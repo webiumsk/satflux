@@ -929,6 +929,7 @@
     "app_opt_reverse_charge_note": "Text prenesenia DPH na faktúre",
     "action_isdoc": "Stiahnuť ISDOC",
     "action_ubl": "Stiahnuť UBL (XML)",
+    "action_xrechnung": "Stiahnuť XRechnung (XML)",
     "vies_validate": "Overiť vo VIES",
     "vies_valid": "IČ DPH je platné vo VIES",
     "vies_invalid": "IČ DPH nie je platné vo VIES",

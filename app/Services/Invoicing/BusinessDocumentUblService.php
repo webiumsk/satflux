@@ -10,6 +10,7 @@ use App\Models\CompanyContact;
 use App\Support\Invoicing\Canonical\CanonicalInvoice;
 use App\Support\Invoicing\Canonical\CanonicalInvoiceLine;
 use App\Support\Invoicing\Canonical\CanonicalTaxBreakdownRow;
+use App\Support\Invoicing\DeXRechnungProfile;
 use App\Support\Invoicing\EuStructuredDocumentExport;
 use App\Support\Invoicing\SkUblProfile;
 use XMLWriter;
@@ -19,6 +20,9 @@ use XMLWriter;
  */
 class BusinessDocumentUblService
 {
+    /** German companies export the XRechnung CIUS instead of plain Peppol BIS. */
+    protected bool $xrechnung = false;
+
     public function __construct(
         protected CanonicalInvoiceBuilder $canonicalBuilder,
     ) {}
@@ -33,6 +37,7 @@ class BusinessDocumentUblService
         $canonical = $this->canonicalBuilder->fromDocument($document);
         $document = $canonical->document ?? $document;
 
+        $this->xrechnung = DeXRechnungProfile::appliesTo($canonical->company);
         $isCreditNote = $document->type === BusinessDocumentType::CreditNote;
 
         $writer = new XMLWriter;
@@ -48,13 +53,19 @@ class BusinessDocumentUblService
         $writer->writeAttributeNs('xmlns', 'cac', null, 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
         $writer->writeAttributeNs('xmlns', 'cbc', null, 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
 
-        $this->element($writer, 'cbc', 'CustomizationID', 'urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0');
+        $this->element($writer, 'cbc', 'CustomizationID', $this->xrechnung
+            ? DeXRechnungProfile::CUSTOMIZATION_ID
+            : 'urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0');
         $this->element($writer, 'cbc', 'ProfileID', 'urn:fdc:peppol.eu:2017:poacc:billing:01:1.0');
         $this->element($writer, 'cbc', 'ID', (string) $document->number);
         $this->element($writer, 'cbc', 'IssueDate', $document->issue_date?->format('Y-m-d') ?? now()->format('Y-m-d'));
         $this->element($writer, 'cbc', 'DueDate', $document->due_date?->format('Y-m-d'));
         $this->element($writer, 'cbc', 'DocumentCurrencyCode', $canonical->currency);
-        $this->element($writer, 'cbc', 'BuyerReference', $document->variable_symbol);
+        // BT-10 is mandatory in XRechnung (BR-DE-15); Peppol keeps the
+        // optional variable-symbol behavior.
+        $this->element($writer, 'cbc', 'BuyerReference', $this->xrechnung
+            ? DeXRechnungProfile::buyerReference($document)
+            : $document->variable_symbol);
         if ($isCreditNote) {
             $this->element($writer, 'cbc', 'CreditNoteTypeCode', $this->invoiceTypeCode($document->type));
         } else {
@@ -205,7 +216,8 @@ class BusinessDocumentUblService
         }
 
         $writer->startElementNs('cac', 'PaymentMeans', null);
-        $this->element($writer, 'cbc', 'PaymentMeansCode', '30');
+        // 58 = SEPA credit transfer (XRechnung/BR-DE-23 expectation for IBAN).
+        $this->element($writer, 'cbc', 'PaymentMeansCode', $this->xrechnung ? '58' : '30');
         if ($document->variable_symbol) {
             $this->element($writer, 'cbc', 'PaymentID', $document->variable_symbol);
         }
@@ -225,7 +237,11 @@ class BusinessDocumentUblService
         $writer->startElementNs('cac', $wrapper, null);
         $writer->startElementNs('cac', 'Party', null);
 
-        $endpoint = SkUblProfile::resolveEndpoint($entity);
+        // XRechnung parties carry electronic addresses (e-mail with the EM
+        // scheme) - German registers are not Peppol participant ids.
+        $endpoint = $this->xrechnung
+            ? DeXRechnungProfile::electronicAddress($entity)
+            : SkUblProfile::resolveEndpoint($entity);
         if ($endpoint !== null) {
             $writer->startElementNs('cbc', 'EndpointID', null);
             $writer->writeAttribute('schemeID', $endpoint['scheme']);
@@ -246,17 +262,8 @@ class BusinessDocumentUblService
         $writer->endElement();
         $writer->endElement();
 
-        $legalEntity = SkUblProfile::resolveLegalEntityId($entity);
-        if ($legalEntity !== null) {
-            $writer->startElementNs('cac', 'PartyLegalEntity', null);
-            $this->element($writer, 'cbc', 'RegistrationName', SkUblProfile::partyDisplayName($entity));
-            $writer->startElementNs('cbc', 'CompanyID', null);
-            $writer->writeAttribute('schemeID', $legalEntity['scheme']);
-            $writer->text($legalEntity['id']);
-            $writer->endElement();
-            $writer->endElement();
-        }
-
+        // UBL schema order inside cac:Party: PartyTaxScheme precedes
+        // PartyLegalEntity, Contact comes last.
         $vat = $entity instanceof Company ? $entity->vat_number : $entity->vat_id;
         if ($vat) {
             $writer->startElementNs('cac', 'PartyTaxScheme', null);
@@ -265,6 +272,35 @@ class BusinessDocumentUblService
             $this->element($writer, 'cbc', 'ID', 'VAT');
             $writer->endElement();
             $writer->endElement();
+        }
+
+        $legalEntity = $this->xrechnung
+            ? DeXRechnungProfile::legalEntityId($entity)
+            : SkUblProfile::resolveLegalEntityId($entity);
+        if ($legalEntity !== null) {
+            $writer->startElementNs('cac', 'PartyLegalEntity', null);
+            $this->element($writer, 'cbc', 'RegistrationName', SkUblProfile::partyDisplayName($entity));
+            $writer->startElementNs('cbc', 'CompanyID', null);
+            if ($legalEntity['scheme'] !== null) {
+                $writer->writeAttribute('schemeID', $legalEntity['scheme']);
+            }
+            $writer->text($legalEntity['id']);
+            $writer->endElement();
+            $writer->endElement();
+        }
+
+        // BG-6 seller contact - required by XRechnung (BR-DE-2/5/6).
+        if ($this->xrechnung && $wrapper === 'AccountingSupplierParty' && $entity instanceof Company) {
+            $contactName = trim((string) ($entity->issuer_name ?: $entity->legal_name));
+            $phone = trim((string) $entity->issuer_phone);
+            $email = trim((string) $entity->issuer_email);
+            if ($contactName !== '' || $phone !== '' || $email !== '') {
+                $writer->startElementNs('cac', 'Contact', null);
+                $this->element($writer, 'cbc', 'Name', $contactName);
+                $this->element($writer, 'cbc', 'Telephone', $phone);
+                $this->element($writer, 'cbc', 'ElectronicMail', $email);
+                $writer->endElement();
+            }
         }
 
         $writer->endElement();

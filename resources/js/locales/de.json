@@ -929,6 +929,7 @@
     "app_opt_reverse_charge_note": "Reverse-Charge-Text auf der Rechnung",
     "action_isdoc": "ISDOC herunterladen",
     "action_ubl": "UBL (XML) herunterladen",
+    "action_xrechnung": "XRechnung (XML) herunterladen",
     "vies_validate": "In VIES prüfen",
     "vies_valid": "USt-IdNr. ist in VIES gültig",
     "vies_invalid": "USt-IdNr. ist in VIES nicht gültig",

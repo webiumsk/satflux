@@ -929,6 +929,7 @@
     "app_opt_reverse_charge_note": "Reverse charge text on invoice",
     "action_isdoc": "Download ISDOC",
     "action_ubl": "Download UBL (XML)",
+    "action_xrechnung": "Download XRechnung (XML)",
     "vies_validate": "Check in VIES",
     "vies_valid": "VAT ID is valid in VIES",
     "vies_invalid": "VAT ID is not valid in VIES",

@@ -248,6 +248,7 @@
         @issue="issueDocument"
         @send-email="openSendEmail"
         @pdf="downloadPdf"
+        :xrechnung="company?.jurisdiction === 'eu_de'"
         @isdoc="downloadIsdoc"
         @ubl="downloadUbl"
         @duplicate="duplicateCurrent"
