@@ -7,6 +7,19 @@ export type SupportedLocale = typeof supportedLocales[number];
 
 const defaultLocale: SupportedLocale = 'en';
 
+const localeTags: Record<SupportedLocale, string> = {
+    en: 'en-US',
+    sk: 'sk-SK',
+    es: 'es-ES',
+    cs: 'cs-CZ',
+    de: 'de-DE',
+};
+
+/** BCP-47 tag for Intl APIs (dates, numbers); unknown locales fall back to en-US. */
+export function localeTagFor(locale: string): string {
+    return localeTags[locale as SupportedLocale] ?? localeTags[defaultLocale];
+}
+
 function getLocale(): SupportedLocale {
     const stored = localStorage.getItem('locale');
     if (stored && supportedLocales.includes(stored as SupportedLocale)) {

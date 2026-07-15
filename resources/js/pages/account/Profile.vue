@@ -1422,6 +1422,7 @@
 import { ref, onMounted, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
+import { localeTagFor } from "@/i18n";
 import { useAuthStore } from "../../store/auth";
 import { useFlashStore } from "../../store/flash";
 import {
@@ -1932,17 +1933,7 @@ async function handleAddCredit() {
 function formatCreditHistoryDate(value: string): string {
   if (!value) return "";
   const date = new Date(value);
-  const localeTag =
-    locale.value === "sk"
-      ? "sk-SK"
-      : locale.value === "cs"
-        ? "cs-CZ"
-        : locale.value === "de"
-          ? "de-DE"
-          : locale.value === "es"
-            ? "es-ES"
-            : "en-US";
-  return date.toLocaleDateString(localeTag, {
+  return date.toLocaleDateString(localeTagFor(locale.value), {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -1963,17 +1954,7 @@ function formatDate(timestamp: number | string): string {
     typeof timestamp === "number"
       ? new Date(timestamp * 1000)
       : new Date(timestamp);
-  const localeTag =
-    locale.value === "sk"
-      ? "sk-SK"
-      : locale.value === "cs"
-        ? "cs-CZ"
-        : locale.value === "de"
-          ? "de-DE"
-          : locale.value === "es"
-            ? "es-ES"
-            : "en-US";
-  return date.toLocaleDateString(localeTag, {
+  return date.toLocaleDateString(localeTagFor(locale.value), {
     weekday: "long",
     year: "numeric",
     month: "long",
