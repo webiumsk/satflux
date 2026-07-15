@@ -173,8 +173,12 @@ class WooAutoIssueTest extends TestCase
         $payload = $this->paidOrderPayload();
         $payload['type'] = 'proforma';
         $payload['is_paid'] = false;
-        // The plugin serializes unpaid orders with an explicit null.
+        // The plugin serializes unpaid orders with an explicit null and COD
+        // orders with an empty BTCPay id (arrives as null via
+        // convertEmptyStringsToNull) - both must pass validation.
         $payload['paid_at'] = null;
+        $payload['btcpay_invoice_id'] = '';
+        $payload['payment_method'] = 'cod';
 
         $response = $this->withHeader('Authorization', 'Bearer '.$this->token)
             ->postJson('/api/integrations/woocommerce/documents', $payload)
