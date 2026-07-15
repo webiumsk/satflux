@@ -187,6 +187,247 @@ class EphemeralBusinessDocumentBtcpayTest extends TestCase
     }
 
     #[Test]
+    public function paid_ephemeral_checkout_is_not_replaced_by_a_fresh_invoice(): void
+    {
+        Http::fake([
+            '*' => Http::response([
+                'id' => 'btcpay-inv-new',
+                'checkoutLink' => 'https://btcpay.example/i/new',
+            ], 200),
+        ]);
+
+        $user = $this->createProUser();
+        $user->update(['btcpay_api_key' => 'test-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'btcpay_store_id' => 'btcpay-store-1',
+        ]);
+
+        \App\Models\EphemeralBtcpayCheckout::query()->create([
+            'user_id' => $user->id,
+            'store_id' => $store->id,
+            'btcpay_invoice_id' => 'btcpay-inv-paid',
+            'evolu_document_id' => 'evolu-doc-123',
+            'status' => 'paid',
+            'paid_at' => now(),
+            'amount' => 100,
+            'currency' => 'EUR',
+        ]);
+
+        $payload = $this->ephemeralPayload();
+        $payload['store_id'] = $store->id;
+        $payload['evolu_document_id'] = 'evolu-doc-123';
+        $payload['document']['payment_btc_enabled'] = true;
+
+        $this->actingAs($user)->postJson('/api/invoicing/ephemeral/btcpay-checkout', $payload)
+            ->assertOk()
+            ->assertJsonPath('data.btcpay_invoice_id', 'btcpay-inv-paid')
+            ->assertJsonPath('data.checkout_link', null)
+            ->assertJsonPath('data.status', 'paid');
+
+        $this->assertDatabaseCount('ephemeral_btcpay_checkouts', 1);
+        Http::assertSentCount(0);
+    }
+
+    #[Test]
+    public function settled_pending_ephemeral_checkout_is_marked_paid_instead_of_replaced(): void
+    {
+        Http::fake([
+            '*/invoices/btcpay-inv-pending' => Http::response([
+                'id' => 'btcpay-inv-pending',
+                'status' => 'Settled',
+                'checkoutLink' => 'https://btcpay.example/i/pending',
+            ], 200),
+            '*' => Http::response([
+                'id' => 'btcpay-inv-new',
+                'checkoutLink' => 'https://btcpay.example/i/new',
+            ], 200),
+        ]);
+
+        $user = $this->createProUser();
+        $user->update(['btcpay_api_key' => 'test-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'btcpay_store_id' => 'btcpay-store-1',
+        ]);
+
+        \App\Models\EphemeralBtcpayCheckout::query()->create([
+            'user_id' => $user->id,
+            'store_id' => $store->id,
+            'btcpay_invoice_id' => 'btcpay-inv-pending',
+            'evolu_document_id' => 'evolu-doc-123',
+            'status' => 'pending',
+            'amount' => 100,
+            'currency' => 'EUR',
+        ]);
+
+        $payload = $this->ephemeralPayload();
+        $payload['store_id'] = $store->id;
+        $payload['evolu_document_id'] = 'evolu-doc-123';
+        $payload['document']['payment_btc_enabled'] = true;
+
+        $this->actingAs($user)->postJson('/api/invoicing/ephemeral/btcpay-checkout', $payload)
+            ->assertOk()
+            ->assertJsonPath('data.btcpay_invoice_id', 'btcpay-inv-pending')
+            ->assertJsonPath('data.checkout_link', null)
+            ->assertJsonPath('data.status', 'paid');
+
+        $this->assertDatabaseHas('ephemeral_btcpay_checkouts', [
+            'btcpay_invoice_id' => 'btcpay-inv-pending',
+            'status' => 'paid',
+        ]);
+        $this->assertDatabaseMissing('ephemeral_btcpay_checkouts', [
+            'btcpay_invoice_id' => 'btcpay-inv-new',
+        ]);
+        Http::assertSentCount(1);
+    }
+
+    #[Test]
+    public function processing_checkout_is_reused_as_payable_not_reported_paid(): void
+    {
+        Http::fake([
+            '*/invoices/btcpay-inv-pending' => Http::response([
+                'id' => 'btcpay-inv-pending',
+                'status' => 'Processing',
+                'checkoutLink' => 'https://btcpay.example/i/pending',
+            ], 200),
+            '*' => Http::response([
+                'id' => 'btcpay-inv-new',
+                'checkoutLink' => 'https://btcpay.example/i/new',
+            ], 200),
+        ]);
+
+        $user = $this->createProUser();
+        $user->update(['btcpay_api_key' => 'test-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'btcpay_store_id' => 'btcpay-store-1',
+        ]);
+
+        \App\Models\EphemeralBtcpayCheckout::query()->create([
+            'user_id' => $user->id,
+            'store_id' => $store->id,
+            'btcpay_invoice_id' => 'btcpay-inv-pending',
+            'evolu_document_id' => 'evolu-doc-123',
+            'status' => 'pending',
+            'amount' => 100,
+            'currency' => 'EUR',
+        ]);
+
+        $payload = $this->ephemeralPayload();
+        $payload['store_id'] = $store->id;
+        $payload['evolu_document_id'] = 'evolu-doc-123';
+        $payload['document']['payment_btc_enabled'] = true;
+
+        // Processing = broadcast but unconfirmed: the link is reused, the
+        // document is NOT reported paid (settlement lands via webhook).
+        $this->actingAs($user)->postJson('/api/invoicing/ephemeral/btcpay-checkout', $payload)
+            ->assertOk()
+            ->assertJsonPath('data.btcpay_invoice_id', 'btcpay-inv-pending')
+            ->assertJsonPath('data.checkout_link', 'https://btcpay.example/i/pending')
+            ->assertJsonMissingPath('data.status');
+
+        $this->assertDatabaseHas('ephemeral_btcpay_checkouts', [
+            'btcpay_invoice_id' => 'btcpay-inv-pending',
+            'status' => 'pending',
+        ]);
+    }
+
+    #[Test]
+    public function unknown_btcpay_state_fails_closed_instead_of_minting(): void
+    {
+        Http::fake([
+            '*/invoices/btcpay-inv-pending' => Http::response(null, 500),
+            '*' => Http::response([
+                'id' => 'btcpay-inv-new',
+                'checkoutLink' => 'https://btcpay.example/i/new',
+            ], 200),
+        ]);
+
+        $user = $this->createProUser();
+        $user->update(['btcpay_api_key' => 'test-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'btcpay_store_id' => 'btcpay-store-1',
+        ]);
+
+        \App\Models\EphemeralBtcpayCheckout::query()->create([
+            'user_id' => $user->id,
+            'store_id' => $store->id,
+            'btcpay_invoice_id' => 'btcpay-inv-pending',
+            'evolu_document_id' => 'evolu-doc-123',
+            'status' => 'pending',
+            'amount' => 100,
+            'currency' => 'EUR',
+        ]);
+
+        $payload = $this->ephemeralPayload();
+        $payload['store_id'] = $store->id;
+        $payload['evolu_document_id'] = 'evolu-doc-123';
+        $payload['document']['payment_btc_enabled'] = true;
+
+        // The pending invoice's state could not be determined - it might be
+        // paid. Creating a replacement blindly is exactly the duplicate bug,
+        // so the create flow fails closed.
+        $this->actingAs($user)->postJson('/api/invoicing/ephemeral/btcpay-checkout', $payload)
+            ->assertStatus(422);
+        $this->assertDatabaseMissing('ephemeral_btcpay_checkouts', [
+            'btcpay_invoice_id' => 'btcpay-inv-new',
+        ]);
+
+        // The read-only view lookup degrades to "no link" instead of erroring.
+        $this->actingAs($user)->postJson('/api/invoicing/ephemeral/btcpay-checkout/existing', $payload)
+            ->assertOk()
+            ->assertJsonPath('data', null);
+    }
+
+    #[Test]
+    public function view_lookup_surfaces_a_settled_checkout_as_paid(): void
+    {
+        Http::fake([
+            '*/invoices/btcpay-inv-pending' => Http::response([
+                'id' => 'btcpay-inv-pending',
+                'status' => 'Settled',
+                'checkoutLink' => 'https://btcpay.example/i/pending',
+            ], 200),
+        ]);
+
+        $user = $this->createProUser();
+        $user->update(['btcpay_api_key' => 'test-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'btcpay_store_id' => 'btcpay-store-1',
+        ]);
+
+        \App\Models\EphemeralBtcpayCheckout::query()->create([
+            'user_id' => $user->id,
+            'store_id' => $store->id,
+            'btcpay_invoice_id' => 'btcpay-inv-pending',
+            'evolu_document_id' => 'evolu-doc-123',
+            'status' => 'pending',
+            'amount' => 100,
+            'currency' => 'EUR',
+        ]);
+
+        $payload = $this->ephemeralPayload();
+        $payload['store_id'] = $store->id;
+        $payload['evolu_document_id'] = 'evolu-doc-123';
+        $payload['document']['payment_btc_enabled'] = true;
+
+        // The read-only view lookup also heals: the browser learns the
+        // checkout settled and can mark the local document paid.
+        $this->actingAs($user)->postJson('/api/invoicing/ephemeral/btcpay-checkout/existing', $payload)
+            ->assertOk()
+            ->assertJsonPath('data.btcpay_invoice_id', 'btcpay-inv-pending')
+            ->assertJsonPath('data.status', 'paid');
+
+        $this->assertDatabaseHas('ephemeral_btcpay_checkouts', [
+            'btcpay_invoice_id' => 'btcpay-inv-pending',
+            'status' => 'paid',
+        ]);
+    }
+
+    #[Test]
     public function existing_checkout_lookup_never_mints_a_btcpay_invoice(): void
     {
         Http::fake([
