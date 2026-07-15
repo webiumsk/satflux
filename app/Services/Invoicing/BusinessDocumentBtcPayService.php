@@ -194,27 +194,37 @@ class BusinessDocumentBtcPayService
     }
 
     /**
-     * Checkout link of an existing BTCPay invoice when it is still payable
-     * (New/Processing) - reused instead of minting another BTCPay invoice
-     * for the same document on every view. Null on expired/invalid/settled
-     * invoices or any BTCPay error (the caller then creates a fresh one).
+     * BTCPay-side state of an existing ephemeral checkout (fresh fetch):
+     *  - paid: the invoice settled - the caller must surface the payment,
+     *    NEVER replace it with a fresh invoice (PR #144 root cause),
+     *  - payable: New/Processing - reusable instead of minting another one,
+     *  - replaceable: expired/invalid - a fresh invoice may be created.
+     * Null on any BTCPay error (treated as replaceable by callers).
      *
-     * @return array{checkout_link: string|null, btcpay_invoice_id: string}|null
+     * @return array{state: 'paid'|'payable'|'replaceable', checkout_link: string|null, btcpay_invoice_id: string}|null
      */
-    public function reusableEphemeralCheckout(Store $store, string $btcpayInvoiceId): ?array
+    public function ephemeralCheckoutState(Store $store, string $btcpayInvoiceId): ?array
     {
         $invoice = $this->fetchBtcpayInvoiceForStore($store, $btcpayInvoiceId);
         if (! is_array($invoice)) {
             return null;
         }
 
-        $status = strtolower((string) ($invoice['status'] ?? ''));
-        if (! in_array($status, ['new', 'processing'], true)) {
-            return null;
+        $checkoutLink = isset($invoice['checkoutLink']) ? (string) $invoice['checkoutLink'] : null;
+
+        if ($this->invoiceIndicatesPaid($invoice)) {
+            return [
+                'state' => 'paid',
+                'checkout_link' => $checkoutLink,
+                'btcpay_invoice_id' => $btcpayInvoiceId,
+            ];
         }
 
+        $status = strtolower((string) ($invoice['status'] ?? ''));
+
         return [
-            'checkout_link' => isset($invoice['checkoutLink']) ? (string) $invoice['checkoutLink'] : null,
+            'state' => in_array($status, ['new', 'processing'], true) ? 'payable' : 'replaceable',
+            'checkout_link' => $checkoutLink,
             'btcpay_invoice_id' => $btcpayInvoiceId,
         ];
     }

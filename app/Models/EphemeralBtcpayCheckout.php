@@ -6,6 +6,13 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property string $id
+ * @property string $btcpay_invoice_id
+ * @property string $evolu_document_id
+ * @property string $status
+ * @property \Illuminate\Support\Carbon|null $paid_at
+ */
 class EphemeralBtcpayCheckout extends Model
 {
     use HasUuids;

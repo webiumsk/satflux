@@ -3559,12 +3559,6 @@ parameters:
 			path: app/Services/Invoicing/Efaktura/SapiSkComplianceGateway.php
 
 		-
-			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Services/Invoicing/EphemeralBtcpayCheckoutService.php
-
-		-
 			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
 			identifier: function.impossibleType
 			count: 1
