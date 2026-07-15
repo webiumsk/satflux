@@ -6,6 +6,8 @@ use App\Enums\BusinessDocumentStatus;
 use App\Models\BusinessDocument;
 use App\Models\Store;
 use App\Services\BtcPay\InvoiceService as BtcPayInvoiceService;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -35,19 +37,38 @@ class BusinessDocumentBtcPayService
         Store $store,
         ?string $evoluDocumentId,
     ): ?string {
-        // Paid detection via amounts: every paid-marking path writes
-        // amount_paid = total, and ephemeral snapshots always carry it.
+        // Paid documents render without a payment QR. The status check works
+        // for both worlds (the model casts to the enum at runtime; static
+        // analysis types it string in the ephemeral context, hence in_array).
+        if (in_array($document->status, [BusinessDocumentStatus::Paid, BusinessDocumentStatus::Paid->value], true)) {
+            return null;
+        }
         $total = (float) $document->total;
         if ($total <= 0 || (float) $document->amount_paid >= $total - 0.005) {
             return null;
         }
 
+        // Without a stable dedupe key a minted invoice could never be found
+        // again by any later render/view/create - refuse to mint and render
+        // without a QR instead of leaving untrackable strays behind.
         $user = $store->user;
-        if (! $user instanceof \App\Models\User) {
-            $user = null;
+        if (! $user instanceof \App\Models\User || ! is_string($evoluDocumentId) || $evoluDocumentId === '') {
+            return null;
         }
 
-        if (is_string($evoluDocumentId) && $evoluDocumentId !== '' && $user) {
+        // Serialize per document: the auto-issue email job and the WooCommerce
+        // attachment render fire within seconds of each other - both finding
+        // "no pending checkout" would mint twice. Atomic on redis (prod).
+        $lock = Cache::lock('ephemeral-qr-checkout:'.$store->id.':'.$evoluDocumentId, 30);
+        try {
+            $lock->block(10);
+        } catch (LockTimeoutException) {
+            // The concurrent holder is resolving the same checkout - render
+            // without a QR rather than risk a duplicate mint.
+            return null;
+        }
+
+        try {
             if ($this->ephemeralCheckoutService->findLatestPaid($user, $store, $evoluDocumentId)) {
                 return null;
             }
@@ -74,26 +95,24 @@ class BusinessDocumentBtcPayService
                 }
                 // replaceable (expired/invalid) falls through to a fresh one.
             }
+
+            $result = $this->createEphemeralCheckout($document, $store, $evoluDocumentId);
+
+            if (is_string($result['btcpay_invoice_id'] ?? null) && $result['btcpay_invoice_id'] !== '') {
+                $this->ephemeralCheckoutService->registerCheckout(
+                    $user,
+                    $store,
+                    $evoluDocumentId,
+                    $result['btcpay_invoice_id'],
+                    $total,
+                    $document->currency,
+                );
+            }
+
+            return $result['checkout_link'] ?? null;
+        } finally {
+            $lock->release();
         }
-
-        $result = $this->createEphemeralCheckout($document, $store, $evoluDocumentId);
-
-        if (
-            $user
-            && is_string($evoluDocumentId) && $evoluDocumentId !== ''
-            && is_string($result['btcpay_invoice_id'] ?? null) && $result['btcpay_invoice_id'] !== ''
-        ) {
-            $this->ephemeralCheckoutService->registerCheckout(
-                $user,
-                $store,
-                $evoluDocumentId,
-                $result['btcpay_invoice_id'],
-                $total,
-                $document->currency,
-            );
-        }
-
-        return $result['checkout_link'] ?? null;
     }
 
     /**

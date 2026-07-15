@@ -116,6 +116,11 @@ class EphemeralPdfQrCheckoutTest extends TestCase
     public function unpaid_document_mints_once_and_registers_the_checkout(): void
     {
         Http::fake([
+            '*/invoices/btcpay-inv-new' => Http::response([
+                'id' => 'btcpay-inv-new',
+                'status' => 'New',
+                'checkoutLink' => 'https://btcpay.example/i/new',
+            ], 200),
             '*' => Http::response([
                 'id' => 'btcpay-inv-new',
                 'checkoutLink' => 'https://btcpay.example/i/new',
@@ -135,6 +140,51 @@ class EphemeralPdfQrCheckoutTest extends TestCase
             'evolu_document_id' => 'evolu-doc-123',
             'status' => 'pending',
         ]);
+
+        // A second render (email + WC attachment) reuses the registered
+        // checkout - exactly one create call ever reaches BTCPay.
+        $secondLink = $this->service->qrCheckoutLinkForEphemeralRender(
+            $this->ephemeralDocument(0.18, 0),
+            $this->store,
+            'evolu-doc-123',
+        );
+
+        $this->assertSame($link, $secondLink);
+        $this->assertDatabaseCount('ephemeral_btcpay_checkouts', 1);
+        Http::assertSentCount(2); // 1x create + 1x status fetch, never 2x create
+    }
+
+    #[Test]
+    public function paid_status_alone_suppresses_the_qr_even_without_amount_paid(): void
+    {
+        Http::fake();
+
+        // A paid document whose snapshot lacks amount_paid (defensive: every
+        // current paid-marking path writes it, but status is authoritative).
+        $link = $this->service->qrCheckoutLinkForEphemeralRender(
+            $this->ephemeralDocument(0.18, 0, 'paid'),
+            $this->store,
+            'evolu-doc-123',
+        );
+
+        $this->assertNull($link);
+        Http::assertSentCount(0);
+    }
+
+    #[Test]
+    public function render_without_a_dedupe_key_never_mints(): void
+    {
+        Http::fake();
+
+        $link = $this->service->qrCheckoutLinkForEphemeralRender(
+            $this->ephemeralDocument(0.18, 0),
+            $this->store,
+            null,
+        );
+
+        $this->assertNull($link);
+        Http::assertSentCount(0);
+        $this->assertDatabaseCount('ephemeral_btcpay_checkouts', 0);
     }
 
     #[Test]
