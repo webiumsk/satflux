@@ -33,6 +33,14 @@ return new class extends Migration
 
     public function down(): void
     {
+        // The old schema allows a single row per order: drop non-invoice
+        // entries (transient inbox rows) so recreating the narrower unique
+        // constraint cannot fail on an order holding both a proforma and
+        // its final invoice.
+        IntegrationDocumentInbox::query()
+            ->where('document_type', '!=', 'invoice')
+            ->delete();
+
         Schema::table('integration_document_inbox', function (Blueprint $table) {
             $table->dropUnique('integration_inbox_wc_order_type_unique');
             $table->unique(
