@@ -15,8 +15,11 @@ import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
  * 1. invoice-header snapshot + local high counters → PUT auto-issue-profile,
  * 2. e-mail settings (SMTP/templates live only in Evolu for local-first
  *    companies) → PATCH email-settings on the bridge company,
- * 3. the LOCAL invoice series format → server default series (without this
- *    the server would issue with its INVYYYYNNNN default - the F3 bug).
+ * 3. the LOCAL series formats (invoice + proforma) → server default series
+ *    (without this the server would issue with its INVYYYYNNNN /
+ *    PFYYYYNNNN defaults - the F3 bug, and its proforma reprise where a
+ *    deferred Woo order got PF20260001 while the merchant's local series
+ *    said ZAL20260001, colliding with an existing document).
  *
  * Opt-in: enabling deliberately persists this company's invoicing header and
  * SMTP settings server-side - the UI says so explicitly.
@@ -63,7 +66,12 @@ type ServerSeriesRow = {
     is_default: boolean;
 };
 
-const SYNCED_DOCUMENT_TYPES: DocumentType[] = ["invoice" as DocumentType];
+const SYNCED_DOCUMENT_TYPES: DocumentType[] = [
+    "invoice" as DocumentType,
+    // Deferred-payment Woo orders auto-issue a proforma server-side, so its
+    // local series format and high counter must sync exactly like invoices.
+    "proforma" as DocumentType,
+];
 
 /** Company snapshot in the shape the server-side EphemeralDocumentFactory consumes. */
 export function buildAutoIssueCompanyPayload(

@@ -233,7 +233,7 @@ describe("auto-issue sync orchestration", () => {
 });
 
 describe("buildLocalHighCounters", () => {
-    it("reports the highest locally issued invoice counter for the local format", () => {
+    it("reports the highest locally issued counter per type for the local formats", () => {
         const companyId = "c1" as CompanyId;
         const series = [
             {
@@ -244,17 +244,32 @@ describe("buildLocalHighCounters", () => {
                 name: "FV",
                 isDefault: 1,
             },
+            {
+                id: "s2",
+                companyId,
+                documentType: "proforma",
+                format: "ZALRRRRCCCC",
+                name: "ZAL",
+                isDefault: 1,
+            },
         ] as unknown as EvoluNumberSeriesRow[];
         const documents = [
             { id: "d1", companyId, documentType: "invoice", status: "issued", number: "FV20260041" },
             { id: "d2", companyId, documentType: "invoice", status: "issued", number: "FV20260007" },
             { id: "d3", companyId, documentType: "invoice", status: "draft", number: null },
+            { id: "d4", companyId, documentType: "proforma", status: "issued", number: "ZAL20260001" },
         ] as unknown as EvoluDocumentRow[];
 
-        expect(buildLocalHighCounters(companyId, documents, series)).toEqual({ invoice: 41 });
+        expect(buildLocalHighCounters(companyId, documents, series)).toEqual({
+            invoice: 41,
+            proforma: 1,
+        });
     });
 
     it("returns zero for an empty dataset", () => {
-        expect(buildLocalHighCounters("c1" as CompanyId, [], [])).toEqual({ invoice: 0 });
+        expect(buildLocalHighCounters("c1" as CompanyId, [], [])).toEqual({
+            invoice: 0,
+            proforma: 0,
+        });
     });
 });
