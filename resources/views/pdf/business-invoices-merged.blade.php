@@ -27,6 +27,8 @@
         $showSalesTaxColumn = $page['showSalesTaxColumn'] ?? false;
         $isUs = $page['isUs'] ?? false;
         $reverseChargeNote = $page['reverseChargeNote'] ?? null;
+        $vatLabel = $page['vatLabel'] ?? null;
+        $taxIdLabel = $page['taxIdLabel'] ?? null;
     @endphp
     <div class="invoice-page">
         @include('pdf.partials.business-invoice-body-eu', compact(
@@ -34,6 +36,8 @@
             'company',
             'contact',
             'lines',
+            'vatLabel',
+            'taxIdLabel',
             'taxBreakdown',
             'showVatColumn',
             'showVatBreakdown',

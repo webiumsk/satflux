@@ -175,13 +175,24 @@ class BusinessDocumentPdfService
         $contact = $document->resolvedBuyer();
         $reverseChargeNote = $this->vatPolicy->reverseChargeNote($company, $contact, $settings);
 
-        $isUs = $company->jurisdiction === CompanyJurisdiction::Us;
+        $jurisdiction = $company->jurisdiction;
+        $isUs = $jurisdiction === CompanyJurisdiction::Us;
+
+        // sk/cs/en label localization comes from pdf_locale translations;
+        // jurisdictions whose statutory tax terms a language file cannot
+        // distinguish (DE USt-IdNr. vs AT UID-Nr. vs CH MWST - all German)
+        // override the labels from JurisdictionRules.
+        $rules = \App\Support\Invoicing\JurisdictionRules::for($jurisdiction);
+        $vatLabel = $rules['pdf_label_override'] ? $rules['vat_name'] : __('VAT');
+        $taxIdLabel = $rules['pdf_label_override'] ? $rules['tax_id_label'] : __('VAT ID');
 
         return [
             'document' => $document,
             'company' => $company,
             'contact' => $contact,
             'lines' => $document->lines,
+            'vatLabel' => $vatLabel,
+            'taxIdLabel' => $taxIdLabel,
             'taxBreakdown' => $canonical->taxBreakdown,
             'showVatColumn' => $this->vatPolicy->showsVatRateColumn($company, $contact),
             'showVatBreakdown' => $this->vatPolicy->showsVatBreakdown($company, $contact),

@@ -91,7 +91,10 @@ const DocumentAction = maxLength(128)(NonEmptyString);
 export const CompanyJurisdiction = union(
     "eu_sk",
     "eu_cz",
+    "eu_de",
+    "eu_at",
     "eu_other",
+    "ch",
     "us",
     "uk",
     "offshore",

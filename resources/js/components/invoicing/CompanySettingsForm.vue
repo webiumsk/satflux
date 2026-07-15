@@ -105,6 +105,15 @@
           <div>
             <label class="invoicing-sf-label">{{ t('invoicing.jurisdiction') }}</label>
             <InvoicingJurisdictionSelect v-model="contactForm.jurisdiction" />
+            <p
+              v-if="activeJurisdictionRules.is_generic_bucket"
+              class="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mt-2"
+            >
+              {{ t('invoicing.jurisdiction_generic_bucket_note') }}
+            </p>
+            <p v-else-if="eInvoicingInfo" class="text-xs text-gray-600 mt-2">
+              {{ eInvoicingInfo }}
+            </p>
           </div>
         </div>
 
@@ -180,14 +189,15 @@
               <input v-model="contactForm.tax_id" class="invoicing-sf-input" />
             </div>
             <div>
-              <label class="invoicing-sf-label">{{ t('invoicing.vat_number_ic_dph') }}</label>
+              <label class="invoicing-sf-label">{{ vatIdFieldLabel }}</label>
               <div class="flex gap-2 items-start">
                 <input
                   v-model="contactForm.vat_number"
                   class="invoicing-sf-input flex-1 min-w-0"
-                  placeholder="SK2023980035"
+                  :placeholder="vatIdPlaceholder"
                 />
                 <button
+                  v-if="activeJurisdictionRules.eu_member"
                   type="button"
                   class="shrink-0 px-2 py-2 text-xs border border-gray-300 rounded-lg hover:bg-gray-50"
                   :disabled="viesLoading || !contactForm.vat_number.trim()"
@@ -417,6 +427,8 @@ import {
   syncCompanyDefaultCurrency,
 } from '../../config/companyCurrencies';
 import { defaultRegistryForJurisdiction } from '../../config/registryCountries';
+import { jurisdictionRules, standardVatRate } from '../../config/jurisdictionRules';
+import { localeTagFor } from '../../i18n';
 import { useEfakturaFeature } from '../../composables/useEfakturaFeature';
 import { isCompanyEfakturaEligible } from '../../composables/useCompanyEfakturaSettings';
 import {
@@ -474,7 +486,7 @@ const emit = defineEmits<{
   updated: [company: Record<string, any>];
 }>();
 
-const { t, te } = useI18n();
+const { t, te, locale } = useI18n();
 const { notifySaved } = useInvoicingSaveFeedback();
 const router = useRouter();
 const storesStore = useStoresStore();
@@ -570,6 +582,53 @@ const resetImpactItems = computed(() => [
 ]);
 
 const isUs = computed(() => isUsJurisdiction(contactForm.jurisdiction));
+
+const activeJurisdictionRules = computed(() => jurisdictionRules(contactForm.jurisdiction));
+
+const vatIdFieldLabel = computed(() =>
+  activeJurisdictionRules.value.pdf_label_override
+    ? activeJurisdictionRules.value.tax_id_label
+    : t('invoicing.vat_number_ic_dph'),
+);
+
+const VAT_ID_PLACEHOLDERS: Record<string, string> = {
+  eu_sk: 'SK2023980035',
+  eu_cz: 'CZ12345678',
+  eu_de: 'DE123456789',
+  eu_at: 'ATU12345678',
+  ch: 'CHE-123.456.789 MWST',
+  uk: 'GB123456789',
+};
+const vatIdPlaceholder = computed(
+  () => VAT_ID_PLACEHOLDERS[contactForm.jurisdiction] ?? 'SK2023980035',
+);
+
+/** Human sentence about the jurisdiction's e-invoicing mandate (empty when none). */
+const eInvoicingInfo = computed(() => {
+  const einv = activeJurisdictionRules.value.e_invoicing;
+  if (!einv) return '';
+  const network = einv.network === 'xrechnung_zugferd' ? 'XRechnung/ZUGFeRD' : 'Peppol';
+  const fmt = (iso: string) => new Date(iso).toLocaleDateString(localeTagFor(locale.value));
+  const parts: string[] = [];
+  if (einv.b2g_only) {
+    parts.push(t('invoicing.einvoicing_b2g_only'));
+  }
+  if (einv.receive_from) {
+    parts.push(t('invoicing.einvoicing_receive_from', { date: fmt(einv.receive_from) }));
+  }
+  if (einv.issue_from) {
+    parts.push(
+      einv.issue_from_all
+        ? t('invoicing.einvoicing_issue_from_phased', {
+            date: fmt(einv.issue_from),
+            all: fmt(einv.issue_from_all),
+          })
+        : t('invoicing.einvoicing_issue_from', { date: fmt(einv.issue_from) }),
+    );
+  }
+  if (!parts.length) return '';
+  return `${t('invoicing.einvoicing_intro', { network })} ${parts.join('; ')}.`;
+});
 const { enabled: efakturaGloballyEnabled, load: loadEfakturaFeature } = useEfakturaFeature();
 const showEfakturaTab = computed(() =>
   isCompanyEfakturaEligible(props.company, efakturaGloballyEnabled.value)
@@ -685,6 +744,14 @@ function applyJurisdictionDefaults(jurisdiction: string, previous: string) {
     jurisdiction,
     prevCountry
   );
+  // Prefill the jurisdiction's standard rate for VAT payers who have none
+  // set yet - never overwrite a deliberate value.
+  if (vatStatus.value !== 'none' && !Number(contactForm.vat_rate_default)) {
+    const standard = standardVatRate(jurisdiction);
+    if (standard != null) {
+      contactForm.vat_rate_default = standard;
+    }
+  }
   syncRegistryCountryFromForm();
 }
 
