@@ -57,8 +57,9 @@
               @change="persistPdfOptions"
             >
               <option value="sk">Slovenčina</option>
-              <option value="en">English</option>
               <option value="cs">Čeština</option>
+              <option value="de">Deutsch</option>
+              <option value="en">English</option>
             </select>
           </label>
           <label class="text-xs text-gray-700 flex items-center gap-1.5">

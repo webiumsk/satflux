@@ -60,11 +60,15 @@ import { setLocale as setApiLocale } from '../services/api';
 const { t, locale } = useI18n();
 const showDropdown = ref(false);
 
-const availableLocales = [
+const availableLocales = ([
   { code: 'en', name: 'English' },
   { code: 'sk', name: 'Slovenčina' },
+  { code: 'cs', name: 'Čeština' },
+  { code: 'de', name: 'Deutsch' },
   { code: 'es', name: 'Español' },
-].sort((a, b) => a.name.localeCompare(b.name));
+] satisfies Array<{ code: SupportedLocale; name: string }>).sort(
+  (a, b) => a.name.localeCompare(b.name),
+);
 
 const currentLocale = computed(() => locale.value as SupportedLocale);
 

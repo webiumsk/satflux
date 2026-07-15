@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { localeTagFor } from '@/i18n';
 import api from '../services/api';
 
 export interface PricingFree {
@@ -44,8 +45,7 @@ export function usePricing() {
   const loaded = computed(() => cached.value !== null);
 
   function formatSats(amount: number): string {
-    const localeTag = locale.value === 'sk' ? 'sk-SK' : locale.value === 'es' ? 'es-ES' : 'en-US';
-    return new Intl.NumberFormat(localeTag).format(amount) + ' sats';
+    return new Intl.NumberFormat(localeTagFor(locale.value)).format(amount) + ' sats';
   }
 
   async function load() {
