@@ -1933,7 +1933,15 @@ function formatCreditHistoryDate(value: string): string {
   if (!value) return "";
   const date = new Date(value);
   const localeTag =
-    locale.value === "sk" ? "sk-SK" : locale.value === "es" ? "es-ES" : "en-US";
+    locale.value === "sk"
+      ? "sk-SK"
+      : locale.value === "cs"
+        ? "cs-CZ"
+        : locale.value === "de"
+          ? "de-DE"
+          : locale.value === "es"
+            ? "es-ES"
+            : "en-US";
   return date.toLocaleDateString(localeTag, {
     weekday: "long",
     year: "numeric",
@@ -1956,7 +1964,15 @@ function formatDate(timestamp: number | string): string {
       ? new Date(timestamp * 1000)
       : new Date(timestamp);
   const localeTag =
-    locale.value === "sk" ? "sk-SK" : locale.value === "es" ? "es-ES" : "en-US";
+    locale.value === "sk"
+      ? "sk-SK"
+      : locale.value === "cs"
+        ? "cs-CZ"
+        : locale.value === "de"
+          ? "de-DE"
+          : locale.value === "es"
+            ? "es-ES"
+            : "en-US";
   return date.toLocaleDateString(localeTag, {
     weekday: "long",
     year: "numeric",

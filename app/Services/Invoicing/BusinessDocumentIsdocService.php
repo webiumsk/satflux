@@ -348,6 +348,7 @@ class BusinessDocumentIsdocService
         return match ($locale) {
             'sk' => 'sk',
             'cs' => 'cs',
+            'de' => 'de',
             'en' => 'en',
             default => 'sk',
         };

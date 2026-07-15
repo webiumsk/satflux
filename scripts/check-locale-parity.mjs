@@ -27,7 +27,7 @@ function loadLocale(code) {
 }
 
 const baseline = loadLocale('en');
-const targets = ['sk', 'es'];
+const targets = ['sk', 'es', 'cs', 'de'];
 let failed = false;
 
 for (const code of targets) {
@@ -54,4 +54,4 @@ if (failed) {
   process.exit(1);
 }
 
-console.log('Locale parity OK (en vs sk, es).');
+console.log('Locale parity OK (en vs sk, es, cs, de).');

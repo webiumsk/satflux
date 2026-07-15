@@ -30,7 +30,7 @@ class LandingCopy
     {
         $locale = strtolower(substr($locale, 0, 2));
 
-        return in_array($locale, ['en', 'sk', 'es'], true) ? $locale : 'en';
+        return in_array($locale, ['en', 'sk', 'cs', 'de', 'es'], true) ? $locale : 'en';
     }
 
     /** @return array<string, mixed> */

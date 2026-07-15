@@ -63,6 +63,8 @@ const showDropdown = ref(false);
 const availableLocales = [
   { code: 'en', name: 'English' },
   { code: 'sk', name: 'Slovenčina' },
+  { code: 'cs', name: 'Čeština' },
+  { code: 'de', name: 'Deutsch' },
   { code: 'es', name: 'Español' },
 ].sort((a, b) => a.name.localeCompare(b.name));
 

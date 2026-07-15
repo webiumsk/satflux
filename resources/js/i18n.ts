@@ -2,7 +2,7 @@ import { createI18n } from 'vue-i18n';
 import en from './locales/en.json';
 import api from './services/api';
 
-export const supportedLocales = ['en', 'sk', 'es'] as const;
+export const supportedLocales = ['en', 'sk', 'es', 'cs', 'de'] as const;
 export type SupportedLocale = typeof supportedLocales[number];
 
 const defaultLocale: SupportedLocale = 'en';
@@ -23,6 +23,10 @@ async function loadLocaleMessages(locale: SupportedLocale): Promise<Record<strin
             return (await import('./locales/sk.json')).default;
         case 'es':
             return (await import('./locales/es.json')).default;
+        case 'cs':
+            return (await import('./locales/cs.json')).default;
+        case 'de':
+            return (await import('./locales/de.json')).default;
         default:
             return en;
     }

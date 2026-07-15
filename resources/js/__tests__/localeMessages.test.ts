@@ -3,8 +3,10 @@ import { createI18n } from 'vue-i18n';
 import en from '../locales/en.json';
 import sk from '../locales/sk.json';
 import es from '../locales/es.json';
+import cs from '../locales/cs.json';
+import de from '../locales/de.json';
 
-const locales = { en, sk, es } as const;
+const locales = { en, sk, es, cs, de } as const;
 
 function flattenMessages(obj: Record<string, unknown>, prefix = ''): string[] {
   const keys: string[] = [];
