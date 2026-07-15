@@ -220,3 +220,20 @@ export function standardVatRate(jurisdiction: string): number | null {
     }
     return Math.max(...rules.vat_rates);
 }
+
+/** Default PDF language for new documents; SK behavior stays unchanged. */
+export function defaultPdfLocaleForJurisdiction(jurisdiction: string): "sk" | "cs" | "de" | "en" {
+    switch (jurisdiction) {
+        case "eu_sk":
+        case "eu_other":
+            return "sk";
+        case "eu_cz":
+            return "cs";
+        case "eu_de":
+        case "eu_at":
+        case "ch":
+            return "de";
+        default:
+            return "en";
+    }
+}

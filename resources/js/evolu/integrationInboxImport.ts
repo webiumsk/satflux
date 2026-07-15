@@ -19,6 +19,7 @@ import type { EvoluDocumentRow } from "./documentMap";
 import type { EvoluCompanyRow } from "./companyMap";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { allNumberSeriesQuery } from "./client";
+import { defaultPdfLocaleForJurisdiction } from "@/config/jurisdictionRules";
 import { resolveImportSettleActions } from "./integrationInboxPaid";
 import { resolveIntegrationInboxBasePath } from "./integrationInboxPaths";
 import {
@@ -152,6 +153,7 @@ function buyerToContactForm(buyer: Record<string, unknown>): ContactFormState {
 function payloadToDocumentSave(
     payload: Record<string, unknown>,
     contactId: string,
+    jurisdiction: string,
 ): DocumentSavePayload {
     const rawLines = Array.isArray(payload.lines) ? payload.lines : [];
     const lines: DocumentLinePayload[] = rawLines.map((line) => {
@@ -185,7 +187,9 @@ function payloadToDocumentSave(
         note_above_lines: String(payload.note_above_lines ?? ""),
         note_footer: "",
         internal_note: String(payload.internal_note ?? ""),
-        pdf_locale: "sk",
+        pdf_locale:
+            String(payload.pdf_locale ?? "")
+            || defaultPdfLocaleForJurisdiction(jurisdiction),
         pdf_show_signature: true,
         pdf_show_payment_info: true,
         payment_bank_enabled: payload.payment_bank_enabled !== false,
@@ -344,7 +348,11 @@ export async function importIntegrationInboxEntry(
     }
 
     const vat = vatOptionsForContact(company, { country: buyer.country as string | null });
-    const documentPayload = payloadToDocumentSave(entry.payload, contactResult.contactId);
+    const documentPayload = payloadToDocumentSave(
+        entry.payload,
+        contactResult.contactId,
+        String(company?.jurisdiction ?? ""),
+    );
     const existingDocument =
         existingDocuments.find((row) => row.id === stableDocumentId) ?? null;
 

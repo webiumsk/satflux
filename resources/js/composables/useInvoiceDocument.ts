@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import type { InvoiceLineForm } from '../components/invoicing/InvoiceLivePreview.vue';
 import { invoicingApi } from '../services/api';
 import { isInvoicingLocalFirst } from '../evolu/flags';
+import { defaultPdfLocaleForJurisdiction } from '../config/jurisdictionRules';
 import { allDocumentEventsQuery, allDocumentSnapshotsQuery } from '../evolu/client';
 import {
   latestSnapshotRowForDocument,
@@ -635,7 +636,7 @@ export function useInvoiceDocument() {
       note_above_lines: '',
       note_footer: company.value?.legal_footer_note || '',
       internal_note: '',
-      pdf_locale: 'sk',
+      pdf_locale: defaultPdfLocaleForJurisdiction(String(company.value?.jurisdiction ?? '')),
       pdf_show_signature: true,
       pdf_show_payment_info: true,
       payment_bank_enabled: true,
