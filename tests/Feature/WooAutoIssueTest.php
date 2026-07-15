@@ -163,6 +163,73 @@ class WooAutoIssueTest extends TestCase
             ->assertJsonPath('data.number', 'FV'.now()->format('Y').'0042');
     }
 
+    public function test_unpaid_proforma_is_auto_issued_from_the_pf_series_without_email(): void
+    {
+        Queue::fake();
+        $this->createProfile(autoEmail: false);
+
+        // Deferred payment (COD / bank transfer): the proforma is the payment
+        // REQUEST - it is issued precisely while unpaid.
+        $payload = $this->paidOrderPayload();
+        $payload['type'] = 'proforma';
+        $payload['is_paid'] = false;
+        unset($payload['paid_at']);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$this->token)
+            ->postJson('/api/integrations/woocommerce/documents', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.number', 'PF'.now()->format('Y').'0001')
+            ->assertJsonPath('data.auto_issued', true)
+            ->assertJsonPath('data.email_queued', false);
+
+        $entry = IntegrationDocumentInbox::findOrFail($response->json('data.inbox_id'));
+        $this->assertSame('proforma', $entry->document_type);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_one_order_carries_a_proforma_and_a_linked_final_invoice(): void
+    {
+        Queue::fake();
+        $this->createProfile(autoEmail: false);
+
+        // Stage 1: order reaches Processing - deferred gateway sends a proforma.
+        $proformaPayload = $this->paidOrderPayload();
+        $proformaPayload['type'] = 'proforma';
+        $proformaPayload['is_paid'] = false;
+        unset($proformaPayload['paid_at']);
+
+        $proforma = $this->withHeader('Authorization', 'Bearer '.$this->token)
+            ->postJson('/api/integrations/woocommerce/documents', $proformaPayload)
+            ->assertCreated()
+            ->json('data');
+        $this->assertSame('PF'.now()->format('Y').'0001', $proforma['number']);
+
+        // Stage 2: order completes - the final INVOICE arrives for the SAME
+        // order, linked to the proforma. Dedupe is per type, so the pending
+        // proforma must NOT be returned.
+        $invoicePayload = $this->paidOrderPayload();
+        $invoicePayload['source_evolu_document_id'] = $proforma['evolu_document_id'];
+
+        $invoice = $this->withHeader('Authorization', 'Bearer '.$this->token)
+            ->postJson('/api/integrations/woocommerce/documents', $invoicePayload)
+            ->assertCreated()
+            ->json('data');
+
+        $this->assertNotSame($proforma['inbox_id'], $invoice['inbox_id']);
+        $this->assertSame('FV'.now()->format('Y').'0001', $invoice['number']);
+        $this->assertSame(
+            $proforma['evolu_document_id'],
+            $invoice['payload']['source_evolu_document_id'] ?? null,
+        );
+
+        // Two reservations on separate series: the invoice keeps the
+        // historical un-suffixed key, the proforma is type-suffixed.
+        $keys = DocumentNumberReservation::query()->pluck('issue_request_id')->all();
+        $this->assertCount(2, $keys);
+        $this->assertContains('woo-order:'.IntegrationDocumentInbox::findOrFail($invoice['inbox_id'])->store_integration_id.':1001', $keys);
+        $this->assertContains('woo-order:'.IntegrationDocumentInbox::findOrFail($invoice['inbox_id'])->store_integration_id.':1001:pf', $keys);
+    }
+
     public function test_unpaid_order_is_not_auto_issued_and_names_the_reason(): void
     {
         Queue::fake();
