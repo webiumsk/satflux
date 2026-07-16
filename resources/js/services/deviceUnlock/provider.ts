@@ -1,11 +1,22 @@
 import {
+    addPasskeyPrfSlot,
     createDeviceEnvelope,
     DeviceUnlockError,
+    listPasskeyPrfSlots,
+    removePasskeyPrfSlot,
     rotatePassphrase,
+    touchPasskeyPrfSlot,
     unlockWithPassphrase,
+    unlockWithPrfOutput,
     type DeviceEnvelope,
     type DeviceUnlockSlotType,
+    type PasskeySlotMetadata,
 } from "./envelope";
+import {
+    createPasskeyPrfCredential,
+    evaluatePrfForSlots,
+    isPasskeyPrfSupported,
+} from "./passkeyPrf";
 import {
     clearDeviceEnvelope,
     hasDeviceEnvelope,
@@ -37,11 +48,15 @@ export const passphraseUnlockProvider: DeviceUnlockProvider = {
     },
 };
 
-/** Runtime capability probe for the future passkey PRF slot (not yet implemented). */
+/**
+ * Passkey PRF provider: platform-authenticator probe only - whether the
+ * authenticator actually implements PRF is knowable only at create() time
+ * (addPasskeyToRememberedDevice fails typed when it does not).
+ */
 export const passkeyPrfUnlockProvider: DeviceUnlockProvider = {
     type: "passkey-prf",
     async isSupported() {
-        return false;
+        return isPasskeyPrfSupported();
     },
 };
 
@@ -108,4 +123,108 @@ export async function forgetDevice(): Promise<void> {
     await clearDeviceEnvelope();
 }
 
-export type { DeviceEnvelope };
+/** Passkey slots on this device's envelope (empty when device not remembered). */
+export async function listDevicePasskeySlots(): Promise<PasskeySlotMetadata[]> {
+    const envelope = await loadDeviceEnvelope();
+    return envelope ? listPasskeyPrfSlots(envelope) : [];
+}
+
+/**
+ * Add a passkey unlock shortcut to an already remembered device. Requires the
+ * device passphrase (proves possession + yields the DEK) - the passphrase
+ * slot always stays; the passkey can only ever be an ADDITIONAL slot.
+ */
+export async function addPasskeyToRememberedDevice(passphrase: string, label: string): Promise<PasskeySlotMetadata[]> {
+    const envelope = await loadDeviceEnvelope();
+    if (!envelope) {
+        throw new DeviceUnlockError();
+    }
+    const { dekRaw } = await unlockWithPassphrase(envelope, passphrase);
+    try {
+        const credential = await createPasskeyPrfCredential({
+            label,
+            userHandle: envelope.ownerFingerprint,
+            userName: "satflux-device-unlock",
+        });
+
+        const updated = await addPasskeyPrfSlot({
+            envelope,
+            dekRaw,
+            prfOutput: credential.prfOutput,
+            credentialIdB64: credential.credentialIdB64,
+            prfSaltB64: credential.prfSaltB64,
+            label,
+        });
+
+        // Test-unlock before persisting - same crash/idempotency safety as
+        // rememberDeviceWithPassphrase.
+        const check = await unlockWithPrfOutput(updated, credential.credentialIdB64, credential.prfOutput);
+        if (deriveRecoveryPublicKeyHex(check.recoveryPhrase) !== envelope.ownerFingerprint) {
+            throw new DeviceUnlockError();
+        }
+        check.dekRaw.fill(0);
+        credential.prfOutput.fill(0);
+
+        await saveDeviceEnvelope(updated);
+        return listPasskeyPrfSlots(updated);
+    } finally {
+        dekRaw.fill(0);
+    }
+}
+
+/**
+ * Unlock this device with a passkey: one platform prompt across all passkey
+ * slots, PRF output unwraps the DEK, phrase goes to the session store and
+ * the used slot gets a lastUsedAt stamp.
+ */
+export async function unlockDeviceWithPasskey(): Promise<{ recoveryPhrase: string }> {
+    const envelope = await loadDeviceEnvelope();
+    if (!envelope) {
+        throw new DeviceUnlockError();
+    }
+    const slots = listPasskeyPrfSlots(envelope);
+    if (slots.length === 0) {
+        throw new DeviceUnlockError();
+    }
+
+    const { credentialIdB64, prfOutput } = await evaluatePrfForSlots(
+        slots.map((slot) => ({ credentialIdB64: slot.credentialIdB64, prfSaltB64: findPrfSalt(envelope, slot.id) })),
+    );
+
+    try {
+        const { recoveryPhrase, dekRaw, slotId } = await unlockWithPrfOutput(envelope, credentialIdB64, prfOutput);
+        dekRaw.fill(0);
+
+        if (deriveRecoveryPublicKeyHex(recoveryPhrase) !== envelope.ownerFingerprint) {
+            throw new DeviceUnlockError();
+        }
+
+        storeAccountMnemonic(recoveryPhrase);
+        await saveDeviceEnvelope(touchPasskeyPrfSlot(envelope, slotId));
+        return { recoveryPhrase };
+    } finally {
+        prfOutput.fill(0);
+    }
+}
+
+/** Remove a passkey slot; the passphrase slot(s) are untouched. */
+export async function removeDevicePasskeySlot(slotId: string): Promise<PasskeySlotMetadata[]> {
+    const envelope = await loadDeviceEnvelope();
+    if (!envelope) {
+        throw new DeviceUnlockError();
+    }
+    const updated = removePasskeyPrfSlot(envelope, slotId);
+    await saveDeviceEnvelope(updated);
+    return listPasskeyPrfSlots(updated);
+}
+
+function findPrfSalt(envelope: DeviceEnvelope, slotId: string): string {
+    for (const slot of envelope.slots) {
+        if (slot.id === slotId && slot.kdf.kind === "WEBAUTHN-PRF") {
+            return slot.kdf.prfSaltB64;
+        }
+    }
+    throw new DeviceUnlockError();
+}
+
+export type { DeviceEnvelope, PasskeySlotMetadata };

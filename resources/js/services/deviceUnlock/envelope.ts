@@ -50,14 +50,41 @@ export type PassphraseKdf = {
     iterations: number;
 };
 
+/**
+ * Passkey PRF slot: the KEK comes from the WebAuthn PRF extension output
+ * (HKDF-SHA-256 over the 32-byte PRF secret with a context info string) -
+ * never from a WebAuthn signature. `prfSaltB64` is the fixed evaluation
+ * input stored per slot so the authenticator returns the same secret on
+ * every unlock. Everything here is public metadata.
+ */
+export type PasskeyPrfKdf = {
+    kind: "WEBAUTHN-PRF";
+    credentialIdB64: string;
+    prfSaltB64: string;
+    /** User-facing passkey label (device/authenticator name). */
+    label: string;
+    lastUsedAt?: string;
+};
+
 export type DeviceUnlockSlot = {
     id: string;
     type: DeviceUnlockSlotType;
     createdAt: string;
-    kdf: PassphraseKdf;
+    kdf: PassphraseKdf | PasskeyPrfKdf;
     /** DEK encrypted under this slot's KEK. */
     wrappedDek: CipherBlob;
 };
+
+export type PassphraseSlot = DeviceUnlockSlot & { type: "passphrase"; kdf: PassphraseKdf };
+export type PasskeyPrfSlot = DeviceUnlockSlot & { type: "passkey-prf"; kdf: PasskeyPrfKdf };
+
+export function isPassphraseSlot(slot: DeviceUnlockSlot): slot is PassphraseSlot {
+    return slot.type === "passphrase" && slot.kdf.kind === "PBKDF2-SHA256";
+}
+
+export function isPasskeyPrfSlot(slot: DeviceUnlockSlot): slot is PasskeyPrfSlot {
+    return slot.type === "passkey-prf" && slot.kdf.kind === "WEBAUTHN-PRF";
+}
 
 export type DeviceEnvelope = {
     version: typeof ENVELOPE_VERSION;
@@ -184,7 +211,7 @@ export async function unlockWithPassphrase(
         throw new DeviceUnlockError();
     }
     const additional = aad(envelope.ownerFingerprint);
-    const slots = envelope.slots.filter((s) => s.type === "passphrase");
+    const slots = envelope.slots.filter(isPassphraseSlot);
     if (slots.length === 0) {
         throw new DeviceUnlockError();
     }
@@ -251,4 +278,131 @@ export async function rotatePassphrase(params: {
     } finally {
         dekRaw.fill(0);
     }
+}
+
+/**
+ * KEK from a WebAuthn PRF output: HKDF-SHA-256 with a context+owner info
+ * string. The PRF secret is already uniform 32-byte keying material - HKDF
+ * only binds it to this envelope's context, it adds no stretching (none is
+ * needed; the secret never leaves the authenticator boundary unprotected).
+ */
+async function deriveKekFromPrfOutput(prfOutput: Uint8Array, ownerFingerprint: string): Promise<CryptoKey> {
+    try {
+        const ikm = await subtle().importKey("raw", prfOutput as BufferSource, "HKDF", false, ["deriveKey"]);
+        return await subtle().deriveKey(
+            {
+                name: "HKDF",
+                hash: "SHA-256",
+                salt: new Uint8Array(32),
+                info: new TextEncoder().encode(`${CONTEXT}.prf.v1|${ownerFingerprint}`),
+            },
+            ikm,
+            { name: "AES-GCM", length: 256 },
+            false,
+            ["encrypt", "decrypt"],
+        );
+    } catch {
+        throw new DeviceUnlockError();
+    }
+}
+
+/** Public passkey slot metadata for management UI. */
+export type PasskeySlotMetadata = {
+    id: string;
+    label: string;
+    createdAt: string;
+    lastUsedAt: string | null;
+    credentialIdB64: string;
+};
+
+export function listPasskeyPrfSlots(envelope: DeviceEnvelope): PasskeySlotMetadata[] {
+    return envelope.slots.filter(isPasskeyPrfSlot).map((slot) => ({
+        id: slot.id,
+        label: slot.kdf.label,
+        createdAt: slot.createdAt,
+        lastUsedAt: slot.kdf.lastUsedAt ?? null,
+        credentialIdB64: slot.kdf.credentialIdB64,
+    }));
+}
+
+/**
+ * Add a passkey PRF slot to an unlocked envelope. Never replaces or removes
+ * passphrase slots - the passkey is a convenience shortcut; the passphrase
+ * (and ultimately the recovery phrase) stays the root unlock path, so losing
+ * every authenticator can never lock the data.
+ */
+export async function addPasskeyPrfSlot(params: {
+    envelope: DeviceEnvelope;
+    dekRaw: Uint8Array;
+    prfOutput: Uint8Array;
+    credentialIdB64: string;
+    prfSaltB64: string;
+    label: string;
+}): Promise<DeviceEnvelope> {
+    const additional = aad(params.envelope.ownerFingerprint);
+    const kek = await deriveKekFromPrfOutput(params.prfOutput, params.envelope.ownerFingerprint);
+    const wrappedDek = await aesGcmEncrypt(kek, params.dekRaw, additional);
+
+    const slot: DeviceUnlockSlot = {
+        id: crypto.randomUUID(),
+        type: "passkey-prf",
+        createdAt: new Date().toISOString(),
+        kdf: {
+            kind: "WEBAUTHN-PRF",
+            credentialIdB64: params.credentialIdB64,
+            prfSaltB64: params.prfSaltB64,
+            label: params.label,
+        },
+        wrappedDek,
+    };
+
+    return { ...params.envelope, slots: [...params.envelope.slots, slot] };
+}
+
+/**
+ * Unlock with a WebAuthn PRF output for a specific credential. Same
+ * non-distinguishing DeviceUnlockError on every failure.
+ */
+export async function unlockWithPrfOutput(
+    envelope: DeviceEnvelope,
+    credentialIdB64: string,
+    prfOutput: Uint8Array,
+): Promise<{ recoveryPhrase: string; dekRaw: Uint8Array; slotId: string }> {
+    if (envelope.version !== ENVELOPE_VERSION) {
+        throw new DeviceUnlockError();
+    }
+    const additional = aad(envelope.ownerFingerprint);
+    const slot = envelope.slots
+        .filter(isPasskeyPrfSlot)
+        .find((s) => s.kdf.credentialIdB64 === credentialIdB64);
+    if (!slot) {
+        throw new DeviceUnlockError();
+    }
+
+    const kek = await deriveKekFromPrfOutput(prfOutput, envelope.ownerFingerprint);
+    const dekRaw = await aesGcmDecrypt(kek, slot.wrappedDek, additional);
+
+    const dek = await subtle().importKey("raw", dekRaw as BufferSource, "AES-GCM", false, ["decrypt"]);
+    const secretBytes = await aesGcmDecrypt(dek, envelope.encryptedSecret, additional);
+    return { recoveryPhrase: new TextDecoder().decode(secretBytes), dekRaw, slotId: slot.id };
+}
+
+/** Remove a passkey slot; passphrase slots are never removable through this. */
+export function removePasskeyPrfSlot(envelope: DeviceEnvelope, slotId: string): DeviceEnvelope {
+    return {
+        ...envelope,
+        slots: envelope.slots.filter((slot) => !(isPasskeyPrfSlot(slot) && slot.id === slotId)),
+    };
+}
+
+/** Stamp lastUsedAt on a passkey slot after a successful unlock. */
+export function touchPasskeyPrfSlot(envelope: DeviceEnvelope, slotId: string): DeviceEnvelope {
+    return {
+        ...envelope,
+        slots: envelope.slots.map((slot) =>
+            isPasskeyPrfSlot(slot) && slot.id === slotId
+                ? { ...slot, kdf: { ...slot.kdf, lastUsedAt: new Date().toISOString() } }
+                : slot,
+        ),
+    };
 }
