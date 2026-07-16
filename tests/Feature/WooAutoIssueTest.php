@@ -144,6 +144,25 @@ class WooAutoIssueTest extends TestCase
         Queue::assertPushed(SendWooAutoInvoiceEmail::class, fn ($job) => $job->inboxEntryId === $inboxId);
     }
 
+    public function test_auto_issued_document_keeps_jurisdiction_pdf_locale_for_rendering(): void
+    {
+        Queue::fake();
+        $this->company->update(['jurisdiction' => CompanyJurisdiction::EuDe]);
+        $profile = $this->createProfile();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$this->token)
+            ->postJson('/api/integrations/woocommerce/documents', $this->paidOrderPayload())
+            ->assertCreated()
+            ->assertJsonPath('data.payload.pdf_locale', 'de');
+
+        $entry = IntegrationDocumentInbox::findOrFail($response->json('data.inbox_id'));
+        $this->company->refresh();
+        $document = app(\App\Services\Integrations\IntegrationAutoIssueService::class)
+            ->buildDocument($this->company, $entry, $profile);
+
+        $this->assertSame('de', $document->pdf_locale);
+    }
+
     public function test_local_high_counter_from_profile_raises_the_series_floor(): void
     {
         Queue::fake();

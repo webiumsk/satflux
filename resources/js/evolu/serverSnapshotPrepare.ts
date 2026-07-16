@@ -7,6 +7,7 @@ import {
     BankTransactionId,
     BankTransactionMatchId,
     CompanyId,
+    CompanyJurisdiction,
     ContactId,
     DocumentEventId,
     DocumentId,
@@ -77,19 +78,9 @@ function normalizeCountry(value: unknown): string | null {
     return normalizeIsoCountryCode(typeof value === "string" ? value : null);
 }
 
-const JURISDICTIONS = new Set([
-    "eu_sk",
-    "eu_cz",
-    "eu_other",
-    "us",
-    "uk",
-    "offshore",
-    "asia",
-]);
-
 function normalizeJurisdiction(value: unknown): string {
     const text = emptyToNull(value);
-    if (text && JURISDICTIONS.has(text)) {
+    if (text && CompanyJurisdiction.from(text).ok) {
         return text;
     }
     return "eu_sk";

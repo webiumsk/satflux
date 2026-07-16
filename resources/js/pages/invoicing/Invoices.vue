@@ -1229,6 +1229,7 @@ import { useInvoicingRelaySync } from "../../composables/useInvoicingRelaySync";
 import { useInvoicingSaveFeedback } from "../../composables/useInvoicingSaveFeedback";
 import { useInvoicingLayout } from "../../composables/useInvoicingLayout";
 import { invoicingDocumentRoutesForType } from "../../composables/useInvoicingDocumentRoutes";
+import { supportsStructuredDocumentExport } from "../../config/jurisdictionRules";
 
 type StatusKind =
   | "paid"
@@ -1405,11 +1406,7 @@ watch(showIntegrationInbox, (visible) => {
 });
 
 const supportsEuExport = computed(() => {
-  const j = localCompanyJurisdiction.value;
-  if (localFirst) {
-    return j === "eu_sk" || j === "eu_cz" || j === "eu_other";
-  }
-  return false;
+  return localFirst && supportsStructuredDocumentExport(localCompanyJurisdiction.value);
 });
 
 const {

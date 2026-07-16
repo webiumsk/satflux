@@ -317,6 +317,7 @@ class IntegrationAutoIssueService
                 'currency' => (string) ($payload['currency'] ?? $company->default_currency),
                 'note_above_lines' => $payload['note_above_lines'] ?? null,
                 'internal_note' => $payload['internal_note'] ?? null,
+                'pdf_locale' => $payload['pdf_locale'] ?? null,
                 'payment_btc_enabled' => (bool) ($payload['payment_btc_enabled'] ?? false),
                 'payment_bank_enabled' => (bool) ($payload['payment_bank_enabled'] ?? true),
                 'discount_percent' => (float) ($payload['discount_percent'] ?? 0),
