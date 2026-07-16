@@ -39,6 +39,12 @@ export const invoicingRoutes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, invoicingSection: 'tools' },
     },
     {
+        path: 'companies/:companyId/app/woocommerce',
+        name: 'invoicing-company-app-woocommerce',
+        component: () => import('../pages/invoicing/CompanyShow.vue'),
+        meta: { requiresAuth: true, invoicingSection: 'tools' },
+    },
+    {
         path: 'companies/:companyId/import',
         name: 'invoicing-company-import',
         component: () => import('../pages/invoicing/DocumentImport.vue'),
@@ -108,6 +114,14 @@ export const invoicingRoutes: RouteRecordRaw[] = [
         path: 'companies/:companyId/contacts/:contactId',
         name: 'invoicing-contact-show',
         component: () => import('../pages/invoicing/ContactShow.vue'),
+        meta: { requiresAuth: true },
+    },
+    {
+        // Deep link from external integrations (WP plugin): resolves the
+        // inbox evolu uuid to the local document and forwards to its detail.
+        path: 'from-inbox/:evoluId',
+        name: 'invoicing-from-inbox',
+        component: () => import('../pages/invoicing/DocumentFromInboxRedirect.vue'),
         meta: { requiresAuth: true },
     },
     {

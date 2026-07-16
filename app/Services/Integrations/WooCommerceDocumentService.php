@@ -24,6 +24,7 @@ class WooCommerceDocumentService
         protected BusinessDocumentIssueService $issueService,
         protected SubscriptionEntitlementService $subscriptionService,
         protected IntegrationDocumentInboxService $inboxService,
+        protected IntegrationAutoIssueService $autoIssueService,
     ) {}
 
     /**
@@ -48,6 +49,10 @@ class WooCommerceDocumentService
                 'name' => $company->legal_name,
             ] : null,
             'invoicing_enabled' => $company && $this->subscriptionService->canUseBusinessInvoicing($user),
+            // Headless auto-issue is opt-in (profile synced from the client);
+            // the plugin uses this flag to tell the merchant it is OFF.
+            'auto_issue_enabled' => $company !== null
+                && $this->autoIssueService->resolveProfileContext($company) !== null,
             'inbox_mode' => $inboxMode,
             'local_first' => (bool) config('invoicing.local_first', false),
             'uses_server_invoicing' => $company ? $company->usesServerInvoicing() : null,
@@ -116,8 +121,12 @@ class WooCommerceDocumentService
 
         if ($this->shouldUseInbox($company)) {
             $result = $this->inboxService->enqueueFromWoo($integration, $payload);
+            $entry = IntegrationDocumentInbox::query()->findOrFail($result['inbox_id']);
 
-            return IntegrationDocumentInbox::query()->findOrFail($result['inbox_id']);
+            // Headless issue for paid orders when the company opted in - the
+            // number lands in the response so the plugin can note it and the
+            // customer email is queued immediately (P3 auto-issue).
+            return $this->autoIssueService->maybeAutoIssue($company, $entry);
         }
 
         $wcOrderId = (int) ($payload['woocommerce_order_id'] ?? 0);
@@ -206,7 +215,7 @@ class WooCommerceDocumentService
      */
     public function serializeIssuedInboxEntry(IntegrationDocumentInbox $entry): array
     {
-        $payload = is_array($entry->payload_json) ? $entry->payload_json : [];
+        $payload = $entry->payload_json;
         $base = $this->inboxService->serializeEntry($entry);
 
         return [
@@ -232,6 +241,30 @@ class WooCommerceDocumentService
         return $this->inboxService->serializeEntry($entry);
     }
 
+    /**
+     * Inbox response payload with auto-issue diagnostics: when the entry was
+     * NOT issued, auto_issue_skipped names the reason (not_paid, no_profile,
+     * document_type, issue_failed) so the plugin can record it on the order
+     * instead of the order silently "staying in the inbox".
+     *
+     * @return array<string, mixed>
+     */
+    public function serializeInboxEntryWithDiagnostics(
+        StoreIntegration $integration,
+        IntegrationDocumentInbox $entry,
+    ): array {
+        $data = $this->inboxService->serializeEntry($entry);
+        if (empty($data['number'])) {
+            // An inbox entry can only exist for a resolved company -
+            // createDocument (the sole flow reaching here) resolved it before
+            // enqueueing, so this cannot throw.
+            $company = $this->resolveCompany($integration);
+            $data['auto_issue_skipped'] = $this->autoIssueService->skipReason($company, $entry);
+        }
+
+        return $data;
+    }
+
     protected function shouldUseInbox(Company $company): bool
     {
         if (config('invoicing.woocommerce_inbox_mode')) {
@@ -239,6 +272,43 @@ class WooCommerceDocumentService
         }
 
         return ! $company->usesServerInvoicing();
+    }
+
+    /**
+     * Render an auto-issued inbox document as PDF for the plugin (WC email
+     * attachment path). Requires a stamped number and a synced profile.
+     *
+     * @return array{binary: string, filename: string}
+     */
+    public function renderInboxPdf(
+        StoreIntegration $integration,
+        IntegrationDocumentInbox $inbox,
+        \App\Services\Invoicing\BusinessDocumentPdfService $pdfService,
+        \App\Services\Invoicing\CompanyPdfFilenameBuilder $filenameBuilder,
+    ): array {
+        $this->assertInboxAccess($integration, $inbox);
+        $company = $this->resolveCompany($integration);
+
+        $payload = $inbox->payload_json;
+        if (empty($payload['number'])) {
+            throw ValidationException::withMessages([
+                'document' => ['Document has no number yet - it was not auto-issued.'],
+            ]);
+        }
+
+        $context = $this->autoIssueService->resolveProfileContext($company);
+        if (! $context) {
+            throw ValidationException::withMessages([
+                'document' => ['Auto-issue profile is not configured for this company.'],
+            ]);
+        }
+
+        $document = $this->autoIssueService->buildDocument($context['company'], $inbox, $context['profile']);
+
+        return [
+            'binary' => $pdfService->renderBinary($document),
+            'filename' => $filenameBuilder->build($document),
+        ];
     }
 
     /**

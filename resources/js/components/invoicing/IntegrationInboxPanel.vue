@@ -23,6 +23,19 @@
       {{ t('invoicing.integration_inbox_relay_hint') }}
     </p>
 
+    <p
+      v-if="showAutoIssueHint"
+      class="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+    >
+      {{ t('invoicing.integration_inbox_auto_issue_hint') }}
+      <RouterLink
+        :to="{ name: 'invoicing-company', params: { companyId } }"
+        class="ml-1 font-medium underline"
+      >
+        {{ t('invoicing.integration_inbox_auto_issue_hint_link') }}
+      </RouterLink>
+    </p>
+
     <ul v-if="items.length" class="mt-3 space-y-2">
       <li
         v-for="item in items"
@@ -79,6 +92,8 @@ import {
   reconcileIntegrationInboxWithLocalDocuments,
   type IntegrationInboxEntry,
 } from '@/evolu/integrationInboxImport';
+import { useIntegrationInboxLive } from '@/evolu/integrationInboxLive';
+import { isPaidWooCommercePayload } from '@/evolu/integrationInboxPaid';
 import { ensureEvoluBoundToAccountSeed } from '@/evolu/bootstrap';
 import { pullInvoicingFromRelay } from '@/evolu/relaySyncWait';
 
@@ -96,7 +111,20 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const evolu = useInvoicingEvolu();
 
-const items = ref<IntegrationInboxEntry[]>([]);
+// Shared with the header badge: the panel's stronger refresh (relay pull
+// before reconcile) writes into the same live state the polling loop feeds.
+const { entries: items } = useIntegrationInboxLive();
+
+// A PAID order sitting in the inbox WITHOUT a number means headless
+// auto-issue did not run - most likely the opt-in toggle in company
+// settings is off. Point the merchant straight at it.
+const showAutoIssueHint = computed(() =>
+  items.value.some(
+    (item) =>
+      !String(item.payload?.number ?? '').trim()
+      && isPaidWooCommercePayload(item.payload),
+  ),
+);
 const loading = ref(false);
 const error = ref('');
 const busyId = ref<string | null>(null);
@@ -118,7 +146,8 @@ function mapImportError(code: string): string {
 
 async function refresh(): Promise<void> {
   if (!props.enabled || !props.companyId) {
-    items.value = [];
+    // Keep the shared entries - the panel is hidden while disabled and the
+    // header badge should not blank out during a relay sync.
     return;
   }
   loading.value = true;
@@ -178,6 +207,16 @@ async function importItem(item: IntegrationInboxEntry): Promise<void> {
 }
 
 async function dismissItem(item: IntegrationInboxEntry): Promise<void> {
+  // An auto-issued entry already carries an allocated invoice number (and
+  // the customer may have received the PDF) - dismissing it drops that
+  // number from the books, so it needs an explicit confirmation.
+  const stampedNumber = String(item.payload?.number ?? '').trim();
+  if (
+    stampedNumber !== ''
+    && !window.confirm(t('invoicing.integration_inbox_dismiss_issued_confirm', { number: stampedNumber }))
+  ) {
+    return;
+  }
   busyId.value = item.inbox_id;
   error.value = '';
   try {

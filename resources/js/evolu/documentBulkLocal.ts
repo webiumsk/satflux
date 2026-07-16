@@ -116,28 +116,65 @@ export function bulkMarkPaidLocal(
     return { processed, skipped };
 }
 
-export function bulkDeleteLocal(
+/**
+ * Newest-first order so a selected contiguous tail of the sequence can be
+ * deleted in one bulk run: after the newest falls, the next one becomes the
+ * latest and passes the only-latest-deletable guard.
+ */
+export function sortRowsForSequentialDelete(rows: EvoluDocumentRow[]): EvoluDocumentRow[] {
+    return [...rows].sort((a, b) => {
+        const aDate = a.issueDate || "";
+        const bDate = b.issueDate || "";
+        if (aDate !== bDate) return bDate.localeCompare(aDate);
+        const aNumber = String(a.number ?? "");
+        const bNumber = String(b.number ?? "");
+        // Numeric collation: FV-10 must sort after FV-2, not before it.
+        if (aNumber !== bNumber) return bNumber.localeCompare(aNumber, undefined, { numeric: true });
+        return String(b.id).localeCompare(String(a.id));
+    });
+}
+
+export async function bulkDeleteLocal(
     evolu: Evolu<InvoicingLocalSchema>,
     rows: EvoluDocumentRow[],
     allDocuments: EvoluDocumentRow[],
     allSeries?: EvoluNumberSeriesRow[],
-): BulkResult {
+): Promise<BulkResult> {
     let processed = 0;
     let skipped = 0;
     const deletedIds = new Set<DocumentId>();
     const issuedDeletes: EvoluDocumentRow[] = [];
+    // The guard evaluates "is latest" against the documents that still
+    // exist - shrink the working set as rows fall so a chain of the newest
+    // invoices deletes in one pass (gapless numbering, P3).
+    let remainingDocs = allDocuments;
+    const { releaseIssuedNumber } = await import("./numberReleaseBridge");
 
-    for (const row of rows) {
-        if (!canDeleteLocalDocument(row, allDocuments)) {
+    for (const row of sortRowsForSequentialDelete(rows)) {
+        if (!canDeleteLocalDocument(row, remainingDocs)) {
             skipped++;
             continue;
         }
+
+        if (row.status !== "draft" && row.status !== "cancelled" && row.number) {
+            const release = await releaseIssuedNumber(
+                row.companyId,
+                String(row.documentType),
+                String(row.number),
+            );
+            if (!release.ok) {
+                skipped++;
+                continue;
+            }
+        }
+
         const result = deleteLocalDocument(evolu, row.id);
         if (!result.ok) {
             skipped++;
             continue;
         }
         deletedIds.add(row.id);
+        remainingDocs = remainingDocs.filter((docRow) => docRow.id !== row.id);
         if (row.status !== "draft" && row.status !== "cancelled" && row.number) {
             issuedDeletes.push(row);
         }

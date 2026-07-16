@@ -17,6 +17,7 @@
         $contact = $page['contact'];
         $lines = $page['lines'];
         $bankQr = $page['bankQr'] ?? null;
+        $bankQrStandard = $page['bankQrStandard'] ?? null;
         $btcPayQr = $page['btcPayQr'] ?? null;
         $btcPayUrl = $page['btcPayUrl'] ?? null;
         $logoDataUri = $page['logoDataUri'] ?? null;
@@ -27,6 +28,8 @@
         $showSalesTaxColumn = $page['showSalesTaxColumn'] ?? false;
         $isUs = $page['isUs'] ?? false;
         $reverseChargeNote = $page['reverseChargeNote'] ?? null;
+        $vatLabel = $page['vatLabel'] ?? null;
+        $taxIdLabel = $page['taxIdLabel'] ?? null;
     @endphp
     <div class="invoice-page">
         @include('pdf.partials.business-invoice-body-eu', compact(
@@ -34,12 +37,15 @@
             'company',
             'contact',
             'lines',
+            'vatLabel',
+            'taxIdLabel',
             'taxBreakdown',
             'showVatColumn',
             'showVatBreakdown',
             'showSalesTaxColumn',
             'reverseChargeNote',
             'bankQr',
+            'bankQrStandard',
             'btcPayQr',
             'btcPayUrl',
             'logoDataUri',

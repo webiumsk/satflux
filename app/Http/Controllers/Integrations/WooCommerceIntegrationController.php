@@ -62,19 +62,23 @@ class WooCommerceIntegrationController extends Controller
             'lines.*.quantity' => ['required', 'numeric', 'min:0'],
             'lines.*.unit_price' => ['required', 'numeric'],
             'lines.*.tax_rate' => ['sometimes', 'numeric'],
-            'payment_method' => ['sometimes', 'string', 'max:64'],
+            // Empty strings from the WP plugin arrive as null
+            // (convertEmptyStringsToNull) - optional strings must be nullable.
+            'payment_method' => ['sometimes', 'nullable', 'string', 'max:64'],
             'is_paid' => ['sometimes', 'boolean'],
-            'paid_at' => ['sometimes', 'string', 'max:64'],
+            'paid_at' => ['sometimes', 'nullable', 'string', 'max:64'],
             'order_total' => ['sometimes', 'numeric'],
             'discount_percent' => ['sometimes', 'numeric', 'min:0'],
-            'btcpay_invoice_id' => ['sometimes', 'string', 'max:128'],
+            'btcpay_invoice_id' => ['sometimes', 'nullable', 'string', 'max:128'],
+            'source_evolu_document_id' => ['sometimes', 'nullable', 'uuid'],
+            'source_document_number' => ['sometimes', 'nullable', 'string', 'max:64'],
         ]);
 
         $result = $this->documentService->createDocument($integration, $validated);
 
         if ($result instanceof IntegrationDocumentInbox) {
             return response()->json([
-                'data' => $this->documentService->serializeInboxEntry($result),
+                'data' => $this->documentService->serializeInboxEntryWithDiagnostics($integration, $result),
             ], 201);
         }
 
@@ -109,6 +113,38 @@ class WooCommerceIntegrationController extends Controller
 
         return response()->json([
             'data' => $this->documentService->serializeDocument($document),
+        ]);
+    }
+
+    /**
+     * PDF of an auto-issued inbox document (WC email attachment path).
+     * Accepts the inbox row id or the evolu document id.
+     */
+    public function documentPdf(
+        Request $request,
+        string $documentId,
+        \App\Services\Invoicing\BusinessDocumentPdfService $pdfService,
+        \App\Services\Invoicing\CompanyPdfFilenameBuilder $filenameBuilder,
+    ): \Illuminate\Http\Response {
+        /** @var StoreIntegration $integration */
+        $integration = $request->attributes->get('store_integration');
+
+        $inbox = IntegrationDocumentInbox::query()
+            ->where('store_integration_id', $integration->id)
+            ->where(function ($query) use ($documentId) {
+                $query->where('id', $documentId)
+                    ->orWhere('evolu_document_id', $documentId);
+            })
+            ->first();
+        if (! $inbox) {
+            abort(404);
+        }
+
+        $pdf = $this->documentService->renderInboxPdf($integration, $inbox, $pdfService, $filenameBuilder);
+
+        return response($pdf['binary'], 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$pdf['filename'].'"',
         ]);
     }
 

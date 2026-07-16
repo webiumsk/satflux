@@ -13,6 +13,7 @@ use App\Http\Requests\Invoicing\EphemeralCompanyEmailSmtpTestRequest;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\Company;
+use App\Models\EphemeralBtcpayCheckout;
 use App\Models\Store;
 use App\Models\User;
 use App\Services\Invoicing\BusinessDocumentBtcPayService;
@@ -157,6 +158,31 @@ class EphemeralBusinessDocumentController extends Controller
         $snapshotCompany = $this->factory->resolveCompany($user, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithBtcpayCheckout($request, $snapshotCompany);
+    }
+
+    /**
+     * Read-only lookup: the still-payable checkout of a document, or null.
+     * Viewing an invoice calls THIS - a BTCPay invoice is only ever minted
+     * by an explicit user action (production 2026-07-14: every view of an
+     * unpaid invoice created another "New" BTCPay invoice).
+     */
+    public function btcpayCheckoutExistingWithoutCompany(EphemeralBusinessDocumentBtcpayRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+        $snapshotCompany = $this->factory->resolveCompany($user, (array) ($request->validated()['company'] ?? []));
+
+        $store = Store::query()
+            ->where('id', $request->validated('store_id'))
+            ->where('user_id', $user->id)
+            ->with('user')
+            ->firstOrFail();
+
+        $document = $this->factory->document($snapshotCompany, $request->validated());
+
+        return response()->json([
+            'data' => $this->findReusableCheckout($user, $store, $document, $request->input('evolu_document_id')),
+        ]);
     }
 
     public function efakturaBridge(Request $request): JsonResponse
@@ -419,6 +445,88 @@ class EphemeralBusinessDocumentController extends Controller
         ]);
     }
 
+    /**
+     * Existing checkout of a document, shared by the read-only lookup and
+     * the create flow's dedupe:
+     *  - an already PAID checkout (row, or a pending row whose BTCPay
+     *    invoice settled meanwhile) returns a paid payload - it must never
+     *    be replaced by a fresh invoice (PR #144: creating one for an
+     *    already-paid document duplicated invoices in BTCPay),
+     *  - a still-payable checkout with matching amount and currency is
+     *    reused,
+     *  - an UNKNOWN BTCPay state fails safe: with $failClosed the caller
+     *    must not mint a replacement blindly (the existing invoice could be
+     *    paid) - a 422 asks the user to retry; without it (read-only view)
+     *    null simply shows no link,
+     *  - anything else returns null (caller may create a fresh one).
+     *
+     * @return array{checkout_link: string|null, btcpay_invoice_id: string, status?: string, paid_at?: string|null}|null
+     */
+    protected function findReusableCheckout(
+        User $user,
+        Store $store,
+        BusinessDocument $document,
+        mixed $evoluDocumentId,
+        bool $failClosed = false,
+    ): ?array {
+        if (! is_string($evoluDocumentId) || $evoluDocumentId === '') {
+            return null;
+        }
+
+        $paid = $this->ephemeralBtcpayCheckoutService->findLatestPaid($user, $store, $evoluDocumentId);
+        if ($paid) {
+            return $this->paidEphemeralCheckoutPayload($paid);
+        }
+
+        $pending = $this->ephemeralBtcpayCheckoutService->findLatestPending($user, $store, $evoluDocumentId);
+        if (! $pending) {
+            return null;
+        }
+
+        $state = $this->btcPayService->ephemeralCheckoutState($store, $pending->btcpay_invoice_id);
+        if ($state['state'] === 'unknown') {
+            if ($failClosed) {
+                throw ValidationException::withMessages([
+                    'btcpay' => ['BTCPay did not confirm the state of the existing checkout. Try again in a moment.'],
+                ]);
+            }
+
+            return null;
+        }
+
+        if ($state['state'] === 'paid') {
+            return $this->paidEphemeralCheckoutPayload(
+                $this->ephemeralBtcpayCheckoutService->markPaid($pending),
+            );
+        }
+
+        if (
+            $state['state'] === 'payable'
+            && abs((float) $pending->amount - (float) $document->total) < 0.005
+            && strcasecmp((string) $pending->currency, (string) $document->currency) === 0
+        ) {
+            return [
+                'checkout_link' => $state['checkout_link'],
+                'btcpay_invoice_id' => $state['btcpay_invoice_id'],
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{checkout_link: null, btcpay_invoice_id: string, status: string, paid_at: string|null}
+     */
+    protected function paidEphemeralCheckoutPayload(EphemeralBtcpayCheckout $checkout): array
+    {
+        return [
+            'checkout_link' => null,
+            'btcpay_invoice_id' => $checkout->btcpay_invoice_id,
+            'status' => EphemeralBtcpayCheckout::STATUS_PAID,
+            'paid_at' => $checkout->paid_at?->toIso8601String(),
+        ];
+    }
+
     protected function respondWithBtcpayCheckout(
         EphemeralBusinessDocumentBtcpayRequest $request,
         Company $snapshotCompany,
@@ -444,13 +552,33 @@ class EphemeralBusinessDocumentController extends Controller
             ]);
         }
 
+        $evoluDocumentId = $request->input('evolu_document_id');
+
+        // Reuse a still-payable checkout for the same document (same amount
+        // and currency) - never mint a second BTCPay invoice for it. A PAID
+        // checkout returns its paid payload instead of any new invoice;
+        // an UNKNOWN BTCPay state fails closed (422) rather than minting.
+        $reused = $this->findReusableCheckout($user, $store, $document, $evoluDocumentId, failClosed: true);
+        if ($reused !== null) {
+            if (! isset($reused['status'])) {
+                [$auditType, $auditId] = $this->auditTarget($user, $auditCompany, $snapshotCompany);
+                AuditLog::log('business_document.ephemeral_btcpay_checkout', $auditType, $auditId, [
+                    'document_type' => (string) $request->input('document.type'),
+                    'store_id' => $store->id,
+                    'btcpay_invoice_id' => $reused['btcpay_invoice_id'],
+                    'company_less' => $auditCompany === null,
+                    'reused' => true,
+                ], $user->id);
+            }
+
+            return response()->json(['data' => $reused]);
+        }
+
         $result = $this->btcPayService->createEphemeralCheckout(
             $document,
             $store,
             $request->input('evolu_document_id'),
         );
-
-        $evoluDocumentId = $request->input('evolu_document_id');
         if (
             is_string($evoluDocumentId)
             && $evoluDocumentId !== ''

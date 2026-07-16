@@ -57,8 +57,28 @@
               @change="persistPdfOptions"
             >
               <option value="sk">Slovenčina</option>
-              <option value="en">English</option>
               <option value="cs">Čeština</option>
+              <option value="de">Deutsch</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+          <label class="text-xs text-gray-600 flex items-center gap-2">
+            {{ t('invoicing.pdf_bank_qr') }}
+            <select
+              v-model="form.pdf_bank_qr"
+              class="invoicing-sf-input w-auto py-1"
+              :disabled="isLocked"
+              @change="persistPdfOptions"
+            >
+              <option value="auto">{{ t('invoicing.pdf_bank_qr_auto') }}</option>
+              <option value="paybysquare">Pay by Square</option>
+              <option value="epc" :disabled="!epcQrFeasible">
+                EPC (SEPA){{ epcQrFeasible ? '' : ` - ${t('invoicing.pdf_bank_qr_epc_requirements')}` }}
+              </option>
+              <option value="swiss" :disabled="!swissQrFeasible">
+                Swiss QR{{ swissQrFeasible ? '' : ` - ${t('invoicing.pdf_bank_qr_swiss_requirements')}` }}
+              </option>
+              <option value="none">{{ t('invoicing.pdf_bank_qr_none') }}</option>
             </select>
           </label>
           <label class="text-xs text-gray-700 flex items-center gap-1.5">
@@ -155,7 +175,7 @@
             </template>
             <div v-else class="mt-1 flex flex-wrap items-center gap-2">
               <p class="text-sm text-gray-500">{{ t('invoicing.local_first_btcpay_checkout_missing') }}</p>
-              <button type="button" class="invoicing-btn-secondary text-sm" @click="loadLocalBtcpayCheckout">
+              <button type="button" class="invoicing-btn-secondary text-sm" @click="createLocalBtcpayCheckout">
                 {{ t('invoicing.local_first_btcpay_checkout_refresh') }}
               </button>
             </div>
@@ -247,6 +267,7 @@
         @issue="issueDocument"
         @send-email="openSendEmail"
         @pdf="downloadPdf"
+        :xrechnung="company?.jurisdiction === 'eu_de'"
         @isdoc="downloadIsdoc"
         @ubl="downloadUbl"
         @duplicate="duplicateCurrent"
@@ -327,7 +348,7 @@ const {
   pdfUrl,
   btcPayUrl,
   localBtcpayCheckoutLoading,
-  loadLocalBtcpayCheckout,
+  createLocalBtcpayCheckout,
   previewForm,
   previewTotals,
   extractError,
@@ -355,6 +376,21 @@ const {
 } = useInvoiceDocument();
 
 const { isRelaySyncing } = useInvoicingRelaySync({ refreshOnMount: true });
+
+// The QR select mirrors the server-side feasibility rules so a forced
+// standard cannot silently produce "no QR": Swiss QR pays only onto CH/LI
+// IBANs in CHF/EUR, EPC is EUR-only.
+const companyIbanPrefix = computed(() =>
+  String(company.value?.iban ?? '').replace(/\s+/g, '').toUpperCase().slice(0, 2),
+);
+const swissQrFeasible = computed(
+  () =>
+    ['CH', 'LI'].includes(companyIbanPrefix.value)
+    && ['CHF', 'EUR'].includes(String(form.currency || '').toUpperCase()),
+);
+const epcQrFeasible = computed(
+  () => String(form.currency || '').toUpperCase() === 'EUR',
+);
 
 const paidViaBtcpay = computed(
   () =>
@@ -753,12 +789,22 @@ async function deleteDoc() {
       : t('invoicing.confirm_delete');
   if (!window.confirm(msg)) return;
   if (localFirst && local) {
-    await local.deleteLocalDocumentAsync(
+    const result = await local.deleteLocalDocumentAsync(
       local.evolu,
       documentId.value as import('../../evolu/schema').DocumentId,
       local.documentRows.value as import('../../evolu/documentMap').EvoluDocumentRow[],
       local.seriesRows.value as import('../../evolu/numberSeriesMap').EvoluNumberSeriesRow[],
     );
+    if (!result.ok) {
+      // Gapless numbering: the number must be freed on the server first.
+      error.value =
+        result.error === 'delete_requires_online'
+          ? t('invoicing.delete_requires_online')
+          : result.error === 'not_last'
+            ? t('invoicing.delete_not_last')
+            : t('invoicing.delete_release_failed');
+      return;
+    }
     router.push({ name: documentRoutes.value.list, params: { companyId: companyId.value } });
     return;
   }

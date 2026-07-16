@@ -250,6 +250,7 @@ Route::middleware(['throttle:60,1', AuthenticateWooCommerceIntegration::class])
         Route::post('/contacts/upsert', [WooCommerceIntegrationController::class, 'upsertContact']);
         Route::post('/documents', [WooCommerceIntegrationController::class, 'createDocument']);
         Route::get('/documents/{documentId}', [WooCommerceIntegrationController::class, 'showDocument']);
+        Route::get('/documents/{documentId}/pdf', [WooCommerceIntegrationController::class, 'documentPdf']);
         Route::post('/documents/{documentId}/issue', [WooCommerceIntegrationController::class, 'issueDocument']);
     });
 
@@ -337,6 +338,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/ephemeral/isdoc', [EphemeralBusinessDocumentController::class, 'isdocWithoutCompany']);
             Route::post('/ephemeral/ubl', [EphemeralBusinessDocumentController::class, 'ublWithoutCompany']);
             Route::post('/ephemeral/btcpay-checkout', [EphemeralBusinessDocumentController::class, 'btcpayCheckoutWithoutCompany']);
+            Route::post('/ephemeral/btcpay-checkout/existing', [EphemeralBusinessDocumentController::class, 'btcpayCheckoutExistingWithoutCompany']);
             Route::get('/ephemeral/btcpay-status', [EphemeralBusinessDocumentController::class, 'btcpayStatus']);
             Route::get('/ephemeral/efaktura/bridge', [EphemeralBusinessDocumentController::class, 'efakturaBridge']);
             Route::get('/ephemeral/efaktura/status', [EphemeralBusinessDocumentController::class, 'efakturaStatus']);
@@ -363,6 +365,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
 
             // Server number allocator (audit F3) - company-scoped, store-independent.
+            Route::post('/companies/{company}/number-allocator/release', [CompanyNumberAllocatorController::class, 'release'])
+                ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/number-allocator/reserve', [CompanyNumberAllocatorController::class, 'reserve'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/number-allocator/confirm', [CompanyNumberAllocatorController::class, 'confirm'])
@@ -476,6 +480,14 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/companies/{company}/integration-inbox/{inbox}/dismiss', [IntegrationDocumentInboxController::class, 'dismiss'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/integration-inbox/{inbox}/imported', [IntegrationDocumentInboxController::class, 'markImported'])
+                ->middleware(EnsureCompanyOwnership::class);
+
+            // Headless auto-issue profile (WooCommerce paid orders, P3).
+            Route::get('/companies/{company}/auto-issue-profile', [\App\Http\Controllers\Invoicing\CompanyAutoIssueProfileController::class, 'show'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::put('/companies/{company}/auto-issue-profile', [\App\Http\Controllers\Invoicing\CompanyAutoIssueProfileController::class, 'update'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::delete('/companies/{company}/auto-issue-profile', [\App\Http\Controllers\Invoicing\CompanyAutoIssueProfileController::class, 'destroy'])
                 ->middleware(EnsureCompanyOwnership::class);
 
             Route::get('/stores/{store}/integration-inbox', [IntegrationDocumentInboxController::class, 'indexForStore'])

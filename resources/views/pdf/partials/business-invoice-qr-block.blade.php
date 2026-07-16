@@ -1,17 +1,26 @@
 @if(! $isQuote && ($bankQr || $btcPayQr))
+    @php
+        // Caption + accent must match what the QR actually is - a Swiss
+        // payer must not be told to scan "PAY by square".
+        [$bankQrAccent, $bankQrBrand, $bankQrCaption] = match ($bankQrStandard ?? 'paybysquare') {
+            'epc' => ['#10298e', 'EPC QR', 'SEPA'],
+            'swiss' => ['#da291c', 'Swiss QR', 'QR-Rechnung'],
+            default => ['#00a0e3', 'PAY', 'by square'],
+        };
+    @endphp
     <table cellpadding="0" cellspacing="0" style="margin-top: 12px;">
         <tr>
             @if($bankQr)
                 <td style="vertical-align: top; width: 132px;">
                     <table cellpadding="0" cellspacing="0">
                         <tr>
-                            <td style="width: 132px; height: 132px; border: 1.5px solid #00a0e3; text-align: center; vertical-align: middle; padding: 0;">
+                            <td style="width: 132px; height: 132px; border: 1.5px solid {{ $bankQrAccent }}; text-align: center; vertical-align: middle; padding: 0;">
                                 <img src="{{ $bankQr }}" alt="" width="110" height="110" style="width: 110px; height: 110px;">
                             </td>
                         </tr>
                     </table>
                     <div style="width: 132px; margin-top: 5px; text-align: center; font-size: 9px; color: #374151; line-height: 1.3;">
-                        <span style="font-weight: bold; font-size: 10px; color: #00a0e3;">PAY</span> by square
+                        <span style="font-weight: bold; font-size: 10px; color: {{ $bankQrAccent }};">{{ $bankQrBrand }}</span> {{ $bankQrCaption }}
                     </div>
                 </td>
             @endif

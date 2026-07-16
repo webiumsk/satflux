@@ -19,10 +19,12 @@ import type { EvoluDocumentRow } from "./documentMap";
 import type { EvoluCompanyRow } from "./companyMap";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { allNumberSeriesQuery } from "./client";
-import { isPaidWooCommercePayload } from "./integrationInboxPaid";
+import { defaultPdfLocaleForJurisdiction } from "@/config/jurisdictionRules";
+import { resolveImportSettleActions } from "./integrationInboxPaid";
 import { resolveIntegrationInboxBasePath } from "./integrationInboxPaths";
 import {
     findLocalDocumentForInboxEntry,
+    resolveLinkedSourceDocumentId,
     stableDocumentIdFromInboxUuid,
 } from "./inboxDocumentStableId";
 import { waitForInvoicingDataSettled } from "./relaySyncWait";
@@ -56,6 +58,24 @@ export async function fetchIntegrationInbox(
     return (data.data ?? []) as IntegrationInboxEntry[];
 }
 
+/**
+ * A stamped (auto-issued) entry may only be auto-cleared when the matched
+ * local document carries the SAME number - otherwise silently marking it
+ * imported would erase an issued (and possibly already emailed) invoice
+ * number from the books. Such entries stay pending for a manual decision.
+ */
+export function canAutoReconcileEntry(
+    entry: Pick<IntegrationInboxEntry, "payload">,
+    existingNumber: string | null | undefined,
+): boolean {
+    const stampedNumber = String(entry.payload?.number ?? "").trim();
+    if (stampedNumber === "") {
+        return true;
+    }
+
+    return String(existingNumber ?? "").trim() === stampedNumber;
+}
+
 /** Drop inbox rows already present locally (relay import on another device) and clear them on the server. */
 export async function reconcileIntegrationInboxWithLocalDocuments(
     evolu: Evolu<InvoicingLocalSchema>,
@@ -69,7 +89,7 @@ export async function reconcileIntegrationInboxWithLocalDocuments(
 
     for (const entry of entries) {
         const existing = findLocalDocumentForInboxEntry(documents, typedCompanyId, entry);
-        if (!existing) {
+        if (!existing || !canAutoReconcileEntry(entry, existing.number)) {
             remaining.push(entry);
             continue;
         }
@@ -133,6 +153,7 @@ function buyerToContactForm(buyer: Record<string, unknown>): ContactFormState {
 function payloadToDocumentSave(
     payload: Record<string, unknown>,
     contactId: string,
+    jurisdiction: string,
 ): DocumentSavePayload {
     const rawLines = Array.isArray(payload.lines) ? payload.lines : [];
     const lines: DocumentLinePayload[] = rawLines.map((line) => {
@@ -166,7 +187,9 @@ function payloadToDocumentSave(
         note_above_lines: String(payload.note_above_lines ?? ""),
         note_footer: "",
         internal_note: String(payload.internal_note ?? ""),
-        pdf_locale: "sk",
+        pdf_locale:
+            String(payload.pdf_locale ?? "")
+            || defaultPdfLocaleForJurisdiction(jurisdiction),
         pdf_show_signature: true,
         pdf_show_payment_info: true,
         payment_bank_enabled: payload.payment_bank_enabled !== false,
@@ -206,11 +229,10 @@ function resolveLocalContactId(
     return { ok: true, contactId: inserted.value.id as ContactId };
 }
 
-async function settleImportedPaidDocument(
+async function issueImportedDocument(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
     documentId: DocumentId,
-    payload: Record<string, unknown>,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
     const companies = (await evolu.loadQuery(allCompaniesQuery)) as EvoluCompanyRow[];
     const companyRow = companies.find((row) => row.id === companyId);
@@ -223,6 +245,14 @@ async function settleImportedPaidDocument(
         return { ok: false, error: String(issueResult.error ?? "issue_failed") };
     }
 
+    return { ok: true };
+}
+
+async function markImportedDocumentPaid(
+    evolu: Evolu<InvoicingLocalSchema>,
+    documentId: DocumentId,
+    payload: Record<string, unknown>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
     const documents = (await evolu.loadQuery(allDocumentsQuery)) as EvoluDocumentRow[];
     const doc = documents.find((row) => row.id === documentId);
     const docTotal = parseFloat(doc?.total ?? "0");
@@ -235,6 +265,34 @@ async function settleImportedPaidDocument(
     }
 
     return { ok: true };
+}
+
+/**
+ * The customer's payment settles the linked proforma together with the final
+ * invoice. Best-effort: the proforma may not be imported yet (or was deleted),
+ * and a failure here must never abort the invoice import itself.
+ */
+async function markLinkedProformaPaid(
+    evolu: Evolu<InvoicingLocalSchema>,
+    sourceDocumentId: DocumentId,
+    payload: Record<string, unknown>,
+): Promise<void> {
+    try {
+        const rows = await evolu.loadQuery(allDocumentsQuery);
+        const documents = rows as unknown as EvoluDocumentRow[];
+        const proforma = documents.find((row) => row.id === sourceDocumentId);
+        if (!proforma) {
+            return;
+        }
+        const orderTotal = Number(payload.order_total);
+        const amount =
+            Number.isFinite(orderTotal) && orderTotal > 0
+                ? orderTotal
+                : parseFloat(proforma.total ?? "0");
+        markLocalDocumentPaidWithAmount(evolu, sourceDocumentId, documents, amount);
+    } catch {
+        // Best-effort by design.
+    }
 }
 
 function resolveStoreIdForApi(
@@ -268,7 +326,11 @@ export async function importIntegrationInboxEntry(
         typedCompanyId,
         entry,
     );
-    if (alreadyImported) {
+    // A stamped entry whose number is NOT represented locally must fall
+    // through to a real import (the order-id match may point at an OLDER
+    // invoice for the same order) - short-circuiting here would erase an
+    // issued, possibly already emailed number from the books.
+    if (alreadyImported && canAutoReconcileEntry(entry, alreadyImported.number)) {
         const storeIdForApi = resolveStoreIdForApi(linkedStoreId, entry.payload);
         await markIntegrationInboxImported(companyId, entry.inbox_id, storeIdForApi);
         return { ok: true };
@@ -286,13 +348,24 @@ export async function importIntegrationInboxEntry(
     }
 
     const vat = vatOptionsForContact(company, { country: buyer.country as string | null });
-    const documentPayload = payloadToDocumentSave(entry.payload, contactResult.contactId);
+    const documentPayload = payloadToDocumentSave(
+        entry.payload,
+        contactResult.contactId,
+        String(company?.jurisdiction ?? ""),
+    );
     const existingDocument =
         existingDocuments.find((row) => row.id === stableDocumentId) ?? null;
+
+    // Deferred-payment flow: the final invoice references the proforma's
+    // inbox uuid; the same stable-id derivation both sides use for imports
+    // turns it into the proforma's LOCAL document id, so the link works
+    // regardless of which entry is imported first.
+    const sourceDocumentId = resolveLinkedSourceDocumentId(entry.payload);
 
     const saveResult = saveLocalDocument(evolu, typedCompanyId, documentPayload, {
         documentId: stableDocumentId,
         existingDocument,
+        sourceDocumentId,
         ...vat,
         existingLines,
     });
@@ -302,8 +375,8 @@ export async function importIntegrationInboxEntry(
     }
 
     const savedDocumentId = saveResult.value.id;
-    const reservedNumber = String(entry.payload.number ?? "").trim();
-    if (reservedNumber) {
+    const actions = resolveImportSettleActions(entry.payload);
+    if (actions.reservedNumber) {
         const allSeries = (await evolu.loadQuery(allNumberSeriesQuery)) as EvoluNumberSeriesRow[];
         const documentType = String(entry.payload.type ?? "invoice") as DocumentType;
         const applyResult = await applyReservedNumberToLocalDocumentAsync(
@@ -311,22 +384,27 @@ export async function importIntegrationInboxEntry(
             savedDocumentId,
             typedCompanyId,
             documentType,
-            reservedNumber,
+            actions.reservedNumber,
             allSeries,
             entry.payload.variable_symbol as string | null | undefined,
         );
         if (!applyResult.ok) {
             return { ok: false, error: String(applyResult.error ?? "issue_failed") };
         }
-    } else if (isPaidWooCommercePayload(entry.payload)) {
-        const settleResult = await settleImportedPaidDocument(
-            evolu,
-            typedCompanyId,
-            savedDocumentId,
-            entry.payload,
-        );
-        if (!settleResult.ok) {
-            return settleResult;
+    } else if (actions.issueLocally) {
+        const issueResult = await issueImportedDocument(evolu, typedCompanyId, savedDocumentId);
+        if (!issueResult.ok) {
+            return issueResult;
+        }
+    }
+
+    if (actions.markPaid) {
+        const markResult = await markImportedDocumentPaid(evolu, savedDocumentId, entry.payload);
+        if (!markResult.ok) {
+            return markResult;
+        }
+        if (sourceDocumentId) {
+            await markLinkedProformaPaid(evolu, sourceDocumentId, entry.payload);
         }
     }
 

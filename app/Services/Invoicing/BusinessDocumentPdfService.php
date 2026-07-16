@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Support\Invoicing\CompanyAppSettings;
 use App\Support\Invoicing\CompanyVatPolicy;
+use App\Support\Invoicing\QrPngRenderer;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Spatie\LaravelPdf\Facades\Pdf;
@@ -16,7 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
 class BusinessDocumentPdfService
 {
     public function __construct(
-        protected PayBySquareGenerator $payBySquare,
+        protected BankQrGenerator $bankQrGenerator,
         protected BusinessDocumentPaymentTokenService $paymentTokenService,
         protected BusinessDocumentBtcPayService $btcPayService,
         protected CompanyBrandingService $brandingService,
@@ -154,8 +155,17 @@ class BusinessDocumentPdfService
     {
         $company = $document->company;
         $bankQr = null;
-        if ($document->payment_bank_enabled && $document->type !== BusinessDocumentType::Quote) {
-            $bankQr = $this->payBySquare->generateQrDataUri($company, $document);
+        $bankQrStandard = null;
+        if ($company instanceof \App\Models\Company
+            && $document->payment_bank_enabled
+            && $document->type !== BusinessDocumentType::Quote
+        ) {
+            $bankQr = $this->bankQrGenerator->generateQrDataUri($company, $document);
+            // The caption under the QR must name what the code actually is
+            // (PAY by square / EPC / Swiss QR) - payers recognize the brand.
+            $bankQrStandard = $bankQr !== null
+                ? $this->bankQrGenerator->selectStandard($company, $document)
+                : null;
         }
 
         $btcPayQr = null;
@@ -164,7 +174,7 @@ class BusinessDocumentPdfService
             $qrTarget = $this->resolveBtcPayQrTarget($document);
             if ($qrTarget) {
                 $btcPayUrl = $qrTarget;
-                $btcPayQr = $this->qrPngDataUri($qrTarget);
+                $btcPayQr = QrPngRenderer::dataUri($qrTarget, 180);
             }
         }
 
@@ -175,13 +185,24 @@ class BusinessDocumentPdfService
         $contact = $document->resolvedBuyer();
         $reverseChargeNote = $this->vatPolicy->reverseChargeNote($company, $contact, $settings);
 
-        $isUs = $company->jurisdiction === CompanyJurisdiction::Us;
+        $jurisdiction = $company->jurisdiction;
+        $isUs = $jurisdiction === CompanyJurisdiction::Us;
+
+        // sk/cs/en label localization comes from pdf_locale translations;
+        // jurisdictions whose statutory tax terms a language file cannot
+        // distinguish (DE USt-IdNr. vs AT UID-Nr. vs CH MWST - all German)
+        // override the labels from JurisdictionRules.
+        $rules = \App\Support\Invoicing\JurisdictionRules::for($jurisdiction);
+        $vatLabel = $rules['pdf_label_override'] ? $rules['vat_name'] : __('VAT');
+        $taxIdLabel = $rules['pdf_label_override'] ? $rules['tax_id_label'] : __('VAT ID');
 
         return [
             'document' => $document,
             'company' => $company,
             'contact' => $contact,
             'lines' => $document->lines,
+            'vatLabel' => $vatLabel,
+            'taxIdLabel' => $taxIdLabel,
             'taxBreakdown' => $canonical->taxBreakdown,
             'showVatColumn' => $this->vatPolicy->showsVatRateColumn($company, $contact),
             'showVatBreakdown' => $this->vatPolicy->showsVatBreakdown($company, $contact),
@@ -189,6 +210,7 @@ class BusinessDocumentPdfService
             'isUs' => $isUs,
             'reverseChargeNote' => $reverseChargeNote,
             'bankQr' => $bankQr,
+            'bankQrStandard' => $bankQrStandard,
             'btcPayQr' => $btcPayQr,
             'btcPayUrl' => $btcPayUrl,
             'logoDataUri' => $this->brandingService->resolveBrandingDataUri(
@@ -235,19 +257,22 @@ class BusinessDocumentPdfService
 
             $document->loadMissing(['store.user']);
             $store = $document->store;
-            if (! $store) {
+            if (! $store instanceof \App\Models\Store) {
                 return null;
             }
 
             try {
                 $evoluDocumentId = $document->getAttribute('ephemeral_evolu_document_id');
-                $result = $this->btcPayService->createEphemeralCheckout(
+
+                // Shares the checkout dedupe: paid documents render without a
+                // payment QR, existing checkouts are reused, and a mint is
+                // registered - rendering a PDF must never leave stray BTCPay
+                // invoices behind (production 2026-07-15).
+                return $this->btcPayService->qrCheckoutLinkForEphemeralRender(
                     $document,
                     $store,
                     is_string($evoluDocumentId) && $evoluDocumentId !== '' ? $evoluDocumentId : null,
                 );
-
-                return $result['checkout_link'] ?? null;
             } catch (\Throwable $e) {
                 report($e);
 
@@ -268,30 +293,5 @@ class BusinessDocumentPdfService
         $this->paymentTokenService->ensureForDocument($document);
 
         return $this->paymentTokenService->payUrl($document);
-    }
-
-    protected function qrPngDataUri(string $data, int $size = 180): ?string
-    {
-        if (class_exists(\chillerlan\QRCode\QRCode::class)) {
-            $options = new \chillerlan\QRCode\QROptions([
-                'outputType' => \chillerlan\QRCode\QRCode::OUTPUT_IMAGE_PNG,
-                'scale' => max(4, (int) floor($size / 25)),
-                'imageBase64' => true,
-            ]);
-            $qr = new \chillerlan\QRCode\QRCode($options);
-
-            return $qr->render($data);
-        }
-
-        $url = 'https://api.qrserver.com/v1/create-qr-code/?'.http_build_query([
-            'size' => "{$size}x{$size}",
-            'data' => $data,
-        ]);
-        $png = @file_get_contents($url);
-        if ($png === false) {
-            return null;
-        }
-
-        return 'data:image/png;base64,'.base64_encode($png);
     }
 }

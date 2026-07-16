@@ -1,7 +1,10 @@
 export type CompanyJurisdictionValue =
   | 'eu_sk'
   | 'eu_cz'
+  | 'eu_de'
+  | 'eu_at'
   | 'eu_other'
+  | 'ch'
   | 'us'
   | 'uk'
   | 'offshore'
@@ -10,7 +13,10 @@ export type CompanyJurisdictionValue =
 export const COMPANY_JURISDICTION_VALUES: CompanyJurisdictionValue[] = [
   'eu_sk',
   'eu_cz',
+  'eu_de',
+  'eu_at',
   'eu_other',
+  'ch',
   'uk',
   'offshore',
   'asia',
@@ -24,7 +30,10 @@ const OFFSHORE_COUNTRIES = new Set(['GI', 'KY', 'PA', 'VG', 'BM', 'LU', 'MT', 'E
 const DEFAULT_COUNTRY_BY_JURISDICTION: Record<CompanyJurisdictionValue, string> = {
   eu_sk: 'SK',
   eu_cz: 'CZ',
-  eu_other: 'DE',
+  eu_de: 'DE',
+  eu_at: 'AT',
+  eu_other: 'PL',
+  ch: 'CH',
   us: 'US',
   uk: 'GB',
   offshore: 'GI',
@@ -35,7 +44,10 @@ const DEFAULT_COUNTRY_BY_JURISDICTION: Record<CompanyJurisdictionValue, string> 
 export const JURISDICTION_I18N_KEYS: Record<CompanyJurisdictionValue, string> = {
   eu_sk: 'jurisdiction_sk',
   eu_cz: 'jurisdiction_cz',
+  eu_de: 'jurisdiction_de',
+  eu_at: 'jurisdiction_at',
   eu_other: 'jurisdiction_eu',
+  ch: 'jurisdiction_ch',
   us: 'jurisdiction_us',
   uk: 'jurisdiction_uk',
   offshore: 'jurisdiction_offshore',
@@ -50,6 +62,10 @@ export function jurisdictionFromCountry(country: string | null | undefined): Com
   const c = (country || '').trim().toUpperCase();
   if (c === 'SK') return 'eu_sk';
   if (c === 'CZ') return 'eu_cz';
+  if (c === 'DE') return 'eu_de';
+  if (c === 'AT') return 'eu_at';
+  // Liechtenstein is part of the Swiss VAT (MWST) area.
+  if (c === 'CH' || c === 'LI') return 'ch';
   if (c === 'US' || c === 'USA') return 'us';
   if (UK_COUNTRIES.has(c)) return 'uk';
   if (ASIA_COUNTRIES.has(c)) return 'asia';
@@ -67,6 +83,12 @@ export function countriesForJurisdiction(jurisdiction: string): string[] {
       return ['SK'];
     case 'eu_cz':
       return ['CZ'];
+    case 'eu_de':
+      return ['DE'];
+    case 'eu_at':
+      return ['AT'];
+    case 'ch':
+      return ['CH', 'LI'];
     case 'us':
       return ['US'];
     case 'uk':

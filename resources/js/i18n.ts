@@ -2,10 +2,23 @@ import { createI18n } from 'vue-i18n';
 import en from './locales/en.json';
 import api from './services/api';
 
-export const supportedLocales = ['en', 'sk', 'es'] as const;
+export const supportedLocales = ['en', 'sk', 'es', 'cs', 'de'] as const;
 export type SupportedLocale = typeof supportedLocales[number];
 
 const defaultLocale: SupportedLocale = 'en';
+
+const localeTags: Record<SupportedLocale, string> = {
+    en: 'en-US',
+    sk: 'sk-SK',
+    es: 'es-ES',
+    cs: 'cs-CZ',
+    de: 'de-DE',
+};
+
+/** BCP-47 tag for Intl APIs (dates, numbers); unknown locales fall back to en-US. */
+export function localeTagFor(locale: string): string {
+    return localeTags[locale as SupportedLocale] ?? localeTags[defaultLocale];
+}
 
 function getLocale(): SupportedLocale {
     const stored = localStorage.getItem('locale');
@@ -23,6 +36,10 @@ async function loadLocaleMessages(locale: SupportedLocale): Promise<Record<strin
             return (await import('./locales/sk.json')).default;
         case 'es':
             return (await import('./locales/es.json')).default;
+        case 'cs':
+            return (await import('./locales/cs.json')).default;
+        case 'de':
+            return (await import('./locales/de.json')).default;
         default:
             return en;
     }
@@ -66,9 +83,9 @@ const i18n = createI18n({
     legacy: false,
     locale: getLocale(),
     fallbackLocale: defaultLocale,
-    messages: {
-        en,
-    },
+    // Only en is bundled; the cast widens the locale type so the lazily
+    // loaded locales are assignable to i18n.global.locale.
+    messages: { en } as Record<SupportedLocale, typeof en>,
     missingWarn: false,
     fallbackWarn: false,
 });

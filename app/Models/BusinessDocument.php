@@ -43,6 +43,7 @@ class BusinessDocument extends Model
         'note_footer',
         'internal_note',
         'pdf_locale',
+        'pdf_bank_qr',
         'pdf_show_signature',
         'pdf_show_payment_info',
         'paid_at',

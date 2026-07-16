@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import type { InvoiceLineForm } from '../components/invoicing/InvoiceLivePreview.vue';
 import { invoicingApi } from '../services/api';
 import { isInvoicingLocalFirst } from '../evolu/flags';
+import { defaultPdfLocaleForJurisdiction } from '../config/jurisdictionRules';
 import { allDocumentEventsQuery, allDocumentSnapshotsQuery } from '../evolu/client';
 import {
   latestSnapshotRowForDocument,
@@ -22,6 +23,7 @@ import {
   buildEphemeralSnapshot,
   fetchEphemeralBtcpayCheckout,
   fetchEphemeralBtcpayStatus,
+  fetchExistingEphemeralBtcpayCheckout,
   resolveEphemeralBridgeCompanyId,
 } from '../evolu/ephemeralBridge';
 import { useLocalInvoiceDocumentSupport } from './useLocalInvoiceDocument';
@@ -185,6 +187,7 @@ export function useInvoiceDocument() {
     note_footer: '',
     internal_note: '',
     pdf_locale: 'sk',
+    pdf_bank_qr: 'auto',
     pdf_show_signature: true,
     pdf_show_payment_info: true,
     payment_bank_enabled: true,
@@ -528,6 +531,7 @@ export function useInvoiceDocument() {
       note_footer: d.note_footer || '',
       internal_note: d.internal_note || '',
       pdf_locale: d.pdf_locale || 'sk',
+      pdf_bank_qr: d.pdf_bank_qr || 'auto',
       pdf_show_signature: d.pdf_show_signature ?? true,
       pdf_show_payment_info: d.pdf_show_payment_info ?? true,
       payment_bank_enabled: d.payment_bank_enabled,
@@ -634,7 +638,8 @@ export function useInvoiceDocument() {
       note_above_lines: '',
       note_footer: company.value?.legal_footer_note || '',
       internal_note: '',
-      pdf_locale: 'sk',
+      pdf_locale: defaultPdfLocaleForJurisdiction(String(company.value?.jurisdiction ?? '')),
+      pdf_bank_qr: 'auto',
       pdf_show_signature: true,
       pdf_show_payment_info: true,
       payment_bank_enabled: true,
@@ -860,6 +865,7 @@ export function useInvoiceDocument() {
         note_footer: form.note_footer,
         internal_note: form.internal_note,
         pdf_locale: form.pdf_locale,
+        pdf_bank_qr: form.pdf_bank_qr === 'auto' ? null : form.pdf_bank_qr,
         pdf_show_signature: form.pdf_show_signature,
         pdf_show_payment_info: form.pdf_show_payment_info,
         payment_bank_enabled: form.payment_bank_enabled,
@@ -876,6 +882,12 @@ export function useInvoiceDocument() {
     );
   }
 
+  /**
+   * View-time lookup ONLY: shows an existing still-payable checkout link.
+   * A BTCPay invoice is never minted by merely opening the invoice - that
+   * used to create a stray "New" BTCPay invoice per view (production
+   * 2026-07-14). Minting happens in createLocalBtcpayCheckout (button).
+   */
   async function loadLocalBtcpayCheckout() {
     localBtcpayCheckoutLink.value = '';
     localBtcpayInvoiceId.value = '';
@@ -889,6 +901,32 @@ export function useInvoiceDocument() {
     ) {
       return;
     }
+
+    localBtcpayCheckoutLoading.value = true;
+    try {
+      const result = await fetchExistingEphemeralBtcpayCheckout(
+        buildCurrentEphemeralSnapshot(),
+        form.store_id,
+        documentId.value,
+      );
+      localBtcpayCheckoutLink.value = result?.checkout_link || '';
+      localBtcpayInvoiceId.value = result?.btcpay_invoice_id || '';
+      if (localBtcpayInvoiceId.value) {
+        startLocalBtcpayPolling();
+      }
+    } catch {
+      // No existing checkout is a normal state - the create button handles it.
+      localBtcpayCheckoutLink.value = '';
+      localBtcpayInvoiceId.value = '';
+    } finally {
+      localBtcpayCheckoutLoading.value = false;
+    }
+  }
+
+  /** Explicit user action: create (or reuse server-side) the checkout link. */
+  async function createLocalBtcpayCheckout() {
+    if (!localFirst || !documentId.value) return;
+    if (!form.payment_btc_enabled || !form.store_id) return;
 
     localBtcpayCheckoutLoading.value = true;
     try {
@@ -1150,6 +1188,7 @@ export function useInvoiceDocument() {
     btcPayUrl,
     localBtcpayCheckoutLoading,
     loadLocalBtcpayCheckout,
+    createLocalBtcpayCheckout,
     paymentToken,
     documentType,
     documentKind,

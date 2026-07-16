@@ -6,6 +6,8 @@ use App\Enums\BusinessDocumentStatus;
 use App\Models\BusinessDocument;
 use App\Models\Store;
 use App\Services\BtcPay\InvoiceService as BtcPayInvoiceService;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -13,7 +15,105 @@ class BusinessDocumentBtcPayService
 {
     public function __construct(
         protected BtcPayInvoiceService $btcPayInvoiceService,
+        protected EphemeralBtcpayCheckoutService $ephemeralCheckoutService,
     ) {}
+
+    /**
+     * Checkout link for the BTC QR on an EPHEMERAL render (PDF/e-mail).
+     *
+     * This used to call createEphemeralCheckout() unconditionally and never
+     * registered the row - every rendered PDF of a BTC-enabled document
+     * minted an invisible stray BTCPay invoice (production 2026-07-15).
+     * Now it shares the dedupe semantics:
+     *  - paid documents (status or amount) get NO payment QR,
+     *  - an already paid checkout gets NO payment QR (and is marked paid),
+     *  - a still-payable checkout with a matching amount is reused,
+     *  - an unknown BTCPay state renders WITHOUT a QR - never mints blindly,
+     *  - only a genuinely unpaid document without a usable checkout mints,
+     *    and the new checkout is REGISTERED so future dedupe sees it.
+     */
+    public function qrCheckoutLinkForEphemeralRender(
+        BusinessDocument $document,
+        Store $store,
+        ?string $evoluDocumentId,
+    ): ?string {
+        // Paid documents render without a payment QR. The status check works
+        // for both worlds (the model casts to the enum at runtime; static
+        // analysis types it string in the ephemeral context, hence in_array).
+        if (in_array($document->status, [BusinessDocumentStatus::Paid, BusinessDocumentStatus::Paid->value], true)) {
+            return null;
+        }
+        $total = (float) $document->total;
+        if ($total <= 0 || (float) $document->amount_paid >= $total - 0.005) {
+            return null;
+        }
+
+        // Without a stable dedupe key a minted invoice could never be found
+        // again by any later render/view/create - refuse to mint and render
+        // without a QR instead of leaving untrackable strays behind.
+        $user = $store->user;
+        if (! $user instanceof \App\Models\User || ! is_string($evoluDocumentId) || $evoluDocumentId === '') {
+            return null;
+        }
+
+        // Serialize per document: the auto-issue email job and the WooCommerce
+        // attachment render fire within seconds of each other - both finding
+        // "no pending checkout" would mint twice. Atomic on redis (prod).
+        $lock = Cache::lock('ephemeral-qr-checkout:'.$store->id.':'.$evoluDocumentId, 30);
+        try {
+            $lock->block(10);
+        } catch (LockTimeoutException) {
+            // The concurrent holder is resolving the same checkout - render
+            // without a QR rather than risk a duplicate mint.
+            return null;
+        }
+
+        try {
+            if ($this->ephemeralCheckoutService->findLatestPaid($user, $store, $evoluDocumentId)) {
+                return null;
+            }
+
+            $pending = $this->ephemeralCheckoutService->findLatestPending($user, $store, $evoluDocumentId);
+            if ($pending) {
+                $state = $this->ephemeralCheckoutState($store, $pending->btcpay_invoice_id);
+                if ($state['state'] === 'paid') {
+                    $this->ephemeralCheckoutService->markPaid($pending);
+
+                    return null;
+                }
+                if ($state['state'] === 'unknown') {
+                    // Fail safe: render without a QR rather than mint a
+                    // possible duplicate of an unverifiable invoice.
+                    return null;
+                }
+                if (
+                    $state['state'] === 'payable'
+                    && abs((float) $pending->amount - $total) < 0.005
+                    && strcasecmp((string) $pending->currency, (string) $document->currency) === 0
+                ) {
+                    return $state['checkout_link'];
+                }
+                // replaceable (expired/invalid) falls through to a fresh one.
+            }
+
+            $result = $this->createEphemeralCheckout($document, $store, $evoluDocumentId);
+
+            if (is_string($result['btcpay_invoice_id'] ?? null) && $result['btcpay_invoice_id'] !== '') {
+                $this->ephemeralCheckoutService->registerCheckout(
+                    $user,
+                    $store,
+                    $evoluDocumentId,
+                    $result['btcpay_invoice_id'],
+                    $total,
+                    $document->currency,
+                );
+            }
+
+            return $result['checkout_link'] ?? null;
+        } finally {
+            $lock->release();
+        }
+    }
 
     /**
      * Attach or refresh BTCPay checkout for an issued document when Bitcoin payment is enabled.
@@ -191,6 +291,52 @@ class BusinessDocumentBtcPayService
         }
 
         return $this->fetchBtcpayInvoiceForStore($store, $document->btcpay_invoice_id);
+    }
+
+    /**
+     * BTCPay-side state of an existing ephemeral checkout (fresh fetch):
+     *  - paid: the invoice settled - the caller must surface the payment,
+     *    NEVER replace it with a fresh invoice (PR #144 root cause),
+     *  - payable: New/Processing - reusable instead of minting another one
+     *    (Processing means the customer already broadcast the payment, so
+     *    the link is reused and settlement lands via webhook/polling - it
+     *    is deliberately NOT reported paid here),
+     *  - replaceable: expired/invalid - a fresh invoice may be created,
+     *  - unknown: BTCPay could not be reached / did not answer - the caller
+     *    must fail safe and never mint a replacement blindly.
+     *
+     * @return array{state: 'paid'|'payable'|'replaceable'|'unknown', checkout_link: string|null, btcpay_invoice_id: string}
+     */
+    public function ephemeralCheckoutState(Store $store, string $btcpayInvoiceId): array
+    {
+        $invoice = $this->fetchBtcpayInvoiceForStore($store, $btcpayInvoiceId);
+        if (! is_array($invoice)) {
+            return [
+                'state' => 'unknown',
+                'checkout_link' => null,
+                'btcpay_invoice_id' => $btcpayInvoiceId,
+            ];
+        }
+
+        $checkoutLink = isset($invoice['checkoutLink']) ? (string) $invoice['checkoutLink'] : null;
+        $status = strtolower((string) ($invoice['status'] ?? ''));
+
+        // Payable takes precedence: invoiceIndicatesPaid() counts Processing
+        // as paid for the webhook/settlement flows, but an unconfirmed
+        // payment must not mark the document paid here.
+        if (in_array($status, ['new', 'processing'], true)) {
+            return [
+                'state' => 'payable',
+                'checkout_link' => $checkoutLink,
+                'btcpay_invoice_id' => $btcpayInvoiceId,
+            ];
+        }
+
+        return [
+            'state' => $this->invoiceIndicatesPaid($invoice) ? 'paid' : 'replaceable',
+            'checkout_link' => $checkoutLink,
+            'btcpay_invoice_id' => $btcpayInvoiceId,
+        ];
     }
 
     /**

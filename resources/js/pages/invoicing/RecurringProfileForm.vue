@@ -55,8 +55,9 @@
             <label class="invoicing-sf-label">{{ t('invoicing.pdf_language') }}</label>
             <select v-model="form.pdf_locale" class="invoicing-sf-input">
               <option value="sk">Slovenčina</option>
-              <option value="en">English</option>
               <option value="cs">Čeština</option>
+              <option value="de">Deutsch</option>
+              <option value="en">English</option>
             </select>
           </div>
           <label class="flex items-center gap-2 text-sm text-gray-700">

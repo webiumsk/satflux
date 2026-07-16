@@ -30,19 +30,23 @@ class IntegrationDocumentInboxService
         $company = $this->resolveCompany($integration);
         $store = $integration->store;
 
+        $type = BusinessDocumentType::tryFrom((string) ($payload['type'] ?? 'invoice')) ?? BusinessDocumentType::Invoice;
+
         $wcOrderId = isset($payload['woocommerce_order_id']) ? (int) $payload['woocommerce_order_id'] : null;
         if ($wcOrderId !== null && $wcOrderId > 0) {
+            // Dedupe per (order, TYPE): one order legitimately carries both a
+            // proforma (deferred payment) and its later final invoice - the
+            // invoice request must never return the pending proforma entry.
             $existing = IntegrationDocumentInbox::query()
                 ->where('store_integration_id', $integration->id)
                 ->where('woocommerce_order_id', $wcOrderId)
+                ->where('document_type', $type->value)
                 ->where('status', IntegrationDocumentInboxStatus::Pending)
                 ->first();
             if ($existing) {
                 return $this->serializeEntry($existing);
             }
         }
-
-        $type = BusinessDocumentType::tryFrom((string) ($payload['type'] ?? 'invoice')) ?? BusinessDocumentType::Invoice;
         if (! $type->isMvpEnabled()) {
             throw ValidationException::withMessages(['type' => ['Document type not supported.']]);
         }
@@ -79,6 +83,9 @@ class IntegrationDocumentInboxService
             'internal_note' => $wcOrderId ? 'woocommerce_order_id='.$wcOrderId : null,
             'note_above_lines' => $wcOrderId ? 'WooCommerce order #'.$wcOrderId : null,
             'tags' => $wcOrderId ? ['woocommerce', 'wc_order:'.$wcOrderId] : ['woocommerce'],
+            // Headless auto-issue renders the PDF before any browser touches
+            // the document - pick the merchant's language up front.
+            'pdf_locale' => \App\Support\Invoicing\JurisdictionRules::defaultPdfLocale($company->jurisdiction),
         ];
 
         foreach ([
@@ -88,10 +95,28 @@ class IntegrationDocumentInboxService
             'order_total',
             'discount_percent',
             'btcpay_invoice_id',
+            // Link to the earlier proforma entry (deferred-payment flow) -
+            // the client import resolves it to a local sourceDocumentId.
+            'source_evolu_document_id',
         ] as $passthroughKey) {
             if (array_key_exists($passthroughKey, $payload)) {
                 $documentPayload[$passthroughKey] = $payload[$passthroughKey];
             }
+        }
+
+        // Deferred-payment flow: the plugin sends the proforma's number with
+        // the final invoice - surface it on the document itself (PDF + local
+        // import), the proforma inbox row may already be gone.
+        $sourceNumber = trim((string) ($payload['source_document_number'] ?? ''));
+        if ($sourceNumber !== '' && $type === BusinessDocumentType::Invoice) {
+            $documentPayload['source_document_number'] = $sourceNumber;
+            $paidByProforma = __(
+                'invoicing.paid_by_proforma',
+                ['number' => $sourceNumber],
+                \App\Support\Invoicing\JurisdictionRules::documentNoteLocale($company->jurisdiction),
+            );
+            $note = trim((string) ($documentPayload['note_above_lines'] ?? ''));
+            $documentPayload['note_above_lines'] = $note === '' ? $paidByProforma : $note.' - '.$paidByProforma;
         }
 
         if (! isset($documentPayload['is_paid']) && isset($payload['payment_method'])) {
@@ -106,6 +131,7 @@ class IntegrationDocumentInboxService
             'woocommerce_order_id' => $wcOrderId,
             'evolu_document_id' => (string) Str::uuid(),
             'payload_json' => $documentPayload,
+            'document_type' => $type->value,
             'status' => IntegrationDocumentInboxStatus::Pending,
         ]);
 
@@ -162,7 +188,7 @@ class IntegrationDocumentInboxService
 
     public function issuePendingEntry(IntegrationDocumentInbox $entry, Company $company): IntegrationDocumentInbox
     {
-        $payload = is_array($entry->payload_json) ? $entry->payload_json : [];
+        $payload = $entry->payload_json;
 
         if (! empty($payload['number'])) {
             return $entry;
@@ -228,7 +254,7 @@ class IntegrationDocumentInboxService
      */
     public function serializeEntry(IntegrationDocumentInbox $entry): array
     {
-        $payload = is_array($entry->payload_json) ? $entry->payload_json : [];
+        $payload = $entry->payload_json;
 
         return [
             'inbox_id' => $entry->id,
@@ -237,6 +263,13 @@ class IntegrationDocumentInboxService
             'status' => $entry->status->value,
             'created_at' => $entry->created_at?->toIso8601String(),
             'payload' => $payload,
+            // Auto-issue evidence (P3): present when the server issued the
+            // paid order headlessly; the plugin notes these on the WC order.
+            'number' => $payload['number'] ?? null,
+            'auto_issued' => ! empty($payload['auto_issued_at']),
+            'email_queued' => ! empty($payload['email_queued_at']),
+            'emailed' => ! empty($payload['emailed_at']),
+            'pdf_available' => ! empty($payload['number']),
             'summary' => [
                 'type' => (string) ($payload['type'] ?? 'invoice'),
                 'currency' => (string) ($payload['currency'] ?? 'EUR'),

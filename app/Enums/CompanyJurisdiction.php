@@ -6,7 +6,10 @@ enum CompanyJurisdiction: string
 {
     case EuSk = 'eu_sk';
     case EuCz = 'eu_cz';
+    case EuDe = 'eu_de';
+    case EuAt = 'eu_at';
     case EuOther = 'eu_other';
+    case Ch = 'ch';
     case Us = 'us';
     case Uk = 'uk';
     case Offshore = 'offshore';
@@ -14,6 +17,9 @@ enum CompanyJurisdiction: string
 
     public function supportsPayBySquare(): bool
     {
+        // PayBySquare is the Slovak QR standard - German/Austrian/Swiss
+        // banking apps cannot read it (EPC QR / Swiss QR-bill are separate
+        // follow-ups). EuOther keeps it for backward compatibility.
         return match ($this) {
             self::EuSk, self::EuCz, self::EuOther => true,
             default => false,
@@ -32,6 +38,10 @@ enum CompanyJurisdiction: string
         return match (true) {
             $c === 'SK' => self::EuSk,
             $c === 'CZ' => self::EuCz,
+            $c === 'DE' => self::EuDe,
+            $c === 'AT' => self::EuAt,
+            // Liechtenstein is part of the Swiss VAT (MWST) area.
+            $c === 'CH' || $c === 'LI' => self::Ch,
             $c === 'US' => self::Us,
             $c === 'GB' || $c === 'UK' => self::Uk,
             in_array($c, ['HK', 'SG', 'AE'], true) => self::Asia,

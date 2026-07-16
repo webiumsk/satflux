@@ -1537,12 +1537,6 @@ parameters:
 			path: app/Models/FaqItem.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\IntegrationDocumentInboxStatus\:\:Pending will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/IntegrationDocumentInbox.php
-
-		-
 			message: '#^Call to function is_array\(\) with array\{''lightning'', ''onchain''\} will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
@@ -1981,69 +1975,9 @@ parameters:
 			path: app/Services/Integrations/IntegrationDocumentInboxService.php
 
 		-
-			message: '#^Call to function is_array\(\) with string will always evaluate to false\.$#'
-			identifier: function.impossibleType
-			count: 2
-			path: app/Services/Integrations/IntegrationDocumentInboxService.php
-
-		-
-			message: '#^Cannot access property \$value on string\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Services/Integrations/IntegrationDocumentInboxService.php
-
-		-
-			message: '#^Offset ''buyer'' on array\{\} on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Services/Integrations/IntegrationDocumentInboxService.php
-
-		-
-			message: '#^Offset ''currency'' on array\{\} on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Integrations/IntegrationDocumentInboxService.php
-
-		-
-			message: '#^Offset ''lines'' on array\{\} on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Integrations/IntegrationDocumentInboxService.php
-
-		-
-			message: '#^Offset ''number'' on array\{\} in empty\(\) does not exist\.$#'
-			identifier: empty.offset
-			count: 1
-			path: app/Services/Integrations/IntegrationDocumentInboxService.php
-
-		-
-			message: '#^Offset ''type'' on array\{\} on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Integrations/IntegrationDocumentInboxService.php
-
-		-
 			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyAppSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Services/Integrations/IntegrationDocumentInboxService.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\IntegrationDocumentInboxStatus\:\:Pending will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 3
-			path: app/Services/Integrations/IntegrationDocumentInboxService.php
-
-		-
-			message: '#^Ternary operator condition is always false\.$#'
-			identifier: ternary.alwaysFalse
-			count: 1
-			path: app/Services/Integrations/IntegrationDocumentInboxService.php
-
-		-
-			message: '#^Unreachable statement \- code above always terminates\.$#'
-			identifier: deadCode.unreachable
-			count: 3
 			path: app/Services/Integrations/IntegrationDocumentInboxService.php
 
 		-
@@ -2107,32 +2041,8 @@ parameters:
 			path: app/Services/Integrations/WooCommerceDocumentService.php
 
 		-
-			message: '#^Call to function is_array\(\) with string will always evaluate to false\.$#'
-			identifier: function.impossibleType
-			count: 1
-			path: app/Services/Integrations/WooCommerceDocumentService.php
-
-		-
 			message: '#^Cannot access property \$value on string\.$#'
 			identifier: property.nonObject
-			count: 2
-			path: app/Services/Integrations/WooCommerceDocumentService.php
-
-		-
-			message: '#^Offset ''currency'' on array\{\} on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/Integrations/WooCommerceDocumentService.php
-
-		-
-			message: '#^Offset ''number'' on array\{\} in empty\(\) does not exist\.$#'
-			identifier: empty.offset
-			count: 1
-			path: app/Services/Integrations/WooCommerceDocumentService.php
-
-		-
-			message: '#^Offset ''number'' on array\{\} on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
 			count: 1
 			path: app/Services/Integrations/WooCommerceDocumentService.php
 
@@ -2737,18 +2647,6 @@ parameters:
 			path: app/Services/Invoicing/BusinessDocumentPdfService.php
 
 		-
-			message: '#^Instantiated class chillerlan\\QRCode\\QROptions not found\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Services/Invoicing/BusinessDocumentPdfService.php
-
-		-
-			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\PayBySquareGenerator\:\:generateQrDataUri\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Invoicing/BusinessDocumentPdfService.php
-
-		-
 			message: '#^Parameter \#1 \$company of method App\\Support\\Invoicing\\CompanyVatPolicy\:\:reverseChargeNote\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
 			identifier: argument.type
 			count: 1
@@ -2762,12 +2660,6 @@ parameters:
 
 		-
 			message: '#^Parameter \#1 \$company of method App\\Support\\Invoicing\\CompanyVatPolicy\:\:showsVatRateColumn\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Invoicing/BusinessDocumentPdfService.php
-
-		-
-			message: '#^Parameter \#2 \$store of method App\\Services\\Invoicing\\BusinessDocumentBtcPayService\:\:createEphemeralCheckout\(\) expects App\\Models\\Store, Illuminate\\Database\\Eloquent\\Model given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Services/Invoicing/BusinessDocumentPdfService.php
@@ -3649,12 +3541,6 @@ parameters:
 			path: app/Services/Invoicing/Efaktura/SapiSkComplianceGateway.php
 
 		-
-			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Services/Invoicing/EphemeralBtcpayCheckoutService.php
-
-		-
 			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
 			identifier: function.impossibleType
 			count: 1
@@ -3679,12 +3565,6 @@ parameters:
 			path: app/Services/Invoicing/OpenRegistryService.php
 
 		-
-			message: '#^Cannot call method supportsPayBySquare\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Services/Invoicing/PayBySquareGenerator.php
-
-		-
 			message: '#^Cannot call method toDateTime\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
@@ -3694,13 +3574,13 @@ parameters:
 			message: '#^Instantiated class chillerlan\\QRCode\\QROptions not found\.$#'
 			identifier: class.notFound
 			count: 1
-			path: app/Services/Invoicing/PayBySquareGenerator.php
+			path: app/Support/Invoicing/QrPngRenderer.php
 
 		-
 			message: '#^Parameter \#1 \$stored of static method App\\Support\\Invoicing\\CompanyAppSettings\:\:from\(\) expects array\<string, mixed\>\|null, string\|null given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Services/Invoicing/PayBySquareGenerator.php
+			path: app/Support/Invoicing/BankQrEligibility.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$description\.$#'

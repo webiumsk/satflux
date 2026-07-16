@@ -45,6 +45,7 @@ class StoreBusinessDocumentRequest extends FormRequest
             'note_footer' => ['nullable', 'string', 'max:10000'],
             'internal_note' => ['nullable', 'string', 'max:10000'],
             'pdf_locale' => ['nullable', 'string', 'max:8'],
+            'pdf_bank_qr' => ['nullable', 'in:auto,paybysquare,epc,swiss,none'],
             'pdf_show_signature' => ['sometimes', 'boolean'],
             'pdf_show_payment_info' => ['sometimes', 'boolean'],
             'tags' => ['nullable', 'array'],
