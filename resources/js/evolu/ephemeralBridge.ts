@@ -366,6 +366,7 @@ export function buildEphemeralSnapshot(
             note_footer: document.note_footer,
             internal_note: document.internal_note,
             pdf_locale: document.pdf_locale,
+            pdf_bank_qr: document.pdf_bank_qr ?? null,
             pdf_show_signature: document.pdf_show_signature,
             pdf_show_payment_info: document.pdf_show_payment_info,
             payment_bank_enabled: document.payment_bank_enabled,
@@ -747,6 +748,7 @@ export async function buildBulkEphemeralRequest(
             doc,
             payload.lines,
             emailSettings,
+            documentId,
         );
         if (!companyPayload) {
             companyPayload = snapshot.company;
@@ -780,6 +782,7 @@ export function buildEphemeralSnapshotFromApiDocument(
     doc: Record<string, unknown>,
     lines: DocumentSavePayload["lines"],
     emailSettingsOverride?: Record<string, unknown>,
+    evoluDocumentId?: string | null,
 ): EphemeralSnapshotPayload {
     const companyForSnapshot = emailSettingsOverride && company
         ? { ...company, email_settings: emailSettingsOverride }
@@ -801,6 +804,7 @@ export function buildEphemeralSnapshotFromApiDocument(
         note_footer: doc.note_footer,
         internal_note: doc.internal_note,
         pdf_locale: doc.pdf_locale,
+        pdf_bank_qr: doc.pdf_bank_qr ?? null,
         pdf_show_signature: doc.pdf_show_signature,
         pdf_show_payment_info: doc.pdf_show_payment_info,
         payment_bank_enabled: doc.payment_bank_enabled,
@@ -809,6 +813,10 @@ export function buildEphemeralSnapshotFromApiDocument(
         amount_paid: doc.amount_paid,
     }, lines, {
         storeId: typeof doc.store_id === 'string' ? doc.store_id : null,
+        // Without the evolu id the server cannot find the document's
+        // registered BTCPay checkout (and the keyless render never mints),
+        // so list/bulk PDFs silently lost the BTC QR the detail PDF had.
+        evoluDocumentId: evoluDocumentId ?? null,
     });
 }
 
@@ -887,6 +895,11 @@ function renderInputsFromFrozen(
             ...frozen.document,
             status: liveDoc.status,
             amount_paid: liveDoc.amount_paid,
+            // Operational payment routing, deliberately NOT frozen content:
+            // which BTCPay store serves the checkout (without it the server
+            // renders no BTC QR at all) and the bank-QR standard choice.
+            store_id: liveDoc.store_id,
+            pdf_bank_qr: liveDoc.pdf_bank_qr ?? null,
         },
         lines: frozen.lines.map((line) => ({
             name: line.name,
@@ -944,6 +957,7 @@ export async function buildLocalDocumentEphemeralSnapshot(
                 inputs.document,
                 inputs.lines,
                 emailSettings,
+                documentId,
             ),
         };
     }
@@ -957,6 +971,7 @@ export async function buildLocalDocumentEphemeralSnapshot(
             doc,
             payload.lines,
             emailSettings,
+            documentId,
         ),
     };
 }

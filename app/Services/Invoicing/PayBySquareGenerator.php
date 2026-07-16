@@ -4,7 +4,8 @@ namespace App\Services\Invoicing;
 
 use App\Models\BusinessDocument;
 use App\Models\Company;
-use App\Support\Invoicing\CompanyAppSettings;
+use App\Support\Invoicing\BankQrEligibility;
+use App\Support\Invoicing\QrPngRenderer;
 use DateTime;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -19,24 +20,10 @@ class PayBySquareGenerator
 {
     public function canGenerate(Company $company, BusinessDocument $document): bool
     {
-        if (! $company->jurisdiction->supportsPayBySquare()) {
-            return false;
-        }
-
-        if (empty($company->iban)) {
-            return false;
-        }
-
-        if (! $document->payment_bank_enabled) {
-            return false;
-        }
-
-        $settings = CompanyAppSettings::from($company->app_settings);
-        if (! $settings->bool('show_pay_by_square')) {
-            return false;
-        }
-
-        return (float) $document->total > 0;
+        // Which STANDARD fits the payer is BankQrGenerator's decision (the
+        // issuer jurisdiction no longer gates it - a Swiss company invoicing
+        // a Slovak customer legitimately prints PayBySquare).
+        return BankQrEligibility::passes($company, $document);
     }
 
     public function generatePayload(Company $company, BusinessDocument $document): string
@@ -103,27 +90,7 @@ class PayBySquareGenerator
 
     protected function qrPngDataUri(string $data, int $size): ?string
     {
-        if (class_exists(\chillerlan\QRCode\QRCode::class)) {
-            $options = new \chillerlan\QRCode\QROptions([
-                'outputType' => \chillerlan\QRCode\QRCode::OUTPUT_IMAGE_PNG,
-                'scale' => max(4, (int) floor($size / 25)),
-                'imageBase64' => true,
-            ]);
-            $qr = new \chillerlan\QRCode\QRCode($options);
-
-            return $qr->render($data);
-        }
-
-        $url = 'https://api.qrserver.com/v1/create-qr-code/?'.http_build_query([
-            'size' => "{$size}x{$size}",
-            'data' => $data,
-        ]);
-        $png = @file_get_contents($url);
-        if ($png === false) {
-            return null;
-        }
-
-        return 'data:image/png;base64,'.base64_encode($png);
+        return QrPngRenderer::dataUri($data, $size);
     }
 
     protected function sanitize(string $value): string

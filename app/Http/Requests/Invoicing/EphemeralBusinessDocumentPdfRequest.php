@@ -118,6 +118,7 @@ class EphemeralBusinessDocumentPdfRequest extends FormRequest
             'document.note_footer' => ['sometimes', 'nullable', 'string', 'max:10000'],
             'document.internal_note' => ['sometimes', 'nullable', 'string', 'max:10000'],
             'document.pdf_locale' => ['sometimes', 'nullable', 'string', 'max:10'],
+            'document.pdf_bank_qr' => ['sometimes', 'nullable', 'in:auto,paybysquare,epc,swiss,none'],
             'document.pdf_show_signature' => ['sometimes', 'boolean'],
             'document.pdf_show_payment_info' => ['sometimes', 'boolean'],
             'document.payment_bank_enabled' => ['sometimes', 'boolean'],

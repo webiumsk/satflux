@@ -69,6 +69,8 @@ export type DocumentSavePayload = {
     note_footer: string;
     internal_note: string;
     pdf_locale: string;
+    /** Bank QR standard on the PDF: auto|paybysquare|epc|swiss|none (null = auto). */
+    pdf_bank_qr?: string | null;
     pdf_show_signature: boolean;
     pdf_show_payment_info: boolean;
     payment_bank_enabled: boolean;
@@ -174,6 +176,7 @@ function buildDocumentFields(
             noteFooter: payload.note_footer || null,
             internalNote: payload.internal_note || null,
             pdfLocale: payload.pdf_locale || "sk",
+            pdfBankQr: payload.pdf_bank_qr || null,
             pdfShowSignature: booleanToSqliteBoolean(payload.pdf_show_signature),
             pdfShowPaymentInfo: booleanToSqliteBoolean(paymentFlags.pdfPay),
             paymentBankEnabled: booleanToSqliteBoolean(paymentFlags.bank),
@@ -393,6 +396,7 @@ export function saveLocalDocument(
                 note_footer: fields.value.noteFooter,
                 internal_note: fields.value.internalNote,
                 pdf_locale: fields.value.pdfLocale,
+                pdf_bank_qr: fields.value.pdfBankQr ?? null,
                 pdf_show_signature: payload.pdf_show_signature,
                 pdf_show_payment_info: payload.pdf_show_payment_info,
                 payment_bank_enabled: payload.payment_bank_enabled,
@@ -959,6 +963,7 @@ export function payloadFromApiDocument(doc: Record<string, unknown>): DocumentSa
         note_footer: String(doc.note_footer || ""),
         internal_note: String(doc.internal_note || ""),
         pdf_locale: String(doc.pdf_locale || "sk"),
+        pdf_bank_qr: (doc.pdf_bank_qr as string | null | undefined) ?? null,
         pdf_show_signature: doc.pdf_show_signature !== false,
         pdf_show_payment_info: doc.pdf_show_payment_info !== false,
         payment_bank_enabled: doc.payment_bank_enabled !== false,
