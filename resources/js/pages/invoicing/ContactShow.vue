@@ -139,8 +139,8 @@ const { documentRows } = useInvoicingContacts(companyId);
 
 const contactDocumentCount = computed(() => {
   if (!localFirst || !contactId.value) return 0;
-  return documentRows.value.filter(
-    (row) => (row as EvoluDocumentRow).contactId === contactId.value,
+  return toAppRows<EvoluDocumentRow>(documentRows.value).filter(
+    (row) => row.contactId === contactId.value,
   ).length;
 });
 

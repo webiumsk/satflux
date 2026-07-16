@@ -220,7 +220,7 @@ function periodLabel(period: string) {
 }
 
 function localSeriesRows(): EvoluNumberSeriesRow[] {
-  return (toAppRows<EvoluNumberSeriesRow>(seriesRows.value)).filter(
+  return toAppRows<EvoluNumberSeriesRow>(seriesRows.value).filter(
     (row) => row.companyId === props.companyId,
   );
 }

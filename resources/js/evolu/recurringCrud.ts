@@ -338,8 +338,7 @@ export async function generateLocalRecurringDocument(
         };
     }
 
-    await evolu.loadQuery(allDocumentsQuery);
-    const issuedDocuments = toAppRows<EvoluDocumentRow>((await evolu.loadQuery(allDocumentsQuery)));
+    const issuedDocuments = toAppRows<EvoluDocumentRow>(await evolu.loadQuery(allDocumentsQuery));
     const doc = issuedDocuments.find((row) => row.id === saveResult.value.id);
     const issuedNumber = doc?.number || previewNumber;
 

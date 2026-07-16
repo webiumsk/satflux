@@ -453,9 +453,8 @@ export function useInvoiceDocument() {
   function existingLocalDocument() {
     if (!local || !documentId.value) return null;
     return (
-      local.documentRows.value.find((row) => row.id === documentId.value) as
-        | import('../evolu/documentMap').EvoluDocumentRow
-        | undefined
+      toAppRows<import('../evolu/documentMap').EvoluDocumentRow>(local.documentRows.value)
+        .find((row) => row.id === documentId.value)
     ) ?? null;
   }
 
@@ -1120,12 +1119,14 @@ export function useInvoiceDocument() {
       await local.refreshAll();
     }
     if (wasDraft) {
-      const companyRow = local.companyRows.value.find((c) => c.id === companyId.value);
+      const companyRow = toAppRows<import('../evolu/companyMap').EvoluCompanyRow>(
+        local.companyRows.value,
+      ).find((c) => c.id === companyId.value);
       if (!companyRow) throw new Error('company');
       const issueResult = await local.issueLocalDocumentAsync(
         local.evolu,
         docId as DocumentId,
-        companyRow as import('../evolu/companyMap').EvoluCompanyRow,
+        companyRow,
       );
       if (!issueResult.ok) {
         throw new Error(typeof issueResult.error === 'string' ? issueResult.error : 'issue');

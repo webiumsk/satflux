@@ -103,7 +103,7 @@ async function submit() {
   try {
     if (localFirst && localStockDetail?.evolu) {
       await localStockDetail.refreshAll();
-      const item = (toAppRows<EvoluStockItemRow>(localStockDetail.itemRows.value)).find(
+      const item = toAppRows<EvoluStockItemRow>(localStockDetail.itemRows.value).find(
         (row) => row.id === props.stockItemId,
       );
       if (!item) {

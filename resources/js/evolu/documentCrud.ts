@@ -472,7 +472,7 @@ export async function issueLocalDocumentAsync(
     const snapshotContext: IssueSnapshotContext = {
         lines: toAppRows<EvoluDocumentLineRow>(lineRows),
         contact:
-            ((toAppRows<EvoluContactRow>(contactRows)).find((c) => c.id === draft.contactId)
+            (toAppRows<EvoluContactRow>(contactRows).find((c) => c.id === draft.contactId)
                 ?? null),
     };
 
@@ -616,7 +616,7 @@ export async function applyReservedNumberToLocalDocumentAsync(
                 evolu.loadQuery(allCompaniesDetailQuery),
                 evolu.loadQuery(allDocumentsQuery),
             ]);
-            const company = (toAppRows<EvoluCompanyRow>(companyRows)).find(
+            const company = toAppRows<EvoluCompanyRow>(companyRows).find(
                 (row) => row.id === companyId,
             );
             if (company) {
@@ -626,7 +626,7 @@ export async function applyReservedNumberToLocalDocumentAsync(
                     allDocuments: toAppRows<EvoluDocumentRow>(documents),
                     lines: toAppRows<EvoluDocumentLineRow>(lineRows),
                     contact:
-                        ((toAppRows<EvoluContactRow>(contactRows)).find(
+                        (toAppRows<EvoluContactRow>(contactRows).find(
                             (c) => c.id === doc.contactId,
                         ) ?? null),
                 };

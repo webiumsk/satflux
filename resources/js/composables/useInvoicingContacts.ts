@@ -102,10 +102,10 @@ function useLocalInvoicingContacts(companyId: Ref<string>): UseInvoicingContacts
 
     const companyContacts = computed(() => {
         const docs = toAppRows<EvoluDocumentRow>(documentRows.value);
-        return contactRows.value
+        return toAppRows<EvoluContactRow>(contactRows.value)
             .filter((row) => row.companyId === companyId.value)
             .map((row) => {
-                const apiRow = evoluContactToApi(row as EvoluContactRow);
+                const apiRow = evoluContactToApi(row);
                 apiRow.stats = computeContactStats(row.id, docs);
                 return apiRow;
             });
@@ -187,14 +187,14 @@ export function useInvoicingContact(
                 contact.value = null;
                 return;
             }
-            const row = contactRows.value.find(
+            const row = toAppRows<EvoluContactRow>(contactRows.value).find(
                 (c) => c.id === contactId.value && c.companyId === (companyId.value as CompanyId),
             );
             if (!row) {
                 contact.value = null;
                 return;
             }
-            const apiRow = evoluContactToApi(row as EvoluContactRow);
+            const apiRow = evoluContactToApi(row);
             apiRow.stats = computeContactStats(
                 row.id,
                 toAppRows<EvoluDocumentRow>(documentRows.value),

@@ -102,11 +102,13 @@ function useLocalStockItems(companyId: Ref<string>): UseInvoicingStockItemsResul
             toAppRows<EvoluStockItemRow>(itemRows.value),
             companyId.value as CompanyId,
         );
+        const balances = toAppRows<EvoluStockBalanceRow>(balanceRows.value);
+        const warehouses = toAppRows<EvoluWarehouseRow>(warehouseRows.value);
         return companyItems.map((row) =>
             evoluStockItemToListRow(
                 row,
-                toAppRows<EvoluStockBalanceRow>(balanceRows.value),
-                toAppRows<EvoluWarehouseRow>(warehouseRows.value),
+                balances,
+                warehouses,
                 filters.value.warehouse_id || null,
             ),
         );
@@ -180,14 +182,15 @@ export function useLocalStockItemDetail(companyId: Ref<string>) {
     }
 
     function itemApi(itemId: string) {
-        const row = (toAppRows<EvoluStockItemRow>(itemRows.value)).find((entry) => entry.id === itemId);
+        const row = toAppRows<EvoluStockItemRow>(itemRows.value).find((entry) => entry.id === itemId);
         if (!row || row.companyId !== companyId.value) return null;
+        const warehouses = toAppRows<EvoluWarehouseRow>(warehouseRows.value);
         const apiRow = evoluStockItemToListRow(
             row,
             toAppRows<EvoluStockBalanceRow>(balanceRows.value),
-            toAppRows<EvoluWarehouseRow>(warehouseRows.value),
+            warehouses,
         );
-        const movements = (toAppRows<EvoluStockMovementRow>(movementRows.value))
+        const movements = toAppRows<EvoluStockMovementRow>(movementRows.value)
             .filter(
                 (entry) =>
                     entry.companyStockItemId === itemId
@@ -196,7 +199,7 @@ export function useLocalStockItemDetail(companyId: Ref<string>) {
             .sort((a, b) => (b.movementAt ?? "").localeCompare(a.movementAt ?? ""))
             .slice(0, 100)
             .map((entry) => {
-                const warehouse = (toAppRows<EvoluWarehouseRow>(warehouseRows.value)).find(
+                const warehouse = warehouses.find(
                     (w) => w.id === entry.companyWarehouseId,
                 );
                 return evoluStockMovementToApi(entry, warehouse?.name);

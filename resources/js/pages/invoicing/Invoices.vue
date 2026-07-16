@@ -1200,7 +1200,7 @@ import {
 } from "../../evolu/documentCrud";
 import type { CompanyId, DocumentId } from "../../evolu/schema";
 import type { EvoluCompanyRow } from "../../evolu/companyMap";
-import type { EvoluDocumentRow } from "../../evolu/documentMap";
+import type { EvoluDocumentLineRow, EvoluDocumentRow } from "../../evolu/documentMap";
 import type { EvoluNumberSeriesRow } from "../../evolu/numberSeriesMap";
 import CreditNotePickInvoiceModal from "../../components/invoicing/CreditNotePickInvoiceModal.vue";
 import CreditNoteStartModal from "../../components/invoicing/CreditNoteStartModal.vue";
@@ -1736,8 +1736,7 @@ async function createInvoiceFromQuote(d: { id: string }) {
         localDoc.evolu,
         d.id as DocumentId,
         toAppRows<EvoluDocumentRow>(localDoc.documentRows.value),
-        localDoc.lineRows
-          .value as import("../../evolu/documentMap").EvoluDocumentLineRow[],
+        toAppRows<EvoluDocumentLineRow>(localDoc.lineRows.value),
         (doc) => payloadFromApiDocument(doc),
         {
           ...localDoc.saveOptions(
@@ -1800,8 +1799,7 @@ async function createFinalInvoice(d: { id: string }) {
         localDoc.evolu,
         d.id as DocumentId,
         toAppRows<EvoluDocumentRow>(localDoc.documentRows.value),
-        localDoc.lineRows
-          .value as import("../../evolu/documentMap").EvoluDocumentLineRow[],
+        toAppRows<EvoluDocumentLineRow>(localDoc.lineRows.value),
         (doc) => payloadFromApiDocument(doc),
         {
           ...localDoc.saveOptions(
