@@ -66,24 +66,25 @@ export type PasskeyPrfKdf = {
     lastUsedAt?: string;
 };
 
-export type DeviceUnlockSlot = {
+type DeviceUnlockSlotBase = {
     id: string;
-    type: DeviceUnlockSlotType;
     createdAt: string;
-    kdf: PassphraseKdf | PasskeyPrfKdf;
     /** DEK encrypted under this slot's KEK. */
     wrappedDek: CipherBlob;
 };
 
-export type PassphraseSlot = DeviceUnlockSlot & { type: "passphrase"; kdf: PassphraseKdf };
-export type PasskeyPrfSlot = DeviceUnlockSlot & { type: "passkey-prf"; kdf: PasskeyPrfKdf };
+export type PassphraseSlot = DeviceUnlockSlotBase & { type: "passphrase"; kdf: PassphraseKdf };
+export type PasskeyPrfSlot = DeviceUnlockSlotBase & { type: "passkey-prf"; kdf: PasskeyPrfKdf };
+
+/** Discriminated union: a slot type can never carry the other type's kdf. */
+export type DeviceUnlockSlot = PassphraseSlot | PasskeyPrfSlot;
 
 export function isPassphraseSlot(slot: DeviceUnlockSlot): slot is PassphraseSlot {
-    return slot.type === "passphrase" && slot.kdf.kind === "PBKDF2-SHA256";
+    return slot.type === "passphrase";
 }
 
 export function isPasskeyPrfSlot(slot: DeviceUnlockSlot): slot is PasskeyPrfSlot {
-    return slot.type === "passkey-prf" && slot.kdf.kind === "WEBAUTHN-PRF";
+    return slot.type === "passkey-prf";
 }
 
 export type DeviceEnvelope = {
@@ -382,9 +383,15 @@ export async function unlockWithPrfOutput(
     const kek = await deriveKekFromPrfOutput(prfOutput, envelope.ownerFingerprint);
     const dekRaw = await aesGcmDecrypt(kek, slot.wrappedDek, additional);
 
-    const dek = await subtle().importKey("raw", dekRaw as BufferSource, "AES-GCM", false, ["decrypt"]);
-    const secretBytes = await aesGcmDecrypt(dek, envelope.encryptedSecret, additional);
-    return { recoveryPhrase: new TextDecoder().decode(secretBytes), dekRaw, slotId: slot.id };
+    // From here the unwrapped DEK exists - zero it on ANY failure.
+    try {
+        const dek = await subtle().importKey("raw", dekRaw as BufferSource, "AES-GCM", false, ["decrypt"]);
+        const secretBytes = await aesGcmDecrypt(dek, envelope.encryptedSecret, additional);
+        return { recoveryPhrase: new TextDecoder().decode(secretBytes), dekRaw, slotId: slot.id };
+    } catch (error) {
+        dekRaw.fill(0);
+        throw error;
+    }
 }
 
 /** Remove a passkey slot; passphrase slots are never removable through this. */

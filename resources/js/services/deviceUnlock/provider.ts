@@ -147,26 +147,31 @@ export async function addPasskeyToRememberedDevice(passphrase: string, label: st
             userName: "satflux-device-unlock",
         });
 
-        const updated = await addPasskeyPrfSlot({
-            envelope,
-            dekRaw,
-            prfOutput: credential.prfOutput,
-            credentialIdB64: credential.credentialIdB64,
-            prfSaltB64: credential.prfSaltB64,
-            label,
-        });
+        // From here the PRF secret exists - zero it on every path.
+        try {
+            const updated = await addPasskeyPrfSlot({
+                envelope,
+                dekRaw,
+                prfOutput: credential.prfOutput,
+                credentialIdB64: credential.credentialIdB64,
+                prfSaltB64: credential.prfSaltB64,
+                label,
+            });
 
-        // Test-unlock before persisting - same crash/idempotency safety as
-        // rememberDeviceWithPassphrase.
-        const check = await unlockWithPrfOutput(updated, credential.credentialIdB64, credential.prfOutput);
-        if (deriveRecoveryPublicKeyHex(check.recoveryPhrase) !== envelope.ownerFingerprint) {
-            throw new DeviceUnlockError();
+            // Test-unlock before persisting - same crash/idempotency safety
+            // as rememberDeviceWithPassphrase. The unwrapped DEK is zeroed
+            // immediately; the fingerprint check only needs the phrase.
+            const check = await unlockWithPrfOutput(updated, credential.credentialIdB64, credential.prfOutput);
+            check.dekRaw.fill(0);
+            if (deriveRecoveryPublicKeyHex(check.recoveryPhrase) !== envelope.ownerFingerprint) {
+                throw new DeviceUnlockError();
+            }
+
+            await saveDeviceEnvelope(updated);
+            return listPasskeyPrfSlots(updated);
+        } finally {
+            credential.prfOutput.fill(0);
         }
-        check.dekRaw.fill(0);
-        credential.prfOutput.fill(0);
-
-        await saveDeviceEnvelope(updated);
-        return listPasskeyPrfSlots(updated);
     } finally {
         dekRaw.fill(0);
     }
