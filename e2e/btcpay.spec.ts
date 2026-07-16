@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { btcpayStubUrl, hasBtcpayStub, hasSeededUser, loginWithEmail, seededUser } from './support';
 
 /**
@@ -9,10 +9,15 @@ import { btcpayStubUrl, hasBtcpayStub, hasSeededUser, loginWithEmail, seededUser
  * through invoice creation, settlement (signed webhook back into the panel),
  * expiry and deletion. Requires E2E_BTCPAY=1 + the stub running + the seeder
  * run with E2E_BTCPAY=1 (merchant key fixture).
+ *
+ * The whole suite shares one page and ONE login (the Playwright pattern for
+ * describe.serial): the auth endpoint is throttled at 5/min per IP, so a
+ * per-test login makes the suite - and everything after it - flaky.
  */
 test.describe.serial('BTCPay lifecycle (Greenfield stub)', () => {
     test.skip(!hasSeededUser || !hasBtcpayStub, 'requires E2E_SEEDED_USER=1 and E2E_BTCPAY=1 with the stub running');
 
+    let page: Page;
     let storeId = '';
     let btcpayStoreId = '';
     let invoiceId = '';
@@ -22,10 +27,32 @@ test.describe.serial('BTCPay lifecycle (Greenfield stub)', () => {
         return response.json() as Promise<T>;
     }
 
-    test('store creation provisions through the stub and registers a webhook', async ({ page }) => {
-        // Email login lands on /dashboard; the goto below does the navigation.
+    test.beforeAll(async ({ browser }) => {
+        page = await browser.newPage();
         await loginWithEmail(page, seededUser.email, seededUser.password);
-        await page.waitForURL('**/dashboard');
+    });
+
+    test.afterAll(async () => {
+        await page?.close();
+    });
+
+    test('store creation provisions through the stub and registers a webhook', async () => {
+        // Serial retries reuse the database and the free plan allows one
+        // store - drop leftovers from earlier attempts before creating.
+        // Sanctum only treats requests as stateful when the Referer/Origin
+        // matches a stateful domain, so page.request must send one.
+        const apiHeaders = {
+            Referer: page.url(),
+            'X-XSRF-TOKEN': decodeURIComponent(
+                (await page.context().cookies()).find((c) => c.name === 'XSRF-TOKEN')?.value ?? '',
+            ),
+        };
+        const existing = (await (
+            await page.request.get('/api/stores', { headers: apiHeaders })
+        ).json()) as { data?: Array<{ id: string }> };
+        for (const stale of existing.data ?? []) {
+            await page.request.delete(`/api/stores/${stale.id}`, { headers: apiHeaders });
+        }
 
         await page.goto('/stores/create');
         await page.fill('#name', 'E2E Stub Store');
@@ -51,7 +78,7 @@ test.describe.serial('BTCPay lifecycle (Greenfield stub)', () => {
         await expect(page.getByText('E2E Stub Store').first()).toBeVisible();
     });
 
-    test('an invoice created on the BTCPay side appears in the store invoice list', async ({ page }) => {
+    test('an invoice created on the BTCPay side appears in the store invoice list', async () => {
         const invoice = await stub<{ id: string; status: string }>(`/_stub/stores/${btcpayStoreId}/invoices`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -61,7 +88,6 @@ test.describe.serial('BTCPay lifecycle (Greenfield stub)', () => {
         expect(invoice.status).toBe('New');
         invoiceId = invoice.id;
 
-        await loginWithEmail(page, seededUser.email, seededUser.password);
         await page.goto(`/stores/${storeId}`);
         // Invoice lists render ids truncated to 8 chars (StoreInvoices/RecentInvoices).
         await expect(page.getByText(invoiceId.substring(0, 8)).first()).toBeVisible({ timeout: 15_000 });
@@ -77,15 +103,14 @@ test.describe.serial('BTCPay lifecycle (Greenfield stub)', () => {
         expect(String(result.webhook.body)).toContain('received');
     });
 
-    test('the settled status is visible in the invoice list', async ({ page }) => {
-        await loginWithEmail(page, seededUser.email, seededUser.password);
+    test('the settled status is visible in the invoice list', async () => {
         await page.goto(`/stores/${storeId}`);
         const row = page.getByText(invoiceId.substring(0, 8)).first();
         await expect(row).toBeVisible({ timeout: 15_000 });
         await expect(page.getByText(/settled/i).first()).toBeVisible({ timeout: 15_000 });
     });
 
-    test('an expired invoice shows as expired', async ({ page }) => {
+    test('an expired invoice shows as expired', async () => {
         const invoice = await stub<{ id: string }>(`/_stub/stores/${btcpayStoreId}/invoices`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -93,14 +118,12 @@ test.describe.serial('BTCPay lifecycle (Greenfield stub)', () => {
         });
         await stub(`/_stub/invoices/${invoice.id}/expire`, { method: 'POST' });
 
-        await loginWithEmail(page, seededUser.email, seededUser.password);
         await page.goto(`/stores/${storeId}`);
         await expect(page.getByText(invoice.id.substring(0, 8)).first()).toBeVisible({ timeout: 15_000 });
         await expect(page.getByText(/expired/i).first()).toBeVisible({ timeout: 15_000 });
     });
 
-    test('deleting the store removes it from the stub too', async ({ page }) => {
-        await loginWithEmail(page, seededUser.email, seededUser.password);
+    test('deleting the store removes it from the stub too', async () => {
         await page.goto(`/stores/${storeId}?section=settings`);
 
         // Open the confirmation modal, type the required word, confirm.

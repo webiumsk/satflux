@@ -4,10 +4,11 @@
  * in-memory state - NOT a BTCPay emulator, it implements exactly the
  * endpoint subset BtcPayClient calls plus a control API for tests:
  *
- *   POST /_stub/stores/{storeId}/invoices   create an invoice (test setup)
+ *   POST /_stub/stores/{storeId}/invoices   create an invoice (test setup;
+ *                                           fires InvoiceCreated, detached)
  *   POST /_stub/invoices/{id}/settle        mark settled + fire the SIGNED
- *                                           InvoiceSettled webhook at APP_URL
- *   POST /_stub/invoices/{id}/expire        mark expired (no webhook)
+ *                                           InvoiceSettled webhook
+ *   POST /_stub/invoices/{id}/expire        mark expired + fire InvoiceExpired
  *   GET  /_stub/state                       full state dump for asserts
  *
  * Wiring is config-only: point BTCPAY_BASE_URL at this server. Webhook
@@ -95,7 +96,7 @@ function createInvoice(storeId, body) {
 }
 
 /** Signed delivery exactly like BTCPay: BTCPay-Sig: sha256=<hmac(rawBody, secret)>. */
-async function fireInvoiceSettledWebhook(invoice) {
+async function fireInvoiceWebhook(invoice, eventType) {
     const store = stores.get(invoice.storeId);
     const webhook = store?.webhooks[store.webhooks.length - 1];
     if (!webhook) {
@@ -105,8 +106,8 @@ async function fireInvoiceSettledWebhook(invoice) {
     const rawBody = JSON.stringify({
         deliveryId: `stub-delivery-${randomUUID()}`,
         webhookId: webhook.id,
-        type: "InvoiceSettled",
-        eventType: "InvoiceSettled",
+        type: eventType,
+        eventType,
         storeId: invoice.storeId,
         invoiceId: invoice.id,
         timestamp: Math.floor(Date.now() / 1000),
@@ -151,21 +152,27 @@ const server = http.createServer(async (req, res) => {
     if (method === "POST" && (match = path.match(/^\/_stub\/stores\/([^/]+)\/invoices$/))) {
         const store = stores.get(match[1]);
         if (!store) return json(res, 404, { message: "unknown store" });
-        return json(res, 201, invoicePayload(createInvoice(match[1], await readBody(req))));
+        const invoice = createInvoice(match[1], await readBody(req));
+        // Real BTCPay announces creation too. Fire-and-forget: awaiting a
+        // callback into the (single-threaded artisan serve) panel while it
+        // might itself be waiting on this response would deadlock.
+        void fireInvoiceWebhook(invoice, "InvoiceCreated").catch(() => {});
+        return json(res, 201, invoicePayload(invoice));
     }
     if (method === "POST" && (match = path.match(/^\/_stub\/invoices\/([^/]+)\/settle$/))) {
         const invoice = invoices.get(match[1]);
         if (!invoice) return json(res, 404, { message: "unknown invoice" });
         invoice.status = "Settled";
         invoice.paidTime = Math.floor(Date.now() / 1000);
-        const delivery = await fireInvoiceSettledWebhook(invoice);
+        const delivery = await fireInvoiceWebhook(invoice, "InvoiceSettled");
         return json(res, 200, { invoice: invoicePayload(invoice), webhook: delivery });
     }
     if (method === "POST" && (match = path.match(/^\/_stub\/invoices\/([^/]+)\/expire$/))) {
         const invoice = invoices.get(match[1]);
         if (!invoice) return json(res, 404, { message: "unknown invoice" });
         invoice.status = "Expired";
-        return json(res, 200, { invoice: invoicePayload(invoice) });
+        const delivery = await fireInvoiceWebhook(invoice, "InvoiceExpired");
+        return json(res, 200, { invoice: invoicePayload(invoice), webhook: delivery });
     }
 
     // ---- Fake checkout page (checkoutLink target) ----
@@ -216,7 +223,11 @@ const server = http.createServer(async (req, res) => {
         const store = stores.get(match[1]);
         if (!store) return json(res, 404, { message: "unknown store" });
         if (method === "POST") {
-            return json(res, 200, invoicePayload(createInvoice(match[1], await readBody(req))));
+            const invoice = createInvoice(match[1], await readBody(req));
+            // Detached like the control-API create: the caller here IS the
+            // panel - awaiting a callback into it would deadlock artisan serve.
+            void fireInvoiceWebhook(invoice, "InvoiceCreated").catch(() => {});
+            return json(res, 200, invoicePayload(invoice));
         }
         const list = [...invoices.values()].filter((i) => i.storeId === match[1]).map(invoicePayload);
         return json(res, 200, list);
@@ -224,6 +235,11 @@ const server = http.createServer(async (req, res) => {
     if (method === "GET" && (match = path.match(/^\/api\/v1\/stores\/([^/]+)\/invoices\/([^/]+)$/))) {
         const invoice = invoices.get(match[2]);
         return invoice ? json(res, 200, invoicePayload(invoice)) : json(res, 404, { message: "unknown invoice" });
+    }
+    if (method === "GET" && (match = path.match(/^\/api\/v1\/stores\/([^/]+)\/invoices\/([^/]+)\/payment-methods$/))) {
+        // Settlement sync (webhook handler) walks the payments of every
+        // method; an empty list is a valid "no payment data" answer.
+        return invoices.has(match[2]) ? json(res, 200, []) : json(res, 404, { message: "unknown invoice" });
     }
     if (method === "GET" && (match = path.match(/^\/api\/v1\/stores\/([^/]+)\/payment-methods/))) {
         return json(res, 200, []);

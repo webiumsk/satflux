@@ -9,6 +9,7 @@ use App\Services\StoreChecklistService;
 use App\Services\StoreProvisioningService;
 use App\Services\StoreResponseFormatter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
@@ -160,6 +161,10 @@ class StoreController extends Controller
     {
         $store = $this->storeProvisioning->create($request->user(), $request->validated());
 
+        // The cached limits payload holds the store count - without this the
+        // UI reports a stale count for up to a minute after the change.
+        Cache::forget('user_limits_'.$request->user()->id);
+
         return response()->json([
             'data' => $this->formatter->fromLocal($store),
             'message' => __('messages.store_created'),
@@ -280,6 +285,10 @@ class StoreController extends Controller
 
             // Delete local record (this will cascade delete related records)
             $store->delete();
+
+            // Same stale-count problem as in store(): a user who deletes a
+            // store must be able to create a new one immediately.
+            Cache::forget('user_limits_'.$user->id);
 
             Log::info('Store deleted from local database', [
                 'store_id' => $localStoreId,

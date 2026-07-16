@@ -15,6 +15,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -70,6 +71,21 @@ class ProcessBtcPayWebhook implements ShouldQueue
             ? Store::where('btcpay_store_id', $storeId)->first()
             : null;
         if ($store) {
+            // Invoice lifecycle changed - drop the cached store dashboard so
+            // the UI reflects the new status now, not when the 1h TTL runs
+            // out (the payload embeds recent invoices with their statuses).
+            if (str_starts_with((string) $eventType, 'Invoice')) {
+                try {
+                    $owner = $store->user;
+                    if ($owner instanceof User) {
+                        $apiKeyHash = md5($owner->getBtcPayApiKeyOrFail());
+                        Cache::forget("btcpay:dashboard:{$store->id}:{$apiKeyHash}");
+                    }
+                } catch (\Throwable) {
+                    // Owner without a merchant key has no cached dashboard.
+                }
+            }
+
             try {
                 app(StoreEmailRuleDispatcher::class)->dispatchForWebhook($this->webhookEvent, $store);
             } catch (\Throwable $e) {

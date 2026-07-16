@@ -51,4 +51,7 @@ export async function loginWithEmail(page: Page, email: string, password: string
     await page.fill('input[type="email"]', email);
     await page.fill('input[type="password"]', password);
     await page.click('button[type="submit"]');
+    // Wait out the login POST + redirect: a page.goto right after the click
+    // aborts the in-flight request and the session never materializes.
+    await page.waitForURL('**/dashboard');
 }

@@ -25,14 +25,20 @@ store), payment-methods/lightning-addresses/apps (prázdne).
 
 ### Control API (len pre testy)
 
-- `POST /_stub/stores/{storeId}/invoices` - vytvor faktúru (setup scenára).
+- `POST /_stub/stores/{storeId}/invoices` - vytvor faktúru (setup scenára);
+  vystrelí `InvoiceCreated` webhook fire-and-forget (čakať na callback do
+  jednovláknového `artisan serve` by bol deadlock, keď faktúru vytvára panel).
 - `POST /_stub/invoices/{id}/settle` - stav `Settled` + **vystrelí podpísaný
-  `InvoiceSettled` webhook** na `APP_URL/api/webhooks/btcpay` s hlavičkou
+  `InvoiceSettled` webhook** na registrovanú webhook URL s hlavičkou
   `BTCPay-Sig: sha256=<hmac(rawBody, webhook.secret)>` a unikátnym
   `deliveryId` (replay ochrana panelu).
-- `POST /_stub/invoices/{id}/expire` - stav `Expired` (bez webhooku).
+- `POST /_stub/invoices/{id}/expire` - stav `Expired` + `InvoiceExpired`
+  webhook (ako reálny BTCPay).
 - `GET /_stub/state` - dump stavu (stores, invoices, webhookDeliveries) na
   asserty.
+
+Suita zdieľa jednu page a JEDEN login (`test.beforeAll`): `/api/auth/*` má
+throttle 5/min na IP, takže login per-test robí celú sadu flaky.
 
 Podpisový reťazec je overený end-to-end: stub podpisuje secretom, ktorý
 panel počas provisioningu uložil do `store.webhook_secret`, a
