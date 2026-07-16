@@ -18,6 +18,7 @@ import {
 } from "@/evolu/warehouseMap";
 import type { WarehouseRow } from "@/composables/useCompanyWarehouse";
 import type { CompanyId, InvoicingLocalSchema, WarehouseId } from "@/evolu/schema";
+import { toAppRows } from "../evolu/queryLoad";
 
 export interface UseInvoicingWarehousesResult {
     localFirst: boolean;
@@ -54,7 +55,7 @@ function useServerWarehouses(companyId: Ref<string>): UseInvoicingWarehousesResu
         loading,
         refresh,
         evolu: null,
-        warehouseRows: computed(() => [] as EvoluWarehouseRow[]),
+        warehouseRows: computed(() => toAppRows<EvoluWarehouseRow>([])),
     };
 }
 
@@ -76,7 +77,7 @@ function useLocalWarehouses(companyId: Ref<string>): UseInvoicingWarehousesResul
         const contacts = contactRows.value.map((row) => evoluContactToApi(row));
         const contactNames = new Map(contacts.map((c) => [c.id, c.name]));
         return filterCompanyWarehouses(
-            warehouseRows.value as EvoluWarehouseRow[],
+            toAppRows<EvoluWarehouseRow>(warehouseRows.value),
             companyId.value as CompanyId,
             activeOnly.value,
         ).map((row) => evoluWarehouseToApi(row, row.companyContactId ? contactNames.get(row.companyContactId) : null));
@@ -91,7 +92,7 @@ function useLocalWarehouses(companyId: Ref<string>): UseInvoicingWarehousesResul
                 evolu.loadQuery(allContactsQuery),
                 evolu.loadQuery(allCompanyStockBalancesQuery),
             ]);
-            const rows = warehouseRows.value as EvoluWarehouseRow[];
+            const rows = toAppRows<EvoluWarehouseRow>(warehouseRows.value);
             if (companyId.value && !rows.some((row) => row.companyId === companyId.value)) {
                 ensureDefaultLocalWarehouse(evolu, companyId.value as CompanyId, rows);
                 await evolu.loadQuery(allCompanyWarehousesQuery);
@@ -107,7 +108,7 @@ function useLocalWarehouses(companyId: Ref<string>): UseInvoicingWarehousesResul
         loading,
         refresh,
         evolu,
-        warehouseRows: computed(() => warehouseRows.value as EvoluWarehouseRow[]),
+        warehouseRows: computed(() => toAppRows<EvoluWarehouseRow>(warehouseRows.value)),
     };
 }
 

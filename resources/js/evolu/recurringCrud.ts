@@ -15,6 +15,7 @@ import { advanceRecurringNextDate } from "./recurringNextDate";
 import type { EvoluRecurringProfileLineRow, EvoluRecurringProfileRow } from "./recurringMap";
 import { parseRecurringTags } from "./recurringMap";
 import { resolveRecurringPlaceholders } from "./recurringPlaceholder";
+import { toAppRows } from "./queryLoad";
 import type {
     CompanyId,
     ContactId,
@@ -338,7 +339,7 @@ export async function generateLocalRecurringDocument(
     }
 
     await evolu.loadQuery(allDocumentsQuery);
-    const issuedDocuments = (await evolu.loadQuery(allDocumentsQuery)) as EvoluDocumentRow[];
+    const issuedDocuments = toAppRows<EvoluDocumentRow>((await evolu.loadQuery(allDocumentsQuery)));
     const doc = issuedDocuments.find((row) => row.id === saveResult.value.id);
     const issuedNumber = doc?.number || previewNumber;
 

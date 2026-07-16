@@ -7,6 +7,7 @@ import { evoluContactToApi } from "@/evolu/contactMap";
 import { evoluDocumentToListRow, type EvoluDocumentRow } from "@/evolu/documentMap";
 import { filterLocalDocumentRows } from "@/evolu/documentListFilters";
 import type { CompanyId } from "@/evolu/schema";
+import { toAppRows } from "../evolu/queryLoad";
 
 export type LocalDocumentListRow = Record<string, unknown>;
 
@@ -50,9 +51,11 @@ export function useInvoicingDocumentsLocal(companyId: Ref<string>) {
     });
 
     const filteredRows = computed(() => {
-        const companyRows = documentRows.value.filter(
-            (row) => row.companyId === (companyId.value as CompanyId),
-        ) as EvoluDocumentRow[];
+        const companyRows = toAppRows<EvoluDocumentRow>(
+            documentRows.value.filter(
+                (row) => row.companyId === (companyId.value as CompanyId),
+            ),
+        );
 
         return filterLocalDocumentRows(companyRows, {
             apiType: filterOptions.value.apiType,
@@ -65,7 +68,7 @@ export function useInvoicingDocumentsLocal(companyId: Ref<string>) {
     });
 
     const documents = computed(() => {
-        const all = documentRows.value as EvoluDocumentRow[];
+        const all = toAppRows<EvoluDocumentRow>(documentRows.value);
         return filteredRows.value.map((row) =>
             mapDocumentRow(
                 row,

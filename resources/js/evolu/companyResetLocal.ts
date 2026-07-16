@@ -10,6 +10,7 @@ import type { EvoluContactRow } from "./contactMap";
 import type { EvoluDocumentEventRow } from "./documentEventLog";
 import type { EvoluDocumentRow } from "./documentMap";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
+import { toAppRows } from "./queryLoad";
 import type {
     CompanyId,
     ContactId,
@@ -23,10 +24,10 @@ export function resetLocalCompanyData(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
 ): void {
-    const documents = evolu.getQueryRows(allDocumentsQuery) as EvoluDocumentRow[];
-    const contacts = evolu.getQueryRows(allContactsQuery) as EvoluContactRow[];
-    const numberSeries = evolu.getQueryRows(allNumberSeriesQuery) as EvoluNumberSeriesRow[];
-    const documentEvents = evolu.getQueryRows(allDocumentEventsQuery) as EvoluDocumentEventRow[];
+    const documents = toAppRows<EvoluDocumentRow>(evolu.getQueryRows(allDocumentsQuery));
+    const contacts = toAppRows<EvoluContactRow>(evolu.getQueryRows(allContactsQuery));
+    const numberSeries = toAppRows<EvoluNumberSeriesRow>(evolu.getQueryRows(allNumberSeriesQuery));
+    const documentEvents = toAppRows<EvoluDocumentEventRow>(evolu.getQueryRows(allDocumentEventsQuery));
 
     const companyDocIds = new Set(
         documents.filter((doc) => doc.companyId === companyId).map((doc) => doc.id),

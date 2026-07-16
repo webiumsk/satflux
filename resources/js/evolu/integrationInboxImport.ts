@@ -28,6 +28,7 @@ import {
     stableDocumentIdFromInboxUuid,
 } from "./inboxDocumentStableId";
 import { waitForInvoicingDataSettled } from "./relaySyncWait";
+import { toAppRows } from "./queryLoad";
 
 export { IntegrationInboxPathError } from "./integrationInboxPaths";
 
@@ -84,7 +85,7 @@ export async function reconcileIntegrationInboxWithLocalDocuments(
     linkedStoreId?: string | null,
 ): Promise<IntegrationInboxEntry[]> {
     const typedCompanyId = companyId as CompanyId;
-    const documents = (await evolu.loadQuery(allDocumentsQuery)) as EvoluDocumentRow[];
+    const documents = toAppRows<EvoluDocumentRow>((await evolu.loadQuery(allDocumentsQuery)));
     const remaining: IntegrationInboxEntry[] = [];
 
     for (const entry of entries) {
@@ -234,7 +235,7 @@ async function issueImportedDocument(
     companyId: CompanyId,
     documentId: DocumentId,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-    const companies = (await evolu.loadQuery(allCompaniesQuery)) as EvoluCompanyRow[];
+    const companies = toAppRows<EvoluCompanyRow>((await evolu.loadQuery(allCompaniesQuery)));
     const companyRow = companies.find((row) => row.id === companyId);
     if (!companyRow) {
         return { ok: false, error: "company_not_found" };
@@ -253,7 +254,7 @@ async function markImportedDocumentPaid(
     documentId: DocumentId,
     payload: Record<string, unknown>,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-    const documents = (await evolu.loadQuery(allDocumentsQuery)) as EvoluDocumentRow[];
+    const documents = toAppRows<EvoluDocumentRow>((await evolu.loadQuery(allDocumentsQuery)));
     const doc = documents.find((row) => row.id === documentId);
     const docTotal = parseFloat(doc?.total ?? "0");
     const orderTotal = Number(payload.order_total);
@@ -279,7 +280,7 @@ async function markLinkedProformaPaid(
 ): Promise<void> {
     try {
         const rows = await evolu.loadQuery(allDocumentsQuery);
-        const documents = rows as unknown as EvoluDocumentRow[];
+        const documents = toAppRows<EvoluDocumentRow>(rows);
         const proforma = documents.find((row) => row.id === sourceDocumentId);
         if (!proforma) {
             return;
@@ -377,7 +378,7 @@ export async function importIntegrationInboxEntry(
     const savedDocumentId = saveResult.value.id;
     const actions = resolveImportSettleActions(entry.payload);
     if (actions.reservedNumber) {
-        const allSeries = (await evolu.loadQuery(allNumberSeriesQuery)) as EvoluNumberSeriesRow[];
+        const allSeries = toAppRows<EvoluNumberSeriesRow>((await evolu.loadQuery(allNumberSeriesQuery)));
         const documentType = String(entry.payload.type ?? "invoice") as DocumentType;
         const applyResult = await applyReservedNumberToLocalDocumentAsync(
             evolu,

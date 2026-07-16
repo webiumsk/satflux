@@ -7,6 +7,7 @@ import { resolveDefaultSeries } from "./numberSeriesCrud";
 import type { CompanyId, DocumentType } from "./schema";
 import type { EvoluDocumentRow } from "./documentMap";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
+import { toAppRows } from "./queryLoad";
 
 /**
  * Auto-issue profile sync (P3): pushes everything the server needs to issue
@@ -207,8 +208,8 @@ export async function syncAutoIssueProfile(
             evolu.loadQuery(allDocumentsQuery),
             evolu.loadQuery(allNumberSeriesQuery),
         ]);
-        const documents = documentRows as unknown as EvoluDocumentRow[];
-        const allSeries = seriesRows as unknown as EvoluNumberSeriesRow[];
+        const documents = toAppRows<EvoluDocumentRow>(documentRows);
+        const allSeries = toAppRows<EvoluNumberSeriesRow>(seriesRows);
         const typedCompanyId = localCompanyId as CompanyId;
 
         // Prerequisites FIRST: the profile row is what activates headless

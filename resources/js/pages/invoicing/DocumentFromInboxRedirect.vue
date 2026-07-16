@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { toAppRows } from "../../evolu/queryLoad";
 /**
  * Deep-link target for external integrations (WP plugin order metabox):
  * /invoicing/from-inbox/:evoluId carries the integration-inbox evolu uuid;
@@ -26,7 +27,7 @@ const SHOW_ROUTE_BY_TYPE: Record<string, string> = {
 async function loadDocuments(): Promise<EvoluDocumentRow[]> {
     const { evolu, allDocumentsQuery } = await import("@/evolu/client");
     const rows = await evolu.loadQuery(allDocumentsQuery);
-    return rows as unknown as EvoluDocumentRow[];
+    return toAppRows<EvoluDocumentRow>(rows);
 }
 
 onMounted(async () => {

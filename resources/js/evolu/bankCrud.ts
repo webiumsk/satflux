@@ -28,6 +28,7 @@ import type { EvoluDocumentRow } from "./documentMap";
 import { markLocalDocumentPaidWithAmount, unmarkLocalDocumentPaid } from "./documentCrud";
 import type { EvoluExpenseRow } from "./expenseMap";
 import { insertLocalExpense, nextLocalExpenseInternalNumber, type ExpenseSavePayload } from "./expenseCrud";
+import { toAppRows } from "./queryLoad";
 import type {
     BankImportBatchId,
     BankImportSource,
@@ -60,11 +61,11 @@ export async function loadBankPaymentContext(
     ]);
 
     return {
-        batches: batches as EvoluBankImportBatchRow[],
-        transactions: transactions as EvoluBankTransactionRow[],
-        matches: matches as EvoluBankTransactionMatchRow[],
-        documents: documents as EvoluDocumentRow[],
-        expenses: expenses as EvoluExpenseRow[],
+        batches: toAppRows<EvoluBankImportBatchRow>(batches),
+        transactions: toAppRows<EvoluBankTransactionRow>(transactions),
+        matches: toAppRows<EvoluBankTransactionMatchRow>(matches),
+        documents: toAppRows<EvoluDocumentRow>(documents),
+        expenses: toAppRows<EvoluExpenseRow>(expenses),
     };
 }
 

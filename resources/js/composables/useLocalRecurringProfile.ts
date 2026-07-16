@@ -29,6 +29,7 @@ import {
 import type { CompanyId, RecurringProfileId } from "@/evolu/schema";
 import { useStoresStore } from "@/store/stores";
 import type { DocumentLinePayload } from "@/evolu/documentCrud";
+import { toAppRows } from "../evolu/queryLoad";
 
 export function useLocalRecurringProfileSupport(companyId: Ref<string>) {
     const evolu = useInvoicingEvolu();
@@ -79,7 +80,7 @@ export function useLocalRecurringProfileSupport(companyId: Ref<string>) {
             : null;
         return evoluRecurringProfileToApi(
             row,
-            profileLineRows.value as EvoluRecurringProfileLineRow[],
+            toAppRows<EvoluRecurringProfileLineRow>(profileLineRows.value),
             contact ? { id: contact.id, name: contact.name } : null,
         );
     }
@@ -101,7 +102,7 @@ export function useLocalRecurringProfileSupport(companyId: Ref<string>) {
             defaultVat: options.defaultVat,
             lineTaxApplies: options.lineTaxApplies,
             lineTaxRate: options.lineTaxRate,
-            existingLines: profileLineRows.value as EvoluRecurringProfileLineRow[],
+            existingLines: toAppRows<EvoluRecurringProfileLineRow>(profileLineRows.value),
         });
     }
 
@@ -113,7 +114,7 @@ export function useLocalRecurringProfileSupport(companyId: Ref<string>) {
         return deleteLocalRecurringProfile(
             evolu,
             profileId,
-            profileLineRows.value as EvoluRecurringProfileLineRow[],
+            toAppRows<EvoluRecurringProfileLineRow>(profileLineRows.value),
         );
     }
 
@@ -131,11 +132,11 @@ export function useLocalRecurringProfileSupport(companyId: Ref<string>) {
             evolu,
             profileId,
             companyRow,
-            profileRows.value as EvoluRecurringProfileRow[],
-            profileLineRows.value as EvoluRecurringProfileLineRow[],
-            documentRows.value as EvoluDocumentRow[],
-            documentLineRows.value as EvoluDocumentLineRow[],
-            seriesRows.value as EvoluNumberSeriesRow[],
+            toAppRows<EvoluRecurringProfileRow>(profileRows.value),
+            toAppRows<EvoluRecurringProfileLineRow>(profileLineRows.value),
+            toAppRows<EvoluDocumentRow>(documentRows.value),
+            toAppRows<EvoluDocumentLineRow>(documentLineRows.value),
+            toAppRows<EvoluNumberSeriesRow>(seriesRows.value),
             options,
         );
     }

@@ -17,6 +17,7 @@ import type { CompanyId, DocumentId } from "./schema";
 import { resolveLocalEmailSettingsForBridge } from "./companySettingsCrud";
 import type { useLocalInvoiceDocumentSupport } from "@/composables/useLocalInvoiceDocument";
 import type { AxiosResponse } from "axios";
+import { toAppRows } from "./queryLoad";
 
 export type EphemeralSnapshotPayload = {
     company: Record<string, unknown>;
@@ -839,9 +840,9 @@ async function resolveFrozenIssuedContent(
 
     let rows: EvoluDocumentSnapshotRow[];
     try {
-        rows = (await localDoc.evolu.loadQuery(
-            allDocumentSnapshotsQuery,
-        )) as unknown as EvoluDocumentSnapshotRow[];
+        rows = toAppRows<EvoluDocumentSnapshotRow>(
+            await localDoc.evolu.loadQuery(allDocumentSnapshotsQuery),
+        );
     } catch {
         // Query failure: fall back to live render. No backfill either - we
         // cannot tell whether a snapshot already exists.

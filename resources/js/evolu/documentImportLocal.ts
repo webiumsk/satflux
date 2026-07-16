@@ -30,6 +30,7 @@ import type { CompanyId, ContactId, DocumentId, InvoicingLocalSchema } from "./s
 import { stripUtf8Bom } from "./contactImportLocal";
 import { parseImportDate, type ImportDateFormat } from "./importDateParse";
 import { parseSpreadsheetFile } from "./spreadsheetParse";
+import { toAppRows } from "./queryLoad";
 
 export type { ImportDateFormat };
 
@@ -768,9 +769,9 @@ export async function importDocumentImportCsv(
 ): Promise<DocumentImportResult> {
     const normalizedMapping = normalizeDocumentMapping(mapping);
     const dateFormat = options.dateFormat ?? "dmy_dot";
-    const documents = evolu.getQueryRows(allDocumentsQuery) as EvoluDocumentRow[];
-    let contacts = evolu.getQueryRows(allContactsQuery) as EvoluContactRow[];
-    const series = evolu.getQueryRows(allNumberSeriesQuery) as EvoluNumberSeriesRow[];
+    const documents = toAppRows<EvoluDocumentRow>(evolu.getQueryRows(allDocumentsQuery));
+    let contacts = toAppRows<EvoluContactRow>(evolu.getQueryRows(allContactsQuery));
+    const series = toAppRows<EvoluNumberSeriesRow>(evolu.getQueryRows(allNumberSeriesQuery));
 
     const knownNumbers = existingInvoiceNumbers(documents, companyId);
     let imported = 0;

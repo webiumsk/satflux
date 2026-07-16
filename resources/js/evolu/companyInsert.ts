@@ -18,6 +18,7 @@ import {
 } from "./parseUtils";
 import type { InvoicingLocalSchema } from "./schema";
 import { stableCompanyIdFromIdentity } from "./companyStableId";
+import { toAppRows } from "./queryLoad";
 
 /** Payload aligned with CompanyForm save() / StoreCompanyRequest. */
 export interface LocalCompanyCreatePayload {
@@ -126,6 +127,6 @@ export function insertLocalCompanyFromPayload(
     });
     if (!result.ok) return result;
 
-    ensureDefaultLocalWarehouse(evolu, result.value.id, [] as EvoluWarehouseRow[]);
+    ensureDefaultLocalWarehouse(evolu, result.value.id, toAppRows<EvoluWarehouseRow>([]));
     return result;
 }

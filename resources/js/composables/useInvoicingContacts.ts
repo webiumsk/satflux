@@ -15,6 +15,7 @@ import type { EvoluDocumentRow } from "@/evolu/documentMap";
 import { isInvoicingLocalFirst } from "@/evolu/flags";
 import type { CompanyId, ContactId, InvoicingLocalSchema } from "@/evolu/schema";
 import type { CompanyContactRow } from "./useCompanyContact";
+import { toAppRows } from "../evolu/queryLoad";
 
 export interface ContactListFilters {
     q?: string;
@@ -79,7 +80,7 @@ function useServerInvoicingContacts(companyId: Ref<string>): UseInvoicingContact
         loading,
         refresh,
         evolu: null,
-        contactRows: computed(() => [] as EvoluContactRow[]),
+        contactRows: computed(() => toAppRows<EvoluContactRow>([])),
         documentRows: computed(() => []),
     };
 }
@@ -100,7 +101,7 @@ function useLocalInvoicingContacts(companyId: Ref<string>): UseInvoicingContacts
     });
 
     const companyContacts = computed(() => {
-        const docs = documentRows.value as EvoluDocumentRow[];
+        const docs = toAppRows<EvoluDocumentRow>(documentRows.value);
         return contactRows.value
             .filter((row) => row.companyId === companyId.value)
             .map((row) => {
@@ -156,7 +157,7 @@ function useLocalInvoicingContacts(companyId: Ref<string>): UseInvoicingContacts
         loading,
         refresh,
         evolu,
-        contactRows: computed(() => contactRows.value as EvoluContactRow[]),
+        contactRows: computed(() => toAppRows<EvoluContactRow>(contactRows.value)),
         documentRows,
     };
 }
@@ -196,7 +197,7 @@ export function useInvoicingContact(
             const apiRow = evoluContactToApi(row as EvoluContactRow);
             apiRow.stats = computeContactStats(
                 row.id,
-                documentRows.value as EvoluDocumentRow[],
+                toAppRows<EvoluDocumentRow>(documentRows.value),
             );
             contact.value = apiRow;
         }

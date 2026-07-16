@@ -34,6 +34,7 @@ import { DEFAULT_INVOICE_LINE_UNIT } from './useInvoiceLineUnits';
 import { invoicingDocumentRoutes, type InvoicingDocumentRoutes } from './useInvoicingDocumentRoutes';
 import type { InvoicingDocumentKind } from './useInvoicingLayout';
 import { defaultWarehouseId, type WarehouseRow } from './useCompanyWarehouse';
+import { toAppRows } from "../evolu/queryLoad";
 
 function parseDocumentAmountPaid(value: unknown): number | null {
   if (value == null || value === '') {
@@ -797,9 +798,9 @@ export function useInvoiceDocument() {
     frozenIssuedContent.value = null;
     if (!local || !documentId.value) return;
     try {
-      const rows = (await local.evolu.loadQuery(
-        allDocumentSnapshotsQuery,
-      )) as unknown as EvoluDocumentSnapshotRow[];
+      const rows = toAppRows<EvoluDocumentSnapshotRow>(
+        await local.evolu.loadQuery(allDocumentSnapshotsQuery),
+      );
       const latest = latestSnapshotRowForDocument(rows, documentId.value);
       if (!latest) return;
       const parsed = parseIssuedSnapshotRow(latest);
@@ -976,7 +977,7 @@ export function useInvoiceDocument() {
       markLocalDocumentPaid(
         local.evolu,
         documentId.value as DocumentId,
-        local.documentRows.value as EvoluDocumentRow[],
+        toAppRows<EvoluDocumentRow>(local.documentRows.value),
       );
       await local.refreshAll();
       const apiDoc = local.documentApi(documentId.value as DocumentId);

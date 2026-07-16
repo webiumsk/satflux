@@ -138,6 +138,7 @@
 </template>
 
 <script setup lang="ts">
+import { toAppRows } from "../../evolu/queryLoad";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { invoicingApi } from "../../services/api";
@@ -321,8 +322,8 @@ async function createLocalCreditNote(invoiceId: string) {
   const result = createLocalCreditNoteFromInvoice(
     localDoc.evolu,
     invoiceId as DocumentId,
-    localDoc.documentRows.value as EvoluDocumentRow[],
-    localDoc.lineRows.value as EvoluDocumentLineRow[],
+    toAppRows<EvoluDocumentRow>(localDoc.documentRows.value),
+    toAppRows<EvoluDocumentLineRow>(localDoc.lineRows.value),
     localSaveOptions(invoiceRow?.contactId ?? null),
     invoiceRow?.number
       ? `${t("invoicing.linked_credited_invoice", { number: invoiceRow.number })}.`

@@ -380,6 +380,7 @@
 </template>
 
 <script setup lang="ts">
+import { toAppRows } from "../../evolu/queryLoad";
 import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
@@ -582,7 +583,7 @@ async function runBulkLocal(action: "export_csv" | "delete") {
     companyId.value as CompanyId,
     selectAllMode.value,
     selectedIds.value,
-    contactRows.value as EvoluContactRow[],
+    toAppRows<EvoluContactRow>(contactRows.value),
     listFilterParams(),
   );
 
@@ -592,7 +593,7 @@ async function runBulkLocal(action: "export_csv" | "delete") {
   }
 
   if (action === "delete") {
-    const allDocuments = documentRows.value as unknown as EvoluDocumentRow[];
+    const allDocuments = toAppRows<EvoluDocumentRow>(documentRows.value);
     const result = bulkDeleteLocalContacts(evoluClient, targets, allDocuments);
     success.value = t("invoicing.bulk_result", {
       processed: result.processed,

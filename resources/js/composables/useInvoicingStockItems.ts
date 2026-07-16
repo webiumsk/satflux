@@ -28,6 +28,7 @@ import {
 } from "@/evolu/stockMap";
 import type { EvoluWarehouseRow } from "@/evolu/warehouseMap";
 import type { CompanyId, InvoicingLocalSchema, StockItemId } from "@/evolu/schema";
+import { toAppRows } from "../evolu/queryLoad";
 
 export type StockListFilters = {
     q?: string;
@@ -98,14 +99,14 @@ function useLocalStockItems(companyId: Ref<string>): UseInvoicingStockItemsResul
 
     const listRows = computed(() => {
         const companyItems = filterCompanyStockItems(
-            itemRows.value as EvoluStockItemRow[],
+            toAppRows<EvoluStockItemRow>(itemRows.value),
             companyId.value as CompanyId,
         );
         return companyItems.map((row) =>
             evoluStockItemToListRow(
                 row,
-                balanceRows.value as EvoluStockBalanceRow[],
-                warehouseRows.value as EvoluWarehouseRow[],
+                toAppRows<EvoluStockBalanceRow>(balanceRows.value),
+                toAppRows<EvoluWarehouseRow>(warehouseRows.value),
                 filters.value.warehouse_id || null,
             ),
         );
@@ -134,9 +135,9 @@ function useLocalStockItems(companyId: Ref<string>): UseInvoicingStockItemsResul
     function search(query: string, limit = 10, warehouseId?: string | null): StockSearchResult[] {
         return searchLocalStockItems(
             companyId.value as CompanyId,
-            itemRows.value as EvoluStockItemRow[],
-            balanceRows.value as EvoluStockBalanceRow[],
-            warehouseRows.value as EvoluWarehouseRow[],
+            toAppRows<EvoluStockItemRow>(itemRows.value),
+            toAppRows<EvoluStockBalanceRow>(balanceRows.value),
+            toAppRows<EvoluWarehouseRow>(warehouseRows.value),
             query,
             limit,
             warehouseId,
@@ -179,14 +180,14 @@ export function useLocalStockItemDetail(companyId: Ref<string>) {
     }
 
     function itemApi(itemId: string) {
-        const row = (itemRows.value as EvoluStockItemRow[]).find((entry) => entry.id === itemId);
+        const row = (toAppRows<EvoluStockItemRow>(itemRows.value)).find((entry) => entry.id === itemId);
         if (!row || row.companyId !== companyId.value) return null;
         const apiRow = evoluStockItemToListRow(
             row,
-            balanceRows.value as EvoluStockBalanceRow[],
-            warehouseRows.value as EvoluWarehouseRow[],
+            toAppRows<EvoluStockBalanceRow>(balanceRows.value),
+            toAppRows<EvoluWarehouseRow>(warehouseRows.value),
         );
-        const movements = (movementRows.value as EvoluStockMovementRow[])
+        const movements = (toAppRows<EvoluStockMovementRow>(movementRows.value))
             .filter(
                 (entry) =>
                     entry.companyStockItemId === itemId
@@ -195,14 +196,14 @@ export function useLocalStockItemDetail(companyId: Ref<string>) {
             .sort((a, b) => (b.movementAt ?? "").localeCompare(a.movementAt ?? ""))
             .slice(0, 100)
             .map((entry) => {
-                const warehouse = (warehouseRows.value as EvoluWarehouseRow[]).find(
+                const warehouse = (toAppRows<EvoluWarehouseRow>(warehouseRows.value)).find(
                     (w) => w.id === entry.companyWarehouseId,
                 );
                 return evoluStockMovementToApi(entry, warehouse?.name);
             });
         return {
             ...apiRow,
-            neighbor_ids: stockItemNeighborIds(itemRows.value as EvoluStockItemRow[], companyId.value as CompanyId),
+            neighbor_ids: stockItemNeighborIds(toAppRows<EvoluStockItemRow>(itemRows.value), companyId.value as CompanyId),
             movements,
         };
     }
@@ -215,7 +216,7 @@ export function useLocalStockItemDetail(companyId: Ref<string>) {
         balanceRows,
         warehouseRows,
         movementRows,
-        documentLineRows: computed(() => documentLineRows.value as EvoluDocumentLineRow[]),
+        documentLineRows: computed(() => toAppRows<EvoluDocumentLineRow>(documentLineRows.value)),
     };
 }
 
