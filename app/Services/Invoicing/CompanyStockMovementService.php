@@ -75,23 +75,70 @@ class CompanyStockMovementService
      */
     public function reverseDocumentCancel(BusinessDocument $document): array
     {
-        if (! in_array($document->type, [BusinessDocumentType::Invoice, BusinessDocumentType::CreditNote, BusinessDocumentType::DeliveryNote], true)) {
+        return $this->reverseIssueMovements($document, CompanyStockMovementSource::DocumentCancel);
+    }
+
+    /**
+     * Reverse and re-apply issue movements after an issued document's lines
+     * changed (server-mode edit): the reversal is recorded as
+     * document_adjustment and the stale issue rows are deleted so
+     * applyDocumentIssue's idempotency guard lets the fresh lines through
+     * (Cursor PR #65).
+     *
+     * @return list<CompanyStockItemMovement>
+     */
+    public function rebuildDocumentIssue(BusinessDocument $document): array
+    {
+        if (! $this->stockRelevantType($document)) {
             return [];
         }
 
         $movements = [];
 
         DB::transaction(function () use ($document, &$movements) {
+            $movements = array_merge(
+                $movements,
+                $this->reverseIssueMovements(
+                    $document,
+                    CompanyStockMovementSource::DocumentAdjustment,
+                    deleteIssueMovements: true,
+                ),
+            );
+
+            $movements = array_merge(
+                $movements,
+                $this->applyDocumentIssue($document->fresh(['lines', 'company'])),
+            );
+        });
+
+        return $movements;
+    }
+
+    /**
+     * @return list<CompanyStockItemMovement>
+     */
+    protected function reverseIssueMovements(
+        BusinessDocument $document,
+        CompanyStockMovementSource $reversalSource,
+        bool $deleteIssueMovements = false,
+    ): array {
+        if (! $this->stockRelevantType($document)) {
+            return [];
+        }
+
+        $movements = [];
+
+        DB::transaction(function () use ($document, $reversalSource, $deleteIssueMovements, &$movements) {
             if (! BusinessDocument::query()->where('id', $document->id)->lockForUpdate()->exists()) {
                 return;
             }
 
             $alreadyReversed = CompanyStockItemMovement::query()
                 ->where('business_document_id', $document->id)
-                ->where('source', CompanyStockMovementSource::DocumentCancel)
+                ->where('source', $reversalSource)
                 ->exists();
 
-            if ($alreadyReversed) {
+            if ($alreadyReversed && ! $deleteIssueMovements) {
                 return;
             }
 
@@ -127,14 +174,31 @@ class CompanyStockMovementService
                     $item,
                     $warehouse,
                     -((float) $issueMovement->quantity_delta),
-                    CompanyStockMovementSource::DocumentCancel,
+                    $reversalSource,
                     note: null,
                     document: $document,
                 );
             }
+
+            if ($deleteIssueMovements) {
+                CompanyStockItemMovement::query()
+                    ->where('business_document_id', $document->id)
+                    ->where('source', CompanyStockMovementSource::DocumentIssue)
+                    ->delete();
+            }
         });
 
         return $movements;
+    }
+
+    /** Enum-on-string cast duality: the ephemeral context types status/type as string. */
+    protected function stockRelevantType(BusinessDocument $document): bool
+    {
+        return in_array($document->type, [
+            BusinessDocumentType::Invoice,
+            BusinessDocumentType::CreditNote,
+            BusinessDocumentType::DeliveryNote,
+        ], true);
     }
 
     public function recordManualChange(

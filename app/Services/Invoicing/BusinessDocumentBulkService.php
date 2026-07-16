@@ -11,6 +11,7 @@ use App\Models\Company;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -24,6 +25,7 @@ class BusinessDocumentBulkService
         protected BusinessDocumentPdfService $pdfService,
         protected BusinessDocumentMarkPaidService $markPaidService,
         protected DocumentSequenceService $sequenceService,
+        protected CompanyStockMovementService $stockMovementService,
     ) {}
 
     /**
@@ -233,8 +235,13 @@ class BusinessDocumentBulkService
                 continue;
             }
             $typesToSync[$document->type->value] = $document->company;
-            $document->lines()->delete();
-            $document->delete();
+            // Deleting an issued document must return its stock first
+            // (Cursor PR #67) - no-op for drafts, idempotent otherwise.
+            DB::transaction(function () use ($document) {
+                $this->stockMovementService->reverseDocumentCancel($document->fresh(['lines']));
+                $document->lines()->delete();
+                $document->delete();
+            });
             $processed++;
         }
 
@@ -259,11 +266,24 @@ class BusinessDocumentBulkService
 
                 continue;
             }
-            $document->update([
-                'status' => BusinessDocumentStatus::Cancelled,
-                'paid_at' => null,
-                'amount_paid' => null,
-            ]);
+            DB::transaction(function () use ($document) {
+                $shouldReverseStock = in_array($document->status, [
+                    BusinessDocumentStatus::Issued,
+                    BusinessDocumentStatus::Issued->value,
+                    BusinessDocumentStatus::Paid,
+                    BusinessDocumentStatus::Paid->value,
+                ], true);
+
+                $document->update([
+                    'status' => BusinessDocumentStatus::Cancelled,
+                    'paid_at' => null,
+                    'amount_paid' => null,
+                ]);
+
+                if ($shouldReverseStock) {
+                    $this->stockMovementService->reverseDocumentCancel($document->fresh(['lines']));
+                }
+            });
             $processed++;
         }
 

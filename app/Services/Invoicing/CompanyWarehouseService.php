@@ -109,6 +109,14 @@ class CompanyWarehouseService
             ]);
         }
 
+        // Movement history is the audit trail - deleting the warehouse would
+        // orphan it (Cursor PR #65); deactivation is the supported path.
+        if ($warehouse->movements()->exists()) {
+            throw ValidationException::withMessages([
+                'warehouse' => ['Warehouse has stock movement history and cannot be deleted. Deactivate it instead.'],
+            ]);
+        }
+
         $wasDefault = $warehouse->is_default;
         $warehouse->delete();
 

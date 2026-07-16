@@ -266,6 +266,12 @@ class BusinessDocumentController extends Controller
         $this->syncLines($businessDocument, $lines);
 
         if ($businessDocument->status === BusinessDocumentStatus::Issued) {
+            // Editing an issued document replaces its lines - stock must
+            // follow (reverse the old issue, apply the new lines).
+            $this->stockMovementService->rebuildDocumentIssue($businessDocument->fresh(['lines', 'company']));
+        }
+
+        if ($businessDocument->status === BusinessDocumentStatus::Issued) {
             if (! $businessDocument->payment_btc_enabled || ! $businessDocument->store_id) {
                 $businessDocument->payment_token = null;
                 $businessDocument->btcpay_invoice_id = null;
@@ -337,7 +343,14 @@ class BusinessDocumentController extends Controller
                 ]);
             }
 
-            $wasIssued = $locked->status === BusinessDocumentStatus::Issued;
+            // Paid documents had their stock applied at issue time too -
+            // cancelling either state must return the goods (Cursor PR #67).
+            $shouldReverseStock = in_array($locked->status, [
+                BusinessDocumentStatus::Issued,
+                BusinessDocumentStatus::Issued->value,
+                BusinessDocumentStatus::Paid,
+                BusinessDocumentStatus::Paid->value,
+            ], true);
 
             $locked->update([
                 'status' => BusinessDocumentStatus::Cancelled,
@@ -345,7 +358,7 @@ class BusinessDocumentController extends Controller
                 'amount_paid' => null,
             ]);
 
-            if ($wasIssued) {
+            if ($shouldReverseStock) {
                 $this->stockMovementService->reverseDocumentCancel($locked->fresh(['lines']));
             }
         });
@@ -587,8 +600,26 @@ class BusinessDocumentController extends Controller
         $id = $businessDocument->id;
         $number = $businessDocument->number;
         $documentType = $businessDocument->type->value;
-        $businessDocument->lines()->delete();
-        $businessDocument->delete();
+
+        // Lock + re-check + stock reversal in one transaction: deleting an
+        // issued document used to leave its stock deducted forever
+        // (Cursor PR #67).
+        DB::transaction(function () use ($businessDocument) {
+            $locked = BusinessDocument::query()
+                ->whereKey($businessDocument->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! $locked->canDelete()) {
+                throw ValidationException::withMessages([
+                    'status' => ['This document cannot be deleted. Cancel it first, or delete only the latest invoice without bank matches or linked documents.'],
+                ]);
+            }
+
+            $this->stockMovementService->reverseDocumentCancel($locked->fresh(['lines']));
+            $locked->lines()->delete();
+            $locked->delete();
+        });
 
         $this->sequenceService->syncSeriesAfterDocumentChange($company, $documentType);
 
