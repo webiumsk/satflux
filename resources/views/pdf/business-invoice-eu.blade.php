@@ -8,6 +8,10 @@
 <body>
     @php
         $btcPayUrl = $btcPayUrl ?? null;
+        // Ad-hoc renderers (tests) pass a data subset - compact() requires
+        // the variables to exist; the body partial falls back to __() labels.
+        $vatLabel = $vatLabel ?? null;
+        $taxIdLabel = $taxIdLabel ?? null;
     @endphp
     <div class="invoice-doc-body">
     @include('pdf.partials.business-invoice-body-eu', compact(
