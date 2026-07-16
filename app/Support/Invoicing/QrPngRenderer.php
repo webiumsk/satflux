@@ -2,6 +2,8 @@
 
 namespace App\Support\Invoicing;
 
+use Illuminate\Support\Facades\Http;
+
 /**
  * Shared QR PNG rendering for payment QRs (PayBySquare, EPC, Swiss) -
  * chillerlan locally, with the qrserver.com fallback the PayBySquare
@@ -23,15 +25,18 @@ final class QrPngRenderer
             return $qr->render($data);
         }
 
-        $url = 'https://api.qrserver.com/v1/create-qr-code/?'.http_build_query([
-            'size' => "{$size}x{$size}",
-            'data' => $data,
-        ]);
-        $png = @file_get_contents($url);
-        if ($png === false) {
+        try {
+            $response = Http::timeout(5)->connectTimeout(3)->get(
+                'https://api.qrserver.com/v1/create-qr-code/',
+                ['size' => "{$size}x{$size}", 'data' => $data],
+            );
+        } catch (\Throwable) {
+            return null;
+        }
+        if (! $response->successful()) {
             return null;
         }
 
-        return 'data:image/png;base64,'.base64_encode($png);
+        return 'data:image/png;base64,'.base64_encode($response->body());
     }
 }

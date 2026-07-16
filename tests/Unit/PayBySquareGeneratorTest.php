@@ -51,6 +51,13 @@ class PayBySquareGeneratorTest extends TestCase
         $this->assertMatchesRegularExpression('/^[0-9A-V]+$/', $payload);
         $this->assertGreaterThan(40, strlen($payload));
 
+        // Without chillerlan installed the renderer falls back to the
+        // qrserver.com API - fake it so the test never leaves the machine
+        // (the old file_get_contents fallback used to make a real request).
+        \Illuminate\Support\Facades\Http::fake([
+            'api.qrserver.com/*' => \Illuminate\Support\Facades\Http::response('png-bytes'),
+        ]);
+
         $qr = $service->generateQrDataUri($company, $document);
         $this->assertNotNull($qr);
         $this->assertStringStartsWith('data:image/png;base64,', $qr);

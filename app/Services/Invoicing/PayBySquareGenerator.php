@@ -4,6 +4,8 @@ namespace App\Services\Invoicing;
 
 use App\Models\BusinessDocument;
 use App\Models\Company;
+use App\Support\Invoicing\BankQrEligibility;
+use App\Support\Invoicing\QrPngRenderer;
 use DateTime;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -21,7 +23,7 @@ class PayBySquareGenerator
         // Which STANDARD fits the payer is BankQrGenerator's decision (the
         // issuer jurisdiction no longer gates it - a Swiss company invoicing
         // a Slovak customer legitimately prints PayBySquare).
-        return \App\Support\Invoicing\BankQrEligibility::passes($company, $document);
+        return BankQrEligibility::passes($company, $document);
     }
 
     public function generatePayload(Company $company, BusinessDocument $document): string
@@ -88,7 +90,7 @@ class PayBySquareGenerator
 
     protected function qrPngDataUri(string $data, int $size): ?string
     {
-        return \App\Support\Invoicing\QrPngRenderer::dataUri($data, $size);
+        return QrPngRenderer::dataUri($data, $size);
     }
 
     protected function sanitize(string $value): string
