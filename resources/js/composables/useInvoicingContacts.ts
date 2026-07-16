@@ -15,6 +15,7 @@ import type { EvoluDocumentRow } from "@/evolu/documentMap";
 import { isInvoicingLocalFirst } from "@/evolu/flags";
 import type { CompanyId, ContactId, InvoicingLocalSchema } from "@/evolu/schema";
 import type { CompanyContactRow } from "./useCompanyContact";
+import { toAppRows } from "../evolu/queryLoad";
 
 export interface ContactListFilters {
     q?: string;
@@ -79,7 +80,7 @@ function useServerInvoicingContacts(companyId: Ref<string>): UseInvoicingContact
         loading,
         refresh,
         evolu: null,
-        contactRows: computed(() => [] as EvoluContactRow[]),
+        contactRows: computed(() => toAppRows<EvoluContactRow>([])),
         documentRows: computed(() => []),
     };
 }
@@ -100,11 +101,11 @@ function useLocalInvoicingContacts(companyId: Ref<string>): UseInvoicingContacts
     });
 
     const companyContacts = computed(() => {
-        const docs = documentRows.value as EvoluDocumentRow[];
-        return contactRows.value
+        const docs = toAppRows<EvoluDocumentRow>(documentRows.value);
+        return toAppRows<EvoluContactRow>(contactRows.value)
             .filter((row) => row.companyId === companyId.value)
             .map((row) => {
-                const apiRow = evoluContactToApi(row as EvoluContactRow);
+                const apiRow = evoluContactToApi(row);
                 apiRow.stats = computeContactStats(row.id, docs);
                 return apiRow;
             });
@@ -156,7 +157,7 @@ function useLocalInvoicingContacts(companyId: Ref<string>): UseInvoicingContacts
         loading,
         refresh,
         evolu,
-        contactRows: computed(() => contactRows.value as EvoluContactRow[]),
+        contactRows: computed(() => toAppRows<EvoluContactRow>(contactRows.value)),
         documentRows,
     };
 }
@@ -186,17 +187,17 @@ export function useInvoicingContact(
                 contact.value = null;
                 return;
             }
-            const row = contactRows.value.find(
+            const row = toAppRows<EvoluContactRow>(contactRows.value).find(
                 (c) => c.id === contactId.value && c.companyId === (companyId.value as CompanyId),
             );
             if (!row) {
                 contact.value = null;
                 return;
             }
-            const apiRow = evoluContactToApi(row as EvoluContactRow);
+            const apiRow = evoluContactToApi(row);
             apiRow.stats = computeContactStats(
                 row.id,
-                documentRows.value as EvoluDocumentRow[],
+                toAppRows<EvoluDocumentRow>(documentRows.value),
             );
             contact.value = apiRow;
         }

@@ -11,6 +11,7 @@ import type { EvoluExpenseRow } from "./expenseMap";
 import { allExpensesQuery } from "./client";
 import { parseSpreadsheetFile } from "./spreadsheetParse";
 import type { CompanyId, InvoicingLocalSchema } from "./schema";
+import { toAppRows } from "./queryLoad";
 
 export { downloadCsvBlob };
 
@@ -308,9 +309,9 @@ export async function importLocalExpensesFromFile(
             if (!result.ok) throw new Error("insert_failed");
 
             await evolu.loadQuery(allExpensesQuery);
-            workingRows = evolu.getQueryRows(allExpensesQuery).filter(
-                (r) => r.companyId === companyId,
-            ) as EvoluExpenseRow[];
+            workingRows = toAppRows<EvoluExpenseRow>(
+                evolu.getQueryRows(allExpensesQuery).filter((r) => r.companyId === companyId),
+            );
             for (const r of workingRows) {
                 existingNumbers.add(r.internalNumber);
             }

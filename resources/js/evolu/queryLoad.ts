@@ -1,6 +1,17 @@
 import type { Evolu, Query, QueryRows, Row } from "@evolu/common/local-first";
 import { withTimeout } from "./asyncTimeout";
 
+/**
+ * The single deliberate bridge from Evolu's branded QueryRows to the app-level
+ * row types (Evolu*Row in *Map.ts): both describe the same SQLite rows, but
+ * the branded column types do not overlap structurally, so a direct `as`
+ * cast is a TS2352 at every call site. Centralizing the cast keeps call
+ * sites cast-free and gives grep one place to audit.
+ */
+export function toAppRows<TRow>(rows: readonly unknown[]): TRow[] {
+    return rows as unknown as TRow[];
+}
+
 /** Default wait for Evolu SQLite worker to answer a loadQuery call. */
 export const EVOLU_QUERY_LOAD_TIMEOUT_MS = 30_000;
 

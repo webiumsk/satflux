@@ -32,6 +32,7 @@ import {
     insertIssuedDocumentSnapshot,
 } from "./documentSnapshotCrud";
 import type { DocumentType } from "./schema";
+import { toAppRows } from "./queryLoad";
 import {
     allCompaniesDetailQuery,
     allContactsQuery,
@@ -421,8 +422,8 @@ async function loadIssueContext(evolu: Evolu<InvoicingLocalSchema>): Promise<{
         evolu.loadQuery(allNumberSeriesQuery),
     ]);
     return {
-        documents: documents as EvoluDocumentRow[],
-        series: series as EvoluNumberSeriesRow[],
+        documents: toAppRows<EvoluDocumentRow>(documents),
+        series: toAppRows<EvoluNumberSeriesRow>(series),
     };
 }
 
@@ -431,7 +432,7 @@ async function waitForDraftDocument(
     documentId: DocumentId,
 ): Promise<EvoluDocumentRow | null> {
     for (let attempt = 0; attempt < 8; attempt += 1) {
-        const documents = (await evolu.loadQuery(allDocumentsQuery)) as EvoluDocumentRow[];
+        const documents = toAppRows<EvoluDocumentRow>((await evolu.loadQuery(allDocumentsQuery)));
         const doc = documents.find((row) => row.id === documentId);
         if (doc) {
             return doc;
@@ -469,9 +470,9 @@ export async function issueLocalDocumentAsync(
         evolu.loadQuery(allContactsQuery),
     ]);
     const snapshotContext: IssueSnapshotContext = {
-        lines: lineRows as unknown as EvoluDocumentLineRow[],
+        lines: toAppRows<EvoluDocumentLineRow>(lineRows),
         contact:
-            ((contactRows as unknown as EvoluContactRow[]).find((c) => c.id === draft.contactId)
+            (toAppRows<EvoluContactRow>(contactRows).find((c) => c.id === draft.contactId)
                 ?? null),
     };
 
@@ -615,17 +616,17 @@ export async function applyReservedNumberToLocalDocumentAsync(
                 evolu.loadQuery(allCompaniesDetailQuery),
                 evolu.loadQuery(allDocumentsQuery),
             ]);
-            const company = (companyRows as unknown as EvoluCompanyRow[]).find(
+            const company = toAppRows<EvoluCompanyRow>(companyRows).find(
                 (row) => row.id === companyId,
             );
             if (company) {
                 context = {
                     company,
                     doc,
-                    allDocuments: documents as unknown as EvoluDocumentRow[],
-                    lines: lineRows as unknown as EvoluDocumentLineRow[],
+                    allDocuments: toAppRows<EvoluDocumentRow>(documents),
+                    lines: toAppRows<EvoluDocumentLineRow>(lineRows),
                     contact:
-                        ((contactRows as unknown as EvoluContactRow[]).find(
+                        (toAppRows<EvoluContactRow>(contactRows).find(
                             (c) => c.id === doc.contactId,
                         ) ?? null),
                 };

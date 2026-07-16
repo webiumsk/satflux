@@ -40,6 +40,7 @@ import type { EvoluNumberSeriesRow } from "@/evolu/numberSeriesMap";
 import type { EvoluDocumentEventRow } from "@/evolu/documentEventLog";
 import type { CompanyId, DocumentId } from "@/evolu/schema";
 import { useStoresStore } from "@/store/stores";
+import { toAppRows } from "../evolu/queryLoad";
 
 /** Evolu-backed document operations (requires EvoluProvider). */
 export function useLocalInvoiceDocumentSupport() {
@@ -86,8 +87,8 @@ export function useLocalInvoiceDocumentSupport() {
             evolu,
             companyId,
             documentType as Parameters<typeof previewNextLocalDocumentNumber>[2],
-            documentRows.value as EvoluDocumentRow[],
-            seriesRows.value as EvoluNumberSeriesRow[],
+            toAppRows<EvoluDocumentRow>(documentRows.value),
+            toAppRows<EvoluNumberSeriesRow>(seriesRows.value),
         );
     }
 
@@ -105,8 +106,8 @@ export function useLocalInvoiceDocumentSupport() {
             evolu.loadQuery(allDocumentsQuery),
             evolu.loadQuery(allCompaniesDetailQuery),
         ]);
-        const documents = documentRows.value as EvoluDocumentRow[];
-        const series = seriesRows.value as EvoluNumberSeriesRow[];
+        const documents = toAppRows<EvoluDocumentRow>(documentRows.value);
+        const series = toAppRows<EvoluNumberSeriesRow>(seriesRows.value);
         const companyRow = companyRows.value.find((c) => c.id === companyId) as
             | EvoluCompanyRow
             | undefined;

@@ -15,6 +15,7 @@ import { generateLocalRecurringDocument } from "./recurringCrud";
 import type { EvoluRecurringProfileLineRow, EvoluRecurringProfileRow } from "./recurringMap";
 import { listDueRecurringProfiles } from "./recurringNextDate";
 import type { InvoicingLocalSchema, RecurringProfileId } from "./schema";
+import { toAppRows } from "./queryLoad";
 
 export type RecurringDueGeneration = {
     profileId: string;
@@ -51,12 +52,12 @@ async function loadRunnerSnapshot(evolu: Evolu<InvoicingLocalSchema>): Promise<R
     ]);
 
     return {
-        companies: companies as EvoluCompanyRow[],
-        profiles: profiles as EvoluRecurringProfileRow[],
-        profileLines: profileLines as EvoluRecurringProfileLineRow[],
-        documents: documents as EvoluDocumentRow[],
-        documentLines: documentLines as EvoluDocumentLineRow[],
-        series: series as EvoluNumberSeriesRow[],
+        companies: toAppRows<EvoluCompanyRow>(companies),
+        profiles: toAppRows<EvoluRecurringProfileRow>(profiles),
+        profileLines: toAppRows<EvoluRecurringProfileLineRow>(profileLines),
+        documents: toAppRows<EvoluDocumentRow>(documents),
+        documentLines: toAppRows<EvoluDocumentLineRow>(documentLines),
+        series: toAppRows<EvoluNumberSeriesRow>(series),
     };
 }
 

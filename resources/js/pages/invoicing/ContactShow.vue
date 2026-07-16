@@ -97,6 +97,7 @@
 </template>
 
 <script setup lang="ts">
+import { toAppRows } from "../../evolu/queryLoad";
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -138,8 +139,8 @@ const { documentRows } = useInvoicingContacts(companyId);
 
 const contactDocumentCount = computed(() => {
   if (!localFirst || !contactId.value) return 0;
-  return documentRows.value.filter(
-    (row) => (row as EvoluDocumentRow).contactId === contactId.value,
+  return toAppRows<EvoluDocumentRow>(documentRows.value).filter(
+    (row) => row.contactId === contactId.value,
   ).length;
 });
 
@@ -157,7 +158,7 @@ const contactStats = computed(() => {
     if (!contactId.value) return null;
     return computeContactStats(
       contactId.value,
-      documentRows.value as EvoluDocumentRow[],
+      toAppRows<EvoluDocumentRow>(documentRows.value),
     );
   }
   return contact.value?.stats ?? null;
@@ -168,7 +169,7 @@ const canDelete = computed(() => {
     if (!contactId.value) return false;
     return !isContactReferencedByIssuedOrPaid(
       contactId.value,
-      documentRows.value as EvoluDocumentRow[],
+      toAppRows<EvoluDocumentRow>(documentRows.value),
     );
   }
   return (contact.value?.stats?.invoiced_count ?? 0) === 0;

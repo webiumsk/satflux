@@ -1171,6 +1171,7 @@
 </template>
 
 <script setup lang="ts">
+import { toAppRows } from "../../evolu/queryLoad";
 import { computed, nextTick, onActivated, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
@@ -1199,7 +1200,7 @@ import {
 } from "../../evolu/documentCrud";
 import type { CompanyId, DocumentId } from "../../evolu/schema";
 import type { EvoluCompanyRow } from "../../evolu/companyMap";
-import type { EvoluDocumentRow } from "../../evolu/documentMap";
+import type { EvoluDocumentLineRow, EvoluDocumentRow } from "../../evolu/documentMap";
 import type { EvoluNumberSeriesRow } from "../../evolu/numberSeriesMap";
 import CreditNotePickInvoiceModal from "../../components/invoicing/CreditNotePickInvoiceModal.vue";
 import CreditNoteStartModal from "../../components/invoicing/CreditNoteStartModal.vue";
@@ -1734,9 +1735,8 @@ async function createInvoiceFromQuote(d: { id: string }) {
       const result = localDoc.createLocalInvoiceFromQuote(
         localDoc.evolu,
         d.id as DocumentId,
-        localDoc.documentRows.value as EvoluDocumentRow[],
-        localDoc.lineRows
-          .value as import("../../evolu/documentMap").EvoluDocumentLineRow[],
+        toAppRows<EvoluDocumentRow>(localDoc.documentRows.value),
+        toAppRows<EvoluDocumentLineRow>(localDoc.lineRows.value),
         (doc) => payloadFromApiDocument(doc),
         {
           ...localDoc.saveOptions(
@@ -1798,9 +1798,8 @@ async function createFinalInvoice(d: { id: string }) {
       const result = localDoc.createLocalFinalInvoiceFromProforma(
         localDoc.evolu,
         d.id as DocumentId,
-        localDoc.documentRows.value as EvoluDocumentRow[],
-        localDoc.lineRows
-          .value as import("../../evolu/documentMap").EvoluDocumentLineRow[],
+        toAppRows<EvoluDocumentRow>(localDoc.documentRows.value),
+        toAppRows<EvoluDocumentLineRow>(localDoc.lineRows.value),
         (doc) => payloadFromApiDocument(doc),
         {
           ...localDoc.saveOptions(
@@ -1986,8 +1985,7 @@ async function runBulkLocal(action: string) {
     contactId: contactFilterId.value,
   });
 
-  const allDocuments = localDocuments.documentRows
-    .value as unknown as EvoluDocumentRow[];
+  const allDocuments = toAppRows<EvoluDocumentRow>(localDocuments.documentRows.value);
   const contactNameById = new Map<string, string>();
   for (const row of localDocuments.contactRows.value) {
     if (row.companyId !== companyId.value) continue;
@@ -2031,7 +2029,7 @@ async function runBulkLocal(action: string) {
       localDoc.evolu,
       targets,
       allDocuments,
-      localDoc.seriesRows.value as EvoluNumberSeriesRow[],
+      toAppRows<EvoluNumberSeriesRow>(localDoc.seriesRows.value),
     );
     success.value = t("invoicing.bulk_result", {
       processed: result.processed,
@@ -2363,7 +2361,7 @@ async function markPaid(d: { id: string }) {
       markLocalDocumentPaid(
         localDoc.evolu,
         d.id as DocumentId,
-        localDoc.documentRows.value as EvoluDocumentRow[],
+        toAppRows<EvoluDocumentRow>(localDoc.documentRows.value),
       );
       await load();
       return;
@@ -2555,8 +2553,8 @@ async function deleteDoc(d: {
       const result = await deleteLocalDocumentAsync(
         localDoc.evolu,
         d.id as DocumentId,
-        localDoc.documentRows.value as EvoluDocumentRow[],
-        localDoc.seriesRows.value as EvoluNumberSeriesRow[],
+        toAppRows<EvoluDocumentRow>(localDoc.documentRows.value),
+        toAppRows<EvoluNumberSeriesRow>(localDoc.seriesRows.value),
       );
       if (!result.ok) {
         error.value =
@@ -2587,7 +2585,7 @@ async function cancelDoc(d: { id: string }) {
       await cancelLocalDocumentAsync(
         localDoc.evolu,
         d.id as DocumentId,
-        localDoc.documentRows.value as EvoluDocumentRow[],
+        toAppRows<EvoluDocumentRow>(localDoc.documentRows.value),
       );
       await load();
       return;

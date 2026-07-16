@@ -1,6 +1,11 @@
 import { maxLength, NonEmptyString } from "@evolu/common";
 
-type MaxLengthValidator = ReturnType<ReturnType<typeof maxLength>>;
+/**
+ * Generic over the validator's from() so the branded value type flows to the
+ * caller - an erased ReturnType<ReturnType<typeof maxLength>> alias does not
+ * match the concrete branded validators structurally.
+ */
+type Validator<R> = { from: (value: string) => R };
 
 export function emptyToNull(value: string | null | undefined): string | null {
     if (value == null) return null;
@@ -8,11 +13,14 @@ export function emptyToNull(value: string | null | undefined): string | null {
     return trimmed === "" ? null : trimmed;
 }
 
-export function parseRequired(value: string, type: MaxLengthValidator) {
+export function parseRequired<R>(value: string, type: Validator<R>): R {
     return type.from(value.trim());
 }
 
-export function parseOptional(value: string | null | undefined, type: MaxLengthValidator) {
+export function parseOptional<R>(
+    value: string | null | undefined,
+    type: Validator<R>,
+): R | { ok: true; value: null } {
     const normalized = emptyToNull(value);
     if (normalized == null) return { ok: true as const, value: null };
     return type.from(normalized);

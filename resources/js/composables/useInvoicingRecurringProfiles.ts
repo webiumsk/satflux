@@ -18,6 +18,7 @@ import {
     type RecurringProfileApiRow,
 } from "@/evolu/recurringMap";
 import type { CompanyId, InvoicingLocalSchema } from "@/evolu/schema";
+import { toAppRows } from "../evolu/queryLoad";
 
 export type RecurringListFilter = "all" | "active" | "inactive";
 
@@ -73,7 +74,7 @@ function useLocalRecurringProfiles(companyId: Ref<string>): UseInvoicingRecurrin
 
     const profiles = computed(() => {
         const companyProfiles = filterRecurringProfiles(
-            profileRows.value as EvoluRecurringProfileRow[],
+            toAppRows<EvoluRecurringProfileRow>(profileRows.value),
             companyId.value as CompanyId,
             filter.value,
         );
@@ -85,7 +86,7 @@ function useLocalRecurringProfiles(companyId: Ref<string>): UseInvoicingRecurrin
                 : null;
             return evoluRecurringProfileToApi(
                 row,
-                lineRows.value as EvoluRecurringProfileLineRow[],
+                toAppRows<EvoluRecurringProfileLineRow>(lineRows.value),
                 contact ? { id: contact.id, name: contact.name } : null,
             );
         });

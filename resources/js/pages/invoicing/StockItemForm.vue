@@ -301,6 +301,7 @@
 </template>
 
 <script setup lang="ts">
+import { toAppRows } from "../../evolu/queryLoad";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
@@ -456,9 +457,8 @@ async function save() {
         toLocalStockPayload(),
         {
           itemId: isNew.value ? undefined : (itemId.value as StockItemId),
-          existingItems: localStockDetail.itemRows.value as EvoluStockItemRow[],
-          existingBalances: localStockDetail.balanceRows
-            .value as EvoluStockBalanceRow[],
+          existingItems: toAppRows<EvoluStockItemRow>(localStockDetail.itemRows.value),
+          existingBalances: toAppRows<EvoluStockBalanceRow>(localStockDetail.balanceRows.value),
         },
       );
       if (!result.ok) {

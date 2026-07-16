@@ -5,6 +5,7 @@ import {
     type IntegrationInboxEntry,
 } from "./integrationInboxImport";
 import { isInvoicingLocalFirst } from "./flags";
+import { toAppRows } from "./queryLoad";
 
 /**
  * Shared live state of the WooCommerce integration inbox (module singleton).
@@ -39,7 +40,7 @@ type CompanyRowSlice = {
 
 async function deriveCompanyParams(nextCompanyId: string): Promise<void> {
     const { evolu, allCompaniesQuery } = await import("./client");
-    const rows = (await evolu.loadQuery(allCompaniesQuery)) as unknown as CompanyRowSlice[];
+    const rows = toAppRows<CompanyRowSlice>((await evolu.loadQuery(allCompaniesQuery)));
     const row = rows.find((r) => String(r.id) === nextCompanyId) ?? null;
 
     let runsEshop = false;

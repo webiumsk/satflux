@@ -143,6 +143,7 @@
 </template>
 
 <script setup lang="ts">
+import { toAppRows } from "../../evolu/queryLoad";
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useQuery } from '@evolu/vue';
@@ -219,7 +220,7 @@ function periodLabel(period: string) {
 }
 
 function localSeriesRows(): EvoluNumberSeriesRow[] {
-  return (seriesRows.value as EvoluNumberSeriesRow[]).filter(
+  return toAppRows<EvoluNumberSeriesRow>(seriesRows.value).filter(
     (row) => row.companyId === props.companyId,
   );
 }
@@ -245,7 +246,7 @@ async function loadLocal() {
       seedDefaultNumberSeries(
         evolu,
         props.companyId as CompanyId,
-        seriesRows.value as EvoluNumberSeriesRow[],
+        toAppRows<EvoluNumberSeriesRow>(seriesRows.value),
         localizedDefaultSeries(t),
       );
       await evolu.loadQuery(allNumberSeriesQuery);

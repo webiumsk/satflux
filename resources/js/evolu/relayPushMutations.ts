@@ -3,6 +3,7 @@ import { allCompaniesDetailQuery, allDocumentsQuery } from "./client";
 import { logDocumentEvent, RELAY_SYNC_EVENT_ACTION } from "./documentEventLog";
 import type { CompanyId, DocumentId, InvoicingLocalSchema } from "./schema";
 import type { EvoluDocumentRow } from "./documentMap";
+import { toAppRows } from "./queryLoad";
 
 /** Wait for Evolu worker WebSocket + subscribe upload before mutating. */
 export const RELAY_CONNECTION_WARMUP_MS = 12_000;
@@ -43,7 +44,7 @@ export async function bumpDocumentsForRelayPush(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId?: string,
 ): Promise<number> {
-    const documents = (await evolu.loadQuery(allDocumentsQuery)) as EvoluDocumentRow[];
+    const documents = toAppRows<EvoluDocumentRow>((await evolu.loadQuery(allDocumentsQuery)));
     let inserted = 0;
 
     for (const doc of documents) {

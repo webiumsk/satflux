@@ -308,6 +308,7 @@
 </template>
 
 <script setup lang="ts">
+import { toAppRows } from "../../evolu/queryLoad";
 import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
@@ -474,10 +475,8 @@ async function bulkDelete() {
         id as StockItemId,
         {
           documentLines: localStockDetail.documentLineRows.value,
-          balanceRows: localStockDetail.balanceRows
-            .value as EvoluStockBalanceRow[],
-          movementRows: localStockDetail.movementRows
-            .value as EvoluStockMovementRow[],
+          balanceRows: toAppRows<EvoluStockBalanceRow>(localStockDetail.balanceRows.value),
+          movementRows: toAppRows<EvoluStockMovementRow>(localStockDetail.movementRows.value),
         },
       );
       if (result.ok) deleted++;

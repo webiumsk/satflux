@@ -11,6 +11,7 @@ import type { EvoluDocumentLineRow, EvoluDocumentRow } from "./documentMap";
 import { formatQty, parseStockQty, type EvoluStockBalanceRow, type EvoluStockItemRow, type EvoluStockMovementRow } from "./stockMap";
 import type { CompanyId, DocumentId, InvoicingLocalSchema, StockBalanceId, StockItemId, WarehouseId } from "./schema";
 import type { EvoluWarehouseRow } from "./warehouseMap";
+import { toAppRows } from "./queryLoad";
 
 export type DocumentStockContext = {
     documents: EvoluDocumentRow[];
@@ -40,12 +41,12 @@ export async function loadDocumentStockContext(
     ]);
 
     return {
-        documents: documents as EvoluDocumentRow[],
-        documentLines: documentLines as EvoluDocumentLineRow[],
-        stockItems: stockItems as EvoluStockItemRow[],
-        warehouses: warehouses as EvoluWarehouseRow[],
-        balanceRows: balanceRows as EvoluStockBalanceRow[],
-        movementRows: movementRows as EvoluStockMovementRow[],
+        documents: toAppRows<EvoluDocumentRow>(documents),
+        documentLines: toAppRows<EvoluDocumentLineRow>(documentLines),
+        stockItems: toAppRows<EvoluStockItemRow>(stockItems),
+        warehouses: toAppRows<EvoluWarehouseRow>(warehouses),
+        balanceRows: toAppRows<EvoluStockBalanceRow>(balanceRows),
+        movementRows: toAppRows<EvoluStockMovementRow>(movementRows),
     };
 }
 

@@ -24,7 +24,7 @@ const Opt64 = maxLength(64)(NonEmptyString);
 const Opt4000 = maxLength(4000)(NonEmptyString);
 const CurrencyType = maxLength(3)(NonEmptyString);
 
-function parseOpt(value: string | null | undefined, type: ReturnType<ReturnType<typeof maxLength>>) {
+function parseOpt<R>(value: string | null | undefined, type: { from: (value: string) => R }): R | { ok: true; value: null } {
     if (value == null || value.trim() === "") return { ok: true as const, value: null };
     return type.from(value.trim());
 }

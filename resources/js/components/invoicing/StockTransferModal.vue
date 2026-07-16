@@ -40,6 +40,7 @@
 </template>
 
 <script setup lang="ts">
+import { toAppRows } from "../../evolu/queryLoad";
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { WarehouseRow } from '../../composables/useCompanyWarehouse';
@@ -102,7 +103,7 @@ async function submit() {
   try {
     if (localFirst && localStockDetail?.evolu) {
       await localStockDetail.refreshAll();
-      const item = (localStockDetail.itemRows.value as EvoluStockItemRow[]).find(
+      const item = toAppRows<EvoluStockItemRow>(localStockDetail.itemRows.value).find(
         (row) => row.id === props.stockItemId,
       );
       if (!item) {
@@ -119,7 +120,7 @@ async function submit() {
         note.value.trim() || null,
         {
           item,
-          balanceRows: localStockDetail.balanceRows.value as EvoluStockBalanceRow[],
+          balanceRows: toAppRows<EvoluStockBalanceRow>(localStockDetail.balanceRows.value),
         },
       );
       if (!result.ok) {

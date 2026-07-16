@@ -34,6 +34,7 @@ import { DEFAULT_INVOICE_LINE_UNIT } from './useInvoiceLineUnits';
 import { invoicingDocumentRoutes, type InvoicingDocumentRoutes } from './useInvoicingDocumentRoutes';
 import type { InvoicingDocumentKind } from './useInvoicingLayout';
 import { defaultWarehouseId, type WarehouseRow } from './useCompanyWarehouse';
+import { toAppRows } from "../evolu/queryLoad";
 
 function parseDocumentAmountPaid(value: unknown): number | null {
   if (value == null || value === '') {
@@ -452,9 +453,8 @@ export function useInvoiceDocument() {
   function existingLocalDocument() {
     if (!local || !documentId.value) return null;
     return (
-      local.documentRows.value.find((row) => row.id === documentId.value) as
-        | import('../evolu/documentMap').EvoluDocumentRow
-        | undefined
+      toAppRows<import('../evolu/documentMap').EvoluDocumentRow>(local.documentRows.value)
+        .find((row) => row.id === documentId.value)
     ) ?? null;
   }
 
@@ -797,9 +797,9 @@ export function useInvoiceDocument() {
     frozenIssuedContent.value = null;
     if (!local || !documentId.value) return;
     try {
-      const rows = (await local.evolu.loadQuery(
-        allDocumentSnapshotsQuery,
-      )) as unknown as EvoluDocumentSnapshotRow[];
+      const rows = toAppRows<EvoluDocumentSnapshotRow>(
+        await local.evolu.loadQuery(allDocumentSnapshotsQuery),
+      );
       const latest = latestSnapshotRowForDocument(rows, documentId.value);
       if (!latest) return;
       const parsed = parseIssuedSnapshotRow(latest);
@@ -976,7 +976,7 @@ export function useInvoiceDocument() {
       markLocalDocumentPaid(
         local.evolu,
         documentId.value as DocumentId,
-        local.documentRows.value as EvoluDocumentRow[],
+        toAppRows<EvoluDocumentRow>(local.documentRows.value),
       );
       await local.refreshAll();
       const apiDoc = local.documentApi(documentId.value as DocumentId);
@@ -1119,12 +1119,14 @@ export function useInvoiceDocument() {
       await local.refreshAll();
     }
     if (wasDraft) {
-      const companyRow = local.companyRows.value.find((c) => c.id === companyId.value);
+      const companyRow = toAppRows<import('../evolu/companyMap').EvoluCompanyRow>(
+        local.companyRows.value,
+      ).find((c) => c.id === companyId.value);
       if (!companyRow) throw new Error('company');
       const issueResult = await local.issueLocalDocumentAsync(
         local.evolu,
         docId as DocumentId,
-        companyRow as import('../evolu/companyMap').EvoluCompanyRow,
+        companyRow,
       );
       if (!issueResult.ok) {
         throw new Error(typeof issueResult.error === 'string' ? issueResult.error : 'issue');

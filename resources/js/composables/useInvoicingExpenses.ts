@@ -15,6 +15,7 @@ import type { EvoluExpenseAttachmentRow } from "@/evolu/expenseAttachmentCrud";
 import { isInvoicingLocalFirst } from "@/evolu/flags";
 import type { CompanyId, InvoicingLocalSchema } from "@/evolu/schema";
 import type { ExpenseListRow } from "@/composables/useExpenseRowMeta";
+import { toAppRows } from "../evolu/queryLoad";
 
 export interface UseInvoicingExpensesResult {
     localFirst: boolean;
@@ -54,7 +55,7 @@ function useServerInvoicingExpenses(companyId: Ref<string>): UseInvoicingExpense
         loading,
         refresh,
         evolu: null,
-        expenseRows: computed(() => [] as EvoluExpenseRow[]),
+        expenseRows: computed(() => toAppRows<EvoluExpenseRow>([])),
     };
 }
 
@@ -74,15 +75,15 @@ function useLocalInvoicingExpenses(companyId: Ref<string>): UseInvoicingExpenses
     });
 
     function attachmentsForExpense(expenseId: string): EvoluExpenseAttachmentRow[] {
-        return attachmentRows.value.filter(
-            (row) => row.expenseId === expenseId,
-        ) as EvoluExpenseAttachmentRow[];
+        return toAppRows<EvoluExpenseAttachmentRow>(
+            attachmentRows.value.filter((row) => row.expenseId === expenseId),
+        );
     }
 
     const expenses = computed(() => {
-        const companyRows = expenseRows.value.filter(
-            (row) => row.companyId === companyId.value,
-        ) as EvoluExpenseRow[];
+        const companyRows = toAppRows<EvoluExpenseRow>(
+            expenseRows.value.filter((row) => row.companyId === companyId.value),
+        );
 
         return filterLocalExpenses(companyRows, filters.value).map((row) =>
             evoluExpenseToListRow(row, attachmentsForExpense(row.id)),
@@ -109,7 +110,7 @@ function useLocalInvoicingExpenses(companyId: Ref<string>): UseInvoicingExpenses
         loading,
         refresh,
         evolu,
-        expenseRows: computed(() => expenseRows.value as EvoluExpenseRow[]),
+        expenseRows: computed(() => toAppRows<EvoluExpenseRow>(expenseRows.value)),
     };
 }
 
@@ -141,9 +142,9 @@ export function useInvoicingExpense(
             const row = expenseRows.value.find(
                 (e) => e.id === expenseId.value && e.companyId === (companyId.value as CompanyId),
             );
-            const attachments = attachmentRows.value.filter(
-                (a) => a.expenseId === expenseId.value,
-            ) as EvoluExpenseAttachmentRow[];
+            const attachments = toAppRows<EvoluExpenseAttachmentRow>(
+                attachmentRows.value.filter((a) => a.expenseId === expenseId.value),
+            );
             expense.value = row ? evoluExpenseToApi(row as EvoluExpenseRow, attachments) : null;
         }
 
@@ -186,6 +187,6 @@ export function useInvoicingExpense(
         loading,
         refresh,
         evolu: null,
-        expenseRows: computed(() => [] as EvoluExpenseRow[]),
+        expenseRows: computed(() => toAppRows<EvoluExpenseRow>([])),
     };
 }
