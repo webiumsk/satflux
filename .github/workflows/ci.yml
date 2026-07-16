@@ -104,6 +104,13 @@ jobs:
             echo "BTCPAY_BASE_URL=http://localhost:14142"
             echo "BTCPAY_API_KEY=stub-server-key"
           } >> .env
+          # Seed-first off for e2e: the seeded user logs in with a password
+          # (an enrolled recovery key would disable password login), and an
+          # un-enrolled user under seed-first gets the mandatory migration
+          # wizard overlay, which blocks every UI interaction. Replace in
+          # place - .env.example sets it to true and dotenv keeps the first
+          # definition it sees.
+          sed -i 's|^SEED_FIRST_REGISTRATION=.*|SEED_FIRST_REGISTRATION=false|' .env
           mkdir -p bootstrap/cache && chmod -R 777 bootstrap/cache
           touch database/e2e.sqlite
 

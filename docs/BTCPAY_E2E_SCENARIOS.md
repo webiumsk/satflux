@@ -77,6 +77,11 @@ docker compose exec -e E2E_BTCPAY=1 php php artisan db:seed --class=E2eTestSeede
 E2E_SEEDED_USER=1 E2E_INVOICING_LOCAL_FIRST=1 E2E_BTCPAY=1 npm run test:e2e
 ```
 
+Aplikácia musí bežať so `SEED_FIRST_REGISTRATION=false`: seedovaný user sa
+prihlasuje heslom (enrolled recovery kľúč by password login vypol - viď
+`User::canUsePasswordLogin`) a bez enrolled kľúča by pod seed-first režimom
+každú stránku prekryl povinný migračný wizard.
+
 ## CI
 
 `.github/workflows/ci.yml` job **E2E**: krok "Start BTCPay Greenfield stub"

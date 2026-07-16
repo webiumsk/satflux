@@ -34,14 +34,15 @@ class E2eTestSeeder extends Seeder
                 'password' => Hash::make(self::PASSWORD),
                 'email_verified_at' => now(),
                 'is_guest' => false,
-                // A recovery phrase counts as enrolled (fixture key, never a
-                // real one): with SEED_FIRST_REGISTRATION=true an un-enrolled
-                // email user gets the MANDATORY legacy-migration wizard over
-                // every page, which blocks all UI interaction in the specs.
-                // The /invoicing device guard is unaffected - it checks
-                // sessionStorage, not this flag.
-                'guest_recovery_public_key' => hash('sha256', 'satflux-e2e-recovery-fixture'),
-                'guest_recovery_enrolled_at' => now(),
+                // Deliberately NO enrolled recovery key (explicit null so a
+                // re-run heals a previously enrolled fixture): enrolling one
+                // disables password login (User::canUsePasswordLogin), which
+                // every spec relies on. The mandatory legacy-migration wizard
+                // that an un-enrolled user would get is avoided by running
+                // the e2e app with SEED_FIRST_REGISTRATION=false instead
+                // (see the e2e job env in .github/workflows/ci.yml).
+                'guest_recovery_public_key' => null,
+                'guest_recovery_enrolled_at' => null,
             ],
         );
 
