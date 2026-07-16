@@ -18,9 +18,10 @@ akceptuje akékoľvek `Authorization`). Žiadna zmena aplikačného kódu.
 ### Greenfield podmnožina
 
 Stores (create/list/get/delete), store users, webhooks (create vracia
-`{id, secret}` - unikátny secret per store, ako reálny BTCPay), users +
-api-keys, invoices (create → `{id, checkoutLink, status:'New'}`, get so
-stavom, list per store), payment-methods/lightning-addresses/apps (prázdne).
+`{id, secret}` - každé volanie dostane vlastný unikátny secret, ako reálny
+BTCPay; jeden obchod ich môže mať viac), users + api-keys, invoices
+(create → `{id, checkoutLink, status:'New'}`, get so stavom, list per
+store), payment-methods/lightning-addresses/apps (prázdne).
 
 ### Control API (len pre testy)
 
@@ -64,11 +65,15 @@ podľa BTCPay user id. Seeder sa nikdy nespustí v `production`.
 # 1) stub (terminál A) - webhooky mieria na docker app na :8080
 APP_URL=http://localhost:8080 node e2e/btcpay-stub/server.mjs
 
-# 2) app + seed (docker beží)
-docker compose exec php php artisan db:seed --class=E2eTestSeeder   # s E2E_BTCPAY=1 v env
-# BTCPAY_BASE_URL=http://localhost:14142 musí byť v .env aplikácie
+# 2) app + seed (docker beží) - E2E_BTCPAY=1 musí ísť DO kontajnera
+docker compose exec -e E2E_BTCPAY=1 php php artisan db:seed --class=E2eTestSeeder
+# .env aplikácie musí mať BTCPAY_BASE_URL na adresu stubu dostupnú
+# Z KONTAJNERA (localhost v kontajneri nie je host!):
+#   BTCPAY_BASE_URL=http://host.docker.internal:14142
+# Na Linuxe pridaj php službe v docker-compose.yml:
+#   extra_hosts: ["host.docker.internal:host-gateway"]
 
-# 3) testy (terminál B)
+# 3) testy (terminál B, bežia na hoste)
 E2E_SEEDED_USER=1 E2E_INVOICING_LOCAL_FIRST=1 E2E_BTCPAY=1 npm run test:e2e
 ```
 

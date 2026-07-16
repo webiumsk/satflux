@@ -23,8 +23,9 @@ test.describe.serial('BTCPay lifecycle (Greenfield stub)', () => {
     }
 
     test('store creation provisions through the stub and registers a webhook', async ({ page }) => {
+        // Email login lands on /dashboard; the goto below does the navigation.
         await loginWithEmail(page, seededUser.email, seededUser.password);
-        await page.waitForURL('**/stores**');
+        await page.waitForURL('**/dashboard');
 
         await page.goto('/stores/create');
         await page.fill('#name', 'E2E Stub Store');
@@ -33,7 +34,9 @@ test.describe.serial('BTCPay lifecycle (Greenfield stub)', () => {
         const createResponse = page.waitForResponse(
             (r) => r.url().includes('/api/stores') && r.request().method() === 'POST',
         );
-        await page.click('button[type="submit"]');
+        // Step-1 of the create wizard submits via a type="button" labeled
+        // "Next Step" (create_store.next_step) - not a submit button.
+        await page.getByRole('button', { name: /next step/i }).click();
         const created = (await (await createResponse).json()) as { data?: { id: string } };
         expect(created.data?.id).toBeTruthy();
         storeId = created.data!.id;
@@ -60,7 +63,8 @@ test.describe.serial('BTCPay lifecycle (Greenfield stub)', () => {
 
         await loginWithEmail(page, seededUser.email, seededUser.password);
         await page.goto(`/stores/${storeId}`);
-        await expect(page.getByText(invoiceId).first()).toBeVisible({ timeout: 15_000 });
+        // Invoice lists render ids truncated to 8 chars (StoreInvoices/RecentInvoices).
+        await expect(page.getByText(invoiceId.substring(0, 8)).first()).toBeVisible({ timeout: 15_000 });
     });
 
     test('settling fires a correctly signed webhook the panel accepts', async () => {
@@ -76,7 +80,7 @@ test.describe.serial('BTCPay lifecycle (Greenfield stub)', () => {
     test('the settled status is visible in the invoice list', async ({ page }) => {
         await loginWithEmail(page, seededUser.email, seededUser.password);
         await page.goto(`/stores/${storeId}`);
-        const row = page.locator(`text=${invoiceId}`).first();
+        const row = page.getByText(invoiceId.substring(0, 8)).first();
         await expect(row).toBeVisible({ timeout: 15_000 });
         await expect(page.getByText(/settled/i).first()).toBeVisible({ timeout: 15_000 });
     });
@@ -91,7 +95,7 @@ test.describe.serial('BTCPay lifecycle (Greenfield stub)', () => {
 
         await loginWithEmail(page, seededUser.email, seededUser.password);
         await page.goto(`/stores/${storeId}`);
-        await expect(page.getByText(invoice.id).first()).toBeVisible({ timeout: 15_000 });
+        await expect(page.getByText(invoice.id.substring(0, 8)).first()).toBeVisible({ timeout: 15_000 });
         await expect(page.getByText(/expired/i).first()).toBeVisible({ timeout: 15_000 });
     });
 

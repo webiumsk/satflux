@@ -76,7 +76,9 @@ function invoicePayload(invoice) {
 }
 
 function createInvoice(storeId, body) {
-    const id = `stub-inv-${randomUUID().slice(0, 8)}`;
+    // No shared prefix: the panel UI truncates invoice ids to 8 chars, so the
+    // id must be unique in its prefix (like real BTCPay invoice ids).
+    const id = `inv${randomUUID().replace(/-/g, "").slice(0, 16)}`;
     const invoice = {
         id,
         storeId,
@@ -112,8 +114,12 @@ async function fireInvoiceSettledWebhook(invoice) {
     });
     const signature = "sha256=" + createHmac("sha256", webhook.secret).update(rawBody).digest("hex");
 
+    // Deliver to the URL the panel registered for this webhook (falls back to
+    // the default endpoint if none was recorded) - matches real BTCPay.
+    const target = webhook.url || `${APP_URL}/api/webhooks/btcpay`;
+
     try {
-        const response = await fetch(`${APP_URL}/api/webhooks/btcpay`, {
+        const response = await fetch(target, {
             method: "POST",
             headers: { "Content-Type": "application/json", "BTCPay-Sig": signature },
             body: rawBody,
