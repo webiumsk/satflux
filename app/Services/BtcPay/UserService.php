@@ -420,7 +420,7 @@ class UserService
             // Format: https://pay.example.org/invite/{inviteId}/{approvalCode}
             if (! preg_match('#/invite/([^/]+)/([^/?]+)#', $invitationUrl, $matches)) {
                 Log::warning('Invalid invitation URL format', [
-                    'invitation_url' => $invitationUrl,
+                    'invitation_url' => '[REDACTED]',
                 ]);
 
                 return false;
@@ -476,7 +476,6 @@ class UserService
                 if ($response->successful()) {
                     Log::info('BTCPay invitation accepted via direct URL call', [
                         'invite_id' => $inviteId,
-                        'url' => $invitationUrl,
                         'status' => $response->status(),
                     ]);
 
@@ -484,7 +483,6 @@ class UserService
                 } else {
                     Log::warning('BTCPay invitation URL call failed', [
                         'invite_id' => $inviteId,
-                        'url' => $invitationUrl,
                         'status' => $response->status(),
                     ]);
 
@@ -495,7 +493,7 @@ class UserService
             return false;
         } catch (\Exception $e) {
             Log::error('BTCPay invitation acceptance failed', [
-                'invitation_url' => $invitationUrl,
+                'invitation_url' => '[REDACTED]',
                 'error' => $e->getMessage(),
             ]);
 

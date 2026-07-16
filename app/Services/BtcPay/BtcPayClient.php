@@ -312,8 +312,10 @@ class BtcPayClient
                 'endpoint' => $endpoint,
                 'method' => $method,
                 'status_code' => $statusCode,
-                'response_body' => $json,
-                'errors' => $json['errors'] ?? null,
+                'response_body' => is_array($json) ? $this->sanitizeData($json) : $json,
+                'errors' => isset($json['errors']) && is_array($json['errors'])
+                    ? $this->sanitizeData($json['errors'])
+                    : ($json['errors'] ?? null),
             ]);
         }
 
@@ -424,10 +426,21 @@ class BtcPayClient
     protected function sanitizeData(array $data): array
     {
         $sanitized = $data;
-        $secretKeys = ['apiKey', 'api_key', 'secret', 'password', 'token', 'webhookSecret'];
+        $secretKeys = array_map('strtolower', [
+            'apiKey',
+            'api_key',
+            'approvalCode',
+            'approval_code',
+            'invitationUrl',
+            'invitation_url',
+            'secret',
+            'password',
+            'token',
+            'webhookSecret',
+        ]);
 
         foreach ($sanitized as $key => $value) {
-            if (in_array(strtolower($key), array_map('strtolower', $secretKeys))) {
+            if (in_array(strtolower((string) $key), $secretKeys, true)) {
                 $sanitized[$key] = '***REDACTED***';
             } elseif (is_array($value)) {
                 $sanitized[$key] = $this->sanitizeData($value);

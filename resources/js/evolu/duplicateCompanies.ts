@@ -24,6 +24,15 @@ export function normalizeCompanyIdentityKey(
     return reg ? `${name}|${reg}` : name;
 }
 
+function normalizeMergeIdentityKey(
+    legalName: string,
+    registrationNumber?: string | null,
+): string | null {
+    const name = legalName.trim().toLowerCase();
+    const reg = (registrationNumber ?? "").trim().toLowerCase();
+    return name && reg ? `${name}|${reg}` : null;
+}
+
 /**
  * Finds the server bridge company matching a local Evolu company identity.
  *
@@ -71,10 +80,11 @@ export function findDuplicateCompanyGroups<
 
     // Phantom same-id repeats are not mergeable duplicates.
     for (const company of dedupeRowsById(companies)) {
-        const key = normalizeCompanyIdentityKey(
+        const key = normalizeMergeIdentityKey(
             company.legal_name,
             company.registration_number ?? null,
         );
+        if (key === null) continue;
         const bucket = groups.get(key) ?? [];
         bucket.push(company);
         groups.set(key, bucket);

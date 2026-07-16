@@ -42,11 +42,19 @@ describe("findDuplicateCompanyGroups with phantom repeats", () => {
         expect(findDuplicateCompanyGroups(rows)).toEqual([]);
     });
 
-    it("still finds real duplicates among phantom repeats", () => {
+    it("does not group companies by legal name alone", () => {
         const rows = [
             { id: "one", legal_name: "MONACOR", registration_number: null },
-            { id: "one", legal_name: "MONACOR", registration_number: null },
             { id: "two", legal_name: "MONACOR", registration_number: null },
+        ];
+        expect(findDuplicateCompanyGroups(rows)).toEqual([]);
+    });
+
+    it("still finds real duplicates with a shared registration number among phantom repeats", () => {
+        const rows = [
+            { id: "one", legal_name: "MONACOR", registration_number: "12345678" },
+            { id: "one", legal_name: "MONACOR", registration_number: "12345678" },
+            { id: "two", legal_name: "MONACOR", registration_number: "12345678" },
         ];
         const groups = findDuplicateCompanyGroups(rows);
         expect(groups).toHaveLength(1);

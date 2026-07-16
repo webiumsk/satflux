@@ -204,7 +204,7 @@ function dedupeNumberSeriesForCompany(
     }
 }
 
-/** Merge duplicate company profiles (same legal name) into the row with the most documents. */
+/** Merge duplicate company profiles (same legal name + registration number) into the row with the most documents. */
 export async function mergeDuplicateCompaniesLocal(
     evolu: Evolu<InvoicingLocalSchema>,
     companies: readonly CompanyMergeListRow[],

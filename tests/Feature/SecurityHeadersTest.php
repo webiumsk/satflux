@@ -144,6 +144,32 @@ class SecurityHeadersTest extends TestCase
     }
 
     #[Test]
+    public function csp_report_endpoint_strips_sensitive_url_parts_before_logging(): void
+    {
+        \Illuminate\Support\Facades\Log::shouldReceive('warning')
+            ->once()
+            ->withArgs(function (string $message, array $context): bool {
+                return $message === 'CSP violation reported'
+                    && ($context['document_uri'] ?? null) === 'https://satflux.io/password/reset'
+                    && ($context['source_file'] ?? null) === 'https://satflux.io/auth/verify-email/123/abcdef'
+                    && ! str_contains(json_encode($context), 'reset-token')
+                    && ! str_contains(json_encode($context), 'user@example.com')
+                    && ! str_contains(json_encode($context), 'signed-secret');
+            });
+
+        $this->call('POST', '/api/csp-report', [], [], [], [
+            'CONTENT_TYPE' => 'application/csp-report',
+        ], json_encode([
+            'csp-report' => [
+                'document-uri' => 'https://satflux.io/password/reset?token=reset-token&email=user@example.com',
+                'violated-directive' => 'script-src',
+                'blocked-uri' => 'data:text/html,<script>secret</script>',
+                'source-file' => 'https://satflux.io/auth/verify-email/123/abcdef?signature=signed-secret&expires=999',
+            ],
+        ]))->assertStatus(204);
+    }
+
+    #[Test]
     public function matomo_origin_is_added_to_script_src_when_configured(): void
     {
         config([
