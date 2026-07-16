@@ -7,11 +7,13 @@
 | `e2e/auth.spec.ts` | login stránka sa načíta; email formulár dostupný cez `?tab=email` v oboch build módoch; nepriihlásený redirect z `/stores`; zlé prihlasovacie údaje ukážu chybu | žiadne |
 | `e2e/emailLogin.spec.ts` | prihlásenie seedovaného používateľa → dashboard; Sanctum session prežije reload; prihlásený je presmerovaný preč z `/login` | `E2E_SEEDED_USER=1` + seeder |
 | `e2e/invoicingGuard.spec.ts` | hard-gate: `/invoicing` bez recovery frázy na zariadení presmeruje na `/account` restore flow | + `E2E_INVOICING_LOCAL_FIRST=1` a build s `VITE_INVOICING_LOCAL_FIRST=true` |
+| `e2e/btcpay.spec.ts` | životný cyklus obchodu + faktúry cez Greenfield stub (create, invoice, settle+webhook, expire, delete) | `E2E_BTCPAY=1` + bežiaci stub + seeder s `E2E_BTCPAY=1`; viď [BTCPAY_E2E_SCENARIOS.md](BTCPAY_E2E_SCENARIOS.md) |
 
-Zámerné vymedzenie: **žiadne BTCPay flows** (provisioning guest účtu, obchody,
-faktúry BTCPay, Lightning) - CI nemá BTCPay Server. Seedovaný používateľ nemá
-žiadne obchody, takže dashboard je deterministický prázdny stav. Rozšírenie o
-BTCPay scenáre vyžaduje Greenfield stub - kandidát na ďalšiu fázu.
+CI nemá reálny BTCPay Server; BTCPay scenáre bežia proti in-memory Greenfield
+stubu (`e2e/btcpay-stub/server.mjs`, zapojený cez `BTCPAY_BASE_URL`) -
+[BTCPAY_E2E_SCENARIOS.md](BTCPAY_E2E_SCENARIOS.md). Local-first invoicing
+BTCPay checkout (QR z Evolu faktúry) ostáva mimo (vyžaduje recovery-phrase
+flow v prehliadači) - kandidát na ďalší follow-up.
 
 ## Lokálne spustenie
 

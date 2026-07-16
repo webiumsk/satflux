@@ -101,6 +101,8 @@ jobs:
             echo "DB_DATABASE=${{ github.workspace }}/database/e2e.sqlite"
             echo "VITE_INVOICING_LOCAL_FIRST=true"
             echo "VITE_EVOLU_RELAY_URL="
+            echo "BTCPAY_BASE_URL=http://localhost:14142"
+            echo "BTCPAY_API_KEY=stub-server-key"
           } >> .env
           mkdir -p bootstrap/cache && chmod -R 777 bootstrap/cache
           touch database/e2e.sqlite
@@ -115,9 +117,26 @@ jobs:
         run: npm run build
 
       - name: Migrate and seed the e2e fixture user
+        env:
+          E2E_BTCPAY: "1"
         run: |
           php artisan migrate --force
           php artisan db:seed --class=E2eTestSeeder --force
+
+      - name: Start BTCPay Greenfield stub
+        env:
+          APP_URL: http://localhost:8000
+          BTCPAY_STUB_PORT: "14142"
+        run: |
+          node e2e/btcpay-stub/server.mjs &
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:14142/_stub/state >/dev/null && break
+            sleep 1
+          done
+          if ! curl -sf http://localhost:14142/_stub/state >/dev/null; then
+            echo "::error::BTCPay stub failed to start on :14142 within 15s"
+            exit 1
+          fi
 
       - name: Start application server
         run: |
@@ -139,6 +158,7 @@ jobs:
           APP_URL: http://localhost:8000
           E2E_SEEDED_USER: "1"
           E2E_INVOICING_LOCAL_FIRST: "1"
+          E2E_BTCPAY: "1"
         run: npx playwright test
 
       - name: Upload Playwright report

@@ -27,7 +27,7 @@ class E2eTestSeeder extends Seeder
             return;
         }
 
-        User::updateOrCreate(
+        $user = User::updateOrCreate(
             ['email' => self::EMAIL],
             [
                 'name' => 'E2E Test User',
@@ -36,5 +36,16 @@ class E2eTestSeeder extends Seeder
                 'is_guest' => false,
             ],
         );
+
+        // BTCPay stub scenarios (E2E_BTCPAY=1, docs/BTCPAY_E2E_SCENARIOS.md):
+        // the invoices page requires a merchant API key and store creation
+        // assigns the merchant by BTCPay user id - the stub accepts any
+        // bearer token, so fixed fake values are enough.
+        if (env('E2E_BTCPAY') === '1') {
+            $user->forceFill([
+                'btcpay_user_id' => 'stub-merchant-user',
+                'btcpay_api_key' => 'stub-merchant-key',
+            ])->save();
+        }
     }
 }

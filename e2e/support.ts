@@ -20,6 +20,15 @@ export const hasSeededUser = process.env.E2E_SEEDED_USER === '1';
 export const hasLocalFirstBuild = process.env.E2E_INVOICING_LOCAL_FIRST === '1';
 
 /**
+ * Set when the BTCPay Greenfield stub (e2e/btcpay-stub/server.mjs) is running
+ * and BTCPAY_BASE_URL points at it - gates the BTCPay lifecycle scenarios.
+ */
+export const hasBtcpayStub = process.env.E2E_BTCPAY === '1';
+
+/** Control-API base of the BTCPay stub. */
+export const btcpayStubUrl = process.env.BTCPAY_STUB_URL ?? 'http://localhost:14142';
+
+/**
  * The cookie consent banner (fixed bottom overlay) intercepts pointer events
  * over the login submit button. Pre-seeding the consent choice keeps it from
  * rendering at all. Must run before the first page.goto.
