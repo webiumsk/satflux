@@ -176,6 +176,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, watch } from 'vue';
 
 const props = defineProps<{
@@ -270,7 +271,8 @@ function parseProductsJson() {
     });
     
     emit('update:products', newProducts);
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     jsonError.value = e.message || 'Invalid JSON';
   }
 }

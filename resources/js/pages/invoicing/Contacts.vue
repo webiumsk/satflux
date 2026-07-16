@@ -380,6 +380,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { toAppRows } from "../../evolu/queryLoad";
 import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -667,7 +668,8 @@ async function runBulk(action: "export_xlsx" | "delete") {
       await load();
       clearSelection();
     }
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     if (e?.response?.data instanceof Blob) {
       const text = await e.response.data.text();
       try {

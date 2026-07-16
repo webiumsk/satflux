@@ -676,6 +676,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, watch, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { currencies } from "../../data/currencies";
@@ -818,7 +819,8 @@ const generatedCode = computed(() => {
 
   try {
     return generateHtmlCode();
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     console.error("Error generating code:", err);
     return `<!-- Error: ${err.message || "Failed to generate code"} -->`;
   }

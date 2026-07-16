@@ -172,6 +172,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
@@ -248,7 +249,8 @@ async function handleDelete() {
     await api.delete(`/stores/${props.storeId}/api-keys/${props.apiKey.id}`);
     emit('delete');
     showDeleteModal.value = false;
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     console.error('Failed to delete API key:', err);
     flash.error(
       (err as { response?: { data?: { message?: string } } }).response?.data?.message ||
@@ -271,7 +273,8 @@ async function confirmRegenerate() {
     // Hand the revealed key to the parent - its modal outlives this card,
     // which gets unmounted when the parent refreshes the list.
     emit('regenerate', response.data.data);
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     console.error('Failed to regenerate API key:', err);
     flash.error(
       (err as { response?: { data?: { message?: string } } }).response?.data?.message ||

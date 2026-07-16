@@ -1171,6 +1171,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { toAppRows } from "../../evolu/queryLoad";
 import { computed, nextTick, onActivated, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -1691,7 +1692,8 @@ async function approveQuote(d: { id: string }) {
     await invoicingApi.documents.action(companyId.value, d.id, 'approve-quote');
     success.value = t("invoicing.quote_approved_success");
     await load();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
@@ -1711,7 +1713,8 @@ async function rejectQuote(d: { id: string }) {
     await invoicingApi.documents.action(companyId.value, d.id, 'reject-quote');
     success.value = t("invoicing.quote_rejected_success");
     await load();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
@@ -1762,7 +1765,8 @@ async function createInvoiceFromQuote(d: { id: string }) {
       name: "invoicing-invoice-edit",
       params: { companyId: companyId.value, documentId: res.id },
     });
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value =
       e?.response?.data?.message ||
       e?.response?.data?.errors?.quote_status?.[0] ||
@@ -1825,7 +1829,8 @@ async function createFinalInvoice(d: { id: string }) {
       name: "invoicing-invoice-edit",
       params: { companyId: companyId.value, documentId: res.id },
     });
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value =
       e?.response?.data?.message ||
       e?.response?.data?.errors?.status?.[0] ||
@@ -2157,7 +2162,8 @@ async function runBulk(action: string) {
       await load();
       clearSelection();
     }
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     if (isAbortError(e)) {
       // User-initiated cancel - no partial file exists (all-or-nothing on
       // the server); re-running the action starts from scratch.
@@ -2346,7 +2352,8 @@ async function issueDoc(d: { id: string }) {
     }
     await invoicingApi.documents.action(companyId.value, d.id, 'issue');
     await load();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
@@ -2368,7 +2375,8 @@ async function markPaid(d: { id: string }) {
     }
     await invoicingApi.documents.action(companyId.value, d.id, 'mark-paid');
     await load();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
@@ -2386,7 +2394,8 @@ async function unmarkPaid(d: { id: string }) {
     }
     await invoicingApi.documents.action(companyId.value, d.id, 'unmark-paid');
     await load();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
@@ -2422,7 +2431,8 @@ async function downloadPdf(d: { id: string; number?: string }) {
     a.download = `invoice-${d.number || d.id}.pdf`;
     a.click();
     URL.revokeObjectURL(url);
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
@@ -2454,7 +2464,8 @@ async function downloadIsdoc(d: { id: string; number?: string }) {
       `${d.number || d.id}.isdoc`,
       ctx.bridgeCompanyId,
     );
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
@@ -2479,7 +2490,8 @@ async function downloadUbl(d: { id: string; number?: string }) {
       `${d.number || d.id}.xml`,
       ctx.bridgeCompanyId,
     );
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
@@ -2530,7 +2542,8 @@ async function duplicateDoc(d: { id: string; type?: string }) {
       name: routes.edit,
       params: { companyId: companyId.value, documentId: res.id },
     });
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
@@ -2570,7 +2583,8 @@ async function deleteDoc(d: {
     }
     await invoicingApi.documents.delete(companyId.value, d.id);
     await load();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;
@@ -2592,7 +2606,8 @@ async function cancelDoc(d: { id: string }) {
     }
     await invoicingApi.documents.action(companyId.value, d.id, 'cancel');
     await load();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("common.error");
   } finally {
     actionId.value = null;

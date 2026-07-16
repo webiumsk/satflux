@@ -731,6 +731,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -848,7 +849,8 @@ async function loadAddresses() {
     if (response.data.limit) {
       limit.value = response.data.limit;
     }
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     flashStore.error(
       err.response?.data?.message || "Failed to load lightning addresses",
     );
@@ -942,7 +944,8 @@ async function handleSubmit() {
     await loadAddresses();
     closeForm();
     flashStore.success(t("stores.lightning_address_added"));
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     console.error("Failed to save address:", err);
     const errorMessage =
       err.response?.data?.message || t("stores.lightning_address_save_failed");
@@ -987,7 +990,8 @@ async function handleDelete() {
     await loadAddresses();
     closeDeleteModal();
     flashStore.success(t("stores.lightning_address_removed"));
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     console.error("Failed to delete address:", err);
     const msg =
       err.response?.data?.message ||

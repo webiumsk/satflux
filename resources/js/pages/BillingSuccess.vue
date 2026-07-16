@@ -76,6 +76,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../utils/apiError";
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '../store/auth';
@@ -107,7 +108,8 @@ onMounted(async () => {
           await authStore.fetchUser();
         }
       }
-    } catch (err: any) {
+    } catch (rawError) {
+      const err = asApiError(rawError);
       console.error('Failed to process subscription success:', err);
       error.value = err.response?.data?.message || 'Failed to process subscription. Please contact support.';
     } finally {

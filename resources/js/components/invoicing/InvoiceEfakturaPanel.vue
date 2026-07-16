@@ -71,6 +71,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
@@ -292,7 +293,8 @@ async function refreshStatus() {
       await loadCompliance();
     }
     panelSuccess.value = t('invoicing.efaktura_panel_refresh_success');
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     panelError.value = extractError(e);
   } finally {
     busy.value = false;
@@ -332,7 +334,8 @@ async function send() {
       await loadCompliance();
     }
     emit('sent');
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     panelError.value = extractError(e);
     await loadCompliance();
   } finally {

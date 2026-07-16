@@ -673,6 +673,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -789,7 +790,8 @@ async function loadSettings() {
         : "",
       webhookSigningSecret: "",
     };
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     const msg = err.response?.data?.message || "Failed to load Stripe settings";
     if (err.response?.status === 403) {
       showUpgradeModal.value = true;
@@ -840,7 +842,8 @@ async function saveSettings() {
     settings.value = res.data;
     setFlash(t("stores.stripe_settings_saved"), "success");
     await loadSettings();
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     const data = err.response?.data;
     if (err.response?.status === 422 && data?.errors) {
       const errors: Record<string, string> = {};
@@ -871,7 +874,8 @@ async function testConnection() {
       d.success ? d.message : d.message || "Connection failed",
       d.success ? "success" : "error",
     );
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     setFlash(err.response?.data?.message || "Connection test failed", "error");
   } finally {
     testingConnection.value = false;
@@ -893,7 +897,8 @@ async function registerWebhook() {
       `/stores/${storeId.value}/stripe/webhook/status`,
     );
     webhookStatus.value = webhookRes.data;
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     setFlash(
       err.response?.data?.message || "Webhook registration failed",
       "error",
@@ -911,7 +916,8 @@ async function clearCredentials() {
     setFlash(t("stores.stripe_credentials_cleared"), "success");
     showDeleteConfirm.value = false;
     await loadSettings();
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     setFlash(
       err.response?.data?.message || "Failed to clear credentials",
       "error",

@@ -307,6 +307,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, watch, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
@@ -444,7 +445,8 @@ async function uploadImage() {
     if (fileInput.value) {
       fileInput.value.value = '';
     }
-  } catch (error: any) {
+  } catch (rawError) {
+    const error = asApiError(rawError);
     console.error('Failed to upload image:', error);
     flash.error(
       error.response?.data?.message || t('stores.product_image_upload_failed')

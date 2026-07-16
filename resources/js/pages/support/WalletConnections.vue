@@ -372,6 +372,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, onMounted, computed, watch } from "vue";
 import api from "../../services/api";
 import RevealSecretModal from "../../components/support/RevealSecretModal.vue";
@@ -486,7 +487,8 @@ async function markConnected(connection: any) {
       `/support/wallet-connections/${connection.id}/mark-connected`,
     );
     await loadConnections();
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     alert(
       err.response?.data?.message || "Failed to mark connection as connected",
     );

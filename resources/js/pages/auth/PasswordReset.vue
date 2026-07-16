@@ -163,6 +163,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -211,7 +212,8 @@ async function handleSendResetLink() {
       email: form.value.email,
     });
     flashStore.success(t("auth.password_reset_sent"));
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     flashStore.error(
       err.response?.data?.message || t("auth.failed_send_reset"),
     );
@@ -244,7 +246,8 @@ async function handleSetNewPassword() {
     setTimeout(() => {
       window.location.href = "/login";
     }, 2500);
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     flashStore.error(
       err.response?.data?.errors?.email?.[0] ||
         err.response?.data?.message ||

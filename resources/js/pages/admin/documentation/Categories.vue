@@ -157,6 +157,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../../utils/apiError";
 import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { adminDocumentationApi } from '../../../services/api';
@@ -238,7 +239,8 @@ const handleSubmit = async () => {
     // Wait a bit to ensure DB transaction is committed
     await new Promise(resolve => setTimeout(resolve, 100));
     await loadCategories();
-  } catch (error: any) {
+  } catch (rawError) {
+    const error = asApiError(rawError);
     console.error('Failed to save category:', error);
     alert(error.response?.data?.message || t('admin.documentation.categories.save_error'));
   } finally {
@@ -251,7 +253,8 @@ const deleteCategory = async (id: string) => {
   try {
     await adminDocumentationApi.categories.delete(id);
     loadCategories();
-  } catch (error: any) {
+  } catch (rawError) {
+    const error = asApiError(rawError);
     console.error('Failed to delete category:', error);
     alert(error.response?.data?.message || t('admin.documentation.categories.delete_error'));
   }

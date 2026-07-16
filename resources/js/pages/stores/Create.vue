@@ -581,6 +581,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, onUnmounted, watch, nextTick, defineAsyncComponent } from "vue";
 import { useSamRockPairing } from "../../composables/useSamRockPairing";
 import { useRouter } from "vue-router";
@@ -802,7 +803,8 @@ async function startSamRockPairing() {
   try {
     await storesApi.setWalletType(sid, "aqua_boltz");
     await storesStore.fetchStore(sid);
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     samrockErrorMessage.value =
       err.response?.data?.message ?? t("stores.samrock_error");
     return;
@@ -898,7 +900,8 @@ async function submitStep1Create() {
     });
     createdStoreId.value = store.id;
     currentStep.value = 2;
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     const msg =
       err.response?.data?.message || t("create_store.failed_to_create");
     const errors = err.response?.data?.errors
@@ -948,7 +951,8 @@ async function submitWalletConfiguration() {
     await storesStore.fetchStore(sid);
     currentStep.value = 3;
     startBotWaitSequence();
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     const msg =
       err.response?.data?.message || t("create_store.failed_to_create");
     const errors = err.response?.data?.errors

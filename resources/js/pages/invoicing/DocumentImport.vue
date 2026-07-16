@@ -350,6 +350,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { computed, onMounted, reactive, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import InvoicingAppHeader from "../../components/invoicing/InvoicingAppHeader.vue";
@@ -594,7 +595,8 @@ async function loadPreview() {
     for (const field of DOCUMENT_IMPORT_FIELD_KEYS) {
       mapping[field] = suggested[field] ?? null;
     }
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("errors.generic");
     headers.value = [];
   } finally {
@@ -639,7 +641,8 @@ async function goToConfirm() {
     previewRows.value = data.preview ?? [];
     rowCount.value = data.row_count ?? 0;
     step.value = 3;
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("errors.generic");
   } finally {
     loading.value = false;
@@ -702,7 +705,8 @@ async function runImport() {
       errors: result.errors ?? [],
     };
     importDone.value = true;
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("errors.generic");
   } finally {
     importing.value = false;

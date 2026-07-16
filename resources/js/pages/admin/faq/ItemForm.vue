@@ -97,6 +97,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../../utils/apiError";
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -167,7 +168,8 @@ const handleSubmit = async () => {
       await adminFaqApi.items.create(form.value);
     }
     router.push('/admin/faq');
-  } catch (error: any) {
+  } catch (rawError) {
+    const error = asApiError(rawError);
     console.error('Failed to save item:', error);
     alert(error.response?.data?.message || t('admin.faq.items.save_error'));
   } finally {

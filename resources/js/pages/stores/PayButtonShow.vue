@@ -97,6 +97,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, unref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -235,7 +236,8 @@ async function handleDelete() {
   try {
     await appsStore.deleteApp(storeId.value, appId.value);
     router.push({ name: "stores-show", params: { id: storeId.value } });
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     const msg = err.response?.data?.message || "Failed to delete app";
     deleteError.value = msg;
     flashStore.error(msg);

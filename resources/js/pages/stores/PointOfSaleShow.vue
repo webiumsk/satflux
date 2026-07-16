@@ -1147,6 +1147,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, watch, watchEffect, inject, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -1769,7 +1770,8 @@ async function handleSubmit() {
         success.value = "Settings saved successfully";
       }
     }
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     // Only set error if we don't have success
     if (!success.value) {
       const msg = err.response?.data?.message || t("settings.failed_to_update");
@@ -1802,7 +1804,8 @@ async function handleArchive() {
     } else {
       vueRouter!.push({ name: "stores-show", params: { id: storeId.value } });
     }
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     const msg = err.response?.data?.message || "Failed to archive app";
     error.value = msg;
     flashStore.error(msg);
@@ -1827,7 +1830,8 @@ async function handleUnarchive() {
         layoutRef.value.app = updatedApp;
       }
     }
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     const msg = err.response?.data?.message || "Failed to unarchive app";
     error.value = msg;
     flashStore.error(msg);
@@ -1850,7 +1854,8 @@ async function handleDelete() {
     } else {
       vueRouter!.push({ name: "stores-show", params: { id: storeId.value } });
     }
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     const msg = err.response?.data?.message || "Failed to delete app";
     deleteError.value = msg;
     flashStore.error(msg);

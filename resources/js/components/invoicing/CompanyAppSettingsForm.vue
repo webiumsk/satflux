@@ -175,6 +175,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
@@ -276,7 +277,8 @@ async function save() {
 
     emit('updated', await invoicingApi.companies.updateAppSettings(props.companyId, payload));
     notifySaved();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');
   } finally {
     saving.value = false;

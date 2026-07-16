@@ -1762,6 +1762,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, nextTick, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import {
@@ -1982,7 +1983,8 @@ async function onEventImageChange(e: Event) {
       eventForm.value.eventLogoFileId = d.eventLogoFileId ?? d.id ?? "";
       eventForm.value.eventLogoUrl = d.eventLogoUrl ?? d.logoUrl ?? d.url ?? "";
       showSuccess(t("tickets.image_uploaded"));
-    } catch (err: any) {
+    } catch (rawError) {
+      const err = asApiError(rawError);
       imagePreview.value = null;
       showError(
         err?.response?.data?.message ||
@@ -2010,7 +2012,8 @@ async function clearEventImage() {
       const d = response.data?.data ?? {};
       eventForm.value.eventLogoFileId = d.eventLogoFileId ?? "";
       eventForm.value.eventLogoUrl = d.eventLogoUrl ?? "";
-    } catch (err: any) {
+    } catch (rawError) {
+      const err = asApiError(rawError);
       showError(
         err?.response?.data?.message || err?.message || "Failed to remove logo",
       );
@@ -2082,7 +2085,8 @@ async function loadTicketTypes(eventId: string) {
       props.store.id,
       eventId,
     );
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     eventTicketTypes.value = [];
     showError(
       err?.response?.data?.message ||
@@ -2200,7 +2204,8 @@ async function handleSubmitEvent() {
     }
     cancelForm();
     await loadEvents();
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     const msg =
       err?.response?.data?.message ||
       (Array.isArray(err?.response?.data)
@@ -2272,7 +2277,8 @@ async function handleToggleEvent(event: TicketEvent) {
         ? t("tickets.event_disabled")
         : t("tickets.event_activated"),
     );
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     showError(
       err?.response?.data?.message || err?.message || "Failed to toggle event",
     );
@@ -2291,7 +2297,8 @@ async function handleDeleteEvent(event: TicketEvent) {
     if (expandedEventId.value === event.id) expandedEventId.value = null;
     await loadEvents();
     showSuccess(t("tickets.event_deleted"));
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     showError(
       err?.response?.data?.message || err?.message || "Failed to delete event",
     );
@@ -2328,7 +2335,8 @@ async function handleSubmitTicketType(eventId: string) {
     }
     cancelTicketTypeForm();
     await loadTicketTypes(eventId);
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     const msg =
       err?.response?.data?.message ||
       (Array.isArray(err?.response?.data)
@@ -2368,7 +2376,8 @@ async function handleToggleTicketType(eventId: string, tt: TicketType) {
         ? t("tickets.ticket_type_disabled")
         : t("tickets.ticket_type_activated"),
     );
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     showError(
       err?.response?.data?.message ||
         err?.message ||
@@ -2385,7 +2394,8 @@ async function handleDeleteTicketType(eventId: string, tt: TicketType) {
     await ticketsStore.deleteTicketType(props.store.id, eventId, tt.id);
     await loadTicketTypes(eventId);
     showSuccess(t("tickets.ticket_type_deleted"));
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     showError(
       err?.response?.data?.message ||
         err?.message ||
@@ -2404,7 +2414,8 @@ async function loadTickets(eventId: string, search?: string) {
       eventId,
       search || undefined,
     );
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     eventTickets.value = [];
     showError(
       err?.response?.data?.message || err?.message || "Failed to load tickets",
@@ -2475,7 +2486,8 @@ async function handleCheckIn(eventId: string, ticket: Ticket) {
     );
     showSuccess(t("tickets.checkin_success", { number: ticket.ticketNumber }));
     await loadTickets(eventId, ticketSearch.value || undefined);
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     showError(
       err?.response?.data?.message ||
         err?.message ||

@@ -127,6 +127,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { EfakturaInboundPollStats } from '../../composables/useCompanyEfakturaSettings';
@@ -246,7 +247,8 @@ async function pollInboundNow() {
         },
       });
     }
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     pollError.value = true;
     pollMessage.value = e?.response?.data?.message ?? t('common.error_generic');
   } finally {
@@ -292,7 +294,8 @@ async function save() {
     form.efaktura_sapi_client_secret = '';
     secretSet.value = efakturaSecretIsSet(updated);
     notifySaved();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');
   } finally {
     saving.value = false;

@@ -225,6 +225,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { Store } from '../../store/stores';
@@ -296,7 +297,8 @@ async function fetchInvoices() {
     
     const response = await api.get(`/stores/${props.store.id}/invoices`, { params });
     invoices.value = response.data.data || [];
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     flashStore.error(err.response?.data?.message || t('stores.failed_to_load_invoices'));
     invoices.value = [];
   } finally {
@@ -364,7 +366,8 @@ async function handleExportInvoices(format: 'csv' | 'xlsx') {
       downloadBlob(blob, response.headers, 'invoices.xlsx');
       flashStore.success(t('stores.export_xlsx_success'));
     }
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     if (err.response?.status === 403) {
       showXlsxUpgradeModal.value = true;
     } else {

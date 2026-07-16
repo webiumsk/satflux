@@ -189,6 +189,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { invoicingApi } from "../../services/api";
@@ -293,7 +294,8 @@ async function loadPreview() {
     const form = new FormData();
     form.append("file", selectedFile.value);
     preview.value = await invoicingApi.expenses.importAttachments.preview<NonNullable<typeof preview.value>>(props.companyId, form);
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("errors.generic");
     preview.value = null;
   } finally {
@@ -313,7 +315,8 @@ async function submitImport() {
     if ((data.attached ?? 0) > 0) {
       emit("imported");
     }
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("errors.generic");
   } finally {
     importing.value = false;

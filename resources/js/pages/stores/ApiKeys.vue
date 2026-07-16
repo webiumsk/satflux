@@ -533,6 +533,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -623,7 +624,8 @@ async function fetchApiKeys() {
     if (response.data.limit) {
       limit.value = response.data.limit;
     }
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     flashStore.error(err.response?.data?.message || "Failed to load API keys");
   } finally {
     loading.value = false;
@@ -666,7 +668,8 @@ async function handleSubmit() {
 
     // Refresh list
     await fetchApiKeys();
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     const msg =
       err.response?.data?.message || t("stores.api_key_create_failed");
     if (err.response?.status === 403 && msg.includes("maximum number")) {
