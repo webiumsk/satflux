@@ -421,12 +421,6 @@ parameters:
 			path: app/Http/Controllers/Invoicing/BusinessDocumentController.php
 
 		-
-			message: '#^If condition is always false\.$#'
-			identifier: if.alwaysFalse
-			count: 1
-			path: app/Http/Controllers/Invoicing/BusinessDocumentController.php
-
-		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\AuditLog\>\:\:map\(\) contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 1
@@ -3357,7 +3351,7 @@ parameters:
 		-
 			message: '#^Unreachable statement \- code above always terminates\.$#'
 			identifier: deadCode.unreachable
-			count: 2
+			count: 1
 			path: app/Services/Invoicing/CompanyStockMovementService.php
 
 		-

@@ -146,6 +146,7 @@ export const StockMovementSource = union(
     "import",
     "document_issue",
     "document_cancel",
+    "document_adjustment",
     "transfer",
     "purchase_receipt",
 );

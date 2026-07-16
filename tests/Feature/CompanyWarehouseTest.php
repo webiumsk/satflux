@@ -317,4 +317,58 @@ class CompanyWarehouseTest extends TestCase
         $this->assertEquals(5.0, $this->stockQuantity($item, $from));
         $this->assertEquals(3.0, $this->stockQuantity($item, $to));
     }
+
+    #[Test]
+    public function transfer_cannot_exceed_available_stock(): void
+    {
+        $from = $this->defaultWarehouse($this->company);
+        $to = CompanyWarehouse::create([
+            'company_id' => $this->company->id,
+            'name' => 'Pobočka',
+            'type' => CompanyWarehouseType::Own,
+            'deduct_on_issue' => true,
+            'is_active' => true,
+        ]);
+
+        $item = $this->createStockItem($this->company, [
+            'name' => 'Transfer item',
+            'sku' => 'tr-2',
+        ], quantity: 2);
+
+        $this->actingAs($this->proUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/stock-items/{$item->id}/transfer", [
+                'from_warehouse_id' => $from->id,
+                'to_warehouse_id' => $to->id,
+                'quantity' => 5,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['quantity']);
+
+        // Nothing moved.
+        $this->assertEquals(2.0, $this->stockQuantity($item, $from));
+        $this->assertEquals(0.0, $this->stockQuantity($item, $to));
+    }
+
+    #[Test]
+    public function warehouse_with_movement_history_cannot_be_deleted(): void
+    {
+        $warehouse = $this->defaultWarehouse($this->company);
+        $item = $this->createStockItem($this->company, [
+            'name' => 'History item',
+            'sku' => 'hist-1',
+        ], quantity: 1);
+        // Record a real movement (balances alone do not create history),
+        // then drain the balance so only the history blocks deletion.
+        app(\App\Services\Invoicing\CompanyStockMovementService::class)
+            ->recordManualChange($item, $warehouse, previousQuantity: 0);
+        app(\App\Services\Invoicing\CompanyStockBalanceService::class)
+            ->setQuantity($warehouse, $item, 0);
+
+        $this->actingAs($this->proUser)
+            ->deleteJson("/api/invoicing/companies/{$this->company->id}/warehouses/{$warehouse->id}")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['warehouse']);
+
+        $this->assertDatabaseHas('company_warehouses', ['id' => $warehouse->id]);
+    }
 }

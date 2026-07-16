@@ -25,15 +25,23 @@ class BusinessDocumentIssueService
 
     public function issue(BusinessDocument $document): BusinessDocument
     {
-        if (! $document->canIssue()) {
-            throw ValidationException::withMessages([
-                'status' => ['Document cannot be issued in its current status.'],
-            ]);
-        }
-
-        $document->load(['company', 'lines', 'store', 'contact']);
-
+        // Lock + re-check INSIDE the transaction: two concurrent issue calls
+        // both passing an unlocked canIssue() would burn two numbers and
+        // apply stock twice (Cursor PR #64).
         $issued = DB::transaction(function () use ($document) {
+            $document = BusinessDocument::query()
+                ->whereKey($document->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $document->load(['company', 'lines', 'store', 'contact']);
+
+            if (! $document->canIssue()) {
+                throw ValidationException::withMessages([
+                    'status' => ['Document cannot be issued in its current status.'],
+                ]);
+            }
+
             $number = $this->sequenceService->nextNumber(
                 $document->company,
                 $document->type->value
@@ -80,6 +88,10 @@ class BusinessDocumentIssueService
         });
 
         $this->complianceSubmissionService->queueIfEligible($issued);
+
+        // The transaction worked on a locked re-fetch - sync the caller's
+        // instance so the pre-lock contract (in-place mutation) holds.
+        $document->refresh();
 
         return $issued;
     }
