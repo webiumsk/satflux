@@ -98,7 +98,7 @@ describe("server snapshot field validation", () => {
             }).company[0];
 
             expect(prepared.jurisdiction).toBe(jurisdiction);
-            expect(CompanyJurisdiction.from(prepared.jurisdiction).ok).toBe(true);
+            expect(CompanyJurisdiction.from(prepared.jurisdiction as string).ok).toBe(true);
         }
     });
 
