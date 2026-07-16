@@ -78,6 +78,8 @@ class ProcessBtcPayWebhook implements ShouldQueue
                 try {
                     $owner = $store->user;
                     if ($owner instanceof User) {
+                        // md5 on purpose: must derive the exact key that
+                        // StoreDashboardController::show writes under.
                         $apiKeyHash = md5($owner->getBtcPayApiKeyOrFail());
                         Cache::forget("btcpay:dashboard:{$store->id}:{$apiKeyHash}");
                     }
