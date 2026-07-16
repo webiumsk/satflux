@@ -27,14 +27,34 @@ class E2eTestSeeder extends Seeder
             return;
         }
 
-        User::updateOrCreate(
+        $user = User::updateOrCreate(
             ['email' => self::EMAIL],
             [
                 'name' => 'E2E Test User',
                 'password' => Hash::make(self::PASSWORD),
                 'email_verified_at' => now(),
                 'is_guest' => false,
+                // Deliberately NO enrolled recovery key (explicit null so a
+                // re-run heals a previously enrolled fixture): enrolling one
+                // disables password login (User::canUsePasswordLogin), which
+                // every spec relies on. The mandatory legacy-migration wizard
+                // that an un-enrolled user would get is avoided by running
+                // the e2e app with SEED_FIRST_REGISTRATION=false instead
+                // (see the e2e job env in .github/workflows/ci.yml).
+                'guest_recovery_public_key' => null,
+                'guest_recovery_enrolled_at' => null,
             ],
         );
+
+        // BTCPay stub scenarios (E2E_BTCPAY=1, docs/BTCPAY_E2E_SCENARIOS.md):
+        // the invoices page requires a merchant API key and store creation
+        // assigns the merchant by BTCPay user id - the stub accepts any
+        // bearer token, so fixed fake values are enough.
+        if (env('E2E_BTCPAY') === '1') {
+            $user->forceFill([
+                'btcpay_user_id' => 'stub-merchant-user',
+                'btcpay_api_key' => 'stub-merchant-key',
+            ])->save();
+        }
     }
 }
