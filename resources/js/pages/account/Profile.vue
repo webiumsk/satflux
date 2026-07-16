@@ -527,6 +527,71 @@
                 {{ t("account.device_change_passphrase_submit") }}
               </button>
             </form>
+
+            <!-- Passkey unlock shortcuts (WebAuthn PRF slots on the envelope) -->
+            <div class="pt-3 border-t border-gray-700 space-y-2">
+              <p class="text-sm text-gray-200">{{ t("account.passkey_section_title") }}</p>
+              <p class="text-xs text-gray-500">{{ t("account.passkey_loss_warning") }}</p>
+              <ul v-if="passkeySlots.length" class="space-y-2">
+                <li
+                  v-for="slot in passkeySlots"
+                  :key="slot.id"
+                  class="flex items-center justify-between gap-3 rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2"
+                >
+                  <span class="min-w-0 text-xs text-gray-300">
+                    <span class="block font-medium text-gray-200 truncate">{{ slot.label }}</span>
+                    <span class="block text-gray-500">
+                      {{
+                        slot.lastUsedAt
+                          ? t("account.passkey_last_used", { date: formatDate(slot.lastUsedAt) })
+                          : t("account.passkey_never_used")
+                      }}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    class="shrink-0 px-2 py-1 border border-red-500/40 rounded-lg text-xs text-red-300 hover:bg-red-500/10"
+                    @click="removePasskey(slot)"
+                  >
+                    {{ t("account.passkey_remove") }}
+                  </button>
+                </li>
+              </ul>
+              <button
+                v-if="passkeySupported"
+                type="button"
+                class="px-3 py-1.5 border border-gray-600 rounded-lg text-xs text-gray-300 hover:bg-gray-700"
+                @click="showAddPasskey = !showAddPasskey"
+              >
+                {{ t("account.passkey_add_button") }}
+              </button>
+              <p v-else class="text-xs text-gray-500">{{ t("account.passkey_unsupported") }}</p>
+              <form v-if="showAddPasskey" class="space-y-2 pt-1" @submit.prevent="submitAddPasskey">
+                <input
+                  v-model="passkeyLabelInput"
+                  type="text"
+                  maxlength="64"
+                  class="w-full rounded-lg border border-gray-600 bg-gray-900/80 px-3 py-2 text-sm text-gray-200"
+                  :placeholder="t('account.passkey_label_placeholder')"
+                />
+                <input
+                  v-model="passkeyPassphraseInput"
+                  type="password"
+                  autocomplete="current-password"
+                  class="w-full rounded-lg border border-gray-600 bg-gray-900/80 px-3 py-2 text-sm text-gray-200"
+                  :placeholder="t('account.device_passphrase_placeholder')"
+                />
+                <p class="text-xs text-gray-500">{{ t("account.passkey_passphrase_hint") }}</p>
+                <button
+                  type="submit"
+                  class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs text-white disabled:opacity-50"
+                  :disabled="passkeyBusy"
+                >
+                  {{ passkeyBusy ? t("common.loading") : t("account.passkey_add_submit") }}
+                </button>
+              </form>
+              <p v-if="passkeyError" class="text-xs text-red-400">{{ passkeyError }}</p>
+            </div>
           </div>
         </div>
 
@@ -1231,6 +1296,19 @@
             <p class="text-sm text-gray-300">
               {{ t("account.device_unlock_detail") }}
             </p>
+            <template v-if="passkeySupported && passkeySlots.length > 0">
+              <button
+                type="button"
+                class="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-sm font-medium text-white disabled:opacity-50"
+                :disabled="deviceUnlockLoading"
+                @click="submitDeviceUnlockWithPasskey"
+              >
+                {{ t("account.passkey_unlock_button") }}
+              </button>
+              <p class="text-center text-xs text-gray-500">
+                {{ t("account.passkey_or_passphrase") }}
+              </p>
+            </template>
             <form autocomplete="on" @submit.prevent="submitDeviceUnlock">
               <input
                 v-model="devicePassphraseInput"
@@ -1445,12 +1523,23 @@ import {
   getStoredAccountMnemonic,
 } from "../../services/accountSeed";
 import {
+  addPasskeyToRememberedDevice,
   changeDevicePassphrase,
   forgetDevice,
   isDeviceRemembered,
+  listDevicePasskeySlots,
+  passkeyPrfUnlockProvider,
+  removeDevicePasskeySlot,
   rememberDeviceWithPassphrase,
+  unlockDeviceWithPasskey,
   unlockDeviceWithPassphrase,
+  type PasskeySlotMetadata,
 } from "../../services/deviceUnlock/provider";
+import {
+  PasskeyCancelledError,
+  PasskeyPrfUnsupportedError,
+  PasskeyUnsupportedError,
+} from "../../services/deviceUnlock/passkeyPrf";
 import { isAcceptableDevicePassphrase } from "../../services/deviceUnlock/envelope";
 import { isInvoicingLocalFirst } from "../../evolu/flags";
 import { getEvoluRelayBuildInfo, normalizeEvoluRelayBaseUrl } from "../../evolu/config";
@@ -1557,6 +1646,7 @@ async function refreshDeviceRemembered(): Promise<void> {
   } catch {
     deviceRemembered.value = false;
   }
+  await refreshPasskeyState();
 }
 
 /** Unlock this device with the device passphrase (no need to retype the phrase). */
@@ -1584,6 +1674,79 @@ async function forgetThisDevice(): Promise<void> {
   await forgetDevice();
   await refreshDeviceRemembered();
   flashStore.success(t("account.device_forgotten"));
+}
+
+const passkeySupported = ref(false);
+const passkeySlots = ref<PasskeySlotMetadata[]>([]);
+const showAddPasskey = ref(false);
+const passkeyLabelInput = ref("");
+const passkeyPassphraseInput = ref("");
+const passkeyError = ref("");
+const passkeyBusy = ref(false);
+
+async function refreshPasskeyState(): Promise<void> {
+  try {
+    passkeySupported.value = await passkeyPrfUnlockProvider.isSupported();
+    passkeySlots.value = await listDevicePasskeySlots();
+  } catch {
+    passkeySlots.value = [];
+  }
+}
+
+/** Silent on user cancel; typed messages for unsupported authenticators. */
+function passkeyErrorMessage(error: unknown): string {
+  if (error instanceof PasskeyCancelledError) return "";
+  if (error instanceof PasskeyPrfUnsupportedError) return t("account.passkey_prf_unsupported");
+  if (error instanceof PasskeyUnsupportedError) return t("account.passkey_unsupported");
+  return t("account.device_unlock_failed");
+}
+
+/** Unlock this device with a passkey - one platform prompt, no typing. */
+async function submitDeviceUnlockWithPasskey(): Promise<void> {
+  deviceUnlockError.value = "";
+  deviceUnlockLoading.value = true;
+  try {
+    resetEvoluBootstrapForRetry();
+    await unlockDeviceWithPasskey();
+    storedGuestMnemonic.value = getStoredGuestMnemonic();
+    showRestoreOnDeviceModal.value = false;
+    const { evolu } = await import("@/evolu/client");
+    allowEvoluPageReload();
+    evolu.reloadApp();
+  } catch (error) {
+    deviceUnlockError.value = passkeyErrorMessage(error);
+  } finally {
+    deviceUnlockLoading.value = false;
+  }
+}
+
+async function submitAddPasskey(): Promise<void> {
+  passkeyError.value = "";
+  passkeyBusy.value = true;
+  try {
+    const label = passkeyLabelInput.value.trim() || t("account.passkey_default_label");
+    passkeySlots.value = await addPasskeyToRememberedDevice(passkeyPassphraseInput.value, label);
+    passkeyPassphraseInput.value = "";
+    passkeyLabelInput.value = "";
+    showAddPasskey.value = false;
+    flashStore.success(t("account.passkey_added"));
+  } catch (error) {
+    passkeyError.value = passkeyErrorMessage(error);
+  } finally {
+    passkeyBusy.value = false;
+  }
+}
+
+async function removePasskey(slot: PasskeySlotMetadata): Promise<void> {
+  if (!window.confirm(t("account.passkey_remove_confirm", { label: slot.label }))) {
+    return;
+  }
+  try {
+    passkeySlots.value = await removeDevicePasskeySlot(slot.id);
+    flashStore.success(t("account.passkey_removed"));
+  } catch {
+    passkeyError.value = t("account.device_unlock_failed");
+  }
 }
 
 async function submitChangeDevicePassphrase(): Promise<void> {

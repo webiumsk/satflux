@@ -59,3 +59,7 @@ toku (preview počtov, potvrdenie, merge sémantika, report) je identický.
 `resources/js/__tests__/invoicingBackupCrypto.test.ts` - round-trip s plnou
 validáciou, zlá fráza, tamper detekcia, klasifikácia súborov, generátor
 (6 slov z wordlistu). Testy používajú nízke iterácie; produkcia kalibruje.
+
+## Súvisiace
+
+- Passkey-PRF slot pre device unlock: [PASSKEY_PRF_DEVICE_UNLOCK.md](PASSKEY_PRF_DEVICE_UNLOCK.md)
