@@ -895,6 +895,11 @@ function renderInputsFromFrozen(
             ...frozen.document,
             status: liveDoc.status,
             amount_paid: liveDoc.amount_paid,
+            // Operational payment routing, deliberately NOT frozen content:
+            // which BTCPay store serves the checkout (without it the server
+            // renders no BTC QR at all) and the bank-QR standard choice.
+            store_id: liveDoc.store_id,
+            pdf_bank_qr: liveDoc.pdf_bank_qr ?? null,
         },
         lines: frozen.lines.map((line) => ({
             name: line.name,
