@@ -2647,12 +2647,6 @@ parameters:
 			path: app/Services/Invoicing/BusinessDocumentPdfService.php
 
 		-
-			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\BankQrGenerator\:\:generateQrDataUri\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Invoicing/BusinessDocumentPdfService.php
-
-		-
 			message: '#^Parameter \#1 \$company of method App\\Support\\Invoicing\\CompanyVatPolicy\:\:reverseChargeNote\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
 			identifier: argument.type
 			count: 1

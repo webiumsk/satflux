@@ -155,8 +155,17 @@ class BusinessDocumentPdfService
     {
         $company = $document->company;
         $bankQr = null;
-        if ($document->payment_bank_enabled && $document->type !== BusinessDocumentType::Quote) {
+        $bankQrStandard = null;
+        if ($company instanceof \App\Models\Company
+            && $document->payment_bank_enabled
+            && $document->type !== BusinessDocumentType::Quote
+        ) {
             $bankQr = $this->bankQrGenerator->generateQrDataUri($company, $document);
+            // The caption under the QR must name what the code actually is
+            // (PAY by square / EPC / Swiss QR) - payers recognize the brand.
+            $bankQrStandard = $bankQr !== null
+                ? $this->bankQrGenerator->selectStandard($company, $document)
+                : null;
         }
 
         $btcPayQr = null;
@@ -201,6 +210,7 @@ class BusinessDocumentPdfService
             'isUs' => $isUs,
             'reverseChargeNote' => $reverseChargeNote,
             'bankQr' => $bankQr,
+            'bankQrStandard' => $bankQrStandard,
             'btcPayQr' => $btcPayQr,
             'btcPayUrl' => $btcPayUrl,
             'logoDataUri' => $this->brandingService->resolveBrandingDataUri(
