@@ -34,6 +34,14 @@ class E2eTestSeeder extends Seeder
                 'password' => Hash::make(self::PASSWORD),
                 'email_verified_at' => now(),
                 'is_guest' => false,
+                // A recovery phrase counts as enrolled (fixture key, never a
+                // real one): with SEED_FIRST_REGISTRATION=true an un-enrolled
+                // email user gets the MANDATORY legacy-migration wizard over
+                // every page, which blocks all UI interaction in the specs.
+                // The /invoicing device guard is unaffected - it checks
+                // sessionStorage, not this flag.
+                'guest_recovery_public_key' => hash('sha256', 'satflux-e2e-recovery-fixture'),
+                'guest_recovery_enrolled_at' => now(),
             ],
         );
 
