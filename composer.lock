@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "adawolfa/isdoc",
-            "version": "1.5.0",
+            "version": "1.6.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/adawolfa/isdoc.git",
-                "reference": "4d6aaa6f866466bce2d148bb231401c6d96a8aa6"
+                "reference": "408d8514f57cbb5802ddc8ce31da8883e4df6b8e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/adawolfa/isdoc/zipball/4d6aaa6f866466bce2d148bb231401c6d96a8aa6",
-                "reference": "4d6aaa6f866466bce2d148bb231401c6d96a8aa6",
+                "url": "https://api.github.com/repos/adawolfa/isdoc/zipball/408d8514f57cbb5802ddc8ce31da8883e4df6b8e",
+                "reference": "408d8514f57cbb5802ddc8ce31da8883e4df6b8e",
                 "shasum": ""
             },
             "require": {
@@ -26,6 +26,7 @@
                 "ext-zip": "*",
                 "nette/utils": "^3.2|^4.0",
                 "php": ">=8.3",
+                "symfony/deprecation-contracts": "^2.5|^3.0",
                 "symfony/serializer": "^6.0|^7.0|^8.0"
             },
             "require-dev": {
@@ -42,7 +43,7 @@
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-master": "1.5.x-dev"
+                    "dev-master": "1.6.x-dev"
                 }
             },
             "autoload": {
@@ -64,9 +65,9 @@
             "description": "ISDOC parser and generator.",
             "support": {
                 "issues": "https://github.com/adawolfa/isdoc/issues",
-                "source": "https://github.com/adawolfa/isdoc/tree/1.5.0"
+                "source": "https://github.com/adawolfa/isdoc/tree/1.6.2"
             },
-            "time": "2026-01-16T03:26:37+00:00"
+            "time": "2026-06-07T02:10:26+00:00"
         },
         {
             "name": "brick/math",
@@ -6258,16 +6259,16 @@
         },
         {
             "name": "symfony/deprecation-contracts",
-            "version": "v3.7.0",
+            "version": "v3.7.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/deprecation-contracts.git",
-                "reference": "50f59d1f3ca46d41ac911f97a78626b6756af35b"
+                "reference": "f3202fa1b5097b0af062dc978b32ecf63404e31d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/deprecation-contracts/zipball/50f59d1f3ca46d41ac911f97a78626b6756af35b",
-                "reference": "50f59d1f3ca46d41ac911f97a78626b6756af35b",
+                "url": "https://api.github.com/repos/symfony/deprecation-contracts/zipball/f3202fa1b5097b0af062dc978b32ecf63404e31d",
+                "reference": "f3202fa1b5097b0af062dc978b32ecf63404e31d",
                 "shasum": ""
             },
             "require": {
@@ -6305,7 +6306,7 @@
             "description": "A generic function and convention to trigger deprecation notices",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/deprecation-contracts/tree/v3.7.0"
+                "source": "https://github.com/symfony/deprecation-contracts/tree/v3.7.1"
             },
             "funding": [
                 {
@@ -6325,7 +6326,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-04-13T15:52:40+00:00"
+            "time": "2026-06-05T06:23:12+00:00"
         },
         {
             "name": "symfony/error-handler",
@@ -7997,16 +7998,16 @@
         },
         {
             "name": "symfony/serializer",
-            "version": "v7.4.10",
+            "version": "v7.4.14",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/serializer.git",
-                "reference": "268c5aa6c4bd675eddd89348e7ecac292a843ddd"
+                "reference": "55acb01b9c8a5211dfbaf68c314d90d0ed2cc3d1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/serializer/zipball/268c5aa6c4bd675eddd89348e7ecac292a843ddd",
-                "reference": "268c5aa6c4bd675eddd89348e7ecac292a843ddd",
+                "url": "https://api.github.com/repos/symfony/serializer/zipball/55acb01b9c8a5211dfbaf68c314d90d0ed2cc3d1",
+                "reference": "55acb01b9c8a5211dfbaf68c314d90d0ed2cc3d1",
                 "shasum": ""
             },
             "require": {
@@ -8077,7 +8078,7 @@
             "description": "Handles serializing and deserializing data structures, including object graphs, into array structures or other formats like XML and JSON.",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/serializer/tree/v7.4.10"
+                "source": "https://github.com/symfony/serializer/tree/v7.4.14"
             },
             "funding": [
                 {
@@ -8097,7 +8098,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-05-03T13:03:28+00:00"
+            "time": "2026-06-27T08:31:18+00:00"
         },
         {
             "name": "symfony/service-contracts",

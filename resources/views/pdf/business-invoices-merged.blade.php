@@ -17,6 +17,7 @@
         $contact = $page['contact'];
         $lines = $page['lines'];
         $bankQr = $page['bankQr'] ?? null;
+        $bankQrStandard = $page['bankQrStandard'] ?? null;
         $btcPayQr = $page['btcPayQr'] ?? null;
         $btcPayUrl = $page['btcPayUrl'] ?? null;
         $logoDataUri = $page['logoDataUri'] ?? null;
@@ -44,6 +45,7 @@
             'showSalesTaxColumn',
             'reverseChargeNote',
             'bankQr',
+            'bankQrStandard',
             'btcPayQr',
             'btcPayUrl',
             'logoDataUri',
