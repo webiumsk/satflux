@@ -1306,6 +1306,8 @@
     "pdf_bank_qr": "Platební QR",
     "pdf_bank_qr_auto": "Automaticky (podle země odběratele)",
     "pdf_bank_qr_none": "Žádný",
+    "pdf_bank_qr_swiss_requirements": "vyžaduje CH/LI IBAN firmy a měnu CHF/EUR",
+    "pdf_bank_qr_epc_requirements": "vyžaduje měnu EUR",
     "pdf_signature": "Podpis",
     "pdf_payment_info": "Informace o úhradě",
     "pdf_link": "Odkaz na PDF",

@@ -748,6 +748,7 @@ export async function buildBulkEphemeralRequest(
             doc,
             payload.lines,
             emailSettings,
+            documentId,
         );
         if (!companyPayload) {
             companyPayload = snapshot.company;
@@ -781,6 +782,7 @@ export function buildEphemeralSnapshotFromApiDocument(
     doc: Record<string, unknown>,
     lines: DocumentSavePayload["lines"],
     emailSettingsOverride?: Record<string, unknown>,
+    evoluDocumentId?: string | null,
 ): EphemeralSnapshotPayload {
     const companyForSnapshot = emailSettingsOverride && company
         ? { ...company, email_settings: emailSettingsOverride }
@@ -811,6 +813,10 @@ export function buildEphemeralSnapshotFromApiDocument(
         amount_paid: doc.amount_paid,
     }, lines, {
         storeId: typeof doc.store_id === 'string' ? doc.store_id : null,
+        // Without the evolu id the server cannot find the document's
+        // registered BTCPay checkout (and the keyless render never mints),
+        // so list/bulk PDFs silently lost the BTC QR the detail PDF had.
+        evoluDocumentId: evoluDocumentId ?? null,
     });
 }
 
@@ -946,6 +952,7 @@ export async function buildLocalDocumentEphemeralSnapshot(
                 inputs.document,
                 inputs.lines,
                 emailSettings,
+                documentId,
             ),
         };
     }
@@ -959,6 +966,7 @@ export async function buildLocalDocumentEphemeralSnapshot(
             doc,
             payload.lines,
             emailSettings,
+            documentId,
         ),
     };
 }

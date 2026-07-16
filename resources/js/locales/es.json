@@ -3742,6 +3742,8 @@
     "pdf_bank_qr": "QR de pago",
     "pdf_bank_qr_auto": "Automático (según el país del cliente)",
     "pdf_bank_qr_none": "Ninguno",
+    "pdf_bank_qr_swiss_requirements": "requiere un IBAN CH/LI de la empresa y CHF/EUR",
+    "pdf_bank_qr_epc_requirements": "requiere EUR",
     "pdf_signature": "Firma",
     "pdf_payment_info": "Info de pago",
     "pdf_link": "Enlace PDF",

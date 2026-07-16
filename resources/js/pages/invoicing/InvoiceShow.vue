@@ -72,8 +72,12 @@
             >
               <option value="auto">{{ t('invoicing.pdf_bank_qr_auto') }}</option>
               <option value="paybysquare">Pay by Square</option>
-              <option value="epc">EPC (SEPA)</option>
-              <option value="swiss">Swiss QR</option>
+              <option value="epc" :disabled="!epcQrFeasible">
+                EPC (SEPA){{ epcQrFeasible ? '' : ` - ${t('invoicing.pdf_bank_qr_epc_requirements')}` }}
+              </option>
+              <option value="swiss" :disabled="!swissQrFeasible">
+                Swiss QR{{ swissQrFeasible ? '' : ` - ${t('invoicing.pdf_bank_qr_swiss_requirements')}` }}
+              </option>
               <option value="none">{{ t('invoicing.pdf_bank_qr_none') }}</option>
             </select>
           </label>
@@ -372,6 +376,21 @@ const {
 } = useInvoiceDocument();
 
 const { isRelaySyncing } = useInvoicingRelaySync({ refreshOnMount: true });
+
+// The QR select mirrors the server-side feasibility rules so a forced
+// standard cannot silently produce "no QR": Swiss QR pays only onto CH/LI
+// IBANs in CHF/EUR, EPC is EUR-only.
+const companyIbanPrefix = computed(() =>
+  String(company.value?.iban ?? '').replace(/\s+/g, '').toUpperCase().slice(0, 2),
+);
+const swissQrFeasible = computed(
+  () =>
+    ['CH', 'LI'].includes(companyIbanPrefix.value)
+    && ['CHF', 'EUR'].includes(String(form.currency || '').toUpperCase()),
+);
+const epcQrFeasible = computed(
+  () => String(form.currency || '').toUpperCase() === 'EUR',
+);
 
 const paidViaBtcpay = computed(
   () =>
