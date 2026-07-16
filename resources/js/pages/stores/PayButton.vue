@@ -88,6 +88,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -153,7 +154,8 @@ async function setPayButtonEnabled(enabled: boolean) {
     await storesStore.fetchStore(storeId);
     store.value = storesStore.currentStore;
     flashStore.success(enabled ? t('stores.pay_button_enabled_success') : t('stores.pay_button_disabled_success'));
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     flashStore.error(err.response?.data?.message || (enabled ? t('stores.pay_button_enable_failed') : t('stores.pay_button_disable_failed')));
   } finally {
     toggleSaving.value = false;

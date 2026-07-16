@@ -100,6 +100,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
@@ -197,7 +198,8 @@ async function submit() {
     }
     emit("success", { store_id: data?.store_id ?? null });
     emit("close");
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value =
       e?.response?.data?.message || t("auth.guest_restore_error");
   } finally {

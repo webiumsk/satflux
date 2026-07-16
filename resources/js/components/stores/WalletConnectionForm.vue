@@ -425,6 +425,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, reactive, computed, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -750,7 +751,8 @@ async function handleConfirmPassword() {
     const reveal = await walletApi.connection.reveal(props.storeId, payload);
     passwordInput.value = "";
     applyRevealedConnection(reveal);
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     const msg =
       err.response?.data?.errors?.password?.[0] ||
       err.response?.data?.message ||
@@ -886,7 +888,8 @@ async function handleTestConnection() {
       message: result.message || "Connection test completed",
       requires_manual_config: result.requires_manual_config ?? false,
     };
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     testResult.value = {
       success: false,
       message:
@@ -963,13 +966,13 @@ async function handleSubmit() {
       secret: secretPayload,
     });
     emit("submitted");
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     if (err.response?.status === 422) {
-      const validationErrors = err.response.data.errors || {};
+      const validationErrors = err.response?.data?.errors ?? {};
       Object.keys(validationErrors).forEach((key) => {
-        errors[key] = Array.isArray(validationErrors[key])
-          ? validationErrors[key][0]
-          : validationErrors[key];
+        const v = validationErrors[key];
+        errors[key] = (Array.isArray(v) ? v[0] : v) ?? "";
       });
     } else {
       errors.general =

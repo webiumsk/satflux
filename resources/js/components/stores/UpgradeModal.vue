@@ -96,6 +96,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
@@ -184,7 +185,8 @@ async function handleUpgrade() {
       flashStore.error(t('upgrade_modal.checkout_error'));
       upgrading.value = false;
     }
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     flashStore.error(err.response?.data?.message || t('upgrade_modal.checkout_error'));
     upgrading.value = false;
   }

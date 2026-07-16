@@ -60,6 +60,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -164,7 +165,8 @@ async function save() {
       await invoicingApi.contacts.update(companyId.value, contactId.value!, payload);
       await router.push(contactShowTo(contactId.value!));
     }
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t('errors.generic');
   } finally {
     saving.value = false;

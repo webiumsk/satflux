@@ -424,6 +424,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -451,10 +452,12 @@ interface EventInfo {
   maximumEventCapacity?: number | null;
 }
 
+// `| undefined` explicitly: the check-in result builds these with
+// `value || undefined`, which exactOptionalPropertyTypes otherwise rejects.
 interface TicketInfo {
-  name?: string;
-  email?: string;
-  type?: string;
+  name?: string | undefined;
+  email?: string | undefined;
+  type?: string | undefined;
 }
 
 interface CheckInResult {
@@ -553,14 +556,18 @@ async function performCheckIn(code: string): Promise<CheckInResult> {
       code: ticketCode,
       time: new Date(),
     };
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
+    const errData = err.response?.data;
+    const detail = typeof errData?.detail === "string" ? errData.detail : "";
+    const listMessage = Array.isArray(errData)
+      ? errData.map((entry) => (entry as { message?: string }).message ?? "").join(", ")
+      : "";
     const msg =
-      err?.response?.data?.message ||
-      err?.response?.data?.detail ||
-      (Array.isArray(err?.response?.data)
-        ? err.response.data.map((e: any) => e.message).join(", ")
-        : "") ||
-      err?.message ||
+      errData?.message ||
+      detail ||
+      listMessage ||
+      err.message ||
       t("tickets.checkin_fail");
     return { success: false, message: msg, code: ticketCode, time: new Date() };
   }
@@ -621,7 +628,8 @@ async function startScanner() {
         /* no QR found - ignore */
       },
     );
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     scanning.value = false;
     setResult({
       success: false,

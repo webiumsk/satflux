@@ -189,6 +189,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
@@ -308,7 +309,8 @@ async function saveRule() {
     }
     closeEditor();
     await loadRules();
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     const msg = err.response?.data?.message;
     const errs = err.response?.data?.errors;
     editorError.value =

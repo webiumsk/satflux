@@ -138,6 +138,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { toAppRows } from "../../evolu/queryLoad";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -282,7 +283,8 @@ async function loadInvoices() {
       (d: { status: string; number?: string }) =>
         d.status !== "cancelled" && d.status !== "draft",
     );
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("common.error");
     invoices.value = [];
   } finally {
@@ -372,7 +374,8 @@ async function confirmSelected() {
 
     const created = await invoicingApi.documents.creditNoteFromInvoice<{ id: string }>(props.companyId, selectedId.value);
     emit("selected", created.id);
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value =
       e?.response?.data?.message ||
       e?.response?.data?.errors?.invoice_id?.[0] ||

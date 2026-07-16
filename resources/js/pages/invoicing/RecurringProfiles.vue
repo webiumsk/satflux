@@ -201,6 +201,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import "../../styles/invoicing-theme.css";
@@ -284,7 +285,8 @@ async function load() {
       invoicingRecurring.refresh(activeFilter.value),
     ]);
     companyName.value = summary.trade_name || summary.legal_name || "";
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("common.error");
   }
 }

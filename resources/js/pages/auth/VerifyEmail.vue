@@ -114,6 +114,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -220,7 +221,8 @@ onMounted(async () => {
     } else {
       error.value = data.message || t("auth.failed_to_verify_email");
     }
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     // Handle axios errors
     if (err.response) {
       // Server responded with error status

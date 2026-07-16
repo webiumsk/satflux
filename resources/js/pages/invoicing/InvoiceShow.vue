@@ -286,6 +286,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { computed, onMounted, ref, watch } from 'vue';
 import '../../styles/invoicing-theme.css';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
@@ -594,7 +595,8 @@ async function downloadWebFile(path: string, filename: string) {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = extractError(e);
   } finally {
     saving.value = false;
@@ -658,7 +660,8 @@ async function issueDocument() {
     success.value = t('invoicing.issue_success');
     await reloadDocument();
     await loadHistory();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = extractError(e);
   } finally {
     saving.value = false;
@@ -694,7 +697,8 @@ async function createFinalInvoice() {
       name: 'invoicing-invoice-edit',
       params: { companyId: companyId.value, documentId: res.id },
     });
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = extractError(e);
   } finally {
     saving.value = false;
@@ -716,7 +720,8 @@ async function approveQuote() {
     success.value = t('invoicing.quote_approved_success');
     await reloadDocument();
     await loadHistory();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = extractError(e);
   } finally {
     saving.value = false;
@@ -738,7 +743,8 @@ async function rejectQuote() {
     success.value = t('invoicing.quote_rejected_success');
     await reloadDocument();
     await loadHistory();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = extractError(e);
   } finally {
     saving.value = false;
@@ -774,7 +780,8 @@ async function createInvoiceFromQuote() {
       name: 'invoicing-invoice-edit',
       params: { companyId: companyId.value, documentId: res.id },
     });
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = extractError(e);
   } finally {
     saving.value = false;
@@ -845,7 +852,8 @@ async function markPaid() {
     await invoicingApi.documents.action(companyId.value, documentId.value!, 'mark-paid');
     await reloadDocument();
     await loadHistory();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = extractError(e);
   } finally {
     saving.value = false;
@@ -868,7 +876,8 @@ async function unmarkPaid() {
     await invoicingApi.documents.action(companyId.value, documentId.value!, 'unmark-paid');
     await reloadDocument();
     await loadHistory();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = extractError(e);
   } finally {
     saving.value = false;

@@ -64,6 +64,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, watch, inject, useSlots } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -118,7 +119,8 @@ async function loadApp() {
     }
     await appsStore.fetchApps(currentStoreId);
     loadedApp.value = await appsStore.fetchApp(currentStoreId, currentAppId);
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     console.error('Failed to load app:', err);
   } finally {
     loading.value = false;

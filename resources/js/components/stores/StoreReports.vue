@@ -261,6 +261,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
@@ -362,7 +363,8 @@ async function saveSettings() {
       auto_report_format: settingsForm.value.auto_report_format,
     });
     flashStore.success(t("stores.auto_report_saved"));
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     flashStore.error(err.response?.data?.message || t("stores.auto_report_save_failed"));
   } finally {
     savingSettings.value = false;
@@ -397,7 +399,8 @@ async function fetchExports(silent = false) {
   try {
     const response = await api.get(`/stores/${props.store.id}/exports`);
     exports.value = response.data.data || [];
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     if (!silent) {
       flashStore.error(err.response?.data?.message || "Failed to load reports.");
       exports.value = [];
@@ -416,7 +419,8 @@ async function handleDownloadExport(exportItem: any) {
     } else {
       flashStore.error("Download URL not available.");
     }
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     if (err.response?.status === 202) {
       flashStore.error("Export is not ready yet.");
     } else {
@@ -432,7 +436,8 @@ async function handleRetryExport(exportItem: any) {
   try {
     await api.post(`/exports/${exportItem.id}/retry`);
     await fetchExports();
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     flashStore.error(err.response?.data?.message || "Failed to retry export.");
   } finally {
     retryingExportId.value = null;
@@ -459,7 +464,8 @@ async function generatePdfReport() {
     a.download = `report-${pdfDateFrom.value}-${pdfDateTo.value}.pdf`;
     a.click();
     window.URL.revokeObjectURL(url);
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     if (err.response?.status === 401) {
       flashStore.error(t("stores.pdf_report_unauth"));
     } else if (err.response?.status === 422) {
@@ -478,7 +484,8 @@ async function handleDeleteExport(exportItem: any) {
   try {
     await api.delete(`/exports/${exportItem.id}`);
     await fetchExports();
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     flashStore.error(err.response?.data?.message || "Failed to delete export.");
   } finally {
     deletingExportId.value = null;

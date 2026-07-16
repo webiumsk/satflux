@@ -369,6 +369,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -781,7 +782,8 @@ async function save() {
       await loadProfile();
       notifySaved('invoicing.changes_saved');
     }
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t('common.error');
   } finally {
     saving.value = false;
@@ -815,7 +817,8 @@ async function generateNow() {
       name: routeName,
       params: { companyId: companyId.value, documentId: doc.id },
     });
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t('common.error');
   } finally {
     saving.value = false;

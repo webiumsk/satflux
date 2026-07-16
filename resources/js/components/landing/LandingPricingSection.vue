@@ -396,6 +396,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
@@ -449,7 +450,8 @@ async function handleUpgrade(plan: string) {
       subscribeError.value = t("landing.failed_to_create_checkout");
       subscribing.value = false;
     }
-  } catch (error: any) {
+  } catch (rawError) {
+    const error = asApiError(rawError);
     console.error("Failed to create checkout:", error);
     subscribeError.value =
       error.response?.data?.message || t("landing.failed_to_create_checkout");

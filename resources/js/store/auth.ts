@@ -1,3 +1,4 @@
+import { asApiError } from "../utils/apiError";
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import api from '../services/api';
@@ -117,7 +118,8 @@ export const useAuthStore = defineStore('auth', () => {
             if (mnemonic && isInvoicingLocalFirst()) {
                 void ensureEvoluBoundToAccountSeed();
             }
-        } catch (error: any) {
+        } catch (rawError) {
+            const error = asApiError(rawError);
             const status = error?.response?.status ?? error?.status;
             if (status === 401 || status === 403) {
                 user.value = null;

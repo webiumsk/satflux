@@ -162,6 +162,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
@@ -309,7 +310,8 @@ async function saveAll() {
       form.smtp.password_set = updated.email_settings.smtp.password_set;
     }
     notifySaved();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');
   } finally {
     saving.value = false;
@@ -355,7 +357,8 @@ async function testSmtp() {
     const res = await invoicingApi.companies.testSmtp(props.companyId, { to });
     smtpTestOk.value = true;
     smtpTestMessage.value = res.message ?? t('invoicing.email_smtp_test_ok');
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     smtpTestOk.value = false;
     smtpTestMessage.value = e?.message ?? e?.response?.data?.message ?? t('common.error_generic');
   } finally {

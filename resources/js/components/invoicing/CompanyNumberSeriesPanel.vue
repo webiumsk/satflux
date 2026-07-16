@@ -143,6 +143,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { toAppRows } from "../../evolu/queryLoad";
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -262,7 +263,8 @@ async function loadServer() {
   saveError.value = '';
   try {
     series.value = await invoicingApi.numberSeries.list(props.companyId);
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');
   } finally {
     loading.value = false;
@@ -349,7 +351,8 @@ async function saveModalServer() {
     closeModal();
     await loadServer();
     notifySaved('invoicing.series_saved');
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');
   } finally {
     saving.value = false;
@@ -382,7 +385,8 @@ async function removeServer(row: NumberSeriesRow) {
     await invoicingApi.numberSeries.delete(props.companyId, String(row.id));
     await loadServer();
     notifySaved('invoicing.series_saved');
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     saveError.value = e?.response?.data?.message ?? t('common.error_generic');
   }
 }

@@ -173,6 +173,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { computed, reactive, ref, toRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import {
@@ -333,7 +334,8 @@ async function loadPreview() {
     for (const field of EXPENSE_IMPORT_FIELD_KEYS) {
       mapping[field] = suggested[field] ?? null;
     }
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("errors.generic");
     headers.value = [];
     rowCount.value = 0;
@@ -385,7 +387,8 @@ async function submitImport() {
     if ((data.imported ?? 0) > 0) {
       emit("imported");
     }
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("errors.generic");
   } finally {
     importing.value = false;

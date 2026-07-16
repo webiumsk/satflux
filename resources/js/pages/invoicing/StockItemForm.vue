@@ -301,6 +301,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { toAppRows } from "../../evolu/queryLoad";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -485,7 +486,8 @@ async function save() {
       await loadItem();
       notifySaved("invoicing.changes_saved");
     }
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t("errors.generic");
     const errors = e?.response?.data?.errors;
     if (errors) {

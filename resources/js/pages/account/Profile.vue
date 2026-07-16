@@ -1497,6 +1497,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, onMounted, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -2024,7 +2025,8 @@ async function loadSubscriptionDetails() {
     subscriptionBilling.value = response.data.billing || null;
     creditBalance.value = response.data.creditBalance || 0;
     creditHistory.value = response.data.creditHistory || [];
-  } catch (error: any) {
+  } catch (rawError) {
+    const error = asApiError(rawError);
     // If 404, user doesn't have subscription yet - that's ok
     if (error.response?.status !== 404) {
       console.error("Error loading subscription details:", error);
@@ -2070,7 +2072,8 @@ async function handlePayNow() {
     if (!redirected) {
       payingNow.value = false;
     }
-  } catch (error: any) {
+  } catch (rawError) {
+    const error = asApiError(rawError);
     console.error("Failed to start subscription payment:", error);
     alert(error.response?.data?.message || t("account.checkout_failed"));
     payingNow.value = false;
@@ -2086,7 +2089,8 @@ async function handleAddCredit() {
     if (!redirected) {
       addingCredit.value = false;
     }
-  } catch (error: any) {
+  } catch (rawError) {
+    const error = asApiError(rawError);
     console.error("Failed to add credit:", error);
     alert(error.response?.data?.message || t("account.add_credit_failed"));
     addingCredit.value = false;
@@ -2138,7 +2142,8 @@ async function upgradePlan(plan: string) {
       alert(t("account.checkout_failed"));
       upgrading.value = false;
     }
-  } catch (error: any) {
+  } catch (rawError) {
+    const error = asApiError(rawError);
     console.error("Failed to create checkout:", error);
     alert(error.response?.data?.message || t("account.checkout_failed"));
     upgrading.value = false;
@@ -2169,7 +2174,8 @@ async function handleRecoveryEnrolled(payload: {
     await initEvoluFromAccountSeedIfNeeded(payload.mnemonic);
     storedGuestMnemonic.value = payload.mnemonic;
     flashStore.success(t("account.recovery_phrase_saved"));
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     flashStore.error(
       e?.response?.data?.message || t("account.recovery_phrase_save_failed"),
     );

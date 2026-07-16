@@ -186,6 +186,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -442,7 +443,8 @@ async function runBulk(action: string) {
       await load();
       clearSelection();
     }
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     if (e?.response?.data instanceof Blob) {
       const text = await e.response.data.text();
       try {
@@ -470,7 +472,8 @@ async function markPaidRow(expenseId: string) {
     }
     await invoicingApi.expenses.action(companyId.value, expenseId, 'mark-paid');
     await load();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t('common.error');
   } finally {
     actionId.value = null;
@@ -501,7 +504,8 @@ async function duplicateRow(expenseId: string) {
       name: 'invoicing-expense-edit',
       params: { companyId: companyId.value, expenseId: res.id },
     });
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t('common.error');
     actionId.value = null;
   }
@@ -519,7 +523,8 @@ async function cancelRow(expenseId: string) {
     }
     await invoicingApi.expenses.delete(companyId.value, expenseId);
     await load();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t('common.error');
   } finally {
     actionId.value = null;

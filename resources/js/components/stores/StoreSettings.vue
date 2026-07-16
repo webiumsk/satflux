@@ -332,6 +332,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -795,7 +796,8 @@ async function handleSettingsSubmit() {
     await storesApi.settings.update(props.store.id, payload);
     flashStore.success(t("settings.settings_updated"));
     emit("update-store"); // Notify parent to refresh store data if needed
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     const msg = err.response?.data?.message || t("settings.failed_to_update");
     const errors = err.response?.data?.errors
       ? Object.values(err.response.data.errors).flat()
@@ -831,7 +833,8 @@ async function handleLogoUpload(event: Event) {
       t("stores.logo_uploaded"),
     );
     emit("update-store");
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     logoError.value = err.response?.data?.message || "Failed to upload logo";
     flashStore.error(logoError.value);
   } finally {
@@ -856,7 +859,8 @@ async function handleDeleteLogo() {
     }
     flashStore.success(t("stores.logo_deleted"));
     emit("update-store");
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     logoError.value = err.response?.data?.message || "Failed to delete logo";
     flashStore.error(logoError.value);
   } finally {
@@ -879,7 +883,8 @@ async function handleDeleteStore() {
     await storesStore.deleteStore(props.store.id);
     closeDeleteStoreModal();
     router.push({ name: "home" });
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     const msg =
       err.response?.data?.message || t("stores.settings_delete_failed");
     deleteStoreError.value = msg;

@@ -192,6 +192,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, onUnmounted, watch } from 'vue';
 import { supportWalletApi } from '../../services/api';
 import WalletTypeIcon from '../WalletTypeIcon.vue';
@@ -253,13 +254,13 @@ async function handleReveal() {
                 secretInput.value.select();
             }
         }, 100);
-    } catch (err: any) {
+    } catch (rawError) {
+        const err = asApiError(rawError);
         if (err.response?.status === 422) {
-            const validationErrors = err.response.data.errors || {};
+            const validationErrors = err.response?.data?.errors ?? {};
             Object.keys(validationErrors).forEach(key => {
-                errors.value[key] = Array.isArray(validationErrors[key])
-                    ? validationErrors[key][0]
-                    : validationErrors[key];
+                const v = validationErrors[key];
+                errors.value[key] = (Array.isArray(v) ? v[0] : v) ?? "";
             });
         } else {
             errors.value.password = err.response?.data?.message || 'Failed to reveal secret';
@@ -319,7 +320,8 @@ async function handleMarkConnected() {
     try {
         await supportWalletApi.markConnected(props.connection.id);
         emit('close');
-    } catch (err: any) {
+    } catch (rawError) {
+        const err = asApiError(rawError);
         alert(err.response?.data?.message || 'Failed to mark connection as connected');
     } finally {
         markingConnected.value = false;

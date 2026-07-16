@@ -222,6 +222,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, watch, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -315,7 +316,8 @@ async function handleLogin() {
     );
     const redirect = router.currentRoute.value.query.redirect as string;
     redirectAfterAuth(redirect);
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     flashStore.error(
       err.response?.data?.message || "Login failed. Please try again.",
     );

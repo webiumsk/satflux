@@ -406,6 +406,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
@@ -972,7 +973,8 @@ async function saveContact() {
     }
     emit('updated', payload);
     notifySaved();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     saveError.value = extractSaveError(e);
   } finally {
     savingContact.value = false;
@@ -1030,7 +1032,8 @@ async function saveBank() {
 
     emit('updated', await invoicingApi.companies.update(props.companyId, payload));
     notifySaved();
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     saveError.value = extractSaveError(e);
   } finally {
     savingBank.value = false;
@@ -1060,7 +1063,8 @@ async function uploadLogo(e: Event) {
 
     emit('updated', await invoicingApi.companies.branding.uploadLogo(props.companyId, file));
     notifySaved();
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     saveError.value = err?.message || err?.response?.data?.message || t('common.error');
   } finally {
     uploadingLogo.value = false;
@@ -1091,7 +1095,8 @@ async function uploadSignature(e: Event) {
 
     emit('updated', await invoicingApi.companies.branding.uploadSignatureStamp(props.companyId, file));
     notifySaved();
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     saveError.value = err?.message || err?.response?.data?.message || t('common.error');
   } finally {
     uploadingSignature.value = false;
@@ -1119,7 +1124,8 @@ async function removeLogo() {
 
     emit('updated', await invoicingApi.companies.branding.deleteLogo(props.companyId));
     notifySaved();
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     saveError.value = err?.response?.data?.message || t('common.error');
   } finally {
     uploadingLogo.value = false;
@@ -1146,7 +1152,8 @@ async function removeSignature() {
 
     emit('updated', await invoicingApi.companies.branding.deleteSignatureStamp(props.companyId));
     notifySaved();
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     saveError.value = err?.response?.data?.message || t('common.error');
   } finally {
     uploadingSignature.value = false;
@@ -1172,7 +1179,8 @@ async function resetCompanyData() {
     }
     showResetModal.value = false;
     await router.push({ name: 'invoicing-invoices', params: { companyId: props.companyId } });
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     resetError.value = e?.response?.data?.message || t('errors.generic');
   } finally {
     resetting.value = false;
@@ -1213,7 +1221,8 @@ async function deleteCompanyProfile() {
     }
     showDeleteModal.value = false;
     await router.push({ name: 'invoicing' });
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     deleteError.value = e?.response?.data?.message || t('errors.generic');
   } finally {
     deleting.value = false;

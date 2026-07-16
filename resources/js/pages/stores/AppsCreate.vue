@@ -248,6 +248,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -296,7 +297,8 @@ function isPointOfSaleAppType(t: string | undefined | null): boolean {
 async function loadStore() {
   try {
     store.value = await storesStore.fetchStore(storeId.value);
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     console.error("Failed to load store:", err);
   }
 }
@@ -345,7 +347,8 @@ async function handleSubmit() {
     await appsStore.fetchApps(storeId.value);
     const newAppId = response.data.data.id;
     router.push(`/stores/${storeId.value}/apps/${newAppId}`);
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     flashStore.error(err.response?.data?.message || t("apps.failed_to_create"));
   } finally {
     saving.value = false;

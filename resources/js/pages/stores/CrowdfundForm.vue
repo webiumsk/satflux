@@ -547,6 +547,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAppsStore } from "../../store/apps";
@@ -842,7 +843,8 @@ async function handleSubmit() {
         }
         form.value.featuredImageUrl = url;
         pendingFeaturedImageFile.value = null;
-      } catch (err: any) {
+      } catch (rawError) {
+        const err = asApiError(rawError);
         const msg =
           err.response?.data?.message ||
           err.message ||
@@ -927,7 +929,8 @@ async function handleSubmit() {
     });
 
     flashStore.success(t("settings.settings_updated"));
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     const msg = err.response?.data?.message || t("settings.failed_to_update");
     flashStore.error(msg);
   } finally {

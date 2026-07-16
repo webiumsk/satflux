@@ -67,6 +67,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -134,7 +135,8 @@ async function handleGuestEnrolled(payload: {
     }
 
     router.replace("/stores/create");
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     flashStore.error(
       err.response?.data?.message || "Unable to start session.",
     );

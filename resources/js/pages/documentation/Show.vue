@@ -192,6 +192,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -269,7 +270,8 @@ const loadArticle = async () => {
       locale: locale.value,
     });
     article.value = response.data.data;
-  } catch (error: any) {
+  } catch (rawError) {
+    const error = asApiError(rawError);
     console.error("Failed to load article:", error);
     if (error.response?.status === 404) {
       article.value = null;

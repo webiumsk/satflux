@@ -436,6 +436,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../../utils/apiError";
 import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../../store/auth";
@@ -693,12 +694,13 @@ async function handleSaveCashu() {
     cashuInitializedFromFetch.value = true;
     cashuSectionMode.value = "readonly";
     emit("submitted");
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     if (err.response?.status === 422 && err.response?.data?.errors) {
-      const validationErrors = err.response.data.errors || {};
+      const validationErrors = err.response?.data?.errors ?? {};
       Object.keys(validationErrors).forEach((key) => {
         const v = validationErrors[key];
-        const msg = Array.isArray(v) ? v[0] : v;
+        const msg = (Array.isArray(v) ? v[0] : v) ?? "";
         if (key === "cashu") {
           cashuErrorMessage.value = msg;
         } else {
@@ -765,7 +767,8 @@ async function handleCashuConfirmPassword() {
     await walletApi.cashu.confirmEdit(props.storeId, payload);
     passwordInput.value = "";
     cashuSectionMode.value = "editing";
-  } catch (err: any) {
+  } catch (rawError) {
+    const err = asApiError(rawError);
     const msg =
       err.response?.data?.errors?.password?.[0] ||
       err.response?.data?.message ||

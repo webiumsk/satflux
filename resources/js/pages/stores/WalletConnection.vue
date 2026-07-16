@@ -85,6 +85,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -143,7 +144,8 @@ async function loadConnection() {
             return;
         }
         connection.value = await walletApi.connection.get(storeId.value);
-    } catch (err: any) {
+    } catch (rawError) {
+        const err = asApiError(rawError);
         if (err.response?.status !== 404) {
             error.value = err.response?.data?.message || 'Failed to load wallet connection';
         }

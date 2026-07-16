@@ -341,6 +341,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted } from "vue";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/auth";
@@ -396,7 +397,8 @@ const loadUsers = async (page = 1) => {
     const response = await api.get("/admin/users", { params });
     users.value = response.data.data || [];
     meta.value = response.data.meta || null;
-  } catch (error: any) {
+  } catch (rawError) {
+    const error = asApiError(rawError);
     console.error("Failed to load users:", error);
     users.value = [];
   } finally {

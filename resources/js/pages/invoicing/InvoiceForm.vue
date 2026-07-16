@@ -459,6 +459,7 @@
 </template>
 
 <script setup lang="ts">
+import { asApiError } from "../../utils/apiError";
 import { computed, onMounted, ref } from 'vue';
 import ContactCreateModal from '../../components/invoicing/ContactCreateModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
@@ -719,7 +720,8 @@ async function save(downloadPdf: boolean) {
       name: documentRoutes.value.show,
       params: { companyId: companyId.value, documentId: docId! },
     });
-  } catch (e: any) {
+  } catch (rawError) {
+    const e = asApiError(rawError);
     error.value = extractError(e);
   } finally {
     saving.value = false;
