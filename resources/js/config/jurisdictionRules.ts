@@ -237,3 +237,17 @@ export function defaultPdfLocaleForJurisdiction(jurisdiction: string): "sk" | "c
             return "en";
     }
 }
+
+export function supportsStructuredDocumentExport(jurisdiction: string | null | undefined): boolean {
+    switch (jurisdiction) {
+        case "eu_sk":
+        case "eu_cz":
+        case "eu_de":
+        case "eu_at":
+        case "eu_other":
+        case "ch":
+            return true;
+        default:
+            return false;
+    }
+}

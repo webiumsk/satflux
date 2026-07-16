@@ -298,6 +298,7 @@ import {
 } from '../../evolu/ephemeralBridge';
 import { markLocalDocumentEmailSent } from '../../evolu/documentCrud';
 import type { DocumentId } from '../../evolu/schema';
+import { supportsStructuredDocumentExport } from '../../config/jurisdictionRules';
 
 const {
   t,
@@ -427,8 +428,7 @@ async function openSendEmail() {
 const { enabled: efakturaGloballyEnabled, load: loadEfakturaFeature } = useEfakturaFeature();
 
 const supportsEuExport = computed(() => {
-  const j = company.value?.jurisdiction;
-  return j === 'eu_sk' || j === 'eu_cz' || j === 'eu_other';
+  return supportsStructuredDocumentExport(company.value?.jurisdiction);
 });
 
 const showEfakturaPanel = computed(() => {

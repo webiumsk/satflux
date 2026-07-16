@@ -15,6 +15,8 @@
         'company',
         'contact',
         'lines',
+        'vatLabel',
+        'taxIdLabel',
         'taxBreakdown',
         'showVatColumn',
         'showVatBreakdown',

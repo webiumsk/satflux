@@ -5,6 +5,7 @@ import {
     JURISDICTION_RULES,
     jurisdictionRules,
     standardVatRate,
+    supportsStructuredDocumentExport,
     vatRateOutsideJurisdiction,
 } from "@/config/jurisdictionRules";
 import {
@@ -131,6 +132,13 @@ describe("VAT rate validation", () => {
         expect(defaultPdfLocaleForJurisdiction("eu_at")).toBe("de");
         expect(defaultPdfLocaleForJurisdiction("ch")).toBe("de");
         expect(defaultPdfLocaleForJurisdiction("us")).toBe("en");
+    });
+
+    it("enables structured exports for jurisdictions with UBL support", () => {
+        for (const jurisdiction of ["eu_sk", "eu_cz", "eu_de", "eu_at", "eu_other", "ch"]) {
+            expect(supportsStructuredDocumentExport(jurisdiction), jurisdiction).toBe(true);
+        }
+        expect(supportsStructuredDocumentExport("us")).toBe(false);
     });
 
     it("derives the standard (highest) rate for prefill", () => {

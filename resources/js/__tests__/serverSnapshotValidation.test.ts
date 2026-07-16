@@ -74,6 +74,34 @@ describe("server snapshot field validation", () => {
         expect(Opt64.from(prepared.linkedStoreId as string).ok).toBe(true);
     });
 
+    it("preserves jurisdiction values added to the local schema", () => {
+        for (const jurisdiction of ["eu_de", "eu_at", "ch"]) {
+            const prepared = prepareServerSnapshotForEvolu({
+                company: [{ ...sampleCompany, jurisdiction }],
+                contact: [],
+                numberSeries: [],
+                document: [],
+                documentLine: [],
+                documentEvent: [],
+                documentSnapshot: [],
+                expense: [],
+                expenseAttachment: [],
+                recurringProfile: [],
+                recurringProfileLine: [],
+                companyWarehouse: [],
+                companyStockItem: [],
+                companyStockBalance: [],
+                companyStockMovement: [],
+                bankImportBatch: [],
+                bankTransaction: [],
+                bankTransactionMatch: [],
+            }).company[0];
+
+            expect(prepared.jurisdiction).toBe(jurisdiction);
+            expect(CompanyJurisdiction.from(prepared.jurisdiction).ok).toBe(true);
+        }
+    });
+
     it("accepts number series document types used on the server", () => {
         for (const documentType of ["expense", "order_issued", "invoice"]) {
             expect(DocumentType.from(documentType).ok).toBe(true);
