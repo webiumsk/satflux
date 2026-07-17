@@ -4,11 +4,13 @@ namespace Tests\Feature;
 
 use App\Enums\CompanyJurisdiction;
 use App\Enums\CompanyStockMovementSource;
+use App\Models\BusinessDocument;
 use App\Models\Company;
 use App\Models\CompanyStockItem;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Services\Invoicing\CompanyStockMovementService;
 use App\Services\Invoicing\DocumentSequenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -234,6 +236,50 @@ class CompanyStockDocumentMovementTest extends TestCase
         // 10 - 5 after the rebuild, not 10 - 3 - 5.
         $this->assertEquals(5.0, $this->stockQuantity($this->stockItem));
         $this->assertDatabaseHas('company_stock_item_movements', [
+            'business_document_id' => $documentId,
+            'source' => CompanyStockMovementSource::DocumentAdjustment->value,
+        ]);
+    }
+
+    #[Test]
+    public function failed_issued_document_stock_rebuild_rolls_back_line_replacement(): void
+    {
+        $documentId = $this->issueInvoiceWithStockLine();
+        $this->assertEquals(7.0, $this->stockQuantity($this->stockItem));
+
+        $stockMovementService = \Mockery::mock(CompanyStockMovementService::class);
+        $stockMovementService->shouldReceive('rebuildDocumentIssue')
+            ->once()
+            ->andThrow(new \RuntimeException('stock rebuild failed'));
+        $this->instance(CompanyStockMovementService::class, $stockMovementService);
+
+        try {
+            $this->withoutExceptionHandling()
+                ->actingAs($this->proUser)
+                ->patchJson("/api/invoicing/companies/{$this->company->id}/documents/{$documentId}", [
+                    'type' => 'invoice',
+                    'currency' => 'EUR',
+                    'lines' => [
+                        [
+                            'name' => 'Jablká',
+                            'quantity' => 5,
+                            'unit' => 'kg',
+                            'unit_price' => 1.5,
+                            'company_stock_item_id' => $this->stockItem->id,
+                        ],
+                    ],
+                ]);
+
+            $this->fail('Expected stock rebuild failure to abort the document update.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('stock rebuild failed', $e->getMessage());
+        }
+
+        $document = BusinessDocument::with('lines')->findOrFail($documentId);
+
+        $this->assertEquals(3.0, (float) $document->lines->firstOrFail()->quantity);
+        $this->assertEquals(7.0, $this->stockQuantity($this->stockItem));
+        $this->assertDatabaseMissing('company_stock_item_movements', [
             'business_document_id' => $documentId,
             'source' => CompanyStockMovementSource::DocumentAdjustment->value,
         ]);
