@@ -215,61 +215,90 @@ class BusinessDocumentController extends Controller
             ]);
         }
 
-        $previousTotal = (float) $businessDocument->total;
-        $previousStoreId = $businessDocument->store_id;
-        $previousPaymentBtc = $businessDocument->payment_btc_enabled;
-
         $this->assertContactBelongsToCompany($request->input('company_contact_id'), $company);
         $this->assertStoreBelongsToCompany($request->input('store_id'), $company);
         $this->assertStockItemsBelongToCompany($request->input('lines', []), $company);
         $this->assertWarehousesBelongToCompany($request->input('lines', []), $company);
 
-        $businessDocument->fill(array_merge($request->only([
-            'company_contact_id',
-            'title',
-            'variable_symbol',
-            'constant_symbol',
-            'specific_symbol',
-            'issue_date',
-            'delivery_date',
-            'due_date',
-            'currency',
-            'note_above_lines',
-            'note_footer',
-            'internal_note',
-            'pdf_locale',
-            'pdf_show_signature',
-            'pdf_show_payment_info',
-            'tags',
-            'payment_btc_enabled',
-            'payment_bank_enabled',
-        ]), [
-            'store_id' => $this->resolveStoreId($company, $request) ?? $businessDocument->store_id,
-        ]));
-
-        if ($businessDocument->type === BusinessDocumentType::Quote) {
-            $businessDocument->pdf_show_payment_info = false;
-            $businessDocument->payment_btc_enabled = false;
-            $businessDocument->payment_bank_enabled = false;
-        }
-
-        $businessDocument->setRelation('company', $company);
         $lines = $request->input('lines', []);
-        $this->totalsCalculator->applyToDocument(
+        $previousTotal = 0.0;
+        $previousStoreId = null;
+        $previousPaymentBtc = false;
+
+        $businessDocument = DB::transaction(function () use (
             $businessDocument,
+            $company,
+            $request,
             $lines,
-            (float) $request->input('discount_percent', $businessDocument->discount_percent)
-        );
+            &$previousTotal,
+            &$previousStoreId,
+            &$previousPaymentBtc,
+        ): BusinessDocument {
+            $locked = BusinessDocument::query()
+                ->whereKey($businessDocument->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $businessDocument->save();
-        $businessDocument->lines()->delete();
-        $this->syncLines($businessDocument, $lines);
+            $this->assertDocumentCompany($locked, $company);
 
-        if ($businessDocument->status === BusinessDocumentStatus::Issued) {
-            // Editing an issued document replaces its lines - stock must
-            // follow (reverse the old issue, apply the new lines).
-            $this->stockMovementService->rebuildDocumentIssue($businessDocument->fresh(['lines', 'company']));
-        }
+            if (! $locked->canUpdate()) {
+                throw ValidationException::withMessages([
+                    'status' => ['This document cannot be edited in its current status.'],
+                ]);
+            }
+
+            $previousTotal = (float) $locked->total;
+            $previousStoreId = $locked->store_id;
+            $previousPaymentBtc = $locked->payment_btc_enabled;
+
+            $locked->fill(array_merge($request->only([
+                'company_contact_id',
+                'title',
+                'variable_symbol',
+                'constant_symbol',
+                'specific_symbol',
+                'issue_date',
+                'delivery_date',
+                'due_date',
+                'currency',
+                'note_above_lines',
+                'note_footer',
+                'internal_note',
+                'pdf_locale',
+                'pdf_show_signature',
+                'pdf_show_payment_info',
+                'tags',
+                'payment_btc_enabled',
+                'payment_bank_enabled',
+            ]), [
+                'store_id' => $this->resolveStoreId($company, $request) ?? $locked->store_id,
+            ]));
+
+            if ($locked->type === BusinessDocumentType::Quote) {
+                $locked->pdf_show_payment_info = false;
+                $locked->payment_btc_enabled = false;
+                $locked->payment_bank_enabled = false;
+            }
+
+            $locked->setRelation('company', $company);
+            $this->totalsCalculator->applyToDocument(
+                $locked,
+                $lines,
+                (float) $request->input('discount_percent', $locked->discount_percent)
+            );
+
+            $locked->save();
+            $locked->lines()->delete();
+            $this->syncLines($locked, $lines);
+
+            if ($locked->status === BusinessDocumentStatus::Issued) {
+                // Editing an issued document replaces its lines - stock must
+                // follow atomically with the persisted line replacement.
+                $this->stockMovementService->rebuildDocumentIssue($locked->fresh(['lines', 'company']));
+            }
+
+            return $locked->fresh(['lines', 'contact', 'store']);
+        });
 
         if ($businessDocument->status === BusinessDocumentStatus::Issued) {
             if (! $businessDocument->payment_btc_enabled || ! $businessDocument->store_id) {
