@@ -66,4 +66,41 @@ class SystemHealthTest extends TestCase
 
         $this->artisan('system:health-check')->assertFailed();
     }
+
+    #[Test]
+    public function old_failed_jobs_do_not_fail_the_queue_check(): void
+    {
+        $this->fakeExternalChecks();
+        $this->seedFailedJobs(SystemHealthService::MAX_FAILED_JOBS + 40, now()->subDays(30));
+
+        $checks = app(SystemHealthService::class)->runChecks();
+
+        $this->assertTrue($checks['queue']['ok']);
+        $this->assertStringContainsString('(50 total)', $checks['queue']['detail']);
+    }
+
+    #[Test]
+    public function a_burst_of_recent_failed_jobs_fails_the_queue_check(): void
+    {
+        $this->fakeExternalChecks();
+        $this->seedFailedJobs(SystemHealthService::MAX_FAILED_JOBS + 1, now()->subHour());
+
+        $checks = app(SystemHealthService::class)->runChecks();
+
+        $this->assertFalse($checks['queue']['ok']);
+    }
+
+    protected function seedFailedJobs(int $count, \DateTimeInterface $failedAt): void
+    {
+        for ($i = 0; $i < $count; $i++) {
+            \Illuminate\Support\Facades\DB::table('failed_jobs')->insert([
+                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                'connection' => 'database',
+                'queue' => 'default',
+                'payload' => '{}',
+                'exception' => 'Test exception',
+                'failed_at' => $failedAt,
+            ]);
+        }
+    }
 }
