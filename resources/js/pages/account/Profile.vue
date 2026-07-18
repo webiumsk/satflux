@@ -1821,6 +1821,14 @@ async function submitAddPasskey(): Promise<void> {
 
 const accountEnvelopes = ref<AccountEnvelopeSummary[]>([]);
 const accountEnvelopeCount = computed(() => accountEnvelopes.value.length);
+/**
+ * True while the server list could not be fetched. The merged list keeps the
+ * LAST KNOWN state (an empty list would falsely mark every passkey "this
+ * device only"), and destructive/promoting actions refuse to run - removing
+ * a passkey against stale state would silently leave its server envelope
+ * behind, still able to sign in.
+ */
+const accountEnvelopesStale = ref(false);
 const accountPasskeyRestoreLoading = ref(false);
 const passkeyUpgradeBusyId = ref<string | null>(null);
 
@@ -1828,9 +1836,22 @@ const passkeyUpgradeBusyId = ref<string | null>(null);
 async function refreshAccountEnvelopeCount(): Promise<void> {
   try {
     accountEnvelopes.value = await listAccountEnvelopes();
+    accountEnvelopesStale.value = false;
   } catch {
-    accountEnvelopes.value = [];
+    accountEnvelopesStale.value = true;
   }
+}
+
+/** Gate for actions that must see current cloud state; retries once. */
+async function ensureAccountEnvelopesFresh(): Promise<boolean> {
+  if (accountEnvelopesStale.value) {
+    await refreshAccountEnvelopeCount();
+  }
+  if (accountEnvelopesStale.value) {
+    passkeyError.value = t("account.passkey_cloud_state_unavailable");
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -1886,6 +1907,9 @@ const mergedPasskeys = computed<MergedPasskey[]>(() => {
 async function enablePasskeyEverywhere(entry: MergedPasskey): Promise<void> {
   if (!entry.slot) return;
   passkeyError.value = "";
+  if (!(await ensureAccountEnvelopesFresh())) {
+    return;
+  }
   if (!getStoredAccountMnemonic()) {
     passkeyError.value = t("account.passkey_enable_needs_unlock");
     return;
@@ -1904,10 +1928,13 @@ async function enablePasskeyEverywhere(entry: MergedPasskey): Promise<void> {
 
 /** Remove wherever the passkey lives - the local slot, the server envelope, or both. */
 async function removeMergedPasskey(entry: MergedPasskey): Promise<void> {
+  passkeyError.value = "";
+  if (!(await ensureAccountEnvelopesFresh())) {
+    return;
+  }
   if (!window.confirm(t("account.passkey_remove_confirm", { label: entry.label }))) {
     return;
   }
-  passkeyError.value = "";
   try {
     if (entry.slot) {
       passkeySlots.value = await removeDevicePasskeySlot(entry.slot.id);

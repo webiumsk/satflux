@@ -2573,6 +2573,7 @@
     "passkey_added": "Passkey hinzugefügt.",
     "passkey_added_local_only": "Passkey hinzugefügt, funktioniert aber vorerst nur auf diesem Gerät - das Hochladen des Konto-Umschlags ist fehlgeschlagen. Versuchen Sie es später über die Passkey-Liste erneut.",
     "passkey_local_only_badge": "Funktioniert nur auf diesem Gerät",
+    "passkey_cloud_state_unavailable": "Der Passkey-Status konnte nicht vom Server geladen werden. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
     "passkey_main_title": "Passkeys - Anmeldung und Wiederherstellung",
     "passkey_main_hint": "Ein Passkey meldet Sie mit einer Geste an und stellt Ihre Rechnungsdaten auf jedem Gerät wieder her. Der Server speichert nur einen verschlüsselten Umschlag, den allein Ihr Passkey öffnen kann.",
     "passkey_everywhere_badge": "Funktioniert auf allen Geräten",

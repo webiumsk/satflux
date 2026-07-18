@@ -2573,6 +2573,7 @@
     "passkey_added": "Passkey přidán.",
     "passkey_added_local_only": "Passkey přidán, ale zatím funguje jen na tomto zařízení - nahrání účtové obálky selhalo. Zkuste to později ze seznamu passkey.",
     "passkey_local_only_badge": "Funguje jen na tomto zařízení",
+    "passkey_cloud_state_unavailable": "Nepodařilo se načíst stav passkey ze serveru. Zkontrolujte připojení a zkuste to znovu.",
     "passkey_main_title": "Passkeys - přihlášení a obnova",
     "passkey_main_hint": "Passkey vás jedním gestem přihlásí a obnoví fakturační data na libovolném zařízení. Server ukládá jen šifrovanou obálku, kterou otevře pouze váš passkey.",
     "passkey_everywhere_badge": "Funguje na všech zařízeních",

@@ -1734,6 +1734,7 @@
     "passkey_added": "Passkey añadida.",
     "passkey_added_local_only": "Passkey añadida, pero por ahora solo funciona en este dispositivo - la subida del sobre de la cuenta falló. Inténtalo más tarde desde la lista de passkeys.",
     "passkey_local_only_badge": "Funciona solo en este dispositivo",
+    "passkey_cloud_state_unavailable": "No se pudo cargar el estado de las passkeys desde el servidor. Comprueba la conexión e inténtalo de nuevo.",
     "passkey_main_title": "Passkeys - inicio de sesión y recuperación",
     "passkey_main_hint": "Una passkey te conecta y restaura tus datos de facturación en cualquier dispositivo con un gesto. El servidor solo guarda un sobre cifrado que únicamente tu passkey puede abrir.",
     "passkey_everywhere_badge": "Funciona en todos los dispositivos",

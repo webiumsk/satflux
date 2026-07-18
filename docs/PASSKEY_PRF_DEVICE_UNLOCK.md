@@ -63,9 +63,16 @@ Tok prihlásenia (Login.vue "Prihlásiť sa passkeyom"):
    DEŠIFROVANOU frázou - **server-side WebAuthn ceremónia neexistuje**
    a blob sám o sebe nedáva žiadny prístup.
 
-Threat model: server (aj kompromitovaný) vidí len AES-GCM ciphertext;
-dešifrovanie vyžaduje fyzický authenticator s user verification. Podvrhnutý
-alebo zamenený blob len genericky zlyhá (zlý KEK / neplatná fráza).
+Threat model - dve rôzne úrovne kompromitácie:
+
+- **Únik úložiska/DB (aj zálohy)**: útočník má len AES-GCM ciphertext;
+  dešifrovanie vyžaduje fyzický authenticator s user verification.
+  Podvrhnutý alebo zamenený blob len genericky zlyhá (zlý KEK / neplatná
+  fráza).
+- **Plná kompromitácia web originu**: útočník servírujúci SPA vie podvrhnúť
+  JavaScript a po odomknutí exfiltrovať PRF výstup alebo dešifrovanú frázu
+  - to je inherentný limit KAŽDEJ webovej E2E aplikácie (platí rovnako pre
+  ručne zadanú frázu) a cloud envelope ho nezhoršuje ani nerieši.
 Credential id je vysokoentropické - enumerácia je nepraktická a chránená
 limiterom. Účtové passkeys sa vytvárajú s `residentKey: "required"`, inak
 by ich discoverable prihlásenie nikdy nenašlo.

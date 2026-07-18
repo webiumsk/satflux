@@ -2575,6 +2575,7 @@
     "passkey_added": "Passkey pridaný.",
     "passkey_added_local_only": "Passkey pridaný, ale zatiaľ funguje len na tomto zariadení - nahratie účtového závoja zlyhalo. Skúste to neskôr zo zoznamu passkey.",
     "passkey_local_only_badge": "Funguje len na tomto zariadení",
+    "passkey_cloud_state_unavailable": "Nepodarilo sa načítať stav passkey zo servera. Skontrolujte pripojenie a skúste znova.",
     "passkey_main_title": "Passkeys - prihlásenie a obnova",
     "passkey_main_hint": "Passkey vás jedným gestom prihlási a obnoví fakturačné dáta na ľubovoľnom zariadení. Server ukladá len šifrovaný závoj, ktorý otvorí iba váš passkey.",
     "passkey_everywhere_badge": "Funguje na všetkých zariadeniach",

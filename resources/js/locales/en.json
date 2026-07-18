@@ -2574,6 +2574,7 @@
     "passkey_added": "Passkey added.",
     "passkey_added_local_only": "Passkey added, but it works on this device only for now - uploading the account envelope failed. Try again later from the passkey list.",
     "passkey_local_only_badge": "Works on this device only",
+    "passkey_cloud_state_unavailable": "Could not load the passkey state from the server. Check your connection and try again.",
     "passkey_main_title": "Passkeys - sign-in and recovery",
     "passkey_main_hint": "A passkey signs you in and restores your invoicing data on any device with one gesture. The server only stores an encrypted envelope that your passkey alone can open.",
     "passkey_everywhere_badge": "Works on all devices",
