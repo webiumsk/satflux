@@ -90,6 +90,16 @@
         </div>
 
         <div v-show="showSeedPanel" class="mb-2">
+          <button
+            v-if="passkeyLoginSupported"
+            type="button"
+            :disabled="passkeyLoginLoading"
+            class="w-full flex items-center justify-center gap-2 py-3 px-4 mb-3 border border-indigo-500/40 text-sm font-bold rounded-xl text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all"
+            @click="handlePasskeyLogin"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+            {{ t("auth.passkey_login_button") }}
+          </button>
           <AuthSeedGuestPanel
             variant="login"
             :primary-label="t('auth.restore_guest_session')"
@@ -233,12 +243,40 @@ import GuestRestoreModal from "../../components/auth/GuestRestoreModal.vue";
 import AuthSeedGuestPanel from "../../components/auth/AuthSeedGuestPanel.vue";
 import { isPublicMarketingPath, navigateToAppPath } from "../../utils/publicMarketingRoutes";
 import { isSeedFirstRegistration } from "../../config/auth";
+import { loginWithAccountPasskey } from "../../services/deviceUnlock/provider";
+import { isPasskeyPrfSupported, PasskeyCancelledError } from "../../services/deviceUnlock/passkeyPrf";
 
 const { t } = useI18n();
 
+const passkeyLoginSupported = ref(false);
+const passkeyLoginLoading = ref(false);
+
 onMounted(() => {
   applyAuthTabFromQuery();
+  void isPasskeyPrfSupported().then((supported) => {
+    passkeyLoginSupported.value = supported;
+  });
 });
+
+/**
+ * One gesture on ANY device: the passkey's PRF output decrypts the
+ * server-held ciphertext envelope into the recovery phrase, and the phrase
+ * signs the existing guest-recovery challenge for the session.
+ */
+async function handlePasskeyLogin() {
+  passkeyLoginLoading.value = true;
+  try {
+    const { recoveryPhrase } = await loginWithAccountPasskey();
+    await authStore.restoreGuestFromMnemonic(recoveryPhrase);
+    redirectAfterGuestRestore({});
+  } catch (rawError) {
+    if (!(rawError instanceof PasskeyCancelledError)) {
+      flashStore.error(t("auth.passkey_login_failed"));
+    }
+  } finally {
+    passkeyLoginLoading.value = false;
+  }
+}
 
 const router = useRouter();
 const route = useRoute();

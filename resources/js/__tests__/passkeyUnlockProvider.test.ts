@@ -15,6 +15,19 @@ vi.mock("../services/passphraseCrypto", async (importOriginal) => {
     return { ...original, calibratePbkdf2Iterations: vi.fn(async () => 1000) };
 });
 
+// The cloud-envelope layer talks to axios - keep the provider tests hermetic.
+vi.mock("../services/deviceUnlock/accountPasskeyEnvelope", async (importOriginal) => {
+    const original = await importOriginal<typeof import("../services/deviceUnlock/accountPasskeyEnvelope")>();
+    return {
+        ...original,
+        putAccountEnvelope: vi.fn(async () => {}),
+        listAccountEnvelopes: vi.fn(async () => []),
+        fetchEnvelopeForLogin: vi.fn(async () => {
+            throw new Error("not stubbed");
+        }),
+    };
+});
+
 // In-memory stand-in for the IndexedDB-backed envelope store.
 let stored: DeviceEnvelope | null = null;
 
@@ -72,7 +85,8 @@ describe("passkey unlock provider", () => {
     it("adds a passkey slot (passphrase required) and unlocks with it", async () => {
         const provider = await rememberedDevice();
 
-        const slots = await provider.addPasskeyToRememberedDevice(PASSPHRASE, "Test laptop");
+        const { slots, cloudSynced } = await provider.addPasskeyToRememberedDevice(PASSPHRASE, "Test laptop");
+        expect(cloudSynced).toBe(true);
         expect(slots).toHaveLength(1);
         expect(slots[0]!.label).toBe("Test laptop");
         expect(slots[0]!.lastUsedAt).toBeNull();
@@ -98,7 +112,7 @@ describe("passkey unlock provider", () => {
 
     it("removing the passkey slot keeps the passphrase unlock working", async () => {
         const provider = await rememberedDevice();
-        const slots = await provider.addPasskeyToRememberedDevice(PASSPHRASE, "Test laptop");
+        const { slots } = await provider.addPasskeyToRememberedDevice(PASSPHRASE, "Test laptop");
 
         const remaining = await provider.removeDevicePasskeySlot(slots[0]!.id);
         expect(remaining).toHaveLength(0);

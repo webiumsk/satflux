@@ -86,12 +86,19 @@ export async function createPasskeyPrfCredential(params: {
     /** Stable public user handle (owner fingerprint) - groups credentials per account. */
     userHandle: string;
     userName: string;
+    /**
+     * PRF eval input for the new credential. Account-level passkeys pass the
+     * FIXED input (accountPasskeyEnvelope.ts) so one create() gesture yields
+     * an output usable for both the local slot and the cloud envelope;
+     * omitted = random (local-only slot, original behavior).
+     */
+    prfSaltB64?: string;
 }): Promise<{ credentialIdB64: string; prfSaltB64: string; prfOutput: Uint8Array }> {
     if (!(await isPasskeyPrfSupported())) {
         throw new PasskeyUnsupportedError();
     }
 
-    const prfSalt = randomBytes(32);
+    const prfSalt = params.prfSaltB64 ? fromB64(params.prfSaltB64) : randomBytes(32);
     let credential: PublicKeyCredential | null;
     try {
         credential = (await navigator.credentials.create({
@@ -188,6 +195,41 @@ export async function evaluatePrfForSlots(
         throw new PasskeyPrfUnsupportedError();
     }
 
+    return { credentialIdB64: toB64(new Uint8Array(assertion.rawId)), prfOutput: output };
+}
+
+/**
+ * Discoverable sign-in evaluation: no allowCredentials - the platform lists
+ * the user's resident passkeys for this rp and evaluates the PRF with the
+ * FIXED account input in the same gesture. Which credential answered is
+ * only known from the assertion, which is exactly why the account envelope
+ * uses a fixed eval input (see accountPasskeyEnvelope.ts).
+ */
+export async function evaluatePrfDiscoverable(prfInput: Uint8Array): Promise<{ credentialIdB64: string; prfOutput: Uint8Array }> {
+    let assertion: PublicKeyCredential | null;
+    try {
+        assertion = (await navigator.credentials.get({
+            publicKey: {
+                rpId: location.hostname,
+                challenge: randomBytes(32) as BufferSource,
+                allowCredentials: [],
+                userVerification: "required",
+                extensions: {
+                    prf: { eval: { first: prfInput as BufferSource } },
+                } as AuthenticationExtensionsClientInputs,
+            },
+        })) as PublicKeyCredential | null;
+    } catch (error) {
+        throw mapWebAuthnError(error);
+    }
+    if (!assertion) {
+        throw new PasskeyCancelledError();
+    }
+
+    const output = prfResultBytes(assertion.getClientExtensionResults() as PrfExtensionResults);
+    if (!output) {
+        throw new PasskeyPrfUnsupportedError();
+    }
     return { credentialIdB64: toB64(new Uint8Array(assertion.rawId)), prfOutput: output };
 }
 

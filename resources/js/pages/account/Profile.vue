@@ -1357,6 +1357,21 @@
             <p class="text-sm text-gray-300">
               {{ t("account.recovery_phrase_restore_on_device_detail") }}
             </p>
+            <template v-if="passkeySupported && accountEnvelopeCount > 0">
+              <button
+                type="button"
+                class="w-full flex items-center justify-center gap-2 py-3 px-4 border border-indigo-500/40 text-sm font-bold rounded-xl text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 disabled:opacity-50 transition-all"
+                :disabled="accountPasskeyRestoreLoading"
+                @click="submitRestoreWithAccountPasskey"
+              >
+                {{ accountPasskeyRestoreLoading ? t("common.loading") : t("account.passkey_restore_button") }}
+              </button>
+              <div class="flex items-center gap-3 text-xs text-gray-500">
+                <span class="h-px flex-1 bg-gray-700"></span>
+                {{ t("account.passkey_or_phrase_divider") }}
+                <span class="h-px flex-1 bg-gray-700"></span>
+              </div>
+            </template>
             <textarea
               v-model="restoreOnDeviceInput"
               rows="4"
@@ -1532,10 +1547,12 @@ import {
   passkeyPrfUnlockProvider,
   removeDevicePasskeySlot,
   rememberDeviceWithPassphrase,
+  restoreWithAccountPasskey,
   unlockDeviceWithPasskey,
   unlockDeviceWithPassphrase,
   type PasskeySlotMetadata,
 } from "../../services/deviceUnlock/provider";
+import { listAccountEnvelopes } from "../../services/deviceUnlock/accountPasskeyEnvelope";
 import {
   PasskeyCancelledError,
   PasskeyPrfUnsupportedError,
@@ -1625,6 +1642,9 @@ const loadingSubscription = ref(false);
 const showGuestSeedModal = ref(false);
 const showRecoveryBackupWizard = ref(false);
 const showRestoreOnDeviceModal = ref(false);
+watch(showRestoreOnDeviceModal, (open) => {
+  if (open) void refreshAccountEnvelopeCount();
+});
 const restoreOnDeviceInput = ref("");
 const restoreOnDeviceLoading = ref(false);
 const restoreOnDeviceError = ref("");
@@ -1726,15 +1746,59 @@ async function submitAddPasskey(): Promise<void> {
   passkeyBusy.value = true;
   try {
     const label = passkeyLabelInput.value.trim() || t("account.passkey_default_label");
-    passkeySlots.value = await addPasskeyToRememberedDevice(passkeyPassphraseInput.value, label);
+    const result = await addPasskeyToRememberedDevice(passkeyPassphraseInput.value, label);
+    passkeySlots.value = result.slots;
     passkeyPassphraseInput.value = "";
     passkeyLabelInput.value = "";
     showAddPasskey.value = false;
-    flashStore.success(t("account.passkey_added"));
+    if (result.cloudSynced) {
+      flashStore.success(t("account.passkey_added"));
+    } else {
+      // Local slot works; the account envelope upload failed - the passkey
+      // unlocks THIS device only until it is promoted again.
+      flashStore.warning(t("account.passkey_added_local_only"));
+    }
   } catch (error) {
     passkeyError.value = passkeyErrorMessage(error);
   } finally {
     passkeyBusy.value = false;
+  }
+}
+
+const accountEnvelopeCount = ref(0);
+const accountPasskeyRestoreLoading = ref(false);
+
+/** Best-effort: the restore modal shows the passkey path only when the account has envelopes. */
+async function refreshAccountEnvelopeCount(): Promise<void> {
+  try {
+    accountEnvelopeCount.value = (await listAccountEnvelopes()).length;
+  } catch {
+    accountEnvelopeCount.value = 0;
+  }
+}
+
+/** One passkey gesture instead of retyping 24 words on a new device. */
+async function submitRestoreWithAccountPasskey(): Promise<void> {
+  restoreOnDeviceError.value = "";
+  accountPasskeyRestoreLoading.value = true;
+  try {
+    const { recoveryPhrase } = await restoreWithAccountPasskey();
+    resetEvoluBootstrapForRetry();
+    const result = await bindRecoveryPhraseOnThisDevice(recoveryPhrase);
+    storedGuestMnemonic.value = getStoredGuestMnemonic();
+    showRestoreOnDeviceModal.value = false;
+    if (result === "restored" || result === "migrated_legacy_owner") {
+      const { evolu } = await import("@/evolu/client");
+      allowEvoluPageReload();
+      evolu.reloadApp();
+    }
+    flashStore.success(t("account.recovery_phrase_restore_on_device_success"));
+  } catch (error) {
+    if (!(error instanceof PasskeyCancelledError)) {
+      restoreOnDeviceError.value = t("account.device_unlock_failed");
+    }
+  } finally {
+    accountPasskeyRestoreLoading.value = false;
   }
 }
 
