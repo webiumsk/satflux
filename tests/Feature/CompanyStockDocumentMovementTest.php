@@ -280,7 +280,7 @@ class CompanyStockDocumentMovementTest extends TestCase
         $warehouse = CompanyWarehouse::create([
             'company_id' => $this->company->id,
             'name' => 'Retail shop',
-            'type' => 'shop',
+            'type' => 'own',
             'deduct_on_issue' => true,
             'is_active' => true,
         ]);
