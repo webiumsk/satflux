@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\UserPasskeyEnvelope;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -44,37 +45,55 @@ class PasskeyEnvelopeController extends Controller
 
         $user = $request->user();
 
-        $existing = UserPasskeyEnvelope::query()
+        $attributes = [
+            'label' => $validated['label'] ?? null,
+            'payload' => $validated['payload'],
+            'envelope_version' => $validated['envelope_version'] ?? 1,
+            'transports' => $validated['transports'] ?? null,
+        ];
+
+        // Ownership-scoped update first: this can only ever touch the
+        // caller's own row, so no race can redirect the write elsewhere.
+        $envelope = UserPasskeyEnvelope::query()
             ->where('credential_id', $credentialId)
+            ->where('user_id', $user->id)
             ->first();
+
+        if ($envelope) {
+            $envelope->update($attributes);
+
+            return response()->json([
+                'data' => $envelope->only(['credential_id', 'label', 'created_at', 'last_used_at']),
+            ]);
+        }
 
         // A credential id belongs to exactly one account; never let one
         // account overwrite another's envelope (generic message, no oracle).
-        if ($existing && $existing->user_id !== $user->id) {
+        if (UserPasskeyEnvelope::query()->where('credential_id', $credentialId)->exists()) {
             throw ValidationException::withMessages([
                 'credential_id' => ['This passkey cannot be saved.'],
             ]);
         }
 
-        if (! $existing) {
-            $count = UserPasskeyEnvelope::query()->where('user_id', $user->id)->count();
-            if ($count >= self::MAX_ENVELOPES_PER_USER) {
-                throw ValidationException::withMessages([
-                    'credential_id' => ['Passkey limit reached for this account.'],
-                ]);
-            }
+        $count = UserPasskeyEnvelope::query()->where('user_id', $user->id)->count();
+        if ($count >= self::MAX_ENVELOPES_PER_USER) {
+            throw ValidationException::withMessages([
+                'credential_id' => ['Passkey limit reached for this account.'],
+            ]);
         }
 
-        $envelope = UserPasskeyEnvelope::query()->updateOrCreate(
-            ['credential_id' => $credentialId],
-            [
+        try {
+            $envelope = UserPasskeyEnvelope::create(array_merge($attributes, [
                 'user_id' => $user->id,
-                'label' => $validated['label'] ?? null,
-                'payload' => $validated['payload'],
-                'envelope_version' => $validated['envelope_version'] ?? 1,
-                'transports' => $validated['transports'] ?? null,
-            ],
-        );
+                'credential_id' => $credentialId,
+            ]));
+        } catch (UniqueConstraintViolationException) {
+            // A concurrent insert won the credential id - refuse instead of
+            // overwriting whatever the winner stored (same generic message).
+            throw ValidationException::withMessages([
+                'credential_id' => ['This passkey cannot be saved.'],
+            ]);
+        }
 
         return response()->json([
             'data' => $envelope->only(['credential_id', 'label', 'created_at', 'last_used_at']),
