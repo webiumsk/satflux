@@ -11,6 +11,7 @@ use App\Http\Controllers\AppController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\GuestAuthController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\PasskeyEnvelopeLoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\BlinkMigrationAlertController;
 use App\Http\Controllers\BoltzReadinessController;
@@ -271,6 +272,13 @@ Route::middleware(['throttle:auth'])->group(function () {
     Route::post('/auth/email/verification-notification', [EmailVerificationController::class, 'sendVerificationEmail']);
 });
 
+// Passkey sign-in envelope fetch: unauthenticated by design (the ciphertext
+// grants nothing without the physical authenticator; the session comes from
+// the guest-recovery challenge signed with the DECRYPTED phrase). Own
+// limiter so passkey attempts never consume the throttle:auth budget.
+Route::middleware(['throttle:passkey-envelope'])
+    ->post('/auth/passkey/envelope', [PasskeyEnvelopeLoginController::class, 'fetch']);
+
 // Email verification (GET request from email link - no auth required, separate from main auth group)
 Route::get('/auth/verify-email/{id}/{hash}', [EmailVerificationController::class, 'verify'])
     ->middleware(['throttle:6,1'])
@@ -294,6 +302,10 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
     Route::get('/user', [AccountController::class, 'user']);
     Route::get('/chorala/widget-token', [ChoralaController::class, 'widgetToken']);
     Route::get('/user/limits', [AccountController::class, 'limits']);
+    // Passkey recovery envelopes (ciphertext-only, see PasskeyEnvelopeController)
+    Route::get('/account/passkey-envelopes', [\App\Http\Controllers\PasskeyEnvelopeController::class, 'index']);
+    Route::put('/account/passkey-envelopes/{credentialId}', [\App\Http\Controllers\PasskeyEnvelopeController::class, 'upsert']);
+    Route::delete('/account/passkey-envelopes/{credentialId}', [\App\Http\Controllers\PasskeyEnvelopeController::class, 'destroy']);
     Route::put('/user', [AccountController::class, 'updateProfile']);
     Route::put('/user/password', [AccountController::class, 'updatePassword'])
         ->middleware('throttle:5,1');

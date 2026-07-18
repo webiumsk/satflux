@@ -72,6 +72,12 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('password-reset', function (Request $request) {
             return Limit::perMinute(5)->by($request->ip());
         });
+        // Passkey envelope fetch during sign-in: separate from throttle:auth
+        // so a passkey attempt never eats the password-login budget. The
+        // endpoint returns ciphertext only, so a slightly higher cap is safe.
+        RateLimiter::for('passkey-envelope', function (Request $request) {
+            return Limit::perMinute(10)->by($request->ip());
+        });
         // Per-user limiter for authenticated API endpoints (avoids shared-IP throttling)
         RateLimiter::for('api-user', function (Request $request) {
             return $request->user()
