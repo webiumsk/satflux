@@ -27,6 +27,9 @@
           <p class="text-sm text-gray-400">
             {{ t("auth.guest_restore_hint") }}
           </p>
+          <p class="text-xs text-indigo-300/90 rounded-lg border border-indigo-500/25 bg-indigo-500/10 px-3 py-2">
+            {{ t("auth.guest_restore_passkey_hint") }}
+          </p>
           <textarea
             v-model="mnemonicInput"
             rows="4"

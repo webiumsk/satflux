@@ -37,6 +37,53 @@ len DEK vlastným KEK. Passkey slot pridáva druhý typ KEK:
 4. Chybové stavy: zrušenie promptu je ticho (žiadna chyba), authenticator
    bez PRF → typovaná hláška, všetko ostatné → generická hláška bez oracle.
 
+## Účtový cloud envelope (passkey na novom zariadení)
+
+Lokálny envelope žije len v IndexedDB, takže samotný passkey na novom
+zariadení nemal čo odomknúť. Druhá vrstva to rieši: **fráza zašifrovaná
+kľúčom z PRF výstupu passkey, uložená na serveri ako ciphertext**
+(`user_passkey_envelopes`). Synchronizovaný passkey (iCloud/Google) dáva
+rovnaký PRF výstup na každom zariadení, takže jedno gesto obnoví účet
+kdekoľvek.
+
+Tok prihlásenia (Login.vue "Prihlásiť sa passkeyom"):
+
+1. `get()` bez `allowCredentials` (discoverable) s PRF eval = **fixný input**
+   `SHA-256("satflux.account-envelope.prf-input.v1")` - credential id sa
+   dozvieme až z assertion, preto input nemôže byť per-credential; PRF
+   výstup je aj tak per-credential (authenticator primiešava tajomstvo
+   credentialu).
+2. `POST /auth/passkey/envelope` `{credential_id}` → ciphertext (generická
+   404, vlastný limiter 10/min/IP, žiadne info o účte).
+3. KEK = HKDF-SHA-256(prfOutput, zero salt, info
+   `satflux.account-envelope.v1`) - info sa líši od lokálneho envelope,
+   takže rovnaký PRF výstup dáva doménovo oddelené kľúče. AES-GCM decrypt,
+   BIP39 validácia frázy.
+4. Session vznikne existujúcim Ed25519 guest-recovery challenge podpísaným
+   DEŠIFROVANOU frázou - **server-side WebAuthn ceremónia neexistuje**
+   a blob sám o sebe nedáva žiadny prístup.
+
+Threat model - dve rôzne úrovne kompromitácie:
+
+- **Únik úložiska/DB (aj zálohy)**: útočník má len AES-GCM ciphertext;
+  dešifrovanie vyžaduje fyzický authenticator s user verification.
+  Podvrhnutý alebo zamenený blob len genericky zlyhá (zlý KEK / neplatná
+  fráza).
+- **Plná kompromitácia web originu**: útočník servírujúci SPA vie podvrhnúť
+  JavaScript a po odomknutí exfiltrovať PRF výstup alebo dešifrovanú frázu
+  - to je inherentný limit KAŽDEJ webovej E2E aplikácie (platí rovnako pre
+  ručne zadanú frázu) a cloud envelope ho nezhoršuje ani nerieši.
+Credential id je vysokoentropické - enumerácia je nepraktická a chránená
+limiterom. Účtové passkeys sa vytvárajú s `residentKey: "required"`, inak
+by ich discoverable prihlásenie nikdy nenašlo.
+
+Enrollment: jedno `create()` gesto - fixný input slúži ako salt lokálneho
+slotu AJ ako PRF vstup cloud envelope (HKDF info separácia). Upload je
+best-effort; slot bez serverového závoja ukazuje badge "len toto
+zariadenie" s akciou "Povoliť na všetkých zariadeniach"
+(`upgradeAccountPasskey`). Passkey sa dá pridať aj bez zapamätaného
+zariadenia (`addAccountPasskeyFromSession` - vyžaduje odomknutú session).
+
 ## Súbory
 
 - `services/deviceUnlock/envelope.ts` - PasskeyPrfKdf, addPasskeyPrfSlot,
@@ -48,9 +95,16 @@ len DEK vlastným KEK. Passkey slot pridáva druhý typ KEK:
 - `services/deviceUnlock/provider.ts` - addPasskeyToRememberedDevice,
   unlockDeviceWithPasskey, listDevicePasskeySlots, removeDevicePasskeySlot;
   `passkeyPrfUnlockProvider.isSupported()` už nie je stub.
-- `pages/account/Profile.vue` - tlačidlo "Odomknúť passkeyom" v unlock modali
-  + správa slotov (zoznam s lastUsedAt, pridanie s heslom, odstránenie
-  s potvrdením) v bloku zapamätaného zariadenia.
+- `services/deviceUnlock/accountPasskeyEnvelope.ts` - fixný PRF input,
+  encrypt/decrypt účtového závoja, API klient (list/put/delete/fetch).
+- `app/Http/Controllers/PasskeyEnvelopeController.php` +
+  `Auth/PasskeyEnvelopeLoginController.php` - zero-knowledge CRUD a sign-in
+  fetch (tabuľka `user_passkey_envelopes`).
+- `pages/account/Profile.vue` - sekcia "Passkeys - prihlásenie a obnova"
+  (zlúčený zoznam serverových závojov a lokálnych slotov, add/remove/
+  povýšenie), blok "Offline odomknutie tohto zariadenia" (passphrase),
+  passkey obnova v restore modali; `pages/auth/Login.vue` - tlačidlo
+  "Prihlásiť sa passkeyom".
 
 ## Podpora prehliadačov (snapshot 07/2026)
 
