@@ -474,12 +474,102 @@
             {{ t("account.recovery_phrase_setup") }}
           </button>
 
-          <!-- Remembered-device management (local-first only) -->
+          <!-- Passkeys: sign-in + restore on ANY device (account envelopes) merged
+               with this device's offline unlock slots. The recovery phrase stays
+               the root; passkeys are removable conveniences. -->
+          <div
+            v-if="localFirst && authStore.user?.guest_recovery_enrolled"
+            class="mt-4 rounded-xl border border-indigo-500/25 bg-indigo-500/5 p-4 space-y-2"
+          >
+            <p class="text-sm font-medium text-gray-100">{{ t("account.passkey_main_title") }}</p>
+            <p class="text-xs text-gray-400">{{ t("account.passkey_main_hint") }}</p>
+            <p class="text-xs text-gray-500">{{ t("account.passkey_loss_warning") }}</p>
+            <ul v-if="mergedPasskeys.length" class="space-y-2">
+              <li
+                v-for="entry in mergedPasskeys"
+                :key="entry.key"
+                class="flex items-center justify-between gap-3 rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2"
+              >
+                <span class="min-w-0 text-xs text-gray-300">
+                  <span class="block font-medium text-gray-200 truncate">{{ entry.label }}</span>
+                  <span class="block text-gray-500">
+                    {{
+                      entry.lastUsedAt
+                        ? t("account.passkey_last_used", { date: formatDate(entry.lastUsedAt) })
+                        : t("account.passkey_never_used")
+                    }}
+                  </span>
+                  <span v-if="entry.cloud" class="block text-emerald-400/80 mt-0.5">
+                    {{ t("account.passkey_everywhere_badge") }}
+                  </span>
+                  <span v-else class="block text-amber-400/90 mt-0.5">
+                    {{ t("account.passkey_local_only_badge") }}
+                  </span>
+                </span>
+                <span class="flex shrink-0 items-center gap-1.5">
+                  <button
+                    v-if="!entry.cloud && entry.slot"
+                    type="button"
+                    class="px-2 py-1 border border-indigo-500/40 rounded-lg text-xs text-indigo-300 hover:bg-indigo-500/10 disabled:opacity-50"
+                    :disabled="passkeyUpgradeBusyId === entry.slot.id"
+                    @click="enablePasskeyEverywhere(entry)"
+                  >
+                    {{ passkeyUpgradeBusyId === entry.slot.id ? t("common.loading") : t("account.passkey_enable_everywhere") }}
+                  </button>
+                  <button
+                    type="button"
+                    class="px-2 py-1 border border-red-500/40 rounded-lg text-xs text-red-300 hover:bg-red-500/10"
+                    @click="removeMergedPasskey(entry)"
+                  >
+                    {{ t("account.passkey_remove") }}
+                  </button>
+                </span>
+              </li>
+            </ul>
+            <button
+              v-if="passkeySupported"
+              type="button"
+              class="px-3 py-1.5 border border-gray-600 rounded-lg text-xs text-gray-300 hover:bg-gray-700"
+              @click="showAddPasskey = !showAddPasskey"
+            >
+              {{ t("account.passkey_add_button") }}
+            </button>
+            <p v-else class="text-xs text-gray-500">{{ t("account.passkey_unsupported") }}</p>
+            <form v-if="showAddPasskey" class="space-y-2 pt-1" @submit.prevent="submitAddPasskey">
+              <input
+                v-model="passkeyLabelInput"
+                type="text"
+                maxlength="64"
+                class="w-full rounded-lg border border-gray-600 bg-gray-900/80 px-3 py-2 text-sm text-gray-200"
+                :placeholder="t('account.passkey_label_placeholder')"
+              />
+              <template v-if="deviceRemembered">
+                <input
+                  v-model="passkeyPassphraseInput"
+                  type="password"
+                  autocomplete="current-password"
+                  class="w-full rounded-lg border border-gray-600 bg-gray-900/80 px-3 py-2 text-sm text-gray-200"
+                  :placeholder="t('account.device_passphrase_placeholder')"
+                />
+                <p class="text-xs text-gray-500">{{ t("account.passkey_offline_note") }}</p>
+              </template>
+              <button
+                type="submit"
+                class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs text-white disabled:opacity-50"
+                :disabled="passkeyBusy"
+              >
+                {{ passkeyBusy ? t("common.loading") : t("account.passkey_add_submit") }}
+              </button>
+            </form>
+            <p v-if="passkeyError" class="text-xs text-red-400">{{ passkeyError }}</p>
+          </div>
+
+          <!-- Offline unlock of THIS device (advanced: passphrase envelope) -->
           <div
             v-if="localFirst && deviceRemembered"
             class="mt-4 rounded-xl border border-gray-700 bg-gray-900/50 p-4 space-y-3"
           >
-            <p class="text-sm text-gray-200">{{ t("account.device_remembered_status") }}</p>
+            <p class="text-sm text-gray-200">{{ t("account.device_offline_title") }}</p>
             <p class="text-xs text-gray-500">{{ t("account.device_remembered_hint") }}</p>
             <div class="flex flex-wrap gap-2">
               <button
@@ -528,84 +618,6 @@
               </button>
             </form>
 
-            <!-- Passkey unlock shortcuts (WebAuthn PRF slots on the envelope) -->
-            <div class="pt-3 border-t border-gray-700 space-y-2">
-              <p class="text-sm text-gray-200">{{ t("account.passkey_section_title") }}</p>
-              <p class="text-xs text-gray-500">{{ t("account.passkey_loss_warning") }}</p>
-              <ul v-if="passkeySlots.length" class="space-y-2">
-                <li
-                  v-for="slot in passkeySlots"
-                  :key="slot.id"
-                  class="flex items-center justify-between gap-3 rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2"
-                >
-                  <span class="min-w-0 text-xs text-gray-300">
-                    <span class="block font-medium text-gray-200 truncate">{{ slot.label }}</span>
-                    <span class="block text-gray-500">
-                      {{
-                        slot.lastUsedAt
-                          ? t("account.passkey_last_used", { date: formatDate(slot.lastUsedAt) })
-                          : t("account.passkey_never_used")
-                      }}
-                    </span>
-                    <span v-if="!slotCloudSynced(slot)" class="block text-amber-400/90 mt-0.5">
-                      {{ t("account.passkey_local_only_badge") }}
-                    </span>
-                  </span>
-                  <span class="flex shrink-0 items-center gap-1.5">
-                    <button
-                      v-if="!slotCloudSynced(slot)"
-                      type="button"
-                      class="px-2 py-1 border border-indigo-500/40 rounded-lg text-xs text-indigo-300 hover:bg-indigo-500/10 disabled:opacity-50"
-                      :disabled="passkeyUpgradeBusyId === slot.id"
-                      @click="enablePasskeyEverywhere(slot)"
-                    >
-                      {{ passkeyUpgradeBusyId === slot.id ? t("common.loading") : t("account.passkey_enable_everywhere") }}
-                    </button>
-                    <button
-                      type="button"
-                      class="px-2 py-1 border border-red-500/40 rounded-lg text-xs text-red-300 hover:bg-red-500/10"
-                      @click="removePasskey(slot)"
-                    >
-                      {{ t("account.passkey_remove") }}
-                    </button>
-                  </span>
-                </li>
-              </ul>
-              <button
-                v-if="passkeySupported"
-                type="button"
-                class="px-3 py-1.5 border border-gray-600 rounded-lg text-xs text-gray-300 hover:bg-gray-700"
-                @click="showAddPasskey = !showAddPasskey"
-              >
-                {{ t("account.passkey_add_button") }}
-              </button>
-              <p v-else class="text-xs text-gray-500">{{ t("account.passkey_unsupported") }}</p>
-              <form v-if="showAddPasskey" class="space-y-2 pt-1" @submit.prevent="submitAddPasskey">
-                <input
-                  v-model="passkeyLabelInput"
-                  type="text"
-                  maxlength="64"
-                  class="w-full rounded-lg border border-gray-600 bg-gray-900/80 px-3 py-2 text-sm text-gray-200"
-                  :placeholder="t('account.passkey_label_placeholder')"
-                />
-                <input
-                  v-model="passkeyPassphraseInput"
-                  type="password"
-                  autocomplete="current-password"
-                  class="w-full rounded-lg border border-gray-600 bg-gray-900/80 px-3 py-2 text-sm text-gray-200"
-                  :placeholder="t('account.device_passphrase_placeholder')"
-                />
-                <p class="text-xs text-gray-500">{{ t("account.passkey_passphrase_hint") }}</p>
-                <button
-                  type="submit"
-                  class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs text-white disabled:opacity-50"
-                  :disabled="passkeyBusy"
-                >
-                  {{ passkeyBusy ? t("common.loading") : t("account.passkey_add_submit") }}
-                </button>
-              </form>
-              <p v-if="passkeyError" class="text-xs text-red-400">{{ passkeyError }}</p>
-            </div>
           </div>
         </div>
 
@@ -1553,6 +1565,7 @@ import {
   getStoredAccountMnemonic,
 } from "../../services/accountSeed";
 import {
+  addAccountPasskeyFromSession,
   addPasskeyToRememberedDevice,
   changeDevicePassphrase,
   forgetDevice,
@@ -1567,7 +1580,12 @@ import {
   upgradeAccountPasskey,
   type PasskeySlotMetadata,
 } from "../../services/deviceUnlock/provider";
-import { credentialIdToB64Url, listAccountEnvelopes } from "../../services/deviceUnlock/accountPasskeyEnvelope";
+import {
+  credentialIdToB64Url,
+  deleteAccountEnvelope,
+  listAccountEnvelopes,
+  type AccountEnvelopeSummary,
+} from "../../services/deviceUnlock/accountPasskeyEnvelope";
 import {
   PasskeyCancelledError,
   PasskeyPrfUnsupportedError,
@@ -1758,23 +1776,42 @@ async function submitDeviceUnlockWithPasskey(): Promise<void> {
   }
 }
 
+/**
+ * One add-passkey form, two paths: with the device passphrase filled in it
+ * creates the local unlock slot AND the account envelope (one gesture);
+ * left empty it needs the unlocked session and creates the account
+ * envelope only (still signs in and restores everywhere).
+ */
 async function submitAddPasskey(): Promise<void> {
   passkeyError.value = "";
   passkeyBusy.value = true;
   try {
     const label = passkeyLabelInput.value.trim() || t("account.passkey_default_label");
-    const result = await addPasskeyToRememberedDevice(passkeyPassphraseInput.value, label);
-    passkeySlots.value = result.slots;
+
+    if (deviceRemembered.value && passkeyPassphraseInput.value) {
+      const result = await addPasskeyToRememberedDevice(passkeyPassphraseInput.value, label);
+      passkeySlots.value = result.slots;
+      if (result.cloudSynced) {
+        flashStore.success(t("account.passkey_added"));
+      } else {
+        // Local slot works; the account envelope upload failed - the passkey
+        // unlocks THIS device only until it is promoted again.
+        flashStore.warning(t("account.passkey_added_local_only"));
+      }
+    } else if (getStoredAccountMnemonic()) {
+      await addAccountPasskeyFromSession(label);
+      flashStore.success(t("account.passkey_added"));
+    } else {
+      passkeyError.value = deviceRemembered.value
+        ? t("account.passkey_passphrase_hint")
+        : t("account.passkey_enable_needs_unlock");
+      return;
+    }
+
     passkeyPassphraseInput.value = "";
     passkeyLabelInput.value = "";
     showAddPasskey.value = false;
-    if (result.cloudSynced) {
-      flashStore.success(t("account.passkey_added"));
-    } else {
-      // Local slot works; the account envelope upload failed - the passkey
-      // unlocks THIS device only until it is promoted again.
-      flashStore.warning(t("account.passkey_added_local_only"));
-    }
+    await refreshAccountEnvelopeCount();
   } catch (error) {
     passkeyError.value = passkeyErrorMessage(error);
   } finally {
@@ -1782,44 +1819,106 @@ async function submitAddPasskey(): Promise<void> {
   }
 }
 
-const accountEnvelopeCount = ref(0);
-const accountEnvelopeIds = ref<Set<string>>(new Set());
+const accountEnvelopes = ref<AccountEnvelopeSummary[]>([]);
+const accountEnvelopeCount = computed(() => accountEnvelopes.value.length);
 const accountPasskeyRestoreLoading = ref(false);
 const passkeyUpgradeBusyId = ref<string | null>(null);
 
-/** Best-effort: drives the restore-modal passkey path and the per-slot "this device only" state. */
+/** Best-effort: drives the restore-modal passkey path and the merged passkey list. */
 async function refreshAccountEnvelopeCount(): Promise<void> {
   try {
-    const envelopes = await listAccountEnvelopes();
-    accountEnvelopeCount.value = envelopes.length;
-    accountEnvelopeIds.value = new Set(envelopes.map((entry) => entry.credential_id));
+    accountEnvelopes.value = await listAccountEnvelopes();
   } catch {
-    accountEnvelopeCount.value = 0;
-    accountEnvelopeIds.value = new Set();
+    accountEnvelopes.value = [];
   }
 }
 
-/** Local slot without a server envelope = the passkey works on this device only. */
-function slotCloudSynced(slot: PasskeySlotMetadata): boolean {
-  return accountEnvelopeIds.value.has(credentialIdToB64Url(slot.credentialIdB64));
-}
+/**
+ * One list for the user, two storage places for us: server envelopes (work
+ * on every device) merged with this device's local unlock slots by
+ * credential id. Cloud-only entries come from other devices; local-only
+ * entries predate the cloud envelope or failed to upload.
+ */
+type MergedPasskey = {
+  key: string;
+  label: string;
+  lastUsedAt: string | null;
+  local: boolean;
+  cloud: boolean;
+  slot: PasskeySlotMetadata | null;
+};
+
+const mergedPasskeys = computed<MergedPasskey[]>(() => {
+  const byId = new Map<string, MergedPasskey>();
+  for (const envelope of accountEnvelopes.value) {
+    byId.set(envelope.credential_id, {
+      key: envelope.credential_id,
+      label: envelope.label || t("account.passkey_default_label"),
+      lastUsedAt: envelope.last_used_at,
+      local: false,
+      cloud: true,
+      slot: null,
+    });
+  }
+  for (const slot of passkeySlots.value) {
+    const id = credentialIdToB64Url(slot.credentialIdB64);
+    const existing = byId.get(id);
+    if (existing) {
+      existing.local = true;
+      existing.slot = slot;
+      existing.label = slot.label;
+      existing.lastUsedAt = slot.lastUsedAt ?? existing.lastUsedAt;
+    } else {
+      byId.set(id, {
+        key: id,
+        label: slot.label,
+        lastUsedAt: slot.lastUsedAt,
+        local: true,
+        cloud: false,
+        slot,
+      });
+    }
+  }
+  return [...byId.values()];
+});
 
 /** Retry path for a failed (or pre-cloud) envelope upload - needs the session phrase. */
-async function enablePasskeyEverywhere(slot: PasskeySlotMetadata): Promise<void> {
+async function enablePasskeyEverywhere(entry: MergedPasskey): Promise<void> {
+  if (!entry.slot) return;
   passkeyError.value = "";
   if (!getStoredAccountMnemonic()) {
     passkeyError.value = t("account.passkey_enable_needs_unlock");
     return;
   }
-  passkeyUpgradeBusyId.value = slot.id;
+  passkeyUpgradeBusyId.value = entry.slot.id;
   try {
-    await upgradeAccountPasskey(slot.credentialIdB64, slot.label);
+    await upgradeAccountPasskey(entry.slot.credentialIdB64, entry.slot.label);
     await refreshAccountEnvelopeCount();
     flashStore.success(t("account.passkey_added"));
   } catch (error) {
     passkeyError.value = passkeyErrorMessage(error);
   } finally {
     passkeyUpgradeBusyId.value = null;
+  }
+}
+
+/** Remove wherever the passkey lives - the local slot, the server envelope, or both. */
+async function removeMergedPasskey(entry: MergedPasskey): Promise<void> {
+  if (!window.confirm(t("account.passkey_remove_confirm", { label: entry.label }))) {
+    return;
+  }
+  passkeyError.value = "";
+  try {
+    if (entry.slot) {
+      passkeySlots.value = await removeDevicePasskeySlot(entry.slot.id);
+    }
+    if (entry.cloud) {
+      await deleteAccountEnvelope(entry.key);
+    }
+    await refreshAccountEnvelopeCount();
+    flashStore.success(t("account.passkey_removed"));
+  } catch {
+    passkeyError.value = t("account.device_unlock_failed");
   }
 }
 
@@ -1854,17 +1953,6 @@ async function submitRestoreWithAccountPasskey(): Promise<void> {
   }
 }
 
-async function removePasskey(slot: PasskeySlotMetadata): Promise<void> {
-  if (!window.confirm(t("account.passkey_remove_confirm", { label: slot.label }))) {
-    return;
-  }
-  try {
-    passkeySlots.value = await removeDevicePasskeySlot(slot.id);
-    flashStore.success(t("account.passkey_removed"));
-  } catch {
-    passkeyError.value = t("account.device_unlock_failed");
-  }
-}
 
 async function submitChangeDevicePassphrase(): Promise<void> {
   changeDevicePassphraseError.value = "";
