@@ -92,15 +92,17 @@ class SystemHealthTest extends TestCase
 
     protected function seedFailedJobs(int $count, \DateTimeInterface $failedAt): void
     {
+        $rows = [];
         for ($i = 0; $i < $count; $i++) {
-            \Illuminate\Support\Facades\DB::table('failed_jobs')->insert([
+            $rows[] = [
                 'uuid' => (string) \Illuminate\Support\Str::uuid(),
                 'connection' => 'database',
                 'queue' => 'default',
                 'payload' => '{}',
                 'exception' => 'Test exception',
                 'failed_at' => $failedAt,
-            ]);
+            ];
         }
+        \Illuminate\Support\Facades\DB::table('failed_jobs')->insert($rows);
     }
 }
