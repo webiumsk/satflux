@@ -14,9 +14,21 @@ import {
 } from "./envelope";
 import {
     createPasskeyPrfCredential,
+    evaluatePrf,
+    evaluatePrfDiscoverable,
     evaluatePrfForSlots,
     isPasskeyPrfSupported,
 } from "./passkeyPrf";
+import {
+    ACCOUNT_PRF_INPUT_B64,
+    accountPrfInputBytes,
+    decryptAccountEnvelope,
+    encryptAccountEnvelope,
+    fetchEnvelopeForLogin,
+    listAccountEnvelopes,
+    putAccountEnvelope,
+    type AccountEnvelopeSummary,
+} from "./accountPasskeyEnvelope";
 import {
     clearDeviceEnvelope,
     hasDeviceEnvelope,
@@ -25,6 +37,7 @@ import {
 } from "./deviceEnvelopeStore";
 import {
     deriveRecoveryPublicKeyHex,
+    getStoredAccountMnemonic,
     normalizeAccountMnemonic,
     storeAccountMnemonic,
 } from "../accountSeed";
@@ -134,17 +147,25 @@ export async function listDevicePasskeySlots(): Promise<PasskeySlotMetadata[]> {
  * device passphrase (proves possession + yields the DEK) - the passphrase
  * slot always stays; the passkey can only ever be an ADDITIONAL slot.
  */
-export async function addPasskeyToRememberedDevice(passphrase: string, label: string): Promise<PasskeySlotMetadata[]> {
+export async function addPasskeyToRememberedDevice(
+    passphrase: string,
+    label: string,
+): Promise<{ slots: PasskeySlotMetadata[]; cloudSynced: boolean }> {
     const envelope = await loadDeviceEnvelope();
     if (!envelope) {
         throw new DeviceUnlockError();
     }
     const { dekRaw } = await unlockWithPassphrase(envelope, passphrase);
     try {
+        // The FIXED account input doubles as the local slot's salt so ONE
+        // create() gesture serves both envelopes (HKDF infos differ, so the
+        // derived keys stay domain-separated).
         const credential = await createPasskeyPrfCredential({
             label,
             userHandle: envelope.ownerFingerprint,
             userName: "satflux-device-unlock",
+            prfSaltB64: ACCOUNT_PRF_INPUT_B64,
+            requireResident: true,
         });
 
         // From here the PRF secret exists - zero it on every path.
@@ -168,13 +189,129 @@ export async function addPasskeyToRememberedDevice(passphrase: string, label: st
             }
 
             await saveDeviceEnvelope(updated);
-            return listPasskeyPrfSlots(updated);
+
+            // Cloud envelope: best-effort - the passkey already unlocks this
+            // device; the caller surfaces a "works on this device only" hint
+            // when the upload fails (retry via upgradeAccountPasskey).
+            let cloudSynced = false;
+            try {
+                const payload = await encryptAccountEnvelope(check.recoveryPhrase, credential.prfOutput);
+                await putAccountEnvelope({
+                    credentialIdB64: credential.credentialIdB64,
+                    payload,
+                    label,
+                });
+                cloudSynced = true;
+            } catch {
+                cloudSynced = false;
+            }
+
+            return { slots: listPasskeyPrfSlots(updated), cloudSynced };
         } finally {
             credential.prfOutput.fill(0);
         }
     } finally {
         dekRaw.fill(0);
     }
+}
+
+/**
+ * Sign-in path on ANY device: one discoverable WebAuthn gesture evaluates
+ * the PRF, the server hands over this credential's ciphertext envelope and
+ * the phrase decrypts locally. The caller then signs the guest-recovery
+ * challenge with the phrase to obtain the session.
+ */
+export async function loginWithAccountPasskey(): Promise<{ recoveryPhrase: string }> {
+    const { credentialIdB64, prfOutput } = await evaluatePrfDiscoverable(accountPrfInputBytes());
+    try {
+        const payload = await fetchEnvelopeForLogin(credentialIdB64);
+        const recoveryPhrase = await decryptAccountEnvelope(payload, prfOutput);
+        return { recoveryPhrase };
+    } finally {
+        prfOutput.fill(0);
+    }
+}
+
+/**
+ * Restore on a new device while already signed in (email login): same
+ * decryption chain, but scoped to the account's known credentials so
+ * non-resident passkeys work too.
+ */
+export async function restoreWithAccountPasskey(envelopes?: AccountEnvelopeSummary[]): Promise<{ recoveryPhrase: string }> {
+    const list = envelopes ?? (await listAccountEnvelopes());
+    if (list.length === 0) {
+        throw new DeviceUnlockError();
+    }
+
+    const { credentialIdB64, prfOutput } = await evaluatePrfForSlots(
+        list.map((entry) => ({
+            credentialIdB64: credentialIdFromB64Url(entry.credential_id),
+            prfSaltB64: ACCOUNT_PRF_INPUT_B64,
+        })),
+    );
+    try {
+        const payload = await fetchEnvelopeForLogin(credentialIdB64);
+        const recoveryPhrase = await decryptAccountEnvelope(payload, prfOutput);
+        return { recoveryPhrase };
+    } finally {
+        prfOutput.fill(0);
+    }
+}
+
+/**
+ * Create an account-level passkey WITHOUT a remembered device: needs only
+ * the session phrase (Evolu unlocked). Cloud envelope only - a local slot
+ * additionally requires the device passphrase path.
+ */
+export async function addAccountPasskeyFromSession(label: string): Promise<void> {
+    const phrase = getStoredAccountMnemonic();
+    if (!phrase) {
+        throw new DeviceUnlockError();
+    }
+
+    const credential = await createPasskeyPrfCredential({
+        label,
+        userHandle: deriveRecoveryPublicKeyHex(phrase),
+        userName: "satflux-device-unlock",
+        prfSaltB64: ACCOUNT_PRF_INPUT_B64,
+        requireResident: true,
+    });
+    try {
+        const payload = await encryptAccountEnvelope(phrase, credential.prfOutput);
+        await putAccountEnvelope({
+            credentialIdB64: credential.credentialIdB64,
+            payload,
+            label,
+        });
+    } finally {
+        credential.prfOutput.fill(0);
+    }
+}
+
+/**
+ * Promote an existing local-only passkey slot to an account passkey: one
+ * get() evaluating the FIXED input on that credential, then upload. Needs
+ * the session phrase.
+ */
+export async function upgradeAccountPasskey(credentialIdB64: string, label: string | null): Promise<void> {
+    const phrase = getStoredAccountMnemonic();
+    if (!phrase) {
+        throw new DeviceUnlockError();
+    }
+
+    const prfOutput = await evaluatePrf(credentialIdB64, ACCOUNT_PRF_INPUT_B64);
+    try {
+        const payload = await encryptAccountEnvelope(phrase, prfOutput);
+        await putAccountEnvelope({ credentialIdB64, payload, label });
+    } finally {
+        prfOutput.fill(0);
+    }
+}
+
+/** Server ids are base64url; WebAuthn helpers here use standard base64. */
+function credentialIdFromB64Url(b64url: string): string {
+    const b64 = b64url.replace(/-/g, "+").replace(/_/g, "/");
+    return b64 + "=".repeat((4 - (b64.length % 4)) % 4);
 }
 
 /**

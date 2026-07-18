@@ -547,14 +547,28 @@
                           : t("account.passkey_never_used")
                       }}
                     </span>
+                    <span v-if="!slotCloudSynced(slot)" class="block text-amber-400/90 mt-0.5">
+                      {{ t("account.passkey_local_only_badge") }}
+                    </span>
                   </span>
-                  <button
-                    type="button"
-                    class="shrink-0 px-2 py-1 border border-red-500/40 rounded-lg text-xs text-red-300 hover:bg-red-500/10"
-                    @click="removePasskey(slot)"
-                  >
-                    {{ t("account.passkey_remove") }}
-                  </button>
+                  <span class="flex shrink-0 items-center gap-1.5">
+                    <button
+                      v-if="!slotCloudSynced(slot)"
+                      type="button"
+                      class="px-2 py-1 border border-indigo-500/40 rounded-lg text-xs text-indigo-300 hover:bg-indigo-500/10 disabled:opacity-50"
+                      :disabled="passkeyUpgradeBusyId === slot.id"
+                      @click="enablePasskeyEverywhere(slot)"
+                    >
+                      {{ passkeyUpgradeBusyId === slot.id ? t("common.loading") : t("account.passkey_enable_everywhere") }}
+                    </button>
+                    <button
+                      type="button"
+                      class="px-2 py-1 border border-red-500/40 rounded-lg text-xs text-red-300 hover:bg-red-500/10"
+                      @click="removePasskey(slot)"
+                    >
+                      {{ t("account.passkey_remove") }}
+                    </button>
+                  </span>
                 </li>
               </ul>
               <button
@@ -1357,6 +1371,21 @@
             <p class="text-sm text-gray-300">
               {{ t("account.recovery_phrase_restore_on_device_detail") }}
             </p>
+            <template v-if="passkeySupported && accountEnvelopeCount > 0">
+              <button
+                type="button"
+                class="w-full flex items-center justify-center gap-2 py-3 px-4 border border-indigo-500/40 text-sm font-bold rounded-xl text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 disabled:opacity-50 transition-all"
+                :disabled="accountPasskeyRestoreLoading"
+                @click="submitRestoreWithAccountPasskey"
+              >
+                {{ accountPasskeyRestoreLoading ? t("common.loading") : t("account.passkey_restore_button") }}
+              </button>
+              <div class="flex items-center gap-3 text-xs text-gray-500">
+                <span class="h-px flex-1 bg-gray-700"></span>
+                {{ t("account.passkey_or_phrase_divider") }}
+                <span class="h-px flex-1 bg-gray-700"></span>
+              </div>
+            </template>
             <textarea
               v-model="restoreOnDeviceInput"
               rows="4"
@@ -1532,10 +1561,13 @@ import {
   passkeyPrfUnlockProvider,
   removeDevicePasskeySlot,
   rememberDeviceWithPassphrase,
+  restoreWithAccountPasskey,
   unlockDeviceWithPasskey,
   unlockDeviceWithPassphrase,
+  upgradeAccountPasskey,
   type PasskeySlotMetadata,
 } from "../../services/deviceUnlock/provider";
+import { credentialIdToB64Url, listAccountEnvelopes } from "../../services/deviceUnlock/accountPasskeyEnvelope";
 import {
   PasskeyCancelledError,
   PasskeyPrfUnsupportedError,
@@ -1625,6 +1657,9 @@ const loadingSubscription = ref(false);
 const showGuestSeedModal = ref(false);
 const showRecoveryBackupWizard = ref(false);
 const showRestoreOnDeviceModal = ref(false);
+watch(showRestoreOnDeviceModal, (open) => {
+  if (open) void refreshAccountEnvelopeCount();
+});
 const restoreOnDeviceInput = ref("");
 const restoreOnDeviceLoading = ref(false);
 const restoreOnDeviceError = ref("");
@@ -1692,6 +1727,8 @@ async function refreshPasskeyState(): Promise<void> {
   } catch {
     passkeySlots.value = [];
   }
+  // The slot list marks passkeys that lack a server envelope.
+  await refreshAccountEnvelopeCount();
 }
 
 /** Silent on user cancel; typed messages for unsupported authenticators. */
@@ -1726,15 +1763,94 @@ async function submitAddPasskey(): Promise<void> {
   passkeyBusy.value = true;
   try {
     const label = passkeyLabelInput.value.trim() || t("account.passkey_default_label");
-    passkeySlots.value = await addPasskeyToRememberedDevice(passkeyPassphraseInput.value, label);
+    const result = await addPasskeyToRememberedDevice(passkeyPassphraseInput.value, label);
+    passkeySlots.value = result.slots;
     passkeyPassphraseInput.value = "";
     passkeyLabelInput.value = "";
     showAddPasskey.value = false;
-    flashStore.success(t("account.passkey_added"));
+    if (result.cloudSynced) {
+      flashStore.success(t("account.passkey_added"));
+    } else {
+      // Local slot works; the account envelope upload failed - the passkey
+      // unlocks THIS device only until it is promoted again.
+      flashStore.warning(t("account.passkey_added_local_only"));
+    }
   } catch (error) {
     passkeyError.value = passkeyErrorMessage(error);
   } finally {
     passkeyBusy.value = false;
+  }
+}
+
+const accountEnvelopeCount = ref(0);
+const accountEnvelopeIds = ref<Set<string>>(new Set());
+const accountPasskeyRestoreLoading = ref(false);
+const passkeyUpgradeBusyId = ref<string | null>(null);
+
+/** Best-effort: drives the restore-modal passkey path and the per-slot "this device only" state. */
+async function refreshAccountEnvelopeCount(): Promise<void> {
+  try {
+    const envelopes = await listAccountEnvelopes();
+    accountEnvelopeCount.value = envelopes.length;
+    accountEnvelopeIds.value = new Set(envelopes.map((entry) => entry.credential_id));
+  } catch {
+    accountEnvelopeCount.value = 0;
+    accountEnvelopeIds.value = new Set();
+  }
+}
+
+/** Local slot without a server envelope = the passkey works on this device only. */
+function slotCloudSynced(slot: PasskeySlotMetadata): boolean {
+  return accountEnvelopeIds.value.has(credentialIdToB64Url(slot.credentialIdB64));
+}
+
+/** Retry path for a failed (or pre-cloud) envelope upload - needs the session phrase. */
+async function enablePasskeyEverywhere(slot: PasskeySlotMetadata): Promise<void> {
+  passkeyError.value = "";
+  if (!getStoredAccountMnemonic()) {
+    passkeyError.value = t("account.passkey_enable_needs_unlock");
+    return;
+  }
+  passkeyUpgradeBusyId.value = slot.id;
+  try {
+    await upgradeAccountPasskey(slot.credentialIdB64, slot.label);
+    await refreshAccountEnvelopeCount();
+    flashStore.success(t("account.passkey_added"));
+  } catch (error) {
+    passkeyError.value = passkeyErrorMessage(error);
+  } finally {
+    passkeyUpgradeBusyId.value = null;
+  }
+}
+
+/** One passkey gesture instead of retyping 24 words on a new device. */
+async function submitRestoreWithAccountPasskey(): Promise<void> {
+  restoreOnDeviceError.value = "";
+  accountPasskeyRestoreLoading.value = true;
+  try {
+    const { recoveryPhrase } = await restoreWithAccountPasskey();
+    resetEvoluBootstrapForRetry();
+    const result = await bindRecoveryPhraseOnThisDevice(recoveryPhrase);
+    storedGuestMnemonic.value = getStoredGuestMnemonic();
+    showRestoreOnDeviceModal.value = false;
+    if (result === "restored" || result === "migrated_legacy_owner") {
+      const { evolu } = await import("@/evolu/client");
+      allowEvoluPageReload();
+      evolu.reloadApp();
+    }
+    flashStore.success(t("account.recovery_phrase_restore_on_device_success"));
+  } catch (error) {
+    if (error instanceof PasskeyCancelledError) {
+      // Dismissed prompt - not an error state.
+    } else if (error instanceof PasskeyPrfUnsupportedError) {
+      restoreOnDeviceError.value = t("account.passkey_prf_unsupported");
+    } else if (error instanceof PasskeyUnsupportedError) {
+      restoreOnDeviceError.value = t("account.passkey_unsupported");
+    } else {
+      restoreOnDeviceError.value = t("account.recovery_phrase_restore_on_device_failed");
+    }
+  } finally {
+    accountPasskeyRestoreLoading.value = false;
   }
 }
 
