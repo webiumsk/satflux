@@ -165,6 +165,7 @@ export async function addPasskeyToRememberedDevice(
             userHandle: envelope.ownerFingerprint,
             userName: "satflux-device-unlock",
             prfSaltB64: ACCOUNT_PRF_INPUT_B64,
+            requireResident: true,
         });
 
         // From here the PRF secret exists - zero it on every path.
@@ -273,6 +274,7 @@ export async function addAccountPasskeyFromSession(label: string): Promise<void>
         userHandle: deriveRecoveryPublicKeyHex(phrase),
         userName: "satflux-device-unlock",
         prfSaltB64: ACCOUNT_PRF_INPUT_B64,
+        requireResident: true,
     });
     try {
         const payload = await encryptAccountEnvelope(phrase, credential.prfOutput);

@@ -100,6 +100,20 @@ describe("passkey unlock provider", () => {
         expect(after[0]!.lastUsedAt).toBeTruthy();
     });
 
+    it("returns cloudSynced=false when the envelope upload fails, local unlock intact", async () => {
+        const provider = await rememberedDevice();
+        const accountEnvelope = await import("../services/deviceUnlock/accountPasskeyEnvelope");
+        vi.mocked(accountEnvelope.putAccountEnvelope).mockRejectedValueOnce(new Error("offline"));
+
+        const { slots, cloudSynced } = await provider.addPasskeyToRememberedDevice(PASSPHRASE, "Test laptop");
+        expect(cloudSynced).toBe(false);
+        expect(slots).toHaveLength(1);
+
+        // Best-effort means the local slot still unlocks this device.
+        const { recoveryPhrase } = await provider.unlockDeviceWithPasskey();
+        expect(recoveryPhrase).toBe(FAKE_PHRASE);
+    });
+
     it("refuses to add a passkey with a wrong passphrase", async () => {
         const provider = await rememberedDevice();
         const { DeviceUnlockError } = await import("../services/deviceUnlock/envelope");

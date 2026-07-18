@@ -93,6 +93,12 @@ export async function createPasskeyPrfCredential(params: {
      * omitted = random (local-only slot, original behavior).
      */
     prfSaltB64?: string;
+    /**
+     * Account passkeys must be resident (discoverable) - the sign-in button
+     * runs get() with no allowCredentials, and a non-resident credential
+     * would silently never show up there. Local-only slots keep "preferred".
+     */
+    requireResident?: boolean;
 }): Promise<{ credentialIdB64: string; prfSaltB64: string; prfOutput: Uint8Array }> {
     if (!(await isPasskeyPrfSupported())) {
         throw new PasskeyUnsupportedError();
@@ -115,7 +121,10 @@ export async function createPasskeyPrfCredential(params: {
                     { type: "public-key", alg: -257 },
                 ],
                 authenticatorSelection: {
-                    residentKey: "preferred",
+                    residentKey: params.requireResident ? "required" : "preferred",
+                    // Legacy WebAuthn L1 field - older authenticator stacks
+                    // only honor this spelling.
+                    requireResidentKey: params.requireResident === true,
                     userVerification: "required",
                 },
                 extensions: { prf: { eval: { first: prfSalt as BufferSource } } } as AuthenticationExtensionsClientInputs,
