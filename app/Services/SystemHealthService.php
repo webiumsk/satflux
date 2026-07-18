@@ -18,8 +18,15 @@ class SystemHealthService
     /** Free disk space below this fails the disk check. */
     public const MIN_FREE_DISK_BYTES = 500 * 1024 * 1024;
 
-    /** More failed jobs than this fails the queue check. */
+    /** More failed jobs than this within the window fails the queue check. */
     public const MAX_FAILED_JOBS = 10;
+
+    /**
+     * Only failures inside this window count against the threshold - an
+     * all-time count keeps the check red forever over historical rows
+     * that were already investigated (flush is not required to go green).
+     */
+    public const FAILED_JOBS_WINDOW_HOURS = 24;
 
     /** No processed webhook for this long (with webhooks configured) is suspicious. */
     public const WEBHOOK_STALE_HOURS = 48;
@@ -68,11 +75,14 @@ class SystemHealthService
     /** @return array{ok: bool, detail: string} */
     protected function checkQueue(): array
     {
-        $failed = (int) DB::table('failed_jobs')->count();
+        $recent = (int) DB::table('failed_jobs')
+            ->where('failed_at', '>=', now()->subHours(self::FAILED_JOBS_WINDOW_HOURS))
+            ->count();
+        $total = (int) DB::table('failed_jobs')->count();
 
         return [
-            'ok' => $failed <= self::MAX_FAILED_JOBS,
-            'detail' => "{$failed} failed job(s)",
+            'ok' => $recent <= self::MAX_FAILED_JOBS,
+            'detail' => "{$recent} failed job(s) in ".self::FAILED_JOBS_WINDOW_HOURS."h ({$total} total)",
         ];
     }
 
