@@ -157,7 +157,7 @@ class CompanyStockMovementService
                     ->lockForUpdate()
                     ->first();
 
-                if (! $item || ! $item->track_inventory || ! $issueMovement->company_warehouse_id) {
+                if (! $item || ! $issueMovement->company_warehouse_id) {
                     continue;
                 }
 
@@ -336,7 +336,6 @@ class CompanyStockMovementService
         if ($warehouseId) {
             $warehouse = $company->warehouses()
                 ->where('id', $warehouseId)
-                ->where('is_active', true)
                 ->first();
 
             if ($warehouse) {

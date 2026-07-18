@@ -7,6 +7,7 @@ use App\Enums\CompanyStockMovementSource;
 use App\Models\BusinessDocument;
 use App\Models\Company;
 use App\Models\CompanyStockItem;
+use App\Models\CompanyWarehouse;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
@@ -239,6 +240,98 @@ class CompanyStockDocumentMovementTest extends TestCase
             'business_document_id' => $documentId,
             'source' => CompanyStockMovementSource::DocumentAdjustment->value,
         ]);
+    }
+
+    #[Test]
+    public function editing_an_issued_document_after_tracking_is_disabled_reverses_the_original_issue(): void
+    {
+        $documentId = $this->issueInvoiceWithStockLine();
+        $this->assertEquals(7.0, $this->stockQuantity($this->stockItem));
+
+        $this->stockItem->update(['track_inventory' => false]);
+
+        $this->actingAs($this->proUser)
+            ->patchJson("/api/invoicing/companies/{$this->company->id}/documents/{$documentId}", [
+                'type' => 'invoice',
+                'currency' => 'EUR',
+                'lines' => [
+                    [
+                        'name' => 'Jablká',
+                        'quantity' => 5,
+                        'unit' => 'kg',
+                        'unit_price' => 1.5,
+                        'company_stock_item_id' => $this->stockItem->id,
+                    ],
+                ],
+            ])
+            ->assertOk();
+
+        $this->assertEquals(10.0, $this->stockQuantity($this->stockItem));
+        $this->assertDatabaseHas('company_stock_item_movements', [
+            'business_document_id' => $documentId,
+            'source' => CompanyStockMovementSource::DocumentAdjustment->value,
+            'quantity_delta' => 3,
+        ]);
+    }
+
+    #[Test]
+    public function editing_an_issued_document_keeps_stock_in_the_original_inactive_warehouse(): void
+    {
+        $warehouse = CompanyWarehouse::create([
+            'company_id' => $this->company->id,
+            'name' => 'Retail shop',
+            'type' => 'shop',
+            'deduct_on_issue' => true,
+            'is_active' => true,
+        ]);
+        app(\App\Services\Invoicing\CompanyStockBalanceService::class)
+            ->setQuantity($warehouse, $this->stockItem, 10);
+
+        $create = $this->actingAs($this->proUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents", [
+                'type' => 'invoice',
+                'currency' => 'EUR',
+                'lines' => [
+                    [
+                        'name' => 'Jablká',
+                        'quantity' => 3,
+                        'unit' => 'kg',
+                        'unit_price' => 1.5,
+                        'company_stock_item_id' => $this->stockItem->id,
+                        'company_warehouse_id' => $warehouse->id,
+                    ],
+                ],
+            ]);
+        $create->assertCreated();
+        $documentId = $create->json('data.id');
+
+        $this->actingAs($this->proUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$documentId}/issue")
+            ->assertOk();
+        $this->assertEquals(7.0, $this->stockQuantity($this->stockItem, $warehouse));
+        $this->assertEquals(10.0, $this->stockQuantity($this->stockItem));
+
+        $warehouse->update(['is_active' => false]);
+
+        $this->actingAs($this->proUser)
+            ->patchJson("/api/invoicing/companies/{$this->company->id}/documents/{$documentId}", [
+                'type' => 'invoice',
+                'currency' => 'EUR',
+                'lines' => [
+                    [
+                        'name' => 'Jablká',
+                        'quantity' => 5,
+                        'unit' => 'kg',
+                        'unit_price' => 1.5,
+                        'company_stock_item_id' => $this->stockItem->id,
+                        'company_warehouse_id' => $warehouse->id,
+                    ],
+                ],
+            ])
+            ->assertOk();
+
+        $this->assertEquals(5.0, $this->stockQuantity($this->stockItem, $warehouse));
+        $this->assertEquals(10.0, $this->stockQuantity($this->stockItem));
     }
 
     #[Test]
