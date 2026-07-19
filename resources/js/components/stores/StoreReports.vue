@@ -193,7 +193,7 @@
                     </span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    {{ formatLabel(exportItem.format) }}
+                    {{ formatLabel(exportItem.format ?? '') }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div class="flex items-center gap-2">
@@ -292,7 +292,15 @@ const props = defineProps({
 });
 
 const loading = ref(false);
-const exports = ref<any[]>([]);
+interface ExportRow {
+  id: number;
+  status: string;
+  format?: string | null;
+  created_at?: string | null;
+  [key: string]: unknown;
+}
+
+const exports = ref<ExportRow[]>([]);
 const downloadingExportId = ref<number | null>(null);
 const retryingExportId = ref<number | null>(null);
 const deletingExportId = ref<number | null>(null);
@@ -375,7 +383,7 @@ function startRefreshInterval() {
   stopRefreshInterval();
   exportsRefreshInterval = window.setInterval(() => {
     const hasPendingOrRunning = exports.value.some(
-      (e: any) => e.status === "pending" || e.status === "running"
+      (e) => e.status === "pending" || e.status === "running"
     );
     if (hasPendingOrRunning) {
       fetchExports(true);
@@ -410,7 +418,7 @@ async function fetchExports(silent = false) {
   }
 }
 
-async function handleDownloadExport(exportItem: any) {
+async function handleDownloadExport(exportItem: ExportRow) {
   downloadingExportId.value = exportItem.id;
   try {
     const response = await api.get(`/exports/${exportItem.id}/download`);
@@ -431,7 +439,7 @@ async function handleDownloadExport(exportItem: any) {
   }
 }
 
-async function handleRetryExport(exportItem: any) {
+async function handleRetryExport(exportItem: ExportRow) {
   retryingExportId.value = exportItem.id;
   try {
     await api.post(`/exports/${exportItem.id}/retry`);
@@ -478,7 +486,7 @@ async function generatePdfReport() {
   }
 }
 
-async function handleDeleteExport(exportItem: any) {
+async function handleDeleteExport(exportItem: ExportRow) {
   if (!confirm(t("stores.confirm_delete_report"))) return;
   deletingExportId.value = exportItem.id;
   try {

@@ -176,16 +176,17 @@
 </template>
 
 <script setup lang="ts">
+import type { PosProduct, RawPosItem } from '../../types/btcpayApps';
 import { asApiError } from "../../utils/apiError";
 import { ref, watch } from 'vue';
 
 const props = defineProps<{
-  products: any[];
+  products: PosProduct[];
   currency: string;
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:products', products: any[]): void;
+  (e: 'update:products', products: PosProduct[]): void;
   (e: 'add'): void;
   (e: 'edit', index: number): void;
 }>();
@@ -208,12 +209,12 @@ function generateProductId(title: string): string {
 }
 
 // Convert products to JSON string
-function productsToJson(prods: any[]): string {
+function productsToJson(prods: PosProduct[]): string {
   return JSON.stringify(
     prods.map(p => {
       // Handle inventory logic similar to parent
       let inventory: number | null = null;
-      if (p.inventory !== null && p.inventory !== undefined && p.inventory !== '') {
+      if (p.inventory !== null && p.inventory !== undefined) {
         const invNum = Number(p.inventory);
         if (!isNaN(invNum) && invNum >= 0) {
           inventory = invNum;
@@ -225,7 +226,7 @@ function productsToJson(prods: any[]): string {
         title: p.title,
         priceType: p.priceType,
         price: p.priceType !== 'Free' && p.priceType !== 'Topup' ? String(p.price || 0) : null,
-        taxRate: p.taxRate !== null && p.taxRate !== undefined && p.taxRate !== '' ? String(p.taxRate) : null,
+        taxRate: p.taxRate !== null && p.taxRate !== undefined ? String(p.taxRate) : null,
         image: p.image || null,
         description: p.description || null,
         categories: p.categories ? String(p.categories).split(',').map((c: string) => c.trim()).filter((c: string) => c) : null,
@@ -246,9 +247,9 @@ function parseProductsJson() {
     const parsed = JSON.parse(productsJson.value);
     if (!Array.isArray(parsed)) throw new Error('Root must be an array');
     
-    const newProducts = parsed.map((p: any) => {
+    const newProducts = (parsed as RawPosItem[]).map((p) => {
         let inventory: number | null = null;
-        if (p.inventory !== null && p.inventory !== undefined && p.inventory !== '') {
+        if (p.inventory !== null && p.inventory !== undefined) {
         const invNum = Number(p.inventory);
         if (!isNaN(invNum) && invNum >= 0) {
             inventory = invNum;
@@ -310,11 +311,11 @@ function handleDragStart(event: DragEvent, index: number) {
   }
 }
 
-function handleDragOver(event: DragEvent, index: number) {
+function handleDragOver(_event: DragEvent, index: number) {
   dragOverIndex.value = index;
 }
 
-function handleDrop(event: DragEvent, dropIndex: number) {
+function handleDrop(_event: DragEvent, dropIndex: number) {
   if (draggedIndex.value === null) return;
   
   const newProducts = [...props.products];

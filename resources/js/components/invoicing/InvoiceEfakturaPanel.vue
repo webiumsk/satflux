@@ -361,8 +361,9 @@ function complianceDetailMessage(row: ComplianceRow | null): string {
   return '';
 }
 
-function extractError(e: any) {
-  const errors = e?.response?.data?.errors;
+function extractError(rawError: unknown) {
+  const e = asApiError(rawError);
+  const errors = e.response?.data?.errors;
   if (errors && typeof errors === 'object') {
     for (const value of Object.values(errors)) {
       if (Array.isArray(value) && typeof value[0] === 'string') {
@@ -371,7 +372,7 @@ function extractError(e: any) {
     }
   }
 
-  return e?.response?.data?.message || t('common.error');
+  return e.response?.data?.message || t('common.error');
 }
 
 function formatDate(iso: string) {

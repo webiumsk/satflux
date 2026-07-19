@@ -147,7 +147,7 @@
                     {{ (invoice.invoice_id || invoice.id).substring(0, 8) }}...
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    {{ formatDate(invoice.created_time || invoice.created_at) }}
+                    {{ formatDate(invoice.created_time || invoice.created_at || '') }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm">
                     <span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full border"
@@ -156,7 +156,7 @@
                     </span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-white font-medium">
-                    {{ formatAmount(invoice.amount, invoice.currency) }}
+                    {{ formatAmount(invoice.amount, invoice.currency ?? 'USD') }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
                     <svg 
@@ -198,7 +198,7 @@
                         </div>
                         <div>
                           <p class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">Created At</p>
-                          <p class="text-sm text-gray-300">{{ formatDate(invoice.created_time || invoice.created_at) }}</p>
+                          <p class="text-sm text-gray-300">{{ formatDate(invoice.created_time || invoice.created_at || '') }}</p>
                         </div>
                       </div>
 
@@ -251,7 +251,18 @@ const showXlsxUpgradeModal = ref(false);
 const props = defineProps<{ store: Store }>();
 
 const loading = ref(false);
-const invoices = ref<any[]>([]);
+interface StoreInvoiceRow {
+  id: string;
+  invoice_id?: string;
+  status?: string;
+  amount?: string | number;
+  currency?: string;
+  created_time?: string | number | null;
+  created_at?: string | number | null;
+  [key: string]: unknown;
+}
+
+const invoices = ref<StoreInvoiceRow[]>([]);
 const exportingInvoices = ref(false);
 
 const expandedInvoiceId = ref<string | null>(null);
@@ -290,7 +301,7 @@ async function fetchInvoices() {
   
   loading.value = true;
   try {
-    const params: any = {};
+    const params: Record<string, unknown> = {};
     if (filters.value.status) params.status = filters.value.status;
     if (filters.value.date_from) params.date_from = filters.value.date_from;
     if (filters.value.date_to) params.date_to = filters.value.date_to;
@@ -339,7 +350,7 @@ async function handleExportInvoices(format: 'csv' | 'xlsx') {
   flashStore.clear();
   
   try {
-    const params: any = { format };
+    const params: Record<string, unknown> = { format };
     if (filters.value.status) params.status = filters.value.status;
     if (filters.value.date_from) params.date_from = filters.value.date_from;
     if (filters.value.date_to) params.date_to = filters.value.date_to;
@@ -378,8 +389,8 @@ async function handleExportInvoices(format: 'csv' | 'xlsx') {
   }
 }
 
-function downloadBlob(blob: Blob, headers: any, defaultFilename: string) {
-  const contentDisposition = headers['content-disposition'] || '';
+function downloadBlob(blob: Blob, headers: Record<string, unknown>, defaultFilename: string) {
+  const contentDisposition = String(headers['content-disposition'] ?? '');
   let filename = defaultFilename;
   if (contentDisposition) {
     const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
@@ -418,7 +429,7 @@ function formatDate(dateInput: string | number): string {
   return `${day}.${month}.${year} ${hours}:${minutes}`;
 }
 
-function formatAmount(amount: string | number, currency: string = 'USD'): string {
+function formatAmount(amount: string | number | undefined, currency: string = 'USD'): string {
   if (!amount) return '-';
   const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
   if (isNaN(numAmount)) return '-';
@@ -436,7 +447,7 @@ function formatAmount(amount: string | number, currency: string = 'USD'): string
   }
 }
 
-function getStatusClass(status: string): string {
+function getStatusClass(status: string | undefined): string {
   const statusLower = status?.toLowerCase() || '';
   if (statusLower === 'paid' || statusLower === 'settled' || statusLower === 'complete') {
     return 'bg-green-500/10 text-green-400 border-green-500/20';

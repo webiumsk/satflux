@@ -41,7 +41,7 @@ const appsStore = useAppsStore();
 const { limits, load: loadLimits } = useAccountLimits();
 const { storeId, store, error, loadStore, goSettings, goSection } = useStorePageShell();
 
-const virtualApp = computed(() => ({ name: t('tickets.title') }));
+const virtualApp = computed(() => ({ id: '', name: t('tickets.title') }));
 const eventLimit = computed(() => limits.value?.events?.unlimited ? null : (limits.value?.events?.max ?? null));
 
 onMounted(async () => {

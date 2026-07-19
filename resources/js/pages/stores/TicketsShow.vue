@@ -73,7 +73,7 @@
         </div>
       </div>
     </template>
-    <template #default="{ app, store }">
+    <template #default>
       <!-- Content -->
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         <!-- ────── Create / Edit Event Form ────── -->
@@ -1762,6 +1762,8 @@
 </template>
 
 <script setup lang="ts">
+import type { AppRef } from "../../types/btcpayApps";
+import type { Store } from "../../store/stores";
 import { asApiError } from "../../utils/apiError";
 import { ref, computed, nextTick, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
@@ -1791,13 +1793,22 @@ const openRaffles = computed(() =>
 );
 const props = withDefaults(
   defineProps<{
-    app: any;
-    store: any;
+    // StoreTickets passes a virtual app (empty id + name) and a possibly-null store.
+    app: AppRef | null;
+    store: Store | null;
     /** Max events allowed (null = unlimited). When set, Create button is disabled at limit. */
     eventLimit?: number | null;
   }>(),
   { eventLimit: null },
 );
+
+/** Actions run only when a store is bound (template guards on props.store). */
+function requireStoreId(): string {
+  if (!props.store) {
+    throw new Error("tickets: no store bound");
+  }
+  return props.store.id;
+}
 
 const layoutRef = ref<InstanceType<typeof AppShowLayout> | null>(null);
 const showUpgradeModal = ref(false);
@@ -1805,7 +1816,7 @@ const showUpgradeModal = ref(false);
 // ── State ───────────────────────────────────────
 const events = ref<TicketEvent[]>([]);
 const loadingEvents = ref(false);
-const showCheckInQrEventId = ref<number | null>(null);
+const showCheckInQrEventId = ref<string | null>(null);
 const resendingTicketId = ref<string | null>(null);
 const showCreateForm = ref(false);
 const eventFormRef = ref<HTMLElement | null>(null);
@@ -1976,7 +1987,7 @@ async function onEventImageChange(e: Event) {
       const formData = new FormData();
       formData.append("file", file);
       const response = await api.post(
-        `/stores/${props.store.id}/tickets/events/${eventId}/logo`,
+        `/stores/${requireStoreId()}/tickets/events/${eventId}/logo`,
         formData,
       );
       const d = response.data?.data ?? {};
@@ -2007,7 +2018,7 @@ async function clearEventImage() {
   if (eventId) {
     try {
       const response = await api.delete(
-        `/stores/${props.store.id}/tickets/events/${eventId}/logo`,
+        `/stores/${requireStoreId()}/tickets/events/${eventId}/logo`,
       );
       const d = response.data?.data ?? {};
       eventForm.value.eventLogoFileId = d.eventLogoFileId ?? "";
@@ -2070,7 +2081,7 @@ async function loadEvents() {
   loadingEvents.value = true;
   clearMessages();
   try {
-    events.value = await ticketsStore.fetchEvents(props.store.id);
+    events.value = await ticketsStore.fetchEvents(requireStoreId());
   } catch (err: unknown) {
     showError(getApiErrorMessage(err, t("common.error")));
   } finally {
@@ -2082,7 +2093,7 @@ async function loadTicketTypes(eventId: string) {
   loadingTicketTypes.value = true;
   try {
     eventTicketTypes.value = await ticketsStore.fetchTicketTypes(
-      props.store.id,
+      requireStoreId(),
       eventId,
     );
   } catch (rawError) {
@@ -2124,7 +2135,7 @@ async function handleSubmitEvent() {
   submitting.value = true;
   clearMessages();
 
-  const data: any = {
+  const data: Record<string, unknown> = {
     title: eventForm.value.title,
     eventType: eventForm.value.eventType,
     startDate: toISOString(eventForm.value.startDate),
@@ -2176,13 +2187,13 @@ async function handleSubmitEvent() {
   try {
     if (editingEvent.value) {
       await ticketsStore.updateEvent(
-        props.store.id,
+        requireStoreId(),
         editingEvent.value.id,
         data,
       );
       showSuccess(t("tickets.event_updated"));
     } else {
-      const createdEvent = await ticketsStore.createEvent(props.store.id, data);
+      const createdEvent = await ticketsStore.createEvent(requireStoreId(), data);
       // Upload pending image via plugin logo endpoint now that we have an event ID
       if (pendingImageFile.value && createdEvent?.id) {
         uploadingImage.value = true;
@@ -2190,7 +2201,7 @@ async function handleSubmitEvent() {
           const formData = new FormData();
           formData.append("file", pendingImageFile.value);
           await api.post(
-            `/stores/${props.store.id}/tickets/events/${createdEvent.id}/logo`,
+            `/stores/${requireStoreId()}/tickets/events/${createdEvent.id}/logo`,
             formData,
           );
         } catch {
@@ -2209,7 +2220,7 @@ async function handleSubmitEvent() {
     const msg =
       err?.response?.data?.message ||
       (Array.isArray(err?.response?.data)
-        ? err.response.data.map((e: any) => e.message).join(", ")
+        ? err.response.data.map((entry) => (entry as { message?: string }).message ?? "").join(", ")
         : "") ||
       err?.message ||
       "Failed to save event";
@@ -2234,8 +2245,8 @@ function handleEditEvent(event: TicketEvent) {
     emailBody: event.emailBody || "",
     hasMaximumCapacity: event.hasMaximumCapacity || false,
     maximumEventCapacity: event.maximumEventCapacity || null,
-    eventLogoUrl: event.eventLogoUrl || (event as any).logoUrl || "",
-    eventLogoFileId: (event as any).eventLogoFileId || "",
+    eventLogoUrl: event.eventLogoUrl || event.logoUrl || "",
+    eventLogoFileId: event.eventLogoFileId || "",
     bundledRaffleId: event.bundledRaffleId || "",
     bundledRaffleTicketsPerAdmission:
       event.bundledRaffleTicketsPerAdmission ?? 0,
@@ -2256,7 +2267,7 @@ async function handleToggleEvent(event: TicketEvent) {
   }
   clearMessages();
   try {
-    const toggled = await ticketsStore.toggleEvent(props.store.id, event.id);
+    const toggled = await ticketsStore.toggleEvent(requireStoreId(), event.id);
     // Determine new state from response; fall back to optimistic flip when plugin returns empty (204)
     const newState: "Active" | "Disabled" =
       toggled?.eventState ??
@@ -2293,7 +2304,7 @@ async function handleDeleteEvent(event: TicketEvent) {
   if (!confirm(t("tickets.delete_confirm", { title: event.title }))) return;
   clearMessages();
   try {
-    await ticketsStore.deleteEvent(props.store.id, event.id);
+    await ticketsStore.deleteEvent(requireStoreId(), event.id);
     if (expandedEventId.value === event.id) expandedEventId.value = null;
     await loadEvents();
     showSuccess(t("tickets.event_deleted"));
@@ -2311,7 +2322,7 @@ async function handleSubmitTicketType(eventId: string) {
   submittingTT.value = true;
   clearMessages();
 
-  const data: any = {
+  const data: Record<string, unknown> = {
     name: ttForm.value.name,
     price: ttForm.value.price,
     isDefault: !!ttForm.value.isDefault,
@@ -2323,14 +2334,14 @@ async function handleSubmitTicketType(eventId: string) {
   try {
     if (editingTicketType.value) {
       await ticketsStore.updateTicketType(
-        props.store.id,
+        requireStoreId(),
         eventId,
         editingTicketType.value.id,
         data,
       );
       showSuccess(t("tickets.ticket_type_updated"));
     } else {
-      await ticketsStore.createTicketType(props.store.id, eventId, data);
+      await ticketsStore.createTicketType(requireStoreId(), eventId, data);
       showSuccess(t("tickets.ticket_type_created"));
     }
     cancelTicketTypeForm();
@@ -2340,7 +2351,7 @@ async function handleSubmitTicketType(eventId: string) {
     const msg =
       err?.response?.data?.message ||
       (Array.isArray(err?.response?.data)
-        ? err.response.data.map((e: any) => e.message).join(", ")
+        ? err.response.data.map((entry) => (entry as { message?: string }).message ?? "").join(", ")
         : "") ||
       err?.message ||
       "Failed to save ticket type";
@@ -2369,7 +2380,7 @@ function handleEditTicketType(eventId: string, tt: TicketType) {
 async function handleToggleTicketType(eventId: string, tt: TicketType) {
   clearMessages();
   try {
-    await ticketsStore.toggleTicketType(props.store.id, eventId, tt.id);
+    await ticketsStore.toggleTicketType(requireStoreId(), eventId, tt.id);
     await loadTicketTypes(eventId);
     showSuccess(
       tt.ticketTypeState === "Active"
@@ -2391,7 +2402,7 @@ async function handleDeleteTicketType(eventId: string, tt: TicketType) {
     return;
   clearMessages();
   try {
-    await ticketsStore.deleteTicketType(props.store.id, eventId, tt.id);
+    await ticketsStore.deleteTicketType(requireStoreId(), eventId, tt.id);
     await loadTicketTypes(eventId);
     showSuccess(t("tickets.ticket_type_deleted"));
   } catch (rawError) {
@@ -2410,7 +2421,7 @@ async function loadTickets(eventId: string, search?: string) {
   loadingTickets.value = true;
   try {
     eventTickets.value = await ticketsStore.fetchTickets(
-      props.store.id,
+      requireStoreId(),
       eventId,
       search || undefined,
     );
@@ -2446,7 +2457,7 @@ async function handleResendTicketEmail(eventId: string, ticket: Ticket) {
   resendingTicketId.value = ticket.id;
   try {
     await ticketsStore.sendReminder(
-      props.store.id,
+      requireStoreId(),
       eventId,
       ticket.orderId,
       ticket.id,
@@ -2480,7 +2491,7 @@ async function handleCheckIn(eventId: string, ticket: Ticket) {
   clearMessages();
   try {
     await ticketsStore.checkInTicket(
-      props.store.id,
+      requireStoreId(),
       eventId,
       ticket.ticketNumber,
     );
@@ -2497,7 +2508,7 @@ async function handleCheckIn(eventId: string, ticket: Ticket) {
 }
 
 function getPanelCheckInUrl(event: TicketEvent): string {
-  const path = `/stores/${props.store.id}/ticket-check-in/${event.id}`;
+  const path = `/stores/${requireStoreId()}/ticket-check-in/${event.id}`;
   return typeof window !== "undefined"
     ? `${window.location.origin}${path}`
     : path;
@@ -2574,10 +2585,10 @@ function exportTicketsCsv(event: TicketEvent) {
 async function loadRaffleBundleOptions() {
   try {
     raffleBundleAvailable.value = await rafflesStore.fetchAvailability(
-      props.store.id,
+      requireStoreId(),
     );
     if (raffleBundleAvailable.value) {
-      await rafflesStore.fetchRaffles(props.store.id);
+      await rafflesStore.fetchRaffles(requireStoreId());
     }
   } catch {
     raffleBundleAvailable.value = false;

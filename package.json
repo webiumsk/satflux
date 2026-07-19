@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "vite build && node scripts/fix-manifest.js",
     "preview": "vite preview",
-    "lint": "eslint resources/js --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --max-warnings=205",
+    "lint": "eslint resources/js --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --max-warnings=117",
     "lint:fix": "eslint resources/js --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
     "typecheck": "node scripts/typecheck-baseline.mjs",
     "typecheck:update-baseline": "node scripts/typecheck-baseline.mjs --update",

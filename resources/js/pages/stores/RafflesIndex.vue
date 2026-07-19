@@ -133,7 +133,7 @@ const { limits } = useAccountLimits();
 const { storeId, store, error, loadStore, goSettings, goSection } = useStorePageShell();
 const apps = computed(() => appsStore.apps);
 
-const virtualApp = computed(() => ({ name: t('raffles.title') }));
+const virtualApp = computed(() => ({ id: '', name: t('raffles.title') }));
 
 const raffles = ref<Raffle[]>([]);
 const listLoading = ref(true);

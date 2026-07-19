@@ -676,6 +676,7 @@ const apps = computed(() => appsStore.apps);
 const raffleId = computed(() => route.params.raffleId as string);
 const raffle = ref<Raffle | null>(null);
 const virtualApp = computed(() => ({
+  id: '',
   name: raffle.value?.name ?? t("raffles.title"),
 }));
 const sanitizedDescription = computed(() =>

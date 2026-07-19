@@ -120,7 +120,7 @@ const { limits } = useAccountLimits();
 const { storeId, store, error, loadStore, goSettings, goSection } = useStorePageShell();
 const apps = computed(() => appsStore.apps);
 
-const virtualApp = computed(() => ({ name: t('raffles.create') }));
+const virtualApp = computed(() => ({ id: '', name: t('raffles.create') }));
 
 const form = reactive({
     name: '',

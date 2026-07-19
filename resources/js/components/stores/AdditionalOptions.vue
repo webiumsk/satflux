@@ -443,18 +443,25 @@ import { useI18n } from "vue-i18n";
 
 const { t } = useI18n();
 
+import type {
+  CrowdfundAdvanced,
+  CrowdfundBehavior,
+  CrowdfundCheckout,
+  CrowdfundContributions,
+} from '../../types/btcpayApps';
+
 const props = defineProps<{
-  contributions: any;
-  crowdfundBehavior: any;
-  checkout: any;
-  advanced: any;
+  contributions: CrowdfundContributions;
+  crowdfundBehavior: CrowdfundBehavior;
+  checkout: CrowdfundCheckout;
+  advanced: CrowdfundAdvanced;
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:contributions', value: any): void;
-  (e: 'update:crowdfundBehavior', value: any): void;
-  (e: 'update:checkout', value: any): void;
-  (e: 'update:advanced', value: any): void;
+  (e: 'update:contributions', value: CrowdfundContributions): void;
+  (e: 'update:crowdfundBehavior', value: CrowdfundBehavior): void;
+  (e: 'update:checkout', value: CrowdfundCheckout): void;
+  (e: 'update:advanced', value: CrowdfundAdvanced): void;
 }>();
 
 const openSections = ref({
@@ -466,7 +473,7 @@ const openSections = ref({
   notification: false,
 });
 
-function normalizeCheckout(c: Record<string, unknown>) {
+function normalizeCheckout(c: Partial<CrowdfundCheckout> & { requestContributorData?: boolean }) {
   const raw = c?.formId;
   let formId =
     raw === null || raw === undefined ? "" : String(raw);
@@ -521,7 +528,7 @@ watch(
   () => props.checkout,
   (val) => {
     if (val === localCheckout.value) return;
-    localCheckout.value = normalizeCheckout(val as Record<string, unknown>);
+    localCheckout.value = normalizeCheckout(val);
   },
 );
 
@@ -534,7 +541,8 @@ watch(
 );
 
 function toggleSection(section: string) {
-  openSections.value[section as keyof typeof openSections] = !openSections.value[section as keyof typeof openSections];
+  const key = section as keyof typeof openSections.value;
+  openSections.value[key] = !openSections.value[key];
 }
 
 /** BTCPay hardcoded FormId keys; anything else is a store-specific form UUID. */

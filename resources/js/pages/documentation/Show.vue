@@ -154,20 +154,20 @@
             <div
               class="flex items-center text-sm text-gray-400 mb-8 pb-8 border-b border-gray-700"
             >
-              <span>{{ formatDate(article.created_at) }}</span>
+              <span>{{ formatDate(article.created_at ?? '') }}</span>
               <span
                 v-if="article.updated_at !== article.created_at"
                 class="ml-4"
               >
                 {{ t("documentation.updated") }}:
-                {{ formatDate(article.updated_at) }}
+                {{ formatDate(article.updated_at ?? '') }}
               </span>
             </div>
 
             <!-- Content (sanitized HTML from rich editor or legacy plain text) -->
             <div
               class="prose prose-invert prose-lg max-w-none doc-content"
-              v-html="sanitizedContent(article.content)"
+              v-html="sanitizedContent(article.content ?? '')"
             ></div>
           </article>
 
@@ -212,11 +212,23 @@ const canEditArticle = computed(() => {
   return role === "admin" || role === "support";
 });
 
+interface DocArticle {
+  id: string;
+  slug: string;
+  title: string;
+  content?: string;
+  created_at?: string;
+  updated_at?: string;
+  category_id?: string | number | null;
+  category?: { id: string | number; name: string } | null;
+  [key: string]: unknown;
+}
+
 const loading = ref(false);
 const sidebarLoading = ref(false);
-const article = ref<any>(null);
-const sidebarArticles = ref<any[]>([]);
-const sidebarCategories = ref<any[]>([]);
+const article = ref<DocArticle | null>(null);
+const sidebarArticles = ref<DocArticle[]>([]);
+const sidebarCategories = ref<{ id: string | number; name: string }[]>([]);
 
 interface SidebarGroup {
   category: { id: string; name: string } | null;
@@ -228,7 +240,7 @@ const sidebarNav = computed<SidebarGroup[]>(() => {
   const articles = sidebarArticles.value;
   if (!articles.length) return [];
   const byCategory = new Map<string, { slug: string; title: string }[]>();
-  articles.forEach((a: any) => {
+  articles.forEach((a) => {
     const rawId = a.category_id ?? a.category?.id;
     const key = rawId != null ? String(rawId) : "none";
     if (!byCategory.has(key)) byCategory.set(key, []);

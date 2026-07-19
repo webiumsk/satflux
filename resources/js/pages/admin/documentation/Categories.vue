@@ -165,9 +165,21 @@ import MultilanguageEditor from '../../../components/admin/MultilanguageEditor.v
 
 const { t } = useI18n();
 
-const categories = ref<any[]>([]);
+/** name/description may be a plain string or a locale map from the API. */
+interface DocCategory {
+  id: string;
+  name: string | Record<string, string>;
+  description?: string | Record<string, string> | null;
+  slug?: string;
+  order?: number;
+  is_active?: boolean;
+  articles_count?: number;
+  [key: string]: unknown;
+}
+
+const categories = ref<DocCategory[]>([]);
 const showCreateModal = ref(false);
-const editingCategory = ref<any>(null);
+const editingCategory = ref<DocCategory | null>(null);
 const saving = ref(false);
 
 const form = ref({
@@ -178,7 +190,7 @@ const form = ref({
   is_active: true,
 });
 
-const getCategoryName = (category: any): string => {
+const getCategoryName = (category: DocCategory): string => {
   if (typeof category.name === 'string') return category.name;
   if (typeof category.name === 'object' && category.name !== null) {
     return category.name.en || category.name[Object.keys(category.name)[0]] || '';
@@ -186,7 +198,7 @@ const getCategoryName = (category: any): string => {
   return '';
 };
 
-const getCategoryDescription = (category: any): string => {
+const getCategoryDescription = (category: DocCategory): string => {
   if (!category.description) return '';
   if (typeof category.description === 'string') return category.description;
   if (typeof category.description === 'object' && category.description !== null) {
@@ -204,12 +216,15 @@ const loadCategories = async () => {
   }
 };
 
-const editCategory = (category: any) => {
+const editCategory = (category: DocCategory) => {
   editingCategory.value = category;
   form.value = {
     slug: category.slug || '',
-    name: category.name || {},
-    description: category.description || {},
+    name: typeof category.name === 'string' ? { en: category.name } : (category.name || {}),
+    description:
+      typeof category.description === 'string'
+        ? { en: category.description }
+        : (category.description || {}),
     order: category.order || 0,
     is_active: category.is_active !== undefined ? category.is_active : true,
   };
