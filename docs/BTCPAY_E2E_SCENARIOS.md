@@ -37,8 +37,12 @@ store), payment-methods/lightning-addresses/apps (prázdne).
 - `GET /_stub/state` - dump stavu (stores, invoices, webhookDeliveries) na
   asserty.
 
-Suita zdieľa jednu page a JEDEN login (`test.beforeAll`): `/api/auth/*` má
-throttle 5/min na IP, takže login per-test robí celú sadu flaky.
+Prihlásenie beží raz za celý beh (`e2e/auth.setup.ts`) a uloží sa ako
+storage state do `e2e/.auth/user.json`; Playwright každému specu vytvára
+vlastný izolovaný context/page, ktoré tento stav načítajú - zdieľa sa teda
+session, nie Page inštancia (serial suita si navyše drží jednu page v rámci
+seba cez `beforeAll`). Dôvod: `/api/auth/*` má throttle 5/min na IP a každý
+login navyše robí celú sadu flaky (viď E2E_HARNESS.md).
 
 Podpisový reťazec je overený end-to-end: stub podpisuje secretom, ktorý
 panel počas provisioningu uložil do `store.webhook_secret`, a
@@ -99,5 +103,9 @@ beží s `E2E_BTCPAY=1`, playwright s `E2E_BTCPAY=1`.
 
 - Stub nemá platobnú parity (žiadne reálne BTC/LN, žiadne on-chain sumy) -
   overuje riadiaci tok a signatúrny reťazec, nie kryptomenovú logiku.
-- Local-first invoicing BTCPay checkout (QR z Evolu faktúry) tu nie je -
-  vyžaduje prejsť recovery-phrase flow v prehliadači; kandidát na follow-up.
+- Local-first invoicing BTCPay checkout pokrýva `e2e/localFirstCheckout.spec.ts`:
+  fráza bind v prehliadači (fixný BIP39 vektor, čisto klientske), firma so
+  store, issued faktúra, mint ephemeral checkoutu (overuje sa
+  `metadata.ephemeral` + `evoluDocumentId` v stube), settle cez podpísaný
+  webhook a paid stav v UI. Fixture vyžaduje Pro entitlement
+  (`business_invoicing`) - seeder ho pod `E2E_BTCPAY=1` pridáva.

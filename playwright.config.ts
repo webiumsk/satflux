@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { AUTH_STATE_PATH } from './e2e/support';
 
 export default defineConfig({
     testDir: './e2e',
@@ -16,6 +17,18 @@ export default defineConfig({
     },
 
     projects: [
-        { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+        // One login per run (auth throttle is 5/min/IP): the setup project
+        // signs the seeded user in and saves the storage state; chromium
+        // specs start authenticated. Specs that test the login flow itself
+        // opt out with an empty storageState (auth.spec, emailLogin.spec).
+        { name: 'setup', testMatch: /auth\.setup\.ts/ },
+        {
+            name: 'chromium',
+            dependencies: ['setup'],
+            use: {
+                ...devices['Desktop Chrome'],
+                storageState: AUTH_STATE_PATH,
+            },
+        },
     ],
 });

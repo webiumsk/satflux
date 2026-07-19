@@ -8,12 +8,22 @@
 | `e2e/emailLogin.spec.ts` | prihlásenie seedovaného používateľa → dashboard; Sanctum session prežije reload; prihlásený je presmerovaný preč z `/login` | `E2E_SEEDED_USER=1` + seeder |
 | `e2e/invoicingGuard.spec.ts` | hard-gate: `/invoicing` bez recovery frázy na zariadení presmeruje na `/account` restore flow | + `E2E_INVOICING_LOCAL_FIRST=1` a build s `VITE_INVOICING_LOCAL_FIRST=true` |
 | `e2e/btcpay.spec.ts` | životný cyklus obchodu + faktúry cez Greenfield stub (create, invoice, settle+webhook, expire, delete) | `E2E_BTCPAY=1` + bežiaci stub + seeder s `E2E_BTCPAY=1`; viď [BTCPAY_E2E_SCENARIOS.md](BTCPAY_E2E_SCENARIOS.md) |
+| `e2e/localFirstCheckout.spec.ts` | local-first fráza bind → firma so store → issued faktúra → ephemeral BTCPay checkout → settle webhook → paid v UI | ako btcpay.spec + `E2E_INVOICING_LOCAL_FIRST=1` (local-first build) |
 
 CI nemá reálny BTCPay Server; BTCPay scenáre bežia proti in-memory Greenfield
 stubu (`e2e/btcpay-stub/server.mjs`, zapojený cez `BTCPAY_BASE_URL`) -
-[BTCPAY_E2E_SCENARIOS.md](BTCPAY_E2E_SCENARIOS.md). Local-first invoicing
-BTCPay checkout (QR z Evolu faktúry) ostáva mimo (vyžaduje recovery-phrase
-flow v prehliadači) - kandidát na ďalší follow-up.
+[BTCPAY_E2E_SCENARIOS.md](BTCPAY_E2E_SCENARIOS.md).
+
+## Jeden login na beh (storage state)
+
+`/api/auth/*` má throttle 5/min na IP. `e2e/auth.setup.ts` (projekt `setup`
+v playwright.config) sa prihlási raz a uloží storage state do
+`e2e/.auth/user.json` (gitignore); projekt `chromium` na ňom závisí a specy
+so seedovaným používateľom štartujú prihlásené (btcpay, invoicingGuard,
+localFirstCheckout). Specy testujúce samotný login (`auth.spec`,
+`emailLogin.spec`) sa odhlasujú cez
+`test.use({ storageState: { cookies: [], origins: [] } })`. Rozpočet behu:
+setup 1 + emailLogin 2 + invalid 1 = 4 ≤ 5.
 
 ## Lokálne spustenie
 
