@@ -10,7 +10,7 @@
       </span>
     </div>
 
-    <div class="relative ml-10 h-44 sm:h-56">
+    <div class="relative ml-10" :class="heightClass">
       <div
         v-for="tick in ticksTopDown"
         :key="'g' + tick"
@@ -67,10 +67,12 @@ const props = withDefaults(
     points: ChartPoint[];
     color?: string;
     formatValue?: (value: number) => string;
+    heightClass?: string;
   }>(),
   {
     color: CHART_PRIMARY,
     formatValue: (value: number) => formatCompact(value),
+    heightClass: "h-44 sm:h-56",
   },
 );
 

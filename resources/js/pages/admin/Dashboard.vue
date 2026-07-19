@@ -198,169 +198,25 @@
               </button>
             </div>
           </div>
-          <div class="relative h-48 w-full">
-            <svg
-              class="w-full h-full overflow-visible"
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-              @mouseleave="trendActivePoint = null"
-            >
-              <defs>
-                <linearGradient
-                  id="adminUsersGrad"
-                  x1="0%"
-                  y1="0%"
-                  x2="0%"
-                  y2="100%"
-                >
-                  <stop offset="0%" stop-color="#6366f1" stop-opacity="0.3" />
-                  <stop offset="100%" stop-color="#6366f1" stop-opacity="0" />
-                </linearGradient>
-                <linearGradient
-                  id="adminStoresGrad"
-                  x1="0%"
-                  y1="0%"
-                  x2="0%"
-                  y2="100%"
-                >
-                  <stop offset="0%" stop-color="#10b981" stop-opacity="0.3" />
-                  <stop offset="100%" stop-color="#10b981" stop-opacity="0" />
-                </linearGradient>
-              </defs>
-              <g v-for="(d, i) in trendsChartData" :key="d.date">
-                <!-- Invisible hover zone -->
-                <rect
-                  :x="(i / trendsChartData.length) * 100"
-                  y="0"
-                  :width="100 / trendsChartData.length"
-                  height="100"
-                  fill="transparent"
-                  class="cursor-pointer"
-                  @mouseenter="trendActivePoint = i"
-                />
-                <!-- Users bar -->
-                <rect
-                  :x="
-                    (i / trendsChartData.length) * 100 +
-                    (100 / trendsChartData.length) * 0.02
-                  "
-                  :y="100 - (d.users / maxTrendValue) * 40"
-                  :width="(100 / trendsChartData.length) * 0.28"
-                  :height="
-                    Math.max(
-                      (d.users / maxTrendValue) * 40,
-                      d.users > 0 ? 2 : 0,
-                    )
-                  "
-                  fill="#6366f1"
-                  :opacity="trendActivePoint === i ? 1 : 0.7"
-                  rx="2"
-                  class="transition-all duration-150"
-                />
-                <!-- Stores bar -->
-                <rect
-                  :x="
-                    (i / trendsChartData.length) * 100 +
-                    (100 / trendsChartData.length) * 0.35
-                  "
-                  :y="100 - (d.stores / maxTrendValue) * 40"
-                  :width="(100 / trendsChartData.length) * 0.28"
-                  :height="
-                    Math.max(
-                      (d.stores / maxTrendValue) * 40,
-                      d.stores > 0 ? 2 : 0,
-                    )
-                  "
-                  fill="#10b981"
-                  :opacity="trendActivePoint === i ? 1 : 0.7"
-                  rx="2"
-                  class="transition-all duration-150"
-                />
-                <!-- PoS amount bar (sats or € based on toggle) -->
-                <rect
-                  :x="
-                    (i / trendsChartData.length) * 100 +
-                    (100 / trendsChartData.length) * 0.68
-                  "
-                  :y="100 - (posAmountForDay(d) / maxTrendValue) * 40"
-                  :width="(100 / trendsChartData.length) * 0.28"
-                  :height="
-                    Math.max(
-                      (posAmountForDay(d) / maxTrendValue) * 40,
-                      posAmountForDay(d) > 0 ? 2 : 0,
-                    )
-                  "
-                  fill="#f59e0b"
-                  :opacity="trendActivePoint === i ? 1 : 0.7"
-                  rx="2"
-                  class="transition-all duration-150"
-                />
-              </g>
-            </svg>
-
-            <!-- Tooltip -->
-            <div
-              v-if="trendActivePoint !== null"
-              class="absolute pointer-events-none z-50 bg-gray-900/95 backdrop-blur-md border border-gray-600 shadow-xl rounded-xl px-4 py-3 min-w-[160px] transition-all duration-150"
-              :style="tooltipStyle"
-            >
-              <p
-                class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2"
-              >
-                {{ formatChartDate(trendsChartData[trendActivePoint]?.date) }}
+          <!-- Small multiples: one scale per measure (users and stores are
+               unit counts, PoS volume is sats/EUR - a shared axis squashed the
+               counts into invisible slivers). Shared BarChart per measure. -->
+          <div class="space-y-5">
+            <div v-for="metric in trendMetrics" :key="metric.key">
+              <p class="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
+                <span class="w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: metric.color }" />
+                {{ metric.label }}
               </p>
-              <div class="flex items-center justify-between gap-4">
-                <span class="flex items-center gap-2 text-sm text-gray-300">
-                  <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
-                  {{ t("admin.dashboard.users") }}
-                </span>
-                <span class="font-bold text-indigo-400">{{
-                  trendsChartData[trendActivePoint]?.users ?? 0
-                }}</span>
-              </div>
-              <div class="flex items-center justify-between gap-4 mt-1">
-                <span class="flex items-center gap-2 text-sm text-gray-300">
-                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  {{ t("admin.dashboard.stores") }}
-                </span>
-                <span class="font-bold text-emerald-400">{{
-                  trendsChartData[trendActivePoint]?.stores ?? 0
-                }}</span>
-              </div>
-              <div class="flex items-center justify-between gap-4 mt-1">
-                <span class="flex items-center gap-2 text-sm text-gray-300">
-                  <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-                  {{ amountCurrency === "sats" ? "PoS (sats)" : "PoS (€)" }}
-                </span>
-                <span class="font-bold text-amber-400">{{
-                  formatPosAmount(
-                    posAmountForDay(trendsChartData[trendActivePoint]),
-                  )
-                }}</span>
-              </div>
+              <BarChart
+                :points="metric.points"
+                :color="metric.color"
+                :format-value="metric.format"
+                height-class="h-20"
+              />
             </div>
           </div>
-          <div class="flex justify-between mt-2 text-xs text-gray-500">
-            <span>{{ formatChartDate(trendsChartData[0]?.date) }}</span>
-            <span>{{
-              formatChartDate(trendsChartData[trendsChartData.length - 1]?.date)
-            }}</span>
-          </div>
-          <div class="flex justify-between items-center mt-3">
-            <div class="flex gap-6">
-              <span class="flex items-center gap-2 text-sm">
-                <span class="w-3 h-3 rounded bg-indigo-500"></span>
-                {{ t("admin.dashboard.users") }}
-              </span>
-              <span class="flex items-center gap-2 text-sm">
-                <span class="w-3 h-3 rounded bg-emerald-500"></span>
-                {{ t("admin.dashboard.stores") }}
-              </span>
-              <span class="flex items-center gap-2 text-sm">
-                <span class="w-3 h-3 rounded bg-amber-500"></span>
-                {{ amountCurrency === "sats" ? "PoS (sats)" : "PoS (€)" }}
-              </span>
-            </div>
+          <div class="flex justify-end items-center mt-3">
+
             <button
               type="button"
               :disabled="exportingStats"
@@ -887,6 +743,7 @@ import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import { adminDocumentationApi, adminFaqApi } from "../../services/api";
 import api from "../../services/api";
+import BarChart from "../../components/charts/BarChart.vue";
 
 const { t } = useI18n();
 const authStore = useAuthStore();
@@ -942,7 +799,6 @@ const platformStats = ref({
 
 const userRole = computed(() => authStore.user?.role || "");
 
-const trendActivePoint = ref<number | null>(null);
 const trendPeriod = ref<"7d" | "30d">("30d");
 const amountCurrency = ref<"sats" | "eur">("eur");
 
@@ -997,31 +853,39 @@ async function downloadStatsExport() {
   }
 }
 
-const tooltipStyle = computed(() => {
-  const idx = trendActivePoint.value;
-  const d = trendsChartData.value;
-  if (idx == null || !d?.length) return {};
-  const pct = ((idx + 0.5) / d.length) * 100;
-  return {
-    left: `${pct}%`,
-    top: "8px",
-    transform: "translateX(-50%)",
-  };
-});
+/**
+ * Small-multiple definitions for the trends card: one BarChart per measure,
+ * each with its own scale (counts vs sats/EUR volume must never share an
+ * axis). Colors are fixed per measure.
+ */
+const trendMetrics = computed(() => {
+  const days = trendsChartData.value;
+  const toPoints = (pick: (d: (typeof days)[number]) => number) =>
+    days.map((d) => ({ label: formatChartDate(d.date), value: pick(d) }));
 
-const maxTrendValue = computed(() => {
-  const d = trendsChartData.value;
-  if (!d?.length) return 1;
-  type TrendDay = {
-    users: number;
-    stores: number;
-    pos_amount_sats?: number;
-    pos_amount_eur?: number;
-  };
-  const max = Math.max(
-    ...d.flatMap((x: TrendDay) => [x.users, x.stores, posAmountForDay(x)]),
-  );
-  return max > 0 ? max : 1;
+  return [
+    {
+      key: "users",
+      label: t("admin.dashboard.users"),
+      color: "#6366f1",
+      points: toPoints((d) => d.users),
+      format: (v: number) => String(Math.round(v)),
+    },
+    {
+      key: "stores",
+      label: t("admin.dashboard.stores"),
+      color: "#10b981",
+      points: toPoints((d) => d.stores),
+      format: (v: number) => String(Math.round(v)),
+    },
+    {
+      key: "pos",
+      label: amountCurrency.value === "sats" ? "PoS (sats)" : "PoS (€)",
+      color: "#f59e0b",
+      points: toPoints((d) => posAmountForDay(d)),
+      format: (v: number) => formatPosAmount(v),
+    },
+  ];
 });
 
 function formatChartDate(dateStr: string | undefined): string {
