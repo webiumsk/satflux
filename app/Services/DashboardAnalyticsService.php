@@ -66,6 +66,14 @@ class DashboardAnalyticsService
 
         $byStore = [];
 
+        // The stores are ownership-filtered to $user, so the merchant key is
+        // resolved once here instead of per store via $store->user.
+        try {
+            $apiKey = $user->getBtcPayApiKeyOrFail();
+        } catch (\Throwable) {
+            $apiKey = null;
+        }
+
         foreach ($stores as $store) {
             $storeAgg = [
                 'store_id' => $store->id,
@@ -75,7 +83,7 @@ class DashboardAnalyticsService
                 'amount_by_currency' => [],
             ];
 
-            $this->aggregateInvoices($store, $from, $to, $source, $series, $bySource, $storeAgg);
+            $this->aggregateInvoices($store, $from, $to, $source, $apiKey, $series, $bySource, $storeAgg);
             $this->aggregatePosOrders($store, $from, $to, $source, $series, $bySource, $storeAgg);
 
             $byStore[] = $storeAgg;
@@ -85,7 +93,7 @@ class DashboardAnalyticsService
 
         return [
             'totals' => $this->totalsFromSeries($series),
-            'previous' => $this->previousTotals($stores, $from, $to, $source),
+            'previous' => $this->previousTotals($stores, $from, $to, $source, $apiKey),
             'series' => array_values($series),
             'by_source' => $bySource,
             'by_store' => $byStore,
@@ -93,7 +101,7 @@ class DashboardAnalyticsService
     }
 
     /** Totals for the equally long window that ends right before `from`. */
-    protected function previousTotals(Collection $stores, CarbonImmutable $from, CarbonImmutable $to, ?string $source): array
+    protected function previousTotals(Collection $stores, CarbonImmutable $from, CarbonImmutable $to, ?string $source, ?string $apiKey): array
     {
         $spanDays = (int) $from->diffInDays($to) + 1;
         $prevTo = $from->subDay();
@@ -116,7 +124,7 @@ class DashboardAnalyticsService
 
         foreach ($stores as $store) {
             $unusedStoreAgg = ['paid_count' => 0, 'amount_sats' => 0, 'amount_by_currency' => []];
-            $this->aggregateInvoices($store, $prevFrom, $prevTo, $source, $series, $bySource, $unusedStoreAgg);
+            $this->aggregateInvoices($store, $prevFrom, $prevTo, $source, $apiKey, $series, $bySource, $unusedStoreAgg);
             $this->aggregatePosOrders($store, $prevFrom, $prevTo, $source, $series, $bySource, $unusedStoreAgg);
         }
 
@@ -144,28 +152,23 @@ class DashboardAnalyticsService
         CarbonImmutable $from,
         CarbonImmutable $to,
         ?string $source,
+        ?string $apiKey,
         array &$series,
         array &$bySource,
         array &$storeAgg,
     ): void {
-        $owner = $store->user;
-        if (! $owner instanceof User) {
-            return;
-        }
-        try {
-            $apiKey = $owner->getBtcPayApiKeyOrFail();
-        } catch (\Throwable) {
-            return;
-        }
-
-        try {
-            $invoices = $this->fetchAllInvoices((string) $store->btcpay_store_id, $apiKey);
-        } catch (\Throwable) {
+        if ($apiKey === null) {
             return;
         }
 
         $fromTs = $from->startOfDay()->getTimestamp();
         $toTs = $to->endOfDay()->getTimestamp();
+
+        try {
+            $invoices = $this->fetchAllInvoices((string) $store->btcpay_store_id, $apiKey, $fromTs, $toTs);
+        } catch (\Throwable) {
+            return;
+        }
 
         foreach ($invoices as $inv) {
             if (! in_array($inv['status'] ?? null, ['Settled', 'Complete'], true)) {
@@ -310,14 +313,24 @@ class DashboardAnalyticsService
         return $days;
     }
 
-    /** Paginated Greenfield fetch - same shape the other stats services use. */
-    protected function fetchAllInvoices(string $btcpayStoreId, string $apiKey): array
+    /**
+     * Paginated Greenfield fetch, server-side filtered to the requested
+     * window (startDate/endDate are unix timestamps in the Greenfield API) -
+     * fetching the whole store history for a 7-day chart does not scale.
+     */
+    protected function fetchAllInvoices(string $btcpayStoreId, string $apiKey, int $fromTs, int $toTs): array
     {
         $out = [];
         $skip = 0;
         $take = 100;
         do {
-            $result = $this->invoiceService->listInvoices($btcpayStoreId, [], $skip, $take, $apiKey);
+            $result = $this->invoiceService->listInvoices(
+                $btcpayStoreId,
+                ['startDate' => $fromTs, 'endDate' => $toTs],
+                $skip,
+                $take,
+                $apiKey,
+            );
             $chunk = $result['data'] ?? $result;
             if (! is_array($chunk)) {
                 break;

@@ -389,7 +389,6 @@ class DashboardController extends Controller
         }
 
         $stores = Store::where('user_id', $user->id)
-            ->with('user')
             ->when($validated['store_id'] ?? null, fn ($q, $id) => $q->where('id', $id))
             ->orderBy('name')
             ->get();
@@ -407,6 +406,13 @@ class DashboardController extends Controller
             $validated['store_id'] ?? null, $validated['source'] ?? null,
         ]));
         if ($request->boolean('refresh')) {
+            // A cache-busting refresh recomputes against BTCPay - throttle it
+            // tighter than the generic api-user limit (which still applies).
+            $refreshKey = 'dashboard-analytics-refresh:'.$user->id;
+            if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($refreshKey, 5)) {
+                return response()->json(['message' => 'Too many refreshes - try again shortly.'], 429);
+            }
+            \Illuminate\Support\Facades\RateLimiter::hit($refreshKey, 60);
             Cache::forget($cacheKey);
         }
 

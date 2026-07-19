@@ -60,14 +60,28 @@ class DashboardAnalyticsTest extends TestCase
         ]);
     }
 
-    /** Two settled invoices inside the window (day1 SATS, day2 EUR), one outside, one unpaid. */
+    /**
+     * Two settled invoices inside the window (day1 SATS, day2 EUR), one in
+     * the PREVIOUS window (10 days ago), one far outside, one unpaid. The
+     * fake honors the startDate/endDate filters the service now sends, so
+     * each window only sees its own invoices - like real Greenfield.
+     */
     protected function fakeInvoices(): void
     {
         $inWindowDay1 = now()->subDays(5)->setTime(10, 0);
         $inWindowDay2 = now()->subDays(3)->setTime(12, 0);
+        $inPreviousWindow = now()->subDays(10)->setTime(9, 0);
         $outside = now()->subDays(40);
 
-        Http::fake(function ($request) use ($inWindowDay1, $inWindowDay2, $outside) {
+        $all = [
+            ['id' => 'inv-sats', 'status' => 'Settled', 'amount' => 1500, 'currency' => 'SATS', 'createdTime' => $inWindowDay1->getTimestamp()],
+            ['id' => 'inv-eur', 'status' => 'Complete', 'amount' => 50.5, 'currency' => 'EUR', 'createdTime' => $inWindowDay2->getTimestamp()],
+            ['id' => 'inv-prev', 'status' => 'Settled', 'amount' => 700, 'currency' => 'SATS', 'createdTime' => $inPreviousWindow->getTimestamp()],
+            ['id' => 'inv-old', 'status' => 'Settled', 'amount' => 999, 'currency' => 'SATS', 'createdTime' => $outside->getTimestamp()],
+            ['id' => 'inv-new', 'status' => 'New', 'amount' => 7, 'currency' => 'EUR', 'createdTime' => $inWindowDay2->getTimestamp()],
+        ];
+
+        Http::fake(function ($request) use ($all) {
             $url = (string) $request->url();
             if (str_contains($url, '/api/v1/stores/btcpay-store-1/invoices/inv-eur/payment-methods')) {
                 return Http::response([
@@ -75,12 +89,15 @@ class DashboardAnalyticsTest extends TestCase
                 ], 200);
             }
             if (str_contains($url, '/api/v1/stores/btcpay-store-1/invoices')) {
-                return Http::response([
-                    ['id' => 'inv-sats', 'status' => 'Settled', 'amount' => 1500, 'currency' => 'SATS', 'createdTime' => $inWindowDay1->getTimestamp()],
-                    ['id' => 'inv-eur', 'status' => 'Complete', 'amount' => 50.5, 'currency' => 'EUR', 'createdTime' => $inWindowDay2->getTimestamp()],
-                    ['id' => 'inv-old', 'status' => 'Settled', 'amount' => 999, 'currency' => 'SATS', 'createdTime' => $outside->getTimestamp()],
-                    ['id' => 'inv-new', 'status' => 'New', 'amount' => 7, 'currency' => 'EUR', 'createdTime' => $inWindowDay2->getTimestamp()],
-                ], 200);
+                parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+                $from = isset($query['startDate']) ? (int) $query['startDate'] : null;
+                $to = isset($query['endDate']) ? (int) $query['endDate'] : null;
+                $filtered = array_values(array_filter($all, function ($inv) use ($from, $to) {
+                    return ($from === null || $inv['createdTime'] >= $from)
+                        && ($to === null || $inv['createdTime'] <= $to);
+                }));
+
+                return Http::response($filtered, 200);
             }
 
             return Http::response([], 200);
@@ -140,8 +157,10 @@ class DashboardAnalyticsTest extends TestCase
         $this->assertCount(1, $byStore);
         $this->assertSame(3, $byStore[0]['paid_count']);
 
-        // Previous window: equally long, ends the day before `from`, empty here.
-        $this->assertSame(0, $response->json('previous.paid_count'));
+        // Previous window: equally long, ends the day before `from`; the
+        // 10-days-ago invoice lands there (and ONLY there).
+        $this->assertSame(1, $response->json('previous.paid_count'));
+        $this->assertSame(700, $response->json('previous.amount_sats'));
         $this->assertSame(
             now()->subDays(7)->format('Y-m-d'),
             $response->json('previous.to'),
