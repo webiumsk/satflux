@@ -94,12 +94,38 @@
             v-if="passkeyLoginSupported"
             type="button"
             :disabled="passkeyLoginLoading"
-            class="w-full flex items-center justify-center gap-2 py-3 px-4 mb-3 border border-indigo-500/40 text-sm font-bold rounded-xl text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all"
+            class="w-full flex items-center justify-center gap-2 py-3 px-4 mb-3 border text-sm font-bold rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 transition-all"
+            :class="
+              passkeyOwnerSwitchImpact
+                ? 'border-amber-500/50 text-amber-100 bg-amber-600/30 hover:bg-amber-600/40 focus:ring-amber-500'
+                : 'border-indigo-500/40 text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 focus:ring-indigo-500'
+            "
             @click="handlePasskeyLogin"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
-            {{ t("auth.passkey_login_button") }}
+            {{
+              passkeyOwnerSwitchImpact
+                ? t("auth.guest_restore_owner_switch_confirm")
+                : t("auth.passkey_login_button")
+            }}
           </button>
+          <div
+            v-if="passkeyOwnerSwitchImpact"
+            class="mb-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-2"
+          >
+            <p class="text-sm font-medium text-amber-300">
+              {{ t("auth.guest_restore_owner_switch_title") }}
+            </p>
+            <p class="text-sm text-gray-300">
+              {{
+                t("auth.guest_restore_owner_switch_body", {
+                  documents: passkeyOwnerSwitchImpact.documents,
+                  contacts: passkeyOwnerSwitchImpact.contacts,
+                  companies: passkeyOwnerSwitchImpact.companies,
+                })
+              }}
+            </p>
+          </div>
           <AuthSeedGuestPanel
             variant="login"
             :primary-label="t('auth.restore_guest_session')"
@@ -245,11 +271,18 @@ import { isPublicMarketingPath, navigateToAppPath } from "../../utils/publicMark
 import { isSeedFirstRegistration } from "../../config/auth";
 import { loginWithAccountPasskey } from "../../services/deviceUnlock/provider";
 import { isPasskeyPrfSupported, PasskeyCancelledError } from "../../services/deviceUnlock/passkeyPrf";
+import {
+  deriveRecoveryPublicKeyHex,
+  previewOwnerSwitchImpact,
+  type OwnerSwitchImpact,
+} from "../../services/accountSeed";
 
 const { t } = useI18n();
 
 const passkeyLoginSupported = ref(false);
 const passkeyLoginLoading = ref(false);
+const passkeyOwnerSwitchImpact = ref<Extract<OwnerSwitchImpact, { switches: true }> | null>(null);
+const passkeyOwnerSwitchConfirmedFor = ref("");
 
 onMounted(() => {
   applyAuthTabFromQuery();
@@ -267,10 +300,23 @@ async function handlePasskeyLogin() {
   passkeyLoginLoading.value = true;
   try {
     const { recoveryPhrase } = await loginWithAccountPasskey();
+    const recoveryPublicKeyHex = deriveRecoveryPublicKeyHex(recoveryPhrase);
+    if (passkeyOwnerSwitchConfirmedFor.value !== recoveryPublicKeyHex) {
+      const impact = await previewOwnerSwitchImpact(recoveryPhrase);
+      if (impact.switches) {
+        passkeyOwnerSwitchImpact.value = impact;
+        passkeyOwnerSwitchConfirmedFor.value = recoveryPublicKeyHex;
+        return;
+      }
+    }
+    passkeyOwnerSwitchImpact.value = null;
+    passkeyOwnerSwitchConfirmedFor.value = "";
     await authStore.restoreGuestFromMnemonic(recoveryPhrase);
     redirectAfterGuestRestore({});
   } catch (rawError) {
     if (!(rawError instanceof PasskeyCancelledError)) {
+      passkeyOwnerSwitchImpact.value = null;
+      passkeyOwnerSwitchConfirmedFor.value = "";
       flashStore.error(t("auth.passkey_login_failed"));
     }
   } finally {
