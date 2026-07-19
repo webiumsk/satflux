@@ -83,6 +83,17 @@
         </svg>
       </div>
 
+      <div v-else-if="analyticsError && !analytics" class="py-12 text-center rounded-xl bg-gray-900/40 border border-red-500/30 border-dashed">
+        <p class="text-red-300 mb-4">{{ analyticsError }}</p>
+        <button
+          type="button"
+          class="px-4 py-2 border border-gray-600 rounded-lg text-sm text-gray-300 hover:bg-gray-700"
+          @click="loadAnalytics()"
+        >
+          {{ t('common.retry') }}
+        </button>
+      </div>
+
       <template v-else-if="analytics">
         <!-- KPI row -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -311,7 +322,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, nextTick, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import api from '../../services/api';
@@ -323,6 +334,8 @@ import BarChart from '../charts/BarChart.vue';
 import DonutChart, { type DonutSlice } from '../charts/DonutChart.vue';
 import Sparkline from '../charts/Sparkline.vue';
 import DeltaBadge from './DeltaBadge.vue';
+import { asApiError } from '../../utils/apiError';
+import { useFlashStore } from '../../store/flash';
 import { CHART_PRIMARY, SOURCE_COLORS, percentDelta } from '../charts/chartScales';
 import {
   isDashboardPeriodPreset,
@@ -333,6 +346,7 @@ import {
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
+const flashStore = useFlashStore();
 
 // ---- Overview (stores / all-time revenue / BTCPay ping) ----
 
@@ -437,6 +451,7 @@ const chartMode = ref<'amount' | 'count'>('amount');
 
 const analytics = ref<AnalyticsPayload | null>(null);
 const analyticsLoading = ref(false);
+const analyticsError = ref('');
 const canViewStats = computed(() => analytics.value?.can_view_stats ?? false);
 const statsStores = ref<Array<{ id: string; name: string }>>([]);
 const showStatsUpgradeModal = ref(false);
@@ -558,6 +573,7 @@ const storeRanking = computed(() => {
 
 async function loadAnalytics(opts?: { refresh?: boolean }) {
   analyticsLoading.value = true;
+  analyticsError.value = '';
   try {
     const params: Record<string, string | number> = { from: range.value.from, to: range.value.to };
     if (selectedStoreId.value) params.store_id = selectedStoreId.value;
@@ -565,8 +581,17 @@ async function loadAnalytics(opts?: { refresh?: boolean }) {
     if (opts?.refresh) params.refresh = 1;
     const response = await api.get('/dashboard/analytics', { params });
     analytics.value = response.data as AnalyticsPayload;
-  } catch (e) {
-    console.error('Failed to load dashboard analytics', e);
+  } catch (rawError) {
+    const err = asApiError(rawError);
+    const message = err.response?.data?.message || t('dashboard.analytics_failed');
+    if (analytics.value) {
+      // Stale data stays on screen - say why it did not update (429 from a
+      // refresh burst, 422/403 from a bad filter, network...).
+      flashStore.error(message);
+    } else {
+      analyticsError.value = message;
+    }
+    console.error('Failed to load dashboard analytics', rawError);
   } finally {
     analyticsLoading.value = false;
   }
@@ -593,7 +618,15 @@ function applyQuery(): void {
   if (typeof q.source === 'string') selectedSource.value = q.source;
 }
 
+/**
+ * applyQuery() mutates the same refs this watcher observes - without the
+ * gate, a mount with query params would fetch analytics twice (watcher +
+ * the explicit initial load) and rewrite the router query needlessly.
+ */
+let filtersReady = false;
+
 watch([preset, customFrom, customTo, selectedStoreId, selectedSource], () => {
+  if (!filtersReady) return;
   const query: Record<string, string> = { ...route.query } as Record<string, string>;
   query.range = preset.value;
   if (preset.value === 'custom') {
@@ -618,8 +651,12 @@ async function handleRefresh() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   applyQuery();
+  // Let the watcher flush triggered by applyQuery's ref writes pass while
+  // still gated, then open the gate - exactly one initial analytics load.
+  await nextTick();
+  filtersReady = true;
   loadDashboardData();
   loadStoreList();
   loadAnalytics();

@@ -1603,6 +1603,7 @@
     "create_new_store": "Vytvořit nový obchod",
     "all_stores_stats": "Prodeje napříč obchody",
     "analytics_title": "Přehled prodejů",
+    "analytics_failed": "Nepodařilo se načíst statistiky prodejů. Zkontrolujte připojení a zkuste to znovu.",
     "period_7d": "7D",
     "period_30d": "30D",
     "period_90d": "90D",
