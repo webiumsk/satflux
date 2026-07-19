@@ -1908,6 +1908,7 @@
       "pos_terminals": "Terminales PoS",
       "pos_orders": "Pedidos PoS",
       "pos_orders_30d": "Pedidos PoS (30d)",
+      "pos_volume": "Volumen PoS ({currency})",
       "wallet_needs_support": "Necesitan soporte",
       "paid_plans": "Pro / Enterprise",
       "new_users_7d": "+7 días",

@@ -3623,6 +3623,7 @@
       "pos_terminals": "PoS-Terminals",
       "pos_orders": "PoS-Bestellungen",
       "pos_orders_30d": "PoS-Bestellungen (30 T.)",
+      "pos_volume": "PoS-Volumen ({currency})",
       "wallet_needs_support": "Brauchen Support",
       "paid_plans": "Pro / Enterprise",
       "new_users_7d": "+7 Tage",

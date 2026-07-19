@@ -3623,6 +3623,7 @@
       "pos_terminals": "PoS terminály",
       "pos_orders": "PoS objednávky",
       "pos_orders_30d": "PoS objednávky (30 dní)",
+      "pos_volume": "PoS objem ({currency})",
       "wallet_needs_support": "Potřebují podporu",
       "paid_plans": "Pro / Enterprise",
       "new_users_7d": "+7 dní",

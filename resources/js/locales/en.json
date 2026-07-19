@@ -3608,6 +3608,7 @@
       "pos_terminals": "PoS terminals",
       "pos_orders": "PoS orders",
       "pos_orders_30d": "PoS orders (30d)",
+      "pos_volume": "PoS volume ({currency})",
       "wallet_needs_support": "Need support",
       "paid_plans": "Pro / Enterprise",
       "new_users_7d": "+7 days",
