@@ -880,7 +880,9 @@ const trendMetrics = computed(() => {
     },
     {
       key: "pos",
-      label: amountCurrency.value === "sats" ? "PoS (sats)" : "PoS (€)",
+      label: t("admin.dashboard.pos_volume", {
+        currency: amountCurrency.value === "sats" ? "sats" : "€",
+      }),
       color: "#f59e0b",
       points: toPoints((d) => posAmountForDay(d)),
       format: (v: number) => formatPosAmount(v),
