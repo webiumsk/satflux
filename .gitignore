@@ -69,3 +69,4 @@ docs/satoshi-tickets-includeInactive-patch.md
 # Playwright
 /playwright-report/
 /test-results/
+e2e/.auth/

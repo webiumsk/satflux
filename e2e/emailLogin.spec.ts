@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { hasSeededUser, loginWithEmail, seededUser } from './support';
 
+// This spec exercises the login flow itself - start unauthenticated
+// instead of inheriting the shared storage state.
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test.describe('Email login (seeded user)', () => {
     test.skip(!hasSeededUser, 'requires E2E_SEEDED_USER=1 and `php artisan db:seed --class=E2eTestSeeder`');
 

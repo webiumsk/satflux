@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { dismissCookieConsent } from './support';
 
+// This spec exercises the login flow itself - start unauthenticated
+// instead of inheriting the shared storage state.
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test.describe('Authentication', () => {
     test('login page loads with an auth entry point', async ({ page }) => {
         await page.goto('/login');

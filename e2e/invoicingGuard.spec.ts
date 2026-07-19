@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { hasLocalFirstBuild, hasSeededUser, loginWithEmail, seededUser } from './support';
+import { hasLocalFirstBuild, hasSeededUser } from './support';
 
 /**
  * The local-first invoicing hard-gate (P0/P1): an authenticated user whose
@@ -13,7 +13,9 @@ test.describe('Invoicing recovery-phrase guard', () => {
     test.skip(!hasLocalFirstBuild, 'requires a build with VITE_INVOICING_LOCAL_FIRST=true (set E2E_INVOICING_LOCAL_FIRST=1)');
 
     test('without a phrase on this device /invoicing redirects to the account restore flow', async ({ page }) => {
-        await loginWithEmail(page, seededUser.email, seededUser.password);
+        // Session comes from the shared storage state (auth.setup.ts); the
+        // fresh context has no session phrase, which is exactly the scenario.
+        await page.goto('/dashboard');
         await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
 
         await page.goto('/invoicing');

@@ -16,6 +16,18 @@ export default defineConfig({
     },
 
     projects: [
-        { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+        // One login per run (auth throttle is 5/min/IP): the setup project
+        // signs the seeded user in and saves the storage state; chromium
+        // specs start authenticated. Specs that test the login flow itself
+        // opt out with an empty storageState (auth.spec, emailLogin.spec).
+        { name: 'setup', testMatch: /auth\.setup\.ts/ },
+        {
+            name: 'chromium',
+            dependencies: ['setup'],
+            use: {
+                ...devices['Desktop Chrome'],
+                storageState: 'e2e/.auth/user.json',
+            },
+        },
     ],
 });
