@@ -36,7 +36,7 @@
         <!-- Left side: Empty on mobile, Logo + Navigation on desktop -->
         <div class="hidden md:flex items-center space-x-8">
           <!-- Logo -->
-          <component :is="isInertia ? Link : RouterLink" :href="isInertia ? '/' : undefined" :to="!isInertia ? '/' : undefined" class="flex items-center gap-3">
+          <AppNavLink :href="'/'"   class="flex items-center gap-3">
             <div
               class="w-8 h-8 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-1"
             >
@@ -45,48 +45,36 @@
             <span class="text-xl font-bold text-white tracking-tight"
               >SATFLUX</span
             >
-          </component>
+          </AppNavLink>
 
           <!-- Navigation Menu (Desktop only) -->
           <nav class="hidden md:flex space-x-2">
-            <component
-              :is="isInertia ? Link : RouterLink"
-              :href="isInertia ? '/dashboard' : undefined"
-              :to="!isInertia ? '/dashboard' : undefined"
+            <AppNavLink :href="'/dashboard'"
               class="px-3 py-2 rounded-lg text-sm font-medium transition-all"
               :class="
                 isActive('/dashboard', 'home')
                   ? 'text-white bg-indigo-600/20 text-indigo-300'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              "
-            >
+              ">
               {{ t("header.dashboard") }}
-            </component>
-            <component
-              :is="isInertia ? Link : RouterLink"
-              :href="isInertia ? '/stores' : undefined"
-              :to="!isInertia ? '/stores' : undefined"
+            </AppNavLink>
+            <AppNavLink :href="'/stores'"
               class="px-3 py-2 rounded-lg text-sm font-medium transition-all"
               :class="
                 isActive('/stores')
                   ? 'text-white bg-indigo-600/20 text-indigo-300'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              "
-            >
+              ">
               {{ t("header.stores") }}
-            </component>
-            <component
-              :is="isInertia ? Link : RouterLink"
-              :href="isInertia ? dashboardInvoicingTabPath : undefined"
-              :to="!isInertia ? dashboardInvoicingTabRoute : undefined"
+            </AppNavLink>
+            <AppNavLink :href="dashboardInvoicingTabPath"
               class="px-3 py-2 rounded-lg text-sm font-medium transition-all inline-flex items-center gap-1.5"
               :class="
                 isInvoicingNavActiveState
                   ? 'text-white bg-indigo-600/20 text-indigo-300'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               "
-              @click="closeMobileMenu"
-            >
+              @click="closeMobileMenu">
               {{ t("header.invoicing") }}
               <span
                 v-if="!canBusinessInvoicing"
@@ -95,22 +83,17 @@
               <span
                 class="text-[10px] uppercase tracking-wide text-green-400/90"
               >BETA</span>
-            </component>
-            <component
-              v-if="
+            </AppNavLink>
+            <AppNavLink :href="'/support/wallet-connections'" v-if="
                 authStore.user?.role === 'support' ||
                 authStore.user?.role === 'admin'
               "
-              :is="isInertia ? Link : RouterLink"
-              :href="isInertia ? '/support/wallet-connections' : undefined"
-              :to="!isInertia ? '/support/wallet-connections' : undefined"
               class="px-3 py-2 rounded-lg text-sm font-medium transition-all relative"
               :class="
                 isActive('/support/wallet-connections', 'support-wallet-connections')
                   ? 'text-white bg-indigo-600/20 text-indigo-300'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              "
-            >
+              ">
               Support
               <span
                 v-if="supportCount > 0"
@@ -118,27 +101,22 @@
               >
                 {{ supportCount > 99 ? "99+" : supportCount }}
               </span>
-            </component>
-            <component
-              v-if="authStore.user?.role === 'admin'"
-              :is="isInertia ? Link : RouterLink"
-              :href="isInertia ? '/admin' : undefined"
-              :to="!isInertia ? '/admin' : undefined"
+            </AppNavLink>
+            <AppNavLink :href="'/admin'" v-if="authStore.user?.role === 'admin'"
               class="px-3 py-2 rounded-lg text-sm font-medium transition-all"
               :class="
                 isActive('/admin', 'admin-users')
                   ? 'text-white bg-indigo-600/20 text-indigo-300'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              "
-            >
+              ">
               {{ t("header.admin") }}
-            </component>
+            </AppNavLink>
           </nav>
         </div>
 
         <!-- Center: Logo on mobile only -->
         <div class="md:hidden absolute left-1/2 transform -translate-x-1/2">
-          <component :is="isInertia ? Link : RouterLink" :href="isInertia ? '/' : undefined" :to="!isInertia ? '/' : undefined" class="flex items-center gap-2">
+          <AppNavLink :href="'/'"   class="flex items-center gap-2">
             <div
               class="w-7 h-7 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-1"
             >
@@ -147,7 +125,7 @@
             <span class="text-lg font-bold text-white tracking-tight"
               >SATFLUX</span
               >
-            </component>
+            </AppNavLink>
         </div>
 
         <!-- Right side: Mobile menu button (mobile) / User button (desktop) -->
@@ -158,29 +136,21 @@
           </div>
 
           <!-- Links visible on desktop right side -->
-          <component
-              :is="isInertia ? Link : RouterLink"
-              :href="isInertia ? '/documentation' : undefined"
-              :to="!isInertia ? '/documentation' : undefined"
+          <AppNavLink :href="'/documentation'"
               class="hidden md:block text-gray-500 hover:text-gray-300 text-sm font-medium transition-colors"
               :class="
                 isActive('/documentation', 'home')
                   ? 'text-white bg-indigo-600/20 text-indigo-300'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              "
-            >
+              ">
             {{ t("header.docs") }}
-          </component>
+          </AppNavLink>
 
           <!-- Messages icon with unread badge -->
-          <component
-            :is="isInertia ? Link : RouterLink"
-            :href="isInertia ? '/messages' : undefined"
-            :to="!isInertia ? '/messages' : undefined"
+          <AppNavLink :href="'/messages'"
             class="relative p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
             :class="isActive('/messages') ? 'text-indigo-400 bg-indigo-600/20' : ''"
-            :aria-label="t('header.messages')"
-          >
+            :aria-label="t('header.messages')">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
@@ -190,7 +160,7 @@
             >
               {{ messageCount > 99 ? "99+" : messageCount }}
             </span>
-          </component>
+          </AppNavLink>
 
           <!-- Mobile menu button (right side, mobile only) -->
           <button
@@ -262,13 +232,9 @@
                   </p>
                 </div>
                 <div class="py-1">
-                  <component
-                    :is="isInertia ? Link : RouterLink"
-                    :href="isInertia ? '/messages' : undefined"
-                    :to="!isInertia ? '/messages' : undefined"
+                  <AppNavLink :href="'/messages'"
                     @click="closeUserMenu"
-                    class="group flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors relative"
-                  >
+                    class="group flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors relative">
                     <svg
                       class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white"
                       fill="none"
@@ -284,14 +250,10 @@
                     >
                       {{ messageCount > 99 ? "99+" : messageCount }}
                     </span>
-                  </component>
-                  <component
-                    :is="isInertia ? Link : RouterLink"
-                    :href="isInertia ? '/account' : undefined"
-                    :to="!isInertia ? '/account' : undefined"
+                  </AppNavLink>
+                  <AppNavLink :href="'/account'"
                     @click="closeUserMenu"
-                    class="group flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
-                  >
+                    class="group flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">
                     <svg
                       class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white"
                       fill="none"
@@ -306,14 +268,10 @@
                       />
                     </svg>
                     {{ t("header.profile_settings") }}
-                  </component>
-                  <component
-                    :is="isInertia ? Link : RouterLink"
-                    :href="isInertia ? '/support' : undefined"
-                    :to="!isInertia ? '/support' : undefined"
+                  </AppNavLink>
+                  <AppNavLink :href="'/support'"
                     @click="closeUserMenu"
-                    class="group flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
-                  >
+                    class="group flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">
                     <svg
                       class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white"
                       fill="none"
@@ -328,7 +286,7 @@
                       />
                     </svg>
                     {{ t("header.support") }}
-                  </component>                  
+                  </AppNavLink>                  
                   <div class="border-t border-gray-700 my-1"></div>
                   <button
                     @click="handleLogout"
@@ -402,18 +360,14 @@
 
         <!-- Navigation Menu -->
         <nav class="p-4 space-y-2">
-          <component
-            :is="isInertia ? Link : RouterLink"
-            :href="isInertia ? '/dashboard' : undefined"
-            :to="!isInertia ? '/dashboard' : undefined"
+          <AppNavLink :href="'/dashboard'"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors"
             :class="
               isActive('/dashboard', 'home')
                 ? 'bg-indigo-600/20 text-indigo-300'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-            "
-          >
+            ">
             <svg
               class="w-5 h-5 mr-3"
               fill="none"
@@ -428,19 +382,15 @@
               />
             </svg>
             {{ t("header.dashboard") }}
-          </component>
-          <component
-            :is="isInertia ? Link : RouterLink"
-            :href="isInertia ? '/stores' : undefined"
-            :to="!isInertia ? '/stores' : undefined"
+          </AppNavLink>
+          <AppNavLink :href="'/stores'"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors"
             :class="
               isActive('/stores')
                 ? 'bg-indigo-600/20 text-indigo-300'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-            "
-          >
+            ">
             <svg
               class="w-5 h-5 mr-3"
               fill="none"
@@ -455,19 +405,15 @@
               />
             </svg>
             {{ t("header.stores") }}
-          </component>
-          <component
-            :is="isInertia ? Link : RouterLink"
-            :href="isInertia ? dashboardInvoicingTabPath : undefined"
-            :to="!isInertia ? dashboardInvoicingTabRoute : undefined"
+          </AppNavLink>
+          <AppNavLink :href="dashboardInvoicingTabPath"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors"
             :class="
               isInvoicingNavActiveState
                 ? 'bg-indigo-600/20 text-indigo-300'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-            "
-          >
+            ">
             <svg
               class="w-5 h-5 mr-3 shrink-0"
               fill="none"
@@ -483,19 +429,15 @@
               />
             </svg>
             {{ t("header.invoicing") }}
-          </component>
-          <component
-            :is="isInertia ? Link : RouterLink"
-            :href="isInertia ? '/support' : undefined"
-            :to="!isInertia ? '/support' : undefined"
+          </AppNavLink>
+          <AppNavLink :href="'/support'"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors relative"
             :class="
               isActive('/support/wallet-connections', 'support-wallet-connections')
                 ? 'bg-indigo-600/20 text-indigo-300'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-            "
-          >
+            ">
             <svg
               class="w-5 h-5 mr-3"
               fill="none"
@@ -510,23 +452,18 @@
               />
             </svg>
             {{ t("header.support") }}
-          </component>
-          <component
-            v-if="
+          </AppNavLink>
+          <AppNavLink :href="'/admin'" v-if="
               authStore.user?.role === 'support' ||
               authStore.user?.role === 'admin'
             "
-            :is="isInertia ? Link : RouterLink"
-            :href="isInertia ? '/admin' : undefined"
-            :to="!isInertia ? '/admin' : undefined"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors relative"
             :class="
               isActive('/admin', 'support-wallet-connections')
                 ? 'bg-indigo-600/20 text-indigo-300'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-            "
-          >
+            ">
             <svg
               class="w-5 h-5 mr-3"
               fill="none"
@@ -547,20 +484,15 @@
             >
               {{ supportCount > 99 ? "99+" : supportCount }}
             </span>
-          </component>
-          <component
-            v-if="authStore.user?.role === 'admin'"
-            :is="isInertia ? Link : RouterLink"
-            :href="isInertia ? '/admin' : undefined"
-            :to="!isInertia ? '/admin' : undefined"
+          </AppNavLink>
+          <AppNavLink :href="'/admin'" v-if="authStore.user?.role === 'admin'"
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors"
             :class="
               isActive('/admin', 'admin-users')
                 ? 'bg-indigo-600/20 text-indigo-300'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-            "
-          >
+            ">
             <svg
               class="w-5 h-5 mr-3"
               fill="none"
@@ -575,7 +507,7 @@
               />
             </svg>
             {{ t("header.admin") }}
-          </component>
+          </AppNavLink>
         </nav>
       </div>
 
@@ -591,13 +523,9 @@
             {{ authStore.user?.email }}
           </p>
         </div>
-        <component
-          :is="isInertia ? Link : RouterLink"
-          :href="isInertia ? '/messages' : undefined"
-          :to="!isInertia ? '/messages' : undefined"
+        <AppNavLink :href="'/messages'"
           @click="closeMobileMenu"
-          class="flex items-center px-4 py-3 rounded-xl text-base font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-colors relative"
-        >
+          class="flex items-center px-4 py-3 rounded-xl text-base font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-colors relative">
           <svg
             class="w-5 h-5 mr-3"
             fill="none"
@@ -613,14 +541,10 @@
           >
             {{ messageCount > 99 ? "99+" : messageCount }}
           </span>
-        </component>
-        <component
-          :is="isInertia ? Link : RouterLink"
-          :href="isInertia ? '/account' : undefined"
-          :to="!isInertia ? '/account' : undefined"
+        </AppNavLink>
+        <AppNavLink :href="'/account'"
           @click="closeMobileMenu"
-          class="flex items-center px-4 py-3 rounded-xl text-base font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-        >
+          class="flex items-center px-4 py-3 rounded-xl text-base font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
           <svg
             class="w-5 h-5 mr-3"
             fill="none"
@@ -635,7 +559,7 @@
             />
           </svg>
           {{ t("header.profile_settings") }}
-        </component>
+        </AppNavLink>
         <button
           @click="handleLogout"
           class="flex items-center w-full px-4 py-3 rounded-xl text-base font-medium text-red-400 hover:bg-red-900/10 hover:text-red-300 transition-colors text-left"
@@ -674,9 +598,10 @@
 </template>
 
 <script setup lang="ts">
+import AppNavLink from "./AppNavLink.vue";
 import { ref, computed, onMounted, onUnmounted, inject } from "vue";
-import { useRouter, useRoute, RouterLink } from "vue-router";
-import { Link, router as inertiaRouter, usePage } from "@inertiajs/vue3";
+import { useRouter, useRoute } from "vue-router";
+import { router as inertiaRouter, usePage } from "@inertiajs/vue3";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
 import { useBusinessInvoicing } from "../../composables/useBusinessInvoicing";
@@ -932,8 +857,9 @@ onUnmounted(() => {
 });
 
 // Click outside directive
+type ClickOutsideEl = HTMLElement & { clickOutsideEvent?: (event: Event) => void };
 const vClickOutside = {
-  mounted(el: HTMLElement, binding: any) {
+  mounted(el: ClickOutsideEl, binding: { value: () => void }) {
     el.clickOutsideEvent = (event: Event) => {
       if (!(el === event.target || el.contains(event.target as Node))) {
         binding.value();
@@ -941,7 +867,7 @@ const vClickOutside = {
     };
     document.addEventListener("click", el.clickOutsideEvent);
   },
-  unmounted(el: HTMLElement) {
+  unmounted(el: ClickOutsideEl) {
     if (el.clickOutsideEvent) {
       document.removeEventListener("click", el.clickOutsideEvent);
     }

@@ -780,24 +780,11 @@ import { useFlashStore } from "../../store/flash";
 import { invoicingApi } from "../../services/api";
 import { ensureBridgeCompanyIdForLocalCompany } from "../../evolu/bridgeCompanyEnsure";
 
-type LinkedDocument = { id: string; number?: string; type?: string };
-type LinkedExpense = { id: string; internal_number: string };
-
-type BankTx = {
-  id: string;
-  booked_at: string;
-  amount: string;
-  currency: string;
-  direction: string;
-  variable_symbol?: string | null;
-  counterparty_name?: string | null;
-  reference?: string | null;
-  match_status: string;
-  match?: {
-    document?: LinkedDocument | null;
-  };
-  expense?: LinkedExpense | null;
-};
+// One row type for the whole page: the local duplicate drifted from the
+// API shape and tripped exactOptionalPropertyTypes at every call site.
+type BankTx = import("@/evolu/bankMap").BankTxApiRow;
+type LinkedDocument = NonNullable<NonNullable<BankTx["match"]>["document"]>;
+type LinkedExpense = NonNullable<BankTx["expense"]>;
 
 const { t, locale } = useI18n();
 const route = useRoute();

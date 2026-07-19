@@ -114,8 +114,9 @@ async function changeLocale(localeCode: SupportedLocale) {
 }
 
 // Click outside directive
+type ClickOutsideEl = HTMLElement & { clickOutsideEvent?: (event: Event) => void };
 const vClickOutside = {
-  mounted(el: HTMLElement, binding: any) {
+  mounted(el: ClickOutsideEl, binding: { value: () => void }) {
     el.clickOutsideEvent = (event: Event) => {
       if (!(el === event.target || el.contains(event.target as Node))) {
         binding.value();
@@ -123,7 +124,7 @@ const vClickOutside = {
     };
     document.addEventListener('click', el.clickOutsideEvent);
   },
-  unmounted(el: HTMLElement) {
+  unmounted(el: ClickOutsideEl) {
     if (el.clickOutsideEvent) {
       document.removeEventListener('click', el.clickOutsideEvent);
     }

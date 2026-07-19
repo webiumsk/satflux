@@ -198,17 +198,9 @@
       <div
         class="flex items-center gap-2 mb-3 py-3 border-y border-gray-300 border-dotted"
       >
-        <component
-          :is="isInertia ? Link : RouterLink"
-          :href="isInertia ? `/stores/${store.id}` : undefined"
-          :to="
-            !isInertia
-              ? { name: 'stores-show', params: { id: store.id } }
-              : undefined
-          "
+        <AppNavLink :href="`/stores/${store.id}`"
           class="flex items-center min-w-0 flex-1 text-md font-semibold text-white hover:text-gray-200 transition-colors cursor-pointer"
-          @click="showMobileMenu = false"
-        >
+          @click="showMobileMenu = false">
           <img
             v-if="store.logo_url"
             :src="store.logo_url"
@@ -216,19 +208,10 @@
             class="mr-2 h-8 w-8 object-contain rounded flex-shrink-0"
           />
           <span class="truncate">{{ store.name }}</span>
-        </component>
+        </AppNavLink>
         <div class="flex items-center gap-1 flex-shrink-0">
           <!-- Wallet connection (plug / unplug by status) -->
-          <component
-            :is="isInertia ? Link : RouterLink"
-            :href="
-              isInertia ? `/stores/${store.id}/wallet-connection` : undefined
-            "
-            :to="
-              !isInertia
-                ? { name: 'stores-wallet-connection', params: { id: store.id } }
-                : undefined
-            "
+          <AppNavLink :href="`/stores/${store.id}/wallet-connection`"
             :title="t('stores.wallet_connection')"
             class="p-1.5 rounded-md transition-colors"
             :class="[
@@ -240,8 +223,7 @@
                 : 'text-gray-400 hover:bg-gray-700 hover:text-white',
               getWalletConnectionIconClass(),
             ]"
-            @click="showMobileMenu = false"
-          >
+            @click="showMobileMenu = false">
             <!-- Link (connected) vs LinkSlash (disconnected / needs support / pending) -->
             <svg
               v-if="
@@ -276,7 +258,7 @@
                 d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
               />
             </svg>
-          </component>
+          </AppNavLink>
           <!-- Store settings (onboarding pos-5) -->
           <button
             type="button"
@@ -453,19 +435,7 @@
                 >{{ t("stores.guest_nav_locked_short") }}</span
               >
             </button>
-            <component
-              v-else
-              :is="isInertia ? Link : RouterLink"
-              :href="
-                isInertia
-                  ? `/stores/${store.id}/lightning-addresses`
-                  : undefined
-              "
-              :to="
-                !isInertia
-                  ? `/stores/${store.id}/lightning-addresses`
-                  : undefined
-              "
+            <AppNavLink :href="`/stores/${store.id}/lightning-addresses`" v-else
               class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="
                 isLinkActive(
@@ -475,8 +445,7 @@
                   ? 'bg-gray-900 text-white'
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               "
-              @click="showMobileMenu = false"
-            >
+              @click="showMobileMenu = false">
               <span class="flex items-center min-w-0">
                 <svg
                   class="w-5 h-5 mr-3 flex-shrink-0"
@@ -505,7 +474,7 @@
                 class="ml-2 text-xs text-gray-500 shrink-0"
                 >∞</span
               >
-            </component>
+            </AppNavLink>
           </div>
 
           <!-- Point of Sale -->
@@ -540,32 +509,15 @@
                 >{{ t("stores.guest_nav_locked_short") }}</span
               >
             </button>
-            <component
-              v-else
-              :is="isInertia ? Link : RouterLink"
+            <AppNavLink :href="`/stores/${store.id}/apps/create?type=PointOfSale`" v-else
               data-onboarding="pos-1"
-              :href="
-                isInertia
-                  ? `/stores/${store.id}/apps/create?type=PointOfSale`
-                  : undefined
-              "
-              :to="
-                !isInertia
-                  ? {
-                      name: 'stores-apps-create',
-                      params: { id: store.id },
-                      query: { type: 'PointOfSale' },
-                    }
-                  : undefined
-              "
               class="flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer"
               :class="
                 isAppsCreateWithType('PointOfSale')
                   ? 'bg-gray-900 text-white'
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               "
-              @click="showMobileMenu = false"
-            >
+              @click="showMobileMenu = false">
               <span class="flex items-center min-w-0">
                 <svg
                   class="w-5 h-5 mr-3 flex-shrink-0"
@@ -596,31 +548,22 @@
                   d="M12 4v16m8-8H4"
                 />
               </svg>
-            </component>
+            </AppNavLink>
             <div
               v-if="getAppsByType('PointOfSale').length > 0"
               class="ml-4 space-y-1"
             >
-              <component
-                v-for="app in getAppsByType('PointOfSale')"
+              <AppNavLink :href="`/stores/${store.id}/apps/${app.id}`" v-for="app in getAppsByType('PointOfSale')"
                 :key="app.id"
-                :is="isInertia ? Link : RouterLink"
-                :href="
-                  isInertia ? `/stores/${store.id}/apps/${app.id}` : undefined
-                "
-                :to="
-                  !isInertia ? `/stores/${store.id}/apps/${app.id}` : undefined
-                "
                 class="block px-3 py-2 rounded-md text-sm transition-colors"
                 :class="
                   paramAppId === app.id
                     ? 'bg-gray-900 text-white'
                     : 'text-gray-400 hover:bg-gray-700 hover:text-white'
                 "
-                @click="showMobileMenu = false"
-              >
+                @click="showMobileMenu = false">
                 {{ app.name }}
-              </component>
+              </AppNavLink>
             </div>
             <div v-else class="ml-4 text-xs text-gray-500">
               {{ t("stores.no_pos") }}
@@ -658,31 +601,14 @@
                 >{{ t("stores.guest_nav_locked_short") }}</span
               >
             </button>
-            <component
-              v-else
-              :is="isInertia ? Link : RouterLink"
-              :href="
-                isInertia
-                  ? `/stores/${store.id}/apps/create?type=Crowdfund`
-                  : undefined
-              "
-              :to="
-                !isInertia
-                  ? {
-                      name: 'stores-apps-create',
-                      params: { id: store.id },
-                      query: { type: 'Crowdfund' },
-                    }
-                  : undefined
-              "
+            <AppNavLink :href="`/stores/${store.id}/apps/create?type=Crowdfund`" v-else
               class="flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer"
               :class="
                 isAppsCreateWithType('Crowdfund')
                   ? 'bg-gray-900 text-white'
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               "
-              @click="showMobileMenu = false"
-            >
+              @click="showMobileMenu = false">
               <span class="flex items-center min-w-0">
                 <svg
                   class="w-5 h-5 mr-3 flex-shrink-0"
@@ -713,31 +639,22 @@
                   d="M12 4v16m8-8H4"
                 />
               </svg>
-            </component>
+            </AppNavLink>
             <div
               v-if="!isGuestUser && getAppsByType('Crowdfund').length > 0"
               class="ml-4 space-y-1"
             >
-              <component
-                v-for="app in getAppsByType('Crowdfund')"
+              <AppNavLink :href="`/stores/${store.id}/apps/${app.id}`" v-for="app in getAppsByType('Crowdfund')"
                 :key="app.id"
-                :is="isInertia ? Link : RouterLink"
-                :href="
-                  isInertia ? `/stores/${store.id}/apps/${app.id}` : undefined
-                "
-                :to="
-                  !isInertia ? `/stores/${store.id}/apps/${app.id}` : undefined
-                "
                 class="block px-3 py-2 rounded-md text-sm transition-colors"
                 :class="
                   paramAppId === app.id
                     ? 'bg-gray-900 text-white'
                     : 'text-gray-400 hover:bg-gray-700 hover:text-white'
                 "
-                @click="showMobileMenu = false"
-              >
+                @click="showMobileMenu = false">
                 {{ app.name }}
-              </component>
+              </AppNavLink>
             </div>
             <div v-else-if="!isGuestUser" class="ml-4 text-xs text-gray-500">
               {{ t("stores.no_crowdfund") }}
@@ -775,11 +692,7 @@
                 >{{ t("stores.guest_nav_locked_short") }}</span
               >
             </button>
-            <component
-              v-else
-              :is="isInertia ? Link : RouterLink"
-              :href="isInertia ? `/stores/${store.id}/pay-button` : undefined"
-              :to="!isInertia ? `/stores/${store.id}/pay-button` : undefined"
+            <AppNavLink :href="`/stores/${store.id}/pay-button`" v-else
               class="flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="
                 isLinkActive(
@@ -789,8 +702,7 @@
                   ? 'bg-gray-900 text-white'
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               "
-              @click="showMobileMenu = false"
-            >
+              @click="showMobileMenu = false">
               <svg
                 class="w-5 h-5 mr-3 flex-shrink-0"
                 fill="none"
@@ -806,7 +718,7 @@
                 />
               </svg>
               <span>{{ t("stores.pay_button") }}</span>
-            </component>
+            </AppNavLink>
           </div>
 
           <!-- Raffles (BTCPay plugin; shown after availability probe, always for guests) -->
@@ -840,15 +752,7 @@
                 >{{ t("stores.guest_nav_locked_short") }}</span
               >
             </button>
-            <component
-              v-else
-              :is="isInertia ? Link : RouterLink"
-              :href="isInertia ? `/stores/${store.id}/raffles` : undefined"
-              :to="
-                !isInertia
-                  ? { name: 'stores-raffles', params: { id: store.id } }
-                  : undefined
-              "
+            <AppNavLink :href="`/stores/${store.id}/raffles`" v-else
               class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="
                 isLinkActive(`/stores/${store.id}/raffles`, 'stores-raffles') ||
@@ -860,8 +764,7 @@
                   ? 'bg-gray-900 text-white'
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               "
-              @click="showMobileMenu = false"
-            >
+              @click="showMobileMenu = false">
               <span class="flex items-center min-w-0">
                 <svg
                   class="w-5 h-5 mr-3 flex-shrink-0"
@@ -890,7 +793,7 @@
                 class="ml-2 text-xs text-gray-500 shrink-0"
                 >∞</span
               >
-            </component>
+            </AppNavLink>
           </div>
 
           <!-- Tickets (store-level events, like LN Address) -->
@@ -924,23 +827,14 @@
                 >{{ t("stores.guest_nav_locked_short") }}</span
               >
             </button>
-            <component
-              v-else
-              :is="isInertia ? Link : RouterLink"
-              :href="isInertia ? `/stores/${store.id}/tickets` : undefined"
-              :to="
-                !isInertia
-                  ? { name: 'stores-tickets', params: { id: store.id } }
-                  : undefined
-              "
+            <AppNavLink :href="`/stores/${store.id}/tickets`" v-else
               class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="
                 isLinkActive(`/stores/${store.id}/tickets`, 'stores-tickets')
                   ? 'bg-gray-900 text-white'
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               "
-              @click="showMobileMenu = false"
-            >
+              @click="showMobileMenu = false">
               <span class="flex items-center min-w-0">
                 <svg
                   class="w-5 h-5 mr-3 flex-shrink-0"
@@ -969,7 +863,7 @@
                 class="ml-2 text-xs text-gray-500 shrink-0"
                 >∞</span
               >
-            </component>
+            </AppNavLink>
           </div>
 
           <!-- E-shop Integration -->
@@ -1002,19 +896,14 @@
                 >{{ t("stores.guest_nav_locked_short") }}</span
               >
             </button>
-            <component
-              v-else
-              :is="isInertia ? Link : RouterLink"
-              :href="isInertia ? `/stores/${store.id}/api-keys` : undefined"
-              :to="!isInertia ? `/stores/${store.id}/api-keys` : undefined"
+            <AppNavLink :href="`/stores/${store.id}/api-keys`" v-else
               class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="
                 isLinkActive(`/stores/${store.id}/api-keys`, 'stores-api-keys')
                   ? 'bg-gray-900 text-white'
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               "
-              @click="showMobileMenu = false"
-            >
+              @click="showMobileMenu = false">
               <span class="flex items-center">
                 <svg
                   class="w-5 h-5 mr-3"
@@ -1041,7 +930,7 @@
                 class="ml-2 text-xs text-gray-500 shrink-0"
                 >∞</span
               >
-            </component>
+            </AppNavLink>
           </div>
 
           <!-- Stripe (visible for all, PRO badge for Free) -->
@@ -1080,23 +969,14 @@
                 >{{ t("stores.guest_nav_locked_short") }}</span
               >
             </button>
-            <component
-              v-else
-              :is="isInertia ? Link : RouterLink"
-              :href="isInertia ? `/stores/${store.id}/stripe` : undefined"
-              :to="
-                !isInertia
-                  ? { name: 'stores-stripe', params: { id: store.id } }
-                  : undefined
-              "
+            <AppNavLink :href="`/stores/${store.id}/stripe`" v-else
               class="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium transition-colors"
               :class="
                 isLinkActive(`/stores/${store.id}/stripe`, 'stores-stripe')
                   ? 'bg-gray-900 text-white'
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               "
-              @click="showMobileMenu = false"
-            >
+              @click="showMobileMenu = false">
               <span class="flex items-center min-w-0">
                 <svg
                   class="w-5 h-5 mr-3 flex-shrink-0"
@@ -1118,7 +998,7 @@
                 class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0 inline-flex items-center"
                 ><ProPlanBadge
               /></span>
-            </component>
+            </AppNavLink>
           </div>
 
           <!-- Archived Apps link -->
@@ -1138,26 +1018,11 @@
                 >{{ t("stores.guest_nav_locked_short") }}</span
               >
             </button>
-            <component
-              v-else
-              :is="isInertia ? Link : RouterLink"
-              :href="
-                isInertia ? `/stores/${store.id}/apps?archived=1` : undefined
-              "
-              :to="
-                !isInertia
-                  ? {
-                      name: 'stores-apps',
-                      params: { id: store.id },
-                      query: { archived: '1' },
-                    }
-                  : undefined
-              "
+            <AppNavLink :href="`/stores/${store.id}/apps?archived=1`" v-else
               class="flex items-center w-full px-3 py-2 rounded-md text-sm font-medium transition-colors text-red-400 hover:bg-gray-700 hover:text-red-300"
-              @click="showMobileMenu = false"
-            >
+              @click="showMobileMenu = false">
               <span>{{ archivedAppsCount }} {{ t("stores.archived") }}</span>
-            </component>
+            </AppNavLink>
           </div>
         </nav>
       </div>
@@ -1216,9 +1081,10 @@
 </template>
 
 <script setup lang="ts">
+import AppNavLink from "../layout/AppNavLink.vue";
 import { ref, computed, onMounted, onUnmounted, watch, inject } from "vue";
-import { useRouter, useRoute, RouterLink } from "vue-router";
-import { Link, router as inertiaRouter, usePage } from "@inertiajs/vue3";
+import { useRouter, useRoute } from "vue-router";
+import { router as inertiaRouter, usePage } from "@inertiajs/vue3";
 import { useI18n } from "vue-i18n";
 import { useStoresStore } from "../../store/stores";
 import { useAccountLimits } from "../../composables/useAccountLimits";

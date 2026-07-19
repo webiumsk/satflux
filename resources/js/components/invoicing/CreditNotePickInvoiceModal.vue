@@ -332,7 +332,7 @@ async function createLocalCreditNote(invoiceId: string) {
       : undefined,
   );
   if (!result.ok) {
-    const key = creditNoteErrors[result.error] ?? "common.error";
+    const key = (typeof result.error === "string" ? creditNoteErrors[result.error] : undefined) ?? "common.error";
     error.value = t(key);
     return null;
   }

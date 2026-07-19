@@ -640,7 +640,7 @@ const editor = useEditor({
         "prose-editor-inner min-h-[200px] px-4 py-3 text-gray-200 focus:outline-none max-w-none",
       "data-placeholder": props.placeholder,
     },
-    handleDrop(view, event) {
+    handleDrop(_view, event) {
       const files = event.dataTransfer?.files;
       if (files?.length && files[0].type.startsWith("image/")) {
         event.preventDefault();
@@ -649,7 +649,7 @@ const editor = useEditor({
       }
       return false;
     },
-    handlePaste(view, event) {
+    handlePaste(_view, event) {
       const items = event.clipboardData?.items;
       if (items) {
         for (const item of items) {

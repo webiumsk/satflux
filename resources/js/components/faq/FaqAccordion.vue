@@ -41,10 +41,10 @@
         
         <div class="mt-4 flex items-center justify-between">
           <div class="flex items-center gap-4 text-sm text-gray-400">
-            <span v-if="item.view_count > 0">
+            <span v-if="(item.view_count ?? 0) > 0">
               {{ item.view_count }} {{ t('faq.views') }}
             </span>
-            <span v-if="item.helpful_count > 0">
+            <span v-if="(item.helpful_count ?? 0) > 0">
               {{ item.helpful_count }} {{ t('faq.helpful') }}
             </span>
           </div>

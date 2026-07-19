@@ -349,7 +349,7 @@ async function handleExportInvoices(format: 'csv' | 'xlsx') {
       responseType: 'arraybuffer',
     });
     
-    const contentType = response.headers['content-type'] || '';
+    const contentType = String(response.headers['content-type'] ?? '');
     
     if (contentType.includes('application/json')) {
       const text = new TextDecoder().decode(response.data);

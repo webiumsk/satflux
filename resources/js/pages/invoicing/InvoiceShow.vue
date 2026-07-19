@@ -286,6 +286,7 @@
 </template>
 
 <script setup lang="ts">
+import { toAppRows } from '../../evolu/queryLoad';
 import { asApiError } from "../../utils/apiError";
 import { computed, onMounted, ref, watch } from 'vue';
 import '../../styles/invoicing-theme.css';
@@ -680,8 +681,8 @@ async function createFinalInvoice() {
       const result = local.createLocalFinalInvoiceFromProforma(
         local.evolu,
         documentId.value as import('../../evolu/schema').DocumentId,
-        local.documentRows.value as import('../../evolu/documentMap').EvoluDocumentRow[],
-        local.lineRows.value as import('../../evolu/documentMap').EvoluDocumentLineRow[],
+        toAppRows<import('../../evolu/documentMap').EvoluDocumentRow>(local.documentRows.value),
+        toAppRows<import('../../evolu/documentMap').EvoluDocumentLineRow>(local.lineRows.value),
         (doc) => payloadFromApiDocument(doc),
         { ...localTaxHelpers(), documentId: undefined },
       );
@@ -763,8 +764,8 @@ async function createInvoiceFromQuote() {
       const result = local.createLocalInvoiceFromQuote(
         local.evolu,
         documentId.value as import('../../evolu/schema').DocumentId,
-        local.documentRows.value as import('../../evolu/documentMap').EvoluDocumentRow[],
-        local.lineRows.value as import('../../evolu/documentMap').EvoluDocumentLineRow[],
+        toAppRows<import('../../evolu/documentMap').EvoluDocumentRow>(local.documentRows.value),
+        toAppRows<import('../../evolu/documentMap').EvoluDocumentLineRow>(local.lineRows.value),
         (doc) => payloadFromApiDocument(doc),
         { ...localTaxHelpers(), documentId: undefined },
       );
@@ -799,7 +800,7 @@ async function deleteDoc() {
     const result = await local.deleteLocalDocumentAsync(
       local.evolu,
       documentId.value as import('../../evolu/schema').DocumentId,
-      local.documentRows.value as import('../../evolu/documentMap').EvoluDocumentRow[],
+      toAppRows<import('../../evolu/documentMap').EvoluDocumentRow>(local.documentRows.value),
       local.seriesRows.value as import('../../evolu/numberSeriesMap').EvoluNumberSeriesRow[],
     );
     if (!result.ok) {
@@ -825,7 +826,7 @@ async function cancelDoc() {
     await local.cancelLocalDocumentAsync(
       local.evolu,
       documentId.value as import('../../evolu/schema').DocumentId,
-      local.documentRows.value as import('../../evolu/documentMap').EvoluDocumentRow[],
+      toAppRows<import('../../evolu/documentMap').EvoluDocumentRow>(local.documentRows.value),
     );
     await reloadDocument();
     return;
@@ -844,7 +845,7 @@ async function markPaid() {
       local.markLocalDocumentPaid(
         local.evolu,
         documentId.value as import('../../evolu/schema').DocumentId,
-        local.documentRows.value as import('../../evolu/documentMap').EvoluDocumentRow[],
+        toAppRows<import('../../evolu/documentMap').EvoluDocumentRow>(local.documentRows.value),
       );
       await reloadDocument();
       return;
