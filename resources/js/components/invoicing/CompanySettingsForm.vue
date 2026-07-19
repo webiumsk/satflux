@@ -961,7 +961,7 @@ async function saveContact() {
       ...vatPayload(),
     })) as Record<string, any>;
     if (linkedStoreId.value !== savedLinkedStoreId.value) {
-      await invoicingApi.companies.updateStores(
+      const storeRes = await invoicingApi.companies.updateStores(
         props.companyId,
         linkedStoreId.value ? [linkedStoreId.value] : [],
       );

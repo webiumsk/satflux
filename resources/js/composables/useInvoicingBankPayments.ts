@@ -1,3 +1,4 @@
+import { toAppRows } from "@/evolu/queryLoad";
 import type { Evolu } from "@evolu/common/local-first";
 import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
 import { useQuery } from "@evolu/vue";
@@ -291,34 +292,41 @@ function useLocalInvoicingBankPayments(
     const loading = ref(true);
     const matchFilter = ref("all");
 
+    // Per-query promises: useQuery's `promise` option is typed per query,
+    // so hand each one its own (Promise.all only gates the loading flag).
+    const bankTxPromise = evolu.loadQuery(allBankTransactionsQuery);
+    const bankMatchPromise = evolu.loadQuery(allBankTransactionMatchesQuery);
+    const documentsPromise = evolu.loadQuery(allDocumentsQuery);
+    const expensesPromise = evolu.loadQuery(allExpensesQuery);
+    const batchesPromise = evolu.loadQuery(allBankImportBatchesQuery);
     const loadPromise = Promise.all([
-        evolu.loadQuery(allBankTransactionsQuery),
-        evolu.loadQuery(allBankTransactionMatchesQuery),
-        evolu.loadQuery(allDocumentsQuery),
-        evolu.loadQuery(allExpensesQuery),
-        evolu.loadQuery(allBankImportBatchesQuery),
+        bankTxPromise,
+        bankMatchPromise,
+        documentsPromise,
+        expensesPromise,
+        batchesPromise,
     ]);
     void loadPromise.finally(() => {
         loading.value = false;
     });
 
-    const bankTxRows = useQuery(allBankTransactionsQuery, { promise: loadPromise });
-    const bankMatchRows = useQuery(allBankTransactionMatchesQuery, { promise: loadPromise });
-    const documentRows = useQuery(allDocumentsQuery, { promise: loadPromise });
-    const expenseRows = useQuery(allExpensesQuery, { promise: loadPromise });
-    const batchRows = useQuery(allBankImportBatchesQuery, { promise: loadPromise });
+    const bankTxRows = useQuery(allBankTransactionsQuery, { promise: bankTxPromise });
+    const bankMatchRows = useQuery(allBankTransactionMatchesQuery, { promise: bankMatchPromise });
+    const documentRows = useQuery(allDocumentsQuery, { promise: documentsPromise });
+    const expenseRows = useQuery(allExpensesQuery, { promise: expensesPromise });
+    const batchRows = useQuery(allBankImportBatchesQuery, { promise: batchesPromise });
 
     const ctx = computed((): BankPaymentContext => ({
-        batches: batchRows.value as BankPaymentContext["batches"],
-        transactions: bankTxRows.value as BankPaymentContext["transactions"],
-        matches: bankMatchRows.value as BankPaymentContext["matches"],
-        documents: documentRows.value as BankPaymentContext["documents"],
-        expenses: expenseRows.value as BankPaymentContext["expenses"],
+        batches: toAppRows<BankPaymentContext["batches"][number]>(batchRows.value),
+        transactions: toAppRows<BankPaymentContext["transactions"][number]>(bankTxRows.value),
+        matches: toAppRows<BankPaymentContext["matches"][number]>(bankMatchRows.value),
+        documents: toAppRows<BankPaymentContext["documents"][number]>(documentRows.value),
+        expenses: toAppRows<BankPaymentContext["expenses"][number]>(expenseRows.value),
     }));
 
     const filteredRows = computed(() =>
         filterLocalBankTransactions(
-            bankTxRows.value as BankPaymentContext["transactions"],
+            toAppRows<BankPaymentContext["transactions"][number]>(bankTxRows.value),
             companyId.value as CompanyId,
             matchFilter.value === "all" ? undefined : matchFilter.value,
         ).slice(0, 50),
@@ -331,7 +339,7 @@ function useLocalInvoicingBankPayments(
     const summary = computed(() =>
         buildBankSummary(
             filterLocalBankTransactions(
-                bankTxRows.value as BankPaymentContext["transactions"],
+                toAppRows<BankPaymentContext["transactions"][number]>(bankTxRows.value),
                 companyId.value as CompanyId,
             ),
         ),
@@ -339,7 +347,7 @@ function useLocalInvoicingBankPayments(
 
     const batches = computed(() =>
         mapLocalBankBatchesToApi(
-            batchRows.value as BankPaymentContext["batches"],
+            toAppRows<BankPaymentContext["batches"][number]>(batchRows.value),
             companyId.value as CompanyId,
         ),
     );

@@ -470,8 +470,10 @@ export const invoicingApi = {
             const { data } = await api.get<ApiEnvelope<CompanySummary | null>>(`/invoicing/companies/${companyId}/summary`);
             return data.data ?? {};
         },
-        async updateStores(companyId: string, storeIds: string[]): Promise<void> {
-            await api.patch(`/invoicing/companies/${companyId}/stores`, { store_ids: storeIds });
+        async updateStores(companyId: string, storeIds: string[]) {
+            // Returns {data: company-with-stores} - callers refresh their
+            // payload from it after re-linking.
+            return api.patch(`/invoicing/companies/${companyId}/stores`, { store_ids: storeIds });
         },
         async resetData(companyId: string, payload: Record<string, unknown>): Promise<void> {
             await api.post(`/invoicing/companies/${companyId}/reset-data`, payload);
