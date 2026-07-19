@@ -72,6 +72,18 @@ class E2eTestSeeder extends Seeder
                     'is_active' => true,
                 ],
             );
+            // Deterministic fixture even against a pre-existing plan row
+            // (local dev DB): guarantee the entitlements the scenarios need
+            // WITHOUT clobbering dev-tuned pricing/limits - a full
+            // updateOrCreate would overwrite those.
+            $features = (array) ($plan->features ?? []);
+            $missing = array_diff(['advanced_statistics', 'business_invoicing'], $features);
+            if ($missing !== [] || ! $plan->is_active) {
+                $plan->forceFill([
+                    'features' => array_values(array_merge($features, $missing)),
+                    'is_active' => true,
+                ])->save();
+            }
             \App\Models\Subscription::updateOrCreate(
                 ['user_id' => $user->id],
                 [

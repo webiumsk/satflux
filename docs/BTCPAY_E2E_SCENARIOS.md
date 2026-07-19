@@ -37,9 +37,12 @@ store), payment-methods/lightning-addresses/apps (prázdne).
 - `GET /_stub/state` - dump stavu (stores, invoices, webhookDeliveries) na
   asserty.
 
-Suity zdieľajú jednu page a session zo storage state (`e2e/auth.setup.ts` -
-jeden login na celý beh): `/api/auth/*` má throttle 5/min na IP, takže
-každý login navyše robí celú sadu flaky (viď E2E_HARNESS.md).
+Prihlásenie beží raz za celý beh (`e2e/auth.setup.ts`) a uloží sa ako
+storage state do `e2e/.auth/user.json`; Playwright každému specu vytvára
+vlastný izolovaný context/page, ktoré tento stav načítajú - zdieľa sa teda
+session, nie Page inštancia (serial suita si navyše drží jednu page v rámci
+seba cez `beforeAll`). Dôvod: `/api/auth/*` má throttle 5/min na IP a každý
+login navyše robí celú sadu flaky (viď E2E_HARNESS.md).
 
 Podpisový reťazec je overený end-to-end: stub podpisuje secretom, ktorý
 panel počas provisioningu uložil do `store.webhook_secret`, a
