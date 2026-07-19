@@ -364,4 +364,75 @@ class DashboardController extends Controller
             'per_store' => $perStore,
         ]);
     }
+
+    /**
+     * Range analytics for the redesigned dashboard: per-day series, totals,
+     * previous-window totals and source/store breakdowns
+     * (DashboardAnalyticsService). Free plans get totals only - the same
+     * boundary the stats() chart gate draws.
+     */
+    public function analytics(Request $request, \App\Services\DashboardAnalyticsService $analyticsService)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'from' => ['required', 'date_format:Y-m-d'],
+            'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
+            'store_id' => ['nullable', 'uuid'],
+            'source' => ['nullable', 'in:'.implode(',', InvoiceSourceService::SOURCES)],
+        ]);
+
+        $from = \Carbon\CarbonImmutable::createFromFormat('Y-m-d', $validated['from'])->startOfDay();
+        $to = \Carbon\CarbonImmutable::createFromFormat('Y-m-d', $validated['to'])->startOfDay();
+        if ($from->diffInDays($to) > 400) {
+            return response()->json(['message' => 'Date range too large (max 400 days).'], 422);
+        }
+
+        $stores = Store::where('user_id', $user->id)
+            ->when($validated['store_id'] ?? null, fn ($q, $id) => $q->where('id', $id))
+            ->orderBy('name')
+            ->get();
+        if (($validated['store_id'] ?? null) && $stores->isEmpty()) {
+            return response()->json(['message' => __('messages.unauthorized')], 403);
+        }
+
+        $plan = $user->currentSubscriptionPlan();
+        $planCode = $plan ? strtolower($plan->code ?? '') : 'free';
+        $canViewStats = in_array($user->role, ['admin', 'support'], true)
+            || in_array($planCode, ['pro', 'enterprise'], true);
+
+        $cacheKey = 'dashboard:analytics:'.$user->id.':'.md5(json_encode([
+            $validated['from'], $validated['to'],
+            $validated['store_id'] ?? null, $validated['source'] ?? null,
+        ]));
+        if ($request->boolean('refresh')) {
+            // A cache-busting refresh recomputes against BTCPay - throttle it
+            // tighter than the generic api-user limit (which still applies).
+            $refreshKey = 'dashboard-analytics-refresh:'.$user->id;
+            if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($refreshKey, 5)) {
+                return response()->json(['message' => 'Too many refreshes - try again shortly.'], 429);
+            }
+            \Illuminate\Support\Facades\RateLimiter::hit($refreshKey, 60);
+            Cache::forget($cacheKey);
+        }
+
+        $payload = Cache::remember($cacheKey, 600, function () use ($analyticsService, $user, $stores, $from, $to, $validated) {
+            return $analyticsService->analytics($user, $stores, $from, $to, $validated['source'] ?? null);
+        });
+
+        if (! $canViewStats) {
+            // Same product boundary as the stats() chart gate: KPIs for
+            // everyone, series and breakdowns for Pro.
+            $payload['series'] = null;
+            $payload['by_source'] = null;
+            $payload['by_store'] = null;
+            $payload['previous'] = null;
+        }
+
+        return response()->json(array_merge($payload, [
+            'from' => $validated['from'],
+            'to' => $validated['to'],
+            'can_view_stats' => $canViewStats,
+        ]));
+    }
 }

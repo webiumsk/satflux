@@ -677,6 +677,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
+    Route::get('/dashboard/analytics', [DashboardController::class, 'analytics']);
 
     // Stores
     Route::get('/stores', [StoreController::class, 'index']);
