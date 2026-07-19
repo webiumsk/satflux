@@ -6,7 +6,6 @@
   "resources/js/__tests__/setup.ts|TS2550|Property 'difference' does not exist on type 'Set<any>'. Do you need to change your target library? Try changing the 'lib' compiler option to 'esnext' or later.": 2,
   "resources/js/app.ts|TS2769|No overload matches this call.": 1,
   "resources/js/components/admin/RichTextEditor.vue|TS2339|Property 'url' does not exist on type '{ data: { url: string; }; }'.": 1,
-  "resources/js/components/dashboard/DashboardStoresTab.vue|TS2322|Type 'string' is not assignable to type '\"1W\" | \"1M\"'.": 1,
   "resources/js/components/faq/FaqAccordion.vue|TS18048|'item.helpful_count' is possibly 'undefined'.": 1,
   "resources/js/components/faq/FaqAccordion.vue|TS18048|'item.view_count' is possibly 'undefined'.": 1,
   "resources/js/components/invoicing/CompanyEmailSettingsForm.vue|TS2339|Property 'password_set' does not exist on type '{}'.": 1,

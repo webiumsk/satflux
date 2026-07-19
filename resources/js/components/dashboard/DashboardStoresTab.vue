@@ -1,6 +1,207 @@
 <template>
   <div>
-    <!-- Dashboard Stats -->
+    <!-- ============ Sales analytics (primary) ============ -->
+    <div class="bg-gray-800/50 backdrop-blur-md border border-gray-700 rounded-2xl p-6 mb-8">
+      <div class="flex flex-col gap-4 mb-6">
+        <div class="flex items-center justify-between gap-2 flex-wrap">
+          <div class="flex items-center gap-2">
+            <h2 class="text-xl font-bold text-white">{{ t('dashboard.analytics_title') }}</h2>
+            <button
+              v-if="!canViewStats"
+              type="button"
+              @click="showStatsUpgradeModal = true"
+              class="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
+            >
+              <ProPlanBadge />
+            </button>
+          </div>
+          <p class="text-xs text-gray-500 tabular-nums">{{ analytics?.from }} - {{ analytics?.to }}</p>
+        </div>
+
+        <!-- Filter bar: one row above the charts -->
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex flex-wrap gap-1 bg-gray-900/50 rounded-xl p-1 border border-gray-700/50">
+            <button
+              v-for="p in presetOptions"
+              :key="p.value"
+              type="button"
+              :class="[
+                'px-3 py-1.5 text-xs font-bold rounded-lg transition-all',
+                preset === p.value ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-gray-500 hover:text-white hover:bg-white/5',
+              ]"
+              @click="preset = p.value"
+            >
+              {{ p.label }}
+            </button>
+          </div>
+          <template v-if="preset === 'custom'">
+            <input
+              v-model="customFrom"
+              type="date"
+              :aria-label="t('dashboard.custom_from')"
+              class="rounded-lg border border-gray-600 bg-gray-900/80 px-2.5 py-1.5 text-xs text-gray-200"
+            />
+            <span class="text-gray-500 text-xs">-</span>
+            <input
+              v-model="customTo"
+              type="date"
+              :aria-label="t('dashboard.custom_to')"
+              class="rounded-lg border border-gray-600 bg-gray-900/80 px-2.5 py-1.5 text-xs text-gray-200"
+            />
+          </template>
+          <Select
+            v-model="selectedStoreId"
+            :options="storeFilterOptions"
+            class="min-w-[160px]"
+          />
+          <Select
+            v-model="selectedSource"
+            :options="paymentMethodOptions"
+            class="min-w-[160px]"
+          />
+          <div class="flex gap-1 bg-gray-900/50 rounded-xl p-1 border border-gray-700/50">
+            <button
+              v-for="c in currencyOptions"
+              :key="c"
+              type="button"
+              :class="[
+                'px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all',
+                selectedCurrency === c ? 'bg-amber-600 text-white' : 'text-gray-500 hover:text-white hover:bg-white/5',
+              ]"
+              @click="selectedCurrency = c"
+            >
+              {{ c === 'sats' ? 'sats' : c.toUpperCase() }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="analyticsLoading" class="py-16 flex justify-center">
+        <svg class="animate-spin h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+
+      <template v-else-if="analytics">
+        <!-- KPI row -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="rounded-xl border border-gray-700 bg-gray-900/40 p-4 relative overflow-hidden">
+            <p class="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">{{ t('dashboard.kpi_revenue') }}</p>
+            <p class="text-2xl font-black text-white tracking-tighter tabular-nums">
+              {{ formatAmount(totalForCurrency(analytics.totals)) }}
+              <span class="text-xs font-bold text-gray-400 uppercase">{{ currencyLabel }}</span>
+            </p>
+            <DeltaBadge :delta="revenueDelta" :label="t('dashboard.vs_previous')" :new-label="t('dashboard.delta_new')" />
+            <div v-if="canViewStats && chartSeries.length > 1" class="absolute bottom-3 right-3 opacity-60">
+              <Sparkline :values="chartSeries.map((p) => p.value)" />
+            </div>
+          </div>
+          <div class="rounded-xl border border-gray-700 bg-gray-900/40 p-4">
+            <p class="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">{{ t('dashboard.kpi_paid_sales') }}</p>
+            <p class="text-2xl font-black text-white tracking-tighter tabular-nums">{{ analytics.totals.paid_count }}</p>
+            <DeltaBadge :delta="countDelta" :label="t('dashboard.vs_previous')" :new-label="t('dashboard.delta_new')" />
+          </div>
+          <div class="rounded-xl border border-gray-700 bg-gray-900/40 p-4">
+            <p class="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">{{ t('dashboard.kpi_avg_order') }}</p>
+            <p class="text-2xl font-black text-white tracking-tighter tabular-nums">
+              {{ formatSats(analytics.totals.avg_order_sats) }}
+              <span class="text-xs font-bold text-gray-400 uppercase">sats</span>
+            </p>
+            <DeltaBadge :delta="avgDelta" :label="t('dashboard.vs_previous')" :new-label="t('dashboard.delta_new')" />
+          </div>
+          <div class="rounded-xl border border-gray-700 bg-gray-900/40 p-4">
+            <p class="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">{{ t('dashboard.kpi_best_day') }}</p>
+            <template v-if="analytics.totals.best_day">
+              <p class="text-2xl font-black text-white tracking-tighter tabular-nums">
+                {{ formatSats(analytics.totals.best_day.amount_sats) }}
+                <span class="text-xs font-bold text-gray-400 uppercase">sats</span>
+              </p>
+              <p class="mt-1 text-xs text-gray-400">{{ analytics.totals.best_day.date }}</p>
+            </template>
+            <p v-else class="text-2xl font-black text-gray-600 tracking-tighter">-</p>
+          </div>
+        </div>
+
+        <!-- Pro-gated charts -->
+        <div v-if="!canViewStats" class="py-12 text-center rounded-xl bg-gray-900/40 border border-gray-700/50 border-dashed">
+          <p class="text-gray-400">{{ t('dashboard.upgrade_to_see_stats') }}</p>
+        </div>
+        <template v-else>
+          <!-- Main chart -->
+          <div class="mb-6">
+            <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+              <div class="flex gap-2">
+                <button
+                  v-for="m in chartModes"
+                  :key="m.value"
+                  type="button"
+                  :class="[
+                    'px-4 py-2 text-xs font-bold rounded-lg transition-all',
+                    chartMode === m.value ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-gray-500 hover:text-white hover:bg-white/5',
+                  ]"
+                  @click="chartMode = m.value"
+                >
+                  {{ m.label }}
+                </button>
+              </div>
+            </div>
+            <template v-if="hasSeriesData">
+              <LineAreaChart
+                v-if="chartMode === 'amount'"
+                :points="chartSeries"
+                :format-value="formatChartValue"
+              />
+              <BarChart
+                v-else
+                :points="chartSeries"
+                :format-value="formatChartValue"
+              />
+            </template>
+            <div v-else class="py-10 text-center text-gray-500 rounded-xl bg-gray-900/40 border border-gray-700/50 border-dashed">
+              {{ t('dashboard.no_data_in_period') }}
+            </div>
+          </div>
+
+          <!-- Breakdowns -->
+          <div v-if="hasSeriesData" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="rounded-xl border border-gray-700 bg-gray-900/40 p-5">
+              <h3 class="text-sm font-bold text-white mb-4">{{ t('dashboard.by_source_title') }}</h3>
+              <DonutChart
+                v-if="donutSlices.length > 0"
+                :slices="donutSlices"
+                :total-label="t('dashboard.donut_total_label')"
+              />
+              <p v-else class="text-sm text-gray-500">{{ t('dashboard.no_data_in_period') }}</p>
+            </div>
+            <div class="rounded-xl border border-gray-700 bg-gray-900/40 p-5">
+              <h3 class="text-sm font-bold text-white mb-4">{{ t('dashboard.by_store_title') }}</h3>
+              <ul v-if="storeRanking.length > 0" class="space-y-3">
+                <li v-for="entry in storeRanking" :key="entry.store_id">
+                  <div class="flex items-center justify-between gap-3 text-sm mb-1">
+                    <span class="text-gray-200 truncate">{{ entry.name }}</span>
+                    <span class="text-gray-400 tabular-nums shrink-0">
+                      {{ formatAmount(entry.value) }} {{ currencyLabel }}
+                      <span class="text-gray-600">·</span>
+                      {{ entry.paid_count }}
+                    </span>
+                  </div>
+                  <div class="h-1.5 rounded-full bg-gray-700/40 overflow-hidden">
+                    <div
+                      class="h-full rounded-full"
+                      :style="{ width: entry.sharePercent + '%', backgroundColor: CHART_PRIMARY }"
+                    />
+                  </div>
+                </li>
+              </ul>
+              <p v-else class="text-sm text-gray-500">{{ t('dashboard.no_data_in_period') }}</p>
+            </div>
+          </div>
+        </template>
+      </template>
+    </div>
+
+    <!-- ============ Secondary tiles (stores / all-time revenue / BTCPay) ============ -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
       <router-link
         :to="storeCount === 0 ? '/stores/create' : '/stores'"
@@ -8,18 +209,8 @@
       >
         <div class="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
         <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-          <svg
-            class="w-24 h-24 text-indigo-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-            />
+          <svg class="w-24 h-24 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
         </div>
         <div class="relative z-10">
@@ -95,91 +286,6 @@
       </div>
     </div>
 
-    <div class="bg-gray-800/50 backdrop-blur-md border border-gray-700 rounded-2xl p-6 mb-8">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div class="flex items-center gap-2 flex-wrap">
-          <h2 class="text-xl font-bold text-white">{{ t('dashboard.all_stores_stats') }}</h2>
-          <button
-            v-if="!canViewStats"
-            type="button"
-            @click="showStatsUpgradeModal = true"
-            class="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
-          >
-            <ProPlanBadge />
-          </button>
-        </div>
-        <div v-if="statsStores.length > 0" class="flex flex-wrap items-center gap-3">
-          <label class="text-sm font-medium text-gray-400">{{ t('dashboard.filter_by_store') }}</label>
-          <Select
-            v-model="selectedStoreId"
-            :options="storeFilterOptions"
-            class="min-w-[180px]"
-            @change="onStatsFilterChange"
-          />
-          <label class="text-sm font-medium text-gray-400">{{ t('stores.filter_by_payment_method') }}</label>
-          <Select
-            v-model="selectedStatsSource"
-            :options="paymentMethodOptions"
-            :placeholder="t('stores.payment_method_all')"
-            class="min-w-[180px]"
-            @change="onStatsFilterChange"
-          />
-        </div>
-      </div>
-      <div v-if="!canViewStats" class="py-12 text-center rounded-xl bg-gray-900/40 border border-gray-700/50 border-dashed">
-        <p class="text-gray-400">{{ t('dashboard.upgrade_to_see_stats') }}</p>
-      </div>
-      <div v-else-if="statsLoading" class="py-12 flex justify-center">
-        <svg class="animate-spin h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-      </div>
-      <div v-else class="space-y-6">
-        <div class="flex items-baseline gap-2">
-          <span class="text-3xl font-black text-white tracking-tighter">{{ statsTotal }}</span>
-          <span class="text-sm font-bold text-gray-500 uppercase tracking-widest">{{ statsPeriod === '1W' ? t('dashboard.stats_7d') : t('dashboard.stats_30d') }}</span>
-        </div>
-        <div class="flex gap-2 mb-4">
-          <button
-            v-for="p in ['1W', '1M']"
-            :key="p"
-            @click="statsPeriod = p"
-            :class="[
-              'px-4 py-2 text-xs font-bold rounded-lg transition-all',
-              statsPeriod === p ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:text-white hover:bg-white/5'
-            ]"
-          >
-            {{ p }}
-          </button>
-        </div>
-        <div v-if="statsChartData.length > 0" class="relative h-64 w-full">
-          <svg class="w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id="dashboardChartGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#4f46e5" stop-opacity="0.3" />
-                <stop offset="100%" stop-color="#4f46e5" stop-opacity="0" />
-              </linearGradient>
-            </defs>
-            <g v-for="(item, index) in statsChartData" :key="index">
-              <rect
-                :x="statsGetX(index) - (90 / statsChartData.length / 2)"
-                :y="statsGetY(item.count)"
-                :width="90 / statsChartData.length"
-                :height="100 - statsGetY(item.count)"
-                fill="url(#dashboardChartGrad)"
-                rx="2"
-                class="transition-all duration-300"
-              />
-            </g>
-          </svg>
-        </div>
-        <div v-else class="py-8 text-center text-gray-500 rounded-xl bg-gray-900/40 border border-gray-700/50 border-dashed">
-          {{ t('stores.no_sales_data') }}
-        </div>
-      </div>
-    </div>
-
     <UpgradeModal
       :show="showStatsUpgradeModal"
       :message="t('dashboard.stats_available_in_pro_message')"
@@ -205,14 +311,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 import api from '../../services/api';
 import Select from '../ui/Select.vue';
 import UpgradeModal from '../stores/UpgradeModal.vue';
 import ProPlanBadge from '../stores/ProPlanBadge.vue';
+import LineAreaChart, { type ChartPoint } from '../charts/LineAreaChart.vue';
+import BarChart from '../charts/BarChart.vue';
+import DonutChart, { type DonutSlice } from '../charts/DonutChart.vue';
+import Sparkline from '../charts/Sparkline.vue';
+import DeltaBadge from './DeltaBadge.vue';
+import { CHART_PRIMARY, SOURCE_COLORS, percentDelta } from '../charts/chartScales';
+import {
+  isDashboardPeriodPreset,
+  useDashboardPeriod,
+  type DashboardPeriodPreset,
+} from '../../composables/useDashboardPeriod';
 
 const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
+
+// ---- Overview (stores / all-time revenue / BTCPay ping) ----
 
 const loading = ref(true);
 const storeCount = ref(0);
@@ -280,9 +402,7 @@ const revenueCurrencyLabel = computed(() => {
 });
 
 function formatSats(sats: number): string {
-  return new Intl.NumberFormat('en-US', {
-    maximumFractionDigits: 0,
-  }).format(sats);
+  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(sats);
 }
 
 function formatRevenue(value: number, currency: string): string {
@@ -290,39 +410,45 @@ function formatRevenue(value: number, currency: string): string {
   return new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 }
 
-const statsStores = ref<Array<{ id: string; name: string }>>([]);
-const canViewStats = ref(false);
-const statsLoading = ref(false);
+// ---- Range analytics ----
+
+type AnalyticsBucket = { paid_count: number; amount_sats: number; amount_by_currency?: Record<string, number> };
+type AnalyticsDay = AnalyticsBucket & { date: string; label: string; amount_by_currency: Record<string, number> };
+type AnalyticsPayload = {
+  from: string;
+  to: string;
+  can_view_stats: boolean;
+  totals: AnalyticsBucket & {
+    amount_by_currency: Record<string, number>;
+    avg_order_sats: number;
+    best_day: { date: string; paid_count: number; amount_sats: number } | null;
+  };
+  previous: (AnalyticsBucket & { from: string; to: string; amount_by_currency: Record<string, number> }) | null;
+  series: AnalyticsDay[] | null;
+  by_source: Record<string, AnalyticsBucket> | null;
+  by_store: Array<{ store_id: string; name: string; paid_count: number; amount_sats: number; amount_by_currency: Record<string, number> }> | null;
+};
+
+const { preset, customFrom, customTo, range } = useDashboardPeriod();
 const selectedStoreId = ref('');
-const selectedStatsSource = ref('all');
-const sales7d = ref<Array<{ date: string; count: number }>>([]);
-const sales30d = ref<Array<{ date: string; count: number }>>([]);
-const total7d = ref(0);
-const total30d = ref(0);
-const perStore = ref<PerStoreEntry[]>([]);
-const statsPeriod = ref<'1W' | '1M'>('1W');
+const selectedSource = ref('all');
+const selectedCurrency = ref('sats');
+const chartMode = ref<'amount' | 'count'>('amount');
+
+const analytics = ref<AnalyticsPayload | null>(null);
+const analyticsLoading = ref(false);
+const canViewStats = computed(() => analytics.value?.can_view_stats ?? false);
+const statsStores = ref<Array<{ id: string; name: string }>>([]);
 const showStatsUpgradeModal = ref(false);
 const refreshing = ref(false);
 
-async function handleRefresh() {
-  refreshing.value = true;
-  try {
-    await Promise.all([loadDashboardData({ refresh: true }), loadStats({ refresh: true })]);
-  } finally {
-    refreshing.value = false;
-  }
-}
-
-interface PerStoreEntry {
-  store_id: string;
-  name: string;
-  pos: { sales_7d: Array<{ date: string; count: number }>; sales_30d: Array<{ date: string; count: number }>; total_7d: number; total_30d: number };
-  invoices: { by_source: Record<string, { sales_7d: Array<{ date: string; count: number }>; sales_30d: Array<{ date: string; count: number }>; total_7d: number; total_30d: number }> };
-}
+const presetOptions = computed(() => (
+  ['7d', '30d', '90d', 'this_month', 'last_month', 'this_year', 'custom'] as DashboardPeriodPreset[]
+).map((value) => ({ value, label: t(`dashboard.period_${value}`) })));
 
 const storeFilterOptions = computed(() => {
   const options = [{ label: t('dashboard.all_stores'), value: '' }];
-  statsStores.value.forEach((s: { id: string | number; name: string }) => options.push({ label: s.name, value: String(s.id) }));
+  statsStores.value.forEach((s) => options.push({ label: s.name, value: String(s.id) }));
   return options;
 });
 
@@ -336,105 +462,167 @@ const paymentMethodOptions = computed(() => [
   { label: t('stores.payment_method_other'), value: 'other' },
 ]);
 
-function mergeSeriesByDay(arrays: Array<Array<{ date: string; count: number }>>): Array<{ date: string; count: number }> {
-  if (arrays.length === 0) return [];
-  const first = arrays[0];
-  const out = first.map((row) => ({ date: row.date, count: 0 }));
-  arrays.forEach((arr) => arr.forEach((row, i) => { if (out[i]) out[i].count += row.count; }));
-  return out;
-}
-
-const effectiveStats = computed(() => {
-  const storeId = selectedStoreId.value;
-  const source = selectedStatsSource.value;
-  const ps = perStore.value;
-  if (!ps.length) {
-    return { sales_7d: sales7d.value, sales_30d: sales30d.value, total_7d: total7d.value, total_30d: total30d.value };
+const currencyOptions = computed(() => {
+  const set = new Set<string>(['sats']);
+  for (const key of Object.keys(analytics.value?.totals.amount_by_currency ?? {})) {
+    set.add(key);
   }
-  if (!storeId && source === 'all') {
-    return { sales_7d: sales7d.value, sales_30d: sales30d.value, total_7d: total7d.value, total_30d: total30d.value };
-  }
-  if (storeId && source === 'all') {
-    const one = ps.find((s: PerStoreEntry) => String(s.store_id) === String(storeId));
-    if (!one) return { sales_7d: sales7d.value, sales_30d: sales30d.value, total_7d: total7d.value, total_30d: total30d.value };
-    const bySource = one.invoices.by_source as Record<string, { sales_7d: Array<{ date: string; count: number }>; sales_30d: Array<{ date: string; count: number }>; total_7d: number; total_30d: number }>;
-    const all7 = [one.pos.sales_7d, ...Object.values(bySource).map((x) => x.sales_7d)];
-    const all30 = [one.pos.sales_30d, ...Object.values(bySource).map((x) => x.sales_30d)];
-    const t7 = one.pos.total_7d + Object.values(bySource).reduce((sum: number, x) => sum + x.total_7d, 0);
-    const t30 = one.pos.total_30d + Object.values(bySource).reduce((sum: number, x) => sum + x.total_30d, 0);
-    return { sales_7d: mergeSeriesByDay(all7), sales_30d: mergeSeriesByDay(all30), total_7d: t7, total_30d: t30 };
-  }
-  if (!storeId && source !== 'all') {
-    if (source === 'pos') {
-      const all7 = ps.map((s: PerStoreEntry) => s.pos.sales_7d);
-      const all30 = ps.map((s: PerStoreEntry) => s.pos.sales_30d);
-      return {
-        sales_7d: mergeSeriesByDay(all7),
-        sales_30d: mergeSeriesByDay(all30),
-        total_7d: ps.reduce((sum: number, x: PerStoreEntry) => sum + x.pos.total_7d, 0),
-        total_30d: ps.reduce((sum: number, x: PerStoreEntry) => sum + x.pos.total_30d, 0),
-      };
-    }
-    const all7 = ps.map((s: PerStoreEntry) => (s.invoices.by_source[source]?.sales_7d ?? []) as Array<{ date: string; count: number }>).filter((a: Array<unknown>) => a.length > 0);
-    const all30 = ps.map((s: PerStoreEntry) => (s.invoices.by_source[source]?.sales_30d ?? []) as Array<{ date: string; count: number }>).filter((a: Array<unknown>) => a.length > 0);
-    const t7 = ps.reduce((sum: number, x: PerStoreEntry) => sum + (x.invoices.by_source[source]?.total_7d ?? 0), 0);
-    const t30 = ps.reduce((sum: number, x: PerStoreEntry) => sum + (x.invoices.by_source[source]?.total_30d ?? 0), 0);
-    return { sales_7d: mergeSeriesByDay(all7), sales_30d: mergeSeriesByDay(all30), total_7d: t7, total_30d: t30 };
-  }
-  const one = ps.find((s: PerStoreEntry) => String(s.store_id) === String(storeId));
-  if (!one) return { sales_7d: sales7d.value, sales_30d: sales30d.value, total_7d: total7d.value, total_30d: total30d.value };
-  if (source === 'pos') {
-    return { sales_7d: one.pos.sales_7d, sales_30d: one.pos.sales_30d, total_7d: one.pos.total_7d, total_30d: one.pos.total_30d };
-  }
-  const inv = one.invoices.by_source[source];
-  if (!inv) return { sales_7d: [], sales_30d: [], total_7d: 0, total_30d: 0 };
-  return { sales_7d: inv.sales_7d, sales_30d: inv.sales_30d, total_7d: inv.total_7d, total_30d: inv.total_30d };
+  return [...set];
 });
 
-const statsChartData = computed(() => (statsPeriod.value === '1W' ? effectiveStats.value.sales_7d : effectiveStats.value.sales_30d));
-const statsTotal = computed(() => (statsPeriod.value === '1W' ? effectiveStats.value.total_7d : effectiveStats.value.total_30d));
+const currencyLabel = computed(() => (selectedCurrency.value === 'sats' ? 'sats' : selectedCurrency.value.toUpperCase()));
 
-function onStatsFilterChange() {
-  // Reactive effectiveStats will update
+const chartModes = computed(() => [
+  { value: 'amount' as const, label: t('dashboard.chart_amount') },
+  { value: 'count' as const, label: t('dashboard.chart_count') },
+]);
+
+function bucketValue(bucket: AnalyticsBucket, currency: string): number {
+  if (currency === 'sats') return bucket.amount_sats;
+  return bucket.amount_by_currency?.[currency] ?? 0;
 }
 
-const statsMaxCount = computed(() => {
-  const max = Math.max(...statsChartData.value.map((d: { date: string; count: number }) => d.count), 0);
-  return max === 0 ? 10 : max * 1.2;
+function totalForCurrency(bucket: AnalyticsBucket): number {
+  return bucketValue(bucket, selectedCurrency.value);
+}
+
+const chartSeries = computed<ChartPoint[]>(() => {
+  const series = analytics.value?.series ?? [];
+  return series.map((day) => ({
+    label: day.label,
+    value: chartMode.value === 'count' ? day.paid_count : bucketValue(day, selectedCurrency.value),
+  }));
 });
 
-function statsGetX(index: number): number {
-  if (statsChartData.value.length === 0) return 0;
-  if (statsChartData.value.length === 1) return 50;
-  return (index / (statsChartData.value.length - 1)) * 80 + 10;
+const hasSeriesData = computed(() => (analytics.value?.totals.paid_count ?? 0) > 0 && chartSeries.value.length > 0);
+
+function formatAmount(value: number): string {
+  if (selectedCurrency.value === 'sats') return formatSats(Math.round(value));
+  return new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 }
 
-function statsGetY(count: number): number {
-  if (statsMaxCount.value === 0) return 100;
-  return 100 - (count / statsMaxCount.value) * 100;
+function formatChartValue(value: number): string {
+  if (chartMode.value === 'count') return String(Math.round(value));
+  return `${formatAmount(value)} ${currencyLabel.value}`;
 }
 
-async function loadStats(opts?: { refresh?: boolean }) {
-  statsLoading.value = true;
+const revenueDelta = computed(() => {
+  const prev = analytics.value?.previous;
+  if (!prev || !analytics.value) return undefined;
+  return percentDelta(totalForCurrency(analytics.value.totals), bucketValue(prev, selectedCurrency.value));
+});
+
+const countDelta = computed(() => {
+  const prev = analytics.value?.previous;
+  if (!prev || !analytics.value) return undefined;
+  return percentDelta(analytics.value.totals.paid_count, prev.paid_count);
+});
+
+const avgDelta = computed(() => {
+  const prev = analytics.value?.previous;
+  if (!prev || !analytics.value) return undefined;
+  const prevAvg = prev.paid_count > 0 ? prev.amount_sats / prev.paid_count : 0;
+  return percentDelta(analytics.value.totals.avg_order_sats, prevAvg);
+});
+
+/**
+ * Donut shares by received sats; when nothing has a sats value (fiat-only
+ * data without payment details), fall back to counts so shares still render.
+ * Colors are FIXED per source entity (SOURCE_COLORS) - filters never repaint.
+ */
+const donutSlices = computed<DonutSlice[]>(() => {
+  const bySource = analytics.value?.by_source ?? {};
+  const useSats = Object.values(bySource).some((b) => b.amount_sats > 0);
+  return Object.entries(bySource)
+    .map(([key, bucket]) => ({
+      key,
+      label: t(`stores.payment_method_${key}`),
+      value: useSats ? bucket.amount_sats : bucket.paid_count,
+      color: SOURCE_COLORS[key] ?? CHART_PRIMARY,
+    }))
+    .filter((slice) => slice.value > 0);
+});
+
+const storeRanking = computed(() => {
+  const stores = analytics.value?.by_store ?? [];
+  const values = stores.map((s) => ({
+    ...s,
+    value: bucketValue(s, selectedCurrency.value),
+  }));
+  const max = Math.max(...values.map((s) => s.value), 0);
+  return values
+    .filter((s) => s.paid_count > 0)
+    .slice(0, 6)
+    .map((s) => ({ ...s, sharePercent: max > 0 ? Math.round((s.value / max) * 100) : 0 }));
+});
+
+async function loadAnalytics(opts?: { refresh?: boolean }) {
+  analyticsLoading.value = true;
   try {
-    const response = await api.get('/dashboard/stats', { params: opts?.refresh ? { refresh: 1 } : {} });
-    statsStores.value = response.data.stores || [];
-    canViewStats.value = !!response.data.can_view_stats;
-    sales7d.value = response.data.sales_7d || [];
-    sales30d.value = response.data.sales_30d || [];
-    total7d.value = response.data.total_7d ?? 0;
-    total30d.value = response.data.total_30d ?? 0;
-    perStore.value = response.data.per_store || [];
+    const params: Record<string, string | number> = { from: range.value.from, to: range.value.to };
+    if (selectedStoreId.value) params.store_id = selectedStoreId.value;
+    if (selectedSource.value !== 'all') params.source = selectedSource.value;
+    if (opts?.refresh) params.refresh = 1;
+    const response = await api.get('/dashboard/analytics', { params });
+    analytics.value = response.data as AnalyticsPayload;
   } catch (e) {
-    console.error('Failed to load dashboard stats', e);
+    console.error('Failed to load dashboard analytics', e);
   } finally {
-    statsLoading.value = false;
+    analyticsLoading.value = false;
+  }
+}
+
+/** Store list for the filter select (names come from the stats endpoint). */
+async function loadStoreList() {
+  try {
+    const response = await api.get('/dashboard/stats');
+    statsStores.value = response.data.stores || [];
+  } catch {
+    statsStores.value = [];
+  }
+}
+
+// ---- URL query sync (survives reload / shareable) ----
+
+function applyQuery(): void {
+  const q = route.query;
+  if (isDashboardPeriodPreset(q.range)) preset.value = q.range;
+  if (typeof q.from === 'string') customFrom.value = q.from;
+  if (typeof q.to === 'string') customTo.value = q.to;
+  if (typeof q.store === 'string') selectedStoreId.value = q.store;
+  if (typeof q.source === 'string') selectedSource.value = q.source;
+}
+
+watch([preset, customFrom, customTo, selectedStoreId, selectedSource], () => {
+  const query: Record<string, string> = { ...route.query } as Record<string, string>;
+  query.range = preset.value;
+  if (preset.value === 'custom') {
+    query.from = customFrom.value;
+    query.to = customTo.value;
+  } else {
+    delete query.from;
+    delete query.to;
+  }
+  if (selectedStoreId.value) query.store = selectedStoreId.value; else delete query.store;
+  if (selectedSource.value !== 'all') query.source = selectedSource.value; else delete query.source;
+  void router.replace({ query });
+  void loadAnalytics();
+});
+
+async function handleRefresh() {
+  refreshing.value = true;
+  try {
+    await Promise.all([loadDashboardData({ refresh: true }), loadAnalytics({ refresh: true })]);
+  } finally {
+    refreshing.value = false;
   }
 }
 
 onMounted(() => {
+  applyQuery();
   loadDashboardData();
-  loadStats();
+  loadStoreList();
+  loadAnalytics();
 });
 
 defineExpose({
