@@ -434,7 +434,7 @@
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors relative"
             :class="
-              isActive('/support/wallet-connections', 'support-wallet-connections')
+              isActive('/support', 'support')
                 ? 'bg-indigo-600/20 text-indigo-300'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
             ">
@@ -460,7 +460,7 @@
             @click="closeMobileMenu"
             class="flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors relative"
             :class="
-              isActive('/admin', 'support-wallet-connections')
+              isActive('/admin', 'admin-users')
                 ? 'bg-indigo-600/20 text-indigo-300'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
             ">
