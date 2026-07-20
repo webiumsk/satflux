@@ -98,7 +98,7 @@
             {{ article.meta_description }}
           </p>
           <div class="flex items-center text-xs text-gray-500">
-            <span>{{ formatDate(article.created_at ?? '') }}</span>
+            <span v-if="article.created_at">{{ formatDate(article.created_at) }}</span>
           </div>
         </article>
       </div>
