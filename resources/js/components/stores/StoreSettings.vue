@@ -730,7 +730,6 @@ async function handleSettingsSubmit() {
     const urlFields = [
       "website",
       "support_url",
-      "logo_url",
       "css_url",
       "payment_sound_url",
     ];
