@@ -116,12 +116,13 @@
 </template>
 
 <script setup lang="ts">
+import type { WalletConnectionDetails } from "../../../services/api";
 import { useI18n } from "vue-i18n";
 import WalletTypeIcon from "../../WalletTypeIcon.vue";
 import type { AquaBoltzWalletBrand } from "../../../utils/aquaBoltzWalletBrand";
 
 defineProps<{
-  connection: any;
+  connection: WalletConnectionDetails;
   walletBrand: AquaBoltzWalletBrand;
   /** Disables the change button while a reveal is running in the parent. */
   revealing?: boolean;

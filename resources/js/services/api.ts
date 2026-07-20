@@ -227,7 +227,7 @@ export const storesApi = {
 
 export interface WalletConnectionDetails {
     id: string;
-    type: string;
+    type: 'blink' | 'aqua_boltz' | 'cashu' | 'nwc' | 'aqua_descriptor';
     status: string;
     configuration_source?: string | null;
     brand?: 'aqua' | 'bull' | null;
@@ -236,6 +236,13 @@ export interface WalletConnectionDetails {
     secret_updated_at?: string | null;
     submitted_by_user_id?: number | null;
     bot_failure_message?: string | null;
+}
+
+/** Support queue row: a wallet connection enriched with store/actor context. */
+export interface SupportWalletConnection extends WalletConnectionDetails {
+    store_name?: string | null;
+    submitted_by?: string | null;
+    bot_failed_at?: string | null;
 }
 
 /** Response of the owner/support secret reveal endpoints. */

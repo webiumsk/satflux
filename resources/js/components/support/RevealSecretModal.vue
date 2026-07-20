@@ -192,13 +192,14 @@
 </template>
 
 <script setup lang="ts">
+import type { SupportWalletConnection } from "../../services/api";
 import { asApiError } from "../../utils/apiError";
 import { ref, onUnmounted, watch } from 'vue';
 import { supportWalletApi } from '../../services/api';
 import WalletTypeIcon from '../WalletTypeIcon.vue';
 
 interface Props {
-    connection: any;
+    connection: SupportWalletConnection;
 }
 
 const props = defineProps<Props>();

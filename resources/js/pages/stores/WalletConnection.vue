@@ -91,7 +91,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useStoresStore } from '../../store/stores';
 import { useAppsStore } from '../../store/apps';
-import { walletApi } from '../../services/api';
+import { walletApi, type WalletConnectionDetails } from '../../services/api';
+import type { Store } from '../../store/stores';
 import WalletConnectionForm from '../../components/stores/WalletConnectionForm.vue';
 import BlinkMigrationAlertModal from '../../components/stores/BlinkMigrationAlertModal.vue';
 import StoreSidebar from '../../components/stores/StoreSidebar.vue';
@@ -106,7 +107,7 @@ const storesStore = useStoresStore();
 const appsStore = useAppsStore();
 
 const storeId = computed(() => route.params.id as string);
-const store = ref<any>(null);
+const store = ref<Store | null>(null);
 
 const {
   modalOpen: blinkAlertModalOpen,
@@ -119,7 +120,7 @@ const {
 const storeLoading = ref(true);
 const loading = ref(true);
 const error = ref<string | null>(null);
-const connection = ref<any>(null);
+const connection = ref<WalletConnectionDetails | null>(null);
 
 const allApps = computed(() => appsStore.apps);
 
