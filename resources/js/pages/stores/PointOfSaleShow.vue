@@ -732,10 +732,8 @@
                             <p class="mb-2">
                               {{ t("stores.pos_advanced_options_pro_only") }}
                             </p>
-                            <component
-                              :is="isInertia ? InertiaLink : RouterLink"
-                              :href="isInertia ? '/account' : undefined"
-                              :to="!isInertia ? '/account' : undefined"
+                            <AppNavLink
+                              :href="'/account'"
                               class="inline-flex items-center font-medium text-indigo-300 hover:text-indigo-200 underline underline-offset-2"
                             >
                               {{ t("stores.upgrade_to_pro") }}
@@ -752,7 +750,7 @@
                                   d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
                                 />
                               </svg>
-                            </component>
+                            </AppNavLink>
                           </div>
                         </Transition>
                       </div>
@@ -1151,13 +1149,15 @@ import { asApiError } from "../../utils/apiError";
 import { ref, computed, watch, watchEffect, inject, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { router as inertiaRouter, Link as InertiaLink } from "@inertiajs/vue3";
-import { RouterLink } from "vue-router";
+import { router as inertiaRouter } from "@inertiajs/vue3";
+import type { Store } from '../../store/stores';
 import { useAuthStore } from "../../store/auth";
 import { useAppsStore } from "../../store/apps";
 import { useFlashStore } from "../../store/flash";
 import ProductEditDrawer from "../../components/stores/ProductEditDrawer.vue";
 import PointOfSaleProductsEditor from "../../components/stores/PointOfSaleProductsEditor.vue";
+import type { AppRef, PosProduct, RawPosItem } from "../../types/btcpayApps";
+import AppNavLink from "../../components/layout/AppNavLink.vue";
 import AppShowLayout from "../../components/stores/AppShowLayout.vue";
 import Select from "../../components/ui/Select.vue";
 import AppShowHeader from "../../components/stores/AppShowHeader.vue";
@@ -1180,7 +1180,7 @@ const vueRouter = !isInertia ? useRouter() : null;
 const authStore = useAuthStore();
 const appsStore = useAppsStore();
 
-const props = defineProps<{ store?: any; app?: any }>();
+const props = defineProps<{ store?: Store; app?: AppRef }>();
 
 const planCode = computed(
   () => (authStore.user?.plan?.code ?? "free") as string,
@@ -1229,7 +1229,7 @@ const archiving = ref(false);
 const showAdvancedSettings = ref(false);
 
 // Products editor state
-const products = ref<any[]>([]);
+const products = ref<PosProduct[]>([]);
 const showProductDrawer = ref(false);
 const editingProductIndex = ref<number | null>(null);
 
@@ -1348,7 +1348,7 @@ function editProduct(index: number) {
   showProductDrawer.value = true;
 }
 
-function handleProductSave(product: any) {
+function handleProductSave(product: PosProduct) {
   if (editingProductIndex.value !== null) {
     products.value[editingProductIndex.value] = product;
   } else {
@@ -1382,7 +1382,7 @@ function onTipTaxRateInput(event: Event) {
 
 // Helper function to parse boolean values from BTCPay API response
 // BTCPay might return booleans, strings ("true"/"false"), numbers (1/0), or null/undefined
-function parseBoolean(value: any, defaultValue: boolean = false): boolean {
+function parseBoolean(value: unknown, defaultValue: boolean = false): boolean {
   if (value === null || value === undefined) {
     return defaultValue;
   }
@@ -1470,7 +1470,7 @@ async function loadApp(clearErrors: boolean = true) {
         : "";
     form.value.notificationUrl = config.notificationUrl || "";
 
-    let templateArray: any[] = [];
+    let templateArray: RawPosItem[] = [];
     const productsSource = config.items || config.template;
 
     if (productsSource) {
@@ -1494,7 +1494,7 @@ async function loadApp(clearErrors: boolean = true) {
     }
 
     if (templateArray && templateArray.length > 0) {
-      products.value = templateArray.map((p: any) => {
+      products.value = templateArray.map((p) => {
         let inventory: number | null = null;
         if (
           p.inventory !== null &&
@@ -1600,12 +1600,9 @@ async function handleSubmit() {
     const template = products.value
       .filter((p) => p.title)
       .map((p) => {
+        // Typed PosProduct: inventory is number | null already.
         let inventory: number | null = null;
-        if (
-          p.inventory !== null &&
-          p.inventory !== undefined &&
-          p.inventory !== ""
-        ) {
+        if (p.inventory !== null && p.inventory !== undefined) {
           const invNum = Number(p.inventory);
           if (!isNaN(invNum) && invNum >= 0) inventory = invNum;
         }
@@ -1630,13 +1627,13 @@ async function handleSubmit() {
           buyButtonText: p.buyButtonText || null,
           inventory: inventory,
           taxRate:
-            p.taxRate !== null && p.taxRate !== undefined && p.taxRate !== ""
+            p.taxRate !== null && p.taxRate !== undefined
               ? String(p.taxRate)
               : null,
         };
       });
 
-    const config: any = {
+    const config: Record<string, unknown> = {
       appName: form.value.appName,
       title: form.value.title,
       defaultView: form.value.defaultView, // This should be 'Light', 'Static', 'Cart', or 'Print'
@@ -1713,7 +1710,7 @@ async function handleSubmit() {
       await new Promise((resolve) => setTimeout(resolve, 500));
       if (layoutRef.value) {
         try {
-          await (layoutRef.value as any).loadApp();
+          await layoutRef.value?.loadApp();
         } catch (reloadError) {
           // Silently ignore errors during reload after successful save
           console.warn("Error reloading app after save:", reloadError);
@@ -1822,13 +1819,9 @@ async function handleUnarchive() {
     const updatedApp = await appsStore.unarchiveApp(storeId.value, appId.value);
     flashStore.success(t("stores.app_unarchived"));
     // Update layout's app ref so UI reflects change immediately
-    const layoutApp = layoutRef.value?.app;
-    if (updatedApp && layoutApp && typeof layoutApp === "object") {
-      if ("value" in layoutApp) {
-        (layoutApp as { value: unknown }).value = updatedApp;
-      } else if (layoutRef.value) {
-        layoutRef.value.app = updatedApp;
-      }
+    // (the exposed `app` is a ref proxy - assignment writes through)
+    if (updatedApp && layoutRef.value) {
+      layoutRef.value.app = updatedApp;
     }
   } catch (rawError) {
     const err = asApiError(rawError);

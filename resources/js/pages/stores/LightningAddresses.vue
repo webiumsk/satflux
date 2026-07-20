@@ -766,8 +766,17 @@ const loading = ref(false);
 const error = ref("");
 const saving = ref(false);
 const deleting = ref(false);
-const addresses = ref<any[]>([]);
-const store = ref<any>(null);
+interface LightningAddressRow {
+  username: string;
+  currencyCode?: string | null;
+  min?: number | string | null;
+  max?: number | string | null;
+  png?: string | null;
+  [key: string]: unknown;
+}
+
+const addresses = ref<LightningAddressRow[]>([]);
+const store = ref<import("../../store/stores").Store | null>(null);
 const limit = ref<{
   max: number | null;
   current: number;
@@ -778,7 +787,7 @@ const showForm = ref(false);
 const showDeleteModal = ref(false);
 const showUpgradeModal = ref(false);
 const addCheckLoading = ref(false);
-const addressToDelete = ref<any>(null);
+const addressToDelete = ref<LightningAddressRow | null>(null);
 const qrModalAddress = ref<string | null>(null);
 const showAdvancedSettings = ref(false);
 
@@ -790,7 +799,7 @@ const qrModalDownloadFilename = computed(() => {
   return `lightning-address-${username || "qrcode"}.png`;
 });
 
-function showQrForAddress(address: any) {
+function showQrForAddress(address: LightningAddressRow) {
   qrModalAddress.value = formatLnAddress(address.username);
 }
 
@@ -891,7 +900,7 @@ async function handleSubmit() {
   saving.value = true;
   flashStore.clear();
   try {
-    const data: any = {
+    const data: Record<string, unknown> = {
       username: form.value.username,
     };
 
@@ -965,7 +974,7 @@ async function handleSubmit() {
   }
 }
 
-function confirmDelete(address: any) {
+function confirmDelete(address: LightningAddressRow) {
   addressToDelete.value = address;
   showDeleteModal.value = true;
   deleteError.value = "";

@@ -988,15 +988,16 @@ onMounted(async () => {
   }
 });
 
-function extractSaveError(e: any): string {
-  const errors = e?.response?.data?.errors;
+function extractSaveError(rawError: unknown): string {
+  const e = asApiError(rawError);
+  const errors = e.response?.data?.errors;
   if (errors && typeof errors === 'object') {
     const first = Object.values(errors).flat()[0];
     if (typeof first === 'string') {
       return first;
     }
   }
-  return e?.response?.data?.message || t('common.error');
+  return e.response?.data?.message || t('common.error');
 }
 
 async function saveBank() {

@@ -9,7 +9,7 @@
         form-id="crowdfund-form"
         :save-button-text="t('apps.save_pos_settings')"
         :saving-text="t('auth.saving')"
-        :saving="formRef?.saving"
+        :saving="formRef?.saving ?? false"
       />
     </template>
     <template #default="{ app, store }">

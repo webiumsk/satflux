@@ -967,9 +967,9 @@ export const adminDocumentationApi = {
             api.get('/admin/documentation/articles', { params }),
         show: (id: string) => 
             api.get(`/admin/documentation/articles/${id}`),
-        create: (data: any) => 
+        create: (data: Record<string, unknown>) => 
             api.post('/admin/documentation/articles', data),
-        update: (id: string, data: any) => 
+        update: (id: string, data: Record<string, unknown>) => 
             api.put(`/admin/documentation/articles/${id}`, data),
         delete: (id: string) => 
             api.delete(`/admin/documentation/articles/${id}`),
@@ -979,9 +979,9 @@ export const adminDocumentationApi = {
             api.get('/admin/documentation/categories'),
         show: (id: string) => 
             api.get(`/admin/documentation/categories/${id}`),
-        create: (data: any) => 
+        create: (data: Record<string, unknown>) => 
             api.post('/admin/documentation/categories', data),
-        update: (id: string, data: any) => 
+        update: (id: string, data: Record<string, unknown>) => 
             api.put(`/admin/documentation/categories/${id}`, data),
         delete: (id: string) => 
             api.delete(`/admin/documentation/categories/${id}`),
@@ -995,9 +995,9 @@ export const adminFaqApi = {
             api.get('/admin/faq/items', { params }),
         show: (id: string) => 
             api.get(`/admin/faq/items/${id}`),
-        create: (data: any) => 
+        create: (data: Record<string, unknown>) => 
             api.post('/admin/faq/items', data),
-        update: (id: string, data: any) => 
+        update: (id: string, data: Record<string, unknown>) => 
             api.put(`/admin/faq/items/${id}`, data),
         delete: (id: string) => 
             api.delete(`/admin/faq/items/${id}`),
@@ -1007,9 +1007,9 @@ export const adminFaqApi = {
             api.get('/admin/faq/categories'),
         show: (id: string) => 
             api.get(`/admin/faq/categories/${id}`),
-        create: (data: any) => 
+        create: (data: Record<string, unknown>) => 
             api.post('/admin/faq/categories', data),
-        update: (id: string, data: any) => 
+        update: (id: string, data: Record<string, unknown>) => 
             api.put(`/admin/faq/categories/${id}`, data),
         delete: (id: string) => 
             api.delete(`/admin/faq/categories/${id}`),

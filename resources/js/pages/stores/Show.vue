@@ -280,6 +280,7 @@
 </template>
 
 <script setup lang="ts">
+import type { Store } from '../../store/stores';
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -311,7 +312,7 @@ const storesStore = useStoresStore();
 const appsStore = useAppsStore();
 
 const loading = ref(false);
-const store = ref<any>(null);
+const store = ref<Store | null>(null);
 
 const {
   modalOpen: blinkAlertModalOpen,
@@ -432,7 +433,7 @@ onMounted(async () => {
       delete q.openPosTour;
       router.replace({ name: 'stores-show', params: { id: storeId }, query: Object.keys(q).length ? q : undefined });
     } else if (!dismissed && store.value && !section) {
-      const hasPos = (appsStore.apps || []).some((a: any) => a.app_type === 'PointOfSale' && !a.archived);
+      const hasPos = (appsStore.apps || []).some((a: { app_type?: string; archived?: boolean }) => a.app_type === 'PointOfSale' && !a.archived);
       if (!hasPos) {
         showSetupWizard.value = true;
       }
@@ -457,8 +458,13 @@ function handleRestartPosTour() {
   showSetupWizard.value = false;
 }
 
+/** Store id for navigation - falls back to the route param before load completes. */
+function storeRouteId(): string {
+  return store.value?.id ?? (route.params.id as string);
+}
+
 function handleCreateApp() {
-  router.push({ name: 'stores-apps-create', params: { id: store.value.id } });
+  router.push({ name: 'stores-apps-create', params: { id: storeRouteId() } });
 }
 
 function handleShowSettings() {
@@ -467,18 +473,18 @@ function handleShowSettings() {
 
 function handleShowSection(section: string) {
   updateSection(section);
-  router.push({ name: 'stores-show', params: { id: store.value.id }, query: { section } });
+  router.push({ name: 'stores-show', params: { id: storeRouteId() }, query: { section } });
 }
 
-function handleViewInvoices(filters?: any) {
-  router.push({ name: 'stores-show', params: { id: store.value.id }, query: { section: 'invoices', ...filters } });
+function handleViewInvoices(filters?: Record<string, unknown>) {
+  router.push({ name: 'stores-show', params: { id: storeRouteId() }, query: { section: 'invoices', ...filters } });
 }
 
 function handleViewAllInvoices() {
   handleViewInvoices();
 }
 
-function handleViewInvoice(invoice: any) {
+function handleViewInvoice(invoice: { id: string; invoice_id: string }) {
    const invoiceId = invoice?.invoice_id || invoice?.id;
    if (!invoiceId) return;
    router.push(`/stores/${route.params.id}/invoices/${invoiceId}`);
@@ -490,7 +496,7 @@ async function handleStoreUpdate() {
    store.value = await storesStore.fetchStore(storeId);
 }
 
-function getWalletConnectionStatusClass(store: any): string {
+function getWalletConnectionStatusClass(store: Store): string {
   if (store.wallet_type === 'cashu') {
     return 'text-green-400';
   }
@@ -510,7 +516,7 @@ function getWalletConnectionStatusClass(store: any): string {
   }
 }
 
-function getWalletConnectionStatusKey(store: any): string {
+function getWalletConnectionStatusKey(store: Store): string {
   if (store.wallet_type === 'cashu') {
     return 'stores.connected';
   }

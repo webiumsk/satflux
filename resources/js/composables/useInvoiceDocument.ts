@@ -1,3 +1,4 @@
+import { asApiError } from '../utils/apiError';
 import { computed, onUnmounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -422,14 +423,15 @@ export function useInvoiceDocument() {
     'number_collision',
   ]);
 
-  function extractError(e: any) {
-    if (e instanceof Error && e.message && !KNOWN_ISSUE_ERROR_CODES.has(e.message)) {
-      return e.message;
+  function extractError(rawError: unknown) {
+    if (rawError instanceof Error && rawError.message && !KNOWN_ISSUE_ERROR_CODES.has(rawError.message)) {
+      return rawError.message;
     }
-    if (e?.message === 'issue_requires_online') {
+    const e = asApiError(rawError);
+    if (e.message === 'issue_requires_online') {
       return t('invoicing.issue_requires_online');
     }
-    const fieldErrors = e?.response?.data?.errors;
+    const fieldErrors = e.response?.data?.errors;
     if (fieldErrors && typeof fieldErrors === 'object') {
       for (const messages of Object.values(fieldErrors)) {
         if (Array.isArray(messages) && messages[0]) {
@@ -438,12 +440,12 @@ export function useInvoiceDocument() {
       }
     }
     return (
-      e?.response?.data?.message
-      || e?.response?.data?.errors?.status?.[0]
-      || e?.response?.data?.errors?.store_id?.[0]
-      || e?.response?.data?.errors?.document?.[0]
-      || (e?.message === 'validation' ? t('invoicing.company_save_validation_error') : null)
-      || (e?.message === 'issue' || e?.message === 'reserve_failed' || e?.message === 'not_draft' || e?.message === 'series_update_failed' || e?.message === 'no_default_series' || e?.message === 'number_collision'
+      e.response?.data?.message
+      || e.response?.data?.errors?.status?.[0]
+      || e.response?.data?.errors?.store_id?.[0]
+      || e.response?.data?.errors?.document?.[0]
+      || (e.message === 'validation' ? t('invoicing.company_save_validation_error') : null)
+      || (e.message === 'issue' || e.message === 'reserve_failed' || e.message === 'not_draft' || e.message === 'series_update_failed' || e.message === 'no_default_series' || e.message === 'number_collision'
         ? t('invoicing.issue_error')
         : null)
       || t('common.error')

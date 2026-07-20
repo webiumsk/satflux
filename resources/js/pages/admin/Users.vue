@@ -168,7 +168,7 @@
                   </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                  {{ formatDate(user.created_at) }}
+                  {{ user.created_at ? formatDate(user.created_at) : "-" }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                   {{
@@ -351,8 +351,19 @@ import { getApiErrorMessage } from "../../composables/useApiError";
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 
-const users = ref<any[]>([]);
-const meta = ref<any>(null);
+interface AdminUserRow {
+  id: number;
+  email: string;
+  role: string;
+  stores_count?: number;
+  email_verified_at?: string | null;
+  last_login_at?: string | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+const users = ref<AdminUserRow[]>([]);
+const meta = ref<{ current_page: number; last_page: number; per_page: number; total: number } | null>(null);
 const loading = ref(false);
 const searchQuery = ref("");
 const selectedRole = ref("all");
@@ -379,14 +390,14 @@ const editForm = ref({
 const updateLoading = ref(false);
 const editError = ref("");
 
-const userToDelete = ref<any>(null);
+const userToDelete = ref<AdminUserRow | null>(null);
 const deleteLoading = ref(false);
 const deleteError = ref("");
 
 const loadUsers = async (page = 1) => {
   loading.value = true;
   try {
-    const params: any = { page };
+    const params: Record<string, unknown> = { page };
     if (searchQuery.value) {
       params.search = searchQuery.value;
     }
@@ -421,7 +432,7 @@ const changePage = (page: number) => {
   }
 };
 
-const openEditModal = (user: any) => {
+const openEditModal = (user: AdminUserRow) => {
   editForm.value = {
     id: user.id,
     email: user.email,
@@ -462,7 +473,7 @@ const handleUpdateUser = async () => {
   }
 };
 
-const confirmDelete = (user: any) => {
+const confirmDelete = (user: AdminUserRow) => {
   userToDelete.value = user;
   deleteError.value = "";
 };

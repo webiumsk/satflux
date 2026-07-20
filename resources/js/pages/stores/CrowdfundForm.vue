@@ -540,7 +540,7 @@
     :is-open="showPerkDrawer"
     :perk="currentPerk"
     :currency="form.currency || store?.default_currency || 'EUR'"
-    :store-id="store?.id"
+    :store-id="store?.id ?? ''"
     @close="showPerkDrawer = false"
     @save="handlePerkSave"
   />
@@ -555,14 +555,15 @@ import { useFlashStore } from "../../store/flash";
 import { currencies } from "../../data/currencies";
 import RichTextEditor from "../../components/admin/RichTextEditor.vue";
 import PerkEditDrawer from "../../components/stores/PerkEditDrawer.vue";
+import type { AppRef, CrowdfundPerk, RawPosItem, StoreRef } from "../../types/btcpayApps";
 import AdditionalOptions from "../../components/stores/AdditionalOptions.vue";
 import DatePicker from "../../components/ui/DatePicker.vue";
 import Select from "../../components/ui/Select.vue";
 import api from "../../services/api";
 
 const props = defineProps<{
-  app: any;
-  store: any;
+  app: AppRef;
+  store: StoreRef;
   archiving?: boolean;
 }>();
 
@@ -612,7 +613,7 @@ const form = ref({
   },
 });
 
-const perks = ref<any[]>([]);
+const perks = ref<CrowdfundPerk[]>([]);
 const perksJson = ref("[]");
 const perksViewMode = ref<"editor" | "code">("editor");
 const showPerkDrawer = ref(false);
@@ -690,7 +691,7 @@ function editPerk(index: number) {
   showPerkDrawer.value = true;
 }
 
-function handlePerkSave(perk: any) {
+function handlePerkSave(perk: CrowdfundPerk) {
   if (editingPerkIndex.value !== null) {
     perks.value[editingPerkIndex.value] = perk;
   } else {
@@ -724,7 +725,7 @@ function parsePerksJson() {
 }
 
 /** BTCPay perks use `image` (URL). The grid previously read `imageUrl`, so images never showed. */
-function perkImageDisplayUrl(perk: any): string {
+function perkImageDisplayUrl(perk: (Partial<CrowdfundPerk> & { imageUrl?: string }) | null): string {
   if (!perk) return "";
   const fromImage = typeof perk.image === "string" ? perk.image.trim() : "";
   const fromAlt = typeof perk.imageUrl === "string" ? perk.imageUrl.trim() : "";
@@ -763,12 +764,9 @@ async function handleSubmit() {
       .filter((p) => p.title) // Only include perks with titles
       .map((p) => {
         // Handle inventory:
+        // Typed CrowdfundPerk: inventory is number | null already.
         let inventory: number | null = null;
-        if (
-          p.inventory !== null &&
-          p.inventory !== undefined &&
-          p.inventory !== ""
-        ) {
+        if (p.inventory !== null && p.inventory !== undefined) {
           const invNum = Number(p.inventory);
           if (!isNaN(invNum) && invNum >= 0) {
             inventory = invNum;
@@ -796,14 +794,14 @@ async function handleSubmit() {
                 .map((c: string) => c.trim())
                 .filter((c: string) => c)
             : null,
-          image: p.image || p.imageUrl || null,
+          image: p.image || null,
           priceType: outPriceType,
           price: outPrice,
           buyButtonText:
             p.buyButtonText || t("stores.crowdfund_perk_buy_placeholder"),
           inventory: inventory,
           taxRate:
-            p.taxRate !== null && p.taxRate !== undefined && p.taxRate !== ""
+            p.taxRate !== null && p.taxRate !== undefined
               ? String(p.taxRate)
               : null,
         };
@@ -863,7 +861,7 @@ async function handleSubmit() {
         .filter((line) => line.length > 0);
 
     // Build config object
-    const config: any = {
+    const config: Record<string, unknown> & { crowdfundBehavior?: Record<string, unknown> } = {
       appName: form.value.appName,
       displayTitle: form.value.displayTitle,
       tagline: form.value.tagline || null,
@@ -965,7 +963,7 @@ function applyCrowdfundConfigFromProps() {
           ? config.enabled
           : true;
     form.value.description = config.description || "";
-    form.value.targetAmount = config.targetAmount || config.goal || "";
+    form.value.targetAmount = String(config.targetAmount || config.goal || "");
     form.value.currency = config.currency || config.targetCurrency || "";
 
     // Handle dates - convert from UNIX timestamp or ISO string to datetime-local format
@@ -999,14 +997,14 @@ function applyCrowdfundConfigFromProps() {
     }
 
     // Handle recurring goal settings
+    const resetEveryAmount = Number(config.resetEveryAmount ?? 0);
     if (
-      config.resetEveryAmount &&
-      config.resetEveryAmount > 0 &&
+      resetEveryAmount > 0 &&
       config.resetEvery &&
       config.resetEvery !== "Never"
     ) {
       form.value.recurringGoal = true;
-      form.value.resetEveryAmount = config.resetEveryAmount;
+      form.value.resetEveryAmount = resetEveryAmount;
       form.value.resetEveryUnit = config.resetEvery;
     } else {
       form.value.recurringGoal = false;
@@ -1030,7 +1028,7 @@ function applyCrowdfundConfigFromProps() {
     }
     if (config.crowdfundBehavior) {
       form.value.crowdfundBehavior = {
-        countAllInvoices: config.crowdfundBehavior.countAllInvoices || false,
+        countAllInvoices: Boolean(config.crowdfundBehavior.countAllInvoices),
       };
     }
     {
@@ -1093,7 +1091,7 @@ function applyCrowdfundConfigFromProps() {
     }
 
     // Load perks - could be in 'perks', 'items', or 'template' field
-    let perksArray: any[] = [];
+    let perksArray: RawPosItem[] = [];
     const perksSource =
       config.perks || config.items || config.template || config.perksTemplate;
 
@@ -1111,7 +1109,7 @@ function applyCrowdfundConfigFromProps() {
     }
 
     if (perksArray && perksArray.length > 0) {
-      perks.value = perksArray.map((p: any) => {
+      perks.value = perksArray.map((p) => {
         // Handle inventory
         let inventory: number | null = null;
         if (

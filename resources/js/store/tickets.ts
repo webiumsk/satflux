@@ -21,6 +21,9 @@ export interface TicketEvent {
     emailBody?: string;
     hasMaximumCapacity: boolean;
     maximumEventCapacity?: number;
+    /** Older plugin payloads use logoUrl / carry the upload file id. */
+    logoUrl?: string | null;
+    eventLogoFileId?: string | null;
     eventState: 'Active' | 'Disabled';
     eventLogoUrl?: string | null;
     purchaseLink?: string;

@@ -64,6 +64,7 @@
 </template>
 
 <script setup lang="ts">
+import type { AppRef } from '../../types/btcpayApps';
 import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, watch, inject, useSlots } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -71,11 +72,12 @@ import { useI18n } from 'vue-i18n';
 import { router as inertiaRouter } from '@inertiajs/vue3';
 import { useAppsStore } from '../../store/apps';
 import { useStoresStore } from '../../store/stores';
+import type { Store } from '../../store/stores';
 import StoreSidebar from './StoreSidebar.vue';
 import ArchivedStoreBanner from './ArchivedStoreBanner.vue';
 import AppScrollPane from '../layout/AppScrollPane.vue';
 
-const props = defineProps<{ store?: any; app?: any }>();
+const props = defineProps<{ store?: Store | null | undefined; app?: AppRef | null | undefined }>();
 const { t } = useI18n();
 const slots = useSlots();
 const hasToolbarSlot = computed(() => typeof slots.toolbar === 'function');
@@ -91,8 +93,8 @@ const propsApp = computed(() => props.app ?? null);
 const storeId = computed(() => (propsStore.value?.id ?? route?.params?.id ?? '') as string);
 const appId = computed(() => (propsApp.value?.id ?? route?.params?.appId ?? '') as string);
 const loading = ref(false);
-const loadedStore = ref<any>(null);
-const loadedApp = ref<any>(null);
+const loadedStore = ref<Store | null>(null);
+const loadedApp = ref<AppRef | null>(null);
 
 const allApps = computed(() => appsStore.apps);
 
