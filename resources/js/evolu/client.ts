@@ -444,6 +444,18 @@ export const allCompanyStockBalancesQuery = evolu.createQuery((db) =>
         .orderBy("createdAt"),
 );
 
+const invoiceTemplateColumns = ["id", "companyId", "name", "payloadJson"] as const;
+
+export const allInvoiceTemplatesQuery = evolu.createQuery((db) =>
+    db
+        .selectFrom("invoiceTemplate")
+        .select(invoiceTemplateColumns)
+        .where("isDeleted", "is not", sqliteTrue)
+        .where("name", "is not", null)
+        .$narrowType<{ name: kysely.NotNull }>()
+        .orderBy("createdAt"),
+);
+
 export const allCompanyStockMovementsQuery = evolu.createQuery((db) =>
     db
         .selectFrom("companyStockMovement")

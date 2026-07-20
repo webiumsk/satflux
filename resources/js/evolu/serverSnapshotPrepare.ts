@@ -13,6 +13,7 @@ import {
     DocumentId,
     DocumentLineId,
     DocumentSnapshotId,
+    InvoiceTemplateId,
     ExpenseAttachmentId,
     ExpenseId,
     NumberSeriesId,
@@ -254,6 +255,12 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
                 id: DocumentSnapshotId,
                 fields: { documentId: DocumentId },
             }),
+        ),
+        invoiceTemplate: snapshot.invoiceTemplate.map((row) =>
+            withCompanyFk(
+                mapRowIds(row, { id: InvoiceTemplateId }),
+                companyIdByServerUuid,
+            ),
         ),
         expense: snapshot.expense.map((row) => {
             const mapped = withCompanyFk(

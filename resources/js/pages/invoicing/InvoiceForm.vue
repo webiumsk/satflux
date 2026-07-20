@@ -14,6 +14,24 @@
       {{ isNew ? newTitle : editTitle }}
     </h1>
 
+    <div v-if="localFirst && !isLocked" class="mb-4 flex flex-wrap items-center gap-2">
+      <select
+        v-if="(isNew || documentStatus === 'draft') && invoiceTemplates.length"
+        class="invoicing-sf-input max-w-[240px]"
+        :value="''"
+        :aria-label="t('invoicing.template_load_placeholder')"
+        @change="onPickTemplate"
+      >
+        <option value="">{{ t('invoicing.template_load_placeholder') }}</option>
+        <option v-for="tpl in invoiceTemplates" :key="tpl.id" :value="tpl.id">
+          {{ tpl.name }}
+        </option>
+      </select>
+      <button type="button" class="invoicing-btn-secondary" @click="saveAsTemplate">
+        {{ t('invoicing.template_save') }}
+      </button>
+    </div>
+
     <div
       v-if="isCreditNote && sourceDocument?.number"
       class="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900 mb-4"
@@ -479,6 +497,14 @@ import { allowedVatRates, vatRateOutsideJurisdiction } from '../../config/jurisd
 import { appSettingsFromCompany } from '../../composables/useCompanyAppSettings';
 import { useInvoiceDocument } from '../../composables/useInvoiceDocument';
 import type { CompanyContactRow } from '../../composables/useCompanyContact';
+import { useInvoicingInvoiceTemplates } from '../../composables/useInvoicingInvoiceTemplates';
+import {
+  buildTemplateSnapshot,
+  parseTemplateSnapshot,
+  serializeTemplateSnapshot,
+  templateToDraftDocument,
+} from '../../evolu/invoiceTemplate';
+import { useFlashStore } from '../../store/flash';
 
 const {
   t,
@@ -528,6 +554,42 @@ const {
 } = useInvoiceDocument();
 
 const { rememberCompany } = useInvoicingLayout();
+
+const flashStore = useFlashStore();
+const {
+  templates: invoiceTemplates,
+  save: saveTemplate,
+  refresh: refreshTemplates,
+} = useInvoicingInvoiceTemplates(companyId);
+
+async function saveAsTemplate() {
+  const name = window.prompt(t('invoicing.template_name_prompt'))?.trim();
+  if (!name) return;
+  const snapshot = buildTemplateSnapshot(payload() as Record<string, unknown>);
+  const result = saveTemplate(name, serializeTemplateSnapshot(snapshot));
+  if (result.ok) {
+    await refreshTemplates();
+    flashStore.success(t('invoicing.template_saved'));
+  } else {
+    flashStore.error(t('invoicing.template_save_failed'));
+  }
+}
+
+async function onPickTemplate(event: Event) {
+  const select = event.target as HTMLSelectElement;
+  const id = select.value;
+  select.value = '';
+  if (!id) return;
+  const tpl = invoiceTemplates.value.find((entry) => entry.id === id);
+  if (!tpl) return;
+  const snapshot = parseTemplateSnapshot(tpl.payloadJson);
+  if (!snapshot) {
+    flashStore.error(t('invoicing.template_apply_failed'));
+    return;
+  }
+  await applyDocument(templateToDraftDocument(snapshot));
+  flashStore.success(t('invoicing.template_applied', { name: tpl.name }));
+}
 
 const isNew = computed(() => !documentId.value);
 

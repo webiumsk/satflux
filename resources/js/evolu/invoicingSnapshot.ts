@@ -10,6 +10,7 @@ import {
     allCompanyWarehousesQuery,
     allContactsQuery,
     allDocumentEventsQuery,
+    allInvoiceTemplatesQuery,
     allDocumentLinesQuery,
     allDocumentSnapshotsQuery,
     allDocumentsQuery,
@@ -41,6 +42,7 @@ export type InvoicingDataSnapshot = {
     documentLine: ReadonlyArray<Record<string, unknown>>;
     documentEvent: ReadonlyArray<Record<string, unknown>>;
     documentSnapshot: ReadonlyArray<Record<string, unknown>>;
+    invoiceTemplate: ReadonlyArray<Record<string, unknown>>;
     expense: ReadonlyArray<Record<string, unknown>>;
     expenseAttachment: ReadonlyArray<Record<string, unknown>>;
     recurringProfile: ReadonlyArray<Record<string, unknown>>;
@@ -62,6 +64,7 @@ export const EMPTY_INVOICING_SNAPSHOT: InvoicingDataSnapshot = {
     documentLine: [],
     documentEvent: [],
     documentSnapshot: [],
+    invoiceTemplate: [],
     expense: [],
     expenseAttachment: [],
     recurringProfile: [],
@@ -83,6 +86,7 @@ const UPSERT_ORDER: InvoicingTable[] = [
     "documentLine",
     "documentEvent",
     "documentSnapshot",
+    "invoiceTemplate",
     "expense",
     "expenseAttachment",
     "recurringProfile",
@@ -107,6 +111,7 @@ export async function snapshotInvoicingData(
         documentLine,
         documentEvent,
         documentSnapshot,
+        invoiceTemplate,
         expense,
         expenseAttachment,
         recurringProfile,
@@ -126,6 +131,7 @@ export async function snapshotInvoicingData(
         evolu.loadQuery(allDocumentLinesQuery),
         evolu.loadQuery(allDocumentEventsQuery),
         evolu.loadQuery(allDocumentSnapshotsQuery),
+        evolu.loadQuery(allInvoiceTemplatesQuery),
         evolu.loadQuery(allExpensesQuery),
         evolu.loadQuery(allExpenseAttachmentsQuery),
         evolu.loadQuery(allRecurringProfilesQuery),
@@ -147,6 +153,7 @@ export async function snapshotInvoicingData(
         documentLine: documentLine as ReadonlyArray<Record<string, unknown>>,
         documentEvent: documentEvent as ReadonlyArray<Record<string, unknown>>,
         documentSnapshot: documentSnapshot as ReadonlyArray<Record<string, unknown>>,
+        invoiceTemplate: invoiceTemplate as ReadonlyArray<Record<string, unknown>>,
         expense: expense as ReadonlyArray<Record<string, unknown>>,
         expenseAttachment: expenseAttachment as ReadonlyArray<Record<string, unknown>>,
         recurringProfile: recurringProfile as ReadonlyArray<Record<string, unknown>>,
