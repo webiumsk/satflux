@@ -1390,7 +1390,13 @@
                 :disabled="accountPasskeyRestoreLoading"
                 @click="submitRestoreWithAccountPasskey"
               >
-                {{ accountPasskeyRestoreLoading ? t("common.loading") : t("account.passkey_restore_button") }}
+                {{
+                  accountPasskeyRestoreLoading
+                    ? t("common.loading")
+                    : restoreOwnerSwitchImpact
+                      ? t("auth.guest_restore_owner_switch_confirm")
+                      : t("account.passkey_restore_button")
+                }}
               </button>
               <div class="flex items-center gap-3 text-xs text-gray-500">
                 <span class="h-px flex-1 bg-gray-700"></span>
@@ -1431,6 +1437,24 @@
               />
             </div>
 
+            <div
+              v-if="restoreOwnerSwitchImpact"
+              class="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-2"
+            >
+              <p class="text-sm font-medium text-amber-300">
+                {{ t("auth.guest_restore_owner_switch_title") }}
+              </p>
+              <p class="text-sm text-gray-300">
+                {{
+                  t("auth.guest_restore_owner_switch_body", {
+                    documents: restoreOwnerSwitchImpact.documents,
+                    contacts: restoreOwnerSwitchImpact.contacts,
+                    companies: restoreOwnerSwitchImpact.companies,
+                  })
+                }}
+              </p>
+            </div>
+
             <p v-if="restoreOnDeviceError" class="text-sm text-red-400">
               {{ restoreOnDeviceError }}
             </p>
@@ -1451,7 +1475,9 @@
                 {{
                   restoreOnDeviceLoading
                     ? t("common.loading")
-                    : t("account.recovery_phrase_restore_on_device_submit")
+                    : restoreOwnerSwitchImpact
+                      ? t("auth.guest_restore_owner_switch_confirm")
+                      : t("account.recovery_phrase_restore_on_device_submit")
                 }}
               </button>
             </div>
@@ -1562,7 +1588,10 @@ import {
 import {
   initEvoluFromAccountSeedIfNeeded,
   bindRecoveryPhraseOnThisDevice,
+  deriveRecoveryPublicKeyHex,
   getStoredAccountMnemonic,
+  previewOwnerSwitchImpact,
+  type OwnerSwitchImpact,
 } from "../../services/accountSeed";
 import {
   addAccountPasskeyFromSession,
@@ -1676,11 +1705,17 @@ const showGuestSeedModal = ref(false);
 const showRecoveryBackupWizard = ref(false);
 const showRestoreOnDeviceModal = ref(false);
 watch(showRestoreOnDeviceModal, (open) => {
-  if (open) void refreshAccountEnvelopeCount();
+  if (open) {
+    void refreshAccountEnvelopeCount();
+  } else {
+    resetRestoreOwnerSwitchGuard();
+  }
 });
 const restoreOnDeviceInput = ref("");
 const restoreOnDeviceLoading = ref(false);
 const restoreOnDeviceError = ref("");
+const restoreOwnerSwitchImpact = ref<Extract<OwnerSwitchImpact, { switches: true }> | null>(null);
+const restoreOwnerSwitchConfirmedFor = ref("");
 
 // "Remember this device" - opt-in device passphrase unlock (see deviceUnlock).
 const deviceRemembered = ref(false);
@@ -1955,6 +1990,9 @@ async function submitRestoreWithAccountPasskey(): Promise<void> {
   accountPasskeyRestoreLoading.value = true;
   try {
     const { recoveryPhrase } = await restoreWithAccountPasskey();
+    if (!(await confirmRestoreOwnerSwitchIfNeeded(recoveryPhrase))) {
+      return;
+    }
     resetEvoluBootstrapForRetry();
     const result = await bindRecoveryPhraseOnThisDevice(recoveryPhrase);
     storedGuestMnemonic.value = getStoredGuestMnemonic();
@@ -1978,6 +2016,25 @@ async function submitRestoreWithAccountPasskey(): Promise<void> {
   } finally {
     accountPasskeyRestoreLoading.value = false;
   }
+}
+
+function resetRestoreOwnerSwitchGuard(): void {
+  restoreOwnerSwitchImpact.value = null;
+  restoreOwnerSwitchConfirmedFor.value = "";
+}
+
+async function confirmRestoreOwnerSwitchIfNeeded(recoveryPhrase: string): Promise<boolean> {
+  const recoveryPublicKeyHex = deriveRecoveryPublicKeyHex(recoveryPhrase);
+  if (restoreOwnerSwitchConfirmedFor.value !== recoveryPublicKeyHex) {
+    const impact = await previewOwnerSwitchImpact(recoveryPhrase);
+    if (impact.switches) {
+      restoreOwnerSwitchImpact.value = impact;
+      restoreOwnerSwitchConfirmedFor.value = recoveryPublicKeyHex;
+      return false;
+    }
+  }
+  resetRestoreOwnerSwitchGuard();
+  return true;
 }
 
 
@@ -2426,6 +2483,9 @@ async function submitRestoreOnDevice(): Promise<void> {
       return;
     }
 
+    if (!(await confirmRestoreOwnerSwitchIfNeeded(restoreOnDeviceInput.value))) {
+      return;
+    }
     resetEvoluBootstrapForRetry();
     const result = await bindRecoveryPhraseOnThisDevice(restoreOnDeviceInput.value);
 
