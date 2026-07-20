@@ -104,8 +104,22 @@ import CategoryFilter from '../../components/documentation/CategoryFilter.vue';
 const { t } = useI18n();
 
 const loading = ref(false);
-const items = ref<any[]>([]);
-const categories = ref<any[]>([]);
+interface FaqItem {
+  id: string;
+  slug: string;
+  question: string;
+  answer: string;
+  view_count?: number;
+  helpful_count?: number;
+  [key: string]: unknown;
+}
+interface FaqCategory {
+  id: string;
+  name: string;
+  [key: string]: unknown;
+}
+const items = ref<FaqItem[]>([]);
+const categories = ref<FaqCategory[]>([]);
 const searchQuery = ref('');
 const selectedCategory = ref<string | null>(null);
 
@@ -130,7 +144,7 @@ const filteredItems = computed(() => {
 const loadItems = async () => {
   loading.value = true;
   try {
-    const params: any = {};
+    const params: Record<string, unknown> = {};
     if (selectedCategory.value) {
       params.category_id = selectedCategory.value;
     }

@@ -19,7 +19,8 @@ export type DocumentHistoryEntry = {
     id: string;
     action: string;
     created_at: string;
-    user: null;
+    // Local events carry no user; server history entries attach the actor.
+    user: { email?: string | null } | null;
     metadata: Record<string, unknown> | null;
 };
 

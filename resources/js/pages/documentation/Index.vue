@@ -98,7 +98,7 @@
             {{ article.meta_description }}
           </p>
           <div class="flex items-center text-xs text-gray-500">
-            <span>{{ formatDate(article.created_at) }}</span>
+            <span>{{ formatDate(article.created_at ?? '') }}</span>
           </div>
         </article>
       </div>
@@ -148,8 +148,23 @@ import AppFooter from "../../components/layout/AppFooter.vue";
 const { t, locale } = useI18n();
 
 const loading = ref(false);
-const articles = ref<any[]>([]);
-const categories = ref<any[]>([]);
+interface DocArticle {
+  id: string;
+  slug?: string;
+  title?: string;
+  category?: { id?: string | number; name?: string } | null;
+  category_id?: string | number | null;
+  meta_description?: string;
+  created_at?: string;
+  [key: string]: unknown;
+}
+interface DocCategory {
+  id: string;
+  name: string;
+  [key: string]: unknown;
+}
+const articles = ref<DocArticle[]>([]);
+const categories = ref<DocCategory[]>([]);
 const searchQuery = ref('');
 const selectedCategory = ref<string | null>(null);
 
@@ -158,7 +173,7 @@ let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 const loadArticles = async () => {
   loading.value = true;
   try {
-    const params: any = { locale: locale.value };
+    const params: Record<string, unknown> = { locale: locale.value };
     if (selectedCategory.value) {
       params.category_id = selectedCategory.value;
     }

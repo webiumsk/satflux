@@ -62,6 +62,7 @@ import { useInvoicingEvolu } from '../../evolu/client';
 import { insertLocalContactFromForm } from '../../evolu/contactCrud';
 import { contactPayloadFromForm, evoluContactToApi } from '../../evolu/contactMap';
 import { invoicingApi } from "../../services/api";
+import type { CompanyContactRow } from '../../composables/useCompanyContact';
 
 const props = defineProps<{
   open: boolean;
@@ -70,7 +71,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: [];
-  saved: [contact: Record<string, unknown>];
+  saved: [contact: CompanyContactRow];
 }>();
 
 const { t } = useI18n();
@@ -134,13 +135,13 @@ async function save() {
         companyId: asCompanyId(props.companyId),
         ...payload,
       });
-      emit('saved', row as unknown as Record<string, unknown>);
+      emit('saved', row);
       emit('close');
       return;
     }
 
     const payload = formToPayload(form.value, showDelivery.value);
-    emit('saved', await invoicingApi.contacts.create(props.companyId, payload));
+    emit('saved', await invoicingApi.contacts.create<CompanyContactRow>(props.companyId, payload));
     emit('close');
   } catch (e: unknown) {
     const err = e as { response?: { data?: { message?: string } } };

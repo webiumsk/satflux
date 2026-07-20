@@ -18,8 +18,10 @@ import type { DocumentSavePayload } from '../evolu/documentCrud';
 import { payloadFromApiDocument, markLocalDocumentPaid } from '../evolu/documentCrud';
 import { resolveLocalEmailSettingsForBridge } from '../evolu/companySettingsCrud';
 import { documentVariableSymbol } from '../evolu/documentNumber';
-import { documentHistoryFromEvents } from '../evolu/documentEventLog';
+import { documentHistoryFromEvents, type DocumentHistoryEntry } from '../evolu/documentEventLog';
 import type { EvoluDocumentRow } from '../evolu/documentMap';
+import type { InvoicingCompanyRecord } from '../evolu/companyMap';
+import type { CompanyContactRow } from './useCompanyContact';
 import {
   buildEphemeralSnapshot,
   fetchEphemeralBtcpayCheckout,
@@ -89,11 +91,11 @@ export function useInvoiceDocument() {
     matched_at?: string;
     transaction?: { booked_at?: string };
   } | null>(null);
-  const company = ref<Record<string, any> | null>(null);
-  const contacts = ref<any[]>([]);
+  const company = ref<InvoicingCompanyRecord | null>(null);
+  const contacts = ref<CompanyContactRow[]>([]);
   const warehouses = ref<WarehouseRow[]>([]);
-  const linkedStores = ref<any[]>([]);
-  const history = ref<any[]>([]);
+  const linkedStores = ref<InvoicingCompanyRecord['stores']>([]);
+  const history = ref<DocumentHistoryEntry[]>([]);
   const neighborIds = ref<string[]>([]);
   const tagsInput = ref('');
   const paymentToken = ref<string | null>(null);
@@ -734,7 +736,7 @@ export function useInvoiceDocument() {
       return;
     }
 
-    company.value = await invoicingApi.companies.get(companyId.value);
+    company.value = await invoicingApi.companies.get<InvoicingCompanyRecord>(companyId.value);
     linkedStores.value = company.value?.stores ?? [];
     form.currency = company.value?.default_currency || 'EUR';
     if (!form.note_footer) form.note_footer = company.value?.legal_footer_note || '';
@@ -755,7 +757,7 @@ export function useInvoiceDocument() {
       applyQuoteDueDefault();
     }
 
-    contacts.value = (await invoicingApi.contacts.list(companyId.value)).data;
+    contacts.value = (await invoicingApi.contacts.list<CompanyContactRow>(companyId.value)).data;
 
     warehouses.value = (await invoicingApi.warehouses.list<WarehouseRow>(companyId.value)).filter(
       (w) => w.is_active,
@@ -826,7 +828,9 @@ export function useInvoiceDocument() {
 
   function buildCurrentEphemeralSnapshot() {
     const p = payload();
-    let companyForSnapshot = company.value;
+    // Snapshot payloads are loose records (frozen snapshots override with
+    // partial data); buildEphemeralSnapshot takes Record<string, unknown>.
+    let companyForSnapshot: Record<string, unknown> | null = company.value;
     if (localFirst && local?.evolu && companyId.value && companyForSnapshot) {
       const emailSettings = resolveLocalEmailSettingsForBridge(
         local.evolu,
@@ -838,7 +842,7 @@ export function useInvoiceDocument() {
     // Non-draft documents take supplier/buyer from the frozen snapshot (audit
     // F2); document content stays form-driven so unsaved edits still preview,
     // and every save of an issued document re-freezes the snapshot to match.
-    let contactForSnapshot = selectedContact.value;
+    let contactForSnapshot: Record<string, unknown> | null = selectedContact.value;
     const frozen = documentStatus.value !== 'draft' ? frozenIssuedContent.value : null;
     if (frozen) {
       companyForSnapshot = {
@@ -1016,7 +1020,7 @@ export function useInvoiceDocument() {
       history.value = documentHistoryFromEvents(events);
       return;
     }
-    history.value = await invoicingApi.documents.history(companyId.value, documentId.value);
+    history.value = await invoicingApi.documents.history<DocumentHistoryEntry>(companyId.value, documentId.value);
   }
 
   async function loadNeighbors() {
@@ -1065,7 +1069,12 @@ export function useInvoiceDocument() {
     return { name: 'invoicing-contact-new', params: { companyId: companyId.value } };
   }
 
-  function formatContactAddress(c: Record<string, any>) {
+  function formatContactAddress(c: {
+    street?: string | null;
+    postal_code?: string | null;
+    city?: string | null;
+    country?: string | null;
+  }) {
     const parts = [
       [c.street, c.postal_code, c.city].filter(Boolean).join(', '),
       c.country,
