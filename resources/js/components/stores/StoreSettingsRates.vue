@@ -66,13 +66,14 @@
 </template>
 
 <script setup lang="ts">
+import type { StoreSettingsForm } from "../../types/btcpay";
 import { useI18n } from "vue-i18n";
 import Select from "../ui/Select.vue";
 import ProPlanBadge from "./ProPlanBadge.vue";
 import { exchanges } from "../../data/exchanges";
 
 const props = defineProps<{
-  form: Record<string, any>;
+  form: StoreSettingsForm;
   canEditRatesOptions: boolean;
 }>();
 

@@ -310,12 +310,13 @@
 </template>
 
 <script setup lang="ts">
+import type { StoreSettingsForm } from "../../types/btcpay";
 import { useI18n } from "vue-i18n";
 import Select from "../ui/Select.vue";
 import ProPlanBadge from "./ProPlanBadge.vue";
 
 defineProps<{
-  form: Record<string, any>;
+  form: StoreSettingsForm;
   canEditCheckoutOptions: boolean;
   defaultPaymentMethodOptions: { label: string; value: string }[];
   paymentMethodCriteriaTypeOptions: { label: string; value: string }[];

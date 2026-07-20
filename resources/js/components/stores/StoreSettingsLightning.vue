@@ -133,10 +133,11 @@
 </template>
 
 <script setup lang="ts">
+import type { StoreSettingsForm } from "../../types/btcpay";
 import { useI18n } from "vue-i18n";
 
 defineProps<{
-  form: Record<string, any>;
+  form: StoreSettingsForm;
 }>();
 
 const { t } = useI18n();

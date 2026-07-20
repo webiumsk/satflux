@@ -33,7 +33,7 @@ export const useAppsStore = defineStore('apps', () => {
         }
     }
 
-    async function createApp(storeId: string, appType: string, config: { name: string; config?: any }) {
+    async function createApp(storeId: string, appType: string, config: { name: string; config?: Record<string, unknown> }) {
         loading.value = true;
         try {
             const response = await api.post(`/stores/${storeId}/apps`, {
@@ -49,7 +49,7 @@ export const useAppsStore = defineStore('apps', () => {
         }
     }
 
-    async function updateApp(storeId: string, appId: string, config: { name?: string; config?: any; archived?: boolean }) {
+    async function updateApp(storeId: string, appId: string, config: { name?: string; config?: Record<string, unknown>; archived?: boolean }) {
         loading.value = true;
         try {
             const response = await api.put(`/stores/${storeId}/apps/${appId}`, config);
