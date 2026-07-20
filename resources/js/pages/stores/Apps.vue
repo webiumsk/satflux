@@ -349,8 +349,8 @@ const showArchived = computed(() => route.query.archived === "1");
 const allApps = computed(() => appsStore.apps);
 const apps = computed(() =>
   showArchived.value
-    ? allApps.value.filter((a: any) => a.archived)
-    : allApps.value.filter((a: any) => !a.archived),
+    ? allApps.value.filter((a) => a.archived)
+    : allApps.value.filter((a) => !a.archived),
 );
 
 const isGuestUser = computed(() => !!authStore.user?.is_guest);
@@ -365,7 +365,7 @@ function isPointOfSaleAppType(t: string | undefined | null): boolean {
 }
 
 function guestActivePosCount(): number {
-  return allApps.value.filter((a: any) => {
+  return allApps.value.filter((a) => {
     if (a.archived) return false;
     return isPointOfSaleAppType(a.app_type);
   }).length;

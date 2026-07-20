@@ -685,6 +685,22 @@ import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import ProPlanBadge from "../../components/stores/ProPlanBadge.vue";
 import Select from "../../components/ui/Select.vue";
 import { useStoresStore, type Store } from "../../store/stores";
+
+interface StripeSettings {
+  enabled?: boolean;
+  isConfigured?: boolean;
+  isTestMode?: boolean;
+  settlementCurrency?: string;
+  publishableKey?: string;
+  webhookSigningSecret?: string | null;
+  advancedConfig?: unknown;
+}
+interface StripeWebhookStatus {
+  configured?: boolean;
+  message?: string | null;
+  webhookId?: string | null;
+  webhookUrl?: string | null;
+}
 import { getApiErrorMessage } from "../../composables/useApiError";
 import api from "../../services/api";
 
@@ -711,8 +727,8 @@ const formReadonly = computed(() => !canAccessStripe.value);
 const storeId = computed(() => route.params.id as string);
 const store = ref<Store | null>(null);
 const error = ref("");
-const settings = ref<any>(null);
-const webhookStatus = ref<any>(null);
+const settings = ref<StripeSettings | null>(null);
+const webhookStatus = ref<StripeWebhookStatus | null>(null);
 const loading = ref(true);
 const saving = ref(false);
 const testingConnection = ref(false);
@@ -776,17 +792,18 @@ async function loadSettings() {
       api.get(`/stores/${storeId.value}/stripe/settings`),
       api.get(`/stores/${storeId.value}/stripe/webhook/status`),
     ]);
-    settings.value = settingsRes.data;
+    const loadedSettings: StripeSettings = settingsRes.data;
+    settings.value = loadedSettings;
     webhookStatus.value = webhookRes.data;
     form.value = {
-      enabled: settings.value.enabled ?? false,
+      enabled: loadedSettings.enabled ?? false,
       publishableKey: "",
       secretKey: "",
-      settlementCurrency: settings.value.settlementCurrency || "EUR",
-      advancedConfig: settings.value.advancedConfig
-        ? typeof settings.value.advancedConfig === "string"
-          ? settings.value.advancedConfig
-          : JSON.stringify(settings.value.advancedConfig, null, 2)
+      settlementCurrency: loadedSettings.settlementCurrency || "EUR",
+      advancedConfig: loadedSettings.advancedConfig
+        ? typeof loadedSettings.advancedConfig === "string"
+          ? loadedSettings.advancedConfig
+          : JSON.stringify(loadedSettings.advancedConfig, null, 2)
         : "",
       webhookSigningSecret: "",
     };
