@@ -227,6 +227,15 @@ function findButton(wrapper: VueWrapper, text: string) {
     return button;
 }
 
+function findLastButton(wrapper: VueWrapper, text: string) {
+    const buttons = wrapper.findAll("button").filter((candidate) => candidate.text().includes(text));
+    const button = buttons[buttons.length - 1];
+    if (!button) {
+        throw new Error(`button not found: ${text}`);
+    }
+    return button;
+}
+
 async function mountProfile(): Promise<VueWrapper> {
     const { default: Profile } = await import("../pages/account/Profile.vue");
     const wrapper = mount(Profile, {
@@ -309,7 +318,7 @@ describe("Profile recovery phrase owner switch guard", () => {
         expect(mocks.resetEvoluBootstrapForRetry).not.toHaveBeenCalled();
         expect(wrapper.text()).toContain("auth.guest_restore_owner_switch_title");
 
-        await findButton(wrapper, "auth.guest_restore_owner_switch_confirm").trigger("click");
+        await findLastButton(wrapper, "auth.guest_restore_owner_switch_confirm").trigger("click");
         await flushPromises();
 
         expect(mocks.previewOwnerSwitchImpact).toHaveBeenCalledTimes(1);
