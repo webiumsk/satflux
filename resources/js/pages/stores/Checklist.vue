@@ -83,7 +83,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { useStoresStore } from '../../store/stores';
+import { useStoresStore, type Store } from '../../store/stores';
 import WalletChecklist from '../../components/stores/WalletChecklist.vue';
 import WalletTypeIcon from '../../components/WalletTypeIcon.vue';
 import { resolveStoreWalletBrand } from '../../utils/storeWalletBrand';
@@ -96,7 +96,7 @@ const storesStore = useStoresStore();
 
 const storeId = route.params.id as string;
 const loading = ref(false);
-const store = ref<any>(null);
+const store = ref<Store | null>(null);
 const checklistStats = ref<{ total: number; completed: number } | null>(null);
 
 const progressLabel = computed(() => {

@@ -66,7 +66,7 @@
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { useStoresStore } from '../../store/stores';
+import { useStoresStore, type Store } from '../../store/stores';
 import AppScrollPane from '../../components/layout/AppScrollPane.vue';
 
 const { t } = useI18n();
@@ -75,7 +75,7 @@ const route = useRoute();
 const storesStore = useStoresStore();
 
 const loading = ref(false);
-const store = ref<any>(null);
+const store = ref<Store | null>(null);
 
 onMounted(async () => {
   const storeId = route.params.id as string;

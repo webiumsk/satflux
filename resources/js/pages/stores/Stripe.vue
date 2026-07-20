@@ -684,7 +684,7 @@ import AppScrollPane from "../../components/layout/AppScrollPane.vue";
 import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import ProPlanBadge from "../../components/stores/ProPlanBadge.vue";
 import Select from "../../components/ui/Select.vue";
-import { useStoresStore } from "../../store/stores";
+import { useStoresStore, type Store } from "../../store/stores";
 import { getApiErrorMessage } from "../../composables/useApiError";
 import api from "../../services/api";
 
@@ -709,7 +709,7 @@ const canAccessStripe = computed(
 const formReadonly = computed(() => !canAccessStripe.value);
 
 const storeId = computed(() => route.params.id as string);
-const store = ref<any>(null);
+const store = ref<Store | null>(null);
 const error = ref("");
 const settings = ref<any>(null);
 const webhookStatus = ref<any>(null);
@@ -804,7 +804,7 @@ async function loadSettings() {
 }
 
 function buildPayload() {
-  const p: Record<string, any> = {};
+  const p: Record<string, unknown> = {};
   if (form.value.enabled !== undefined) p.enabled = form.value.enabled;
   if (form.value.publishableKey?.trim())
     p.publishableKey = form.value.publishableKey.trim();

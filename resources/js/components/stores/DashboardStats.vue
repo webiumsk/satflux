@@ -115,7 +115,7 @@ interface Props {
 defineProps<Props>();
 
 const emit = defineEmits<{
-  'view-invoices': [filters?: any];
+  'view-invoices': [filters?: Record<string, unknown>];
 }>();
 
 function formatSats(sats: number): string {

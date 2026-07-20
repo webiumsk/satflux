@@ -208,7 +208,7 @@
 import { onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { storeToRefs } from "pinia";
-import { useStoresStore } from "../../store/stores";
+import { useStoresStore, type Store } from "../../store/stores";
 import { useAccountLimits } from "../../composables/useAccountLimits";
 import WalletTypeIcon from "../../components/WalletTypeIcon.vue";
 import BlinkMigrationBanner from "../../components/stores/BlinkMigrationBanner.vue";
@@ -220,7 +220,7 @@ const storesStore = useStoresStore();
 const { stores, loading } = storeToRefs(storesStore);
 const { limits, load: loadLimits } = useAccountLimits();
 
-function getWalletConnectionStatusBadgeClass(store: any): string {
+function getWalletConnectionStatusBadgeClass(store: Store): string {
   if (!store.wallet_connection) {
     return "bg-red-500/10 text-red-400 border border-red-500/20";
   }
@@ -237,7 +237,7 @@ function getWalletConnectionStatusBadgeClass(store: any): string {
   }
 }
 
-function getWalletConnectionStatusText(store: any): string {
+function getWalletConnectionStatusText(store: Store): string {
   if (!store.wallet_connection) {
     return t("stores.not_config");
   }
