@@ -222,13 +222,14 @@
 </template>
 
 <script setup lang="ts">
+import type { StoreSettingsForm } from "../../types/btcpay";
 import { useI18n } from "vue-i18n";
 import Select from "../ui/Select.vue";
 import ProPlanBadge from "./ProPlanBadge.vue";
 import { currencies } from "../../data/currencies";
 
 defineProps<{
-  form: Record<string, any>;
+  form: StoreSettingsForm;
   canEditPaymentOptions: boolean;
   timezoneOptions: { label: string; value: string }[];
   speedPolicyOptions: { label: string; value: string }[];

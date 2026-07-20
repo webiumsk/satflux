@@ -11,7 +11,6 @@
   "resources/js/components/invoicing/CreditNotePickInvoiceModal.vue|TS2322|Type 'string | null' is not assignable to type 'string'.": 1,
   "resources/js/components/invoicing/CreditNotePickInvoiceModal.vue|TS2345|Argument of type 'Readonly<{ name: string & Brand<\"MinLength1\"> & Brand<\"MaxLength255\">; companyId: (string & Brand<\"Id\"> & Brand<\"Company\">) | null; id: string & Brand<\"Id\"> & Brand<...>; ... 23 more": 1,
   "resources/js/components/invoicing/InvoicingMobileNavDrawer.vue|TS2345|Argument of type '{ class: { 'rotate-90': boolean; }; name: \"chevron-right\"; }' is not assignable to parameter of type '{ readonly name: \"documents\" | \"expenses\" | \"contacts\" | \"stock\" | \"payments\" | ": 1,
-  "resources/js/components/stores/StoreSettings.vue|TS2345|Argument of type '{ [x: string]: any; }' is not assignable to parameter of type 'UpdateStoreSettingsPayload'.": 1,
   "resources/js/components/stores/StoreSettings.vue|TS2739|Type 'Record<string, any>' is missing the following properties from type 'Store': id, name, wallet_type, created_at, updated_at": 1,
   "resources/js/components/stores/StoreSidebar.vue|TS2339|Property 'user' does not exist on type '{}'.": 2,
   "resources/js/components/stores/WalletChecklist.vue|TS18047|'$event.target' is possibly 'null'.": 1,

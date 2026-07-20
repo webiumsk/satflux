@@ -280,6 +280,7 @@
 </template>
 
 <script setup lang="ts">
+import type { StoreSettings, StoreSettingsForm } from "../../types/btcpay";
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import ProPlanBadge from "./ProPlanBadge.vue";
@@ -291,8 +292,8 @@ const emit = defineEmits<{
 }>();
 
 defineProps<{
-  form: Record<string, any>;
-  settings: any;
+  form: StoreSettingsForm;
+  settings: StoreSettings | null;
   canEditBranding: boolean;
   canEditArchivedOption: boolean;
   storeLogoUrl: string | null;

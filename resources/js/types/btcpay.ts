@@ -116,3 +116,60 @@ export interface StoreSettings {
 
 /** PUT /stores/{id}/settings body - name is required, id is never sent, the rest is optional. */
 export type UpdateStoreSettingsPayload = Partial<Omit<StoreSettings, 'id'>> & { name: string };
+
+/** One BTCPay payment-method criterion as edited in the settings form. */
+export interface StoreSettingsPaymentCriterion {
+    payment_method: string;
+    type: string;
+    value: string;
+}
+
+/**
+ * Normalized (null-free) editing shape backing the StoreSettings tabs. The
+ * loaded StoreSettings response is mapped into this on load; every field has
+ * a default so the child tabs can v-model it directly.
+ */
+export interface StoreSettingsForm {
+    name: string;
+    website: string;
+    support_url: string;
+    css_url: string;
+    payment_sound_url: string;
+    brand_color: string;
+    apply_brand_color_to_backend: boolean;
+    default_currency: string;
+    additional_tracked_rates: string[];
+    invoice_expiration: number;
+    refund_bolt11_expiration: number;
+    display_expiration_timer: number;
+    monitoring_expiration: number;
+    speed_policy: string;
+    lightning_description_template: string;
+    payment_tolerance: number;
+    archived: boolean;
+    anyone_can_create_invoice: boolean;
+    receipt: StoreSettingsReceipt;
+    lightning_amount_in_satoshi: boolean;
+    lightning_private_route_hints: boolean;
+    on_chain_with_ln_invoice_fallback: boolean;
+    lnurl_enabled: boolean;
+    lnurl_classic_mode: boolean;
+    lnurl_allow_payee_comment: boolean;
+    redirect_automatically: boolean;
+    show_recommended_fee: boolean;
+    recommended_fee_block_target: number;
+    default_lang: string;
+    html_title: string;
+    network_fee_mode: string;
+    pay_join_enabled: boolean;
+    auto_detect_language: boolean;
+    show_pay_in_wallet_button: boolean;
+    show_store_header: boolean;
+    celebrate_payment: boolean;
+    play_sound_on_payment: boolean;
+    lazy_payment_methods: boolean;
+    default_payment_method: string;
+    payment_method_criteria: StoreSettingsPaymentCriterion[];
+    timezone: string;
+    preferred_exchange: string;
+}

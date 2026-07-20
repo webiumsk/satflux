@@ -333,6 +333,7 @@
 
 <script setup lang="ts">
 import { asApiError } from "../../utils/apiError";
+import type { StoreSettings, StoreSettingsForm, UpdateStoreSettingsPayload } from "../../types/btcpay";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -398,9 +399,9 @@ const settingsTabs = [
 const loading = ref(false);
 const settingsLoadError = ref(false);
 const saving = ref(false);
-const settings = ref<any>(null);
+const settings = ref<StoreSettings | null>(null);
 
-const settingsForm = ref<Record<string, any>>({
+const settingsForm = ref<StoreSettingsForm>({
   name: "",
   website: "",
   support_url: "",
@@ -697,7 +698,7 @@ async function fetchSettings() {
     const rawCriteria = d.payment_method_criteria;
     if (Array.isArray(rawCriteria) && rawCriteria.length > 0) {
       settingsForm.value.payment_method_criteria = rawCriteria.map(
-        (c: any) => ({
+        (c: { paymentMethod?: string; payment_method?: string; type?: string; value?: string }) => ({
           payment_method: c.paymentMethod ?? c.payment_method ?? "BTC-LN",
           type: c.type ?? "GreaterThan",
           value: c.value ?? "",
@@ -724,12 +725,11 @@ async function handleSettingsSubmit() {
   saving.value = true;
 
   try {
-    const payload = { ...settingsForm.value };
+    const payload: Record<string, unknown> = { ...settingsForm.value };
     // Convert empty URL strings to null to avoid 422 validation errors
     const urlFields = [
       "website",
       "support_url",
-      "logo_url",
       "css_url",
       "payment_sound_url",
     ];
@@ -793,7 +793,7 @@ async function handleSettingsSubmit() {
       ];
       checkoutFields.forEach((key) => delete payload[key]);
     }
-    await storesApi.settings.update(props.store.id, payload);
+    await storesApi.settings.update(props.store.id, payload as UpdateStoreSettingsPayload);
     flashStore.success(t("settings.settings_updated"));
     emit("update-store"); // Notify parent to refresh store data if needed
   } catch (rawError) {
