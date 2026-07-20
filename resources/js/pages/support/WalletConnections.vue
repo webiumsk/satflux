@@ -163,7 +163,7 @@
                   >
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                  {{ formatDate(connection.submitted_at) }}
+                  {{ connection.submitted_at ? formatDate(connection.submitted_at) : '-' }}
                 </td>
                 <td class="px-6 py-4 max-w-xs">
                   <span
@@ -304,7 +304,7 @@
               <div class="flex justify-between items-center text-sm">
                 <span class="text-gray-500">Submitted:</span>
                 <span class="text-gray-400">{{
-                  formatDate(connection.submitted_at)
+                  connection.submitted_at ? formatDate(connection.submitted_at) : '-'
                 }}</span>
               </div>
 
@@ -363,7 +363,7 @@
       </div>
 
       <RevealSecretModal
-        v-if="showRevealModal"
+        v-if="showRevealModal && selectedConnection"
         :connection="selectedConnection"
         @close="handleModalClose"
       />
@@ -372,6 +372,7 @@
 </template>
 
 <script setup lang="ts">
+import type { SupportWalletConnection } from "../../services/api";
 import { asApiError } from "../../utils/apiError";
 import { ref, onMounted, computed, watch } from "vue";
 import api from "../../services/api";
@@ -382,9 +383,9 @@ import { getApiErrorMessage } from "../../composables/useApiError";
 
 const loading = ref(true);
 const error = ref<string | null>(null);
-const connections = ref<any[]>([]);
+const connections = ref<SupportWalletConnection[]>([]);
 const showRevealModal = ref(false);
-const selectedConnection = ref<any>(null);
+const selectedConnection = ref<SupportWalletConnection | null>(null);
 const searchQuery = ref("");
 const statusFilter = ref("needs_support");
 
@@ -466,7 +467,7 @@ const filteredConnections = computed(() => {
   return filtered;
 });
 
-function revealSecret(connection: any) {
+function revealSecret(connection: SupportWalletConnection) {
   selectedConnection.value = connection;
   showRevealModal.value = true;
 }
@@ -477,7 +478,7 @@ function handleModalClose() {
   loadConnections();
 }
 
-async function markConnected(connection: any) {
+async function markConnected(connection: SupportWalletConnection) {
   if (!confirm("Mark this wallet connection as connected?")) {
     return;
   }

@@ -425,6 +425,7 @@
 </template>
 
 <script setup lang="ts">
+import type { WalletConnectionDetails } from "../../services/api";
 import { asApiError } from "../../utils/apiError";
 import { ref, reactive, computed, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -451,7 +452,7 @@ import {
 
 interface Props {
   storeId: string;
-  existingConnection?: any;
+  existingConnection?: WalletConnectionDetails | null;
   walletType?: "blink" | "aqua_boltz" | "cashu" | "nwc" | string | null | undefined;
   /** When wallet_type is aqua_boltz: Aqua vs Bull (from API) */
   walletBrand?: AquaBoltzWalletBrand | null | undefined;
@@ -696,7 +697,7 @@ watch(
 
 watch(
   () => props.existingConnection,
-  (conn: any) => {
+  (conn) => {
     if (!conn) {
       viewMode.value = "create";
 
