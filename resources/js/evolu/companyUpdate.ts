@@ -35,6 +35,7 @@ export type LocalCompanyContactPatch = {
     vat_status?: "none" | "payer" | "partial";
     vat_payer?: boolean;
     vat_rate_default?: number;
+    vat_turnover_limit?: number;
     linked_store_id?: string | null;
 };
 
@@ -144,6 +145,16 @@ export function updateLocalCompanyContact(
         const parsed = Opt16.from(rate);
         if (!parsed.ok) return parsed;
         update.vatRateDefault = parsed.value;
+    }
+    if (patch.vat_turnover_limit != null) {
+        const limit = patch.vat_turnover_limit > 0 ? String(patch.vat_turnover_limit) : null;
+        if (limit === null) {
+            update.vatTurnoverLimit = null;
+        } else {
+            const parsed = Opt16.from(limit);
+            if (!parsed.ok) return parsed;
+            update.vatTurnoverLimit = parsed.value;
+        }
     }
     if (patch.linked_store_id !== undefined) {
         const store = parseOptional(patch.linked_store_id, Opt64);

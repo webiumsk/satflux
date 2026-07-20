@@ -117,6 +117,7 @@ export function insertLocalCompanyFromPayload(
         vatPayer: booleanToSqliteBoolean(payload.vat_payer),
         vatStatus: payload.vat_status,
         vatRateDefault: null,
+        vatTurnoverLimit: null,
         legalFooterNote: null,
         issuerName: null,
         issuerPhone: null,

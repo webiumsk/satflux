@@ -189,6 +189,8 @@ export const InvoicingLocalSchema = {
         vatPayer: nullOr(SqliteBoolean),
         vatStatus: VatStatus,
         vatRateDefault: OptionalString16,
+        /** Annual turnover limit for VAT registration (numeric, stored as string). */
+        vatTurnoverLimit: OptionalString16,
         legalFooterNote: OptionalString512,
         issuerName: OptionalString255,
         issuerPhone: OptionalString64,
