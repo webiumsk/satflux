@@ -224,6 +224,24 @@
                 {{ t('invoicing.vat_status_partial') }}
               </label>
             </fieldset>
+            <div>
+              <label class="invoicing-sf-label">{{ t('invoicing.vat_turnover_limit_label') }}</label>
+              <input
+                v-model.number="contactForm.vat_turnover_limit"
+                type="number"
+                min="0"
+                step="1"
+                class="invoicing-sf-input w-48"
+                :placeholder="t('invoicing.vat_turnover_limit_ph')"
+              />
+              <p class="text-xs text-gray-500 mt-1">{{ t('invoicing.vat_turnover_limit_hint') }}</p>
+            </div>
+            <TaxLimitAlert
+              v-if="companyId"
+              :company-id="companyId"
+              :limit="Number(contactForm.vat_turnover_limit) || 0"
+              :currency="bankForm.default_currency || 'EUR'"
+            />
           </template>
         </div>
       </div>
@@ -412,6 +430,7 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { invoicingApi } from "../../services/api";
 import CompanyEfakturaSettingsForm from './CompanyEfakturaSettingsForm.vue';
+import TaxLimitAlert from './TaxLimitAlert.vue';
 import InvoicingJurisdictionSelect from './InvoicingJurisdictionSelect.vue';
 import RegistryLookupField from './RegistryLookupField.vue';
 import DangerConfirmModal from '../ui/DangerConfirmModal.vue';
@@ -552,6 +571,7 @@ const contactForm = reactive({
   website: '',
   legal_footer_note: '',
   vat_rate_default: 0,
+  vat_turnover_limit: 0,
 });
 
 const bankForm = reactive({
@@ -819,6 +839,7 @@ function applyCompany(c: Record<string, any>) {
   bankForm.default_currency = c.default_currency ?? 'EUR';
 
   contactForm.vat_rate_default = Number(c.vat_rate_default ?? 0);
+  contactForm.vat_turnover_limit = Number(c.vat_turnover_limit ?? 0);
 
   if (isUsJurisdiction(contactForm.jurisdiction)) {
     vatStatus.value = 'none';
@@ -930,6 +951,10 @@ async function saveContact() {
           vatPayer: vatPayload().vat_payer ? 1 : 0,
           vatStatus: vatPayload().vat_status,
           vatRateDefault: String(contactForm.vat_rate_default ?? 0),
+          vatTurnoverLimit:
+            Number(contactForm.vat_turnover_limit) > 0
+              ? String(contactForm.vat_turnover_limit)
+              : null,
           legalFooterNote: contactForm.legal_footer_note || null,
           issuerName: contactForm.issuer_name || null,
           issuerPhone: contactForm.issuer_phone || null,

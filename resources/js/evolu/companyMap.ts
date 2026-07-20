@@ -25,6 +25,7 @@ export type InvoicingCompanyRecord = {
     vat_payer: boolean;
     vat_status: string;
     vat_rate_default: number;
+    vat_turnover_limit?: number;
     legal_footer_note: string | null;
     issuer_name: string | null;
     issuer_phone: string | null;
@@ -62,6 +63,7 @@ export type EvoluCompanyRow = {
     vatPayer: 0 | 1 | null;
     vatStatus: string;
     vatRateDefault: string | null;
+    vatTurnoverLimit?: string | null;
     legalFooterNote: string | null;
     issuerName: string | null;
     issuerPhone: string | null;
@@ -136,6 +138,7 @@ export function evoluCompanyToApi(
         vat_payer: sqliteBoolToBoolean(row.vatPayer),
         vat_status: row.vatStatus,
         vat_rate_default: Number(row.vatRateDefault ?? 0) || 0,
+        vat_turnover_limit: Number(row.vatTurnoverLimit ?? 0) || 0,
         legal_footer_note: row.legalFooterNote,
         issuer_name: row.issuerName,
         issuer_phone: row.issuerPhone,
