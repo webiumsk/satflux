@@ -34,7 +34,7 @@
     "@scure/bip39": "^2.2.0",
     "@tiptap/extension-code-block-lowlight": "^2.10.0",
     "@tiptap/extension-color": "^2.10.0",
-    "@tiptap/extension-heading": "^2.10.0",
+    "@tiptap/extension-heading": "^3.28.0",
     "@tiptap/extension-image": "^2.10.0",
     "@tiptap/extension-link": "^2.27.2",
     "@tiptap/extension-table": "^2.10.0",
