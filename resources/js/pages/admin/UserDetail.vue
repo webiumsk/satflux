@@ -384,7 +384,7 @@ const primaryCurrency = computed(() => {
 const posTerminalsTotal = computed(() => {
   const stores = user.value?.stores ?? [];
   return stores.reduce(
-    (sum: number, s: any) => sum + (s.pos_terminal_count ?? 0),
+    (sum: number, s: { pos_terminal_count?: number }) => sum + (s.pos_terminal_count ?? 0),
     0,
   );
 });
@@ -476,7 +476,7 @@ const getRoleBadgeClass = (role: string) => {
   return m[role] ?? m.free;
 };
 
-const formatSubscriptionStatus = (sub: any) => {
+const formatSubscriptionStatus = (sub: { plan?: string; status?: string } | null) => {
   if (!sub) return "-";
   const plan = sub.plan ?? "free";
   const status = sub.status ?? "none";

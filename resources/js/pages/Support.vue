@@ -283,7 +283,7 @@ let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 const loadFaqItems = async () => {
   loading.value = true;
   try {
-    const params: any = {};
+    const params: Record<string, unknown> = {};
     if (searchQuery.value) {
       params.search = searchQuery.value;
     }
