@@ -54,54 +54,55 @@
       </button>
     </div>
 
-    <div
-      v-else-if="isEmpty"
-      class="rounded-xl border border-gray-700 bg-gray-800/60 px-4 py-16 text-center invoicing-muted"
-    >
+    <div v-else-if="isEmpty" class="invoicing-card invoicing-card-pad text-center text-gray-600">
       {{ t("invoicing.vat_report_empty") }}
     </div>
 
-    <div v-else class="space-y-8">
+    <div v-else class="space-y-6">
       <section
         v-for="currency in summary.byCurrency"
         :key="currency.currency"
-        class="rounded-xl border border-gray-700 bg-gray-800/60 overflow-hidden"
+        class="invoicing-card overflow-hidden"
       >
-        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-700 px-5 py-4">
-          <h2 class="text-lg font-semibold text-white">{{ currency.currency }}</h2>
+        <div
+          class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-5 py-4"
+        >
+          <h2 class="text-lg font-semibold text-gray-900">{{ currency.currency }}</h2>
           <dl class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
             <div class="flex gap-2">
-              <dt class="text-gray-400">{{ t("invoicing.vat_report_documents") }}:</dt>
-              <dd class="text-white">{{ currency.documentCount }}</dd>
+              <dt class="text-gray-500">{{ t("invoicing.vat_report_documents") }}:</dt>
+              <dd class="text-gray-900">{{ currency.documentCount }}</dd>
             </div>
             <div class="flex gap-2">
-              <dt class="text-gray-400">{{ t("invoicing.vat_report_turnover") }}:</dt>
-              <dd class="font-semibold text-white">{{ money(currency.turnover) }}</dd>
+              <dt class="text-gray-500">{{ t("invoicing.vat_report_turnover") }}:</dt>
+              <dd class="font-semibold text-gray-900">{{ money(currency.turnover) }}</dd>
             </div>
           </dl>
         </div>
         <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="text-left text-gray-400">
-                <th class="px-5 py-2 font-medium">{{ t("invoicing.vat_report_col_rate") }}</th>
-                <th class="px-5 py-2 text-right font-medium">{{ t("invoicing.vat_report_col_base") }}</th>
-                <th class="px-5 py-2 text-right font-medium">{{ t("invoicing.vat_report_col_vat") }}</th>
-                <th class="px-5 py-2 text-right font-medium">{{ t("invoicing.vat_report_col_gross") }}</th>
+          <table class="invoice-table w-full text-sm text-left">
+            <thead
+              class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide border-b border-gray-200"
+            >
+              <tr>
+                <th class="px-5 py-3">{{ t("invoicing.vat_report_col_rate") }}</th>
+                <th class="px-5 py-3 text-right">{{ t("invoicing.vat_report_col_base") }}</th>
+                <th class="px-5 py-3 text-right">{{ t("invoicing.vat_report_col_vat") }}</th>
+                <th class="px-5 py-3 text-right">{{ t("invoicing.vat_report_col_gross") }}</th>
               </tr>
             </thead>
             <tbody>
               <tr
                 v-for="bucket in currency.byRate"
                 :key="bucket.rate"
-                class="border-t border-gray-700/60 text-gray-200"
+                class="border-b border-gray-100 text-gray-700"
               >
                 <td class="px-5 py-2">{{ bucket.rate }}%</td>
                 <td class="px-5 py-2 text-right">{{ money(bucket.base) }}</td>
                 <td class="px-5 py-2 text-right">{{ money(bucket.vat) }}</td>
                 <td class="px-5 py-2 text-right">{{ money(bucket.gross) }}</td>
               </tr>
-              <tr class="border-t border-gray-600 font-semibold text-white">
+              <tr class="border-t border-gray-300 font-semibold text-gray-900">
                 <td class="px-5 py-2">{{ t("invoicing.vat_report_total") }}</td>
                 <td class="px-5 py-2 text-right">{{ money(currency.base) }}</td>
                 <td class="px-5 py-2 text-right">{{ money(currency.vat) }}</td>
