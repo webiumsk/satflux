@@ -62,6 +62,9 @@ export type BankTransactionMatchId = typeof BankTransactionMatchId.Type;
 export const DocumentSnapshotId = id("DocumentSnapshot");
 export type DocumentSnapshotId = typeof DocumentSnapshotId.Type;
 
+export const InvoiceTemplateId = id("InvoiceTemplate");
+export type InvoiceTemplateId = typeof InvoiceTemplateId.Type;
+
 const LegalName = maxLength(255)(NonEmptyString);
 const OptionalString16 = nullOr(maxLength(16)(NonEmptyString));
 const OptionalString32 = nullOr(maxLength(32)(NonEmptyString));
@@ -318,6 +321,14 @@ export const InvoicingLocalSchema = {
         payloadJson: SnapshotPayloadJson,
         /** Set on snapshots reconstructed for documents issued before F2 - lower fidelity. */
         backfilled: nullOr(SqliteBoolean),
+    },
+    /** Reusable invoice template: a saved document payload (header + lines, no
+     * number/dates) applied to prefill a new draft. */
+    invoiceTemplate: {
+        id: InvoiceTemplateId,
+        companyId: CompanyId,
+        name: LineName,
+        payloadJson: SnapshotPayloadJson,
     },
     expense: {
         id: ExpenseId,

@@ -67,6 +67,7 @@ export function filterInvoicingSnapshotByCompany(
         expenseAttachment: snapshot.expenseAttachment.filter((row) =>
             expenseIds.has(String(row.expenseId)),
         ),
+        invoiceTemplate: snapshot.invoiceTemplate.filter((row) => row.companyId === companyId),
         recurringProfile: recurringProfiles,
         recurringProfileLine: snapshot.recurringProfileLine.filter((row) =>
             recurringProfileIds.has(String(row.recurringProfileId)),
