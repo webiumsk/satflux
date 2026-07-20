@@ -304,7 +304,7 @@ async function loadStore() {
 }
 
 function guestActivePosCount(): number {
-  return appsStore.apps.filter((a: any) => {
+  return appsStore.apps.filter((a) => {
     if (a.archived) return false;
     return isPointOfSaleAppType(a.app_type);
   }).length;

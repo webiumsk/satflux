@@ -85,7 +85,7 @@ const app = computed(() => {
   const apps = appsStore.apps;
   // Only use app if store is loaded for this route (apps are for this store)
   if (!storeForRoute.value) return null;
-  return apps.find((a: any) => a.id === appId.value) ?? null;
+  return apps.find((a) => a.id === appId.value) ?? null;
 });
 
 const appType = computed(() => app.value?.app_type ?? null);
@@ -99,7 +99,7 @@ async function loadApp() {
   try {
     await storesStore.fetchStore(storeId.value);
     await appsStore.fetchApps(storeId.value);
-    const currentApp = appsStore.apps.find((a: any) => a.id === appId.value);
+    const currentApp = appsStore.apps.find((a) => a.id === appId.value);
     if (authStore.user?.is_guest && currentApp && currentApp.app_type !== 'PointOfSale') {
       openGuestUpgradeModal('apps.title');
       router.replace({ name: 'stores-apps', params: { id: storeId.value } });
