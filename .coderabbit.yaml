@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# CodeRabbit review configuration.
+#
+# The ESLint tool is disabled because CodeRabbit's sandbox times out
+# installing this project's dependencies ("ESLint install timed out"), and
+# ESLint is already enforced authoritatively on every PR by our own CI
+# (.github/workflows/ci.yml -> `npm run lint`, a hard --max-warnings ratchet).
+# Re-running it inside CodeRabbit is redundant and only produced noise.
+reviews:
+  tools:
+    eslint:
+      enabled: false
