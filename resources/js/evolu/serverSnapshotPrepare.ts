@@ -257,10 +257,10 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
             }),
         ),
         invoiceTemplate: snapshot.invoiceTemplate.map((row) =>
-            mapRowIds(row, {
-                id: InvoiceTemplateId,
-                fields: { companyId: CompanyId },
-            }),
+            withCompanyFk(
+                mapRowIds(row, { id: InvoiceTemplateId }),
+                companyIdByServerUuid,
+            ),
         ),
         expense: snapshot.expense.map((row) => {
             const mapped = withCompanyFk(

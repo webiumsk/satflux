@@ -77,5 +77,6 @@ export function templateToDraftDocument(snapshot: InvoiceTemplateSnapshot): Reco
         issue_date: '',
         due_date: '',
         delivery_date: '',
+        variable_symbol: '',
     };
 }

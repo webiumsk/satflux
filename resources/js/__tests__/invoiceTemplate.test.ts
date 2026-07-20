@@ -71,6 +71,7 @@ describe('templateToDraftDocument', () => {
         expect(draft.issue_date).toBe('');
         expect(draft.due_date).toBe('');
         expect(draft.delivery_date).toBe('');
+        expect(draft.variable_symbol).toBe('');
         // template content is preserved
         expect(draft.title).toBe('Web development');
         expect(draft.company_contact_id).toBe('contact-1');
