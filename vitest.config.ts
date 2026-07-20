@@ -7,6 +7,10 @@ export default defineConfig({
     test: {
         environment: 'jsdom',
         globals: true,
+        // Heavy component-mount tests occasionally exceed the 5s default under
+        // full-suite parallel load (they pass in isolation); 15s absorbs the
+        // contention without masking genuinely hung tests.
+        testTimeout: 15000,
         setupFiles: ['resources/js/__tests__/setup.ts'],
         include: ['resources/js/__tests__/**/*.{test,spec}.ts'],
         coverage: {
