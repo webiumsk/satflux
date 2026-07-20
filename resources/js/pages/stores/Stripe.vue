@@ -686,7 +686,7 @@ import ProPlanBadge from "../../components/stores/ProPlanBadge.vue";
 import Select from "../../components/ui/Select.vue";
 import { useStoresStore, type Store } from "../../store/stores";
 
-interface StripeTaxSettings {
+interface StripeSettings {
   enabled?: boolean;
   isConfigured?: boolean;
   isTestMode?: boolean;
@@ -727,7 +727,7 @@ const formReadonly = computed(() => !canAccessStripe.value);
 const storeId = computed(() => route.params.id as string);
 const store = ref<Store | null>(null);
 const error = ref("");
-const settings = ref<StripeTaxSettings | null>(null);
+const settings = ref<StripeSettings | null>(null);
 const webhookStatus = ref<StripeWebhookStatus | null>(null);
 const loading = ref(true);
 const saving = ref(false);
@@ -792,7 +792,7 @@ async function loadSettings() {
       api.get(`/stores/${storeId.value}/stripe/settings`),
       api.get(`/stores/${storeId.value}/stripe/webhook/status`),
     ]);
-    const loadedSettings: StripeTaxSettings = settingsRes.data;
+    const loadedSettings: StripeSettings = settingsRes.data;
     settings.value = loadedSettings;
     webhookStatus.value = webhookRes.data;
     form.value = {
