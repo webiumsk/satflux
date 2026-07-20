@@ -53,9 +53,9 @@ calculators are only a mirror.
 | Report data loading (Evolu docs + lines) | `resources/js/composables/useVatReport.ts` |
 | Report page | `resources/js/pages/invoicing/VatReport.vue` |
 | Limit alert | `resources/js/components/invoicing/TaxLimitAlert.vue` |
-| Limit field storage | `evolu/schema.ts` (`vatTurnoverLimit`), `companyMap.ts`, `companyUpdate.ts`, `companyInsert.ts` |
+| Limit field storage | `resources/js/evolu/schema.ts` (`vatTurnoverLimit`), `resources/js/evolu/companyMap.ts`, `resources/js/evolu/companyUpdate.ts`, `resources/js/evolu/companyInsert.ts` |
 | Limit field UI | `resources/js/components/invoicing/CompanySettingsForm.vue` |
-| Route / nav | `router/invoicingRoutes.ts`, `composables/useInvoicingLayout.ts`, `components/invoicing/InvoicingPageShell.vue` (`isToolsArea`) |
+| Route / nav | `resources/js/router/invoicingRoutes.ts`, `resources/js/composables/useInvoicingLayout.ts`, `resources/js/components/invoicing/InvoicingPageShell.vue` (`isToolsArea`) |
 | i18n | `resources/js/locales/{en,sk,es,cs,de}.json` (`vat_report_*`, `vat_turnover_limit_*`, `vat_limit_alert_*`, `settings_nav_vat_report`) |
 
 ### Determinism and correctness
@@ -66,10 +66,13 @@ calculators are only a mirror.
   stored scalar document fields (`total` / `subtotal` / `taxTotal`), already
   reconciled at save time.
 - **Per-rate breakdown** is re-derived from each stored line's gross
-  (`lineTotal`) and rate (`taxRate`): `net = gross / (1 + rate/100)`. Because
+  (`lineTotal`) and rate (`taxRate`): `net = gross / (1 + rate/100)`.
   `calcDocumentTotals` scales every `lineTotal` and the `subtotal`/`taxTotal` by
-  the same document-discount ratio, the per-rate bases sum back **exactly** to
-  the stored `subtotal` and the per-rate VAT to the stored `taxTotal`.
+  the same document-discount ratio, so the per-rate bases and VAT reconcile with
+  the stored `subtotal` / `taxTotal` **within rounding** - `lineTotal` is stored
+  at 2 decimals, so re-deriving the net from it can differ from the stored
+  totals by sub-cent penny-rounding; there is no residual-allocation pass that
+  forces an exact match.
 - **Credit notes** are stored as positive amounts with no sign; they are
   subtracted (they reduce turnover and output VAT).
 - Only `issued` and `paid` documents of type `invoice` / `credit_note` count by
