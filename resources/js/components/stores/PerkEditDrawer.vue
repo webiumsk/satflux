@@ -325,6 +325,7 @@
 
 <script setup lang="ts">
 import { asApiError } from "../../utils/apiError";
+import type { CrowdfundPerk } from "../../types/btcpayApps";
 import { ref, watch, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import api from "../../services/api";
@@ -334,14 +335,14 @@ const { t, locale } = useI18n();
 
 const props = defineProps<{
   isOpen: boolean;
-  perk: any | null;
+  perk: CrowdfundPerk | null;
   currency: string;
   storeId?: string;
 }>();
 
 const emit = defineEmits<{
   (e: 'close'): void;
-  (e: 'save', perk: any): void;
+  (e: 'save', perk: CrowdfundPerk): void;
 }>();
 
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -361,7 +362,7 @@ const priceTypeOptions = computed(() => {
 
 const editingPerk = computed(() => props.perk !== null);
 
-const localProduct = ref<any>({
+const localProduct = ref<CrowdfundPerk>({
   id: '',
   title: '',
   priceType: 'Fixed',
@@ -500,14 +501,7 @@ function handleSave() {
     alert(t("stores.crowdfund_perk_title_required"));
     return;
   }
-  
-  // Ensure inventory is null (not empty string or undefined) if not set
-  // BUT keep 0 as 0 (out of stock), don't convert it to null
-  if (localProduct.value.inventory === '' || localProduct.value.inventory === undefined) {
-    localProduct.value.inventory = null;
-  }
-  // If inventory is 0, keep it as 0 (out of stock)
-  
+
   emit('save', { ...localProduct.value });
   emit('close');
 }

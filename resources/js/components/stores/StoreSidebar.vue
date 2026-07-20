@@ -1118,6 +1118,7 @@ interface Props {
     id: string;
     name: string;
     app_type: string;
+    archived?: boolean;
   }>;
 }
 
@@ -1177,10 +1178,10 @@ const showRaffleNav = computed(
 );
 const allStores = computed(() => storesStore.stores);
 const activeStores = computed(() =>
-  allStores.value.filter((s: any) => !s.archived),
+  allStores.value.filter((s) => !s.archived),
 );
 const archivedStores = computed(() =>
-  allStores.value.filter((s: any) => s.archived),
+  allStores.value.filter((s) => s.archived),
 );
 
 // Current URL state for both Inertia and SPA
@@ -1351,7 +1352,7 @@ function getAppsByType(type: string) {
   // Exclude archived apps from sidebar listing (BTCPay behavior)
   const normalizedType = type.toLowerCase().replace(/[_-]/g, "");
   return props.apps.filter((app) => {
-    if ((app as any).archived) return false;
+    if (app.archived) return false;
     const appType = (app.app_type || "")
       .toString()
       .toLowerCase()
@@ -1361,7 +1362,7 @@ function getAppsByType(type: string) {
 }
 
 const archivedAppsCount = computed(
-  () => props.apps.filter((app: any) => app.archived).length,
+  () => props.apps.filter((app) => app.archived).length,
 );
 
 const guestActivePosCount = computed(() => getAppsByType("PointOfSale").length);

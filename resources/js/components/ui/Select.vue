@@ -75,11 +75,11 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 
 interface Option {
   label: string;
-  value: any;
+  value: string | number;
 }
 
 interface Props {
-  modelValue: any;
+  modelValue: string | number | null;
   options: Option[];
   placeholder?: string;
   error?: string | boolean;

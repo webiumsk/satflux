@@ -201,10 +201,24 @@ const props = defineProps<{ store: Store }>();
 
 const loading = ref(true);
 const saving = ref(false);
-const rules = ref<any[]>([]);
+interface EmailRule {
+  id: string | number;
+  trigger: string;
+  trigger_label?: string;
+  condition?: string | null;
+  to_addresses?: string | null;
+  cc_addresses?: string | null;
+  bcc_addresses?: string | null;
+  send_to_buyer?: boolean;
+  subject?: string | null;
+  body?: string | null;
+  sort_order?: number;
+  [key: string]: unknown;
+}
+const rules = ref<EmailRule[]>([]);
 const triggerOptions = ref<{ value: string; label: string }[]>([]);
 const editorOpen = ref(false);
-const editingId = ref<string | null>(null);
+const editingId = ref<string | number | null>(null);
 const editorError = ref('');
 const preferredDefaultTrigger = 'InvoiceSettled';
 
@@ -276,7 +290,7 @@ function openCreate() {
   editorOpen.value = true;
 }
 
-function openEdit(r: any) {
+function openEdit(r: EmailRule) {
   editingId.value = r.id;
   editorError.value = '';
   form.value = {
@@ -322,7 +336,7 @@ async function saveRule() {
   }
 }
 
-async function confirmDelete(r: any) {
+async function confirmDelete(r: EmailRule) {
   if (!confirm(t('stores.email_rules_delete_confirm'))) return;
   try {
     await api.delete(`/stores/${props.store.id}/email-rules/${r.id}`);
