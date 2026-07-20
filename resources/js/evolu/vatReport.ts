@@ -198,3 +198,48 @@ export function vatLimitProgress(turnover: number, limit: number): VatLimitProgr
 export function turnoverForCurrency(summary: VatSummary, currency: string): number {
     return summary.byCurrency.find((row) => row.currency === currency)?.base ?? 0;
 }
+
+function csvCell(value: string | number): string {
+    return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+/**
+ * Flatten a VAT summary to RFC-4180 CSV text (UTF-8 BOM, CRLF), one row per
+ * (currency, rate) plus a per-currency total row - the shape accountants
+ * import. Amounts use a fixed 2-decimal representation.
+ */
+export function vatSummaryToCsv(summary: VatSummary): string {
+    const money = (n: number): string => n.toFixed(2);
+    const header = ['Currency', 'Rate (%)', 'Base', 'VAT', 'Gross'];
+    const rows: string[] = [header.map(csvCell).join(',')];
+
+    for (const currency of summary.byCurrency) {
+        for (const bucket of currency.byRate) {
+            rows.push(
+                [
+                    csvCell(currency.currency),
+                    csvCell(bucket.rate),
+                    csvCell(money(bucket.base)),
+                    csvCell(money(bucket.vat)),
+                    csvCell(money(bucket.gross)),
+                ].join(','),
+            );
+        }
+        rows.push(
+            [
+                csvCell(currency.currency),
+                csvCell('Total'),
+                csvCell(money(currency.base)),
+                csvCell(money(currency.vat)),
+                csvCell(money(currency.turnover)),
+            ].join(','),
+        );
+    }
+
+    return '﻿' + rows.join('\r\n');
+}
+
+/** VAT summary CSV as a downloadable Blob. */
+export function vatSummaryCsvBlob(summary: VatSummary): Blob {
+    return new Blob([vatSummaryToCsv(summary)], { type: 'text/csv;charset=utf-8' });
+}

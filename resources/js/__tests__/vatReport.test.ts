@@ -3,6 +3,7 @@ import {
     buildVatSummary,
     turnoverForCurrency,
     vatLimitProgress,
+    vatSummaryToCsv,
 } from '../evolu/vatReport';
 import type { EvoluDocumentLineRow, EvoluDocumentRow } from '../evolu/documentMap';
 import type { CompanyId, DocumentId, DocumentType } from '../evolu/schema';
@@ -235,6 +236,29 @@ describe('vatLimitProgress', () => {
         expect(p?.level).toBe('exceeded');
         expect(p?.percent).toBe(100);
         expect(vatLimitProgress(60000, 50000)?.level).toBe('exceeded');
+    });
+});
+
+describe('vatSummaryToCsv', () => {
+    it('emits a BOM header, per-rate rows and a per-currency total row', () => {
+        const documents = [
+            doc({ id: 'd1', currency: 'EUR', subtotal: '300.00', taxTotal: '46.00', total: '346.00' }),
+        ];
+        const lines = [line('d1', '100.00', '0'), line('d1', '246.00', '23')];
+
+        const csv = vatSummaryToCsv(buildVatSummary(documents, lines, YEAR));
+        expect(csv.startsWith('﻿')).toBe(true);
+        const rows = csv.replace('﻿', '').split('\r\n');
+
+        expect(rows[0]).toBe('"Currency","Rate (%)","Base","VAT","Gross"');
+        expect(rows).toContain('"EUR","0","100.00","0.00","100.00"');
+        expect(rows).toContain('"EUR","23","200.00","46.00","246.00"');
+        expect(rows).toContain('"EUR","Total","300.00","46.00","346.00"');
+    });
+
+    it('produces only a header for an empty summary', () => {
+        const csv = vatSummaryToCsv(buildVatSummary([], [], YEAR));
+        expect(csv).toBe('﻿"Currency","Rate (%)","Base","VAT","Gross"');
     });
 });
 
