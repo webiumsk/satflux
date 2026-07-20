@@ -154,13 +154,13 @@
             <div
               class="flex items-center text-sm text-gray-400 mb-8 pb-8 border-b border-gray-700"
             >
-              <span>{{ formatDate(article.created_at ?? '') }}</span>
+              <span v-if="article.created_at">{{ formatDate(article.created_at) }}</span>
               <span
-                v-if="article.updated_at !== article.created_at"
+                v-if="article.updated_at && article.updated_at !== article.created_at"
                 class="ml-4"
               >
                 {{ t("documentation.updated") }}:
-                {{ formatDate(article.updated_at ?? '') }}
+                {{ formatDate(article.updated_at) }}
               </span>
             </div>
 

@@ -220,11 +220,11 @@ const editCategory = (category: DocCategory) => {
   editingCategory.value = category;
   form.value = {
     slug: category.slug || '',
-    name: typeof category.name === 'string' ? { en: category.name } : (category.name || {}),
+    name: typeof category.name === 'string' ? { en: category.name } : { ...(category.name || {}) },
     description:
       typeof category.description === 'string'
         ? { en: category.description }
-        : (category.description || {}),
+        : { ...(category.description || {}) },
     order: category.order || 0,
     is_active: category.is_active !== undefined ? category.is_active : true,
   };

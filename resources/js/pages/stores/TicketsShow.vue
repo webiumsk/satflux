@@ -665,11 +665,11 @@
                 <div class="flex items-center gap-4">
                   <!-- Event image thumbnail -->
                   <div
-                    v-if="event.eventLogoUrl || (event as any).logoUrl"
+                    v-if="event.eventLogoUrl || event.logoUrl"
                     class="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden bg-gray-700 border border-gray-600"
                   >
                     <img
-                      :src="event.eventLogoUrl || (event as any).logoUrl"
+                      :src="event.eventLogoUrl || event.logoUrl || ''"
                       alt=""
                       class="w-full h-full object-cover"
                       @error="
@@ -2078,6 +2078,7 @@ function openTicketTypeForm(eventId: string) {
 // ── Data Loading ────────────────────────────────
 
 async function loadEvents() {
+  if (!props.store) return;
   loadingEvents.value = true;
   clearMessages();
   try {
@@ -2135,7 +2136,7 @@ async function handleSubmitEvent() {
   submitting.value = true;
   clearMessages();
 
-  const data: Record<string, unknown> = {
+  const data: Partial<TicketEvent> = {
     title: eventForm.value.title,
     eventType: eventForm.value.eventType,
     startDate: toISOString(eventForm.value.startDate),
@@ -2220,7 +2221,7 @@ async function handleSubmitEvent() {
     const msg =
       err?.response?.data?.message ||
       (Array.isArray(err?.response?.data)
-        ? err.response.data.map((entry) => (entry as { message?: string }).message ?? "").join(", ")
+        ? err.response.data.map((entry) => (entry as { message?: string }).message ?? "").filter(Boolean).join(", ")
         : "") ||
       err?.message ||
       "Failed to save event";
@@ -2322,9 +2323,9 @@ async function handleSubmitTicketType(eventId: string) {
   submittingTT.value = true;
   clearMessages();
 
-  const data: Record<string, unknown> = {
+  const data: Partial<TicketType> = {
     name: ttForm.value.name,
-    price: ttForm.value.price,
+    price: ttForm.value.price ?? 0,
     isDefault: !!ttForm.value.isDefault,
   };
   if (ttForm.value.description) data.description = ttForm.value.description;
@@ -2351,7 +2352,7 @@ async function handleSubmitTicketType(eventId: string) {
     const msg =
       err?.response?.data?.message ||
       (Array.isArray(err?.response?.data)
-        ? err.response.data.map((entry) => (entry as { message?: string }).message ?? "").join(", ")
+        ? err.response.data.map((entry) => (entry as { message?: string }).message ?? "").filter(Boolean).join(", ")
         : "") ||
       err?.message ||
       "Failed to save ticket type";
@@ -2583,6 +2584,7 @@ function exportTicketsCsv(event: TicketEvent) {
 
 // ── Lifecycle ───────────────────────────────────
 async function loadRaffleBundleOptions() {
+  if (!props.store) return;
   try {
     raffleBundleAvailable.value = await rafflesStore.fetchAvailability(
       requireStoreId(),
