@@ -1,5 +1,6 @@
 import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Component } from "vue";
 
 const mocks = vi.hoisted(() => ({
     route: { query: { restore_phrase: "1" } as Record<string, string | undefined> },
@@ -236,8 +237,15 @@ function findLastButton(wrapper: VueWrapper, text: string) {
     return button;
 }
 
+// Profile.vue is a large SFC; compile it once up front (outside the timed
+// tests) so the per-test budget covers only mount + interaction, not the
+// one-off transform that otherwise makes the first test flaky under load.
+let Profile: Component;
+beforeAll(async () => {
+    Profile = (await import("../pages/account/Profile.vue")).default;
+}, 30000);
+
 async function mountProfile(): Promise<VueWrapper> {
-    const { default: Profile } = await import("../pages/account/Profile.vue");
     const wrapper = mount(Profile, {
         global: {
             stubs: {
@@ -304,7 +312,7 @@ describe("Profile recovery phrase owner switch guard", () => {
         expect(mocks.previewOwnerSwitchImpact).toHaveBeenCalledTimes(1);
         expect(mocks.resetEvoluBootstrapForRetry).toHaveBeenCalledTimes(1);
         expect(mocks.bindRecoveryPhraseOnThisDevice).toHaveBeenCalledWith("passkey phrase");
-    });
+    }, 15000);
 
     it("requires confirmation before typed phrase restore re-links existing local invoicing data", async () => {
         const wrapper = await mountProfile();
@@ -324,5 +332,5 @@ describe("Profile recovery phrase owner switch guard", () => {
         expect(mocks.previewOwnerSwitchImpact).toHaveBeenCalledTimes(1);
         expect(mocks.resetEvoluBootstrapForRetry).toHaveBeenCalledTimes(1);
         expect(mocks.bindRecoveryPhraseOnThisDevice).toHaveBeenCalledWith("typed phrase");
-    });
+    }, 15000);
 });
