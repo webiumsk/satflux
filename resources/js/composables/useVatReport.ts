@@ -26,15 +26,29 @@ const MAX_DATE = '9999-12-31';
 export function useVatReport(companyId: Ref<string>) {
     const evolu = useInvoicingEvolu();
     const loading = ref(true);
+    const loadError = ref(false);
 
-    const documentsPromise = evolu.loadQuery(allDocumentsQuery);
-    const linesPromise = evolu.loadQuery(allDocumentLinesQuery);
-    const documentRows = useQuery(allDocumentsQuery, { promise: documentsPromise });
-    const lineRows = useQuery(allDocumentLinesQuery, { promise: linesPromise });
+    const documentRows = useQuery(allDocumentsQuery, { promise: evolu.loadQuery(allDocumentsQuery) });
+    const lineRows = useQuery(allDocumentLinesQuery, { promise: evolu.loadQuery(allDocumentLinesQuery) });
 
-    void Promise.all([documentsPromise, linesPromise]).finally(() => {
-        loading.value = false;
-    });
+    async function load(): Promise<void> {
+        loading.value = true;
+        loadError.value = false;
+        try {
+            await Promise.all([
+                evolu.loadQuery(allDocumentsQuery),
+                evolu.loadQuery(allDocumentLinesQuery),
+            ]);
+        } catch (error) {
+            // Surface through the invoicing local_db_load_failed_* UI pattern.
+            loadError.value = true;
+            console.error('Failed to load VAT report data', error);
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    void load();
 
     // VAT is filed per calendar period; default to the current year.
     const period = ref<IssuePeriodState>({
@@ -59,5 +73,5 @@ export function useVatReport(companyId: Ref<string>) {
         return buildVatSummary(companyDocuments, companyLines, { from, to });
     });
 
-    return { loading, period, summary };
+    return { loading, loadError, period, summary, retry: load };
 }

@@ -13,7 +13,7 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('vue-i18n', () => ({
-    useI18n: () => ({ t: (key: string) => key }),
+    useI18n: () => ({ t: (key: string) => key, locale: { value: 'en' } }),
 }));
 
 // Avoid pulling in evolu/client (real Evolu instance) via the CSV helper

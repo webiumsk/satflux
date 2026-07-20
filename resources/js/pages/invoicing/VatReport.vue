@@ -1,49 +1,62 @@
 <template>
-  <InvoicingPageShell content-class="pb-8">
+  <InvoicingPageShell
+    content-class="pb-8"
+    :title="t('invoicing.vat_report_title')"
+    :subtitle="t('invoicing.vat_report_subtitle')"
+  >
     <template #header>
       <InvoicingAppHeader />
     </template>
 
-    <header class="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-      <div>
-        <h1 class="text-2xl font-bold text-white">{{ t("invoicing.vat_report_title") }}</h1>
-        <p class="mt-1 text-sm text-gray-400">{{ t("invoicing.vat_report_subtitle") }}</p>
-      </div>
-      <div class="flex flex-wrap items-end gap-3">
-        <label class="flex flex-col gap-1 text-xs text-gray-400">
-          <span>{{ t("invoicing.vat_report_period") }}</span>
-          <select v-model="periodPreset" class="invoicing-sf-input min-w-[180px]">
-            <option v-for="opt in periodOptions" :key="opt.value" :value="opt.value">
-              {{ t(opt.labelKey) }}
-            </option>
-          </select>
-        </label>
-        <button
-          type="button"
-          class="invoicing-btn-secondary"
-          :disabled="isEmpty"
-          @click="exportCsv"
-        >
-          {{ t("invoicing.vat_report_export_csv") }}
-        </button>
-        <button
-          type="button"
-          class="invoicing-btn-secondary"
-          :disabled="isEmpty"
-          @click="printReport"
-        >
-          {{ t("invoicing.vat_report_print") }}
-        </button>
-      </div>
-    </header>
+    <template #actions>
+      <label class="flex flex-col gap-1 text-xs invoicing-muted">
+        <span>{{ t("invoicing.vat_report_period") }}</span>
+        <select v-model="periodPreset" class="invoicing-sf-input min-w-[180px]">
+          <option v-for="opt in periodOptions" :key="opt.value" :value="opt.value">
+            {{ t(opt.labelKey) }}
+          </option>
+        </select>
+      </label>
+      <button
+        type="button"
+        class="invoicing-btn-secondary self-end"
+        :disabled="isEmpty"
+        @click="exportCsv"
+      >
+        {{ t("invoicing.vat_report_export_csv") }}
+      </button>
+      <button
+        type="button"
+        class="invoicing-btn-secondary self-end"
+        :disabled="isEmpty"
+        @click="printReport"
+      >
+        {{ t("invoicing.vat_report_print") }}
+      </button>
+    </template>
 
-    <div v-if="loading" class="py-16 text-center text-gray-400">
+    <div v-if="loading" class="py-16 text-center invoicing-muted">
       {{ t("common.loading") }}
     </div>
 
     <div
+      v-else-if="loadError"
+      class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-8 text-center"
+    >
+      <p class="text-sm font-medium text-amber-950">
+        {{ t("invoicing.local_db_load_failed_title") }}
+      </p>
+      <p class="mt-2 max-w-md mx-auto text-sm text-amber-900">
+        {{ t("invoicing.local_db_load_failed_detail") }}
+      </p>
+      <button type="button" class="invoicing-btn-primary mt-4" @click="retry">
+        {{ t("invoicing.local_db_retry") }}
+      </button>
+    </div>
+
+    <div
       v-else-if="isEmpty"
-      class="rounded-xl border border-gray-700 bg-gray-800/60 px-4 py-16 text-center text-gray-400"
+      class="rounded-xl border border-gray-700 bg-gray-800/60 px-4 py-16 text-center invoicing-muted"
     >
       {{ t("invoicing.vat_report_empty") }}
     </div>
@@ -113,11 +126,11 @@ import { vatSummaryCsvBlob } from "../../evolu/vatReport";
 import { downloadCsvBlob } from "../../evolu/documentBulkLocal";
 import type { IssuePeriodPreset } from "../../composables/useInvoicingIssuePeriod";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const route = useRoute();
 const companyId = computed(() => route.params.companyId as string);
 
-const { loading, period, summary } = useVatReport(companyId);
+const { loading, loadError, period, summary, retry } = useVatReport(companyId);
 
 const periodOptions: { value: IssuePeriodPreset; labelKey: string }[] = [
   { value: "this_month", labelKey: "invoicing.period_this_month" },
@@ -138,7 +151,10 @@ const periodPreset = computed<IssuePeriodPreset>({
 const isEmpty = computed(() => summary.value.byCurrency.length === 0);
 
 function money(value: number): string {
-  return value.toFixed(2);
+  return value.toLocaleString(locale.value, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function exportCsv(): void {
@@ -189,10 +205,12 @@ function printReport(): void {
   const win = iframe.contentWindow;
   const cleanup = () => window.setTimeout(() => iframe.remove(), 500);
   if (win) {
+    // Keep the iframe until printing finishes; onafterprint drives cleanup.
     win.focus();
     win.onafterprint = cleanup;
     win.print();
+  } else {
+    cleanup();
   }
-  cleanup();
 }
 </script>
