@@ -308,6 +308,7 @@
 
 <script setup lang="ts">
 import { asApiError } from "../../utils/apiError";
+import type { PosProduct } from "../../types/btcpayApps";
 import { ref, watch, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
@@ -316,14 +317,14 @@ import { useFlashStore } from '../../store/flash';
 
 const props = defineProps<{
   isOpen: boolean;
-  product: any | null;
+  product: PosProduct | null;
   currency: string;
   storeId: string;
 }>();
 
 const emit = defineEmits<{
   (e: 'close'): void;
-  (e: 'save', product: any): void;
+  (e: 'save', product: PosProduct): void;
 }>();
 
 const { t } = useI18n();
@@ -343,7 +344,7 @@ const priceTypeOptions = [
 
 const editingProduct = computed(() => props.product !== null);
 
-const localProduct = ref<any>({
+const localProduct = ref<PosProduct>({
   id: '',
   title: '',
   priceType: 'Fixed',
@@ -494,14 +495,7 @@ function handleSave() {
     flash.error(t('stores.product_title_required'));
     return;
   }
-  
-  // Ensure inventory is null (not empty string or undefined) if not set
-  // BUT keep 0 as 0 (out of stock), don't convert it to null
-  if (localProduct.value.inventory === '' || localProduct.value.inventory === undefined) {
-    localProduct.value.inventory = null;
-  }
-  // If inventory is 0, keep it as 0 (out of stock)
-  
+
   emit('save', { ...localProduct.value });
   emit('close');
 }

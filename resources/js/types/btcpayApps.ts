@@ -13,6 +13,7 @@ export type AppRef = {
     id: string;
     app_type?: string;
     name?: string;
+    archived?: boolean;
     config?: RawAppConfig;
     btcpay_app_id?: string;
     btcpay_app_url?: string;
