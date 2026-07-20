@@ -70,7 +70,7 @@
     "@types/node": "^22.0.0",
     "@vitejs/plugin-vue": "^5.0.0",
     "@vitest/coverage-v8": "^4.1.10",
-    "@vue/eslint-config-typescript": "^13.0.0",
+    "@vue/eslint-config-typescript": "^14.9.0",
     "@vue/test-utils": "^2.4.11",
     "autoprefixer": "^10.4.17",
     "eslint": "^8.57.0",
