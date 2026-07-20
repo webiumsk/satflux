@@ -60,7 +60,7 @@
     "pusher-js": "^8.4.3",
     "qrcode": "^1.5.4",
     "vue": "^3.5.40",
-    "vue-i18n": "^9.9.1",
+    "vue-i18n": "^11.4.7",
     "vue-router": "^4.3.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
