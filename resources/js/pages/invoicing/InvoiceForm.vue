@@ -478,6 +478,7 @@ import { companyCurrencyOptions } from '../../config/companyCurrencies';
 import { allowedVatRates, vatRateOutsideJurisdiction } from '../../config/jurisdictionRules';
 import { appSettingsFromCompany } from '../../composables/useCompanyAppSettings';
 import { useInvoiceDocument } from '../../composables/useInvoiceDocument';
+import type { CompanyContactRow } from '../../composables/useCompanyContact';
 
 const {
   t,
@@ -657,8 +658,8 @@ function onContactChange() {
   form.due_date = base.toISOString().slice(0, 10);
 }
 
-function onContactCreated(contact: Record<string, unknown>) {
-  const id = contact.id as string;
+function onContactCreated(contact: CompanyContactRow) {
+  const id = contact.id;
   if (!id) return;
   contacts.value = [...contacts.value, contact];
   form.company_contact_id = id;
