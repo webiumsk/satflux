@@ -1,4 +1,9 @@
 # https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# Update cadence and PR-noise control. Patch updates per ecosystem are grouped
+# into a single PR so they can be auto-processed together (see
+# .github/workflows/dependabot-auto.yml and docs/DEPENDABOT_MAINTENANCE.md);
+# minor and major bumps come as individual PRs for manual review.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -9,15 +14,25 @@ updates:
     labels:
       - dependencies
       - javascript
+    groups:
+      npm-patch:
+        applies-to: version-updates
+        update-types:
+          - patch
 
   - package-ecosystem: composer
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     open-pull-requests-limit: 10
     labels:
       - dependencies
       - php
+    groups:
+      composer-patch:
+        applies-to: version-updates
+        update-types:
+          - patch
 
   - package-ecosystem: github-actions
     directory: /
@@ -26,3 +41,8 @@ updates:
     labels:
       - dependencies
       - github-actions
+    groups:
+      actions-patch:
+        applies-to: version-updates
+        update-types:
+          - patch

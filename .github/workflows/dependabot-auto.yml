@@ -1,0 +1,60 @@
+name: Dependabot auto-triage
+
+# Labels Dependabot PRs by semver level and enables GitHub auto-merge for
+# patch updates. The existing CI (ci.yml) remains the gate: auto-merge only
+# completes once required status checks pass. Minor/major updates are labelled
+# for manual review and never auto-merged.
+#
+# Requires (repo admin, see docs/DEPENDABOT_MAINTENANCE.md):
+#   - Settings > General > "Allow auto-merge"
+#   - Branch protection on master with the CI checks marked required
+#   - (if approvals are required) "Allow GitHub Actions to create and approve
+#     pull requests"
+
+on:
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  triage:
+    name: Triage Dependabot PR
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Classify update
+        id: review
+        run: node scripts/dependency-review.mjs "${{ steps.meta.outputs.update-type }}" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure triage labels exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create dependencies-approved --color 0e8a16 --description "Dependabot patch update - safe to auto-merge on green CI" --force || true
+          gh label create dependencies-needs-review --color d93f0b --description "Dependabot minor/major update - needs manual review" --force || true
+
+      - name: Apply label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr edit "${{ github.event.pull_request.html_url }}" --add-label "${{ steps.review.outputs.label }}"
+
+      - name: Enable auto-merge for patch updates
+        if: steps.review.outputs.automerge == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr review "${{ github.event.pull_request.html_url }}" --approve || true
+          gh pr merge "${{ github.event.pull_request.html_url }}" --auto --squash \
+            || echo "::warning::Could not enable auto-merge. Enable 'Allow auto-merge' in repo settings (see docs/DEPENDABOT_MAINTENANCE.md)."
