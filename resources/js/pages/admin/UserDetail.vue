@@ -476,7 +476,7 @@ const getRoleBadgeClass = (role: string) => {
   return m[role] ?? m.free;
 };
 
-const formatSubscriptionStatus = (sub: { plan?: string; status?: string } | null) => {
+const formatSubscriptionStatus = (sub: { plan?: string; status?: string } | null | undefined) => {
   if (!sub) return "-";
   const plan = sub.plan ?? "free";
   const status = sub.status ?? "none";
