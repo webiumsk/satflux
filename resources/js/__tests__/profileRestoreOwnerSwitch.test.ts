@@ -174,15 +174,15 @@ vi.mock("../evolu/client", () => ({
 }));
 
 vi.mock("../evolu/config", () => ({
-    getEvoluRelayBuildInfo: () => null,
+    getEvoluRelayBuildInfo: () => ({ enabled: false, url: "" }),
     normalizeEvoluRelayBaseUrl: (value: string | null | undefined) => value ?? "",
 }));
 
 vi.mock("../services/evoluRelayPreference", () => ({
     getEvoluRelayRuntimeInfo: () => ({
+        url: "",
         defaultUrl: "",
         profileUrl: "",
-        activeUrl: "",
         override: { kind: "none" },
     }),
 }));
