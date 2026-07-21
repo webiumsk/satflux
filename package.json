@@ -28,7 +28,7 @@
     "@evolu/vue": "^1.4.0",
     "@evolu/web": "^2.4.0",
     "@fontsource/outfit": "^5.2.8",
-    "@inertiajs/vue3": "^2.0",
+    "@inertiajs/vue3": "^3.6",
     "@noble/ed25519": "^3.1.0",
     "@noble/hashes": "^2.2.0",
     "@scure/bip39": "^2.2.0",
