@@ -7,9 +7,11 @@ use App\Models\AuditLog;
 use App\Models\Store;
 use App\Models\WalletConnection;
 use App\Services\Auth\SensitiveActionAuthorization;
+use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\LightningService;
 use App\Services\WalletConnectionService;
 use App\Services\WalletConnectionValidator;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -77,7 +79,7 @@ class WalletConnectionController extends Controller
 
         try {
             $plaintext = $this->service->reveal($connection, $user);
-        } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+        } catch (DecryptException $e) {
             return response()->json([
                 'message' => 'Unable to decrypt the stored secret. Please re-submit your wallet connection.',
             ], 500);
@@ -320,7 +322,7 @@ class WalletConnectionController extends Controller
 
         try {
             $plaintext = $this->service->reveal($connection, $request->user());
-        } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+        } catch (DecryptException $e) {
             return response()->json([
                 'message' => 'Unable to decrypt the stored secret. This usually happens when APP_KEY was changed after the secret was saved. The merchant will need to re-submit their wallet connection.',
             ], 500);
@@ -545,7 +547,7 @@ class WalletConnectionController extends Controller
             }
 
             $result['connection_id'] = $connection->id;
-        } catch (\App\Services\BtcPay\Exceptions\BtcPayException $e) {
+        } catch (BtcPayException $e) {
             // BTCPay API error
             $connection->update(['status' => 'needs_support']);
 

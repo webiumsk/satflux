@@ -10,18 +10,21 @@ use App\Models\WalletConnection;
 use App\Notifications\SupportNeededNotification;
 use App\Notifications\WalletConnectionChangedNotification;
 use App\Notifications\WalletConnectionNeedsSupportMerchantNotification;
+use App\Notifications\WalletConnectionReadyNotification;
 use App\Services\BtcPay\BoltzService;
+use App\Services\BtcPay\CashuService;
 use App\Services\BtcPay\LightningService;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 
 class WalletConnectionService
 {
     public function __construct(
         protected WalletConnectionValidator $validator,
-        protected \App\Services\BtcPay\CashuService $cashuService,
+        protected CashuService $cashuService,
         protected LightningService $lightningService,
         protected BoltzService $boltzService,
     ) {}
@@ -34,7 +37,7 @@ class WalletConnectionService
      * @param  User  $user  User submitting the connection
      * @param  string  $initialStatus  'pending' = bot will run first, no support emails yet; 'needs_support' = notify support immediately
      *
-     * @throws \Illuminate\Validation\ValidationException
+     * @throws ValidationException
      */
     public function createOrUpdate(Store $store, string $type, string $secret, User $user, string $initialStatus = 'needs_support'): WalletConnection
     {
@@ -68,7 +71,7 @@ class WalletConnectionService
                 'type' => $type,
                 'errors' => $validation['errors'] ?? [],
             ]);
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'secret' => $validation['errors'],
             ]);
         }
@@ -83,7 +86,7 @@ class WalletConnectionService
                     'existing_store_id' => $duplicateCheck['existing_store_id'],
                     'existing_store_name' => $duplicateCheck['existing_store_name'],
                 ]);
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'secret' => [
                         'This descriptor is already in use by another store. '.
                         'BTCPay allows each descriptor to be used only once. '.
@@ -487,7 +490,7 @@ class WalletConnectionService
 
             if ($merchant && $merchant->email) {
                 try {
-                    $merchant->notify(new \App\Notifications\WalletConnectionReadyNotification($store, $connection));
+                    $merchant->notify(new WalletConnectionReadyNotification($store, $connection));
                     Log::info('Wallet connection ready notification sent', [
                         'connection_id' => $connection->id,
                         'store_id' => $connection->store_id,

@@ -11,18 +11,20 @@ use App\Models\WalletConnection;
 use App\Services\StatsService;
 use App\Services\SubscriptionEntitlementService;
 use App\Services\WalletConnectionValidator;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminController extends Controller
 {
     /**
      * Platform-wide stats for admin dashboard.
      */
-    public function stats(): \Illuminate\Http\JsonResponse
+    public function stats(): JsonResponse
     {
         $data = Cache::remember('admin.platform_stats.v5', 600, fn () => $this->getPlatformStats());
 
@@ -32,11 +34,11 @@ class AdminController extends Controller
     /**
      * Export platform stats as CSV.
      */
-    public function statsExport(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function statsExport(Request $request): StreamedResponse
     {
         $data = Cache::remember('admin.platform_stats.v5', 600, fn () => $this->getPlatformStats());
 
-        $response = new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($data) {
+        $response = new StreamedResponse(function () use ($data) {
             $out = fopen('php://output', 'w');
             fputcsv($out, ['Metric', 'Value']);
             foreach ($data as $key => $value) {

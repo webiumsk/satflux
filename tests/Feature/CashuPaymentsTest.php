@@ -6,6 +6,7 @@ use App\Models\Store;
 use App\Models\User;
 use App\Models\WalletConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
@@ -20,7 +21,7 @@ class CashuPaymentsTest extends TestCase
         $baseUrl = rtrim(config('services.btcpay.base_url'), '/');
         $btcpaySid = 'store-cashu-payments';
 
-        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, $btcpaySid) {
+        Http::fake(function (Request $request) use ($baseUrl, $btcpaySid) {
             if (! str_contains($request->url(), "{$baseUrl}/api/v1/stores/{$btcpaySid}/plugins/cashumelt/payments")) {
                 return Http::response(['error' => 'unexpected URL'], 500);
             }
@@ -64,7 +65,7 @@ class CashuPaymentsTest extends TestCase
         $baseUrl = rtrim(config('services.btcpay.base_url'), '/');
         $btcpaySid = 'store-cashu-payments-2';
 
-        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, $btcpaySid) {
+        Http::fake(function (Request $request) use ($baseUrl, $btcpaySid) {
             if (! str_contains($request->url(), "{$baseUrl}/api/v1/stores/{$btcpaySid}/plugins/cashumelt/payments")) {
                 return Http::response(['error' => 'unexpected URL'], 500);
             }
@@ -205,7 +206,7 @@ class CashuPaymentsTest extends TestCase
         $baseUrl = rtrim(config('services.btcpay.base_url'), '/');
         $btcpaySid = 'store-cashu-poll-url';
 
-        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, $btcpaySid) {
+        Http::fake(function (Request $request) use ($baseUrl, $btcpaySid) {
             if (! str_contains($request->url(), "{$baseUrl}/api/v1/stores/{$btcpaySid}/plugins/cashumelt/payments")) {
                 return Http::response(['error' => 'unexpected URL'], 500);
             }
@@ -250,7 +251,7 @@ class CashuPaymentsTest extends TestCase
         $btcpaySid = 'store-cashu-merge-put';
         $captured = null;
 
-        Http::fake(function (\Illuminate\Http\Client\Request $request) use (&$captured, $btcpaySid) {
+        Http::fake(function (Request $request) use (&$captured, $btcpaySid) {
             $url = $request->url();
             if (! str_contains($url, "/api/v1/stores/{$btcpaySid}/plugins/cashumelt/settings") || $request->method() !== 'PUT') {
                 return Http::response(['error' => 'unexpected URL'], 500);
@@ -292,7 +293,7 @@ class CashuPaymentsTest extends TestCase
         $btcpaySid = 'store-cashu-null-put';
         $captured = null;
 
-        Http::fake(function (\Illuminate\Http\Client\Request $request) use (&$captured, $btcpaySid) {
+        Http::fake(function (Request $request) use (&$captured, $btcpaySid) {
             $url = $request->url();
             if (! str_contains($url, "/api/v1/stores/{$btcpaySid}/plugins/cashumelt/settings") || $request->method() !== 'PUT') {
                 return Http::response(['error' => 'unexpected URL'], 500);
@@ -336,7 +337,7 @@ class CashuPaymentsTest extends TestCase
         config(['services.btcpay.base_url' => 'https://btcpay.test']);
 
         $deletedMethods = [];
-        Http::fake(function (\Illuminate\Http\Client\Request $request) use (&$deletedMethods) {
+        Http::fake(function (Request $request) use (&$deletedMethods) {
             $url = $request->url();
 
             if (str_contains($url, 'cashumelt/settings') && $request->method() === 'PUT') {
@@ -386,7 +387,7 @@ class CashuPaymentsTest extends TestCase
     {
         config(['services.btcpay.base_url' => 'https://btcpay.test']);
 
-        Http::fake(function (\Illuminate\Http\Client\Request $request) {
+        Http::fake(function (Request $request) {
             $url = $request->url();
 
             if (str_contains($url, 'cashumelt/settings') && $request->method() === 'PUT') {
@@ -433,7 +434,7 @@ class CashuPaymentsTest extends TestCase
         config(['services.btcpay.base_url' => 'https://btcpay.test']);
         $btcpaySid = 'store-cashu-plugin-bind-bug';
 
-        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($btcpaySid) {
+        Http::fake(function (Request $request) use ($btcpaySid) {
             $url = $request->url();
             if (! str_contains($url, "/api/v1/stores/{$btcpaySid}/plugins/cashumelt/settings") || $request->method() !== 'PUT') {
                 return Http::response(['error' => 'unexpected URL'], 500);

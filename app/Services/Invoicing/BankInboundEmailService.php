@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Services\Invoicing\BankImport\BankNotificationParser;
 use App\Services\Invoicing\BankImport\SlspBankEmailParser;
 use App\Services\Invoicing\BankImport\TatraBankEmailParser;
+use App\Support\Invoicing\ParsedBankTransaction;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -80,7 +81,7 @@ class BankInboundEmailService
     }
 
     /**
-     * @return list<\App\Support\Invoicing\ParsedBankTransaction>
+     * @return list<ParsedBankTransaction>
      */
     protected function parseBody(string $from, string $subject, string $body): array
     {

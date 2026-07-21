@@ -7,6 +7,7 @@ use App\Enums\CompanyJurisdiction;
 use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentLine;
 use App\Models\Company;
+use App\Models\CompanyContact;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
@@ -107,7 +108,7 @@ class BusinessDocumentUblTest extends TestCase
     {
         [, $company] = $this->proUserWithCompany();
 
-        $contact = \App\Models\CompanyContact::create([
+        $contact = CompanyContact::create([
             'company_id' => $company->id,
             'name' => 'Odberateľ s.r.o.',
             'registration_number' => '87654321',

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Store;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -122,7 +123,7 @@ class WooCommerceSatoshiTicketsController extends Controller
         return $this->redirectToReturnUrl($returnUrl, $store, $request->user(), $returnSatfluxStoreId);
     }
 
-    private function redirectToReturnUrl(string $returnUrl, Store $store, $user, bool $includeSatfluxStoreId = false): \Illuminate\Http\RedirectResponse
+    private function redirectToReturnUrl(string $returnUrl, Store $store, $user, bool $includeSatfluxStoreId = false): RedirectResponse
     {
         $btcpayUrl = rtrim((string) config('services.btcpay.base_url'), '/');
         $apiKey = $user->getBtcPayApiKeyOrFail();
@@ -149,7 +150,7 @@ class WooCommerceSatoshiTicketsController extends Controller
         return redirect()->away($targetUrl);
     }
 
-    private function redirectWithError(string $returnUrl, string $errorCode): \Illuminate\Http\RedirectResponse
+    private function redirectWithError(string $returnUrl, string $errorCode): RedirectResponse
     {
         $params = http_build_query([
             'satflux_return' => '1',

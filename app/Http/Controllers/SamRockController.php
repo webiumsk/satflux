@@ -17,7 +17,7 @@ class SamRockController extends Controller
         protected WalletConnectionService $walletConnectionService
     ) {}
 
-    public function createOtp(Request $request, Store $store): \Illuminate\Http\JsonResponse
+    public function createOtp(Request $request, Store $store): JsonResponse
     {
         $this->ensureSamRockEligibleStore($store);
 
@@ -56,7 +56,7 @@ class SamRockController extends Controller
         ], 201);
     }
 
-    public function getOtpStatus(Store $store, string $otp): \Illuminate\Http\JsonResponse
+    public function getOtpStatus(Store $store, string $otp): JsonResponse
     {
         $this->ensureSamRockEligibleStore($store);
 
@@ -108,7 +108,7 @@ class SamRockController extends Controller
         ]);
     }
 
-    public function deleteOtp(Store $store, string $otp): \Illuminate\Http\JsonResponse
+    public function deleteOtp(Store $store, string $otp): JsonResponse
     {
         $this->ensureSamRockEligibleStore($store);
 
@@ -127,7 +127,7 @@ class SamRockController extends Controller
         return response()->json(['data' => ['deleted' => true]]);
     }
 
-    public function complete(Request $request, Store $store): \Illuminate\Http\JsonResponse
+    public function complete(Request $request, Store $store): JsonResponse
     {
         $this->ensureSamRockEligibleStore($store);
 

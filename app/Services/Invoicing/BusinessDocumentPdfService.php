@@ -6,8 +6,11 @@ use App\Enums\BusinessDocumentType;
 use App\Enums\CompanyJurisdiction;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
+use App\Models\Company;
+use App\Models\Store;
 use App\Support\Invoicing\CompanyAppSettings;
 use App\Support\Invoicing\CompanyVatPolicy;
+use App\Support\Invoicing\JurisdictionRules;
 use App\Support\Invoicing\QrPngRenderer;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -156,7 +159,7 @@ class BusinessDocumentPdfService
         $company = $document->company;
         $bankQr = null;
         $bankQrStandard = null;
-        if ($company instanceof \App\Models\Company
+        if ($company instanceof Company
             && $document->payment_bank_enabled
             && $document->type !== BusinessDocumentType::Quote
         ) {
@@ -192,7 +195,7 @@ class BusinessDocumentPdfService
         // jurisdictions whose statutory tax terms a language file cannot
         // distinguish (DE USt-IdNr. vs AT UID-Nr. vs CH MWST - all German)
         // override the labels from JurisdictionRules.
-        $rules = \App\Support\Invoicing\JurisdictionRules::for($jurisdiction);
+        $rules = JurisdictionRules::for($jurisdiction);
         $vatLabel = $rules['pdf_label_override'] ? $rules['vat_name'] : __('VAT');
         $taxIdLabel = $rules['pdf_label_override'] ? $rules['tax_id_label'] : __('VAT ID');
 
@@ -257,7 +260,7 @@ class BusinessDocumentPdfService
 
             $document->loadMissing(['store.user']);
             $store = $document->store;
-            if (! $store instanceof \App\Models\Store) {
+            if (! $store instanceof Store) {
                 return null;
             }
 

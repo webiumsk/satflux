@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Store;
 use App\Models\User;
+use App\Services\BtcPay\BtcPayClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
@@ -18,7 +19,7 @@ class BlinkMigrationAlertTest extends TestCase
         parent::setUp();
 
         config(['services.btcpay.base_url' => 'https://btcpay.test']);
-        $this->app->forgetInstance(\App\Services\BtcPay\BtcPayClient::class);
+        $this->app->forgetInstance(BtcPayClient::class);
 
         Http::fake(function ($request) {
             if ($request->method() === 'GET' && str_contains((string) $request->url(), '/api/v1/stores/')) {

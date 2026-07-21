@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -79,7 +81,7 @@ class SecurityHeadersTest extends TestCase
     {
         config(['security.csp.enabled' => true, 'security.csp.report_only' => false]);
 
-        $user = \App\Models\User::factory()->create(['evolu_relay_url' => 'wss://my-relay.example.com']);
+        $user = User::factory()->create(['evolu_relay_url' => 'wss://my-relay.example.com']);
 
         $policy = (string) $this->actingAs($user)->get('/')->headers->get('Content-Security-Policy');
         preg_match('/connect-src ([^;]+)/', $policy, $m);
@@ -118,7 +120,7 @@ class SecurityHeadersTest extends TestCase
     #[Test]
     public function csp_report_endpoint_accepts_and_logs_reports(): void
     {
-        \Illuminate\Support\Facades\Log::shouldReceive('warning')
+        Log::shouldReceive('warning')
             ->once()
             ->withArgs(function (string $message, array $context): bool {
                 return $message === 'CSP violation reported'
@@ -146,7 +148,7 @@ class SecurityHeadersTest extends TestCase
     #[Test]
     public function csp_report_endpoint_strips_sensitive_url_parts_before_logging(): void
     {
-        \Illuminate\Support\Facades\Log::shouldReceive('warning')
+        Log::shouldReceive('warning')
             ->once()
             ->withArgs(function (string $message, array $context): bool {
                 return $message === 'CSP violation reported'

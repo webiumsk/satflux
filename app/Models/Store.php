@@ -8,10 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 /**
- * @property \Illuminate\Support\Carbon|null $blink_alert_snoozed_until
- * @property \Illuminate\Support\Carbon|null $blink_alert_dismissed_at
+ * @property Carbon|null $blink_alert_snoozed_until
+ * @property Carbon|null $blink_alert_dismissed_at
  */
 class Store extends Model
 {
