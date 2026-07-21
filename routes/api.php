@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\DocumentationCategoryController;
 use App\Http\Controllers\Admin\DocumentationImageController;
 use App\Http\Controllers\Admin\FaqCategoryController;
 use App\Http\Controllers\Admin\FaqItemController;
+use App\Http\Controllers\Admin\RegWatchController;
 use App\Http\Controllers\Admin\SystemHealthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AppController;
@@ -962,6 +963,14 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             ->middleware(AuditLog::class.':admin.user.updated');
         Route::delete('/admin/users/{user}', [AdminController::class, 'destroy'])
             ->middleware(AuditLog::class.':admin.user.deleted');
+
+        // RegWatch review (docs/LEGAL.md): changelog workflow only - rules
+        // are edited manually after verifying the official source.
+        Route::get('/admin/regwatch/changes', [RegWatchController::class, 'changes']);
+        Route::get('/admin/regwatch/changes/{change}', [RegWatchController::class, 'showChange']);
+        Route::put('/admin/regwatch/changes/{change}/status', [RegWatchController::class, 'updateChangeStatus'])
+            ->middleware(AuditLog::class.':admin.regwatch.change_status_updated');
+        Route::get('/admin/regwatch/sources', [RegWatchController::class, 'sources']);
     });
 });
 

@@ -23,6 +23,10 @@ use Illuminate\Support\Carbon;
  * @property array<string, mixed>|null $classification_json
  * @property Carbon $detected_at
  * @property Carbon|null $reviewed_at
+ * @property int|null $reviewed_by
+ * @property-read RegWatchSource|null $source
+ * @property-read RegWatchRule|null $rule
+ * @property-read User|null $reviewer
  */
 class RegWatchChange extends Model
 {
@@ -39,6 +43,7 @@ class RegWatchChange extends Model
         'classification_json',
         'detected_at',
         'reviewed_at',
+        'reviewed_by',
     ];
 
     protected function casts(): array
@@ -59,5 +64,10 @@ class RegWatchChange extends Model
     public function rule(): BelongsTo
     {
         return $this->belongsTo(RegWatchRule::class, 'rule_id');
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 }
