@@ -19,6 +19,10 @@
       </div>
     </div>
 
+    <div v-if="loadError" class="bg-red-500/10 border border-red-500/40 rounded-xl px-4 py-3 mb-6 text-sm text-red-300">
+      {{ loadError }}
+    </div>
+
     <!-- Changes table -->
     <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
       <div class="overflow-x-auto">
@@ -235,6 +239,7 @@ const page = ref(1);
 const detail = ref<ChangeRow | null>(null);
 const updating = ref(false);
 const updateError = ref('');
+const loadError = ref('');
 
 const statusOptions = computed(() => [
   { label: t('admin.regwatch.all'), value: '' },
@@ -288,6 +293,7 @@ function formatDate(value: string): string {
 
 async function loadChanges(): Promise<void> {
   loading.value = true;
+  loadError.value = '';
   try {
     const params: { status?: string; source_id?: string; page?: number } = { page: page.value };
     if (statusFilter.value) params.status = statusFilter.value;
@@ -298,6 +304,7 @@ async function loadChanges(): Promise<void> {
   } catch {
     changes.value = [];
     meta.value = null;
+    loadError.value = t('admin.regwatch.load_error');
   } finally {
     loading.value = false;
   }
@@ -309,6 +316,7 @@ async function loadSources(): Promise<void> {
     sources.value = response.data.data;
   } catch {
     sources.value = [];
+    loadError.value = t('admin.regwatch.load_error');
   }
 }
 
@@ -327,8 +335,10 @@ async function openDetail(id: string): Promise<void> {
   try {
     const response = await adminRegwatchApi.changes.show(id);
     detail.value = response.data.data;
+    loadError.value = '';
   } catch {
     detail.value = null;
+    loadError.value = t('admin.regwatch.load_error');
   }
 }
 

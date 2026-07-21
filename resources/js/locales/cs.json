@@ -3656,6 +3656,7 @@
       "next": "Další",
       "page_of": "Strana {current} z {last} (celkem {total})",
       "update_error": "Změna stavu selhala. Zkuste to znovu.",
+      "load_error": "Načtení dat selhalo. Obnovte stránku nebo to zkuste znovu.",
       "disclaimer": "Orientační - ověřte s místním odborníkem."
     },
     "health": {

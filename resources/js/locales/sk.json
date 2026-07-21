@@ -3661,6 +3661,7 @@
       "next": "Ďalšia",
       "page_of": "Strana {current} z {last} (spolu {total})",
       "update_error": "Zmena stavu zlyhala. Skúste znova.",
+      "load_error": "Načítanie dát zlyhalo. Obnovte stránku alebo skúste znova.",
       "disclaimer": "Orientačné - overte s lokálnym odborníkom."
     },
     "health": {"history_range": "{from} - {to}", "history_ok": "v poriadku ({count} snapshotov)", "history_failing": "zlyháva: {checks} ({count} snapshotov)", "status_ok": "OK", "status_failed": "Zlyhalo", "title": "Zdravie systému", "description": "Živé kontroly, chybovosť a história plánovaných snapshotov", "refresh": "Obnoviť", "all_ok": "Všetky kontroly prechádzajú", "failing": "Niektoré kontroly zlyhávajú", "checked_at": "Skontrolované {time}", "error_rate": "Chyby za túto hodinu", "error_rate_detail": "predošlá hodina: {previous} - prah alertu: {threshold}", "history": "História snapshotov (každých 5 minút)", "history_empty": "Zatiaľ žiadne snapshoty - scheduler zapisuje jeden každých 5 minút."},

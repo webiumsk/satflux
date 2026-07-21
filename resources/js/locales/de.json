@@ -3656,6 +3656,7 @@
       "next": "Weiter",
       "page_of": "Seite {current} von {last} ({total} gesamt)",
       "update_error": "Statusänderung fehlgeschlagen. Bitte erneut versuchen.",
+      "load_error": "Daten konnten nicht geladen werden. Seite neu laden oder erneut versuchen.",
       "disclaimer": "Unverbindlich - mit einem lokalen Experten prüfen."
     },
     "health": {
