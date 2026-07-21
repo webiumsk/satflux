@@ -31,6 +31,7 @@ class RegWatchMonitorTest extends TestCase
             'regwatch.enabled' => true,
             'regwatch.notify_email' => null,
             'regwatch.classifier.api_key' => null,
+            'regwatch.classifier.retry_delay_ms' => 0,
             'regwatch.snapshot_disk' => 'local',
         ]);
         Storage::fake('local');
@@ -140,6 +141,45 @@ class RegWatchMonitorTest extends TestCase
     }
 
     #[Test]
+    public function minified_html_diffs_per_block_not_as_one_line(): void
+    {
+        $source = $this->makeSource();
+        Http::fake(['source.test/*' => Http::sequence()
+            ->push('<html><body><p>stable paragraph</p><p>old paragraph</p></body></html>')
+            ->push('<html><body><p>stable paragraph</p><p>new paragraph</p></body></html>')]);
+
+        $this->monitor()->check($source);
+        $change = $this->monitor()->check($source->refresh());
+
+        $this->assertNotNull($change);
+        $this->assertStringContainsString('- old paragraph', (string) $change->diff);
+        $this->assertStringContainsString('+ new paragraph', (string) $change->diff);
+        // The unchanged block must not appear in the diff - minified HTML
+        // would otherwise collapse into a single line and diff as a whole.
+        $this->assertStringNotContainsString('stable paragraph', (string) $change->diff);
+    }
+
+    #[Test]
+    public function missing_snapshot_with_existing_hash_records_a_change_without_diff(): void
+    {
+        $source = $this->makeSource();
+        Http::fake(['source.test/*' => Http::sequence()
+            ->push('<p>old</p>')
+            ->push('<p>new</p>')]);
+
+        $this->monitor()->check($source);
+        // Simulate wiped storage: the hash survives in the DB, the file is gone.
+        Storage::disk('local')->delete('regwatch/snapshots/sk-test-source.txt');
+
+        $change = $this->monitor()->check($source->refresh());
+
+        $this->assertNotNull($change);
+        $this->assertStringContainsString('previous snapshot missing', (string) $change->diff);
+        $this->assertNull($change->classification_json);
+        Storage::disk('local')->assertExists('regwatch/snapshots/sk-test-source.txt');
+    }
+
+    #[Test]
     public function fetch_failure_leaves_the_source_untouched(): void
     {
         $source = $this->makeSource();
@@ -183,14 +223,13 @@ class RegWatchMonitorTest extends TestCase
         $this->assertTrue((bool) ($change->classification_json['relevant'] ?? false));
         $this->assertSame(['vat_registration'], $change->classification_json['topics']);
 
-        Http::assertSent(function ($request) {
-            if (! str_contains($request->url(), 'api.anthropic.com')) {
-                return true;
-            }
-
-            // The critical rule: the classifier prompt forbids adding facts.
-            return str_contains(json_encode($request->data()) ?: '', 'never add legal facts');
-        });
+        // The critical rule: the classifier prompt forbids adding facts. The
+        // predicate must only accept the Anthropic request itself - matching
+        // any other request would make the assertion vacuous.
+        Http::assertSent(
+            fn ($request) => str_contains($request->url(), 'api.anthropic.com')
+                && str_contains(json_encode($request->data()) ?: '', 'never add legal facts'),
+        );
     }
 
     #[Test]

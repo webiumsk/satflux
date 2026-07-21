@@ -39,6 +39,8 @@ return [
         'model' => env('REGWATCH_CLAUDE_MODEL', 'claude-sonnet-5'),
         'base_url' => env('REGWATCH_ANTHROPIC_BASE_URL', 'https://api.anthropic.com'),
         'timeout' => (int) env('REGWATCH_CLASSIFIER_TIMEOUT', 60),
+        /** Delay between retries of transient API failures (429/5xx). */
+        'retry_delay_ms' => (int) env('REGWATCH_CLASSIFIER_RETRY_DELAY_MS', 1000),
     ],
 
 ];

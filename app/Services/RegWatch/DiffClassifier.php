@@ -4,6 +4,8 @@ namespace App\Services\RegWatch;
 
 use App\Enums\RegWatchTopic;
 use App\Models\RegWatchSource;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -48,6 +50,17 @@ class DiffClassifier
                 'anthropic-version' => '2023-06-01',
             ])
                 ->timeout((int) config('regwatch.classifier.timeout', 60))
+                // Transient failures (connection, 429 rate limit, 5xx incl.
+                // Anthropic's 529 overloaded) get a couple of retries before
+                // the change is recorded unclassified.
+                ->retry(
+                    3,
+                    (int) config('regwatch.classifier.retry_delay_ms', 1000),
+                    fn ($exception) => $exception instanceof ConnectionException
+                        || ($exception instanceof RequestException
+                            && ($exception->response->status() === 429 || $exception->response->status() >= 500)),
+                    throw: false,
+                )
                 ->post(rtrim((string) config('regwatch.classifier.base_url'), '/').'/v1/messages', [
                     'model' => (string) config('regwatch.classifier.model'),
                     'max_tokens' => 1024,
