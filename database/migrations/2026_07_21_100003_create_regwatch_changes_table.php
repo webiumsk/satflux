@@ -13,7 +13,10 @@ return new class extends Migration
         // regwatch_rules: new -> reviewed -> applied/dismissed.
         Schema::create('regwatch_changes', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('source_id')->constrained('regwatch_sources')->cascadeOnDelete();
+            // restrictOnDelete: the changelog is an audit trail - a source
+            // with detection history cannot be hard-deleted (deactivate it
+            // via regwatch_sources.active instead).
+            $table->foreignUuid('source_id')->constrained('regwatch_sources')->restrictOnDelete();
             $table->foreignUuid('rule_id')->nullable()->constrained('regwatch_rules')->nullOnDelete();
             // App\Enums\RegWatchChangeStatus.
             $table->string('status', 16)->default('new');

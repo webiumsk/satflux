@@ -13,8 +13,8 @@ use Illuminate\Support\Carbon;
  * RegWatch rule - the source of truth for a tax/legal rule in a
  * jurisdiction. Edited ONLY by a human after reviewing the official source
  * (docs/LEGAL.md); the monitoring cron must never write here. A row with
- * verified_on = NULL is an unverified placeholder ("TODO: overit z
- * oficialneho zdroja") and must not be presented as fact.
+ * verified_on = NULL is an unverified placeholder ("TODO: overiť z
+ * oficiálneho zdroja") and must not be presented as fact.
  *
  * @property string $id
  * @property string $jurisdiction_id
