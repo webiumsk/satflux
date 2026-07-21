@@ -25,6 +25,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $last_checked_at
  * @property string|null $last_snapshot_hash
  * @property-read RegWatchJurisdiction|null $jurisdiction
+ * @property-read int|null $new_changes_count
  */
 class RegWatchSource extends Model
 {

@@ -686,6 +686,53 @@
           }}</span>
         </div>
 
+        <!-- RegWatch (admin only) -->
+        <div
+          v-if="userRole === 'admin'"
+          class="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-amber-500/50 transition-all group cursor-pointer"
+          @click="$router.push('/admin/regwatch')"
+        >
+          <div class="flex items-start justify-between mb-4">
+            <div class="p-3 bg-amber-500/10 rounded-lg">
+              <svg
+                class="w-6 h-6 text-amber-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"
+                />
+              </svg>
+            </div>
+            <svg
+              class="w-5 h-5 text-gray-400 group-hover:text-amber-400 transition-colors"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold text-white mb-2">
+            {{ t("admin.dashboard.regwatch") }}
+          </h3>
+          <p class="text-gray-400 text-sm mb-4">
+            {{ t("admin.dashboard.regwatch_desc") }}
+          </p>
+          <span class="text-sm text-amber-400 font-medium">{{
+            t("admin.dashboard.view_section")
+          }}</span>
+        </div>
+
         <!-- Support Tools (if support role) -->
         <div
           v-if="userRole === 'support' || userRole === 'admin'"

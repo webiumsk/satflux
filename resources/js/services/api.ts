@@ -1023,6 +1023,21 @@ export const adminFaqApi = {
     },
 };
 
+export const adminRegwatchApi = {
+    changes: {
+        index: (params?: { status?: string; source_id?: string; page?: number }) =>
+            api.get('/admin/regwatch/changes', { params }),
+        show: (id: string) =>
+            api.get(`/admin/regwatch/changes/${id}`),
+        updateStatus: (id: string, status: string) =>
+            api.put(`/admin/regwatch/changes/${id}/status`, { status }),
+    },
+    sources: {
+        index: () =>
+            api.get('/admin/regwatch/sources'),
+    },
+};
+
 export default api;
 
 
