@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Store;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -25,7 +26,7 @@ class TicketToggleEventTest extends TestCase
         $toggleCalled = false;
         $ticketTypesCalled = false;
 
-        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, &$toggleCalled, &$ticketTypesCalled) {
+        Http::fake(function (Request $request) use ($baseUrl, &$toggleCalled, &$ticketTypesCalled) {
             $url = (string) $request->url();
 
             if (! str_contains($url, $baseUrl)) {
@@ -80,7 +81,7 @@ class TicketToggleEventTest extends TestCase
         $baseUrl = rtrim(config('services.btcpay.base_url', 'http://localhost'), '/');
         $toggleCalled = false;
 
-        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, &$toggleCalled) {
+        Http::fake(function (Request $request) use ($baseUrl, &$toggleCalled) {
             $url = (string) $request->url();
 
             if (! str_contains($url, $baseUrl)) {
@@ -123,7 +124,7 @@ class TicketToggleEventTest extends TestCase
         $baseUrl = rtrim(config('services.btcpay.base_url', 'http://localhost'), '/');
         $toggleCalled = false;
 
-        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($baseUrl, &$toggleCalled) {
+        Http::fake(function (Request $request) use ($baseUrl, &$toggleCalled) {
             $url = (string) $request->url();
 
             if (! str_contains($url, $baseUrl)) {

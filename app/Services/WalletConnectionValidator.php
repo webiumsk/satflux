@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\WalletConnection;
+use Illuminate\Support\Facades\Log;
+
 class WalletConnectionValidator
 {
     /**
@@ -315,7 +318,7 @@ class WalletConnectionValidator
      */
     public function validate(string $type, string $value): array
     {
-        \Illuminate\Support\Facades\Log::info('WalletConnectionValidator::validate called', [
+        Log::info('WalletConnectionValidator::validate called', [
             'type' => $type,
             'value_length' => strlen($value),
             'value_preview' => substr($value, 0, 100).'...',
@@ -326,13 +329,13 @@ class WalletConnectionValidator
 
         if ($type === 'blink') {
             $returnType = 'blink';
-            \Illuminate\Support\Facades\Log::info('Validating Blink connection string', [
+            Log::info('Validating Blink connection string', [
                 'type' => $type,
             ]);
 
             // Validate Blink connection string format
             $parsed = $this->parseBlinkConnectionString($value);
-            \Illuminate\Support\Facades\Log::info('Blink connection string parsed', [
+            Log::info('Blink connection string parsed', [
                 'type' => $type,
                 'parsed_errors' => $parsed['errors'] ?? [],
                 'parsed_type' => $parsed['type'] ?? 'NULL',
@@ -346,12 +349,12 @@ class WalletConnectionValidator
             }
         } elseif ($type === 'aqua_descriptor') {
             $returnType = 'aqua_descriptor';
-            \Illuminate\Support\Facades\Log::info('Validating Aqua descriptor', [
+            Log::info('Validating Aqua descriptor', [
                 'type' => $type,
             ]);
 
             $isValid = $this->validateAquaDescriptor($value);
-            \Illuminate\Support\Facades\Log::info('Aqua descriptor validation result', [
+            Log::info('Aqua descriptor validation result', [
                 'type' => $type,
                 'is_valid' => $isValid,
             ]);
@@ -365,7 +368,7 @@ class WalletConnectionValidator
                 $errors[] = 'Invalid NWC connection. Must start with nostr+walletconnect: and include relay= and secret= parameters.';
             }
         } else {
-            \Illuminate\Support\Facades\Log::error('Unsupported wallet connection type', [
+            Log::error('Unsupported wallet connection type', [
                 'type' => $type,
             ]);
             throw new \InvalidArgumentException("Unsupported wallet connection type: {$type}");
@@ -378,7 +381,7 @@ class WalletConnectionValidator
             'error' => ! empty($errors) ? implode('; ', $errors) : null,
         ];
 
-        \Illuminate\Support\Facades\Log::info('WalletConnectionValidator::validate result', [
+        Log::info('WalletConnectionValidator::validate result', [
             'type' => $type,
             'valid' => $result['valid'],
             'errors_count' => count($errors),
@@ -422,7 +425,7 @@ class WalletConnectionValidator
      *
      * @return 'aqua'|'bull'|null
      */
-    public function resolveAquaBoltzBrand(?\App\Models\WalletConnection $connection): ?string
+    public function resolveAquaBoltzBrand(?WalletConnection $connection): ?string
     {
         if (! $connection) {
             return null;

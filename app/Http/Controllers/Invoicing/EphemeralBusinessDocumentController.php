@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class EphemeralBusinessDocumentController extends Controller
 {
@@ -364,7 +365,7 @@ class EphemeralBusinessDocumentController extends Controller
                 $request->input('subject'),
                 $request->input('body'),
             );
-        } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+        } catch (TransportExceptionInterface $e) {
             Log::warning('Ephemeral business document email failed', [
                 'user_id' => $request->user()?->id,
                 'exception' => $e->getMessage(),
@@ -385,7 +386,7 @@ class EphemeralBusinessDocumentController extends Controller
     ): JsonResponse {
         try {
             $this->emailSettingsService->sendSmtpTest($snapshotCompany, $request->validated('to'));
-        } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+        } catch (TransportExceptionInterface $e) {
             Log::warning('Ephemeral company SMTP test failed', [
                 'user_id' => $request->user()?->id,
                 'error' => $e->getMessage(),

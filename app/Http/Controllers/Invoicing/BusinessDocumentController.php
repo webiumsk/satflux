@@ -38,9 +38,11 @@ use App\Services\Invoicing\DocumentTotalsCalculator;
 use App\Support\Invoicing\CompanyAppSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class BusinessDocumentController extends Controller
 {
@@ -514,7 +516,7 @@ class BusinessDocumentController extends Controller
                 $request->input('subject'),
                 $request->input('body'),
             );
-        } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+        } catch (TransportExceptionInterface $e) {
             return response()->json(['message' => 'Email could not be sent: '.$e->getMessage()], 422);
         }
 
@@ -782,14 +784,14 @@ class BusinessDocumentController extends Controller
         if (! $contactId) {
             $issue = $request->input('issue_date') ?? now()->toDateString();
 
-            return \Illuminate\Support\Carbon::parse($issue)->addDays($fallbackDays)->toDateString();
+            return Carbon::parse($issue)->addDays($fallbackDays)->toDateString();
         }
 
         $contact = CompanyContact::find($contactId);
         $days = $contact?->default_payment_terms_days ?? $fallbackDays;
         $issue = $request->input('issue_date') ?? now()->toDateString();
 
-        return \Illuminate\Support\Carbon::parse($issue)->addDays($days)->toDateString();
+        return Carbon::parse($issue)->addDays($days)->toDateString();
     }
 
     protected function defaultDeliveryDate(StoreBusinessDocumentRequest $request, Company $company): ?string

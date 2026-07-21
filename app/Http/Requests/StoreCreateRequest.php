@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Services\WalletConnectionValidator;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -18,7 +20,7 @@ class StoreCreateRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -56,7 +58,7 @@ class StoreCreateRequest extends FormRequest
                 $connectionString = $this->connection_string;
                 $walletType = $this->wallet_type;
 
-                $connectionValidator = app(\App\Services\WalletConnectionValidator::class);
+                $connectionValidator = app(WalletConnectionValidator::class);
 
                 if ($walletType === 'blink') {
                     // Validate Blink connection string format

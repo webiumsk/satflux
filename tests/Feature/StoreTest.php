@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Models\Store;
 use App\Models\User;
 use App\Models\WalletConnection;
+use App\Services\BtcPay\BtcPayClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -23,8 +25,8 @@ class StoreTest extends TestCase
         config(['services.btcpay.base_url' => 'http://localhost']);
 
         // Clear cache and force fresh BtcPayClient with new config
-        \Illuminate\Support\Facades\Cache::flush();
-        $this->app->forgetInstance(\App\Services\BtcPay\BtcPayClient::class);
+        Cache::flush();
+        $this->app->forgetInstance(BtcPayClient::class);
 
         // Mock BTCPay API responses (closure so POST vs GET to same URL return different bodies)
         $baseUrl = rtrim(config('services.btcpay.base_url'), '/');

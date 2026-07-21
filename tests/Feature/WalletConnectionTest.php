@@ -8,6 +8,7 @@ use App\Models\WalletConnection;
 use App\Services\BtcPay\BoltzService;
 use App\Services\WalletConnectionValidator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
@@ -98,7 +99,7 @@ class WalletConnectionTest extends TestCase
     {
         config(['services.btcpay.base_url' => 'https://btcpay.test']);
 
-        Http::fake(function (\Illuminate\Http\Client\Request $request) {
+        Http::fake(function (Request $request) {
             $url = $request->url();
 
             if (str_contains($url, '/payment-methods/') && $request->method() === 'DELETE') {
@@ -188,7 +189,7 @@ class WalletConnectionTest extends TestCase
         config(['services.btcpay.base_url' => 'https://btcpay.test']);
         $btcpayStoreId = 'store-boltz-greenfield';
 
-        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($btcpayStoreId) {
+        Http::fake(function (Request $request) use ($btcpayStoreId) {
             $url = $request->url();
 
             if (str_contains($url, "/api/v1/stores/{$btcpayStoreId}/boltz/wallets") && $request->method() === 'POST') {
@@ -236,7 +237,7 @@ class WalletConnectionTest extends TestCase
             'status' => 'connected',
         ]);
 
-        Http::assertSent(function (\Illuminate\Http\Client\Request $request) use ($btcpayStoreId, $walletName, $expectedDescriptor) {
+        Http::assertSent(function (Request $request) use ($btcpayStoreId, $walletName, $expectedDescriptor) {
             if ($request->method() !== 'POST' || ! str_contains($request->url(), "/api/v1/stores/{$btcpayStoreId}/boltz/wallets")) {
                 return false;
             }
@@ -246,7 +247,7 @@ class WalletConnectionTest extends TestCase
                 && ($body['currency'] ?? null) === 'LBTC'
                 && ($body['coreDescriptor'] ?? null) === $expectedDescriptor;
         });
-        Http::assertSent(function (\Illuminate\Http\Client\Request $request) use ($btcpayStoreId, $walletName) {
+        Http::assertSent(function (Request $request) use ($btcpayStoreId, $walletName) {
             if ($request->method() !== 'POST' || ! str_contains($request->url(), "/api/v1/stores/{$btcpayStoreId}/boltz/setup")) {
                 return false;
             }
@@ -263,7 +264,7 @@ class WalletConnectionTest extends TestCase
         $btcpayStoreId = 'store-nwc-greenfield';
         $nwcUri = 'nostr+walletconnect://abc1234567890123456789012345678901234567890123456789012345678901234?relay=wss%3A%2F%2Frelay.example.com&secret=deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
 
-        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($btcpayStoreId, $nwcUri) {
+        Http::fake(function (Request $request) use ($btcpayStoreId, $nwcUri) {
             $url = $request->url();
 
             if (str_contains($url, "/api/v1/stores/{$btcpayStoreId}/lightning/BTC/connect") && $request->method() === 'POST') {
@@ -318,7 +319,7 @@ class WalletConnectionTest extends TestCase
         config(['services.btcpay.base_url' => 'https://btcpay.test']);
         $btcpayStoreId = 'store-boltz-probe';
 
-        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($btcpayStoreId) {
+        Http::fake(function (Request $request) use ($btcpayStoreId) {
             $url = $request->url();
 
             if (str_contains($url, "/api/v1/stores/{$btcpayStoreId}/boltz/wallets") && $request->method() === 'POST') {
@@ -595,7 +596,7 @@ class WalletConnectionTest extends TestCase
         config(['services.btcpay.base_url' => 'https://btcpay.test']);
 
         $putPayload = null;
-        Http::fake(function (\Illuminate\Http\Client\Request $request) use (&$putPayload) {
+        Http::fake(function (Request $request) use (&$putPayload) {
             $url = $request->url();
 
             if (str_contains($url, '/payment-methods/') && $request->method() === 'DELETE') {
@@ -651,7 +652,7 @@ class WalletConnectionTest extends TestCase
         $store->refresh();
         $this->assertSame('blink', $store->wallet_type);
 
-        Http::assertSent(function (\Illuminate\Http\Client\Request $request) {
+        Http::assertSent(function (Request $request) {
             return $request->method() === 'DELETE'
                 && str_contains($request->url(), 'btcpay.test/api/v1/stores/store-btcpay-cashu-switch/payment-methods/CASHU');
         });
@@ -667,7 +668,7 @@ class WalletConnectionTest extends TestCase
     {
         config(['services.btcpay.base_url' => 'https://btcpay.test']);
 
-        Http::fake(function (\Illuminate\Http\Client\Request $request) {
+        Http::fake(function (Request $request) {
             $url = $request->url();
             if (
                 $request->method() === 'DELETE'

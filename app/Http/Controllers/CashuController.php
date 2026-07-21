@@ -8,6 +8,7 @@ use App\Services\BtcPay\CashuService;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\LightningService;
 use App\Services\StoreChecklistService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -25,7 +26,7 @@ class CashuController extends Controller
      * Confirm account password (or LNURL / Nostr challenge) before editing Cashu settings in the UI.
      * Recovery-phrase accounts may confirm with their authenticated session only.
      */
-    public function confirmEdit(Request $request, Store $store): \Illuminate\Http\JsonResponse
+    public function confirmEdit(Request $request, Store $store): JsonResponse
     {
         if (($store->wallet_type ?? null) !== 'cashu') {
             throw ValidationException::withMessages([
@@ -42,7 +43,7 @@ class CashuController extends Controller
         return response()->json(['data' => ['ok' => true]]);
     }
 
-    public function getSettings(Store $store): \Illuminate\Http\JsonResponse
+    public function getSettings(Store $store): JsonResponse
     {
         $wt = $store->wallet_type ?? null;
 
@@ -63,7 +64,7 @@ class CashuController extends Controller
         ]);
     }
 
-    public function updateSettings(Request $request, Store $store): \Illuminate\Http\JsonResponse
+    public function updateSettings(Request $request, Store $store): JsonResponse
     {
         $previousWalletType = $store->wallet_type ?? null;
         $switchingFromLightning = $this->isLightningWalletTypeForCashuSwitch($previousWalletType)
@@ -149,7 +150,7 @@ class CashuController extends Controller
         return response()->json(['data' => $data]);
     }
 
-    public function listPayments(Request $request, Store $store): \Illuminate\Http\JsonResponse
+    public function listPayments(Request $request, Store $store): JsonResponse
     {
         $this->ensureCashuStore($store);
 
@@ -188,7 +189,7 @@ class CashuController extends Controller
         ]);
     }
 
-    public function retryPayment(Request $request, Store $store, string $quoteId): \Illuminate\Http\JsonResponse
+    public function retryPayment(Request $request, Store $store, string $quoteId): JsonResponse
     {
         $this->ensureCashuStore($store);
 
