@@ -712,6 +712,7 @@
     "vat_turnover_limit_ph": "e.g. 50000",
     "vat_turnover_limit_hint": "We warn you as your current-year turnover approaches this limit. Leave 0 to disable.",
     "vat_limit_alert_title": "VAT registration limit",
+    "vat_limit_indicator_tooltip": "VAT turnover at {percent}% of your registration limit",
     "vat_limit_alert_body": "Current-year turnover is {turnover} {currency} - {percent}% of your {limit} {currency} limit.",
     "vat_limit_alert_exceeded": "Current-year turnover {turnover} {currency} has exceeded your {limit} {currency} VAT limit.",
     "save_my_details": "Save my details",

@@ -3203,6 +3203,7 @@
     "vat_turnover_limit_ph": "p. ej. 50000",
     "vat_turnover_limit_hint": "Le avisamos cuando su facturación del año en curso se acerque a este límite. Deje 0 para desactivar.",
     "vat_limit_alert_title": "Límite de registro de IVA",
+    "vat_limit_indicator_tooltip": "Facturación de IVA al {percent}% de su límite de registro",
     "vat_limit_alert_body": "La facturación del año en curso es {turnover} {currency} - {percent}% de su límite de {limit} {currency}.",
     "vat_limit_alert_exceeded": "La facturación del año en curso {turnover} {currency} ha superado su límite de IVA de {limit} {currency}.",
     "save_my_details": "Guardar mis datos",

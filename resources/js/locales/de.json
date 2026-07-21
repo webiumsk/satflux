@@ -712,6 +712,7 @@
     "vat_turnover_limit_ph": "z. B. 50000",
     "vat_turnover_limit_hint": "Wir warnen Sie, wenn sich Ihr Jahresumsatz dieser Grenze nähert. 0 zum Deaktivieren.",
     "vat_limit_alert_title": "USt.-Registrierungsgrenze",
+    "vat_limit_indicator_tooltip": "USt.-Umsatz bei {percent}% Ihrer Registrierungsgrenze",
     "vat_limit_alert_body": "Der Jahresumsatz beträgt {turnover} {currency} - {percent}% Ihrer Grenze von {limit} {currency}.",
     "vat_limit_alert_exceeded": "Der Jahresumsatz {turnover} {currency} hat Ihre USt.-Grenze von {limit} {currency} überschritten.",
     "save_my_details": "Meine Daten speichern",
