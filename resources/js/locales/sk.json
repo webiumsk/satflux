@@ -712,6 +712,7 @@
     "vat_turnover_limit_ph": "napr. 50000",
     "vat_turnover_limit_hint": "Upozorníme ťa, keď sa obrat za aktuálny rok priblíži k tomuto limitu. Ponechaj 0 pre vypnutie.",
     "vat_limit_alert_title": "Limit pre registráciu DPH",
+    "vat_limit_indicator_tooltip": "Obrat DPH na {percent}% limitu pre registráciu",
     "vat_limit_alert_body": "Obrat za aktuálny rok je {turnover} {currency} - {percent}% z tvojho limitu {limit} {currency}.",
     "vat_limit_alert_exceeded": "Obrat za aktuálny rok {turnover} {currency} prekročil tvoj DPH limit {limit} {currency}.",
     "save_my_details": "Uložiť moje údaje",
