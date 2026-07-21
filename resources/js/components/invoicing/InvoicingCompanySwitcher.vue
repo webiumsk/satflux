@@ -11,9 +11,9 @@
       :class="{ 'invoicing-company-switcher__trigger--open': open }"
       :aria-expanded="open"
       aria-haspopup="listbox"
-      :aria-label="t('invoicing.company_switcher_title')"
       @click="toggleOpen"
     >
+      <span class="sr-only">{{ t('invoicing.company_switcher_title') }}</span>
       <img
         v-if="currentLogoUrl"
         :src="currentLogoUrl"
