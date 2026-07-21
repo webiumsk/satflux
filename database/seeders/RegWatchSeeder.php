@@ -21,7 +21,7 @@ use Illuminate\Database\Seeder;
  */
 class RegWatchSeeder extends Seeder
 {
-    private const PLACEHOLDER_RULE_TEXT = 'TODO: overiť z oficiálneho zdroja';
+    private const PLACEHOLDER_RULE_TEXT = RegWatchRule::PLACEHOLDER_RULE_TEXT;
 
     public function run(): void
     {

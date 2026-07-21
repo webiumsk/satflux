@@ -3,18 +3,22 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\RegWatchChangeStatus;
+use App\Enums\RegWatchTopic;
 use App\Http\Controllers\Controller;
 use App\Models\RegWatchChange;
+use App\Models\RegWatchJurisdiction;
+use App\Models\RegWatchRule;
 use App\Models\RegWatchSource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * Admin review of RegWatch detections (docs/LEGAL.md): list changes, view
- * the diff and move a change through new -> reviewed -> applied/dismissed.
- * This controller only manages the changelog - rule content stays a manual
- * edit after verifying the official source.
+ * Admin review of RegWatch detections and the rule knowledge base
+ * (docs/LEGAL.md): list changes, view the diff and move a change through
+ * new -> reviewed -> applied/dismissed; edit rules by hand after verifying
+ * the official source (verified_on carries the human verification date -
+ * nothing here ever generates rule content).
  */
 class RegWatchController extends Controller
 {
@@ -111,6 +115,151 @@ class RegWatchController extends Controller
                 'new_changes_count' => $source->new_changes_count,
             ])->all(),
         ]);
+    }
+
+    public function jurisdictions(): JsonResponse
+    {
+        return response()->json([
+            'data' => RegWatchJurisdiction::query()
+                ->orderBy('code')
+                ->get()
+                ->map(fn (RegWatchJurisdiction $jurisdiction) => [
+                    'id' => $jurisdiction->id,
+                    'code' => $jurisdiction->code,
+                    'name' => $jurisdiction->name,
+                    'active' => $jurisdiction->active,
+                ])->all(),
+        ]);
+    }
+
+    public function rules(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'jurisdiction_id' => ['nullable', 'uuid'],
+            'topic' => ['nullable', Rule::enum(RegWatchTopic::class)],
+            'verified' => ['nullable', 'boolean'],
+        ]);
+
+        $query = RegWatchRule::query()
+            ->with(['jurisdiction:id,code,name', 'source:id,slug,name'])
+            ->join('regwatch_jurisdictions', 'regwatch_jurisdictions.id', '=', 'regwatch_rules.jurisdiction_id')
+            ->orderBy('regwatch_jurisdictions.code')
+            ->orderBy('regwatch_rules.topic')
+            ->select('regwatch_rules.*');
+
+        if (! empty($validated['jurisdiction_id'])) {
+            $query->where('regwatch_rules.jurisdiction_id', $validated['jurisdiction_id']);
+        }
+        if (! empty($validated['topic'])) {
+            $query->where('regwatch_rules.topic', $validated['topic']);
+        }
+        if (array_key_exists('verified', $validated) && $validated['verified'] !== null) {
+            $request->boolean('verified')
+                ? $query->whereNotNull('verified_on')
+                : $query->whereNull('verified_on');
+        }
+
+        $rules = $query->paginate(20);
+
+        return response()->json([
+            'data' => collect($rules->items())->map(fn (RegWatchRule $rule) => $this->formatRule($rule))->all(),
+            'meta' => [
+                'current_page' => $rules->currentPage(),
+                'last_page' => $rules->lastPage(),
+                'per_page' => $rules->perPage(),
+                'total' => $rules->total(),
+            ],
+        ]);
+    }
+
+    public function showRule(RegWatchRule $rule): JsonResponse
+    {
+        $rule->load(['jurisdiction:id,code,name', 'source:id,slug,name']);
+
+        return response()->json([
+            'data' => $this->formatRule($rule, withText: true),
+        ]);
+    }
+
+    public function updateRule(Request $request, RegWatchRule $rule): JsonResponse
+    {
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'rule_text' => ['required', 'string', 'max:20000'],
+            'source_url' => ['required', 'url', 'max:2048'],
+            'source_id' => ['nullable', 'uuid', Rule::exists('regwatch_sources', 'id')],
+            // The date a human verified the text against source_url - never
+            // in the future, NULL while the rule is still a placeholder.
+            'verified_on' => ['nullable', 'date', 'before_or_equal:today'],
+            'effective_from' => ['nullable', 'date'],
+        ]);
+
+        if (! empty($validated['source_id'])) {
+            $source = RegWatchSource::query()->findOrFail($validated['source_id']);
+            if ($source->jurisdiction_id !== $rule->jurisdiction_id) {
+                return response()->json([
+                    'message' => __('The source belongs to a different jurisdiction than the rule.'),
+                ], 422);
+            }
+        }
+
+        // The LEGAL.md invariant: a rule whose text is still the seeded
+        // placeholder has not been verified by anyone - it must not carry a
+        // verification stamp.
+        if (! empty($validated['verified_on'])
+            && trim($validated['rule_text']) === RegWatchRule::PLACEHOLDER_RULE_TEXT) {
+            return response()->json([
+                'message' => __('A placeholder rule cannot be marked as verified - fill in the verified rule text first.'),
+            ], 422);
+        }
+
+        $rule->forceFill([
+            'title' => $validated['title'],
+            'rule_text' => $validated['rule_text'],
+            'source_url' => $validated['source_url'],
+            'source_id' => $validated['source_id'] ?? null,
+            'verified_on' => $validated['verified_on'] ?? null,
+            'effective_from' => $validated['effective_from'] ?? null,
+        ])->save();
+
+        $rule->load(['jurisdiction:id,code,name', 'source:id,slug,name']);
+
+        return response()->json([
+            'data' => $this->formatRule($rule, withText: true),
+            'message' => __('Rule updated.'),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatRule(RegWatchRule $rule, bool $withText = false): array
+    {
+        $data = [
+            'id' => $rule->id,
+            'slug' => $rule->slug,
+            'topic' => $rule->topic->value,
+            'title' => $rule->title,
+            'source_url' => $rule->source_url,
+            'verified_on' => $rule->verified_on?->toDateString(),
+            'effective_from' => $rule->effective_from?->toDateString(),
+            'jurisdiction' => $rule->jurisdiction ? [
+                'id' => $rule->jurisdiction->id,
+                'code' => $rule->jurisdiction->code,
+                'name' => $rule->jurisdiction->name,
+            ] : null,
+            'source' => $rule->source ? [
+                'id' => $rule->source->id,
+                'slug' => $rule->source->slug,
+                'name' => $rule->source->name,
+            ] : null,
+        ];
+
+        if ($withText) {
+            $data['rule_text'] = $rule->rule_text;
+        }
+
+        return $data;
     }
 
     /**

@@ -1036,6 +1036,18 @@ export const adminRegwatchApi = {
         index: () =>
             api.get('/admin/regwatch/sources'),
     },
+    jurisdictions: {
+        index: () =>
+            api.get('/admin/regwatch/jurisdictions'),
+    },
+    rules: {
+        index: (params?: { jurisdiction_id?: string; topic?: string; verified?: string; page?: number }) =>
+            api.get('/admin/regwatch/rules', { params }),
+        show: (id: string) =>
+            api.get(`/admin/regwatch/rules/${id}`),
+        update: (id: string, data: Record<string, unknown>) =>
+            api.put(`/admin/regwatch/rules/${id}`, data),
+    },
 };
 
 export default api;

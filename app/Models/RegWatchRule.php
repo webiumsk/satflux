@@ -26,10 +26,15 @@ use Illuminate\Support\Carbon;
  * @property string $source_url
  * @property Carbon|null $verified_on
  * @property Carbon|null $effective_from
+ * @property-read RegWatchJurisdiction|null $jurisdiction
+ * @property-read RegWatchSource|null $source
  */
 class RegWatchRule extends Model
 {
     use HasUuids;
+
+    /** Seeded placeholder body - a rule with this text must stay unverified. */
+    public const PLACEHOLDER_RULE_TEXT = 'TODO: overiť z oficiálneho zdroja';
 
     protected $table = 'regwatch_rules';
 
