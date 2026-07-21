@@ -152,6 +152,8 @@
     "changes_saved": "Zmeny boli uložené.",
     "local_db_load_failed_title": "Nepodarilo sa načítať lokálne fakturačné dáta",
     "local_db_load_failed_detail": "Databáza v prehliadači neodpovedala včas. Skúste znova alebo obnovte stránku. Ak sa to opakuje, prihláste sa obnovovacou frázou alebo vymažte údaje stránky pre satflux.io.",
+    "local_db_multitab_blocked_title": "Aplikácia je otvorená v inom okne",
+    "local_db_multitab_blocked_detail": "Fakturácia používa jednu lokálnu databázu zdieľanú medzi kartami. Zavrite ostatné okná alebo karty so satflux.io a skúste to znova.",
     "local_db_retry": "Skúsiť znova",
     "evolu_bootstrap_failed_title": "Synchronizácia fakturácie sa nepodarila spustiť",
     "evolu_bootstrap_failed_detail": "Lokálna fakturácia sa neinicializovala. Obnovte stránku. Ak problém pretrváva, prihláste sa obnovovacou frázou.",

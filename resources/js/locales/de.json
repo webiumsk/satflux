@@ -152,6 +152,8 @@
     "changes_saved": "Änderungen gespeichert.",
     "local_db_load_failed_title": "Lokale Fakturierungsdaten konnten nicht geladen werden",
     "local_db_load_failed_detail": "Die Browserdatenbank hat nicht rechtzeitig geantwortet. Versuchen Sie es erneut oder laden Sie die Seite neu. Wenn das weiterhin passiert, melden Sie sich mit Ihrer Wiederherstellungsphrase an oder löschen Sie die Website-Daten für satflux.io.",
+    "local_db_multitab_blocked_title": "Die App ist in einem anderen Fenster geöffnet",
+    "local_db_multitab_blocked_detail": "Die Rechnungsstellung nutzt eine einzige lokale Datenbank, die von allen Tabs gemeinsam genutzt wird. Schließen Sie die anderen Fenster oder Tabs mit satflux.io und versuchen Sie es erneut.",
     "local_db_retry": "Erneut versuchen",
     "evolu_bootstrap_failed_title": "Die Synchronisierung der Rechnungsstellung konnte nicht gestartet werden",
     "evolu_bootstrap_failed_detail": "Die lokale Rechnungsstellung konnte nicht initialisiert werden. Laden Sie die Seite neu. Falls das Problem weiterhin besteht, melden Sie sich mit Ihrer Wiederherstellungsphrase an.",
