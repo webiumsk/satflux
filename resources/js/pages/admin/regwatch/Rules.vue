@@ -213,6 +213,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { adminRegwatchApi } from '../../../services/api';
+import { getApiErrorMessage } from '../../../composables/useApiError';
 import Select from '../../../components/ui/Select.vue';
 
 const { t } = useI18n();
@@ -374,8 +375,10 @@ async function saveRule(): Promise<void> {
     });
     editing.value = null;
     await loadRules();
-  } catch {
-    saveError.value = t('admin.regwatch.save_error');
+  } catch (error) {
+    // Backend 422s carry the specific reason (placeholder verification,
+    // cross-jurisdiction source, field validation) - show it when present.
+    saveError.value = getApiErrorMessage(error, t('admin.regwatch.save_error'));
   } finally {
     saving.value = false;
   }

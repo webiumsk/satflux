@@ -203,6 +203,16 @@ class RegWatchController extends Controller
             }
         }
 
+        // The LEGAL.md invariant: a rule whose text is still the seeded
+        // placeholder has not been verified by anyone - it must not carry a
+        // verification stamp.
+        if (! empty($validated['verified_on'])
+            && trim($validated['rule_text']) === RegWatchRule::PLACEHOLDER_RULE_TEXT) {
+            return response()->json([
+                'message' => __('A placeholder rule cannot be marked as verified - fill in the verified rule text first.'),
+            ], 422);
+        }
+
         $rule->forceFill([
             'title' => $validated['title'],
             'rule_text' => $validated['rule_text'],

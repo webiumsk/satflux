@@ -33,6 +33,9 @@ class RegWatchRule extends Model
 {
     use HasUuids;
 
+    /** Seeded placeholder body - a rule with this text must stay unverified. */
+    public const PLACEHOLDER_RULE_TEXT = 'TODO: overiť z oficiálneho zdroja';
+
     protected $table = 'regwatch_rules';
 
     protected $fillable = [

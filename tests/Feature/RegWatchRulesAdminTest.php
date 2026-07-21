@@ -125,6 +125,12 @@ class RegWatchRulesAdminTest extends TestCase
         $this->assertSame('Overené znenie pravidla doplnené človekom.', $rule->rule_text);
         $this->assertNotNull($rule->verified_on);
         $this->assertSame('2026-01-01', $rule->effective_from->toDateString());
+
+        // The write route is audit-logged.
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'admin.regwatch.rule_updated',
+            'user_id' => $admin->id,
+        ]);
     }
 
     #[Test]
@@ -149,6 +155,16 @@ class RegWatchRulesAdminTest extends TestCase
             ->putJson("/api/admin/regwatch/rules/{$rule->id}", array_merge($base, ['source_url' => 'not-a-url']))
             ->assertStatus(422)
             ->assertJsonValidationErrors(['source_url']);
+
+        // A rule whose text is still the seeded placeholder must not accept
+        // a verification stamp (LEGAL.md: verified_on = human-verified text).
+        $this->actingAs($admin)
+            ->putJson("/api/admin/regwatch/rules/{$rule->id}", array_merge($base, [
+                'rule_text' => RegWatchRule::PLACEHOLDER_RULE_TEXT,
+                'verified_on' => now()->toDateString(),
+            ]))
+            ->assertStatus(422);
+        $this->assertNull($rule->refresh()->verified_on);
 
         $this->assertSame('TODO: overiť z oficiálneho zdroja', $rule->refresh()->rule_text);
     }
