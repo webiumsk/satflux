@@ -2644,6 +2644,8 @@
     "changes_saved": "Cambios guardados.",
     "local_db_load_failed_title": "No se pudieron cargar los datos de facturación locales",
     "local_db_load_failed_detail": "La base de datos del navegador no respondió a tiempo. Inténtelo de nuevo o recargue la página. Si persiste, inicie sesión con su frase de recuperación o borre los datos del sitio para satflux.io.",
+    "local_db_multitab_blocked_title": "La aplicación está abierta en otra ventana",
+    "local_db_multitab_blocked_detail": "La facturación usa una única base de datos local compartida entre pestañas. Cierre las otras ventanas o pestañas con satflux.io e inténtelo de nuevo.",
     "local_db_retry": "Reintentar",
     "evolu_bootstrap_failed_title": "No se pudo iniciar la sincronización de facturación",
     "evolu_bootstrap_failed_detail": "La facturación local no se inicializó. Recargue la página. Si el problema continúa, inicie sesión con su frase de recuperación.",

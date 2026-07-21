@@ -152,6 +152,8 @@
     "changes_saved": "Changes saved.",
     "local_db_load_failed_title": "Could not load local invoicing data",
     "local_db_load_failed_detail": "The browser database did not respond in time. Try again or reload the page. If this keeps happening, sign in with your recovery phrase or clear site data for satflux.io.",
+    "local_db_multitab_blocked_title": "The app is open in another window",
+    "local_db_multitab_blocked_detail": "Invoicing uses a single local database shared across tabs. Close the other windows or tabs running satflux.io, then try again.",
     "local_db_retry": "Try again",
     "evolu_bootstrap_failed_title": "Invoicing sync could not start",
     "evolu_bootstrap_failed_detail": "Local invoicing did not initialize. Reload the page. If the problem continues, sign in with your recovery phrase.",
