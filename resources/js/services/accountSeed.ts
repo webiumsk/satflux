@@ -152,6 +152,11 @@ export function clearStoredAccountMnemonic(): void {
     }
 }
 
+export function clearSessionAccountMnemonic(): void {
+    sessionStorage.removeItem(ACCOUNT_MNEMONIC_STORAGE_KEY);
+    sessionStorage.removeItem(LEGACY_GUEST_MNEMONIC_STORAGE_KEY);
+}
+
 export type OwnerSwitchImpact =
     | { switches: false }
     | { switches: true; companies: number; contacts: number; documents: number };
