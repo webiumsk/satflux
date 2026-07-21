@@ -26,6 +26,8 @@ use Illuminate\Support\Carbon;
  * @property string $source_url
  * @property Carbon|null $verified_on
  * @property Carbon|null $effective_from
+ * @property-read RegWatchJurisdiction|null $jurisdiction
+ * @property-read RegWatchSource|null $source
  */
 class RegWatchRule extends Model
 {

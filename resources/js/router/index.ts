@@ -357,6 +357,12 @@ const router = createRouter({
             meta: { requiresAuth: true, requiresAdmin: true },
         },
         {
+            path: '/admin/regwatch/rules',
+            name: 'admin-regwatch-rules',
+            component: () => import('../pages/admin/regwatch/Rules.vue'),
+            meta: { requiresAuth: true, requiresAdmin: true },
+        },
+        {
             path: '/admin/users',
             name: 'admin-users',
             component: () => import('../pages/admin/Users.vue'),

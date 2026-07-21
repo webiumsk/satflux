@@ -971,6 +971,11 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
         Route::put('/admin/regwatch/changes/{change}/status', [RegWatchController::class, 'updateChangeStatus'])
             ->middleware(AuditLog::class.':admin.regwatch.change_status_updated');
         Route::get('/admin/regwatch/sources', [RegWatchController::class, 'sources']);
+        Route::get('/admin/regwatch/jurisdictions', [RegWatchController::class, 'jurisdictions']);
+        Route::get('/admin/regwatch/rules', [RegWatchController::class, 'rules']);
+        Route::get('/admin/regwatch/rules/{rule}', [RegWatchController::class, 'showRule']);
+        Route::put('/admin/regwatch/rules/{rule}', [RegWatchController::class, 'updateRule'])
+            ->middleware(AuditLog::class.':admin.regwatch.rule_updated');
     });
 });
 
