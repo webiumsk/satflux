@@ -96,6 +96,7 @@ non-trivial. Drop the corresponding `ignore` entry when tackling one.
 | `vue-router` (4 -> 5) | v5 is a build-time/typed router (peers on vite 8, pinia 3, `@pinia/colada`, `@vue-macros`); we use the v4 runtime `createRouter` API. Needs the vite migration + pinia 3 + a routing rewrite. |
 | `@tiptap/*` (2 -> 3) | tiptap 3 must be upgraded across all 16 `@tiptap/*` packages together (extension 3.x peers `@tiptap/core@3`); partial bumps ERESOLVE. |
 | `@vue/eslint-config-typescript` (13 -> 14) | Requires ESLint `^9` (flat-config migration); project is on ESLint 8. |
+| `laravel/framework` (12 -> 13) | Full framework major (breaking changes) and its stricter Pint preset reformats ~160 files (`fully_qualified_strict_types` etc.). Master stays Pint-clean on the current version; do the upgrade + reformat as one deliberate migration. |
 
 ## Known limitations
 

@@ -53,6 +53,13 @@ updates:
         applies-to: version-updates
         update-types:
           - patch
+    # Deferred majors - dedicated migration, not a dep bump. Minor/patch flow.
+    ignore:
+      # Laravel 12 -> 13 is a full framework major migration (breaking changes
+      # + a stricter Pint preset that reformats ~160 files). Do it deliberately,
+      # not as a Dependabot merge. See docs/DEPENDABOT_MAINTENANCE.md.
+      - dependency-name: "laravel/framework"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
