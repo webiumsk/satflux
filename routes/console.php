@@ -68,6 +68,15 @@ Schedule::command('compliance:sync-sanctions-lists')
     ->withoutOverlapping()
     ->runInBackground();
 
+// RegWatch legislative monitoring (docs/LEGAL.md): fetch official sources,
+// diff snapshots, record detections for human review (opt-in via REGWATCH_ENABLED).
+if (config('regwatch.enabled')) {
+    Schedule::command('regwatch:monitor')
+        ->dailyAt('05:15')
+        ->withoutOverlapping()
+        ->runInBackground();
+}
+
 if (config('efaktura.enabled')) {
     Schedule::command('efaktura:poll-inbound')
         ->everyFifteenMinutes()
