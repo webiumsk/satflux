@@ -352,7 +352,7 @@ describe("Profile recovery phrase owner switch guard", () => {
         const wrapper = await mountProfile();
         await wrapper.find("input[type='password']").setValue("device passphrase");
 
-        await wrapper.find("form").trigger("submit");
+        await wrapper.find("form[autocomplete='on']").trigger("submit");
         await flushPromises();
 
         expect(mocks.unlockDeviceWithPassphrase).toHaveBeenCalledTimes(1);
@@ -363,7 +363,7 @@ describe("Profile recovery phrase owner switch guard", () => {
         expect(wrapper.text()).toContain("auth.guest_restore_owner_switch_title");
 
         await wrapper.find("input[type='password']").setValue("device passphrase");
-        await wrapper.find("form").trigger("submit");
+        await wrapper.find("form[autocomplete='on']").trigger("submit");
         await flushPromises();
 
         expect(mocks.unlockDeviceWithPassphrase).toHaveBeenCalledTimes(2);
