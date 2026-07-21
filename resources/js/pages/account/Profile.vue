@@ -1329,7 +1329,11 @@
                 :disabled="deviceUnlockLoading"
                 @click="submitDeviceUnlockWithPasskey"
               >
-                {{ t("account.passkey_unlock_button") }}
+                {{
+                  restoreOwnerSwitchImpact
+                    ? t("auth.guest_restore_owner_switch_confirm")
+                    : t("account.passkey_unlock_button")
+                }}
               </button>
               <p class="text-center text-xs text-gray-500">
                 {{ t("account.passkey_or_passphrase") }}
@@ -1369,10 +1373,33 @@
                   class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm text-white disabled:opacity-50"
                   :disabled="deviceUnlockLoading"
                 >
-                  {{ deviceUnlockLoading ? t("common.loading") : t("account.device_unlock_submit") }}
+                  {{
+                    deviceUnlockLoading
+                      ? t("common.loading")
+                      : restoreOwnerSwitchImpact
+                        ? t("auth.guest_restore_owner_switch_confirm")
+                        : t("account.device_unlock_submit")
+                  }}
                 </button>
               </div>
             </form>
+            <div
+              v-if="restoreOwnerSwitchImpact"
+              class="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-2"
+            >
+              <p class="text-sm font-medium text-amber-300">
+                {{ t("auth.guest_restore_owner_switch_title") }}
+              </p>
+              <p class="text-sm text-gray-300">
+                {{
+                  t("auth.guest_restore_owner_switch_body", {
+                    documents: restoreOwnerSwitchImpact.documents,
+                    contacts: restoreOwnerSwitchImpact.contacts,
+                    companies: restoreOwnerSwitchImpact.companies,
+                  })
+                }}
+              </p>
+            </div>
           </template>
 
           <!-- Recovery-phrase mode: enter the phrase, optionally remember the device -->
@@ -1588,9 +1615,11 @@ import {
 import {
   initEvoluFromAccountSeedIfNeeded,
   bindRecoveryPhraseOnThisDevice,
+  clearSessionAccountMnemonic,
   deriveRecoveryPublicKeyHex,
   getStoredAccountMnemonic,
   previewOwnerSwitchImpact,
+  storeAccountMnemonic,
   type OwnerSwitchImpact,
 } from "../../services/accountSeed";
 import {
@@ -1742,9 +1771,15 @@ async function refreshDeviceRemembered(): Promise<void> {
 async function submitDeviceUnlock(): Promise<void> {
   deviceUnlockError.value = "";
   deviceUnlockLoading.value = true;
+  const previousMnemonic = getStoredAccountMnemonic();
   try {
+    const { recoveryPhrase } = await unlockDeviceWithPassphrase(devicePassphraseInput.value);
+    if (!(await confirmRestoreOwnerSwitchIfNeeded(recoveryPhrase))) {
+      restorePreviousSessionMnemonic(previousMnemonic);
+      devicePassphraseInput.value = "";
+      return;
+    }
     resetEvoluBootstrapForRetry();
-    await unlockDeviceWithPassphrase(devicePassphraseInput.value);
     storedGuestMnemonic.value = getStoredGuestMnemonic();
     devicePassphraseInput.value = "";
     showRestoreOnDeviceModal.value = false;
@@ -1796,9 +1831,14 @@ function passkeyErrorMessage(error: unknown): string {
 async function submitDeviceUnlockWithPasskey(): Promise<void> {
   deviceUnlockError.value = "";
   deviceUnlockLoading.value = true;
+  const previousMnemonic = getStoredAccountMnemonic();
   try {
+    const { recoveryPhrase } = await unlockDeviceWithPasskey();
+    if (!(await confirmRestoreOwnerSwitchIfNeeded(recoveryPhrase))) {
+      restorePreviousSessionMnemonic(previousMnemonic);
+      return;
+    }
     resetEvoluBootstrapForRetry();
-    await unlockDeviceWithPasskey();
     storedGuestMnemonic.value = getStoredGuestMnemonic();
     showRestoreOnDeviceModal.value = false;
     const { evolu } = await import("@/evolu/client");
@@ -2021,6 +2061,14 @@ async function submitRestoreWithAccountPasskey(): Promise<void> {
 function resetRestoreOwnerSwitchGuard(): void {
   restoreOwnerSwitchImpact.value = null;
   restoreOwnerSwitchConfirmedFor.value = "";
+}
+
+function restorePreviousSessionMnemonic(previousMnemonic: string | null): void {
+  clearSessionAccountMnemonic();
+  if (previousMnemonic) {
+    storeAccountMnemonic(previousMnemonic);
+  }
+  storedGuestMnemonic.value = getStoredGuestMnemonic();
 }
 
 async function confirmRestoreOwnerSwitchIfNeeded(recoveryPhrase: string): Promise<boolean> {
