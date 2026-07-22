@@ -78,6 +78,24 @@ class RegWatchSeederTest extends TestCase
     }
 
     #[Test]
+    public function reseeding_never_overwrites_human_verified_rules(): void
+    {
+        $this->seed_regwatch();
+
+        $rule = RegWatchRule::where('slug', 'sk-vat-registration')->firstOrFail();
+        $rule->forceFill([
+            'rule_text' => 'Overené znenie doplnené človekom.',
+            'verified_on' => '2026-07-22',
+        ])->save();
+
+        $this->seed_regwatch();
+
+        $rule->refresh();
+        $this->assertSame('Overené znenie doplnené človekom.', $rule->rule_text);
+        $this->assertSame('2026-07-22', $rule->verified_on->toDateString());
+    }
+
+    #[Test]
     public function relations_and_enum_casts_work(): void
     {
         $this->seed_regwatch();
