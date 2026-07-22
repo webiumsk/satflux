@@ -11,7 +11,8 @@ use Illuminate\Database\Seeder;
 
 /**
  * Seeds the RegWatch knowledge-base skeleton (docs/LEGAL.md): jurisdictions,
- * official sources (SK/CZ URLs verified 2026-07-21, DE 2026-07-22) and
+ * official sources (SK/CZ URLs verified 2026-07-21, DE/AT/CH/HU/PL
+ * 2026-07-22) and
  * PLACEHOLDER rules only. Never seed concrete tax rates, thresholds,
  * deadlines or rule wording - a human fills those in after verifying the
  * official source, stamping verified_on. Idempotent (updateOrCreate for
@@ -57,9 +58,13 @@ class RegWatchSeeder extends Seeder
     }
 
     /**
-     * Monitored sources for SK, CZ and DE. Official portals only; the CZ
-     * URLs are canonical (e-sbirka.gov.cz and financnisprava.gov.cz are the
-     * targets of permanent redirects from the legacy .cz domains).
+     * Monitored sources for all seven EU/CH jurisdictions. Official portals
+     * only; the CZ URLs are canonical (e-sbirka.gov.cz and
+     * financnisprava.gov.cz are the targets of permanent redirects from the
+     * legacy .cz domains). AT RIS, HU njt.hu and PL ISAP are deliberately
+     * absent - they block automated fetches (503/reset/CAPTCHA, verified
+     * 2026-07-22), so the cron could never monitor them; the tax authority
+     * covers those jurisdictions' topics instead.
      *
      * @param  array<string, RegWatchJurisdiction>  $jurisdictions
      * @return array<string, RegWatchSource> keyed by slug
@@ -109,6 +114,48 @@ class RegWatchSeeder extends Seeder
                 'url' => 'https://www.bzst.de/',
                 'type' => RegWatchSourceType::TaxAuthority,
             ],
+            [
+                'slug' => 'at-bmf',
+                'jurisdiction' => 'AT',
+                'name' => 'Bundesministerium für Finanzen (AT)',
+                'url' => 'https://www.bmf.gv.at/',
+                'type' => RegWatchSourceType::TaxAuthority,
+            ],
+            [
+                'slug' => 'ch-fedlex',
+                'jurisdiction' => 'CH',
+                'name' => 'Fedlex - platforma spolkového práva CH',
+                'url' => 'https://www.fedlex.admin.ch/',
+                'type' => RegWatchSourceType::LegalRegister,
+            ],
+            [
+                'slug' => 'ch-estv',
+                'jurisdiction' => 'CH',
+                'name' => 'Eidgenössische Steuerverwaltung (ESTV)',
+                'url' => 'https://www.estv.admin.ch/',
+                'type' => RegWatchSourceType::TaxAuthority,
+            ],
+            [
+                'slug' => 'hu-nav',
+                'jurisdiction' => 'HU',
+                'name' => 'Nemzeti Adó- és Vámhivatal (NAV)',
+                'url' => 'https://nav.gov.hu/',
+                'type' => RegWatchSourceType::TaxAuthority,
+            ],
+            [
+                'slug' => 'pl-dziennik-ustaw',
+                'jurisdiction' => 'PL',
+                'name' => 'Dziennik Ustaw RP',
+                'url' => 'https://dziennikustaw.gov.pl/',
+                'type' => RegWatchSourceType::LegalRegister,
+            ],
+            [
+                'slug' => 'pl-podatki',
+                'jurisdiction' => 'PL',
+                'name' => 'podatki.gov.pl (Ministerstwo Finansów)',
+                'url' => 'https://www.podatki.gov.pl/',
+                'type' => RegWatchSourceType::TaxAuthority,
+            ],
         ];
 
         $bySlug = [];
@@ -129,7 +176,8 @@ class RegWatchSeeder extends Seeder
     }
 
     /**
-     * PLACEHOLDER rules for the phase-1 topics in SK, CZ and DE. Deliberately no
+     * PLACEHOLDER rules for the phase-1 topics in all seven EU/CH
+     * jurisdictions. Deliberately no
      * rates, thresholds or deadlines - titles only name the topic, rule_text
      * is a TODO and verified_on stays NULL until a human verifies the rule
      * against source_url.
@@ -147,7 +195,7 @@ class RegWatchSeeder extends Seeder
         $topics = [
             RegWatchTopic::VatRegistration->value => [
                 'title' => 'DPH - registračná povinnosť a prahy',
-                'source' => ['SK' => 'sk-financna-sprava', 'CZ' => 'cz-financni-sprava', 'DE' => 'de-gesetze-im-internet'],
+                'source' => ['SK' => 'sk-financna-sprava', 'CZ' => 'cz-financni-sprava', 'DE' => 'de-gesetze-im-internet', 'AT' => 'at-bmf', 'CH' => 'ch-estv', 'HU' => 'hu-nav', 'PL' => 'pl-podatki'],
                 'url' => [
                     'SK' => 'https://www.financnasprava.sk/sk/podnikatelia/dane/dan-z-pridanej-hodnoty/registracna-povinnost-pre-dph',
                     // §19 UStG - Kleinunternehmer (thresholds live here).
@@ -156,12 +204,12 @@ class RegWatchSeeder extends Seeder
             ],
             RegWatchTopic::ReverseCharge->value => [
                 'title' => 'Reverse charge - cezhraničné B2B služby',
-                'source' => ['SK' => 'sk-slov-lex', 'CZ' => 'cz-e-sbirka', 'DE' => 'de-gesetze-im-internet'],
+                'source' => ['SK' => 'sk-slov-lex', 'CZ' => 'cz-e-sbirka', 'DE' => 'de-gesetze-im-internet', 'AT' => 'at-bmf', 'CH' => 'ch-fedlex', 'HU' => 'hu-nav', 'PL' => 'pl-dziennik-ustaw'],
                 'url' => [],
             ],
             RegWatchTopic::Oss->value => [
                 'title' => 'OSS režim (One Stop Shop)',
-                'source' => ['SK' => 'sk-slov-lex', 'CZ' => 'cz-e-sbirka', 'DE' => 'de-bzst'],
+                'source' => ['SK' => 'sk-slov-lex', 'CZ' => 'cz-e-sbirka', 'DE' => 'de-bzst', 'AT' => 'at-bmf', 'CH' => 'ch-estv', 'HU' => 'hu-nav', 'PL' => 'pl-podatki'],
                 'url' => [
                     // BZSt Umsatzsteuer section carries the OSS procedures.
                     'DE' => 'https://www.bzst.de/DE/Unternehmen/Umsatzsteuer/umsatzsteuer_node.html',
@@ -169,26 +217,26 @@ class RegWatchSeeder extends Seeder
             ],
             RegWatchTopic::UsLlcIncome->value => [
                 'title' => 'Príjem z US LLC v daňovom priznaní',
-                'source' => ['SK' => 'sk-financna-sprava', 'CZ' => 'cz-financni-sprava', 'DE' => 'de-bzst'],
+                'source' => ['SK' => 'sk-financna-sprava', 'CZ' => 'cz-financni-sprava', 'DE' => 'de-bzst', 'AT' => 'at-bmf', 'CH' => 'ch-estv', 'HU' => 'hu-nav', 'PL' => 'pl-podatki'],
                 'url' => [
                     'SK' => 'https://www.financnasprava.sk/sk/podnikatelia/dane/dan-z-prijmov/',
                 ],
             ],
             RegWatchTopic::IncomeTax->value => [
                 'title' => 'Daň z príjmov / CIT',
-                'source' => ['SK' => 'sk-financna-sprava', 'CZ' => 'cz-financni-sprava', 'DE' => 'de-gesetze-im-internet'],
+                'source' => ['SK' => 'sk-financna-sprava', 'CZ' => 'cz-financni-sprava', 'DE' => 'de-gesetze-im-internet', 'AT' => 'at-bmf', 'CH' => 'ch-estv', 'HU' => 'hu-nav', 'PL' => 'pl-podatki'],
                 'url' => [
                     'SK' => 'https://www.financnasprava.sk/sk/podnikatelia/dane/dan-z-prijmov/',
                 ],
             ],
             RegWatchTopic::Archiving->value => [
                 'title' => 'Archivácia účtovných a daňových dokladov',
-                'source' => ['SK' => 'sk-slov-lex', 'CZ' => 'cz-e-sbirka', 'DE' => 'de-gesetze-im-internet'],
+                'source' => ['SK' => 'sk-slov-lex', 'CZ' => 'cz-e-sbirka', 'DE' => 'de-gesetze-im-internet', 'AT' => 'at-bmf', 'CH' => 'ch-fedlex', 'HU' => 'hu-nav', 'PL' => 'pl-dziennik-ustaw'],
                 'url' => [],
             ],
         ];
 
-        foreach (['SK', 'CZ', 'DE'] as $code) {
+        foreach (['SK', 'CZ', 'DE', 'AT', 'CH', 'HU', 'PL'] as $code) {
             foreach ($topics as $topic => $spec) {
                 $source = $sources[$spec['source'][$code]];
                 // firstOrCreate, never updateOrCreate: rules are the human-

@@ -29,16 +29,20 @@ class RegWatchSeederTest extends TestCase
         $this->seed_regwatch();
 
         $this->assertSame(8, RegWatchJurisdiction::count());
-        $this->assertSame(6, RegWatchSource::count());
-        $this->assertSame(18, RegWatchRule::count());
+        $this->assertSame(12, RegWatchSource::count());
+        $this->assertSame(42, RegWatchRule::count());
 
         $codes = RegWatchJurisdiction::pluck('code')->sort()->values()->all();
         $this->assertSame(['AT', 'CH', 'CZ', 'DE', 'HU', 'PL', 'SK', 'US-WY'], $codes);
 
-        // Sources exist for SK, CZ and DE, with official URLs.
+        // Sources exist for all seven EU/CH jurisdictions, with official URLs.
         $slugs = RegWatchSource::pluck('slug')->sort()->values()->all();
         $this->assertSame(
-            ['cz-e-sbirka', 'cz-financni-sprava', 'de-bzst', 'de-gesetze-im-internet', 'sk-financna-sprava', 'sk-slov-lex'],
+            [
+                'at-bmf', 'ch-estv', 'ch-fedlex', 'cz-e-sbirka', 'cz-financni-sprava',
+                'de-bzst', 'de-gesetze-im-internet', 'hu-nav', 'pl-dziennik-ustaw',
+                'pl-podatki', 'sk-financna-sprava', 'sk-slov-lex',
+            ],
             $slugs,
         );
 
@@ -67,8 +71,8 @@ class RegWatchSeederTest extends TestCase
             $this->assertStringStartsWith('https://', $rule->source_url);
         }
 
-        // SK, CZ and DE each carry the full phase-1 topic set.
-        foreach (['SK', 'CZ', 'DE'] as $code) {
+        // Every jurisdiction with sources carries the full phase-1 topic set.
+        foreach (['SK', 'CZ', 'DE', 'AT', 'CH', 'HU', 'PL'] as $code) {
             $topics = RegWatchRule::whereHas('jurisdiction', fn ($q) => $q->where('code', $code))
                 ->pluck('topic')->map(fn (RegWatchTopic $t) => $t->value)->sort()->values()->all();
             $this->assertSame(
@@ -86,8 +90,8 @@ class RegWatchSeederTest extends TestCase
         $this->seed_regwatch();
 
         $this->assertSame(8, RegWatchJurisdiction::count());
-        $this->assertSame(6, RegWatchSource::count());
-        $this->assertSame(18, RegWatchRule::count());
+        $this->assertSame(12, RegWatchSource::count());
+        $this->assertSame(42, RegWatchRule::count());
     }
 
     #[Test]
