@@ -89,17 +89,22 @@ export async function processDueLocalRecurringProfiles(
 
             let issuedThisRound = 0;
             for (const profile of dueProfiles) {
-                const company = snapshot.companies.find((row) => row.id === profile.companyId);
+                // Resolve the profile, company and contact from the same
+                // fresh snapshot the generation uses - earlier iterations of
+                // this loop (or a concurrent edit) may have changed them
+                // since the round's due-list snapshot.
+                const fresh = await loadRunnerSnapshot(evolu);
+                const freshProfile = fresh.profiles.find((row) => row.id === profile.id) ?? profile;
+                const company = fresh.companies.find((row) => row.id === freshProfile.companyId);
                 if (!company) {
                     errors += 1;
                     continue;
                 }
 
-                const contact = profile.contactId
-                    ? snapshot.contacts.find((row) => row.id === profile.contactId) ?? null
+                const contact = freshProfile.contactId
+                    ? fresh.contacts.find((row) => row.id === freshProfile.contactId) ?? null
                     : null;
 
-                const fresh = await loadRunnerSnapshot(evolu);
                 const result = await generateLocalRecurringDocument(
                     evolu,
                     profile.id as RecurringProfileId,
@@ -119,10 +124,10 @@ export async function processDueLocalRecurringProfiles(
 
                 generated.push({
                     profileId: profile.id,
-                    companyId: profile.companyId,
+                    companyId: freshProfile.companyId,
                     documentId: result.value.documentId,
                     number: result.value.number,
-                    title: profile.title,
+                    title: freshProfile.title,
                 });
                 issuedThisRound += 1;
             }
