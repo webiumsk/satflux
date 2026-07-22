@@ -202,6 +202,65 @@ class CompanyVatPolicyTest extends TestCase
     }
 
     #[Test]
+    public function cz_company_gets_the_same_three_tier_behavior(): void
+    {
+        $user = User::factory()->create();
+        $company = Company::create([
+            'user_id' => $user->id,
+            'legal_name' => 'Test s.r.o. (CZ)',
+            'jurisdiction' => CompanyJurisdiction::EuCz,
+            'country' => 'CZ',
+            'vat_payer' => true,
+            'vat_status' => 'payer',
+            'vat_rate_default' => 21,
+            'default_currency' => 'CZK',
+        ]);
+        $policy = app(CompanyVatPolicy::class);
+
+        // Domestic CZ buyer: normal VAT.
+        $domestic = CompanyContact::create(['company_id' => $company->id, 'name' => 'CZ', 'country' => 'CZ']);
+        $this->assertSame('domestic', $policy->supplyRegion($company, $domestic));
+        $this->assertTrue($policy->calculatesVatAmounts($company, $domestic));
+
+        // SK VAT-registered business: automatic reverse charge.
+        $skB2b = CompanyContact::create(['company_id' => $company->id, 'name' => 'SK', 'country' => 'SK', 'vat_id' => 'SK2020...']);
+        $this->assertTrue($policy->euB2bReverseCharge($company, $skB2b));
+        $this->assertFalse($policy->calculatesVatAmounts($company, $skB2b));
+        $this->assertNotNull($policy->reverseChargeNote($company, $skB2b, CompanyAppSettings::from([])));
+
+        // Identifikovana osoba (vat_status 'partial') + SK buyer: VAT 0 + note.
+        $company->vat_status = 'partial';
+        $this->assertTrue($policy->showsVatBreakdown($company, $skB2b));
+        $this->assertFalse($policy->calculatesVatAmounts($company, $skB2b));
+    }
+
+    #[Test]
+    public function seller_country_falls_back_to_the_jurisdiction(): void
+    {
+        // The DB column is NOT NULL - the fallback matters for ephemeral
+        // payload-only companies, so in-memory models mirror that path.
+        $company = new Company([
+            'legal_name' => 'Bez krajiny s.r.o.',
+            'jurisdiction' => CompanyJurisdiction::EuCz,
+            'vat_payer' => true,
+            'vat_status' => 'payer',
+            'default_currency' => 'CZK',
+        ]);
+        $policy = app(CompanyVatPolicy::class);
+
+        // A CZ-jurisdiction company without a country must treat a CZ buyer
+        // as domestic - never as EU reverse charge.
+        $czB2b = new CompanyContact(['name' => 'CZ', 'country' => 'CZ', 'vat_id' => 'CZ123']);
+        $this->assertSame('domestic', $policy->supplyRegion($company, $czB2b));
+        $this->assertFalse($policy->euB2bReverseCharge($company, $czB2b));
+
+        // Multi-country buckets have no fallback: everything is domestic-safe.
+        $company->jurisdiction = CompanyJurisdiction::EuOther;
+        $de = new CompanyContact(['name' => 'DE', 'country' => 'DE', 'vat_id' => 'DE123']);
+        $this->assertSame('domestic', $policy->supplyRegion($company, $de));
+    }
+
+    #[Test]
     public function greek_vies_alias_el_is_domestic_for_a_gr_seller(): void
     {
         $company = $this->skPartialCompany();

@@ -3259,7 +3259,7 @@
     "vat_status": "Estado de IVA",
     "vat_status_none": "No sujeto a IVA",
     "vat_status_payer": "Sujeto a IVA",
-    "vat_status_partial": "Sujeto parcial a IVA (§7 / §7a)",
+    "vat_status_partial": "Sujeto parcial a IVA / persona identificada a efectos de IVA (§7 / §7a)",
     "vat_turnover_limit_label": "Límite anual de facturación para IVA",
     "vat_turnover_limit_ph": "p. ej. 50000",
     "vat_turnover_limit_hint": "Le avisamos cuando su facturación del año en curso se acerque a este límite. Deje 0 para desactivar.",

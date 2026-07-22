@@ -54,13 +54,41 @@ final class CompanyVatPolicy
         return $this->vatStatus($company) === 'payer';
     }
 
+    /**
+     * Seller country fallback for companies with no country set - derived
+     * from the single-country jurisdictions only. Multi-country buckets
+     * (eu_other, offshore, asia) stay empty, and an empty seller compares
+     * as domestic - the safe default that never triggers reverse charge.
+     *
+     * @var array<string, string>
+     */
+    private const JURISDICTION_COUNTRY = [
+        'eu_sk' => 'SK',
+        'eu_cz' => 'CZ',
+        'eu_de' => 'DE',
+        'eu_at' => 'AT',
+        'ch' => 'CH',
+        'us' => 'US',
+        'uk' => 'GB',
+    ];
+
+    protected function sellerCountry(Company $company): string
+    {
+        $country = $this->normalizeCountryCode((string) $company->country);
+        if ($country !== '') {
+            return $country;
+        }
+
+        return self::JURISDICTION_COUNTRY[JurisdictionRules::normalizeValue($company->jurisdiction)] ?? '';
+    }
+
     public function isDomesticSupply(Company $company, ?CompanyContact $contact): bool
     {
         if ($contact === null) {
             return true;
         }
 
-        $seller = $this->normalizeCountryCode((string) $company->country);
+        $seller = $this->sellerCountry($company);
         $buyer = $this->normalizeCountryCode((string) $contact->country);
 
         if ($seller === '' || $buyer === '') {

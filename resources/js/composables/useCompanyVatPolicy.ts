@@ -22,6 +22,31 @@ function normalizeCountry(country: string | null | undefined): string {
   return code === 'EL' ? 'GR' : code;
 }
 
+/**
+ * Seller country fallback for companies with no country set - derived from
+ * the single-country jurisdictions only (mirrors the server policy).
+ * Multi-country buckets (eu_other, offshore, asia) stay empty, and an empty
+ * seller compares as domestic - the safe default that never triggers
+ * reverse charge.
+ */
+const JURISDICTION_COUNTRY: Record<string, string> = {
+  eu_sk: 'SK',
+  eu_cz: 'CZ',
+  eu_de: 'DE',
+  eu_at: 'AT',
+  ch: 'CH',
+  us: 'US',
+  uk: 'GB',
+};
+
+function sellerCountry(company: VatPolicyCompany): string {
+  const country = normalizeCountry(company?.country);
+  if (country) {
+    return country;
+  }
+  return JURISDICTION_COUNTRY[company?.jurisdiction || ''] || '';
+}
+
 export function resolveCompanyVatStatus(company: VatPolicyCompany): 'none' | 'payer' | 'partial' {
   const status = company?.vat_status;
   if (status === 'payer' || status === 'partial') {
@@ -50,7 +75,7 @@ export function useCompanyVatPolicy() {
     if (!contact?.country) {
       return true;
     }
-    const seller = normalizeCountry(company?.country || 'SK');
+    const seller = sellerCountry(company);
     const buyer = normalizeCountry(contact.country);
     if (!seller || !buyer) {
       return true;
