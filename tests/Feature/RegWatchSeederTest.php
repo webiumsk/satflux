@@ -29,16 +29,16 @@ class RegWatchSeederTest extends TestCase
         $this->seed_regwatch();
 
         $this->assertSame(8, RegWatchJurisdiction::count());
-        $this->assertSame(4, RegWatchSource::count());
-        $this->assertSame(12, RegWatchRule::count());
+        $this->assertSame(6, RegWatchSource::count());
+        $this->assertSame(18, RegWatchRule::count());
 
         $codes = RegWatchJurisdiction::pluck('code')->sort()->values()->all();
         $this->assertSame(['AT', 'CH', 'CZ', 'DE', 'HU', 'PL', 'SK', 'US-WY'], $codes);
 
-        // Sources exist only for SK and CZ in phase 1, with official URLs.
+        // Sources exist for SK, CZ and DE, with official URLs.
         $slugs = RegWatchSource::pluck('slug')->sort()->values()->all();
         $this->assertSame(
-            ['cz-e-sbirka', 'cz-financni-sprava', 'sk-financna-sprava', 'sk-slov-lex'],
+            ['cz-e-sbirka', 'cz-financni-sprava', 'de-bzst', 'de-gesetze-im-internet', 'sk-financna-sprava', 'sk-slov-lex'],
             $slugs,
         );
     }
@@ -73,8 +73,8 @@ class RegWatchSeederTest extends TestCase
         $this->seed_regwatch();
 
         $this->assertSame(8, RegWatchJurisdiction::count());
-        $this->assertSame(4, RegWatchSource::count());
-        $this->assertSame(12, RegWatchRule::count());
+        $this->assertSame(6, RegWatchSource::count());
+        $this->assertSame(18, RegWatchRule::count());
     }
 
     #[Test]
