@@ -53,7 +53,9 @@ function issuedDocument(): EvoluDocumentRow {
     } as unknown as EvoluDocumentRow;
 }
 
-const evoluStub = {} as Evolu<InvoicingLocalSchema>;
+function evoluWith(rows: EvoluDocumentRow[]): Evolu<InvoicingLocalSchema> {
+    return { getQueryRows: () => rows } as unknown as Evolu<InvoicingLocalSchema>;
+}
 
 const baseOptions = {
     defaultVat: 19,
@@ -62,18 +64,57 @@ const baseOptions = {
     existingLines: [],
 };
 
+function expectIssuedLocked(result: ReturnType<typeof saveLocalDocument>) {
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+        expect(result.error).toBe("issued_locked");
+    }
+}
+
 describe("GoBD immutability - saveLocalDocument lockIssuedContent", () => {
     it("rejects any save against an issued document when locked", () => {
-        const result = saveLocalDocument(evoluStub, companyId, payload, {
+        expectIssuedLocked(saveLocalDocument(evoluWith([issuedDocument()]), companyId, payload, {
             ...baseOptions,
             documentId: "doc-1" as DocumentId,
             existingDocument: issuedDocument(),
             lockIssuedContent: true,
-        });
-        expect(result.ok).toBe(false);
-        if (!result.ok) {
-            expect(result.error).toBe("issued_locked");
-        }
+        }));
+    });
+
+    it("verifies against PERSISTED state - a stale draft copy cannot downgrade an issued document", () => {
+        const staleDraftCopy = { ...issuedDocument(), status: "draft", number: null } as EvoluDocumentRow;
+        expectIssuedLocked(saveLocalDocument(evoluWith([issuedDocument()]), companyId, payload, {
+            ...baseOptions,
+            documentId: "doc-1" as DocumentId,
+            existingDocument: staleDraftCopy,
+            lockIssuedContent: true,
+        }));
+    });
+
+    it("a missing existingDocument cannot bypass the lock", () => {
+        expectIssuedLocked(saveLocalDocument(evoluWith([issuedDocument()]), companyId, payload, {
+            ...baseOptions,
+            documentId: "doc-1" as DocumentId,
+            lockIssuedContent: true,
+        }));
+    });
+
+    it("an unverifiable update (no persisted row, no caller copy) is rejected", () => {
+        expectIssuedLocked(saveLocalDocument(evoluWith([]), companyId, payload, {
+            ...baseOptions,
+            documentId: "doc-1" as DocumentId,
+            lockIssuedContent: true,
+        }));
+    });
+
+    it("the lock beats line validation - an empty-lines edit of an issued document reports issued_locked", () => {
+        const emptyLines = { ...payload, lines: [] } as unknown as typeof payload;
+        expectIssuedLocked(saveLocalDocument(evoluWith([issuedDocument()]), companyId, emptyLines, {
+            ...baseOptions,
+            documentId: "doc-1" as DocumentId,
+            existingDocument: issuedDocument(),
+            lockIssuedContent: true,
+        }));
     });
 
     it("locked drafts still save (only issued content is immutable)", () => {
@@ -81,7 +122,7 @@ describe("GoBD immutability - saveLocalDocument lockIssuedContent", () => {
         // Reaching past the guard proves drafts are not blocked - the stub
         // evolu then fails, which is fine for this unit test's purpose.
         expect(() =>
-            saveLocalDocument(evoluStub, companyId, payload, {
+            saveLocalDocument(evoluWith([draft]), companyId, payload, {
                 ...baseOptions,
                 documentId: "doc-1" as DocumentId,
                 existingDocument: draft,
@@ -92,7 +133,7 @@ describe("GoBD immutability - saveLocalDocument lockIssuedContent", () => {
 
     it("without the lock the issued save path stays reachable (edit + re-freeze)", () => {
         expect(() =>
-            saveLocalDocument(evoluStub, companyId, payload, {
+            saveLocalDocument(evoluWith([issuedDocument()]), companyId, payload, {
                 ...baseOptions,
                 documentId: "doc-1" as DocumentId,
                 existingDocument: issuedDocument(),

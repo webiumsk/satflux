@@ -48,9 +48,13 @@ export function logDocumentEvent(
     const actionParsed = ActionType.from(action);
     if (!actionParsed.ok) return actionParsed;
 
+    // The attribution key is reserved: strip any caller-supplied value so an
+    // unauthenticated (or malicious) caller can never forge the actor.
+    const safeMetadata: Record<string, unknown> = { ...(metadata ?? {}) };
+    delete safeMetadata[EVENT_USER_EMAIL_KEY];
     const email = currentUserEmail();
     const enriched: Record<string, unknown> = {
-        ...(metadata ?? {}),
+        ...safeMetadata,
         ...(email ? { [EVENT_USER_EMAIL_KEY]: email } : {}),
     };
     const metadataJson = Object.keys(enriched).length > 0 ? JSON.stringify(enriched) : null;
