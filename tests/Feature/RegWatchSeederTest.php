@@ -29,16 +29,20 @@ class RegWatchSeederTest extends TestCase
         $this->seed_regwatch();
 
         $this->assertSame(8, RegWatchJurisdiction::count());
-        $this->assertSame(6, RegWatchSource::count());
-        $this->assertSame(18, RegWatchRule::count());
+        $this->assertSame(12, RegWatchSource::count());
+        $this->assertSame(42, RegWatchRule::count());
 
         $codes = RegWatchJurisdiction::pluck('code')->sort()->values()->all();
         $this->assertSame(['AT', 'CH', 'CZ', 'DE', 'HU', 'PL', 'SK', 'US-WY'], $codes);
 
-        // Sources exist for SK, CZ and DE, with official URLs.
+        // Sources exist for all seven EU/CH jurisdictions, with official URLs.
         $slugs = RegWatchSource::pluck('slug')->sort()->values()->all();
         $this->assertSame(
-            ['cz-e-sbirka', 'cz-financni-sprava', 'de-bzst', 'de-gesetze-im-internet', 'sk-financna-sprava', 'sk-slov-lex'],
+            [
+                'at-bmf', 'ch-estv', 'ch-fedlex', 'cz-e-sbirka', 'cz-financni-sprava',
+                'de-bzst', 'de-gesetze-im-internet', 'hu-nav', 'pl-dziennik-ustaw',
+                'pl-podatki', 'sk-financna-sprava', 'sk-slov-lex',
+            ],
             $slugs,
         );
 
@@ -51,6 +55,23 @@ class RegWatchSeederTest extends TestCase
             'de-bzst' => 'https://www.bzst.de/',
             'de-gesetze-im-internet' => 'https://www.gesetze-im-internet.de/',
         ], $deSources);
+
+        // AT/CH/HU/PL sources: jurisdiction, type and official URL each match
+        // the verified seed data.
+        $expected = [
+            'at-bmf' => ['AT', RegWatchSourceType::TaxAuthority, 'https://www.bmf.gv.at/'],
+            'ch-fedlex' => ['CH', RegWatchSourceType::LegalRegister, 'https://www.fedlex.admin.ch/'],
+            'ch-estv' => ['CH', RegWatchSourceType::TaxAuthority, 'https://www.estv.admin.ch/'],
+            'hu-nav' => ['HU', RegWatchSourceType::TaxAuthority, 'https://nav.gov.hu/'],
+            'pl-dziennik-ustaw' => ['PL', RegWatchSourceType::LegalRegister, 'https://dziennikustaw.gov.pl/'],
+            'pl-podatki' => ['PL', RegWatchSourceType::TaxAuthority, 'https://www.podatki.gov.pl/'],
+        ];
+        foreach ($expected as $slug => [$code, $type, $url]) {
+            $source = RegWatchSource::where('slug', $slug)->firstOrFail();
+            $this->assertSame($code, $source->jurisdiction?->code, "source {$slug} jurisdiction");
+            $this->assertSame($type, $source->type, "source {$slug} type");
+            $this->assertSame($url, $source->url, "source {$slug} url");
+        }
     }
 
     #[Test]
@@ -67,8 +88,8 @@ class RegWatchSeederTest extends TestCase
             $this->assertStringStartsWith('https://', $rule->source_url);
         }
 
-        // SK, CZ and DE each carry the full phase-1 topic set.
-        foreach (['SK', 'CZ', 'DE'] as $code) {
+        // Every jurisdiction with sources carries the full phase-1 topic set.
+        foreach (['SK', 'CZ', 'DE', 'AT', 'CH', 'HU', 'PL'] as $code) {
             $topics = RegWatchRule::whereHas('jurisdiction', fn ($q) => $q->where('code', $code))
                 ->pluck('topic')->map(fn (RegWatchTopic $t) => $t->value)->sort()->values()->all();
             $this->assertSame(
@@ -86,8 +107,8 @@ class RegWatchSeederTest extends TestCase
         $this->seed_regwatch();
 
         $this->assertSame(8, RegWatchJurisdiction::count());
-        $this->assertSame(6, RegWatchSource::count());
-        $this->assertSame(18, RegWatchRule::count());
+        $this->assertSame(12, RegWatchSource::count());
+        $this->assertSame(42, RegWatchRule::count());
     }
 
     #[Test]
