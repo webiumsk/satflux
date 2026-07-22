@@ -314,12 +314,14 @@ class CompanyVatPolicyTest extends TestCase
             $policy->taxClause($company, $contact, CompanyAppSettings::from([])),
         );
 
-        // A custom company note still wins.
+        // A custom company note is appended - the mandatory German wording
+        // always stays on the invoice.
         $custom = $policy->taxClause($company, $contact, CompanyAppSettings::from([
             'reverse_charge' => true,
             'reverse_charge_note' => 'Eigener Hinweis.',
         ]));
-        $this->assertSame('Eigener Hinweis.', $custom);
+        $this->assertStringContainsString(CompanyVatPolicy::DE_REVERSE_CHARGE_NOTE, (string) $custom);
+        $this->assertStringContainsString('Eigener Hinweis.', (string) $custom);
     }
 
     #[Test]

@@ -127,10 +127,12 @@
                 @endif
                 @if($contact->country){{ $contact->country }}<br>@endif
                 {{-- Buyer identifiers - a reverse-charge invoice must carry
-                     both parties' VAT IDs. --}}
+                     both parties' VAT IDs. Generic labels on purpose: the
+                     supplier-scoped overrides (Steuernummer/USt-IdNr.) do
+                     not fit a foreign counterparty. --}}
                 @if(!empty($contact->registration_number)){{ __('Reg. no.') }}: {{ $contact->registration_number }}<br>@endif
-                @if(!empty($contact->tax_id)){{ $taxNumberLabel ?? __('Tax no.') }}: {{ $contact->tax_id }}<br>@endif
-                @if(!empty($contact->vat_id)){{ $taxIdLabel ?? __('VAT ID') }}: {{ $contact->vat_id }}<br>@endif
+                @if(!empty($contact->tax_id)){{ __('Tax no.') }}: {{ $contact->tax_id }}<br>@endif
+                @if(!empty($contact->vat_id)){{ __('VAT ID') }}: {{ $contact->vat_id }}<br>@endif
                 @if($contact->email){{ $contact->email }}<br>@endif
             @endif
             <table class="dates-table">

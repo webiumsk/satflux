@@ -255,11 +255,13 @@ final class CompanyVatPolicy
         $reverseCharge = $this->reverseChargeNote($company, $contact, $settings);
         if ($reverseCharge !== null) {
             if ($this->isDeCompany($company)) {
-                // German statutory wording is mandatory; a custom company
-                // note still wins so the operator can extend it.
+                // The German statutory wording is mandatory and always stays;
+                // a custom company note is appended, never a replacement.
                 $custom = $settings->bool('reverse_charge') ? trim((string) $settings->get('reverse_charge_note')) : '';
 
-                return $custom !== '' ? $custom : self::DE_REVERSE_CHARGE_NOTE;
+                return $custom !== ''
+                    ? self::DE_REVERSE_CHARGE_NOTE.' '.$custom
+                    : self::DE_REVERSE_CHARGE_NOTE;
             }
 
             return $reverseCharge;

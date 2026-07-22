@@ -152,7 +152,7 @@
               :placeholder="t('invoicing.app_opt_reverse_charge_note')"
             />
           </div>
-          <div>
+          <div v-if="isDeCompany">
             <label class="invoicing-sf-label">{{ t('invoicing.app_opt_export_note') }}</label>
             <textarea
               v-model="form.export_note"
@@ -225,6 +225,7 @@ const form = reactive<CompanyAppSettingsState>(appSettingsFromCompany(null));
 
 const homeCurrency = computed(() => props.company?.default_currency ?? 'EUR');
 const isUsCompany = computed(() => props.company?.jurisdiction === 'us');
+const isDeCompany = computed(() => props.company?.jurisdiction === 'eu_de');
 
 const checkboxOptions: { key: keyof CompanyAppSettingsState; labelKey: string }[] = [
   { key: 'show_contextual_help', labelKey: 'invoicing.app_opt_contextual_help' },

@@ -14,6 +14,11 @@ export const DE_EXPORT_GOODS_NOTE = 'Steuerfreie Ausfuhrlieferung.';
 
 export type TaxClauseKind = 'kleinunternehmer_de' | 'reverse_charge' | 'export_de';
 
+export type TaxClauseSettings = {
+  /** The company app-settings manual reverse-charge toggle. */
+  reverse_charge?: boolean;
+} | null;
+
 export type VatPolicyCompany = {
   country?: string | null;
   jurisdiction?: string | null;
@@ -161,13 +166,20 @@ export function useCompanyVatPolicy() {
   /**
    * Which statutory tax clause the invoice carries (mirrors the server
    * taxClause precedence): DE Kleinunternehmer for German non-payers,
-   * reverse charge, then the DE export clause. Null = no clause.
+   * reverse charge (automatic, or the manual app-settings toggle with a
+   * VAT-registered counterparty - any supply region, like the server's
+   * legacy branch), then the DE export clause. Null = no clause.
    */
-  function taxClauseKind(company: VatPolicyCompany, contact: VatPolicyContact): TaxClauseKind | null {
+  function taxClauseKind(
+    company: VatPolicyCompany,
+    contact: VatPolicyContact,
+    settings: TaxClauseSettings = null,
+  ): TaxClauseKind | null {
     if (isDeCompany(company) && resolveCompanyVatStatus(company) === 'none') {
       return 'kleinunternehmer_de';
     }
-    if (reverseChargeApplies(company, contact)) {
+    const manualReverseCharge = Boolean(settings?.reverse_charge) && (contact?.vat_id || '').trim() !== '';
+    if (reverseChargeApplies(company, contact) || manualReverseCharge) {
       return 'reverse_charge';
     }
     if (exportExemptionApplies(company, contact)) {

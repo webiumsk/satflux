@@ -424,20 +424,21 @@ const isDeCompany = computed(() => vatPolicy.isDeCompany(props.company));
 // Statutory clause (mirrors the server taxClause): DE texts stay German
 // regardless of the UI locale; custom company notes win over defaults.
 const reverseChargeNote = computed(() => {
-  const kind = vatPolicy.taxClauseKind(props.company, props.selectedContact);
-  if (!kind) return null;
   const settings = appSettingsFromCompany(props.company);
+  const kind = vatPolicy.taxClauseKind(props.company, props.selectedContact, settings);
+  if (!kind) return null;
   if (kind === "kleinunternehmer_de") {
     return DE_KLEINUNTERNEHMER_NOTE;
   }
   if (kind === "export_de") {
     return settings.export_note.trim() || DE_EXPORT_SERVICES_NOTE;
   }
+  const custom = settings.reverse_charge ? settings.reverse_charge_note.trim() : "";
   if (isDeCompany.value) {
-    const custom = settings.reverse_charge ? settings.reverse_charge_note.trim() : "";
-    return custom || DE_REVERSE_CHARGE_NOTE;
+    // The mandatory German wording always stays; a custom note appends.
+    return custom ? `${DE_REVERSE_CHARGE_NOTE} ${custom}` : DE_REVERSE_CHARGE_NOTE;
   }
-  return t("invoicing.reverse_charge_note_partial");
+  return custom || t("invoicing.reverse_charge_note_partial");
 });
 
 const invoiceHeading = computed(() => {

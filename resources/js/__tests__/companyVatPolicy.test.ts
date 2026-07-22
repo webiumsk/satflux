@@ -157,6 +157,21 @@ describe('DE statutory clauses (taxClauseKind)', () => {
     expect(policy.calculatesVatAmounts(company, { country: 'FR' })).toBe(true);
   });
 
+  it('the manual reverse-charge toggle applies regardless of region (server parity)', () => {
+    const de = deCompany('payer');
+    // Non-EU counterparty with a VAT id + manual toggle: reverse charge
+    // wins over the export clause, mirroring the server precedence.
+    expect(policy.taxClauseKind(de, { country: 'US', vat_id: 'X1' }, { reverse_charge: true }))
+      .toBe('reverse_charge');
+    // Without the toggle it stays the export clause.
+    expect(policy.taxClauseKind(de, { country: 'US', vat_id: 'X1' })).toBe('export_de');
+    // The toggle needs a VAT-registered counterparty.
+    expect(policy.taxClauseKind(de, { country: 'US' }, { reverse_charge: true })).toBe('export_de');
+    // Non-DE companies: the manual toggle also produces the clause.
+    expect(policy.taxClauseKind(skCompany('payer'), { country: 'US', vat_id: 'X1' }, { reverse_charge: true }))
+      .toBe('reverse_charge');
+  });
+
   it('non-DE companies get no DE clauses and keep non-EU VAT', () => {
     const sk = skCompany('payer');
     expect(policy.taxClauseKind(sk, { country: 'US' })).toBe(null);
