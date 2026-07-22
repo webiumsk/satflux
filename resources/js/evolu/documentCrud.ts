@@ -310,8 +310,33 @@ export function saveLocalDocument(
             company: Record<string, unknown> | null;
             contact: Record<string, unknown> | null;
         };
+        /**
+         * GoBD immutability (DE companies): an issued document must never be
+         * retro-edited - corrections go through storno or a credit note. When
+         * set, any save against a non-draft document is rejected.
+         */
+        lockIssuedContent?: boolean;
     },
 ) {
+    const existing = options.existingDocument ?? null;
+
+    // GoBD lock first, and against PERSISTED state - the caller's
+    // existingDocument copy may be missing or stale, and an issued document
+    // must stay immutable even then. An unverifiable update (a documentId
+    // whose row cannot be found) is rejected rather than trusted.
+    if (options.lockIssuedContent) {
+        const persisted = options.documentId
+            ? toAppRows<EvoluDocumentRow>(evolu.getQueryRows(allDocumentsQuery))
+                .find((row) => row.id === options.documentId) ?? existing
+            : existing;
+        if (options.documentId && !persisted) {
+            return { ok: false as const, error: "issued_locked" };
+        }
+        if (persisted && persisted.status !== "draft") {
+            return { ok: false as const, error: "issued_locked" };
+        }
+    }
+
     if (!payload.lines.length) {
         return { ok: false as const, error: "lines_required" };
     }
@@ -324,7 +349,6 @@ export function saveLocalDocument(
         options.lineTaxRate as (line: DocumentLinePayload) => number,
     );
 
-    const existing = options.existingDocument ?? null;
     const statusForSave = existing?.status ?? "draft";
     const numberForSave = existing?.number ?? null;
     const quoteStatusForSave =

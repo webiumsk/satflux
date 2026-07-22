@@ -952,6 +952,7 @@
     "app_opt_reverse_charge_note": "Text prenesenia DPH na faktúre",
     "app_opt_export_note": "Doložka pre export (faktúry mimo EÚ)",
     "de_full_invoice_buyer_required": "Nemecká faktúra nad 250 € musí obsahovať úplný názov a adresu odberateľa (§ 14 UStG). Vyberte odberateľa s kompletnou adresou, alebo ponechajte sumu v limite pre faktúry nízkej hodnoty.",
+    "issued_locked_gobd": "Vystavenú faktúru nemeckej firmy nemožno upravovať (GoBD). Opravu vykonajte stornom alebo dobropisom.",
     "app_opt_export_note_placeholder": "Nicht im Inland steuerbare Leistung.",
     "app_opt_export_note_hint": "Nemecké firmy: prázdne = štatutárna doložka pre služby; predajcovia tovaru zadajú \"Steuerfreie Ausfuhrlieferung.\"",
     "reverse_charge_note_partial": "Dodanie tovaru je oslobodené. Dodanie služby podlieha preneseniu daňovej povinnosti.",
