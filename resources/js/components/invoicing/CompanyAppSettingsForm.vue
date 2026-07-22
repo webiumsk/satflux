@@ -152,6 +152,16 @@
               :placeholder="t('invoicing.app_opt_reverse_charge_note')"
             />
           </div>
+          <div>
+            <label class="invoicing-sf-label">{{ t('invoicing.app_opt_export_note') }}</label>
+            <textarea
+              v-model="form.export_note"
+              rows="2"
+              class="invoicing-sf-input w-full"
+              :placeholder="t('invoicing.app_opt_export_note_placeholder')"
+            />
+            <p class="text-xs text-gray-500 mt-1">{{ t('invoicing.app_opt_export_note_hint') }}</p>
+          </div>
         </div>
       </div>
 

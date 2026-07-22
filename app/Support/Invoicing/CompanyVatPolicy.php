@@ -18,6 +18,20 @@ final class CompanyVatPolicy
     public const PARTIAL_REVERSE_CHARGE_NOTE = 'The supply of goods is exempt. The supply of services is subject to the reverse charge procedure.';
 
     /**
+     * German statutory clause wording (operator-supplied, 2026-07-22). These
+     * are legal texts mandated for DE invoices - they stay German regardless
+     * of the PDF locale and are never translated.
+     */
+    public const DE_KLEINUNTERNEHMER_NOTE = 'Umsatzsteuerfrei aufgrund der Kleinunternehmerregelung gem. § 19 UStG.';
+
+    public const DE_REVERSE_CHARGE_NOTE = 'Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge).';
+
+    /** Default export clause (services); goods sellers override via the export_note app setting. */
+    public const DE_EXPORT_SERVICES_NOTE = 'Nicht im Inland steuerbare Leistung.';
+
+    public const DE_EXPORT_GOODS_NOTE = 'Steuerfreie Ausfuhrlieferung.';
+
+    /**
      * EU VAT area member codes - mirror of resources/js/config/euVatCountries.ts
      * ('EL' is the VIES alias for Greece).
      *
@@ -138,13 +152,31 @@ final class CompanyVatPolicy
             && trim((string) $contact?->vat_id) !== '';
     }
 
+    public function isDeCompany(Company $company): bool
+    {
+        return JurisdictionRules::normalizeValue($company->jurisdiction) === 'eu_de';
+    }
+
+    /**
+     * DE export exemption (operator rule): a German payer invoicing a non-EU
+     * counterparty charges no VAT and carries the export clause instead.
+     */
+    public function exportExemptionApplies(Company $company, ?CompanyContact $contact): bool
+    {
+        return $this->isDeCompany($company)
+            && $this->isFullPayer($company)
+            && $this->supplyRegion($company, $contact) === 'non_eu';
+    }
+
     public function calculatesVatAmounts(Company $company, ?CompanyContact $contact = null): bool
     {
         if ($company->jurisdiction === CompanyJurisdiction::Us) {
             return true;
         }
 
-        return $this->isFullPayer($company) && ! $this->euB2bReverseCharge($company, $contact);
+        return $this->isFullPayer($company)
+            && ! $this->euB2bReverseCharge($company, $contact)
+            && ! $this->exportExemptionApplies($company, $contact);
     }
 
     public function showsVatRateColumn(Company $company, ?CompanyContact $contact = null): bool
@@ -202,6 +234,44 @@ final class CompanyVatPolicy
     public function vatApplicableForIsdoc(Company $company, ?CompanyContact $contact = null): bool
     {
         return $this->isFullPayer($company);
+    }
+
+    /**
+     * The statutory tax clause for the invoice, in precedence order:
+     * DE Kleinunternehmer (§19 UStG) for German non-payers, the
+     * reverse-charge note (German statutory wording for DE companies),
+     * then the DE export clause for non-EU supplies. Returns null when no
+     * clause applies.
+     */
+    public function taxClause(
+        Company $company,
+        ?CompanyContact $contact,
+        CompanyAppSettings $settings,
+    ): ?string {
+        if ($this->isDeCompany($company) && $this->vatStatus($company) === 'none') {
+            return self::DE_KLEINUNTERNEHMER_NOTE;
+        }
+
+        $reverseCharge = $this->reverseChargeNote($company, $contact, $settings);
+        if ($reverseCharge !== null) {
+            if ($this->isDeCompany($company)) {
+                // German statutory wording is mandatory; a custom company
+                // note still wins so the operator can extend it.
+                $custom = $settings->bool('reverse_charge') ? trim((string) $settings->get('reverse_charge_note')) : '';
+
+                return $custom !== '' ? $custom : self::DE_REVERSE_CHARGE_NOTE;
+            }
+
+            return $reverseCharge;
+        }
+
+        if ($this->exportExemptionApplies($company, $contact)) {
+            $custom = trim((string) $settings->get('export_note'));
+
+            return $custom !== '' ? $custom : self::DE_EXPORT_SERVICES_NOTE;
+        }
+
+        return null;
     }
 
     public function reverseChargeNote(

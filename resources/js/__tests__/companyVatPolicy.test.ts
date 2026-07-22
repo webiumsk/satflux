@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { useCompanyVatPolicy, type VatPolicyCompany } from '../composables/useCompanyVatPolicy';
 
+function deCompany(vatStatus: 'none' | 'payer' | 'partial'): VatPolicyCompany {
+  return {
+    country: 'DE',
+    jurisdiction: 'eu_de',
+    vat_payer: vatStatus !== 'none',
+    vat_status: vatStatus,
+    vat_rate_default: 19,
+  };
+}
+
 const policy = useCompanyVatPolicy();
 
 function skCompany(vatStatus: 'none' | 'payer' | 'partial'): VatPolicyCompany {
@@ -119,6 +129,41 @@ describe('reverseChargeApplies', () => {
     expect(policy.reverseChargeApplies(skCompany('partial'), freeText)).toBe(false);
     expect(policy.reverseChargeApplies(skCompany('payer'), cz)).toBe(false);
     expect(policy.reverseChargeApplies(skCompany('none'), cz)).toBe(false);
+  });
+});
+
+describe('DE statutory clauses (taxClauseKind)', () => {
+  it('DE non-payer always carries the Kleinunternehmer clause', () => {
+    const company = deCompany('none');
+    expect(policy.taxClauseKind(company, null)).toBe('kleinunternehmer_de');
+    expect(policy.taxClauseKind(company, { country: 'DE' })).toBe('kleinunternehmer_de');
+    expect(policy.taxClauseKind(company, { country: 'US' })).toBe('kleinunternehmer_de');
+  });
+
+  it('DE payer + EU B2B is reverse charge; + non-EU is the export clause', () => {
+    const company = deCompany('payer');
+    expect(policy.taxClauseKind(company, { country: 'FR', vat_id: 'FR123' })).toBe('reverse_charge');
+    expect(policy.taxClauseKind(company, { country: 'US' })).toBe('export_de');
+    expect(policy.taxClauseKind(company, { country: 'DE' })).toBe(null);
+  });
+
+  it('DE export exemption zeroes VAT', () => {
+    const company = deCompany('payer');
+    expect(policy.exportExemptionApplies(company, { country: 'US' })).toBe(true);
+    expect(policy.calculatesVatAmounts(company, { country: 'US' })).toBe(false);
+    expect(policy.resolveLineTaxRate(company, { country: 'US' }, 19)).toBe(0);
+    // Domestic and EU B2C keep normal VAT.
+    expect(policy.calculatesVatAmounts(company, { country: 'DE' })).toBe(true);
+    expect(policy.calculatesVatAmounts(company, { country: 'FR' })).toBe(true);
+  });
+
+  it('non-DE companies get no DE clauses and keep non-EU VAT', () => {
+    const sk = skCompany('payer');
+    expect(policy.taxClauseKind(sk, { country: 'US' })).toBe(null);
+    expect(policy.exportExemptionApplies(sk, { country: 'US' })).toBe(false);
+    expect(policy.calculatesVatAmounts(sk, { country: 'US' })).toBe(true);
+    expect(policy.taxClauseKind(skCompany('none'), { country: 'SK' })).toBe(null);
+    expect(policy.taxClauseKind(skCompany('partial'), { country: 'CZ' })).toBe('reverse_charge');
   });
 });
 

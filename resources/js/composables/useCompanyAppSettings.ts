@@ -15,6 +15,7 @@ export type CompanyAppSettingsState = {
   embed_isdoc_in_pdf: boolean;
   reverse_charge: boolean;
   reverse_charge_note: string;
+  export_note: string;
   us_sales_tax_provider: 'manual' | 'stripe_tax' | 'avalara';
   stripe_tax_secret_key: string;
   show_pay_by_square: boolean;
@@ -58,6 +59,7 @@ export function defaultAppSettings(): CompanyAppSettingsState {
     embed_isdoc_in_pdf: true,
     reverse_charge: false,
     reverse_charge_note: '',
+    export_note: '',
     us_sales_tax_provider: 'manual',
     stripe_tax_secret_key: '',
     show_pay_by_square: true,
@@ -95,6 +97,7 @@ export function appSettingsFromCompany(company: Record<string, unknown> | null):
     embed_isdoc_in_pdf: raw.embed_isdoc_in_pdf ?? base.embed_isdoc_in_pdf,
     reverse_charge: raw.reverse_charge ?? base.reverse_charge,
     reverse_charge_note: raw.reverse_charge_note ?? base.reverse_charge_note,
+    export_note: raw.export_note ?? base.export_note,
     us_sales_tax_provider: raw.us_sales_tax_provider ?? base.us_sales_tax_provider,
     stripe_tax_secret_key: raw.stripe_tax_secret_key ?? base.stripe_tax_secret_key,
     show_pay_by_square: raw.show_pay_by_square ?? base.show_pay_by_square,

@@ -186,10 +186,11 @@ class BusinessDocumentPdfService
         $canonical = $this->canonicalBuilder->fromDocument($document);
         $settings = CompanyAppSettings::from($company->app_settings);
         $contact = $document->resolvedBuyer();
-        $reverseChargeNote = $this->vatPolicy->reverseChargeNote($company, $contact, $settings);
+        $reverseChargeNote = $this->vatPolicy->taxClause($company, $contact, $settings);
 
         $jurisdiction = $company->jurisdiction;
         $isUs = $jurisdiction === CompanyJurisdiction::Us;
+        $isDe = $this->vatPolicy->isDeCompany($company);
 
         // sk/cs/en label localization comes from pdf_locale translations;
         // jurisdictions whose statutory tax terms a language file cannot
@@ -211,6 +212,10 @@ class BusinessDocumentPdfService
             'showVatBreakdown' => $this->vatPolicy->showsVatBreakdown($company, $contact),
             'showSalesTaxColumn' => $isUs && (float) $canonical->taxTotal > 0,
             'isUs' => $isUs,
+            // DE mandatory-field rendering: always-shown Leistungsdatum and
+            // the German Steuernummer label.
+            'isDe' => $isDe,
+            'taxNumberLabel' => $isDe ? 'Steuernummer' : null,
             'reverseChargeNote' => $reverseChargeNote,
             'bankQr' => $bankQr,
             'bankQrStandard' => $bankQrStandard,

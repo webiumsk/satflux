@@ -24,6 +24,8 @@ final class CompanyAppSettings
         'embed_isdoc_in_pdf' => true,
         'reverse_charge' => false,
         'reverse_charge_note' => null,
+        // Custom DE export clause override (defaults to the statutory services wording).
+        'export_note' => null,
         'us_sales_tax_provider' => 'manual',
         'stripe_tax_secret_key' => null,
         'show_pay_by_square' => true,

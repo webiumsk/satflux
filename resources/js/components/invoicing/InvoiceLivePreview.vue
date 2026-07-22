@@ -106,12 +106,14 @@
                 {{ formatDate(form.issue_date) }}
               </td>
             </tr>
-            <tr v-if="form.delivery_date">
+            <!-- DE §14 UStG: the Leistungsdatum must be stated even when it
+                 equals the issue date. -->
+            <tr v-if="form.delivery_date || isDeCompany">
               <td class="text-right pr-2 text-gray-500">
                 {{ t("invoicing.delivery_date") }}:
               </td>
               <td class="text-right font-semibold">
-                {{ formatDate(form.delivery_date) }}
+                {{ formatDate(form.delivery_date || form.issue_date) }}
               </td>
             </tr>
             <tr v-if="form.due_date">
@@ -345,7 +347,13 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { useCompanyVatPolicy } from "../../composables/useCompanyVatPolicy";
+import {
+  DE_EXPORT_SERVICES_NOTE,
+  DE_KLEINUNTERNEHMER_NOTE,
+  DE_REVERSE_CHARGE_NOTE,
+  useCompanyVatPolicy,
+} from "../../composables/useCompanyVatPolicy";
+import { appSettingsFromCompany } from "../../composables/useCompanyAppSettings";
 import FooterContactIcon from "./FooterContactIcon.vue";
 
 export type InvoiceLineForm = {
@@ -412,11 +420,25 @@ const isUsCompany = computed(() => props.company?.jurisdiction === "us");
 const showTaxSummary = computed(() =>
   vatPolicy.showsVatSummary(props.company, props.selectedContact),
 );
-const reverseChargeNote = computed(() =>
-  vatPolicy.reverseChargeApplies(props.company, props.selectedContact)
-    ? t("invoicing.reverse_charge_note_partial")
-    : null,
-);
+const isDeCompany = computed(() => vatPolicy.isDeCompany(props.company));
+// Statutory clause (mirrors the server taxClause): DE texts stay German
+// regardless of the UI locale; custom company notes win over defaults.
+const reverseChargeNote = computed(() => {
+  const kind = vatPolicy.taxClauseKind(props.company, props.selectedContact);
+  if (!kind) return null;
+  const settings = appSettingsFromCompany(props.company);
+  if (kind === "kleinunternehmer_de") {
+    return DE_KLEINUNTERNEHMER_NOTE;
+  }
+  if (kind === "export_de") {
+    return settings.export_note.trim() || DE_EXPORT_SERVICES_NOTE;
+  }
+  if (isDeCompany.value) {
+    const custom = settings.reverse_charge ? settings.reverse_charge_note.trim() : "";
+    return custom || DE_REVERSE_CHARGE_NOTE;
+  }
+  return t("invoicing.reverse_charge_note_partial");
+});
 
 const invoiceHeading = computed(() => {
   if (props.form.title) return props.form.title;
