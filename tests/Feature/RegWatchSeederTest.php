@@ -55,6 +55,23 @@ class RegWatchSeederTest extends TestCase
             'de-bzst' => 'https://www.bzst.de/',
             'de-gesetze-im-internet' => 'https://www.gesetze-im-internet.de/',
         ], $deSources);
+
+        // AT/CH/HU/PL sources: jurisdiction, type and official URL each match
+        // the verified seed data.
+        $expected = [
+            'at-bmf' => ['AT', RegWatchSourceType::TaxAuthority, 'https://www.bmf.gv.at/'],
+            'ch-fedlex' => ['CH', RegWatchSourceType::LegalRegister, 'https://www.fedlex.admin.ch/'],
+            'ch-estv' => ['CH', RegWatchSourceType::TaxAuthority, 'https://www.estv.admin.ch/'],
+            'hu-nav' => ['HU', RegWatchSourceType::TaxAuthority, 'https://nav.gov.hu/'],
+            'pl-dziennik-ustaw' => ['PL', RegWatchSourceType::LegalRegister, 'https://dziennikustaw.gov.pl/'],
+            'pl-podatki' => ['PL', RegWatchSourceType::TaxAuthority, 'https://www.podatki.gov.pl/'],
+        ];
+        foreach ($expected as $slug => [$code, $type, $url]) {
+            $source = RegWatchSource::where('slug', $slug)->firstOrFail();
+            $this->assertSame($code, $source->jurisdiction?->code, "source {$slug} jurisdiction");
+            $this->assertSame($type, $source->type, "source {$slug} type");
+            $this->assertSame($url, $source->url, "source {$slug} url");
+        }
     }
 
     #[Test]

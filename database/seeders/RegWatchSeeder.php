@@ -189,7 +189,10 @@ class RegWatchSeeder extends Seeder
     {
         // Topic -> [title, source slug per jurisdiction, optional deep URL].
         // Tax-administration topics point at the tax authority; law-text
-        // topics point at the legal register. Deep URLs are used only where
+        // topics (ReverseCharge, Archiving) point at the legal register -
+        // except AT and HU, which have no monitorable legal register (RIS
+        // and njt.hu block automated fetches), so those topics fall back to
+        // the tax authority (at-bmf, hu-nav). Deep URLs are used only where
         // they were verified against the live site (SK paths 2026-07-21,
         // DE paths 2026-07-22).
         $topics = [
