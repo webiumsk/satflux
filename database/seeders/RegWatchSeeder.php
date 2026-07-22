@@ -170,7 +170,11 @@ class RegWatchSeeder extends Seeder
         foreach (['SK', 'CZ'] as $code) {
             foreach ($topics as $topic => $spec) {
                 $source = $sources[$spec['source'][$code]];
-                RegWatchRule::updateOrCreate(
+                // firstOrCreate, never updateOrCreate: rules are the human-
+                // edited source of truth (docs/LEGAL.md) - re-running the
+                // seeder must only add missing placeholders and can never
+                // overwrite verified rule content back to a placeholder.
+                RegWatchRule::firstOrCreate(
                     ['slug' => strtolower($code).'-'.str_replace('_', '-', $topic)],
                     [
                         'jurisdiction_id' => $jurisdictions[$code]->id,
