@@ -709,7 +709,7 @@
     "vat_status": "Stav DPH",
     "vat_status_none": "Neplatiteľ DPH",
     "vat_status_payer": "Platiteľ DPH",
-    "vat_status_partial": "Čiastočný platiteľ DPH (§7 / §7a)",
+    "vat_status_partial": "Čiastočný platiteľ DPH (§7 / §7a) / identifikovaná osoba",
     "vat_turnover_limit_label": "Ročný obratový limit pre DPH",
     "vat_turnover_limit_ph": "napr. 50000",
     "vat_turnover_limit_hint": "Upozorníme ťa, keď sa obrat za aktuálny rok priblíži k tomuto limitu. Ponechaj 0 pre vypnutie.",

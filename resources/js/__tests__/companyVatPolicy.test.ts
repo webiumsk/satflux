@@ -35,6 +35,22 @@ describe('supplyRegion', () => {
     const grCompany = { ...skCompany('payer'), country: 'GR' };
     expect(policy.supplyRegion(grCompany, { country: 'EL' })).toBe('domestic');
   });
+
+  it('is company-country relative: a CZ company treats SK as EU', () => {
+    const czCompany = { ...skCompany('payer'), country: 'CZ', jurisdiction: 'eu_cz' };
+    expect(policy.supplyRegion(czCompany, { country: 'CZ' })).toBe('domestic');
+    expect(policy.supplyRegion(czCompany, { country: 'SK' })).toBe('eu');
+    expect(policy.euB2bReverseCharge(czCompany, { country: 'SK', vat_id: 'SK2020' })).toBe(true);
+  });
+
+  it('falls back to the jurisdiction country when the company has none', () => {
+    const czNoCountry = { ...skCompany('payer'), country: null, jurisdiction: 'eu_cz' };
+    // CZ buyer is domestic, never EU reverse charge.
+    expect(policy.supplyRegion(czNoCountry, { country: 'CZ', vat_id: 'CZ123' })).toBe('domestic');
+    // Multi-country buckets have no fallback - domestic-safe.
+    const euOther = { ...skCompany('payer'), country: null, jurisdiction: 'eu_other' };
+    expect(policy.supplyRegion(euOther, { country: 'DE', vat_id: 'DE123' })).toBe('domestic');
+  });
 });
 
 describe('§4 payer + EU B2B (counterparty with IČ DPH) reverse charges automatically', () => {
