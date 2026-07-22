@@ -10,6 +10,7 @@ const fullBuyer = {
 
 function input(overrides: Partial<Parameters<typeof deFullInvoiceBuyerMissing>[0]> = {}) {
   return {
+    documentType: 'invoice',
     jurisdiction: 'eu_de',
     currency: 'EUR',
     totalGross: 300,
@@ -36,6 +37,13 @@ describe('deFullInvoiceBuyerMissing (§ 33 UStDV / § 14 UStG)', () => {
     expect(deFullInvoiceBuyerMissing(input({ totalGross: 100, buyer: null }))).toBe(false);
     // Just above the limit blocks.
     expect(deFullInvoiceBuyerMissing(input({ totalGross: 250.01, buyer: null }))).toBe(true);
+  });
+
+  it('only applies to invoices - other document types issue freely', () => {
+    for (const documentType of ['quote', 'proforma', 'credit_note', null, undefined]) {
+      expect(deFullInvoiceBuyerMissing(input({ documentType, buyer: null }))).toBe(false);
+    }
+    expect(deFullInvoiceBuyerMissing(input({ documentType: 'invoice', buyer: null }))).toBe(true);
   });
 
   it('only applies to DE companies and EUR documents', () => {

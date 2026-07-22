@@ -23,14 +23,20 @@ function filled(value: string | null | undefined): boolean {
  * True when issuing would violate the DE full-invoice rule: a German
  * company's EUR invoice above the Kleinbetrag limit without the buyer's
  * complete name and address. Small-amount invoices and other currencies
- * pass freely.
+ * pass freely. § 14 UStG governs invoices - quotes, proformas and credit
+ * notes are never blocked (credit notes inherit the buyer from their
+ * source invoice anyway).
  */
 export function deFullInvoiceBuyerMissing(input: {
+  documentType: string | null | undefined;
   jurisdiction: string | null | undefined;
   currency: string | null | undefined;
   totalGross: number;
   buyer: DeInvoiceBuyer;
 }): boolean {
+  if (input.documentType !== 'invoice') {
+    return false;
+  }
   if (input.jurisdiction !== 'eu_de') {
     return false;
   }

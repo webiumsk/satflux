@@ -1142,6 +1142,7 @@ export function useInvoiceDocument() {
       // actionable message instead of producing a non-compliant invoice.
       if (
         deFullInvoiceBuyerMissing({
+          documentType: documentType.value,
           jurisdiction: companyRow.jurisdiction,
           currency: form.currency,
           totalGross: previewTotals.value.total,
