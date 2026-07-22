@@ -951,6 +951,7 @@
     "app_opt_reverse_charge": "Reverse charge note on PDF",
     "app_opt_reverse_charge_note": "Reverse charge text on invoice",
     "app_opt_export_note": "Export clause (non-EU invoices)",
+    "de_full_invoice_buyer_required": "German invoices above 250 € must carry the buyer's full name and address (§ 14 UStG). Select a customer with a complete address, or keep the total within the small-amount limit.",
     "app_opt_export_note_placeholder": "Nicht im Inland steuerbare Leistung.",
     "app_opt_export_note_hint": "German companies: empty = the statutory services clause; goods sellers should enter \"Steuerfreie Ausfuhrlieferung.\"",
     "reverse_charge_note_partial": "The supply of goods is exempt. The supply of services is subject to the reverse charge procedure.",

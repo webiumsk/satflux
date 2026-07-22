@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router';
 import type { InvoiceLineForm } from '../components/invoicing/InvoiceLivePreview.vue';
 import { invoicingApi } from '../services/api';
 import { isInvoicingLocalFirst } from '../evolu/flags';
+import { deFullInvoiceBuyerMissing } from '../evolu/deInvoiceRules';
 import { defaultPdfLocaleForJurisdiction } from '../config/jurisdictionRules';
 import { allDocumentEventsQuery, allDocumentSnapshotsQuery } from '../evolu/client';
 import {
@@ -1136,6 +1137,20 @@ export function useInvoiceDocument() {
         local.companyRows.value,
       ).find((c) => c.id === companyId.value);
       if (!companyRow) throw new Error('company');
+      // DE § 14 UStG: above the 250 EUR Kleinbetrag limit the buyer's full
+      // name and address are mandatory - block the issue with an
+      // actionable message instead of producing a non-compliant invoice.
+      if (
+        deFullInvoiceBuyerMissing({
+          documentType: documentType.value,
+          jurisdiction: companyRow.jurisdiction,
+          currency: form.currency,
+          totalGross: previewTotals.value.total,
+          buyer: selectedContact.value,
+        })
+      ) {
+        throw new Error(t('invoicing.de_full_invoice_buyer_required'));
+      }
       const issueResult = await local.issueLocalDocumentAsync(
         local.evolu,
         docId as DocumentId,

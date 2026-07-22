@@ -951,6 +951,7 @@
     "app_opt_reverse_charge": "Přenesení daňové povinnosti na PDF",
     "app_opt_reverse_charge_note": "Text přenesení daňové povinnosti na faktuře",
     "app_opt_export_note": "Doložka pro export (faktury mimo EU)",
+    "de_full_invoice_buyer_required": "Německá faktura nad 250 € musí obsahovat úplný název a adresu odběratele (§ 14 UStG). Vyberte odběratele s kompletní adresou, nebo ponechte částku v limitu pro faktury nízké hodnoty.",
     "app_opt_export_note_placeholder": "Nicht im Inland steuerbare Leistung.",
     "app_opt_export_note_hint": "Německé firmy: prázdné = statutární doložka pro služby; prodejci zboží zadají \"Steuerfreie Ausfuhrlieferung.\"",
     "reverse_charge_note_partial": "Dodání zboží je osvobozeno. Poskytnutí služby podléhá přenesení daňové povinnosti.",
