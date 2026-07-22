@@ -57,7 +57,7 @@ class RegWatchSeeder extends Seeder
     }
 
     /**
-     * Phase-1 monitored sources for SK and CZ. Official portals only; the
+     * Monitored sources for SK, CZ and DE. Official portals only; the CZ
      * URLs are canonical (e-sbirka.gov.cz and financnisprava.gov.cz are the
      * targets of permanent redirects from the legacy .cz domains).
      *
@@ -129,7 +129,7 @@ class RegWatchSeeder extends Seeder
     }
 
     /**
-     * PLACEHOLDER rules for the phase-1 topics in SK and CZ. Deliberately no
+     * PLACEHOLDER rules for the phase-1 topics in SK, CZ and DE. Deliberately no
      * rates, thresholds or deadlines - titles only name the topic, rule_text
      * is a TODO and verified_on stays NULL until a human verifies the rule
      * against source_url.
