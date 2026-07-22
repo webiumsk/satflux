@@ -73,8 +73,10 @@ class CompanyVatPolicyTest extends TestCase
         $policy = app(CompanyVatPolicy::class);
 
         $this->assertTrue($policy->isForeignSupply($company, $contact));
+        $this->assertSame('eu', $policy->supplyRegion($company, $contact));
         $this->assertTrue($policy->showsVatRateColumn($company, $contact));
-        $this->assertFalse($policy->showsVatBreakdown($company, $contact));
+        // EU reverse charge shows the summary with VAT 0.
+        $this->assertTrue($policy->showsVatBreakdown($company, $contact));
         $this->assertFalse($policy->calculatesVatAmounts($company, $contact));
 
         $canonical = app(CanonicalInvoiceBuilder::class)->fromLinePayloads($company, [
@@ -90,5 +92,130 @@ class CompanyVatPolicyTest extends TestCase
             __(CompanyVatPolicy::PARTIAL_REVERSE_CHARGE_NOTE),
             $note,
         );
+    }
+
+    #[Test]
+    public function partial_payer_non_eu_supply_hides_vat_and_carries_no_note(): void
+    {
+        $company = $this->skPartialCompany();
+        $contact = CompanyContact::create([
+            'company_id' => $company->id,
+            'name' => 'US klient',
+            'country' => 'US',
+        ]);
+
+        $policy = app(CompanyVatPolicy::class);
+
+        $this->assertSame('non_eu', $policy->supplyRegion($company, $contact));
+        $this->assertFalse($policy->showsVatRateColumn($company, $contact));
+        $this->assertFalse($policy->showsVatBreakdown($company, $contact));
+        $this->assertNull($policy->reverseChargeNote($company, $contact, CompanyAppSettings::from([])));
+    }
+
+    #[Test]
+    public function partial_payer_unrecognized_country_never_triggers_eu_reverse_charge(): void
+    {
+        $company = $this->skPartialCompany();
+        $contact = CompanyContact::create([
+            'company_id' => $company->id,
+            'name' => 'Voľný text',
+            'country' => 'Nemecká spolková republika',
+        ]);
+
+        $policy = app(CompanyVatPolicy::class);
+
+        // A country that is not a recognizable ISO2 code must never trigger
+        // the EU reverse-charge path.
+        $this->assertSame('non_eu', $policy->supplyRegion($company, $contact));
+        $this->assertFalse($policy->showsVatBreakdown($company, $contact));
+        $this->assertNull($policy->reverseChargeNote($company, $contact, CompanyAppSettings::from([])));
+    }
+
+    #[Test]
+    public function full_payer_always_shows_vat_regardless_of_counterparty(): void
+    {
+        $company = $this->skPartialCompany();
+        $company->vat_status = 'payer';
+        $contact = CompanyContact::create([
+            'company_id' => $company->id,
+            'name' => 'US klient',
+            'country' => 'US',
+        ]);
+
+        $policy = app(CompanyVatPolicy::class);
+
+        $this->assertTrue($policy->showsVatBreakdown($company, $contact));
+        $this->assertTrue($policy->showsVatBreakdown($company, null));
+        $this->assertTrue($policy->calculatesVatAmounts($company, $contact));
+        $this->assertNull($policy->reverseChargeNote($company, $contact, CompanyAppSettings::from([])));
+    }
+
+    #[Test]
+    public function full_payer_eu_b2b_with_vat_id_reverse_charges_automatically(): void
+    {
+        $company = $this->skPartialCompany();
+        $company->vat_status = 'payer';
+        $contact = CompanyContact::create([
+            'company_id' => $company->id,
+            'name' => 'CZ firma',
+            'country' => 'CZ',
+            'vat_id' => 'CZ12345678',
+        ]);
+
+        $policy = app(CompanyVatPolicy::class);
+
+        $this->assertTrue($policy->euB2bReverseCharge($company, $contact));
+        // No VAT is charged, but the summary still shows VAT 0 + the note.
+        $this->assertFalse($policy->calculatesVatAmounts($company, $contact));
+        $this->assertSame(0.0, $policy->resolveLineTaxRate($company, $contact, 23.0));
+        $this->assertTrue($policy->showsVatBreakdown($company, $contact));
+        $this->assertSame(
+            __(CompanyVatPolicy::PARTIAL_REVERSE_CHARGE_NOTE),
+            $policy->reverseChargeNote($company, $contact, CompanyAppSettings::from([])),
+        );
+
+        // A custom company note wins over the statutory default.
+        $custom = $policy->reverseChargeNote($company, $contact, CompanyAppSettings::from([
+            'reverse_charge' => true,
+            'reverse_charge_note' => 'Vlastná nota o prenesení.',
+        ]));
+        $this->assertSame('Vlastná nota o prenesení.', $custom);
+    }
+
+    #[Test]
+    public function full_payer_eu_b2c_without_vat_id_keeps_normal_vat(): void
+    {
+        $company = $this->skPartialCompany();
+        $company->vat_status = 'payer';
+        $contact = CompanyContact::create([
+            'company_id' => $company->id,
+            'name' => 'CZ spotrebiteľ',
+            'country' => 'CZ',
+        ]);
+
+        $policy = app(CompanyVatPolicy::class);
+
+        $this->assertFalse($policy->euB2bReverseCharge($company, $contact));
+        $this->assertTrue($policy->calculatesVatAmounts($company, $contact));
+        $this->assertSame(23.0, $policy->resolveLineTaxRate($company, $contact, 23.0));
+        $this->assertNull($policy->reverseChargeNote($company, $contact, CompanyAppSettings::from([])));
+    }
+
+    #[Test]
+    public function greek_vies_alias_el_is_domestic_for_a_gr_seller(): void
+    {
+        $company = $this->skPartialCompany();
+        $company->country = 'GR';
+        $contact = CompanyContact::create([
+            'company_id' => $company->id,
+            'name' => 'Grécky klient',
+            'country' => 'EL',
+        ]);
+
+        $policy = app(CompanyVatPolicy::class);
+
+        $this->assertTrue($policy->isDomesticSupply($company, $contact));
+        $this->assertSame('domestic', $policy->supplyRegion($company, $contact));
+        $this->assertNull($policy->reverseChargeNote($company, $contact, CompanyAppSettings::from([])));
     }
 }

@@ -56,6 +56,7 @@ class StoreCompanyAutoIssueProfileRequest extends FormRequest
             'company.default_currency' => ['sometimes', 'nullable', 'string', 'size:3'],
             'company.jurisdiction' => ['sometimes', Rule::enum(CompanyJurisdiction::class)],
             'company.vat_payer' => ['sometimes', 'boolean'],
+            'company.vat_status' => ['sometimes', 'nullable', 'string', 'in:none,payer,partial'],
             'company.vat_rate_default' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:100'],
             'company.legal_footer_note' => ['sometimes', 'nullable', 'string', 'max:10000'],
             'company.issuer_name' => ['sometimes', 'nullable', 'string', 'max:255'],

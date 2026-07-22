@@ -3500,6 +3500,7 @@
     "app_opt_embed_isdoc": "Incrustar ISDOC 6.0 en PDF de facturas (SK/CZ)",
     "app_opt_reverse_charge": "Nota de inversión del sujeto pasivo en PDF",
     "app_opt_reverse_charge_note": "Texto de inversión del sujeto pasivo",
+    "reverse_charge_note_partial": "La entrega de bienes está exenta. La prestación de servicios está sujeta al mecanismo de inversión del sujeto pasivo.",
     "action_isdoc": "Descargar ISDOC",
     "action_ubl": "Descargar UBL (XML)",
     "action_xrechnung": "Descargar XRechnung (XML)",

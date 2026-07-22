@@ -38,6 +38,8 @@ export type SnapshotCompanyV1 = {
     default_currency: string | null;
     jurisdiction: string | null;
     vat_payer: boolean | null;
+    /** §7a is 'partial'; older snapshots may lack the field entirely. */
+    vat_status?: 'none' | 'payer' | 'partial' | null;
     vat_rate_default: string | null;
     legal_footer_note: string | null;
     issuer_name: string | null;
@@ -120,6 +122,10 @@ function bool(value: unknown, fallback: boolean): boolean {
     return typeof value === "boolean" ? value : fallback;
 }
 
+function vatStatus(value: unknown): 'none' | 'payer' | 'partial' | null {
+    return value === "none" || value === "payer" || value === "partial" ? value : null;
+}
+
 /**
  * Freezes API-shaped company/contact/document/line records (the shape
  * evoluCompanyToApi / evoluContactToApi / evoluDocumentToApi emit) into the
@@ -166,6 +172,7 @@ export function buildIssuedSnapshotContentV1(input: {
             default_currency: str(input.company.default_currency),
             jurisdiction: str(input.company.jurisdiction),
             vat_payer: typeof input.company.vat_payer === "boolean" ? input.company.vat_payer : null,
+            vat_status: vatStatus(input.company.vat_status),
             vat_rate_default: str(input.company.vat_rate_default),
             legal_footer_note: str(input.company.legal_footer_note),
             issuer_name: str(input.company.issuer_name),
@@ -265,6 +272,9 @@ export function validateIssuedSnapshotV1(
     }
     const company = root.company;
     if (!company || typeof company !== "object" || typeof company.legal_name !== "string" || !company.legal_name) {
+        return { ok: false, error: "snapshot_company_invalid" };
+    }
+    if (company.vat_status != null && vatStatus(company.vat_status) === null) {
         return { ok: false, error: "snapshot_company_invalid" };
     }
     const doc = root.document;

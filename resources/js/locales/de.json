@@ -950,6 +950,7 @@
     "app_opt_embed_isdoc": "ISDOC 6.0 in Rechnungs-PDFs einbetten (SK/CZ)",
     "app_opt_reverse_charge": "Hinweis auf Reverse-Charge-Verfahren auf dem PDF",
     "app_opt_reverse_charge_note": "Reverse-Charge-Text auf der Rechnung",
+    "reverse_charge_note_partial": "Die Lieferung von Waren ist steuerbefreit. Die Erbringung von Dienstleistungen unterliegt dem Reverse-Charge-Verfahren.",
     "action_isdoc": "ISDOC herunterladen",
     "action_ubl": "UBL (XML) herunterladen",
     "action_xrechnung": "XRechnung (XML) herunterladen",

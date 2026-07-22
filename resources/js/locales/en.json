@@ -950,6 +950,7 @@
     "app_opt_embed_isdoc": "Embed ISDOC 6.0 in invoice PDFs (SK/CZ)",
     "app_opt_reverse_charge": "Reverse charge note on PDF",
     "app_opt_reverse_charge_note": "Reverse charge text on invoice",
+    "reverse_charge_note_partial": "The supply of goods is exempt. The supply of services is subject to the reverse charge procedure.",
     "action_isdoc": "Download ISDOC",
     "action_ubl": "Download UBL (XML)",
     "action_xrechnung": "Download XRechnung (XML)",
