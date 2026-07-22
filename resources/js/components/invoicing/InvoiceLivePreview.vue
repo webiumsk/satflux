@@ -133,6 +133,10 @@
 
     <hr class="border-0 border-t border-dotted border-gray-300 my-3" />
 
+    <p v-if="reverseChargeNote" class="text-xs font-semibold text-gray-800 mb-3">
+      {{ reverseChargeNote }}
+    </p>
+
     <p
       v-if="form.note_above_lines"
       class="text-xs text-gray-600 mb-3 whitespace-pre-wrap"
@@ -403,12 +407,16 @@ const companyDisplayName = computed(
 
 const vatPolicy = useCompanyVatPolicy();
 const isUsCompany = computed(() => props.company?.jurisdiction === "us");
-const showTaxSummary = computed(() => {
-  if (isUsCompany.value) {
-    return true;
-  }
-  return vatPolicy.calculatesVatAmounts(props.company);
-});
+// §4 payer / US: always; non-payer: never; §7a: only EU counterparties
+// (VAT 0 next to the reverse-charge note).
+const showTaxSummary = computed(() =>
+  vatPolicy.showsVatSummary(props.company, props.selectedContact),
+);
+const reverseChargeNote = computed(() =>
+  vatPolicy.reverseChargeApplies(props.company, props.selectedContact)
+    ? t("invoicing.reverse_charge_note_partial")
+    : null,
+);
 
 const invoiceHeading = computed(() => {
   if (props.form.title) return props.form.title;

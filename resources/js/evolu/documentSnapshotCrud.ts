@@ -38,6 +38,8 @@ export type SnapshotCompanyV1 = {
     default_currency: string | null;
     jurisdiction: string | null;
     vat_payer: boolean | null;
+    /** 'none' | 'payer' | 'partial' (§7a); older snapshots may lack it. */
+    vat_status?: string | null;
     vat_rate_default: string | null;
     legal_footer_note: string | null;
     issuer_name: string | null;
@@ -166,6 +168,7 @@ export function buildIssuedSnapshotContentV1(input: {
             default_currency: str(input.company.default_currency),
             jurisdiction: str(input.company.jurisdiction),
             vat_payer: typeof input.company.vat_payer === "boolean" ? input.company.vat_payer : null,
+            vat_status: str(input.company.vat_status),
             vat_rate_default: str(input.company.vat_rate_default),
             legal_footer_note: str(input.company.legal_footer_note),
             issuer_name: str(input.company.issuer_name),

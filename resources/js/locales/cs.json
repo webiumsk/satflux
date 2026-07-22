@@ -950,6 +950,7 @@
     "app_opt_embed_isdoc": "Vložit ISDOC 6.0 do PDF faktur (SK/CZ)",
     "app_opt_reverse_charge": "Přenesení daňové povinnosti na PDF",
     "app_opt_reverse_charge_note": "Text přenesení daňové povinnosti na faktuře",
+    "reverse_charge_note_partial": "Dodání zboží je osvobozeno. Poskytnutí služby podléhá přenesení daňové povinnosti.",
     "action_isdoc": "Stáhnout ISDOC",
     "action_ubl": "Stáhnout UBL (XML)",
     "action_xrechnung": "Stáhnout XRechnung (XML)",

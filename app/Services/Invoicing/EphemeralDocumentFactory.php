@@ -266,6 +266,7 @@ class EphemeralDocumentFactory
             'default_currency',
             'jurisdiction',
             'vat_payer',
+            'vat_status',
             'vat_rate_default',
             'legal_footer_note',
             'issuer_name',

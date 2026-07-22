@@ -8,10 +8,26 @@ use App\Models\CompanyContact;
 
 /**
  * VAT display and calculation rules for EU companies, including §7 / §7a partial payers.
+ *
+ * Partial (§7a) payers distinguish the counterparty in three tiers: domestic
+ * and non-EU supplies show no VAT at all; EU (non-domestic) supplies show a
+ * 0% VAT summary plus the reverse-charge note.
  */
 final class CompanyVatPolicy
 {
     public const PARTIAL_REVERSE_CHARGE_NOTE = 'The supply of goods is exempt. The supply of services is subject to the reverse charge procedure.';
+
+    /**
+     * EU VAT area member codes - mirror of resources/js/config/euVatCountries.ts
+     * ('EL' is the VIES alias for Greece).
+     *
+     * @var list<string>
+     */
+    public const EU_VAT_COUNTRIES = [
+        'AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES', 'FI', 'FR',
+        'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT',
+        'RO', 'SE', 'SI', 'SK',
+    ];
 
     public function vatStatus(Company $company): string
     {
@@ -59,6 +75,28 @@ final class CompanyVatPolicy
         return ! $this->isDomesticSupply($company, $contact);
     }
 
+    /**
+     * Counterparty tier for VAT display: 'domestic' (same country or empty),
+     * 'eu' (EU member other than the supplier's country) or 'non_eu'.
+     * A country that does not normalize to a known ISO2 code falls to
+     * 'non_eu' - it is never treated as an EU reverse-charge case.
+     *
+     * @return 'domestic'|'eu'|'non_eu'
+     */
+    public function supplyRegion(Company $company, ?CompanyContact $contact): string
+    {
+        if ($this->isDomesticSupply($company, $contact)) {
+            return 'domestic';
+        }
+
+        $buyer = $this->normalizeCountryCode((string) $contact?->country);
+        if (strlen($buyer) === 2 && in_array($buyer, self::EU_VAT_COUNTRIES, true)) {
+            return 'eu';
+        }
+
+        return 'non_eu';
+    }
+
     public function calculatesVatAmounts(Company $company, ?CompanyContact $contact = null): bool
     {
         if ($company->jurisdiction === CompanyJurisdiction::Us) {
@@ -78,7 +116,9 @@ final class CompanyVatPolicy
             return true;
         }
 
-        return $this->isPartialPayer($company) && $this->isForeignSupply($company, $contact);
+        // §7a: the VAT rate column only appears on EU reverse-charge
+        // invoices (rate 0); domestic and non-EU supplies show no VAT.
+        return $this->isPartialPayer($company) && $this->supplyRegion($company, $contact) === 'eu';
     }
 
     public function showsVatBreakdown(Company $company, ?CompanyContact $contact = null): bool
@@ -87,7 +127,13 @@ final class CompanyVatPolicy
             return false;
         }
 
-        return $this->isFullPayer($company);
+        if ($this->isFullPayer($company)) {
+            return true;
+        }
+
+        // §7a EU supply: show the summary with VAT 0 next to the
+        // reverse-charge note.
+        return $this->isPartialPayer($company) && $this->supplyRegion($company, $contact) === 'eu';
     }
 
     public function defaultTaxRate(Company $company, ?CompanyContact $contact = null): float
@@ -122,7 +168,7 @@ final class CompanyVatPolicy
         ?CompanyContact $contact,
         CompanyAppSettings $settings,
     ): ?string {
-        if ($this->isPartialPayer($company) && $this->isForeignSupply($company, $contact)) {
+        if ($this->isPartialPayer($company) && $this->supplyRegion($company, $contact) === 'eu') {
             return __(self::PARTIAL_REVERSE_CHARGE_NOTE);
         }
 
