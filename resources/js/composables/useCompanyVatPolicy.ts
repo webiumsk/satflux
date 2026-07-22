@@ -10,12 +10,16 @@ export type VatPolicyCompany = {
 
 export type VatPolicyContact = {
   country?: string | null;
+  vat_id?: string | null;
 } | null;
 
 // Full-string normalization (mirrors the server CompanyVatPolicy): a free
-// text like "Slovensko" must never truncate to a different ISO2 code.
+// text like "Slovensko" must never truncate to a different ISO2 code, and
+// the Greek VIES alias 'EL' canonicalizes to 'GR' so it never misclassifies
+// a domestic supply as cross-border.
 function normalizeCountry(country: string | null | undefined): string {
-  return (country || '').trim().toUpperCase();
+  const code = (country || '').trim().toUpperCase();
+  return code === 'EL' ? 'GR' : code;
 }
 
 export function resolveCompanyVatStatus(company: VatPolicyCompany): 'none' | 'payer' | 'partial' {
@@ -78,11 +82,25 @@ export function useCompanyVatPolicy() {
     return 'non_eu';
   }
 
-  function calculatesVatAmounts(company: VatPolicyCompany): boolean {
+  /**
+   * §4 full payer invoicing a VAT-registered business in another EU state
+   * (counterparty has IČ DPH): the tax liability transfers to the buyer,
+   * so no VAT is charged and the invoice carries the reverse-charge note.
+   * B2C EU supplies (no vat_id) keep normal VAT.
+   */
+  function euB2bReverseCharge(company: VatPolicyCompany, contact: VatPolicyContact): boolean {
+    return (
+      isFullPayer(company)
+      && supplyRegion(company, contact) === 'eu'
+      && (contact?.vat_id || '').trim() !== ''
+    );
+  }
+
+  function calculatesVatAmounts(company: VatPolicyCompany, contact: VatPolicyContact = null): boolean {
     if (company?.jurisdiction === 'us') {
       return true;
     }
-    return isFullPayer(company);
+    return isFullPayer(company) && !euB2bReverseCharge(company, contact);
   }
 
   function showsVatRateColumn(company: VatPolicyCompany, contact: VatPolicyContact): boolean {
@@ -111,9 +129,15 @@ export function useCompanyVatPolicy() {
     return isPartialPayer(company) && supplyRegion(company, contact) === 'eu';
   }
 
-  /** §7a EU supply: the invoice carries the reverse-charge note. */
+  /**
+   * The invoice carries the reverse-charge note: §7a with any EU
+   * counterparty, or §4 full payer with an EU VAT-registered business.
+   */
   function reverseChargeApplies(company: VatPolicyCompany, contact: VatPolicyContact): boolean {
-    return isPartialPayer(company) && supplyRegion(company, contact) === 'eu';
+    return (
+      (isPartialPayer(company) && supplyRegion(company, contact) === 'eu')
+      || euB2bReverseCharge(company, contact)
+    );
   }
 
   function defaultTaxRate(company: VatPolicyCompany): number {
@@ -131,7 +155,7 @@ export function useCompanyVatPolicy() {
     contact: VatPolicyContact,
     requestedRate?: number | null,
   ): number {
-    if (!calculatesVatAmounts(company)) {
+    if (!calculatesVatAmounts(company, contact)) {
       return 0;
     }
     return requestedRate ?? defaultTaxRate(company);
@@ -143,6 +167,7 @@ export function useCompanyVatPolicy() {
     isDomesticSupply,
     isForeignSupply,
     supplyRegion,
+    euB2bReverseCharge,
     calculatesVatAmounts,
     showsVatRateColumn,
     showsVatSummary,

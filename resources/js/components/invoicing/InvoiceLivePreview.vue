@@ -473,8 +473,14 @@ function lineTotal(line: InvoiceLineForm) {
     (line.quantity || 0) *
     (line.unit_price || 0) *
     (1 - (line.line_discount_percent || 0) / 100);
-  const tax = showTaxSummary.value ? net * ((line.tax_rate || 0) / 100) : 0;
-  return net + tax;
+  // The policy resolves the effective rate (0 for non-payers, §7a and EU
+  // reverse charge) - showTaxSummary only controls summary rendering.
+  const rate = vatPolicy.resolveLineTaxRate(
+    props.company,
+    props.selectedContact,
+    line.tax_rate ?? null,
+  );
+  return net + net * (rate / 100);
 }
 
 function formatMoney(n: number) {

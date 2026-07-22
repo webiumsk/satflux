@@ -97,13 +97,26 @@ final class CompanyVatPolicy
         return 'non_eu';
     }
 
+    /**
+     * §4 full payer invoicing a VAT-registered business in another EU state:
+     * the tax liability transfers to the buyer (reverse charge / exemption),
+     * so no VAT is charged and the invoice carries the note. Requires the
+     * counterparty's IC DPH (vat_id) - B2C EU supplies keep normal VAT.
+     */
+    public function euB2bReverseCharge(Company $company, ?CompanyContact $contact): bool
+    {
+        return $this->isFullPayer($company)
+            && $this->supplyRegion($company, $contact) === 'eu'
+            && trim((string) $contact?->vat_id) !== '';
+    }
+
     public function calculatesVatAmounts(Company $company, ?CompanyContact $contact = null): bool
     {
         if ($company->jurisdiction === CompanyJurisdiction::Us) {
             return true;
         }
 
-        return $this->isFullPayer($company);
+        return $this->isFullPayer($company) && ! $this->euB2bReverseCharge($company, $contact);
     }
 
     public function showsVatRateColumn(Company $company, ?CompanyContact $contact = null): bool
@@ -168,8 +181,15 @@ final class CompanyVatPolicy
         ?CompanyContact $contact,
         CompanyAppSettings $settings,
     ): ?string {
-        if ($this->isPartialPayer($company) && $this->supplyRegion($company, $contact) === 'eu') {
-            return __(self::PARTIAL_REVERSE_CHARGE_NOTE);
+        $applies = ($this->isPartialPayer($company) && $this->supplyRegion($company, $contact) === 'eu')
+            || $this->euB2bReverseCharge($company, $contact);
+
+        if ($applies) {
+            // A custom note from the company app settings wins over the
+            // statutory default wording.
+            $custom = $settings->bool('reverse_charge') ? trim((string) $settings->get('reverse_charge_note')) : '';
+
+            return $custom !== '' ? $custom : __(self::PARTIAL_REVERSE_CHARGE_NOTE);
         }
 
         if ($settings->bool('reverse_charge') && $contact && trim((string) $contact->vat_id) !== '') {
@@ -182,6 +202,10 @@ final class CompanyVatPolicy
 
     protected function normalizeCountryCode(string $country): string
     {
-        return strtoupper(trim($country));
+        $code = strtoupper(trim($country));
+
+        // Canonicalize the Greek VIES alias so 'EL' vs 'GR' never
+        // misclassifies a domestic supply as cross-border.
+        return $code === 'EL' ? 'GR' : $code;
     }
 }

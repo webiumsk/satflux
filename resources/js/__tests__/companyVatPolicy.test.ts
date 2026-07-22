@@ -30,6 +30,45 @@ describe('supplyRegion', () => {
   it('never treats an unrecognized country as EU', () => {
     expect(policy.supplyRegion(skCompany('partial'), freeText)).toBe('non_eu');
   });
+
+  it('canonicalizes the Greek VIES alias EL to GR (domestic supply)', () => {
+    const grCompany = { ...skCompany('payer'), country: 'GR' };
+    expect(policy.supplyRegion(grCompany, { country: 'EL' })).toBe('domestic');
+  });
+});
+
+describe('§4 payer + EU B2B (counterparty with IČ DPH) reverse charges automatically', () => {
+  const czB2b = { country: 'CZ', vat_id: 'CZ12345678' };
+
+  it('charges no VAT but keeps the summary and note', () => {
+    const company = skCompany('payer');
+    expect(policy.euB2bReverseCharge(company, czB2b)).toBe(true);
+    expect(policy.calculatesVatAmounts(company, czB2b)).toBe(false);
+    expect(policy.resolveLineTaxRate(company, czB2b, 23)).toBe(0);
+    expect(policy.showsVatSummary(company, czB2b)).toBe(true);
+    expect(policy.reverseChargeApplies(company, czB2b)).toBe(true);
+  });
+
+  it('EU B2C (no vat_id) keeps normal VAT', () => {
+    const company = skCompany('payer');
+    expect(policy.euB2bReverseCharge(company, cz)).toBe(false);
+    expect(policy.calculatesVatAmounts(company, cz)).toBe(true);
+    expect(policy.resolveLineTaxRate(company, cz, 23)).toBe(23);
+    expect(policy.reverseChargeApplies(company, cz)).toBe(false);
+  });
+
+  it('does not apply domestically or outside the EU even with a vat_id', () => {
+    const company = skCompany('payer');
+    expect(policy.euB2bReverseCharge(company, { country: 'SK', vat_id: 'SK123' })).toBe(false);
+    expect(policy.euB2bReverseCharge(company, { country: 'US', vat_id: 'X1' })).toBe(false);
+  });
+
+  it('non-payer with an EU B2B counterparty stays without VAT and without the note', () => {
+    const company = skCompany('none');
+    expect(policy.euB2bReverseCharge(company, czB2b)).toBe(false);
+    expect(policy.showsVatSummary(company, czB2b)).toBe(false);
+    expect(policy.reverseChargeApplies(company, czB2b)).toBe(false);
+  });
 });
 
 describe('showsVatSummary - the invoice VAT display matrix', () => {

@@ -250,7 +250,9 @@ export function useInvoiceDocument() {
     if (isUsCompany.value) {
       return true;
     }
-    return vatPolicy.calculatesVatAmounts(company.value);
+    // Contact-aware: §4 payer invoicing an EU VAT-registered business
+    // (reverse charge) charges no VAT.
+    return vatPolicy.calculatesVatAmounts(company.value, selectedContact.value);
   }
 
   function lineTaxRate(line: InvoiceLineForm) {
