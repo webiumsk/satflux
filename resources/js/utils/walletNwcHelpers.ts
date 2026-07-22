@@ -64,10 +64,7 @@ export function isCashuWalletNwcUri(value: string): boolean {
   return false;
 }
 
-/** Lightning address shape: local@domain.tld with at least 2 chars after the last dot. */
-const LIGHTNING_ADDRESS_PATTERN = /^[^@\s]+@[^@\s]*\.[^@\s]{2,}$/;
-
-/** Bare 'name@blink.sv' paste - the non-custodial Blink shorthand (blink.sv domain only). */
+/** Lightning address at the blink.sv domain - the only domain Blink connections accept. */
 export function isBareBlinkLightningAddress(value: string): boolean {
   return /^[^@\s;=]+@blink\.sv$/i.test(value.trim());
 }
@@ -112,9 +109,9 @@ export function validateBlinkConnectionString(connectionString: string): boolean
   }
   if (typeVal !== 'blink') return false;
   if (lnAddressVal) {
-    // Plugin defaults a bare username to the blink.sv domain
+    // Plugin defaults a bare username to the blink.sv domain; other domains are rejected
     const address = lnAddressVal.includes('@') ? lnAddressVal : `${lnAddressVal}@blink.sv`;
-    return LIGHTNING_ADDRESS_PATTERN.test(address);
+    return isBareBlinkLightningAddress(address);
   }
   return !!serverVal && !!apiKeyVal && !!walletIdVal;
 }

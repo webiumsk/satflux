@@ -14,7 +14,7 @@ class NotifyBlinkMigrationCommand extends Command
     protected $signature = 'wallet:notify-blink-migration
                             {--dry-run : List recipients without sending email}';
 
-    protected $description = 'Send one-shot Blink wallet migration emails (deduped per user, skips dismissed stores and stores already on the ln-address format)';
+    protected $description = 'Send one-shot Blink wallet migration emails (deduped per user, skips dismissed stores and stores already on the Lightning address format)';
 
     public function __construct(
         protected BlinkMigrationAlertService $alertService,

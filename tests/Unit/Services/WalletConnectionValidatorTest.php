@@ -57,6 +57,14 @@ class WalletConnectionValidatorTest extends TestCase
         $this->assertFalse($result['valid']);
     }
 
+    public function test_blink_ln_address_at_other_domain_is_rejected(): void
+    {
+        $result = $this->validator->validate('blink', 'type=blink;ln-address=satoshi@example.com;');
+
+        $this->assertFalse($result['valid']);
+        $this->assertNotEmpty($result['errors']);
+    }
+
     public function test_blink_ln_address_with_empty_local_part_is_rejected(): void
     {
         $result = $this->validator->validate('blink', 'type=blink;ln-address=@blink.sv;');

@@ -41,9 +41,9 @@ class BlinkMigrationAlertService
     }
 
     /**
-     * True when the store's Blink secret is still the custodial api-key format (or
-     * undeterminable). The non-custodial ln-address format works in the EU, so those
-     * stores get no migration warning.
+     * True when the store's Blink secret is still the custodial API key format (or
+     * undeterminable). The non-custodial Lightning address format works in the EU,
+     * so those stores get no migration warning.
      */
     public function usesLegacyBlinkFormat(Store $store): bool
     {

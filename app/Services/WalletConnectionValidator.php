@@ -81,8 +81,8 @@ class WalletConnectionValidator
                 // Non-custodial variant: ln-address only, no API key needed
                 $result['variant'] = 'ln_address';
                 $address = $this->normalizeBlinkLnAddress($result['ln_address']);
-                if (! $this->validateBlinkLightningAddress($address)) {
-                    $result['errors'][] = "Invalid ln-address. Expected a Lightning address like 'yourname@blink.sv'";
+                if (! $this->isBareBlinkLightningAddress($address)) {
+                    $result['errors'][] = "Invalid ln-address. Must be a blink.sv Lightning address like 'yourname@blink.sv'";
                 } else {
                     $result['ln_address'] = $address;
                 }
@@ -119,14 +119,6 @@ class WalletConnectionValidator
     }
 
     /**
-     * Lightning address shape: local@domain.tld with at least 2 chars after the last dot.
-     */
-    public function validateBlinkLightningAddress(string $value): bool
-    {
-        return (bool) preg_match('/^[^@\s]+@[^@\s]*\.[^@\s]{2,}$/', trim($value));
-    }
-
-    /**
      * The plugin defaults a bare username to the blink.sv domain - mirror that.
      */
     public function normalizeBlinkLnAddress(string $value): string
@@ -137,7 +129,7 @@ class WalletConnectionValidator
     }
 
     /**
-     * Bare 'name@blink.sv' paste - only the blink.sv domain counts as Blink; other
+     * Lightning address at the blink.sv domain. Also gates bare pastes - other
      * Lightning addresses stay ambiguous (Cashu uses the same shape).
      */
     public function isBareBlinkLightningAddress(string $value): bool

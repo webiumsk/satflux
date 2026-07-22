@@ -59,7 +59,7 @@ class BlinkMigrationReportCommand extends Command
             ['Metric', 'Count'],
             [
                 ['Total Blink stores', $blinkStores->count()],
-                ['Migrated (ln-address)', $migrated],
+                ['Migrated (Lightning address)', $migrated],
                 ['Active alert', $active],
                 ['Snoozed (24h)', $snoozed],
                 ['Dismissed (per store)', $dismissed],
