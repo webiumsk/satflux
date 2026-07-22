@@ -10,10 +10,11 @@ class WalletConnectionValidator
     /**
      * Parse Blink connection string.
      *
-     * Format: type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx
+     * Custodial (api-key): type=blink;server=https://api.blink.sv/graphql;api-key=blink_xxx;wallet-id=xxx
+     * Non-custodial (EU):  type=blink;ln-address=yourname@blink.sv;
      *
      * @param  string  $connectionString  Connection string to parse
-     * @return array Parsed values with keys: 'type', 'server', 'api_key', 'wallet_id', 'errors'
+     * @return array Parsed values with keys: 'type', 'server', 'api_key', 'wallet_id', 'ln_address', 'variant', 'errors'
      */
     public function parseBlinkConnectionString(string $connectionString): array
     {
@@ -23,6 +24,8 @@ class WalletConnectionValidator
             'server' => null,
             'api_key' => null,
             'wallet_id' => null,
+            'ln_address' => null,
+            'variant' => null,
             'errors' => [],
         ];
 
@@ -61,6 +64,11 @@ class WalletConnectionValidator
                     case 'walletid':
                         $result['wallet_id'] = $value;
                         break;
+                    case 'ln-address':
+                    case 'lnaddress':
+                    case 'username':
+                        $result['ln_address'] = $value;
+                        break;
                 }
             }
 
@@ -68,28 +76,91 @@ class WalletConnectionValidator
             if ($result['type'] !== 'blink') {
                 $result['errors'][] = "Type must be 'blink'";
             }
-            if (empty($result['server'])) {
-                $result['errors'][] = 'Server is required';
-            } elseif (! filter_var($result['server'], FILTER_VALIDATE_URL)) {
-                $result['errors'][] = 'Server must be a valid URL';
+
+            if ($result['ln_address'] !== null) {
+                // Non-custodial variant: ln-address only, no API key needed
+                $result['variant'] = 'ln_address';
+                $address = $this->normalizeBlinkLnAddress($result['ln_address']);
+                if (! $this->isBareBlinkLightningAddress($address)) {
+                    $result['errors'][] = "Invalid ln-address. Must be a blink.sv Lightning address like 'yourname@blink.sv'";
+                } else {
+                    $result['ln_address'] = $address;
+                }
+            } else {
+                $result['variant'] = 'api_key';
+                if (empty($result['server'])) {
+                    $result['errors'][] = 'Server is required';
+                } elseif (! filter_var($result['server'], FILTER_VALIDATE_URL)) {
+                    $result['errors'][] = 'Server must be a valid URL';
+                }
+                if (empty($result['api_key'])) {
+                    $result['errors'][] = 'API key is required';
+                }
+                if (empty($result['wallet_id'])) {
+                    $result['errors'][] = 'Wallet ID is required';
+                }
             }
-            if (empty($result['api_key'])) {
-                $result['errors'][] = 'API key is required';
-            }
-            if (empty($result['wallet_id'])) {
-                $result['errors'][] = 'Wallet ID is required';
-            }
+        } elseif ($this->isBareBlinkLightningAddress($connectionString)) {
+            // Non-custodial shorthand: merchant pasted just their Blink Lightning address
+            $result['type'] = 'blink';
+            $result['variant'] = 'ln_address';
+            $result['ln_address'] = $connectionString;
         } else {
             // Legacy format: just a URL or token (allow for backward compatibility)
             if (filter_var($connectionString, FILTER_VALIDATE_URL) !== false) {
                 // Valid URL format
                 $result['server'] = $connectionString;
             } else {
-                $result['errors'][] = 'Invalid connection string format. Expected: type=blink;server=...;api-key=...;wallet-id=...';
+                $result['errors'][] = 'Invalid connection string format. Expected: type=blink;ln-address=yourname@blink.sv; or type=blink;server=...;api-key=...;wallet-id=...';
             }
         }
 
         return $result;
+    }
+
+    /**
+     * The plugin defaults a bare username to the blink.sv domain - mirror that.
+     */
+    public function normalizeBlinkLnAddress(string $value): string
+    {
+        $value = trim($value);
+
+        return str_contains($value, '@') ? $value : $value.'@blink.sv';
+    }
+
+    /**
+     * Lightning address at the blink.sv domain. Also gates bare pastes - other
+     * Lightning addresses stay ambiguous (Cashu uses the same shape).
+     */
+    public function isBareBlinkLightningAddress(string $value): bool
+    {
+        return (bool) preg_match('/^[^@\s;=]+@blink\.sv$/i', trim($value));
+    }
+
+    /**
+     * Which Blink format a stored secret uses.
+     *
+     * @return 'api_key'|'ln_address'|null Null when the secret is not a parseable Blink string
+     */
+    public function blinkVariant(string $secret): ?string
+    {
+        $parsed = $this->parseBlinkConnectionString($secret);
+
+        return empty($parsed['errors']) ? $parsed['variant'] : null;
+    }
+
+    /**
+     * Canonical BTCPay connection string for a Blink secret (expands the bare
+     * ln-address shorthand; api-key strings pass through unchanged).
+     */
+    public function formatBtcpayBlinkConnectionString(string $secret): string
+    {
+        $parsed = $this->parseBlinkConnectionString($secret);
+        if (empty($parsed['errors']) && $parsed['variant'] === 'ln_address' && $parsed['ln_address']) {
+            return 'type=blink;ln-address='.$parsed['ln_address'].';';
+        }
+
+        return trim($secret);
     }
 
     /**
@@ -345,7 +416,7 @@ class WalletConnectionValidator
             if (! empty($parsed['errors'])) {
                 $errors = array_merge($errors, $parsed['errors']);
             } elseif (! $this->validateBlinkToken($value)) {
-                $errors[] = 'Invalid Blink connection string format. Expected: type=blink;server=https://...;api-key=...;wallet-id=...';
+                $errors[] = 'Invalid Blink connection string format. Expected: type=blink;ln-address=yourname@blink.sv; or type=blink;server=https://...;api-key=...;wallet-id=...';
             }
         } elseif ($type === 'aqua_descriptor') {
             $returnType = 'aqua_descriptor';

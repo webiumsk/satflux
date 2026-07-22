@@ -64,10 +64,28 @@ export function isCashuWalletNwcUri(value: string): boolean {
   return false;
 }
 
-/** Blink connection string: type=blink;server=...;api-key=...;wallet-id=... (all keys present, non-empty). */
+/** Lightning address at the blink.sv domain - the only domain Blink connections accept. */
+export function isBareBlinkLightningAddress(value: string): boolean {
+  return /^[^@\s;=]+@blink\.sv$/i.test(value.trim());
+}
+
+/** Canonical BTCPay Blink connection string (bare ln-address shorthand → full form). */
+export function normalizeBlinkConnectionString(value: string): string {
+  const trimmed = value.trim();
+  if (isBareBlinkLightningAddress(trimmed)) {
+    return `type=blink;ln-address=${trimmed};`;
+  }
+  return trimmed;
+}
+
+/**
+ * Blink connection string - either custodial (type=blink;server=...;api-key=...;wallet-id=...),
+ * non-custodial (type=blink;ln-address=you@blink.sv;), or the bare blink.sv address shorthand.
+ */
 export function validateBlinkConnectionString(connectionString: string): boolean {
   const trimmed = connectionString.trim();
   if (!trimmed) return false;
+  if (isBareBlinkLightningAddress(trimmed)) return true;
   if (!trimmed.includes(';')) return false;
   const parts = trimmed
     .split(';')
@@ -77,6 +95,7 @@ export function validateBlinkConnectionString(connectionString: string): boolean
   let serverVal = '';
   let apiKeyVal = '';
   let walletIdVal = '';
+  let lnAddressVal = '';
   for (const part of parts) {
     const eq = part.indexOf('=');
     if (eq === -1) continue;
@@ -86,8 +105,15 @@ export function validateBlinkConnectionString(connectionString: string): boolean
     if (key === 'server') serverVal = value;
     if (key === 'api-key' || key === 'apikey') apiKeyVal = value;
     if (key === 'wallet-id' || key === 'walletid') walletIdVal = value;
+    if (key === 'ln-address' || key === 'lnaddress' || key === 'username') lnAddressVal = value;
   }
-  return typeVal === 'blink' && !!serverVal && !!apiKeyVal && !!walletIdVal;
+  if (typeVal !== 'blink') return false;
+  if (lnAddressVal) {
+    // Plugin defaults a bare username to the blink.sv domain; other domains are rejected
+    const address = lnAddressVal.includes('@') ? lnAddressVal : `${lnAddressVal}@blink.sv`;
+    return isBareBlinkLightningAddress(address);
+  }
+  return !!serverVal && !!apiKeyVal && !!walletIdVal;
 }
 
 export function validateNwcUri(value: string): boolean {

@@ -26,6 +26,79 @@ class WalletConnectionValidatorTest extends TestCase
         $this->assertEquals('blink', $result['type']);
     }
 
+    public function test_valid_blink_ln_address_connection_string(): void
+    {
+        $result = $this->validator->validate('blink', 'type=blink;ln-address=satoshi@blink.sv;');
+
+        $this->assertTrue($result['valid']);
+        $this->assertEquals('blink', $result['type']);
+    }
+
+    public function test_blink_username_key_defaults_to_blink_sv_domain(): void
+    {
+        $parsed = $this->validator->parseBlinkConnectionString('type=blink;username=satoshi;');
+
+        $this->assertEmpty($parsed['errors']);
+        $this->assertSame('ln_address', $parsed['variant']);
+        $this->assertSame('satoshi@blink.sv', $parsed['ln_address']);
+    }
+
+    public function test_bare_blink_lightning_address_is_valid_blink_secret(): void
+    {
+        $result = $this->validator->validate('blink', 'satoshi@blink.sv');
+
+        $this->assertTrue($result['valid']);
+    }
+
+    public function test_bare_lightning_address_at_other_domain_is_rejected(): void
+    {
+        $result = $this->validator->validate('blink', 'satoshi@example.com');
+
+        $this->assertFalse($result['valid']);
+    }
+
+    public function test_blink_ln_address_at_other_domain_is_rejected(): void
+    {
+        $result = $this->validator->validate('blink', 'type=blink;ln-address=satoshi@example.com;');
+
+        $this->assertFalse($result['valid']);
+        $this->assertNotEmpty($result['errors']);
+    }
+
+    public function test_blink_ln_address_with_empty_local_part_is_rejected(): void
+    {
+        $result = $this->validator->validate('blink', 'type=blink;ln-address=@blink.sv;');
+
+        $this->assertFalse($result['valid']);
+        $this->assertNotEmpty($result['errors']);
+    }
+
+    public function test_blink_variant_detection(): void
+    {
+        $this->assertSame(
+            'api_key',
+            $this->validator->blinkVariant('type=blink;server=https://api.blink.sv/graphql;api-key=blink_test123;wallet-id=wallet456')
+        );
+        $this->assertSame('ln_address', $this->validator->blinkVariant('type=blink;ln-address=satoshi@blink.sv;'));
+        $this->assertSame('ln_address', $this->validator->blinkVariant('satoshi@blink.sv'));
+        $this->assertNull($this->validator->blinkVariant('not a connection string'));
+    }
+
+    public function test_formats_btcpay_blink_connection_string(): void
+    {
+        $this->assertSame(
+            'type=blink;ln-address=satoshi@blink.sv;',
+            $this->validator->formatBtcpayBlinkConnectionString('satoshi@blink.sv')
+        );
+        $this->assertSame(
+            'type=blink;ln-address=satoshi@blink.sv;',
+            $this->validator->formatBtcpayBlinkConnectionString('type=blink;username=satoshi;')
+        );
+
+        $apiKeyString = 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_test123;wallet-id=wallet456';
+        $this->assertSame($apiKeyString, $this->validator->formatBtcpayBlinkConnectionString($apiKeyString));
+    }
+
     public function test_invalid_blink_connection_string_missing_parts(): void
     {
         // Missing required parts

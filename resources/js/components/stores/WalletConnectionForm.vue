@@ -441,6 +441,7 @@ import { isValidAquaBoltzDescriptor } from "../../utils/aquaBoltzDescriptor";
 import { detectWalletConnectionInput } from "../../utils/detectWalletConnectionInput";
 import {
   isCashuWalletNwcUri,
+  normalizeBlinkConnectionString,
   normalizeNwcUri,
   validateBlinkConnectionString,
   validateNwcUri,
@@ -903,6 +904,9 @@ async function handleTestConnection() {
 }
 
 function formatConnectionStringForApi(value: string, type: string): string {
+  if (type === "blink") {
+    return normalizeBlinkConnectionString(value);
+  }
   if (type !== "nwc") {
     return value.trim();
   }
@@ -960,7 +964,11 @@ async function handleSubmit() {
 
   try {
     const secretPayload =
-      form.type === "nwc" ? normalizeNwcUri(form.secret) : form.secret.trim();
+      form.type === "nwc"
+        ? normalizeNwcUri(form.secret)
+        : form.type === "blink"
+          ? normalizeBlinkConnectionString(form.secret)
+          : form.secret.trim();
 
     await walletApi.connection.create(props.storeId, {
       type: form.type,

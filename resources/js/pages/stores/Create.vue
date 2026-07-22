@@ -598,6 +598,7 @@ import { DEFAULT_CASHU_MINT_URL } from "../../constants/cashu";
 import { isValidAquaBoltzDescriptor } from "../../utils/aquaBoltzDescriptor";
 import { detectWalletConnectionInput, isValidCashuLightningAddress } from "../../utils/detectWalletConnectionInput";
 import {
+  normalizeBlinkConnectionString,
   normalizeNwcUri,
   validateBlinkConnectionString,
   validateNwcUri,
@@ -941,7 +942,11 @@ async function submitWalletConfiguration() {
 
     const rawSecret = (form.value.connection_string ?? "").trim();
     const secret =
-      connectionType.value === "nwc" ? normalizeNwcUri(rawSecret) : rawSecret;
+      connectionType.value === "nwc"
+        ? normalizeNwcUri(rawSecret)
+        : connectionType.value === "blink"
+          ? normalizeBlinkConnectionString(rawSecret)
+          : rawSecret;
 
     await walletApi.connection.create(sid, {
       type: connectionType.value,

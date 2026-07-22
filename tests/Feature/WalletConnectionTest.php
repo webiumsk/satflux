@@ -95,6 +95,81 @@ class WalletConnectionTest extends TestCase
     }
 
     #[Test]
+    public function user_can_create_wallet_connection_with_blink_ln_address_secret(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $user->id]);
+
+        $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [
+            'type' => 'blink',
+            'secret' => 'type=blink;ln-address=satoshi@blink.sv;',
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.type', 'blink')
+            ->assertJsonPath('data.status', 'pending');
+        $store->refresh();
+        $this->assertSame('blink', $store->wallet_type);
+        $connection = WalletConnection::where('store_id', $store->id)->first();
+        $this->assertSame('type=blink;ln-address=satoshi@blink.sv;', Crypt::decryptString($connection->encrypted_secret));
+    }
+
+    #[Test]
+    public function blink_ln_address_shorthand_sends_canonical_connection_string_to_btcpay(): void
+    {
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+
+        Http::fake(function (Request $request) {
+            $url = $request->url();
+            if ($request->method() === 'POST' && str_contains($url, '/stores/blink-ln-store/lightning/BTC/connect')) {
+                return Http::response(['success' => true], 200);
+            }
+            if (str_contains($url, '/lightning/BTC')) {
+                return Http::response([], 200);
+            }
+
+            return Http::response(['message' => 'not found'], 404);
+        });
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-blink-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'btcpay_store_id' => 'blink-ln-store',
+        ]);
+
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [
+            'type' => 'blink',
+            'secret' => 'satoshi@blink.sv',
+        ])->assertStatus(201);
+
+        Http::assertSent(function (Request $request) {
+            return $request->method() === 'POST'
+                && str_contains($request->url(), '/stores/blink-ln-store/lightning/BTC/connect')
+                && ($request->data()['ConnectionString'] ?? null) === 'type=blink;ln-address=satoshi@blink.sv;';
+        });
+        $this->assertDatabaseHas('wallet_connections', [
+            'store_id' => $store->id,
+            'type' => 'blink',
+            'status' => 'connected',
+        ]);
+    }
+
+    #[Test]
+    public function blink_ln_address_secret_with_empty_address_is_rejected(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $user->id]);
+
+        $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [
+            'type' => 'blink',
+            'secret' => 'type=blink;ln-address=@blink.sv;',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['secret']);
+    }
+
+    #[Test]
     public function cashu_store_saving_blink_sets_pending_reconfig_for_config_bot(): void
     {
         config(['services.btcpay.base_url' => 'https://btcpay.test']);
