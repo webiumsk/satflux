@@ -85,15 +85,23 @@
                 </td>
                 <td class="px-5 py-2 text-right tabular-nums">{{ report.numberedCount }}</td>
                 <td class="px-5 py-2">
-                  <span v-if="report.missing.length === 0" class="text-xs text-green-700">
+                  <span v-if="report.missingTotal === 0" class="text-xs text-green-700">
                     {{ t("invoicing.audit_gap_ok") }}
                   </span>
+                  <!-- Capped preview - the full list lives in the ZIP export
+                       report; missingTotal always shows the true count. -->
                   <span
-                    v-for="counter in report.missing"
+                    v-for="counter in report.missing.slice(0, MISSING_BADGE_LIMIT)"
                     :key="counter"
                     class="mr-1 inline-block rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-800"
                   >
                     {{ counter }}
+                  </span>
+                  <span
+                    v-if="report.missingTotal > MISSING_BADGE_LIMIT"
+                    class="text-xs font-medium text-red-700"
+                  >
+                    +{{ report.missingTotal - MISSING_BADGE_LIMIT }}
                   </span>
                 </td>
                 <td class="px-5 py-2">
@@ -138,6 +146,8 @@ const route = useRoute();
 const companyId = computed(() => route.params.companyId as string);
 
 const { loading, loadError, period, gapReports, buildExportBlob, retry } = useGobdAudit(companyId);
+
+const MISSING_BADGE_LIMIT = 20;
 const { company } = useInvoicingCompany(companyId);
 
 const periodOptions: { value: IssuePeriodPreset; labelKey: string }[] = [

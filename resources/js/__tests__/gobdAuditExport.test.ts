@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { EvoluDocumentRow, EvoluDocumentLineRow } from "@/evolu/documentMap";
 import type { EvoluNumberSeriesRow } from "@/evolu/numberSeriesMap";
 import type { EvoluDocumentEventRow } from "@/evolu/documentEventLog";
-import { buildNumberGapReport } from "@/evolu/numberGapReport";
+import { buildNumberGapReport, MISSING_LIST_LIMIT } from "@/evolu/numberGapReport";
 import { buildGobdExportFiles, selectGobdDocuments } from "@/evolu/gobdExport";
 import { buildStoredZip, crc32 } from "@/evolu/zipStore";
 
@@ -62,6 +62,44 @@ describe("buildNumberGapReport", () => {
         ]);
         // Single-document series have no gaps.
         expect(reports.every((r) => r.missing.length === 0)).toBe(true);
+    });
+
+    it("accepts no-prefix series where the number length equals the counter width", () => {
+        const bareSeries = [
+            { id: "s3", companyId: "cmp-1", documentType: "invoice", format: "NNNN", isDefault: 1 },
+        ] as unknown as EvoluNumberSeriesRow[];
+        const documents = [
+            doc({ id: "d1", number: "0001" }),
+            doc({ id: "d3", number: "0003" }),
+        ];
+        const reports = buildNumberGapReport(documents, bareSeries, "cmp-1");
+        expect(reports).toHaveLength(1);
+        expect(reports[0].prefix).toBe("");
+        expect(reports[0].missing).toEqual([2]);
+        expect(reports[0].missingTotal).toBe(1);
+    });
+
+    it("a null isDefault series never overrides the explicit default", () => {
+        const mixedSeries = [
+            { id: "sA", companyId: "cmp-1", documentType: "invoice", format: "INVYYYYNNNN", isDefault: 1 },
+            { id: "sB", companyId: "cmp-1", documentType: "invoice", format: "INVYYYYNNNNNN", isDefault: null },
+        ] as unknown as EvoluNumberSeriesRow[];
+        // 4-digit counter parsing (from the explicit default) splits the
+        // prefix as INV2026; a 6-digit parse would produce prefix "INV20".
+        const reports = buildNumberGapReport([doc({ number: "INV20260001" })], mixedSeries, "cmp-1");
+        expect(reports[0].prefix).toBe("INV2026");
+    });
+
+    it("caps enumerated missing counters while reporting the true total", () => {
+        const documents = [
+            doc({ id: "d1", number: "INV20260001" }),
+            // A wildly off-range number must not freeze the report.
+            doc({ id: "d2", number: "INV20269999" }),
+        ];
+        const reports = buildNumberGapReport(documents, series, "cmp-1");
+        expect(reports[0].missingTotal).toBe(9997);
+        expect(reports[0].missing).toHaveLength(MISSING_LIST_LIMIT);
+        expect(reports[0].missing[0]).toBe(2);
     });
 
     it("ignores drafts, other companies and unparseable numbers", () => {
@@ -137,6 +175,18 @@ describe("GoBD export", () => {
         expect(byName["events.csv"]).not.toContain("2027-01-01T10:00:00Z");
         // The gap report covers the exported range only (no d3 counter).
         expect(byName["number_gaps.csv"]).toContain('"INV2026"');
+    });
+
+    it("neutralizes spreadsheet formula injection in CSV cells", () => {
+        const files = buildGobdExportFiles({
+            ...input,
+            lines: [
+                { documentId: "d1", name: "=SUM(A1:A9)", lineTotal: "1" },
+            ] as unknown as EvoluDocumentLineRow[],
+        });
+        const linesCsv = files.find((f) => f.name === "lines.csv")?.content ?? "";
+        expect(linesCsv).toContain(`"'=SUM(A1:A9)"`);
+        expect(linesCsv).not.toContain('"=SUM');
     });
 });
 

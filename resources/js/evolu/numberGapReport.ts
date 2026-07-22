@@ -19,6 +19,13 @@ import { counterDigitsInFormat } from "./numberSeriesFormat";
  * for documents whose type has no configured series. */
 const FALLBACK_COUNTER_DIGITS = 4;
 
+/**
+ * Cap on enumerated missing counters per series - a corrupt or wildly
+ * off-range number must not freeze the audit page or balloon the CSV.
+ * The full count is always reported via missingTotal.
+ */
+export const MISSING_LIST_LIMIT = 200;
+
 export type CancelledNumberEntry = {
     documentId: string;
     number: string;
@@ -33,8 +40,12 @@ export type NumberSeriesGapReport = {
     maxCounter: number;
     /** Documents carrying a number in this prefix (any non-draft status). */
     numberedCount: number;
-    /** Counters between min and max with no document at all. */
+    /**
+     * Counters between min and max with no document at all - capped at
+     * MISSING_LIST_LIMIT entries; missingTotal carries the true count.
+     */
     missing: number[];
+    missingTotal: number;
     /** Documented gaps - cancelled documents keep their number. */
     cancelled: CancelledNumberEntry[];
 };
@@ -48,8 +59,9 @@ function counterDigitsByType(
         if (row.companyId !== companyId) continue;
         const digits = counterDigitsInFormat(row.format);
         if (digits <= 0) continue;
-        // Prefer the default series; otherwise the first seen wins.
-        if (row.isDefault !== 0 || !byType.has(row.documentType)) {
+        // Prefer the explicit default series (sqlite true = 1; null is
+        // NOT a default); otherwise the first seen wins.
+        if (row.isDefault === 1 || !byType.has(row.documentType)) {
             byType.set(row.documentType, digits);
         }
     }
@@ -58,7 +70,7 @@ function counterDigitsByType(
 
 function parseCounter(number: string, digits: number): { prefix: string; counter: number } | null {
     const trimmed = number.trim();
-    if (trimmed.length <= digits) return null;
+    if (trimmed.length < digits) return null;
     const suffix = trimmed.slice(-digits);
     if (!/^\d+$/.test(suffix)) return null;
     return { prefix: trimmed.slice(0, -digits), counter: parseInt(suffix, 10) };
@@ -104,9 +116,19 @@ export function buildNumberGapReport(
         const minCounter = counters[0];
         const maxCounter = counters[counters.length - 1];
 
+        // Walk consecutive counters instead of the raw min..max range -
+        // work scales with the document count, the gap sizes are computed
+        // arithmetically and enumeration stops at the cap.
         const missing: number[] = [];
-        for (let counter = minCounter; counter <= maxCounter; counter += 1) {
-            if (!group.byCounter.has(counter)) missing.push(counter);
+        let missingTotal = 0;
+        for (let i = 1; i < counters.length; i += 1) {
+            const previous = counters[i - 1];
+            const gap = counters[i] - previous - 1;
+            if (gap <= 0) continue;
+            missingTotal += gap;
+            for (let c = previous + 1; c < counters[i] && missing.length < MISSING_LIST_LIMIT; c += 1) {
+                missing.push(c);
+            }
         }
 
         const cancelled: CancelledNumberEntry[] = [];
@@ -124,6 +146,7 @@ export function buildNumberGapReport(
             maxCounter,
             numberedCount: counters.length,
             missing,
+            missingTotal,
             cancelled,
         });
     }

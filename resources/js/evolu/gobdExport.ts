@@ -28,7 +28,13 @@ export type GobdExportFile = { name: string; content: string };
 const BOM = "﻿";
 
 function csvCell(value: string | number | null | undefined): string {
-    return `"${String(value ?? "").replace(/"/g, '""')}"`;
+    let text = String(value ?? "");
+    // Neutralize spreadsheet formula injection: a leading =, +, -, @, tab or
+    // CR would execute when the CSV is opened in a spreadsheet.
+    if (/^[=+\-@\t\r]/.test(text)) {
+        text = `'${text}`;
+    }
+    return `"${text.replace(/"/g, '""')}"`;
 }
 
 function csv(rows: (string | number | null | undefined)[][]): string {
@@ -108,12 +114,13 @@ function eventsCsv(events: EvoluDocumentEventRow[], documentIds: Set<string>): s
 function gapReportCsv(reports: NumberSeriesGapReport[]): string {
     const header = [
         "document_type", "series_prefix", "min_counter", "max_counter",
-        "numbered_documents", "missing_counters", "cancelled_numbers",
+        "numbered_documents", "missing_total", "missing_counters", "cancelled_numbers",
     ];
     const rows = reports.map((report) => [
         report.documentType, report.prefix, report.minCounter, report.maxCounter,
         report.numberedCount,
-        report.missing.join(" "),
+        report.missingTotal,
+        report.missing.join(" ") + (report.missingTotal > report.missing.length ? " ..." : ""),
         report.cancelled.map((entry) => entry.number).join(" "),
     ]);
     return csv([header, ...rows]);
