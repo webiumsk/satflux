@@ -310,6 +310,12 @@ export function saveLocalDocument(
             company: Record<string, unknown> | null;
             contact: Record<string, unknown> | null;
         };
+        /**
+         * GoBD immutability (DE companies): an issued document must never be
+         * retro-edited - corrections go through storno or a credit note. When
+         * set, any save against a non-draft document is rejected.
+         */
+        lockIssuedContent?: boolean;
     },
 ) {
     if (!payload.lines.length) {
@@ -325,6 +331,9 @@ export function saveLocalDocument(
     );
 
     const existing = options.existingDocument ?? null;
+    if (options.lockIssuedContent && existing && existing.status !== "draft") {
+        return { ok: false as const, error: "issued_locked" };
+    }
     const statusForSave = existing?.status ?? "draft";
     const numberForSave = existing?.number ?? null;
     const quoteStatusForSave =

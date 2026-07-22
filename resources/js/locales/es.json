@@ -3502,6 +3502,7 @@
     "app_opt_reverse_charge_note": "Texto de inversión del sujeto pasivo",
     "app_opt_export_note": "Cláusula de exportación (facturas fuera de la UE)",
     "de_full_invoice_buyer_required": "Las facturas alemanas superiores a 250 € deben incluir el nombre completo y la dirección del cliente (§ 14 UStG). Seleccione un cliente con dirección completa o mantenga el importe dentro del límite de facturas de pequeño importe.",
+    "issued_locked_gobd": "Una factura emitida de una empresa alemana no puede editarse (GoBD). Corríjala mediante una anulación (storno) o una factura rectificativa.",
     "app_opt_export_note_placeholder": "Nicht im Inland steuerbare Leistung.",
     "app_opt_export_note_hint": "Empresas alemanas: vacío = cláusula legal de servicios; los vendedores de bienes deben introducir \"Steuerfreie Ausfuhrlieferung.\"",
     "reverse_charge_note_partial": "La entrega de bienes está exenta. La prestación de servicios está sujeta al mecanismo de inversión del sujeto pasivo.",
