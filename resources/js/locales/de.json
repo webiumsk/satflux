@@ -951,6 +951,7 @@
     "app_opt_reverse_charge": "Hinweis auf Reverse-Charge-Verfahren auf dem PDF",
     "app_opt_reverse_charge_note": "Reverse-Charge-Text auf der Rechnung",
     "app_opt_export_note": "Exportklausel (Rechnungen außerhalb der EU)",
+    "de_full_invoice_buyer_required": "Rechnungen über 250 € müssen den vollständigen Namen und die Anschrift des Leistungsempfängers enthalten (§ 14 UStG). Wählen Sie einen Kunden mit vollständiger Adresse oder bleiben Sie innerhalb der Kleinbetragsgrenze.",
     "app_opt_export_note_placeholder": "Nicht im Inland steuerbare Leistung.",
     "app_opt_export_note_hint": "Leer = gesetzliche Klausel für Dienstleistungen; Warenverkäufer tragen \"Steuerfreie Ausfuhrlieferung.\" ein.",
     "reverse_charge_note_partial": "Die Lieferung von Waren ist steuerbefreit. Die Erbringung von Dienstleistungen unterliegt dem Reverse-Charge-Verfahren.",
