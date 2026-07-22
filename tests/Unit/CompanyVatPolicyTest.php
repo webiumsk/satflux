@@ -260,6 +260,126 @@ class CompanyVatPolicyTest extends TestCase
         $this->assertSame('domestic', $policy->supplyRegion($company, $de));
     }
 
+    private function deCompany(string $vatStatus = 'payer'): Company
+    {
+        $user = User::factory()->create();
+
+        return Company::create([
+            'user_id' => $user->id,
+            'legal_name' => 'Test GmbH',
+            'jurisdiction' => CompanyJurisdiction::EuDe,
+            'country' => 'DE',
+            'vat_payer' => $vatStatus !== 'none',
+            'vat_status' => $vatStatus,
+            'vat_rate_default' => 19,
+            'default_currency' => 'EUR',
+        ]);
+    }
+
+    #[Test]
+    public function de_non_payer_carries_the_kleinunternehmer_clause(): void
+    {
+        $company = $this->deCompany('none');
+        $contact = new CompanyContact(['name' => 'DE klient', 'country' => 'DE']);
+        $policy = app(CompanyVatPolicy::class);
+
+        $this->assertFalse($policy->calculatesVatAmounts($company, $contact));
+        $this->assertFalse($policy->showsVatBreakdown($company, $contact));
+        $this->assertSame(
+            CompanyVatPolicy::DE_KLEINUNTERNEHMER_NOTE,
+            $policy->taxClause($company, $contact, CompanyAppSettings::from([])),
+        );
+        // The clause applies on every DE non-payer invoice, contact or not.
+        $this->assertSame(
+            CompanyVatPolicy::DE_KLEINUNTERNEHMER_NOTE,
+            $policy->taxClause($company, null, CompanyAppSettings::from([])),
+        );
+    }
+
+    #[Test]
+    public function de_payer_eu_b2b_uses_the_german_reverse_charge_wording(): void
+    {
+        $company = $this->deCompany();
+        $contact = CompanyContact::create([
+            'company_id' => $company->id,
+            'name' => 'FR firma',
+            'country' => 'FR',
+            'vat_id' => 'FR12345678901',
+        ]);
+        $policy = app(CompanyVatPolicy::class);
+
+        $this->assertFalse($policy->calculatesVatAmounts($company, $contact));
+        $this->assertSame(
+            CompanyVatPolicy::DE_REVERSE_CHARGE_NOTE,
+            $policy->taxClause($company, $contact, CompanyAppSettings::from([])),
+        );
+
+        // A custom company note is appended - the mandatory German wording
+        // always stays on the invoice.
+        $custom = $policy->taxClause($company, $contact, CompanyAppSettings::from([
+            'reverse_charge' => true,
+            'reverse_charge_note' => 'Eigener Hinweis.',
+        ]));
+        $this->assertStringContainsString(CompanyVatPolicy::DE_REVERSE_CHARGE_NOTE, (string) $custom);
+        $this->assertStringContainsString('Eigener Hinweis.', (string) $custom);
+    }
+
+    #[Test]
+    public function de_payer_non_eu_export_is_vat_free_with_the_export_clause(): void
+    {
+        $company = $this->deCompany();
+        $contact = CompanyContact::create([
+            'company_id' => $company->id,
+            'name' => 'US klient',
+            'country' => 'US',
+        ]);
+        $policy = app(CompanyVatPolicy::class);
+
+        $this->assertTrue($policy->exportExemptionApplies($company, $contact));
+        $this->assertFalse($policy->calculatesVatAmounts($company, $contact));
+        $this->assertSame(0.0, $policy->resolveLineTaxRate($company, $contact, 19.0));
+        $this->assertSame(
+            CompanyVatPolicy::DE_EXPORT_SERVICES_NOTE,
+            $policy->taxClause($company, $contact, CompanyAppSettings::from([])),
+        );
+
+        // Goods sellers override the clause via the export_note setting.
+        $goods = $policy->taxClause($company, $contact, CompanyAppSettings::from([
+            'export_note' => CompanyVatPolicy::DE_EXPORT_GOODS_NOTE,
+        ]));
+        $this->assertSame(CompanyVatPolicy::DE_EXPORT_GOODS_NOTE, $goods);
+    }
+
+    #[Test]
+    public function non_de_companies_keep_their_existing_clause_behavior(): void
+    {
+        // SK payer + non-EU: no export exemption, VAT still charged, no clause.
+        $company = $this->skPartialCompany();
+        $company->vat_status = 'payer';
+        $contact = CompanyContact::create([
+            'company_id' => $company->id,
+            'name' => 'US klient',
+            'country' => 'US',
+        ]);
+        $policy = app(CompanyVatPolicy::class);
+
+        $this->assertFalse($policy->exportExemptionApplies($company, $contact));
+        $this->assertTrue($policy->calculatesVatAmounts($company, $contact));
+        $this->assertNull($policy->taxClause($company, $contact, CompanyAppSettings::from([])));
+
+        // SK non-payer gets no Kleinunternehmer clause (DE-only wording).
+        $company->vat_status = 'none';
+        $this->assertNull($policy->taxClause($company, $contact, CompanyAppSettings::from([])));
+
+        // SK §7a EU reverse charge keeps the existing translated wording.
+        $company->vat_status = 'partial';
+        $cz = CompanyContact::create(['company_id' => $company->id, 'name' => 'CZ', 'country' => 'CZ']);
+        $this->assertSame(
+            __(CompanyVatPolicy::PARTIAL_REVERSE_CHARGE_NOTE),
+            $policy->taxClause($company, $cz, CompanyAppSettings::from([])),
+        );
+    }
+
     #[Test]
     public function greek_vies_alias_el_is_domestic_for_a_gr_seller(): void
     {

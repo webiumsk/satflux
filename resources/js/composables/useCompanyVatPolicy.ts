@@ -1,5 +1,24 @@
 import { countrySupportsVatPayer } from '@/config/euVatCountries';
 
+/**
+ * German statutory clause wording (operator-supplied, 2026-07-22; mirrors
+ * the server CompanyVatPolicy constants). Legal texts mandated for DE
+ * invoices - they stay German regardless of the UI/PDF locale.
+ */
+export const DE_KLEINUNTERNEHMER_NOTE =
+  'Umsatzsteuerfrei aufgrund der Kleinunternehmerregelung gem. § 19 UStG.';
+export const DE_REVERSE_CHARGE_NOTE =
+  'Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge).';
+export const DE_EXPORT_SERVICES_NOTE = 'Nicht im Inland steuerbare Leistung.';
+export const DE_EXPORT_GOODS_NOTE = 'Steuerfreie Ausfuhrlieferung.';
+
+export type TaxClauseKind = 'kleinunternehmer_de' | 'reverse_charge' | 'export_de';
+
+export type TaxClauseSettings = {
+  /** The company app-settings manual reverse-charge toggle. */
+  reverse_charge?: boolean;
+} | null;
+
 export type VatPolicyCompany = {
   country?: string | null;
   jurisdiction?: string | null;
@@ -121,11 +140,52 @@ export function useCompanyVatPolicy() {
     );
   }
 
+  function isDeCompany(company: VatPolicyCompany): boolean {
+    return company?.jurisdiction === 'eu_de';
+  }
+
+  /**
+   * DE export exemption (operator rule): a German payer invoicing a non-EU
+   * counterparty charges no VAT and carries the export clause instead.
+   */
+  function exportExemptionApplies(company: VatPolicyCompany, contact: VatPolicyContact): boolean {
+    return isDeCompany(company) && isFullPayer(company) && supplyRegion(company, contact) === 'non_eu';
+  }
+
   function calculatesVatAmounts(company: VatPolicyCompany, contact: VatPolicyContact = null): boolean {
     if (company?.jurisdiction === 'us') {
       return true;
     }
-    return isFullPayer(company) && !euB2bReverseCharge(company, contact);
+    return (
+      isFullPayer(company)
+      && !euB2bReverseCharge(company, contact)
+      && !exportExemptionApplies(company, contact)
+    );
+  }
+
+  /**
+   * Which statutory tax clause the invoice carries (mirrors the server
+   * taxClause precedence): DE Kleinunternehmer for German non-payers,
+   * reverse charge (automatic, or the manual app-settings toggle with a
+   * VAT-registered counterparty - any supply region, like the server's
+   * legacy branch), then the DE export clause. Null = no clause.
+   */
+  function taxClauseKind(
+    company: VatPolicyCompany,
+    contact: VatPolicyContact,
+    settings: TaxClauseSettings = null,
+  ): TaxClauseKind | null {
+    if (isDeCompany(company) && resolveCompanyVatStatus(company) === 'none') {
+      return 'kleinunternehmer_de';
+    }
+    const manualReverseCharge = Boolean(settings?.reverse_charge) && (contact?.vat_id || '').trim() !== '';
+    if (reverseChargeApplies(company, contact) || manualReverseCharge) {
+      return 'reverse_charge';
+    }
+    if (exportExemptionApplies(company, contact)) {
+      return 'export_de';
+    }
+    return null;
   }
 
   function showsVatRateColumn(company: VatPolicyCompany, contact: VatPolicyContact): boolean {
@@ -193,6 +253,9 @@ export function useCompanyVatPolicy() {
     isForeignSupply,
     supplyRegion,
     euB2bReverseCharge,
+    isDeCompany,
+    exportExemptionApplies,
+    taxClauseKind,
     calculatesVatAmounts,
     showsVatRateColumn,
     showsVatSummary,
