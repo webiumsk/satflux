@@ -95,6 +95,41 @@ class WalletConnectionTest extends TestCase
     }
 
     #[Test]
+    public function user_can_create_wallet_connection_with_blink_ln_address_secret(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $user->id]);
+
+        $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [
+            'type' => 'blink',
+            'secret' => 'type=blink;ln-address=satoshi@blink.sv;',
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.type', 'blink')
+            ->assertJsonPath('data.status', 'pending');
+        $store->refresh();
+        $this->assertSame('blink', $store->wallet_type);
+        $connection = WalletConnection::where('store_id', $store->id)->first();
+        $this->assertSame('type=blink;ln-address=satoshi@blink.sv;', Crypt::decryptString($connection->encrypted_secret));
+    }
+
+    #[Test]
+    public function blink_ln_address_secret_with_empty_address_is_rejected(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $user->id]);
+
+        $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [
+            'type' => 'blink',
+            'secret' => 'type=blink;ln-address=@blink.sv;',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['secret']);
+    }
+
+    #[Test]
     public function cashu_store_saving_blink_sets_pending_reconfig_for_config_bot(): void
     {
         config(['services.btcpay.base_url' => 'https://btcpay.test']);

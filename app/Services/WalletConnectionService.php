@@ -551,7 +551,8 @@ class WalletConnectionService
                 ]);
             }
 
-            $this->tryConnectLightningAndMarkConnected($store, $connection, $secret, $user, $userApiKey);
+            $btcpayString = $this->validator->formatBtcpayBlinkConnectionString($secret);
+            $this->tryConnectLightningAndMarkConnected($store, $connection, $btcpayString, $user, $userApiKey);
 
             return;
         }

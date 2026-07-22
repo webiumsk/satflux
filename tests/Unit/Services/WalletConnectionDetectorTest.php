@@ -41,6 +41,25 @@ class WalletConnectionDetectorTest extends TestCase
     }
 
     #[Test]
+    public function it_detects_blink_ln_address_connection_string(): void
+    {
+        $result = $this->detector->detect('type=blink;ln-address=satoshi@blink.sv;');
+
+        $this->assertSame('blink', $result['kind']);
+        $this->assertSame('blink', $result['connection_type']);
+    }
+
+    #[Test]
+    public function it_detects_bare_blink_address_as_blink_not_cashu(): void
+    {
+        $result = $this->detector->detect('satoshi@blink.sv');
+
+        $this->assertSame('blink', $result['kind']);
+        $this->assertSame('type=blink;ln-address=satoshi@blink.sv;', $result['normalized_secret']);
+        $this->assertNull($result['cashu_lightning_address']);
+    }
+
+    #[Test]
     public function it_detects_bull_descriptor(): void
     {
         $input = 'ct(slip77(5bd88956b5c0782248ad31f92d24712cff8c4cd761759dd629c08e2b60c9e6a7),elwpkh([0eb9c7d5/84h/1776h/0h]xpub6CE9h9pKdmMzM11sbeuRA1AAnmL3k6PWNzPDNw2gAGHMthvbVChXbhAADsKanndLJ7neMMBeC3oEA4uqadycLz8xYQbCdMF2NoMVZjJU7rB/<0;1>/*))';

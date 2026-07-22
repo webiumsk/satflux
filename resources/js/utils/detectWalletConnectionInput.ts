@@ -27,8 +27,10 @@ import { isValidAquaBoltzDescriptor } from './aquaBoltzDescriptor';
 import { detectWalletBrandFromDescriptor } from './aquaBoltzWalletBrand';
 import {
   extractNwcLud16,
+  isBareBlinkLightningAddress,
   isCashuWalletNwcUri,
   looksLikeNwcUri,
+  normalizeBlinkConnectionString,
   normalizeNwcUri,
 } from './walletNwcHelpers';
 
@@ -131,13 +133,15 @@ export function detectWalletConnectionInput(input: string): WalletConnectionDete
     };
   }
 
-  if (looksLikeBlink(trimmed)) {
+  // Bare 'name@blink.sv' is the non-custodial Blink shorthand - must win over the
+  // Cashu Lightning-address heuristic below.
+  if (looksLikeBlink(trimmed) || isBareBlinkLightningAddress(trimmed)) {
     return {
       kind: 'blink',
       connectionType: 'blink',
       storeWalletType: 'blink',
       brand: null,
-      normalizedSecret: trimmed,
+      normalizedSecret: normalizeBlinkConnectionString(trimmed),
       cashuMintUrl: null,
       cashuLightningAddress: null,
       confidence: 'high',
