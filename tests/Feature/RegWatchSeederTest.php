@@ -29,18 +29,28 @@ class RegWatchSeederTest extends TestCase
         $this->seed_regwatch();
 
         $this->assertSame(8, RegWatchJurisdiction::count());
-        $this->assertSame(4, RegWatchSource::count());
-        $this->assertSame(12, RegWatchRule::count());
+        $this->assertSame(6, RegWatchSource::count());
+        $this->assertSame(18, RegWatchRule::count());
 
         $codes = RegWatchJurisdiction::pluck('code')->sort()->values()->all();
         $this->assertSame(['AT', 'CH', 'CZ', 'DE', 'HU', 'PL', 'SK', 'US-WY'], $codes);
 
-        // Sources exist only for SK and CZ in phase 1, with official URLs.
+        // Sources exist for SK, CZ and DE, with official URLs.
         $slugs = RegWatchSource::pluck('slug')->sort()->values()->all();
         $this->assertSame(
-            ['cz-e-sbirka', 'cz-financni-sprava', 'sk-financna-sprava', 'sk-slov-lex'],
+            ['cz-e-sbirka', 'cz-financni-sprava', 'de-bzst', 'de-gesetze-im-internet', 'sk-financna-sprava', 'sk-slov-lex'],
             $slugs,
         );
+
+        // DE relationships: both sources hang off the DE jurisdiction and
+        // carry the verified official URLs.
+        $de = RegWatchJurisdiction::where('code', 'DE')->firstOrFail();
+        $deSources = RegWatchSource::where('jurisdiction_id', $de->id)
+            ->pluck('url', 'slug')->sort()->all();
+        $this->assertSame([
+            'de-bzst' => 'https://www.bzst.de/',
+            'de-gesetze-im-internet' => 'https://www.gesetze-im-internet.de/',
+        ], $deSources);
     }
 
     #[Test]
@@ -57,13 +67,16 @@ class RegWatchSeederTest extends TestCase
             $this->assertStringStartsWith('https://', $rule->source_url);
         }
 
-        // SK and CZ each carry the full phase-1 topic set.
-        $skTopics = RegWatchRule::whereHas('jurisdiction', fn ($q) => $q->where('code', 'SK'))
-            ->pluck('topic')->map(fn (RegWatchTopic $t) => $t->value)->sort()->values()->all();
-        $this->assertSame(
-            ['archiving', 'income_tax', 'oss', 'reverse_charge', 'us_llc_income', 'vat_registration'],
-            $skTopics,
-        );
+        // SK, CZ and DE each carry the full phase-1 topic set.
+        foreach (['SK', 'CZ', 'DE'] as $code) {
+            $topics = RegWatchRule::whereHas('jurisdiction', fn ($q) => $q->where('code', $code))
+                ->pluck('topic')->map(fn (RegWatchTopic $t) => $t->value)->sort()->values()->all();
+            $this->assertSame(
+                ['archiving', 'income_tax', 'oss', 'reverse_charge', 'us_llc_income', 'vat_registration'],
+                $topics,
+                "jurisdiction {$code} must carry the full topic set",
+            );
+        }
     }
 
     #[Test]
@@ -73,8 +86,8 @@ class RegWatchSeederTest extends TestCase
         $this->seed_regwatch();
 
         $this->assertSame(8, RegWatchJurisdiction::count());
-        $this->assertSame(4, RegWatchSource::count());
-        $this->assertSame(12, RegWatchRule::count());
+        $this->assertSame(6, RegWatchSource::count());
+        $this->assertSame(18, RegWatchRule::count());
     }
 
     #[Test]
