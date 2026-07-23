@@ -221,6 +221,24 @@ class EphemeralBusinessDocumentController extends Controller
         ]);
     }
 
+    /** Latest submission per Evolu document id for the invoice-list badge. */
+    public function efakturaStatusBulk(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+
+        $validated = $request->validate([
+            'evolu_document_ids' => ['required', 'array', 'max:100'],
+            'evolu_document_ids.*' => ['string', 'max:64'],
+        ]);
+
+        $rows = $this->efakturaService->latestForDocuments($user, $validated['evolu_document_ids']);
+
+        return response()->json([
+            'data' => array_map(fn ($row) => $row->toApiRow(), $rows),
+        ]);
+    }
+
     /**
      * One-shot SAPI-SK credential check for local-first companies - the
      * credentials live only in the client's Evolu database, so all three
