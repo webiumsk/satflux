@@ -256,4 +256,97 @@ class BusinessDocumentUblTest extends TestCase
         $response->assertHeader('content-type', 'application/xml; charset=utf-8');
         $this->assertStringContainsString('CustomizationID', $response->getContent());
     }
+
+    private function deCompanyDocument(
+        string $vatStatus,
+        ?array $contactAttributes,
+        float $taxRate = 0,
+    ): BusinessDocument {
+        [$user, $company] = $this->proUserWithCompany();
+        $company->forceFill([
+            'legal_name' => 'Muster GmbH',
+            'jurisdiction' => CompanyJurisdiction::EuDe,
+            'country' => 'DE',
+            'vat_number' => 'DE123456789',
+            'vat_payer' => $vatStatus !== 'none',
+            'vat_status' => $vatStatus,
+            'vat_rate_default' => 19,
+        ])->save();
+
+        $contact = null;
+        if ($contactAttributes !== null) {
+            $contact = CompanyContact::create(array_merge(
+                ['company_id' => $company->id, 'name' => 'Buyer'],
+                $contactAttributes,
+            ));
+        }
+
+        $doc = BusinessDocument::create([
+            'company_id' => $company->id,
+            'company_contact_id' => $contact?->id,
+            'type' => 'invoice',
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => 'RE20260001',
+            'subtotal' => 100,
+            'tax_total' => 0,
+            'total' => 100,
+            'currency' => 'EUR',
+            'issue_date' => now(),
+        ]);
+        BusinessDocumentLine::create([
+            'business_document_id' => $doc->id,
+            'sort_order' => 0,
+            'name' => 'Leistung',
+            'quantity' => 1,
+            'unit' => 'ks.',
+            'unit_price' => 100,
+            'tax_rate' => $taxRate,
+            'line_total' => 100,
+        ]);
+
+        return $doc->fresh(['company', 'contact', 'lines']);
+    }
+
+    #[Test]
+    public function de_kleinunternehmer_exports_category_e_with_the_statutory_reason(): void
+    {
+        $doc = $this->deCompanyDocument('none', ['country' => 'DE']);
+        $xml = app(BusinessDocumentUblService::class)->xml($doc);
+
+        $this->assertStringContainsString('<cbc:ID>E</cbc:ID>', $xml);
+        $this->assertStringContainsString('Kleinunternehmerregelung', $xml);
+        $this->assertStringNotContainsString('<cbc:ID>Z</cbc:ID>', $xml);
+    }
+
+    #[Test]
+    public function de_eu_b2b_reverse_charge_exports_category_ae(): void
+    {
+        $doc = $this->deCompanyDocument('payer', ['country' => 'FR', 'vat_id' => 'FR12345678901']);
+        $xml = app(BusinessDocumentUblService::class)->xml($doc);
+
+        $this->assertStringContainsString('<cbc:ID>AE</cbc:ID>', $xml);
+        $this->assertStringContainsString('Steuerschuldnerschaft des Leistungsempfängers', $xml);
+    }
+
+    #[Test]
+    public function de_non_eu_export_exports_category_o_for_services(): void
+    {
+        $doc = $this->deCompanyDocument('payer', ['country' => 'US']);
+        $xml = app(BusinessDocumentUblService::class)->xml($doc);
+
+        $this->assertStringContainsString('<cbc:ID>O</cbc:ID>', $xml);
+        $this->assertStringContainsString('Nicht im Inland steuerbare Leistung', $xml);
+    }
+
+    #[Test]
+    public function normal_taxed_invoice_keeps_category_s(): void
+    {
+        $doc = $this->deCompanyDocument('payer', ['country' => 'DE'], 19.0);
+        $doc->forceFill(['tax_total' => 19, 'total' => 119])->save();
+        $xml = app(BusinessDocumentUblService::class)->xml($doc->fresh(['company', 'contact', 'lines']));
+
+        $this->assertStringContainsString('<cbc:ID>S</cbc:ID>', $xml);
+        $this->assertStringNotContainsString('<cbc:ID>AE</cbc:ID>', $xml);
+        $this->assertStringNotContainsString('TaxExemptionReason', $xml);
+    }
 }
