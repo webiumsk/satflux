@@ -2173,7 +2173,7 @@
       "name": "Nombre",
       "base_url": "URL base de la API",
       "send_detail_path": "Ruta de detalle de estado (opcional)",
-      "send_detail_path_hint": "Ruta de estado del documento enviado específica del CPDS con el marcador {id}; déjela vacía si el proveedor no la tiene.",
+      "send_detail_path_hint": "Ruta de estado del documento enviado específica del CPDS con el marcador {'{id}'}; déjela vacía si el proveedor no la tiene.",
       "active": "Activo",
       "inactive": "Inactivo",
       "sort_order": "Orden",

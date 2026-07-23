@@ -92,7 +92,12 @@ class EfakturaCpdsProvider extends Model
         }
     }
 
-    /** Preset detail-path override for the CPDS matching the given base URL host. */
+    /**
+     * Preset detail-path override for the CPDS matching the given base URL
+     * host. The admin controller enforces one active preset per host, so the
+     * match is unique; the sort_order/name ordering keeps resolution
+     * deterministic even for legacy duplicate rows.
+     */
     public static function detailPathForBaseUrl(?string $baseUrl): ?string
     {
         $host = strtolower((string) parse_url(rtrim((string) $baseUrl, '/'), PHP_URL_HOST));
@@ -104,6 +109,8 @@ class EfakturaCpdsProvider extends Model
             $match = self::query()
                 ->where('active', true)
                 ->whereNotNull('send_detail_path')
+                ->orderBy('sort_order')
+                ->orderBy('name')
                 ->get()
                 ->first(fn (self $preset): bool => strtolower((string) parse_url(rtrim($preset->base_url, '/'), PHP_URL_HOST)) === $host);
 

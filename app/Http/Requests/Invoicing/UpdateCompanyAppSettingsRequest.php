@@ -50,8 +50,9 @@ class UpdateCompanyAppSettingsRequest extends FormRequest
             'efaktura_inbound_enabled' => ['sometimes', 'boolean'],
             'efaktura_provider' => ['sometimes', 'string', 'in:sapi_sk'],
             'efaktura_sapi_base_url' => ['nullable', 'string', 'url', 'max:255'],
-            // Peppol scheme syntax (e.g. 0245:2023980035) - reject typos early.
-            'efaktura_peppol_participant_id' => ['nullable', 'string', 'max:64', 'regex:/^\d{4}:.+$/'],
+            // Peppol scheme syntax (e.g. 0245:2023980035) - reject typos
+            // early; identifiers never contain whitespace.
+            'efaktura_peppol_participant_id' => ['nullable', 'string', 'max:64', 'regex:/^\d{4}:\S+$/'],
             'efaktura_sapi_client_id' => ['nullable', 'string', 'max:128'],
             'efaktura_sapi_client_secret' => ['nullable', 'string', 'max:255'],
         ];

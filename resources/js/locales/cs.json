@@ -3933,7 +3933,7 @@
       "name": "Název",
       "base_url": "API base URL",
       "send_detail_path": "Cesta detailu stavu (volitelné)",
-      "send_detail_path_hint": "CPDS-specifická cesta stavu odeslaného dokumentu s placeholderem {id}; nechte prázdné, pokud ji poskytovatel nemá.",
+      "send_detail_path_hint": "CPDS-specifická cesta stavu odeslaného dokumentu s placeholderem {'{id}'}; nechte prázdné, pokud ji poskytovatel nemá.",
       "active": "Aktivní",
       "inactive": "Neaktivní",
       "sort_order": "Pořadí",

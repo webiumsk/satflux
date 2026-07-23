@@ -734,10 +734,10 @@
         </div>
 
         <!-- E-faktura CPDS presets (admin only) -->
-        <div
+        <RouterLink
           v-if="userRole === 'admin'"
-          class="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-emerald-500/50 transition-all group cursor-pointer"
-          @click="$router.push('/admin/efaktura-cpds')"
+          to="/admin/efaktura-cpds"
+          class="block bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-emerald-500/50 transition-all group cursor-pointer"
         >
           <div class="flex items-start justify-between mb-4">
             <div class="p-3 bg-emerald-500/10 rounded-lg">
@@ -778,7 +778,7 @@
           <span class="text-sm text-emerald-400 font-medium">{{
             t("admin.dashboard.view_section")
           }}</span>
-        </div>
+        </RouterLink>
 
         <!-- Support Tools (if support role) -->
         <div

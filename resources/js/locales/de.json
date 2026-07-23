@@ -3933,7 +3933,7 @@
       "name": "Name",
       "base_url": "API-Basis-URL",
       "send_detail_path": "Status-Detailpfad (optional)",
-      "send_detail_path_hint": "CPDS-spezifischer Statuspfad des gesendeten Dokuments mit dem {id}-Platzhalter; leer lassen, wenn der Anbieter keinen hat.",
+      "send_detail_path_hint": "CPDS-spezifischer Statuspfad des gesendeten Dokuments mit dem {'{id}'}-Platzhalter; leer lassen, wenn der Anbieter keinen hat.",
       "active": "Aktiv",
       "inactive": "Inaktiv",
       "sort_order": "Reihenfolge",

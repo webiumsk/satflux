@@ -3933,7 +3933,7 @@
       "name": "Name",
       "base_url": "API base URL",
       "send_detail_path": "Status detail path (optional)",
-      "send_detail_path_hint": "CPDS-specific sent-document status path with the {id} placeholder; leave empty when the provider has none.",
+      "send_detail_path_hint": "CPDS-specific sent-document status path with the {'{id}'} placeholder; leave empty when the provider has none.",
       "active": "Active",
       "inactive": "Inactive",
       "sort_order": "Order",

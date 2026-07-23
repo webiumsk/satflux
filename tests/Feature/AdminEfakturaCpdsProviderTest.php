@@ -86,6 +86,71 @@ class AdminEfakturaCpdsProviderTest extends TestCase
     }
 
     #[Test]
+    public function a_host_can_belong_to_only_one_active_preset(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->postJson('/api/admin/efaktura/cpds-providers', [
+                'name' => 'First',
+                'base_url' => 'https://shared.test',
+            ])
+            ->assertCreated();
+
+        // Same host again (even with a different path/casing) is rejected.
+        $this->actingAs($admin)
+            ->postJson('/api/admin/efaktura/cpds-providers', [
+                'name' => 'Second',
+                'base_url' => 'https://SHARED.test/api',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['base_url']);
+
+        // An inactive duplicate is fine - only ACTIVE hosts must be unique.
+        $inactive = $this->actingAs($admin)
+            ->postJson('/api/admin/efaktura/cpds-providers', [
+                'name' => 'Second (inactive)',
+                'base_url' => 'https://shared.test',
+                'active' => false,
+            ])
+            ->assertCreated();
+
+        // Re-activating it collides with the first preset again.
+        $this->actingAs($admin)
+            ->putJson('/api/admin/efaktura/cpds-providers/'.$inactive->json('data.id'), [
+                'name' => 'Second (inactive)',
+                'base_url' => 'https://shared.test',
+                'active' => true,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['base_url']);
+    }
+
+    #[Test]
+    public function detail_path_resolution_is_deterministic_for_legacy_duplicate_hosts(): void
+    {
+        // Rows created directly (bypassing the controller guard) simulate
+        // pre-guard data: resolution must follow sort_order, not insertion.
+        EfakturaCpdsProvider::create([
+            'name' => 'Later',
+            'base_url' => 'https://dup.test',
+            'send_detail_path' => '/sapi/v1/later/{id}',
+            'sort_order' => 5,
+        ]);
+        EfakturaCpdsProvider::create([
+            'name' => 'Winner',
+            'base_url' => 'https://dup.test',
+            'send_detail_path' => '/sapi/v1/winner/{id}',
+            'sort_order' => 1,
+        ]);
+
+        $this->assertSame(
+            '/sapi/v1/winner/{id}',
+            EfakturaCpdsProvider::detailPathForBaseUrl('https://dup.test'),
+        );
+    }
+
+    #[Test]
     public function active_presets_appear_in_public_config_only_when_enabled(): void
     {
         EfakturaCpdsProvider::create(['name' => 'B postman', 'base_url' => 'https://b.test', 'sort_order' => 2]);

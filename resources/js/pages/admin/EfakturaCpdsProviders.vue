@@ -82,8 +82,9 @@
 
           <div class="px-6 py-4 space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">{{ t('admin.efaktura.name') }}</label>
+              <label for="cpds-name" class="block text-sm font-medium text-gray-300 mb-2">{{ t('admin.efaktura.name') }}</label>
               <input
+                id="cpds-name"
                 v-model="form.name"
                 type="text"
                 maxlength="128"
@@ -91,8 +92,9 @@
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">{{ t('admin.efaktura.base_url') }}</label>
+              <label for="cpds-base-url" class="block text-sm font-medium text-gray-300 mb-2">{{ t('admin.efaktura.base_url') }}</label>
               <input
+                id="cpds-base-url"
                 v-model="form.base_url"
                 type="url"
                 placeholder="https://"
@@ -100,8 +102,9 @@
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">{{ t('admin.efaktura.send_detail_path') }}</label>
+              <label for="cpds-send-detail-path" class="block text-sm font-medium text-gray-300 mb-2">{{ t('admin.efaktura.send_detail_path') }}</label>
               <input
+                id="cpds-send-detail-path"
                 v-model="form.send_detail_path"
                 type="text"
                 placeholder="/sapi/v1/document/send/{id}"
@@ -115,8 +118,9 @@
                 {{ t('admin.efaktura.active') }}
               </label>
               <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">{{ t('admin.efaktura.sort_order') }}</label>
+                <label for="cpds-sort-order" class="block text-sm font-medium text-gray-300 mb-2">{{ t('admin.efaktura.sort_order') }}</label>
                 <input
+                  id="cpds-sort-order"
                   v-model.number="form.sort_order"
                   type="number"
                   min="0"

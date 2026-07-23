@@ -30,14 +30,20 @@ class EfakturaCpdsProviderController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $provider = EfakturaCpdsProvider::create($this->validated($request));
+        $validated = $this->validated($request);
+        $this->assertHostNotTakenByAnotherActivePreset($validated);
+
+        $provider = EfakturaCpdsProvider::create($validated);
 
         return response()->json(['data' => $this->format($provider)], 201);
     }
 
     public function update(Request $request, EfakturaCpdsProvider $provider): JsonResponse
     {
-        $provider->update($this->validated($request));
+        $validated = $this->validated($request);
+        $this->assertHostNotTakenByAnotherActivePreset($validated, $provider);
+
+        $provider->update($validated);
 
         return response()->json(['data' => $this->format($provider->fresh())]);
     }
@@ -73,6 +79,39 @@ class EfakturaCpdsProviderController extends Controller
         $validated['send_detail_path'] = $detailPath !== '' ? $detailPath : null;
 
         return $validated;
+    }
+
+    /**
+     * One ACTIVE preset per host - detailPathForBaseUrl and the SSRF trust
+     * resolve by hostname, so an ambiguous host would pick an arbitrary
+     * preset's status path.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    protected function assertHostNotTakenByAnotherActivePreset(
+        array $validated,
+        ?EfakturaCpdsProvider $ignore = null,
+    ): void {
+        // Effective active state: the request value, else the current row
+        // (update), else the column default (create).
+        $active = (bool) ($validated['active'] ?? $ignore->active ?? true);
+        if (! $active) {
+            return;
+        }
+
+        $host = strtolower((string) parse_url((string) $validated['base_url'], PHP_URL_HOST));
+
+        $taken = EfakturaCpdsProvider::query()
+            ->where('active', true)
+            ->when($ignore !== null, fn ($query) => $query->whereKeyNot($ignore->id))
+            ->get()
+            ->contains(fn (EfakturaCpdsProvider $preset): bool => strtolower((string) parse_url($preset->base_url, PHP_URL_HOST)) === $host);
+
+        if ($taken) {
+            throw ValidationException::withMessages([
+                'base_url' => ['Another active preset already uses this host.'],
+            ]);
+        }
     }
 
     /**
