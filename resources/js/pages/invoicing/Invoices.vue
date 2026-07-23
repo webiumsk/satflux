@@ -68,6 +68,12 @@
       </InvoicingAppHeader>
     </template>
 
+  <EfakturaReadinessCard
+    class="mb-4"
+    :company-id="companyId"
+    :company="localFirst ? (localCompanyForInbox as unknown as Record<string, unknown> | null) : null"
+  />
+
   <div
     v-if="showIntegrationInbox && localCompanyForInbox"
     id="woocommerce-integration-inbox"
@@ -1209,6 +1215,7 @@ import InvoicingMobileCard from "../../components/invoicing/InvoicingMobileCard.
 import InvoicingRowActionsMenu from "../../components/invoicing/InvoicingRowActionsMenu.vue";
 import InvoicingIcons from "../../components/invoicing/icons/InvoicingIcons.vue";
 import { appSettingsFromCompany } from "../../composables/useCompanyAppSettings";
+import EfakturaReadinessCard from "../../components/invoicing/EfakturaReadinessCard.vue";
 import IntegrationInboxPanel from "../../components/invoicing/IntegrationInboxPanel.vue";
 import { useInvoicingDocumentListFilters } from "../../composables/useInvoicingDocumentListFilters";
 import { useCompanyVatPolicy } from "../../composables/useCompanyVatPolicy";

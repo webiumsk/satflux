@@ -447,7 +447,7 @@
 import { asApiError } from "../../utils/apiError";
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { invoicingApi } from "../../services/api";
 import CompanyEfakturaSettingsForm from './CompanyEfakturaSettingsForm.vue';
 import TaxLimitAlert from './TaxLimitAlert.vue';
@@ -529,6 +529,7 @@ const emit = defineEmits<{
 const { t, te, locale } = useI18n();
 const { notifySaved } = useInvoicingSaveFeedback();
 const router = useRouter();
+const route = useRoute();
 const storesStore = useStoresStore();
 const flashStore = useFlashStore();
 const localFirst = computed(() => props.localFirst ?? isInvoicingLocalFirst());
@@ -680,11 +681,20 @@ const showEfakturaTab = computed(() =>
 );
 const countryOptions = computed(() => countriesForJurisdiction(contactForm.jurisdiction));
 
-watch(showEfakturaTab, (visible) => {
-  if (!visible && activeTab.value === 'efaktura') {
-    activeTab.value = 'contact';
-  }
-});
+// One watcher covers both the ?tab=efaktura deep-link (readiness checklist)
+// and the visibility fallback: the query opens the tab only while it is
+// actually visible, and losing visibility falls back to the contact tab.
+watch(
+  [showEfakturaTab, () => route.query.tab],
+  ([visible, tab]) => {
+    if (visible && tab === 'efaktura') {
+      activeTab.value = 'efaktura';
+    } else if (!visible && activeTab.value === 'efaktura') {
+      activeTab.value = 'contact';
+    }
+  },
+  { immediate: true },
+);
 
 function countryLabel(code: string): string {
   const key = `invoicing.country_${code.toLowerCase()}`;
