@@ -10,6 +10,8 @@ use App\Models\CompanyContact;
 use App\Support\Invoicing\Canonical\CanonicalInvoice;
 use App\Support\Invoicing\Canonical\CanonicalInvoiceLine;
 use App\Support\Invoicing\Canonical\CanonicalTaxBreakdownRow;
+use App\Support\Invoicing\CompanyAppSettings;
+use App\Support\Invoicing\CompanyVatPolicy;
 use App\Support\Invoicing\DeXRechnungProfile;
 use App\Support\Invoicing\EuStructuredDocumentExport;
 use App\Support\Invoicing\SkUblProfile;
@@ -23,8 +25,21 @@ class BusinessDocumentUblService
     /** German companies export the XRechnung CIUS instead of plain Peppol BIS. */
     protected bool $xrechnung = false;
 
+    /**
+     * EN 16931 tax scenario of the whole invoice, resolved from the shared
+     * VAT policy: null = normal S/Z behavior; otherwise every category on
+     * the document carries this code and (on subtotals) the statutory
+     * exemption reason. AE = reverse charge, E = exempt (§19
+     * Kleinunternehmer), G = export outside the EU (goods), O = outside the
+     * scope of VAT (exported services).
+     *
+     * @var array{category: string, reason: string|null}|null
+     */
+    protected ?array $taxScenario = null;
+
     public function __construct(
         protected CanonicalInvoiceBuilder $canonicalBuilder,
+        protected CompanyVatPolicy $vatPolicy,
     ) {}
 
     public function supports(BusinessDocument $document): bool
@@ -38,6 +53,7 @@ class BusinessDocumentUblService
         $document = $canonical->document ?? $document;
 
         $this->xrechnung = DeXRechnungProfile::appliesTo($canonical->company);
+        $this->taxScenario = $this->resolveTaxScenario($canonical);
         $isCreditNote = $document->type === BusinessDocumentType::CreditNote;
 
         $writer = new XMLWriter;
@@ -108,6 +124,46 @@ class BusinessDocumentUblService
         return $xml;
     }
 
+    /**
+     * @return array{category: string, reason: string|null}|null
+     */
+    protected function resolveTaxScenario(CanonicalInvoice $canonical): ?array
+    {
+        $company = $canonical->company;
+        $contact = $canonical->contact;
+        // getAttribute keeps the type mixed - the app_settings PHPDoc says
+        // string while the cast yields an array (pre-existing looseness).
+        $rawSettings = $company->getAttribute('app_settings');
+        $settings = CompanyAppSettings::from(is_array($rawSettings) ? $rawSettings : null);
+
+        if ($this->vatPolicy->isDeCompany($company) && $this->vatPolicy->vatStatus($company) === 'none') {
+            return ['category' => 'E', 'reason' => CompanyVatPolicy::DE_KLEINUNTERNEHMER_NOTE];
+        }
+
+        $reverseCharge = ($this->vatPolicy->isPartialPayer($company)
+                && $this->vatPolicy->supplyRegion($company, $contact) === 'eu')
+            || $this->vatPolicy->euB2bReverseCharge($company, $contact);
+        if ($reverseCharge) {
+            return [
+                'category' => 'AE',
+                'reason' => $this->vatPolicy->taxClause($company, $contact, $settings),
+            ];
+        }
+
+        if ($this->vatPolicy->exportExemptionApplies($company, $contact)) {
+            $reason = $this->vatPolicy->taxClause($company, $contact, $settings);
+
+            // G = free export of goods; O = services outside the scope of
+            // German VAT (our default export clause).
+            return [
+                'category' => $reason === CompanyVatPolicy::DE_EXPORT_GOODS_NOTE ? 'G' : 'O',
+                'reason' => $reason,
+            ];
+        }
+
+        return null;
+    }
+
     protected function invoiceTypeCode(BusinessDocumentType $type): string
     {
         return match ($type) {
@@ -139,8 +195,9 @@ class BusinessDocumentUblService
         $this->amountElement($writer, 'cbc', 'TaxableAmount', $row->taxableAmount, $currency);
         $this->amountElement($writer, 'cbc', 'TaxAmount', $row->taxAmount, $currency);
         $writer->startElementNs('cac', 'TaxCategory', null);
-        $this->element($writer, 'cbc', 'ID', 'S');
+        $this->element($writer, 'cbc', 'ID', $this->taxScenario['category'] ?? 'S');
         $this->element($writer, 'cbc', 'Percent', $this->formatRate($row->ratePercent));
+        $this->element($writer, 'cbc', 'TaxExemptionReason', $this->taxScenario['reason'] ?? null);
         $writer->startElementNs('cac', 'TaxScheme', null);
         $this->element($writer, 'cbc', 'ID', 'VAT');
         $writer->endElement();
@@ -154,8 +211,9 @@ class BusinessDocumentUblService
         $this->amountElement($writer, 'cbc', 'TaxableAmount', $canonical->subtotal, $canonical->currency);
         $this->amountElement($writer, 'cbc', 'TaxAmount', '0.00', $canonical->currency);
         $writer->startElementNs('cac', 'TaxCategory', null);
-        $this->element($writer, 'cbc', 'ID', 'Z');
+        $this->element($writer, 'cbc', 'ID', $this->taxScenario['category'] ?? 'Z');
         $this->element($writer, 'cbc', 'Percent', '0');
+        $this->element($writer, 'cbc', 'TaxExemptionReason', $this->taxScenario['reason'] ?? null);
         $writer->startElementNs('cac', 'TaxScheme', null);
         $this->element($writer, 'cbc', 'ID', 'VAT');
         $writer->endElement();
@@ -193,7 +251,7 @@ class BusinessDocumentUblService
             $this->element($writer, 'cbc', 'Description', $line->description);
         }
         $writer->startElementNs('cac', 'ClassifiedTaxCategory', null);
-        $this->element($writer, 'cbc', 'ID', (float) $line->taxRate > 0 ? 'S' : 'Z');
+        $this->element($writer, 'cbc', 'ID', $this->taxScenario['category'] ?? ((float) $line->taxRate > 0 ? 'S' : 'Z'));
         $this->element($writer, 'cbc', 'Percent', $this->formatRate($line->taxRate));
         $writer->startElementNs('cac', 'TaxScheme', null);
         $this->element($writer, 'cbc', 'ID', 'VAT');
