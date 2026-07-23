@@ -83,7 +83,12 @@ class EfakturaDoctorCommand extends Command
             $this->info(sprintf('%s (%s)', $company->legal_name ?: $company->trade_name ?: '?', $company->id));
 
             if (! $eligibility->supportsCompany($company)) {
-                $this->line('  eligible: no (only eu_sk full VAT payers)');
+                $this->line('  eligible (outbound): no - only eu_sk full VAT payers issue e-invoices');
+                // The statutory RECEIVING obligation covers all SK taxable
+                // entities from 2027; the module's inbound is currently also
+                // limited to full payers (pollAll/pollCompany gate on the
+                // same eligibility) - documented in docs/SK_EFAKTURA.md.
+                $this->line('  note: receiving readiness is not tracked for non-payers (module limitation)');
 
                 continue;
             }
@@ -93,11 +98,13 @@ class EfakturaDoctorCommand extends Command
             $this->line('  efaktura_enabled (company): '.($settings->enabled() ? 'yes' : 'no'));
 
             $baseUrl = $settings->sapiBaseUrl();
+            $baseUrlValid = false;
             if ($baseUrl === null) {
                 $this->line('  base URL: (none)');
             } else {
                 try {
                     $client->validateBaseUrl($baseUrl);
+                    $baseUrlValid = true;
                     $this->line("  base URL: {$baseUrl} (host allowed)");
                 } catch (\RuntimeException $exception) {
                     $this->warn("  base URL: {$baseUrl} - REJECTED: {$exception->getMessage()}");
@@ -114,10 +121,16 @@ class EfakturaDoctorCommand extends Command
             $this->line('  connection tested at: '.((string) ($settings->values['efaktura_connection_tested_at'] ?? '') ?: '(never)'));
             $this->line('  auto-send: '.($settings->autoSend() ? 'yes' : 'no').', inbound: '.($settings->inboundEnabled() ? 'yes' : 'no'));
 
-            $configured = $settings->configured();
-            $configured
-                ? $this->line('  configured: yes')
-                : $this->warn('  configured: NO');
+            // A rejected base URL means every real call would fail - it
+            // downgrades the verdict and blocks the --live attempt.
+            $configured = $settings->configured() && $baseUrlValid;
+            if ($configured) {
+                $this->line('  configured: yes');
+            } elseif ($settings->configured() && ! $baseUrlValid) {
+                $this->warn('  configured: NO (base URL rejected)');
+            } else {
+                $this->warn('  configured: NO');
+            }
 
             if ($this->option('live') && $configured) {
                 $result = $tester->test($baseUrl, $settings->sapiClientId(), $settings->sapiClientSecret());

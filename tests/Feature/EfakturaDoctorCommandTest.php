@@ -80,6 +80,29 @@ class EfakturaDoctorCommandTest extends TestCase
     }
 
     #[Test]
+    public function live_mode_skips_authentication_when_the_base_url_is_rejected(): void
+    {
+        // Host is neither allowlisted nor resolvable - the URL guard rejects
+        // it, the verdict downgrades and no authentication is attempted.
+        config(['efaktura.enabled' => true, 'efaktura.allowed_sapi_hosts' => []]);
+        Http::fake();
+        $this->skCompany([
+            'efaktura_enabled' => true,
+            'efaktura_sapi_base_url' => 'https://rejected.invalid',
+            'efaktura_sapi_client_id' => 'client-test',
+            'efaktura_sapi_client_secret_encrypted' => Crypt::encryptString('secret-test'),
+        ]);
+
+        $this->artisan('efaktura:doctor --live')
+            ->expectsOutputToContain('REJECTED')
+            ->expectsOutputToContain('configured: NO (base URL rejected)')
+            ->doesntExpectOutputToContain('live authentication')
+            ->assertSuccessful();
+
+        Http::assertNothingSent();
+    }
+
+    #[Test]
     public function unknown_company_fails_and_ineligible_companies_are_labelled(): void
     {
         config(['efaktura.enabled' => true]);
@@ -91,7 +114,7 @@ class EfakturaDoctorCommandTest extends TestCase
         $nonPayer->forceFill(['vat_status' => 'none', 'vat_payer' => false])->save();
 
         $this->artisan('efaktura:doctor')
-            ->expectsOutputToContain('eligible: no (only eu_sk full VAT payers)')
+            ->expectsOutputToContain('eligible (outbound): no - only eu_sk full VAT payers issue e-invoices')
             ->assertSuccessful();
     }
 }
