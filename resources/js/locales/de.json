@@ -954,6 +954,7 @@
     "app_display_options": "Anzeigeoptionen für Belege",
     "app_opt_contextual_help": "Kontexthilfe anzeigen",
     "app_opt_embed_isdoc": "ISDOC 6.0 in Rechnungs-PDFs einbetten (SK/CZ)",
+    "app_opt_embed_zugferd": "ZUGFeRD-E-Rechnung in PDFs einbetten",
     "app_opt_reverse_charge": "Hinweis auf Reverse-Charge-Verfahren auf dem PDF",
     "app_opt_reverse_charge_note": "Reverse-Charge-Text auf der Rechnung",
     "app_opt_export_note": "Exportklausel (Rechnungen außerhalb der EU)",

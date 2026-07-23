@@ -38,6 +38,7 @@ class UpdateCompanyAppSettingsRequest extends FormRequest
             'show_summary_on_quotes' => ['sometimes', 'boolean'],
             'runs_eshop' => ['sometimes', 'boolean'],
             'embed_isdoc_in_pdf' => ['sometimes', 'boolean'],
+            'embed_zugferd_in_pdf' => ['sometimes', 'boolean'],
             'reverse_charge' => ['sometimes', 'boolean'],
             'reverse_charge_note' => ['nullable', 'string', 'max:2000'],
             'export_note' => ['nullable', 'string', 'max:2000'],

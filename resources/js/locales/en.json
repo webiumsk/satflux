@@ -954,6 +954,7 @@
     "app_display_options": "Document display options",
     "app_opt_contextual_help": "Show contextual help",
     "app_opt_embed_isdoc": "Embed ISDOC 6.0 in invoice PDFs (SK/CZ)",
+    "app_opt_embed_zugferd": "Embed ZUGFeRD e-invoice in PDFs (DE)",
     "app_opt_reverse_charge": "Reverse charge note on PDF",
     "app_opt_reverse_charge_note": "Reverse charge text on invoice",
     "app_opt_export_note": "Export clause (non-EU invoices)",

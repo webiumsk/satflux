@@ -3504,6 +3504,7 @@
     "app_display_options": "Opciones de visualización",
     "app_opt_contextual_help": "Mostrar ayuda contextual",
     "app_opt_embed_isdoc": "Incrustar ISDOC 6.0 en PDF de facturas (SK/CZ)",
+    "app_opt_embed_zugferd": "Incrustar factura electrónica ZUGFeRD en PDF (DE)",
     "app_opt_reverse_charge": "Nota de inversión del sujeto pasivo en PDF",
     "app_opt_reverse_charge_note": "Texto de inversión del sujeto pasivo",
     "app_opt_export_note": "Cláusula de exportación (facturas fuera de la UE)",

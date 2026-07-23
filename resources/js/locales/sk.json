@@ -954,6 +954,7 @@
     "app_display_options": "Zobrazenie na dokladoch",
     "app_opt_contextual_help": "Zobrazovať kontextovú nápovedu",
     "app_opt_embed_isdoc": "Vložiť ISDOC 6.0 do PDF faktúr (SK/CZ)",
+    "app_opt_embed_zugferd": "Vkladať ZUGFeRD e-faktúru do PDF (DE)",
     "app_opt_reverse_charge": "Prenesenie daňovej povinnosti na PDF",
     "app_opt_reverse_charge_note": "Text prenesenia DPH na faktúre",
     "app_opt_export_note": "Doložka pre export (faktúry mimo EÚ)",

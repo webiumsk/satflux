@@ -243,6 +243,45 @@ final class CompanyVatPolicy
      * then the DE export clause for non-EU supplies. Returns null when no
      * clause applies.
      */
+    /**
+     * EN 16931 tax scenario of a whole document (shared by the UBL/XRechnung
+     * and ZUGFeRD exports): null = normal S/Z categories; otherwise the
+     * category code plus the statutory exemption reason. AE = reverse
+     * charge, E = exempt (§19 Kleinunternehmer), G = export of goods
+     * outside the EU, O = services outside the scope of German VAT.
+     *
+     * @return array{category: string, reason: string|null}|null
+     */
+    public function enTaxScenario(
+        Company $company,
+        ?CompanyContact $contact,
+        CompanyAppSettings $settings,
+    ): ?array {
+        if ($this->isDeCompany($company) && $this->vatStatus($company) === 'none') {
+            return ['category' => 'E', 'reason' => self::DE_KLEINUNTERNEHMER_NOTE];
+        }
+
+        $reverseCharge = ($this->isPartialPayer($company) && $this->supplyRegion($company, $contact) === 'eu')
+            || $this->euB2bReverseCharge($company, $contact);
+        if ($reverseCharge) {
+            return [
+                'category' => 'AE',
+                'reason' => $this->taxClause($company, $contact, $settings),
+            ];
+        }
+
+        if ($this->exportExemptionApplies($company, $contact)) {
+            $reason = $this->taxClause($company, $contact, $settings);
+
+            return [
+                'category' => $reason === self::DE_EXPORT_GOODS_NOTE ? 'G' : 'O',
+                'reason' => $reason,
+            ];
+        }
+
+        return null;
+    }
+
     public function taxClause(
         Company $company,
         ?CompanyContact $contact,

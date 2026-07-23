@@ -22,6 +22,8 @@ final class CompanyAppSettings
         'tax_free_minimum' => '0.00',
         'show_contextual_help' => true,
         'embed_isdoc_in_pdf' => true,
+        // ZUGFeRD hybrid PDFs for DE companies (factur-x.xml in the PDF).
+        'embed_zugferd_in_pdf' => true,
         'reverse_charge' => false,
         'reverse_charge_note' => null,
         // Custom DE export clause override (defaults to the statutory services wording).
