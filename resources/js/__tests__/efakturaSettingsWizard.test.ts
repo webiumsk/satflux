@@ -140,6 +140,33 @@ describe('eFaktura settings wizard', () => {
     expect(wrapper.text()).toContain('0245:2023980035');
   });
 
+  it('a preset stored with a trailing slash still matches the saved URL', async () => {
+    state.presets = [{ id: 'p1', name: 'Postman One', base_url: 'https://one.test/' }];
+    const wrapper = mountForm(skCompany({ efaktura_sapi_base_url: 'https://one.test' }));
+    await nextTick();
+    await nextTick();
+
+    expect((wrapper.find('#efaktura-cpds-preset').element as HTMLSelectElement).value).toBe('p1');
+  });
+
+  it('editing credentials invalidates the stored connection test', async () => {
+    const wrapper = mountForm(
+      skCompany({
+        efaktura_sapi_base_url: 'https://one.test',
+        efaktura_sapi_client_id: 'client-1',
+        efaktura_connection_tested_at: '2026-07-20T10:00:00Z',
+      }),
+    );
+    await nextTick();
+
+    expect(wrapper.text()).toContain('efaktura_connection_tested_at');
+
+    await wrapper.find('#efaktura-client-id').trigger('input');
+    await nextTick();
+
+    expect(wrapper.text()).not.toContain('efaktura_connection_tested_at');
+  });
+
   it('turning the module on for the first time preselects auto-send', async () => {
     const wrapper = mountForm({
       ...skCompany(),

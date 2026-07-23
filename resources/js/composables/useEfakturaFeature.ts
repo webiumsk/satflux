@@ -60,11 +60,14 @@ export function useEfakturaFeature() {
           presets: presetsFromRaw(data.efaktura_cpds_presets),
           mandatoryFrom: String(data.efaktura_mandatory_from ?? ''),
         };
+        return cachedConfig.value.enabled;
       } catch {
-        cachedConfig.value = { enabled: false, presets: [], mandatoryFrom: '' };
+        // Leave the cache unset so a later load() can retry - a transient
+        // /config failure must not pin the module off for the session.
+        return false;
+      } finally {
+        fetchPromise = null;
       }
-
-      return cachedConfig.value.enabled;
     })();
 
     return fetchPromise;

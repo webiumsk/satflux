@@ -50,6 +50,7 @@
             class="invoicing-sf-input font-mono text-sm"
             :placeholder="t('invoicing.efaktura_sapi_base_url_placeholder')"
             required
+            @input="invalidateConnectionTest"
           />
           <p class="text-xs text-gray-500 mt-1">{{ t('invoicing.efaktura_sapi_base_url_hint') }}</p>
         </div>
@@ -74,6 +75,7 @@
             class="invoicing-sf-input font-mono text-sm"
             autocomplete="off"
             required
+            @input="invalidateConnectionTest"
           />
         </div>
 
@@ -86,6 +88,7 @@
             class="invoicing-sf-input font-mono text-sm"
             autocomplete="new-password"
             :placeholder="secretSet ? t('invoicing.efaktura_sapi_client_secret_placeholder_set') : t('invoicing.efaktura_sapi_client_secret_placeholder')"
+            @input="invalidateConnectionTest"
           />
           <p v-if="secretSet && !form.efaktura_sapi_client_secret" class="text-xs text-emerald-700 mt-1">
             {{ t('invoicing.efaktura_sapi_client_secret_saved') }}
@@ -298,13 +301,17 @@ watch(
   },
 );
 
+function normalizeBaseUrl(url: string): string {
+  return url.trim().replace(/\/$/, '');
+}
+
 function syncSelectedPreset() {
-  const url = form.efaktura_sapi_base_url.trim().replace(/\/$/, '');
+  const url = normalizeBaseUrl(form.efaktura_sapi_base_url);
   if (url === '') {
     selectedPresetId.value = '';
     return;
   }
-  const match = cpdsPresets.value.find((preset) => preset.base_url === url);
+  const match = cpdsPresets.value.find((preset) => normalizeBaseUrl(preset.base_url) === url);
   selectedPresetId.value = match ? match.id : 'custom';
 }
 
@@ -317,6 +324,15 @@ function applyPreset() {
     form.efaktura_sapi_base_url = preset.base_url;
     form.efaktura_connection_tested_at = null;
   }
+}
+
+/**
+ * A URL/credential edit makes the last successful test stale. Wired as
+ * `@input` (not a watcher) so the initial props.company synchronization
+ * keeps the stored timestamp.
+ */
+function invalidateConnectionTest() {
+  form.efaktura_connection_tested_at = null;
 }
 
 function stepBadgeClass(done: boolean): string {
