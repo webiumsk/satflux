@@ -181,6 +181,9 @@ Route::get('/config', function () {
         'btcpay_base_url' => $publicBase,
         'btcpay_lightning_address_domain' => (string) (config('services.btcpay.lightning_address_domain') ?? ''),
         'efaktura_enabled' => (bool) config('efaktura.enabled'),
+        // Exposed unconditionally - readiness messaging shows the statutory
+        // deadline to SK companies even before the module is switched on.
+        'efaktura_mandatory_from' => (string) config('efaktura.mandatory_from'),
         'efaktura_cpds_presets' => config('efaktura.enabled')
             ? EfakturaCpdsProvider::activePresets()
             : [],
