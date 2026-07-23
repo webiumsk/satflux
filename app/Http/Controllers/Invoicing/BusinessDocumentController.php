@@ -211,7 +211,7 @@ class BusinessDocumentController extends Controller
     {
         $this->assertDocumentCompany($businessDocument, $company);
 
-        if (! $businessDocument->canUpdate()) {
+        if (! $businessDocument->canUpdate($company)) {
             throw ValidationException::withMessages([
                 'status' => ['This document cannot be edited in its current status.'],
             ]);
@@ -243,7 +243,7 @@ class BusinessDocumentController extends Controller
 
             $this->assertDocumentCompany($locked, $company);
 
-            if (! $locked->canUpdate()) {
+            if (! $locked->canUpdate($company)) {
                 throw ValidationException::withMessages([
                     'status' => ['This document cannot be edited in its current status.'],
                 ]);
@@ -622,7 +622,7 @@ class BusinessDocumentController extends Controller
     {
         $this->assertDocumentCompany($businessDocument, $company);
 
-        if (! $businessDocument->canDelete()) {
+        if (! $businessDocument->canDelete($company)) {
             throw ValidationException::withMessages([
                 'status' => ['This document cannot be deleted. Cancel it first, or delete only the latest invoice without bank matches or linked documents.'],
             ]);
@@ -635,13 +635,13 @@ class BusinessDocumentController extends Controller
         // Lock + re-check + stock reversal in one transaction: deleting an
         // issued document used to leave its stock deducted forever
         // (Cursor PR #67).
-        DB::transaction(function () use ($businessDocument) {
+        DB::transaction(function () use ($businessDocument, $company) {
             $locked = BusinessDocument::query()
                 ->whereKey($businessDocument->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if (! $locked->canDelete()) {
+            if (! $locked->canDelete($company)) {
                 throw ValidationException::withMessages([
                     'status' => ['This document cannot be deleted. Cancel it first, or delete only the latest invoice without bank matches or linked documents.'],
                 ]);

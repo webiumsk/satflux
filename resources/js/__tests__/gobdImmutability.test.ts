@@ -17,7 +17,12 @@ vi.mock("@/evolu/client", () => ({
     allCompanyWarehousesQuery: "allCompanyWarehousesQuery",
 }));
 
-import { saveLocalDocument, type DocumentSavePayload } from "@/evolu/documentCrud";
+import {
+    deleteLocalDocumentAsync,
+    saveLocalDocument,
+    type DocumentSavePayload,
+} from "@/evolu/documentCrud";
+import { canDeleteLocalDocument } from "@/evolu/documentBulkLocal";
 import { documentHistoryFromEvents, EVENT_USER_EMAIL_KEY } from "@/evolu/documentEventLog";
 
 const companyId = "cmp-1" as CompanyId;
@@ -139,6 +144,44 @@ describe("GoBD immutability - saveLocalDocument lockIssuedContent", () => {
                 existingDocument: issuedDocument(),
             }),
         ).toThrow();
+    });
+});
+
+describe("GoBD immutability - local document deletion", () => {
+    const dePolicy = {
+        jurisdictionByCompanyId: new Map<string, string>([[String(companyId), "eu_de"]]),
+    };
+
+    it("does not allow issued or cancelled DE documents to disappear from the audit trail", () => {
+        const issued = issuedDocument();
+        const cancelled = { ...issuedDocument(), id: "doc-2" as DocumentId, status: "cancelled" };
+
+        expect(canDeleteLocalDocument(issued, [issued], dePolicy)).toBe(false);
+        expect(canDeleteLocalDocument(cancelled, [cancelled], dePolicy)).toBe(false);
+    });
+
+    it("keeps DE drafts deletable", () => {
+        const draft = { ...issuedDocument(), status: "draft", number: null } as EvoluDocumentRow;
+
+        expect(canDeleteLocalDocument(draft, [draft], dePolicy)).toBe(true);
+    });
+
+    it("blocks the direct async delete helper for non-draft DE documents", async () => {
+        const update = vi.fn();
+        const cancelled = { ...issuedDocument(), status: "cancelled" } as EvoluDocumentRow;
+        const result = await deleteLocalDocumentAsync(
+            { update } as unknown as Evolu<InvoicingLocalSchema>,
+            cancelled.id,
+            [cancelled],
+            [],
+            dePolicy,
+        );
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+            expect(result.error).toBe("issued_locked");
+        }
+        expect(update).not.toHaveBeenCalled();
     });
 });
 

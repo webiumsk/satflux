@@ -40,6 +40,7 @@ import {
     allDocumentsQuery,
     allNumberSeriesQuery,
 } from "./client";
+import type { LocalDocumentDeletionPolicy } from "./documentBulkLocal";
 
 export type DocumentLinePayload = {
     name: string;
@@ -676,11 +677,12 @@ export function getLocalDocumentApi(
     documentId: DocumentId,
     documents: EvoluDocumentRow[],
     lines: EvoluDocumentLineRow[],
+    policy: LocalDocumentDeletionPolicy = {},
 ): Record<string, unknown> | null {
     const doc = documents.find((d) => d.id === documentId);
     if (!doc) return null;
     const docLines = lines.filter((l) => l.documentId === documentId);
-    return evoluDocumentToApi(doc, docLines, documents);
+    return evoluDocumentToApi(doc, docLines, documents, policy);
 }
 
 export function duplicateLocalDocument(
@@ -718,8 +720,17 @@ export async function deleteLocalDocumentAsync(
     documentId: DocumentId,
     documents: EvoluDocumentRow[],
     allSeries: EvoluNumberSeriesRow[],
+    policy: LocalDocumentDeletionPolicy = {},
 ) {
     const doc = documents.find((row) => row.id === documentId);
+
+    if (
+        doc
+        && doc.status !== "draft"
+        && policy.jurisdictionByCompanyId?.get(String(doc.companyId)) === "eu_de"
+    ) {
+        return { ok: false as const, error: "issued_locked" };
+    }
 
     // Gapless numbering (P3): an issued/paid invoice frees its number on the
     // server allocator FIRST - only then is it deleted locally. A failed
