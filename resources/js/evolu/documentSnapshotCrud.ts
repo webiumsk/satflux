@@ -30,6 +30,11 @@ export type SnapshotCompanyV1 = {
     postal_code: string | null;
     country: string | null;
     state_region: string | null;
+    /** DE Geschaeftsbrief corporate footer data; older snapshots lack them. */
+    register_court?: string | null;
+    register_number?: string | null;
+    managing_directors?: string | null;
+    supervisory_board_chair?: string | null;
     iban: string | null;
     bic: string | null;
     bank_name: string | null;
@@ -164,6 +169,10 @@ export function buildIssuedSnapshotContentV1(input: {
             postal_code: str(input.company.postal_code),
             country: str(input.company.country),
             state_region: str(input.company.state_region),
+            register_court: str(input.company.register_court),
+            register_number: str(input.company.register_number),
+            managing_directors: str(input.company.managing_directors),
+            supervisory_board_chair: str(input.company.supervisory_board_chair),
             iban: str(input.company.iban),
             bic: str(input.company.bic),
             bank_name: str(input.company.bank_name),

@@ -316,6 +316,12 @@
 
     <div class="mt-auto shrink-0 pt-4">
     <div class="border-t border-dotted border-gray-300 pt-3">
+      <div
+        v-if="corporateFooterLine"
+        class="mb-1.5 text-center text-[9px] text-gray-500"
+      >
+        {{ corporateFooterLine }}
+      </div>
       <div class="grid grid-cols-4 gap-2 text-[10px] text-gray-600">
         <div v-if="company?.issuer_name" class="text-left">
           <span class="font-semibold text-gray-800">{{ t('invoicing.issued_by') }}:</span>
@@ -421,6 +427,19 @@ const showTaxSummary = computed(() =>
   vatPolicy.showsVatSummary(props.company, props.selectedContact),
 );
 const isDeCompany = computed(() => vatPolicy.isDeCompany(props.company));
+// DE Geschaeftsbrief corporate footer - statutory German labels on purpose.
+const corporateFooterLine = computed(() => {
+  const c = props.company;
+  const register = [c?.register_court, c?.register_number].filter(Boolean).join(" ");
+  const parts = [
+    register || null,
+    c?.managing_directors ? `Geschäftsführer: ${c.managing_directors}` : null,
+    c?.supervisory_board_chair ? `Aufsichtsratsvorsitz: ${c.supervisory_board_chair}` : null,
+  ].filter(Boolean);
+  if (parts.length === 0) return null;
+  const seat = c?.city ? ` · Sitz: ${c.city}` : "";
+  return `${c?.legal_name ?? ""}${seat} · ${parts.join(" · ")}`;
+});
 // Statutory clause (mirrors the server taxClause): DE texts stay German
 // regardless of the UI locale; custom company notes win over defaults.
 const reverseChargeNote = computed(() => {

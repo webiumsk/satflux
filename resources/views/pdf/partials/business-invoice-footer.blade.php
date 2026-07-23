@@ -74,6 +74,24 @@
             @endif
         </td>
     </tr>
+    @php
+        // DE Geschaeftsbrief corporate data - statutory German labels on
+        // purpose (like the tax clauses, they are not translated).
+        $corporateParts = array_filter([
+            ($company->register_court || $company->register_number)
+                ? trim(($company->register_court ?? '').' '.($company->register_number ?? ''))
+                : null,
+            $company->managing_directors ? 'Geschäftsführer: '.$company->managing_directors : null,
+            $company->supervisory_board_chair ? 'Aufsichtsratsvorsitz: '.$company->supervisory_board_chair : null,
+        ]);
+    @endphp
+    @if($corporateParts !== [])
+    <tr>
+        <td colspan="4" align="center" style="padding-top: 5px; font-size: 8px; color: #6b7280; font-family: DejaVu Sans, sans-serif;">
+            {{ $company->legal_name }}@if($company->city) · Sitz: {{ $company->city }}@endif · {{ implode(' · ', $corporateParts) }}
+        </td>
+    </tr>
+    @endif
     <tr>
         <td colspan="4" style="height: 8px; font-size: 0; line-height: 0;">&nbsp;</td>
     </tr>

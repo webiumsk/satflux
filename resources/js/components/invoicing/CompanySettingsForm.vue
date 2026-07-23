@@ -131,6 +131,26 @@
             <label class="invoicing-sf-label">{{ t('invoicing.commercial_register') }}</label>
             <input v-model="contactForm.commercial_register" class="invoicing-sf-input" />
           </div>
+          <!-- DE Geschaeftsbrief corporate data - mandatory on GmbH/UG
+               invoice footers (Registergericht, HRB, Geschaeftsfuehrer). -->
+          <template v-if="contactForm.jurisdiction === 'eu_de'">
+            <div>
+              <label class="invoicing-sf-label">{{ t('invoicing.register_court') }}</label>
+              <input v-model="contactForm.register_court" class="invoicing-sf-input" :placeholder="t('invoicing.register_court_placeholder')" />
+            </div>
+            <div>
+              <label class="invoicing-sf-label">{{ t('invoicing.register_number') }}</label>
+              <input v-model="contactForm.register_number" class="invoicing-sf-input" placeholder="HRB 12345" />
+            </div>
+            <div>
+              <label class="invoicing-sf-label">{{ t('invoicing.managing_directors') }}</label>
+              <input v-model="contactForm.managing_directors" class="invoicing-sf-input" :placeholder="t('invoicing.managing_directors_placeholder')" />
+            </div>
+            <div>
+              <label class="invoicing-sf-label">{{ t('invoicing.supervisory_board_chair') }}</label>
+              <input v-model="contactForm.supervisory_board_chair" class="invoicing-sf-input" />
+            </div>
+          </template>
           <div>
             <label class="invoicing-sf-label">{{ t('invoicing.issuer_name') }}</label>
             <input v-model="contactForm.issuer_name" class="invoicing-sf-input" />
@@ -565,6 +585,10 @@ const contactForm = reactive({
   tax_id: '',
   vat_number: '',
   commercial_register: '',
+  register_court: '',
+  register_number: '',
+  managing_directors: '',
+  supervisory_board_chair: '',
   issuer_name: '',
   issuer_phone: '',
   issuer_email: '',
@@ -825,6 +849,10 @@ function applyCompany(c: Record<string, any>) {
   contactForm.tax_id = c.tax_id ?? '';
   contactForm.vat_number = c.vat_number ?? '';
   contactForm.commercial_register = c.commercial_register ?? '';
+  contactForm.register_court = c.register_court ?? '';
+  contactForm.register_number = c.register_number ?? '';
+  contactForm.managing_directors = c.managing_directors ?? '';
+  contactForm.supervisory_board_chair = c.supervisory_board_chair ?? '';
   contactForm.issuer_name = c.issuer_name ?? '';
   contactForm.issuer_phone = c.issuer_phone ?? '';
   contactForm.issuer_email = c.issuer_email ?? '';
@@ -938,6 +966,10 @@ async function saveContact() {
           taxId: contactForm.tax_id || null,
           vatNumber: contactForm.vat_number || null,
           commercialRegister: contactForm.commercial_register || null,
+          registerCourt: contactForm.register_court || null,
+          registerNumber: contactForm.register_number || null,
+          managingDirectors: contactForm.managing_directors || null,
+          supervisoryBoardChair: contactForm.supervisory_board_chair || null,
           street: contactForm.street || null,
           city: contactForm.city || null,
           postalCode: contactForm.postal_code || null,
