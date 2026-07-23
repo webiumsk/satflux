@@ -635,7 +635,7 @@ class BusinessDocumentController extends Controller
         // Lock + re-check + stock reversal in one transaction: deleting an
         // issued document used to leave its stock deducted forever
         // (Cursor PR #67).
-        DB::transaction(function () use ($businessDocument) {
+        DB::transaction(function () use ($businessDocument, $company) {
             $locked = BusinessDocument::query()
                 ->whereKey($businessDocument->id)
                 ->lockForUpdate()
