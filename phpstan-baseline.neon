@@ -1333,9 +1333,33 @@ parameters:
 			path: app/Models/BusinessDocument.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Draft will always evaluate to false\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$jurisdiction\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/BusinessDocument.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Draft will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentListCapabilities.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\CompanyJurisdiction\:\:EuDe will always evaluate to false\.$#'
 			identifier: identical.alwaysFalse
 			count: 1
+			path: app/Services/Invoicing/BusinessDocumentListCapabilities.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Services/Invoicing/BusinessDocumentListCapabilities.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Draft will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
 			path: app/Models/BusinessDocument.php
 
 		-
