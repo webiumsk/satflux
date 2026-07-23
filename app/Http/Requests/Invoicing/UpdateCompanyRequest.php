@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Invoicing;
 
 use App\Enums\CompanyJurisdiction;
+use App\Models\Company;
+use App\Support\Invoicing\JurisdictionRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -11,6 +13,25 @@ class UpdateCompanyRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    /**
+     * @return list<CompanyJurisdiction>
+     */
+    protected function allowedJurisdictions(): array
+    {
+        $allowed = CompanyJurisdiction::enabled();
+        $company = $this->route('company');
+        // normalizeValue tolerates both the enum cast and the string PHPDoc
+        // shape (pre-existing looseness on Company::$jurisdiction).
+        $current = $company instanceof Company
+            ? CompanyJurisdiction::tryFrom(JurisdictionRules::normalizeValue($company->jurisdiction))
+            : null;
+        if ($current !== null && ! in_array($current, $allowed, true)) {
+            $allowed[] = $current;
+        }
+
+        return $allowed;
     }
 
     public function rules(): array
@@ -37,7 +58,10 @@ class UpdateCompanyRequest extends FormRequest
             'bank_account' => ['sometimes', 'nullable', 'string', 'max:64'],
             'bank_code' => ['sometimes', 'nullable', 'string', 'max:16'],
             'default_currency' => ['sometimes', 'nullable', 'string', 'size:3'],
-            'jurisdiction' => ['sometimes', 'required', Rule::enum(CompanyJurisdiction::class)],
+            // Enabled set + the company's current value: an existing company
+            // in a disabled jurisdiction keeps saving its profile, but cannot
+            // switch to another disabled one.
+            'jurisdiction' => ['sometimes', 'required', Rule::enum(CompanyJurisdiction::class)->only($this->allowedJurisdictions())],
             'vat_payer' => ['sometimes', 'boolean'],
             'vat_status' => ['sometimes', 'string', 'in:none,payer,partial'],
             'vat_rate_default' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:100'],

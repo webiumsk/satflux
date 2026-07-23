@@ -246,6 +246,7 @@
     "legal_name": "Obchodný názov / firma",
     "trade_name": "Skrátený názov",
     "jurisdiction": "Jurisdikcia",
+    "jurisdiction_unavailable": "(zatiaľ nedostupné)",
     "currency": "Predvolená mena",
     "registration_number": "IČO",
     "tax_id": "DIČ / IČ DPH",

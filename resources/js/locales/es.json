@@ -2797,6 +2797,7 @@
     "legal_name": "Razón social",
     "trade_name": "Nombre comercial",
     "jurisdiction": "Jurisdicción",
+    "jurisdiction_unavailable": "(aún no disponible)",
     "currency": "Moneda predeterminada",
     "registration_number": "Número de registro",
     "tax_id": "ID fiscal",

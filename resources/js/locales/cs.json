@@ -246,6 +246,7 @@
     "legal_name": "Obchodní název / firma",
     "trade_name": "Obchodní jméno",
     "jurisdiction": "Jurisdikce",
+    "jurisdiction_unavailable": "(zatím nedostupné)",
     "currency": "Výchozí měna",
     "registration_number": "IČO",
     "tax_id": "DIČ",

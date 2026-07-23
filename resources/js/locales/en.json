@@ -246,6 +246,7 @@
     "legal_name": "Legal name",
     "trade_name": "Trade name",
     "jurisdiction": "Jurisdiction",
+    "jurisdiction_unavailable": "(not available yet)",
     "currency": "Default currency",
     "registration_number": "Registration number",
     "tax_id": "Tax ID",

@@ -246,6 +246,7 @@
     "legal_name": "Rechtlicher Name",
     "trade_name": "Handelsname",
     "jurisdiction": "Rechtsraum",
+    "jurisdiction_unavailable": "(noch nicht verfügbar)",
     "currency": "Standardwährung",
     "registration_number": "Registernummer",
     "tax_id": "Steuernummer",

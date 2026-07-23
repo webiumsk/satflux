@@ -37,7 +37,7 @@ class StoreCompanyRequest extends FormRequest
             'bank_account' => ['nullable', 'string', 'max:64'],
             'bank_code' => ['nullable', 'string', 'max:16'],
             'default_currency' => ['nullable', 'string', 'size:3'],
-            'jurisdiction' => ['required', Rule::enum(CompanyJurisdiction::class)],
+            'jurisdiction' => ['required', Rule::enum(CompanyJurisdiction::class)->only(CompanyJurisdiction::enabled())],
             'vat_payer' => ['sometimes', 'boolean'],
             'vat_status' => ['sometimes', 'string', 'in:none,payer,partial'],
             'vat_rate_default' => ['nullable', 'numeric', 'min:0', 'max:100'],
