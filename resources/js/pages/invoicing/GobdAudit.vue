@@ -1,7 +1,7 @@
 <template>
   <InvoicingPageShell
     content-class="pb-8"
-    :title="t('invoicing.audit_title')"
+    :title="t(isDeCompany ? 'invoicing.audit_title' : 'invoicing.audit_title_generic')"
     :subtitle="t('invoicing.audit_subtitle')"
   >
     <template #header>
@@ -123,7 +123,7 @@
       <section class="invoicing-card invoicing-card-pad">
         <h2 class="text-lg font-semibold text-gray-900">{{ t("invoicing.audit_export_title") }}</h2>
         <p class="text-sm text-gray-600 mt-2 max-w-2xl">
-          {{ t("invoicing.audit_export_detail") }}
+          {{ t(isDeCompany ? "invoicing.audit_export_detail" : "invoicing.audit_export_detail_generic") }}
         </p>
       </section>
     </div>
@@ -149,6 +149,11 @@ const { loading, loadError, period, gapReports, buildExportBlob, retry } = useGo
 
 const MISSING_BADGE_LIMIT = 20;
 const { company } = useInvoicingCompany(companyId);
+
+// The number-gap check and the export are useful in every jurisdiction -
+// only the GoBD/Datenträgerüberlassung framing is German. Non-DE companies
+// see the neutral "Audit" wording.
+const isDeCompany = computed(() => String(company.value?.jurisdiction ?? '') === 'eu_de');
 
 const periodOptions: { value: IssuePeriodPreset; labelKey: string }[] = [
   { value: "this_month", labelKey: "invoicing.period_this_month" },
