@@ -40,7 +40,9 @@ describe("DE corporate footer fields in the issued snapshot", () => {
         expect(result.ok).toBe(true);
         if (result.ok) {
             expect(result.value.company.register_court).toBeNull();
+            expect(result.value.company.register_number).toBeNull();
             expect(result.value.company.managing_directors).toBeNull();
+            expect(result.value.company.supervisory_board_chair).toBeNull();
         }
     });
 });

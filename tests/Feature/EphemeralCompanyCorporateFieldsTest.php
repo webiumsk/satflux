@@ -79,6 +79,7 @@ class EphemeralCompanyCorporateFieldsTest extends TestCase
                 'register_court' => 'Amtsgericht Charlottenburg',
                 'register_number' => 'HRB 12345',
                 'managing_directors' => 'Max Mustermann',
+                'supervisory_board_chair' => 'Dr. A. Vorsitz',
             ])
             ->assertOk();
 
@@ -87,6 +88,7 @@ class EphemeralCompanyCorporateFieldsTest extends TestCase
             'register_court' => 'Amtsgericht Charlottenburg',
             'register_number' => 'HRB 12345',
             'managing_directors' => 'Max Mustermann',
+            'supervisory_board_chair' => 'Dr. A. Vorsitz',
         ]);
     }
 }

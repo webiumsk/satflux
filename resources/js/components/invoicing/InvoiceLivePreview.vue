@@ -428,13 +428,17 @@ const showTaxSummary = computed(() =>
 );
 const isDeCompany = computed(() => vatPolicy.isDeCompany(props.company));
 // DE Geschaeftsbrief corporate footer - statutory German labels on purpose.
+// DE-only: a company switched away from eu_de must not carry German
+// statutory wording even while the field values are preserved. Mirrors the
+// guard in pdf/partials/business-invoice-footer.blade.php.
 const corporateFooterLine = computed(() => {
+  if (!isDeCompany.value) return null;
   const c = props.company;
   const register = [c?.register_court, c?.register_number].filter(Boolean).join(" ");
   const parts = [
     register || null,
     c?.managing_directors ? `Geschäftsführer: ${c.managing_directors}` : null,
-    c?.supervisory_board_chair ? `Aufsichtsratsvorsitz: ${c.supervisory_board_chair}` : null,
+    c?.supervisory_board_chair ? `Vorsitzender des Aufsichtsrats: ${c.supervisory_board_chair}` : null,
   ].filter(Boolean);
   if (parts.length === 0) return null;
   const seat = c?.city ? ` · Sitz: ${c.city}` : "";

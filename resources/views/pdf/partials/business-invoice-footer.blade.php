@@ -76,14 +76,17 @@
     </tr>
     @php
         // DE Geschaeftsbrief corporate data - statutory German labels on
-        // purpose (like the tax clauses, they are not translated).
-        $corporateParts = array_filter([
+        // purpose (like the tax clauses, they are not translated). DE-only:
+        // a company switched away from eu_de keeps the values but must not
+        // render German wording (mirrors InvoiceLivePreview).
+        $isDeCorporate = \App\Support\Invoicing\JurisdictionRules::normalizeValue($company->jurisdiction) === 'eu_de';
+        $corporateParts = $isDeCorporate ? array_filter([
             ($company->register_court || $company->register_number)
                 ? trim(($company->register_court ?? '').' '.($company->register_number ?? ''))
                 : null,
             $company->managing_directors ? 'Geschäftsführer: '.$company->managing_directors : null,
-            $company->supervisory_board_chair ? 'Aufsichtsratsvorsitz: '.$company->supervisory_board_chair : null,
-        ]);
+            $company->supervisory_board_chair ? 'Vorsitzender des Aufsichtsrats: '.$company->supervisory_board_chair : null,
+        ]) : [];
     @endphp
     @if($corporateParts !== [])
     <tr>
