@@ -13,6 +13,7 @@ use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\Invoicing\BusinessDocumentUblService;
 use App\Services\Invoicing\CanonicalInvoiceBuilder;
+use App\Support\Invoicing\CompanyVatPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -345,7 +346,7 @@ class BusinessDocumentUblTest extends TestCase
         // The goods wording in the company export clause flips the category
         // from O (services, default) to G (free export of goods).
         $doc->company->forceFill([
-            'app_settings' => ['export_note' => \App\Support\Invoicing\CompanyVatPolicy::DE_EXPORT_GOODS_NOTE],
+            'app_settings' => ['export_note' => CompanyVatPolicy::DE_EXPORT_GOODS_NOTE],
         ])->save();
         $xml = app(BusinessDocumentUblService::class)->xml($doc->fresh(['company', 'contact', 'lines']));
 
