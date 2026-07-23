@@ -211,8 +211,14 @@ function countMissingIds(contacts: ContactLike[]): number {
   }).length;
 }
 
+// Guards all async work: a company switch bumps the generation, so late
+// responses for the previous company can never touch the current state.
+let loadGeneration = 0;
+
 async function loadContactsCoverage(): Promise<void> {
+  const generation = loadGeneration;
   try {
+    let missing = 0;
     if (localFirst) {
       const [{ evolu, allContactsQuery }, { evoluContactToApi }] = await Promise.all([
         import('../../evolu/client'),
@@ -222,35 +228,62 @@ async function loadContactsCoverage(): Promise<void> {
       const contacts = rows
         .filter((row) => String(row.companyId ?? '') === props.companyId)
         .map((row) => evoluContactToApi(row as never) as ContactLike);
-      contactsMissingIds.value = countMissingIds(contacts);
+      missing = countMissingIds(contacts);
     } else {
-      // First 100 contacts (API page cap) - a best-effort readiness signal.
-      const { data } = await invoicingApi.contacts.list<ContactLike>(props.companyId, { per_page: 100 });
-      contactsMissingIds.value = countMissingIds(data);
+      // Walk every contact page (API caps a page at 100); the page cap of
+      // 50 is only a runaway backstop far above real contact counts.
+      const all: ContactLike[] = [];
+      let page = 1;
+      let lastPage = 1;
+      do {
+        const { data, meta } = await invoicingApi.contacts.list<ContactLike>(props.companyId, {
+          per_page: 100,
+          page,
+        });
+        all.push(...data);
+        lastPage = Number(meta.last_page ?? 1);
+        page += 1;
+      } while (page <= lastPage && page <= 50 && generation === loadGeneration);
+      missing = countMissingIds(all);
     }
+    if (generation !== loadGeneration) {
+      return;
+    }
+    contactsMissingIds.value = missing;
     contactsLoaded.value = true;
   } catch {
     // Coverage unknown - keep the card hidden rather than guessing.
   }
 }
 
-onMounted(() => {
-  if (isSnoozed()) {
+/** (Re)initialize for the current companyId - also on prop switches. */
+function initForCompany(): void {
+  loadGeneration += 1;
+  fetchedCompany.value = null;
+  contactsLoaded.value = false;
+  contactsMissingIds.value = 0;
+  snoozed.value = isSnoozed();
+  if (snoozed.value) {
     return;
   }
-  snoozed.value = false;
   void loadFeature();
   if (!localFirst && !props.company) {
+    const generation = loadGeneration;
     void invoicingApi.companies
       .get<Record<string, unknown>>(props.companyId)
       .then((company) => {
-        fetchedCompany.value = company;
+        if (generation === loadGeneration) {
+          fetchedCompany.value = company;
+        }
       })
       .catch(() => {
         // Without the record the card simply stays hidden.
       });
   }
-});
+}
+
+onMounted(initForCompany);
+watch(() => props.companyId, initForCompany);
 
 // The company record can arrive after mount (async load on both pages) -
 // fetch the contacts coverage once eligibility is known and not snoozed.

@@ -536,14 +536,6 @@ const localFirst = computed(() => props.localFirst ?? isInvoicingLocalFirst());
 const evolu = isInvoicingLocalFirst() ? useInvoicingEvolu() : null;
 
 const activeTab = ref<'contact' | 'bank' | 'branding' | 'efaktura'>('contact');
-
-// Deep-link from the readiness checklist: ?tab=efaktura opens the tab
-// directly (only honored while the tab is actually visible - see watcher).
-onMounted(() => {
-  if (route.query.tab === 'efaktura') {
-    activeTab.value = 'efaktura';
-  }
-});
 const linkedStoreId = ref('');
 const savedLinkedStoreId = ref('');
 /** Identity used for the bridge-company match - renaming the company can break it. */
@@ -689,11 +681,20 @@ const showEfakturaTab = computed(() =>
 );
 const countryOptions = computed(() => countriesForJurisdiction(contactForm.jurisdiction));
 
-watch(showEfakturaTab, (visible) => {
-  if (!visible && activeTab.value === 'efaktura') {
-    activeTab.value = 'contact';
-  }
-});
+// One watcher covers both the ?tab=efaktura deep-link (readiness checklist)
+// and the visibility fallback: the query opens the tab only while it is
+// actually visible, and losing visibility falls back to the contact tab.
+watch(
+  [showEfakturaTab, () => route.query.tab],
+  ([visible, tab]) => {
+    if (visible && tab === 'efaktura') {
+      activeTab.value = 'efaktura';
+    } else if (!visible && activeTab.value === 'efaktura') {
+      activeTab.value = 'contact';
+    }
+  },
+  { immediate: true },
+);
 
 function countryLabel(code: string): string {
   const key = `invoicing.country_${code.toLowerCase()}`;

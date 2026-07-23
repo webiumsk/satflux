@@ -5,6 +5,7 @@ import { computed } from 'vue';
 const state = vi.hoisted(() => ({
   featureEnabled: true,
   contacts: [] as Record<string, unknown>[],
+  contactPages: [] as Record<string, unknown>[][],
 }));
 
 vi.mock('vue-i18n', () => ({
@@ -25,7 +26,11 @@ vi.mock('../composables/useEfakturaFeature', () => ({
 vi.mock('../services/api', () => ({
   invoicingApi: {
     contacts: {
-      list: async () => ({ data: state.contacts, meta: {} }),
+      list: async (_companyId: string, params?: { page?: number }) => {
+        const pages = state.contactPages.length ? state.contactPages : [state.contacts];
+        const page = Number(params?.page ?? 1);
+        return { data: pages[page - 1] ?? [], meta: { last_page: pages.length } };
+      },
     },
     companies: { get: vi.fn() },
   },
@@ -55,6 +60,7 @@ describe('EfakturaReadinessCard', () => {
     window.localStorage.clear();
     state.featureEnabled = true;
     state.contacts = [{ name: 'Buyer', country: 'SK', tax_id: null, registration_number: null }];
+    state.contactPages = [];
   });
 
   it('renders nothing for companies outside the e-faktura scope', async () => {
@@ -107,6 +113,21 @@ describe('EfakturaReadinessCard', () => {
 
     // auto_send is only a recommendation - it must not keep the card alive.
     expect(wrapper.text()).toBe('');
+  });
+
+  it('counts uncovered contacts across every API page', async () => {
+    state.contactPages = [
+      [{ name: 'A', country: 'SK', tax_id: null }],
+      [
+        { name: 'B', country: 'SK', tax_id: null },
+        { name: 'C', country: 'SK', tax_id: '1234567890' },
+      ],
+    ];
+    const wrapper = mountCard(skPayerCompany());
+    await flushPromises();
+
+    // Two uncovered SK contacts live on different pages - both must count.
+    expect(wrapper.text()).toContain('"count":2');
   });
 
   it('snoozes via localStorage', async () => {
