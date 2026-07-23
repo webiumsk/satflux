@@ -887,6 +887,16 @@ export const invoicingApi = {
             const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/efaktura/poll-inbound`);
             return data.data ?? ({} as T);
         },
+        async testConnection<T = unknown>(companyId: string, payload: Record<string, unknown> = {}): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/efaktura/test-connection`, payload);
+            return data.data;
+        },
+        // Local-first variant - credentials live in Evolu, so they travel in
+        // the body and nothing is persisted server-side.
+        async testConnectionEphemeral<T = unknown>(payload: Record<string, unknown>): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>('/invoicing/ephemeral/efaktura/test-connection', payload);
+            return data.data;
+        },
     },
     usSalesTax: {
         async preview<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
