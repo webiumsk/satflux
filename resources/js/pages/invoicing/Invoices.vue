@@ -2575,6 +2575,9 @@ async function deleteDoc(d: {
         d.id as DocumentId,
         toAppRows<EvoluDocumentRow>(localDoc.documentRows.value),
         toAppRows<EvoluNumberSeriesRow>(localDoc.seriesRows.value),
+        // GoBD: the single-delete path must carry the same jurisdiction
+        // policy as the bulk path - the hidden button alone is not a guard.
+        localDeletionPolicy.value,
       );
       if (!result.ok) {
         error.value =
