@@ -208,6 +208,16 @@ class SapiSkClient
     }
 
     /**
+     * Validate a base URL (HTTPS-only, SSRF guard, allowlist) without any
+     * HTTP call - used by efaktura:doctor for ops diagnostics. Throws a
+     * RuntimeException with the human-readable reason.
+     */
+    public function validateBaseUrl(?string $baseUrl): string
+    {
+        return $this->resolveBaseUrl($baseUrl);
+    }
+
+    /**
      * Effective sent-document detail path: the CPDS preset matching the base
      * URL wins over the global EFAKTURA_SAPI_SEND_DETAIL_PATH - two merchants
      * on different postmen can each track their own status endpoint.
