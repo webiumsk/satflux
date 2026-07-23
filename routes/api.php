@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\DocumentationArticleController;
 use App\Http\Controllers\Admin\DocumentationCategoryController;
 use App\Http\Controllers\Admin\DocumentationImageController;
+use App\Http\Controllers\Admin\EfakturaCpdsProviderController;
 use App\Http\Controllers\Admin\FaqCategoryController;
 use App\Http\Controllers\Admin\FaqItemController;
 use App\Http\Controllers\Admin\RegWatchController;
@@ -99,6 +100,7 @@ use App\Http\Middleware\EnsureStoreOwnership;
 use App\Http\Middleware\EnsureSupportOrAdminRole;
 use App\Http\Middleware\EnsureSupportRole;
 use App\Http\Middleware\RequireVerifiedEmail;
+use App\Models\EfakturaCpdsProvider;
 use App\Models\Store;
 use App\Services\BtcPay\StoreService;
 use Illuminate\Http\Request;
@@ -179,6 +181,9 @@ Route::get('/config', function () {
         'btcpay_base_url' => $publicBase,
         'btcpay_lightning_address_domain' => (string) (config('services.btcpay.lightning_address_domain') ?? ''),
         'efaktura_enabled' => (bool) config('efaktura.enabled'),
+        'efaktura_cpds_presets' => config('efaktura.enabled')
+            ? EfakturaCpdsProvider::activePresets()
+            : [],
     ]);
 });
 
@@ -377,6 +382,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::get('/ephemeral/efaktura/status', [EphemeralBusinessDocumentController::class, 'efakturaStatus']);
             Route::post('/ephemeral/efaktura/send', [EphemeralBusinessDocumentController::class, 'efakturaSendWithoutCompany']);
             Route::post('/ephemeral/efaktura/refresh', [EphemeralBusinessDocumentController::class, 'efakturaRefreshWithoutCompany']);
+            Route::post('/ephemeral/efaktura/test-connection', [EphemeralBusinessDocumentController::class, 'efakturaTestConnection'])
+                ->middleware('throttle:10,1');
             Route::post('/ephemeral/bulk/pdf-zip', [EphemeralBusinessDocumentController::class, 'bulkPdfZipWithoutCompany']);
             Route::post('/ephemeral/bulk/pdf-merge', [EphemeralBusinessDocumentController::class, 'bulkPdfMergeWithoutCompany']);
             Route::post('/companies', [CompanyController::class, 'store'])
@@ -593,6 +600,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/efaktura/poll-inbound', [EfakturaController::class, 'pollInbound'])
                 ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/efaktura/test-connection', [EfakturaController::class, 'testConnection'])
+                ->middleware([EnsureCompanyOwnership::class, 'throttle:10,1']);
             Route::post('/companies/{company}/documents/{businessDocument}/mark-paid', [BusinessDocumentController::class, 'markPaid'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/documents/{businessDocument}/unmark-paid', [BusinessDocumentController::class, 'unmarkPaid'])
@@ -976,6 +985,16 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
         Route::get('/admin/regwatch/rules/{rule}', [RegWatchController::class, 'showRule']);
         Route::put('/admin/regwatch/rules/{rule}', [RegWatchController::class, 'updateRule'])
             ->middleware(AuditLog::class.':admin.regwatch.rule_updated');
+
+        // E-faktura CPDS presets (digitálny poštár) shown in the merchant
+        // settings form - operator adds only verified provider URLs.
+        Route::get('/admin/efaktura/cpds-providers', [EfakturaCpdsProviderController::class, 'index']);
+        Route::post('/admin/efaktura/cpds-providers', [EfakturaCpdsProviderController::class, 'store'])
+            ->middleware(AuditLog::class.':admin.efaktura.cpds_provider_created');
+        Route::put('/admin/efaktura/cpds-providers/{provider}', [EfakturaCpdsProviderController::class, 'update'])
+            ->middleware(AuditLog::class.':admin.efaktura.cpds_provider_updated');
+        Route::delete('/admin/efaktura/cpds-providers/{provider}', [EfakturaCpdsProviderController::class, 'destroy'])
+            ->middleware(AuditLog::class.':admin.efaktura.cpds_provider_deleted');
     });
 });
 

@@ -260,8 +260,7 @@ class EphemeralEfakturaSubmissionService
      */
     protected function fetchRemotePayload(CompanyEfakturaSettings $settings, string $externalId): ?array
     {
-        $detailPath = (string) config('efaktura.providers.sapi_sk.send_detail_path', '');
-        if ($detailPath === '') {
+        if ($this->client->sentDocumentDetailPathTemplate($settings->sapiBaseUrl()) === null) {
             return null;
         }
 

@@ -1954,7 +1954,23 @@
       "topic_archiving": "Archivado",
       "disclaimer": "Orientativo - verifique con un profesional local."
     },
-    "health": {"history_range": "{from} - {to}", "history_ok": "correcto ({count} snapshots)", "history_failing": "fallando: {checks} ({count} snapshots)", "status_ok": "OK", "status_failed": "Fallido", "title": "Salud del sistema", "description": "Comprobaciones en vivo, tasa de errores e historial de snapshots programados", "refresh": "Actualizar", "all_ok": "Todas las comprobaciones pasan", "failing": "Algunas comprobaciones fallan", "checked_at": "Comprobado a las {time}", "error_rate": "Errores esta hora", "error_rate_detail": "hora anterior: {previous} - umbral de alerta: {threshold}", "history": "Historial de snapshots (cada 5 minutos)", "history_empty": "Aún no hay snapshots; el planificador escribe uno cada 5 minutos."},
+    "health": {
+      "history_range": "{from} - {to}",
+      "history_ok": "correcto ({count} snapshots)",
+      "history_failing": "fallando: {checks} ({count} snapshots)",
+      "status_ok": "OK",
+      "status_failed": "Fallido",
+      "title": "Salud del sistema",
+      "description": "Comprobaciones en vivo, tasa de errores e historial de snapshots programados",
+      "refresh": "Actualizar",
+      "all_ok": "Todas las comprobaciones pasan",
+      "failing": "Algunas comprobaciones fallan",
+      "checked_at": "Comprobado a las {time}",
+      "error_rate": "Errores esta hora",
+      "error_rate_detail": "hora anterior: {previous} - umbral de alerta: {threshold}",
+      "history": "Historial de snapshots (cada 5 minutos)",
+      "history_empty": "Aún no hay snapshots; el planificador escribe uno cada 5 minutos."
+    },
     "dashboard": {
       "title": "Panel de Administración",
       "description": "Gestiona el contenido de la plataforma y los usuarios",
@@ -1993,7 +2009,9 @@
       "regwatch_desc": "Revisión de cambios legislativos detectados",
       "wallet_connections": "Conexiones de Billetera",
       "wallet_connections_desc": "Ver y gestionar solicitudes de conexión de billetera",
-      "view_section": "Ver Sección →"
+      "view_section": "Ver Sección →",
+      "efaktura_cpds": "Carteros de e-factura",
+      "efaktura_cpds_desc": "Presets CPDS para la configuración de e-factura de los comerciantes"
     },
     "user_detail": {
       "view": "Ver",
@@ -2145,6 +2163,25 @@
         "update": "Actualizar",
         "save_error": "Error al guardar el elemento FAQ"
       }
+    },
+    "efaktura": {
+      "providers_title": "Carteros de e-factura (CPDS)",
+      "providers_description": "Presets mostrados a los comerciantes en el formulario de configuración de e-factura",
+      "verified_only_hint": "Añada un proveedor solo tras verificar su endpoint SAPI-SK real - los hosts de los presets son de confianza para el control de URL salientes.",
+      "add_provider": "Añadir proveedor",
+      "edit_provider": "Editar proveedor",
+      "name": "Nombre",
+      "base_url": "URL base de la API",
+      "send_detail_path": "Ruta de detalle de estado (opcional)",
+      "send_detail_path_hint": "Ruta de estado del documento enviado específica del CPDS con el marcador {'{id}'}; déjela vacía si el proveedor no la tiene.",
+      "active": "Activo",
+      "inactive": "Inactivo",
+      "sort_order": "Orden",
+      "delete": "Eliminar",
+      "delete_confirm": "¿Eliminar el preset \"{name}\"?",
+      "no_providers": "Aún no hay presets - los comerciantes introducen la URL de su cartero manualmente.",
+      "load_error": "No se pudieron cargar los presets.",
+      "save_error": "No se pudo guardar el preset."
     }
   },
   "landing": {

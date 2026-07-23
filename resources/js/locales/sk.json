@@ -1611,7 +1611,6 @@
     "create_with_recovery_phrase": "Vytvoriť účet s obnovovacou frázou",
     "restore_with_recovery_phrase": "Obnoviť pomocou frázy",
     "already_have_email_account": "Máte už účet s emailom?",
-    "sign_in": "Prihlásiť sa",
     "tab_email": "E-mail",
     "tab_lightning_nostr": "Lightning / Nostr",
     "go_to_passwordless_login": "Otvoriť prihlásenie cez Lightning / Nostr",
@@ -3719,7 +3718,23 @@
       "topic_archiving": "Archivácia",
       "disclaimer": "Orientačné - overte s lokálnym odborníkom."
     },
-    "health": {"history_range": "{from} - {to}", "history_ok": "v poriadku ({count} snapshotov)", "history_failing": "zlyháva: {checks} ({count} snapshotov)", "status_ok": "OK", "status_failed": "Zlyhalo", "title": "Zdravie systému", "description": "Živé kontroly, chybovosť a história plánovaných snapshotov", "refresh": "Obnoviť", "all_ok": "Všetky kontroly prechádzajú", "failing": "Niektoré kontroly zlyhávajú", "checked_at": "Skontrolované {time}", "error_rate": "Chyby za túto hodinu", "error_rate_detail": "predošlá hodina: {previous} - prah alertu: {threshold}", "history": "História snapshotov (každých 5 minút)", "history_empty": "Zatiaľ žiadne snapshoty - scheduler zapisuje jeden každých 5 minút."},
+    "health": {
+      "history_range": "{from} - {to}",
+      "history_ok": "v poriadku ({count} snapshotov)",
+      "history_failing": "zlyháva: {checks} ({count} snapshotov)",
+      "status_ok": "OK",
+      "status_failed": "Zlyhalo",
+      "title": "Zdravie systému",
+      "description": "Živé kontroly, chybovosť a história plánovaných snapshotov",
+      "refresh": "Obnoviť",
+      "all_ok": "Všetky kontroly prechádzajú",
+      "failing": "Niektoré kontroly zlyhávajú",
+      "checked_at": "Skontrolované {time}",
+      "error_rate": "Chyby za túto hodinu",
+      "error_rate_detail": "predošlá hodina: {previous} - prah alertu: {threshold}",
+      "history": "História snapshotov (každých 5 minút)",
+      "history_empty": "Zatiaľ žiadne snapshoty - scheduler zapisuje jeden každých 5 minút."
+    },
     "dashboard": {
       "title": "Admin Nástenka",
       "description": "Spravujte obsah platformy a používateľov",
@@ -3758,7 +3773,9 @@
       "regwatch_desc": "Kontrola zistených legislatívnych zmien",
       "wallet_connections": "Pripojenia peňaženiek",
       "wallet_connections_desc": "Zobraziť a spravovať žiadosti o pripojenie peňaženiek",
-      "view_section": "Zobraziť sekciu →"
+      "view_section": "Zobraziť sekciu →",
+      "efaktura_cpds": "E-faktúra poštári",
+      "efaktura_cpds_desc": "Presety CPDS pre nastavenia e-faktúry merchantov"
     },
     "user_detail": {
       "view": "Zobraziť",
@@ -3910,6 +3927,25 @@
         "update": "Aktualizovať",
         "save_error": "Nepodarilo sa uložiť FAQ položku"
       }
+    },
+    "efaktura": {
+      "providers_title": "E-faktúra poštári (CPDS)",
+      "providers_description": "Presety zobrazované merchantom vo formulári nastavení e-faktúry",
+      "verified_only_hint": "Poskytovateľa pridajte až po overení jeho reálneho SAPI-SK endpointu - hosty presetov sú dôveryhodné pre kontrolu odchádzajúcich URL.",
+      "add_provider": "Pridať poskytovateľa",
+      "edit_provider": "Upraviť poskytovateľa",
+      "name": "Názov",
+      "base_url": "API base URL",
+      "send_detail_path": "Cesta detailu stavu (voliteľné)",
+      "send_detail_path_hint": "CPDS-špecifická cesta stavu odoslaného dokumentu s placeholderom {'{id}'}; nechajte prázdne, ak ju poskytovateľ nemá.",
+      "active": "Aktívny",
+      "inactive": "Neaktívny",
+      "sort_order": "Poradie",
+      "delete": "Zmazať",
+      "delete_confirm": "Zmazať preset \"{name}\"?",
+      "no_providers": "Zatiaľ žiadne presety - merchanti zadávajú URL poštára ručne.",
+      "load_error": "Presety sa nepodarilo načítať.",
+      "save_error": "Preset sa nepodarilo uložiť."
     }
   },
   "legal": {

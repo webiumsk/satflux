@@ -3769,7 +3769,9 @@
       "regwatch_desc": "Kontrola zjištěných legislativních změn",
       "wallet_connections": "Připojení peněženek",
       "wallet_connections_desc": "Zobrazit a spravovat žádosti o připojení peněženek",
-      "view_section": "Zobrazit sekci →"
+      "view_section": "Zobrazit sekci →",
+      "efaktura_cpds": "E-faktura pošťáci",
+      "efaktura_cpds_desc": "Presety CPDS pro nastavení e-faktury merchantů"
     },
     "user_detail": {
       "view": "Zobrazit",
@@ -3921,6 +3923,25 @@
         "update": "Aktualizovat",
         "save_error": "Nepodařilo se uložit FAQ položku"
       }
+    },
+    "efaktura": {
+      "providers_title": "E-faktura pošťáci (CPDS)",
+      "providers_description": "Presety zobrazované merchantům ve formuláři nastavení e-faktury",
+      "verified_only_hint": "Poskytovatele přidejte až po ověření jeho reálného SAPI-SK endpointu - hosty presetů jsou důvěryhodné pro kontrolu odchozích URL.",
+      "add_provider": "Přidat poskytovatele",
+      "edit_provider": "Upravit poskytovatele",
+      "name": "Název",
+      "base_url": "API base URL",
+      "send_detail_path": "Cesta detailu stavu (volitelné)",
+      "send_detail_path_hint": "CPDS-specifická cesta stavu odeslaného dokumentu s placeholderem {'{id}'}; nechte prázdné, pokud ji poskytovatel nemá.",
+      "active": "Aktivní",
+      "inactive": "Neaktivní",
+      "sort_order": "Pořadí",
+      "delete": "Smazat",
+      "delete_confirm": "Smazat preset \"{name}\"?",
+      "no_providers": "Zatím žádné presety - merchanti zadávají URL pošťáka ručně.",
+      "load_error": "Presety se nepodařilo načíst.",
+      "save_error": "Preset se nepodařilo uložit."
     }
   },
   "legal": {
