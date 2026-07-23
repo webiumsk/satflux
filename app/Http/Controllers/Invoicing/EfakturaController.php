@@ -15,6 +15,7 @@ use App\Support\Invoicing\CompanyAppSettings;
 use App\Support\Invoicing\CompanyEfakturaEligibility;
 use App\Support\Invoicing\CompanyEfakturaSettings;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
@@ -85,6 +86,35 @@ class EfakturaController extends Controller
             ->get();
 
         return response()->json(['data' => $rows]);
+    }
+
+    /**
+     * Latest Peppol compliance row per document - powers the "e" badge in
+     * the server-mode invoice list. Read-only over the company's own
+     * documents, so no configured/eligibility gate is needed.
+     */
+    public function complianceBulk(Request $request, Company $company): JsonResponse
+    {
+        $validated = $request->validate([
+            'document_ids' => ['required', 'array', 'max:100'],
+            'document_ids.*' => ['string', 'uuid'],
+        ]);
+
+        $latest = [];
+        BusinessDocumentCompliance::query()
+            ->whereIn('business_document_id', $validated['document_ids'])
+            ->whereHas('document', fn ($query) => $query->where('company_id', $company->id))
+            ->orderByDesc('updated_at')
+            ->get()
+            ->each(function (BusinessDocumentCompliance $row) use (&$latest) {
+                $latest[$row->business_document_id] ??= [
+                    'status' => $row->status,
+                    'provider' => $row->provider,
+                    'updated_at' => $row->updated_at?->toIso8601String(),
+                ];
+            });
+
+        return response()->json(['data' => $latest]);
     }
 
     /**

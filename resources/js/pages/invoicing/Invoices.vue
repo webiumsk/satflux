@@ -341,6 +341,13 @@
               >
                 @
               </th>
+              <th
+                v-if="showEfakturaColumn"
+                class="w-10 px-1 py-3 text-center"
+                :title="t('invoicing.col_efaktura_status')"
+              >
+                e
+              </th>
               <th class="px-4 py-3 min-w-[160px]">
                 {{ t("invoicing.col_title") }}
               </th>
@@ -441,6 +448,16 @@
                   :title="t('invoicing.email_indicator_disabled')"
                 >
                   @
+                </span>
+              </td>
+              <td v-if="showEfakturaColumn" class="px-1 py-3 text-center align-middle">
+                <span
+                  v-if="efakturaStatuses[d.id]"
+                  class="invoice-email-indicator cursor-default"
+                  :class="efakturaBadgeClass(efakturaStatuses[d.id])"
+                  :title="efakturaBadgeTitle(efakturaStatuses[d.id])"
+                >
+                  e
                 </span>
               </td>
               <td class="px-4 py-3 text-gray-600 align-middle">
@@ -947,6 +964,14 @@
               <div class="min-w-0">
                 <p class="font-semibold text-gray-900 truncate">
                   {{ documentListNumber(d) }}
+                  <span
+                    v-if="efakturaStatuses[d.id]"
+                    class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded border text-[10px] font-bold align-middle"
+                    :class="efakturaBadgeClass(efakturaStatuses[d.id])"
+                    :title="efakturaBadgeTitle(efakturaStatuses[d.id])"
+                  >
+                    e
+                  </span>
                 </p>
                 <p
                   v-if="d.contact?.name"
@@ -1215,8 +1240,10 @@ import {
   downloadEphemeralPdfMerge,
   downloadEphemeralPdfZip,
   downloadEphemeralUbl,
+  fetchEphemeralEfakturaStatusBulk,
   type EphemeralSnapshotPayload,
 } from "../../evolu/ephemeralBridge";
+import { useEfakturaFeature } from "../../composables/useEfakturaFeature";
 import {
   bulkCancelLocalAsync,
   bulkDeleteLocal,
@@ -2271,6 +2298,7 @@ async function load() {
       });
       companyName.value = summaryCompanyName.value;
       applyLocalDocumentPage();
+      void refreshEfakturaStatuses();
       return;
     }
 
@@ -2283,12 +2311,75 @@ async function load() {
     totalCount.value = docs.total ?? documents.value.length;
     currentPage.value = docs.current_page ?? 1;
     lastPage.value = docs.last_page ?? 1;
+    void refreshEfakturaStatuses();
   } catch (e: unknown) {
     const err = e as { response?: { data?: { message?: string } }; message?: string };
     error.value = err?.response?.data?.message || err?.message || t("common.error");
   } finally {
     loading.value = false;
   }
+}
+
+// "e" badge: latest e-faktura submission per visible document. Best-effort -
+// the column only appears when at least one row has a submission, so non-SK
+// merchants never see it.
+const efakturaStatuses = ref<Record<string, string>>({});
+const showEfakturaColumn = computed(() => Object.keys(efakturaStatuses.value).length > 0);
+const { load: loadEfakturaFeature } = useEfakturaFeature();
+// Monotonic token: a slower response from a previous filter/page/company
+// load must never overwrite the statuses of the current document set.
+let efakturaRefreshToken = 0;
+
+async function refreshEfakturaStatuses() {
+  const token = ++efakturaRefreshToken;
+  const ids = documents.value.map((d) => String(d.id)).filter(Boolean).slice(0, 100);
+  efakturaStatuses.value = {};
+  if (ids.length === 0 || !(await loadEfakturaFeature())) {
+    return;
+  }
+
+  try {
+    const map: Record<string, string> = {};
+    if (localFirst) {
+      const rows = await fetchEphemeralEfakturaStatusBulk(ids);
+      for (const [id, row] of Object.entries(rows)) {
+        if (row?.status) map[id] = String(row.status);
+      }
+    } else {
+      const rows = await invoicingApi.efaktura.complianceBulk<Record<string, { status?: string }>>(
+        companyId.value,
+        ids,
+      );
+      for (const [id, row] of Object.entries(rows ?? {})) {
+        if (row?.status) map[id] = String(row.status);
+      }
+    }
+    if (token !== efakturaRefreshToken) {
+      return;
+    }
+    efakturaStatuses.value = map;
+  } catch {
+    // The badge is informational only - a failed lookup hides the column.
+  }
+}
+
+function efakturaBadgeClass(status: string): string {
+  if (status === "approved") {
+    return "border-emerald-500 text-emerald-600 bg-emerald-50";
+  }
+  if (status === "failed" || status === "rejected") {
+    return "border-red-400 text-red-600 bg-red-50";
+  }
+  if (status === "submitted" || status === "pending") {
+    return "border-indigo-400 text-indigo-600 bg-indigo-50";
+  }
+  return "border-gray-300 text-gray-500 bg-gray-50";
+}
+
+function efakturaBadgeTitle(status: string): string {
+  return t("invoicing.efaktura_badge_title", {
+    status: t(`invoicing.efaktura_panel_status_${status}`),
+  });
 }
 
 function openCreditNoteStart() {

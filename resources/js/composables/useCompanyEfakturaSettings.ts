@@ -1,5 +1,6 @@
 import type { VatPolicyCompany } from './useCompanyVatPolicy';
 import { isFullVatPayer } from './useCompanyVatPolicy';
+import { resolvePeppolEndpoint } from '../utils/peppolEndpoint';
 
 export type EfakturaInboundPollStats = {
   imported: number;
@@ -93,10 +94,21 @@ export function efakturaSecretIsSet(company: Record<string, unknown> | null): bo
 export function isEfakturaConfigured(company: Record<string, unknown> | null): boolean {
   const settings = efakturaSettingsFromCompany(company);
 
+  // Mirror of the server CompanyEfakturaSettings::configured(): an explicit
+  // participant ID or one derivable from the company DIČ/IČO both count.
+  const participantId =
+    settings.efaktura_peppol_participant_id.trim() !== ''
+    || resolvePeppolEndpoint({
+      tax_id: company?.tax_id as string | null,
+      registration_number: company?.registration_number as string | null,
+      country: company?.country as string | null,
+      jurisdiction: company?.jurisdiction as string | null,
+    }) !== null;
+
   return (
     settings.efaktura_enabled
     && settings.efaktura_sapi_base_url.trim() !== ''
-    && settings.efaktura_peppol_participant_id.trim() !== ''
+    && participantId
     && settings.efaktura_sapi_client_id.trim() !== ''
     && efakturaSecretIsSet(company)
   );
@@ -122,4 +134,53 @@ export function isCompanyEfakturaEligible(
   }
 
   return isFullVatPayer(row);
+}
+
+export type EfakturaSendability =
+  | 'ok'
+  | 'not_configured'
+  | 'no_contact'
+  | 'foreign_buyer'
+  | 'missing_ids';
+
+/**
+ * Whether a document for this buyer would go out as an e-faktura, and if
+ * not, the first reason why - drives the invoice-form indicator and the
+ * send-panel preflight. Returns null when the company itself is not an
+ * e-faktura company (non-SK, non-payer, or the module is globally off) -
+ * the indicator should not render at all in that case.
+ */
+export function efakturaSendability(
+  company: VatPolicyCompany | Record<string, unknown> | null,
+  contact: Record<string, unknown> | null | undefined,
+  globallyEnabled = true,
+): EfakturaSendability | null {
+  if (!isCompanyEfakturaEligible(company, globallyEnabled)) {
+    return null;
+  }
+
+  if (!isEfakturaConfigured(company as Record<string, unknown>)) {
+    return 'not_configured';
+  }
+
+  if (!contact) {
+    return 'no_contact';
+  }
+
+  if (!isSkDomesticContact(contact)) {
+    return 'foreign_buyer';
+  }
+
+  if (
+    resolvePeppolEndpoint({
+      peppol_participant_id: contact.peppol_participant_id as string | null,
+      tax_id: contact.tax_id as string | null,
+      registration_number: contact.registration_number as string | null,
+      country: contact.country as string | null,
+    }) === null
+  ) {
+    return 'missing_ids';
+  }
+
+  return 'ok';
 }

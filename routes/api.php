@@ -383,6 +383,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::get('/ephemeral/btcpay-status', [EphemeralBusinessDocumentController::class, 'btcpayStatus']);
             Route::get('/ephemeral/efaktura/bridge', [EphemeralBusinessDocumentController::class, 'efakturaBridge']);
             Route::get('/ephemeral/efaktura/status', [EphemeralBusinessDocumentController::class, 'efakturaStatus']);
+            Route::post('/ephemeral/efaktura/status-bulk', [EphemeralBusinessDocumentController::class, 'efakturaStatusBulk']);
             Route::post('/ephemeral/efaktura/send', [EphemeralBusinessDocumentController::class, 'efakturaSendWithoutCompany']);
             Route::post('/ephemeral/efaktura/refresh', [EphemeralBusinessDocumentController::class, 'efakturaRefreshWithoutCompany']);
             Route::post('/ephemeral/efaktura/test-connection', [EphemeralBusinessDocumentController::class, 'efakturaTestConnection'])
@@ -605,6 +606,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/efaktura/test-connection', [EfakturaController::class, 'testConnection'])
                 ->middleware([EnsureCompanyOwnership::class, 'throttle:10,1']);
+            Route::post('/companies/{company}/efaktura/compliance-bulk', [EfakturaController::class, 'complianceBulk'])
+                ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/documents/{businessDocument}/mark-paid', [BusinessDocumentController::class, 'markPaid'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/documents/{businessDocument}/unmark-paid', [BusinessDocumentController::class, 'unmarkPaid'])

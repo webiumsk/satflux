@@ -644,6 +644,20 @@ export async function fetchEphemeralEfakturaStatus(
     return Array.isArray(res.data?.data) ? res.data.data : [];
 }
 
+/** Latest submission per Evolu document id for the invoice-list badge. */
+export async function fetchEphemeralEfakturaStatusBulk(
+    evoluDocumentIds: string[],
+): Promise<Record<string, EphemeralEfakturaComplianceRow>> {
+    if (evoluDocumentIds.length === 0) {
+        return {};
+    }
+    const res = await api.post(`${EPHEMERAL_EFAKTURA_STATUS_PATH}-bulk`, {
+        evolu_document_ids: evoluDocumentIds,
+    });
+    const data = res.data?.data;
+    return data && typeof data === "object" ? (data as Record<string, EphemeralEfakturaComplianceRow>) : {};
+}
+
 export async function sendEphemeralEfaktura(
     snapshot: EphemeralSnapshotPayload,
     evoluDocumentId: string,

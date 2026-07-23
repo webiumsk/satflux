@@ -891,6 +891,13 @@ export const invoicingApi = {
             const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/efaktura/test-connection`, payload);
             return data.data ?? ({} as T);
         },
+        // Latest compliance status per document id for the list badge.
+        async complianceBulk<T = unknown>(companyId: string, documentIds: string[]): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/efaktura/compliance-bulk`, {
+                document_ids: documentIds,
+            });
+            return data.data ?? ({} as T);
+        },
         // Local-first variant - credentials live in Evolu, so they travel in
         // the body and nothing is persisted server-side.
         async testConnectionEphemeral<T = unknown>(payload: Record<string, unknown>): Promise<T> {
