@@ -21,6 +21,8 @@ class PublicConfigTest extends TestCase
                 'btcpay_base_url' => 'https://btcpay.example.com',
                 'btcpay_lightning_address_domain' => 'btcpay.example.com',
                 'efaktura_enabled' => false,
+                // Presets are exposed only while e-faktura is globally on.
+                'efaktura_cpds_presets' => [],
             ]);
     }
 

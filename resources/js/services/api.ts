@@ -1050,6 +1050,19 @@ export const adminRegwatchApi = {
     },
 };
 
+export const adminEfakturaApi = {
+    cpdsProviders: {
+        index: () =>
+            api.get('/admin/efaktura/cpds-providers'),
+        store: (data: Record<string, unknown>) =>
+            api.post('/admin/efaktura/cpds-providers', data),
+        update: (id: string, data: Record<string, unknown>) =>
+            api.put(`/admin/efaktura/cpds-providers/${id}`, data),
+        destroy: (id: string) =>
+            api.delete(`/admin/efaktura/cpds-providers/${id}`),
+    },
+};
+
 export default api;
 
 

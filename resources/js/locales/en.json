@@ -1612,7 +1612,6 @@
     "create_with_recovery_phrase": "Create account with recovery phrase",
     "restore_with_recovery_phrase": "Restore with recovery phrase",
     "already_have_email_account": "Already upgraded with email?",
-    "sign_in": "Sign in",
     "tab_lightning_nostr": "Lightning / Nostr",
     "go_to_passwordless_login": "Open sign-in with Lightning / Nostr",
     "register_passwordless_hint": "Use Lightning or Nostr sign-in from the login page.",
@@ -3715,7 +3714,23 @@
       "topic_archiving": "Archiving",
       "disclaimer": "Indicative only - verify with a local professional."
     },
-    "health": {"history_range": "{from} - {to}", "history_ok": "healthy ({count} snapshots)", "history_failing": "failing: {checks} ({count} snapshots)", "status_ok": "OK", "status_failed": "Failed", "title": "System health", "description": "Live checks, error rate and scheduled snapshot history", "refresh": "Refresh", "all_ok": "All checks passing", "failing": "Some checks are failing", "checked_at": "Checked at {time}", "error_rate": "Errors this hour", "error_rate_detail": "previous hour: {previous} - alert threshold: {threshold}", "history": "Snapshot history (every 5 minutes)", "history_empty": "No snapshots yet - the scheduler writes one every 5 minutes."},
+    "health": {
+      "history_range": "{from} - {to}",
+      "history_ok": "healthy ({count} snapshots)",
+      "history_failing": "failing: {checks} ({count} snapshots)",
+      "status_ok": "OK",
+      "status_failed": "Failed",
+      "title": "System health",
+      "description": "Live checks, error rate and scheduled snapshot history",
+      "refresh": "Refresh",
+      "all_ok": "All checks passing",
+      "failing": "Some checks are failing",
+      "checked_at": "Checked at {time}",
+      "error_rate": "Errors this hour",
+      "error_rate_detail": "previous hour: {previous} - alert threshold: {threshold}",
+      "history": "Snapshot history (every 5 minutes)",
+      "history_empty": "No snapshots yet - the scheduler writes one every 5 minutes."
+    },
     "dashboard": {
       "title": "Admin Dashboard",
       "description": "Manage your platform content and users",
@@ -3754,7 +3769,9 @@
       "regwatch_desc": "Review detected legislative changes",
       "wallet_connections": "Wallet Connections",
       "wallet_connections_desc": "View and manage wallet connection requests",
-      "view_section": "View Section →"
+      "view_section": "View Section →",
+      "efaktura_cpds": "E-invoice postmen",
+      "efaktura_cpds_desc": "CPDS presets for the merchant e-invoice settings"
     },
     "user_detail": {
       "view": "View",
@@ -3906,6 +3923,25 @@
         "update": "Update",
         "save_error": "Failed to save FAQ item"
       }
+    },
+    "efaktura": {
+      "providers_title": "E-invoice postmen (CPDS)",
+      "providers_description": "Presets shown to merchants in the e-invoice settings form",
+      "verified_only_hint": "Add a provider only after verifying its real SAPI-SK endpoint - preset hosts are trusted by the outbound URL guard.",
+      "add_provider": "Add provider",
+      "edit_provider": "Edit provider",
+      "name": "Name",
+      "base_url": "API base URL",
+      "send_detail_path": "Status detail path (optional)",
+      "send_detail_path_hint": "CPDS-specific sent-document status path with the {id} placeholder; leave empty when the provider has none.",
+      "active": "Active",
+      "inactive": "Inactive",
+      "sort_order": "Order",
+      "delete": "Delete",
+      "delete_confirm": "Delete the preset \"{name}\"?",
+      "no_providers": "No presets yet - merchants enter their postman URL manually.",
+      "load_error": "Failed to load presets.",
+      "save_error": "Failed to save the preset."
     }
   },
   "legal": {

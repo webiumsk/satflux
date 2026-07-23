@@ -363,6 +363,12 @@ const router = createRouter({
             meta: { requiresAuth: true, requiresAdmin: true },
         },
         {
+            path: '/admin/efaktura-cpds',
+            name: 'admin-efaktura-cpds',
+            component: () => import('../pages/admin/EfakturaCpdsProviders.vue'),
+            meta: { requiresAuth: true, requiresAdmin: true },
+        },
+        {
             path: '/admin/users',
             name: 'admin-users',
             component: () => import('../pages/admin/Users.vue'),

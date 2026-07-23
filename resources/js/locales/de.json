@@ -3769,7 +3769,9 @@
       "regwatch_desc": "Überprüfung erkannter Gesetzesänderungen",
       "wallet_connections": "Wallet-Verbindungen",
       "wallet_connections_desc": "Wallet-Verbindungsanfragen anzeigen und verwalten",
-      "view_section": "Bereich anzeigen →"
+      "view_section": "Bereich anzeigen →",
+      "efaktura_cpds": "E-Rechnung Zusteller",
+      "efaktura_cpds_desc": "CPDS-Voreinstellungen für die E-Rechnungs-Einstellungen der Händler"
     },
     "user_detail": {
       "view": "Anzeigen",
@@ -3921,6 +3923,25 @@
         "update": "Aktualisieren",
         "save_error": "FAQ-Eintrag konnte nicht gespeichert werden"
       }
+    },
+    "efaktura": {
+      "providers_title": "E-Rechnung Zusteller (CPDS)",
+      "providers_description": "Voreinstellungen im E-Rechnungs-Einstellungsformular der Händler",
+      "verified_only_hint": "Anbieter erst nach Prüfung des realen SAPI-SK-Endpunkts hinzufügen - Preset-Hosts gelten für die ausgehende URL-Prüfung als vertrauenswürdig.",
+      "add_provider": "Anbieter hinzufügen",
+      "edit_provider": "Anbieter bearbeiten",
+      "name": "Name",
+      "base_url": "API-Basis-URL",
+      "send_detail_path": "Status-Detailpfad (optional)",
+      "send_detail_path_hint": "CPDS-spezifischer Statuspfad des gesendeten Dokuments mit dem {id}-Platzhalter; leer lassen, wenn der Anbieter keinen hat.",
+      "active": "Aktiv",
+      "inactive": "Inaktiv",
+      "sort_order": "Reihenfolge",
+      "delete": "Löschen",
+      "delete_confirm": "Preset \"{name}\" löschen?",
+      "no_providers": "Noch keine Presets - Händler geben die URL ihres Zustellers manuell ein.",
+      "load_error": "Presets konnten nicht geladen werden.",
+      "save_error": "Preset konnte nicht gespeichert werden."
     }
   },
   "legal": {
