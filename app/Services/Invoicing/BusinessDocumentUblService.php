@@ -129,39 +129,15 @@ class BusinessDocumentUblService
      */
     protected function resolveTaxScenario(CanonicalInvoice $canonical): ?array
     {
-        $company = $canonical->company;
-        $contact = $canonical->contact;
         // getAttribute keeps the type mixed - the app_settings PHPDoc says
         // string while the cast yields an array (pre-existing looseness).
-        $rawSettings = $company->getAttribute('app_settings');
-        $settings = CompanyAppSettings::from(is_array($rawSettings) ? $rawSettings : null);
+        $rawSettings = $canonical->company->getAttribute('app_settings');
 
-        if ($this->vatPolicy->isDeCompany($company) && $this->vatPolicy->vatStatus($company) === 'none') {
-            return ['category' => 'E', 'reason' => CompanyVatPolicy::DE_KLEINUNTERNEHMER_NOTE];
-        }
-
-        $reverseCharge = ($this->vatPolicy->isPartialPayer($company)
-                && $this->vatPolicy->supplyRegion($company, $contact) === 'eu')
-            || $this->vatPolicy->euB2bReverseCharge($company, $contact);
-        if ($reverseCharge) {
-            return [
-                'category' => 'AE',
-                'reason' => $this->vatPolicy->taxClause($company, $contact, $settings),
-            ];
-        }
-
-        if ($this->vatPolicy->exportExemptionApplies($company, $contact)) {
-            $reason = $this->vatPolicy->taxClause($company, $contact, $settings);
-
-            // G = free export of goods; O = services outside the scope of
-            // German VAT (our default export clause).
-            return [
-                'category' => $reason === CompanyVatPolicy::DE_EXPORT_GOODS_NOTE ? 'G' : 'O',
-                'reason' => $reason,
-            ];
-        }
-
-        return null;
+        return $this->vatPolicy->enTaxScenario(
+            $canonical->company,
+            $canonical->contact,
+            CompanyAppSettings::from(is_array($rawSettings) ? $rawSettings : null),
+        );
     }
 
     protected function invoiceTypeCode(BusinessDocumentType $type): string

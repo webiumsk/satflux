@@ -26,6 +26,7 @@ class BusinessDocumentPdfService
         protected CompanyBrandingService $brandingService,
         protected CompanyPdfFilenameBuilder $pdfFilenameBuilder,
         protected BusinessDocumentIsdocService $isdocService,
+        protected BusinessDocumentZugferdService $zugferdService,
         protected CanonicalInvoiceBuilder $canonicalBuilder,
         protected CompanyVatPolicy $vatPolicy,
     ) {}
@@ -58,6 +59,26 @@ class BusinessDocumentPdfService
         Pdf::view($view, $viewData)->save($visualPath);
 
         try {
+            // DE companies get the ZUGFeRD hybrid (factur-x.xml, also for
+            // ephemeral local-first documents); ISDOC stays the SK/CZ embed.
+            if ($this->zugferdService->supportsEmbedInPdf($document)) {
+                $zugferdPath = $this->tempPdfPath('pdf-zugferd-'.bin2hex(random_bytes(8)).'.pdf');
+                try {
+                    $this->zugferdService->embedInPdf($visualPath, $document, $zugferdPath);
+
+                    $binary = file_get_contents($zugferdPath);
+                    if ($binary === false) {
+                        // An unreadable hybrid must fail loudly - an empty 200
+                        // body would look like a served (broken) invoice.
+                        throw new \RuntimeException('Could not read generated ZUGFeRD PDF.');
+                    }
+
+                    return $binary;
+                } finally {
+                    @unlink($zugferdPath);
+                }
+            }
+
             if ($document->exists && $this->isdocService->supportsEmbedInPdf($document)) {
                 $isdocPath = $this->tempPdfPath('pdf-isdoc-'.uniqid().'.pdf');
                 try {

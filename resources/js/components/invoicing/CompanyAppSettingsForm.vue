@@ -152,6 +152,14 @@
               :placeholder="t('invoicing.app_opt_reverse_charge_note')"
             />
           </div>
+          <label v-if="isDeCompany" class="flex items-start gap-2 text-sm text-gray-700">
+            <input
+              v-model="form.export_goods"
+              type="checkbox"
+              class="mt-0.5 rounded border-gray-300 text-indigo-600"
+            />
+            <span>{{ t('invoicing.app_opt_export_goods') }}</span>
+          </label>
           <div v-if="isDeCompany">
             <label class="invoicing-sf-label">{{ t('invoicing.app_opt_export_note') }}</label>
             <textarea
@@ -230,6 +238,7 @@ const isDeCompany = computed(() => props.company?.jurisdiction === 'eu_de');
 const checkboxOptions: { key: keyof CompanyAppSettingsState; labelKey: string }[] = [
   { key: 'show_contextual_help', labelKey: 'invoicing.app_opt_contextual_help' },
   { key: 'embed_isdoc_in_pdf', labelKey: 'invoicing.app_opt_embed_isdoc' },
+  { key: 'embed_zugferd_in_pdf', labelKey: 'invoicing.app_opt_embed_zugferd' },
   { key: 'reverse_charge', labelKey: 'invoicing.app_opt_reverse_charge' },
   { key: 'show_pay_by_square', labelKey: 'invoicing.app_opt_pay_by_square' },
   { key: 'show_invoice_by_square', labelKey: 'invoicing.app_opt_invoice_by_square' },

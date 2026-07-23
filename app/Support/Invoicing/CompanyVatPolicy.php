@@ -26,7 +26,7 @@ final class CompanyVatPolicy
 
     public const DE_REVERSE_CHARGE_NOTE = 'Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge).';
 
-    /** Default export clause (services); goods sellers override via the export_note app setting. */
+    /** Default export clause (services); goods sellers switch via the export_goods app setting. */
     public const DE_EXPORT_SERVICES_NOTE = 'Nicht im Inland steuerbare Leistung.';
 
     public const DE_EXPORT_GOODS_NOTE = 'Steuerfreie Ausfuhrlieferung.';
@@ -237,6 +237,43 @@ final class CompanyVatPolicy
     }
 
     /**
+     * EN 16931 tax scenario of a whole document (shared by the UBL/XRechnung
+     * and ZUGFeRD exports): null = normal S/Z categories; otherwise the
+     * category code plus the statutory exemption reason. AE = reverse
+     * charge (statutory or the manual reverse_charge toggle - same rule as
+     * reverseChargeNote), E = exempt (§19 Kleinunternehmer), G = export of
+     * goods outside the EU (export_goods app setting), O = services outside
+     * the scope of German VAT.
+     *
+     * @return array{category: string, reason: string|null}|null
+     */
+    public function enTaxScenario(
+        Company $company,
+        ?CompanyContact $contact,
+        CompanyAppSettings $settings,
+    ): ?array {
+        if ($this->isDeCompany($company) && $this->vatStatus($company) === 'none') {
+            return ['category' => 'E', 'reason' => self::DE_KLEINUNTERNEHMER_NOTE];
+        }
+
+        if ($this->reverseChargeNote($company, $contact, $settings) !== null) {
+            return [
+                'category' => 'AE',
+                'reason' => $this->taxClause($company, $contact, $settings),
+            ];
+        }
+
+        if ($this->exportExemptionApplies($company, $contact)) {
+            return [
+                'category' => $settings->bool('export_goods') ? 'G' : 'O',
+                'reason' => $this->taxClause($company, $contact, $settings),
+            ];
+        }
+
+        return null;
+    }
+
+    /**
      * The statutory tax clause for the invoice, in precedence order:
      * DE Kleinunternehmer (§19 UStG) for German non-payers, the
      * reverse-charge note (German statutory wording for DE companies),
@@ -269,8 +306,13 @@ final class CompanyVatPolicy
 
         if ($this->exportExemptionApplies($company, $contact)) {
             $custom = trim((string) $settings->get('export_note'));
+            if ($custom !== '') {
+                return $custom;
+            }
 
-            return $custom !== '' ? $custom : self::DE_EXPORT_SERVICES_NOTE;
+            return $settings->bool('export_goods')
+                ? self::DE_EXPORT_GOODS_NOTE
+                : self::DE_EXPORT_SERVICES_NOTE;
         }
 
         return null;

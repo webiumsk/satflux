@@ -13,7 +13,6 @@ use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\Invoicing\BusinessDocumentUblService;
 use App\Services\Invoicing\CanonicalInvoiceBuilder;
-use App\Support\Invoicing\CompanyVatPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -343,10 +342,10 @@ class BusinessDocumentUblTest extends TestCase
     public function de_non_eu_goods_export_exports_category_g(): void
     {
         $doc = $this->deCompanyDocument('payer', ['country' => 'US']);
-        // The goods wording in the company export clause flips the category
-        // from O (services, default) to G (free export of goods).
+        // The export_goods app setting flips the category from O (services,
+        // default) to G (free export of goods) and the default clause with it.
         $doc->company->forceFill([
-            'app_settings' => ['export_note' => CompanyVatPolicy::DE_EXPORT_GOODS_NOTE],
+            'app_settings' => ['export_goods' => true],
         ])->save();
         $xml = app(BusinessDocumentUblService::class)->xml($doc->fresh(['company', 'contact', 'lines']));
 
