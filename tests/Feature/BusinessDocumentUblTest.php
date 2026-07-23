@@ -339,6 +339,22 @@ class BusinessDocumentUblTest extends TestCase
     }
 
     #[Test]
+    public function de_non_eu_goods_export_exports_category_g(): void
+    {
+        $doc = $this->deCompanyDocument('payer', ['country' => 'US']);
+        // The goods wording in the company export clause flips the category
+        // from O (services, default) to G (free export of goods).
+        $doc->company->forceFill([
+            'app_settings' => ['export_note' => \App\Support\Invoicing\CompanyVatPolicy::DE_EXPORT_GOODS_NOTE],
+        ])->save();
+        $xml = app(BusinessDocumentUblService::class)->xml($doc->fresh(['company', 'contact', 'lines']));
+
+        $this->assertStringContainsString('<cbc:ID>G</cbc:ID>', $xml);
+        $this->assertStringContainsString('Steuerfreie Ausfuhrlieferung', $xml);
+        $this->assertStringNotContainsString('<cbc:ID>O</cbc:ID>', $xml);
+    }
+
+    #[Test]
     public function normal_taxed_invoice_keeps_category_s(): void
     {
         $doc = $this->deCompanyDocument('payer', ['country' => 'DE'], 19.0);
