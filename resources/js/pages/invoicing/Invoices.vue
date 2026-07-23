@@ -1278,6 +1278,12 @@ const localCompanyJurisdiction = computed(() => {
     | undefined;
 });
 
+const localDeletionPolicy = computed(() => ({
+  jurisdictionByCompanyId: new Map(
+    localDoc?.companyRows.value.map((row) => [String(row.id), String(row.jurisdiction ?? "")]) ?? [],
+  ),
+}));
+
 const localCompanyForInbox = computed(() => {
   if (!localFirst || !localDoc) return null;
   return localDoc.companyApi(companyId.value);
@@ -2035,6 +2041,7 @@ async function runBulkLocal(action: string) {
       targets,
       allDocuments,
       toAppRows<EvoluNumberSeriesRow>(localDoc.seriesRows.value),
+      localDeletionPolicy.value,
     );
     success.value = t("invoicing.bulk_result", {
       processed: result.processed,
