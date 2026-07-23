@@ -2326,8 +2326,12 @@ async function load() {
 const efakturaStatuses = ref<Record<string, string>>({});
 const showEfakturaColumn = computed(() => Object.keys(efakturaStatuses.value).length > 0);
 const { load: loadEfakturaFeature } = useEfakturaFeature();
+// Monotonic token: a slower response from a previous filter/page/company
+// load must never overwrite the statuses of the current document set.
+let efakturaRefreshToken = 0;
 
 async function refreshEfakturaStatuses() {
+  const token = ++efakturaRefreshToken;
   const ids = documents.value.map((d) => String(d.id)).filter(Boolean).slice(0, 100);
   efakturaStatuses.value = {};
   if (ids.length === 0 || !(await loadEfakturaFeature())) {
@@ -2349,6 +2353,9 @@ async function refreshEfakturaStatuses() {
       for (const [id, row] of Object.entries(rows ?? {})) {
         if (row?.status) map[id] = String(row.status);
       }
+    }
+    if (token !== efakturaRefreshToken) {
+      return;
     }
     efakturaStatuses.value = map;
   } catch {

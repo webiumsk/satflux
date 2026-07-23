@@ -74,6 +74,16 @@ class EfakturaStatusBulkTest extends TestCase
         $docA = $this->document($company, 'A1');
         $docB = $this->document($company, 'B1');
 
+        // docA carries two rows (unique is per provider) - the endpoint must
+        // return the NEWER one, so an oldest-row implementation fails here.
+        $older = BusinessDocumentCompliance::create([
+            'business_document_id' => $docA->id,
+            'provider' => 'ctc',
+            'status' => 'failed',
+        ]);
+        BusinessDocumentCompliance::query()
+            ->whereKey($older->id)
+            ->update(['updated_at' => now()->subDay()]);
         BusinessDocumentCompliance::create([
             'business_document_id' => $docA->id,
             'provider' => 'peppol',
@@ -112,6 +122,18 @@ class EfakturaStatusBulkTest extends TestCase
         [$user, $company] = $this->proUserWithCompany();
         [$otherUser, $otherCompany] = $this->proUserWithCompany();
 
+        // Two rows for doc-1 (unique is per provider) with controlled ages -
+        // latest-per-document selection must pick the newer peppol row.
+        $older = EphemeralEfakturaSubmission::create([
+            'user_id' => $user->id,
+            'bridge_company_id' => $company->id,
+            'evolu_document_id' => 'doc-1',
+            'provider' => 'ctc',
+            'status' => 'failed',
+        ]);
+        EphemeralEfakturaSubmission::query()
+            ->whereKey($older->id)
+            ->update(['updated_at' => now()->subDay()]);
         EphemeralEfakturaSubmission::create([
             'user_id' => $user->id,
             'bridge_company_id' => $company->id,
