@@ -447,7 +447,7 @@
 import { asApiError } from "../../utils/apiError";
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { invoicingApi } from "../../services/api";
 import CompanyEfakturaSettingsForm from './CompanyEfakturaSettingsForm.vue';
 import TaxLimitAlert from './TaxLimitAlert.vue';
@@ -529,12 +529,21 @@ const emit = defineEmits<{
 const { t, te, locale } = useI18n();
 const { notifySaved } = useInvoicingSaveFeedback();
 const router = useRouter();
+const route = useRoute();
 const storesStore = useStoresStore();
 const flashStore = useFlashStore();
 const localFirst = computed(() => props.localFirst ?? isInvoicingLocalFirst());
 const evolu = isInvoicingLocalFirst() ? useInvoicingEvolu() : null;
 
 const activeTab = ref<'contact' | 'bank' | 'branding' | 'efaktura'>('contact');
+
+// Deep-link from the readiness checklist: ?tab=efaktura opens the tab
+// directly (only honored while the tab is actually visible - see watcher).
+onMounted(() => {
+  if (route.query.tab === 'efaktura') {
+    activeTab.value = 'efaktura';
+  }
+});
 const linkedStoreId = ref('');
 const savedLinkedStoreId = ref('');
 /** Identity used for the bridge-company match - renaming the company can break it. */
