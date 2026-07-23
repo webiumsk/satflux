@@ -152,6 +152,14 @@
               :placeholder="t('invoicing.app_opt_reverse_charge_note')"
             />
           </div>
+          <label v-if="isDeCompany" class="flex items-start gap-2 text-sm text-gray-700">
+            <input
+              v-model="form.export_goods"
+              type="checkbox"
+              class="mt-0.5 rounded border-gray-300 text-indigo-600"
+            />
+            <span>{{ t('invoicing.app_opt_export_goods') }}</span>
+          </label>
           <div v-if="isDeCompany">
             <label class="invoicing-sf-label">{{ t('invoicing.app_opt_export_note') }}</label>
             <textarea

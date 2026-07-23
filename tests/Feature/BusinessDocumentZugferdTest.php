@@ -129,10 +129,12 @@ class BusinessDocumentZugferdTest extends TestCase
         $dompdf = new Dompdf;
         $dompdf->loadHtml('<h1>Rechnung RE20260001</h1>');
         $dompdf->render();
-        $visual = tempnam(sys_get_temp_dir(), 'zug').'.pdf';
+        $visual = tempnam(sys_get_temp_dir(), 'zug');
+        $output = tempnam(sys_get_temp_dir(), 'zug');
+        $this->assertNotFalse($visual);
+        $this->assertNotFalse($output);
         file_put_contents($visual, $dompdf->output());
 
-        $output = tempnam(sys_get_temp_dir(), 'zug').'.pdf';
         try {
             app(BusinessDocumentZugferdService::class)->embedInPdf($visual, $doc, $output);
 

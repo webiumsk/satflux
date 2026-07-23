@@ -41,6 +41,7 @@ class UpdateCompanyAppSettingsRequest extends FormRequest
             'embed_zugferd_in_pdf' => ['sometimes', 'boolean'],
             'reverse_charge' => ['sometimes', 'boolean'],
             'reverse_charge_note' => ['nullable', 'string', 'max:2000'],
+            'export_goods' => ['sometimes', 'boolean'],
             'export_note' => ['nullable', 'string', 'max:2000'],
             'us_sales_tax_provider' => ['sometimes', 'string', 'in:manual,stripe_tax,avalara'],
             'stripe_tax_secret_key' => ['nullable', 'string', 'max:255'],

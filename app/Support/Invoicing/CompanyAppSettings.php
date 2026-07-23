@@ -26,7 +26,10 @@ final class CompanyAppSettings
         'embed_zugferd_in_pdf' => true,
         'reverse_charge' => false,
         'reverse_charge_note' => null,
-        // Custom DE export clause override (defaults to the statutory services wording).
+        // DE non-EU exports are goods (G, "Steuerfreie Ausfuhrlieferung."),
+        // not services (O) - drives the EN 16931 category and default clause.
+        'export_goods' => false,
+        // Custom DE export clause override (defaults to the statutory wording).
         'export_note' => null,
         'us_sales_tax_provider' => 'manual',
         'stripe_tax_secret_key' => null,

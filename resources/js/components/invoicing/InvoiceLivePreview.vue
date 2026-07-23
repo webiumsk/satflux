@@ -354,6 +354,7 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import {
+  DE_EXPORT_GOODS_NOTE,
   DE_EXPORT_SERVICES_NOTE,
   DE_KLEINUNTERNEHMER_NOTE,
   DE_REVERSE_CHARGE_NOTE,
@@ -454,7 +455,10 @@ const reverseChargeNote = computed(() => {
     return DE_KLEINUNTERNEHMER_NOTE;
   }
   if (kind === "export_de") {
-    return settings.export_note.trim() || DE_EXPORT_SERVICES_NOTE;
+    return (
+      settings.export_note.trim() ||
+      (settings.export_goods ? DE_EXPORT_GOODS_NOTE : DE_EXPORT_SERVICES_NOTE)
+    );
   }
   const custom = settings.reverse_charge ? settings.reverse_charge_note.trim() : "";
   if (isDeCompany.value) {

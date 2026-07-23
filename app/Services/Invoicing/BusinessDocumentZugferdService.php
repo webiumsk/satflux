@@ -65,6 +65,7 @@ class BusinessDocumentZugferdService
     public function embedInPdf(string $visualPdfPath, BusinessDocument $document, string $outputPath): void
     {
         ZugferdDocumentPdfBuilder::fromPdfFile($this->builder($document), $visualPdfPath)
+            ->setAttachmentRelationshipTypeToAlternative()
             ->generateDocument()
             ->saveDocument($outputPath);
     }
