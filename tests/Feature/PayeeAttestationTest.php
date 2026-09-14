@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AuditLog;
 use App\Models\Store;
+use App\Models\StoreSettlement;
 use App\Models\User;
 use App\Models\UserMessage;
 use App\Models\WalletConnection;
@@ -34,6 +35,9 @@ class PayeeAttestationTest extends TestCase
 
     /** receivedDate of those payments (default: just now, i.e. after any baseline in the test). */
     private ?string $paidAt = null;
+
+    /** BTCPay payment status reported for $paidInvoices. */
+    private string $paymentStatus = 'Settled';
 
     /** Distinct payment ids per sync so the ledger sees each payment once per test step. */
     private int $paymentSerial = 0;
@@ -71,7 +75,7 @@ class PayeeAttestationTest extends TestCase
                         'paymentMethodId' => 'BTC-LN',
                         'destination' => $this->paidInvoices[0],
                         'rate' => '60000',
-                        'payments' => array_map(fn ($b) => ['id' => 'p'.$this->paymentSerial.md5($b), 'destination' => $b, 'value' => '0.00001', 'status' => 'Settled', 'receivedDate' => $this->paidAt ?? now()->addSecond()->toIso8601String()], $this->paidInvoices),
+                        'payments' => array_map(fn ($b) => ['id' => 'p'.$this->paymentSerial.md5($b), 'destination' => $b, 'value' => '0.00001', 'status' => $this->paymentStatus, 'receivedDate' => $this->paidAt ?? now()->addSecond()->toIso8601String()], $this->paidInvoices),
                     ],
                 ], 200);
             }
@@ -182,6 +186,29 @@ class PayeeAttestationTest extends TestCase
         ]);
         $this->assertSame(['ok'], array_values($result));
         $this->assertNotNull($connection->fresh()->payee_mismatch_at);
+    }
+
+    #[Test]
+    public function processing_payment_is_attested_when_it_later_settles(): void
+    {
+        Notification::fake();
+        $this->fakeBtcPay();
+        [$user, $store, $connection] = $this->connectedStore();
+        app(WalletConfigIntegrityService::class)->baseline($connection, $user);
+
+        $this->paidInvoices = [Bolt11Test::OTHER_INVOICE];
+        $this->paymentStatus = 'Processing';
+        app(SettlementLedgerService::class)->syncInvoice($store, 'paid-1');
+        $this->assertSame('Processing', StoreSettlement::sole()->payment_status);
+        $this->assertNull($connection->fresh()->payee_mismatch_at);
+
+        $this->paymentStatus = 'Settled';
+        app(SettlementLedgerService::class)->syncInvoice($store, 'paid-1', forgetCache: true);
+
+        $fresh = $connection->fresh();
+        $this->assertNotNull($fresh->payee_mismatch_at);
+        $this->assertSame(Bolt11Test::OTHER_PAYEE, $fresh->payee_mismatch_details['pubkey']);
+        $this->assertSame(1, AuditLog::where('action', 'wallet_connection.payee_mismatch')->count());
     }
 
     #[Test]

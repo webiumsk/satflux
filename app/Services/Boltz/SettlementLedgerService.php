@@ -138,13 +138,16 @@ class SettlementLedgerService
 
             $paidAt = isset($payment['receivedDate']) ? Carbon::parse($payment['receivedDate']) : null;
             $destination = isset($payment['destination']) ? (string) $payment['destination'] : null;
+            $identity = [
+                'store_id' => $store->id,
+                'btcpay_invoice_id' => $invoiceId,
+                'payment_method_id' => $methodId,
+                'payment_id' => $paymentId,
+            ];
+            $existing = StoreSettlement::query()->where($identity)->first();
+            $wasSettled = $existing ? $this->isSettledPaymentStatus($existing->payment_status) : false;
             $row = StoreSettlement::updateOrCreate(
-                [
-                    'store_id' => $store->id,
-                    'btcpay_invoice_id' => $invoiceId,
-                    'payment_method_id' => $methodId,
-                    'payment_id' => $paymentId,
-                ],
+                $identity,
                 [
                     'category' => $category,
                     'destination' => $destination,
@@ -162,10 +165,14 @@ class SettlementLedgerService
 
             // Security: who signed the Lightning invoice this payment settled
             // on (PayeeAttestationService). Only payments the ledger sees for
-            // the first time - the daily reconcile re-reads history and must
-            // not judge old invoices against today's wallet. Never lets a
-            // failure break the ledger.
-            if ($row->wasRecentlyCreated && in_array($methodId, PayeeAttestationService::LIGHTNING_METHODS, true)) {
+            // the first time as settled - the daily reconcile re-reads history
+            // and must not judge old invoices against today's wallet. Never
+            // lets a failure break the ledger.
+            if (
+                ! $wasSettled
+                && $this->isSettledPaymentStatus($row->payment_status)
+                && in_array($methodId, PayeeAttestationService::LIGHTNING_METHODS, true)
+            ) {
                 try {
                     app(PayeeAttestationService::class)->attestPayment(
                         $store,
@@ -181,6 +188,11 @@ class SettlementLedgerService
         }
 
         return $count;
+    }
+
+    protected function isSettledPaymentStatus(?string $status): bool
+    {
+        return strcasecmp((string) $status, 'Settled') === 0;
     }
 
     /**
