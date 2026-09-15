@@ -35,6 +35,12 @@ class PayeeAttestationTest extends TestCase
     /** receivedDate of those payments (default: just now, i.e. after any baseline in the test). */
     private ?string $paidAt = null;
 
+    private string $paymentStatus = 'Settled';
+
+    private bool $includeMethodDestination = true;
+
+    private bool $includePaymentDestination = true;
+
     /** Distinct payment ids per sync so the ledger sees each payment once per test step. */
     private int $paymentSerial = 0;
 
@@ -65,14 +71,32 @@ class PayeeAttestationTest extends TestCase
                 ], 200);
             }
             if (preg_match('#/invoices/paid-1/payment-methods#', $url)) {
+                $payments = array_map(function ($b) {
+                    $payment = [
+                        'id' => 'p'.$this->paymentSerial.md5($b),
+                        'value' => '0.00001',
+                        'status' => $this->paymentStatus,
+                        'receivedDate' => $this->paidAt ?? now()->addSecond()->toIso8601String(),
+                    ];
+                    if ($this->includePaymentDestination) {
+                        $payment['destination'] = $b;
+                    }
+
+                    return $payment;
+                }, $this->paidInvoices);
+
+                $lightning = [
+                    'paymentMethodId' => 'BTC-LN',
+                    'rate' => '60000',
+                    'payments' => $payments,
+                ];
+                if ($this->includeMethodDestination) {
+                    $lightning['destination'] = $this->paidInvoices[0];
+                }
+
                 return Http::response([
                     ['paymentMethodId' => 'BTC-CHAIN', 'destination' => 'bc1qxyz', 'payments' => [], 'rate' => '60000'],
-                    [
-                        'paymentMethodId' => 'BTC-LN',
-                        'destination' => $this->paidInvoices[0],
-                        'rate' => '60000',
-                        'payments' => array_map(fn ($b) => ['id' => 'p'.$this->paymentSerial.md5($b), 'destination' => $b, 'value' => '0.00001', 'status' => 'Settled', 'receivedDate' => $this->paidAt ?? now()->addSecond()->toIso8601String()], $this->paidInvoices),
-                    ],
+                    $lightning,
                 ], 200);
             }
             if (preg_match('#/invoices/paid-1$#', $url)) {
@@ -209,6 +233,73 @@ class PayeeAttestationTest extends TestCase
     }
 
     #[Test]
+    public function a_lightning_payment_is_attested_when_an_existing_row_first_settles(): void
+    {
+        Notification::fake();
+        $this->fakeBtcPay();
+        [$user, $store, $connection] = $this->connectedStore();
+        $admin = User::factory()->admin()->create();
+        app(WalletConfigIntegrityService::class)->baseline($connection, $user);
+
+        // BTCPay can expose a received payment before the settled row carries
+        // a usable BOLT11 destination. The later Settled transition must still
+        // run payee attestation for the same payment id.
+        $this->paymentStatus = 'Processing';
+        $this->includeMethodDestination = false;
+        $this->includePaymentDestination = false;
+        $this->paidInvoices = [Bolt11Test::OTHER_INVOICE];
+        app(SettlementLedgerService::class)->syncInvoice($store, 'paid-1');
+
+        $this->assertNull($connection->fresh()->payee_mismatch_at);
+        $this->assertSame(0, AuditLog::where('action', 'wallet_connection.payee_mismatch')->count());
+        $this->assertSame(0, UserMessage::where('user_id', $user->id)->where('type', 'security')->count());
+        $this->assertDatabaseHas('store_settlements', [
+            'store_id' => $store->id,
+            'btcpay_invoice_id' => 'paid-1',
+            'payment_status' => 'Processing',
+            'destination' => null,
+        ]);
+
+        $this->paymentStatus = 'Settled';
+        $this->includePaymentDestination = true;
+        app(SettlementLedgerService::class)->syncInvoice($store, 'paid-1', forgetCache: true);
+
+        $fresh = $connection->fresh();
+        $this->assertNotNull($fresh->payee_mismatch_at);
+        $this->assertSame(Bolt11Test::OTHER_PAYEE, $fresh->payee_mismatch_details['pubkey']);
+        $this->assertSame(1, AuditLog::where('action', 'wallet_connection.payee_mismatch')->count());
+        $this->assertSame(1, UserMessage::where('user_id', $user->id)->where('type', 'security')->count());
+        $this->assertSame(1, UserMessage::where('user_id', $admin->id)->where('type', 'security')->count());
+        $this->assertDatabaseHas('store_settlements', [
+            'store_id' => $store->id,
+            'btcpay_invoice_id' => 'paid-1',
+            'payment_status' => 'Settled',
+            'destination' => Bolt11Test::OTHER_INVOICE,
+        ]);
+    }
+
+    #[Test]
+    public function an_unsettled_lightning_payment_does_not_seed_the_first_payee_allow_list(): void
+    {
+        $this->fakeBtcPay();
+        $this->canaryInvoice = null;
+        [$user, $store, $connection] = $this->connectedStore();
+        app(WalletConfigIntegrityService::class)->baseline($connection, $user);
+        $this->assertNull($connection->fresh()->payee_pubkeys);
+
+        $this->paymentStatus = 'Processing';
+        app(SettlementLedgerService::class)->syncInvoice($store, 'paid-1');
+        $this->assertNull($connection->fresh()->payee_pubkeys);
+
+        $this->paymentStatus = 'Settled';
+        app(SettlementLedgerService::class)->syncInvoice($store, 'paid-1', forgetCache: true);
+
+        $fresh = $connection->fresh();
+        $this->assertSame([Bolt11Test::SPEC_PAYEE], $fresh->payee_pubkeys);
+        $this->assertSame('first_payment', $fresh->payee_learn_source);
+    }
+
+    #[Test]
     public function a_node_the_wallet_signs_with_right_now_is_learned_instead_of_flagged(): void
     {
         Notification::fake();
@@ -248,6 +339,11 @@ class PayeeAttestationTest extends TestCase
         $kept = UserMessage::createForUser($otherUser->id, 'Payment received by an unknown wallet - Other', 'real', 'security', null, null, $otherConnection->id);
         // A message from before the column existed (no id) inside the window is purged.
         $legacy = UserMessage::createForUser($admin->id, 'Payee mismatch: Legacy', 'old', 'security');
+        $oldLegacy = UserMessage::createForUser($otherUser->id, 'Payee mismatch: Old legacy', 'keep', 'security');
+        $oldLegacy->forceFill(['created_at' => now()->subHours(2), 'updated_at' => now()->subHours(2)])->save();
+        // An earlier, already resolved incident of the SAME connection: its message is outside the window.
+        $earlier = UserMessage::createForUser($user->id, 'Payment received by an unknown wallet - Earlier', 'resolved', 'security', null, null, $connection->id);
+        $earlier->forceFill(['created_at' => now()->subHours(2), 'updated_at' => now()->subHours(2)])->save();
 
         $this->artisan('wallet-connections:reset-payee-incidents', ['--dry-run' => true, '--purge-messages' => true])
             ->expectsOutputToContain('Would reset 1 incident(s), 3 security message(s)')
@@ -259,10 +355,12 @@ class PayeeAttestationTest extends TestCase
             ->assertExitCode(0);
 
         $this->assertNull($connection->fresh()->payee_mismatch_at);
-        $this->assertSame(0, UserMessage::where('user_id', $user->id)->count());
+        $this->assertNotNull($earlier->fresh(), 'with --since a linked message outside the window stays');
+        $this->assertSame(1, UserMessage::where('user_id', $user->id)->count());
         $this->assertSame(1, UserMessage::where('user_id', $admin->id)->count(), 'unrelated security messages stay');
         $this->assertNotNull($kept->fresh(), 'a resolved incident of another connection keeps its message');
         $this->assertNull($legacy->fresh(), 'legacy messages without an id fall back to the time window');
+        $this->assertNotNull($oldLegacy->fresh(), 'legacy messages outside the explicit time window stay');
         $this->assertDatabaseHas('audit_logs', ['action' => 'wallet_connection.payee_incident_reset', 'target_id' => $connection->id]);
     }
 
