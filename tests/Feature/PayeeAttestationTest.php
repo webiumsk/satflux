@@ -339,9 +339,11 @@ class PayeeAttestationTest extends TestCase
         $kept = UserMessage::createForUser($otherUser->id, 'Payment received by an unknown wallet - Other', 'real', 'security', null, null, $otherConnection->id);
         // A message from before the column existed (no id) inside the window is purged.
         $legacy = UserMessage::createForUser($admin->id, 'Payee mismatch: Legacy', 'old', 'security');
+        $oldLegacy = UserMessage::createForUser($otherUser->id, 'Payee mismatch: Old legacy', 'keep', 'security');
+        $oldLegacy->forceFill(['created_at' => now()->subHours(2), 'updated_at' => now()->subHours(2)])->save();
 
         $this->artisan('wallet-connections:reset-payee-incidents', ['--dry-run' => true, '--purge-messages' => true])
-            ->expectsOutputToContain('Would reset 1 incident(s), 3 security message(s)')
+            ->expectsOutputToContain('Would reset 1 incident(s), 2 security message(s)')
             ->assertExitCode(0);
         $this->assertNotNull($connection->fresh()->payee_mismatch_at);
 
@@ -354,6 +356,7 @@ class PayeeAttestationTest extends TestCase
         $this->assertSame(1, UserMessage::where('user_id', $admin->id)->count(), 'unrelated security messages stay');
         $this->assertNotNull($kept->fresh(), 'a resolved incident of another connection keeps its message');
         $this->assertNull($legacy->fresh(), 'legacy messages without an id fall back to the time window');
+        $this->assertNotNull($oldLegacy->fresh(), 'legacy messages outside the explicit time window stay');
         $this->assertDatabaseHas('audit_logs', ['action' => 'wallet_connection.payee_incident_reset', 'target_id' => $connection->id]);
     }
 
