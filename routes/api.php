@@ -927,6 +927,9 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
         Route::post('/test', [SepaController::class, 'testBackend'])
             ->middleware('throttle:10,1');
         Route::get('/payment-requests', [SepaController::class, 'paymentRequests']);
+        Route::get('/payment-requests/{reference}/nop-history', [SepaController::class, 'nopHistory'])
+            ->where('reference', '[a-zA-Z0-9_-]+')
+            ->middleware('throttle:30,1');
         Route::post('/payment-requests/{reference}/confirm', [SepaController::class, 'confirmPaymentRequest'])
             ->where('reference', '[a-zA-Z0-9_-]+')
             ->middleware(AuditLog::class.':sepa.payment_confirmed');

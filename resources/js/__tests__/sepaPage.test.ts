@@ -48,15 +48,41 @@ const baseSettings = {
 };
 
 let settings = { ...baseSettings };
+let nopHistoryStatus: "found" | "not_found" | "invalid_id" | "unavailable" = "found";
 
-function primeApi({ available = true, overrides = {} as Record<string, unknown> } = {}) {
+function primeApi({
+    available = true,
+    overrides = {} as Record<string, unknown>,
+    nopStatus = "found" as typeof nopHistoryStatus,
+} = {}) {
     settings = { ...baseSettings, ...overrides };
+    nopHistoryStatus = nopStatus;
     apiMock.get.mockImplementation((url: string) => {
         if (url.includes("/sepa/status")) {
             return Promise.resolve({ data: { data: { available } } });
         }
         if (url.includes("/sepa/settings")) {
             return Promise.resolve({ data: { data: settings } });
+        }
+        if (url.includes("/nop-history")) {
+            return Promise.resolve({
+                data: {
+                    data: {
+                        reference: "QR-ab29e346f1d841c8a95a63d857490818",
+                        status: nopHistoryStatus,
+                        environment: "PROD",
+                        message: nopHistoryStatus === "unavailable" ? "NOP rate limit reached" : null,
+                        createdAt: nopHistoryStatus === "found" ? "2026-09-16T08:00:00+00:00" : null,
+                        indexedAt: nopHistoryStatus === "found" ? "2026-09-16T08:01:10+00:00" : null,
+                        matchedAt: null,
+                        publishedAt: null,
+                        receivedAt: null,
+                        organizationName: nopHistoryStatus === "found" ? "Kaviaren s.r.o." : null,
+                        amount: nopHistoryStatus === "found" ? 12.5 : null,
+                        currency: nopHistoryStatus === "found" ? "EUR" : null,
+                    },
+                },
+            });
         }
         if (url.includes("/sepa/payment-requests")) {
             return Promise.resolve({
@@ -140,6 +166,39 @@ describe("Sepa store page", () => {
 
         expect(wrapper.text()).toContain("QR-ab29e346f1d841c8a95a63d857490818");
         expect(wrapper.text()).toContain("sepa.mark_paid");
+    });
+
+    it("opens the public NOP timeline for a QR- request", async () => {
+        primeApi();
+        const wrapper = await mountPage();
+        expect(wrapper.find('[data-testid="sepa-nop-history"]').exists()).toBe(false);
+
+        const button = wrapper.findAll("button").find((b) => b.text() === "sepa.nop_history_button");
+        expect(button).toBeDefined();
+        await button!.trigger("click");
+        await flushPromises();
+
+        const modal = wrapper.find('[data-testid="sepa-nop-history"]');
+        expect(modal.exists()).toBe(true);
+        expect(modal.text()).toContain("sepa.nop_history_found");
+        expect(modal.text()).toContain("sepa.nop_history_step_indexed");
+        expect(modal.text()).toContain("sepa.nop_history_disclaimer");
+        expect(apiMock.get).toHaveBeenCalledWith(
+            "/stores/store-1/sepa/payment-requests/QR-ab29e346f1d841c8a95a63d857490818/nop-history",
+        );
+    });
+
+    it("explains an unknown id instead of showing a timeline", async () => {
+        primeApi({ nopStatus: "not_found" });
+        const wrapper = await mountPage();
+
+        const button = wrapper.findAll("button").find((b) => b.text() === "sepa.nop_history_button");
+        await button!.trigger("click");
+        await flushPromises();
+
+        const modal = wrapper.find('[data-testid="sepa-nop-history"]');
+        expect(modal.text()).toContain("sepa.nop_history_not_found");
+        expect(modal.text()).not.toContain("sepa.nop_history_step_created");
     });
 
     it("shows the plugin-unavailable notice when the probe fails", async () => {

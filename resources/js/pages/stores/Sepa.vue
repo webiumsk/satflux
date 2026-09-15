@@ -454,7 +454,16 @@
                   <td class="py-2 pr-4 font-mono text-xs">{{ row.reference }}</td>
                   <td class="py-2 pr-4">{{ formatAmount(row.amountDue) }} {{ row.currency }}</td>
                   <td class="py-2 pr-4">{{ row.reviewReason }}</td>
-                  <td class="py-2 text-right">
+                  <td class="py-2 text-right whitespace-nowrap">
+                    <button
+                      v-if="row.reference.startsWith('QR-')"
+                      type="button"
+                      :disabled="nopHistory.loading"
+                      class="px-3 py-1.5 mr-2 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700/60 text-xs disabled:opacity-60"
+                      @click="openNopHistory(row.reference)"
+                    >
+                      {{ t("sepa.nop_history_button") }}
+                    </button>
                     <button
                       type="button"
                       :disabled="confirming === row.reference"
@@ -494,7 +503,16 @@
                   <td class="py-2 pr-4 font-mono text-xs">{{ row.reference }}</td>
                   <td class="py-2 pr-4">{{ formatAmount(row.amountDue) }} {{ row.currency }}</td>
                   <td class="py-2 pr-4">{{ formatDate(row.createdAt) }}</td>
-                  <td class="py-2 text-right">
+                  <td class="py-2 text-right whitespace-nowrap">
+                    <button
+                      v-if="row.reference.startsWith('QR-')"
+                      type="button"
+                      :disabled="nopHistory.loading"
+                      class="px-3 py-1.5 mr-2 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700/60 text-xs disabled:opacity-60"
+                      @click="openNopHistory(row.reference)"
+                    >
+                      {{ t("sepa.nop_history_button") }}
+                    </button>
                     <button
                       type="button"
                       :disabled="confirming === row.reference"
@@ -511,6 +529,68 @@
         </template>
         </div>
       </AppScrollPane>
+    </div>
+
+    <!-- Where is my payment (public NOP diagnostics) -->
+    <div
+      v-if="nopHistory.open"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      data-testid="sepa-nop-history"
+      @click.self="closeNopHistory"
+    >
+      <div class="w-full max-w-lg bg-gray-900 border border-gray-700 rounded-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-semibold text-white">{{ t("sepa.nop_history_title") }}</h2>
+            <p class="text-xs text-gray-500 font-mono break-all">{{ nopHistory.reference }}</p>
+          </div>
+          <button type="button" class="text-gray-400 hover:text-white text-sm" @click="closeNopHistory">
+            {{ t("sepa.nop_history_close") }}
+          </button>
+        </div>
+
+        <p v-if="nopHistory.loading" class="text-sm text-gray-400">{{ t("sepa.nop_history_loading") }}</p>
+        <p v-else-if="nopHistory.error" class="text-sm text-red-400">{{ nopHistory.error }}</p>
+        <template v-else-if="nopHistory.data">
+          <p class="text-xs text-gray-500">
+            {{ t("sepa.nop_history_intro", { environment: nopHistory.data.environment }) }}
+          </p>
+
+          <template v-if="nopHistory.data.status === 'found'">
+            <div class="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 text-sm text-blue-200 space-y-1">
+              <p>{{ t("sepa.nop_history_found") }}</p>
+              <p v-if="nopHistory.data.amount !== null && nopHistory.data.amount !== undefined">
+                {{ t("sepa.nop_history_amount", { amount: formatAmount(nopHistory.data.amount), currency: nopHistory.data.currency ?? "" }) }}
+              </p>
+              <p v-if="nopHistory.data.organizationName">
+                {{ t("sepa.nop_history_org", { name: nopHistory.data.organizationName }) }}
+              </p>
+            </div>
+            <ol class="space-y-2 text-sm">
+              <li
+                v-for="step in nopHistorySteps"
+                :key="step.key"
+                class="flex items-start gap-3"
+                :class="step.at ? 'text-gray-200' : 'text-gray-500'"
+              >
+                <span class="mt-0.5">{{ step.at ? "●" : "○" }}</span>
+                <span class="flex-1">{{ t(step.label) }}</span>
+                <span class="font-mono text-xs">{{ step.at ? formatDate(step.at) : t("sepa.nop_history_pending_step") }}</span>
+              </li>
+            </ol>
+            <p class="text-xs text-gray-500">{{ t("sepa.nop_history_disclaimer") }}</p>
+          </template>
+          <p v-else-if="nopHistory.data.status === 'not_found'" class="text-sm text-gray-300">
+            {{ t("sepa.nop_history_not_found") }}
+          </p>
+          <p v-else-if="nopHistory.data.status === 'invalid_id'" class="text-sm text-gray-300">
+            {{ t("sepa.nop_history_invalid") }}
+          </p>
+          <p v-else class="text-sm text-amber-300">
+            {{ t("sepa.nop_history_unavailable", { message: nopHistory.data.message ?? "" }) }}
+          </p>
+        </template>
+      </div>
     </div>
   </RafflesPageLayout>
 </template>
@@ -555,6 +635,23 @@ interface SepaPaymentRequest {
   reviewReason: string | null;
 }
 
+interface SepaNopHistory {
+  reference: string;
+  status: "found" | "not_found" | "invalid_id" | "unavailable";
+  environment: string;
+  message: string | null;
+  transactionId?: string | null;
+  createdAt?: string | null;
+  indexedAt?: string | null;
+  matchedAt?: string | null;
+  publishedAt?: string | null;
+  receivedAt?: string | null;
+  organizationName?: string | null;
+  nopStatus?: string | null;
+  amount?: number | null;
+  currency?: string | null;
+}
+
 const { t, locale } = useI18n();
 const flashStore = useFlashStore();
 const appsStore = useAppsStore();
@@ -572,6 +669,13 @@ const confirming = ref<string | null>(null);
 const requests = ref<SepaPaymentRequest[]>([]);
 const bmail = ref<{ enabled: boolean; address: string | null }>({ enabled: false, address: null });
 const bmailCopied = ref(false);
+const nopHistory = reactive<{
+  open: boolean;
+  loading: boolean;
+  reference: string;
+  data: SepaNopHistory | null;
+  error: string | null;
+}>({ open: false, loading: false, reference: "", data: null, error: null });
 const fieldErrors = reactive<Record<string, string>>({});
 
 const form = reactive({
@@ -615,6 +719,17 @@ function backendLabel(backend: string): string {
 }
 
 const pendingRequests = computed(() => requests.value.filter((r) => r.state === "PENDING"));
+const nopHistorySteps = computed(() => {
+  const d = nopHistory.data;
+  if (!d) return [];
+  return [
+    { key: "created", label: "sepa.nop_history_step_created", at: d.createdAt ?? null },
+    { key: "indexed", label: "sepa.nop_history_step_indexed", at: d.indexedAt ?? null },
+    { key: "matched", label: "sepa.nop_history_step_matched", at: d.matchedAt ?? null },
+    { key: "published", label: "sepa.nop_history_step_published", at: d.publishedAt ?? null },
+    { key: "received", label: "sepa.nop_history_step_received", at: d.receivedAt ?? null },
+  ];
+});
 const reviewRequests = computed(() => requests.value.filter((r) => r.state === "MANUAL_REVIEW"));
 
 function applySettings(data: SepaSettings) {
@@ -818,6 +933,28 @@ async function confirmRequest(reference: string) {
   } finally {
     confirming.value = null;
   }
+}
+
+async function openNopHistory(reference: string) {
+  nopHistory.open = true;
+  nopHistory.loading = true;
+  nopHistory.reference = reference;
+  nopHistory.data = null;
+  nopHistory.error = null;
+  try {
+    const res = await api.get(
+      `/stores/${storeId.value}/sepa/payment-requests/${encodeURIComponent(reference)}/nop-history`,
+    );
+    nopHistory.data = res.data?.data ?? res.data;
+  } catch (err: unknown) {
+    nopHistory.error = getApiErrorMessage(err, t("sepa.nop_history_failed"));
+  } finally {
+    nopHistory.loading = false;
+  }
+}
+
+function closeNopHistory() {
+  nopHistory.open = false;
 }
 
 async function copyBmailAddress() {

@@ -4536,6 +4536,25 @@
     "column_created": "Erstellt",
     "mark_paid": "Als bezahlt markieren",
     "payment_confirmed": "Zahlung als bezahlt markiert.",
-    "payment_confirm_failed": "Zahlung konnte nicht bestätigt werden"
+    "payment_confirm_failed": "Zahlung konnte nicht bestätigt werden",
+    "nop_history_button": "Wo ist meine Zahlung",
+    "nop_history_title": "Wo ist meine Zahlung",
+    "nop_history_close": "Schließen",
+    "nop_history_loading": "NOP wird abgefragt...",
+    "nop_history_failed": "Der NOP-Status konnte nicht geladen werden",
+    "nop_history_intro": "Öffentliche NOP-Diagnose der slowakischen Finanzverwaltung (Umgebung {environment}). Nur lesend - hier wird nichts bestätigt.",
+    "nop_history_found": "NOP kennt diese Transaktions-ID.",
+    "nop_history_amount": "Eine Bank hat {amount} {currency} gemeldet.",
+    "nop_history_org": "Kasse: {name}",
+    "nop_history_not_found": "NOP hat diese ID nicht gesehen. Das ist normal für Shops ohne NOP-Backend: die Referenz wird lokal erzeugt, daher zeigt NOP nichts, auch wenn das Geld bereits eingegangen ist. Es bedeutet nicht, dass der Kunde nicht bezahlt hat - prüfen Sie die Überweisung in Ihrer Banking-App.",
+    "nop_history_invalid": "Diese Referenz ist keine NOP-Transaktions-ID.",
+    "nop_history_unavailable": "NOP kann gerade nicht abgefragt werden: {message}",
+    "nop_history_disclaimer": "Die Zeitleiste zeigt den Weg der Zahlung durch NOP, nicht welches Konto gutgeschrieben wurde. Prüfen Sie die Überweisung in Ihrer Banking-App, bevor Sie sie als bezahlt markieren.",
+    "nop_history_step_created": "Transaktions-ID erstellt",
+    "nop_history_step_indexed": "Bankbenachrichtigung gespeichert",
+    "nop_history_step_matched": "Der Kasse zugeordnet",
+    "nop_history_step_published": "Für die Kasse bereitgestellt",
+    "nop_history_step_received": "Von der Kasse empfangen",
+    "nop_history_pending_step": "noch nicht"
   }
 }

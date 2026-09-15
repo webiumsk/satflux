@@ -4536,6 +4536,25 @@
     "column_created": "Creado",
     "mark_paid": "Marcar como pagado",
     "payment_confirmed": "Pago marcado como pagado.",
-    "payment_confirm_failed": "No se pudo confirmar el pago"
+    "payment_confirm_failed": "No se pudo confirmar el pago",
+    "nop_history_button": "Dónde está mi pago",
+    "nop_history_title": "Dónde está mi pago",
+    "nop_history_close": "Cerrar",
+    "nop_history_loading": "Consultando NOP...",
+    "nop_history_failed": "No se pudo cargar el estado de NOP",
+    "nop_history_intro": "Diagnóstico público de NOP de la Administración Financiera eslovaca (entorno {environment}). Solo lectura - aquí no se confirma nada.",
+    "nop_history_found": "NOP conoce este ID de transacción.",
+    "nop_history_amount": "Un banco informó {amount} {currency}.",
+    "nop_history_org": "Caja registradora: {name}",
+    "nop_history_not_found": "NOP no ha visto este ID. Es normal en tiendas sin backend NOP: la referencia se genera localmente, así que NOP no muestra nada aunque el dinero ya haya llegado. No significa que el cliente no haya pagado - verifica la transferencia en tu app bancaria.",
+    "nop_history_invalid": "Esta referencia no es un ID de transacción de NOP.",
+    "nop_history_unavailable": "No se pudo consultar NOP ahora mismo: {message}",
+    "nop_history_disclaimer": "La línea de tiempo muestra el recorrido del pago por NOP, no a qué cuenta se abonó. Comprueba la transferencia en tu app bancaria antes de marcarla como pagada.",
+    "nop_history_step_created": "ID de transacción creado",
+    "nop_history_step_indexed": "Notificación bancaria guardada",
+    "nop_history_step_matched": "Emparejado con la caja",
+    "nop_history_step_published": "Publicado para la caja",
+    "nop_history_step_received": "Recibido por la caja",
+    "nop_history_pending_step": "todavía no"
   }
 }

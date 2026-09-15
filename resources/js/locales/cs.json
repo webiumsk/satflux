@@ -4536,6 +4536,25 @@
     "column_created": "Vytvořeno",
     "mark_paid": "Označit jako zaplacené",
     "payment_confirmed": "Platba označena jako zaplacená.",
-    "payment_confirm_failed": "Platbu se nepodařilo potvrdit"
+    "payment_confirm_failed": "Platbu se nepodařilo potvrdit",
+    "nop_history_button": "Kde je moje platba",
+    "nop_history_title": "Kde je moje platba",
+    "nop_history_close": "Zavřít",
+    "nop_history_loading": "Dotazujeme se NOP...",
+    "nop_history_failed": "Stav z NOP se nepodařilo načíst",
+    "nop_history_intro": "Veřejná diagnostika NOP slovenské Finanční správy (prostředí {environment}). Pouze pro čtení - nic se zde nepotvrzuje.",
+    "nop_history_found": "NOP toto ID transakce zná.",
+    "nop_history_amount": "Banka nahlásila {amount} {currency}.",
+    "nop_history_org": "Pokladna: {name}",
+    "nop_history_not_found": "NOP toto ID neviděl. To je běžné u obchodů bez NOP backendu: reference se generuje lokálně, takže NOP nemá co ukázat, ani když peníze už dorazily. Neznamená to, že zákazník nezaplatil - převod ověřte v bankovní aplikaci.",
+    "nop_history_invalid": "Tato reference není ID transakce NOP.",
+    "nop_history_unavailable": "NOP se teď nedá dotázat: {message}",
+    "nop_history_disclaimer": "Časová osa ukazuje cestu platby přes NOP, ne na který účet přišla. Před označením jako zaplacené převod zkontrolujte v bankovní aplikaci.",
+    "nop_history_step_created": "Vznik ID transakce",
+    "nop_history_step_indexed": "Oznámení banky uloženo",
+    "nop_history_step_matched": "Spárováno s pokladnou",
+    "nop_history_step_published": "Zpřístupněno pokladně",
+    "nop_history_step_received": "Přijato pokladnou",
+    "nop_history_pending_step": "zatím ne"
   }
 }
