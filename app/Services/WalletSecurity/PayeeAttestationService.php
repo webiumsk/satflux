@@ -30,9 +30,6 @@ class PayeeAttestationService
 
     public const LIGHTNING_METHODS = ['BTC-LN', 'BTC-LNURL'];
 
-    /** Multi-node providers may answer from a different node per invoice. */
-    public const CANARY_RECONFIRM_ATTEMPTS = 3;
-
     public function __construct(
         protected InvoiceService $invoices,
         protected WalletSecurityNotifier $notifier,
@@ -210,16 +207,6 @@ class PayeeAttestationService
             return 'skipped';
         }
 
-        // Providers run several nodes (Blink: lnd1/lnd2/..., Boltz: LND + CLN)
-        // and move between them. Before raising an incident, ask the connected
-        // wallet for fresh invoices: if it signs with this node right now, the
-        // payment is consistent with the wallet Satflux connected.
-        if ($this->canaryConfirms($store, $payee)) {
-            $this->setAllowlist($connection, [...$allowed, $payee], $connection->payee_learn_source ?? 'canary', null, 'canary_reconfirm', $context);
-
-            return 'learned';
-        }
-
         $details = [
             'pubkey' => $payee,
             'invoice_id' => $context['invoice_id'] ?? null,
@@ -247,22 +234,6 @@ class PayeeAttestationService
         }
 
         return 'mismatch';
-    }
-
-    /** Up to CANARY_RECONFIRM_ATTEMPTS fresh invoices: does the wallet sign with $payee now? */
-    protected function canaryConfirms(Store $store, string $payee): bool
-    {
-        for ($i = 0; $i < self::CANARY_RECONFIRM_ATTEMPTS; $i++) {
-            $current = $this->canaryPayee($store, 'reconfirm');
-            if ($current === null) {
-                return false;
-            }
-            if ($current === $payee) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /** Admin accepts a node after investigating: add it to the allow-list and close the incident. */

@@ -300,7 +300,7 @@ class PayeeAttestationTest extends TestCase
     }
 
     #[Test]
-    public function a_node_the_wallet_signs_with_right_now_is_learned_instead_of_flagged(): void
+    public function a_fresh_canary_does_not_auto_trust_an_unknown_payment_payee(): void
     {
         Notification::fake();
         $this->fakeBtcPay();
@@ -308,17 +308,19 @@ class PayeeAttestationTest extends TestCase
         app(WalletConfigIntegrityService::class)->baseline($connection, $user);
         $this->assertSame([Bolt11Test::SPEC_PAYEE], $connection->fresh()->payee_pubkeys);
 
-        // Provider moved to another node (Blink lnd1 -> lnd2 style): fresh canaries come from it too.
+        // A fresh BTCPay canary comes through the same store path. Once a paid
+        // invoice shows an unknown node, the canary is not independent proof
+        // that the new node belongs in the allow-list.
         $this->canaryInvoice = Bolt11Test::OTHER_INVOICE;
         $this->paidInvoices = [Bolt11Test::OTHER_INVOICE];
         app(SettlementLedgerService::class)->syncInvoice($store, 'paid-1');
 
         $fresh = $connection->fresh();
-        $this->assertNull($fresh->payee_mismatch_at);
-        $this->assertSame([Bolt11Test::SPEC_PAYEE, Bolt11Test::OTHER_PAYEE], $fresh->payee_pubkeys);
-        $this->assertSame(0, UserMessage::where('user_id', $user->id)->where('type', 'security')->count());
-        $this->assertDatabaseHas('audit_logs', ['action' => 'wallet_connection.payee_learned']);
-        $this->assertSame('canary_reconfirm', AuditLog::where('action', 'wallet_connection.payee_learned')->latest('id')->first()->metadata['reason']);
+        $this->assertNotNull($fresh->payee_mismatch_at);
+        $this->assertSame([Bolt11Test::SPEC_PAYEE], $fresh->payee_pubkeys);
+        $this->assertSame(Bolt11Test::OTHER_PAYEE, $fresh->payee_mismatch_details['pubkey']);
+        $this->assertSame(1, UserMessage::where('user_id', $user->id)->where('type', 'security')->count());
+        $this->assertDatabaseHas('audit_logs', ['action' => 'wallet_connection.payee_mismatch']);
     }
 
     #[Test]
@@ -339,9 +341,11 @@ class PayeeAttestationTest extends TestCase
         $kept = UserMessage::createForUser($otherUser->id, 'Payment received by an unknown wallet - Other', 'real', 'security', null, null, $otherConnection->id);
         // A message from before the column existed (no id) inside the window is purged.
         $legacy = UserMessage::createForUser($admin->id, 'Payee mismatch: Legacy', 'old', 'security');
+        $oldLegacy = UserMessage::createForUser($otherUser->id, 'Payee mismatch: Old legacy', 'keep', 'security');
+        $oldLegacy->forceFill(['created_at' => now()->subHours(2), 'updated_at' => now()->subHours(2)])->save();
 
         $this->artisan('wallet-connections:reset-payee-incidents', ['--dry-run' => true, '--purge-messages' => true])
-            ->expectsOutputToContain('Would reset 1 incident(s), 3 security message(s)')
+            ->expectsOutputToContain('Would reset 1 incident(s), 2 security message(s)')
             ->assertExitCode(0);
         $this->assertNotNull($connection->fresh()->payee_mismatch_at);
 
@@ -354,6 +358,7 @@ class PayeeAttestationTest extends TestCase
         $this->assertSame(1, UserMessage::where('user_id', $admin->id)->count(), 'unrelated security messages stay');
         $this->assertNotNull($kept->fresh(), 'a resolved incident of another connection keeps its message');
         $this->assertNull($legacy->fresh(), 'legacy messages without an id fall back to the time window');
+        $this->assertNotNull($oldLegacy->fresh(), 'legacy messages outside the explicit time window stay');
         $this->assertDatabaseHas('audit_logs', ['action' => 'wallet_connection.payee_incident_reset', 'target_id' => $connection->id]);
     }
 
