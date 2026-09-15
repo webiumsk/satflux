@@ -138,6 +138,7 @@ class SettlementLedgerService
 
             $paidAt = isset($payment['receivedDate']) ? Carbon::parse($payment['receivedDate']) : null;
             $destination = isset($payment['destination']) ? (string) $payment['destination'] : null;
+            $paymentStatus = isset($payment['status']) ? (string) $payment['status'] : null;
             $row = StoreSettlement::updateOrCreate(
                 [
                     'store_id' => $store->id,
@@ -148,7 +149,7 @@ class SettlementLedgerService
                 [
                     'category' => $category,
                     'destination' => $destination,
-                    'payment_status' => isset($payment['status']) ? (string) $payment['status'] : null,
+                    'payment_status' => $paymentStatus,
                     'paid_at' => $paidAt,
                     'gross_sats' => $grossSats,
                     'invoice_currency' => isset($invoice['currency']) ? strtoupper((string) $invoice['currency']) : null,
@@ -161,11 +162,10 @@ class SettlementLedgerService
             $count++;
 
             // Security: who signed the Lightning invoice this payment settled
-            // on (PayeeAttestationService). Only payments the ledger sees for
-            // the first time - the daily reconcile re-reads history and must
-            // not judge old invoices against today's wallet. Never lets a
-            // failure break the ledger.
-            if ($row->wasRecentlyCreated && in_array($methodId, PayeeAttestationService::LIGHTNING_METHODS, true)) {
+            // on (PayeeAttestationService). Run once at the first observed
+            // settled state: a payment can be inserted as Processing and
+            // later update to Settled under the same payment identity.
+            if ($this->shouldAttestPayment($row, $methodId, $paymentStatus)) {
                 try {
                     app(PayeeAttestationService::class)->attestPayment(
                         $store,
@@ -181,6 +181,23 @@ class SettlementLedgerService
         }
 
         return $count;
+    }
+
+    protected function shouldAttestPayment(StoreSettlement $row, string $methodId, ?string $paymentStatus): bool
+    {
+        if (! in_array($methodId, PayeeAttestationService::LIGHTNING_METHODS, true)) {
+            return false;
+        }
+        if (! $this->isSettledPaymentStatus($paymentStatus)) {
+            return false;
+        }
+
+        return $row->wasRecentlyCreated || $row->wasChanged('payment_status');
+    }
+
+    protected function isSettledPaymentStatus(?string $paymentStatus): bool
+    {
+        return $paymentStatus !== null && strcasecmp($paymentStatus, 'Settled') === 0;
     }
 
     /**
