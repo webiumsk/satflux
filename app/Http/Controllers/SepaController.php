@@ -264,6 +264,33 @@ class SepaController extends Controller
         }
     }
 
+    /**
+     * Public NOP diagnostics ("Kde je moja platba") for one payment request.
+     * Only NOP-shaped references (QR- + 32 hex) can be looked up - anything
+     * else answers invalid_id here without a round trip to BTCPay.
+     */
+    public function nopHistory(Store $store, string $reference): JsonResponse
+    {
+        if (preg_match('/^QR-[0-9a-fA-F]{32}$/', $reference) !== 1) {
+            return response()->json(['data' => [
+                'reference' => $reference,
+                'status' => 'invalid_id',
+                'environment' => 'PROD',
+                'message' => null,
+            ]]);
+        }
+
+        $userApiKey = $this->ownerApiKey($store);
+
+        try {
+            $result = $this->sepaService->nopHistory($store->btcpay_store_id, $reference, $userApiKey);
+
+            return response()->json(['data' => $result]);
+        } catch (BtcPayException $e) {
+            return $this->handleBtcPayError($e);
+        }
+    }
+
     public function confirmPaymentRequest(Store $store, string $reference): JsonResponse
     {
         $userApiKey = $this->ownerApiKey($store);

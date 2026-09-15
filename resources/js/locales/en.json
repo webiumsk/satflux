@@ -4536,6 +4536,25 @@
     "column_created": "Created",
     "mark_paid": "Mark as paid",
     "payment_confirmed": "Payment marked as paid.",
-    "payment_confirm_failed": "Failed to confirm the payment"
+    "payment_confirm_failed": "Failed to confirm the payment",
+    "nop_history_button": "Where is my payment",
+    "nop_history_title": "Where is my payment",
+    "nop_history_close": "Close",
+    "nop_history_loading": "Asking NOP...",
+    "nop_history_failed": "Could not load the NOP status",
+    "nop_history_intro": "Public NOP diagnostics of the Slovak Financial Administration ({environment} environment). Read-only - nothing is confirmed here.",
+    "nop_history_found": "NOP knows this transaction id.",
+    "nop_history_amount": "A bank reported {amount} {currency}.",
+    "nop_history_org": "Cash register: {name}",
+    "nop_history_not_found": "NOP has not seen this id. That is expected for stores without a NOP backend (the reference is generated locally) and for payments the customer has not sent yet. Confirm the transfer in your banking app.",
+    "nop_history_invalid": "This reference is not a NOP transaction id.",
+    "nop_history_unavailable": "NOP could not be asked right now: {message}",
+    "nop_history_disclaimer": "The timeline shows the payment's journey through NOP, not which account was credited. Check the transfer in your banking app before marking it as paid.",
+    "nop_history_step_created": "Transaction id created",
+    "nop_history_step_indexed": "Bank notification stored",
+    "nop_history_step_matched": "Matched to the cash register",
+    "nop_history_step_published": "Published to the cash register",
+    "nop_history_step_received": "Received by the cash register",
+    "nop_history_pending_step": "not yet"
   }
 }

@@ -4540,6 +4540,25 @@
     "column_created": "Vytvorené",
     "mark_paid": "Označiť ako zaplatené",
     "payment_confirmed": "Platba označená ako zaplatená.",
-    "payment_confirm_failed": "Platbu sa nepodarilo potvrdiť"
+    "payment_confirm_failed": "Platbu sa nepodarilo potvrdiť",
+    "nop_history_button": "Kde je moja platba",
+    "nop_history_title": "Kde je moja platba",
+    "nop_history_close": "Zavrieť",
+    "nop_history_loading": "Pýtame sa NOP...",
+    "nop_history_failed": "Stav z NOP sa nepodarilo načítať",
+    "nop_history_intro": "Verejná diagnostika NOP Finančnej správy SR (prostredie {environment}). Len na čítanie - nič sa tu nepotvrdzuje.",
+    "nop_history_found": "NOP toto ID transakcie pozná.",
+    "nop_history_amount": "Banka nahlásila {amount} {currency}.",
+    "nop_history_org": "Pokladnica: {name}",
+    "nop_history_not_found": "NOP toto ID nevidel. To je bežné pri obchodoch bez NOP backendu (referencia sa generuje lokálne) a pri platbách, ktoré zákazník ešte neposlal. Prevod overte v bankovej aplikácii.",
+    "nop_history_invalid": "Táto referencia nie je ID transakcie NOP.",
+    "nop_history_unavailable": "NOP sa teraz nedá opýtať: {message}",
+    "nop_history_disclaimer": "Časová os ukazuje cestu platby cez NOP, nie na ktorý účet prišla. Pred označením ako zaplatené prevod skontrolujte v bankovej aplikácii.",
+    "nop_history_step_created": "Vznik ID transakcie",
+    "nop_history_step_indexed": "Oznámenie banky uložené",
+    "nop_history_step_matched": "Spárované s pokladnicou",
+    "nop_history_step_published": "Sprístupnené pokladnici",
+    "nop_history_step_received": "Prijaté pokladnicou",
+    "nop_history_pending_step": "zatiaľ nie"
   }
 }

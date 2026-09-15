@@ -214,6 +214,53 @@ class SepaTest extends TestCase
         Http::assertSent(fn (Request $request) => str_contains((string) $request->url(), 'state=pending'));
     }
 
+    public function test_nop_history_proxies_the_public_nop_timeline(): void
+    {
+        $reference = 'QR-ab29e346f1d841c8a95a63d857490818';
+        Http::fake([
+            $this->pluginBase().'/payment-requests/'.$reference.'/nop-history' => Http::response([
+                'reference' => $reference,
+                'status' => 'found',
+                'environment' => 'PROD',
+                'message' => null,
+                'createdAt' => '2026-09-16T08:00:00+00:00',
+                'indexedAt' => '2026-09-16T08:01:10+00:00',
+                'matchedAt' => null,
+                'organizationName' => 'Kaviaren s.r.o.',
+                'amount' => 12.5,
+                'currency' => 'EUR',
+            ]),
+        ]);
+
+        $response = $this->getJson("/api/stores/{$this->store->id}/sepa/payment-requests/{$reference}/nop-history");
+
+        $response->assertOk();
+        $response->assertJsonPath('data.status', 'found');
+        $response->assertJsonPath('data.amount', 12.5);
+        $response->assertJsonPath('data.organizationName', 'Kaviaren s.r.o.');
+    }
+
+    public function test_nop_history_rejects_non_nop_references_without_calling_btcpay(): void
+    {
+        Http::fake();
+
+        $response = $this->getJson("/api/stores/{$this->store->id}/sepa/payment-requests/1234567890/nop-history");
+
+        $response->assertOk();
+        $response->assertJsonPath('data.status', 'invalid_id');
+        Http::assertNothingSent();
+    }
+
+    public function test_nop_history_is_owner_scoped(): void
+    {
+        Http::fake();
+        $otherStore = Store::factory()->create();
+
+        $this->getJson("/api/stores/{$otherStore->id}/sepa/payment-requests/QR-ab29e346f1d841c8a95a63d857490818/nop-history")
+            ->assertForbidden();
+        Http::assertNothingSent();
+    }
+
     public function test_confirm_payment_request_proxies(): void
     {
         $reference = 'QR-ab29e346f1d841c8a95a63d857490818';

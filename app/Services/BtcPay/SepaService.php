@@ -130,6 +130,18 @@ class SepaService
     }
 
     /**
+     * "Where is my payment": public NOP diagnostics timeline of a QR-
+     * payment request (plugin >= 0.8.0). Read-only; status found |
+     * not_found | invalid_id | unavailable.
+     */
+    public function nopHistory(string $storeId, string $reference, ?string $userApiKey = null): array
+    {
+        return $this->client->withUserKey($userApiKey, function () use ($storeId, $reference) {
+            return $this->client->get($this->base($storeId).'/payment-requests/'.rawurlencode($reference).'/nop-history');
+        });
+    }
+
+    /**
      * @return array { outcome }
      */
     public function confirmPaymentRequest(string $storeId, string $reference, ?string $userApiKey = null): array

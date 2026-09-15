@@ -15,6 +15,18 @@ meta_description: Accept euro bank transfers via a SEPA Instant QR code, alongsi
 2. Enter your bank details (the account that should receive the euro transfers) and enable the method.
 3. Optionally set up e-mail confirmation of incoming payments so the store can reconcile them.
 
+## Where is my payment
+
+Every awaiting or needs-review payment whose reference starts with `QR-` has a **Where is my payment** button. It asks the public diagnostics service of the Slovak Financial Administration's instant payment notifier (NOP) what it knows about that reference and shows the timeline: transaction id created, bank notification stored, matched to the cash register, published, received.
+
+What to expect:
+
+- **NOP knows this id** appears for stores that confirm through NOP with an eKasa certificate, and for payments a notification-enabled bank account (Tatra banka, SLSP) reported.
+- **NOP has not seen this id** is the normal answer for stores that confirm manually, through Fio or through e-mail: their references are generated locally, so NOP has nothing to show until a bank reports the payment. It also means the customer has not paid yet.
+- The timeline never says which account was credited. Always check the transfer in your banking app before marking a payment as paid - satflux does not confirm anything from this screen.
+
+The same data is on [kdejemojaplatba.sk](https://www.kdejemojaplatba.sk/), an independent viewer of the same service.
+
 ## Notes
 
 - Available to all accounts, including guests.
