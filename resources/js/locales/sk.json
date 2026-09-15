@@ -4550,7 +4550,7 @@
     "nop_history_found": "NOP toto ID transakcie pozná.",
     "nop_history_amount": "Banka nahlásila {amount} {currency}.",
     "nop_history_org": "Pokladnica: {name}",
-    "nop_history_not_found": "NOP toto ID nevidel. To je bežné pri obchodoch bez NOP backendu (referencia sa generuje lokálne) a pri platbách, ktoré zákazník ešte neposlal. Prevod overte v bankovej aplikácii.",
+    "nop_history_not_found": "NOP toto ID nevidel. To je bežné pri obchodoch bez NOP backendu: referencia sa generuje lokálne, takže NOP nemá čo ukázať, ani keď peniaze už prišli. Neznamená to, že zákazník nezaplatil - prevod overte v bankovej aplikácii.",
     "nop_history_invalid": "Táto referencia nie je ID transakcie NOP.",
     "nop_history_unavailable": "NOP sa teraz nedá opýtať: {message}",
     "nop_history_disclaimer": "Časová os ukazuje cestu platby cez NOP, nie na ktorý účet prišla. Pred označením ako zaplatené prevod skontrolujte v bankovej aplikácii.",

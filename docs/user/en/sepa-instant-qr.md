@@ -22,7 +22,7 @@ Every awaiting or needs-review payment whose reference starts with `QR-` has a *
 What to expect:
 
 - **NOP knows this id** appears for stores that confirm through NOP with an eKasa certificate, and for payments a notification-enabled bank account (Tatra banka, SLSP) reported.
-- **NOP has not seen this id** is the normal answer for stores that confirm manually, through Fio or through e-mail: their references are generated locally, so NOP has nothing to show until a bank reports the payment. It also means the customer has not paid yet.
+- **NOP has not seen this id** is the normal answer for stores that confirm manually, through Fio or through e-mail: their references are generated locally, so NOP has nothing to show even when the money has already arrived (and even when Fio or e-mail confirmation has already settled the invoice). It does not mean the customer has not paid - check your bank account.
 - The timeline never says which account was credited. Always check the transfer in your banking app before marking a payment as paid - satflux does not confirm anything from this screen.
 
 The same data is on [kdejemojaplatba.sk](https://www.kdejemojaplatba.sk/), an independent viewer of the same service.

@@ -4546,7 +4546,7 @@
     "nop_history_found": "NOP kennt diese Transaktions-ID.",
     "nop_history_amount": "Eine Bank hat {amount} {currency} gemeldet.",
     "nop_history_org": "Kasse: {name}",
-    "nop_history_not_found": "NOP hat diese ID nicht gesehen. Das ist normal für Shops ohne NOP-Backend (die Referenz wird lokal erzeugt) und für Zahlungen, die der Kunde noch nicht gesendet hat. Prüfen Sie die Überweisung in Ihrer Banking-App.",
+    "nop_history_not_found": "NOP hat diese ID nicht gesehen. Das ist normal für Shops ohne NOP-Backend: die Referenz wird lokal erzeugt, daher zeigt NOP nichts, auch wenn das Geld bereits eingegangen ist. Es bedeutet nicht, dass der Kunde nicht bezahlt hat - prüfen Sie die Überweisung in Ihrer Banking-App.",
     "nop_history_invalid": "Diese Referenz ist keine NOP-Transaktions-ID.",
     "nop_history_unavailable": "NOP kann gerade nicht abgefragt werden: {message}",
     "nop_history_disclaimer": "Die Zeitleiste zeigt den Weg der Zahlung durch NOP, nicht welches Konto gutgeschrieben wurde. Prüfen Sie die Überweisung in Ihrer Banking-App, bevor Sie sie als bezahlt markieren.",

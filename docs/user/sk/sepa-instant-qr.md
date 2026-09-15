@@ -22,7 +22,7 @@ Každá čakajúca platba alebo platba na kontrolu, ktorej referencia začína n
 Čo očakávať:
 
 - **NOP toto ID pozná** sa zobrazí pri obchodoch, ktoré potvrdzujú cez NOP s eKasa certifikátom, a pri platbách, ktoré nahlásil notifikačný bankový účet (Tatra banka, SLSP).
-- **NOP toto ID nevidel** je bežná odpoveď pri obchodoch s manuálnym, Fio alebo e-mailovým potvrdzovaním: ich referencie sa generujú lokálne, takže NOP nemá čo ukázať, kým banka platbu nenahlási. Znamená to aj, že zákazník ešte nezaplatil.
+- **NOP toto ID nevidel** je bežná odpoveď pri obchodoch s manuálnym, Fio alebo e-mailovým potvrdzovaním: ich referencie sa generujú lokálne, takže NOP nemá čo ukázať, ani keď peniaze už prišli (a ani keď Fio alebo e-mailové potvrdenie faktúru už uzavrelo). Neznamená to, že zákazník nezaplatil - skontrolujte bankový účet.
 - Časová os nikdy nehovorí, na ktorý účet peniaze prišli. Pred označením platby ako zaplatenej ju vždy skontrolujte v bankovej aplikácii - satflux z tejto obrazovky nič nepotvrdzuje.
 
 Rovnaké údaje ukazuje aj [kdejemojaplatba.sk](https://www.kdejemojaplatba.sk/), nezávislý prehliadač tej istej služby.

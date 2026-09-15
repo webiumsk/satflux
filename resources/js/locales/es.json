@@ -4546,7 +4546,7 @@
     "nop_history_found": "NOP conoce este ID de transacción.",
     "nop_history_amount": "Un banco informó {amount} {currency}.",
     "nop_history_org": "Caja registradora: {name}",
-    "nop_history_not_found": "NOP no ha visto este ID. Es normal en tiendas sin backend NOP (la referencia se genera localmente) y en pagos que el cliente aún no ha enviado. Verifica la transferencia en tu app bancaria.",
+    "nop_history_not_found": "NOP no ha visto este ID. Es normal en tiendas sin backend NOP: la referencia se genera localmente, así que NOP no muestra nada aunque el dinero ya haya llegado. No significa que el cliente no haya pagado - verifica la transferencia en tu app bancaria.",
     "nop_history_invalid": "Esta referencia no es un ID de transacción de NOP.",
     "nop_history_unavailable": "No se pudo consultar NOP ahora mismo: {message}",
     "nop_history_disclaimer": "La línea de tiempo muestra el recorrido del pago por NOP, no a qué cuenta se abonó. Comprueba la transferencia en tu app bancaria antes de marcarla como pagada.",

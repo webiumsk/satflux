@@ -4546,7 +4546,7 @@
     "nop_history_found": "NOP knows this transaction id.",
     "nop_history_amount": "A bank reported {amount} {currency}.",
     "nop_history_org": "Cash register: {name}",
-    "nop_history_not_found": "NOP has not seen this id. That is expected for stores without a NOP backend (the reference is generated locally) and for payments the customer has not sent yet. Confirm the transfer in your banking app.",
+    "nop_history_not_found": "NOP has not seen this id. That is expected for stores without a NOP backend: the reference is generated locally, so NOP has nothing to show even when the money has already arrived. It does not mean the customer has not paid - check the transfer in your banking app.",
     "nop_history_invalid": "This reference is not a NOP transaction id.",
     "nop_history_unavailable": "NOP could not be asked right now: {message}",
     "nop_history_disclaimer": "The timeline shows the payment's journey through NOP, not which account was credited. Check the transfer in your banking app before marking it as paid.",
