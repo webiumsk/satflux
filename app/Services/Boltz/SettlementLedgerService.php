@@ -137,7 +137,9 @@ class SettlementLedgerService
             $estimate = $this->estimateNetSettlement($category, $grossSats);
 
             $paidAt = isset($payment['receivedDate']) ? Carbon::parse($payment['receivedDate']) : null;
-            $destination = isset($payment['destination']) ? (string) $payment['destination'] : null;
+            $paymentDestination = isset($payment['destination']) ? trim((string) $payment['destination']) : '';
+            $methodDestination = isset($method['destination']) ? trim((string) $method['destination']) : '';
+            $destination = $paymentDestination !== '' ? $paymentDestination : ($methodDestination !== '' ? $methodDestination : null);
             $paymentStatus = isset($payment['status']) ? (string) $payment['status'] : null;
             $row = StoreSettlement::updateOrCreate(
                 [
@@ -166,8 +168,9 @@ class SettlementLedgerService
             // sees the payment as Settled: a payment can be inserted as
             // Processing (InvoiceReceivedPayment) and only later update to
             // Settled under the same payment identity. Rows that are already
-            // Settled are not judged again - the daily reconcile re-reads
-            // history and must not judge old invoices against today's wallet.
+            // Settled are not judged again unless their missing destination
+            // first materializes - the daily reconcile re-reads history and
+            // must not judge old invoices against today's wallet.
             // Never lets a failure break the ledger.
             if ($this->shouldAttestPayment($row, $methodId, $paymentStatus)) {
                 try {
@@ -175,7 +178,7 @@ class SettlementLedgerService
                         $store,
                         $invoiceId,
                         $methodId,
-                        $destination ?: (isset($method['destination']) ? (string) $method['destination'] : null),
+                        $destination,
                         $paidAt,
                     );
                 } catch (\Throwable $e) {
@@ -196,7 +199,7 @@ class SettlementLedgerService
             return false;
         }
 
-        return $row->wasRecentlyCreated || $row->wasChanged('payment_status');
+        return $row->wasRecentlyCreated || $row->wasChanged('payment_status') || $row->wasChanged('destination');
     }
 
     protected function isSettledPaymentStatus(?string $paymentStatus): bool
