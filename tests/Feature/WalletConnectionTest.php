@@ -1388,6 +1388,61 @@ class WalletConnectionTest extends TestCase
         $this->assertSame('blink', $store->wallet_type);
     }
 
+    #[Test]
+    public function replacement_is_not_marked_connected_just_because_the_old_lightning_node_is_active(): void
+    {
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+
+        Http::fake(function (Request $request) {
+            $url = $request->url();
+            if (str_contains($url, '/plugins/cashumelt/settings')) {
+                return Http::response($request->method() === 'GET'
+                    ? ['mintUrl' => 'https://mint.example/x']
+                    : $request->data(), 200);
+            }
+            if ($request->method() === 'DELETE' && str_contains($url, '/stores/reconfig-old-active/lightning/BTC')) {
+                return Http::response(['message' => 'delete unavailable'], 405);
+            }
+            if ($request->method() === 'PUT' && str_contains($url, '/stores/reconfig-old-active/payment-methods/BTC-LN')) {
+                return Http::response(['message' => 'connect failed'], 500);
+            }
+            if ($request->method() === 'GET' && str_contains($url, '/stores/reconfig-old-active/lightning/BTC/info')) {
+                return Http::response(['implementation' => 'old-node-still-active'], 200);
+            }
+            if (str_contains($url, '/stores/reconfig-old-active/lightning/BTC')) {
+                return Http::response(['message' => 'legacy connect failed'], 422);
+            }
+
+            return Http::response(['message' => 'not found'], 404);
+        });
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-reconfig-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'blink',
+            'btcpay_store_id' => 'reconfig-old-active',
+        ]);
+        WalletConnection::create([
+            'store_id' => $store->id,
+            'type' => 'blink',
+            'encrypted_secret' => Crypt::encryptString(self::VALID_BLINK_SECRET),
+            'status' => 'connected',
+            'submitted_by_user_id' => $user->id,
+        ]);
+
+        $this->grantWalletChange($user, $store);
+
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", $this->blinkReplacementPayload())
+            ->assertStatus(201)
+            ->assertJsonPath('data.status', 'pending');
+
+        $connection = WalletConnection::where('store_id', $store->id)->firstOrFail();
+        $this->assertTrue((bool) $connection->reconfig);
+        $this->assertSame('pending', $connection->status);
+        $this->assertNull($connection->config_fingerprint);
+        $this->assertStringContainsString('blink_rotated', Crypt::decryptString($connection->encrypted_secret));
+    }
+
     // ---- Replacing a CONNECTED wallet: email-code grant (WalletChangeConfirmationGuard)
 
     private function connectedBlinkStore(User $user): Store
