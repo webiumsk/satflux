@@ -749,6 +749,11 @@ class WalletConnectionService
         if ($connection->status !== 'pending') {
             return false;
         }
+        if ((bool) $connection->reconfig) {
+            // During replacements an active node may be the old wallet. Only
+            // mark reconfigs connected from a successful write path.
+            return false;
+        }
 
         try {
             $nodeInfo = $this->lightningService->getLightningNodeInfo(
