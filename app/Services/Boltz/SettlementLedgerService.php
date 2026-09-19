@@ -137,7 +137,9 @@ class SettlementLedgerService
             $estimate = $this->estimateNetSettlement($category, $grossSats);
 
             $paidAt = isset($payment['receivedDate']) ? Carbon::parse($payment['receivedDate']) : null;
-            $destination = isset($payment['destination']) ? (string) $payment['destination'] : null;
+            $methodDestination = isset($method['destination']) ? (string) $method['destination'] : null;
+            $paymentDestination = isset($payment['destination']) ? (string) $payment['destination'] : null;
+            $destination = $paymentDestination !== null && $paymentDestination !== '' ? $paymentDestination : $methodDestination;
             $paymentStatus = isset($payment['status']) ? (string) $payment['status'] : null;
             $row = StoreSettlement::updateOrCreate(
                 [
@@ -175,7 +177,7 @@ class SettlementLedgerService
                         $store,
                         $invoiceId,
                         $methodId,
-                        $destination ?: (isset($method['destination']) ? (string) $method['destination'] : null),
+                        $destination,
                         $paidAt,
                     );
                 } catch (\Throwable $e) {
@@ -196,7 +198,7 @@ class SettlementLedgerService
             return false;
         }
 
-        return $row->wasRecentlyCreated || $row->wasChanged('payment_status');
+        return $row->wasRecentlyCreated || $row->wasChanged('payment_status') || $row->wasChanged('destination');
     }
 
     protected function isSettledPaymentStatus(?string $paymentStatus): bool
