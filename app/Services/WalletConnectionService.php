@@ -14,6 +14,7 @@ use App\Notifications\WalletConnectionReadyNotification;
 use App\Services\BtcPay\BoltzService;
 use App\Services\BtcPay\CashuService;
 use App\Services\BtcPay\LightningService;
+use App\Services\BtcPay\StoreService;
 use App\Services\WalletSecurity\WalletConfigIntegrityService;
 use App\Services\WalletSecurity\WalletSecurityNotifier;
 use Illuminate\Support\Facades\Crypt;
@@ -29,6 +30,7 @@ class WalletConnectionService
         protected CashuService $cashuService,
         protected LightningService $lightningService,
         protected BoltzService $boltzService,
+        protected StoreService $storeService,
     ) {}
 
     /**
@@ -749,20 +751,25 @@ class WalletConnectionService
         if ($connection->status !== 'pending') {
             return false;
         }
-        if ((bool) $connection->reconfig) {
-            // During replacements an active node may be the old wallet. Only
-            // mark reconfigs connected from a successful write path.
-            return false;
-        }
 
         try {
-            $nodeInfo = $this->lightningService->getLightningNodeInfo(
-                $store->btcpay_store_id,
-                'BTC',
-                $userApiKey
-            );
-            if ($nodeInfo === []) {
-                return false;
+            if ((bool) $connection->reconfig) {
+                // During replacements an active node may be the old wallet, so
+                // the probe alone proves nothing. A reconfig is connected only
+                // when BTCPay already holds the wallet being submitted (the
+                // write failed transiently, or it was configured out-of-band).
+                if (! $this->btcpayLightningConfigMatches($store, $connection, $userApiKey)) {
+                    return false;
+                }
+            } else {
+                $nodeInfo = $this->lightningService->getLightningNodeInfo(
+                    $store->btcpay_store_id,
+                    'BTC',
+                    $userApiKey
+                );
+                if ($nodeInfo === []) {
+                    return false;
+                }
             }
 
             $this->markConnected($connection, $user);
@@ -777,6 +784,76 @@ class WalletConnectionService
 
             return false;
         }
+    }
+
+    /**
+     * Does the BTC-LN connection string BTCPay holds right now equal the one
+     * Satflux writes for this connection's secret? Reads the live config
+     * (includeConfig=true, merchant key - the same read WalletConfigIntegrityService
+     * fingerprints). Types without a plain connection string (aqua_descriptor)
+     * never match and stay pending until the bot or support confirms them.
+     */
+    protected function btcpayLightningConfigMatches(Store $store, WalletConnection $connection, string $userApiKey): bool
+    {
+        $expected = $this->expectedBtcpayConnectionString($connection);
+        if ($expected === null) {
+            return false;
+        }
+
+        $methods = $this->storeService->getStorePaymentMethods(
+            (string) $store->btcpay_store_id,
+            $userApiKey,
+            includeConfig: true,
+        );
+        foreach ($methods as $method) {
+            if (! is_array($method) || (string) ($method['paymentMethodId'] ?? '') !== 'BTC-LN') {
+                continue;
+            }
+            if (! (bool) ($method['enabled'] ?? false)) {
+                return false;
+            }
+            $actual = $method['config']['connectionString'] ?? null;
+
+            return is_string($actual)
+                && self::canonicalConnectionString($actual) === self::canonicalConnectionString($expected);
+        }
+
+        return false;
+    }
+
+    /** The BTCPay connection string the sync connect path writes for this connection. */
+    protected function expectedBtcpayConnectionString(WalletConnection $connection): ?string
+    {
+        $secret = Crypt::decryptString($connection->encrypted_secret);
+
+        return match ($connection->type) {
+            'blink' => $this->validator->formatBtcpayBlinkConnectionString($secret),
+            'blitz' => $this->validator->formatBtcpayBlitzConnectionString($secret),
+            'flash' => $this->validator->formatBtcpayFlashConnectionString($secret),
+            'lnaddress' => $this->validator->formatBtcpayLnAddressConnectionString($secret),
+            'nwc' => $this->validator->formatBtcpayNwcConnectionString($secret),
+            default => null,
+        };
+    }
+
+    /**
+     * "type=blink;ln-address=X;" and "ln-address=X; type=blink" are the same
+     * config: trimmed key=value pairs, keys lowercased, order-independent.
+     */
+    protected static function canonicalConnectionString(string $value): string
+    {
+        $pairs = [];
+        foreach (explode(';', $value) as $pair) {
+            $pair = trim($pair);
+            if ($pair === '') {
+                continue;
+            }
+            [$key, $val] = array_pad(explode('=', $pair, 2), 2, '');
+            $pairs[] = strtolower(trim($key)).'='.trim($val);
+        }
+        sort($pairs);
+
+        return implode(';', $pairs);
     }
 
     /**
