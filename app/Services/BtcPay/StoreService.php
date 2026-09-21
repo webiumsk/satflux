@@ -82,6 +82,13 @@ class StoreService
      * Add a user to a store.
      * Requires server-level API key with store management permissions.
      *
+     * Since BTCPay 2.4.4 (PR btcpayserver#7519) this endpoint creates a
+     * pending invitation by default, which the merchant would never see -
+     * merchants have no BTCPay UI access. `requireInvitation: false` keeps
+     * the direct add; it needs `btcpay.server.canmodifyserversettings` on
+     * the server key (or the "store owners can add users without an
+     * invitation" server policy). Older hosts ignore the field.
+     *
      * @param  string  $storeId  BTCPay store ID
      * @param  string  $userId  BTCPay user ID
      * @param  string  $role  User role in store (e.g., 'Owner', 'Guest', 'Viewer')
@@ -95,12 +102,21 @@ class StoreService
             return $this->client->post("/api/v1/stores/{$storeId}/users", [
                 'userId' => $userId,
                 'role' => $role,
+                'requireInvitation' => false,
             ]);
         } catch (BtcPayException $e) {
+            if ($e->getStatusCode() === 403 && str_contains(strtolower($e->getMessage()), 'invitation')) {
+                Log::error('BTCPay refused a direct store user add: the server API key needs btcpay.server.canmodifyserversettings (or enable the "store owners can add users without an invitation" policy)', [
+                    'store_id' => $storeId,
+                    'user_id' => $userId,
+                ]);
+                throw $e;
+            }
+
             // If user is already in store (409 Conflict or error message contains "already"), this is OK
             $errorMessage = strtolower($e->getMessage());
             if (
-                $e->getCode() === 409 ||
+                $e->getStatusCode() === 409 ||
                 str_contains($errorMessage, 'already') ||
                 str_contains($errorMessage, 'already added') ||
                 str_contains($errorMessage, 'already exists')
@@ -114,7 +130,10 @@ class StoreService
                 // Try to get existing user data and return it
                 try {
                     $users = $this->getStoreUsers($storeId);
-                    $existingUser = collect($users)->firstWhere('userId', $userId);
+                    // BTCPay < 2.4.4 returned `userId`, 2.4.4 returns the compact `id` shape.
+                    $existingUser = collect($users)->first(
+                        fn ($u) => is_array($u) && (($u['userId'] ?? null) === $userId || ($u['id'] ?? null) === $userId)
+                    );
                     if ($existingUser) {
                         return $existingUser;
                     }
@@ -136,6 +155,9 @@ class StoreService
 
     /**
      * Get all users for a store.
+     *
+     * BTCPay 2.4.4 returns the compact `{id, email, roleId}` shape; older
+     * hosts returned `userId`/`storeRole` with the full user fields.
      *
      * @param  string  $storeId  BTCPay store ID
      * @return array List of store users
