@@ -138,6 +138,8 @@ class SettlementLedgerService
 
             $paidAt = isset($payment['receivedDate']) ? Carbon::parse($payment['receivedDate']) : null;
             $destination = isset($payment['destination']) ? (string) $payment['destination'] : null;
+            $methodDestination = isset($method['destination']) ? (string) $method['destination'] : null;
+            $attestationDestination = $destination ?: $methodDestination;
             $paymentStatus = isset($payment['status']) ? (string) $payment['status'] : null;
             $row = StoreSettlement::updateOrCreate(
                 [
@@ -148,7 +150,7 @@ class SettlementLedgerService
                 ],
                 [
                     'category' => $category,
-                    'destination' => $destination,
+                    'destination' => $attestationDestination,
                     'payment_status' => $paymentStatus,
                     'paid_at' => $paidAt,
                     'gross_sats' => $grossSats,
@@ -163,19 +165,19 @@ class SettlementLedgerService
 
             // Security: who signed the Lightning invoice this payment settled
             // on (PayeeAttestationService). Run once, when the ledger first
-            // sees the payment as Settled: a payment can be inserted as
-            // Processing (InvoiceReceivedPayment) and only later update to
-            // Settled under the same payment identity. Rows that are already
-            // Settled are not judged again - the daily reconcile re-reads
-            // history and must not judge old invoices against today's wallet.
+            // sees the payment as Settled or first gains a usable BOLT11: a
+            // payment can be inserted before Settled, or BTCPay can populate
+            // the destination after the Settled row already exists. Unchanged
+            // rows are not judged again - the daily reconcile re-reads history
+            // and must not judge old invoices against today's wallet.
             // Never lets a failure break the ledger.
-            if ($this->shouldAttestPayment($row, $methodId, $paymentStatus)) {
+            if ($this->shouldAttestPayment($row, $methodId, $paymentStatus, $attestationDestination)) {
                 try {
                     app(PayeeAttestationService::class)->attestPayment(
                         $store,
                         $invoiceId,
                         $methodId,
-                        $destination ?: (isset($method['destination']) ? (string) $method['destination'] : null),
+                        $attestationDestination,
                         $paidAt,
                     );
                 } catch (\Throwable $e) {
@@ -187,7 +189,7 @@ class SettlementLedgerService
         return $count;
     }
 
-    protected function shouldAttestPayment(StoreSettlement $row, string $methodId, ?string $paymentStatus): bool
+    protected function shouldAttestPayment(StoreSettlement $row, string $methodId, ?string $paymentStatus, ?string $destination): bool
     {
         if (! in_array($methodId, PayeeAttestationService::LIGHTNING_METHODS, true)) {
             return false;
@@ -196,12 +198,19 @@ class SettlementLedgerService
             return false;
         }
 
-        return $row->wasRecentlyCreated || $row->wasChanged('payment_status');
+        return $row->wasRecentlyCreated
+            || $row->wasChanged('payment_status')
+            || ($this->isLightningDestination($destination) && $row->wasChanged('destination'));
     }
 
     protected function isSettledPaymentStatus(?string $paymentStatus): bool
     {
         return $paymentStatus !== null && strcasecmp($paymentStatus, 'Settled') === 0;
+    }
+
+    protected function isLightningDestination(?string $destination): bool
+    {
+        return $destination !== null && str_starts_with(strtolower($destination), 'ln');
     }
 
     /**
