@@ -113,6 +113,9 @@ class WalletConnectionService
         $isNew = $existingConnection === null;
         $wasConnected = $existingConnection && $existingConnection->status === 'connected';
         $hadAquaDescriptor = $existingConnection && $existingConnection->type === 'aqua_descriptor';
+        // A replacement that is still pending/needs_support was itself a reconfig: BTCPay may
+        // still hold the wallet before it, so replacing it again stays a reconfig too.
+        $hadReconfig = $existingConnection && (bool) $existingConnection->reconfig;
 
         // BTCPay Lightning UI after Cashu (eCash) is usually not the greenfield "first setup" tabbed
         // page the bot expects (#LightningNodeType-Custom). Use the same path as Blink reconfig:
@@ -128,6 +131,7 @@ class WalletConnectionService
             'is_new' => $isNew,
             'existing_connection_id' => $existingConnection->id ?? 'NULL',
             'was_connected' => $wasConnected,
+            'had_reconfig' => $hadReconfig,
             'had_aqua_descriptor' => $hadAquaDescriptor,
             'came_from_cashu' => $cameFromCashu,
             'blink_bot_reconfig_path' => $blinkBotUseReconfigPath,
@@ -148,7 +152,8 @@ class WalletConnectionService
                     'configuration_source' => null,
                     'encrypted_secret' => Crypt::encryptString($secret),
                     'status' => $initialStatus,
-                    'reconfig' => in_array($type, ['blink', 'blitz', 'flash', 'lnaddress'], true) ? $blinkBotUseReconfigPath : $wasConnected,
+                    'reconfig' => $hadReconfig
+                        || (in_array($type, ['blink', 'blitz', 'flash', 'lnaddress'], true) ? $blinkBotUseReconfigPath : $wasConnected),
                     'bot_failure_message' => null,
                     'bot_failed_at' => null,
                     'secret_updated_at' => now(),

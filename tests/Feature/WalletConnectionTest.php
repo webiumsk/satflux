@@ -1527,6 +1527,70 @@ class WalletConnectionTest extends TestCase
     }
 
     #[Test]
+    public function replacing_a_pending_reconfiguration_stays_a_reconfig(): void
+    {
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+
+        Http::fake(function (Request $request) {
+            $url = $request->url();
+            if (str_contains($url, '/plugins/cashumelt/settings')) {
+                return Http::response($request->method() === 'GET'
+                    ? ['mintUrl' => 'https://mint.example/x']
+                    : $request->data(), 200);
+            }
+            if ($request->method() === 'DELETE' && str_contains($url, '/stores/reconfig-again/lightning/BTC')) {
+                return Http::response(['message' => 'delete unavailable'], 405);
+            }
+            if ($request->method() === 'PUT' && str_contains($url, '/stores/reconfig-again/payment-methods/BTC-LN')) {
+                return Http::response(['message' => 'connect failed'], 500);
+            }
+            if ($request->method() === 'GET' && str_contains($url, '/stores/reconfig-again/lightning/BTC/info')) {
+                return Http::response(['implementation' => 'old-node-still-active'], 200);
+            }
+            if ($request->method() === 'GET' && str_contains($url, '/stores/reconfig-again/payment-methods')) {
+                return Http::response([
+                    ['paymentMethodId' => 'BTC-LN', 'enabled' => true, 'config' => ['connectionString' => self::VALID_BLINK_SECRET]],
+                ], 200);
+            }
+            if (str_contains($url, '/stores/reconfig-again/lightning/BTC')) {
+                return Http::response(['message' => 'legacy connect failed'], 422);
+            }
+
+            return Http::response(['message' => 'not found'], 404);
+        });
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-reconfig-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'blink',
+            'btcpay_store_id' => 'reconfig-again',
+        ]);
+        // A replacement of the previously connected wallet that has not gone through yet.
+        WalletConnection::create([
+            'store_id' => $store->id,
+            'type' => 'blink',
+            'encrypted_secret' => Crypt::encryptString('type=blink;server=https://api.blink.sv/graphql;api-key=blink_first_replacement;wallet-id=wallet111'),
+            'status' => 'pending',
+            'reconfig' => true,
+            'submitted_by_user_id' => $user->id,
+        ]);
+
+        // Pending rows are replaced without an email code; the old wallet is still the active node.
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", $this->blinkReplacementPayload())
+            ->assertStatus(201)
+            ->assertJsonPath('data.status', 'pending');
+
+        $connection = WalletConnection::where('store_id', $store->id)->firstOrFail();
+        $this->assertTrue((bool) $connection->reconfig, 'replacing a pending reconfig keeps the reconfig flag');
+        $this->assertSame('pending', $connection->status);
+        $this->assertStringContainsString('blink_rotated', Crypt::decryptString($connection->encrypted_secret));
+
+        $this->actingAs($user)->getJson("/api/stores/{$store->id}/wallet-connection")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'pending');
+    }
+
+    #[Test]
     public function replacement_stays_pending_when_btcpay_holds_a_different_wallet(): void
     {
         config(['services.btcpay.base_url' => 'https://btcpay.test']);
