@@ -91,6 +91,23 @@ class UserServiceApiKeyRevocationTest extends TestCase
         }
     }
 
+    #[Test]
+    public function an_unrelated_404_is_not_retried_with_the_secret(): void
+    {
+        Http::fake(fn () => Http::response(['code' => 'user-not-found', 'message' => 'The user was not found'], 404));
+
+        try {
+            $this->service()->deleteUserApiKey('btcpay-user-1', 'test-key');
+            $this->fail('Expected BtcPayException');
+        } catch (BtcPayException $e) {
+            $this->assertSame(404, $e->getStatusCode());
+            $this->assertSame('user-not-found', $e->getErrorCode());
+        }
+
+        Http::assertSentCount(1);
+        Http::assertNotSent(fn ($request) => str_ends_with($request->url(), '/api-keys/test-key'));
+    }
+
     private function service(): UserService
     {
         return new UserService(new BtcPayClient('server-key'));

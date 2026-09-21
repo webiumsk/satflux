@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Log;
 
 class StoreService
 {
+    /** Greenfield 409 codes meaning the user is already a member of the store. */
+    public const ALREADY_STORE_USER_CODES = ['duplicate-store-user-role', 'already-store-user'];
+
     protected BtcPayClient $client;
 
     public function __construct(BtcPayClient $client)
@@ -113,40 +116,43 @@ class StoreService
                 throw $e;
             }
 
-            // If user is already in store (409 Conflict or error message contains "already"), this is OK
-            $errorMessage = strtolower($e->getMessage());
-            if (
-                $e->getStatusCode() === 409 ||
-                str_contains($errorMessage, 'already') ||
-                str_contains($errorMessage, 'already added') ||
-                str_contains($errorMessage, 'already exists')
-            ) {
+            // Only BTCPay's explicit "already a member" answers are benign:
+            // `duplicate-store-user-role` (< 2.4.4) / `already-store-user` (2.4.4+).
+            if ($e->getStatusCode() === 409 && in_array($e->getErrorCode(), self::ALREADY_STORE_USER_CODES, true)) {
                 Log::info('User already in store, skipping add', [
                     'store_id' => $storeId,
                     'user_id' => $userId,
                     'role' => $role,
-                    'error_code' => $e->getCode(),
+                    'error_code' => $e->getErrorCode(),
                 ]);
-                // Try to get existing user data and return it
+
                 try {
                     $users = $this->getStoreUsers($storeId);
-                    // BTCPay < 2.4.4 returned `userId`, 2.4.4 returns the compact `id` shape.
-                    $existingUser = collect($users)->first(
-                        fn ($u) => is_array($u) && (($u['userId'] ?? null) === $userId || ($u['id'] ?? null) === $userId)
-                    );
-                    if ($existingUser) {
-                        return $existingUser;
-                    }
                 } catch (\Exception $fetchE) {
-                    // If we can't fetch users, just return empty array
+                    // BTCPay already confirmed membership; we just cannot echo the row back.
                     Log::debug('Could not fetch store users to verify existing user', [
                         'store_id' => $storeId,
                         'error' => $fetchE->getMessage(),
                     ]);
+
+                    return [];
                 }
 
-                // Return empty array to indicate success (user already exists)
-                return [];
+                // BTCPay < 2.4.4 returned `userId`, 2.4.4 returns the compact `id` shape.
+                $existingUser = collect($users)->first(
+                    fn ($u) => is_array($u) && (($u['userId'] ?? null) === $userId || ($u['id'] ?? null) === $userId)
+                );
+                if ($existingUser) {
+                    return $existingUser;
+                }
+
+                // BTCPay said "already a member" but does not list the user - do not
+                // let provisioning continue on a store the merchant cannot access.
+                Log::warning('BTCPay reported an existing store user that is not in the store user list', [
+                    'store_id' => $storeId,
+                    'user_id' => $userId,
+                ]);
+                throw $e;
             }
             // Re-throw other errors
             throw $e;

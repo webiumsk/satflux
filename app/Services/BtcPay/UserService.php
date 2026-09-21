@@ -340,13 +340,14 @@ class UserService
         }
     }
 
+    /**
+     * Only BTCPay's explicit "apikey-not-found" answer justifies retrying with
+     * the secret in the URL (the endpoint is logged unredacted); any other
+     * error, including an unrelated 404, is surfaced as-is.
+     */
     protected function isApiKeyNotFound(BtcPayException $e): bool
     {
-        if ($e->getStatusCode() === 404) {
-            return true;
-        }
-
-        return $e->getStatusCode() === 400 && str_contains(strtolower($e->getMessage()), 'apikey');
+        return $e->getErrorCode() === 'apikey-not-found';
     }
 
     /**

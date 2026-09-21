@@ -361,7 +361,9 @@ class BtcPayClient
         // internal BTCPay details don't leak to the frontend. The full message is logged above.
         $clientMessage = $statusCode >= 500 ? "BTCPay Server error (HTTP {$statusCode})" : $message;
 
-        throw new BtcPayException($clientMessage, $statusCode);
+        $errorCode = is_array($json) && is_string($json['code'] ?? null) ? $json['code'] : null;
+
+        throw new BtcPayException($clientMessage, $statusCode, null, $errorCode);
     }
 
     /**

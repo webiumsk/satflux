@@ -66,6 +66,61 @@ class StoreServiceAddUserTest extends TestCase
         }
     }
 
+    #[Test]
+    public function a_pre_244_duplicate_role_conflict_is_resolved_from_the_legacy_shape(): void
+    {
+        Http::fake(function ($request) {
+            if ($request->method() === 'POST') {
+                return Http::response(['code' => 'duplicate-store-user-role', 'message' => 'The user is already added to the store'], 409);
+            }
+
+            return Http::response([
+                ['userId' => 'u-1', 'email' => 'merchant@example.com', 'storeRole' => 'Owner'],
+            ], 200);
+        });
+
+        $result = $this->service()->addUserToStore('store-1', 'u-1', 'Owner');
+
+        $this->assertSame('u-1', $result['userId']);
+    }
+
+    #[Test]
+    public function a_409_without_a_membership_code_is_rethrown(): void
+    {
+        Http::fake(fn () => Http::response(['code' => 'store-user-role-orphaned', 'message' => 'Removing this user would result in the store having no owner.'], 409));
+
+        try {
+            $this->service()->addUserToStore('store-1', 'u-1', 'Owner');
+            $this->fail('Expected BtcPayException');
+        } catch (BtcPayException $e) {
+            $this->assertSame(409, $e->getStatusCode());
+            $this->assertSame('store-user-role-orphaned', $e->getErrorCode());
+        }
+
+        Http::assertNotSent(fn ($request) => $request->method() === 'GET');
+    }
+
+    #[Test]
+    public function a_membership_conflict_for_a_user_missing_from_the_store_is_rethrown(): void
+    {
+        Http::fake(function ($request) {
+            if ($request->method() === 'POST') {
+                return Http::response(['code' => 'already-store-user', 'message' => 'The user is already added to the store'], 409);
+            }
+
+            return Http::response([
+                ['id' => 'someone-else', 'email' => 'other@example.com', 'roleId' => 'Owner'],
+            ], 200);
+        });
+
+        try {
+            $this->service()->addUserToStore('store-1', 'u-1', 'Owner');
+            $this->fail('Expected BtcPayException');
+        } catch (BtcPayException $e) {
+            $this->assertSame('already-store-user', $e->getErrorCode());
+        }
+    }
+
     private function service(): StoreService
     {
         return new StoreService(new BtcPayClient('server-key'));
