@@ -8,6 +8,7 @@ use App\Services\BtcPay\UserService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\Test;
+use Psr\Log\LoggerInterface;
 use Tests\TestCase;
 
 /**
@@ -133,7 +134,7 @@ class UserServiceApiKeyRevocationTest extends TestCase
             : Http::response([], 200));
 
         $endpoints = [];
-        $channel = \Mockery::mock(\Psr\Log\LoggerInterface::class);
+        $channel = \Mockery::mock(LoggerInterface::class);
         $channel->shouldReceive('info')->andReturnUsing(function ($message, array $context = []) use (&$endpoints) {
             $endpoints[] = $context['endpoint'] ?? null;
         });
