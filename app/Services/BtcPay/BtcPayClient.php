@@ -345,7 +345,7 @@ class BtcPayClient
             }
             // Also include the full response body for debugging
             Log::error('BTCPay API 422 Validation Error', [
-                'endpoint' => $endpoint,
+                'endpoint' => self::redactEndpoint($endpoint),
                 'method' => $method,
                 'status_code' => $statusCode,
                 'response_body' => is_array($json) ? $this->sanitizeData($json) : $json,
@@ -426,7 +426,7 @@ class BtcPayClient
     {
         $logData = [
             'method' => $method,
-            'endpoint' => $endpoint,
+            'endpoint' => self::redactEndpoint($endpoint),
         ];
 
         if (isset($options['query'])) {
@@ -457,6 +457,25 @@ class BtcPayClient
                 throw $e;
             }
         }
+    }
+
+    /**
+     * Redact API key secrets that travel in the request path before logging.
+     *
+     * DELETE /api/v1/users/{id}/api-keys/{x} takes the "akid_" key ID on
+     * BTCPay >= 2.4.4, but the transitional fallback in
+     * UserService::deleteUserApiKey still sends the raw secret on older hosts.
+     * IDs are safe to log; anything else in that segment is a secret.
+     */
+    public static function redactEndpoint(string $endpoint): string
+    {
+        return preg_replace_callback(
+            '#(/api-keys/)([^/?\#]+)#i',
+            fn (array $m) => $m[1].(str_starts_with(strtolower($m[2]), 'akid_') || strtolower($m[2]) === 'current'
+                ? $m[2]
+                : '***REDACTED***'),
+            $endpoint
+        ) ?? $endpoint;
     }
 
     /**

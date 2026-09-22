@@ -6,6 +6,7 @@ use App\Services\BtcPay\BtcPayClient;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\UserService;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -106,6 +107,46 @@ class UserServiceApiKeyRevocationTest extends TestCase
 
         Http::assertSentCount(1);
         Http::assertNotSent(fn ($request) => str_ends_with($request->url(), '/api-keys/test-key'));
+    }
+
+    #[Test]
+    public function logged_endpoints_never_contain_the_api_key_secret(): void
+    {
+        $this->assertSame(
+            '/api/v1/users/btcpay-user-1/api-keys/***REDACTED***',
+            BtcPayClient::redactEndpoint('/api/v1/users/btcpay-user-1/api-keys/test-key')
+        );
+        $this->assertSame(
+            '/api/v1/users/btcpay-user-1/api-keys/akid_057e4f9209414306',
+            BtcPayClient::redactEndpoint('/api/v1/users/btcpay-user-1/api-keys/akid_057e4f9209414306')
+        );
+        $this->assertSame('/api/v1/api-keys/current', BtcPayClient::redactEndpoint('/api/v1/api-keys/current'));
+        $this->assertSame('/api/v1/api-keys', BtcPayClient::redactEndpoint('/api/v1/api-keys'));
+        $this->assertSame('/api/v1/stores/s-1/invoices', BtcPayClient::redactEndpoint('/api/v1/stores/s-1/invoices'));
+    }
+
+    #[Test]
+    public function the_secret_fallback_request_is_logged_redacted_but_sent_unredacted(): void
+    {
+        Http::fake(fn ($request) => str_contains((string) $request->url(), '/api-keys/akid_')
+            ? Http::response(['code' => 'apikey-not-found', 'message' => 'This apikey does not exists'], 400)
+            : Http::response([], 200));
+
+        $endpoints = [];
+        $channel = \Mockery::mock(\Psr\Log\LoggerInterface::class);
+        $channel->shouldReceive('info')->andReturnUsing(function ($message, array $context = []) use (&$endpoints) {
+            $endpoints[] = $context['endpoint'] ?? null;
+        });
+        Log::partialMock()->shouldReceive('channel')->with('btcpay')->andReturn($channel);
+
+        $this->service()->deleteUserApiKey('btcpay-user-1', 'test-key');
+
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/api-keys/test-key'));
+        $this->assertNotEmpty($endpoints);
+        foreach ($endpoints as $endpoint) {
+            $this->assertStringNotContainsString('test-key', (string) $endpoint);
+        }
+        $this->assertContains('/api/v1/users/btcpay-user-1/api-keys/***REDACTED***', $endpoints);
     }
 
     private function service(): UserService
