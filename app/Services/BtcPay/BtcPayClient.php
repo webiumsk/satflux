@@ -285,7 +285,12 @@ class BtcPayClient
                 // Includes BtcPayRateLimitException - already logged, never retried here
                 throw $e;
             } catch (\Exception $e) {
-                $this->logRequest($method, $endpoint, $logOptions, null, null, "Exception: {$e->getMessage()}");
+                // Transport errors (Guzzle/cURL) quote the full request URL, which
+                // may carry an API key secret in its path - redact before it
+                // reaches the log or the rethrown message. The original exception
+                // is deliberately not chained as previous for the same reason.
+                $safeMessage = self::redactEndpoint($e->getMessage());
+                $this->logRequest($method, $endpoint, $logOptions, null, null, "Exception: {$safeMessage}");
 
                 if ($attempt < $this->maxRetries) {
                     sleep($backoff);
@@ -295,7 +300,7 @@ class BtcPayClient
                     continue;
                 }
 
-                throw new BtcPayException("Request failed after {$this->maxRetries} retries: {$e->getMessage()}", 0, $e);
+                throw new BtcPayException("Request failed after {$this->maxRetries} retries: ".get_class($e).": {$safeMessage}");
             }
         }
 

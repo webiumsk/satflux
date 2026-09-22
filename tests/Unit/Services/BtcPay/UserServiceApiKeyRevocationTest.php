@@ -5,6 +5,7 @@ namespace Tests\Unit\Services\BtcPay;
 use App\Services\BtcPay\BtcPayClient;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\UserService;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\Test;
@@ -148,6 +149,48 @@ class UserServiceApiKeyRevocationTest extends TestCase
             $this->assertStringNotContainsString('test-key', (string) $endpoint);
         }
         $this->assertContains('/api/v1/users/btcpay-user-1/api-keys/***REDACTED***', $endpoints);
+    }
+
+    #[Test]
+    public function a_transport_failure_during_the_secret_fallback_leaks_no_secret_into_logs_or_the_exception(): void
+    {
+        Http::fake(function ($request) {
+            if (str_contains((string) $request->url(), '/api-keys/akid_')) {
+                return Http::response(['code' => 'apikey-not-found', 'message' => 'This apikey does not exists'], 400);
+            }
+
+            // Guzzle/cURL style message: quotes the full URL, secret included.
+            throw new ConnectionException("cURL error 7: Failed to connect to host for {$request->url()}");
+        });
+
+        $notes = [];
+        $channel = \Mockery::mock(LoggerInterface::class);
+        $channel->shouldReceive('info')->andReturnUsing(function ($message, array $context = []) use (&$notes) {
+            $notes[] = ($context['endpoint'] ?? '').' '.($context['note'] ?? '');
+        });
+        $log = Log::partialMock();
+        $log->shouldReceive('channel')->with('btcpay')->andReturn($channel);
+        // The failed revocation is also reported on the default channel; the
+        // partial mock has no container, so stub those levels out.
+        $log->shouldReceive('error', 'warning', 'info', 'debug')->andReturnNull();
+
+        $client = new BtcPayClient('server-key');
+        $retries = new \ReflectionProperty($client, 'maxRetries');
+        $retries->setValue($client, 0);
+
+        try {
+            (new UserService($client))->deleteUserApiKey('btcpay-user-1', 'test-key');
+            $this->fail('Expected BtcPayException');
+        } catch (BtcPayException $e) {
+            $this->assertStringNotContainsString('test-key', $e->getMessage());
+            $this->assertStringContainsString('/api-keys/***REDACTED***', $e->getMessage());
+            $this->assertNull($e->getPrevious());
+        }
+
+        $this->assertNotEmpty($notes);
+        foreach ($notes as $note) {
+            $this->assertStringNotContainsString('test-key', $note);
+        }
     }
 
     private function service(): UserService
