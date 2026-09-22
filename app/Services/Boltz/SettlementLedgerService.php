@@ -187,6 +187,26 @@ class SettlementLedgerService
         return $count;
     }
 
+    /**
+     * Gate for payee attestation. Deliberately NOT extended with a
+     * `wasChanged('destination')` (or any "destination arrived late") branch:
+     *
+     * - BTCPay writes `payment.destination` exactly once, as a snapshot of the
+     *   payment prompt at the moment the payment is recorded
+     *   (`PaymentDataExtensions.Set`, `LightningListener`). Lightning payments
+     *   are inserted straight away as Settled with the BOLT11 present. A
+     *   Settled row whose destination is filled in by a later sync does not
+     *   happen in BTCPay - the scenario is theoretical.
+     * - The daily reconcile re-reads history for every store. Any gate that
+     *   fires on a column update would re-judge old rows against today's
+     *   allow list and mass-mail merchants with false incidents (this happened
+     *   on 2026-09-07 - see PayeeAttestationService). New triggers must be
+     *   proven against real BTCPay behaviour first, never against a hand-made
+     *   fake payload.
+     *
+     * Bot-generated PRs adding such a branch (#351, #353, #354, #357) were
+     * closed for these reasons; do not propose it again.
+     */
     protected function shouldAttestPayment(StoreSettlement $row, string $methodId, ?string $paymentStatus): bool
     {
         if (! in_array($methodId, PayeeAttestationService::LIGHTNING_METHODS, true)) {
