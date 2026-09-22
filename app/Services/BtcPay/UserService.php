@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Log;
 
 class UserService
 {
+    public const API_KEY_ID_PREFIX = 'akid_';
+
     protected BtcPayClient $client;
 
     public function __construct(BtcPayClient $client)
@@ -273,19 +275,60 @@ class UserService
     }
 
     /**
+     * Greenfield API key ID (BTCPay >= 2.4.4, PR btcpayserver#7561).
+     *
+     * BTCPay no longer stores API key secrets; every key gets an ID derived
+     * from the secret: "akid_" + first 16 hex chars of sha256(sha256(secret)).
+     * The ID is what DELETE /api/v1/users/{id}/api-keys/{apiKeyId} expects,
+     * and it is computable from the secrets satflux already stores, so no
+     * extra column is needed. A value that already carries the prefix is
+     * returned unchanged.
+     */
+    public static function apiKeyIdFromSecret(string $secretOrId): string
+    {
+        if (str_starts_with(strtolower($secretOrId), self::API_KEY_ID_PREFIX)) {
+            return $secretOrId;
+        }
+
+        $hash = hash('sha256', hash('sha256', $secretOrId, true));
+
+        return self::API_KEY_ID_PREFIX.substr($hash, 0, 16);
+    }
+
+    /**
      * Revoke (delete) an API key for a user in BTCPay Server.
      * Requires server-level API key with user management permissions.
      *
-     * BTCPay Greenfield API accepts the API key string itself (not an ID).
-     * There is no GET endpoint to list user API keys.
+     * BTCPay >= 2.4.4 addresses keys by their "akid_" ID (derived from the
+     * secret, see apiKeyIdFromSecret). Older servers only accept the secret
+     * itself and answer "apikey-not-found" to an ID, so the raw secret is
+     * retried once - transitional, drop the fallback after the host runs
+     * 2.4.4 everywhere. There is no GET endpoint to list user API keys.
      *
      * @param  string  $userId  BTCPay user ID
-     * @param  string  $apiKey  The API key string to revoke
+     * @param  string  $apiKey  The API key secret (or its akid_ ID) to revoke
      *
      * @throws BtcPayException
      */
     public function deleteUserApiKey(string $userId, string $apiKey): void
     {
+        $apiKeyId = self::apiKeyIdFromSecret($apiKey);
+
+        try {
+            $this->client->delete("/api/v1/users/{$userId}/api-keys/{$apiKeyId}");
+
+            return;
+        } catch (BtcPayException $e) {
+            if ($apiKeyId === $apiKey || ! $this->isApiKeyNotFound($e)) {
+                Log::error('BTCPay API key revocation failed', [
+                    'error' => $e->getMessage(),
+                    'userId' => $userId,
+                ]);
+                throw $e;
+            }
+        }
+
+        // Pre-2.4.4 host: the route still keys on the secret.
         try {
             $this->client->delete("/api/v1/users/{$userId}/api-keys/{$apiKey}");
         } catch (BtcPayException $e) {
@@ -295,6 +338,16 @@ class UserService
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * Only BTCPay's explicit "apikey-not-found" answer justifies retrying with
+     * the secret in the URL (the endpoint is logged unredacted); any other
+     * error, including an unrelated 404, is surfaced as-is.
+     */
+    protected function isApiKeyNotFound(BtcPayException $e): bool
+    {
+        return $e->getErrorCode() === 'apikey-not-found';
     }
 
     /**

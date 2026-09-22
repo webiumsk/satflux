@@ -285,7 +285,12 @@ class BtcPayClient
                 // Includes BtcPayRateLimitException - already logged, never retried here
                 throw $e;
             } catch (\Exception $e) {
-                $this->logRequest($method, $endpoint, $logOptions, null, null, "Exception: {$e->getMessage()}");
+                // Transport errors (Guzzle/cURL) quote the full request URL, which
+                // may carry an API key secret in its path - redact before it
+                // reaches the log or the rethrown message. The original exception
+                // is deliberately not chained as previous for the same reason.
+                $safeMessage = self::redactEndpoint($e->getMessage());
+                $this->logRequest($method, $endpoint, $logOptions, null, null, "Exception: {$safeMessage}");
 
                 if ($attempt < $this->maxRetries) {
                     sleep($backoff);
@@ -295,7 +300,7 @@ class BtcPayClient
                     continue;
                 }
 
-                throw new BtcPayException("Request failed after {$this->maxRetries} retries: {$e->getMessage()}", 0, $e);
+                throw new BtcPayException("Request failed after {$this->maxRetries} retries: ".get_class($e).": {$safeMessage}");
             }
         }
 
@@ -345,7 +350,7 @@ class BtcPayClient
             }
             // Also include the full response body for debugging
             Log::error('BTCPay API 422 Validation Error', [
-                'endpoint' => $endpoint,
+                'endpoint' => self::redactEndpoint($endpoint),
                 'method' => $method,
                 'status_code' => $statusCode,
                 'response_body' => is_array($json) ? $this->sanitizeData($json) : $json,
@@ -361,7 +366,9 @@ class BtcPayClient
         // internal BTCPay details don't leak to the frontend. The full message is logged above.
         $clientMessage = $statusCode >= 500 ? "BTCPay Server error (HTTP {$statusCode})" : $message;
 
-        throw new BtcPayException($clientMessage, $statusCode);
+        $errorCode = is_array($json) && is_string($json['code'] ?? null) ? $json['code'] : null;
+
+        throw new BtcPayException($clientMessage, $statusCode, null, $errorCode);
     }
 
     /**
@@ -424,7 +431,7 @@ class BtcPayClient
     {
         $logData = [
             'method' => $method,
-            'endpoint' => $endpoint,
+            'endpoint' => self::redactEndpoint($endpoint),
         ];
 
         if (isset($options['query'])) {
@@ -455,6 +462,25 @@ class BtcPayClient
                 throw $e;
             }
         }
+    }
+
+    /**
+     * Redact API key secrets that travel in the request path before logging.
+     *
+     * DELETE /api/v1/users/{id}/api-keys/{x} takes the "akid_" key ID on
+     * BTCPay >= 2.4.4, but the transitional fallback in
+     * UserService::deleteUserApiKey still sends the raw secret on older hosts.
+     * IDs are safe to log; anything else in that segment is a secret.
+     */
+    public static function redactEndpoint(string $endpoint): string
+    {
+        return preg_replace_callback(
+            '#(/api-keys/)([^/?\#]+)#i',
+            fn (array $m) => $m[1].(str_starts_with(strtolower($m[2]), 'akid_') || strtolower($m[2]) === 'current'
+                ? $m[2]
+                : '***REDACTED***'),
+            $endpoint
+        ) ?? $endpoint;
     }
 
     /**
