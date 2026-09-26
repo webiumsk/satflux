@@ -279,6 +279,50 @@ class PayeeAttestationTest extends TestCase
     }
 
     #[Test]
+    public function a_settled_lightning_payment_is_attested_when_the_destination_arrives_late(): void
+    {
+        Notification::fake();
+        $this->fakeBtcPay();
+        [$user, $store, $connection] = $this->connectedStore();
+        $admin = User::factory()->admin()->create();
+        app(WalletConfigIntegrityService::class)->baseline($connection, $user);
+
+        // Some BTCPay webhook reads expose the payment as settled before the
+        // BOLT11 destination is populated. That first sync cannot judge payee.
+        $this->includeMethodDestination = false;
+        $this->includePaymentDestination = false;
+        $this->paidInvoices = [Bolt11Test::OTHER_INVOICE];
+        app(SettlementLedgerService::class)->syncInvoice($store, 'paid-1');
+
+        $this->assertNull($connection->fresh()->payee_mismatch_at);
+        $this->assertSame(0, AuditLog::where('action', 'wallet_connection.payee_mismatch')->count());
+        $this->assertDatabaseHas('store_settlements', [
+            'store_id' => $store->id,
+            'btcpay_invoice_id' => 'paid-1',
+            'payment_status' => 'Settled',
+            'destination' => null,
+        ]);
+
+        // When the destination appears later but the status stays Settled,
+        // attestation must still run for the existing ledger row.
+        $this->includeMethodDestination = true;
+        app(SettlementLedgerService::class)->syncInvoice($store, 'paid-1', forgetCache: true);
+
+        $fresh = $connection->fresh();
+        $this->assertNotNull($fresh->payee_mismatch_at);
+        $this->assertSame(Bolt11Test::OTHER_PAYEE, $fresh->payee_mismatch_details['pubkey']);
+        $this->assertSame(1, AuditLog::where('action', 'wallet_connection.payee_mismatch')->count());
+        $this->assertSame(1, UserMessage::where('user_id', $user->id)->where('type', 'security')->count());
+        $this->assertSame(1, UserMessage::where('user_id', $admin->id)->where('type', 'security')->count());
+        $this->assertDatabaseHas('store_settlements', [
+            'store_id' => $store->id,
+            'btcpay_invoice_id' => 'paid-1',
+            'payment_status' => 'Settled',
+            'destination' => Bolt11Test::OTHER_INVOICE,
+        ]);
+    }
+
+    #[Test]
     public function an_unsettled_lightning_payment_does_not_seed_the_first_payee_allow_list(): void
     {
         $this->fakeBtcPay();
