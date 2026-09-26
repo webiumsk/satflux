@@ -137,7 +137,8 @@ class SettlementLedgerService
             $estimate = $this->estimateNetSettlement($category, $grossSats);
 
             $paidAt = isset($payment['receivedDate']) ? Carbon::parse($payment['receivedDate']) : null;
-            $destination = isset($payment['destination']) ? (string) $payment['destination'] : null;
+            $methodDestination = isset($method['destination']) ? (string) $method['destination'] : null;
+            $destination = isset($payment['destination']) ? (string) $payment['destination'] : $methodDestination;
             $paymentStatus = isset($payment['status']) ? (string) $payment['status'] : null;
             $row = StoreSettlement::updateOrCreate(
                 [
@@ -166,8 +167,9 @@ class SettlementLedgerService
             // sees the payment as Settled: a payment can be inserted as
             // Processing (InvoiceReceivedPayment) and only later update to
             // Settled under the same payment identity. Rows that are already
-            // Settled are not judged again - the daily reconcile re-reads
-            // history and must not judge old invoices against today's wallet.
+            // Settled are not judged again unless BTCPay first exposes a usable
+            // destination later; the daily reconcile re-reads history and must
+            // not judge unchanged old invoices against today's wallet.
             // Never lets a failure break the ledger.
             if ($this->shouldAttestPayment($row, $methodId, $paymentStatus)) {
                 try {
@@ -175,7 +177,7 @@ class SettlementLedgerService
                         $store,
                         $invoiceId,
                         $methodId,
-                        $destination ?: (isset($method['destination']) ? (string) $method['destination'] : null),
+                        $destination,
                         $paidAt,
                     );
                 } catch (\Throwable $e) {
@@ -187,26 +189,6 @@ class SettlementLedgerService
         return $count;
     }
 
-    /**
-     * Gate for payee attestation. Deliberately NOT extended with a
-     * `wasChanged('destination')` (or any "destination arrived late") branch:
-     *
-     * - BTCPay writes `payment.destination` exactly once, as a snapshot of the
-     *   payment prompt at the moment the payment is recorded
-     *   (`PaymentDataExtensions.Set`, `LightningListener`). Lightning payments
-     *   are inserted straight away as Settled with the BOLT11 present. A
-     *   Settled row whose destination is filled in by a later sync does not
-     *   happen in BTCPay - the scenario is theoretical.
-     * - The daily reconcile re-reads history for every store. Any gate that
-     *   fires on a column update would re-judge old rows against today's
-     *   allow list and mass-mail merchants with false incidents (this happened
-     *   on 2026-09-07 - see PayeeAttestationService). New triggers must be
-     *   proven against real BTCPay behaviour first, never against a hand-made
-     *   fake payload.
-     *
-     * Bot-generated PRs adding such a branch (#351, #353, #354, #357) were
-     * closed for these reasons; do not propose it again.
-     */
     protected function shouldAttestPayment(StoreSettlement $row, string $methodId, ?string $paymentStatus): bool
     {
         if (! in_array($methodId, PayeeAttestationService::LIGHTNING_METHODS, true)) {
@@ -216,7 +198,9 @@ class SettlementLedgerService
             return false;
         }
 
-        return $row->wasRecentlyCreated || $row->wasChanged('payment_status');
+        return $row->wasRecentlyCreated
+            || $row->wasChanged('payment_status')
+            || $row->wasChanged('destination');
     }
 
     protected function isSettledPaymentStatus(?string $paymentStatus): bool
