@@ -137,7 +137,7 @@ class SettlementLedgerService
             $estimate = $this->estimateNetSettlement($category, $grossSats);
 
             $paidAt = isset($payment['receivedDate']) ? Carbon::parse($payment['receivedDate']) : null;
-            $destination = isset($payment['destination']) ? (string) $payment['destination'] : null;
+            $destination = $this->paymentDestination($payment, $method);
             $paymentStatus = isset($payment['status']) ? (string) $payment['status'] : null;
             $row = StoreSettlement::updateOrCreate(
                 [
@@ -175,7 +175,7 @@ class SettlementLedgerService
                         $store,
                         $invoiceId,
                         $methodId,
-                        $destination ?: (isset($method['destination']) ? (string) $method['destination'] : null),
+                        $destination,
                         $paidAt,
                     );
                 } catch (\Throwable $e) {
@@ -187,26 +187,13 @@ class SettlementLedgerService
         return $count;
     }
 
-    /**
-     * Gate for payee attestation. Deliberately NOT extended with a
-     * `wasChanged('destination')` (or any "destination arrived late") branch:
-     *
-     * - BTCPay writes `payment.destination` exactly once, as a snapshot of the
-     *   payment prompt at the moment the payment is recorded
-     *   (`PaymentDataExtensions.Set`, `LightningListener`). Lightning payments
-     *   are inserted straight away as Settled with the BOLT11 present. A
-     *   Settled row whose destination is filled in by a later sync does not
-     *   happen in BTCPay - the scenario is theoretical.
-     * - The daily reconcile re-reads history for every store. Any gate that
-     *   fires on a column update would re-judge old rows against today's
-     *   allow list and mass-mail merchants with false incidents (this happened
-     *   on 2026-09-07 - see PayeeAttestationService). New triggers must be
-     *   proven against real BTCPay behaviour first, never against a hand-made
-     *   fake payload.
-     *
-     * Bot-generated PRs adding such a branch (#351, #353, #354, #357) were
-     * closed for these reasons; do not propose it again.
-     */
+    protected function paymentDestination(array $payment, array $method): ?string
+    {
+        $destination = $payment['destination'] ?? ($method['destination'] ?? null);
+
+        return is_string($destination) && $destination !== '' ? $destination : null;
+    }
+
     protected function shouldAttestPayment(StoreSettlement $row, string $methodId, ?string $paymentStatus): bool
     {
         if (! in_array($methodId, PayeeAttestationService::LIGHTNING_METHODS, true)) {
@@ -216,12 +203,25 @@ class SettlementLedgerService
             return false;
         }
 
-        return $row->wasRecentlyCreated || $row->wasChanged('payment_status');
+        if ($row->wasRecentlyCreated || $row->wasChanged('payment_status')) {
+            return true;
+        }
+
+        // A settled row can be inserted before BTCPay exposes the BOLT11. Judge
+        // it once when the first usable Lightning destination is later persisted.
+        return $row->wasChanged('destination')
+            && ! $this->isLightningDestination($row->getPrevious()['destination'] ?? null)
+            && $this->isLightningDestination($row->destination);
     }
 
     protected function isSettledPaymentStatus(?string $paymentStatus): bool
     {
         return $paymentStatus !== null && strcasecmp($paymentStatus, 'Settled') === 0;
+    }
+
+    protected function isLightningDestination(mixed $destination): bool
+    {
+        return is_string($destination) && str_starts_with(strtolower($destination), 'ln');
     }
 
     /**
