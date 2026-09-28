@@ -34,6 +34,7 @@ class Subscription extends Model
         'grace_ends_at',
         'btcpay_subscription_id',
         'auto_renew',
+        'awaiting_invoice',
     ];
 
     /**
@@ -49,6 +50,7 @@ class Subscription extends Model
             'trial_ends_at' => 'datetime',
             'grace_ends_at' => 'datetime',
             'auto_renew' => 'boolean',
+            'awaiting_invoice' => 'boolean',
         ];
     }
 

@@ -300,4 +300,41 @@ class StoreEmailRuleTest extends TestCase
             'send_to_buyer' => false,
         ])->assertStatus(422)->assertJsonValidationErrors('to_addresses');
     }
+
+    public function test_case_variant_recipients_count_once_in_validation_and_dispatch(): void
+    {
+        Mail::fake();
+        Cache::flush();
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create(['user_id' => $user->id, 'btcpay_store_id' => 'btcpay-store-x']);
+        $addresses = array_map(fn (int $i) => "team{$i}@example.com", range(1, 6));
+
+        // 6 addresses, repeated in cc with different case: 6 recipients, not 12.
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/email-rules", [
+            'trigger' => 'InvoiceSettled',
+            'to_addresses' => implode(',', $addresses),
+            'cc_addresses' => strtoupper(implode(', ', $addresses)),
+            'subject' => 'Paid',
+            'body' => '<p>Paid</p>',
+        ])->assertCreated();
+
+        Http::fake([
+            'https://btcpay.test/api/v1/stores/btcpay-store-x/invoices/inv-case' => Http::response([
+                'id' => 'inv-case',
+                'status' => 'Settled',
+            ], 200),
+        ]);
+        $webhookEvent = WebhookEvent::create([
+            'store_id' => $store->id,
+            'event_type' => 'InvoiceSettled',
+            'payload' => ['type' => 'InvoiceSettled', 'storeId' => 'btcpay-store-x', 'invoiceId' => 'inv-case', 'deliveryId' => 'del-case'],
+            'verified' => true,
+        ]);
+
+        app(StoreEmailRuleDispatcher::class)->dispatchForWebhook($webhookEvent, $store);
+
+        Mail::assertSent(StoreInvoiceEmail::class, 1);
+    }
 }
