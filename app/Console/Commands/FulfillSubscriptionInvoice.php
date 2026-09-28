@@ -3,8 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
-use App\Services\BtcPay\Exceptions\BtcPayException;
-use App\Services\BtcPay\InvoiceService;
+use App\Services\BtcPay\SubscriptionService;
 use App\Services\Invoicing\SubscriptionBillingInvoiceService;
 use App\Services\SubscriptionEntitlementService;
 use Illuminate\Console\Command;
@@ -22,7 +21,7 @@ class FulfillSubscriptionInvoice extends Command
     protected $description = 'Manually activate a subscription and issue billing invoice for a settled BTCPay invoice';
 
     public function handle(
-        InvoiceService $invoiceService,
+        SubscriptionService $btcpaySubscriptionService,
         SubscriptionEntitlementService $subscriptionService,
         SubscriptionBillingInvoiceService $billingInvoiceService,
     ): int {
@@ -35,17 +34,13 @@ class FulfillSubscriptionInvoice extends Command
             return Command::FAILURE;
         }
 
-        try {
-            $invoice = $invoiceService->getInvoice($storeId, $invoiceId);
-        } catch (BtcPayException $e) {
-            $this->error("Failed to fetch invoice {$invoiceId}: {$e->getMessage()}");
+        // Fresh read, Settled only: applying an invoice records who it paid for,
+        // so a premature run would lock the eventual payer out of it.
+        $invoice = $btcpaySubscriptionService->fetchSettledInvoice($storeId, (string) $invoiceId);
+        if ($invoice === null) {
+            $this->error("Invoice {$invoiceId} could not be fetched or is not Settled; nothing was applied.");
 
             return Command::FAILURE;
-        }
-
-        $status = $invoice['status'] ?? null;
-        if ($status && ! in_array($status, ['Settled', 'Processing'], true)) {
-            $this->warn("Invoice status is {$status}; continuing anyway.");
         }
 
         $metadata = $invoice['metadata'] ?? [];
@@ -96,13 +91,19 @@ class FulfillSubscriptionInvoice extends Command
             ?? ($invoice['subscription']['id'] ?? null);
 
         $createdTime = $invoice['createdTime'] ?? null;
-        $subscription = $subscriptionService->activateSubscriptionForInvoice(
-            $user,
-            $planRole,
-            (string) $invoiceId,
-            $subscriptionId,
-            is_numeric($createdTime) ? Carbon::createFromTimestamp((int) $createdTime) : null,
-        );
+        try {
+            $subscription = $subscriptionService->activateSubscriptionForInvoice(
+                $user,
+                $planRole,
+                (string) $invoiceId,
+                $subscriptionId,
+                is_numeric($createdTime) ? Carbon::createFromTimestamp((int) $createdTime) : null,
+            );
+        } catch (\RuntimeException $e) {
+            $this->error($e->getMessage());
+
+            return Command::FAILURE;
+        }
 
         $oldRole = $user->role;
         $user->role = $planRole;
