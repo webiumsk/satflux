@@ -271,12 +271,6 @@ parameters:
 			path: app/Http/Controllers/FaqController.php
 
 		-
-			message: '#^Parameter \#2 \$store of method App\\Http\\Controllers\\Integrations\\WooCommerceConnectController\:\:redirectToReturnUrl\(\) expects App\\Models\\Store, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/Integrations/WooCommerceConnectController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$company\.$#'
 			identifier: property.notFound
 			count: 2
