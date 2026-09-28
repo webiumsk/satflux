@@ -1135,12 +1135,17 @@ Route::get('/documentation/{slug}', [DocumentationController::class, 'show']);
 // FAQ (public - no auth required)
 Route::get('/faq', [FaqController::class, 'index']);
 Route::get('/faq/{slug}', [FaqController::class, 'show']);
-Route::post('/faq/{slug}/helpful', [FaqController::class, 'markHelpful']);
+Route::post('/faq/{slug}/helpful', [FaqController::class, 'markHelpful'])
+    ->middleware('throttle:10,1');
 
 // Public Ticket Check-In (no auth required - URL acts as the secret)
 Route::middleware(['throttle:30,1'])->prefix('public/ticket-checkin')->group(function () {
-    Route::get('/{store}/events/{eventId}', [TicketController::class, 'publicEventInfo']);
-    Route::post('/{store}/events/{eventId}/tickets/{ticketNumber}/check-in', [TicketController::class, 'publicCheckIn']);
+    // IDs are interpolated into BTCPay paths under the owner's key: allow
+    // only plain identifier characters (no "/", "..", "?" or "%").
+    Route::get('/{store}/events/{eventId}', [TicketController::class, 'publicEventInfo'])
+        ->where('eventId', '[A-Za-z0-9_-]+');
+    Route::post('/{store}/events/{eventId}/tickets/{ticketNumber}/check-in', [TicketController::class, 'publicCheckIn'])
+        ->where(['eventId' => '[A-Za-z0-9_-]+', 'ticketNumber' => '[A-Za-z0-9_-]+']);
 });
 
 // Documentation is authored as repo Markdown (docs/user), so there is no
