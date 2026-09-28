@@ -39,6 +39,7 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use App\Support\Spreadsheet\NoFormulaValueBinder;
+use Illuminate\Auth\Notifications\ResetPassword;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -69,6 +70,12 @@ class AppServiceProvider extends ServiceProvider
 
         // XLSX formula-injection guard: exported strings are never formulas.
         Cell::setValueBinder(new NoFormulaValueBinder);
+
+        // Reset links always point at APP_URL: the default builds them from the
+        // request host, which a forged Host/X-Forwarded-Host could redirect.
+        ResetPassword::createUrlUsing(fn ($user, string $token): string => rtrim((string) config('app.url'), '/')
+            .'/password/reset?token='.urlencode($token)
+            .'&email='.urlencode((string) $user->getEmailForPasswordReset()));
 
         // Error-rate counters (P1 phase 8): count error+ log records per hour
         // (counts only, never message content) for health checks + dashboard.
