@@ -80,11 +80,12 @@ class Company extends Model
      */
     public function resolvedAppSettings(): array
     {
-        $settings = CompanyAppSettings::from($this->app_settings)->toArray();
-        $stripeTaxSecretSet = is_string($settings['stripe_tax_secret_key'] ?? null)
-            && trim((string) $settings['stripe_tax_secret_key']) !== '';
+        $appSettings = CompanyAppSettings::from($this->app_settings);
+        $settings = $appSettings->toArray();
+        $stripeTaxSecretSet = $appSettings->stripeTaxSecretKey() !== null;
 
-        unset($settings['stripe_tax_secret_key']);
+        unset($settings[CompanyAppSettings::LEGACY_STRIPE_TAX_SECRET_KEY]);
+        unset($settings['stripe_tax_secret_key_encrypted']);
         unset($settings['efaktura_sapi_client_secret_encrypted']);
 
         return array_merge(

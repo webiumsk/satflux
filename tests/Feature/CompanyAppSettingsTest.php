@@ -16,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use App\Support\Invoicing\CompanyAppSettings;
 
 class CompanyAppSettingsTest extends TestCase
 {
@@ -148,7 +149,7 @@ class CompanyAppSettingsTest extends TestCase
             ->assertJsonPath('data.app_settings.stripe_tax_secret_key_set', true);
 
         $this->company->refresh();
-        $this->assertSame('sk_test_existing', $this->company->app_settings['stripe_tax_secret_key']);
+        $this->assertSame('sk_test_existing', CompanyAppSettings::from($this->company->app_settings)->stripeTaxSecretKey());
         $this->assertSame('0558', $this->company->app_settings['default_constant_symbol']);
     }
 
@@ -269,5 +270,23 @@ class CompanyAppSettingsTest extends TestCase
 
         $this->assertStringContainsString('fa_Acme_20260001', $filename);
         $this->assertStringEndsWith('.pdf', $filename);
+    }
+
+    #[Test]
+    public function migration_encrypts_legacy_plaintext_stripe_tax_secret(): void
+    {
+        $this->company->update(['app_settings' => [
+            'us_sales_tax_provider' => 'stripe_tax',
+            'stripe_tax_secret_key' => 'sk_live_legacy',
+        ]]);
+
+        $migration = require database_path('migrations/2026_09_28_110000_encrypt_company_stripe_tax_secret_keys.php');
+        $migration->up();
+
+        $settings = $this->company->fresh()->app_settings;
+        $this->assertArrayNotHasKey('stripe_tax_secret_key', $settings);
+        $this->assertStringNotContainsString('sk_live_legacy', (string) json_encode($settings));
+        $this->assertSame('sk_live_legacy', CompanyAppSettings::from($settings)->stripeTaxSecretKey());
+        $this->assertSame('stripe_tax', $settings['us_sales_tax_provider']);
     }
 }

@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use App\Support\Invoicing\CompanyAppSettings;
 
 class UsSalesTaxFeatureTest extends TestCase
 {
@@ -245,10 +246,17 @@ class UsSalesTaxFeatureTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.app_settings.us_sales_tax_provider', 'stripe_tax')
             ->assertJsonPath('data.app_settings.stripe_tax_secret_key_set', true)
-            ->assertJsonMissingPath('data.app_settings.stripe_tax_secret_key');
+            ->assertJsonMissingPath('data.app_settings.stripe_tax_secret_key')
+            ->assertJsonMissingPath('data.app_settings.stripe_tax_secret_key_encrypted');
 
         $this->usCompany->refresh();
         $this->assertSame('stripe_tax', $this->usCompany->app_settings['us_sales_tax_provider']);
-        $this->assertSame('sk_test_company_key', $this->usCompany->app_settings['stripe_tax_secret_key']);
+        // Stored encrypted at rest, never as plaintext.
+        $this->assertArrayNotHasKey('stripe_tax_secret_key', $this->usCompany->app_settings);
+        $this->assertStringNotContainsString('sk_test_company_key', (string) json_encode($this->usCompany->app_settings));
+        $this->assertSame(
+            'sk_test_company_key',
+            CompanyAppSettings::from($this->usCompany->app_settings)->stripeTaxSecretKey(),
+        );
     }
 }

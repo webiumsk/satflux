@@ -547,7 +547,15 @@ class ServerToEvoluMigrationExportService
      */
     private function appSettingsForMigration(Company $company): array
     {
-        $settings = CompanyAppSettings::from($company->app_settings)->toArray();
+        $appSettings = CompanyAppSettings::from($company->app_settings);
+        $settings = $appSettings->toArray();
+        // Local-first storage keeps the owner's secrets client-side in plaintext;
+        // the server-side ciphertext (APP_KEY) is useless there.
+        unset($settings['stripe_tax_secret_key_encrypted']);
+        $stripeTaxSecret = $appSettings->stripeTaxSecretKey();
+        if ($stripeTaxSecret !== null) {
+            $settings[CompanyAppSettings::LEGACY_STRIPE_TAX_SECRET_KEY] = $stripeTaxSecret;
+        }
         $efaktura = CompanyEfakturaSettings::fromCompany($company);
         $secret = $efaktura->sapiClientSecret();
         if ($secret !== null) {
