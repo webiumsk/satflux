@@ -76,6 +76,7 @@ class SubscriptionBillingInvoiceTest extends TestCase
             if (str_contains($url, "/invoices/{$invoiceId}")) {
                 return Http::response([
                     'id' => $invoiceId,
+                    'status' => 'Settled',
                     'currency' => 'SATS',
                     'amount' => 240_000,
                 ]);
@@ -418,7 +419,7 @@ class SubscriptionBillingInvoiceTest extends TestCase
             'role' => 'free',
         ]);
 
-        Http::fake();
+        $this->fakeBtcPaySubscriptionInvoice();
         $this->runSubscriptionWebhook($subscriber);
 
         $subscriber->refresh();

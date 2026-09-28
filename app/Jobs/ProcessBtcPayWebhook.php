@@ -180,9 +180,30 @@ class ProcessBtcPayWebhook implements ShouldQueue
         try {
             $invoiceData = $payload['invoiceData'] ?? $payload['invoice'] ?? $payload;
             $invoiceId = $invoiceData['id'] ?? $invoiceData['invoiceId'] ?? null;
+
+            if (! $invoiceId) {
+                Log::warning('Subscription invoice payment webhook missing invoice ID', [
+                    'payload_keys' => array_keys($payload),
+                ]);
+
+                return;
+            }
+
+            // Payment events fire for partial and unconfirmed payments too:
+            // only a fresh BTCPay read showing Settled may grant anything.
+            $btcpaySubscriptionService = app(SubscriptionService::class);
+            $settledInvoice = $btcpaySubscriptionService->fetchSettledInvoice(
+                (string) config('services.btcpay.subscription_store_id'),
+                (string) $invoiceId,
+            );
+            if ($settledInvoice === null) {
+                return;
+            }
+
+            $invoiceData = array_merge($invoiceData, $settledInvoice);
             $metadata = $invoiceData['metadata'] ?? [];
 
-            if (($metadata['purpose'] ?? null) === 'expense_isdoc_pack' && $invoiceId) {
+            if (($metadata['purpose'] ?? null) === 'expense_isdoc_pack') {
                 $fulfilled = app(BusinessExpenseIsdocPackService::class)
                     ->fulfillPaidInvoice(
                         $invoiceId,
@@ -201,7 +222,7 @@ class ProcessBtcPayWebhook implements ShouldQueue
                 return;
             }
 
-            if (($metadata['purpose'] ?? null) === 'company_slot_pack' && $invoiceId) {
+            if (($metadata['purpose'] ?? null) === 'company_slot_pack') {
                 $fulfilled = app(CompanySlotService::class)
                     ->fulfillPaidInvoice(
                         $invoiceId,
@@ -216,14 +237,6 @@ class ProcessBtcPayWebhook implements ShouldQueue
                         'slots' => $metadata['packSlots'] ?? null,
                     ]);
                 }
-
-                return;
-            }
-
-            if (! $invoiceId) {
-                Log::warning('Subscription invoice payment webhook missing invoice ID', [
-                    'payload_keys' => array_keys($payload),
-                ]);
 
                 return;
             }
@@ -311,10 +324,12 @@ class ProcessBtcPayWebhook implements ShouldQueue
                 return;
             }
 
-            $subscription = app(SubscriptionEntitlementService::class)->activateSubscription(
+            $subscription = app(SubscriptionEntitlementService::class)->activateSubscriptionForInvoice(
                 $user,
                 $planRole,
+                (string) $invoiceId,
                 $subscriptionId,
+                $btcpaySubscriptionService->invoiceCreatedAt($settledInvoice),
             );
 
             // Update user role and subscription tracking (legacy field)
@@ -428,10 +443,13 @@ class ProcessBtcPayWebhook implements ShouldQueue
                     $subscriptionId,
                 );
             } else {
+                // Paid time is granted per settled invoice (InvoiceSettled or
+                // the success redirect); PlanStarted only ensures a row exists.
                 $subscription = $subscriptionService->activateSubscription(
                     $user,
                     $planRole,
                     $subscriptionId,
+                    extendExisting: false,
                 );
             }
 

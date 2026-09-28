@@ -8,6 +8,7 @@ use App\Services\BtcPay\InvoiceService;
 use App\Services\Invoicing\SubscriptionBillingInvoiceService;
 use App\Services\SubscriptionEntitlementService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class FulfillSubscriptionInvoice extends Command
@@ -94,7 +95,14 @@ class FulfillSubscriptionInvoice extends Command
             ?? $invoice['subscriptionId']
             ?? ($invoice['subscription']['id'] ?? null);
 
-        $subscription = $subscriptionService->activateSubscription($user, $planRole, $subscriptionId);
+        $createdTime = $invoice['createdTime'] ?? null;
+        $subscription = $subscriptionService->activateSubscriptionForInvoice(
+            $user,
+            $planRole,
+            (string) $invoiceId,
+            $subscriptionId,
+            is_numeric($createdTime) ? Carbon::createFromTimestamp((int) $createdTime) : null,
+        );
 
         $oldRole = $user->role;
         $user->role = $planRole;

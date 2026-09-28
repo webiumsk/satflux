@@ -252,20 +252,12 @@ class SubscriptionController extends Controller
                 ?? $checkoutDetails['subscriptionId']
                 ?? null;
 
-            $customerEmail = $checkoutDetails['subscriber']['customer']['identities']['Email']
-                ?? $checkoutDetails['subscriber']['customer']['email']
-                ?? $checkoutDetails['customerEmail']
-                ?? $checkoutDetails['subscriberEmail']
-                ?? $checkoutDetails['email']
-                ?? null;
-
             $subscriptionStoreId = config('services.btcpay.subscription_store_id');
             $paidInvoice = $subscriptionStoreId
                 ? $this->btcpaySubscriptionService->resolvePaidInvoiceFromCheckout(
                     $subscriptionStoreId,
                     $checkoutDetails,
                     $checkoutPlanId,
-                    $customerEmail,
                 )
                 : null;
 
@@ -286,10 +278,12 @@ class SubscriptionController extends Controller
             }
 
             if ($paidInvoice) {
-                $subscription = $this->subscriptionService->activateSubscription(
+                $subscription = $this->subscriptionService->activateSubscriptionForInvoice(
                     $user,
                     $planName,
-                    $subscriptionId
+                    $paidInvoice['id'],
+                    $subscriptionId,
+                    $this->btcpaySubscriptionService->invoiceCreatedAt($paidInvoice['payload']),
                 );
             } else {
                 $subscription = $this->subscriptionService->activateTrialSubscription(
