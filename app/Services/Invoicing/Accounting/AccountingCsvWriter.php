@@ -5,6 +5,7 @@ namespace App\Services\Invoicing\Accounting;
 use App\Support\Invoicing\Accounting\ReceivedExpenseItem;
 use App\Support\Invoicing\Canonical\CanonicalInvoice;
 use DateTimeInterface;
+use App\Support\Spreadsheet\SpreadsheetCell;
 
 /**
  * Generic spreadsheet-friendly CSV files for accountants whose software has
@@ -160,14 +161,7 @@ class AccountingCsvWriter
 
     protected function cell(string|int|float|null $value): string
     {
-        $text = (string) ($value ?? '');
-        // A leading =, +, -, @, tab or CR would execute as a formula when the
-        // file is opened in a spreadsheet - neutralize it like the GoBD export.
-        // Plain numbers (incl. negative amounts) must stay numeric, though.
-        $isPlainNumber = preg_match('/^-?\d+(\.\d+)?$/', $text) === 1;
-        if ($text !== '' && ! $isPlainNumber && preg_match('/^[=+\-@\t\r]/', $text) === 1) {
-            $text = "'".$text;
-        }
+        $text = (string) SpreadsheetCell::neutralize((string) ($value ?? ''));
 
         return '"'.str_replace('"', '""', $text).'"';
     }
