@@ -198,4 +198,76 @@ class StoreEmailRuleTest extends TestCase
 
         Mail::assertSent(StoreInvoiceEmail::class, 1);
     }
+
+    public function test_rule_rejects_more_than_ten_recipients_per_field(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        $many = implode(',', array_map(fn (int $i) => "r{$i}@example.com", range(1, 11)));
+
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/email-rules", [
+            'trigger' => 'InvoiceSettled',
+            'to_addresses' => 'merchant@example.com',
+            'bcc_addresses' => $many,
+            'subject' => 'S',
+            'body' => 'B',
+        ])->assertStatus(422)->assertJsonValidationErrors('bcc_addresses');
+    }
+
+    public function test_buyer_controlled_values_are_escaped_and_cannot_fan_out(): void
+    {
+        Mail::fake();
+        Cache::flush();
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create(['user_id' => $user->id, 'btcpay_store_id' => 'btcpay-store-x']);
+
+        StoreEmailRule::query()->create([
+            'store_id' => $store->id,
+            'trigger' => 'InvoiceSettled',
+            'to_addresses' => 'notify@example.com',
+            'cc_addresses' => '{Invoice.Metadata.ccList}',
+            'send_to_buyer' => false,
+            'subject' => "Order {Invoice.OrderId}",
+            'body' => '<p>Order {Invoice.OrderId}</p>',
+            'sort_order' => 0,
+        ]);
+        StoreEmailRule::query()->create([
+            'store_id' => $store->id,
+            'trigger' => 'InvoiceSettled',
+            'to_addresses' => 'notify@example.com',
+            'send_to_buyer' => false,
+            'subject' => 'Plain',
+            'body' => '<p>Order {Invoice.OrderId}</p>',
+            'sort_order' => 1,
+        ]);
+
+        $fanOut = implode(',', array_map(fn (int $i) => "victim{$i}@example.com", range(1, 50)));
+        Http::fake([
+            'https://btcpay.test/api/v1/stores/btcpay-store-x/invoices/inv-abc' => Http::response([
+                'id' => 'inv-abc',
+                'orderId' => "<a href=\"https://phish.example\">Claim</a>\r\nBcc: x@evil.example",
+                'status' => 'Settled',
+                'metadata' => ['ccList' => $fanOut],
+            ], 200),
+        ]);
+
+        $webhookEvent = WebhookEvent::create([
+            'store_id' => $store->id,
+            'event_type' => 'InvoiceSettled',
+            'payload' => ['type' => 'InvoiceSettled', 'storeId' => 'btcpay-store-x', 'invoiceId' => 'inv-abc', 'deliveryId' => 'del-9'],
+            'verified' => true,
+        ]);
+
+        app(StoreEmailRuleDispatcher::class)->dispatchForWebhook($webhookEvent, $store);
+
+        // The fan-out rule is skipped entirely; the plain rule is sent escaped.
+        Mail::assertSent(StoreInvoiceEmail::class, 1);
+        Mail::assertSent(StoreInvoiceEmail::class, function (StoreInvoiceEmail $mail) {
+            return $mail->subjectLine === 'Plain'
+                && ! str_contains($mail->htmlBody, '<a href')
+                && str_contains($mail->htmlBody, '&lt;a href');
+        });
+    }
 }
