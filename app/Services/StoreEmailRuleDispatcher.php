@@ -128,7 +128,13 @@ class StoreEmailRuleDispatcher
             // Placeholders can carry buyer-controlled invoice data (metadata,
             // orderId, buyer email): a single value must not fan out to a
             // mailing list through our mail domain.
-            if (count(array_unique([...$to, ...$cc, ...$bcc])) > self::MAX_RECIPIENTS) {
+            // Same normalization as StoreEmailRuleRequest::totalRecipientLimit(),
+            // so a rule that validated is never skipped for case/space variants.
+            $uniqueRecipients = array_unique(array_map(
+                fn (string $address) => strtolower(trim($address)),
+                [...$to, ...$cc, ...$bcc],
+            ));
+            if (count($uniqueRecipients) > self::MAX_RECIPIENTS) {
                 Log::warning('Store email rule skipped: too many recipients', [
                     'rule_id' => $rule->id,
                     'store_id' => $store->id,

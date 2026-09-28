@@ -358,4 +358,19 @@ class SubscriptionPaymentIdempotencyTest extends TestCase
         $this->assertSame('pro', $user->fresh()->role);
         $this->assertSame($first, $this->expiresAt($user));
     }
+
+    #[Test]
+    public function a_subscription_not_awaiting_an_invoice_is_extended_not_claimed(): void
+    {
+        $user = User::factory()->create(['role' => 'free']);
+        $this->fakeBtcPay(['inv_1' => ['status' => 'Settled', 'createdTime' => now()->subHour()->timestamp]]);
+
+        // Pro granted by an admin after the checkout invoice was created, before it settled.
+        app(SubscriptionEntitlementService::class)->syncSubscriptionForAdminRole($user, 'pro');
+        $granted = $this->expiresAt($user);
+
+        $this->runWebhook('InvoiceSettled', 'inv_1', $this->subscriptionMetadata($user));
+
+        $this->assertGreaterThanOrEqual($granted + 364 * 86400, $this->expiresAt($user));
+    }
 }

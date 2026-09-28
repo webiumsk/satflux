@@ -450,6 +450,7 @@ class ProcessBtcPayWebhook implements ShouldQueue
                     $planRole,
                     $subscriptionId,
                     extendExisting: false,
+                    awaitingInvoice: true,
                 );
             }
 
