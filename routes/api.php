@@ -1118,7 +1118,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
 });
 
 // Subscription checkout (auth handled in controller based on feature flag)
-Route::post('/subscriptions/checkout', [SubscriptionController::class, 'checkout']);
+Route::post('/subscriptions/checkout', [SubscriptionController::class, 'checkout'])
+    ->middleware('throttle:10,1');
 Route::get('/subscriptions/success', [SubscriptionController::class, 'success'])
     ->middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:30,1']);
 Route::get('/subscriptions/details', [SubscriptionController::class, 'details'])
