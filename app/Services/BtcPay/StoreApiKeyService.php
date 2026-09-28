@@ -7,9 +7,23 @@ use App\Models\StoreApiKey;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class StoreApiKeyService
 {
+    /**
+     * Store-level policies a panel API key may carry (the set the UI offers).
+     * User, server and "unrestricted" policies are never allowed.
+     */
+    public const ALLOWED_PERMISSIONS = [
+        'btcpay.store.canviewinvoices',
+        'btcpay.store.cancreateinvoice',
+        'btcpay.store.canmodifyinvoices',
+        'btcpay.store.webhooks.canmodifywebhooks',
+        'btcpay.store.canviewstoresettings',
+        'btcpay.store.canmodifystoresettings',
+    ];
+
     protected UserService $userService;
 
     protected BtcPayClient $client;
@@ -50,13 +64,27 @@ class StoreApiKeyService
             'btcpay.store.canmodifystoresettings',
         ];
 
-        $finalPermissions = ! empty($permissions) ? $permissions : $defaultPermissions;
+        $finalPermissions = array_values(array_unique(! empty($permissions) ? $permissions : $defaultPermissions));
 
-        // Create API key in BTCPay
+        $disallowed = array_diff($finalPermissions, self::ALLOWED_PERMISSIONS);
+        if ($disallowed !== []) {
+            throw ValidationException::withMessages([
+                'permissions' => ['Unsupported API key permission: '.implode(', ', $disallowed)],
+            ]);
+        }
+
+        // Greenfield has no "specificStores" for admin-created keys: a store
+        // is scoped only by the "policy:storeId" suffix. Without it the key
+        // works on every store the BTCPay user owns.
+        $scopedPermissions = array_map(
+            fn (string $permission) => $permission.':'.$store->btcpay_store_id,
+            $finalPermissions,
+        );
+
         $btcpayApiKeyData = $this->userService->createApiKey(
             $user->btcpay_user_id,
-            $finalPermissions,
-            [$store->btcpay_store_id], // specificStores
+            $scopedPermissions,
+            [],
             $label
         );
 
