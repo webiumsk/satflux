@@ -8,6 +8,7 @@ use App\Services\BtcPay\StoreApiKeyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class StoreApiKeyController extends Controller
 {
@@ -210,6 +211,8 @@ class StoreApiKeyController extends Controller
                 ],
                 'message' => 'API key regenerated successfully',
             ]);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Failed to regenerate store API key', [
                 'store_id' => $store->id,

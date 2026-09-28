@@ -75,6 +75,27 @@ class BtcPayClientSanitizerTest extends TestCase
         $this->assertTrue($sanitized[0]['enabled']);
         $this->assertStringContainsString('allowinsecure=true', $sanitized['note']);
     }
+
+    #[Test]
+    public function it_redacts_rune_fields_and_inline_tokens_keys_and_private_keys(): void
+    {
+        config([
+            'services.btcpay.base_url' => 'https://btcpay.example.com',
+            'services.btcpay.api_key' => 'server-key',
+        ]);
+
+        $sanitized = (new BtcPayClientSanitizerProbe('server-key'))->sanitizeForTest([
+            'rune' => 'LIVERUNEVALUE',
+            'note' => 'retry token=LIVETOKEN;api_key=LIVEAPIKEY; seed xprv9s21ZrQH143K3SECRETPRVKEYxyz123456789 and tprv8ZgxMBicQKsPdTESTNETPRVKEYabc987654',
+        ]);
+
+        $encoded = (string) json_encode($sanitized);
+        foreach (['LIVERUNEVALUE', 'LIVETOKEN', 'LIVEAPIKEY', 'SECRETPRVKEY', 'TESTNETPRVKEY'] as $secret) {
+            $this->assertStringNotContainsString($secret, $encoded);
+        }
+        $this->assertArrayHasKey('note', $sanitized);
+        $this->assertStringStartsWith('retry token=***REDACTED***', $sanitized['note']);
+    }
 }
 
 class BtcPayClientSanitizerProbe extends BtcPayClient

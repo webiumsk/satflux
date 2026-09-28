@@ -190,6 +190,28 @@ class StoreApiKeyTest extends TestCase
     }
 
     #[Test]
+    public function regenerating_a_key_with_legacy_permissions_keeps_the_old_key(): void
+    {
+        $user = User::factory()->create(['btcpay_user_id' => 'btcpay-user-123']);
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        $legacy = StoreApiKey::create([
+            'store_id' => $store->id,
+            'label' => 'Legacy',
+            'btcpay_api_key' => 'legacy-secret',
+            'permissions' => ['unrestricted'],
+            'is_active' => true,
+        ]);
+        $this->fakeBtcPayApiKeyCreation();
+
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/api-keys/{$legacy->id}/regenerate")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('permissions');
+
+        $this->assertTrue($legacy->fresh()->is_active);
+        Http::assertNothingSent();
+    }
+
+    #[Test]
     public function api_key_creation_validates_label_required(): void
     {
         $user = User::factory()->create(['btcpay_user_id' => 'btcpay-user-123']);

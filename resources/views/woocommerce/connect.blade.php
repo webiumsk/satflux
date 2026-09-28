@@ -33,12 +33,12 @@
         <p class="warn">Only continue if this is your own WooCommerce shop. The site will receive API access to the selected store, including payment settings.</p>
         <form method="POST" action="{{ url('/woocommerce/connect/select-store') }}">
             @csrf
-            <input type="hidden" name="return_url" value="{{ e($returnUrl) }}">
+            <input type="hidden" name="return_url" value="{{ $returnUrl }}">
             <input type="hidden" name="return_satflux_store_id" value="{{ !empty($returnSatfluxStoreId) ? '1' : '0' }}">
             <select name="store_id" required>
                 <option value="">- Select store -</option>
                 @foreach($stores as $store)
-                    <option value="{{ $store->id }}" @selected($store->id === $selectedStoreId)>{{ e($store->name) }}</option>
+                    <option value="{{ $store->id }}" @selected($store->id === $selectedStoreId)>{{ $store->name }}</option>
                 @endforeach
             </select>
             <button type="submit">Connect {{ $returnHost }}</button>
