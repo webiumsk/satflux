@@ -13,6 +13,7 @@ use App\Services\SubscriptionCheckoutRegistry;
 use App\Services\SubscriptionEntitlementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -36,7 +37,7 @@ class SubscriptionPaymentIdempotencyTest extends TestCase
             'services.btcpay.base_url' => 'https://btcpay.example.test',
             'services.btcpay.api_key' => 'test-server-key',
             'services.btcpay.subscription_store_id' => self::STORE,
-            'services.btcpay.subscription_plans' => ['pro' => 'plan_pro_test'],
+            'services.btcpay.subscription_plans' => ['pro' => 'plan_pro_test', 'enterprise' => 'plan_ent_test'],
         ]);
         $this->app->forgetInstance(BtcPayClient::class);
 
@@ -294,5 +295,67 @@ class SubscriptionPaymentIdempotencyTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         $service->activateSubscriptionForInvoice($other, 'pro', 'inv_shared');
+    }
+
+    #[Test]
+    public function replaying_an_applied_invoice_with_another_plan_is_rejected(): void
+    {
+        SubscriptionPlan::create([
+            'code' => 'enterprise',
+            'name' => 'enterprise',
+            'display_name' => 'Enterprise',
+            'price_eur' => 299,
+            'billing_period' => 'year',
+            'features' => ['business_invoicing'],
+            'is_active' => true,
+        ]);
+        $user = User::factory()->create();
+        $service = app(SubscriptionEntitlementService::class);
+
+        $first = $service->activateSubscriptionForInvoice($user, 'pro', 'inv_pro');
+        $this->assertSame($first->id, $service->activateSubscriptionForInvoice($user, 'pro', 'inv_pro')->id);
+
+        try {
+            $service->activateSubscriptionForInvoice($user, 'enterprise', 'inv_pro');
+            $this->fail('Replaying a pro invoice as enterprise must be rejected');
+        } catch (\RuntimeException) {
+            $this->addToAssertionCount(1);
+        }
+
+        $this->assertSame(1, Subscription::where('user_id', $user->id)->count());
+    }
+
+    #[Test]
+    public function recovery_command_refuses_invoices_that_are_not_settled(): void
+    {
+        $user = User::factory()->create(['email' => 'payer@example.com']);
+        $this->fakeBtcPay(['inv_processing' => [
+            'status' => 'Processing',
+            'metadata' => $this->subscriptionMetadata($user),
+        ]]);
+
+        $this->artisan('subscriptions:fulfill-invoice', ['invoiceId' => 'inv_processing'])
+            ->assertFailed();
+
+        $this->assertSame(0, DB::table('subscription_invoice_applications')->count());
+        $this->assertSame(0, Subscription::where('user_id', $user->id)->count());
+    }
+
+    #[Test]
+    public function recovery_command_fulfils_a_settled_invoice_once(): void
+    {
+        $user = User::factory()->create(['email' => 'payer@example.com', 'role' => 'free']);
+        $this->fakeBtcPay(['inv_settled' => [
+            'status' => 'Settled',
+            'createdTime' => now()->subMinute()->timestamp,
+            'metadata' => $this->subscriptionMetadata($user),
+        ]]);
+
+        $this->artisan('subscriptions:fulfill-invoice', ['invoiceId' => 'inv_settled'])->assertSuccessful();
+        $first = $this->expiresAt($user);
+        $this->artisan('subscriptions:fulfill-invoice', ['invoiceId' => 'inv_settled'])->assertSuccessful();
+
+        $this->assertSame('pro', $user->fresh()->role);
+        $this->assertSame($first, $this->expiresAt($user));
     }
 }

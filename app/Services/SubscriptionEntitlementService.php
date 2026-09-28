@@ -166,6 +166,10 @@ class SubscriptionEntitlementService
         ?\DateTimeInterface $invoiceCreatedAt = null,
     ): Subscription {
         return DB::transaction(function () use ($user, $planName, $btcpayInvoiceId, $btcpaySubscriptionId, $invoiceCreatedAt) {
+            // Serialize payment-driven activations per user, so the claim-vs-extend
+            // decision below and the activation see the same subscription state.
+            User::whereKey($user->id)->lockForUpdate()->first();
+
             $inserted = DB::table('subscription_invoice_applications')->insertOrIgnore([
                 'btcpay_invoice_id' => $btcpayInvoiceId,
                 'user_id' => $user->id,
@@ -175,21 +179,37 @@ class SubscriptionEntitlementService
             ]);
 
             if ($inserted === 0) {
-                $appliedToUserId = DB::table('subscription_invoice_applications')
+                $application = DB::table('subscription_invoice_applications')
                     ->where('btcpay_invoice_id', $btcpayInvoiceId)
-                    ->value('user_id');
+                    ->first(['user_id', 'plan', 'subscription_id']);
 
-                if ((int) $appliedToUserId !== (int) $user->id) {
+                if ((int) $application->user_id !== (int) $user->id) {
                     Log::warning('Subscription invoice already applied to another user', [
                         'btcpay_invoice_id' => $btcpayInvoiceId,
                         'user_id' => $user->id,
-                        'applied_to_user_id' => $appliedToUserId,
+                        'applied_to_user_id' => $application->user_id,
                     ]);
 
                     throw new \RuntimeException('Subscription invoice already applied to another account.');
                 }
 
-                return $this->activateSubscription($user, $planName, $btcpaySubscriptionId, extendExisting: false);
+                // One payment, one entitlement: a replay can never switch plans.
+                if ($application->plan !== $planName) {
+                    Log::warning('Subscription invoice already applied to a different plan', [
+                        'btcpay_invoice_id' => $btcpayInvoiceId,
+                        'user_id' => $user->id,
+                        'applied_plan' => $application->plan,
+                        'requested_plan' => $planName,
+                    ]);
+
+                    throw new \RuntimeException('Subscription invoice already applied to a different plan.');
+                }
+
+                $recorded = $application->subscription_id
+                    ? Subscription::find($application->subscription_id)
+                    : null;
+
+                return $recorded ?? $this->activateSubscription($user, $planName, $btcpaySubscriptionId, extendExisting: false);
             }
 
             $claimsExisting = $this->hasSubscriptionCreatedForInvoice($user, $planName, $invoiceCreatedAt);
