@@ -107,6 +107,11 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perHour(5)->by($user ? 'user:'.$user->id : 'ip:'.$request->ip());
         });
+        // Outbound document emails go out from our mail domain (platform
+        // SMTP fallback): cap per user so an account cannot become a relay.
+        RateLimiter::for('document-email', function (Request $request) {
+            return Limit::perHour(100)->by($request->user() ? 'user:'.$request->user()->id : 'ip:'.$request->ip());
+        });
         // Per-user limiter for authenticated API endpoints (avoids shared-IP throttling)
         RateLimiter::for('api-user', function (Request $request) {
             return $request->user()

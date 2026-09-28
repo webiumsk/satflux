@@ -20,11 +20,11 @@ class EphemeralBusinessDocumentEmailRequest extends EphemeralBusinessDocumentPdf
     public function rules(): array
     {
         return array_merge(parent::rules(), [
-            'to' => ['required', 'array', 'min:1'],
+            'to' => ['required', 'array', 'min:1', 'max:10'],
             'to.*' => ['required', 'email', 'max:255'],
-            'cc' => ['sometimes', 'array'],
+            'cc' => ['sometimes', 'array', 'max:10'],
             'cc.*' => ['email', 'max:255'],
-            'bcc' => ['sometimes', 'array'],
+            'bcc' => ['sometimes', 'array', 'max:10'],
             'bcc.*' => ['email', 'max:255'],
             'subject' => ['sometimes', 'nullable', 'string', 'max:500'],
             'body' => ['sometimes', 'nullable', 'string', 'max:20000'],
