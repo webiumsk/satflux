@@ -4,6 +4,7 @@ namespace App\Services\Integrations;
 
 use App\Models\BusinessDocument;
 use App\Models\StoreIntegration;
+use App\Support\Http\OutboundUrlGuard;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -45,8 +46,19 @@ class WooCommerceWebhookNotifier
 
         $signature = hash_hmac('sha256', $body, $secret);
 
+        $options = app(OutboundUrlGuard::class)->pinnedOptions($integration->webhook_url);
+        if ($options === null) {
+            Log::warning('WooCommerce integration webhook refused: URL is not a public https endpoint', [
+                'store_id' => $document->store_id,
+                'webhook_host' => parse_url($integration->webhook_url, PHP_URL_HOST),
+            ]);
+
+            return;
+        }
+
         try {
             $response = Http::timeout(10)
+                ->withOptions($options)
                 ->withHeaders([
                     'Content-Type' => 'application/json',
                     'X-Satflux-Signature' => $signature,

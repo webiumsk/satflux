@@ -7,11 +7,13 @@ use App\Models\StoreApiKey;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\BtcPay\BtcPayClient;
+use App\Support\Http\OutboundUrlGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use Tests\Unit\Support\OutboundUrlGuardTest;
 
 class StoreApiKeyTest extends TestCase
 {
@@ -156,6 +158,35 @@ class StoreApiKeyTest extends TestCase
         }
 
         Http::assertNothingSent();
+    }
+
+    #[Test]
+    public function api_key_callback_is_only_sent_to_public_https_hosts(): void
+    {
+        $user = User::factory()->create(['btcpay_user_id' => 'btcpay-user-123']);
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        $this->app->instance(OutboundUrlGuard::class, OutboundUrlGuardTest::guardWithDns([
+            'internal.example.com' => ['10.0.0.8'],
+            'shop.example.com' => ['93.184.216.34'],
+        ]));
+        $this->fakeBtcPayApiKeyCreation();
+
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/api-keys", [
+            'label' => 'Internal',
+            'callback_url' => 'https://internal.example.com/hook',
+        ])->assertStatus(201);
+        Http::assertNotSent(fn ($request) => str_contains((string) $request->url(), 'internal.example.com'));
+
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/api-keys", [
+            'label' => 'Plain http',
+            'callback_url' => 'http://shop.example.com/hook',
+        ])->assertStatus(422)->assertJsonValidationErrors('callback_url');
+
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/api-keys", [
+            'label' => 'Shop',
+            'callback_url' => 'https://shop.example.com/hook',
+        ])->assertStatus(201);
+        Http::assertSent(fn ($request) => (string) $request->url() === 'https://shop.example.com/hook');
     }
 
     #[Test]

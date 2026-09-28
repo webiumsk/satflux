@@ -28,7 +28,7 @@ class EshopIntegrationController extends Controller
         $validated = $request->validate([
             'store_id' => ['required', 'string'], // Local store UUID
             'token' => ['required', 'string'],
-            'callback_url' => ['nullable', 'url', 'max:500'],
+            'callback_url' => ['nullable', 'url:https', 'max:500'],
         ]);
 
         // Get token data from cache

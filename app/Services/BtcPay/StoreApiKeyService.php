@@ -4,6 +4,7 @@ namespace App\Services\BtcPay;
 
 use App\Models\Store;
 use App\Models\StoreApiKey;
+use App\Support\Http\OutboundUrlGuard;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -128,8 +129,20 @@ class StoreApiKeyService
      */
     protected function sendApiKeyToCallback(StoreApiKey $storeApiKey, string $callbackUrl): void
     {
+        // The callback carries a live API key: public https hosts only, pinned
+        // to the validated addresses and without redirects (SSRF guard).
+        $options = app(OutboundUrlGuard::class)->pinnedOptions($callbackUrl);
+        if ($options === null) {
+            Log::warning('API key callback refused: URL is not a public https endpoint', [
+                'api_key_id' => $storeApiKey->id,
+                'callback_host' => parse_url($callbackUrl, PHP_URL_HOST),
+            ]);
+
+            return;
+        }
+
         try {
-            $response = Http::timeout(10)->post($callbackUrl, [
+            $response = Http::timeout(10)->withOptions($options)->post($callbackUrl, [
                 'api_key' => $storeApiKey->btcpay_api_key,
                 'store_id' => $storeApiKey->store->btcpay_store_id,
                 'permissions' => $storeApiKey->permissions,
