@@ -13,6 +13,12 @@ class BusinessExpenseAttachmentBulkService
 {
     private const MAX_FILES = 500;
 
+    /** Same cap as a single attachment upload (10 MB). */
+    private const MAX_ENTRY_BYTES = 10 * 1024 * 1024;
+
+    /** Total inflated size of one archive (ZIP-bomb guard). */
+    private const MAX_TOTAL_BYTES = 200 * 1024 * 1024;
+
     public function __construct(
         protected BusinessExpenseService $expenseService,
     ) {}
@@ -124,6 +130,7 @@ class BusinessExpenseAttachmentBulkService
         }
 
         $entries = [];
+        $totalBytes = 0;
         $tempDir = sys_get_temp_dir().'/sf-expense-pdf-'.uniqid();
         mkdir($tempDir, 0700, true);
 
@@ -143,7 +150,7 @@ class BusinessExpenseAttachmentBulkService
                 $target = $tempDir.'/'.uniqid().'_'.$basename;
             }
 
-            copy('zip://'.$path.'#'.$name, $target);
+            $totalBytes += $this->extractEntryWithLimit($zip, $name, $target, self::MAX_TOTAL_BYTES - $totalBytes);
             $entries[] = [
                 'filename' => $basename,
                 'path' => $target,
@@ -161,6 +168,48 @@ class BusinessExpenseAttachmentBulkService
         }
 
         return $entries;
+    }
+
+    /**
+     * Stream one entry to disk, counting the bytes actually inflated - the
+     * sizes declared in the archive can lie.
+     *
+     * @return int bytes written
+     */
+    protected function extractEntryWithLimit(ZipArchive $zip, string $name, string $target, int $remainingTotal): int
+    {
+        $limit = min(self::MAX_ENTRY_BYTES, $remainingTotal);
+        $in = $zip->getStream($name);
+        $out = fopen($target, 'wb');
+        if ($in === false || $out === false) {
+            throw new \InvalidArgumentException('Could not read ZIP archive entry.');
+        }
+
+        $written = 0;
+        try {
+            while (! feof($in)) {
+                $chunk = fread($in, 65536);
+                if ($chunk === false) {
+                    throw new \InvalidArgumentException('Could not read ZIP archive entry.');
+                }
+                $written += strlen($chunk);
+                if ($written > $limit) {
+                    throw new \InvalidArgumentException('ZIP archive entry is too large: '.basename($name));
+                }
+                fwrite($out, $chunk);
+            }
+        } catch (\InvalidArgumentException $e) {
+            fclose($out);
+            @unlink($target);
+
+            throw $e;
+        } finally {
+            fclose($in);
+        }
+
+        fclose($out);
+
+        return $written;
     }
 
     /**

@@ -159,6 +159,24 @@ class BusinessExpenseImportTest extends TestCase
     }
 
     #[Test]
+    public function zip_entries_that_inflate_past_the_limit_are_rejected(): void
+    {
+        $zipPath = tempnam(sys_get_temp_dir(), 'expense-pdf-bomb-').'.zip';
+        $zip = new ZipArchive;
+        $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        // ~11 MB of zeros compresses to a few KB but inflates past the 10 MB entry cap.
+        $zip->addFromString('bomb.pdf', '%PDF-1.4 '.str_repeat("\0", 11 * 1024 * 1024));
+        $zip->close();
+
+        $this->actingAs($this->proUser)
+            ->post("/api/invoicing/companies/{$this->company->id}/expenses/import/attachments/preview", [
+                'file' => new UploadedFile($zipPath, 'expenses.zip', 'application/zip', null, true),
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', fn ($message) => str_contains((string) $message, 'too large'));
+    }
+
+    #[Test]
     public function user_can_attach_pdfs_from_zip_by_internal_number(): void
     {
         BusinessExpense::create([
