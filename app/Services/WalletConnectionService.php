@@ -89,7 +89,7 @@ class WalletConnectionService
         // For Aqua/Boltz descriptors, check if this descriptor is already used in another store
         // BTCPay limitation: each descriptor can only be used once
         if ($type === 'aqua_descriptor') {
-            $duplicateCheck = $this->checkDescriptorDuplicate($secret, $store->id);
+            $duplicateCheck = $this->checkDescriptorDuplicate($secret, $store->id, $user);
             if ($duplicateCheck['exists']) {
                 Log::warning('Aqua descriptor already in use', [
                     'store_id' => $store->id,
@@ -468,9 +468,10 @@ class WalletConnectionService
      *
      * @param  string  $descriptor  The descriptor to check
      * @param  string|null  $currentStoreId  Current store ID (to exclude from check), or null/'new' for new stores
+     * @param  User  $viewer  Requesting user; other tenants' stores are reported without id/name
      * @return array ['exists' => bool, 'existing_store_id' => string|null, 'existing_store_name' => string|null]
      */
-    public function checkDescriptorDuplicate(string $descriptor, ?string $currentStoreId = null): array
+    public function checkDescriptorDuplicate(string $descriptor, ?string $currentStoreId, User $viewer): array
     {
         // Get all Aqua descriptor connections (excluding current store if provided)
         $query = WalletConnection::where('type', 'aqua_descriptor');
@@ -487,12 +488,15 @@ class WalletConnectionService
                 $decrypted = Crypt::decryptString($connection->encrypted_secret);
                 // Compare descriptors (normalize by trimming)
                 if (trim($decrypted) === trim($descriptor)) {
+                    // Only the viewer's own store is identified; another
+                    // tenant's store id/name must never leak cross-tenant.
                     $store = $connection->store;
+                    $ownedByViewer = $store instanceof Store && (int) $store->user_id === (int) $viewer->id;
 
                     return [
                         'exists' => true,
-                        'existing_store_id' => $store->id,
-                        'existing_store_name' => $store->name,
+                        'existing_store_id' => $ownedByViewer ? $store->id : null,
+                        'existing_store_name' => $ownedByViewer ? $store->name : null,
                     ];
                 }
             } catch (\Exception $e) {

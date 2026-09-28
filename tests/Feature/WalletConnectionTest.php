@@ -1092,10 +1092,12 @@ class WalletConnectionTest extends TestCase
             'type' => 'aqua_descriptor',
         ]);
 
+        // Another tenant's store must not be identified to the caller.
         $response->assertStatus(200)
             ->assertJsonPath('duplicate', true)
-            ->assertJsonPath('existing_store_id', $store1->id)
-            ->assertJsonPath('existing_store_name', $store1->name);
+            ->assertJsonPath('existing_store_id', null)
+            ->assertJsonPath('existing_store_name', null);
+        $this->assertStringNotContainsString($store1->name, (string) $response->json('message'));
     }
 
     #[Test]
@@ -1131,8 +1133,11 @@ class WalletConnectionTest extends TestCase
             'type' => 'aqua_descriptor',
         ]);
 
+        // The caller's own store may be named so they can find it.
         $response->assertStatus(200)
-            ->assertJsonPath('duplicate', true);
+            ->assertJsonPath('duplicate', true)
+            ->assertJsonPath('existing_store_id', $store->id)
+            ->assertJsonPath('existing_store_name', $store->name);
     }
 
     #[Test]
