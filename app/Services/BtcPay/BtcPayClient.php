@@ -489,8 +489,9 @@ class BtcPayClient
      * Keys are matched exactly (approval codes, invitation URLs, wallet
      * derivations) or by substring (anything *password*, *secret*, *token*,
      * *macaroon*, ...). String values are additionally scrubbed of inline
-     * credentials such as "macaroon=..." in Lightning connection strings and
-     * extended public keys, which reveal the merchant's whole wallet history.
+     * credentials such as "macaroon=..." / "token=..." in connection strings,
+     * extended public keys (which reveal the whole wallet history) and
+     * extended private keys.
      */
     protected function sanitizeData(array $data): array
     {
@@ -503,6 +504,8 @@ class BtcPayClient
             'accountDerivation',
             'derivationScheme',
             'derivation_scheme',
+            // Core Lightning rune (exact: a "rune" fragment would also hit e.g. "prune")
+            'rune',
         ]);
         $keyFragments = ['password', 'secret', 'token', 'apikey', 'api_key', 'macaroon', 'mnemonic', 'privatekey', 'connectionstring'];
 
@@ -531,8 +534,9 @@ class BtcPayClient
     {
         return preg_replace(
             [
-                '/\b(macaroon|api-?key|access-?key|password|secret|rune)=([^;\s"\']+)/i',
-                '/\b[xyztuv]pub[1-9A-HJ-NP-Za-km-z]{20,}/',
+                '/\b(macaroon|api[-_]?key|access[-_]?key|password|secret|rune|token)=([^;\s"\']+)/i',
+                // Extended public (history) and private (spending) keys
+                '/\b[xyztuv](?:pub|prv)[1-9A-HJ-NP-Za-km-z]{20,}/',
             ],
             ['$1=***REDACTED***', '***REDACTED***'],
             $value

@@ -270,4 +270,34 @@ class StoreEmailRuleTest extends TestCase
                 && str_contains($mail->htmlBody, '&lt;a href');
         });
     }
+
+    public function test_rule_rejects_more_than_ten_recipients_in_total(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        $list = fn (string $prefix, int $n) => implode(',', array_map(fn (int $i) => "{$prefix}{$i}@example.com", range(1, $n)));
+        $payload = [
+            'trigger' => 'InvoiceSettled',
+            'to_addresses' => $list('to', 5),
+            'cc_addresses' => $list('cc', 5),
+            'send_to_buyer' => true,
+            'subject' => 'S',
+            'body' => 'B',
+        ];
+
+        // 5 + 5 + buyer = 11: the dispatcher would skip every send, so reject upfront.
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/email-rules", $payload)
+            ->assertStatus(422)->assertJsonValidationErrors('to_addresses');
+
+        $rule = $this->actingAs($user)->postJson("/api/stores/{$store->id}/email-rules", [
+            ...$payload,
+            'send_to_buyer' => false,
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAs($user)->putJson("/api/stores/{$store->id}/email-rules/{$rule}", [
+            ...$payload,
+            'bcc_addresses' => 'extra@example.com',
+            'send_to_buyer' => false,
+        ])->assertStatus(422)->assertJsonValidationErrors('to_addresses');
+    }
 }

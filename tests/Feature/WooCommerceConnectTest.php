@@ -84,4 +84,17 @@ class WooCommerceConnectTest extends TestCase
             ->get('/woocommerce/connect?return_url='.urlencode('http://shop.example/'))
             ->assertSessionHasErrors('return_url');
     }
+
+    public function test_return_url_with_several_query_parameters_is_escaped_once(): void
+    {
+        $user = User::factory()->create();
+        Store::factory()->create(['user_id' => $user->id]);
+        $returnUrl = 'https://shop.example/wp-admin/admin.php?page=satflux&tab=connect';
+
+        $this->actingAs($user)
+            ->get('/woocommerce/connect?return_url='.urlencode($returnUrl))
+            ->assertOk()
+            ->assertSee('name="return_url" value="https://shop.example/wp-admin/admin.php?page=satflux&amp;tab=connect"', false)
+            ->assertDontSee('&amp;amp;', false);
+    }
 }

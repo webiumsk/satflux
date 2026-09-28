@@ -65,13 +65,7 @@ class StoreApiKeyService
         ];
 
         $finalPermissions = array_values(array_unique(! empty($permissions) ? $permissions : $defaultPermissions));
-
-        $disallowed = array_diff($finalPermissions, self::ALLOWED_PERMISSIONS);
-        if ($disallowed !== []) {
-            throw ValidationException::withMessages([
-                'permissions' => ['Unsupported API key permission: '.implode(', ', $disallowed)],
-            ]);
-        }
+        $this->assertAllowedPermissions($finalPermissions);
 
         // Greenfield has no "specificStores" for admin-created keys: a store
         // is scoped only by the "policy:storeId" suffix. Without it the key
@@ -214,19 +208,36 @@ class StoreApiKeyService
     {
         $oldApiKey = $apiKey instanceof StoreApiKey ? $apiKey : StoreApiKey::findOrFail($apiKey);
 
-        // Deactivate old key
-        $oldApiKey->update(['is_active' => false]);
+        // Same or new permissions. Keys saved before the allowlist may carry
+        // policies that are no longer allowed: fail before touching the old key.
+        $newPermissions = ! empty($permissions) ? $permissions : (array) $oldApiKey->permissions;
+        $this->assertAllowedPermissions($newPermissions);
 
-        // Create new key with same or new permissions
-        $newPermissions = ! empty($permissions) ? $permissions : $oldApiKey->permissions;
-        $newLabel = $label ?? $oldApiKey->label;
-        $newCallbackUrl = $callbackUrl ?? $oldApiKey->callback_url;
-
-        return $this->generateApiKey(
+        $newApiKey = $this->generateApiKey(
             $oldApiKey->store_id,
             $newPermissions,
-            $newLabel,
-            $newCallbackUrl
+            $label ?? $oldApiKey->label,
+            $callbackUrl ?? $oldApiKey->callback_url
         );
+
+        // Only retire the old key once its replacement exists.
+        $oldApiKey->update(['is_active' => false]);
+
+        return $newApiKey;
+    }
+
+    /**
+     * @param  array<int, mixed>  $permissions
+     *
+     * @throws ValidationException
+     */
+    protected function assertAllowedPermissions(array $permissions): void
+    {
+        $disallowed = array_diff($permissions, self::ALLOWED_PERMISSIONS);
+        if ($disallowed !== []) {
+            throw ValidationException::withMessages([
+                'permissions' => ['Unsupported API key permission: '.implode(', ', $disallowed)],
+            ]);
+        }
     }
 }
