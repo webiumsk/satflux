@@ -141,9 +141,6 @@ class LightningService
                 foreach ($requestBodyVariants as $index => $requestBody) {
                     try {
                         $bodyKey = array_keys($requestBody)[0];
-                        $bodyValuePreview = strlen($connectionString) > 100
-                            ? substr($connectionString, 0, 100).'...'
-                            : $connectionString;
 
                         Log::info('Trying BTCPay Lightning connect with request body variant', [
                             'store_id' => $storeId,
@@ -156,7 +153,6 @@ class LightningService
                             'total_variants' => count($requestBodyVariants),
                             'body_key' => $bodyKey,
                             'body_value_length' => strlen($connectionString),
-                            'body_value_preview' => $bodyValuePreview,
                         ]);
 
                         // Use appropriate HTTP method
@@ -174,7 +170,6 @@ class LightningService
                             'endpoint' => $endpoint,
                             'body_key' => $bodyKey,
                             'response_keys' => is_array($response) ? array_keys($response) : 'NOT_ARRAY',
-                            'response_preview' => is_array($response) ? json_encode($response) : $response,
                         ]);
 
                         return [

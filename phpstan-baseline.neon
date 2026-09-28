@@ -1724,12 +1724,6 @@ parameters:
 			path: app/Services/BtcPay/LightningService.php
 
 		-
-			message: '#^Call to function is_array\(\) with array\<mixed, mixed\> will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Services/BtcPay/LightningService.php
-
-		-
 			message: '#^Call to function is_array\(\) with array\{non\-falsy\-string, ''POST''\|''PUT''\} will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 2
