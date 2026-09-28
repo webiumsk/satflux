@@ -12,11 +12,11 @@ use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\Invoicing\CompanyPdfFilenameBuilder;
 use App\Services\Invoicing\PayBySquareGenerator;
+use App\Support\Invoicing\CompanyAppSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
-use App\Support\Invoicing\CompanyAppSettings;
 
 class CompanyAppSettingsTest extends TestCase
 {

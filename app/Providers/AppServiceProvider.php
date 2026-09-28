@@ -26,6 +26,8 @@ use App\Services\Invoicing\UsSalesTax\StripeTaxUsSalesTaxCalculator;
 use App\Services\Invoicing\UsSalesTax\UsSalesTaxCalculationService;
 use App\Support\ErrorRateCounter;
 use App\Support\ProductionConfigValidator;
+use App\Support\Spreadsheet\NoFormulaValueBinder;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -38,8 +40,6 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
-use App\Support\Spreadsheet\NoFormulaValueBinder;
-use Illuminate\Auth\Notifications\ResetPassword;
 
 class AppServiceProvider extends ServiceProvider
 {

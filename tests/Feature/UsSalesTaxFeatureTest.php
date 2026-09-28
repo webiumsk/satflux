@@ -10,11 +10,11 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\Invoicing\DocumentTotalsCalculator;
+use App\Support\Invoicing\CompanyAppSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
-use App\Support\Invoicing\CompanyAppSettings;
 
 class UsSalesTaxFeatureTest extends TestCase
 {

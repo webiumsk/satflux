@@ -4,8 +4,8 @@ namespace App\Services\Invoicing\Accounting;
 
 use App\Support\Invoicing\Accounting\ReceivedExpenseItem;
 use App\Support\Invoicing\Canonical\CanonicalInvoice;
-use DateTimeInterface;
 use App\Support\Spreadsheet\SpreadsheetCell;
+use DateTimeInterface;
 
 /**
  * Generic spreadsheet-friendly CSV files for accountants whose software has
