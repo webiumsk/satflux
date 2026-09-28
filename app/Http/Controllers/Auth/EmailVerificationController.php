@@ -20,6 +20,8 @@ use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class EmailVerificationController extends Controller
 {
+    public const RESEND_MESSAGE = 'Verification email sent. Please check your inbox.';
+
     protected UserService $userService;
 
     public function __construct(UserService $userService)
@@ -38,15 +40,11 @@ class EmailVerificationController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (! $user) {
-            throw ValidationException::withMessages([
-                'email' => ['We could not find a user with that email address.'],
-            ]);
-        }
-
-        if ($user->hasVerifiedEmail()) {
+        // Unknown and already-verified addresses get the same answer as a
+        // real send, so this public endpoint cannot be used to probe accounts.
+        if (! $user || $user->hasVerifiedEmail()) {
             return response()->json([
-                'message' => 'Email already verified.',
+                'message' => self::RESEND_MESSAGE,
             ]);
         }
 
@@ -63,7 +61,7 @@ class EmailVerificationController extends Controller
         }
 
         return response()->json([
-            'message' => 'Verification email sent. Please check your inbox.',
+            'message' => self::RESEND_MESSAGE,
         ]);
     }
 

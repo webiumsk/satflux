@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Models\User;
 use App\Notifications\VerifyEmailNotification;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -224,14 +225,14 @@ class AuthTest extends TestCase
         $response->assertJsonValidationErrors(['email']);
     }
 
-    public function test_email_verification_send_returns_422_for_unknown_user(): void
+    public function test_email_verification_send_does_not_reveal_unknown_users(): void
     {
         $response = $this->postJson('/api/auth/email/verification-notification', [
             'email' => 'unknown@example.com',
         ]);
 
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['email']);
+        $response->assertStatus(200);
+        $response->assertJson(['message' => EmailVerificationController::RESEND_MESSAGE]);
     }
 
     public function test_email_verification_send_returns_200_when_already_verified(): void
@@ -245,8 +246,9 @@ class AuthTest extends TestCase
             'email' => 'verified@example.com',
         ]);
 
+        // Same response as for unknown or unverified addresses (no account probing).
         $response->assertStatus(200);
-        $response->assertJson(['message' => 'Email already verified.']);
+        $response->assertJson(['message' => EmailVerificationController::RESEND_MESSAGE]);
     }
 
     public function test_email_verification_verify_returns_404_for_invalid_user_id(): void

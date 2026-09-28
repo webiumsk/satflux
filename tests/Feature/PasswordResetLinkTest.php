@@ -30,4 +30,19 @@ class PasswordResetLinkTest extends TestCase
                 && ! str_contains($url, 'evil.example');
         });
     }
+
+    public function test_repeated_requests_look_the_same_for_existing_and_unknown_emails(): void
+    {
+        Notification::fake();
+        User::factory()->create(['email' => 'owner@example.com']);
+
+        foreach (['owner@example.com', 'nobody@example.com'] as $email) {
+            $first = $this->postJson('/api/auth/password/reset-link', ['email' => $email]);
+            $second = $this->postJson('/api/auth/password/reset-link', ['email' => $email]);
+
+            $first->assertOk();
+            $second->assertOk();
+            $this->assertSame($first->json('message'), $second->json('message'), $email);
+        }
+    }
 }
