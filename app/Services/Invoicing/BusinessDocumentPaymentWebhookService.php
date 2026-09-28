@@ -64,6 +64,30 @@ class BusinessDocumentPaymentWebhookService
             return false;
         }
 
+        // The event must be about this document's own checkout invoice: any
+        // store API key can create an invoice whose metadata names a document.
+        if (! $invoiceId) {
+            return false;
+        }
+
+        if (! $document->btcpay_invoice_id) {
+            $bound = $this->btcPayService->resolveDocumentForBtcpayInvoice($store, $invoiceId);
+            if (! $bound || $bound->id !== $document->id) {
+                return false;
+            }
+            $document = $bound;
+        }
+
+        if ($document->btcpay_invoice_id !== $invoiceId) {
+            Log::warning('Business document payment webhook: invoice is not the document checkout', [
+                'business_document_id' => $document->id,
+                'store_id' => $store->id,
+                'invoice_id' => $invoiceId,
+            ]);
+
+            return false;
+        }
+
         if ($this->btcPayService->syncPaidFromBtcpayIfSettled($document->fresh())) {
             Log::info('Business document marked paid from BTCPay webhook', [
                 'business_document_id' => $document->id,
@@ -74,6 +98,8 @@ class BusinessDocumentPaymentWebhookService
             return true;
         }
 
+        // BTCPay could not be read back (e.g. merchant key unavailable): trust
+        // the HMAC-signed event, which is about this document's own invoice.
         $this->markPaidService->markPaid(
             $document,
             (float) $document->total,
