@@ -2,19 +2,31 @@
 
 namespace App\Services\Invoicing;
 
+use App\Support\Http\OutboundUrlGuard;
+
 /**
  * Rejects company SMTP hosts that resolve to private/reserved IP ranges,
  * so user-supplied SMTP settings cannot probe the internal network (SSRF).
  */
 class SmtpHostGuard
 {
+    /** SMTP, SMTPS, submission and the common alternative submission port. */
+    public const ALLOWED_PORTS = [25, 465, 587, 2525];
+
     /**
      * @throws \InvalidArgumentException when the host resolves to a private/reserved address
+     *                                   or the port is not a mail port
      */
-    public function assertAllowed(?string $host): void
+    public function assertAllowed(?string $host, ?int $port = null): void
     {
         if (config('invoicing.smtp_allow_private_hosts')) {
             return;
+        }
+
+        // Without this, a public host could still be used to probe arbitrary
+        // services (SSH, databases) through the SMTP test error messages.
+        if ($port !== null && ! in_array($port, self::ALLOWED_PORTS, true)) {
+            throw new \InvalidArgumentException(__('SMTP port must be 25, 465, 587 or 2525.'));
         }
 
         $host = trim((string) $host);
@@ -34,13 +46,7 @@ class SmtpHostGuard
         }
 
         foreach ($ips as $ip) {
-            $public = filter_var(
-                $ip,
-                FILTER_VALIDATE_IP,
-                FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
-            );
-
-            if ($public === false) {
+            if (! OutboundUrlGuard::isPublicIp($ip)) {
                 throw new \InvalidArgumentException(__('SMTP host must be a public mail server.'));
             }
         }

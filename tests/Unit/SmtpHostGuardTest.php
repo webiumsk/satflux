@@ -61,4 +61,32 @@ class SmtpHostGuardTest extends TestCase
         $this->guard()->assertAllowed('mailpit');
         $this->addToAssertionCount(1);
     }
+
+    public function test_rejects_cgnat_and_embedded_ipv4_addresses(): void
+    {
+        foreach (['100.64.0.10', '::ffff:10.0.0.1', '64:ff9b::a9fe:a9fe'] as $ip) {
+            try {
+                $this->guard()->assertAllowed($ip);
+                $this->fail("Expected {$ip} to be rejected");
+            } catch (\InvalidArgumentException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
+
+    public function test_only_mail_submission_ports_are_allowed(): void
+    {
+        foreach ([25, 465, 587, 2525] as $port) {
+            $this->guard()->assertAllowed('8.8.8.8', $port);
+        }
+
+        foreach ([22, 80, 443, 6379, 5432] as $port) {
+            try {
+                $this->guard()->assertAllowed('8.8.8.8', $port);
+                $this->fail("Expected port {$port} to be rejected");
+            } catch (\InvalidArgumentException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
 }
