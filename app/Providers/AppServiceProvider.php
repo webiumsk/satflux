@@ -88,7 +88,15 @@ class AppServiceProvider extends ServiceProvider
 
         // Define rate limiters
         RateLimiter::for('auth', function (Request $request) {
-            return Limit::perMinute(5)->by($request->ip());
+            $limits = [Limit::perMinute(5)->by($request->ip())];
+
+            // Per-account cap so rotating IPs cannot brute-force one login.
+            $email = strtolower(trim((string) $request->input('email', '')));
+            if ($email !== '') {
+                $limits[] = Limit::perMinute(10)->by('auth-email:'.hash('sha256', $email));
+            }
+
+            return $limits;
         });
         // Separate limiter for password reset (so first attempt isn't throttled by other auth)
         RateLimiter::for('password-reset', function (Request $request) {

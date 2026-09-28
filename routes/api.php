@@ -1065,7 +1065,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
         Route::get('/support/wallet-connections', [WalletConnectionController::class, 'indexSupport']);
         Route::get('/support/count', [WalletConnectionController::class, 'getSupportCount']);
         Route::post('/support/wallet-connections/{connection}/reveal', [WalletConnectionController::class, 'reveal'])
-            ->middleware(AuditLog::class.':wallet_connection.revealed');
+            ->middleware([AuditLog::class.':wallet_connection.revealed', 'throttle:30,60']);
         Route::get('/support/wallet-connections/{connection}/btcpay-store-url', [WalletConnectionController::class, 'getBtcPayStoreUrl']);
         Route::put('/support/wallet-connections/{connection}/mark-connected', [WalletConnectionController::class, 'markConnected'])
             ->middleware(AuditLog::class.':wallet_connection.marked_connected');
