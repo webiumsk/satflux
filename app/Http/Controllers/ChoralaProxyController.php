@@ -19,6 +19,13 @@ class ChoralaProxyController extends Controller
         }
 
         $normalized = ltrim($path, '/');
+        $segments = explode('/', $normalized);
+        // "public/../x" would leave the public API upstream while still
+        // carrying the server's project key.
+        if (in_array('..', $segments, true) || in_array('.', $segments, true)
+            || str_contains($normalized, '\\') || str_contains($normalized, '%')) {
+            abort(403, 'Only Chorala public API paths are proxied.');
+        }
         if (! str_starts_with($normalized, 'public/')) {
             abort(403, 'Only Chorala public API paths are proxied.');
         }
