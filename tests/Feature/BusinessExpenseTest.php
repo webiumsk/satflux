@@ -162,6 +162,71 @@ class BusinessExpenseTest extends TestCase
     }
 
     #[Test]
+    public function active_content_in_an_xml_attachment_is_never_served_inline(): void
+    {
+        $expense = BusinessExpense::create([
+            'company_id' => $this->company->id,
+            'status' => BusinessExpenseStatus::Recorded,
+            'internal_number' => 'N20260003',
+            'issue_date' => now(),
+            'total' => 10,
+            'currency' => 'EUR',
+        ]);
+
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(document.cookie)</script></svg>';
+        $file = UploadedFile::fake()->createWithContent('invoice.xml', $svg);
+
+        $this->actingAs($this->user)->postJson(
+            "/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}/attachment",
+            ['file' => $file],
+        )->assertOk();
+
+        $attachment = $expense->refresh()->attachments->first();
+        $this->assertSame('application/xml', $attachment->mime);
+
+        // Legacy rows may still carry a sniffed active type: serving must not trust it.
+        $attachment->update(['mime' => 'image/svg+xml']);
+
+        foreach ([
+            "/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}/attachment",
+            "/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}/attachments/{$attachment->id}",
+        ] as $url) {
+            $response = $this->actingAs($this->user)->get($url)->assertOk();
+
+            $this->assertSame('application/xml', $response->headers->get('Content-Type'));
+            $this->assertStringStartsWith('attachment;', (string) $response->headers->get('Content-Disposition'));
+            $this->assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
+            $this->assertStringContainsString('sandbox', (string) $response->headers->get('Content-Security-Policy'));
+        }
+    }
+
+    #[Test]
+    public function pdf_attachments_still_open_inline(): void
+    {
+        $expense = BusinessExpense::create([
+            'company_id' => $this->company->id,
+            'status' => BusinessExpenseStatus::Recorded,
+            'internal_number' => 'N20260004',
+            'issue_date' => now(),
+            'total' => 10,
+            'currency' => 'EUR',
+        ]);
+
+        $file = UploadedFile::fake()->create('scan "quoted".pdf', 10, 'application/pdf');
+        $this->actingAs($this->user)->postJson(
+            "/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}/attachment",
+            ['file' => $file],
+        )->assertOk();
+
+        $response = $this->actingAs($this->user)->get(
+            "/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}/attachment",
+        )->assertOk();
+
+        $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+        $this->assertStringStartsWith('inline;', (string) $response->headers->get('Content-Disposition'));
+    }
+
+    #[Test]
     public function expense_can_have_multiple_attachments(): void
     {
         $expense = BusinessExpense::create([

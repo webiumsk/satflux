@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Support\Invoicing\ExpenseAttachmentMime;
 
 class BusinessExpenseService
 {
@@ -266,7 +267,7 @@ class BusinessExpenseService
             'disk' => $disk,
             'path' => $path,
             'original_filename' => $file->getClientOriginalName(),
-            'mime' => $file->getMimeType(),
+            'mime' => ExpenseAttachmentMime::forFilename($filename),
             'size_bytes' => $file->getSize() ?: null,
         ]);
 
