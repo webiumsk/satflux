@@ -1,0 +1,75 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Http\Controllers\EshopIntegrationController;
+use App\Models\Store;
+use App\Models\StoreApiKey;
+use App\Models\SubscriptionPlan;
+use App\Models\User;
+use App\Services\BtcPay\BtcPayClient;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Tests\TestCase;
+
+class EshopIntegrationTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+        $this->app->forgetInstance(BtcPayClient::class);
+        SubscriptionPlan::create([
+            'name' => 'free',
+            'display_name' => 'Free',
+            'price_eur' => 0,
+            'max_stores' => 5,
+            'max_api_keys' => 10,
+            'features' => [],
+            'is_active' => true,
+        ]);
+        Http::fake(fn () => Http::response([
+            'id' => 'btcpay-key-'.uniqid(),
+            'apiKey' => 'secret-'.bin2hex(random_bytes(8)),
+        ], 201));
+    }
+
+    private function store(): Store
+    {
+        $user = User::factory()->create(['btcpay_user_id' => 'btcpay-user-1']);
+
+        return Store::factory()->create(['user_id' => $user->id]);
+    }
+
+    public function test_connect_token_is_single_use(): void
+    {
+        $store = $this->store();
+        $token = EshopIntegrationController::generateToken($store->id, [], 'Shop');
+
+        $this->postJson('/api/public/eshop/connect', ['store_id' => $store->id, 'token' => $token])->assertOk();
+        $this->postJson('/api/public/eshop/connect', ['store_id' => $store->id, 'token' => $token])->assertStatus(400);
+
+        $this->assertSame(1, StoreApiKey::where('store_id', $store->id)->count());
+    }
+
+    public function test_token_exchange_never_returns_an_existing_key(): void
+    {
+        $store = $this->store();
+        $existing = StoreApiKey::create([
+            'store_id' => $store->id,
+            'label' => 'E-shop Integration',
+            'btcpay_api_key' => 'pre-existing-secret',
+            'permissions' => ['btcpay.store.canviewinvoices'],
+            'is_active' => true,
+        ]);
+        $token = EshopIntegrationController::generateToken($store->id);
+
+        $response = $this->getJson("/api/public/eshop/token/{$token}")->assertOk();
+
+        $this->assertNotSame($existing->btcpay_api_key, $response->json('data.api_key'));
+        $this->assertSame(2, StoreApiKey::where('store_id', $store->id)->count());
+        $this->getJson("/api/public/eshop/token/{$token}")->assertStatus(400);
+    }
+}
