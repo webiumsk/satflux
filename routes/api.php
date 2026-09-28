@@ -767,8 +767,9 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
             Route::get('/companies/{company}/wise/status', [WiseBankController::class, 'status'])
                 ->middleware(EnsureCompanyOwnership::class);
+            // Credentials stay with the owner (docs/COMPANY_SHARING.md).
             Route::post('/companies/{company}/wise/connect', [WiseBankController::class, 'connect'])
-                ->middleware(EnsureCompanyOwnership::class);
+                ->middleware([EnsureCompanyOwnership::class, EnsureCompanyRole::class.':owner']);
             Route::post('/companies/{company}/wise/sync', [WiseBankController::class, 'sync'])
                 ->middleware(EnsureCompanyOwnership::class);
         });
