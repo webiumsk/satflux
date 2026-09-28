@@ -6,6 +6,7 @@ use App\Enums\BusinessExpenseStatus;
 use App\Models\BusinessExpense;
 use App\Models\BusinessExpenseAttachment;
 use App\Models\Company;
+use App\Support\Invoicing\ExpenseAttachmentMime;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -14,7 +15,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use App\Support\Invoicing\ExpenseAttachmentMime;
 
 class BusinessExpenseService
 {

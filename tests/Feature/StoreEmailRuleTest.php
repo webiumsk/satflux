@@ -229,7 +229,7 @@ class StoreEmailRuleTest extends TestCase
             'to_addresses' => 'notify@example.com',
             'cc_addresses' => '{Invoice.Metadata.ccList}',
             'send_to_buyer' => false,
-            'subject' => "Order {Invoice.OrderId}",
+            'subject' => 'Order {Invoice.OrderId}',
             'body' => '<p>Order {Invoice.OrderId}</p>',
             'sort_order' => 0,
         ]);
