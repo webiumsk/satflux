@@ -104,6 +104,12 @@ class SubscriptionEntitlementService
             if ($existingSubscription) {
                 if ($existingSubscription->isTrial()) {
                     $existingSubscription->convertToPaidYear();
+                    // A payment signal paid for this year: its invoice must
+                    // claim the converted row, not extend it a second time.
+                    if ($awaitingInvoice) {
+                        $existingSubscription->awaiting_invoice_at = now();
+                        $existingSubscription->save();
+                    }
                 } elseif ($extendExisting) {
                     $existingSubscription->extendOneYear();
                 }
@@ -135,7 +141,7 @@ class SubscriptionEntitlementService
                 'expires_at' => $expiresAt,
                 'grace_ends_at' => $graceEndsAt,
                 'btcpay_subscription_id' => $btcpaySubscriptionId,
-                'awaiting_invoice' => $awaitingInvoice,
+                'awaiting_invoice_at' => $awaitingInvoice ? now() : null,
             ]);
 
             Log::info('Created new paid subscription', [
@@ -215,8 +221,8 @@ class SubscriptionEntitlementService
 
             $claimsExisting = $this->hasSubscriptionCreatedForInvoice($user, $planName, $invoiceCreatedAt);
             $subscription = $this->activateSubscription($user, $planName, $btcpaySubscriptionId, extendExisting: ! $claimsExisting);
-            if ($subscription->awaiting_invoice) {
-                $subscription->update(['awaiting_invoice' => false]);
+            if ($subscription->awaiting_invoice_at !== null) {
+                $subscription->update(['awaiting_invoice_at' => null]);
             }
 
             DB::table('subscription_invoice_applications')
@@ -228,9 +234,9 @@ class SubscriptionEntitlementService
     }
 
     /**
-     * True when the user's current paid subscription was created by a payment
-     * signal after the invoice (awaiting_invoice) and no invoice has been
-     * applied to it yet - i.e. it exists because of this very payment.
+     * True when a payment signal created or converted the user's current paid
+     * subscription after the invoice was created (awaiting_invoice_at) and no
+     * invoice has been applied to it yet - i.e. it exists because of this payment.
      */
     protected function hasSubscriptionCreatedForInvoice(User $user, string $planName, ?\DateTimeInterface $invoiceCreatedAt): bool
     {
@@ -249,14 +255,14 @@ class SubscriptionEntitlementService
             ->orderBy('expires_at', 'desc')
             ->first();
 
-        // Only a row a payment signal created while waiting for this invoice
-        // (PlanStarted / reconcile) may be claimed; anything else (e.g. an
-        // admin grant) is extended by the payment.
-        if (! $existing || $existing->isTrial() || ! $existing->awaiting_invoice || $existing->created_at === null) {
+        // Only a row a payment signal created or converted from a trial while
+        // waiting for this invoice (PlanStarted / reconcile) may be claimed;
+        // anything else (e.g. an admin grant) is extended by the payment.
+        if (! $existing || $existing->isTrial() || $existing->awaiting_invoice_at === null) {
             return false;
         }
 
-        return $existing->created_at->greaterThanOrEqualTo($invoiceCreatedAt)
+        return $existing->awaiting_invoice_at->greaterThanOrEqualTo($invoiceCreatedAt)
             && ! DB::table('subscription_invoice_applications')
                 ->where('subscription_id', $existing->id)
                 ->exists();
