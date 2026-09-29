@@ -761,4 +761,20 @@ class SubscriptionTest extends TestCase
             && $request->method() === 'POST'
             && ($request->data()['newSubscriberEmail'] ?? null) === 'owner@example.com');
     }
+
+    #[Test]
+    public function checkout_rejects_store_offering_and_plan_ids_alongside_plan(): void
+    {
+        $user = User::factory()->create();
+        Http::fake();
+
+        $this->actingAs($user)->postJson('/api/subscriptions/checkout', [
+            'plan' => 'pro',
+            'storeId' => 'x',
+            'offeringId' => 'y',
+            'planId' => 'z',
+        ])->assertStatus(422)->assertJsonValidationErrors(['storeId', 'offeringId', 'planId']);
+
+        Http::assertNothingSent();
+    }
 }

@@ -103,6 +103,8 @@ class StoreApiKeyController extends Controller
                 ],
                 'message' => 'API key created successfully',
             ], 201);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Failed to create store API key', [
                 'store_id' => $store->id,

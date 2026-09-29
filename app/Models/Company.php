@@ -82,7 +82,7 @@ class Company extends Model
     {
         $appSettings = CompanyAppSettings::from($this->app_settings);
         $settings = $appSettings->toArray();
-        $stripeTaxSecretSet = $appSettings->stripeTaxSecretKey() !== null;
+        $stripeTaxSecretSet = $appSettings->hasStripeTaxSecretKey();
 
         unset($settings[CompanyAppSettings::LEGACY_STRIPE_TAX_SECRET_KEY]);
         unset($settings['stripe_tax_secret_key_encrypted']);

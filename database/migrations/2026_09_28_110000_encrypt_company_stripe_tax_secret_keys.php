@@ -15,23 +15,28 @@ return new class extends Migration
         DB::table('companies')
             ->whereNotNull('app_settings')
             ->orderBy('id')
-            ->select(['id', 'app_settings'])
+            ->select(['id'])
             ->chunk(200, function ($companies) {
                 foreach ($companies as $company) {
-                    $settings = json_decode((string) $company->app_settings, true);
-                    if (! is_array($settings) || ! array_key_exists('stripe_tax_secret_key', $settings)) {
-                        continue;
-                    }
+                    // Lock and re-read the row so a concurrent settings save
+                    // during the deploy is not overwritten by a stale snapshot.
+                    DB::transaction(function () use ($company) {
+                        $row = DB::table('companies')->where('id', $company->id)->lockForUpdate()->first(['app_settings']);
+                        $settings = json_decode((string) ($row->app_settings ?? ''), true);
+                        if (! is_array($settings) || ! array_key_exists('stripe_tax_secret_key', $settings)) {
+                            return;
+                        }
 
-                    $secret = trim((string) $settings['stripe_tax_secret_key']);
-                    unset($settings['stripe_tax_secret_key']);
-                    if ($secret !== '' && empty($settings['stripe_tax_secret_key_encrypted'])) {
-                        $settings['stripe_tax_secret_key_encrypted'] = Crypt::encryptString($secret);
-                    }
+                        $secret = trim((string) $settings['stripe_tax_secret_key']);
+                        unset($settings['stripe_tax_secret_key']);
+                        if ($secret !== '' && empty($settings['stripe_tax_secret_key_encrypted'])) {
+                            $settings['stripe_tax_secret_key_encrypted'] = Crypt::encryptString($secret);
+                        }
 
-                    DB::table('companies')
-                        ->where('id', $company->id)
-                        ->update(['app_settings' => json_encode($settings)]);
+                        DB::table('companies')
+                            ->where('id', $company->id)
+                            ->update(['app_settings' => json_encode($settings)]);
+                    });
                 }
             });
     }

@@ -4,6 +4,7 @@ namespace App\Support\Invoicing;
 
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Per-company invoicing application preferences (SuperFaktúra-style "Aplikácia").
@@ -99,7 +100,23 @@ final class CompanyAppSettings
     }
 
     /**
+     * Whether the company has its own Stripe Tax secret configured (readable
+     * or not) - for "key set" flags, which must never fail.
+     */
+    public function hasStripeTaxSecretKey(): bool
+    {
+        $encrypted = $this->get('stripe_tax_secret_key_encrypted');
+
+        return (is_string($encrypted) && $encrypted !== '')
+            || trim((string) $this->get(self::LEGACY_STRIPE_TAX_SECRET_KEY, '')) !== '';
+    }
+
+    /**
      * Decrypted per-company Stripe Tax secret, or null when none is set.
+     *
+     * @throws ValidationException when a configured key cannot be decrypted
+     *                             (e.g. APP_KEY rotated) - callers must not
+     *                             silently fall back to the platform key
      */
     public function stripeTaxSecretKey(): ?string
     {
@@ -107,11 +124,13 @@ final class CompanyAppSettings
         if (is_string($encrypted) && $encrypted !== '') {
             try {
                 $secret = trim(Crypt::decryptString($encrypted));
-
-                return $secret !== '' ? $secret : null;
             } catch (DecryptException) {
-                return null;
+                throw ValidationException::withMessages([
+                    'us_sales_tax' => ['The saved Stripe Tax secret key cannot be read. Enter it again in the company settings.'],
+                ]);
             }
+
+            return $secret !== '' ? $secret : null;
         }
 
         $legacy = trim((string) $this->get(self::LEGACY_STRIPE_TAX_SECRET_KEY, ''));

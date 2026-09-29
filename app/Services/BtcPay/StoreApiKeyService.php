@@ -68,6 +68,14 @@ class StoreApiKeyService
         $finalPermissions = array_values(array_unique(! empty($permissions) ? $permissions : $defaultPermissions));
         $this->assertAllowedPermissions($finalPermissions);
 
+        // Refuse an unsafe callback before BTCPay mints a key that could then
+        // never be delivered (sendApiKeyToCallback resolves and pins again).
+        if ($callbackUrl !== null && app(OutboundUrlGuard::class)->pinnedOptions($callbackUrl) === null) {
+            throw ValidationException::withMessages([
+                'callback_url' => ['The callback URL must be a public HTTPS endpoint.'],
+            ]);
+        }
+
         // Greenfield has no "specificStores" for admin-created keys: a store
         // is scoped only by the "policy:storeId" suffix. Without it the key
         // works on every store the BTCPay user owns.

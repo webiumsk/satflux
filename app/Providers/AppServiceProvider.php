@@ -98,7 +98,8 @@ class AppServiceProvider extends ServiceProvider
             $limits = [Limit::perMinute(5)->by($request->ip())];
 
             // Per-account cap so rotating IPs cannot brute-force one login.
-            $email = strtolower(trim((string) $request->input('email', '')));
+            $email = $request->input('email');
+            $email = is_string($email) ? strtolower(trim($email)) : '';
             if ($email !== '') {
                 $limits[] = Limit::perMinute(10)->by('auth-email:'.hash('sha256', $email));
             }

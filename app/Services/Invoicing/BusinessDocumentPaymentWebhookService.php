@@ -98,22 +98,16 @@ class BusinessDocumentPaymentWebhookService
             return true;
         }
 
-        // BTCPay could not be read back (e.g. merchant key unavailable): trust
-        // the HMAC-signed event, which is about this document's own invoice.
-        $this->markPaidService->markPaid(
-            $document,
-            (float) $document->total,
-            null,
-            'btcpay_webhook',
-        );
-
-        Log::info('Business document marked paid from BTCPay webhook (event only)', [
+        // Only a fresh BTCPay read can show the amount paid (webhook payloads
+        // do not carry it): an unverifiable event leaves the document Issued
+        // for the next sync (pay page, document view, later webhook).
+        Log::info('Business document payment webhook: payment not verified with BTCPay', [
             'business_document_id' => $document->id,
             'store_id' => $store->id,
             'event_type' => BtcPayWebhookEventType::normalize($eventType),
         ]);
 
-        return true;
+        return false;
     }
 
     /**

@@ -6,12 +6,14 @@ use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Models\User;
 use App\Notifications\VerifyEmailNotification;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Contracts\Notifications\Dispatcher as NotificationDispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Laravel\Sanctum\Sanctum;
+use Symfony\Component\Mailer\Exception\TransportException;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -270,5 +272,17 @@ class AuthTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['expires', 'signature']);
+    }
+
+    public function test_email_verification_send_hides_mail_transport_failures(): void
+    {
+        User::factory()->create(['email' => 'pending@example.com', 'email_verified_at' => null]);
+        $this->mock(NotificationDispatcher::class)
+            ->shouldReceive('send')
+            ->andThrow(new TransportException('Connection refused'));
+
+        $this->postJson('/api/auth/email/verification-notification', ['email' => 'pending@example.com'])
+            ->assertStatus(200)
+            ->assertJson(['message' => EmailVerificationController::RESEND_MESSAGE]);
     }
 }

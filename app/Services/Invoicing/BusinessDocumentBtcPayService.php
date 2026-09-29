@@ -170,6 +170,17 @@ class BusinessDocumentBtcPayService
             return false;
         }
 
+        // The linked checkout can predate a total change (a failed refresh
+        // keeps the old, cheaper invoice): paying it must not settle more.
+        if (! $this->invoiceCoversDocument($invoice, $document)) {
+            Log::warning('Business document: paid BTCPay invoice does not cover the document', [
+                'business_document_id' => $document->id,
+                'invoice_id' => $document->btcpay_invoice_id,
+            ]);
+
+            return false;
+        }
+
         app(BusinessDocumentMarkPaidService::class)->markPaid(
             $document,
             (float) $document->total,

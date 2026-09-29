@@ -13,6 +13,7 @@ use App\Services\Invoicing\DocumentTotalsCalculator;
 use App\Support\Invoicing\CompanyAppSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -258,5 +259,31 @@ class UsSalesTaxFeatureTest extends TestCase
             'sk_test_company_key',
             CompanyAppSettings::from($this->usCompany->app_settings)->stripeTaxSecretKey(),
         );
+    }
+
+    #[Test]
+    public function an_unreadable_company_stripe_key_never_falls_back_to_the_platform_key(): void
+    {
+        config(['services.stripe.tax_secret_key' => 'sk_platform_global']);
+        $settings = array_merge($this->usCompany->app_settings ?? [], [
+            'us_sales_tax_provider' => 'stripe_tax',
+            'stripe_tax_secret_key_encrypted' => 'not-a-valid-ciphertext',
+        ]);
+        $this->usCompany->update(['app_settings' => $settings]);
+
+        $this->assertTrue(CompanyAppSettings::from($settings)->hasStripeTaxSecretKey());
+
+        try {
+            CompanyAppSettings::from($settings)->stripeTaxSecretKey();
+            $this->fail('An unreadable configured key must raise an error');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('us_sales_tax', $e->errors());
+        }
+
+        // The company payload still renders and reports a configured key.
+        $this->actingAs($this->proUser)
+            ->getJson("/api/invoicing/companies/{$this->usCompany->id}")
+            ->assertOk()
+            ->assertJsonPath('data.app_settings.stripe_tax_secret_key_set', true);
     }
 }

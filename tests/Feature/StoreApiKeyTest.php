@@ -171,11 +171,13 @@ class StoreApiKeyTest extends TestCase
         ]));
         $this->fakeBtcPayApiKeyCreation();
 
+        // Refused before BTCPay mints a key that could never be delivered.
         $this->actingAs($user)->postJson("/api/stores/{$store->id}/api-keys", [
             'label' => 'Internal',
             'callback_url' => 'https://internal.example.com/hook',
-        ])->assertStatus(201);
-        Http::assertNotSent(fn ($request) => str_contains((string) $request->url(), 'internal.example.com'));
+        ])->assertStatus(422)->assertJsonValidationErrors('callback_url');
+        Http::assertNothingSent();
+        $this->assertSame(0, StoreApiKey::where('store_id', $store->id)->count());
 
         $this->actingAs($user)->postJson("/api/stores/{$store->id}/api-keys", [
             'label' => 'Plain http',

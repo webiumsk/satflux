@@ -176,6 +176,43 @@ class BusinessExpenseImportTest extends TestCase
             ->assertJsonPath('message', fn ($message) => str_contains((string) $message, 'too large'));
     }
 
+    /**
+     * @return list<string>
+     */
+    private function extractionTempDirs(): array
+    {
+        return glob(sys_get_temp_dir().'/sf-expense-pdf-*') ?: [];
+    }
+
+    #[Test]
+    public function zip_extraction_leaves_no_temp_files_behind(): void
+    {
+        $before = $this->extractionTempDirs();
+
+        $okZip = tempnam(sys_get_temp_dir(), 'expense-pdf-ok-').'.zip';
+        $zip = new ZipArchive;
+        $zip->open($okZip, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        $zip->addFromString('naklad_1.pdf', '%PDF-1.4 fake');
+        $zip->close();
+
+        $badZip = tempnam(sys_get_temp_dir(), 'expense-pdf-bad-').'.zip';
+        $zip = new ZipArchive;
+        $zip->open($badZip, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        $zip->addFromString('a_small.pdf', '%PDF-1.4 fine');
+        $zip->addFromString('b_bomb.pdf', '%PDF-1.4 '.str_repeat("\0", 11 * 1024 * 1024));
+        $zip->close();
+
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses/import/attachments/preview";
+        $this->actingAs($this->proUser)
+            ->post($url, ['file' => new UploadedFile($okZip, 'ok.zip', 'application/zip', null, true)])
+            ->assertOk();
+        $this->actingAs($this->proUser)
+            ->post($url, ['file' => new UploadedFile($badZip, 'bad.zip', 'application/zip', null, true)])
+            ->assertStatus(422);
+
+        $this->assertSame($before, $this->extractionTempDirs());
+    }
+
     #[Test]
     public function user_can_attach_pdfs_from_zip_by_internal_number(): void
     {

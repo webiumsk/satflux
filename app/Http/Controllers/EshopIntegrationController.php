@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class EshopIntegrationController extends Controller
 {
@@ -30,10 +31,7 @@ class EshopIntegrationController extends Controller
             'callback_url' => ['nullable', 'url:https', 'max:500'],
         ]);
 
-        // Consume the token atomically: a get-then-forget would let two
-        // concurrent requests mint two keys from one token.
-        $tokenKey = "eshop_token:{$validated['token']}";
-        $tokenData = Cache::pull($tokenKey);
+        $tokenData = $this->claimToken($validated['token']);
 
         if (! is_array($tokenData)) {
             return response()->json([
@@ -95,6 +93,8 @@ class EshopIntegrationController extends Controller
             return response()->json([
                 'message' => 'API key created and sent to callback URL',
             ]);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Failed to create e-shop API key via public endpoint', [
                 'store_id' => $validated['store_id'],
@@ -117,7 +117,7 @@ class EshopIntegrationController extends Controller
         // One-shot exchange: the token mints its own key. It never hands out
         // an existing key (matching by label returned whatever key happened
         // to carry the default label).
-        $tokenData = Cache::pull("eshop_token:{$token}");
+        $tokenData = $this->claimToken($token);
 
         if (! is_array($tokenData)) {
             return response()->json([
@@ -164,6 +164,24 @@ class EshopIntegrationController extends Controller
                 'label' => $apiKey->label,
             ],
         ]);
+    }
+
+    /**
+     * Claim a one-time token: Cache::add is an atomic "set if absent" (SET NX
+     * on Redis), so exactly one request wins even when several read the
+     * token concurrently; Cache::pull alone is a separate get and forget.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function claimToken(string $token): ?array
+    {
+        if (! Cache::add("eshop_token_claimed:{$token}", true, now()->addDay())) {
+            return null;
+        }
+
+        $tokenData = Cache::pull("eshop_token:{$token}");
+
+        return is_array($tokenData) ? $tokenData : null;
     }
 
     /**

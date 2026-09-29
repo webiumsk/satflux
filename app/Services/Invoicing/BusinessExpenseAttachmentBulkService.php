@@ -30,7 +30,11 @@ class BusinessExpenseAttachmentBulkService
     {
         $entries = $this->collectPdfEntries($upload);
 
-        return $this->buildPreview($company, $entries);
+        try {
+            return $this->buildPreview($company, $entries);
+        } finally {
+            $this->cleanupEntries($entries);
+        }
     }
 
     /**
@@ -134,37 +138,45 @@ class BusinessExpenseAttachmentBulkService
         $tempDir = sys_get_temp_dir().'/sf-expense-pdf-'.uniqid();
         mkdir($tempDir, 0700, true);
 
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $name = (string) $zip->getNameIndex($i);
-            if (str_ends_with($name, '/')) {
-                continue;
+        try {
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $name = (string) $zip->getNameIndex($i);
+                if (str_ends_with($name, '/')) {
+                    continue;
+                }
+
+                $basename = basename($name);
+                if (! str_ends_with(strtolower($basename), '.pdf')) {
+                    continue;
+                }
+
+                $target = $tempDir.'/'.$basename;
+                if (file_exists($target)) {
+                    $target = $tempDir.'/'.uniqid().'_'.$basename;
+                }
+
+                $totalBytes += $this->extractEntryWithLimit($zip, $name, $target, self::MAX_TOTAL_BYTES - $totalBytes);
+                $entries[] = [
+                    'filename' => $basename,
+                    'path' => $target,
+                ];
+
+                if (count($entries) >= self::MAX_FILES) {
+                    break;
+                }
             }
 
-            $basename = basename($name);
-            if (! str_ends_with(strtolower($basename), '.pdf')) {
-                continue;
+            if ($entries === []) {
+                throw new \InvalidArgumentException('ZIP archive contains no PDF files.');
             }
+        } catch (\Throwable $e) {
+            // Nothing extracted so far survives a failed archive.
+            $this->cleanupEntries($entries);
+            @rmdir($tempDir);
 
-            $target = $tempDir.'/'.$basename;
-            if (file_exists($target)) {
-                $target = $tempDir.'/'.uniqid().'_'.$basename;
-            }
-
-            $totalBytes += $this->extractEntryWithLimit($zip, $name, $target, self::MAX_TOTAL_BYTES - $totalBytes);
-            $entries[] = [
-                'filename' => $basename,
-                'path' => $target,
-            ];
-
-            if (count($entries) >= self::MAX_FILES) {
-                break;
-            }
-        }
-
-        $zip->close();
-
-        if ($entries === []) {
-            throw new \InvalidArgumentException('ZIP archive contains no PDF files.');
+            throw $e;
+        } finally {
+            $zip->close();
         }
 
         return $entries;
@@ -196,7 +208,14 @@ class BusinessExpenseAttachmentBulkService
                 if ($written > $limit) {
                     throw new \InvalidArgumentException('ZIP archive entry is too large: '.basename($name));
                 }
-                fwrite($out, $chunk);
+                // fwrite may write less than asked: keep writing the remainder.
+                while ($chunk !== '') {
+                    $bytes = fwrite($out, $chunk);
+                    if ($bytes === false || $bytes === 0) {
+                        throw new \InvalidArgumentException('Could not extract ZIP archive entry: '.basename($name));
+                    }
+                    $chunk = substr($chunk, $bytes);
+                }
             }
         } catch (\InvalidArgumentException $e) {
             fclose($out);

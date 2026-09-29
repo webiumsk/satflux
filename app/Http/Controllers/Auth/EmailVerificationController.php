@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class EmailVerificationController extends Controller
@@ -51,12 +50,11 @@ class EmailVerificationController extends Controller
         try {
             $user->sendEmailVerificationNotification();
         } catch (TransportExceptionInterface $e) {
+            // Same public answer as for unknown addresses: a delivery error
+            // must not reveal that this address has an account.
             Log::warning('Failed to send verification email', [
                 'email' => LogSanitizer::email($user->email),
                 'error' => $e->getMessage(),
-            ]);
-            throw ValidationException::withMessages([
-                'email' => [__('messages.verification_email_failed')],
             ]);
         }
 

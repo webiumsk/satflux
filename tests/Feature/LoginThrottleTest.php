@@ -29,4 +29,10 @@ class LoginThrottleTest extends TestCase
             ->postJson('/api/auth/login', ['email' => 'someone@example.com', 'password' => 'x'])
             ->assertStatus(422);
     }
+
+    public function test_non_string_email_is_a_validation_error_not_a_server_error(): void
+    {
+        $this->postJson('/api/auth/login', ['email' => ['a@example.com'], 'password' => 'x'])
+            ->assertStatus(422);
+    }
 }

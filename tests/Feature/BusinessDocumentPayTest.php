@@ -188,6 +188,10 @@ class BusinessDocumentPayTest extends TestCase
             'issue_date' => now(),
         ]);
 
+        Http::fake([
+            '*/invoices/btcpay-inv-dot' => Http::response(['id' => 'btcpay-inv-dot', 'status' => 'Settled', 'amount' => '50', 'currency' => 'EUR'], 200),
+        ]);
+
         $handled = app(BusinessDocumentPaymentWebhookService::class)->handleInvoicePayment(
             'invoice.settled',
             [
@@ -237,6 +241,8 @@ class BusinessDocumentPayTest extends TestCase
             '*/api/v1/stores/btcpay-store-paid/invoices/btcpay-inv-paid' => Http::response([
                 'id' => 'btcpay-inv-paid',
                 'status' => 'Settled',
+                'amount' => '75',
+                'currency' => 'EUR',
                 'metadata' => ['businessDocumentId' => $document->id],
             ], 200),
         ]);
@@ -327,6 +333,10 @@ class BusinessDocumentPayTest extends TestCase
             'payment_btc_enabled' => true,
             'btcpay_invoice_id' => 'btcpay-inv-ln',
             'issue_date' => now(),
+        ]);
+
+        Http::fake([
+            '*/invoices/btcpay-inv-ln' => Http::response(['id' => 'btcpay-inv-ln', 'status' => 'Processing', 'amount' => '20', 'currency' => 'EUR'], 200),
         ]);
 
         $handled = app(BusinessDocumentPaymentWebhookService::class)->handleInvoicePayment(
@@ -461,5 +471,40 @@ class BusinessDocumentPayTest extends TestCase
         $fresh = $document->fresh();
         $this->assertSame(BusinessDocumentStatus::Issued, $fresh->status);
         $this->assertNull($fresh->btcpay_invoice_id);
+    }
+
+    #[Test]
+    public function own_invoice_for_a_lower_amount_does_not_mark_the_document_paid(): void
+    {
+        [$store, $document] = $this->issuedDocument('inv-stale');
+        // Checkout created before the total was raised to 5000.
+        Http::fake([
+            '*/invoices/inv-stale' => Http::response(['id' => 'inv-stale', 'status' => 'Settled', 'amount' => '100', 'currency' => 'EUR'], 200),
+        ]);
+
+        $handled = app(BusinessDocumentPaymentWebhookService::class)->handleInvoicePayment(
+            'InvoiceSettled',
+            ['storeId' => 'btcpay-store-sec', 'invoiceId' => 'inv-stale'],
+            $store
+        );
+
+        $this->assertFalse($handled);
+        $this->assertSame(BusinessDocumentStatus::Issued, $document->fresh()->status);
+    }
+
+    #[Test]
+    public function an_unverifiable_event_does_not_mark_the_document_paid(): void
+    {
+        [$store, $document] = $this->issuedDocument('inv-real');
+        Http::fake(['*' => Http::response(['message' => 'Unavailable'], 503)]);
+
+        $handled = app(BusinessDocumentPaymentWebhookService::class)->handleInvoicePayment(
+            'InvoiceSettled',
+            ['storeId' => 'btcpay-store-sec', 'invoiceId' => 'inv-real'],
+            $store
+        );
+
+        $this->assertFalse($handled);
+        $this->assertSame(BusinessDocumentStatus::Issued, $document->fresh()->status);
     }
 }

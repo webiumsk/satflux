@@ -51,6 +51,10 @@ class SubscriptionController extends Controller
         $request->validate([
             'plan' => ['required', 'string', 'in:pro,enterprise'],
             'customerEmail' => ['nullable', 'email', 'max:255'],
+            // Checkouts always use the configured store/offering/plan.
+            'storeId' => ['missing'],
+            'offeringId' => ['missing'],
+            'planId' => ['missing'],
         ]);
 
         if ($blocked = $this->subscriptionBlockedForGuestResponse($request)) {
