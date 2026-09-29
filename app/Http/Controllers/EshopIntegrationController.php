@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Store;
 use App\Services\BtcPay\StoreApiKeyService;
+use App\Support\Http\OutboundUrlGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -31,18 +32,25 @@ class EshopIntegrationController extends Controller
             'callback_url' => ['nullable', 'url:https', 'max:500'],
         ]);
 
-        $tokenData = $this->claimToken($validated['token']);
+        // Everything that can fail on input is checked before the token is
+        // claimed, so a bad request (e.g. unsafe callback) leaves it usable.
+        $callbackUrl = $validated['callback_url'] ?? null;
+        if ($callbackUrl !== null && app(OutboundUrlGuard::class)->pinnedOptions($callbackUrl) === null) {
+            throw ValidationException::withMessages([
+                'callback_url' => ['The callback URL must be a public HTTPS endpoint.'],
+            ]);
+        }
 
-        if (! is_array($tokenData)) {
+        $pending = Cache::get("eshop_token:{$validated['token']}");
+        if (! is_array($pending)) {
             return response()->json([
                 'message' => 'Invalid or expired token',
             ], 400);
         }
 
-        // Validate store ID matches token
-        if ($tokenData['store_id'] !== $validated['store_id']) {
+        if ($pending['store_id'] !== $validated['store_id']) {
             Log::warning('E-shop token store_id mismatch', [
-                'token_store_id' => $tokenData['store_id'],
+                'token_store_id' => $pending['store_id'],
                 'request_store_id' => $validated['store_id'],
                 'ip' => $request->ip(),
             ]);
@@ -52,12 +60,19 @@ class EshopIntegrationController extends Controller
             ], 400);
         }
 
-        // Load store
         $store = Store::find($validated['store_id']);
         if (! $store) {
             return response()->json([
                 'message' => 'Store not found',
             ], 404);
+        }
+
+        // Atomic claim right before the key is minted: one request wins.
+        $tokenData = $this->claimToken($validated['token']);
+        if (! is_array($tokenData)) {
+            return response()->json([
+                'message' => 'Invalid or expired token',
+            ], 400);
         }
 
         try {
@@ -175,13 +190,18 @@ class EshopIntegrationController extends Controller
      */
     protected function claimToken(string $token): ?array
     {
+        $tokenData = Cache::get("eshop_token:{$token}");
+        if (! is_array($tokenData)) {
+            return null;
+        }
+
         if (! Cache::add("eshop_token_claimed:{$token}", true, now()->addDay())) {
             return null;
         }
 
-        $tokenData = Cache::pull("eshop_token:{$token}");
+        Cache::forget("eshop_token:{$token}");
 
-        return is_array($tokenData) ? $tokenData : null;
+        return $tokenData;
     }
 
     /**

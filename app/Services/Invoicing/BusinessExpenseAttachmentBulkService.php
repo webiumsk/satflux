@@ -192,9 +192,16 @@ class BusinessExpenseAttachmentBulkService
     {
         $limit = min(self::MAX_ENTRY_BYTES, $remainingTotal);
         $in = $zip->getStream($name);
-        $out = fopen($target, 'wb');
-        if ($in === false || $out === false) {
+        if ($in === false) {
             throw new \InvalidArgumentException('Could not read ZIP archive entry.');
+        }
+
+        $out = @fopen($target, 'wb');
+        if ($out === false) {
+            fclose($in);
+            @unlink($target);
+
+            throw new \InvalidArgumentException('Could not extract ZIP archive entry: '.basename($name));
         }
 
         $written = 0;

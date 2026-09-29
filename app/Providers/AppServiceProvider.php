@@ -106,6 +106,19 @@ class AppServiceProvider extends ServiceProvider
 
             return $limits;
         });
+        // Verification resends get their own buckets (distinct key prefixes),
+        // so resending for an address can never use up its login budget.
+        RateLimiter::for('verification-resend', function (Request $request) {
+            $limits = [Limit::perMinute(5)->by('resend-ip:'.$request->ip())];
+
+            $email = $request->input('email');
+            $email = is_string($email) ? strtolower(trim($email)) : '';
+            if ($email !== '') {
+                $limits[] = Limit::perMinute(3)->by('resend-email:'.hash('sha256', $email));
+            }
+
+            return $limits;
+        });
         // Separate limiter for password reset (so first attempt isn't throttled by other auth)
         RateLimiter::for('password-reset', function (Request $request) {
             return Limit::perMinute(5)->by($request->ip());

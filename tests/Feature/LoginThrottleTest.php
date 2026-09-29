@@ -35,4 +35,18 @@ class LoginThrottleTest extends TestCase
         $this->postJson('/api/auth/login', ['email' => ['a@example.com'], 'password' => 'x'])
             ->assertStatus(422);
     }
+
+    public function test_verification_resends_do_not_use_up_the_login_budget(): void
+    {
+        User::factory()->create(['email' => 'owner@example.com', 'password' => bcrypt('correct-horse')]);
+
+        for ($i = 1; $i <= 10; $i++) {
+            $this->withServerVariables(['REMOTE_ADDR' => "198.51.100.{$i}"])
+                ->postJson('/api/auth/email/verification-notification', ['email' => 'owner@example.com']);
+        }
+
+        $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.200'])
+            ->postJson('/api/auth/login', ['email' => 'owner@example.com', 'password' => 'correct-horse'])
+            ->assertOk();
+    }
 }

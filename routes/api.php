@@ -304,10 +304,11 @@ Route::middleware(['throttle:auth'])->group(function () {
     Route::post('/auth/logout', [LoginController::class, 'logout'])->middleware('auth:sanctum');
 
     // Password reset: only in web.php (POST /api/auth/password/reset-link) so no Sanctum 401
-
-    // Email verification
-    Route::post('/auth/email/verification-notification', [EmailVerificationController::class, 'sendVerificationEmail']);
 });
+
+// Email verification resend: own limiter, separate from the login buckets.
+Route::post('/auth/email/verification-notification', [EmailVerificationController::class, 'sendVerificationEmail'])
+    ->middleware('throttle:verification-resend');
 
 // Passkey sign-in envelope fetch: unauthenticated by design (the ciphertext
 // grants nothing without the physical authenticator; the session comes from

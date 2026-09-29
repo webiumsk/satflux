@@ -9,6 +9,8 @@ use App\Models\Company;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Services\Invoicing\BusinessExpenseAttachmentBulkService;
+use App\Services\Invoicing\BusinessExpenseService;
 use App\Support\Invoicing\BusinessExpenseImportFields;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -211,6 +213,45 @@ class BusinessExpenseImportTest extends TestCase
             ->assertStatus(422);
 
         $this->assertSame($before, $this->extractionTempDirs());
+    }
+
+    #[Test]
+    public function failed_entry_setup_leaves_no_files_or_open_handles(): void
+    {
+        $zipPath = tempnam(sys_get_temp_dir(), 'expense-pdf-setup-').'.zip';
+        $zip = new ZipArchive;
+        $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        $zip->addFromString('real.pdf', '%PDF-1.4 fake');
+        $zip->close();
+        $zip->open($zipPath);
+
+        $service = new class(app(BusinessExpenseService::class)) extends BusinessExpenseAttachmentBulkService
+        {
+            public function extract(ZipArchive $zip, string $name, string $target): int
+            {
+                return $this->extractEntryWithLimit($zip, $name, $target, PHP_INT_MAX);
+            }
+        };
+
+        // The entry stream cannot be opened: no target file may be created.
+        $target = sys_get_temp_dir().'/sf-setup-'.uniqid().'.pdf';
+        try {
+            $service->extract($zip, 'missing.pdf', $target);
+            $this->fail('A missing entry must be rejected');
+        } catch (\InvalidArgumentException) {
+            $this->assertFileDoesNotExist($target);
+        }
+
+        // The target cannot be opened: the entry stream is closed, nothing written.
+        $unwritable = sys_get_temp_dir().'/sf-no-such-dir-'.uniqid().'/x.pdf';
+        try {
+            $service->extract($zip, 'real.pdf', $unwritable);
+            $this->fail('An unwritable target must be rejected');
+        } catch (\InvalidArgumentException) {
+            $this->assertFileDoesNotExist($unwritable);
+        }
+
+        $zip->close();
     }
 
     #[Test]

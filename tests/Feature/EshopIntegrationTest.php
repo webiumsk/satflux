@@ -104,4 +104,35 @@ class EshopIntegrationTest extends TestCase
 
         $this->assertSame(0, StoreApiKey::where('store_id', $store->id)->count());
     }
+
+    public function test_a_rejected_callback_leaves_the_token_usable_for_a_retry(): void
+    {
+        $store = $this->store();
+        $token = EshopIntegrationController::generateToken($store->id, [], 'Shop');
+        $this->app->instance(OutboundUrlGuard::class, OutboundUrlGuardTest::guardWithDns([
+            'internal.example.com' => ['10.0.0.8'],
+            'shop.example.com' => ['93.184.216.34'],
+        ]));
+
+        $this->postJson('/api/public/eshop/connect', [
+            'store_id' => $store->id,
+            'token' => $token,
+            'callback_url' => 'https://internal.example.com/hook',
+        ])->assertStatus(422);
+
+        $this->postJson('/api/public/eshop/connect', [
+            'store_id' => $store->id,
+            'token' => $token,
+            'callback_url' => 'https://shop.example.com/hook',
+        ])->assertOk();
+
+        $this->assertSame(1, StoreApiKey::where('store_id', $store->id)->count());
+    }
+
+    public function test_unknown_tokens_leave_no_claim_marker(): void
+    {
+        $this->getJson('/api/public/eshop/token/does-not-exist')->assertStatus(400);
+
+        $this->assertFalse(Cache::has('eshop_token_claimed:does-not-exist'));
+    }
 }
