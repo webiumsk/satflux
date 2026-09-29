@@ -12,6 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 class StoreEmailRuleTest extends TestCase
@@ -336,5 +337,40 @@ class StoreEmailRuleTest extends TestCase
         app(StoreEmailRuleDispatcher::class)->dispatchForWebhook($webhookEvent, $store);
 
         Mail::assertSent(StoreInvoiceEmail::class, 1);
+    }
+
+    public function test_hourly_store_limit_blocks_further_rule_emails(): void
+    {
+        Mail::fake();
+        Cache::flush();
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create(['user_id' => $user->id, 'btcpay_store_id' => 'btcpay-store-x']);
+        StoreEmailRule::query()->create([
+            'store_id' => $store->id,
+            'trigger' => 'InvoiceSettled',
+            'to_addresses' => 'notify@example.com',
+            'send_to_buyer' => false,
+            'subject' => 'Paid',
+            'body' => '<p>Paid</p>',
+            'sort_order' => 0,
+        ]);
+        for ($i = 0; $i < StoreEmailRuleDispatcher::HOURLY_SEND_LIMIT; $i++) {
+            RateLimiter::hit('store-email-rules:'.$store->id, 3600);
+        }
+        Http::fake([
+            'https://btcpay.test/api/v1/stores/btcpay-store-x/invoices/inv-limit' => Http::response(['id' => 'inv-limit', 'status' => 'Settled'], 200),
+        ]);
+        $webhookEvent = WebhookEvent::create([
+            'store_id' => $store->id,
+            'event_type' => 'InvoiceSettled',
+            'payload' => ['type' => 'InvoiceSettled', 'storeId' => 'btcpay-store-x', 'invoiceId' => 'inv-limit', 'deliveryId' => 'del-limit'],
+            'verified' => true,
+        ]);
+
+        app(StoreEmailRuleDispatcher::class)->dispatchForWebhook($webhookEvent, $store);
+
+        Mail::assertNothingSent();
     }
 }

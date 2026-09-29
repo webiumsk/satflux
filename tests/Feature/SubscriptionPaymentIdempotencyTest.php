@@ -373,4 +373,34 @@ class SubscriptionPaymentIdempotencyTest extends TestCase
 
         $this->assertGreaterThanOrEqual($granted + 364 * 86400, $this->expiresAt($user));
     }
+
+    #[Test]
+    public function trial_converted_by_plan_started_is_not_extended_again_by_its_invoice(): void
+    {
+        $user = User::factory()->create(['role' => 'free']);
+        app(SubscriptionEntitlementService::class)->activateTrialSubscription($user, 'pro', now()->addDays(20));
+        $this->travel(10)->days();
+
+        // Checkout for the paid plan, then PlanStarted converts the trial before the invoice settles.
+        $this->fakeBtcPay(['inv_1' => ['status' => 'Settled', 'createdTime' => now()->subMinutes(5)->timestamp]]);
+        $event = WebhookEvent::create([
+            'event_type' => 'PlanStarted',
+            'payload' => [
+                'storeId' => self::STORE,
+                'subscriber' => [
+                    'customer' => ['id' => 'btcpay-sub-1', 'identities' => ['Email' => $user->email]],
+                    'plan' => ['id' => 'plan_pro_test'],
+                    'phase' => 'Normal',
+                    'isActive' => true,
+                ],
+            ],
+            'verified' => true,
+        ]);
+        (new ProcessBtcPayWebhook($event))->handle();
+        $converted = $this->expiresAt($user);
+
+        $this->runWebhook('InvoiceSettled', 'inv_1', $this->subscriptionMetadata($user));
+
+        $this->assertSame($converted, $this->expiresAt($user));
+    }
 }

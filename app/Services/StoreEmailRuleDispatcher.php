@@ -143,8 +143,9 @@ class StoreEmailRuleDispatcher
                 continue;
             }
 
-            $rateKey = 'store-email-rules:'.$store->id;
-            if (RateLimiter::tooManyAttempts($rateKey, self::HOURLY_SEND_LIMIT)) {
+            // Reserve a slot first: hit() is an atomic increment, so concurrent
+            // webhook workers cannot both pass a separate check-then-hit.
+            if (RateLimiter::hit('store-email-rules:'.$store->id, 3600) > self::HOURLY_SEND_LIMIT) {
                 Log::warning('Store email rule skipped: hourly send limit reached', [
                     'rule_id' => $rule->id,
                     'store_id' => $store->id,
@@ -170,8 +171,6 @@ class StoreEmailRuleDispatcher
                 }
                 throw $e;
             }
-
-            RateLimiter::hit($rateKey, 3600);
 
             try {
                 Mail::send(new StoreInvoiceEmail($subject, $body, $to, $cc, $bcc));
