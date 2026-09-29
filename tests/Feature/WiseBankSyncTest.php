@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Enums\BankTransactionDirection;
 use App\Enums\CompanyJurisdiction;
+use App\Enums\CompanyMemberRole;
 use App\Models\Company;
+use App\Models\CompanyMember;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
@@ -141,5 +143,27 @@ class WiseBankSyncTest extends TestCase
         $response->assertJsonPath('data.imported', 1);
         $response->assertJsonCount(1, 'data.rows');
         $this->assertDatabaseCount('bank_transactions', 0);
+    }
+
+    #[Test]
+    public function company_members_cannot_replace_the_wise_token(): void
+    {
+        $accountant = User::factory()->create();
+        CompanyMember::create([
+            'company_id' => $this->company->id,
+            'user_id' => $accountant->id,
+            'role' => CompanyMemberRole::Accountant,
+            'invited_by' => $this->user->id,
+            'accepted_at' => now(),
+        ]);
+        Http::fake();
+
+        $this->actingAs($accountant)->postJson(
+            "/api/invoicing/companies/{$this->company->id}/wise/connect",
+            ['wise_api_token' => 'attacker-token-abcdefghij'],
+        )->assertForbidden();
+
+        $this->assertArrayNotHasKey('wise_api_token_encrypted', $this->company->fresh()->app_settings ?? []);
+        Http::assertNothingSent();
     }
 }

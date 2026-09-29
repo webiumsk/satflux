@@ -64,6 +64,7 @@ class ProcessBtcPayWebhookTest extends TestCase
         Http::fake([
             'https://btcpay.example.test/api/v1/stores/sub-store-123/invoices/inv-1' => Http::response([
                 'id' => 'inv-1',
+                'status' => 'Settled',
                 'currency' => 'EUR',
                 'amount' => 99,
             ]),

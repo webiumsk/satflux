@@ -6,6 +6,7 @@ use App\Enums\BusinessExpenseStatus;
 use App\Models\BusinessExpense;
 use App\Models\BusinessExpenseAttachment;
 use App\Models\Company;
+use App\Support\Invoicing\ExpenseAttachmentMime;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -266,7 +267,7 @@ class BusinessExpenseService
             'disk' => $disk,
             'path' => $path,
             'original_filename' => $file->getClientOriginalName(),
-            'mime' => $file->getMimeType(),
+            'mime' => ExpenseAttachmentMime::forFilename($filename),
             'size_bytes' => $file->getSize() ?: null,
         ]);
 

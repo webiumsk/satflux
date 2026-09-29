@@ -117,6 +117,70 @@ class StoreApiKeyTest extends TestCase
     }
 
     #[Test]
+    public function created_key_permissions_are_scoped_to_the_store(): void
+    {
+        $user = User::factory()->create(['btcpay_user_id' => 'btcpay-user-123']);
+        $store = Store::factory()->create(['user_id' => $user->id, 'btcpay_store_id' => 'btcpay-store-A']);
+        Store::factory()->create(['user_id' => $user->id, 'btcpay_store_id' => 'btcpay-store-B']);
+
+        $this->fakeBtcPayApiKeyCreation();
+
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/api-keys", [
+            'label' => 'Shop A',
+            'permissions' => ['btcpay.store.canviewinvoices', 'btcpay.store.cancreateinvoice'],
+        ])->assertStatus(201)
+            ->assertJsonPath('data.permissions', ['btcpay.store.canviewinvoices', 'btcpay.store.cancreateinvoice']);
+
+        // Greenfield ignores "specificStores"; scope lives in "policy:storeId".
+        Http::assertSent(fn ($request) => $request->method() === 'POST'
+            && str_contains((string) $request->url(), '/api-keys')
+            && $request->data()['permissions'] === [
+                'btcpay.store.canviewinvoices:btcpay-store-A',
+                'btcpay.store.cancreateinvoice:btcpay-store-A',
+            ]);
+    }
+
+    #[Test]
+    public function non_store_permissions_are_rejected(): void
+    {
+        $user = User::factory()->create(['btcpay_user_id' => 'btcpay-user-123']);
+        $store = Store::factory()->create(['user_id' => $user->id]);
+
+        $this->fakeBtcPayApiKeyCreation();
+
+        foreach (['unrestricted', 'btcpay.user.canmodifyprofile', 'btcpay.store.canviewinvoices:other-store'] as $permission) {
+            $this->actingAs($user)->postJson("/api/stores/{$store->id}/api-keys", [
+                'label' => 'Key',
+                'permissions' => [$permission],
+            ])->assertStatus(422)->assertJsonValidationErrors('permissions.0');
+        }
+
+        Http::assertNothingSent();
+    }
+
+    #[Test]
+    public function regenerating_a_key_with_legacy_permissions_keeps_the_old_key(): void
+    {
+        $user = User::factory()->create(['btcpay_user_id' => 'btcpay-user-123']);
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        $legacy = StoreApiKey::create([
+            'store_id' => $store->id,
+            'label' => 'Legacy',
+            'btcpay_api_key' => 'legacy-secret',
+            'permissions' => ['unrestricted'],
+            'is_active' => true,
+        ]);
+        $this->fakeBtcPayApiKeyCreation();
+
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/api-keys/{$legacy->id}/regenerate")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('permissions');
+
+        $this->assertTrue($legacy->fresh()->is_active);
+        Http::assertNothingSent();
+    }
+
+    #[Test]
     public function api_key_creation_validates_label_required(): void
     {
         $user = User::factory()->create(['btcpay_user_id' => 'btcpay-user-123']);

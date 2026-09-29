@@ -266,7 +266,6 @@ class EmailVerificationController extends Controller
                                 Log::warning('Failed to accept BTCPay invitation automatically - user may need to accept manually', [
                                     'user_id' => $user->id,
                                     'btcpay_user_id' => $btcpayUserId,
-                                    'invitation_url' => $btcpayUser['invitationUrl'],
                                 ]);
                             }
                         } else {

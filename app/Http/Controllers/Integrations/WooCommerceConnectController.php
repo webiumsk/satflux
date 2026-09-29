@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Integrations;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Store;
 use App\Models\StoreIntegration;
 use App\Services\SubscriptionEntitlementService;
@@ -54,21 +55,22 @@ class WooCommerceConnectController extends Controller
             return $this->redirectWithError($returnUrl, 'no_stores');
         }
 
-        if ($stores->count() === 1) {
-            return $this->redirectToReturnUrl($returnUrl, $stores->first(), $user, $returnSatfluxStoreId);
-        }
-
-        $storeId = $request->query('store_id');
-        if ($storeId) {
-            $store = $stores->firstWhere('id', $storeId);
-            if ($store) {
-                return $this->redirectToReturnUrl($returnUrl, $store, $user, $returnSatfluxStoreId);
-            }
-        }
+        // Always confirm: this GET is reachable from any link, and the redirect
+        // hands BTCPay credentials to return_url. Credentials are only released
+        // by the CSRF-protected POST (selectStore) after the user sees the host.
+        $storeIds = $stores->pluck('id')->map(fn ($id) => (string) $id);
+        $requestedStoreId = (string) $request->query('store_id', '');
+        $selectedStoreId = match (true) {
+            $storeIds->contains($requestedStoreId) => $requestedStoreId,
+            $storeIds->count() === 1 => $storeIds->first(),
+            default => null,
+        };
 
         return view('woocommerce.connect', [
             'stores' => $stores,
             'returnUrl' => $returnUrl,
+            'returnHost' => $parsed['host'] ?? '',
+            'selectedStoreId' => $selectedStoreId,
             'returnSatfluxStoreId' => $returnSatfluxStoreId,
         ]);
     }
@@ -160,6 +162,10 @@ class WooCommerceConnectController extends Controller
             'user_id' => $user->id,
             'store_id' => $store->id,
         ]);
+
+        AuditLog::log('store_integration.woocommerce_connected', 'store', $store->id, [
+            'return_host' => parse_url($returnUrl, PHP_URL_HOST),
+        ], $user->id);
 
         return redirect()->away($returnUrl.$separator.$queryString);
     }

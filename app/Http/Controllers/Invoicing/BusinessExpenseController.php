@@ -14,10 +14,13 @@ use App\Services\Invoicing\BusinessExpenseIsdocImportService;
 use App\Services\Invoicing\BusinessExpenseIsdocPackService;
 use App\Services\Invoicing\BusinessExpenseIsdocQuotaService;
 use App\Services\Invoicing\BusinessExpenseService;
+use App\Support\Invoicing\ExpenseAttachmentMime;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\Response;
 
 class BusinessExpenseController extends Controller
@@ -317,13 +320,10 @@ class BusinessExpenseController extends Controller
             abort(404);
         }
 
-        return response(
-            $disk->get($businessExpense->attachment_path),
-            200,
-            [
-                'Content-Type' => $businessExpense->attachment_mime ?? 'application/octet-stream',
-                'Content-Disposition' => 'inline; filename="'.addslashes($businessExpense->original_filename ?? 'attachment').'"',
-            ],
+        return $this->fileResponse(
+            (string) $disk->get($businessExpense->attachment_path),
+            $businessExpense->attachment_path,
+            $businessExpense->original_filename,
         );
     }
 
@@ -406,13 +406,34 @@ class BusinessExpenseController extends Controller
             abort(404);
         }
 
-        return response(
-            $disk->get($attachment->path),
-            200,
-            [
-                'Content-Type' => $attachment->mime ?? 'application/octet-stream',
-                'Content-Disposition' => 'inline; filename="'.addslashes($attachment->original_filename ?? 'attachment').'"',
-            ],
+        return $this->fileResponse(
+            (string) $disk->get($attachment->path),
+            $attachment->path,
+            $attachment->original_filename,
         );
+    }
+
+    /**
+     * Serve an uploaded file from our origin without letting it execute:
+     * the type comes from the stored extension (never the stored/sniffed
+     * mime), only passive formats render inline, and the sandbox CSP plus
+     * nosniff neutralise anything a browser might still try to render.
+     */
+    protected function fileResponse(string $contents, string $storedPath, ?string $originalFilename): Response
+    {
+        $mime = ExpenseAttachmentMime::forFilename($storedPath);
+        $filename = str_replace(['/', '\\'], '_', $originalFilename ?: 'attachment');
+        $fallback = preg_replace('/[^A-Za-z0-9._-]+/', '_', Str::ascii($filename)) ?: 'attachment';
+
+        return response($contents, 200, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => HeaderUtils::makeDisposition(
+                ExpenseAttachmentMime::isInline($mime) ? HeaderUtils::DISPOSITION_INLINE : HeaderUtils::DISPOSITION_ATTACHMENT,
+                $filename,
+                $fallback,
+            ),
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Security-Policy' => "sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'",
+        ]);
     }
 }

@@ -5,7 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property Carbon|null $awaiting_invoice_at
+ */
 class Subscription extends Model
 {
     use HasFactory;
@@ -34,6 +38,7 @@ class Subscription extends Model
         'grace_ends_at',
         'btcpay_subscription_id',
         'auto_renew',
+        'awaiting_invoice_at',
     ];
 
     /**
@@ -49,6 +54,7 @@ class Subscription extends Model
             'trial_ends_at' => 'datetime',
             'grace_ends_at' => 'datetime',
             'auto_renew' => 'boolean',
+            'awaiting_invoice_at' => 'datetime',
         ];
     }
 

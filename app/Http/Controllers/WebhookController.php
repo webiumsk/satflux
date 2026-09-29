@@ -17,7 +17,12 @@ class WebhookController extends Controller
      */
     public function handle(Request $request)
     {
-        $payload = $request->all();
+        // Only the raw body is signed: $request->all() would merge in
+        // query-string keys that the signature does not cover.
+        $payload = json_decode($request->getContent(), true);
+        if (! is_array($payload)) {
+            return response()->json(['error' => 'Invalid payload'], 400);
+        }
         $storeId = $payload['storeId'] ?? null;
 
         $store = $storeId

@@ -70,7 +70,7 @@ class StoreProvisioningService
             // Preflight: a duplicate Aqua descriptor must fail BEFORE the BTCPay
             // store exists, otherwise the rollback leaves an orphaned BTCPay store.
             if ($walletType !== null && $walletType !== 'cashu' && ! empty($data['connection_string'])) {
-                $this->assertDescriptorAvailable($walletType, $data['connection_string']);
+                $this->assertDescriptorAvailable($walletType, $data['connection_string'], $user);
             }
 
             $btcpayStore = $this->createBtcPayStore($data, $preferredExchange);
@@ -130,13 +130,13 @@ class StoreProvisioningService
     /**
      * @throws ValidationException when an Aqua descriptor is already in use
      */
-    protected function assertDescriptorAvailable(string $walletType, string $connectionString): void
+    protected function assertDescriptorAvailable(string $walletType, string $connectionString, User $user): void
     {
         if (in_array($walletType, ['blink', 'blitz', 'flash', 'lnaddress'], true)) {
             return; // Blink tokens and Lightning addresses are not unique per store
         }
 
-        $duplicateCheck = $this->walletConnectionService->checkDescriptorDuplicate($connectionString, null);
+        $duplicateCheck = $this->walletConnectionService->checkDescriptorDuplicate($connectionString, null, $user);
         if ($duplicateCheck['exists']) {
             Log::warning('Aqua descriptor already in use - aborting store creation before BTCPay call', [
                 'existing_store_id' => $duplicateCheck['existing_store_id'],
@@ -352,7 +352,8 @@ class StoreProvisioningService
             if ($connectionType === 'aqua_descriptor') {
                 $duplicateCheck = $this->walletConnectionService->checkDescriptorDuplicate(
                     $data['connection_string'],
-                    $store->id
+                    $store->id,
+                    $user,
                 );
                 if ($duplicateCheck['exists']) {
                     Log::warning('Aqua descriptor already in use during store creation', [

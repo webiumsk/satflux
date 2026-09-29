@@ -118,7 +118,9 @@ Route::middleware(['auth', RequireVerifiedEmail::class, EnsurePlanAllowsBusiness
     ->middleware(EnsureCompanyOwnership::class);
 
 // Marketing landing Pay Button (BTCPay store resolved server-side; no store ID in frontend markup)
-Route::post('/landing/pay-button', [LandingPayButtonController::class, 'store']);
+// Creates a real BTCPay invoice per request - keep anonymous callers slow.
+Route::post('/landing/pay-button', [LandingPayButtonController::class, 'store'])
+    ->middleware('throttle:5,1');
 
 // Inertia routes: store apps (must be before SPA catch-all)
 Route::middleware(['auth'])->group(function () {

@@ -63,14 +63,14 @@ class SubscriptionEntitlementService
      *                                year - the existing row is returned as-is
      *                                (trial->paid conversion still applies).
      */
-    public function activateSubscription(User $user, string $planName, ?string $btcpaySubscriptionId = null, bool $extendExisting = true): Subscription
+    public function activateSubscription(User $user, string $planName, ?string $btcpaySubscriptionId = null, bool $extendExisting = true, bool $awaitingInvoice = false): Subscription
     {
         $plan = SubscriptionPlan::where('code', $planName)->orWhere('name', $planName)->first();
         if (! $plan) {
             throw new \Exception("Subscription plan '{$planName}' not found.");
         }
 
-        return DB::transaction(function () use ($user, $plan, $planName, $btcpaySubscriptionId, $extendExisting) {
+        return DB::transaction(function () use ($user, $plan, $planName, $btcpaySubscriptionId, $extendExisting, $awaitingInvoice) {
             $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
             if (! $lockedUser) {
                 throw new \Exception('User not found.');
@@ -104,6 +104,12 @@ class SubscriptionEntitlementService
             if ($existingSubscription) {
                 if ($existingSubscription->isTrial()) {
                     $existingSubscription->convertToPaidYear();
+                    // A payment signal paid for this year: its invoice must
+                    // claim the converted row, not extend it a second time.
+                    if ($awaitingInvoice) {
+                        $existingSubscription->awaiting_invoice_at = now();
+                        $existingSubscription->save();
+                    }
                 } elseif ($extendExisting) {
                     $existingSubscription->extendOneYear();
                 }
@@ -135,6 +141,7 @@ class SubscriptionEntitlementService
                 'expires_at' => $expiresAt,
                 'grace_ends_at' => $graceEndsAt,
                 'btcpay_subscription_id' => $btcpaySubscriptionId,
+                'awaiting_invoice_at' => $awaitingInvoice ? now() : null,
             ]);
 
             Log::info('Created new paid subscription', [
@@ -145,6 +152,120 @@ class SubscriptionEntitlementService
 
             return $subscription;
         });
+    }
+
+    /**
+     * Payment-driven activation: grant paid time for a settled BTCPay invoice
+     * exactly once, whichever path (success redirect, webhook, manual command)
+     * sees it first. Repeats return the current subscription unchanged.
+     *
+     * A subscription created after the invoice itself (e.g. by a PlanStarted
+     * webhook that raced ahead) is claimed by the invoice instead of extended,
+     * so the first payment never yields two years.
+     *
+     * @throws \RuntimeException when the invoice was already applied to another user
+     */
+    public function activateSubscriptionForInvoice(
+        User $user,
+        string $planName,
+        string $btcpayInvoiceId,
+        ?string $btcpaySubscriptionId = null,
+        ?\DateTimeInterface $invoiceCreatedAt = null,
+    ): Subscription {
+        return DB::transaction(function () use ($user, $planName, $btcpayInvoiceId, $btcpaySubscriptionId, $invoiceCreatedAt) {
+            // Serialize payment-driven activations per user, so the claim-vs-extend
+            // decision below and the activation see the same subscription state.
+            User::whereKey($user->id)->lockForUpdate()->first();
+
+            $inserted = DB::table('subscription_invoice_applications')->insertOrIgnore([
+                'btcpay_invoice_id' => $btcpayInvoiceId,
+                'user_id' => $user->id,
+                'plan' => $planName,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            if ($inserted === 0) {
+                $application = DB::table('subscription_invoice_applications')
+                    ->where('btcpay_invoice_id', $btcpayInvoiceId)
+                    ->first(['user_id', 'plan', 'subscription_id']);
+
+                if ((int) $application->user_id !== (int) $user->id) {
+                    Log::warning('Subscription invoice already applied to another user', [
+                        'btcpay_invoice_id' => $btcpayInvoiceId,
+                        'user_id' => $user->id,
+                        'applied_to_user_id' => $application->user_id,
+                    ]);
+
+                    throw new \RuntimeException('Subscription invoice already applied to another account.');
+                }
+
+                // One payment, one entitlement: a replay can never switch plans.
+                if ($application->plan !== $planName) {
+                    Log::warning('Subscription invoice already applied to a different plan', [
+                        'btcpay_invoice_id' => $btcpayInvoiceId,
+                        'user_id' => $user->id,
+                        'applied_plan' => $application->plan,
+                        'requested_plan' => $planName,
+                    ]);
+
+                    throw new \RuntimeException('Subscription invoice already applied to a different plan.');
+                }
+
+                $recorded = $application->subscription_id
+                    ? Subscription::find($application->subscription_id)
+                    : null;
+
+                return $recorded ?? $this->activateSubscription($user, $planName, $btcpaySubscriptionId, extendExisting: false);
+            }
+
+            $claimsExisting = $this->hasSubscriptionCreatedForInvoice($user, $planName, $invoiceCreatedAt);
+            $subscription = $this->activateSubscription($user, $planName, $btcpaySubscriptionId, extendExisting: ! $claimsExisting);
+            if ($subscription->awaiting_invoice_at !== null) {
+                $subscription->update(['awaiting_invoice_at' => null]);
+            }
+
+            DB::table('subscription_invoice_applications')
+                ->where('btcpay_invoice_id', $btcpayInvoiceId)
+                ->update(['subscription_id' => $subscription->id]);
+
+            return $subscription;
+        });
+    }
+
+    /**
+     * True when a payment signal created or converted the user's current paid
+     * subscription after the invoice was created (awaiting_invoice_at) and no
+     * invoice has been applied to it yet - i.e. it exists because of this payment.
+     */
+    protected function hasSubscriptionCreatedForInvoice(User $user, string $planName, ?\DateTimeInterface $invoiceCreatedAt): bool
+    {
+        if ($invoiceCreatedAt === null) {
+            return false;
+        }
+
+        $plan = SubscriptionPlan::where('code', $planName)->orWhere('name', $planName)->first();
+        if (! $plan) {
+            return false;
+        }
+
+        $existing = Subscription::where('user_id', $user->id)
+            ->where('plan_id', $plan->id)
+            ->whereIn('status', ['active', 'grace'])
+            ->orderBy('expires_at', 'desc')
+            ->first();
+
+        // Only a row a payment signal created or converted from a trial while
+        // waiting for this invoice (PlanStarted / reconcile) may be claimed;
+        // anything else (e.g. an admin grant) is extended by the payment.
+        if (! $existing || $existing->isTrial() || $existing->awaiting_invoice_at === null) {
+            return false;
+        }
+
+        return $existing->awaiting_invoice_at->greaterThanOrEqualTo($invoiceCreatedAt)
+            && ! DB::table('subscription_invoice_applications')
+                ->where('subscription_id', $existing->id)
+                ->exists();
     }
 
     /**

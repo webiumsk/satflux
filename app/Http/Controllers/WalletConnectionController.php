@@ -326,16 +326,15 @@ class WalletConnectionController extends Controller
 
         $result = $this->service->checkDescriptorDuplicate(
             $request->descriptor,
-            $storeId ?? 'new' // Use 'new' as placeholder for non-existent stores
+            $storeId ?? 'new', // Use 'new' as placeholder for non-existent stores
+            $request->user(),
         );
 
         return response()->json([
             'duplicate' => $result['exists'],
             'existing_store_id' => $result['existing_store_id'],
             'existing_store_name' => $result['existing_store_name'],
-            'message' => $result['exists']
-                ? "This descriptor is already in use by store: {$result['existing_store_name']}. BTCPay allows each descriptor to be used only once. Please use a different wallet/descriptor."
-                : null,
+            'message' => $result['exists'] ? $this->duplicateDescriptorMessage($result['existing_store_name']) : null,
         ]);
     }
 
@@ -361,16 +360,15 @@ class WalletConnectionController extends Controller
         // For new stores, check against all existing stores
         $result = $this->service->checkDescriptorDuplicate(
             $request->descriptor,
-            null // No current store ID for new stores
+            null, // No current store ID for new stores
+            $request->user(),
         );
 
         return response()->json([
             'duplicate' => $result['exists'],
             'existing_store_id' => $result['existing_store_id'],
             'existing_store_name' => $result['existing_store_name'],
-            'message' => $result['exists']
-                ? "This descriptor is already in use by store: {$result['existing_store_name']}. BTCPay allows each descriptor to be used only once. Please use a different wallet/descriptor."
-                : null,
+            'message' => $result['exists'] ? $this->duplicateDescriptorMessage($result['existing_store_name']) : null,
         ]);
     }
 
@@ -815,5 +813,14 @@ class WalletConnectionController extends Controller
         );
 
         return response()->json($result);
+    }
+
+    private function duplicateDescriptorMessage(?string $existingStoreName): string
+    {
+        $where = $existingStoreName !== null
+            ? "by your store: {$existingStoreName}"
+            : 'by another store';
+
+        return "This descriptor is already in use {$where}. BTCPay allows each descriptor to be used only once. Please use a different wallet/descriptor.";
     }
 }

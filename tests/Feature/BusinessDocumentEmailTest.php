@@ -145,4 +145,22 @@ class BusinessDocumentEmailTest extends TestCase
             'target_id' => $this->document->id,
         ]);
     }
+
+    #[Test]
+    public function document_email_rejects_more_than_ten_bcc_recipients(): void
+    {
+        $bcc = array_map(fn (int $i) => "r{$i}@example.com", range(1, 11));
+
+        $this->actingAs($this->proUser)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$this->document->id}/send-email", [
+                'to' => ['billing@client.com'],
+                'bcc' => $bcc,
+                'subject' => 'S',
+                'body' => 'B',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('bcc');
+
+        Mail::assertNothingSent();
+    }
 }

@@ -405,7 +405,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware('throttle:3,60');
             Route::post('/ephemeral/pdf', [EphemeralBusinessDocumentController::class, 'pdfWithoutCompany']);
             Route::post('/ephemeral/email-preview', [EphemeralBusinessDocumentController::class, 'emailPreviewWithoutCompany']);
-            Route::post('/ephemeral/send-email', [EphemeralBusinessDocumentController::class, 'sendEmailWithoutCompany']);
+            Route::post('/ephemeral/send-email', [EphemeralBusinessDocumentController::class, 'sendEmailWithoutCompany'])
+                ->middleware('throttle:document-email');
             Route::post('/ephemeral/email-settings/test-smtp', [EphemeralBusinessDocumentController::class, 'testEmailSettingsSmtpWithoutCompany']);
             Route::post('/ephemeral/isdoc', [EphemeralBusinessDocumentController::class, 'isdocWithoutCompany']);
             Route::post('/ephemeral/ubl', [EphemeralBusinessDocumentController::class, 'ublWithoutCompany']);
@@ -616,7 +617,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/companies/{company}/documents/ephemeral/email-preview', [EphemeralBusinessDocumentController::class, 'emailPreview'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/documents/ephemeral/send-email', [EphemeralBusinessDocumentController::class, 'sendEmail'])
-                ->middleware(EnsureCompanyOwnership::class);
+                ->middleware([EnsureCompanyOwnership::class, 'throttle:document-email']);
             Route::post('/companies/{company}/documents/ephemeral/isdoc', [EphemeralBusinessDocumentController::class, 'isdoc'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/documents/ephemeral/ubl', [EphemeralBusinessDocumentController::class, 'ubl'])
@@ -678,7 +679,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::get('/companies/{company}/documents/{businessDocument}/email-preview', [BusinessDocumentController::class, 'emailPreview'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/documents/{businessDocument}/send-email', [BusinessDocumentController::class, 'sendEmail'])
-                ->middleware(EnsureCompanyOwnership::class);
+                ->middleware([EnsureCompanyOwnership::class, 'throttle:document-email']);
             Route::get('/companies/{company}/documents/{businessDocument}/history', [BusinessDocumentController::class, 'history'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/documents/{businessDocument}/create-final-invoice', [BusinessDocumentController::class, 'createFinalInvoice'])
@@ -767,8 +768,9 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
             Route::get('/companies/{company}/wise/status', [WiseBankController::class, 'status'])
                 ->middleware(EnsureCompanyOwnership::class);
+            // Credentials stay with the owner (docs/COMPANY_SHARING.md).
             Route::post('/companies/{company}/wise/connect', [WiseBankController::class, 'connect'])
-                ->middleware(EnsureCompanyOwnership::class);
+                ->middleware([EnsureCompanyOwnership::class, EnsureCompanyRole::class.':owner']);
             Route::post('/companies/{company}/wise/sync', [WiseBankController::class, 'sync'])
                 ->middleware(EnsureCompanyOwnership::class);
         });
@@ -1133,12 +1135,17 @@ Route::get('/documentation/{slug}', [DocumentationController::class, 'show']);
 // FAQ (public - no auth required)
 Route::get('/faq', [FaqController::class, 'index']);
 Route::get('/faq/{slug}', [FaqController::class, 'show']);
-Route::post('/faq/{slug}/helpful', [FaqController::class, 'markHelpful']);
+Route::post('/faq/{slug}/helpful', [FaqController::class, 'markHelpful'])
+    ->middleware('throttle:10,1');
 
 // Public Ticket Check-In (no auth required - URL acts as the secret)
 Route::middleware(['throttle:30,1'])->prefix('public/ticket-checkin')->group(function () {
-    Route::get('/{store}/events/{eventId}', [TicketController::class, 'publicEventInfo']);
-    Route::post('/{store}/events/{eventId}/tickets/{ticketNumber}/check-in', [TicketController::class, 'publicCheckIn']);
+    // IDs are interpolated into BTCPay paths under the owner's key: allow
+    // only plain identifier characters (no "/", "..", "?" or "%").
+    Route::get('/{store}/events/{eventId}', [TicketController::class, 'publicEventInfo'])
+        ->where('eventId', '[A-Za-z0-9_-]+');
+    Route::post('/{store}/events/{eventId}/tickets/{ticketNumber}/check-in', [TicketController::class, 'publicCheckIn'])
+        ->where(['eventId' => '[A-Za-z0-9_-]+', 'ticketNumber' => '[A-Za-z0-9_-]+']);
 });
 
 // Documentation is authored as repo Markdown (docs/user), so there is no

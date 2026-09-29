@@ -12,6 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 class StoreEmailRuleTest extends TestCase
@@ -197,5 +198,179 @@ class StoreEmailRuleTest extends TestCase
         app(StoreEmailRuleDispatcher::class)->dispatchForWebhook($e2, $store);
 
         Mail::assertSent(StoreInvoiceEmail::class, 1);
+    }
+
+    public function test_rule_rejects_more_than_ten_recipients_per_field(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        $many = implode(',', array_map(fn (int $i) => "r{$i}@example.com", range(1, 11)));
+
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/email-rules", [
+            'trigger' => 'InvoiceSettled',
+            'to_addresses' => 'merchant@example.com',
+            'bcc_addresses' => $many,
+            'subject' => 'S',
+            'body' => 'B',
+        ])->assertStatus(422)->assertJsonValidationErrors('bcc_addresses');
+    }
+
+    public function test_buyer_controlled_values_are_escaped_and_cannot_fan_out(): void
+    {
+        Mail::fake();
+        Cache::flush();
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create(['user_id' => $user->id, 'btcpay_store_id' => 'btcpay-store-x']);
+
+        StoreEmailRule::query()->create([
+            'store_id' => $store->id,
+            'trigger' => 'InvoiceSettled',
+            'to_addresses' => 'notify@example.com',
+            'cc_addresses' => '{Invoice.Metadata.ccList}',
+            'send_to_buyer' => false,
+            'subject' => 'Order {Invoice.OrderId}',
+            'body' => '<p>Order {Invoice.OrderId}</p>',
+            'sort_order' => 0,
+        ]);
+        StoreEmailRule::query()->create([
+            'store_id' => $store->id,
+            'trigger' => 'InvoiceSettled',
+            'to_addresses' => 'notify@example.com',
+            'send_to_buyer' => false,
+            'subject' => 'Plain',
+            'body' => '<p>Order {Invoice.OrderId}</p>',
+            'sort_order' => 1,
+        ]);
+
+        $fanOut = implode(',', array_map(fn (int $i) => "victim{$i}@example.com", range(1, 50)));
+        Http::fake([
+            'https://btcpay.test/api/v1/stores/btcpay-store-x/invoices/inv-abc' => Http::response([
+                'id' => 'inv-abc',
+                'orderId' => "<a href=\"https://phish.example\">Claim</a>\r\nBcc: x@evil.example",
+                'status' => 'Settled',
+                'metadata' => ['ccList' => $fanOut],
+            ], 200),
+        ]);
+
+        $webhookEvent = WebhookEvent::create([
+            'store_id' => $store->id,
+            'event_type' => 'InvoiceSettled',
+            'payload' => ['type' => 'InvoiceSettled', 'storeId' => 'btcpay-store-x', 'invoiceId' => 'inv-abc', 'deliveryId' => 'del-9'],
+            'verified' => true,
+        ]);
+
+        app(StoreEmailRuleDispatcher::class)->dispatchForWebhook($webhookEvent, $store);
+
+        // The fan-out rule is skipped entirely; the plain rule is sent escaped.
+        Mail::assertSent(StoreInvoiceEmail::class, 1);
+        Mail::assertSent(StoreInvoiceEmail::class, function (StoreInvoiceEmail $mail) {
+            return $mail->subjectLine === 'Plain'
+                && ! str_contains($mail->htmlBody, '<a href')
+                && str_contains($mail->htmlBody, '&lt;a href');
+        });
+    }
+
+    public function test_rule_rejects_more_than_ten_recipients_in_total(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        $list = fn (string $prefix, int $n) => implode(',', array_map(fn (int $i) => "{$prefix}{$i}@example.com", range(1, $n)));
+        $payload = [
+            'trigger' => 'InvoiceSettled',
+            'to_addresses' => $list('to', 5),
+            'cc_addresses' => $list('cc', 5),
+            'send_to_buyer' => true,
+            'subject' => 'S',
+            'body' => 'B',
+        ];
+
+        // 5 + 5 + buyer = 11: the dispatcher would skip every send, so reject upfront.
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/email-rules", $payload)
+            ->assertStatus(422)->assertJsonValidationErrors('to_addresses');
+
+        $rule = $this->actingAs($user)->postJson("/api/stores/{$store->id}/email-rules", [
+            ...$payload,
+            'send_to_buyer' => false,
+        ])->assertCreated()->json('data.id');
+
+        $this->actingAs($user)->putJson("/api/stores/{$store->id}/email-rules/{$rule}", [
+            ...$payload,
+            'bcc_addresses' => 'extra@example.com',
+            'send_to_buyer' => false,
+        ])->assertStatus(422)->assertJsonValidationErrors('to_addresses');
+    }
+
+    public function test_case_variant_recipients_count_once_in_validation_and_dispatch(): void
+    {
+        Mail::fake();
+        Cache::flush();
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create(['user_id' => $user->id, 'btcpay_store_id' => 'btcpay-store-x']);
+        $addresses = array_map(fn (int $i) => "team{$i}@example.com", range(1, 6));
+
+        // 6 addresses, repeated in cc with different case: 6 recipients, not 12.
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/email-rules", [
+            'trigger' => 'InvoiceSettled',
+            'to_addresses' => implode(',', $addresses),
+            'cc_addresses' => strtoupper(implode(', ', $addresses)),
+            'subject' => 'Paid',
+            'body' => '<p>Paid</p>',
+        ])->assertCreated();
+
+        Http::fake([
+            'https://btcpay.test/api/v1/stores/btcpay-store-x/invoices/inv-case' => Http::response([
+                'id' => 'inv-case',
+                'status' => 'Settled',
+            ], 200),
+        ]);
+        $webhookEvent = WebhookEvent::create([
+            'store_id' => $store->id,
+            'event_type' => 'InvoiceSettled',
+            'payload' => ['type' => 'InvoiceSettled', 'storeId' => 'btcpay-store-x', 'invoiceId' => 'inv-case', 'deliveryId' => 'del-case'],
+            'verified' => true,
+        ]);
+
+        app(StoreEmailRuleDispatcher::class)->dispatchForWebhook($webhookEvent, $store);
+
+        Mail::assertSent(StoreInvoiceEmail::class, 1);
+    }
+
+    public function test_hourly_store_limit_blocks_further_rule_emails(): void
+    {
+        Mail::fake();
+        Cache::flush();
+        config(['services.btcpay.base_url' => 'https://btcpay.test']);
+
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create(['user_id' => $user->id, 'btcpay_store_id' => 'btcpay-store-x']);
+        StoreEmailRule::query()->create([
+            'store_id' => $store->id,
+            'trigger' => 'InvoiceSettled',
+            'to_addresses' => 'notify@example.com',
+            'send_to_buyer' => false,
+            'subject' => 'Paid',
+            'body' => '<p>Paid</p>',
+            'sort_order' => 0,
+        ]);
+        for ($i = 0; $i < StoreEmailRuleDispatcher::HOURLY_SEND_LIMIT; $i++) {
+            RateLimiter::hit('store-email-rules:'.$store->id, 3600);
+        }
+        Http::fake([
+            'https://btcpay.test/api/v1/stores/btcpay-store-x/invoices/inv-limit' => Http::response(['id' => 'inv-limit', 'status' => 'Settled'], 200),
+        ]);
+        $webhookEvent = WebhookEvent::create([
+            'store_id' => $store->id,
+            'event_type' => 'InvoiceSettled',
+            'payload' => ['type' => 'InvoiceSettled', 'storeId' => 'btcpay-store-x', 'invoiceId' => 'inv-limit', 'deliveryId' => 'del-limit'],
+            'verified' => true,
+        ]);
+
+        app(StoreEmailRuleDispatcher::class)->dispatchForWebhook($webhookEvent, $store);
+
+        Mail::assertNothingSent();
     }
 }

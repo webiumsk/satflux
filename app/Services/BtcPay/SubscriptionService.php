@@ -826,6 +826,10 @@ class SubscriptionService
     /**
      * Resolve the settled BTCPay invoice for a completed plan checkout (success redirect fallback).
      *
+     * Only invoices tied to this checkout count: the checkout's own invoice id,
+     * or an invoice whose searchable data carries the checkout id. Searching by
+     * subscriber email would match any earlier settled invoice of that buyer.
+     *
      * @param  array<string, mixed>  $checkoutDetails
      * @return array{id: string, payload: array<string, mixed>}|null
      */
@@ -833,34 +837,27 @@ class SubscriptionService
         string $storeId,
         array $checkoutDetails,
         string $checkoutPlanId,
-        ?string $customerEmail,
     ): ?array {
         $invoiceId = $checkoutDetails['invoiceId']
             ?? ($checkoutDetails['invoice']['id'] ?? null)
             ?? ($checkoutDetails['payment']['invoiceId'] ?? null);
 
-        $invoiceService = app(InvoiceService::class);
-
         if (! $invoiceId) {
-            foreach (array_filter([$checkoutPlanId, $customerEmail]) as $search) {
-                try {
-                    $result = $invoiceService->listInvoices($storeId, [
-                        'textSearch' => $search,
-                        'status' => 'Settled',
-                    ], 0, 1);
+            try {
+                $result = app(InvoiceService::class)->listInvoices($storeId, [
+                    'textSearch' => $checkoutPlanId,
+                    'status' => 'Settled',
+                ], 0, 1);
 
-                    $list = $result['data'] ?? $result;
-                    if (is_array($list) && isset($list[0]['id'])) {
-                        $invoiceId = $list[0]['id'];
-                        break;
-                    }
-                } catch (BtcPayException $e) {
-                    Log::debug('Subscription checkout invoice lookup failed', [
-                        'checkout_id' => $checkoutPlanId,
-                        'search' => $search,
-                        'error' => $e->getMessage(),
-                    ]);
+                $list = $result['data'] ?? $result;
+                if (is_array($list) && isset($list[0]['id'])) {
+                    $invoiceId = $list[0]['id'];
                 }
+            } catch (BtcPayException $e) {
+                Log::debug('Subscription checkout invoice lookup failed', [
+                    'checkout_id' => $checkoutPlanId,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -868,11 +865,30 @@ class SubscriptionService
             return null;
         }
 
+        $payload = $this->fetchSettledInvoice($storeId, (string) $invoiceId);
+
+        return $payload === null ? null : [
+            'id' => (string) $invoiceId,
+            'payload' => $payload,
+        ];
+    }
+
+    /**
+     * Fetch an invoice bypassing the cache and return it only when BTCPay
+     * reports it Settled. Payment events alone (InvoiceReceivedPayment,
+     * partial or unconfirmed payments) must never grant anything.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function fetchSettledInvoice(string $storeId, string $invoiceId): ?array
+    {
+        $invoiceService = app(InvoiceService::class);
+        $invoiceService->forgetInvoiceCache($storeId, $invoiceId);
+
         try {
             $payload = $invoiceService->getInvoice($storeId, $invoiceId);
         } catch (BtcPayException $e) {
-            Log::warning('Subscription checkout invoice fetch failed', [
-                'checkout_id' => $checkoutPlanId,
+            Log::error('Subscription store invoice fetch failed', [
                 'invoice_id' => $invoiceId,
                 'error' => $e->getMessage(),
             ]);
@@ -882,8 +898,7 @@ class SubscriptionService
 
         $status = (string) ($payload['status'] ?? '');
         if (strcasecmp($status, 'Settled') !== 0) {
-            Log::info('Subscription checkout invoice is not settled', [
-                'checkout_id' => $checkoutPlanId,
+            Log::info('Subscription store invoice is not settled', [
                 'invoice_id' => $invoiceId,
                 'status' => $status,
             ]);
@@ -891,10 +906,17 @@ class SubscriptionService
             return null;
         }
 
-        return [
-            'id' => $invoiceId,
-            'payload' => $payload,
-        ];
+        return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $invoice
+     */
+    public function invoiceCreatedAt(array $invoice): ?Carbon
+    {
+        $timestamp = $this->normalizeUnixTimestamp($invoice['createdTime'] ?? null);
+
+        return $timestamp === null ? null : Carbon::createFromTimestamp($timestamp);
     }
 
     /**

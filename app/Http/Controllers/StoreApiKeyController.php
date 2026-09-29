@@ -7,6 +7,8 @@ use App\Models\StoreApiKey;
 use App\Services\BtcPay\StoreApiKeyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class StoreApiKeyController extends Controller
 {
@@ -69,7 +71,7 @@ class StoreApiKeyController extends Controller
         $validated = $request->validate([
             'label' => ['required', 'string', 'max:255'],
             'permissions' => ['sometimes', 'array'],
-            'permissions.*' => ['string'],
+            'permissions.*' => ['string', Rule::in(StoreApiKeyService::ALLOWED_PERMISSIONS)],
             'callback_url' => ['nullable', 'url', 'max:500'],
         ]);
 
@@ -175,7 +177,7 @@ class StoreApiKeyController extends Controller
 
         $validated = $request->validate([
             'permissions' => ['sometimes', 'array'],
-            'permissions.*' => ['string'],
+            'permissions.*' => ['string', Rule::in(StoreApiKeyService::ALLOWED_PERMISSIONS)],
             'label' => ['nullable', 'string', 'max:255'],
             'callback_url' => ['nullable', 'url', 'max:500'],
         ]);
@@ -209,6 +211,8 @@ class StoreApiKeyController extends Controller
                 ],
                 'message' => 'API key regenerated successfully',
             ]);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Failed to regenerate store API key', [
                 'store_id' => $store->id,
@@ -230,7 +234,7 @@ class StoreApiKeyController extends Controller
     {
         $validated = $request->validate([
             'permissions' => ['sometimes', 'array'],
-            'permissions.*' => ['string'],
+            'permissions.*' => ['string', Rule::in(StoreApiKeyService::ALLOWED_PERMISSIONS)],
             'label' => ['nullable', 'string', 'max:255'],
             'expiration_minutes' => ['nullable', 'integer', 'min:1', 'max:1440'], // Max 24 hours
         ]);

@@ -7,9 +7,23 @@ use App\Models\StoreApiKey;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class StoreApiKeyService
 {
+    /**
+     * Store-level policies a panel API key may carry (the set the UI offers).
+     * User, server and "unrestricted" policies are never allowed.
+     */
+    public const ALLOWED_PERMISSIONS = [
+        'btcpay.store.canviewinvoices',
+        'btcpay.store.cancreateinvoice',
+        'btcpay.store.canmodifyinvoices',
+        'btcpay.store.webhooks.canmodifywebhooks',
+        'btcpay.store.canviewstoresettings',
+        'btcpay.store.canmodifystoresettings',
+    ];
+
     protected UserService $userService;
 
     protected BtcPayClient $client;
@@ -50,13 +64,21 @@ class StoreApiKeyService
             'btcpay.store.canmodifystoresettings',
         ];
 
-        $finalPermissions = ! empty($permissions) ? $permissions : $defaultPermissions;
+        $finalPermissions = array_values(array_unique(! empty($permissions) ? $permissions : $defaultPermissions));
+        $this->assertAllowedPermissions($finalPermissions);
 
-        // Create API key in BTCPay
+        // Greenfield has no "specificStores" for admin-created keys: a store
+        // is scoped only by the "policy:storeId" suffix. Without it the key
+        // works on every store the BTCPay user owns.
+        $scopedPermissions = array_map(
+            fn (string $permission) => $permission.':'.$store->btcpay_store_id,
+            $finalPermissions,
+        );
+
         $btcpayApiKeyData = $this->userService->createApiKey(
             $user->btcpay_user_id,
-            $finalPermissions,
-            [$store->btcpay_store_id], // specificStores
+            $scopedPermissions,
+            [],
             $label
         );
 
@@ -186,19 +208,36 @@ class StoreApiKeyService
     {
         $oldApiKey = $apiKey instanceof StoreApiKey ? $apiKey : StoreApiKey::findOrFail($apiKey);
 
-        // Deactivate old key
-        $oldApiKey->update(['is_active' => false]);
+        // Same or new permissions. Keys saved before the allowlist may carry
+        // policies that are no longer allowed: fail before touching the old key.
+        $newPermissions = ! empty($permissions) ? $permissions : (array) $oldApiKey->permissions;
+        $this->assertAllowedPermissions($newPermissions);
 
-        // Create new key with same or new permissions
-        $newPermissions = ! empty($permissions) ? $permissions : $oldApiKey->permissions;
-        $newLabel = $label ?? $oldApiKey->label;
-        $newCallbackUrl = $callbackUrl ?? $oldApiKey->callback_url;
-
-        return $this->generateApiKey(
+        $newApiKey = $this->generateApiKey(
             $oldApiKey->store_id,
             $newPermissions,
-            $newLabel,
-            $newCallbackUrl
+            $label ?? $oldApiKey->label,
+            $callbackUrl ?? $oldApiKey->callback_url
         );
+
+        // Only retire the old key once its replacement exists.
+        $oldApiKey->update(['is_active' => false]);
+
+        return $newApiKey;
+    }
+
+    /**
+     * @param  array<int, mixed>  $permissions
+     *
+     * @throws ValidationException
+     */
+    protected function assertAllowedPermissions(array $permissions): void
+    {
+        $disallowed = array_diff($permissions, self::ALLOWED_PERMISSIONS);
+        if ($disallowed !== []) {
+            throw ValidationException::withMessages([
+                'permissions' => ['Unsupported API key permission: '.implode(', ', $disallowed)],
+            ]);
+        }
     }
 }

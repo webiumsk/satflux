@@ -485,31 +485,61 @@ class BtcPayClient
 
     /**
      * Sanitize data to remove secrets before logging.
+     *
+     * Keys are matched exactly (approval codes, invitation URLs, wallet
+     * derivations) or by substring (anything *password*, *secret*, *token*,
+     * *macaroon*, ...). String values are additionally scrubbed of inline
+     * credentials such as "macaroon=..." / "token=..." in connection strings,
+     * extended public keys (which reveal the whole wallet history) and
+     * extended private keys.
      */
     protected function sanitizeData(array $data): array
     {
         $sanitized = $data;
-        $secretKeys = array_map('strtolower', [
-            'apiKey',
-            'api_key',
+        $exactKeys = array_map('strtolower', [
             'approvalCode',
             'approval_code',
             'invitationUrl',
             'invitation_url',
-            'secret',
-            'password',
-            'token',
-            'webhookSecret',
+            'accountDerivation',
+            'derivationScheme',
+            'derivation_scheme',
+            // Core Lightning rune (exact: a "rune" fragment would also hit e.g. "prune")
+            'rune',
         ]);
+        $keyFragments = ['password', 'secret', 'token', 'apikey', 'api_key', 'macaroon', 'mnemonic', 'privatekey', 'connectionstring'];
 
         foreach ($sanitized as $key => $value) {
-            if (in_array(strtolower((string) $key), $secretKeys, true)) {
+            $normalizedKey = strtolower((string) $key);
+            $isSecretKey = in_array($normalizedKey, $exactKeys, true)
+                || array_filter($keyFragments, fn (string $fragment) => str_contains($normalizedKey, $fragment)) !== [];
+
+            if ($isSecretKey) {
                 $sanitized[$key] = '***REDACTED***';
             } elseif (is_array($value)) {
                 $sanitized[$key] = $this->sanitizeData($value);
+            } elseif (is_string($value)) {
+                $sanitized[$key] = self::redactInlineSecrets($value);
             }
         }
 
         return $sanitized;
+    }
+
+    /**
+     * Scrub credentials embedded in free-form strings (connection strings,
+     * error messages echoing a request body).
+     */
+    public static function redactInlineSecrets(string $value): string
+    {
+        return preg_replace(
+            [
+                '/\b(macaroon|api[-_]?key|access[-_]?key|password|secret|rune|token)=([^;\s"\']+)/i',
+                // Extended public (history) and private (spending) keys
+                '/\b[xyztuv](?:pub|prv)[1-9A-HJ-NP-Za-km-z]{20,}/',
+            ],
+            ['$1=***REDACTED***', '***REDACTED***'],
+            $value
+        ) ?? $value;
     }
 }

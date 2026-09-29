@@ -271,12 +271,6 @@ parameters:
 			path: app/Http/Controllers/FaqController.php
 
 		-
-			message: '#^Parameter \#2 \$store of method App\\Http\\Controllers\\Integrations\\WooCommerceConnectController\:\:redirectToReturnUrl\(\) expects App\\Models\\Store, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/Integrations/WooCommerceConnectController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$company\.$#'
 			identifier: property.notFound
 			count: 2
@@ -1725,12 +1719,6 @@ parameters:
 
 		-
 			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Services/BtcPay/LightningService.php
-
-		-
-			message: '#^Call to function is_array\(\) with array\<mixed, mixed\> will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
 			path: app/Services/BtcPay/LightningService.php
@@ -3916,13 +3904,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
-			count: 3
-			path: app/Services/WalletConnectionService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
+			count: 2
 			path: app/Services/WalletConnectionService.php
 
 		-

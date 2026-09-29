@@ -12,10 +12,17 @@ use App\Support\BtcPay\BtcPayWebhookEventType;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use JsonPath\JsonObject;
 
 class StoreEmailRuleDispatcher
 {
+    /** Recipients per message (to + cc + bcc, after placeholders render). */
+    public const MAX_RECIPIENTS = 10;
+
+    /** Rule emails per store per hour - rules run on our mail domain. */
+    public const HOURLY_SEND_LIMIT = 200;
+
     public function __construct(
         protected InvoiceService $invoiceService
     ) {}
@@ -118,8 +125,39 @@ class StoreEmailRuleDispatcher
             $cc = $this->parseRecipientField((string) ($rule->cc_addresses ?? ''), $flat);
             $bcc = $this->parseRecipientField((string) ($rule->bcc_addresses ?? ''), $flat);
 
-            $subject = $this->replacePlaceholders($rule->subject, $flat);
-            $body = $this->replacePlaceholders($rule->body, $flat);
+            // Placeholders can carry buyer-controlled invoice data (metadata,
+            // orderId, buyer email): a single value must not fan out to a
+            // mailing list through our mail domain.
+            // Same normalization as StoreEmailRuleRequest::totalRecipientLimit(),
+            // so a rule that validated is never skipped for case/space variants.
+            $uniqueRecipients = array_unique(array_map(
+                fn (string $address) => strtolower(trim($address)),
+                [...$to, ...$cc, ...$bcc],
+            ));
+            if (count($uniqueRecipients) > self::MAX_RECIPIENTS) {
+                Log::warning('Store email rule skipped: too many recipients', [
+                    'rule_id' => $rule->id,
+                    'store_id' => $store->id,
+                ]);
+
+                continue;
+            }
+
+            // Reserve a slot first: hit() is an atomic increment, so concurrent
+            // webhook workers cannot both pass a separate check-then-hit.
+            if (RateLimiter::hit('store-email-rules:'.$store->id, 3600) > self::HOURLY_SEND_LIMIT) {
+                Log::warning('Store email rule skipped: hourly send limit reached', [
+                    'rule_id' => $rule->id,
+                    'store_id' => $store->id,
+                ]);
+
+                continue;
+            }
+
+            // Subject is plain text (no header line breaks); the body is the
+            // merchant's HTML, so inserted invoice values are HTML-escaped.
+            $subject = str_replace(["\r", "\n"], ' ', $this->replacePlaceholders($rule->subject, $flat));
+            $body = $this->replacePlaceholders($rule->body, $flat, escapeHtml: true);
 
             try {
                 StoreEmailRuleDispatch::create([
@@ -268,12 +306,15 @@ class StoreEmailRuleDispatcher
         return $arr !== [] && array_keys($arr) !== range(0, count($arr) - 1);
     }
 
-    protected function replacePlaceholders(string $template, array $flat): string
+    protected function replacePlaceholders(string $template, array $flat, bool $escapeHtml = false): string
     {
-        return (string) preg_replace_callback('/\{([^}]+)\}/', function (array $m) use ($flat) {
+        return (string) preg_replace_callback('/\{([^}]+)\}/', function (array $m) use ($flat, $escapeHtml) {
             $key = trim($m[1]);
+            if (! array_key_exists($key, $flat)) {
+                return $m[0];
+            }
 
-            return $flat[$key] ?? $m[0];
+            return $escapeHtml ? e($flat[$key]) : $flat[$key];
         }, $template);
     }
 

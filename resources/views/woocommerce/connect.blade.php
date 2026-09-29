@@ -21,23 +21,27 @@
         a.back { color: #94a3b8; font-size: 0.875rem; text-decoration: none; margin-top: 1rem; display: inline-block; }
         a.back:hover { color: #e2e8f0; }
         input[type="hidden"] { display: none; }
+        .host { background: #0f172a; border: 1px solid #f59e0b; border-radius: 0.5rem; padding: 0.75rem 1rem; font-size: 1rem; font-weight: 600; color: #fbbf24; word-break: break-all; margin-bottom: 1rem; }
+        .warn { color: #fca5a5; font-size: 0.8125rem; margin-bottom: 1.5rem; }
     </style>
 </head>
 <body>
     <div class="card">
         <h1>Connect to WooCommerce</h1>
-        <p>Select the Satflux store to link with your WooCommerce shop.</p>
+        <p>This site is requesting access to your Satflux store:</p>
+        <div class="host">{{ $returnHost }}</div>
+        <p class="warn">Only continue if this is your own WooCommerce shop. The site will receive API access to the selected store, including payment settings.</p>
         <form method="POST" action="{{ url('/woocommerce/connect/select-store') }}">
             @csrf
-            <input type="hidden" name="return_url" value="{{ e($returnUrl) }}">
+            <input type="hidden" name="return_url" value="{{ $returnUrl }}">
             <input type="hidden" name="return_satflux_store_id" value="{{ !empty($returnSatfluxStoreId) ? '1' : '0' }}">
             <select name="store_id" required>
                 <option value="">- Select store -</option>
                 @foreach($stores as $store)
-                    <option value="{{ $store->id }}">{{ e($store->name) }}</option>
+                    <option value="{{ $store->id }}" @selected($store->id === $selectedStoreId)>{{ $store->name }}</option>
                 @endforeach
             </select>
-            <button type="submit">Connect</button>
+            <button type="submit">Connect {{ $returnHost }}</button>
         </form>
         <a href="{{ config('app.url') }}/stores" class="back">← Back to {{ config('app.name', 'satflux.io') }}</a>
     </div>
