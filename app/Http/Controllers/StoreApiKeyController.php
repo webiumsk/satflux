@@ -72,7 +72,7 @@ class StoreApiKeyController extends Controller
             'label' => ['required', 'string', 'max:255'],
             'permissions' => ['sometimes', 'array'],
             'permissions.*' => ['string', Rule::in(StoreApiKeyService::ALLOWED_PERMISSIONS)],
-            'callback_url' => ['nullable', 'url', 'max:500'],
+            'callback_url' => ['nullable', 'url:https', 'max:500'],
         ]);
 
         try {
@@ -103,6 +103,8 @@ class StoreApiKeyController extends Controller
                 ],
                 'message' => 'API key created successfully',
             ], 201);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Failed to create store API key', [
                 'store_id' => $store->id,
@@ -179,7 +181,7 @@ class StoreApiKeyController extends Controller
             'permissions' => ['sometimes', 'array'],
             'permissions.*' => ['string', Rule::in(StoreApiKeyService::ALLOWED_PERMISSIONS)],
             'label' => ['nullable', 'string', 'max:255'],
-            'callback_url' => ['nullable', 'url', 'max:500'],
+            'callback_url' => ['nullable', 'url:https', 'max:500'],
         ]);
 
         try {

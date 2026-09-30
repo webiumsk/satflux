@@ -13,6 +13,14 @@ class StoreIntegration extends Model
 {
     use HasFactory, HasUuids;
 
+    /**
+     * Secrets never leave the model through toArray()/JSON; controllers
+     * expose them explicitly where intended.
+     *
+     * @var list<string>
+     */
+    protected $hidden = ['integration_secret', 'token_hash'];
+
     protected $fillable = [
         'store_id',
         'company_id',

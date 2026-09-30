@@ -7,6 +7,7 @@ use App\Jobs\GenerateXlsxExport;
 use App\Models\Export;
 use App\Services\BtcPay\InvoiceService;
 use App\Services\SubscriptionEntitlementService;
+use App\Support\Spreadsheet\SpreadsheetCell;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -197,7 +198,7 @@ class InvoiceController extends Controller
             $handle = fopen('php://output', 'w');
 
             // Write CSV header
-            fputcsv($handle, [
+            fputcsv($handle, SpreadsheetCell::csvRow([
                 'invoiceId',
                 'store',
                 'pos',
@@ -215,7 +216,7 @@ class InvoiceController extends Controller
                 'buyerEmail',
                 'orderId',
                 'checkoutLink',
-            ]);
+            ]));
 
             // Fetch and write invoices with pagination
             $skip = 0;
@@ -270,7 +271,7 @@ class InvoiceController extends Controller
                         $paymentRate = $rate ?? '';
                     }
 
-                    fputcsv($handle, [
+                    fputcsv($handle, SpreadsheetCell::csvRow([
                         $invoice['id'] ?? '',
                         $store->name ?? '',
                         $posData['pos'],
@@ -288,7 +289,7 @@ class InvoiceController extends Controller
                         $buyerEmail,
                         $orderId,
                         $invoice['checkoutLink'] ?? '',
-                    ]);
+                    ]));
                 }
 
                 $skip += $take;

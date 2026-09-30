@@ -26,6 +26,8 @@ use App\Services\Invoicing\UsSalesTax\StripeTaxUsSalesTaxCalculator;
 use App\Services\Invoicing\UsSalesTax\UsSalesTaxCalculationService;
 use App\Support\ErrorRateCounter;
 use App\Support\ProductionConfigValidator;
+use App\Support\Spreadsheet\NoFormulaValueBinder;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -37,6 +39,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -65,6 +68,15 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->enforceProductionConfig();
 
+        // XLSX formula-injection guard: exported strings are never formulas.
+        Cell::setValueBinder(new NoFormulaValueBinder);
+
+        // Reset links always point at APP_URL: the default builds them from the
+        // request host, which a forged Host/X-Forwarded-Host could redirect.
+        ResetPassword::createUrlUsing(fn ($user, string $token): string => rtrim((string) config('app.url'), '/')
+            .'/password/reset?token='.urlencode($token)
+            .'&email='.urlencode((string) $user->getEmailForPasswordReset()));
+
         // Error-rate counters (P1 phase 8): count error+ log records per hour
         // (counts only, never message content) for health checks + dashboard.
         Event::listen(
@@ -83,7 +95,29 @@ class AppServiceProvider extends ServiceProvider
 
         // Define rate limiters
         RateLimiter::for('auth', function (Request $request) {
-            return Limit::perMinute(5)->by($request->ip());
+            $limits = [Limit::perMinute(5)->by($request->ip())];
+
+            // Per-account cap so rotating IPs cannot brute-force one login.
+            $email = $request->input('email');
+            $email = is_string($email) ? strtolower(trim($email)) : '';
+            if ($email !== '') {
+                $limits[] = Limit::perMinute(10)->by('auth-email:'.hash('sha256', $email));
+            }
+
+            return $limits;
+        });
+        // Verification resends get their own buckets (distinct key prefixes),
+        // so resending for an address can never use up its login budget.
+        RateLimiter::for('verification-resend', function (Request $request) {
+            $limits = [Limit::perMinute(5)->by('resend-ip:'.$request->ip())];
+
+            $email = $request->input('email');
+            $email = is_string($email) ? strtolower(trim($email)) : '';
+            if ($email !== '') {
+                $limits[] = Limit::perMinute(3)->by('resend-email:'.hash('sha256', $email));
+            }
+
+            return $limits;
         });
         // Separate limiter for password reset (so first attempt isn't throttled by other auth)
         RateLimiter::for('password-reset', function (Request $request) {

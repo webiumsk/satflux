@@ -9,6 +9,8 @@ use App\Models\Company;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Services\Invoicing\BusinessExpenseAttachmentBulkService;
+use App\Services\Invoicing\BusinessExpenseService;
 use App\Support\Invoicing\BusinessExpenseImportFields;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -156,6 +158,100 @@ class BusinessExpenseImportTest extends TestCase
         $import->assertJsonPath('data.imported', 0);
         $import->assertJsonPath('data.skipped', 1);
         $import->assertJsonPath('data.errors.0.message', 'Internal number already exists: 2026001');
+    }
+
+    #[Test]
+    public function zip_entries_that_inflate_past_the_limit_are_rejected(): void
+    {
+        $zipPath = tempnam(sys_get_temp_dir(), 'expense-pdf-bomb-').'.zip';
+        $zip = new ZipArchive;
+        $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        // ~11 MB of zeros compresses to a few KB but inflates past the 10 MB entry cap.
+        $zip->addFromString('bomb.pdf', '%PDF-1.4 '.str_repeat("\0", 11 * 1024 * 1024));
+        $zip->close();
+
+        $this->actingAs($this->proUser)
+            ->post("/api/invoicing/companies/{$this->company->id}/expenses/import/attachments/preview", [
+                'file' => new UploadedFile($zipPath, 'expenses.zip', 'application/zip', null, true),
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', fn ($message) => str_contains((string) $message, 'too large'));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function extractionTempDirs(): array
+    {
+        return glob(sys_get_temp_dir().'/sf-expense-pdf-*') ?: [];
+    }
+
+    #[Test]
+    public function zip_extraction_leaves_no_temp_files_behind(): void
+    {
+        $before = $this->extractionTempDirs();
+
+        $okZip = tempnam(sys_get_temp_dir(), 'expense-pdf-ok-').'.zip';
+        $zip = new ZipArchive;
+        $zip->open($okZip, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        $zip->addFromString('naklad_1.pdf', '%PDF-1.4 fake');
+        $zip->close();
+
+        $badZip = tempnam(sys_get_temp_dir(), 'expense-pdf-bad-').'.zip';
+        $zip = new ZipArchive;
+        $zip->open($badZip, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        $zip->addFromString('a_small.pdf', '%PDF-1.4 fine');
+        $zip->addFromString('b_bomb.pdf', '%PDF-1.4 '.str_repeat("\0", 11 * 1024 * 1024));
+        $zip->close();
+
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses/import/attachments/preview";
+        $this->actingAs($this->proUser)
+            ->post($url, ['file' => new UploadedFile($okZip, 'ok.zip', 'application/zip', null, true)])
+            ->assertOk();
+        $this->actingAs($this->proUser)
+            ->post($url, ['file' => new UploadedFile($badZip, 'bad.zip', 'application/zip', null, true)])
+            ->assertStatus(422);
+
+        $this->assertSame($before, $this->extractionTempDirs());
+    }
+
+    #[Test]
+    public function failed_entry_setup_leaves_no_files_or_open_handles(): void
+    {
+        $zipPath = tempnam(sys_get_temp_dir(), 'expense-pdf-setup-').'.zip';
+        $zip = new ZipArchive;
+        $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        $zip->addFromString('real.pdf', '%PDF-1.4 fake');
+        $zip->close();
+        $zip->open($zipPath);
+
+        $service = new class(app(BusinessExpenseService::class)) extends BusinessExpenseAttachmentBulkService
+        {
+            public function extract(ZipArchive $zip, string $name, string $target): int
+            {
+                return $this->extractEntryWithLimit($zip, $name, $target, PHP_INT_MAX);
+            }
+        };
+
+        // The entry stream cannot be opened: no target file may be created.
+        $target = sys_get_temp_dir().'/sf-setup-'.uniqid().'.pdf';
+        try {
+            $service->extract($zip, 'missing.pdf', $target);
+            $this->fail('A missing entry must be rejected');
+        } catch (\InvalidArgumentException) {
+            $this->assertFileDoesNotExist($target);
+        }
+
+        // The target cannot be opened: the entry stream is closed, nothing written.
+        $unwritable = sys_get_temp_dir().'/sf-no-such-dir-'.uniqid().'/x.pdf';
+        try {
+            $service->extract($zip, 'real.pdf', $unwritable);
+            $this->fail('An unwritable target must be rejected');
+        } catch (\InvalidArgumentException) {
+            $this->assertFileDoesNotExist($unwritable);
+        }
+
+        $zip->close();
     }
 
     #[Test]

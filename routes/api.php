@@ -304,10 +304,11 @@ Route::middleware(['throttle:auth'])->group(function () {
     Route::post('/auth/logout', [LoginController::class, 'logout'])->middleware('auth:sanctum');
 
     // Password reset: only in web.php (POST /api/auth/password/reset-link) so no Sanctum 401
-
-    // Email verification
-    Route::post('/auth/email/verification-notification', [EmailVerificationController::class, 'sendVerificationEmail']);
 });
+
+// Email verification resend: own limiter, separate from the login buckets.
+Route::post('/auth/email/verification-notification', [EmailVerificationController::class, 'sendVerificationEmail'])
+    ->middleware('throttle:verification-resend');
 
 // Passkey sign-in envelope fetch: unauthenticated by design (the ciphertext
 // grants nothing without the physical authenticator; the session comes from
@@ -1065,7 +1066,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
         Route::get('/support/wallet-connections', [WalletConnectionController::class, 'indexSupport']);
         Route::get('/support/count', [WalletConnectionController::class, 'getSupportCount']);
         Route::post('/support/wallet-connections/{connection}/reveal', [WalletConnectionController::class, 'reveal'])
-            ->middleware(AuditLog::class.':wallet_connection.revealed');
+            ->middleware([AuditLog::class.':wallet_connection.revealed', 'throttle:30,60']);
         Route::get('/support/wallet-connections/{connection}/btcpay-store-url', [WalletConnectionController::class, 'getBtcPayStoreUrl']);
         Route::put('/support/wallet-connections/{connection}/mark-connected', [WalletConnectionController::class, 'markConnected'])
             ->middleware(AuditLog::class.':wallet_connection.marked_connected');
@@ -1118,7 +1119,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
 });
 
 // Subscription checkout (auth handled in controller based on feature flag)
-Route::post('/subscriptions/checkout', [SubscriptionController::class, 'checkout']);
+Route::post('/subscriptions/checkout', [SubscriptionController::class, 'checkout'])
+    ->middleware('throttle:10,1');
 Route::get('/subscriptions/success', [SubscriptionController::class, 'success'])
     ->middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:30,1']);
 Route::get('/subscriptions/details', [SubscriptionController::class, 'details'])

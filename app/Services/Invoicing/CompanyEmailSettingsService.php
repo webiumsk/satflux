@@ -119,7 +119,7 @@ class CompanyEmailSettingsService
         }
 
         $mailerConfig = $this->smtpMailerConfig($settings);
-        $this->smtpHostGuard->assertAllowed($mailerConfig['host']);
+        $this->smtpHostGuard->assertAllowed($mailerConfig['host'], (int) $mailerConfig['port']);
 
         $mailerName = 'company_smtp_'.$company->id;
         config(['mail.mailers.'.$mailerName => $mailerConfig]);

@@ -170,6 +170,17 @@ class BusinessDocumentBtcPayService
             return false;
         }
 
+        // The linked checkout can predate a total change (a failed refresh
+        // keeps the old, cheaper invoice): paying it must not settle more.
+        if (! $this->invoiceCoversDocument($invoice, $document)) {
+            Log::warning('Business document: paid BTCPay invoice does not cover the document', [
+                'business_document_id' => $document->id,
+                'invoice_id' => $document->btcpay_invoice_id,
+            ]);
+
+            return false;
+        }
+
         app(BusinessDocumentMarkPaidService::class)->markPaid(
             $document,
             (float) $document->total,
@@ -214,6 +225,18 @@ class BusinessDocumentBtcPayService
 
             if ($document) {
                 if (! $document->btcpay_invoice_id) {
+                    // Metadata is set by whoever created the invoice (e.g. any
+                    // store API key): only an invoice that pays the document in
+                    // full may become its checkout.
+                    if (! $this->invoiceCoversDocument($invoice, $document)) {
+                        Log::warning('Business document: BTCPay invoice does not cover the document', [
+                            'business_document_id' => $document->id,
+                            'invoice_id' => $invoiceId,
+                        ]);
+
+                        return null;
+                    }
+
                     $document->update([
                         'btcpay_invoice_id' => $invoiceId,
                         'btcpay_checkout_link' => $invoice['checkoutLink'] ?? $document->btcpay_checkout_link,
@@ -251,6 +274,17 @@ class BusinessDocumentBtcPayService
     /**
      * @param  array<string, mixed>  $invoice
      */
+    /**
+     * Satflux creates a document's checkout for its exact total and currency.
+     *
+     * @param  array<string, mixed>  $invoice
+     */
+    public function invoiceCoversDocument(array $invoice, BusinessDocument $document): bool
+    {
+        return strcasecmp((string) ($invoice['currency'] ?? ''), (string) $document->currency) === 0
+            && (float) ($invoice['amount'] ?? 0) + 0.005 >= (float) $document->total;
+    }
+
     public function invoiceIndicatesPaid(array $invoice): bool
     {
         $status = (string) ($invoice['status'] ?? '');

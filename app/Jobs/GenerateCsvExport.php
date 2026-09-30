@@ -6,6 +6,7 @@ use App\Models\Export;
 use App\Notifications\ExportReadyNotification;
 use App\Notifications\MonthlyExportReadyNotification;
 use App\Services\BtcPay\InvoiceService;
+use App\Support\Spreadsheet\SpreadsheetCell;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -170,7 +171,7 @@ class GenerateCsvExport implements ShouldQueue
     protected function writeStandardCsv($handle, InvoiceService $invoiceService, $store, array $filters): void
     {
         // Write header
-        fputcsv($handle, [
+        fputcsv($handle, SpreadsheetCell::csvRow([
             'invoiceId',
             'store',
             'pos',
@@ -188,7 +189,7 @@ class GenerateCsvExport implements ShouldQueue
             'buyerEmail',
             'orderId',
             'checkoutLink',
-        ]);
+        ]));
 
         // Load merchant API key from store owner
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
@@ -224,7 +225,7 @@ class GenerateCsvExport implements ShouldQueue
                     $paymentRate = $rate ?? '';
                 }
 
-                fputcsv($handle, [
+                fputcsv($handle, SpreadsheetCell::csvRow([
                     $invoice['id'] ?? '',
                     $store->name ?? '',
                     $posData['pos'],
@@ -242,7 +243,7 @@ class GenerateCsvExport implements ShouldQueue
                     $invoice['buyer']['buyerEmail'] ?? '',
                     $invoice['metadata']['orderId'] ?? '',
                     $invoice['checkoutLink'] ?? '',
-                ]);
+                ]));
             }
 
             $skip += $take;
@@ -299,7 +300,7 @@ class GenerateCsvExport implements ShouldQueue
     protected function writeAccountingCsv($handle, InvoiceService $invoiceService, $store, array $filters): void
     {
         // Write header
-        fputcsv($handle, [
+        fputcsv($handle, SpreadsheetCell::csvRow([
             'invoice_id',
             'issue_date',
             'settlement_date',
@@ -308,7 +309,7 @@ class GenerateCsvExport implements ShouldQueue
             'payment_method',
             'status',
             'external_reference',
-        ]);
+        ]));
 
         // Load merchant API key from store owner
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
@@ -335,7 +336,7 @@ class GenerateCsvExport implements ShouldQueue
                     $paidTime = date('Y-m-d', strtotime($invoice['paidTime']));
                 }
 
-                fputcsv($handle, [
+                fputcsv($handle, SpreadsheetCell::csvRow([
                     $invoice['id'] ?? '',
                     $createdTime,
                     $paidTime ?? '',
@@ -344,7 +345,7 @@ class GenerateCsvExport implements ShouldQueue
                     $invoice['availablePaymentMethods'] ? implode(',', $invoice['availablePaymentMethods']) : '',
                     $invoice['status'] ?? '',
                     $invoice['metadata']['orderId'] ?? '',
-                ]);
+                ]));
             }
 
             $skip += $take;

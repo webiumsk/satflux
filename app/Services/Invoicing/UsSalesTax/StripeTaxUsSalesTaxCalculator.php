@@ -204,9 +204,8 @@ class StripeTaxUsSalesTaxCalculator implements UsSalesTaxCalculator
 
     protected function secretKey(Company $company): ?string
     {
-        $settings = CompanyAppSettings::from($company->app_settings);
-        $fromCompany = trim((string) $settings->get('stripe_tax_secret_key', ''));
-        if ($fromCompany !== '') {
+        $fromCompany = CompanyAppSettings::from($company->app_settings)->stripeTaxSecretKey();
+        if ($fromCompany !== null) {
             return $fromCompany;
         }
 

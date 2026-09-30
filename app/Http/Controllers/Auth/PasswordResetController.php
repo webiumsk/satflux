@@ -21,18 +21,13 @@ class PasswordResetController extends Controller
     {
         $request->validate(['email' => ['required', 'email']]);
 
-        $status = Password::sendResetLink(
+        Password::sendResetLink(
             $request->only('email')
         );
 
-        // Throttled: tell the user to wait (422/429)
-        if ($status === Password::RESET_THROTTLED) {
-            throw ValidationException::withMessages([
-                'email' => [__($status)],
-            ]);
-        }
-
-        // Success or user not found: always return 200 with same message (don't leak existence)
+        // Sent, unknown user or throttled: always the same 200 (RESET_THROTTLED
+        // only happens for existing accounts, so reporting it leaks existence).
+        // The route is rate limited per IP either way.
         return response()->json([
             'message' => __('messages.password_reset_sent'),
         ]);

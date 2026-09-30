@@ -28,6 +28,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class ServerToEvoluMigrationExportService
@@ -547,7 +548,19 @@ class ServerToEvoluMigrationExportService
      */
     private function appSettingsForMigration(Company $company): array
     {
-        $settings = CompanyAppSettings::from($company->app_settings)->toArray();
+        $appSettings = CompanyAppSettings::from($company->app_settings);
+        $settings = $appSettings->toArray();
+        // Local-first storage keeps the owner's secrets client-side in plaintext;
+        // the server-side ciphertext (APP_KEY) is useless there.
+        unset($settings['stripe_tax_secret_key_encrypted']);
+        try {
+            $stripeTaxSecret = $appSettings->stripeTaxSecretKey();
+            if ($stripeTaxSecret !== null) {
+                $settings[CompanyAppSettings::LEGACY_STRIPE_TAX_SECRET_KEY] = $stripeTaxSecret;
+            }
+        } catch (ValidationException) {
+            $this->warnings[] = "stripe_tax_secret_decrypt_failed:{$company->id}";
+        }
         $efaktura = CompanyEfakturaSettings::fromCompany($company);
         $secret = $efaktura->sapiClientSecret();
         if ($secret !== null) {

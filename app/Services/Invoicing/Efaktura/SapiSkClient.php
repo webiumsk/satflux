@@ -248,7 +248,10 @@ class SapiSkClient
 
     protected function http(): PendingRequest
     {
+        // The base URL is validated host by host (resolveBaseUrl); a redirect
+        // must not carry the request to a host that was never checked.
         return Http::timeout((int) config('efaktura.providers.sapi_sk.timeout_seconds', 30))
+            ->withoutRedirecting()
             ->acceptJson();
     }
 

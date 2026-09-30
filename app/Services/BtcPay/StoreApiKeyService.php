@@ -4,6 +4,7 @@ namespace App\Services\BtcPay;
 
 use App\Models\Store;
 use App\Models\StoreApiKey;
+use App\Support\Http\OutboundUrlGuard;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -67,6 +68,14 @@ class StoreApiKeyService
         $finalPermissions = array_values(array_unique(! empty($permissions) ? $permissions : $defaultPermissions));
         $this->assertAllowedPermissions($finalPermissions);
 
+        // Refuse an unsafe callback before BTCPay mints a key that could then
+        // never be delivered (sendApiKeyToCallback resolves and pins again).
+        if ($callbackUrl !== null && app(OutboundUrlGuard::class)->pinnedOptions($callbackUrl) === null) {
+            throw ValidationException::withMessages([
+                'callback_url' => ['The callback URL must be a public HTTPS endpoint.'],
+            ]);
+        }
+
         // Greenfield has no "specificStores" for admin-created keys: a store
         // is scoped only by the "policy:storeId" suffix. Without it the key
         // works on every store the BTCPay user owns.
@@ -122,8 +131,20 @@ class StoreApiKeyService
      */
     protected function sendApiKeyToCallback(StoreApiKey $storeApiKey, string $callbackUrl): void
     {
+        // The callback carries a live API key: public https hosts only, pinned
+        // to the validated addresses and without redirects (SSRF guard).
+        $options = app(OutboundUrlGuard::class)->pinnedOptions($callbackUrl);
+        if ($options === null) {
+            Log::warning('API key callback refused: URL is not a public https endpoint', [
+                'api_key_id' => $storeApiKey->id,
+                'callback_host' => parse_url($callbackUrl, PHP_URL_HOST),
+            ]);
+
+            return;
+        }
+
         try {
-            $response = Http::timeout(10)->post($callbackUrl, [
+            $response = Http::timeout(10)->withOptions($options)->post($callbackUrl, [
                 'api_key' => $storeApiKey->btcpay_api_key,
                 'store_id' => $storeApiKey->store->btcpay_store_id,
                 'permissions' => $storeApiKey->permissions,

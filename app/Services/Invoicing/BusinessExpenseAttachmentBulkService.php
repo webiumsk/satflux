@@ -13,6 +13,12 @@ class BusinessExpenseAttachmentBulkService
 {
     private const MAX_FILES = 500;
 
+    /** Same cap as a single attachment upload (10 MB). */
+    private const MAX_ENTRY_BYTES = 10 * 1024 * 1024;
+
+    /** Total inflated size of one archive (ZIP-bomb guard). */
+    private const MAX_TOTAL_BYTES = 200 * 1024 * 1024;
+
     public function __construct(
         protected BusinessExpenseService $expenseService,
     ) {}
@@ -24,7 +30,11 @@ class BusinessExpenseAttachmentBulkService
     {
         $entries = $this->collectPdfEntries($upload);
 
-        return $this->buildPreview($company, $entries);
+        try {
+            return $this->buildPreview($company, $entries);
+        } finally {
+            $this->cleanupEntries($entries);
+        }
     }
 
     /**
@@ -124,43 +134,108 @@ class BusinessExpenseAttachmentBulkService
         }
 
         $entries = [];
+        $totalBytes = 0;
         $tempDir = sys_get_temp_dir().'/sf-expense-pdf-'.uniqid();
         mkdir($tempDir, 0700, true);
 
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $name = (string) $zip->getNameIndex($i);
-            if (str_ends_with($name, '/')) {
-                continue;
+        try {
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $name = (string) $zip->getNameIndex($i);
+                if (str_ends_with($name, '/')) {
+                    continue;
+                }
+
+                $basename = basename($name);
+                if (! str_ends_with(strtolower($basename), '.pdf')) {
+                    continue;
+                }
+
+                $target = $tempDir.'/'.$basename;
+                if (file_exists($target)) {
+                    $target = $tempDir.'/'.uniqid().'_'.$basename;
+                }
+
+                $totalBytes += $this->extractEntryWithLimit($zip, $name, $target, self::MAX_TOTAL_BYTES - $totalBytes);
+                $entries[] = [
+                    'filename' => $basename,
+                    'path' => $target,
+                ];
+
+                if (count($entries) >= self::MAX_FILES) {
+                    break;
+                }
             }
 
-            $basename = basename($name);
-            if (! str_ends_with(strtolower($basename), '.pdf')) {
-                continue;
+            if ($entries === []) {
+                throw new \InvalidArgumentException('ZIP archive contains no PDF files.');
             }
+        } catch (\Throwable $e) {
+            // Nothing extracted so far survives a failed archive.
+            $this->cleanupEntries($entries);
+            @rmdir($tempDir);
 
-            $target = $tempDir.'/'.$basename;
-            if (file_exists($target)) {
-                $target = $tempDir.'/'.uniqid().'_'.$basename;
-            }
-
-            copy('zip://'.$path.'#'.$name, $target);
-            $entries[] = [
-                'filename' => $basename,
-                'path' => $target,
-            ];
-
-            if (count($entries) >= self::MAX_FILES) {
-                break;
-            }
-        }
-
-        $zip->close();
-
-        if ($entries === []) {
-            throw new \InvalidArgumentException('ZIP archive contains no PDF files.');
+            throw $e;
+        } finally {
+            $zip->close();
         }
 
         return $entries;
+    }
+
+    /**
+     * Stream one entry to disk, counting the bytes actually inflated - the
+     * sizes declared in the archive can lie.
+     *
+     * @return int bytes written
+     */
+    protected function extractEntryWithLimit(ZipArchive $zip, string $name, string $target, int $remainingTotal): int
+    {
+        $limit = min(self::MAX_ENTRY_BYTES, $remainingTotal);
+        $in = $zip->getStream($name);
+        if ($in === false) {
+            throw new \InvalidArgumentException('Could not read ZIP archive entry.');
+        }
+
+        $out = @fopen($target, 'wb');
+        if ($out === false) {
+            fclose($in);
+            @unlink($target);
+
+            throw new \InvalidArgumentException('Could not extract ZIP archive entry: '.basename($name));
+        }
+
+        $written = 0;
+        try {
+            while (! feof($in)) {
+                $chunk = fread($in, 65536);
+                if ($chunk === false) {
+                    throw new \InvalidArgumentException('Could not read ZIP archive entry.');
+                }
+                $written += strlen($chunk);
+                if ($written > $limit) {
+                    throw new \InvalidArgumentException('ZIP archive entry is too large: '.basename($name));
+                }
+                // fwrite may write less than asked: keep writing the remainder.
+                while ($chunk !== '') {
+                    $bytes = fwrite($out, $chunk);
+                    if ($bytes === false || $bytes === 0) {
+                        throw new \InvalidArgumentException('Could not extract ZIP archive entry: '.basename($name));
+                    }
+                    $chunk = substr($chunk, $bytes);
+                }
+            }
+        } catch (\InvalidArgumentException $e) {
+            fclose($out);
+            @unlink($target);
+
+            throw $e;
+        } finally {
+            fclose($in);
+        }
+
+        fclose($out);
+
+        return $written;
     }
 
     /**

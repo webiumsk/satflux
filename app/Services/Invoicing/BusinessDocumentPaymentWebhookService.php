@@ -64,6 +64,30 @@ class BusinessDocumentPaymentWebhookService
             return false;
         }
 
+        // The event must be about this document's own checkout invoice: any
+        // store API key can create an invoice whose metadata names a document.
+        if (! $invoiceId) {
+            return false;
+        }
+
+        if (! $document->btcpay_invoice_id) {
+            $bound = $this->btcPayService->resolveDocumentForBtcpayInvoice($store, $invoiceId);
+            if (! $bound || $bound->id !== $document->id) {
+                return false;
+            }
+            $document = $bound;
+        }
+
+        if ($document->btcpay_invoice_id !== $invoiceId) {
+            Log::warning('Business document payment webhook: invoice is not the document checkout', [
+                'business_document_id' => $document->id,
+                'store_id' => $store->id,
+                'invoice_id' => $invoiceId,
+            ]);
+
+            return false;
+        }
+
         if ($this->btcPayService->syncPaidFromBtcpayIfSettled($document->fresh())) {
             Log::info('Business document marked paid from BTCPay webhook', [
                 'business_document_id' => $document->id,
@@ -74,20 +98,16 @@ class BusinessDocumentPaymentWebhookService
             return true;
         }
 
-        $this->markPaidService->markPaid(
-            $document,
-            (float) $document->total,
-            null,
-            'btcpay_webhook',
-        );
-
-        Log::info('Business document marked paid from BTCPay webhook (event only)', [
+        // Only a fresh BTCPay read can show the amount paid (webhook payloads
+        // do not carry it): an unverifiable event leaves the document Issued
+        // for the next sync (pay page, document view, later webhook).
+        Log::info('Business document payment webhook: payment not verified with BTCPay', [
             'business_document_id' => $document->id,
             'store_id' => $store->id,
             'event_type' => BtcPayWebhookEventType::normalize($eventType),
         ]);
 
-        return true;
+        return false;
     }
 
     /**

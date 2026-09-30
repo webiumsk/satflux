@@ -50,4 +50,19 @@ class ChoralaProxyTest extends TestCase
         $this->getJson('/api/chorala-proxy/v1/projects')
             ->assertStatus(403);
     }
+
+    public function test_proxy_blocks_dot_segments_that_leave_the_public_api(): void
+    {
+        config([
+            'services.chorala.project_key' => 'pk_test_123',
+            'services.chorala.widget_url' => 'https://chorala.example.com',
+        ]);
+        Http::fake();
+
+        foreach (['public/../projects', 'public/./../admin', 'public/..%2Fprojects'] as $path) {
+            $this->getJson('/api/chorala-proxy/v1/'.$path)->assertStatus(403);
+        }
+
+        Http::assertNothingSent();
+    }
 }

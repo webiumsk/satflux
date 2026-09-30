@@ -725,4 +725,56 @@ class SubscriptionTest extends TestCase
         $this->assertSame($user->id, $binding['user_id']);
         $this->assertSame('pro', $binding['plan']);
     }
+
+    #[Test]
+    public function checkout_rejects_arbitrary_store_and_offering_ids(): void
+    {
+        $user = User::factory()->create();
+        Http::fake();
+
+        $this->actingAs($user)->postJson('/api/subscriptions/checkout', [
+            'storeId' => 'someone-elses-store',
+            'offeringId' => 'offering-x',
+            'planId' => 'plan-x',
+        ])->assertStatus(422)->assertJsonValidationErrors('plan');
+
+        Http::assertNothingSent();
+    }
+
+    #[Test]
+    public function signed_in_checkout_always_uses_the_account_email(): void
+    {
+        $user = User::factory()->create(['email' => 'owner@example.com']);
+        config([
+            'services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store',
+            'services.btcpay.subscription_offering_id' => 'offering_test',
+            'services.btcpay.subscription_plans.pro' => 'plan_pro_test',
+        ]);
+        $this->fakeBtcPayCheckoutSuccess();
+
+        $this->actingAs($user)->postJson('/api/subscriptions/checkout', [
+            'plan' => 'pro',
+            'customerEmail' => 'another-account@example.com',
+        ])->assertOk();
+
+        Http::assertSent(fn ($request) => str_contains((string) $request->url(), '/api/v1/plan-checkout')
+            && $request->method() === 'POST'
+            && ($request->data()['newSubscriberEmail'] ?? null) === 'owner@example.com');
+    }
+
+    #[Test]
+    public function checkout_rejects_store_offering_and_plan_ids_alongside_plan(): void
+    {
+        $user = User::factory()->create();
+        Http::fake();
+
+        $this->actingAs($user)->postJson('/api/subscriptions/checkout', [
+            'plan' => 'pro',
+            'storeId' => 'x',
+            'offeringId' => 'y',
+            'planId' => 'z',
+        ])->assertStatus(422)->assertJsonValidationErrors(['storeId', 'offeringId', 'planId']);
+
+        Http::assertNothingSent();
+    }
 }

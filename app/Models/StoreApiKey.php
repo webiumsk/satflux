@@ -12,6 +12,14 @@ class StoreApiKey extends Model
     use HasFactory, HasUuids;
 
     /**
+     * Secrets never leave the model through toArray()/JSON; controllers
+     * expose them explicitly where intended.
+     *
+     * @var list<string>
+     */
+    protected $hidden = ['btcpay_api_key'];
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>

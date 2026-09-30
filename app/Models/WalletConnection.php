@@ -26,6 +26,14 @@ class WalletConnection extends Model
     use HasFactory, HasUuids;
 
     /**
+     * Secrets never leave the model through toArray()/JSON; controllers
+     * expose them explicitly where intended.
+     *
+     * @var list<string>
+     */
+    protected $hidden = ['encrypted_secret', 'config_snapshot'];
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>

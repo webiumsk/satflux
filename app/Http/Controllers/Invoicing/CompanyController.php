@@ -156,6 +156,9 @@ class CompanyController extends Controller
             $incoming,
         );
         unset($merged['efaktura_sapi_client_secret']);
+        if (isset($incoming['stripe_tax_secret_key_encrypted'])) {
+            unset($merged[CompanyAppSettings::LEGACY_STRIPE_TAX_SECRET_KEY]);
+        }
         $company->update([
             'app_settings' => $merged,
         ]);
@@ -237,19 +240,7 @@ class CompanyController extends Controller
      */
     protected function normalizeWriteOnlySettings(array $incoming): array
     {
-        if (array_key_exists('stripe_tax_secret_key', $incoming)) {
-            $secret = is_string($incoming['stripe_tax_secret_key'])
-                ? trim($incoming['stripe_tax_secret_key'])
-                : $incoming['stripe_tax_secret_key'];
-
-            if ($secret === null || $secret === '') {
-                unset($incoming['stripe_tax_secret_key']);
-            } else {
-                $incoming['stripe_tax_secret_key'] = (string) $secret;
-            }
-        }
-
-        return $incoming;
+        return CompanyAppSettings::encryptIncomingStripeTaxSecret($incoming);
     }
 
     /**

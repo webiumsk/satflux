@@ -3,12 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Store;
-use App\Models\StoreApiKey;
 use App\Services\BtcPay\StoreApiKeyService;
+use App\Support\Http\OutboundUrlGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class EshopIntegrationController extends Controller
 {
@@ -28,23 +29,28 @@ class EshopIntegrationController extends Controller
         $validated = $request->validate([
             'store_id' => ['required', 'string'], // Local store UUID
             'token' => ['required', 'string'],
-            'callback_url' => ['nullable', 'url', 'max:500'],
+            'callback_url' => ['nullable', 'url:https', 'max:500'],
         ]);
 
-        // Get token data from cache
-        $tokenKey = "eshop_token:{$validated['token']}";
-        $tokenData = Cache::get($tokenKey);
+        // Everything that can fail on input is checked before the token is
+        // claimed, so a bad request (e.g. unsafe callback) leaves it usable.
+        $callbackUrl = $validated['callback_url'] ?? null;
+        if ($callbackUrl !== null && app(OutboundUrlGuard::class)->pinnedOptions($callbackUrl) === null) {
+            throw ValidationException::withMessages([
+                'callback_url' => ['The callback URL must be a public HTTPS endpoint.'],
+            ]);
+        }
 
-        if (! $tokenData) {
+        $pending = Cache::get("eshop_token:{$validated['token']}");
+        if (! is_array($pending)) {
             return response()->json([
                 'message' => 'Invalid or expired token',
             ], 400);
         }
 
-        // Validate store ID matches token
-        if ($tokenData['store_id'] !== $validated['store_id']) {
+        if ($pending['store_id'] !== $validated['store_id']) {
             Log::warning('E-shop token store_id mismatch', [
-                'token_store_id' => $tokenData['store_id'],
+                'token_store_id' => $pending['store_id'],
                 'request_store_id' => $validated['store_id'],
                 'ip' => $request->ip(),
             ]);
@@ -54,12 +60,19 @@ class EshopIntegrationController extends Controller
             ], 400);
         }
 
-        // Load store
         $store = Store::find($validated['store_id']);
         if (! $store) {
             return response()->json([
                 'message' => 'Store not found',
             ], 404);
+        }
+
+        // Atomic claim right before the key is minted: one request wins.
+        $tokenData = $this->claimToken($validated['token']);
+        if (! is_array($tokenData)) {
+            return response()->json([
+                'message' => 'Invalid or expired token',
+            ], 400);
         }
 
         try {
@@ -70,9 +83,6 @@ class EshopIntegrationController extends Controller
                 $tokenData['label'] ?? 'E-shop Integration',
                 $validated['callback_url'] ?? null
             );
-
-            // Delete token (one-time use)
-            Cache::forget($tokenKey);
 
             Log::info('E-shop API key created via public endpoint', [
                 'store_id' => $store->id,
@@ -98,6 +108,8 @@ class EshopIntegrationController extends Controller
             return response()->json([
                 'message' => 'API key created and sent to callback URL',
             ]);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Failed to create e-shop API key via public endpoint', [
                 'store_id' => $validated['store_id'],
@@ -106,7 +118,7 @@ class EshopIntegrationController extends Controller
             ]);
 
             return response()->json([
-                'message' => $e->getMessage(),
+                'message' => 'Could not create the API key. Please generate a new token and try again.',
             ], 500);
         }
     }
@@ -117,17 +129,17 @@ class EshopIntegrationController extends Controller
      */
     public function getToken(Request $request, string $token)
     {
-        // Get token data from cache
-        $tokenKey = "eshop_token:{$token}";
-        $tokenData = Cache::get($tokenKey);
+        // One-shot exchange: the token mints its own key. It never hands out
+        // an existing key (matching by label returned whatever key happened
+        // to carry the default label).
+        $tokenData = $this->claimToken($token);
 
-        if (! $tokenData) {
+        if (! is_array($tokenData)) {
             return response()->json([
                 'message' => 'Invalid or expired token',
             ], 400);
         }
 
-        // Load store
         $store = Store::find($tokenData['store_id']);
         if (! $store) {
             return response()->json([
@@ -135,23 +147,25 @@ class EshopIntegrationController extends Controller
             ], 404);
         }
 
-        // Find the API key created with this token
-        $apiKey = StoreApiKey::where('store_id', $store->id)
-            ->where('label', $tokenData['label'] ?? 'E-shop Integration')
-            ->where('is_active', true)
-            ->latest('created_at')
-            ->first();
+        try {
+            $apiKey = $this->storeApiKeyService->generateApiKey(
+                $store->id,
+                $tokenData['permissions'] ?? [],
+                $tokenData['label'] ?? 'E-shop Integration',
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to create e-shop API key via token exchange', [
+                'store_id' => $store->id,
+                'error' => $e->getMessage(),
+                'ip' => $request->ip(),
+            ]);
 
-        if (! $apiKey) {
             return response()->json([
-                'message' => 'API key not found. Please generate a new token.',
-            ], 404);
+                'message' => 'Could not create the API key. Please generate a new token and try again.',
+            ], 500);
         }
 
-        // Delete token (one-time use)
-        Cache::forget($tokenKey);
-
-        Log::info('E-shop API key retrieved via token', [
+        Log::info('E-shop API key created via token exchange', [
             'store_id' => $store->id,
             'api_key_id' => $apiKey->id,
             'ip' => $request->ip(),
@@ -165,6 +179,29 @@ class EshopIntegrationController extends Controller
                 'label' => $apiKey->label,
             ],
         ]);
+    }
+
+    /**
+     * Claim a one-time token: Cache::add is an atomic "set if absent" (SET NX
+     * on Redis), so exactly one request wins even when several read the
+     * token concurrently; Cache::pull alone is a separate get and forget.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function claimToken(string $token): ?array
+    {
+        $tokenData = Cache::get("eshop_token:{$token}");
+        if (! is_array($tokenData)) {
+            return null;
+        }
+
+        if (! Cache::add("eshop_token_claimed:{$token}", true, now()->addDay())) {
+            return null;
+        }
+
+        Cache::forget("eshop_token:{$token}");
+
+        return $tokenData;
     }
 
     /**
