@@ -141,6 +141,31 @@ class RecurringDocumentGeneratorService
 
         $issued = $this->issueService->issue($document);
 
+        // The draft was rendered with the PREVIEW number; the issued number
+        // can differ (concurrent issue, reservation floor). Re-resolve every
+        // number-derived field - a stale variable symbol makes the bank
+        // payment match the wrong invoice.
+        if ($issued->number && $issued->number !== $previewNumber) {
+            $issued->variable_symbol = BankSymbolNormalizer::variableSymbol(
+                $this->placeholders->resolve($vsTemplate, $issueDate, $issued->number, $vsTemplate)
+            ) ?? BankSymbolNormalizer::variableSymbol($issued->number);
+            $issued->note_above_lines = $this->placeholders->resolve(
+                $profile->note_above_lines,
+                $issueDate,
+                $issued->number,
+                $vsTemplate,
+            );
+            foreach ($issued->lines as $line) {
+                $source = $profile->lines->values()->get((int) $line->sort_order);
+                if (! $source) {
+                    continue;
+                }
+                $line->name = $this->placeholders->resolve($source->name, $issueDate, $issued->number, $vsTemplate);
+                $line->description = $this->placeholders->resolve($source->description, $issueDate, $issued->number, $vsTemplate);
+                $line->save();
+            }
+        }
+
         if ($issued->number && $profile->title) {
             $issued->title = $this->placeholders->resolve(
                 $profile->title,
@@ -148,6 +173,9 @@ class RecurringDocumentGeneratorService
                 $issued->number,
                 $issued->variable_symbol
             );
+        }
+
+        if ($issued->isDirty()) {
             $issued->save();
         }
 

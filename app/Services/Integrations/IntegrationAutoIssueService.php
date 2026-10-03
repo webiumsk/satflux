@@ -162,10 +162,7 @@ class IntegrationAutoIssueService
         // The synced local high counter covers invoices issued locally BEFORE
         // the shared allocator existed (post-allocator issues are protected
         // by the reservation floor itself).
-        $localHighCounters = $profile->profile_json['local_high_counters'] ?? [];
-        $localHighCounter = is_array($localHighCounters) && isset($localHighCounters[$documentType])
-            ? (int) $localHighCounters[$documentType]
-            : null;
+        $localHighCounter = $this->profileLocalHighCounter($allocatorCompany, $profile, $documentType);
 
         // Keyed by the WooCommerce ORDER, not the inbox entry: a re-sent
         // order creates a fresh inbox row, and a per-entry key would burn a
@@ -278,6 +275,26 @@ class IntegrationAutoIssueService
      * idempotent; other types (proforma) are suffixed so ONE order can carry
      * a proforma AND its final invoice on separate sequences.
      */
+    /**
+     * The local high counter the browser synced into the profile - only for
+     * the numbering period it was synced in (see
+     * DocumentSequenceService::localHighCounterForCurrentPeriod).
+     */
+    public function profileLocalHighCounter(Company $allocatorCompany, CompanyAutoIssueProfile $profile, string $documentType): ?int
+    {
+        $counters = $profile->profile_json['local_high_counters'] ?? [];
+        if (! is_array($counters) || ! isset($counters[$documentType])) {
+            return null;
+        }
+
+        return $this->sequenceService->localHighCounterForCurrentPeriod(
+            $allocatorCompany,
+            $documentType,
+            (int) $counters[$documentType],
+            $profile->updated_at,
+        );
+    }
+
     public function issueRequestIdFor(IntegrationDocumentInbox $entry, string $documentType = 'invoice'): string
     {
         // Short suffixes: issue_request_id is varchar(64) and the base key

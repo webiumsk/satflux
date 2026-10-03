@@ -1,6 +1,7 @@
 import { invoicingApi } from "@/services/api";
 import { matchCompanyByIdentity } from "./duplicateCompanies";
 import { sha256Hex } from "@/utils/sha256";
+import { localIsoDate } from "./numberSeriesFormat";
 
 /**
  * Client side of the server number allocator (audit F3).
@@ -128,6 +129,7 @@ export async function reserveIssueNumber(
     documentType: string,
     issueRequestId: string,
     localHighCounter?: number,
+    periodDate: Date = new Date(),
 ): Promise<AllocatorReserveResult> {
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
         return { ok: false, error: "issue_requires_online" };
@@ -146,6 +148,10 @@ export async function reserveIssueNumber(
         if (localHighCounter != null && localHighCounter > 0) {
             body.local_high_counter = localHighCounter;
         }
+        // The client's calendar decides the period around midnight UTC -
+        // the number is formatted with this date, so the counter must be
+        // drawn from the same year / month (server accepts +-1 day).
+        body.period_date = localIsoDate(periodDate);
         const data = await invoicingApi.numberAllocator.reserve<{
             number?: string;
             counter?: number;

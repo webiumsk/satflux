@@ -12,6 +12,7 @@ use App\Services\Invoicing\DocumentNumberFormatter;
 use App\Services\Invoicing\DocumentSequenceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class CompanyDocumentSequenceController extends Controller
@@ -23,7 +24,18 @@ class CompanyDocumentSequenceController extends Controller
 
     public function preview(Request $request, Company $company): JsonResponse
     {
-        $type = $request->string('type', 'invoice')->toString();
+        $type = $request->validate([
+            'type' => ['sometimes', 'string', Rule::in([
+                'invoice',
+                'credit_note',
+                'proforma',
+                'delivery_note',
+                'quote',
+                'order_received',
+                'order_issued',
+                'expense',
+            ])],
+        ])['type'] ?? 'invoice';
 
         return response()->json([
             'data' => [

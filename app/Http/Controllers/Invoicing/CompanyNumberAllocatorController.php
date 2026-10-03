@@ -8,6 +8,7 @@ use App\Models\DocumentNumberReservation;
 use App\Services\Invoicing\DocumentSequenceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 
 /**
@@ -52,6 +53,9 @@ class CompanyNumberAllocatorController extends Controller
         $validated = $request->validate([
             ...$this->baseRules(),
             'local_high_counter' => ['sometimes', 'integer', 'min:0', 'max:99999999'],
+            // The client's local calendar date: decides the period (year /
+            // month) the number belongs to around midnight UTC.
+            'period_date' => ['sometimes', 'date_format:Y-m-d'],
         ]);
 
         $reservation = $this->sequenceService->reserveNumberForIssue(
@@ -60,6 +64,7 @@ class CompanyNumberAllocatorController extends Controller
             $validated['issue_request_id'],
             $validated['local_high_counter'] ?? null,
             $request->user()?->id,
+            isset($validated['period_date']) ? Carbon::createFromFormat('Y-m-d', $validated['period_date']) : null,
         );
 
         return response()->json(['data' => $this->reservationPayload($reservation)]);
@@ -99,21 +104,24 @@ class CompanyNumberAllocatorController extends Controller
 
     /**
      * Gapless numbering (P3): frees the number of a deleted invoice so the
-     * sequence hands it out again. Addressed by NUMBER (the client has no
-     * reservation key for imported/auto-issued documents); only the highest
-     * number of the series period can be released.
+     * sequence hands it out again. Addressed by the issue request id (the
+     * document id the number was reserved for) and/or by NUMBER - the
+     * client has no reservation key for imported/auto-issued documents.
+     * Only the highest number of the series period can be released.
      */
     public function release(Request $request, Company $company): JsonResponse
     {
         $validated = $request->validate([
             'document_type' => ['required', 'string', Rule::in(self::DOCUMENT_TYPES)],
-            'number' => ['required', 'string', 'min:1', 'max:64'],
+            'issue_request_id' => ['nullable', 'required_without:number', 'string', 'min:8', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/'],
+            'number' => ['nullable', 'required_without:issue_request_id', 'string', 'min:1', 'max:64'],
         ]);
 
-        $result = $this->sequenceService->releaseReservationByNumber(
+        $result = $this->sequenceService->releaseReservation(
             $company,
             $validated['document_type'],
-            $validated['number'],
+            $validated['issue_request_id'] ?? null,
+            $validated['number'] ?? null,
         );
 
         return response()->json(['data' => $result]);

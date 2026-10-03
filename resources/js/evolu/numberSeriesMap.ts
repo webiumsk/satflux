@@ -1,5 +1,5 @@
 import type { NumberSeriesRow } from "@/composables/useCompanyNumberSeries";
-import { previewNextNumber } from "./numberSeriesFormat";
+import { effectiveLastNumber, previewNextNumber } from "./numberSeriesFormat";
 import type { CompanyId, DocumentType, NumberSeriesId, ResetPeriod } from "./schema";
 
 export type EvoluNumberSeriesRow = {
@@ -28,7 +28,10 @@ export function evoluNumberSeriesToApi(row: EvoluNumberSeriesRow): NumberSeriesR
         reset_period: row.resetPeriod,
         is_default: sqliteBoolToBoolean(row.isDefault),
         period_key: row.periodKey,
-        last_number: parseInt(row.lastNumber || "0", 10) || 0,
+        // The counter of the CURRENT period - a stored counter of last year
+        // is not what the next number continues from (and saving the form
+        // re-stamps the period, see updateNumberSeries).
+        last_number: effectiveLastNumber(row),
         next_number_preview: previewNextNumber(row),
     };
 }

@@ -19,6 +19,7 @@ export async function releaseIssuedNumber(
     localCompanyId: string,
     documentType: string,
     number: string,
+    documentId?: string | null,
 ): Promise<ReleaseNumberResult> {
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
         return { ok: false, error: "delete_requires_online" };
@@ -41,9 +42,14 @@ export async function releaseIssuedNumber(
             bridgeCompanyId = bridge.bridgeCompanyId;
         }
 
+        // The document id is the reservation key (issueRequestId): the
+        // number alone missed whenever the local series format differs from
+        // the server one, and the deleted number stayed burned. The number
+        // remains the fallback for imported / auto-issued documents.
         await invoicingApi.numberAllocator.release(bridgeCompanyId, {
             document_type: documentType,
             number,
+            ...(documentId ? { issue_request_id: documentId } : {}),
         });
         // released=true frees the number; released=false/not_found means no
         // reservation held it (pre-allocator document) - both are fine.

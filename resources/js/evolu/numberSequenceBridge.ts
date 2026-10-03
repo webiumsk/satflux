@@ -6,7 +6,7 @@ import {
 } from "./bridgeCompanyCache";
 import type { EvoluDocumentRow } from "./documentMap";
 import {
-    highestIssuedDocumentCounter,
+    localHighCounterForSeries,
     resolveDefaultSeries,
 } from "./numberSeriesCrud";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
@@ -74,9 +74,14 @@ export function localHighCounterForStoreBridge(
     documents: EvoluDocumentRow[],
     allSeries: EvoluNumberSeriesRow[],
 ): number {
-    const series = resolveDefaultSeries(allSeries, companyId, documentType);
-    const format = series?.format ?? "YYYYNNNN";
-    return highestIssuedDocumentCounter(companyId, documentType, format, documents);
+    // Current period only - sending the all-time maximum carried last
+    // year's count into the new year on the server too.
+    return localHighCounterForSeries(
+        resolveDefaultSeries(allSeries, companyId, documentType),
+        companyId,
+        documentType,
+        documents,
+    );
 }
 
 export function formatNumberFromStoreCounter(

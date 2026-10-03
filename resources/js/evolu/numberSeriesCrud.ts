@@ -10,7 +10,7 @@ import i18n from "@/i18n";
 import type { EvoluDocumentRow } from "./documentMap";
 import { previewNextDocumentNumber } from "./documentNumber";
 import {
-    counterDigitsInFormat,
+    counterInPeriod,
     currentPeriodKey,
     formatHasCounterToken,
     previewNextNumber,
@@ -53,26 +53,33 @@ export function localizedDefaultSeries(
 const NameType = maxLength(255)(NonEmptyString);
 const FormatType = maxLength(64)(NonEmptyString);
 
+/**
+ * Highest counter among numbered documents of the series' CURRENT period
+ * (issued, paid and cancelled - a cancelled number stays used). Parsed with
+ * the full format, so numbers of an earlier year, an earlier format or a
+ * foreign import do not count - the trailing-digits parse carried last
+ * year's count into the new year and misread a widened counter.
+ */
 export function highestIssuedDocumentCounter(
     companyId: CompanyId,
     documentType: DocumentType,
     format: string,
     documents: EvoluDocumentRow[],
+    resetPeriod: ResetPeriod | string = "yearly",
+    date = new Date(),
 ): number {
-    const digitLen = counterDigitsInFormat(format);
     let max = 0;
 
     for (const doc of documents) {
         if (doc.companyId !== companyId || doc.documentType !== documentType || !doc.number) {
             continue;
         }
-        if (doc.status === "draft" || doc.status === "cancelled") {
+        if (doc.status === "draft") {
             continue;
         }
-        if (doc.number.length < digitLen) continue;
-        const suffix = doc.number.slice(-digitLen);
-        if (/^\d+$/.test(suffix)) {
-            max = Math.max(max, parseInt(suffix, 10));
+        const counter = counterInPeriod(format, doc.number, resetPeriod, date, doc.issueDate);
+        if (counter !== null && counter > max) {
+            max = counter;
         }
     }
 
@@ -91,10 +98,18 @@ function syncPeriodFields(series: EvoluNumberSeriesRow, date = new Date()) {
     return series;
 }
 
+/**
+ * Series counter for the current period: the highest number used by
+ * documents, never below the stored counter of the same period (the
+ * "last number" a migrating user types into the series panel is a floor -
+ * it used to be silently overwritten). `lowerTo` is the explicit lowering
+ * path of a gapless delete (see syncNumberSeriesCounterFromDocuments).
+ */
 function ensureCounterSynced(
     series: EvoluNumberSeriesRow,
     documents: EvoluDocumentRow[],
     date = new Date(),
+    lowerTo?: number,
 ): EvoluNumberSeriesRow {
     const synced = syncPeriodFields(series, date);
     const fromDocuments = highestIssuedDocumentCounter(
@@ -102,12 +117,34 @@ function ensureCounterSynced(
         synced.documentType,
         synced.format,
         documents,
+        synced.resetPeriod,
+        date,
     );
-    const current = parseInt(synced.lastNumber || "0", 10) || 0;
-    if (fromDocuments !== current) {
-        return { ...synced, lastNumber: String(fromDocuments) };
+    const stored = parseInt(synced.lastNumber || "0", 10) || 0;
+    const floor = lowerTo !== undefined ? Math.min(stored, Math.max(0, lowerTo)) : stored;
+    const next = Math.max(fromDocuments, floor);
+    if (next !== stored) {
+        return { ...synced, lastNumber: String(next) };
     }
     return synced;
+}
+
+/**
+ * Counter the server allocator must not go below for this client: the
+ * highest number of the current period among local documents and the
+ * series' own counter (manual start value).
+ */
+export function localHighCounterForSeries(
+    series: EvoluNumberSeriesRow | null,
+    companyId: CompanyId,
+    documentType: DocumentType,
+    documents: EvoluDocumentRow[],
+    date = new Date(),
+): number {
+    if (!series) {
+        return highestIssuedDocumentCounter(companyId, documentType, "YYYYNNNN", documents, "yearly", date);
+    }
+    return parseInt(ensureCounterSynced(series, documents, date).lastNumber || "0", 10) || 0;
 }
 
 export function isIssuedNumberTaken(
@@ -251,7 +288,7 @@ export function updateNumberSeries(
     companyId: CompanyId,
     allSeries: EvoluNumberSeriesRow[],
     form: NumberSeriesFormState,
-    existing: EvoluNumberSeriesRow,
+    _existing: EvoluNumberSeriesRow,
 ) {
     const name = NameType.from(form.name.trim());
     if (!name.ok) return name;
@@ -261,7 +298,6 @@ export function updateNumberSeries(
         return { ok: false as const, error: "format_missing_counter" };
     }
 
-    const periodChanged = existing.resetPeriod !== form.reset_period;
     const isDefault = form.is_default;
 
     if (isDefault) {
@@ -281,10 +317,10 @@ export function updateNumberSeries(
         format: format.value,
         resetPeriod: form.reset_period as ResetPeriod,
         isDefault: booleanToSqliteBoolean(isDefault),
+        // The form edits the counter of the current period (the panel shows
+        // the period-effective value), so the period is always re-stamped.
         lastNumber: String(Math.max(0, Number(form.last_number) || 0)),
-        ...(periodChanged
-            ? { periodKey: currentPeriodKey(form.reset_period as ResetPeriod) }
-            : {}),
+        periodKey: currentPeriodKey(form.reset_period as ResetPeriod),
     });
 }
 
@@ -315,101 +351,8 @@ export function deleteNumberSeries(
     return evolu.update("numberSeries", { id: seriesId, isDeleted: sqliteTrue });
 }
 
-type NextNumberAllocation =
-    | {
-          ok: true;
-          value: string;
-          seriesId: NumberSeriesId;
-          periodKey: string | null;
-          nextCounter: number;
-      }
-    | { ok: false; error: string };
-
-export function allocateNextNumberForIssue(
-    evolu: Evolu<InvoicingLocalSchema>,
-    companyId: CompanyId,
-    documentType: DocumentType,
-    allDocuments: EvoluDocumentRow[],
-    allSeries: EvoluNumberSeriesRow[],
-    excludeDocumentId?: DocumentId,
-): NextNumberAllocation {
-    let workingSeries = allSeries;
-    let series = resolveDefaultSeries(workingSeries, companyId, documentType);
-    if (!series) {
-        const seeded = seedDefaultNumberSeries(evolu, companyId, workingSeries);
-        workingSeries = [...workingSeries, ...seeded];
-        series = resolveDefaultSeries(workingSeries, companyId, documentType);
-    }
-    if (!series) {
-        return { ok: false, error: "no_default_series" };
-    }
-
-    const synced = ensureCounterSynced(series, allDocuments);
-    let nextCounter = (parseInt(synced.lastNumber || "0", 10) || 0) + 1;
-    let number = previewNextNumber(synced, nextCounter);
-    const maxAttempts = 10_000;
-    let attempts = 0;
-    while (
-        isIssuedNumberTaken(number, companyId, documentType, allDocuments, excludeDocumentId)
-        && attempts < maxAttempts
-    ) {
-        nextCounter += 1;
-        number = previewNextNumber(synced, nextCounter);
-        attempts += 1;
-    }
-    if (isIssuedNumberTaken(number, companyId, documentType, allDocuments, excludeDocumentId)) {
-        return { ok: false, error: "number_collision" };
-    }
-
-    return {
-        ok: true,
-        value: number,
-        seriesId: series.id,
-        periodKey: synced.periodKey,
-        nextCounter,
-    };
-}
-
-export function commitNumberSeriesCounter(
-    evolu: Evolu<InvoicingLocalSchema>,
-    allocation: Extract<NextNumberAllocation, { ok: true }>,
-): { ok: true } | { ok: false; error: string } {
-    const updateResult = evolu.update("numberSeries", {
-        id: allocation.seriesId,
-        periodKey: allocation.periodKey,
-        lastNumber: String(allocation.nextCounter),
-    });
-    if (!updateResult.ok) {
-        return { ok: false, error: "series_update_failed" };
-    }
-    return { ok: true };
-}
-
-export function nextNumberForIssue(
-    evolu: Evolu<InvoicingLocalSchema>,
-    companyId: CompanyId,
-    documentType: DocumentType,
-    allDocuments: EvoluDocumentRow[],
-    allSeries: EvoluNumberSeriesRow[],
-    excludeDocumentId?: DocumentId,
-): { ok: true; value: string } | { ok: false; error: string } {
-    const allocation = allocateNextNumberForIssue(
-        evolu,
-        companyId,
-        documentType,
-        allDocuments,
-        allSeries,
-        excludeDocumentId,
-    );
-    if (!allocation.ok) {
-        return allocation;
-    }
-    const committed = commitNumberSeriesCounter(evolu, allocation);
-    if (!committed.ok) {
-        return committed;
-    }
-    return { ok: true, value: allocation.value };
-}
+// The local max+1 allocator (allocateNextNumberForIssue / nextNumberForIssue)
+// was removed: issuing reserves through the server allocator (audit F3).
 
 export function previewNextDocumentNumberFromSeries(
     allSeries: EvoluNumberSeriesRow[],
@@ -458,6 +401,7 @@ export function syncNumberSeriesCounterFromDocuments(
     documentType: DocumentType,
     allDocuments: EvoluDocumentRow[],
     allSeries: EvoluNumberSeriesRow[],
+    options: { releasedNumbers?: string[] } = {},
 ): void {
     let workingSeries = allSeries;
     let series = resolveDefaultSeries(workingSeries, companyId, documentType);
@@ -468,7 +412,14 @@ export function syncNumberSeriesCounterFromDocuments(
     }
     if (!series) return;
 
-    const synced = ensureCounterSynced(series, allDocuments);
+    // Gapless delete: the released top numbers go back to the pool, so the
+    // counter drops below the smallest released one (never below what the
+    // remaining documents use). Without released counters it only rises.
+    const released = (options.releasedNumbers ?? [])
+        .map((number) => counterInPeriod(series.format, number, series.resetPeriod))
+        .filter((counter): counter is number => counter !== null);
+    const lowerTo = released.length > 0 ? Math.min(...released) - 1 : undefined;
+    const synced = ensureCounterSynced(series, allDocuments, new Date(), lowerTo);
     const currentLast = parseInt(series.lastNumber || "0", 10) || 0;
     const syncedLast = parseInt(synced.lastNumber || "0", 10) || 0;
     if (synced.periodKey !== series.periodKey || syncedLast !== currentLast) {
@@ -497,12 +448,8 @@ export function syncLocalSeriesCounterFromIssuedNumber(
     }
     if (!series) return;
 
-    const digitLen = counterDigitsInFormat(series.format);
-    if (issuedNumber.length < digitLen) return;
-    const suffix = issuedNumber.slice(-digitLen);
-    if (!/^\d+$/.test(suffix)) return;
-
-    const counter = parseInt(suffix, 10);
+    const counter = counterInPeriod(series.format, issuedNumber, series.resetPeriod);
+    if (counter === null) return;
     const synced = syncPeriodFields(series);
     const current = parseInt(synced.lastNumber || "0", 10) || 0;
     if (counter <= current) return;

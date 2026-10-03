@@ -108,7 +108,10 @@ class CompanyDocumentSequenceTest extends TestCase
 
         $create->assertCreated();
         $create->assertJsonPath('data.format', 'FAKYYYYNNNN');
-        $create->assertJsonPath('data.next_number_preview', 'FAK20260011');
+        // The preview shows what issuing would really hand out - a manually
+        // typed last_number is not a counter source (documents, the local
+        // high counter and reservations are).
+        $create->assertJsonPath('data.next_number_preview', 'FAK'.now()->format('Y').'0001');
     }
 
     #[Test]
