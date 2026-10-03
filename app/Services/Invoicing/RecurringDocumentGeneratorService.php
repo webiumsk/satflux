@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentLine;
 use App\Models\BusinessRecurringProfile;
+use App\Models\BusinessRecurringProfileLine;
 use App\Support\Invoicing\BankSymbolNormalizer;
 use App\Support\Invoicing\CompanyVatPolicy;
 use Carbon\Carbon;
@@ -155,9 +156,13 @@ class RecurringDocumentGeneratorService
                 $issued->number,
                 $vsTemplate,
             );
+            $sourceLines = $profile->lines->values();
             foreach ($issued->lines as $line) {
-                $source = $profile->lines->values()->get((int) $line->sort_order);
-                if (! $source) {
+                if (! $line instanceof BusinessDocumentLine) {
+                    continue;
+                }
+                $source = $sourceLines->get((int) $line->sort_order);
+                if (! $source instanceof BusinessRecurringProfileLine) {
                     continue;
                 }
                 $line->name = $this->placeholders->resolve($source->name, $issueDate, $issued->number, $vsTemplate);

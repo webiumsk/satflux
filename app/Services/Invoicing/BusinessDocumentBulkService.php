@@ -233,7 +233,7 @@ class BusinessDocumentBulkService
         // so a selected tail of the sequence falls one by one in one run.
         $formats = [];
         $ordered = $documents->sortByDesc(function (BusinessDocument $document) use (&$formats) {
-            $type = $document->type->value;
+            $type = $document->typeValue();
             $formats[$type] ??= (string) CompanyDocumentSequence::query()
                 ->where('company_id', $document->company_id)
                 ->where('document_type', $type)
@@ -241,7 +241,7 @@ class BusinessDocumentBulkService
                 ->orderBy('id')
                 ->value('format');
 
-            return $type.'|'.($document->number !== null ? $this->sequenceService->numberSortKey($formats[$type], $document) : '');
+            return $type.'|'.($document->hasNumber() ? $this->sequenceService->numberSortKey($formats[$type], $document) : '');
         });
 
         foreach ($ordered as $document) {

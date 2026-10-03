@@ -202,20 +202,44 @@ class BusinessDocument extends Model
             return false;
         }
 
-        if ($this->status === BusinessDocumentStatus::Draft
-            || ($this->status === BusinessDocumentStatus::Cancelled && ($this->number === null || $this->number === ''))) {
+        if ($this->hasStatus(BusinessDocumentStatus::Draft)
+            || ($this->hasStatus(BusinessDocumentStatus::Cancelled) && ! $this->hasNumber())) {
             return ! $this->hasBlockingRelations();
         }
 
-        if (! in_array($this->status, [
+        if (! $this->hasStatus(
             BusinessDocumentStatus::Issued,
             BusinessDocumentStatus::Paid,
             BusinessDocumentStatus::Cancelled,
-        ], true)) {
+        )) {
             return false;
         }
 
         return $this->isLatestForCompany() && ! $this->hasBlockingRelations();
+    }
+
+    /**
+     * Status check on the cast value. Larastan types the raw column here
+     * (string), so direct enum comparisons read as "always false".
+     */
+    public function hasStatus(BusinessDocumentStatus ...$statuses): bool
+    {
+        return in_array($this->getAttribute('status'), $statuses, true);
+    }
+
+    /** The document type's string value (see hasStatus for why). */
+    public function typeValue(): string
+    {
+        $type = $this->getAttribute('type');
+
+        return $type instanceof BusinessDocumentType ? $type->value : (string) $type;
+    }
+
+    public function hasNumber(): bool
+    {
+        $number = $this->getAttribute('number');
+
+        return $number !== null && $number !== '';
     }
 
     protected function hasGermanGobdIssuedContentLock(?Company $company = null): bool
@@ -235,7 +259,7 @@ class BusinessDocument extends Model
     public function isLatestForCompany(): bool
     {
         return app(DocumentSequenceService::class)
-            ->latestNumberedDocumentId((string) $this->company_id, $this->type->value) === $this->id;
+            ->latestNumberedDocumentId((string) $this->company_id, $this->typeValue()) === $this->id;
     }
 
     protected function hasBlockingRelations(): bool

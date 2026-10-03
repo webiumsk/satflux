@@ -280,10 +280,13 @@ class BusinessDocumentController extends Controller
             // The buyer is frozen at issue; an issued document re-pointed to
             // another contact must re-freeze it, otherwise the list shows
             // the new contact while PDF / UBL / ISDOC keep the old buyer.
-            if ($locked->status !== BusinessDocumentStatus::Draft && $locked->isDirty('company_contact_id')) {
+            if (! $locked->hasStatus(BusinessDocumentStatus::Draft) && $locked->isDirty('company_contact_id')) {
                 $locked->unsetRelation('contact');
-                $contact = $locked->contact()->first();
-                $locked->buyer_snapshot = $contact ? BuyerSnapshot::fromContact($contact) : null;
+                $contact = CompanyContact::query()
+                    ->whereKey($locked->company_contact_id)
+                    ->where('company_id', $company->id)
+                    ->first();
+                $locked->setAttribute('buyer_snapshot', $contact ? BuyerSnapshot::fromContact($contact) : null);
             }
 
             if ($locked->type === BusinessDocumentType::Quote) {

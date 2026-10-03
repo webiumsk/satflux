@@ -29,7 +29,7 @@ class BusinessDocumentListCapabilities
         $ids = $documents->pluck('id')->all();
 
         $latestIdByType = [];
-        foreach ($documents->map(fn (BusinessDocument $document) => $document->type->value)->unique() as $type) {
+        foreach ($documents->map(fn (BusinessDocument $document) => $document->typeValue())->unique() as $type) {
             $latestIdByType[$type] = $this->sequenceService->latestNumberedDocumentId((string) $company->id, $type);
         }
 
@@ -68,7 +68,7 @@ class BusinessDocumentListCapabilities
 
             $result[$document->id] = [
                 'can_update' => $document->canUpdate($company),
-                'can_delete' => $this->canDelete($document, $company, $latestIdByType[$document->type->value] ?? null, $hasBlocking),
+                'can_delete' => $this->canDelete($document, $company, $latestIdByType[$document->typeValue()] ?? null, $hasBlocking),
                 'can_cancel' => $document->canCancel(),
                 'can_unmark_paid' => $document->canUnmarkPaid(),
             ];
@@ -88,16 +88,16 @@ class BusinessDocumentListCapabilities
         }
 
         // Mirrors BusinessDocument::canDelete().
-        if ($document->status === BusinessDocumentStatus::Draft
-            || ($document->status === BusinessDocumentStatus::Cancelled && ($document->number === null || $document->number === ''))) {
+        if ($document->hasStatus(BusinessDocumentStatus::Draft)
+            || ($document->hasStatus(BusinessDocumentStatus::Cancelled) && ! $document->hasNumber())) {
             return ! $hasBlocking;
         }
 
-        if (! in_array($document->status, [
+        if (! $document->hasStatus(
             BusinessDocumentStatus::Issued,
             BusinessDocumentStatus::Paid,
             BusinessDocumentStatus::Cancelled,
-        ], true)) {
+        )) {
             return false;
         }
 

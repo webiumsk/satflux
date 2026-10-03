@@ -494,7 +494,7 @@ class DocumentSequenceService
         $issueDate = $document->issue_date ? Carbon::parse($document->issue_date) : null;
 
         $year = $parsed['year'] ?? null;
-        $year = $year !== null ? (strlen($year) <= 2 ? 2000 + (int) $year : (int) $year) : ($issueDate?->year ?? 0);
+        $year = $year !== null ? (strlen($year) <= 2 ? 2000 + (int) $year : (int) $year) : ($issueDate !== null ? $issueDate->year : 0);
         $month = $parsed['month'] ?? null;
         $month = $month !== null ? (int) $month : 0;
 

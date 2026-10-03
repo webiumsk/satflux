@@ -25,7 +25,7 @@ function makeSeries(lastNumber: string, overrides: Partial<EvoluNumberSeriesRow>
         isDefault: 1,
         isDeleted: 0,
         ...overrides,
-    } as EvoluNumberSeriesRow;
+    } as unknown as EvoluNumberSeriesRow;
 }
 
 function makeDocument(
@@ -41,7 +41,7 @@ function makeDocument(
         status,
         issueDate,
         isDeleted: 0,
-    } as EvoluDocumentRow;
+    } as unknown as EvoluDocumentRow;
 }
 
 function fakeEvolu() {
