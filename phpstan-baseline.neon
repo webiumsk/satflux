@@ -547,18 +547,6 @@ parameters:
 			path: app/Http/Controllers/Invoicing/EphemeralBusinessDocumentController.php
 
 		-
-			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\DocumentSequenceService\:\:lastIssuedCounter\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Invoicing/StoreDocumentSequenceController.php
-
-		-
-			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\DocumentSequenceService\:\:nextNumber\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Invoicing/StoreDocumentSequenceController.php
-
-		-
 			message: '#^Parameter \#1 \$company of method App\\Services\\Invoicing\\DocumentSequenceService\:\:previewNextCounter\(\) expects App\\Models\\Company, Illuminate\\Database\\Eloquent\\Model given\.$#'
 			identifier: argument.type
 			count: 1
@@ -1190,12 +1178,6 @@ parameters:
 			path: app/Models/BankTransaction.php
 
 		-
-			message: '#^Call to function in_array\(\) with arguments string, array\{App\\Enums\\BusinessDocumentStatus\:\:Draft, App\\Enums\\BusinessDocumentStatus\:\:Cancelled\} and true will always evaluate to false\.$#'
-			identifier: function.impossibleType
-			count: 1
-			path: app/Models/BusinessDocument.php
-
-		-
 			message: '#^Call to function in_array\(\) with arguments string, array\{App\\Enums\\BusinessDocumentStatus\:\:Draft, App\\Enums\\BusinessDocumentStatus\:\:Issued\} and true will always evaluate to false\.$#'
 			identifier: function.impossibleType
 			count: 1
@@ -1204,7 +1186,7 @@ parameters:
 		-
 			message: '#^Call to function in_array\(\) with arguments string, array\{App\\Enums\\BusinessDocumentStatus\:\:Issued, App\\Enums\\BusinessDocumentStatus\:\:Paid\} and true will always evaluate to false\.$#'
 			identifier: function.impossibleType
-			count: 2
+			count: 1
 			path: app/Models/BusinessDocument.php
 
 		-
@@ -1330,7 +1312,7 @@ parameters:
 		-
 			message: '#^Unreachable statement \- code above always terminates\.$#'
 			identifier: deadCode.unreachable
-			count: 2
+			count: 1
 			path: app/Models/BusinessDocument.php
 
 		-
@@ -2352,24 +2334,6 @@ parameters:
 			identifier: identical.alwaysFalse
 			count: 1
 			path: app/Services/Invoicing/BusinessDocumentIssueService.php
-
-		-
-			message: '#^Call to function in_array\(\) with arguments string, array\{App\\Enums\\BusinessDocumentStatus\:\:Draft, App\\Enums\\BusinessDocumentStatus\:\:Cancelled\} and true will always evaluate to false\.$#'
-			identifier: function.impossibleType
-			count: 1
-			path: app/Services/Invoicing/BusinessDocumentListCapabilities.php
-
-		-
-			message: '#^Call to function in_array\(\) with arguments string, array\{App\\Enums\\BusinessDocumentStatus\:\:Issued, App\\Enums\\BusinessDocumentStatus\:\:Paid\} and true will always evaluate to false\.$#'
-			identifier: function.impossibleType
-			count: 1
-			path: app/Services/Invoicing/BusinessDocumentListCapabilities.php
-
-		-
-			message: '#^Unreachable statement \- code above always terminates\.$#'
-			identifier: deadCode.unreachable
-			count: 1
-			path: app/Services/Invoicing/BusinessDocumentListCapabilities.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bank_transaction_id\.$#'

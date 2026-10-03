@@ -12,9 +12,11 @@ import {
     type EvoluDocumentRow,
 } from "./documentMap";
 import {
+    resolveDefaultSeries,
     syncLocalSeriesCounterFromIssuedNumber,
     syncNumberSeriesCounterFromDocuments,
 } from "./numberSeriesCrud";
+import { rederiveNumberDerivedFields } from "./numberSeriesFormat";
 import {
     formatNumberFromStoreCounter,
     localHighCounterForStoreBridge,
@@ -506,6 +508,9 @@ export async function issueLocalDocumentAsync(
     // on the server, keyed by the document id so a retried issue gets the
     // same number back. There is deliberately NO local fallback - definitive
     // issuing requires being online; offline the document stays a draft.
+    // One local "now" for the period: the server runs in UTC, the user sees
+    // their own calendar (first hours of a year / month).
+    const periodDate = new Date();
     const localHigh = localHighCounterForStoreBridge(
         company.id,
         draft.documentType,
@@ -524,6 +529,7 @@ export async function issueLocalDocumentAsync(
         draft.documentType,
         documentId,
         localHigh,
+        periodDate,
     );
     if (!reserved.ok) {
         return { ok: false as const, error: reserved.error };
@@ -537,7 +543,23 @@ export async function issueLocalDocumentAsync(
         draft.documentType,
         reserved.value.counter,
         series,
+        periodDate,
     );
+
+    // Title and VS were rendered from the preview (or inherited from a
+    // duplicated / converted source) - align them with the real number.
+    const seriesFormat = resolveDefaultSeries(series, company.id, draft.documentType)?.format ?? "YYYYNNNN";
+    const derived = rederiveNumberDerivedFields(seriesFormat, number, reserved.value.counter, {
+        title: draft.title,
+        variableSymbol: draft.variableSymbol,
+    });
+    let issuedDraft = draft;
+    if (derived.title !== (draft.title ?? null) && derived.title) {
+        const titleUpdate = evolu.update("document", { id: documentId, title: derived.title });
+        if (titleUpdate.ok) {
+            issuedDraft = { ...draft, title: derived.title };
+        }
+    }
 
     const result = await applyReservedNumberToLocalDocumentAsync(
         evolu,
@@ -546,10 +568,10 @@ export async function issueLocalDocumentAsync(
         draft.documentType,
         number,
         series,
-        draft.variableSymbol,
+        derived.variableSymbol,
         {
             company,
-            doc: draft,
+            doc: issuedDraft,
             allDocuments: documents,
             ...snapshotContext,
         },
@@ -734,27 +756,41 @@ export async function deleteLocalDocumentAsync(
         return { ok: false as const, error: "issued_locked" };
     }
 
-    // Gapless numbering (P3): an issued/paid invoice frees its number on the
-    // server allocator FIRST - only then is it deleted locally. A failed
-    // release (offline, or the number is no longer the series top) blocks
-    // the deletion so the sequence can never end up with a hole.
-    if (doc && doc.status !== "draft" && doc.status !== "cancelled" && doc.number) {
+    // The same guard as the list's can_delete and the bulk path - the UI
+    // flag may be stale (a credit note synced in from another member, a
+    // newer invoice issued on another device).
+    const { canDeleteLocalDocument, holdsSequenceNumber } = await import("./documentBulkLocal");
+    if (doc && !canDeleteLocalDocument(doc, documents, { ...policy, allSeries: policy.allSeries ?? allSeries })) {
+        return { ok: false as const, error: "not_deletable" };
+    }
+
+    // Gapless numbering (P3): a numbered document (issued, paid or
+    // cancelled) frees its number on the server allocator FIRST - only
+    // then is it deleted locally. A failed release (offline, or the number
+    // is no longer the series top) blocks the deletion so the sequence can
+    // never end up with a hole.
+    const numbered = doc ? holdsSequenceNumber(doc) : false;
+    if (doc && numbered) {
         const { releaseIssuedNumber } = await import("./numberReleaseBridge");
         const release = await releaseIssuedNumber(
             doc.companyId,
             String(doc.documentType),
             String(doc.number),
+            String(doc.id),
         );
         if (!release.ok) {
             return { ok: false as const, error: release.error };
         }
     }
 
-    const result = deleteLocalDocument(evolu, documentId);
-    if (!result.ok || !doc) {
-        return result;
+    // Return the stock before the row disappears (the reversal reads the
+    // live document; idempotent - a cancelled document was reversed).
+    if (doc && (doc.status === "issued" || doc.status === "paid")) {
+        await reverseDocumentStockOnCancelAsync(evolu, documentId);
     }
-    if (doc.status === "draft" || doc.status === "cancelled" || !doc.number) {
+
+    const result = deleteLocalDocument(evolu, documentId);
+    if (!result.ok || !doc || !numbered) {
         return result;
     }
     const remaining = documents.filter((row) => row.id !== documentId);
@@ -764,6 +800,7 @@ export async function deleteLocalDocumentAsync(
         doc.documentType,
         remaining,
         allSeries,
+        { releasedNumbers: [String(doc.number)] },
     );
     return result;
 }
@@ -783,7 +820,8 @@ export async function cancelLocalDocumentAsync(
 ) {
     const doc = documents.find((row) => row.id === documentId);
     const result = cancelLocalDocument(evolu, documentId);
-    if (!result.ok || doc?.status !== "issued") {
+    // Paid documents deducted stock at issue too (the server reverses both).
+    if (!result.ok || (doc?.status !== "issued" && doc?.status !== "paid")) {
         return result;
     }
     await reverseDocumentStockOnCancelAsync(evolu, documentId);

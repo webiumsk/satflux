@@ -13,7 +13,9 @@ use App\Models\User;
 use App\Services\Invoicing\DocumentSequenceService;
 use App\Support\Invoicing\CompanyAppSettings;
 use App\Support\Invoicing\JurisdictionRules;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -21,7 +23,18 @@ class IntegrationDocumentInboxService
 {
     public function __construct(
         protected DocumentSequenceService $sequenceService,
+        protected IntegrationAutoIssueService $autoIssueService,
     ) {}
+
+    /** Types the number allocator serves (CompanyNumberAllocatorController). */
+    protected const ISSUABLE_TYPES = [
+        'invoice',
+        'credit_note',
+        'proforma',
+        'delivery_note',
+        'quote',
+        'order_received',
+    ];
 
     /**
      * @param  array<string, mixed>  $payload
@@ -203,20 +216,69 @@ class IntegrationDocumentInboxService
         }
 
         $type = (string) ($payload['type'] ?? 'invoice');
-        $number = $this->sequenceService->nextNumber($company, $type);
-        $payload['number'] = $number;
-        $payload['variable_symbol'] = preg_replace('/\D/', '', $number) ?: null;
-        $payload['issued_at'] = now()->toIso8601String();
-        $entry->payload_json = $payload;
-        $entry->save();
+        if (! in_array($type, self::ISSUABLE_TYPES, true)) {
+            throw ValidationException::withMessages([
+                'type' => ['This document type cannot be issued.'],
+            ]);
+        }
 
-        AuditLog::log('integration_inbox.document_number_issued', 'company', $company->id, [
-            'inbox_id' => $entry->id,
-            'document_type' => $type,
-            'number' => $number,
-        ]);
+        // Same allocator, company, idempotency key and lock as the automatic
+        // issue (IntegrationAutoIssueService::maybeAutoIssue). This path used
+        // nextNumber(), which recorded no reservation and ignored the
+        // reservation floor - every manual issue of a local-first company
+        // got the SAME number, colliding with browser-issued invoices.
+        $context = $this->autoIssueService->resolveProfileContext($company);
+        $allocatorCompany = $context['company'] ?? $company;
+        $localHighCounter = $context
+            ? $this->autoIssueService->profileLocalHighCounter($allocatorCompany, $context['profile'], $type)
+            : null;
+        $issueRequestId = $this->autoIssueService->issueRequestIdFor($entry, $type);
 
-        return $entry->fresh();
+        $lock = Cache::lock('woo-auto-issue:'.$allocatorCompany->id.':'.$issueRequestId, 30);
+        try {
+            $lock->block(10);
+        } catch (LockTimeoutException) {
+            return $entry->fresh() ?? $entry;
+        }
+
+        try {
+            $entry = $entry->fresh() ?? $entry;
+            $payload = $entry->payload_json;
+            if (! empty($payload['number'])) {
+                return $entry;
+            }
+
+            $reservation = $this->sequenceService->reserveNumberForIssue(
+                $allocatorCompany,
+                $type,
+                $issueRequestId,
+                $localHighCounter,
+            );
+            $this->sequenceService->confirmReservation(
+                $allocatorCompany,
+                $type,
+                $issueRequestId,
+                hash('sha256', json_encode($payload) ?: ''),
+                'woo-manual-v1',
+            );
+
+            $number = $reservation->number;
+            $payload['number'] = $number;
+            $payload['variable_symbol'] = preg_replace('/\D/', '', $number) ?: null;
+            $payload['issued_at'] = now()->toIso8601String();
+            $entry->payload_json = $payload;
+            $entry->save();
+
+            AuditLog::log('integration_inbox.document_number_issued', 'company', $allocatorCompany->id, [
+                'inbox_id' => $entry->id,
+                'document_type' => $type,
+                'number' => $number,
+            ]);
+
+            return $entry->fresh() ?? $entry;
+        } finally {
+            $lock->release();
+        }
     }
 
     public function dismiss(IntegrationDocumentInbox $entry): void

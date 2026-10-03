@@ -8,6 +8,7 @@ use App\Enums\BusinessDocumentType;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\Company;
+use App\Models\CompanyDocumentSequence;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -228,25 +229,55 @@ class BusinessDocumentBulkService
         $skipped = 0;
         $typesToSync = [];
 
-        foreach ($documents as $document) {
-            if (! $document->canDelete()) {
+        // Newest number first per type: only the top number may be deleted,
+        // so a selected tail of the sequence falls one by one in one run.
+        $formats = [];
+        $ordered = $documents->sortByDesc(function (BusinessDocument $document) use (&$formats) {
+            $type = $document->typeValue();
+            $formats[$type] ??= (string) CompanyDocumentSequence::query()
+                ->where('company_id', $document->company_id)
+                ->where('document_type', $type)
+                ->where('is_default', true)
+                ->orderBy('id')
+                ->value('format');
+
+            return $type.'|'.($document->hasNumber() ? $this->sequenceService->numberSortKey($formats[$type], $document) : '');
+        });
+
+        foreach ($ordered as $document) {
+            // Deleting an issued document must return its stock first
+            // (Cursor PR #67) - no-op for drafts, idempotent otherwise.
+            // Lock + re-check inside the transaction like the single delete.
+            $deleted = DB::transaction(function () use ($document) {
+                $locked = BusinessDocument::query()
+                    ->whereKey($document->id)
+                    ->lockForUpdate()
+                    ->first();
+                if (! $locked || ! $locked->canDelete()) {
+                    return false;
+                }
+
+                $this->stockMovementService->reverseDocumentCancel($locked->fresh(['lines']));
+                $locked->lines()->delete();
+                $locked->delete();
+
+                return true;
+            });
+
+            if (! $deleted) {
                 $skipped++;
 
                 continue;
             }
-            $typesToSync[$document->type->value] = $document->company;
-            // Deleting an issued document must return its stock first
-            // (Cursor PR #67) - no-op for drafts, idempotent otherwise.
-            DB::transaction(function () use ($document) {
-                $this->stockMovementService->reverseDocumentCancel($document->fresh(['lines']));
-                $document->lines()->delete();
-                $document->delete();
-            });
+            $typesToSync[$document->typeValue()] ??= ['company' => $document->company, 'numbers' => []];
+            if ($document->hasNumber()) {
+                $typesToSync[$document->typeValue()]['numbers'][] = (string) $document->number;
+            }
             $processed++;
         }
 
-        foreach ($typesToSync as $documentType => $company) {
-            $this->sequenceService->syncSeriesAfterDocumentChange($company, $documentType);
+        foreach ($typesToSync as $documentType => $sync) {
+            $this->sequenceService->syncSeriesAfterDocumentChange($sync['company'], $documentType, $sync['numbers']);
         }
 
         return ['processed' => $processed, 'skipped' => $skipped];

@@ -42,7 +42,13 @@ describe("reserveIssueNumber", () => {
             reserve: vi.fn().mockResolvedValue({ number: "20260071", counter: 71, status: "reserved" }),
         });
 
-        const result = await bridge.reserveIssueNumber(identity, "invoice", "doc-request-0001", 70);
+        const result = await bridge.reserveIssueNumber(
+            identity,
+            "invoice",
+            "doc-request-0001",
+            70,
+            new Date(2027, 0, 1, 0, 30),
+        );
 
         expect(result).toEqual({
             ok: true,
@@ -53,6 +59,8 @@ describe("reserveIssueNumber", () => {
             document_type: "invoice",
             issue_request_id: "doc-request-0001",
             local_high_counter: 70,
+            // The LOCAL calendar date decides the period (server runs UTC).
+            period_date: "2027-01-01",
         });
     });
 

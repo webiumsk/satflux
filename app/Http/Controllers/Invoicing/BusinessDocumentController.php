@@ -35,6 +35,7 @@ use App\Services\Invoicing\CanonicalInvoiceBuilder;
 use App\Services\Invoicing\CompanyStockMovementService;
 use App\Services\Invoicing\DocumentSequenceService;
 use App\Services\Invoicing\DocumentTotalsCalculator;
+use App\Support\Invoicing\BuyerSnapshot;
 use App\Support\Invoicing\CompanyAppSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -275,6 +276,18 @@ class BusinessDocumentController extends Controller
             ]), [
                 'store_id' => $this->resolveStoreId($company, $request) ?? $locked->store_id,
             ]));
+
+            // The buyer is frozen at issue; an issued document re-pointed to
+            // another contact must re-freeze it, otherwise the list shows
+            // the new contact while PDF / UBL / ISDOC keep the old buyer.
+            if (! $locked->hasStatus(BusinessDocumentStatus::Draft) && $locked->isDirty('company_contact_id')) {
+                $locked->unsetRelation('contact');
+                $contact = CompanyContact::query()
+                    ->whereKey($locked->company_contact_id)
+                    ->where('company_id', $company->id)
+                    ->first();
+                $locked->setAttribute('buyer_snapshot', $contact ? BuyerSnapshot::fromContact($contact) : null);
+            }
 
             if ($locked->type === BusinessDocumentType::Quote) {
                 $locked->pdf_show_payment_info = false;
@@ -652,7 +665,11 @@ class BusinessDocumentController extends Controller
             $locked->delete();
         });
 
-        $this->sequenceService->syncSeriesAfterDocumentChange($company, $documentType);
+        $this->sequenceService->syncSeriesAfterDocumentChange(
+            $company,
+            $documentType,
+            $number !== null && $number !== '' ? [(string) $number] : [],
+        );
 
         AuditLog::log('business_document.deleted', 'business_document', $id, [
             'company_id' => $company->id,

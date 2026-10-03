@@ -108,7 +108,8 @@ class CompanyDocumentSequenceTest extends TestCase
 
         $create->assertCreated();
         $create->assertJsonPath('data.format', 'FAKYYYYNNNN');
-        $create->assertJsonPath('data.next_number_preview', 'FAK20260011');
+        // The typed "last used" counter is a floor for the current period.
+        $create->assertJsonPath('data.next_number_preview', 'FAK'.now()->format('Y').'0011');
     }
 
     #[Test]
