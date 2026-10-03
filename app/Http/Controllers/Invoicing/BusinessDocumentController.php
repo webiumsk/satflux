@@ -665,7 +665,11 @@ class BusinessDocumentController extends Controller
             $locked->delete();
         });
 
-        $this->sequenceService->syncSeriesAfterDocumentChange($company, $documentType);
+        $this->sequenceService->syncSeriesAfterDocumentChange(
+            $company,
+            $documentType,
+            $number !== null && $number !== '' ? [(string) $number] : [],
+        );
 
         AuditLog::log('business_document.deleted', 'business_document', $id, [
             'company_id' => $company->id,

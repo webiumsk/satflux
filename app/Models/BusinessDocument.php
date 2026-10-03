@@ -19,6 +19,15 @@ class BusinessDocument extends Model
 {
     use HasFactory, HasUuids;
 
+    protected static function booted(): void
+    {
+        // Any change can move the top number of a series (see
+        // DocumentSequenceService::latestNumberedDocumentId()).
+        $forget = fn () => app(DocumentSequenceService::class)->forgetLatestNumbered();
+        static::saved($forget);
+        static::deleted($forget);
+    }
+
     protected $fillable = [
         'company_id',
         'company_contact_id',

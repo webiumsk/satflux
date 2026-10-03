@@ -791,8 +791,11 @@ async function createInvoiceFromQuote() {
 
 async function deleteDoc() {
   if (!documentId.value || !canDelete.value) return;
+  // A numbered cancelled document also frees its number for reuse.
   const msg =
-    documentStatus.value === 'paid' || documentStatus.value === 'issued'
+    documentStatus.value === 'paid'
+      || documentStatus.value === 'issued'
+      || (documentStatus.value === 'cancelled' && !!documentNumber.value)
       ? t('invoicing.confirm_delete_last')
       : t('invoicing.confirm_delete');
   if (!window.confirm(msg)) return;

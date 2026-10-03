@@ -269,12 +269,15 @@ class BusinessDocumentBulkService
 
                 continue;
             }
-            $typesToSync[$document->type->value] = $document->company;
+            $typesToSync[$document->typeValue()] ??= ['company' => $document->company, 'numbers' => []];
+            if ($document->hasNumber()) {
+                $typesToSync[$document->typeValue()]['numbers'][] = (string) $document->number;
+            }
             $processed++;
         }
 
-        foreach ($typesToSync as $documentType => $company) {
-            $this->sequenceService->syncSeriesAfterDocumentChange($company, $documentType);
+        foreach ($typesToSync as $documentType => $sync) {
+            $this->sequenceService->syncSeriesAfterDocumentChange($sync['company'], $documentType, $sync['numbers']);
         }
 
         return ['processed' => $processed, 'skipped' => $skipped];

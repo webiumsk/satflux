@@ -151,13 +151,15 @@ class DocumentNumberingAuditTest extends TestCase
     public function test_previews_do_not_write_and_include_the_reservation_floor(): void
     {
         $this->reserve('req-preview-1')->assertOk();
+        CompanyDocumentSequence::query()->where('company_id', $this->company->id)
+            ->update(['last_number' => 0]);
+
+        $service = app(DocumentSequenceService::class);
+        $this->assertSame('INV20260002', $service->previewNextNumber($this->company, 'invoice'));
+        $this->assertSame('INV20260051', $service->previewNextNumber($this->company, 'invoice', 50));
+
         $series = CompanyDocumentSequence::query()->where('company_id', $this->company->id)->firstOrFail();
-        $series->forceFill(['last_number' => 99])->save();
-
-        $preview = app(DocumentSequenceService::class)->previewNextNumber($this->company, 'invoice');
-
-        $this->assertSame('INV20260002', $preview);
-        $this->assertSame(99, (int) $series->fresh()->last_number);
+        $this->assertSame(0, (int) $series->last_number);
     }
 
     public function test_concurrent_first_reserve_of_the_same_request_returns_one_reservation(): void
@@ -226,5 +228,74 @@ class DocumentNumberingAuditTest extends TestCase
         $this->assertNull($service->localHighCounterForCurrentPeriod(
             $this->company, 'invoice', 342, Carbon::parse('2025-12-30'),
         ));
+    }
+
+    public function test_manual_last_used_counter_is_a_floor_and_release_keeps_it(): void
+    {
+        $series = CompanyDocumentSequence::query()->where('company_id', $this->company->id)->firstOrFail();
+        $this->actingAs($this->user)
+            ->patchJson("/api/invoicing/companies/{$this->company->id}/number-series/{$series->id}", [
+                'name' => 'INV',
+                'document_type' => 'invoice',
+                'format' => 'INVYYYYNNNN',
+                'reset_period' => 'yearly',
+                'is_default' => true,
+                'last_number' => 120,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.next_number_preview', 'INV20260121');
+
+        $this->reserve('req-manual-1')->assertOk()->assertJsonPath('data.number', 'INV20260121');
+
+        // Deleting it releases 121 - and keeps the migration start value.
+        $this->actingAs($this->user)
+            ->postJson('/api/invoicing/companies/'.$this->company->id.'/number-allocator/release', [
+                'document_type' => 'invoice',
+                'issue_request_id' => 'req-manual-1',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.released', true);
+
+        $this->reserve('req-manual-2')->assertOk()->assertJsonPath('data.number', 'INV20260121');
+    }
+
+    public function test_series_list_shows_the_counter_of_the_current_period_only(): void
+    {
+        CompanyDocumentSequence::query()->where('company_id', $this->company->id)
+            ->update(['period_key' => '2025', 'last_number' => 342]);
+
+        $this->actingAs($this->user)
+            ->getJson("/api/invoicing/companies/{$this->company->id}/number-series")
+            ->assertOk()
+            ->assertJsonPath('data.0.last_number', 0)
+            ->assertJsonPath('data.0.next_number_preview', 'INV20260001');
+    }
+
+    public function test_server_bulk_delete_of_the_tail_lowers_the_counter_once_per_number(): void
+    {
+        $service = app(DocumentSequenceService::class);
+        $ids = [];
+        foreach ([1, 2, 3] as $i) {
+            $ids[] = BusinessDocument::create([
+                'company_id' => $this->company->id,
+                'type' => 'invoice',
+                'status' => BusinessDocumentStatus::Issued,
+                'number' => $service->nextNumber($this->company, 'invoice'),
+                'issue_date' => '2026-05-01',
+                'total' => 10,
+                'currency' => 'EUR',
+            ])->id;
+        }
+
+        // Memoized "latest" must follow each delete inside one bulk run.
+        $this->actingAs($this->user)
+            ->postJson("/api/invoicing/companies/{$this->company->id}/documents/bulk", [
+                'action' => 'delete',
+                'document_ids' => [$ids[1], $ids[2]],
+            ])
+            ->assertOk();
+
+        $this->assertSame(1, BusinessDocument::query()->where('company_id', $this->company->id)->count());
+        $this->assertSame('INV20260002', $service->nextNumber($this->company, 'invoice'));
     }
 }

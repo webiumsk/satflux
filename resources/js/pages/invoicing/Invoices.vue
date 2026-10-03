@@ -2675,9 +2675,13 @@ async function deleteDoc(d: {
   id: string;
   status?: string;
   can_delete?: boolean;
+  number?: string | null;
 }) {
+  // A numbered cancelled document also frees its number for reuse.
   const msg =
-    d.status === "paid" || d.status === "issued"
+    d.status === "paid"
+      || d.status === "issued"
+      || (d.status === "cancelled" && !!d.number)
       ? t("invoicing.confirm_delete_last")
       : t("invoicing.confirm_delete");
   if (!window.confirm(msg)) return;

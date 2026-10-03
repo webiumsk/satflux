@@ -181,13 +181,16 @@ class BusinessDocumentActionsTest extends TestCase
             ->where('is_default', true)
             ->first();
 
-        $this->assertSame(0, (int) $series->last_number);
+        // Gapless: the deleted number is handed out again. The stored counter
+        // is a floor (numbers 1-4 may come from a previous system), so it
+        // drops to just below the deleted number - not to 0.
+        $this->assertSame(4, (int) $series->last_number);
 
         $preview = $this->actingAs($this->user)
             ->getJson("/api/invoicing/companies/{$this->company->id}/number-series/preview?type=invoice");
 
         $preview->assertOk()
-            ->assertJsonPath('data.next_number', "INV{$year}0001");
+            ->assertJsonPath('data.next_number', "INV{$year}0005");
     }
 
     #[Test]

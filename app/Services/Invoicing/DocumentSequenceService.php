@@ -263,13 +263,13 @@ class DocumentSequenceService
 
             $reservation->delete();
 
-            $remainingMax = (int) (clone $scoped)->max('counter');
+            // Explicit lowering (the stored counter is otherwise a floor):
+            // back to just below the released number - not to the remaining
+            // reservations, which would also drop a manual start value.
+            $lowered = max((int) (clone $scoped)->max('counter'), (int) $reservation->counter - 1);
             if ($series->period_key === $reservation->period_key
-                && (int) $series->last_number > $remainingMax) {
-                // The reserve path re-derives the counter from documents,
-                // the local high counter and the remaining reservation floor
-                // - lowering here makes previews honest immediately.
-                $series->last_number = $remainingMax;
+                && (int) $series->last_number > $lowered) {
+                $series->last_number = $lowered;
                 $series->save();
             }
 
@@ -366,11 +366,17 @@ class DocumentSequenceService
     }
 
     /**
-     * Recalculate default series counter after a document is deleted.
+     * Recalculate the default series counter after documents were deleted.
+     * The deleted numbers are the explicit lowering path of a gapless
+     * delete: the counter drops to just below the smallest of them (never
+     * below what the remaining documents and reservations use). Without
+     * them the counter only rises.
+     *
+     * @param  array<int, string>  $deletedNumbers
      */
-    public function syncSeriesAfterDocumentChange(Company $company, string $documentType): void
+    public function syncSeriesAfterDocumentChange(Company $company, string $documentType, array $deletedNumbers = []): void
     {
-        DB::transaction(function () use ($company, $documentType) {
+        DB::transaction(function () use ($company, $documentType, $deletedNumbers) {
             $series = CompanyDocumentSequence::query()
                 ->where('company_id', $company->id)
                 ->where('document_type', $documentType)
@@ -378,30 +384,56 @@ class DocumentSequenceService
                 ->lockForUpdate()
                 ->first();
 
-            if ($series) {
-                $this->alignCounter($series, null, now());
-                $series->save();
+            if (! $series) {
+                return;
             }
+
+            $date = now();
+            $released = [];
+            foreach ($deletedNumbers as $number) {
+                $counter = $this->formatter->counterInPeriod(
+                    (string) $series->format,
+                    $number,
+                    (string) $series->reset_period,
+                    $date,
+                );
+                if ($counter !== null) {
+                    $released[] = $counter;
+                }
+            }
+
+            $this->alignCounter($series, null, $date, $released !== [] ? min($released) - 1 : null);
+            $series->save();
         });
     }
 
     /**
      * Brings the (in-memory) series counter to the highest number used in
      * the CURRENT period: server documents of that period, the local-first
-     * client's high counter (only meaningful for the same period) and every
-     * reservation of the period. Callers that allocate save it under the
-     * series row lock; previews never save.
+     * client's high counter (only meaningful for the same period), every
+     * reservation of the period and the stored counter itself - the "last
+     * used" value a migrating user types into the series panel is a floor
+     * (syncPeriod() resets it to 0 in a new period). It is lowered only
+     * through $lowerTo, the explicit gapless-delete path. Callers that
+     * allocate save it under the series row lock; previews never save.
      */
-    protected function alignCounter(CompanyDocumentSequence $series, ?int $localHighCounter, CarbonInterface $date): void
-    {
+    protected function alignCounter(
+        CompanyDocumentSequence $series,
+        ?int $localHighCounter,
+        CarbonInterface $date,
+        ?int $lowerTo = null,
+    ): void {
         $this->syncPeriod($series, $date);
+
+        $stored = (int) $series->last_number;
+        $floor = $lowerTo !== null ? min($stored, max(0, $lowerTo)) : $stored;
 
         $counter = $this->highestUsedCounterInPeriod($series, $date);
         if ($localHighCounter !== null && $localHighCounter > $counter) {
             $counter = $localHighCounter;
         }
 
-        $series->last_number = max($counter, $this->reservedCounterFloor($series));
+        $series->last_number = max($counter, $floor, $this->reservedCounterFloor($series));
     }
 
     /**
@@ -462,14 +494,37 @@ class DocumentSequenceService
     }
 
     /**
+     * Memo of latestNumberedDocumentId() per company + type. The service is
+     * bound "scoped" (one instance per request / queue job) and every
+     * BusinessDocument save or delete clears it, so a bulk delete or a
+     * batch of serialized documents (can_delete is appended) does not
+     * re-scan the series each time.
+     *
+     * @var array<string, string|null>
+     */
+    protected array $latestNumberedCache = [];
+
+    public function forgetLatestNumbered(): void
+    {
+        $this->latestNumberedCache = [];
+    }
+
+    /**
      * Id of the document holding the top number of its type - the only
      * numbered document that may be deleted (gapless numbering). Ordered by
      * the number parsed with the default series format (year, month,
      * counter) - not by created_at: drafts are issued in any order and the
-     * issue date of an issued document can be edited.
+     * issue date of an issued document can be edited, so the candidates
+     * cannot be narrowed by date in SQL without breaking that rule. The
+     * scan reads four plain columns (no model hydration) and is memoized.
      */
     public function latestNumberedDocumentId(string $companyId, string $documentType): ?string
     {
+        $key = $companyId.'|'.$documentType;
+        if (array_key_exists($key, $this->latestNumberedCache)) {
+            return $this->latestNumberedCache[$key];
+        }
+
         $format = (string) CompanyDocumentSequence::query()
             ->where('company_id', $companyId)
             ->where('document_type', $documentType)
@@ -477,21 +532,48 @@ class DocumentSequenceService
             ->orderBy('id')
             ->value('format');
 
-        return BusinessDocument::query()
+        $latestId = null;
+        $latestKey = null;
+        $rows = BusinessDocument::query()
             ->where('company_id', $companyId)
             ->where('type', $documentType)
             ->whereNotNull('number')
-            ->get(['id', 'number', 'issue_date', 'created_at'])
-            ->sortByDesc(fn (BusinessDocument $document) => $this->numberSortKey($format, $document))
-            ->first()
-            ?->id;
+            ->toBase()
+            ->get(['id', 'number', 'issue_date', 'created_at']);
+        foreach ($rows as $row) {
+            $sortKey = $this->sortKeyFor(
+                $format,
+                (string) $row->number,
+                $row->issue_date !== null ? Carbon::parse($row->issue_date) : null,
+                $row->created_at !== null ? Carbon::parse($row->created_at) : null,
+            ).(string) $row->id;
+            if ($latestKey === null || strcmp($sortKey, $latestKey) > 0) {
+                $latestKey = $sortKey;
+                $latestId = (string) $row->id;
+            }
+        }
+
+        return $this->latestNumberedCache[$key] = $latestId;
     }
 
     /** Sortable "position in the sequence" of a numbered document. */
     public function numberSortKey(string $format, BusinessDocument $document): string
     {
-        $parsed = $format !== '' ? $this->formatter->parse($format, (string) $document->number) : null;
-        $issueDate = $document->issue_date ? Carbon::parse($document->issue_date) : null;
+        return $this->sortKeyFor(
+            $format,
+            (string) $document->number,
+            $document->issue_date ? Carbon::parse($document->issue_date) : null,
+            $document->created_at,
+        );
+    }
+
+    protected function sortKeyFor(
+        string $format,
+        string $number,
+        ?CarbonInterface $issueDate,
+        ?CarbonInterface $createdAt,
+    ): string {
+        $parsed = $format !== '' ? $this->formatter->parse($format, $number) : null;
 
         $year = $parsed['year'] ?? null;
         $year = $year !== null ? (strlen($year) <= 2 ? 2000 + (int) $year : (int) $year) : ($issueDate !== null ? $issueDate->year : 0);
@@ -501,7 +583,7 @@ class DocumentSequenceService
         // A number outside the series format (imported, older format) falls
         // back to its trailing digits.
         $counter = $parsed['counter']
-            ?? (preg_match('/(\d{1,12})$/', (string) $document->number, $m) ? (int) $m[1] : 0);
+            ?? (preg_match('/(\d{1,12})$/', $number, $m) ? (int) $m[1] : 0);
 
         return sprintf(
             '%04d%02d%d%012d%s%012d',
@@ -510,7 +592,7 @@ class DocumentSequenceService
             $parsed !== null ? 1 : 0,
             $counter,
             $issueDate?->format('Ymd') ?? '00000000',
-            $document->created_at?->getTimestamp() ?? 0,
+            $createdAt?->getTimestamp() ?? 0,
         );
     }
 
