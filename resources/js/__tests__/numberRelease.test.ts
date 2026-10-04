@@ -37,8 +37,14 @@ vi.mock("@/evolu/client", () => {
 });
 
 import { releaseIssuedNumber } from "../evolu/numberReleaseBridge";
-import { sortRowsForSequentialDelete } from "../evolu/documentBulkLocal";
+import {
+    buildLocalDeletionPolicy,
+    canDeleteLocalDocument,
+    isLatestForCompanyType,
+    sortRowsForSequentialDelete,
+} from "../evolu/documentBulkLocal";
 import type { EvoluDocumentRow } from "../evolu/documentMap";
+import type { EvoluNumberSeriesRow } from "../evolu/numberSeriesMap";
 
 describe("releaseIssuedNumber (gapless numbering)", () => {
     beforeEach(() => {
@@ -58,6 +64,28 @@ describe("releaseIssuedNumber (gapless numbering)", () => {
         expect(releaseMock).toHaveBeenCalledWith("bridge-1", {
             document_type: "invoice",
             number: "FV20260075",
+        });
+    });
+
+    it("addresses the reservation by the document id - the local format may differ from the server one", async () => {
+        releaseMock.mockResolvedValue({ released: true });
+
+        await releaseIssuedNumber("c1", "invoice", "FV20260075", "doc-75");
+        expect(releaseMock).toHaveBeenCalledWith("bridge-1", {
+            document_type: "invoice",
+            number: "FV20260075",
+            issue_request_id: "doc-75",
+        });
+    });
+
+    it("a 422 for an e-Faktura submission maps to efaktura_submitted, not not_last", async () => {
+        releaseMock.mockRejectedValue({
+            response: { status: 422, data: { errors: { efaktura: ["submitted"] } } },
+        });
+
+        expect(await releaseIssuedNumber("c1", "invoice", "FV20260075", "doc-75")).toEqual({
+            ok: false,
+            error: "efaktura_submitted",
         });
     });
 
@@ -117,5 +145,68 @@ describe("sortRowsForSequentialDelete", () => {
             "FV-9",
             "FV-2",
         ]);
+    });
+});
+
+describe("latest-by-number delete guard", () => {
+    const series = [{
+        id: "s1",
+        companyId: "c1",
+        documentType: "invoice",
+        format: "FVYYYYNNNN",
+        resetPeriod: "yearly",
+        isDefault: 1,
+        periodKey: "2026",
+        lastNumber: "0",
+        name: "FV",
+    }] as unknown as EvoluNumberSeriesRow[];
+
+    function doc(id: string, number: string | null, status = "issued", issueDate = "2026-07-14"): EvoluDocumentRow {
+        return { id, companyId: "c1", documentType: "invoice", number, status, issueDate } as unknown as EvoluDocumentRow;
+    }
+
+    it("decides by the number, not by a random id on the same day", () => {
+        // "z" sorts after "a" - the old guard made FV20260001 the latest.
+        const docs = [doc("z-first", "FV20260001"), doc("a-second", "FV20260002")];
+        expect(isLatestForCompanyType(docs[1], docs, series)).toBe(true);
+        expect(isLatestForCompanyType(docs[0], docs, series)).toBe(false);
+    });
+
+    it("ignores drafts and edited issue dates", () => {
+        const docs = [
+            doc("d1", "FV20260001", "issued", "2026-12-31"),
+            doc("d2", "FV20260002", "issued", "2026-07-01"),
+            doc("draft", null, "draft", "2026-12-31"),
+        ];
+        expect(isLatestForCompanyType(docs[1], docs, series)).toBe(true);
+    });
+
+    it("treats a numbered cancelled document like an issued one", () => {
+        const policy = buildLocalDeletionPolicy([], series);
+        const docs = [doc("d1", "FV20260001", "cancelled"), doc("d2", "FV20260002")];
+        expect(canDeleteLocalDocument(docs[0], docs, policy)).toBe(false);
+        expect(canDeleteLocalDocument(docs[1], docs, policy)).toBe(true);
+        // A cancelled document that never got a number is always deletable.
+        expect(canDeleteLocalDocument(doc("d3", null, "cancelled"), docs, policy)).toBe(true);
+    });
+
+    it("orders a never-resetting counter-only series by the counter, not the issue date", () => {
+        const neverSeries = [{
+            ...series[0],
+            format: "FVNNNN",
+            resetPeriod: "never",
+        }] as unknown as EvoluNumberSeriesRow[];
+        const docs = [
+            doc("higher", "FV0101", "issued", "2025-12-30"),
+            doc("lower", "FV0100", "issued", "2026-01-05"),
+        ];
+        expect(isLatestForCompanyType(docs[0], docs, neverSeries)).toBe(true);
+        expect(isLatestForCompanyType(docs[1], docs, neverSeries)).toBe(false);
+    });
+
+    it("blocks deleting a bank-matched document", () => {
+        const docs = [doc("d1", "FV20260001", "paid")];
+        const policy = buildLocalDeletionPolicy([], series, [{ businessDocumentId: "d1" }]);
+        expect(canDeleteLocalDocument(docs[0], docs, policy)).toBe(false);
     });
 });

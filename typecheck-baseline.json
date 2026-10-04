@@ -1,6 +1,4 @@
 {
-  "resources/js/__tests__/numberSeriesCounterSync.test.ts|TS2352|Conversion of type '{ id: DocumentId; companyId: string & Brand<\"Id\"> & Brand<\"Company\">; documentType: \"invoice\"; number: string; status: string; isDeleted: number; }' to type 'EvoluDocumentRow' may ": 1,
-  "resources/js/__tests__/numberSeriesCounterSync.test.ts|TS2352|Conversion of type '{ id: string; companyId: string & Brand<\"Id\"> & Brand<\"Company\">; documentType: \"invoice\"; name: string; format: string; resetPeriod: \"yearly\"; periodKey: string; lastNumber: strin": 1,
   "resources/js/__tests__/serverSnapshotValidation.test.ts|TS2345|Argument of type 'unknown' is not assignable to parameter of type 'number'.": 1,
   "resources/js/__tests__/serverSnapshotValidation.test.ts|TS2345|Argument of type 'unknown' is not assignable to parameter of type 'string'.": 2,
   "resources/js/__tests__/setup.ts|TS2550|Property 'difference' does not exist on type 'Set<any>'. Do you need to change your target library? Try changing the 'lib' compiler option to 'esnext' or later.": 2,

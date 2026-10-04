@@ -265,9 +265,11 @@ class BusinessDocumentExcelImportService
 
         if (
             ! $validateOnly
+            // The unique key is (company_id, number) across ALL types - a
+            // clash with a credit note / proforma number used to escape as an
+            // uncaught QueryException and abort the import mid-way.
             && BusinessDocument::query()
                 ->where('company_id', $company->id)
-                ->where('type', BusinessDocumentType::Invoice)
                 ->where('number', $invoiceNumber)
                 ->exists()
         ) {

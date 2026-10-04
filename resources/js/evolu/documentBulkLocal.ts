@@ -7,7 +7,9 @@ import {
     deleteLocalDocument,
     markLocalDocumentPaid,
 } from "./documentCrud";
-import { syncNumberSeriesCounterFromDocuments } from "./numberSeriesCrud";
+import { resolveDefaultSeries, syncNumberSeriesCounterFromDocuments } from "./numberSeriesCrud";
+import { documentNumberSortKey } from "./numberSeriesFormat";
+import { reverseDocumentStockOnCancelAsync } from "./documentStockMovement";
 import {
     filterLocalDocumentRows,
     type LocalDocumentFilterOptions,
@@ -30,7 +32,35 @@ export type ResolveBulkTargetsOptions = LocalDocumentFilterOptions & {
 
 export type LocalDocumentDeletionPolicy = {
     jurisdictionByCompanyId?: ReadonlyMap<string, string | null | undefined>;
+    /** Documents with a bank transaction match - deleting orphans the match. */
+    bankMatchedDocumentIds?: ReadonlySet<string>;
+    /** Number series - "latest" is decided by the number, not the date. */
+    allSeries?: readonly EvoluNumberSeriesRow[];
 };
+
+/** One builder for every deletion guard (list, detail, bulk, single delete). */
+export function buildLocalDeletionPolicy(
+    companies: ReadonlyArray<{ id: unknown; jurisdiction?: unknown }>,
+    allSeries: readonly EvoluNumberSeriesRow[] = [],
+    bankMatches: ReadonlyArray<{ businessDocumentId?: unknown }> = [],
+): LocalDocumentDeletionPolicy {
+    return {
+        jurisdictionByCompanyId: new Map(
+            companies.map((row) => [String(row.id), String(row.jurisdiction ?? "")]),
+        ),
+        bankMatchedDocumentIds: new Set(
+            bankMatches
+                .map((row) => (row.businessDocumentId ? String(row.businessDocumentId) : ""))
+                .filter(Boolean),
+        ),
+        allSeries,
+    };
+}
+
+/** Issued, paid or cancelled with a number - it occupies a slot of the sequence. */
+export function holdsSequenceNumber(doc: EvoluDocumentRow): boolean {
+    return doc.status !== "draft" && Boolean(doc.number);
+}
 
 export function resolveBulkTargets(options: ResolveBulkTargetsOptions): EvoluDocumentRow[] {
     const { companyId, selectAll, selectedIds, allDocuments, ...filterOpts } = options;
@@ -48,7 +78,14 @@ export function resolveBulkTargets(options: ResolveBulkTargetsOptions): EvoluDoc
 export function hasBlockingRelations(
     doc: EvoluDocumentRow,
     allDocuments: EvoluDocumentRow[],
+    policy: LocalDocumentDeletionPolicy = {},
 ): boolean {
+    // A bank-matched document is evidence of a received payment: deleting
+    // it would leave the transaction "matched" to nothing and release the
+    // number for reuse (the server refuses the same).
+    if (policy.bankMatchedDocumentIds?.has(String(doc.id))) {
+        return true;
+    }
     return allDocuments.some(
         (other) =>
             other.sourceDocumentId === doc.id
@@ -56,22 +93,35 @@ export function hasBlockingRelations(
     );
 }
 
+/**
+ * True when `doc` holds the top number of its company + type - the only
+ * numbered document that can be deleted without leaving a hole. Decided by
+ * the number parsed with the series format, not by the issue date and a
+ * random id: same-day invoices made the real last one undeletable half of
+ * the time, a draft dated today blocked it, and an edited issue date let an
+ * older number pass.
+ */
 export function isLatestForCompanyType(
     doc: EvoluDocumentRow,
     allDocuments: EvoluDocumentRow[],
+    allSeries: readonly EvoluNumberSeriesRow[] = [],
 ): boolean {
-    const sameCompanyType = allDocuments.filter(
-        (row) => row.companyId === doc.companyId && row.documentType === doc.documentType,
+    const numbered = allDocuments.filter(
+        (row) =>
+            row.companyId === doc.companyId
+            && row.documentType === doc.documentType
+            && holdsSequenceNumber(row),
     );
-    if (sameCompanyType.length === 0) {
+    if (numbered.length === 0) {
         return true;
     }
 
-    const sorted = [...sameCompanyType].sort((a, b) => {
-        const aDate = a.issueDate || "";
-        const bDate = b.issueDate || "";
-        if (aDate !== bDate) return bDate.localeCompare(aDate);
-        return String(b.id).localeCompare(String(a.id));
+    const series = resolveDefaultSeries([...allSeries], doc.companyId, doc.documentType as DocumentType);
+    const keyOf = (row: EvoluDocumentRow) =>
+        documentNumberSortKey(series?.format ?? null, row.number, row.issueDate, series?.resetPeriod);
+    const sorted = [...numbered].sort((a, b) => {
+        const cmp = keyOf(b).localeCompare(keyOf(a));
+        return cmp !== 0 ? cmp : String(b.id).localeCompare(String(a.id));
     });
 
     return sorted[0]?.id === doc.id;
@@ -82,7 +132,7 @@ export function canDeleteLocalDocument(
     allDocuments: EvoluDocumentRow[],
     policy: LocalDocumentDeletionPolicy = {},
 ): boolean {
-    if (hasBlockingRelations(doc, allDocuments)) {
+    if (hasBlockingRelations(doc, allDocuments, policy)) {
         return false;
     }
 
@@ -93,12 +143,21 @@ export function canDeleteLocalDocument(
         return false;
     }
 
-    if (doc.status === "draft" || doc.status === "cancelled") {
+    if (doc.status === "draft") {
         return true;
     }
 
-    if (doc.status === "issued" || doc.status === "paid") {
-        return isLatestForCompanyType(doc, allDocuments);
+    // A cancelled document without a number never took a slot. With one it
+    // is treated like an issued one: deleting it frees the number, so only
+    // the top of the sequence may go - otherwise a hole remains (and a
+    // cancelled top number used to block deleting the issued one below it
+    // forever, because its reservation was never released).
+    if (doc.status === "cancelled" && !doc.number) {
+        return true;
+    }
+
+    if (doc.status === "issued" || doc.status === "paid" || doc.status === "cancelled") {
+        return isLatestForCompanyType(doc, allDocuments, policy.allSeries ?? []);
     }
 
     return false;
@@ -129,20 +188,21 @@ export function bulkMarkPaidLocal(
 }
 
 /**
- * Newest-first order so a selected contiguous tail of the sequence can be
- * deleted in one bulk run: after the newest falls, the next one becomes the
- * latest and passes the only-latest-deletable guard.
+ * Newest-number-first order (per company + type) so a selected contiguous
+ * tail of the sequence can be deleted in one bulk run: after the newest
+ * falls, the next one becomes the latest and passes the only-latest guard.
  */
-export function sortRowsForSequentialDelete(rows: EvoluDocumentRow[]): EvoluDocumentRow[] {
+export function sortRowsForSequentialDelete(
+    rows: EvoluDocumentRow[],
+    allSeries: readonly EvoluNumberSeriesRow[] = [],
+): EvoluDocumentRow[] {
+    const keyOf = (row: EvoluDocumentRow) => {
+        const series = resolveDefaultSeries([...allSeries], row.companyId, row.documentType as DocumentType);
+        return documentNumberSortKey(series?.format ?? null, row.number, row.issueDate, series?.resetPeriod);
+    };
     return [...rows].sort((a, b) => {
-        const aDate = a.issueDate || "";
-        const bDate = b.issueDate || "";
-        if (aDate !== bDate) return bDate.localeCompare(aDate);
-        const aNumber = String(a.number ?? "");
-        const bNumber = String(b.number ?? "");
-        // Numeric collation: FV-10 must sort after FV-2, not before it.
-        if (aNumber !== bNumber) return bNumber.localeCompare(aNumber, undefined, { numeric: true });
-        return String(b.id).localeCompare(String(a.id));
+        const cmp = keyOf(b).localeCompare(keyOf(a));
+        return cmp !== 0 ? cmp : String(b.id).localeCompare(String(a.id));
     });
 }
 
@@ -156,29 +216,40 @@ export async function bulkDeleteLocal(
     let processed = 0;
     let skipped = 0;
     const deletedIds = new Set<DocumentId>();
-    const issuedDeletes: EvoluDocumentRow[] = [];
+    const numberedDeletes: EvoluDocumentRow[] = [];
     // The guard evaluates "is latest" against the documents that still
     // exist - shrink the working set as rows fall so a chain of the newest
     // invoices deletes in one pass (gapless numbering, P3).
     let remainingDocs = allDocuments;
+    const effectivePolicy: LocalDocumentDeletionPolicy = {
+        ...policy,
+        allSeries: policy.allSeries ?? allSeries ?? [],
+    };
     const { releaseIssuedNumber } = await import("./numberReleaseBridge");
 
-    for (const row of sortRowsForSequentialDelete(rows)) {
-        if (!canDeleteLocalDocument(row, remainingDocs, policy)) {
+    for (const row of sortRowsForSequentialDelete(rows, effectivePolicy.allSeries)) {
+        if (!canDeleteLocalDocument(row, remainingDocs, effectivePolicy)) {
             skipped++;
             continue;
         }
 
-        if (row.status !== "draft" && row.status !== "cancelled" && row.number) {
+        if (holdsSequenceNumber(row)) {
             const release = await releaseIssuedNumber(
                 row.companyId,
                 String(row.documentType),
                 String(row.number),
+                String(row.id),
             );
             if (!release.ok) {
                 skipped++;
                 continue;
             }
+        }
+
+        // Return the stock first - the reversal reads the live document.
+        // Idempotent: a cancelled document was already reversed.
+        if (row.status === "issued" || row.status === "paid") {
+            await reverseDocumentStockOnCancelAsync(evolu, row.id);
         }
 
         const result = deleteLocalDocument(evolu, row.id);
@@ -188,25 +259,28 @@ export async function bulkDeleteLocal(
         }
         deletedIds.add(row.id);
         remainingDocs = remainingDocs.filter((docRow) => docRow.id !== row.id);
-        if (row.status !== "draft" && row.status !== "cancelled" && row.number) {
-            issuedDeletes.push(row);
+        if (holdsSequenceNumber(row)) {
+            numberedDeletes.push(row);
         }
         processed++;
     }
 
-    if (allSeries && issuedDeletes.length > 0) {
+    if (allSeries && numberedDeletes.length > 0) {
         const remaining = allDocuments.filter((row) => !deletedIds.has(row.id));
-        const synced = new Set<string>();
-        for (const row of issuedDeletes) {
+        const releasedByKey = new Map<string, EvoluDocumentRow[]>();
+        for (const row of numberedDeletes) {
             const key = `${row.companyId}:${row.documentType}`;
-            if (synced.has(key)) continue;
-            synced.add(key);
+            releasedByKey.set(key, [...(releasedByKey.get(key) ?? []), row]);
+        }
+        for (const released of releasedByKey.values()) {
+            const first = released[0];
             syncNumberSeriesCounterFromDocuments(
                 evolu,
-                row.companyId,
-                row.documentType as DocumentType,
+                first.companyId,
+                first.documentType as DocumentType,
                 remaining,
                 allSeries,
+                { releasedNumbers: released.map((row) => String(row.number)) },
             );
         }
     }

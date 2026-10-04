@@ -61,6 +61,119 @@ final class DocumentNumberFormatter
         return $result;
     }
 
+    /**
+     * Parses a number produced by this format back into its parts, or null
+     * when the number does not match the format at all (foreign/imported
+     * numbers, numbers of a previous format). Matching the WHOLE pattern -
+     * not just the trailing digits - keeps a year that sits after the
+     * counter (FNNNNYYYY), a widened counter run or an overflowing counter
+     * from being misread as the counter.
+     *
+     * @return array{counter: int, year: ?string, month: ?string}|null
+     */
+    public function parse(string $pattern, string $number): ?array
+    {
+        $pattern = strtoupper(trim($pattern));
+        if ($pattern === '') {
+            return null;
+        }
+
+        $regex = '';
+        $groups = [];
+        $length = strlen($pattern);
+        $index = 0;
+        while ($index < $length) {
+            $char = $pattern[$index];
+            $runLen = 0;
+            while ($index < $length && $pattern[$index] === $char) {
+                $runLen++;
+                $index++;
+            }
+
+            if ($char === 'M') {
+                $regex .= '(\d{'.$runLen.'})';
+                $groups[] = 'month';
+            } elseif ($char === 'R' || ($char === 'Y' && $runLen >= 2)) {
+                $regex .= '(\d{'.$runLen.'})';
+                $groups[] = 'year';
+            } elseif ($char === 'C' || ($char === 'N' && $runLen >= 2)) {
+                // str_pad never truncates - an overflowing counter is longer.
+                $regex .= '(\d{'.$runLen.',})';
+                $groups[] = 'counter';
+            } else {
+                $regex .= preg_quote(str_repeat($char, $runLen), '/');
+            }
+        }
+
+        if (! in_array('counter', $groups, true)
+            || ! preg_match('/^'.$regex.'$/i', trim($number), $matches)) {
+            return null;
+        }
+
+        $parts = ['counter' => null, 'year' => null, 'month' => null];
+        foreach ($groups as $position => $name) {
+            // A repeated token must agree with itself (e.g. YYYY-NN-YYYY).
+            $value = $matches[$position + 1];
+            if ($parts[$name] !== null && $parts[$name] !== $value) {
+                return null;
+            }
+            $parts[$name] = $value;
+        }
+
+        return [
+            'counter' => (int) $parts['counter'],
+            'year' => $parts['year'],
+            'month' => $parts['month'],
+        ];
+    }
+
+    /**
+     * Counter of $number when it belongs to the period of $date under the
+     * given reset rule, otherwise null. A yearly series must never count a
+     * previous year's numbers (the "first invoice of 2027 is 0343" bug).
+     * Formats without the period's date token cannot be told apart by the
+     * number - $documentDate (issue date) decides then, when known.
+     */
+    public function counterInPeriod(
+        string $pattern,
+        string $number,
+        string $resetPeriod,
+        CarbonInterface $date,
+        ?CarbonInterface $documentDate = null,
+    ): ?int {
+        $parsed = $this->parse($pattern, $number);
+        if ($parsed === null) {
+            return null;
+        }
+        if ($resetPeriod === 'never') {
+            return $parsed['counter'];
+        }
+
+        $yearKnown = $parsed['year'] !== null;
+        if ($yearKnown && $parsed['year'] !== $this->padComponent((string) $date->year, strlen($parsed['year']))) {
+            return null;
+        }
+
+        $monthKnown = $parsed['month'] !== null;
+        if ($resetPeriod === 'monthly' && $monthKnown
+            && $parsed['month'] !== $this->padComponent((string) $date->month, strlen($parsed['month']))) {
+            return null;
+        }
+
+        $periodFromNumber = $resetPeriod === 'monthly' ? ($yearKnown && $monthKnown) : $yearKnown;
+        if (! $periodFromNumber && $documentDate !== null) {
+            $sameYear = $documentDate->year === $date->year;
+            $samePeriod = $resetPeriod === 'monthly'
+                ? $sameYear && $documentDate->month === $date->month
+                : $sameYear;
+            if (! $samePeriod) {
+                return null;
+            }
+        }
+
+        return $parsed['counter'];
+    }
+
     protected function padComponent(string $value, int $length): string
     {
         if ($length <= 0) {

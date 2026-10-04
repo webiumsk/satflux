@@ -1,6 +1,7 @@
 import { computed } from "vue";
 import { useQuery } from "@evolu/vue";
 import {
+    allBankTransactionMatchesQuery,
     allCompaniesDetailQuery,
     allContactsQuery,
     allDocumentEventsQuery,
@@ -41,7 +42,7 @@ import type { EvoluDocumentEventRow } from "@/evolu/documentEventLog";
 import type { CompanyId, DocumentId } from "@/evolu/schema";
 import { useStoresStore } from "@/store/stores";
 import { toAppRows } from "../evolu/queryLoad";
-import type { LocalDocumentDeletionPolicy } from "@/evolu/documentBulkLocal";
+import { buildLocalDeletionPolicy, type LocalDocumentDeletionPolicy } from "@/evolu/documentBulkLocal";
 
 /** Evolu-backed document operations (requires EvoluProvider). */
 export function useLocalInvoiceDocumentSupport() {
@@ -53,6 +54,7 @@ export function useLocalInvoiceDocumentSupport() {
     const documentRows = useQuery(allDocumentsQuery);
     const lineRows = useQuery(allDocumentLinesQuery);
     const seriesRows = useQuery(allNumberSeriesQuery);
+    const bankMatchRows = useQuery(allBankTransactionMatchesQuery);
     const documentEventRows = useQuery(allDocumentEventsQuery) as { value: EvoluDocumentEventRow[] };
 
     async function refreshAll(): Promise<void> {
@@ -63,6 +65,7 @@ export function useLocalInvoiceDocumentSupport() {
             evolu.loadQuery(allDocumentLinesQuery),
             evolu.loadQuery(allNumberSeriesQuery),
             evolu.loadQuery(allDocumentEventsQuery),
+            evolu.loadQuery(allBankTransactionMatchesQuery),
         ]);
     }
 
@@ -94,11 +97,11 @@ export function useLocalInvoiceDocumentSupport() {
     }
 
     function deletionPolicy(): LocalDocumentDeletionPolicy {
-        return {
-            jurisdictionByCompanyId: new Map(
-                companyRows.value.map((row) => [String(row.id), String(row.jurisdiction ?? "")]),
-            ),
-        };
+        return buildLocalDeletionPolicy(
+            companyRows.value,
+            toAppRows<EvoluNumberSeriesRow>(seriesRows.value),
+            bankMatchRows.value,
+        );
     }
 
     async function issueLocalDocumentAsyncWrapped(
@@ -217,5 +220,6 @@ export function useLocalInvoiceDocumentSupport() {
         createLocalFinalInvoiceFromProforma,
         createLocalCreditNoteFromInvoice,
         payloadFromApiDocument,
+        deletionPolicy,
     };
 }

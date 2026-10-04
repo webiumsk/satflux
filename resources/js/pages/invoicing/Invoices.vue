@@ -1319,11 +1319,9 @@ const localCompanyJurisdiction = computed(() => {
     | undefined;
 });
 
-const localDeletionPolicy = computed(() => ({
-  jurisdictionByCompanyId: new Map(
-    localDoc?.companyRows.value.map((row) => [String(row.id), String(row.jurisdiction ?? "")]) ?? [],
-  ),
-}));
+// One deletion policy for list, bulk and single delete: jurisdiction
+// (GoBD), bank matches and number series ("latest" by number).
+const localDeletionPolicy = computed(() => localDoc?.deletionPolicy() ?? {});
 
 const localCompanyForInbox = computed(() => {
   if (!localFirst || !localDoc) return null;
@@ -2454,11 +2452,22 @@ async function issueDoc(d: { id: string }) {
         (c) => c.id === companyId.value,
       );
       if (!companyRow) return;
-      await localDoc.issueLocalDocumentAsync(
+      const issued = await localDoc.issueLocalDocumentAsync(
         localDoc.evolu,
         d.id as DocumentId,
         companyRow as EvoluCompanyRow,
       );
+      if (!issued.ok) {
+        // Offline / company limit / reserve failure used to be swallowed:
+        // the row silently stayed a draft.
+        const code = String(issued.error ?? "");
+        error.value =
+          code === "issue_requires_online"
+            ? t("invoicing.issue_requires_online")
+            : code === "company_limit"
+              ? t("invoicing.company_limit_issue_error")
+              : t("invoicing.issue_error");
+      }
       await load();
       return;
     }
@@ -2666,9 +2675,13 @@ async function deleteDoc(d: {
   id: string;
   status?: string;
   can_delete?: boolean;
+  number?: string | null;
 }) {
+  // A numbered cancelled document also frees its number for reuse.
   const msg =
-    d.status === "paid" || d.status === "issued"
+    d.status === "paid"
+      || d.status === "issued"
+      || (d.status === "cancelled" && !!d.number)
       ? t("invoicing.confirm_delete_last")
       : t("invoicing.confirm_delete");
   if (!window.confirm(msg)) return;
@@ -2690,7 +2703,13 @@ async function deleteDoc(d: {
             ? t("invoicing.delete_requires_online")
             : result.error === "not_last"
               ? t("invoicing.delete_not_last")
-              : t("invoicing.delete_release_failed");
+              : result.error === "efaktura_submitted"
+                ? t("invoicing.delete_efaktura_submitted")
+                : result.error === "not_deletable"
+                  ? t("invoicing.delete_not_allowed")
+                  : result.error === "issued_locked"
+                    ? t("invoicing.issued_locked_gobd")
+                    : t("invoicing.delete_release_failed");
         return;
       }
       await load();

@@ -22,6 +22,7 @@ use App\Models\StoreEmailRule;
 use App\Models\WalletConnection;
 use App\Pdf\DomPdfDriver;
 use App\Policies\StorePolicy;
+use App\Services\Invoicing\DocumentSequenceService;
 use App\Services\Invoicing\UsSalesTax\StripeTaxUsSalesTaxCalculator;
 use App\Services\Invoicing\UsSalesTax\UsSalesTaxCalculationService;
 use App\Support\ErrorRateCounter;
@@ -55,6 +56,10 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->bind(UsSalesTaxCalculator::class, StripeTaxUsSalesTaxCalculator::class);
+
+        // One instance per request / queue job: it memoizes the top-numbered
+        // document per series (cleared by BusinessDocument events).
+        $this->app->scoped(DocumentSequenceService::class);
 
         $this->app->singleton('laravel-pdf.driver.dompdf', function () {
             return new DomPdfDriver(config('laravel-pdf.dompdf', []));

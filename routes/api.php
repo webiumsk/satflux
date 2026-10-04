@@ -595,8 +595,6 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureStoreOwnership::class);
             Route::get('/stores/{store}/number-series/preview', [StoreDocumentSequenceController::class, 'preview'])
                 ->middleware(EnsureStoreOwnership::class);
-            Route::post('/stores/{store}/number-series/reserve', [StoreDocumentSequenceController::class, 'reserve'])
-                ->middleware(EnsureStoreOwnership::class);
 
             Route::get('/companies/{company}/documents/import/fields', [BusinessDocumentImportController::class, 'fields'])
                 ->middleware(EnsureCompanyOwnership::class);

@@ -3,9 +3,11 @@ import { useQuery } from "@evolu/vue";
 import type { DocumentAdvancedFilters } from "@/composables/useInvoicingDocumentListFilters";
 import type { IssuePeriodState } from "@/composables/useInvoicingIssuePeriod";
 import {
+    allBankTransactionMatchesQuery,
     allCompaniesDetailQuery,
     allContactsQuery,
     allDocumentsQuery,
+    allNumberSeriesQuery,
     useInvoicingEvolu,
 } from "@/evolu/client";
 import { evoluContactToApi } from "@/evolu/contactMap";
@@ -13,7 +15,8 @@ import { evoluDocumentToListRow, type EvoluDocumentRow } from "@/evolu/documentM
 import { filterLocalDocumentRows } from "@/evolu/documentListFilters";
 import type { CompanyId } from "@/evolu/schema";
 import { toAppRows } from "../evolu/queryLoad";
-import type { LocalDocumentDeletionPolicy } from "@/evolu/documentBulkLocal";
+import { buildLocalDeletionPolicy, type LocalDocumentDeletionPolicy } from "@/evolu/documentBulkLocal";
+import type { EvoluNumberSeriesRow } from "@/evolu/numberSeriesMap";
 
 export type LocalDocumentListRow = Record<string, unknown>;
 
@@ -45,6 +48,8 @@ export function useInvoicingDocumentsLocal(companyId: Ref<string>) {
     const documentRows = useQuery(allDocumentsQuery, { promise: documentsPromise });
     const contactRows = useQuery(allContactsQuery, { promise: contactsPromise });
     const companyRows = useQuery(allCompaniesDetailQuery, { promise: companiesPromise });
+    const seriesRows = useQuery(allNumberSeriesQuery);
+    const bankMatchRows = useQuery(allBankTransactionMatchesQuery);
 
     void Promise.all([documentsPromise, contactsPromise, companiesPromise]).finally(() => {
         loading.value = false;
@@ -59,11 +64,11 @@ export function useInvoicingDocumentsLocal(companyId: Ref<string>) {
         return map;
     });
 
-    const deletionPolicy = computed<LocalDocumentDeletionPolicy>(() => ({
-        jurisdictionByCompanyId: new Map(
-            companyRows.value.map((row) => [String(row.id), String(row.jurisdiction ?? "")]),
-        ),
-    }));
+    const deletionPolicy = computed<LocalDocumentDeletionPolicy>(() => buildLocalDeletionPolicy(
+        companyRows.value,
+        toAppRows<EvoluNumberSeriesRow>(seriesRows.value),
+        bankMatchRows.value,
+    ));
 
     const filteredRows = computed(() => {
         const companyRows = toAppRows<EvoluDocumentRow>(

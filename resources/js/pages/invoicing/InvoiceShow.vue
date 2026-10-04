@@ -791,8 +791,11 @@ async function createInvoiceFromQuote() {
 
 async function deleteDoc() {
   if (!documentId.value || !canDelete.value) return;
+  // A numbered cancelled document also frees its number for reuse.
   const msg =
-    documentStatus.value === 'paid' || documentStatus.value === 'issued'
+    documentStatus.value === 'paid'
+      || documentStatus.value === 'issued'
+      || (documentStatus.value === 'cancelled' && !!documentNumber.value)
       ? t('invoicing.confirm_delete_last')
       : t('invoicing.confirm_delete');
   if (!window.confirm(msg)) return;
@@ -810,13 +813,26 @@ async function deleteDoc() {
           ? t('invoicing.delete_requires_online')
           : result.error === 'not_last'
             ? t('invoicing.delete_not_last')
-            : t('invoicing.delete_release_failed');
+            : result.error === 'efaktura_submitted'
+              ? t('invoicing.delete_efaktura_submitted')
+              : result.error === 'not_deletable'
+                ? t('invoicing.delete_not_allowed')
+                : result.error === 'issued_locked'
+                  ? t('invoicing.issued_locked_gobd')
+                  : t('invoicing.delete_release_failed');
       return;
     }
     router.push({ name: documentRoutes.value.list, params: { companyId: companyId.value } });
     return;
   }
-  await invoicingApi.documents.delete(companyId.value, documentId.value!);
+  try {
+    await invoicingApi.documents.delete(companyId.value, documentId.value!);
+  } catch (rawError) {
+    // A refused delete (422: not the latest / linked documents) used to
+    // fail silently.
+    error.value = extractError(asApiError(rawError));
+    return;
+  }
   router.push({ name: documentRoutes.value.list, params: { companyId: companyId.value } });
 }
 

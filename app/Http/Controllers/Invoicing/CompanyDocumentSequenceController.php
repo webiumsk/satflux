@@ -12,6 +12,7 @@ use App\Services\Invoicing\DocumentNumberFormatter;
 use App\Services\Invoicing\DocumentSequenceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class CompanyDocumentSequenceController extends Controller
@@ -23,7 +24,18 @@ class CompanyDocumentSequenceController extends Controller
 
     public function preview(Request $request, Company $company): JsonResponse
     {
-        $type = $request->string('type', 'invoice')->toString();
+        $type = $request->validate([
+            'type' => ['sometimes', 'string', Rule::in([
+                'invoice',
+                'credit_note',
+                'proforma',
+                'delivery_note',
+                'quote',
+                'order_received',
+                'order_issued',
+                'expense',
+            ])],
+        ])['type'] ?? 'invoice';
 
         return response()->json([
             'data' => [
@@ -94,12 +106,15 @@ class CompanyDocumentSequenceController extends Controller
             'is_default' => $request->boolean('is_default', $sequence->is_default),
         ]);
 
-        if (array_key_exists('last_number', $validated)) {
-            $sequence->last_number = (int) $validated['last_number'];
+        // The panel edits the counter of the CURRENT period (it is a floor
+        // for the allocator), so saving it re-stamps the period - a stale
+        // period would reset it to 0 on the next allocation.
+        if (array_key_exists('last_number', $validated) || $periodChanged) {
+            $sequence->period_key = $this->sequenceService->currentPeriodKey($validated['reset_period']);
         }
 
-        if ($periodChanged) {
-            $sequence->period_key = $this->sequenceService->currentPeriodKey($validated['reset_period']);
+        if (array_key_exists('last_number', $validated)) {
+            $sequence->last_number = (int) $validated['last_number'];
         }
 
         $sequence->save();
@@ -171,7 +186,11 @@ class CompanyDocumentSequenceController extends Controller
             'reset_period' => $series->reset_period,
             'is_default' => $series->is_default,
             'period_key' => $series->period_key,
-            'last_number' => $series->last_number,
+            // Counter of the current period - last year's count is not what
+            // the next number continues from (the form posts it back).
+            'last_number' => $series->period_key === $this->sequenceService->currentPeriodKey((string) $series->reset_period)
+                ? (int) $series->last_number
+                : 0,
             'next_number_preview' => $this->sequenceService->previewNext($series),
         ];
     }

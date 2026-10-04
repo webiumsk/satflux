@@ -8,7 +8,11 @@ use App\Models\BusinessExpense;
 use App\Models\Company;
 use App\Models\CompanyDocumentSequence;
 use App\Models\DocumentNumberReservation;
+use App\Models\EphemeralEfakturaSubmission;
 use App\Support\LandingCopy;
+use Carbon\CarbonInterface;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -28,9 +32,11 @@ class DocumentSequenceService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $this->syncPeriod($series);
-            $this->ensureCounterSynced($series);
-            $this->applyLocalHighCounter($series, $localHighCounter);
+            $date = now();
+            // The reservation floor matters here too: a company that issues
+            // through the local-first allocator has no server documents, so
+            // without it this path handed out numbers already reserved.
+            $this->alignCounter($series, $localHighCounter, $date);
 
             $series->last_number = (int) $series->last_number + 1;
             $series->save();
@@ -38,6 +44,7 @@ class DocumentSequenceService
             return $this->formatter->format(
                 $series->format,
                 (int) $series->last_number,
+                $date,
             );
         });
     }
@@ -49,6 +56,11 @@ class DocumentSequenceService
      * request returns the existing reservation - including its number - in
      * whatever status it currently has, so a client can recover an
      * interrupted issue without burning another number.
+     *
+     * $periodDate is the client's LOCAL calendar date: the server runs in
+     * UTC, so in the first hours of a year the client already formats the
+     * new year while the server period is still the old one. It is honoured
+     * only within one day of the server date.
      */
     public function reserveNumberForIssue(
         Company $company,
@@ -56,50 +68,62 @@ class DocumentSequenceService
         string $issueRequestId,
         ?int $localHighCounter = null,
         ?int $reservedByUserId = null,
+        ?CarbonInterface $periodDate = null,
     ): DocumentNumberReservation {
-        return DB::transaction(function () use ($company, $documentType, $issueRequestId, $localHighCounter, $reservedByUserId) {
-            $existing = DocumentNumberReservation::query()
-                ->where('company_id', $company->id)
-                ->where('document_type', $documentType)
-                ->where('issue_request_id', $issueRequestId)
-                ->lockForUpdate()
-                ->first();
+        $date = $this->resolvePeriodDate($periodDate);
+
+        try {
+            return DB::transaction(function () use ($company, $documentType, $issueRequestId, $localHighCounter, $reservedByUserId, $date) {
+                $existing = DocumentNumberReservation::query()
+                    ->where('company_id', $company->id)
+                    ->where('document_type', $documentType)
+                    ->where('issue_request_id', $issueRequestId)
+                    ->lockForUpdate()
+                    ->first();
+                if ($existing) {
+                    return $existing;
+                }
+
+                $series = $this->resolveSeriesForIssue($company, $documentType);
+                $series = CompanyDocumentSequence::query()
+                    ->where('id', $series->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                // Server documents, the client's local high counter and the
+                // reservations of this period - never hand out a number at or
+                // below an existing reservation (local-first clients create no
+                // server documents). Voided reservations count too.
+                $this->alignCounter($series, $localHighCounter, $date);
+
+                $series->last_number = (int) $series->last_number + 1;
+                $series->save();
+
+                $counter = (int) $series->last_number;
+
+                return DocumentNumberReservation::create([
+                    'company_id' => $company->id,
+                    'document_type' => $documentType,
+                    'company_document_sequence_id' => $series->id,
+                    'issue_request_id' => $issueRequestId,
+                    'period_key' => $series->period_key,
+                    'counter' => $counter,
+                    'number' => $this->formatter->format($series->format, $counter, $date),
+                    'status' => DocumentNumberReservation::STATUS_RESERVED,
+                    'reserved_by_user_id' => $reservedByUserId,
+                ]);
+            });
+        } catch (UniqueConstraintViolationException $e) {
+            // Two first attempts of the SAME issue request raced: locking a
+            // row that does not exist yet locks nothing, so both inserted.
+            // The loser returns the winner's reservation (idempotency).
+            $existing = $this->findReservation($company, $documentType, $issueRequestId);
             if ($existing) {
                 return $existing;
             }
 
-            $series = $this->resolveSeriesForIssue($company, $documentType);
-            $series = CompanyDocumentSequence::query()
-                ->where('id', $series->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            $this->syncPeriod($series);
-            $this->ensureCounterSynced($series);
-            $this->applyLocalHighCounter($series, $localHighCounter);
-            // ensureCounterSynced derives the counter from SERVER documents,
-            // which local-first clients do not create - never hand out a
-            // number at or below an existing reservation for this period.
-            // Voided reservations count too: numbers are never recycled.
-            $this->applyReservedCounterFloor($series);
-
-            $series->last_number = (int) $series->last_number + 1;
-            $series->save();
-
-            $counter = (int) $series->last_number;
-
-            return DocumentNumberReservation::create([
-                'company_id' => $company->id,
-                'document_type' => $documentType,
-                'company_document_sequence_id' => $series->id,
-                'issue_request_id' => $issueRequestId,
-                'period_key' => $series->period_key,
-                'counter' => $counter,
-                'number' => $this->formatter->format($series->format, $counter),
-                'status' => DocumentNumberReservation::STATUS_RESERVED,
-                'reserved_by_user_id' => $reservedByUserId,
-            ]);
-        });
+            throw $e;
+        }
     }
 
     /**
@@ -170,40 +194,88 @@ class DocumentSequenceService
      * and this guard makes the rule race-safe. Chained deletes (newest
      * first) release one number at a time.
      *
+     * The reservation is addressed by its issue_request_id (the local-first
+     * document id) when given: the client renders the number with its LOCAL
+     * series format, which may differ from the server series format stored
+     * on the reservation, so a by-number lookup silently missed and the
+     * reservation floor kept the deleted number burned. The number lookup
+     * (current period of the default series) remains for documents whose
+     * reservation key the client does not know (imported / auto-issued).
+     *
      * Returns released=false with reason "not_found" when no reservation
      * holds the number (pre-allocator documents) - a harmless no-op.
      *
      * @return array{released: bool, reason?: string}
      */
-    public function releaseReservationByNumber(
+    public function releaseReservation(
         Company $company,
         string $documentType,
-        string $number,
+        ?string $issueRequestId,
+        ?string $number,
     ): array {
-        return DB::transaction(function () use ($company, $documentType, $number) {
-            $series = $this->resolveSeriesForIssue($company, $documentType);
+        return DB::transaction(function () use ($company, $documentType, $issueRequestId, $number) {
+            // A local-first document sent to e-Faktura is on record at the
+            // tax authority under this number - releasing it would hand the
+            // same number to the next invoice. Mirrors the server-document
+            // rule (BusinessDocument::hasBlockingRelations).
+            //
+            // The submission's bridge_company_id is not always this company
+            // (the company-less send path uses the sender's first e-Faktura
+            // company), and in a shared company another member may have sent
+            // it - so it counts when it belongs to this company OR was sent
+            // by its owner or any (also former) member.
+            if ($issueRequestId !== null && $issueRequestId !== ''
+                && EphemeralEfakturaSubmission::query()
+                    ->where('evolu_document_id', $issueRequestId)
+                    ->where(fn ($query) => $query
+                        ->where('bridge_company_id', $company->id)
+                        ->orWhereIn('user_id', $this->companyUserIds($company)))
+                    ->exists()) {
+                throw ValidationException::withMessages([
+                    'efaktura' => ['This document was submitted to e-Faktura - its number cannot be released.'],
+                ]);
+            }
+
+            $candidate = null;
+            if ($issueRequestId !== null && $issueRequestId !== '') {
+                $candidate = $this->findReservation($company, $documentType, $issueRequestId);
+            }
+
+            if (! $candidate && $number !== null && $number !== '') {
+                $default = $this->resolveSeriesForIssue($company, $documentType);
+                $periodKey = $this->currentPeriodKey($default->reset_period);
+                $candidate = DocumentNumberReservation::query()
+                    ->where('company_document_sequence_id', $default->id)
+                    ->where('period_key', $periodKey)
+                    ->where('number', $number)
+                    ->first();
+            }
+
+            if (! $candidate) {
+                return ['released' => false, 'reason' => 'not_found'];
+            }
+
+            // Series first, then the reservation - the same lock order as
+            // the reserve path.
             $series = CompanyDocumentSequence::query()
-                ->where('id', $series->id)
+                ->where('id', $candidate->company_document_sequence_id)
                 ->lockForUpdate()
                 ->firstOrFail();
-
-            $this->syncPeriod($series);
-
-            $scoped = DocumentNumberReservation::query()
-                ->where('company_document_sequence_id', $series->id)
-                ->when(
-                    $series->period_key === null,
-                    fn ($query) => $query->whereNull('period_key'),
-                    fn ($query) => $query->where('period_key', $series->period_key),
-                );
-
-            $reservation = (clone $scoped)
-                ->where('number', $number)
+            $reservation = DocumentNumberReservation::query()
+                ->whereKey($candidate->id)
                 ->lockForUpdate()
                 ->first();
             if (! $reservation) {
                 return ['released' => false, 'reason' => 'not_found'];
             }
+
+            $scoped = DocumentNumberReservation::query()
+                ->where('company_document_sequence_id', $series->id)
+                ->when(
+                    $reservation->period_key === null,
+                    fn ($query) => $query->whereNull('period_key'),
+                    fn ($query) => $query->where('period_key', $reservation->period_key),
+                );
 
             $maxCounter = (int) (clone $scoped)->max('counter');
             if ((int) $reservation->counter !== $maxCounter) {
@@ -214,23 +286,45 @@ class DocumentSequenceService
 
             $reservation->delete();
 
-            $remainingMax = (int) (clone $scoped)->max('counter');
-            if ((int) $series->last_number > $remainingMax) {
-                // The reserve path re-derives the counter from documents,
-                // the local high counter and the remaining reservation floor
-                // - lowering here makes previews honest immediately.
-                $series->last_number = $remainingMax;
+            // Explicit lowering (the stored counter is otherwise a floor):
+            // back to just below the released number - not to the remaining
+            // reservations, which would also drop a manual start value.
+            $lowered = max((int) (clone $scoped)->max('counter'), (int) $reservation->counter - 1);
+            $floors = is_array($series->period_floors) ? $series->period_floors : [];
+            if ($series->period_key === $reservation->period_key
+                && (int) $series->last_number > $lowered) {
+                $series->last_number = $lowered;
+                $series->save();
+            } elseif ($reservation->period_key !== null
+                && (int) ($floors[$reservation->period_key] ?? 0) > $lowered) {
+                // The row has moved on to another period - lower the floor
+                // kept for the reservation's period instead.
+                $floors[$reservation->period_key] = $lowered;
+                $series->period_floors = $floors;
                 $series->save();
             }
 
             AuditLog::log('company.document_number_released', 'company', $company->id, [
                 'document_type' => $documentType,
-                'number' => $number,
+                'number' => $reservation->number,
                 'counter' => (int) $reservation->counter,
             ]);
 
             return ['released' => true];
         });
+    }
+
+    /**
+     * Owner and every member (active or former) of the company.
+     *
+     * @return array<int, int>
+     */
+    protected function companyUserIds(Company $company): array
+    {
+        return array_values(array_unique(array_filter([
+            (int) $company->user_id,
+            ...$company->members()->pluck('user_id')->map(fn ($id) => (int) $id)->all(),
+        ])));
     }
 
     public function findReservation(
@@ -246,13 +340,13 @@ class DocumentSequenceService
     }
 
     /**
-     * Raises the series counter to the highest counter ever reserved for the
-     * current period. Safe against races: every reservation for a series runs
-     * under the same lockForUpdate on the series row.
+     * Highest counter ever reserved for the series' current period. Safe
+     * against races: every reservation for a series runs under the same
+     * lockForUpdate on the series row.
      */
-    protected function applyReservedCounterFloor(CompanyDocumentSequence $series): void
+    protected function reservedCounterFloor(CompanyDocumentSequence $series): int
     {
-        $reservedMax = (int) DocumentNumberReservation::query()
+        return (int) DocumentNumberReservation::query()
             ->where('company_document_sequence_id', $series->id)
             ->when(
                 $series->period_key === null,
@@ -260,11 +354,6 @@ class DocumentSequenceService
                 fn ($query) => $query->where('period_key', $series->period_key),
             )
             ->max('counter');
-
-        if ($reservedMax > (int) $series->last_number) {
-            $series->last_number = $reservedMax;
-            $series->save();
-        }
     }
 
     protected function lockedReservation(
@@ -288,222 +377,308 @@ class DocumentSequenceService
         return $reservation;
     }
 
-    public function lastIssuedCounter(Company $company, string $documentType): int
-    {
-        $series = CompanyDocumentSequence::query()
-            ->where('company_id', $company->id)
-            ->where('document_type', $documentType)
-            ->where('is_default', true)
-            ->first();
-
-        return $series ? (int) $series->last_number : 0;
-    }
-
+    /**
+     * Next counter WITHOUT allocating it. Read-only: previews used to save
+     * a recomputed counter from an unlocked GET, racing the reserve path.
+     */
     public function previewNextCounter(Company $company, string $documentType, ?int $localHighCounter = null): int
     {
-        $series = CompanyDocumentSequence::query()
-            ->where('company_id', $company->id)
-            ->where('document_type', $documentType)
-            ->where('is_default', true)
-            ->first();
+        $series = $this->resolveSeriesForIssue($company, $documentType);
+        $this->alignCounter($series, $localHighCounter, now());
 
-        if (! $series) {
-            $this->seedDefaultsForCompany($company);
-
-            $series = CompanyDocumentSequence::query()
-                ->where('company_id', $company->id)
-                ->where('document_type', $documentType)
-                ->where('is_default', true)
-                ->first();
-        }
-
-        if (! $series) {
-            throw ValidationException::withMessages([
-                'number_series' => ['No default number series found for this document type.'],
-            ]);
-        }
-
-        $this->ensureCounterSynced($series);
-        $this->applyLocalHighCounter($series, $localHighCounter);
-
-        return $this->effectiveLastNumber($series->fresh()) + 1;
+        return (int) $series->last_number + 1;
     }
 
     public function previewNext(CompanyDocumentSequence $series, ?int $counterOverride = null): string
     {
-        $counter = $counterOverride ?? ($this->effectiveLastNumber($series) + 1);
+        $date = now();
+        if ($counterOverride === null) {
+            $series = clone $series;
+            $this->alignCounter($series, null, $date);
+            $counterOverride = (int) $series->last_number + 1;
+        }
 
-        return $this->formatter->format($series->format, $counter);
+        return $this->formatter->format($series->format, $counterOverride, $date);
     }
 
     public function previewNextNumber(Company $company, string $documentType, ?int $localHighCounter = null): string
     {
-        $series = CompanyDocumentSequence::query()
-            ->where('company_id', $company->id)
-            ->where('document_type', $documentType)
-            ->where('is_default', true)
-            ->first();
+        return $this->formatter->format(
+            $this->resolveSeriesForIssue($company, $documentType)->format,
+            $this->previewNextCounter($company, $documentType, $localHighCounter),
+        );
+    }
 
-        if (! $series) {
-            $this->seedDefaultsForCompany($company);
-
+    /**
+     * Recalculate the default series counter after documents were deleted.
+     * The deleted numbers are the explicit lowering path of a gapless
+     * delete: the counter drops to just below the smallest of them (never
+     * below what the remaining documents and reservations use). Without
+     * them the counter only rises.
+     *
+     * @param  array<int, string>  $deletedNumbers
+     */
+    public function syncSeriesAfterDocumentChange(Company $company, string $documentType, array $deletedNumbers = []): void
+    {
+        DB::transaction(function () use ($company, $documentType, $deletedNumbers) {
             $series = CompanyDocumentSequence::query()
                 ->where('company_id', $company->id)
                 ->where('document_type', $documentType)
                 ->where('is_default', true)
+                ->lockForUpdate()
                 ->first();
-        }
 
-        if (! $series) {
-            throw ValidationException::withMessages([
-                'number_series' => ['No default number series found for this document type.'],
-            ]);
-        }
+            if (! $series) {
+                return;
+            }
 
-        $this->ensureCounterSynced($series);
-        $this->applyLocalHighCounter($series, $localHighCounter);
+            $date = now();
+            $released = [];
+            foreach ($deletedNumbers as $number) {
+                $counter = $this->formatter->counterInPeriod(
+                    (string) $series->format,
+                    $number,
+                    (string) $series->reset_period,
+                    $date,
+                );
+                if ($counter !== null) {
+                    $released[] = $counter;
+                }
+            }
 
-        return $this->previewNext($series->fresh());
+            $this->alignCounter($series, null, $date, $released !== [] ? min($released) - 1 : null);
+            $series->save();
+        });
     }
 
     /**
-     * Align server counter with the highest issued number known to local-first clients (Evolu).
+     * Brings the (in-memory) series counter to the highest number used in
+     * the CURRENT period: server documents of that period, the local-first
+     * client's high counter (only meaningful for the same period), every
+     * reservation of the period and the stored counter itself - the "last
+     * used" value a migrating user types into the series panel is a floor
+     * (syncPeriod() resets it to 0 in a new period). It is lowered only
+     * through $lowerTo, the explicit gapless-delete path. Callers that
+     * allocate save it under the series row lock; previews never save.
      */
-    protected function applyLocalHighCounter(CompanyDocumentSequence $series, ?int $localHighCounter): void
-    {
-        if ($localHighCounter === null || $localHighCounter < 0) {
-            return;
+    protected function alignCounter(
+        CompanyDocumentSequence $series,
+        ?int $localHighCounter,
+        CarbonInterface $date,
+        ?int $lowerTo = null,
+    ): void {
+        $this->syncPeriod($series, $date);
+
+        $stored = (int) $series->last_number;
+        $floor = $lowerTo !== null ? min($stored, max(0, $lowerTo)) : $stored;
+
+        $counter = $this->highestUsedCounterInPeriod($series, $date);
+        if ($localHighCounter !== null && $localHighCounter > $counter) {
+            $counter = $localHighCounter;
         }
 
-        if ($localHighCounter > (int) $series->last_number) {
-            $series->last_number = $localHighCounter;
-            $series->save();
-        }
+        $series->last_number = max($counter, $floor, $this->reservedCounterFloor($series));
     }
 
-    protected function ensureCounterSynced(CompanyDocumentSequence $series): void
+    /**
+     * Highest counter among server documents numbered in this series'
+     * format AND period. Numbers of earlier years (yearly reset), other
+     * formats or foreign imports do not count.
+     */
+    protected function highestUsedCounterInPeriod(CompanyDocumentSequence $series, CarbonInterface $date): int
     {
-        $this->syncPeriod($series);
+        $rows = $series->document_type === 'expense'
+            ? BusinessExpense::query()
+                ->where('company_id', $series->company_id)
+                ->whereNotNull('internal_number')
+                ->get(['internal_number as number', 'issue_date'])
+            : BusinessDocument::query()
+                ->where('company_id', $series->company_id)
+                ->where('type', $series->document_type)
+                ->whereNotNull('number')
+                ->get(['number', 'issue_date']);
 
-        $fromDocuments = $series->document_type === 'expense'
-            ? $this->highestUsedExpenseCounter($series->company_id, $series->format)
-            : $this->highestUsedCounter(
-                $series->company_id,
-                $series->document_type,
-                $series->format,
+        $max = 0;
+        foreach ($rows as $row) {
+            $counter = $this->formatter->counterInPeriod(
+                (string) $series->format,
+                (string) $row->number,
+                (string) $series->reset_period,
+                $date,
+                $row->issue_date ? Carbon::parse($row->issue_date) : null,
             );
-
-        if ($fromDocuments !== (int) $series->last_number) {
-            $series->last_number = $fromDocuments;
-            $series->save();
+            if ($counter !== null && $counter > $max) {
+                $max = $counter;
+            }
         }
+
+        return $max;
     }
 
     /**
-     * Recalculate default series counter after a document is deleted.
+     * A local high counter observed at $observedAt (the synced auto-issue
+     * profile) belongs to the period it was observed in. Applied in a later
+     * period it carried last year's count into the new year.
      */
-    public function syncSeriesAfterDocumentChange(Company $company, string $documentType): void
+    public function localHighCounterForCurrentPeriod(
+        Company $company,
+        string $documentType,
+        ?int $counter,
+        ?CarbonInterface $observedAt,
+    ): ?int {
+        if ($counter === null || $observedAt === null) {
+            return null;
+        }
+
+        $resetPeriod = (string) $this->resolveSeriesForIssue($company, $documentType)->reset_period;
+
+        return $this->currentPeriodKey($resetPeriod, $observedAt) === $this->currentPeriodKey($resetPeriod)
+            ? $counter
+            : null;
+    }
+
+    /**
+     * Memo of latestNumberedDocumentId() per company + type. The service is
+     * bound "scoped" (one instance per request / queue job) and every
+     * BusinessDocument save or delete clears it, so a bulk delete or a
+     * batch of serialized documents (can_delete is appended) does not
+     * re-scan the series each time.
+     *
+     * @var array<string, string|null>
+     */
+    protected array $latestNumberedCache = [];
+
+    public function forgetLatestNumbered(): void
     {
+        $this->latestNumberedCache = [];
+    }
+
+    /**
+     * Id of the document holding the top number of its type - the only
+     * numbered document that may be deleted (gapless numbering). Ordered by
+     * the number parsed with the default series format (year, month,
+     * counter) - not by created_at: drafts are issued in any order and the
+     * issue date of an issued document can be edited, so the candidates
+     * cannot be narrowed by date in SQL without breaking that rule. The
+     * scan reads four plain columns (no model hydration) and is memoized.
+     */
+    public function latestNumberedDocumentId(string $companyId, string $documentType): ?string
+    {
+        $key = $companyId.'|'.$documentType;
+        if (array_key_exists($key, $this->latestNumberedCache)) {
+            return $this->latestNumberedCache[$key];
+        }
+
         $series = CompanyDocumentSequence::query()
-            ->where('company_id', $company->id)
+            ->where('company_id', $companyId)
             ->where('document_type', $documentType)
             ->where('is_default', true)
-            ->first();
+            ->orderBy('id')
+            ->first(['format', 'reset_period']);
+        $format = (string) $series?->format;
+        $resetPeriod = (string) ($series->reset_period ?? 'yearly');
 
-        if ($series) {
-            $this->ensureCounterSynced($series);
-        }
-    }
-
-    protected function highestUsedCounter(string $companyId, string $documentType, string $format): int
-    {
-        $digitLen = $this->counterDigitsInFormat($format);
-        $max = 0;
-
-        BusinessDocument::query()
+        $latestId = null;
+        $latestKey = null;
+        $rows = BusinessDocument::query()
             ->where('company_id', $companyId)
             ->where('type', $documentType)
             ->whereNotNull('number')
-            ->pluck('number')
-            ->each(function (string $number) use ($digitLen, &$max) {
-                if (strlen($number) < $digitLen) {
-                    return;
-                }
-
-                $suffix = substr($number, -$digitLen);
-                if (ctype_digit($suffix)) {
-                    $max = max($max, (int) $suffix);
-                }
-            });
-
-        return $max;
-    }
-
-    protected function highestUsedExpenseCounter(string $companyId, string $format): int
-    {
-        $digitLen = $this->counterDigitsInFormat($format);
-        $max = 0;
-
-        BusinessExpense::query()
-            ->where('company_id', $companyId)
-            ->pluck('internal_number')
-            ->each(function (string $number) use ($digitLen, &$max) {
-                if (strlen($number) < $digitLen) {
-                    return;
-                }
-
-                $suffix = substr($number, -$digitLen);
-                if (ctype_digit($suffix)) {
-                    $max = max($max, (int) $suffix);
-                }
-            });
-
-        return $max;
-    }
-
-    protected function counterDigitsInFormat(string $format): int
-    {
-        $format = strtoupper(trim($format));
-
-        if (preg_match('/N{2,}$/', $format, $matches)) {
-            return strlen($matches[0]);
-        }
-
-        if (preg_match('/C+$/', $format, $matches)) {
-            return strlen($matches[0]);
-        }
-
-        if (preg_match_all('/N{2,}/', $format, $matches)) {
-            $max = 0;
-            foreach ($matches[0] as $run) {
-                $max = max($max, strlen($run));
-            }
-            if ($max > 0) {
-                return $max;
+            ->toBase()
+            ->get(['id', 'number', 'issue_date', 'created_at']);
+        foreach ($rows as $row) {
+            $sortKey = $this->sortKeyFor(
+                $format,
+                $resetPeriod,
+                (string) $row->number,
+                $row->issue_date !== null ? Carbon::parse($row->issue_date) : null,
+                $row->created_at !== null ? Carbon::parse($row->created_at) : null,
+            ).(string) $row->id;
+            if ($latestKey === null || strcmp($sortKey, $latestKey) > 0) {
+                $latestKey = $sortKey;
+                $latestId = (string) $row->id;
             }
         }
 
-        return max(1, substr_count($format, 'C'));
+        return $this->latestNumberedCache[$key] = $latestId;
     }
 
-    protected function effectiveLastNumber(CompanyDocumentSequence $series): int
+    /** Sortable "position in the sequence" of a numbered document. */
+    public function numberSortKey(string $format, BusinessDocument $document, string $resetPeriod = 'yearly'): string
     {
-        $periodKey = $this->currentPeriodKey($series->reset_period);
+        return $this->sortKeyFor(
+            $format,
+            $resetPeriod,
+            (string) $document->number,
+            $document->issue_date ? Carbon::parse($document->issue_date) : null,
+            $document->created_at,
+        );
+    }
 
-        if ($series->period_key !== $periodKey) {
-            return 0;
+    protected function sortKeyFor(
+        string $format,
+        string $resetPeriod,
+        string $number,
+        ?CarbonInterface $issueDate,
+        ?CarbonInterface $createdAt,
+    ): string {
+        $parsed = $format !== '' ? $this->formatter->parse($format, $number) : null;
+
+        if ($resetPeriod === 'never') {
+            // The counter never restarts, so it alone orders the sequence -
+            // an (editable) issue date must not lift a lower number above a
+            // higher one across years, e.g. in a counter-only FVNNNN series.
+            $year = 0;
+            $month = 0;
+        } else {
+            $year = $parsed['year'] ?? null;
+            $year = $year !== null ? (strlen($year) <= 2 ? 2000 + (int) $year : (int) $year) : ($issueDate !== null ? $issueDate->year : 0);
+            $month = $parsed['month'] ?? null;
+            $month = $month !== null ? (int) $month : 0;
         }
 
-        return (int) $series->last_number;
+        // A number outside the series format (imported, older format) falls
+        // back to its trailing digits.
+        $counter = $parsed['counter']
+            ?? (preg_match('/(\d{1,12})$/', $number, $m) ? (int) $m[1] : 0);
+
+        return sprintf(
+            '%04d%02d%d%012d%s%012d',
+            $year,
+            $month,
+            $parsed !== null ? 1 : 0,
+            $counter,
+            $issueDate?->format('Ymd') ?? '00000000',
+            $createdAt?->getTimestamp() ?? 0,
+        );
     }
 
-    public function currentPeriodKey(string $resetPeriod): string
+    public function currentPeriodKey(string $resetPeriod, ?CarbonInterface $date = null): string
     {
+        $date ??= now();
+
         return match ($resetPeriod) {
-            'monthly' => now()->format('Y-m'),
+            'monthly' => $date->format('Y-m'),
             'never' => 'all',
-            default => now()->format('Y'),
+            default => $date->format('Y'),
         };
+    }
+
+    /**
+     * The client's local date is trusted for the period only within one day
+     * of the server's (UTC) date - enough for every timezone, useless for
+     * back- or forward-dating a number into another year.
+     */
+    protected function resolvePeriodDate(?CarbonInterface $periodDate): CarbonInterface
+    {
+        $now = now();
+        if ($periodDate === null) {
+            return $now;
+        }
+
+        $days = abs($now->copy()->startOfDay()->diffInDays($periodDate->copy()->startOfDay(), false));
+
+        return $days <= 1 ? $periodDate->copy()->setTimeFrom($now) : $now;
     }
 
     /**
@@ -597,12 +772,31 @@ class DocumentSequenceService
         return $series;
     }
 
-    protected function syncPeriod(CompanyDocumentSequence $series): void
+    /**
+     * Switches the series row to the period of $date. The counter of the
+     * period being left is kept in period_floors and restored when the row
+     * comes back to it: around midnight UTC the client's period date (+-1
+     * day) can flip the row between two periods, and a plain reset to 0
+     * lost a manually entered floor. A period without a stored floor still
+     * starts at 0. Only the two most recent periods are kept.
+     */
+    protected function syncPeriod(CompanyDocumentSequence $series, ?CarbonInterface $date = null): void
     {
-        $key = $this->currentPeriodKey($series->reset_period);
-        if ($series->period_key !== $key) {
-            $series->period_key = $key;
-            $series->last_number = 0;
+        $key = $this->currentPeriodKey($series->reset_period, $date);
+        if ($series->period_key === $key) {
+            return;
         }
+
+        $floors = is_array($series->period_floors) ? $series->period_floors : [];
+        if ($series->period_key !== null && (int) $series->last_number > 0) {
+            $floors[$series->period_key] = (int) $series->last_number;
+        }
+
+        $series->period_key = $key;
+        $series->last_number = (int) ($floors[$key] ?? 0);
+
+        unset($floors[$key]);
+        krsort($floors, SORT_STRING);
+        $series->period_floors = array_slice($floors, 0, 2, true) ?: null;
     }
 }

@@ -6,6 +6,7 @@ use App\Enums\BusinessDocumentQuoteStatus;
 use App\Enums\BusinessDocumentStatus;
 use App\Enums\BusinessDocumentType;
 use App\Enums\CompanyJurisdiction;
+use App\Services\Invoicing\DocumentSequenceService;
 use App\Support\Invoicing\BuyerSnapshot;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,6 +18,15 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class BusinessDocument extends Model
 {
     use HasFactory, HasUuids;
+
+    protected static function booted(): void
+    {
+        // Any change can move the top number of a series (see
+        // DocumentSequenceService::latestNumberedDocumentId()).
+        $forget = fn () => app(DocumentSequenceService::class)->forgetLatestNumbered();
+        static::saved($forget);
+        static::deleted($forget);
+    }
 
     protected $fillable = [
         'company_id',
@@ -187,8 +197,13 @@ class BusinessDocument extends Model
     }
 
     /**
-     * Draft and cancelled documents are always deletable.
-     * Issued/paid only when this is the newest document for the company and has no active derivatives.
+     * Drafts and never-numbered cancelled documents are always deletable.
+     * A numbered document (issued, paid or cancelled) only when it holds
+     * the top number of its type and has no active derivatives - deleting
+     * it lowers the series counter, so its number is reissued (gapless
+     * numbering). Deleting a numbered document in the middle would leave a
+     * hole; deleting a cancelled one while an issued one was blocked made
+     * the two layers disagree (local-first never allowed it either).
      */
     public function canDelete(?Company $company = null): bool
     {
@@ -196,21 +211,44 @@ class BusinessDocument extends Model
             return false;
         }
 
-        if (in_array($this->status, [
-            BusinessDocumentStatus::Draft,
-            BusinessDocumentStatus::Cancelled,
-        ], true)) {
+        if ($this->hasStatus(BusinessDocumentStatus::Draft)
+            || ($this->hasStatus(BusinessDocumentStatus::Cancelled) && ! $this->hasNumber())) {
             return ! $this->hasBlockingRelations();
         }
 
-        if (! in_array($this->status, [
+        if (! $this->hasStatus(
             BusinessDocumentStatus::Issued,
             BusinessDocumentStatus::Paid,
-        ], true)) {
+            BusinessDocumentStatus::Cancelled,
+        )) {
             return false;
         }
 
         return $this->isLatestForCompany() && ! $this->hasBlockingRelations();
+    }
+
+    /**
+     * Status check on the cast value. Larastan types the raw column here
+     * (string), so direct enum comparisons read as "always false".
+     */
+    public function hasStatus(BusinessDocumentStatus ...$statuses): bool
+    {
+        return in_array($this->getAttribute('status'), $statuses, true);
+    }
+
+    /** The document type's string value (see hasStatus for why). */
+    public function typeValue(): string
+    {
+        $type = $this->getAttribute('type');
+
+        return $type instanceof BusinessDocumentType ? $type->value : (string) $type;
+    }
+
+    public function hasNumber(): bool
+    {
+        $number = $this->getAttribute('number');
+
+        return $number !== null && $number !== '';
     }
 
     protected function hasGermanGobdIssuedContentLock(?Company $company = null): bool
@@ -226,19 +264,25 @@ class BusinessDocument extends Model
         return $company?->jurisdiction === CompanyJurisdiction::EuDe;
     }
 
+    /** Holds the top number of its document type (see canDelete). */
     public function isLatestForCompany(): bool
     {
-        $latestId = self::query()
-            ->where('company_id', $this->company_id)
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->value('id');
-
-        return $latestId === $this->id;
+        return app(DocumentSequenceService::class)
+            ->latestNumberedDocumentId((string) $this->company_id, $this->typeValue()) === $this->id;
     }
 
     protected function hasBlockingRelations(): bool
     {
+        // eFaktura submissions are evidence held by the tax authority -
+        // deleting would cascade them away and reissue a reported number.
+        if ($this->relationLoaded('complianceSubmissions')) {
+            if ($this->complianceSubmissions->isNotEmpty()) {
+                return true;
+            }
+        } elseif ($this->complianceSubmissions()->exists()) {
+            return true;
+        }
+
         if ($this->relationLoaded('bankMatch')) {
             if ($this->bankMatch !== null) {
                 return true;

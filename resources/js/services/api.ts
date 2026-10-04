@@ -951,10 +951,6 @@ export const invoicingApi = {
             const { data } = await api.get<{ data?: T; error?: string }>(`/invoicing/stores/${storeId}/number-series/preview`, { params });
             return data;
         },
-        async reserve<T = unknown>(storeId: string, payload: Record<string, unknown>): Promise<{ data?: T; error?: string }> {
-            const { data } = await api.post<{ data?: T; error?: string }>(`/invoicing/stores/${storeId}/number-series/reserve`, payload);
-            return data;
-        },
     },
     // Server number allocator (audit F3) - company-scoped, store-independent.
     numberAllocator: {
