@@ -27,6 +27,12 @@ class DocumentSequenceService
         return DB::transaction(function () use ($company, $documentType, $localHighCounter) {
             $series = $this->resolveSeriesForIssue($company, $documentType);
 
+            // Company first, then the series: numbers are unique per company
+            // across ALL types, so two series sharing a format must not both
+            // see the same number as free. The row lock lives until the
+            // caller's transaction commits - issue() saves the document under
+            // it, so the next allocation already sees the number as taken.
+            Company::query()->whereKey($company->getKey())->lockForUpdate()->first();
             $series = CompanyDocumentSequence::query()
                 ->where('id', $series->id)
                 ->lockForUpdate()

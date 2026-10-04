@@ -16,6 +16,7 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\Integrations\WooCommerceDocumentService;
+use App\Services\Invoicing\BusinessDocumentFromProformaService;
 use App\Services\Invoicing\BusinessDocumentIssueService;
 use App\Services\Invoicing\DocumentSequenceService;
 use App\Services\Invoicing\RecurringDocumentGeneratorService;
@@ -286,6 +287,23 @@ class DocumentCreationAuditTest extends TestCase
             app(RecurringDocumentGeneratorService::class)->generateForProfile($stale);
         } finally {
             $this->assertSame(0, BusinessDocument::query()->where('company_id', $this->company->id)->count());
+        }
+    }
+
+    public function test_final_invoice_rechecks_the_proforma_under_the_lock(): void
+    {
+        $proforma = $this->issuedDocument(BusinessDocumentType::Proforma);
+        $proforma->update(['status' => BusinessDocumentStatus::Paid, 'paid_at' => now(), 'amount_paid' => 87]);
+
+        // A stale copy still says "paid" - the row was unmarked meanwhile.
+        $stale = BusinessDocument::query()->findOrFail($proforma->id);
+        $proforma->update(['status' => BusinessDocumentStatus::Issued, 'paid_at' => null, 'amount_paid' => null]);
+
+        try {
+            app(BusinessDocumentFromProformaService::class)->createFinalInvoice($this->company, $stale);
+            $this->fail('A no longer paid proforma must not be converted.');
+        } catch (ValidationException) {
+            $this->assertSame(0, BusinessDocument::query()->where('source_document_id', $proforma->id)->count());
         }
     }
 }

@@ -48,7 +48,27 @@ class BusinessDocumentFromProformaService
         // a double submit used to create (and number) two final invoices; a
         // failed issue rolls the draft back instead of blocking retries.
         return DB::transaction(function () use ($company, $proforma) {
-            BusinessDocument::query()->whereKey($proforma->id)->lockForUpdate()->first();
+            // Re-check against the LOCKED row - the checks above read a copy
+            // that may have been unmarked as paid, cancelled or deleted since.
+            $proforma = BusinessDocument::query()->whereKey($proforma->id)->lockForUpdate()->first();
+            if ($proforma === null || $proforma->company_id !== $company->id) {
+                abort(404);
+            }
+            if ($proforma->typeValue() !== BusinessDocumentType::Proforma->value) {
+                throw ValidationException::withMessages([
+                    'type' => ['Only proforma invoices can be converted to a final invoice.'],
+                ]);
+            }
+            if (! $proforma->hasStatus(BusinessDocumentStatus::Paid)) {
+                throw ValidationException::withMessages([
+                    'status' => ['Mark the proforma as paid before issuing a final invoice.'],
+                ]);
+            }
+            if (! $proforma->hasNumber()) {
+                throw ValidationException::withMessages([
+                    'status' => ['Issue the proforma before creating a final invoice.'],
+                ]);
+            }
 
             $existing = BusinessDocument::query()
                 ->where('source_document_id', $proforma->id)

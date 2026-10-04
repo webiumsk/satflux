@@ -204,6 +204,13 @@ class RecurringDocumentGeneratorService
             if ($persisted !== null && $persisted->hasStatus(BusinessDocumentStatus::Draft)) {
                 $persisted->lines()->delete();
                 $persisted->delete();
+            } elseif ($persisted !== null) {
+                // Issued, then failed: the period IS generated - advance the
+                // profile so a retry does not issue the same period twice.
+                $profile->last_generated_document_id = $persisted->id;
+                $profile->last_generated_at = now();
+                $profile->next_issue_date = $this->nextDateCalculator->advance($profile, $issueDate);
+                $profile->save();
             }
 
             throw $e;

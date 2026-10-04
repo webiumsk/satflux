@@ -55,7 +55,27 @@ class BusinessDocumentFromQuoteService
         // used to create (and number) two invoices; a failed issue rolls the
         // draft back instead of blocking every retry with "already exists".
         return DB::transaction(function () use ($company, $quote) {
-            BusinessDocument::query()->whereKey($quote->id)->lockForUpdate()->first();
+            // Re-check against the LOCKED row - the checks above read a copy
+            // that may have been rejected, cancelled or deleted since.
+            $quote = BusinessDocument::query()->whereKey($quote->id)->lockForUpdate()->first();
+            if ($quote === null || $quote->company_id !== $company->id) {
+                abort(404);
+            }
+            if ($quote->typeValue() !== BusinessDocumentType::Quote->value) {
+                throw ValidationException::withMessages([
+                    'type' => ['Only quotes can be converted to an invoice.'],
+                ]);
+            }
+            if (! $quote->hasStatus(BusinessDocumentStatus::Issued) || ! $quote->hasNumber()) {
+                throw ValidationException::withMessages([
+                    'status' => ['Issue the quote before creating an invoice.'],
+                ]);
+            }
+            if ($quote->resolvedQuoteStatus() !== BusinessDocumentQuoteStatus::Approved) {
+                throw ValidationException::withMessages([
+                    'quote_status' => ['Approve the quote before creating an invoice.'],
+                ]);
+            }
 
             $existing = BusinessDocument::query()
                 ->where('source_document_id', $quote->id)
