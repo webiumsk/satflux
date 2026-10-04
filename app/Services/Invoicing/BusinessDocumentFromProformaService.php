@@ -10,6 +10,7 @@ use App\Models\BusinessDocumentLine;
 use App\Models\Company;
 use App\Support\Invoicing\CompanyAppSettings;
 use App\Support\Invoicing\CompanyVatPolicy;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class BusinessDocumentFromProformaService
@@ -43,119 +44,134 @@ class BusinessDocumentFromProformaService
             ]);
         }
 
-        $existing = BusinessDocument::query()
-            ->where('source_document_id', $proforma->id)
-            ->where('type', BusinessDocumentType::Invoice)
-            ->where('status', '!=', BusinessDocumentStatus::Cancelled)
-            ->exists();
+        // Check + create + issue + mark paid under a lock on the proforma:
+        // a double submit used to create (and number) two final invoices; a
+        // failed issue rolls the draft back instead of blocking retries.
+        return DB::transaction(function () use ($company, $proforma) {
+            BusinessDocument::query()->whereKey($proforma->id)->lockForUpdate()->first();
 
-        if ($existing) {
-            throw ValidationException::withMessages([
-                'source_document_id' => ['A final invoice already exists for this proforma.'],
+            $existing = BusinessDocument::query()
+                ->where('source_document_id', $proforma->id)
+                ->where('type', BusinessDocumentType::Invoice)
+                ->where('status', '!=', BusinessDocumentStatus::Cancelled)
+                ->exists();
+
+            if ($existing) {
+                throw ValidationException::withMessages([
+                    'source_document_id' => ['A final invoice already exists for this proforma.'],
+                ]);
+            }
+
+            $proforma->load(['lines', 'contact', 'company']);
+
+            $settings = CompanyAppSettings::from($company->app_settings);
+            $variableSymbol = $settings->bool('variable_symbol_from_proforma')
+                ? $proforma->variable_symbol
+                : null;
+
+            $paidNote = $this->paidReferenceNote($proforma);
+            $noteAbove = trim(implode("\n", array_filter([
+                $proforma->note_above_lines,
+                $paidNote,
+            ])));
+
+            $document = new BusinessDocument([
+                'company_id' => $company->id,
+                'company_contact_id' => $proforma->company_contact_id,
+                'store_id' => $proforma->store_id,
+                'source_document_id' => $proforma->id,
+                'type' => BusinessDocumentType::Invoice,
+                'status' => BusinessDocumentStatus::Draft,
+                'title' => null,
+                'variable_symbol' => $variableSymbol,
+                'constant_symbol' => $proforma->constant_symbol,
+                'specific_symbol' => $proforma->specific_symbol,
+                'issue_date' => now()->toDateString(),
+                'delivery_date' => $proforma->delivery_date?->toDateString(),
+                'due_date' => now()->addDays($this->paymentTermsDays($proforma))->toDateString(),
+                'currency' => $proforma->currency,
+                'discount_percent' => $proforma->discount_percent,
+                'note_above_lines' => $noteAbove !== '' ? $noteAbove : null,
+                'note_footer' => $proforma->note_footer,
+                'internal_note' => $proforma->internal_note,
+                'pdf_locale' => $proforma->pdf_locale,
+                'pdf_show_signature' => $proforma->pdf_show_signature,
+                'pdf_show_payment_info' => $proforma->pdf_show_payment_info,
+                // Already paid through the proforma - issue() must not open a new,
+                // payable BTCPay checkout for it.
+                'payment_btc_enabled' => false,
+                'payment_bank_enabled' => $proforma->payment_bank_enabled,
+                'tags' => $proforma->tags,
             ]);
-        }
 
-        $proforma->load(['lines', 'contact', 'company']);
+            $document->setRelation('company', $company);
+            $lines = $proforma->lines->map(fn (BusinessDocumentLine $line) => [
+                'name' => $line->name,
+                'description' => $line->description,
+                'quantity' => (float) $line->quantity,
+                'unit' => $line->unit,
+                'unit_price' => (float) $line->unit_price,
+                'line_discount_percent' => (float) $line->line_discount_percent,
+                'tax_rate' => (float) $line->tax_rate,
+                // The quote / proforma moved no stock; the invoice does on issue.
+                'company_stock_item_id' => $line->company_stock_item_id,
+                'company_warehouse_id' => $line->company_warehouse_id,
+            ])->all();
 
-        $settings = CompanyAppSettings::from($company->app_settings);
-        $variableSymbol = $settings->bool('variable_symbol_from_proforma')
-            ? $proforma->variable_symbol
-            : null;
+            $this->totalsCalculator->applyToDocument(
+                $document,
+                $lines,
+                (float) $proforma->discount_percent
+            );
 
-        $paidNote = $this->paidReferenceNote($proforma);
-        $noteAbove = trim(implode("\n", array_filter([
-            $proforma->note_above_lines,
-            $paidNote,
-        ])));
+            $document->save();
 
-        $document = new BusinessDocument([
-            'company_id' => $company->id,
-            'company_contact_id' => $proforma->company_contact_id,
-            'store_id' => $proforma->store_id,
-            'source_document_id' => $proforma->id,
-            'type' => BusinessDocumentType::Invoice,
-            'status' => BusinessDocumentStatus::Draft,
-            'title' => null,
-            'variable_symbol' => $variableSymbol,
-            'constant_symbol' => $proforma->constant_symbol,
-            'specific_symbol' => $proforma->specific_symbol,
-            'issue_date' => now()->toDateString(),
-            'delivery_date' => $proforma->delivery_date?->toDateString(),
-            'due_date' => now()->addDays($this->paymentTermsDays($proforma))->toDateString(),
-            'currency' => $proforma->currency,
-            'discount_percent' => $proforma->discount_percent,
-            'note_above_lines' => $noteAbove !== '' ? $noteAbove : null,
-            'note_footer' => $proforma->note_footer,
-            'internal_note' => $proforma->internal_note,
-            'pdf_locale' => $proforma->pdf_locale,
-            'pdf_show_signature' => $proforma->pdf_show_signature,
-            'pdf_show_payment_info' => $proforma->pdf_show_payment_info,
-            'payment_btc_enabled' => $proforma->payment_btc_enabled,
-            'payment_bank_enabled' => $proforma->payment_bank_enabled,
-            'tags' => $proforma->tags,
-        ]);
+            foreach ($lines as $index => $line) {
+                $qty = (float) ($line['quantity'] ?? 1);
+                $unitPrice = (float) ($line['unit_price'] ?? 0);
+                $lineDiscount = (float) ($line['line_discount_percent'] ?? 0);
+                $taxRate = (float) ($line['tax_rate'] ?? 0);
+                $lineNet = $qty * $unitPrice * (1 - $lineDiscount / 100);
+                $buyer = $document->resolvedBuyer();
+                $vatPolicy = app(CompanyVatPolicy::class);
+                $taxRate = $vatPolicy->resolveLineTaxRate($company, $buyer, $taxRate);
+                $lineTax = $vatPolicy->calculatesVatAmounts($company, $buyer) ? $lineNet * ($taxRate / 100) : 0;
 
-        $document->setRelation('company', $company);
-        $lines = $proforma->lines->map(fn (BusinessDocumentLine $line) => [
-            'name' => $line->name,
-            'description' => $line->description,
-            'quantity' => (float) $line->quantity,
-            'unit' => $line->unit,
-            'unit_price' => (float) $line->unit_price,
-            'line_discount_percent' => (float) $line->line_discount_percent,
-            'tax_rate' => (float) $line->tax_rate,
-        ])->all();
+                BusinessDocumentLine::create([
+                    'business_document_id' => $document->id,
+                    'company_stock_item_id' => $line['company_stock_item_id'] ?? null,
+                    'company_warehouse_id' => $line['company_warehouse_id'] ?? null,
+                    'sort_order' => $index,
+                    'name' => $line['name'],
+                    'description' => $line['description'] ?? null,
+                    'quantity' => $qty,
+                    'unit' => $line['unit'] ?? 'pcs',
+                    'unit_price' => $unitPrice,
+                    'line_discount_percent' => $lineDiscount,
+                    'tax_rate' => $taxRate,
+                    'line_total' => number_format($lineNet + $lineTax, 2, '.', ''),
+                ]);
+            }
 
-        $this->totalsCalculator->applyToDocument(
-            $document,
-            $lines,
-            (float) $proforma->discount_percent
-        );
+            $document = $this->issueService->issue($document);
 
-        $document->save();
-
-        foreach ($lines as $index => $line) {
-            $qty = (float) ($line['quantity'] ?? 1);
-            $unitPrice = (float) ($line['unit_price'] ?? 0);
-            $lineDiscount = (float) ($line['line_discount_percent'] ?? 0);
-            $taxRate = (float) ($line['tax_rate'] ?? 0);
-            $lineNet = $qty * $unitPrice * (1 - $lineDiscount / 100);
-            $buyer = $document->resolvedBuyer();
-            $vatPolicy = app(CompanyVatPolicy::class);
-            $taxRate = $vatPolicy->resolveLineTaxRate($company, $buyer, $taxRate);
-            $lineTax = $vatPolicy->calculatesVatAmounts($company, $buyer) ? $lineNet * ($taxRate / 100) : 0;
-
-            BusinessDocumentLine::create([
-                'business_document_id' => $document->id,
-                'sort_order' => $index,
-                'name' => $line['name'],
-                'description' => $line['description'] ?? null,
-                'quantity' => $qty,
-                'unit' => $line['unit'] ?? 'pcs',
-                'unit_price' => $unitPrice,
-                'line_discount_percent' => $lineDiscount,
-                'tax_rate' => $taxRate,
-                'line_total' => number_format($lineNet + $lineTax, 2, '.', ''),
+            $document->update([
+                'title' => $this->finalInvoiceTitle($document->number),
+                'status' => BusinessDocumentStatus::Paid,
+                'paid_at' => $proforma->paid_at ?? now(),
+                'amount_paid' => $proforma->amount_paid ?? $proforma->total,
             ]);
-        }
 
-        $document = $this->issueService->issue($document);
+            AuditLog::log('business_document.final_from_proforma', 'business_document', $document->id, [
+                'company_id' => $company->id,
+                'proforma_id' => $proforma->id,
+                'proforma_number' => $proforma->number,
+                'invoice_number' => $document->number,
+            ]);
 
-        $document->update([
-            'title' => $this->finalInvoiceTitle($document->number),
-            'status' => BusinessDocumentStatus::Paid,
-            'paid_at' => $proforma->paid_at ?? now(),
-            'amount_paid' => $proforma->amount_paid ?? $proforma->total,
-        ]);
+            return $document->fresh(['lines', 'contact', 'store', 'sourceDocument']);
 
-        AuditLog::log('business_document.final_from_proforma', 'business_document', $document->id, [
-            'company_id' => $company->id,
-            'proforma_id' => $proforma->id,
-            'proforma_number' => $proforma->number,
-            'invoice_number' => $document->number,
-        ]);
-
-        return $document->fresh(['lines', 'contact', 'store', 'sourceDocument']);
+        });
     }
 
     protected function finalInvoiceTitle(string $number): string

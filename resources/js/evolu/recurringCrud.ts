@@ -1,8 +1,10 @@
 import { booleanToSqliteBoolean, maxLength, NonEmptyString, sqliteTrue } from "@evolu/common";
 import type { Evolu } from "@evolu/common/local-first";
+import { localIsoDate } from "./numberSeriesFormat";
 import type { EvoluCompanyRow } from "./companyMap";
 import {
     calcDocumentTotals,
+    deleteLocalDocument,
     issueLocalDocumentAsync,
     saveLocalDocument,
     type DocumentLinePayload,
@@ -252,7 +254,7 @@ export async function generateLocalRecurringDocument(
     const profile = profileRows.find((row) => row.id === profileId);
     if (!profile) return { ok: false, error: "not_found" };
 
-    const issueDate = (options.issueDate ?? profile.nextIssueDate ?? new Date().toISOString().slice(0, 10)).slice(
+    const issueDate = (options.issueDate ?? profile.nextIssueDate ?? localIsoDate()).slice(
         0,
         10,
     );
@@ -332,6 +334,9 @@ export async function generateLocalRecurringDocument(
         company,
     );
     if (!issueResult.ok) {
+        // The profile does not advance on failure, so every run of the
+        // due-runner used to leave one more unissued draft behind.
+        deleteLocalDocument(evolu, saveResult.value.id);
         return {
             ok: false,
             error: typeof issueResult.error === "string" ? issueResult.error : "issue",

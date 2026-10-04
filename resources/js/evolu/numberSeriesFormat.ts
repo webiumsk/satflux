@@ -260,14 +260,42 @@ function digitOnlyPattern(pattern: string): string {
 }
 
 /**
+ * Date to format a reserved counter with. The reservation is idempotent per
+ * document, so a retry after a period boundary (reserved on Dec 31, applied
+ * on Jan 2) returns the OLD period's counter - formatting it with "now"
+ * produced a new-year number that the new year's counter would hand out
+ * again. Same period: `fallback` (the local now); another period: its last
+ * day; "all" / unknown: `fallback`.
+ */
+export function dateForPeriodKey(periodKey: string | null | undefined, fallback = new Date()): Date {
+    const yearly = /^(\d{4})$/.exec(String(periodKey ?? ""));
+    if (yearly) {
+        const year = Number(yearly[1]);
+        return year === fallback.getFullYear() ? fallback : new Date(year, 11, 31, 12);
+    }
+    const monthly = /^(\d{4})-(\d{2})$/.exec(String(periodKey ?? ""));
+    if (monthly) {
+        const year = Number(monthly[1]);
+        const month = Number(monthly[2]);
+        if (year === fallback.getFullYear() && month === fallback.getMonth() + 1) {
+            return fallback;
+        }
+        return new Date(year, month, 0, 12);
+    }
+    return fallback;
+}
+
+/**
  * A draft is rendered with the PREVIEW number: the form pre-fills the
  * variable symbol and title from it, and duplicates / documents derived
  * from a quote inherit the source's. The reserved number can differ
  * (another device, a shared company member, a Woo auto-issue, a cancelled
  * top number), and the explicit VS used to win - bank payments then matched
  * the wrong invoice. Re-derives both from the issued number when they still
- * carry a number of this series (counter within a plausible window, so a
- * user-chosen VS such as an order number is kept).
+ * carry a number of this series: one of another year is always stale (e.g.
+ * a duplicate of last year's invoice), one of the same year when its counter
+ * is within a plausible window - a user-chosen VS such as an order number is
+ * kept.
  */
 export function rederiveNumberDerivedFields(
     pattern: string,
@@ -275,26 +303,27 @@ export function rederiveNumberDerivedFields(
     issuedCounter: number,
     fields: { title: string | null | undefined; variableSymbol: string | null | undefined },
 ): { title: string | null; variableSymbol: string | null } {
+    const issued = parseDocumentNumber(pattern, issuedNumber);
     const maxCounter = issuedCounter + 50;
-    const looksDerived = (counter: number | null | undefined) =>
-        counter != null && counter >= 1 && counter <= maxCounter && counter !== issuedCounter;
+    const isStale = (parsed: ParsedDocumentNumber | null) => {
+        if (!parsed) return false;
+        if (parsed.year !== null && issued?.year != null && parsed.year !== issued.year) return true;
+        return parsed.counter >= 1 && parsed.counter <= maxCounter;
+    };
 
+    const derivedVs = issuedNumber.replace(/\D/g, "").slice(-10);
     let variableSymbol = fields.variableSymbol ?? null;
     const vs = String(variableSymbol ?? "").trim();
-    if (vs && /^\d{1,10}$/.test(vs)) {
-        const parsedVs = parseDocumentNumber(digitOnlyPattern(pattern), vs);
-        if (parsedVs && looksDerived(parsedVs.counter)) {
-            const derived = issuedNumber.replace(/\D/g, "").slice(-10);
-            variableSymbol = derived || variableSymbol;
+    if (vs && vs !== derivedVs && /^\d{1,10}$/.test(vs)) {
+        if (isStale(parseDocumentNumber(digitOnlyPattern(pattern), vs))) {
+            variableSymbol = derivedVs || variableSymbol;
         }
     }
 
     let title = fields.title ?? null;
     if (title) {
-        title = title.replace(/[A-Za-z0-9]+/g, (token) => {
-            const parsed = parseDocumentNumber(pattern, token);
-            return parsed && token !== issuedNumber && looksDerived(parsed.counter) ? issuedNumber : token;
-        });
+        title = title.replace(/[A-Za-z0-9]+/g, (token) =>
+            token !== issuedNumber && isStale(parseDocumentNumber(pattern, token)) ? issuedNumber : token);
     }
 
     return { title, variableSymbol };

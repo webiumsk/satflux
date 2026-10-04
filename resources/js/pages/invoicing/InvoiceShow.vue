@@ -317,7 +317,8 @@ import {
   downloadEphemeralUbl,
   resolveEphemeralBridgeCompanyId,
 } from '../../evolu/ephemeralBridge';
-import { markLocalDocumentEmailSent } from '../../evolu/documentCrud';
+import { markLocalDocumentEmailSent, prepareCopiedPayload } from '../../evolu/documentCrud';
+import { appSettingsFromCompany } from '../../composables/useCompanyAppSettings';
 import type { DocumentId } from '../../evolu/schema';
 import { supportsStructuredDocumentExport } from '../../config/jurisdictionRules';
 
@@ -605,23 +606,29 @@ async function downloadWebFile(path: string, filename: string) {
 }
 
 async function duplicateCurrent() {
-  if (!documentId.value) return;
+  // A double click during refreshAll() used to create two copies.
+  if (!documentId.value || saving.value) return;
   if (localFirst && local) {
-    await local.refreshAll();
-    const apiDoc = local.documentApi(documentId.value as import('../../evolu/schema').DocumentId);
-    if (!apiDoc) return;
-    const p = payloadFromApiDocument(apiDoc);
-    p.title = p.title ? `${p.title} (copy)` : 'Copy';
-    const result = local.saveLocalDocument(local.evolu, companyId.value as import('../../evolu/schema').CompanyId, p, {
-      ...localTaxHelpers(),
-      documentId: undefined,
-    });
-    if (!result.ok) return;
-    const routes = invoicingDocumentRoutesForType(String(apiDoc.type || 'invoice'));
-    router.push({
-      name: routes.edit,
-      params: { companyId: companyId.value, documentId: result.value.id },
-    });
+    saving.value = true;
+    try {
+      await local.refreshAll();
+      const apiDoc = local.documentApi(documentId.value as import('../../evolu/schema').DocumentId);
+      if (!apiDoc) return;
+      // A new document: no source number in title / VS, today's dates.
+      const p = prepareCopiedPayload(payloadFromApiDocument(apiDoc));
+      const result = local.saveLocalDocument(local.evolu, companyId.value as import('../../evolu/schema').CompanyId, p, {
+        ...localTaxHelpers(),
+        documentId: undefined,
+      });
+      if (!result.ok) return;
+      const routes = invoicingDocumentRoutesForType(String(apiDoc.type || 'invoice'));
+      router.push({
+        name: routes.edit,
+        params: { companyId: companyId.value, documentId: result.value.id },
+      });
+    } finally {
+      saving.value = false;
+    }
     return;
   }
   const dup = await invoicingApi.documents.action<{ id: string; type: string }>(companyId.value, documentId.value!, 'duplicate');
@@ -685,6 +692,7 @@ async function createFinalInvoice() {
         toAppRows<import('../../evolu/documentMap').EvoluDocumentLineRow>(local.lineRows.value),
         (doc) => payloadFromApiDocument(doc),
         { ...localTaxHelpers(), documentId: undefined },
+        { variableSymbolFromProforma: appSettingsFromCompany(company.value).variable_symbol_from_proforma },
       );
       if (!result.ok) throw new Error('create');
       router.push({

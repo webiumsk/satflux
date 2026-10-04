@@ -17,6 +17,7 @@ import {
 import type { CompanyId, DocumentId } from '../evolu/schema';
 import type { DocumentSavePayload } from '../evolu/documentCrud';
 import { payloadFromApiDocument, markLocalDocumentPaid } from '../evolu/documentCrud';
+import { localIsoDate } from '../evolu/numberSeriesFormat';
 import { resolveLocalEmailSettingsForBridge } from '../evolu/companySettingsCrud';
 import { documentVariableSymbol } from '../evolu/documentNumber';
 import { documentHistoryFromEvents, type DocumentHistoryEntry } from '../evolu/documentEventLog';
@@ -190,7 +191,7 @@ export function useInvoiceDocument() {
     title: '',
     company_contact_id: '',
     store_id: '',
-    issue_date: new Date().toISOString().slice(0, 10),
+    issue_date: localIsoDate(),
     delivery_date: '',
     due_date: '',
     variable_symbol: '',
@@ -592,7 +593,9 @@ export function useInvoiceDocument() {
       await loadNextNumberPreview();
     }
     const numberForTitle = documentNumber.value || nextNumberPreview.value;
-    if (!form.title && numberForTitle) {
+    // An empty title is stored as the "Document" fallback (copies, credit
+    // notes, imports) - a draft gets the type's title instead.
+    if ((!form.title || (documentStatus.value === 'draft' && form.title === 'Document')) && numberForTitle) {
       const prefixKey = isProforma.value
         ? 'invoicing.proforma_title_prefix'
         : isQuote.value
@@ -659,7 +662,9 @@ export function useInvoiceDocument() {
     localBtcpayInvoiceId.value = '';
     stopLocalBtcpayPolling();
 
-    const today = new Date().toISOString().slice(0, 10);
+    // Local calendar date - the numbering period follows it (UTC is the
+    // previous day around midnight in Central Europe).
+    const today = localIsoDate();
     Object.assign(form, {
       title: '',
       company_contact_id: '',

@@ -52,7 +52,7 @@ describe("reserveIssueNumber", () => {
 
         expect(result).toEqual({
             ok: true,
-            value: { number: "20260071", counter: 71, status: "reserved", bridgeCompanyId: "co-1" },
+            value: { number: "20260071", counter: 71, status: "reserved", bridgeCompanyId: "co-1", periodKey: null },
         });
         expect(api.create).not.toHaveBeenCalled();
         expect(api.reserve).toHaveBeenCalledWith("co-1", {

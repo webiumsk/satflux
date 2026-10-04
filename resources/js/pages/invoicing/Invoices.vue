@@ -1237,6 +1237,7 @@ import {
   unmarkLocalDocumentPaid,
   markLocalDocumentEmailSent,
   payloadFromApiDocument,
+  prepareCopiedPayload,
 } from "../../evolu/documentCrud";
 import type { CompanyId, DocumentId } from "../../evolu/schema";
 import type { EvoluCompanyRow } from "../../evolu/companyMap";
@@ -1858,6 +1859,7 @@ async function createFinalInvoice(d: { id: string }) {
               vatPolicy.resolveLineTaxRate(company, contact, line.tax_rate),
           ),
         },
+        { variableSymbolFromProforma: appSettingsFromCompany(company).variable_symbol_from_proforma },
       );
       if (!result.ok) {
         error.value = t("common.error");
@@ -2626,8 +2628,8 @@ async function duplicateDoc(d: { id: string; type?: string }) {
       await localDoc.refreshAll();
       const apiDoc = localDoc.documentApi(d.id as DocumentId);
       if (!apiDoc) return;
-      const p = payloadFromApiDocument(apiDoc);
-      p.title = p.title ? `${p.title} (copy)` : "Copy";
+      // A new document: no source number in title / VS, today's dates.
+      const p = prepareCopiedPayload(payloadFromApiDocument(apiDoc));
       const company = localDoc.companyApi(companyId.value);
       const contact = p.company_contact_id
         ? (localDoc

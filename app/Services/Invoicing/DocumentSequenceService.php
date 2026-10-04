@@ -38,15 +38,32 @@ class DocumentSequenceService
             // without it this path handed out numbers already reserved.
             $this->alignCounter($series, $localHighCounter, $date);
 
-            $series->last_number = (int) $series->last_number + 1;
+            // business_documents is unique on (company, number) across ALL
+            // types: two types sharing a format, or an imported number of
+            // another type, used to fail the issue with a 500 until the
+            // counters drifted apart. Skip numbers that are already taken.
+            $attempts = 0;
+            do {
+                $series->last_number = (int) $series->last_number + 1;
+                $number = $this->formatter->format($series->format, (int) $series->last_number, $date);
+            } while ($this->numberTaken($series, $number) && ++$attempts < 1000);
             $series->save();
 
-            return $this->formatter->format(
-                $series->format,
-                (int) $series->last_number,
-                $date,
-            );
+            return $number;
         });
+    }
+
+    protected function numberTaken(CompanyDocumentSequence $series, string $number): bool
+    {
+        return $series->document_type === 'expense'
+            ? BusinessExpense::query()
+                ->where('company_id', $series->company_id)
+                ->where('internal_number', $number)
+                ->exists()
+            : BusinessDocument::query()
+                ->where('company_id', $series->company_id)
+                ->where('number', $number)
+                ->exists();
     }
 
     /**

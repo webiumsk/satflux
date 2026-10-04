@@ -12,6 +12,9 @@ use App\Models\BusinessRecurringProfileLine;
 use App\Support\Invoicing\BankSymbolNormalizer;
 use App\Support\Invoicing\CompanyVatPolicy;
 use Carbon\Carbon;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\ValidationException;
 
 class RecurringDocumentGeneratorService
 {
@@ -50,7 +53,44 @@ class RecurringDocumentGeneratorService
         return $count;
     }
 
+    /**
+     * One generation per profile at a time: a double click on "generate now"
+     * or a click racing the daily run used to issue two documents for the
+     * same period. The run re-checks next_issue_date under the lock - a
+     * concurrent run that already advanced the profile wins.
+     */
     public function generateForProfile(BusinessRecurringProfile $profile, ?Carbon $issueDate = null): BusinessDocument
+    {
+        $lock = Cache::lock('recurring-profile-generate:'.$profile->getKey(), 120);
+        try {
+            $lock->block(30);
+        } catch (LockTimeoutException) {
+            throw ValidationException::withMessages([
+                'profile' => ['This recurring profile is already being generated.'],
+            ]);
+        }
+
+        try {
+            $current = BusinessRecurringProfile::query()->whereKey($profile->getKey())->first();
+            if ($current === null
+                || $this->dateString($current->next_issue_date) !== $this->dateString($profile->getOriginal('next_issue_date'))) {
+                throw ValidationException::withMessages([
+                    'profile' => ['This recurring profile was generated in the meantime - reload it.'],
+                ]);
+            }
+
+            return $this->generateUnlocked($profile, $issueDate);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    protected function dateString(mixed $value): ?string
+    {
+        return $value === null || $value === '' ? null : Carbon::parse($value)->toDateString();
+    }
+
+    protected function generateUnlocked(BusinessRecurringProfile $profile, ?Carbon $issueDate = null): BusinessDocument
     {
         $profile->loadMissing(['company', 'lines', 'contact']);
         $issueDate = $issueDate ?? Carbon::parse($profile->next_issue_date);
@@ -140,7 +180,16 @@ class RecurringDocumentGeneratorService
             ]);
         }
 
-        $issued = $this->issueService->issue($document);
+        try {
+            $issued = $this->issueService->issue($document);
+        } catch (\Throwable $e) {
+            // The profile is not advanced on failure, so every daily run used
+            // to leave another unissued draft behind.
+            $document->lines()->delete();
+            $document->delete();
+
+            throw $e;
+        }
 
         // The draft was rendered with the PREVIEW number; the issued number
         // can differ (concurrent issue, reservation floor). Re-resolve every

@@ -16,7 +16,8 @@ import {
     syncLocalSeriesCounterFromIssuedNumber,
     syncNumberSeriesCounterFromDocuments,
 } from "./numberSeriesCrud";
-import { rederiveNumberDerivedFields } from "./numberSeriesFormat";
+import { dateForPeriodKey, localIsoDate, rederiveNumberDerivedFields } from "./numberSeriesFormat";
+import i18n from "@/i18n";
 import {
     formatNumberFromStoreCounter,
     localHighCounterForStoreBridge,
@@ -534,23 +535,31 @@ export async function issueLocalDocumentAsync(
     if (!reserved.ok) {
         return { ok: false as const, error: reserved.error };
     }
+    // A voided reservation never becomes a document number.
+    if (reserved.value.status === "voided") {
+        return { ok: false as const, error: "reserve_failed" as const };
+    }
 
     // The reserved COUNTER is authoritative; the visible number is formatted
     // with the LOCAL series format. The server bridge sequence may carry a
     // different default (e.g. INVYYYYNNNN) than the user's configured series.
+    // A retried issue gets its original reservation back - format it in the
+    // reservation's period, not today's (a new-year retry of a Dec 31
+    // reservation must not produce a new-year number the new year reissues).
     const number = formatNumberFromStoreCounter(
         company.id,
         draft.documentType,
         reserved.value.counter,
         series,
-        periodDate,
+        dateForPeriodKey(reserved.value.periodKey, periodDate),
     );
 
     // Title and VS were rendered from the preview (or inherited from a
-    // duplicated / converted source) - align them with the real number.
+    // duplicated / converted source) - align them with the real number. An
+    // empty title (stored as the "Document" fallback) gets the type's title.
     const seriesFormat = resolveDefaultSeries(series, company.id, draft.documentType)?.format ?? "YYYYNNNN";
     const derived = rederiveNumberDerivedFields(seriesFormat, number, reserved.value.counter, {
-        title: draft.title,
+        title: isFallbackTitle(draft.title) ? defaultDocumentTitle(draft.documentType, number) : draft.title,
         variableSymbol: draft.variableSymbol,
     });
     let issuedDraft = draft;
@@ -586,8 +595,60 @@ export async function issueLocalDocumentAsync(
             "snapshotPayloadJson" in result ? result.snapshotPayloadJson : null,
             ISSUED_SNAPSHOT_FORMAT_VERSION,
         );
+        markFinalInvoicePaidFromProforma(evolu, draft, documents);
     }
     return result;
+}
+
+/** saveLocalDocument stores an empty title as this literal. */
+const FALLBACK_DOCUMENT_TITLE = "Document";
+
+export function isFallbackTitle(title: string | null | undefined): boolean {
+    const value = String(title ?? "").trim();
+    return value === "" || value === FALLBACK_DOCUMENT_TITLE;
+}
+
+const TITLE_PREFIX_KEYS: Partial<Record<string, string>> = {
+    invoice: "invoicing.invoice_title_prefix",
+    proforma: "invoicing.proforma_title_prefix",
+    quote: "invoicing.quote_title_prefix",
+    credit_note: "invoicing.credit_note_title_prefix",
+};
+
+/** "<type prefix> <number>" - the form's own default title. */
+export function defaultDocumentTitle(documentType: string, number: string): string | null {
+    const key = TITLE_PREFIX_KEYS[documentType];
+    return key ? `${String(i18n.global.t(key))} ${number}` : null;
+}
+
+/**
+ * A final invoice settles an already PAID proforma: it is issued as paid
+ * with the proforma's payment (server parity - BusinessDocumentFromProforma
+ * Service). It used to stay "issued", showing a payment QR for money the
+ * customer had already sent.
+ */
+function markFinalInvoicePaidFromProforma(
+    evolu: Evolu<InvoicingLocalSchema>,
+    draft: EvoluDocumentRow,
+    documents: EvoluDocumentRow[],
+) {
+    if (draft.documentType !== "invoice" || !draft.sourceDocumentId) return;
+    const proforma = documents.find((row) => row.id === draft.sourceDocumentId);
+    if (!proforma || proforma.documentType !== "proforma" || proforma.status !== "paid") return;
+
+    const amountPaid = proforma.amountPaid ?? proforma.total ?? "0";
+    const result = evolu.update("document", {
+        id: draft.id,
+        status: "paid",
+        paidAt: proforma.paidAt ?? new Date().toISOString(),
+        amountPaid,
+    });
+    if (result.ok) {
+        logDocumentEvent(evolu, draft.id, "business_document.marked_paid", {
+            amount_paid: Number(amountPaid),
+            source: "proforma",
+        });
+    }
 }
 
 export type ReservedIssueSnapshotContext = IssueSnapshotContext & {
@@ -707,28 +768,6 @@ export function getLocalDocumentApi(
     if (!doc) return null;
     const docLines = lines.filter((l) => l.documentId === documentId);
     return evoluDocumentToApi(doc, docLines, documents, policy);
-}
-
-export function duplicateLocalDocument(
-    evolu: Evolu<InvoicingLocalSchema>,
-    documentId: DocumentId,
-    documents: EvoluDocumentRow[],
-    lines: EvoluDocumentLineRow[],
-    payload: DocumentSavePayload,
-    options: Parameters<typeof saveLocalDocument>[3],
-) {
-    const doc = documents.find((d) => d.id === documentId);
-    if (!doc) return { ok: false as const, error: "not_found" };
-
-    const copyPayload: DocumentSavePayload = {
-        ...payload,
-        title: payload.title ? `${payload.title} (copy)` : "Copy",
-    };
-    return saveLocalDocument(evolu, doc.companyId, copyPayload, {
-        ...options,
-        documentId: undefined,
-        sourceDocumentId: null,
-    });
 }
 
 export function deleteLocalDocument(evolu: Evolu<InvoicingLocalSchema>, documentId: DocumentId) {
@@ -918,6 +957,46 @@ export function rejectLocalQuote(evolu: Evolu<InvoicingLocalSchema>, documentId:
     return result;
 }
 
+function addDaysIso(isoDate: string, days: number): string {
+    const [year, month, day] = isoDate.split("-").map(Number);
+    return localIsoDate(new Date(year, month - 1, day + days));
+}
+
+function daysBetweenIso(from: string, to: string): number | null {
+    const a = /^(\d{4})-(\d{2})-(\d{2})/.exec(from);
+    const b = /^(\d{4})-(\d{2})-(\d{2})/.exec(to);
+    if (!a || !b) return null;
+    const start = Date.UTC(Number(a[1]), Number(a[2]) - 1, Number(a[3]));
+    const end = Date.UTC(Number(b[1]), Number(b[2]) - 1, Number(b[3]));
+    return Math.round((end - start) / 86_400_000);
+}
+
+/**
+ * A copy (duplicate, invoice from a quote, final invoice from a proforma)
+ * is a NEW document: it must not carry the source's number-derived title
+ * and variable symbol (the issued copy printed the source's number and was
+ * bank-matched by the source's VS), nor its dates. Today's local date is
+ * the issue date; the source's payment term (days between issue and due
+ * date) carries over; a delivery date becomes today. The empty title is
+ * filled from the type and the real number at issue.
+ */
+export function prepareCopiedPayload(
+    payload: DocumentSavePayload,
+    today: string = localIsoDate(),
+): DocumentSavePayload {
+    const term = payload.issue_date && payload.due_date
+        ? daysBetweenIso(payload.issue_date, payload.due_date)
+        : null;
+    return {
+        ...payload,
+        title: "",
+        variable_symbol: "",
+        issue_date: today,
+        due_date: term !== null && term >= 0 ? addDaysIso(today, term) : "",
+        delivery_date: payload.delivery_date ? today : "",
+    };
+}
+
 export function createLocalInvoiceFromQuote(
     evolu: Evolu<InvoicingLocalSchema>,
     quoteId: DocumentId,
@@ -926,11 +1005,24 @@ export function createLocalInvoiceFromQuote(
     buildPayloadFromDoc: (doc: Record<string, unknown>) => DocumentSavePayload,
     saveOptions: Parameters<typeof saveLocalDocument>[3],
 ) {
+    // Domain guards (server parity): the UI checks these too, but its state
+    // can be stale across tabs / relay sync.
+    const doc = documents.find((d) => d.id === quoteId);
+    if (!doc) return { ok: false as const, error: "not_found" };
+    if (doc.documentType !== "quote") return { ok: false as const, error: "not_quote" };
+    if (!doc.number) return { ok: false as const, error: "not_issued" };
+    if (doc.quoteStatus !== "approved") return { ok: false as const, error: "not_approved" };
+    if (hasActiveDerivedInvoice(doc.id, documents)) {
+        return { ok: false as const, error: "already_exists" };
+    }
     const api = getLocalDocumentApi(quoteId, documents, lines);
     if (!api) return { ok: false as const, error: "not_found" };
-    const payload = buildPayloadFromDoc(api);
+    const payload = prepareCopiedPayload(buildPayloadFromDoc(api));
     payload.type = "invoice";
-    const doc = documents.find((d) => d.id === quoteId)!;
+    // Quotes are stored with payment off - an invoice asks for payment.
+    payload.pdf_show_payment_info = true;
+    payload.payment_bank_enabled = true;
+    payload.payment_btc_enabled = false;
     const result = saveLocalDocument(evolu, doc.companyId, payload, {
         ...saveOptions,
         sourceDocumentId: quoteId,
@@ -944,6 +1036,14 @@ export function createLocalInvoiceFromQuote(
     return result;
 }
 
+function hasActiveDerivedInvoice(sourceId: DocumentId, documents: EvoluDocumentRow[]): boolean {
+    return documents.some(
+        (row) => row.sourceDocumentId === sourceId
+            && row.documentType === "invoice"
+            && row.status !== "cancelled",
+    );
+}
+
 export function createLocalFinalInvoiceFromProforma(
     evolu: Evolu<InvoicingLocalSchema>,
     proformaId: DocumentId,
@@ -951,12 +1051,26 @@ export function createLocalFinalInvoiceFromProforma(
     lines: EvoluDocumentLineRow[],
     buildPayloadFromDoc: (doc: Record<string, unknown>) => DocumentSavePayload,
     saveOptions: Parameters<typeof saveLocalDocument>[3],
+    options: { variableSymbolFromProforma?: boolean } = {},
 ) {
+    const doc = documents.find((d) => d.id === proformaId);
+    if (!doc) return { ok: false as const, error: "not_found" };
+    if (doc.documentType !== "proforma") return { ok: false as const, error: "not_proforma" };
+    if (!doc.number || doc.status !== "paid") return { ok: false as const, error: "not_paid" };
+    if (hasActiveDerivedInvoice(doc.id, documents)) {
+        return { ok: false as const, error: "already_exists" };
+    }
     const api = getLocalDocumentApi(proformaId, documents, lines);
     if (!api) return { ok: false as const, error: "not_found" };
-    const payload = buildPayloadFromDoc(api);
+    const payload = prepareCopiedPayload(buildPayloadFromDoc(api));
     payload.type = "invoice";
-    const doc = documents.find((d) => d.id === proformaId)!;
+    // Settled through the proforma (it is issued as paid): no payment QR or
+    // BTC checkout for money already received.
+    payload.payment_bank_enabled = false;
+    payload.payment_btc_enabled = false;
+    if (options.variableSymbolFromProforma && doc.variableSymbol) {
+        payload.variable_symbol = doc.variableSymbol;
+    }
     const result = saveLocalDocument(evolu, doc.companyId, payload, {
         ...saveOptions,
         sourceDocumentId: proformaId,
@@ -996,7 +1110,9 @@ export function createLocalCreditNoteFromInvoice(
     const api = getLocalDocumentApi(invoiceId, documents, lines);
     if (!api) return { ok: false as const, error: "not_found" };
 
-    const today = new Date().toISOString().slice(0, 10);
+    // Local calendar date - toISOString() is UTC (the day before around
+    // midnight in Central Europe).
+    const today = localIsoDate();
     const payload = payloadFromApiDocument(api);
     payload.type = "credit_note";
     payload.title = "";

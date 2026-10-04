@@ -38,6 +38,8 @@ export type AllocatorReservation = {
     counter: number;
     status: string;
     bridgeCompanyId: string;
+    /** Period the counter belongs to ("2026", "2026-12", "all"). */
+    periodKey: string | null;
 };
 
 export type AllocatorReserveResult =
@@ -156,6 +158,7 @@ export async function reserveIssueNumber(
             number?: string;
             counter?: number;
             status?: string;
+            period_key?: string | null;
         }>(bridgeCompanyId, body);
 
         if (!data?.number || data.counter == null) {
@@ -168,6 +171,7 @@ export async function reserveIssueNumber(
                 counter: data.counter,
                 status: data.status ?? "reserved",
                 bridgeCompanyId,
+                periodKey: data.period_key ?? null,
             },
         };
     } catch (error: unknown) {

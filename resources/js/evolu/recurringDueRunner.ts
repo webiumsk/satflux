@@ -1,4 +1,5 @@
 import type { Evolu } from "@evolu/common/local-first";
+import { localIsoDate } from "./numberSeriesFormat";
 import {
     allCompaniesDetailQuery,
     allContactsQuery,
@@ -70,7 +71,7 @@ let runnerInFlight: Promise<RecurringDueRunResult> | null = null;
 
 export async function processDueLocalRecurringProfiles(
     evolu: Evolu<InvoicingLocalSchema>,
-    today = new Date().toISOString().slice(0, 10),
+    today = localIsoDate(),
 ): Promise<RecurringDueRunResult> {
     if (runnerInFlight) {
         return runnerInFlight;

@@ -16,6 +16,8 @@ use App\Services\Invoicing\CompanyPdfFilenameBuilder;
 use App\Services\Invoicing\DocumentTotalsCalculator;
 use App\Services\SubscriptionEntitlementService;
 use App\Support\Invoicing\CompanyAppSettings;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 
@@ -132,16 +134,59 @@ class WooCommerceDocumentService
         }
 
         $wcOrderId = (int) ($payload['woocommerce_order_id'] ?? 0);
-        if ($wcOrderId > 0) {
-            $existing = BusinessDocument::query()
-                ->where('company_id', $company->id)
-                ->where('internal_note', 'like', '%woocommerce_order_id='.$wcOrderId.'%')
-                ->where('status', '!=', BusinessDocumentStatus::Cancelled)
-                ->first();
+        if ($wcOrderId <= 0) {
+            return $this->createDraftForOrder($integration, $company, $payload, 0);
+        }
+
+        // One document per shop order. The lock serialises concurrent webhook
+        // deliveries of the same order (both used to pass the lookup).
+        $lock = Cache::lock('woo-order-document:'.$integration->store_id.':'.$wcOrderId, 30);
+        try {
+            $lock->block(10);
+        } catch (LockTimeoutException) {
+            throw ValidationException::withMessages([
+                'woocommerce_order_id' => ['This order is being processed - retry shortly.'],
+            ]);
+        }
+
+        try {
+            $existing = $this->existingDocumentForOrder($company, (string) $integration->store_id, $wcOrderId);
             if ($existing) {
                 return $existing->load(['lines', 'contact', 'store']);
             }
+
+            return $this->createDraftForOrder($integration, $company, $payload, $wcOrderId);
+        } finally {
+            $lock->release();
         }
+    }
+
+    /**
+     * Exact match on the order tag, scoped to the shop's store. The old
+     * `internal_note LIKE %woocommerce_order_id=12%` also matched orders 120,
+     * 1200..., ignored which shop the order came from and broke when the note
+     * was edited. The exact legacy note still matches documents created
+     * before the tag existed.
+     */
+    protected function existingDocumentForOrder(Company $company, string $storeId, int $wcOrderId): ?BusinessDocument
+    {
+        return BusinessDocument::query()
+            ->where('company_id', $company->id)
+            ->where('store_id', $storeId)
+            ->where('status', '!=', BusinessDocumentStatus::Cancelled)
+            ->where(fn ($query) => $query
+                ->whereJsonContains('tags', 'wc_order:'.$wcOrderId)
+                ->orWhere('internal_note', 'woocommerce_order_id='.$wcOrderId))
+            ->orderBy('created_at')
+            ->first();
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function createDraftForOrder(StoreIntegration $integration, Company $company, array $payload, int $wcOrderId): BusinessDocument
+    {
+        $store = $integration->store;
 
         $type = BusinessDocumentType::tryFrom((string) ($payload['type'] ?? 'invoice')) ?? BusinessDocumentType::Invoice;
         if (! $type->isMvpEnabled()) {
