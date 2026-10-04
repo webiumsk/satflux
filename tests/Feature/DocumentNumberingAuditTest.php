@@ -8,6 +8,7 @@ use App\Enums\ComplianceSubmissionStatus;
 use App\Models\BusinessDocument;
 use App\Models\Company;
 use App\Models\CompanyDocumentSequence;
+use App\Models\CompanyMember;
 use App\Models\DocumentNumberReservation;
 use App\Models\EphemeralEfakturaSubmission;
 use App\Models\User;
@@ -350,5 +351,65 @@ class DocumentNumberingAuditTest extends TestCase
 
         $this->assertTrue($higher->fresh()->canDelete());
         $this->assertFalse($lower->fresh()->canDelete());
+    }
+
+    public function test_efaktura_guard_finds_a_submission_filed_by_a_member_under_another_bridge_company(): void
+    {
+        $member = User::factory()->create();
+        CompanyMember::query()->create([
+            'company_id' => $this->company->id,
+            'user_id' => $member->id,
+            'role' => 'accountant',
+            'accepted_at' => now(),
+        ]);
+        // The company-less send path records the sender's own first
+        // e-Faktura company as the bridge.
+        $otherBridge = Company::create([
+            'user_id' => $member->id,
+            'legal_name' => 'Kancelaria s.r.o.',
+            'jurisdiction' => CompanyJurisdiction::EuSk,
+            'default_currency' => 'EUR',
+        ]);
+
+        $this->reserve('req-efaktura-member')->assertOk();
+        EphemeralEfakturaSubmission::query()->create([
+            'user_id' => $member->id,
+            'bridge_company_id' => $otherBridge->id,
+            'evolu_document_id' => 'req-efaktura-member',
+            'provider' => 'peppol',
+            'status' => ComplianceSubmissionStatus::Submitted,
+        ]);
+
+        $this->actingAs($this->user)
+            ->postJson('/api/invoicing/companies/'.$this->company->id.'/number-allocator/release', [
+                'document_type' => 'invoice',
+                'issue_request_id' => 'req-efaktura-member',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('efaktura');
+    }
+
+    public function test_a_period_flip_around_midnight_keeps_the_manual_floor_of_each_period(): void
+    {
+        CompanyDocumentSequence::query()->where('company_id', $this->company->id)
+            ->update(['period_key' => '2026', 'last_number' => 120]);
+
+        // 23:30 UTC on Dec 31: a client already in 2027 reserves first ...
+        $this->travelTo(Carbon::parse('2026-12-31 23:30:00'));
+        $this->reserve('req-flip-2027', ['period_date' => '2027-01-01'])
+            ->assertOk()
+            ->assertJsonPath('data.number', 'INV20270001');
+
+        // ... then a server-side issue still in 2026 must continue at 121,
+        // not restart at 1 because the row flipped periods.
+        $this->assertSame(
+            'INV20260121',
+            app(DocumentSequenceService::class)->nextNumber($this->company, 'invoice'),
+        );
+
+        // And back in 2027 the new period continues from its own count.
+        $this->reserve('req-flip-2027-b', ['period_date' => '2027-01-01'])
+            ->assertOk()
+            ->assertJsonPath('data.number', 'INV20270002');
     }
 }

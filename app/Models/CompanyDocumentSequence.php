@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property array<string, int>|null $period_floors Counter floor per numbering period (see DocumentSequenceService::syncPeriod).
+ */
 class CompanyDocumentSequence extends Model
 {
     protected $fillable = [
@@ -16,6 +19,7 @@ class CompanyDocumentSequence extends Model
         'is_default',
         'period_key',
         'last_number',
+        'period_floors',
     ];
 
     protected function casts(): array
@@ -23,6 +27,7 @@ class CompanyDocumentSequence extends Model
         return [
             'is_default' => 'boolean',
             'last_number' => 'integer',
+            'period_floors' => 'array',
         ];
     }
 

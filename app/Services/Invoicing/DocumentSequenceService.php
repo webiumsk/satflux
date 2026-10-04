@@ -218,10 +218,18 @@ class DocumentSequenceService
             // tax authority under this number - releasing it would hand the
             // same number to the next invoice. Mirrors the server-document
             // rule (BusinessDocument::hasBlockingRelations).
+            //
+            // The submission's bridge_company_id is not always this company
+            // (the company-less send path uses the sender's first e-Faktura
+            // company), and in a shared company another member may have sent
+            // it - so it counts when it belongs to this company OR was sent
+            // by its owner or any (also former) member.
             if ($issueRequestId !== null && $issueRequestId !== ''
                 && EphemeralEfakturaSubmission::query()
-                    ->where('bridge_company_id', $company->id)
                     ->where('evolu_document_id', $issueRequestId)
+                    ->where(fn ($query) => $query
+                        ->where('bridge_company_id', $company->id)
+                        ->orWhereIn('user_id', $this->companyUserIds($company)))
                     ->exists()) {
                 throw ValidationException::withMessages([
                     'efaktura' => ['This document was submitted to e-Faktura - its number cannot be released.'],
@@ -282,9 +290,17 @@ class DocumentSequenceService
             // back to just below the released number - not to the remaining
             // reservations, which would also drop a manual start value.
             $lowered = max((int) (clone $scoped)->max('counter'), (int) $reservation->counter - 1);
+            $floors = is_array($series->period_floors) ? $series->period_floors : [];
             if ($series->period_key === $reservation->period_key
                 && (int) $series->last_number > $lowered) {
                 $series->last_number = $lowered;
+                $series->save();
+            } elseif ($reservation->period_key !== null
+                && (int) ($floors[$reservation->period_key] ?? 0) > $lowered) {
+                // The row has moved on to another period - lower the floor
+                // kept for the reservation's period instead.
+                $floors[$reservation->period_key] = $lowered;
+                $series->period_floors = $floors;
                 $series->save();
             }
 
@@ -296,6 +312,19 @@ class DocumentSequenceService
 
             return ['released' => true];
         });
+    }
+
+    /**
+     * Owner and every member (active or former) of the company.
+     *
+     * @return array<int, int>
+     */
+    protected function companyUserIds(Company $company): array
+    {
+        return array_values(array_unique(array_filter([
+            (int) $company->user_id,
+            ...$company->members()->pluck('user_id')->map(fn ($id) => (int) $id)->all(),
+        ])));
     }
 
     public function findReservation(
@@ -743,12 +772,31 @@ class DocumentSequenceService
         return $series;
     }
 
+    /**
+     * Switches the series row to the period of $date. The counter of the
+     * period being left is kept in period_floors and restored when the row
+     * comes back to it: around midnight UTC the client's period date (+-1
+     * day) can flip the row between two periods, and a plain reset to 0
+     * lost a manually entered floor. A period without a stored floor still
+     * starts at 0. Only the two most recent periods are kept.
+     */
     protected function syncPeriod(CompanyDocumentSequence $series, ?CarbonInterface $date = null): void
     {
         $key = $this->currentPeriodKey($series->reset_period, $date);
-        if ($series->period_key !== $key) {
-            $series->period_key = $key;
-            $series->last_number = 0;
+        if ($series->period_key === $key) {
+            return;
         }
+
+        $floors = is_array($series->period_floors) ? $series->period_floors : [];
+        if ($series->period_key !== null && (int) $series->last_number > 0) {
+            $floors[$series->period_key] = (int) $series->last_number;
+        }
+
+        $series->period_key = $key;
+        $series->last_number = (int) ($floors[$key] ?? 0);
+
+        unset($floors[$key]);
+        krsort($floors, SORT_STRING);
+        $series->period_floors = array_slice($floors, 0, 2, true) ?: null;
     }
 }
