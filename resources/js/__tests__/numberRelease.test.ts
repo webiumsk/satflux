@@ -78,6 +78,17 @@ describe("releaseIssuedNumber (gapless numbering)", () => {
         });
     });
 
+    it("a 422 for an e-Faktura submission maps to efaktura_submitted, not not_last", async () => {
+        releaseMock.mockRejectedValue({
+            response: { status: 422, data: { errors: { efaktura: ["submitted"] } } },
+        });
+
+        expect(await releaseIssuedNumber("c1", "invoice", "FV20260075", "doc-75")).toEqual({
+            ok: false,
+            error: "efaktura_submitted",
+        });
+    });
+
     it("offline deletion of an issued invoice is blocked", async () => {
         vi.stubGlobal("navigator", { onLine: false });
 
@@ -177,6 +188,20 @@ describe("latest-by-number delete guard", () => {
         expect(canDeleteLocalDocument(docs[1], docs, policy)).toBe(true);
         // A cancelled document that never got a number is always deletable.
         expect(canDeleteLocalDocument(doc("d3", null, "cancelled"), docs, policy)).toBe(true);
+    });
+
+    it("orders a never-resetting counter-only series by the counter, not the issue date", () => {
+        const neverSeries = [{
+            ...series[0],
+            format: "FVNNNN",
+            resetPeriod: "never",
+        }] as unknown as EvoluNumberSeriesRow[];
+        const docs = [
+            doc("higher", "FV0101", "issued", "2025-12-30"),
+            doc("lower", "FV0100", "issued", "2026-01-05"),
+        ];
+        expect(isLatestForCompanyType(docs[0], docs, neverSeries)).toBe(true);
+        expect(isLatestForCompanyType(docs[1], docs, neverSeries)).toBe(false);
     });
 
     it("blocks deleting a bank-matched document", () => {

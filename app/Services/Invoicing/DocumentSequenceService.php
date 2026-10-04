@@ -8,6 +8,7 @@ use App\Models\BusinessExpense;
 use App\Models\Company;
 use App\Models\CompanyDocumentSequence;
 use App\Models\DocumentNumberReservation;
+use App\Models\EphemeralEfakturaSubmission;
 use App\Support\LandingCopy;
 use Carbon\CarbonInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -213,6 +214,20 @@ class DocumentSequenceService
         ?string $number,
     ): array {
         return DB::transaction(function () use ($company, $documentType, $issueRequestId, $number) {
+            // A local-first document sent to e-Faktura is on record at the
+            // tax authority under this number - releasing it would hand the
+            // same number to the next invoice. Mirrors the server-document
+            // rule (BusinessDocument::hasBlockingRelations).
+            if ($issueRequestId !== null && $issueRequestId !== ''
+                && EphemeralEfakturaSubmission::query()
+                    ->where('bridge_company_id', $company->id)
+                    ->where('evolu_document_id', $issueRequestId)
+                    ->exists()) {
+                throw ValidationException::withMessages([
+                    'efaktura' => ['This document was submitted to e-Faktura - its number cannot be released.'],
+                ]);
+            }
+
             $candidate = null;
             if ($issueRequestId !== null && $issueRequestId !== '') {
                 $candidate = $this->findReservation($company, $documentType, $issueRequestId);
@@ -525,12 +540,14 @@ class DocumentSequenceService
             return $this->latestNumberedCache[$key];
         }
 
-        $format = (string) CompanyDocumentSequence::query()
+        $series = CompanyDocumentSequence::query()
             ->where('company_id', $companyId)
             ->where('document_type', $documentType)
             ->where('is_default', true)
             ->orderBy('id')
-            ->value('format');
+            ->first(['format', 'reset_period']);
+        $format = (string) $series?->format;
+        $resetPeriod = (string) ($series->reset_period ?? 'yearly');
 
         $latestId = null;
         $latestKey = null;
@@ -543,6 +560,7 @@ class DocumentSequenceService
         foreach ($rows as $row) {
             $sortKey = $this->sortKeyFor(
                 $format,
+                $resetPeriod,
                 (string) $row->number,
                 $row->issue_date !== null ? Carbon::parse($row->issue_date) : null,
                 $row->created_at !== null ? Carbon::parse($row->created_at) : null,
@@ -557,10 +575,11 @@ class DocumentSequenceService
     }
 
     /** Sortable "position in the sequence" of a numbered document. */
-    public function numberSortKey(string $format, BusinessDocument $document): string
+    public function numberSortKey(string $format, BusinessDocument $document, string $resetPeriod = 'yearly'): string
     {
         return $this->sortKeyFor(
             $format,
+            $resetPeriod,
             (string) $document->number,
             $document->issue_date ? Carbon::parse($document->issue_date) : null,
             $document->created_at,
@@ -569,16 +588,25 @@ class DocumentSequenceService
 
     protected function sortKeyFor(
         string $format,
+        string $resetPeriod,
         string $number,
         ?CarbonInterface $issueDate,
         ?CarbonInterface $createdAt,
     ): string {
         $parsed = $format !== '' ? $this->formatter->parse($format, $number) : null;
 
-        $year = $parsed['year'] ?? null;
-        $year = $year !== null ? (strlen($year) <= 2 ? 2000 + (int) $year : (int) $year) : ($issueDate !== null ? $issueDate->year : 0);
-        $month = $parsed['month'] ?? null;
-        $month = $month !== null ? (int) $month : 0;
+        if ($resetPeriod === 'never') {
+            // The counter never restarts, so it alone orders the sequence -
+            // an (editable) issue date must not lift a lower number above a
+            // higher one across years, e.g. in a counter-only FVNNNN series.
+            $year = 0;
+            $month = 0;
+        } else {
+            $year = $parsed['year'] ?? null;
+            $year = $year !== null ? (strlen($year) <= 2 ? 2000 + (int) $year : (int) $year) : ($issueDate !== null ? $issueDate->year : 0);
+            $month = $parsed['month'] ?? null;
+            $month = $month !== null ? (int) $month : 0;
+        }
 
         // A number outside the series format (imported, older format) falls
         // back to its trailing digits.

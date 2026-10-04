@@ -1587,6 +1587,7 @@
     "delete_requires_online": "Smazání vystavené faktury vyžaduje připojení k internetu - její číslo se musí nejprve uvolnit na serveru.",
     "delete_not_last": "Smazat lze jen nejnovější fakturu řady. Nejprve smažte novější faktury.",
     "delete_not_allowed": "Tento doklad nelze smazat. Smazat lze jen poslední očíslovaný doklad řady bez bankovních párování a navazujících dokladů - místo toho jej stornujte.",
+    "delete_efaktura_submitted": "Tato faktura byla odeslána do eFaktury a nelze ji smazat - její číslo je evidováno u finanční správy. Opravte ji dobropisem.",
     "delete_release_failed": "Číslo faktury se nepodařilo uvolnit na serveru. Zkuste to znovu.",
     "saved": "Faktura uložena.",
     "history_business_document_email_sent": "E-mail odeslán",

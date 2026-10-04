@@ -215,14 +215,21 @@ export function documentNumberSortKey(
     pattern: string | null | undefined,
     number: string | null | undefined,
     issueDate?: string | null,
+    resetPeriod: ResetPeriod | string = "yearly",
 ): string {
     const parsed = pattern ? parseDocumentNumber(pattern, String(number ?? "")) : null;
     const docDate = isoDateParts(issueDate);
     const rawYear = parsed?.year ?? null;
-    const year = rawYear !== null
-        ? (rawYear.length <= 2 ? 2000 + Number(rawYear) : Number(rawYear))
-        : (docDate?.year ?? 0);
-    const month = parsed?.month != null ? Number(parsed.month) : 0;
+    // A never-resetting counter alone orders the sequence - an (editable)
+    // issue date must not lift a lower number above a higher one across
+    // years, e.g. in a counter-only FVNNNN series.
+    const neverResets = resetPeriod === "never";
+    const year = neverResets
+        ? 0
+        : rawYear !== null
+            ? (rawYear.length <= 2 ? 2000 + Number(rawYear) : Number(rawYear))
+            : (docDate?.year ?? 0);
+    const month = !neverResets && parsed?.month != null ? Number(parsed.month) : 0;
     const trailing = /(\d{1,12})$/.exec(String(number ?? ""));
     const counter = parsed?.counter ?? (trailing ? parseInt(trailing[1], 10) : 0);
     return [

@@ -1587,6 +1587,7 @@
     "delete_requires_online": "Das Löschen einer ausgestellten Rechnung erfordert eine Internetverbindung - ihre Nummer muss zuerst auf dem Server freigegeben werden.",
     "delete_not_last": "Nur die neueste Rechnung der Reihe kann gelöscht werden. Löschen Sie zuerst neuere Rechnungen.",
     "delete_not_allowed": "Dieser Beleg kann nicht gelöscht werden. Nur der letzte nummerierte Beleg der Reihe ohne Bankzuordnungen und Folgebelege kann gelöscht werden - stornieren Sie ihn stattdessen.",
+    "delete_efaktura_submitted": "Diese Rechnung wurde an e-Faktura übermittelt und kann nicht gelöscht werden - ihre Nummer ist bei der Steuerverwaltung erfasst. Korrigieren Sie sie mit einer Gutschrift.",
     "delete_release_failed": "Die Rechnungsnummer konnte auf dem Server nicht freigegeben werden. Versuchen Sie es erneut.",
     "saved": "Rechnung gespeichert.",
     "history_business_document_email_sent": "E-Mail gesendet",

@@ -813,11 +813,13 @@ async function deleteDoc() {
           ? t('invoicing.delete_requires_online')
           : result.error === 'not_last'
             ? t('invoicing.delete_not_last')
-            : result.error === 'not_deletable'
-              ? t('invoicing.delete_not_allowed')
-              : result.error === 'issued_locked'
-                ? t('invoicing.issued_locked_gobd')
-                : t('invoicing.delete_release_failed');
+            : result.error === 'efaktura_submitted'
+              ? t('invoicing.delete_efaktura_submitted')
+              : result.error === 'not_deletable'
+                ? t('invoicing.delete_not_allowed')
+                : result.error === 'issued_locked'
+                  ? t('invoicing.issued_locked_gobd')
+                  : t('invoicing.delete_release_failed');
       return;
     }
     router.push({ name: documentRoutes.value.list, params: { companyId: companyId.value } });

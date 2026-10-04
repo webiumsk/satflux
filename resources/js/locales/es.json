@@ -4375,6 +4375,7 @@
     "delete_requires_online": "Eliminar una factura emitida requiere conexión a internet: su número debe liberarse primero en el servidor.",
     "delete_not_last": "Solo se puede eliminar la factura más reciente de la serie. Elimina primero las más nuevas.",
     "delete_not_allowed": "Este documento no se puede eliminar. Solo se puede eliminar el último documento numerado de la serie sin conciliaciones bancarias ni documentos vinculados; anúlalo en su lugar.",
+    "delete_efaktura_submitted": "Esta factura se envió a e-Faktura y no se puede eliminar; su número consta en la administración tributaria. Corrígela con una nota de crédito.",
     "delete_release_failed": "No se pudo liberar el número de la factura en el servidor. Inténtalo de nuevo.",
     "saved": "Factura guardada.",
     "history_business_document_email_sent": "Correo enviado",

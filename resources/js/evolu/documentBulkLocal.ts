@@ -116,8 +116,9 @@ export function isLatestForCompanyType(
         return true;
     }
 
-    const format = resolveDefaultSeries([...allSeries], doc.companyId, doc.documentType as DocumentType)?.format ?? null;
-    const keyOf = (row: EvoluDocumentRow) => documentNumberSortKey(format, row.number, row.issueDate);
+    const series = resolveDefaultSeries([...allSeries], doc.companyId, doc.documentType as DocumentType);
+    const keyOf = (row: EvoluDocumentRow) =>
+        documentNumberSortKey(series?.format ?? null, row.number, row.issueDate, series?.resetPeriod);
     const sorted = [...numbered].sort((a, b) => {
         const cmp = keyOf(b).localeCompare(keyOf(a));
         return cmp !== 0 ? cmp : String(b.id).localeCompare(String(a.id));
@@ -196,8 +197,8 @@ export function sortRowsForSequentialDelete(
     allSeries: readonly EvoluNumberSeriesRow[] = [],
 ): EvoluDocumentRow[] {
     const keyOf = (row: EvoluDocumentRow) => {
-        const format = resolveDefaultSeries([...allSeries], row.companyId, row.documentType as DocumentType)?.format ?? null;
-        return documentNumberSortKey(format, row.number, row.issueDate);
+        const series = resolveDefaultSeries([...allSeries], row.companyId, row.documentType as DocumentType);
+        return documentNumberSortKey(series?.format ?? null, row.number, row.issueDate, series?.resetPeriod);
     };
     return [...rows].sort((a, b) => {
         const cmp = keyOf(b).localeCompare(keyOf(a));

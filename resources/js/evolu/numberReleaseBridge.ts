@@ -13,7 +13,7 @@ import { companyShareInfo } from "./companyShareRegistry";
  */
 export type ReleaseNumberResult =
     | { ok: true }
-    | { ok: false; error: "delete_requires_online" | "not_last" | "release_failed" };
+    | { ok: false; error: "delete_requires_online" | "not_last" | "efaktura_submitted" | "release_failed" };
 
 export async function releaseIssuedNumber(
     localCompanyId: string,
@@ -55,9 +55,14 @@ export async function releaseIssuedNumber(
         // reservation held it (pre-allocator document) - both are fine.
         return { ok: true };
     } catch (error: unknown) {
-        const status = (error as { response?: { status?: number } })?.response?.status;
-        if (status === 422) {
-            return { ok: false, error: "not_last" };
+        const response = (error as { response?: { status?: number; data?: { errors?: Record<string, unknown> } } })?.response;
+        if (response?.status === 422) {
+            // Submitted to e-Faktura: the number is on record at the tax
+            // authority and must never be reissued.
+            return {
+                ok: false,
+                error: response.data?.errors?.efaktura ? "efaktura_submitted" : "not_last",
+            };
         }
         return {
             ok: false,

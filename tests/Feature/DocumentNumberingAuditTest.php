@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Enums\BusinessDocumentStatus;
 use App\Enums\CompanyJurisdiction;
+use App\Enums\ComplianceSubmissionStatus;
 use App\Models\BusinessDocument;
 use App\Models\Company;
 use App\Models\CompanyDocumentSequence;
 use App\Models\DocumentNumberReservation;
+use App\Models\EphemeralEfakturaSubmission;
 use App\Models\User;
 use App\Services\Invoicing\DocumentSequenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -297,5 +299,56 @@ class DocumentNumberingAuditTest extends TestCase
 
         $this->assertSame(1, BusinessDocument::query()->where('company_id', $this->company->id)->count());
         $this->assertSame('INV20260002', $service->nextNumber($this->company, 'invoice'));
+    }
+
+    public function test_a_number_submitted_to_efaktura_cannot_be_released(): void
+    {
+        $this->reserve('req-efaktura-1')->assertOk();
+        EphemeralEfakturaSubmission::query()->create([
+            'user_id' => $this->user->id,
+            'bridge_company_id' => $this->company->id,
+            'evolu_document_id' => 'req-efaktura-1',
+            'provider' => 'peppol',
+            'status' => ComplianceSubmissionStatus::Submitted,
+        ]);
+
+        $this->actingAs($this->user)
+            ->postJson('/api/invoicing/companies/'.$this->company->id.'/number-allocator/release', [
+                'document_type' => 'invoice',
+                'issue_request_id' => 'req-efaktura-1',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('efaktura');
+
+        $this->assertSame(1, DocumentNumberReservation::query()->where('issue_request_id', 'req-efaktura-1')->count());
+    }
+
+    public function test_a_never_resetting_counter_only_series_orders_by_counter_not_issue_date(): void
+    {
+        CompanyDocumentSequence::query()->where('company_id', $this->company->id)
+            ->update(['format' => 'FVNNNN', 'reset_period' => 'never']);
+
+        $higher = BusinessDocument::create([
+            'company_id' => $this->company->id,
+            'type' => 'invoice',
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => 'FV0101',
+            // Issue date edited back into the previous year.
+            'issue_date' => '2025-12-30',
+            'total' => 10,
+            'currency' => 'EUR',
+        ]);
+        $lower = BusinessDocument::create([
+            'company_id' => $this->company->id,
+            'type' => 'invoice',
+            'status' => BusinessDocumentStatus::Issued,
+            'number' => 'FV0100',
+            'issue_date' => '2026-01-05',
+            'total' => 10,
+            'currency' => 'EUR',
+        ]);
+
+        $this->assertTrue($higher->fresh()->canDelete());
+        $this->assertFalse($lower->fresh()->canDelete());
     }
 }

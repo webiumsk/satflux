@@ -231,17 +231,21 @@ class BusinessDocumentBulkService
 
         // Newest number first per type: only the top number may be deleted,
         // so a selected tail of the sequence falls one by one in one run.
-        $formats = [];
-        $ordered = $documents->sortByDesc(function (BusinessDocument $document) use (&$formats) {
+        $seriesByType = [];
+        $ordered = $documents->sortByDesc(function (BusinessDocument $document) use (&$seriesByType) {
             $type = $document->typeValue();
-            $formats[$type] ??= (string) CompanyDocumentSequence::query()
-                ->where('company_id', $document->company_id)
-                ->where('document_type', $type)
-                ->where('is_default', true)
-                ->orderBy('id')
-                ->value('format');
+            if (! array_key_exists($type, $seriesByType)) {
+                $series = CompanyDocumentSequence::query()
+                    ->where('company_id', $document->company_id)
+                    ->where('document_type', $type)
+                    ->where('is_default', true)
+                    ->orderBy('id')
+                    ->first(['format', 'reset_period']);
+                $seriesByType[$type] = [(string) $series?->format, (string) ($series->reset_period ?? 'yearly')];
+            }
+            [$format, $resetPeriod] = $seriesByType[$type];
 
-            return $type.'|'.($document->hasNumber() ? $this->sequenceService->numberSortKey($formats[$type], $document) : '');
+            return $type.'|'.($document->hasNumber() ? $this->sequenceService->numberSortKey($format, $document, $resetPeriod) : '');
         });
 
         foreach ($ordered as $document) {
