@@ -148,6 +148,7 @@ class DocumentCreationAuditTest extends TestCase
 
         $this->assertSame('paid', $final['status']);
         $this->assertFalse($final['payment_btc_enabled']);
+        $this->assertFalse($final['pdf_show_payment_info']);
 
         $this->actingAs($this->user)
             ->postJson("/api/invoicing/companies/{$this->company->id}/documents/{$proforma->id}/create-final-invoice")
@@ -251,5 +252,40 @@ class DocumentCreationAuditTest extends TestCase
         // "%woocommerce_order_id=12%" used to return order 120's document.
         $this->assertNotSame($order120->id, $order12->id);
         $this->assertSame($order12->id, $service->createDocument($integration, $payload(12))->id);
+    }
+
+    public function test_a_deactivated_recurring_profile_is_not_generated(): void
+    {
+        $profile = BusinessRecurringProfile::create([
+            'company_id' => $this->company->id,
+            'document_type' => 'invoice',
+            'is_active' => true,
+            'recurrence_interval' => 'yearly',
+            'first_issue_date' => now()->toDateString(),
+            'next_issue_date' => now()->toDateString(),
+            'repeat_indefinitely' => true,
+            'currency' => 'EUR',
+            'total' => 100,
+            'payment_terms_days' => 14,
+        ]);
+        $profile->lines()->create([
+            'sort_order' => 0,
+            'name' => 'Služba',
+            'quantity' => 1,
+            'unit' => 'ks',
+            'unit_price' => 100,
+            'line_total' => 100,
+        ]);
+
+        // Loaded while active, deactivated before the run took the lock.
+        $stale = BusinessRecurringProfile::query()->findOrFail($profile->id);
+        $profile->update(['is_active' => false]);
+
+        $this->expectException(ValidationException::class);
+        try {
+            app(RecurringDocumentGeneratorService::class)->generateForProfile($stale);
+        } finally {
+            $this->assertSame(0, BusinessDocument::query()->where('company_id', $this->company->id)->count());
+        }
     }
 }

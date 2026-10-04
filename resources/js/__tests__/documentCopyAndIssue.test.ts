@@ -157,6 +157,33 @@ describe("conversion guards", () => {
         expect(createLocalFinalInvoiceFromProforma(fakeEvolu([proforma]) as never, "pf-1" as DocumentId, [proforma], [], () => ({}) as never, saveOptions as never))
             .toEqual({ ok: false, error: "not_paid" });
     });
+
+    it("creates the final invoice of a paid proforma without payment instructions", async () => {
+        const { createLocalFinalInvoiceFromProforma } = await import("@/evolu/documentCrud");
+        const proforma = doc({ id: "pf-1", documentType: "proforma", status: "paid", number: "PF20260002" });
+        const evolu = fakeEvolu([proforma]);
+        const payload = {
+            type: "proforma", company_contact_id: "", store_id: "", title: "Zálohová faktúra PF20260002",
+            issue_date: "2026-12-20", delivery_date: "", due_date: "2027-01-03", variable_symbol: "20260002",
+            constant_symbol: "", specific_symbol: "", currency: "EUR", discount_percent: 0,
+            note_above_lines: "", note_footer: "", internal_note: "", pdf_locale: "sk",
+            pdf_show_signature: true, pdf_show_payment_info: true, payment_bank_enabled: true,
+            payment_btc_enabled: true, tags: [],
+            lines: [{ name: "Work", description: null, quantity: 1, unit: "ks", unit_price: 100, line_discount_percent: 0, tax_rate: 0, company_stock_item_id: null, company_warehouse_id: null }],
+        };
+
+        const result = createLocalFinalInvoiceFromProforma(
+            evolu as never, "pf-1" as DocumentId, [proforma], [], () => payload as never, saveOptions as never,
+        );
+
+        expect(result.ok).toBe(true);
+        const inserted = evolu.calls.find((c) => c.table === "document")?.row;
+        expect(inserted?.pdfShowPaymentInfo).toBe(0);
+        expect(inserted?.paymentBankEnabled).toBe(0);
+        expect(inserted?.paymentBtcEnabled).toBe(0);
+        expect(inserted?.variableSymbol).toBeNull();
+        expect(inserted?.issueDate).toBe("2027-01-02");
+    });
 });
 
 describe("issueLocalDocumentAsync", () => {

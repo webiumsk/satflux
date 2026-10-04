@@ -46,10 +46,18 @@ class DocumentSequenceService
             do {
                 $series->last_number = (int) $series->last_number + 1;
                 $number = $this->formatter->format($series->format, (int) $series->last_number, $date);
-            } while ($this->numberTaken($series, $number) && ++$attempts < 1000);
-            $series->save();
+                if (! $this->numberTaken($series, $number)) {
+                    $series->save();
 
-            return $number;
+                    return $number;
+                }
+            } while (++$attempts < 1000);
+
+            // Never hand out a taken number - the series format clashes with
+            // another document type over a whole range.
+            throw ValidationException::withMessages([
+                'number_series' => ['No free document number found in this series - check that its format does not clash with another document type.'],
+            ]);
         });
     }
 

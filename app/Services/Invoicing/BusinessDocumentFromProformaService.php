@@ -96,7 +96,8 @@ class BusinessDocumentFromProformaService
                 'internal_note' => $proforma->internal_note,
                 'pdf_locale' => $proforma->pdf_locale,
                 'pdf_show_signature' => $proforma->pdf_show_signature,
-                'pdf_show_payment_info' => $proforma->pdf_show_payment_info,
+                // Settled through the proforma - no payment instructions.
+                'pdf_show_payment_info' => false,
                 // Already paid through the proforma - issue() must not open a new,
                 // payable BTCPay checkout for it.
                 'payment_btc_enabled' => false,

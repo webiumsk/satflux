@@ -71,15 +71,28 @@ class RecurringDocumentGeneratorService
         }
 
         try {
-            $current = BusinessRecurringProfile::query()->whereKey($profile->getKey())->first();
+            // Generate from the state read UNDER the lock, not the caller's
+            // possibly stale copy.
+            $current = BusinessRecurringProfile::query()
+                ->whereKey($profile->getKey())
+                ->with(['company', 'lines', 'contact'])
+                ->first();
             if ($current === null
                 || $this->dateString($current->next_issue_date) !== $this->dateString($profile->getOriginal('next_issue_date'))) {
                 throw ValidationException::withMessages([
                     'profile' => ['This recurring profile was generated in the meantime - reload it.'],
                 ]);
             }
+            if (! $current->is_active) {
+                throw ValidationException::withMessages([
+                    'profile' => ['This recurring profile is not active.'],
+                ]);
+            }
 
-            return $this->generateUnlocked($profile, $issueDate);
+            $document = $this->generateUnlocked($current, $issueDate);
+            $profile->setRawAttributes($current->getAttributes(), true);
+
+            return $document;
         } finally {
             $lock->release();
         }
@@ -184,9 +197,14 @@ class RecurringDocumentGeneratorService
             $issued = $this->issueService->issue($document);
         } catch (\Throwable $e) {
             // The profile is not advanced on failure, so every daily run used
-            // to leave another unissued draft behind.
-            $document->lines()->delete();
-            $document->delete();
+            // to leave another unissued draft behind. Only a document that is
+            // still a draft goes: issue() can throw after committing (e.g.
+            // the e-Faktura queueing), and an issued one must stay.
+            $persisted = BusinessDocument::query()->whereKey($document->getKey())->first();
+            if ($persisted !== null && $persisted->hasStatus(BusinessDocumentStatus::Draft)) {
+                $persisted->lines()->delete();
+                $persisted->delete();
+            }
 
             throw $e;
         }

@@ -1064,8 +1064,9 @@ export function createLocalFinalInvoiceFromProforma(
     if (!api) return { ok: false as const, error: "not_found" };
     const payload = prepareCopiedPayload(buildPayloadFromDoc(api));
     payload.type = "invoice";
-    // Settled through the proforma (it is issued as paid): no payment QR or
-    // BTC checkout for money already received.
+    // Settled through the proforma (it is issued as paid): no payment block,
+    // QR or BTC checkout for money already received.
+    payload.pdf_show_payment_info = false;
     payload.payment_bank_enabled = false;
     payload.payment_btc_enabled = false;
     if (options.variableSymbolFromProforma && doc.variableSymbol) {
