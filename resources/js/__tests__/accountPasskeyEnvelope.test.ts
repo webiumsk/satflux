@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DeviceUnlockError } from "../services/deviceUnlock/envelope";
 import { randomBytes } from "../services/passphraseCrypto";
+import { deriveRecoveryPublicKeyHex } from "../services/accountSeed";
 
 // Valid BIP39 test vector (24 words) - clearly fake, never a real phrase.
 const FAKE_PHRASE =
@@ -35,6 +36,10 @@ vi.mock("../services/deviceUnlock/passkeyPrf", async (importOriginal) => {
             prfSaltB64: params.prfSaltB64 ?? "unused",
             prfOutput: new Uint8Array(prfSecret),
         })),
+        evaluatePrfForSlots: vi.fn(async () => ({
+            credentialIdB64: (await import("../services/passphraseCrypto")).toB64(credentialId),
+            prfOutput: new Uint8Array(prfSecret),
+        })),
     };
 });
 
@@ -42,6 +47,7 @@ describe("account passkey envelope", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         sessionStorage.clear();
+        apiMock.get.mockResolvedValue({ data: { recovery_public_key: deriveRecoveryPublicKeyHex(FAKE_PHRASE) } });
     });
 
     it("round-trips the phrase under the PRF-derived key", async () => {
@@ -109,6 +115,7 @@ describe("account passkey envelope", () => {
         expect(apiMock.put).toHaveBeenCalledTimes(1);
         const [url, body] = apiMock.put.mock.calls[0]!;
         expect(String(url)).toContain("/account/passkey-envelopes/");
+        expect(body.recovery_public_key).toBe(deriveRecoveryPublicKeyHex(FAKE_PHRASE));
         // The uploaded payload must decrypt back with the same PRF secret.
         const { decryptAccountEnvelope } = await import("../services/deviceUnlock/accountPasskeyEnvelope");
         await expect(decryptAccountEnvelope(body.payload, new Uint8Array(prfSecret))).resolves.toBe(FAKE_PHRASE);
@@ -118,5 +125,42 @@ describe("account passkey envelope", () => {
         const { addAccountPasskeyFromSession } = await import("../services/deviceUnlock/provider");
         await expect(addAccountPasskeyFromSession("X")).rejects.toThrow(DeviceUnlockError);
         expect(apiMock.put).not.toHaveBeenCalled();
+    });
+
+    it("refuses to create or promote a passkey when the unlocked phrase belongs to another account", async () => {
+        sessionStorage.setItem(SESSION_KEY, FAKE_PHRASE);
+        apiMock.get.mockResolvedValue({ data: { recovery_public_key: "b".repeat(64) } });
+        const { addAccountPasskeyFromSession, upgradeAccountPasskey } = await import("../services/deviceUnlock/provider");
+        const { createPasskeyPrfCredential, evaluatePrf } = await import("../services/deviceUnlock/passkeyPrf");
+
+        await expect(addAccountPasskeyFromSession("Wrong owner")).rejects.toThrow(DeviceUnlockError);
+        await expect(upgradeAccountPasskey("credential", "Wrong owner")).rejects.toThrow(DeviceUnlockError);
+        expect(createPasskeyPrfCredential).not.toHaveBeenCalled();
+        expect(evaluatePrf).not.toHaveBeenCalled();
+        expect(apiMock.put).not.toHaveBeenCalled();
+    });
+
+    it("rejects a previously misfiled cloud envelope while restoring a signed-in account", async () => {
+        const { encryptAccountEnvelope } = await import("../services/deviceUnlock/accountPasskeyEnvelope");
+        const payload = await encryptAccountEnvelope(FAKE_PHRASE, new Uint8Array(prfSecret));
+        apiMock.post.mockResolvedValue({ data: { data: { payload } } });
+        apiMock.get.mockResolvedValue({ data: { recovery_public_key: "b".repeat(64) } });
+        const { restoreWithAccountPasskey } = await import("../services/deviceUnlock/provider");
+
+        await expect(restoreWithAccountPasskey([{
+            credential_id: "dGVzdC1jcmVkZW50aWFs", label: null, created_at: "", last_used_at: null,
+        }])).rejects.toThrow(DeviceUnlockError);
+        expect(sessionStorage.getItem(SESSION_KEY)).toBeNull();
+    });
+
+    it("restores a cloud envelope that belongs to the signed-in recovery owner", async () => {
+        const { encryptAccountEnvelope } = await import("../services/deviceUnlock/accountPasskeyEnvelope");
+        const payload = await encryptAccountEnvelope(FAKE_PHRASE, new Uint8Array(prfSecret));
+        apiMock.post.mockResolvedValue({ data: { data: { payload } } });
+        const { restoreWithAccountPasskey } = await import("../services/deviceUnlock/provider");
+
+        await expect(restoreWithAccountPasskey([{
+            credential_id: "dGVzdC1jcmVkZW50aWFs", label: null, created_at: "", last_used_at: null,
+        }])).resolves.toEqual({ recoveryPhrase: FAKE_PHRASE });
     });
 });

@@ -38,12 +38,19 @@ class PasskeyEnvelopeController extends Controller
         $validated = $request->validate([
             'label' => ['nullable', 'string', 'max:100'],
             'payload' => ['required', 'string', 'max:'.self::MAX_PAYLOAD_BYTES],
+            'recovery_public_key' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/i'],
             'envelope_version' => ['nullable', 'integer', 'min:1', 'max:100'],
             'transports' => ['nullable', 'array', 'max:8'],
             'transports.*' => ['string', 'max:32'],
         ]);
 
         $user = $request->user();
+        if (empty($user->guest_recovery_public_key)
+            || ! hash_equals(strtolower($user->guest_recovery_public_key), strtolower($validated['recovery_public_key']))) {
+            throw ValidationException::withMessages([
+                'recovery_public_key' => ['This recovery phrase does not belong to the signed-in account.'],
+            ]);
+        }
 
         $attributes = [
             'label' => $validated['label'] ?? null,

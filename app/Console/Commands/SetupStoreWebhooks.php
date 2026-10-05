@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Store;
 use App\Services\BtcPay\BtcPayClient;
 use App\Services\BtcPay\WebhookService;
+use App\Services\StoreWebhookProvisioningService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -63,13 +64,10 @@ class SetupStoreWebhooks extends Command
         /** @var Store $store */
         foreach ($stores as $store) {
             try {
-                $createdData = $webhookService->replacePanelWebhookForStore($store->btcpay_store_id, null);
-                $store->update([
-                    'btcpay_webhook_id' => $createdData['id'],
-                    'webhook_secret' => $createdData['secret'],
-                ]);
-                $this->info("Created webhook for store: {$store->name} ({$store->btcpay_store_id})");
-                $created++;
+                if (app(StoreWebhookProvisioningService::class)->provisionMissing($store->id)) {
+                    $this->info("Created webhook for store: {$store->name} ({$store->btcpay_store_id})");
+                    $created++;
+                }
             } catch (\Throwable $e) {
                 $this->error("Failed for store {$store->name} ({$store->btcpay_store_id}): {$e->getMessage()}");
                 Log::error('SetupStoreWebhooks: failed to create webhook', [

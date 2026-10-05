@@ -126,9 +126,15 @@ class StoreSettingsController extends Controller
         $this->storeService->updateStore($store->btcpay_store_id, $updateData, $userApiKey);
 
         // Update local record
-        $store->update([
+        $localSettings = [
             'name' => $request->name,
-        ]);
+            'default_currency' => $request->default_currency,
+            'timezone' => $request->timezone,
+        ];
+        if ($request->has('preferred_exchange')) {
+            $localSettings['preferred_exchange'] = $request->preferred_exchange ?: 'kraken';
+        }
+        $store->update($localSettings);
 
         // Build response from request so the client gets the updated values without a second API call
         $data = $this->buildResponseFromRequest($request, $store->fresh());

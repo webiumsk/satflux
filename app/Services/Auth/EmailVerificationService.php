@@ -20,6 +20,7 @@ class EmailVerificationService
             [
                 'id' => $user->id,
                 'hash' => sha1((string) $user->email),
+                'registration' => $this->registrationFingerprint($user),
             ],
             false
         );
@@ -27,5 +28,16 @@ class EmailVerificationService
         $spaRelative = str_replace('/api/auth/verify-email/', '/auth/verify-email/', $relative);
 
         return $baseUrl.$spaRelative;
+    }
+
+    /** Bind verification to the credentials that were present when the email was sent. */
+    public function registrationFingerprint(User $user): string
+    {
+        return hash_hmac('sha256', 'email-verification:v1|'.$user->email.'|'.$user->getAuthPassword(), (string) config('app.key'));
+    }
+
+    public function matchesRegistration(User $user, ?string $fingerprint): bool
+    {
+        return $fingerprint !== null && hash_equals($this->registrationFingerprint($user), $fingerprint);
     }
 }

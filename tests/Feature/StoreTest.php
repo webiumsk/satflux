@@ -241,6 +241,9 @@ class StoreTest extends TestCase
         $this->assertDatabaseHas('stores', [
             'id' => $store->id,
             'name' => 'New Name',
+            'default_currency' => 'USD',
+            'timezone' => 'America/New_York',
+            'preferred_exchange' => 'coinbasepro',
         ]);
     }
 

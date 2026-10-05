@@ -187,12 +187,6 @@ parameters:
 			path: app/Http/Controllers/Auth/EmailVerificationController.php
 
 		-
-			message: '#^Right side of && is always true\.$#'
-			identifier: booleanAnd.rightAlwaysTrue
-			count: 1
-			path: app/Http/Controllers/Auth/EmailVerificationController.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
 			identifier: method.notFound
 			count: 4

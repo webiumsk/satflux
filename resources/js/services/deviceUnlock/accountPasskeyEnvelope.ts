@@ -25,7 +25,7 @@
 import { validateMnemonic } from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
 import api from "../api";
-import { normalizeAccountMnemonic } from "../accountSeed";
+import { deriveRecoveryPublicKeyHex, normalizeAccountMnemonic } from "../accountSeed";
 import { DeviceUnlockError } from "./envelope";
 import {
     aesGcmDecrypt,
@@ -145,14 +145,24 @@ export async function listAccountEnvelopes(): Promise<AccountEnvelopeSummary[]> 
     return data.data;
 }
 
+/** Check the current server session before creating or promoting a passkey. */
+export async function assertAccountRecoveryPhrase(recoveryPhrase: string): Promise<void> {
+    const { data } = await api.get<{ recovery_public_key: string | null }>("/user");
+    if (data.recovery_public_key?.toLowerCase() !== deriveRecoveryPublicKeyHex(recoveryPhrase)) {
+        throw new DeviceUnlockError();
+    }
+}
+
 export async function putAccountEnvelope(params: {
     credentialIdB64: string;
     payload: string;
     label: string | null;
+    recoveryPublicKeyHex: string;
     transports?: string[] | null;
 }): Promise<void> {
     await api.put(`/account/passkey-envelopes/${credentialIdToB64Url(params.credentialIdB64)}`, {
         payload: params.payload,
+        recovery_public_key: params.recoveryPublicKeyHex,
         label: params.label,
         envelope_version: ACCOUNT_ENVELOPE_VERSION,
         transports: params.transports ?? null,

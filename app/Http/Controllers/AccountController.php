@@ -75,6 +75,8 @@ class AccountController extends Controller
             'expense_isdoc_extract_unlimited' => $user->planFeature('expense_isdoc_extract_unlimited'),
         ];
         $payload['guest_recovery_enrolled'] = ! empty($user->guest_recovery_public_key ?? null);
+        // Public owner identifier for validating local recovery envelopes against this session.
+        $payload['recovery_public_key'] = $user->guest_recovery_public_key;
         // The client renders the guest->account upgrade form from this flag so
         // it always matches the server-side validation (password nullable when
         // email-only) - no build-time VITE_* env pair to keep in sync.

@@ -84,6 +84,16 @@ zariadenie" s akciou "Povoliť na všetkých zariadeniach"
 (`upgradeAccountPasskey`). Passkey sa dá pridať aj bez zapamätaného
 zariadenia (`addAccountPasskeyFromSession` - vyžaduje odomknutú session).
 
+Pred vytvorením alebo povýšením passkey klient porovná verejný recovery
+kľúč dešifrovanej frázy s `recovery_public_key` aktuálnej relácie z
+`GET /user`. Zapamätaný envelope iného účtu sa nesmie nahrať pod práve
+prihlásený účet; jeho lokálny passkey sa nesmie povýšiť pre inú frázu.
+`PUT /account/passkey-envelopes/{credential_id}` vyžaduje tento verejný
+kľúč a server ho znovu overuje voči vlastníkovi relácie. Aj obnova zo
+serverového envelope počas prihlásenej relácie kontroluje vlastníka.
+Fráza zostáva na zariadení; prihlasovací tok bez relácie používa existujúci
+Ed25519 challenge.
+
 ## Súbory
 
 - `services/deviceUnlock/envelope.ts` - PasskeyPrfKdf, addPasskeyPrfSlot,

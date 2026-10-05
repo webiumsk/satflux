@@ -42,6 +42,12 @@ Schedule::command('system:health-check')
     ->withoutOverlapping()
     ->runInBackground();
 
+// Retry missing store webhooks after transient BTCPay failures (including guest signup).
+Schedule::command('stores:setup-webhooks')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
+
 // Failed jobs monitoring - alert if more than 5 failures in the last hour
 Schedule::command('jobs:monitor-failed --hours=1 --threshold=5')
     ->hourly()

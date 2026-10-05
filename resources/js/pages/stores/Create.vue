@@ -999,16 +999,26 @@ function cancelBotWait() {
 }
 
 async function submitStep1Create() {
+  if (loading.value) return;
   loading.value = true;
   flashStore.clear();
   try {
-    const store = await storesStore.createStore({
+    const data = {
       name: form.value.name,
       default_currency: form.value.default_currency,
       timezone: form.value.timezone,
       preferred_exchange: form.value.preferred_exchange || undefined,
-    });
-    createdStoreId.value = store.id;
+    };
+    if (createdStoreId.value) {
+      await storesApi.settings.update(createdStoreId.value, {
+        ...data,
+        preferred_exchange: form.value.preferred_exchange,
+      });
+      await storesStore.fetchStore(createdStoreId.value);
+    } else {
+      const store = await storesStore.createStore(data);
+      createdStoreId.value = store.id;
+    }
     currentStep.value = 2;
   } catch (rawError) {
     const err = asApiError(rawError);
