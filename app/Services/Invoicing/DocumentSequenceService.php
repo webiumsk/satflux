@@ -27,6 +27,12 @@ class DocumentSequenceService
         return DB::transaction(function () use ($company, $documentType, $localHighCounter) {
             $series = $this->resolveSeriesForIssue($company, $documentType);
 
+            // Company first, then the series: numbers are unique per company
+            // across ALL types, so two series sharing a format must not both
+            // see the same number as free. The row lock lives until the
+            // caller's transaction commits - issue() saves the document under
+            // it, so the next allocation already sees the number as taken.
+            Company::query()->whereKey($company->getKey())->lockForUpdate()->first();
             $series = CompanyDocumentSequence::query()
                 ->where('id', $series->id)
                 ->lockForUpdate()
@@ -38,15 +44,40 @@ class DocumentSequenceService
             // without it this path handed out numbers already reserved.
             $this->alignCounter($series, $localHighCounter, $date);
 
-            $series->last_number = (int) $series->last_number + 1;
-            $series->save();
+            // business_documents is unique on (company, number) across ALL
+            // types: two types sharing a format, or an imported number of
+            // another type, used to fail the issue with a 500 until the
+            // counters drifted apart. Skip numbers that are already taken.
+            $attempts = 0;
+            do {
+                $series->last_number = (int) $series->last_number + 1;
+                $number = $this->formatter->format($series->format, (int) $series->last_number, $date);
+                if (! $this->numberTaken($series, $number)) {
+                    $series->save();
 
-            return $this->formatter->format(
-                $series->format,
-                (int) $series->last_number,
-                $date,
-            );
+                    return $number;
+                }
+            } while (++$attempts < 1000);
+
+            // Never hand out a taken number - the series format clashes with
+            // another document type over a whole range.
+            throw ValidationException::withMessages([
+                'number_series' => ['No free document number found in this series - check that its format does not clash with another document type.'],
+            ]);
         });
+    }
+
+    protected function numberTaken(CompanyDocumentSequence $series, string $number): bool
+    {
+        return $series->document_type === 'expense'
+            ? BusinessExpense::query()
+                ->where('company_id', $series->company_id)
+                ->where('internal_number', $number)
+                ->exists()
+            : BusinessDocument::query()
+                ->where('company_id', $series->company_id)
+                ->where('number', $number)
+                ->exists();
     }
 
     /**

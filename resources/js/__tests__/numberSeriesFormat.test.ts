@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
     counterInPeriod,
+    dateForPeriodKey,
     parseDocumentNumber,
     rederiveNumberDerivedFields,
 } from "@/evolu/numberSeriesFormat";
@@ -57,5 +58,36 @@ describe("rederiveNumberDerivedFields", () => {
                 variableSymbol: "20269999",
             }).variableSymbol,
         ).toBe("20269999");
+    });
+});
+
+describe("rederiveNumberDerivedFields across years", () => {
+    it("replaces a number of another year even when the counter is the same or far away", () => {
+        // Duplicate of last year's #12 issued as this year's #12.
+        expect(
+            rederiveNumberDerivedFields("INVYYYYNNNN", "INV20260012", 12, {
+                title: "Invoice INV20250012",
+                variableSymbol: "20250012",
+            }),
+        ).toEqual({ title: "Invoice INV20260012", variableSymbol: "20260012" });
+        // Last year's #120 copied into this year's #3.
+        expect(
+            rederiveNumberDerivedFields("INVYYYYNNNN", "INV20260003", 3, {
+                title: null,
+                variableSymbol: "20250120",
+            }).variableSymbol,
+        ).toBe("20260003");
+    });
+});
+
+describe("dateForPeriodKey", () => {
+    const jan2027 = new Date(2027, 0, 2, 10);
+
+    it("keeps today for the current period and uses the last day of an earlier one", () => {
+        expect(dateForPeriodKey("2027", jan2027)).toBe(jan2027);
+        expect(dateForPeriodKey("2026", jan2027).getFullYear()).toBe(2026);
+        expect(dateForPeriodKey("2026-12", jan2027).getMonth()).toBe(11);
+        expect(dateForPeriodKey("all", jan2027)).toBe(jan2027);
+        expect(dateForPeriodKey(null, jan2027)).toBe(jan2027);
     });
 });
