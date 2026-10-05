@@ -125,6 +125,7 @@ class GuestProvisioningServiceTest extends TestCase
         $events = app(Schedule::class)->events();
         $repair = collect($events)->first(fn ($event) => str_contains($event->command ?? '', 'stores:setup-webhooks'));
         $this->assertNotNull($repair);
+        $this->assertStringContainsString('--retry', $repair->command);
         $this->assertSame('*/5 * * * *', $repair->expression);
         $this->assertTrue($repair->withoutOverlapping);
     }

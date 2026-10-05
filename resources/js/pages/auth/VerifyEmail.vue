@@ -73,6 +73,28 @@
           <p class="text-red-400 font-medium">
             {{ error }}
           </p>
+          <!-- A rejected link cannot be retried; without a session the only
+               other way to get a fresh one is registering again. -->
+          <form v-if="!authStore.user" class="space-y-3 text-left" @submit.prevent="resendVerification">
+            <label for="resend-email" class="block text-sm font-medium text-gray-300">{{ t("auth.email") }}</label>
+            <input
+              id="resend-email"
+              v-model="resendEmail"
+              type="email"
+              autocomplete="email"
+              required
+              class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-lg shadow-sm placeholder-gray-500 text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+              :placeholder="t('auth.email_placeholder')"
+            />
+            <button
+              type="submit"
+              :disabled="resendLoading"
+              class="w-full flex justify-center py-2 px-4 text-sm font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 transition-all"
+            >
+              {{ t("auth.resend_verification_email") }}
+            </button>
+            <p v-if="resendMessage" class="text-sm text-gray-300" role="status">{{ resendMessage }}</p>
+          </form>
           <div class="mt-4">
             <router-link
               to="/dashboard"
@@ -120,6 +142,8 @@ import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import axios from "axios";
 import { useAuthStore } from "../../store/auth";
+import api from "../../services/api";
+import { ensureCsrfCookie } from "../../services/csrf";
 
 const { t } = useI18n();
 
@@ -129,6 +153,26 @@ const authStore = useAuthStore();
 
 const verified = ref(false);
 const error = ref("");
+const resendEmail = ref("");
+const resendLoading = ref(false);
+const resendMessage = ref("");
+
+/** Same public endpoint as the check-email page; it answers identically for unknown addresses. */
+async function resendVerification(): Promise<void> {
+  if (resendLoading.value) return;
+  resendLoading.value = true;
+  resendMessage.value = "";
+  try {
+    await ensureCsrfCookie();
+    await api.post("/auth/email/verification-notification", { email: resendEmail.value });
+    resendMessage.value = t("auth.verification_email_resent");
+  } catch (rawError) {
+    const err = asApiError(rawError);
+    resendMessage.value = err.response?.data?.message || t("auth.failed_to_verify_email");
+  } finally {
+    resendLoading.value = false;
+  }
+}
 
 onMounted(async () => {
   try {

@@ -9,6 +9,7 @@ use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\LightningService;
 use App\Services\BtcPay\StoreService;
 use App\Services\BtcPay\UserService;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -66,7 +67,17 @@ class StoreProvisioningService
                 abort(500, 'Server-level BTCPay API key not configured.');
             }
             if (! $user->btcpay_user_id || ! $user->btcpay_api_key) {
-                abort(503, 'Your payment account is not ready. Please try again later.');
+                // Nothing heals a half-provisioned merchant automatically, so a
+                // retry never helps - surface it to support instead.
+                Log::error('Store creation blocked: merchant BTCPay identity incomplete', [
+                    'user_id' => $user->id,
+                    'has_btcpay_user_id' => (bool) $user->btcpay_user_id,
+                    'has_btcpay_api_key' => (bool) $user->btcpay_api_key,
+                ]);
+                throw new HttpResponseException(response()->json([
+                    'message' => 'Your payment account is not fully set up. Please contact support.',
+                    'code' => 'payment_account_incomplete',
+                ], 503));
             }
 
             // Preflight: a duplicate Aqua descriptor must fail BEFORE the BTCPay

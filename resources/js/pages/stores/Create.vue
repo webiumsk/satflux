@@ -629,7 +629,7 @@
 </template>
 
 <script setup lang="ts">
-import { asApiError } from "../../utils/apiError";
+import { asApiError, type ApiErrorLike } from "../../utils/apiError";
 import { ref, computed, onMounted, onUnmounted, watch, nextTick, defineAsyncComponent } from "vue";
 import { useSamRockPairing } from "../../composables/useSamRockPairing";
 import { useRouter } from "vue-router";
@@ -998,6 +998,14 @@ function cancelBotWait() {
   lightningSetupTab.value = "ln";
 }
 
+/** A half-provisioned payment account never heals by retrying - say so instead of "try again". */
+function createStoreErrorMessage(err: ApiErrorLike): string {
+  if (err.response?.data?.code === "payment_account_incomplete") {
+    return t("create_store.payment_account_incomplete");
+  }
+  return err.response?.data?.message || t("create_store.failed_to_create");
+}
+
 async function submitStep1Create() {
   if (loading.value) return;
   loading.value = true;
@@ -1022,8 +1030,7 @@ async function submitStep1Create() {
     currentStep.value = 2;
   } catch (rawError) {
     const err = asApiError(rawError);
-    const msg =
-      err.response?.data?.message || t("create_store.failed_to_create");
+    const msg = createStoreErrorMessage(err);
     const errors = err.response?.data?.errors
       ? Object.values(err.response.data.errors).flat()
       : [];
@@ -1086,8 +1093,7 @@ async function submitWalletConfiguration() {
     startBotWaitSequence();
   } catch (rawError) {
     const err = asApiError(rawError);
-    const msg =
-      err.response?.data?.message || t("create_store.failed_to_create");
+    const msg = createStoreErrorMessage(err);
     const errors = err.response?.data?.errors
       ? Object.values(err.response.data.errors).flat()
       : [];

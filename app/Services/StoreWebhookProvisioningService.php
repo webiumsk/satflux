@@ -10,7 +10,11 @@ class StoreWebhookProvisioningService
 {
     public function __construct(private WebhookService $webhookService) {}
 
-    /** Serialize retries with the immediate post-creation attempt. */
+    /**
+     * Serialize retries with the immediate post-creation attempt. The store
+     * row stays locked during the BTCPay calls - acceptable for a one-off
+     * webhook create, and it keeps the replace idempotent.
+     */
     public function provisionMissing(string $storeId): bool
     {
         return DB::transaction(function () use ($storeId) {

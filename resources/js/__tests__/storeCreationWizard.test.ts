@@ -106,4 +106,17 @@ describe("first store wizard", () => {
         expect(mocks.updateSettings).toHaveBeenCalledTimes(2);
         expect(wrapper.text()).toContain("create_store.wallet_paste_hint");
     });
+
+    it("an incomplete payment account shows the support message instead of a retry hint", async () => {
+        mocks.createStore.mockRejectedValueOnce({
+            response: { status: 503, data: { code: "payment_account_incomplete", message: "server text" } },
+        });
+        const wrapper = await mountWizard();
+        await wrapper.get("#name").setValue("First Store");
+        await button(wrapper, "create_store.next_step").trigger("click");
+        await flushPromises();
+
+        expect(mocks.error).toHaveBeenCalledWith("create_store.payment_account_incomplete");
+        expect(wrapper.find("#name").exists()).toBe(true);
+    });
 });

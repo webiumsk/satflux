@@ -26,7 +26,7 @@ import { validateMnemonic } from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
 import api from "../api";
 import { deriveRecoveryPublicKeyHex, normalizeAccountMnemonic } from "../accountSeed";
-import { DeviceUnlockError } from "./envelope";
+import { DeviceUnlockError, RecoveryOwnerMismatchError } from "./envelope";
 import {
     aesGcmDecrypt,
     aesGcmEncrypt,
@@ -149,7 +149,7 @@ export async function listAccountEnvelopes(): Promise<AccountEnvelopeSummary[]> 
 export async function assertAccountRecoveryPhrase(recoveryPhrase: string): Promise<void> {
     const { data } = await api.get<{ recovery_public_key: string | null }>("/user");
     if (data.recovery_public_key?.toLowerCase() !== deriveRecoveryPublicKeyHex(recoveryPhrase)) {
-        throw new DeviceUnlockError();
+        throw new RecoveryOwnerMismatchError();
     }
 }
 

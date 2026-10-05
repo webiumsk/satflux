@@ -7,20 +7,33 @@ use App\Services\BtcPay\BtcPayClient;
 use App\Services\BtcPay\WebhookService;
 use App\Services\StoreWebhookProvisioningService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class SetupStoreWebhooks extends Command
 {
     protected $signature = 'stores:setup-webhooks
                             {--dry-run : List stores that would get webhooks without making changes}
-                            {--repair : For every store: remove all Satflux panel URL webhooks in BTCPay, create one, update DB (fixes duplicates and secret mismatch)}';
+                            {--repair : For every store: remove all Satflux panel URL webhooks in BTCPay, create one, update DB (fixes duplicates and secret mismatch)}
+                            {--retry : Scheduled self-heal: only stores created in the last 7 days, with exponential backoff per failing store}';
 
     protected $description = 'Create BTCPay webhooks for stores missing one (stores:setup-webhooks). One webhook per Satflux store is normal - same APP_URL, different secrets per BTCPay store. Use --repair to dedupe and re-sync secrets.';
+
+    /** Scheduled retries stop after this window - older stores need a manual run or --repair. */
+    private const RETRY_WINDOW_DAYS = 7;
+
+    private const RETRY_BASE_DELAY_MINUTES = 5;
+
+    private const RETRY_MAX_DELAY_MINUTES = 360;
+
+    /** Consecutive scheduled failures after which the store is escalated to an error log. */
+    private const RETRY_ALERT_AFTER = 6;
 
     public function handle(): int
     {
         $dryRun = $this->option('dry-run');
         $repair = $this->option('repair');
+        $retry = (bool) $this->option('retry');
 
         $serverApiKey = config('services.btcpay.api_key');
         if (! $serverApiKey) {
@@ -39,7 +52,14 @@ class SetupStoreWebhooks extends Command
             return $this->handleRepair($webhookService, $dryRun, $panelUrl);
         }
 
-        $stores = Store::whereNull('btcpay_webhook_id')->get();
+        $query = Store::whereNull('btcpay_webhook_id');
+        if ($retry) {
+            $query->where('created_at', '>=', now()->subDays(self::RETRY_WINDOW_DAYS));
+        }
+        $stores = $query->get();
+        if ($retry) {
+            $stores = $stores->reject(fn (Store $store) => $this->retryBackoffActive($store->id))->values();
+        }
         $count = $stores->count();
 
         if ($count === 0) {
@@ -68,13 +88,27 @@ class SetupStoreWebhooks extends Command
                     $this->info("Created webhook for store: {$store->name} ({$store->btcpay_store_id})");
                     $created++;
                 }
+                Cache::forget($this->retryCacheKey($store->id));
             } catch (\Throwable $e) {
                 $this->error("Failed for store {$store->name} ({$store->btcpay_store_id}): {$e->getMessage()}");
-                Log::error('SetupStoreWebhooks: failed to create webhook', [
+                $context = [
                     'store_id' => $store->id,
                     'btcpay_store_id' => $store->btcpay_store_id,
                     'error' => $e->getMessage(),
-                ]);
+                ];
+                if ($retry) {
+                    $failures = $this->recordRetryFailure($store->id);
+                    $context['consecutive_failures'] = $failures;
+                    // Transient BTCPay outages heal on the next run; only a persistent
+                    // failure is worth an error-level alert, and only once.
+                    if ($failures === self::RETRY_ALERT_AFTER) {
+                        Log::error('SetupStoreWebhooks: webhook still missing after repeated retries', $context);
+                    } else {
+                        Log::warning('SetupStoreWebhooks: scheduled webhook retry failed', $context);
+                    }
+                } else {
+                    Log::error('SetupStoreWebhooks: failed to create webhook', $context);
+                }
                 $failed++;
             }
         }
@@ -83,6 +117,33 @@ class SetupStoreWebhooks extends Command
         $this->info("Done. Created: {$created}, Failed: {$failed}.");
 
         return $failed > 0 ? Command::FAILURE : Command::SUCCESS;
+    }
+
+    private function retryCacheKey(string $storeId): string
+    {
+        return 'stores:setup-webhooks:retry:'.$storeId;
+    }
+
+    private function retryBackoffActive(string $storeId): bool
+    {
+        $state = Cache::get($this->retryCacheKey($storeId));
+
+        return is_array($state) && ($state['next_at'] ?? 0) > now()->timestamp;
+    }
+
+    /** @return int consecutive scheduled failures for this store */
+    private function recordRetryFailure(string $storeId): int
+    {
+        $state = Cache::get($this->retryCacheKey($storeId));
+        $failures = (is_array($state) ? (int) ($state['failures'] ?? 0) : 0) + 1;
+        $delayMinutes = min(self::RETRY_BASE_DELAY_MINUTES * (2 ** ($failures - 1)), self::RETRY_MAX_DELAY_MINUTES);
+
+        Cache::put($this->retryCacheKey($storeId), [
+            'failures' => $failures,
+            'next_at' => now()->addMinutes($delayMinutes)->timestamp,
+        ], now()->addDays(self::RETRY_WINDOW_DAYS + 1));
+
+        return $failures;
     }
 
     protected function handleRepair(WebhookService $webhookService, bool $dryRun, string $panelUrl): int

@@ -1651,7 +1651,7 @@ import {
   PasskeyPrfUnsupportedError,
   PasskeyUnsupportedError,
 } from "../../services/deviceUnlock/passkeyPrf";
-import { isAcceptableDevicePassphrase } from "../../services/deviceUnlock/envelope";
+import { isAcceptableDevicePassphrase, RecoveryOwnerMismatchError } from "../../services/deviceUnlock/envelope";
 import { isInvoicingLocalFirst } from "../../evolu/flags";
 import { getEvoluRelayBuildInfo, normalizeEvoluRelayBaseUrl } from "../../evolu/config";
 import { getEvoluRelayRuntimeInfo } from "../../services/evoluRelayPreference";
@@ -1826,6 +1826,7 @@ function passkeyErrorMessage(error: unknown): string {
   if (error instanceof PasskeyCancelledError) return "";
   if (error instanceof PasskeyPrfUnsupportedError) return t("account.passkey_prf_unsupported");
   if (error instanceof PasskeyUnsupportedError) return t("account.passkey_unsupported");
+  if (error instanceof RecoveryOwnerMismatchError) return t("account.recovery_owner_mismatch");
   return t("account.device_unlock_failed");
 }
 
@@ -2052,6 +2053,8 @@ async function submitRestoreWithAccountPasskey(): Promise<void> {
       restoreOnDeviceError.value = t("account.passkey_prf_unsupported");
     } else if (error instanceof PasskeyUnsupportedError) {
       restoreOnDeviceError.value = t("account.passkey_unsupported");
+    } else if (error instanceof RecoveryOwnerMismatchError) {
+      restoreOnDeviceError.value = t("account.recovery_owner_mismatch");
     } else {
       restoreOnDeviceError.value = t("account.recovery_phrase_restore_on_device_failed");
     }

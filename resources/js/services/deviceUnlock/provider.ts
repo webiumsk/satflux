@@ -3,6 +3,7 @@ import {
     createDeviceEnvelope,
     DeviceUnlockError,
     listPasskeyPrfSlots,
+    RecoveryOwnerMismatchError,
     removePasskeyPrfSlot,
     rotatePassphrase,
     touchPasskeyPrfSlot,
@@ -327,7 +328,7 @@ export async function upgradeAccountPasskey(credentialIdB64: string, label: stri
     const localEnvelope = await loadDeviceEnvelope();
     if (localEnvelope && listPasskeyPrfSlots(localEnvelope).some((slot) => slot.credentialIdB64 === credentialIdB64)
         && localEnvelope.ownerFingerprint !== deriveRecoveryPublicKeyHex(phrase)) {
-        throw new DeviceUnlockError();
+        throw new RecoveryOwnerMismatchError();
     }
 
     const prfOutput = await evaluatePrf(credentialIdB64, ACCOUNT_PRF_INPUT_B64);

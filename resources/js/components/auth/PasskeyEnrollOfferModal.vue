@@ -69,6 +69,7 @@ import {
   PasskeyEnvelopeUploadError,
   upgradeAccountPasskey,
 } from "../../services/deviceUnlock/provider";
+import { RecoveryOwnerMismatchError } from "../../services/deviceUnlock/envelope";
 import {
   PasskeyCancelledError,
   PasskeyPrfUnsupportedError,
@@ -157,6 +158,10 @@ async function submit(): Promise<void> {
     }
     if (rawError instanceof PasskeyUnsupportedError) {
       error.value = t("account.passkey_unsupported");
+      return;
+    }
+    if (rawError instanceof RecoveryOwnerMismatchError) {
+      error.value = t("account.recovery_owner_mismatch");
       return;
     }
     error.value = t("auth.passkey_offer_error");

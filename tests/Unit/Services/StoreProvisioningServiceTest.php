@@ -12,7 +12,7 @@ use App\Services\BtcPay\WebhookService;
 use App\Services\StoreProvisioningService;
 use App\Services\WalletConnectionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Symfony\Component\HttpKernel\Exception\HttpException;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Tests\TestCase;
 
 class StoreProvisioningServiceTest extends TestCase
@@ -66,8 +66,9 @@ class StoreProvisioningServiceTest extends TestCase
             try {
                 $service->create($user, $this->data());
                 $this->fail('An incomplete payment account must not create a store.');
-            } catch (HttpException $e) {
-                $this->assertSame(503, $e->getStatusCode());
+            } catch (HttpResponseException $e) {
+                $this->assertSame(503, $e->getResponse()->getStatusCode());
+                $this->assertSame('payment_account_incomplete', $e->getResponse()->getData(true)['code']);
             }
         }
         $this->assertDatabaseCount('stores', 0);

@@ -43,7 +43,9 @@ Schedule::command('system:health-check')
     ->runInBackground();
 
 // Retry missing store webhooks after transient BTCPay failures (including guest signup).
-Schedule::command('stores:setup-webhooks')
+// --retry limits it to recent stores with per-store backoff, so a permanently
+// broken store does not log an error every five minutes.
+Schedule::command('stores:setup-webhooks --retry')
     ->everyFiveMinutes()
     ->withoutOverlapping()
     ->runInBackground();

@@ -25,8 +25,8 @@ vi.mock("../services/deviceUnlock/accountPasskeyEnvelope", async (importOriginal
         putAccountEnvelope: vi.fn(async () => {}),
         assertAccountRecoveryPhrase: vi.fn(async (phrase: string) => {
             if (deriveRecoveryPublicKeyHex(phrase) !== expectedOwner) {
-                const { DeviceUnlockError } = await import("../services/deviceUnlock/envelope");
-                throw new DeviceUnlockError();
+                const { RecoveryOwnerMismatchError } = await import("../services/deviceUnlock/envelope");
+                throw new RecoveryOwnerMismatchError();
             }
         }),
         listAccountEnvelopes: vi.fn(async () => []),
@@ -143,7 +143,7 @@ describe("passkey unlock provider", () => {
         const { createPasskeyPrfCredential } = await import("../services/deviceUnlock/passkeyPrf");
         const { putAccountEnvelope } = await import("../services/deviceUnlock/accountPasskeyEnvelope");
 
-        await expect(provider.addPasskeyToRememberedDevice(PASSPHRASE, "Wrong account")).rejects.toThrow("device_unlock_failed");
+        await expect(provider.addPasskeyToRememberedDevice(PASSPHRASE, "Wrong account")).rejects.toThrow("recovery_owner_mismatch");
 
         expect(createPasskeyPrfCredential).not.toHaveBeenCalled();
         expect(putAccountEnvelope).not.toHaveBeenCalled();
@@ -159,7 +159,7 @@ describe("passkey unlock provider", () => {
         const { putAccountEnvelope } = await import("../services/deviceUnlock/accountPasskeyEnvelope");
         vi.mocked(putAccountEnvelope).mockClear();
 
-        await expect(provider.upgradeAccountPasskey(slots[0]!.credentialIdB64, "Account B")).rejects.toThrow("device_unlock_failed");
+        await expect(provider.upgradeAccountPasskey(slots[0]!.credentialIdB64, "Account B")).rejects.toThrow("recovery_owner_mismatch");
         expect(putAccountEnvelope).not.toHaveBeenCalled();
     });
 

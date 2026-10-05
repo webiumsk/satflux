@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DeviceUnlockError } from "../services/deviceUnlock/envelope";
+import { DeviceUnlockError, RecoveryOwnerMismatchError } from "../services/deviceUnlock/envelope";
 import { randomBytes } from "../services/passphraseCrypto";
 import { deriveRecoveryPublicKeyHex } from "../services/accountSeed";
 
@@ -133,8 +133,8 @@ describe("account passkey envelope", () => {
         const { addAccountPasskeyFromSession, upgradeAccountPasskey } = await import("../services/deviceUnlock/provider");
         const { createPasskeyPrfCredential, evaluatePrf } = await import("../services/deviceUnlock/passkeyPrf");
 
-        await expect(addAccountPasskeyFromSession("Wrong owner")).rejects.toThrow(DeviceUnlockError);
-        await expect(upgradeAccountPasskey("credential", "Wrong owner")).rejects.toThrow(DeviceUnlockError);
+        await expect(addAccountPasskeyFromSession("Wrong owner")).rejects.toThrow(RecoveryOwnerMismatchError);
+        await expect(upgradeAccountPasskey("credential", "Wrong owner")).rejects.toThrow(RecoveryOwnerMismatchError);
         expect(createPasskeyPrfCredential).not.toHaveBeenCalled();
         expect(evaluatePrf).not.toHaveBeenCalled();
         expect(apiMock.put).not.toHaveBeenCalled();
@@ -149,7 +149,7 @@ describe("account passkey envelope", () => {
 
         await expect(restoreWithAccountPasskey([{
             credential_id: "dGVzdC1jcmVkZW50aWFs", label: null, created_at: "", last_used_at: null,
-        }])).rejects.toThrow(DeviceUnlockError);
+        }])).rejects.toThrow(RecoveryOwnerMismatchError);
         expect(sessionStorage.getItem(SESSION_KEY)).toBeNull();
     });
 
