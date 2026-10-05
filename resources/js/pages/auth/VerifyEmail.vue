@@ -163,7 +163,10 @@ async function resendVerification(): Promise<void> {
   resendLoading.value = true;
   resendMessage.value = "";
   try {
-    await ensureCsrfCookie();
+    if (!(await ensureCsrfCookie())) {
+      resendMessage.value = t("auth.failed_to_connect");
+      return;
+    }
     await api.post("/auth/email/verification-notification", { email: resendEmail.value });
     resendMessage.value = t("auth.verification_email_resent");
   } catch (rawError) {

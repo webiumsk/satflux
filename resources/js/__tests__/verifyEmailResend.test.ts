@@ -44,3 +44,19 @@ it("offers a fresh link when a verification link is rejected", async () => {
     expect(mocks.post).toHaveBeenCalledWith("/auth/email/verification-notification", { email: "merchant@example.com" });
     expect(wrapper.text()).toContain("auth.verification_email_resent");
 });
+
+it("does not post the resend without a CSRF cookie", async () => {
+    mocks.verifyGet.mockResolvedValue({ status: 403, data: { message: "Invalid verification link." } });
+    mocks.ensureCsrfCookie.mockResolvedValueOnce(false);
+    const { default: VerifyEmail } = await import("../pages/auth/VerifyEmail.vue");
+    const wrapper = shallowMount(VerifyEmail, { global: { stubs: { "router-link": true } } });
+    await flushPromises();
+
+    await wrapper.get("#resend-email").setValue("merchant@example.com");
+    await wrapper.get("form").trigger("submit");
+    await flushPromises();
+
+    expect(mocks.post).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain("auth.failed_to_connect");
+    expect(wrapper.get("button[type=submit]").attributes("disabled")).toBeUndefined();
+});
