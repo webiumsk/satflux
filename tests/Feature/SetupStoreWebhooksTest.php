@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Store;
+use App\Services\BtcPay\WebhookService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -120,5 +121,44 @@ class SetupStoreWebhooksTest extends TestCase
             ->expectsOutputToContain('would remove 1 panel URL webhook(s)');
 
         Http::assertSentCount(1);
+    }
+
+    public function test_retry_mode_skips_stores_outside_the_retry_window(): void
+    {
+        config(['services.btcpay.api_key' => 'test-key']);
+        Store::factory()->create(['btcpay_webhook_id' => null, 'created_at' => now()->subDays(8)]);
+        $webhooks = $this->createMock(WebhookService::class);
+        $webhooks->expects($this->never())->method('replacePanelWebhookForStore');
+        $this->app->instance(WebhookService::class, $webhooks);
+
+        $this->artisan('stores:setup-webhooks', ['--retry' => true])
+            ->assertSuccessful()
+            ->expectsOutputToContain('All stores already have webhooks');
+    }
+
+    public function test_retry_mode_backs_off_a_failing_store_and_retries_once_the_delay_passed(): void
+    {
+        config(['services.btcpay.api_key' => 'test-key']);
+        $store = Store::factory()->create(['btcpay_store_id' => 'store-flaky', 'btcpay_webhook_id' => null]);
+        $attempt = 0;
+        $webhooks = $this->createMock(WebhookService::class);
+        $webhooks->expects($this->exactly(2))->method('replacePanelWebhookForStore')
+            ->willReturnCallback(function () use (&$attempt) {
+                if (++$attempt === 1) {
+                    throw new \RuntimeException('BTCPay unavailable');
+                }
+
+                return ['id' => 'wh-healed', 'secret' => 'secret-healed'];
+            });
+        $this->app->instance(WebhookService::class, $webhooks);
+
+        $this->artisan('stores:setup-webhooks', ['--retry' => true])->assertFailed();
+        // Still inside the 5 minute backoff: the store is not attempted again.
+        $this->artisan('stores:setup-webhooks', ['--retry' => true])->assertSuccessful();
+        $this->assertNull($store->fresh()->btcpay_webhook_id);
+
+        $this->travel(6)->minutes();
+        $this->artisan('stores:setup-webhooks', ['--retry' => true])->assertSuccessful();
+        $this->assertSame('wh-healed', $store->fresh()->btcpay_webhook_id);
     }
 }

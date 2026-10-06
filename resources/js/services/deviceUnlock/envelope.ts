@@ -104,6 +104,20 @@ export class DeviceUnlockError extends Error {
     }
 }
 
+/**
+ * The phrase decrypted fine but belongs to another account than the signed-in
+ * session. Distinguishable on purpose: the check runs against the session's
+ * public recovery key, so it reveals nothing about the passphrase, and "check
+ * the passphrase" would send the user down the wrong path.
+ */
+export class RecoveryOwnerMismatchError extends DeviceUnlockError {
+    constructor() {
+        super();
+        this.message = "recovery_owner_mismatch";
+        this.name = "RecoveryOwnerMismatchError";
+    }
+}
+
 export class WeakPassphraseError extends Error {
     constructor() {
         super("weak_passphrase");

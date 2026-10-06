@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\Auth\EmailVerificationService;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\UserService;
 use App\Support\LogSanitizer;
@@ -198,6 +199,16 @@ class EmailVerificationController extends Controller
         $btcpayRandomPassword = Str::random(32);
 
         return DB::transaction(function () use ($request, $user, $btcpayRandomPassword) {
+            // Registration retries and verification serialize on the same row.
+            // A link from an earlier password must never verify newer credentials.
+            $user = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            if ($user->hasVerifiedEmail()) {
+                return response()->json(['message' => 'Email already verified.', 'verified' => true]);
+            }
+            if (! app(EmailVerificationService::class)->matchesRegistration($user, $request->query('registration'))) {
+                return response()->json(['message' => 'Invalid verification link. Please request a new email.'], 403);
+            }
+
             // Mark email as verified
             $user->markEmailAsVerified();
 

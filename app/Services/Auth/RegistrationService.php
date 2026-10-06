@@ -21,7 +21,7 @@ class RegistrationService
     public function register(string $email, string $plainPassword): User
     {
         return DB::transaction(function () use ($email, $plainPassword) {
-            $existingUser = User::where('email', $email)->first();
+            $existingUser = User::where('email', $email)->lockForUpdate()->first();
 
             if ($existingUser) {
                 if ($existingUser->hasVerifiedEmail()) {

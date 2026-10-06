@@ -10,7 +10,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class GuestAuthController extends Controller
@@ -37,9 +36,7 @@ class GuestAuthController extends Controller
             $existingUser = $request->user();
             $existingStoreId = $this->guestProvisioningService->resolvePrimaryStoreId($existingUser);
 
-            if ($recoveryPkHex
-                && Schema::hasColumn('users', 'guest_recovery_public_key')
-                && empty($existingUser->guest_recovery_public_key)) {
+            if ($recoveryPkHex) {
                 $existingUser = $this->guestProvisioningService->attachRecoveryKey($existingUser, $recoveryPkHex);
             }
 

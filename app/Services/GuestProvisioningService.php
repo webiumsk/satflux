@@ -35,23 +35,39 @@ class GuestProvisioningService
 
     public function attachRecoveryKey(User $user, string $recoveryPkHex): User
     {
-        if (! Schema::hasColumn('users', 'guest_recovery_public_key')
-            || ! empty($user->guest_recovery_public_key)) {
-            return $user;
-        }
-
-        if (User::where('guest_recovery_public_key', $recoveryPkHex)->where('id', '!=', $user->id)->exists()) {
+        if (! Schema::hasColumn('users', 'guest_recovery_public_key')) {
             throw ValidationException::withMessages([
-                'recovery_public_key' => ['This recovery key is already in use.'],
+                'recovery_public_key' => ['Recovery enrollment is unavailable. Please try again later.'],
             ]);
         }
 
-        $user->update([
-            'guest_recovery_public_key' => $recoveryPkHex,
-            'guest_recovery_enrolled_at' => now(),
-        ]);
+        $recoveryPkHex = strtolower($recoveryPkHex);
 
-        return $user->fresh();
+        return DB::transaction(function () use ($user, $recoveryPkHex) {
+            $user = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            if (! empty($user->guest_recovery_public_key)) {
+                if (! hash_equals(strtolower($user->guest_recovery_public_key), $recoveryPkHex)) {
+                    throw ValidationException::withMessages([
+                        'recovery_public_key' => ['You are already signed in to another account. Sign out before creating a new account.'],
+                    ]);
+                }
+
+                return $user;
+            }
+
+            if (User::where('guest_recovery_public_key', $recoveryPkHex)->where('id', '!=', $user->id)->exists()) {
+                throw ValidationException::withMessages([
+                    'recovery_public_key' => ['This recovery key is already in use.'],
+                ]);
+            }
+
+            $user->update([
+                'guest_recovery_public_key' => $recoveryPkHex,
+                'guest_recovery_enrolled_at' => now(),
+            ]);
+
+            return $user;
+        });
     }
 
     public function resolvePrimaryStoreId(User $user): ?string

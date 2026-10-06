@@ -3,6 +3,7 @@ import {
     createDeviceEnvelope,
     DeviceUnlockError,
     listPasskeyPrfSlots,
+    RecoveryOwnerMismatchError,
     removePasskeyPrfSlot,
     rotatePassphrase,
     touchPasskeyPrfSlot,
@@ -22,6 +23,7 @@ import {
 import {
     ACCOUNT_PRF_INPUT_B64,
     accountPrfInputBytes,
+    assertAccountRecoveryPhrase,
     decryptAccountEnvelope,
     encryptAccountEnvelope,
     fetchEnvelopeForLogin,
@@ -155,8 +157,9 @@ export async function addPasskeyToRememberedDevice(
     if (!envelope) {
         throw new DeviceUnlockError();
     }
-    const { dekRaw } = await unlockWithPassphrase(envelope, passphrase);
+    const { recoveryPhrase, dekRaw } = await unlockWithPassphrase(envelope, passphrase);
     try {
+        await assertAccountRecoveryPhrase(recoveryPhrase);
         // The FIXED account input doubles as the local slot's salt so ONE
         // create() gesture serves both envelopes (HKDF infos differ, so the
         // derived keys stay domain-separated).
@@ -200,6 +203,7 @@ export async function addPasskeyToRememberedDevice(
                     credentialIdB64: credential.credentialIdB64,
                     payload,
                     label,
+                    recoveryPublicKeyHex: deriveRecoveryPublicKeyHex(check.recoveryPhrase),
                 });
                 cloudSynced = true;
             } catch {
@@ -252,6 +256,7 @@ export async function restoreWithAccountPasskey(envelopes?: AccountEnvelopeSumma
     try {
         const payload = await fetchEnvelopeForLogin(credentialIdB64);
         const recoveryPhrase = await decryptAccountEnvelope(payload, prfOutput);
+        await assertAccountRecoveryPhrase(recoveryPhrase);
         return { recoveryPhrase };
     } finally {
         prfOutput.fill(0);
@@ -284,6 +289,8 @@ export async function addAccountPasskeyFromSession(label: string): Promise<void>
         throw new DeviceUnlockError();
     }
 
+    await assertAccountRecoveryPhrase(phrase);
+
     const credential = await createPasskeyPrfCredential({
         label,
         userHandle: deriveRecoveryPublicKeyHex(phrase),
@@ -297,6 +304,7 @@ export async function addAccountPasskeyFromSession(label: string): Promise<void>
             credentialIdB64: credential.credentialIdB64,
             payload,
             label,
+            recoveryPublicKeyHex: deriveRecoveryPublicKeyHex(phrase),
         });
     } catch {
         throw new PasskeyEnvelopeUploadError(credential.credentialIdB64);
@@ -316,10 +324,17 @@ export async function upgradeAccountPasskey(credentialIdB64: string, label: stri
         throw new DeviceUnlockError();
     }
 
+    await assertAccountRecoveryPhrase(phrase);
+    const localEnvelope = await loadDeviceEnvelope();
+    if (localEnvelope && listPasskeyPrfSlots(localEnvelope).some((slot) => slot.credentialIdB64 === credentialIdB64)
+        && localEnvelope.ownerFingerprint !== deriveRecoveryPublicKeyHex(phrase)) {
+        throw new RecoveryOwnerMismatchError();
+    }
+
     const prfOutput = await evaluatePrf(credentialIdB64, ACCOUNT_PRF_INPUT_B64);
     try {
         const payload = await encryptAccountEnvelope(phrase, prfOutput);
-        await putAccountEnvelope({ credentialIdB64, payload, label });
+        await putAccountEnvelope({ credentialIdB64, payload, label, recoveryPublicKeyHex: deriveRecoveryPublicKeyHex(phrase) });
     } finally {
         prfOutput.fill(0);
     }

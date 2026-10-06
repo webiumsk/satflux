@@ -23,18 +23,22 @@ class PasskeyEnvelopeTest extends TestCase
             'payload' => json_encode(['v' => 1, 'iv' => str_repeat('a', 16), 'ct' => str_repeat('b', 128)]),
             'envelope_version' => 1,
             'transports' => ['internal', 'hybrid'],
+            'recovery_public_key' => str_repeat('a', 64),
         ], $overrides);
     }
 
     protected function verifiedUser(): User
     {
-        return User::factory()->create(['email_verified_at' => now()]);
+        return User::factory()->create(['email_verified_at' => now(), 'guest_recovery_public_key' => str_repeat('a', 64)]);
     }
 
     #[Test]
     public function the_owner_can_upsert_list_and_delete_an_envelope(): void
     {
         $user = $this->verifiedUser();
+        $this->actingAs($user)->getJson('/api/user')->assertOk()
+            ->assertJsonPath('recovery_public_key', str_repeat('a', 64))
+            ->assertJsonMissingPath('password');
 
         $this->actingAs($user)
             ->putJson('/api/account/passkey-envelopes/'.self::CREDENTIAL_ID, $this->payload())
@@ -64,14 +68,17 @@ class PasskeyEnvelopeTest extends TestCase
     public function another_account_cannot_overwrite_or_delete_a_foreign_envelope(): void
     {
         $owner = $this->verifiedUser();
-        $attacker = $this->verifiedUser();
+        $attacker = User::factory()->create(['guest_recovery_public_key' => str_repeat('b', 64)]);
 
         $this->actingAs($owner)
             ->putJson('/api/account/passkey-envelopes/'.self::CREDENTIAL_ID, $this->payload())
             ->assertOk();
 
         $this->actingAs($attacker)
-            ->putJson('/api/account/passkey-envelopes/'.self::CREDENTIAL_ID, $this->payload(['label' => 'Stolen']))
+            ->putJson('/api/account/passkey-envelopes/'.self::CREDENTIAL_ID, $this->payload([
+                'label' => 'Stolen',
+                'recovery_public_key' => str_repeat('b', 64),
+            ]))
             ->assertStatus(422);
 
         $this->actingAs($attacker)
@@ -79,6 +86,32 @@ class PasskeyEnvelopeTest extends TestCase
             ->assertOk();
         // Delete is scoped to the caller - the owner's envelope survives.
         $this->assertSame(1, UserPasskeyEnvelope::query()->where('user_id', $owner->id)->count());
+    }
+
+    #[Test]
+    public function an_envelope_for_another_recovery_owner_cannot_be_created_or_replace_an_existing_one(): void
+    {
+        $user = $this->verifiedUser();
+        $this->actingAs($user)->putJson('/api/account/passkey-envelopes/'.self::CREDENTIAL_ID, $this->payload())->assertOk();
+
+        foreach ([self::CREDENTIAL_ID, self::CREDENTIAL_ID.'other'] as $id) {
+            $this->putJson('/api/account/passkey-envelopes/'.$id, $this->payload([
+                'recovery_public_key' => str_repeat('b', 64),
+                'label' => 'Wrong owner',
+            ]))->assertUnprocessable()->assertJsonValidationErrors('recovery_public_key');
+        }
+
+        $this->assertDatabaseCount('user_passkey_envelopes', 1);
+        $this->assertSame('Test laptop', UserPasskeyEnvelope::first()->label);
+    }
+
+    #[Test]
+    public function password_only_accounts_cannot_store_recovery_envelopes(): void
+    {
+        $user = User::factory()->create(['guest_recovery_public_key' => null]);
+        $this->actingAs($user)->putJson('/api/account/passkey-envelopes/'.self::CREDENTIAL_ID, $this->payload())
+            ->assertUnprocessable()->assertJsonValidationErrors('recovery_public_key');
+        $this->assertDatabaseCount('user_passkey_envelopes', 0);
     }
 
     #[Test]

@@ -8,6 +8,8 @@ use App\Services\BtcPay\UserService;
 use App\Services\BtcPay\WebhookService;
 use App\Services\GuestBtcPayDecommissioner;
 use App\Services\GuestProvisioningService;
+use App\Services\StoreWebhookProvisioningService;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -86,7 +88,49 @@ class GuestProvisioningServiceTest extends TestCase
         $this->assertDatabaseHas('stores', ['id' => $store->id, 'name' => 'My Store - 6WPQ3GRT']);
     }
 
-    private function makeServiceForHappyPath(?callable $onCreateStore = null): GuestProvisioningService
+    public function test_guest_signup_survives_a_webhook_outage_and_scheduled_retries_eventually_repair_it(): void
+    {
+        config(['services.btcpay.api_key' => 'server-key']);
+        $svc = $this->makeServiceForHappyPath(webhookFails: true);
+        [$user, $store] = $svc->provisionGuest();
+        $this->assertTrue($user->is_guest);
+        $this->assertNull($store->btcpay_webhook_id);
+
+        $webhooks = $this->createMock(WebhookService::class);
+        $attempt = 0;
+        $webhooks->expects($this->exactly(2))->method('replacePanelWebhookForStore')
+            ->with('btcpay-store-1', null)
+            ->willReturnCallback(function () use (&$attempt) {
+                if (++$attempt === 1) {
+                    throw new \RuntimeException('BTCPay still unavailable');
+                }
+
+                return ['id' => 'repaired-webhook', 'secret' => 'repaired-secret'];
+            });
+        $this->app->instance(WebhookService::class, $webhooks);
+
+        $this->artisan('stores:setup-webhooks')->assertFailed();
+        $this->assertNull($store->fresh()->btcpay_webhook_id);
+        $this->artisan('stores:setup-webhooks')->assertSuccessful();
+        $this->assertSame('repaired-webhook', $store->fresh()->btcpay_webhook_id);
+        $this->assertSame('repaired-secret', $store->fresh()->webhook_secret);
+        // Both the next scheduler run and a stale immediate attempt are idempotent.
+        $this->artisan('stores:setup-webhooks')->assertSuccessful();
+        $this->assertFalse(app(StoreWebhookProvisioningService::class)->provisionMissing($store->id));
+    }
+
+    public function test_missing_webhook_repair_runs_automatically_every_five_minutes(): void
+    {
+        $this->artisan('schedule:list')->assertSuccessful();
+        $events = app(Schedule::class)->events();
+        $repair = collect($events)->first(fn ($event) => str_contains($event->command ?? '', 'stores:setup-webhooks'));
+        $this->assertNotNull($repair);
+        $this->assertStringContainsString('--retry', $repair->command);
+        $this->assertSame('*/5 * * * *', $repair->expression);
+        $this->assertTrue($repair->withoutOverlapping);
+    }
+
+    private function makeServiceForHappyPath(?callable $onCreateStore = null, bool $webhookFails = false): GuestProvisioningService
     {
         $userService = $this->createMock(UserService::class);
         $userService->method('createUser')->willReturn(['id' => 'btcpay-user-1', 'emailConfirmed' => true]);
@@ -104,7 +148,11 @@ class GuestProvisioningServiceTest extends TestCase
         $storeService->method('addUserToStore')->willReturn([]);
 
         $webhookService = $this->createMock(WebhookService::class);
-        $webhookService->method('replacePanelWebhookForStore')->willReturn(['id' => 'wh-1', 'secret' => 'sec']);
+        if ($webhookFails) {
+            $webhookService->method('replacePanelWebhookForStore')->willThrowException(new \RuntimeException('BTCPay unavailable'));
+        } else {
+            $webhookService->method('replacePanelWebhookForStore')->willReturn(['id' => 'wh-1', 'secret' => 'sec']);
+        }
 
         return new GuestProvisioningService(
             $userService,

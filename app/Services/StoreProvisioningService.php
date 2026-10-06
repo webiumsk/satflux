@@ -9,7 +9,7 @@ use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\LightningService;
 use App\Services\BtcPay\StoreService;
 use App\Services\BtcPay\UserService;
-use App\Services\BtcPay\WebhookService;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -65,6 +65,19 @@ class StoreProvisioningService
             // juggling here - createStore(..., null) runs with the server key.
             if (! config('services.btcpay.api_key')) {
                 abort(500, 'Server-level BTCPay API key not configured.');
+            }
+            if (! $user->btcpay_user_id || ! $user->btcpay_api_key) {
+                // Nothing heals a half-provisioned merchant automatically, so a
+                // retry never helps - surface it to support instead.
+                Log::error('Store creation blocked: merchant BTCPay identity incomplete', [
+                    'user_id' => $user->id,
+                    'has_btcpay_user_id' => (bool) $user->btcpay_user_id,
+                    'has_btcpay_api_key' => (bool) $user->btcpay_api_key,
+                ]);
+                throw new HttpResponseException(response()->json([
+                    'message' => 'Your payment account is not fully set up. Please contact support.',
+                    'code' => 'payment_account_incomplete',
+                ], 503));
             }
 
             // Preflight: a duplicate Aqua descriptor must fail BEFORE the BTCPay
@@ -214,8 +227,7 @@ class StoreProvisioningService
     }
 
     /**
-     * Add merchant and admin as store Owners. Failures are logged but do not
-     * abort provisioning - the store exists in BTCPay at this point.
+     * Merchant ownership is mandatory; support access is best-effort.
      */
     protected function assignOwners(string $btcpayStoreId, User $user): void
     {
@@ -235,13 +247,10 @@ class StoreProvisioningService
                     'error' => $e->getMessage(),
                     'error_type' => get_class($e),
                 ]);
-                // Continue - we'll try to add admin anyway
+                throw $e;
             }
         } else {
-            Log::warning('Merchant does not have BTCPay user ID - cannot assign merchant to store', [
-                'store_id' => $btcpayStoreId,
-                'merchant_user_id' => $user->id,
-            ]);
+            throw new \RuntimeException('Merchant does not have a BTCPay user ID.');
         }
 
         // Admin as Owner (for support access)
@@ -424,12 +433,7 @@ class StoreProvisioningService
                 return;
             }
             try {
-                $webhookService = app(WebhookService::class);
-                $data = $webhookService->replacePanelWebhookForStore($fresh->btcpay_store_id, null);
-                $fresh->update([
-                    'btcpay_webhook_id' => $data['id'],
-                    'webhook_secret' => $data['secret'],
-                ]);
+                app(StoreWebhookProvisioningService::class)->provisionMissing($storeId);
                 Log::info('BTCPay webhook provisioned after store create', [
                     'store_id' => $fresh->id,
                     'btcpay_store_id' => $fresh->btcpay_store_id,

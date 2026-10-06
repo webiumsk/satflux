@@ -1,12 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DeviceEnvelope } from "../services/deviceUnlock/envelope";
 import { randomBytes, toB64 } from "../services/passphraseCrypto";
+import { deriveRecoveryPublicKeyHex } from "../services/accountSeed";
 
 // Valid BIP39 test vector (24 words) - clearly fake, never a real phrase.
 const FAKE_PHRASE =
     "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art";
 const SESSION_KEY = "satflux.account.mnemonic.v1";
 const PASSPHRASE = "correct horse battery staple";
+const OTHER_PHRASE = "legal winner thank year wave sausage worth useful legal winner thank yellow";
 
 // Real PBKDF2 calibration targets wall-clock time (600k+ iterations) and
 // times the suite out under parallel load - pin a fast iteration count.
@@ -21,6 +23,12 @@ vi.mock("../services/deviceUnlock/accountPasskeyEnvelope", async (importOriginal
     return {
         ...original,
         putAccountEnvelope: vi.fn(async () => {}),
+        assertAccountRecoveryPhrase: vi.fn(async (phrase: string) => {
+            if (deriveRecoveryPublicKeyHex(phrase) !== expectedOwner) {
+                const { RecoveryOwnerMismatchError } = await import("../services/deviceUnlock/envelope");
+                throw new RecoveryOwnerMismatchError();
+            }
+        }),
         listAccountEnvelopes: vi.fn(async () => []),
         fetchEnvelopeForLogin: vi.fn(async () => {
             throw new Error("not stubbed");
@@ -30,6 +38,7 @@ vi.mock("../services/deviceUnlock/accountPasskeyEnvelope", async (importOriginal
 
 // In-memory stand-in for the IndexedDB-backed envelope store.
 let stored: DeviceEnvelope | null = null;
+let expectedOwner = deriveRecoveryPublicKeyHex(FAKE_PHRASE);
 
 vi.mock("../services/deviceUnlock/deviceEnvelopeStore", () => ({
     loadDeviceEnvelope: vi.fn(async () => stored),
@@ -65,6 +74,8 @@ vi.mock("../services/deviceUnlock/passkeyPrf", async (importOriginal) => {
 
 describe("passkey unlock provider", () => {
     beforeEach(() => {
+        vi.clearAllMocks();
+        expectedOwner = deriveRecoveryPublicKeyHex(FAKE_PHRASE);
         stored = null;
         sessionStorage.clear();
         localStorage.clear();
@@ -122,6 +133,34 @@ describe("passkey unlock provider", () => {
             DeviceUnlockError,
         );
         expect(await provider.listDevicePasskeySlots()).toHaveLength(0);
+    });
+
+    it.each([true, false])("rejects account A's remembered phrase in account B before creating a passkey (session unlocked: %s)", async (unlocked) => {
+        const provider = await rememberedDevice();
+        expectedOwner = deriveRecoveryPublicKeyHex(OTHER_PHRASE);
+        if (unlocked) sessionStorage.setItem(SESSION_KEY, OTHER_PHRASE);
+        const before = stored;
+        const { createPasskeyPrfCredential } = await import("../services/deviceUnlock/passkeyPrf");
+        const { putAccountEnvelope } = await import("../services/deviceUnlock/accountPasskeyEnvelope");
+
+        await expect(provider.addPasskeyToRememberedDevice(PASSPHRASE, "Wrong account")).rejects.toThrow("recovery_owner_mismatch");
+
+        expect(createPasskeyPrfCredential).not.toHaveBeenCalled();
+        expect(putAccountEnvelope).not.toHaveBeenCalled();
+        expect(stored).toBe(before);
+        expect(sessionStorage.getItem(SESSION_KEY)).toBe(unlocked ? OTHER_PHRASE : null);
+    });
+
+    it("does not promote another owner's local passkey into the signed-in account", async () => {
+        const provider = await rememberedDevice();
+        const { slots } = await provider.addPasskeyToRememberedDevice(PASSPHRASE, "Account A");
+        expectedOwner = deriveRecoveryPublicKeyHex(OTHER_PHRASE);
+        sessionStorage.setItem(SESSION_KEY, OTHER_PHRASE);
+        const { putAccountEnvelope } = await import("../services/deviceUnlock/accountPasskeyEnvelope");
+        vi.mocked(putAccountEnvelope).mockClear();
+
+        await expect(provider.upgradeAccountPasskey(slots[0]!.credentialIdB64, "Account B")).rejects.toThrow("recovery_owner_mismatch");
+        expect(putAccountEnvelope).not.toHaveBeenCalled();
     });
 
     it("removing the passkey slot keeps the passphrase unlock working", async () => {
