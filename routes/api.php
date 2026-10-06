@@ -347,6 +347,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
     Route::get('/chorala/widget-token', [ChoralaController::class, 'widgetToken']);
     Route::get('/user/limits', [AccountController::class, 'limits']);
     // Passkey recovery envelopes (ciphertext-only, see PasskeyEnvelopeController)
+    // Recovery phrase enrollment (guest backup / legacy email migration) - not part of guest signup.
+    Route::post('/account/recovery-key', [GuestAuthController::class, 'enrollRecoveryKey']);
     Route::get('/account/passkey-envelopes', [PasskeyEnvelopeController::class, 'index']);
     Route::put('/account/passkey-envelopes/{credentialId}', [PasskeyEnvelopeController::class, 'upsert']);
     Route::delete('/account/passkey-envelopes/{credentialId}', [PasskeyEnvelopeController::class, 'destroy']);
