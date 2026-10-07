@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Services\Compliance\ComplianceGate;
 use App\Services\GuestProvisioningService;
 use App\Services\GuestRecoveryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -36,8 +38,16 @@ class GuestAuthController extends Controller
             $existingUser = $request->user();
             $existingStoreId = $this->guestProvisioningService->resolvePrimaryStoreId($existingUser);
 
-            if ($recoveryPkHex) {
-                $existingUser = $this->guestProvisioningService->attachRecoveryKey($existingUser, $recoveryPkHex);
+            // Guest signup never mutates an existing session's account: a stale
+            // session (signed in in another tab) would otherwise receive the new
+            // phrase and lose password login. Only a retry with the account's own
+            // key is answered with the existing account; enrollment has its own
+            // endpoint (POST /account/recovery-key).
+            if ($recoveryPkHex && ! hash_equals(strtolower((string) $existingUser->guest_recovery_public_key), $recoveryPkHex)) {
+                return response()->json([
+                    'message' => 'You are already signed in to another account. Sign out before creating a new account.',
+                    'code' => 'already_authenticated',
+                ], 409);
             }
 
             return response()->json([
@@ -87,6 +97,57 @@ class GuestAuthController extends Controller
             'user' => $user->makeVisible('role'),
             'store_id' => $store->id,
         ], 201);
+    }
+
+    /**
+     * Enroll a recovery public key on the signed-in account (guest backup or
+     * legacy email account migration). Enrolling disables password login, so
+     * it is a deliberate, authenticated action - never a side effect of signup.
+     */
+    public function enrollRecoveryKey(Request $request): JsonResponse
+    {
+        // Integration tokens must not grant a permanent login credential.
+        if (! Auth::guard('web')->check()) {
+            return response()->json([
+                'message' => 'Sign in through a browser session to enroll a recovery phrase.',
+                'code' => 'session_required',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'expected_user_id' => ['required', 'integer', 'min:1'],
+            'recovery_public_key' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/i'],
+        ]);
+
+        // Cookies are shared across tabs. Enrollment must target the account
+        // displayed in the initiating tab, even if another tab switched login.
+        if ((string) $validated['expected_user_id'] !== (string) $request->user()->id) {
+            return response()->json([
+                'message' => 'The signed-in account changed. Reload before enrolling a recovery phrase.',
+                'code' => 'account_changed',
+            ], 409);
+        }
+
+        $user = DB::transaction(function () use ($request, $validated) {
+            $user = $this->guestProvisioningService->attachRecoveryKey(
+                $request->user(),
+                strtolower($validated['recovery_public_key']),
+            );
+
+            if ($user->wasChanged('guest_recovery_public_key')) {
+                // target_id is a uuid column - the user id goes into user_id only.
+                AuditLog::log('account.recovery_key_enrolled', 'user', null, [
+                    'is_guest' => (bool) $user->is_guest,
+                ], $user->id);
+            }
+
+            return $user;
+        });
+
+        return response()->json([
+            'message' => 'Recovery phrase enrolled.',
+            'user' => $user->makeVisible('role'),
+        ]);
     }
 
     /**
