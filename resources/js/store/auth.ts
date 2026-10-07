@@ -279,10 +279,17 @@ export const useAuthStore = defineStore('auth', () => {
      * a key to an existing session's account.
      */
     async function enrollGuestRecoveryPublicKey(recoveryPublicKeyHex: string) {
+        // Capture before awaiting CSRF setup: another tab can switch the shared
+        // session while this tab still displays the original account.
+        const expectedUserId = user.value?.id;
+        if (expectedUserId == null) {
+            throw new Error('Recovery enrollment requires a signed-in account.');
+        }
         loading.value = true;
         try {
             await ensureCsrfCookie();
             const response = await api.post('/account/recovery-key', {
+                expected_user_id: expectedUserId,
                 recovery_public_key: recoveryPublicKeyHex,
             });
             if (response.data?.user) {
@@ -345,7 +352,6 @@ export const useAuthStore = defineStore('auth', () => {
         logout,
     };
 });
-
 
 
 

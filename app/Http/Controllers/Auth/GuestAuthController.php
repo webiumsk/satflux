@@ -10,6 +10,7 @@ use App\Services\GuestRecoveryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -105,21 +106,43 @@ class GuestAuthController extends Controller
      */
     public function enrollRecoveryKey(Request $request): JsonResponse
     {
+        // Integration tokens must not grant a permanent login credential.
+        if (! Auth::guard('web')->check()) {
+            return response()->json([
+                'message' => 'Sign in through a browser session to enroll a recovery phrase.',
+                'code' => 'session_required',
+            ], 403);
+        }
+
         $validated = $request->validate([
+            'expected_user_id' => ['required', 'integer', 'min:1'],
             'recovery_public_key' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/i'],
         ]);
 
-        $user = $this->guestProvisioningService->attachRecoveryKey(
-            $request->user(),
-            strtolower($validated['recovery_public_key']),
-        );
-
-        if ($user->wasChanged('guest_recovery_public_key')) {
-            // target_id is a uuid column - the user id goes into user_id only.
-            AuditLog::log('account.recovery_key_enrolled', 'user', null, [
-                'is_guest' => (bool) $user->is_guest,
-            ], $user->id);
+        // Cookies are shared across tabs. Enrollment must target the account
+        // displayed in the initiating tab, even if another tab switched login.
+        if ((string) $validated['expected_user_id'] !== (string) $request->user()->id) {
+            return response()->json([
+                'message' => 'The signed-in account changed. Reload before enrolling a recovery phrase.',
+                'code' => 'account_changed',
+            ], 409);
         }
+
+        $user = DB::transaction(function () use ($request, $validated) {
+            $user = $this->guestProvisioningService->attachRecoveryKey(
+                $request->user(),
+                strtolower($validated['recovery_public_key']),
+            );
+
+            if ($user->wasChanged('guest_recovery_public_key')) {
+                // target_id is a uuid column - the user id goes into user_id only.
+                AuditLog::log('account.recovery_key_enrolled', 'user', null, [
+                    'is_guest' => (bool) $user->is_guest,
+                ], $user->id);
+            }
+
+            return $user;
+        });
 
         return response()->json([
             'message' => 'Recovery phrase enrolled.',
