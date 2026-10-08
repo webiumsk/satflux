@@ -137,7 +137,7 @@
 
 <script setup lang="ts">
 import { asApiError } from "../../utils/apiError";
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import axios from "axios";
@@ -156,6 +156,13 @@ const error = ref("");
 const resendEmail = ref("");
 const resendLoading = ref(false);
 const resendMessage = ref("");
+let redirectTimer: ReturnType<typeof setTimeout> | null = null;
+let unmounted = false;
+
+onBeforeUnmount(() => {
+  unmounted = true;
+  if (redirectTimer !== null) clearTimeout(redirectTimer);
+});
 
 /** Same public endpoint as the check-email page; it answers identically for unknown addresses. */
 async function resendVerification(): Promise<void> {
@@ -219,6 +226,8 @@ onMounted(async () => {
       },
     );
 
+    if (unmounted) return;
+
     // Check if response indicates an error
     if (response.status >= 400) {
       error.value =
@@ -234,7 +243,7 @@ onMounted(async () => {
 
       // Verification confirms the address only. Never adopt the link's user
       // or refresh authentication here; sign-in is a separate user action.
-      setTimeout(() => {
+      redirectTimer = setTimeout(() => {
         router.push({
           name: "login",
           query: { email_verified: "1" },

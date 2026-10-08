@@ -58,3 +58,30 @@ it("a rejected link leaves the current account untouched and does not redirect",
     expect(mocks.auth.fetchUser).not.toHaveBeenCalled();
     expect(mocks.push).not.toHaveBeenCalled();
 });
+
+it("leaving the verification page cancels its pending sign-in redirect", async () => {
+    mocks.get.mockResolvedValue({ status: 200, data: { verified: true } });
+    const { default: VerifyEmail } = await import("../pages/auth/VerifyEmail.vue");
+    const wrapper = shallowMount(VerifyEmail, { global: { stubs: { "router-link": true } } });
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(1000);
+
+    wrapper.unmount();
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(mocks.push).not.toHaveBeenCalled();
+});
+
+it("a verification response arriving after unmount cannot schedule a redirect", async () => {
+    let resolveVerification!: (value: unknown) => void;
+    mocks.get.mockReturnValue(new Promise(resolve => { resolveVerification = resolve; }));
+    const { default: VerifyEmail } = await import("../pages/auth/VerifyEmail.vue");
+    const wrapper = shallowMount(VerifyEmail, { global: { stubs: { "router-link": true } } });
+    wrapper.unmount();
+
+    resolveVerification({ status: 200, data: { verified: true } });
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(3000);
+
+    expect(mocks.push).not.toHaveBeenCalled();
+});
