@@ -27,7 +27,8 @@ class WooCommerceWebhookNotifier
             ->where('is_active', true)
             ->first();
 
-        if (! $integration || ! $integration->webhook_url) {
+        if (! $integration || ! $integration->webhook_url || ! $integration->hasCurrentCompanyLink()
+            || $integration->company_id !== $document->company_id) {
             return;
         }
 

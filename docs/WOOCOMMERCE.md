@@ -40,6 +40,8 @@ Rate limit: 60 requests/minute per IP.
 
 Document reads and issuance require both the integration's store and its linked company to match the server document. Another store's document is rejected with 404 even when both stores share a company; documents without a store are also rejected. Local-first inbox entries and PDF downloads are scoped to the integration ID.
 
+Changing a store's company link (including unlinking or deleting the company) revokes its integration token. Reconnect WooCommerce explicitly to use the new link. Keeping the same link does not revoke access. Authentication rejects stale links, and queued invoice emails cannot switch companies after dispatch. Existing inbox entries are preserved. Before reconnecting to a different company, import or dismiss the existing entries through the store inbox; reconnect is rejected while any remain. Jobs queued before this safeguard lack a dispatch company and are skipped; check pending invoice delivery when deploying.
+
 ## Webhooks to WooCommerce
 
 When a business document linked to a WooCommerce order is marked paid, Satflux POSTs to:

@@ -18,7 +18,7 @@ class AuthenticateWooCommerceIntegration
 
         $token = trim(substr($header, 7));
         $integration = StoreIntegration::findByToken($token);
-        if (! $integration) {
+        if (! $integration || ! $integration->hasCurrentCompanyLink()) {
             return response()->json(['message' => 'Invalid integration token'], 401);
         }
 

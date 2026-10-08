@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class StoreIntegration extends Model
 {
@@ -66,28 +68,51 @@ class StoreIntegration extends Model
         $token = 'sfwc_'.Str::random(48);
         $secret = Str::random(64);
 
-        $integration = self::updateOrCreate(
-            [
-                'store_id' => $store->id,
-                'platform' => 'woocommerce',
-            ],
-            [
-                'company_id' => $store->company_id,
-                'token_hash' => hash('sha256', $token),
-                'integration_secret' => $secret,
-                'webhook_url' => $webhookUrl,
-                'is_active' => true,
-                'metadata' => [
-                    'created_at' => now()->toIso8601String(),
+        $integration = DB::transaction(function () use ($store, $token, $secret, $webhookUrl): self {
+            $store = Store::query()->lockForUpdate()->findOrFail($store->id);
+            $existing = self::query()->where('store_id', $store->id)->where('platform', 'woocommerce')->first();
+            if ($existing && $existing->company_id !== $store->company_id && $existing->documentInbox()->exists()) {
+                throw ValidationException::withMessages([
+                    'store_id' => ['Import or dismiss existing integration inbox entries before reconnecting this store to a different company.'],
+                ]);
+            }
+
+            return self::updateOrCreate(
+                [
+                    'store_id' => $store->id,
+                    'platform' => 'woocommerce',
                 ],
-            ]
-        );
+                [
+                    'company_id' => $store->company_id,
+                    'token_hash' => hash('sha256', $token),
+                    'integration_secret' => $secret,
+                    'webhook_url' => $webhookUrl,
+                    'is_active' => true,
+                    'metadata' => [
+                        'created_at' => now()->toIso8601String(),
+                    ],
+                ]
+            );
+        });
 
         return [
             'integration' => $integration,
             'token' => $token,
             'secret' => $secret,
         ];
+    }
+
+    public function hasCurrentCompanyLink(): bool
+    {
+        /** @var Store|null $store */
+        $store = $this->store()->first();
+
+        return $store !== null && $this->company_id === $store->company_id
+            && self::query()->whereKey($this->id)
+                ->where('is_active', true)
+                ->where('token_hash', $this->token_hash)
+                ->where('company_id', $this->company_id)
+                ->exists();
     }
 
     public static function findByToken(string $token): ?self

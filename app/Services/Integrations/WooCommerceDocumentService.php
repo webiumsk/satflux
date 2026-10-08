@@ -382,6 +382,10 @@ class WooCommerceDocumentService
 
     protected function resolveCompany(StoreIntegration $integration): Company
     {
+        if (! $integration->is_active || ! $integration->hasCurrentCompanyLink()) {
+            abort(404);
+        }
+
         $company = $integration->company ?? $integration->store->company;
         if (! $company) {
             throw ValidationException::withMessages([
