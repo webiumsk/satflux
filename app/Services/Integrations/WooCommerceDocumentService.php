@@ -395,7 +395,7 @@ class WooCommerceDocumentService
     protected function assertDocumentAccess(StoreIntegration $integration, BusinessDocument $document): void
     {
         $company = $this->resolveCompany($integration);
-        if ($document->company_id !== $company->id) {
+        if ($document->company_id !== $company->id || $document->store_id !== $integration->store_id) {
             abort(404);
         }
     }

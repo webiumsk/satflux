@@ -107,7 +107,10 @@ class WooCommerceIntegrationController extends Controller
             ]);
         }
 
-        $document = BusinessDocument::findOrFail($documentId);
+        $document = BusinessDocument::query()
+            ->where('id', $documentId)
+            ->where('store_id', $integration->store_id)
+            ->firstOrFail();
         $company = $integration->company ?? $integration->store->company;
         if (! $company || $document->company_id !== $company->id) {
             abort(404);
@@ -166,7 +169,10 @@ class WooCommerceIntegrationController extends Controller
             ]);
         }
 
-        $document = BusinessDocument::findOrFail($documentId);
+        $document = BusinessDocument::query()
+            ->where('id', $documentId)
+            ->where('store_id', $integration->store_id)
+            ->firstOrFail();
         $company = $integration->company ?? $integration->store->company;
         if (! $company || $document->company_id !== $company->id) {
             abort(404);
