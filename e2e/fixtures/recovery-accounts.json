@@ -1,0 +1,9 @@
+{
+    "password": "Recovery-e2e-password-123",
+    "original": "e2e-recovery-original@satflux.test",
+    "enrollment": [
+        "e2e-recovery-0@satflux.test",
+        "e2e-recovery-1@satflux.test",
+        "e2e-recovery-2@satflux.test"
+    ]
+}

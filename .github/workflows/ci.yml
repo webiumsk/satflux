@@ -126,6 +126,7 @@ jobs:
       - name: Migrate and seed the e2e fixture user
         env:
           E2E_BTCPAY: "1"
+          E2E_AUTH_RECOVERY: "1"
         run: |
           php artisan migrate --force
           php artisan db:seed --class=E2eTestSeeder --force
@@ -166,6 +167,7 @@ jobs:
           E2E_SEEDED_USER: "1"
           E2E_INVOICING_LOCAL_FIRST: "1"
           E2E_BTCPAY: "1"
+          E2E_AUTH_RECOVERY: "1"
         run: npx playwright test
 
       - name: Upload Playwright report
