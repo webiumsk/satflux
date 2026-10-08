@@ -48,6 +48,30 @@ class E2eTestSeeder extends Seeder
             ],
         );
 
+        // Recovery enrollment disables password login. These fixtures have
+        // their own credentials and API quota, separate from the shared user.
+        if (env('E2E_AUTH_RECOVERY') === '1') {
+            $fixtureJson = file_get_contents(base_path('e2e/fixtures/recovery-accounts.json'))
+                ?: throw new \RuntimeException('Recovery E2E fixtures are missing.');
+            /** @var array{password: string, original: string, enrollment: list<string>} $fixtures */
+            $fixtures = json_decode($fixtureJson, true, 512, JSON_THROW_ON_ERROR);
+            foreach ([$fixtures['original'], ...$fixtures['enrollment']] as $email) {
+                User::updateOrCreate(
+                    ['email' => $email],
+                    [
+                        'name' => 'E2E Recovery User',
+                        'password' => Hash::make($fixtures['password']),
+                        'email_verified_at' => now(),
+                        'is_guest' => false,
+                        'guest_recovery_public_key' => null,
+                        'guest_recovery_enrolled_at' => null,
+                        'btcpay_user_id' => env('E2E_BTCPAY') === '1' ? 'stub-recovery-'.hash('sha256', $email) : null,
+                        'btcpay_api_key' => env('E2E_BTCPAY') === '1' ? 'stub-merchant-key' : null,
+                    ],
+                );
+            }
+        }
+
         // BTCPay stub scenarios (E2E_BTCPAY=1, docs/BTCPAY_E2E_SCENARIOS.md):
         // the invoices page requires a merchant API key and store creation
         // assigns the merchant by BTCPay user id - the stub accepts any
