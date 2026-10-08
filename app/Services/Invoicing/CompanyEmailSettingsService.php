@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Support\Invoicing\CompanyEmailSettings;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class CompanyEmailSettingsService
@@ -35,10 +36,39 @@ class CompanyEmailSettingsService
      */
     public function applyIncomingToCompany(Company $company, array $incoming): void
     {
-        $company->email_settings = $this->mergeIncomingSettings(
-            CompanyEmailSettings::from($company->email_settings)->toArray(),
-            $incoming,
-        );
+        $current = CompanyEmailSettings::from($company->email_settings)->toArray();
+        $smtp = is_array($incoming['smtp'] ?? null) ? $incoming['smtp'] : [];
+
+        // Members and queued profiles can supply ephemeral settings. Never
+        // reuse a stored password with a caller-selected connection or login.
+        if (! empty($current['smtp']['password_encrypted']) && empty($smtp['password'])) {
+            foreach (['host', 'port', 'encryption', 'username'] as $field) {
+                if (! array_key_exists($field, $smtp)) {
+                    continue;
+                }
+
+                $default = match ($field) {
+                    'host' => 'localhost',
+                    'port' => 587,
+                    'encryption' => 'tls',
+                    default => null,
+                };
+                $value = $smtp[$field] ?? $default;
+                $stored = $current['smtp'][$field] ?? $default;
+                if ($field === 'port') {
+                    $value = (int) $value;
+                    $stored = (int) $stored;
+                }
+
+                if ((string) $value !== (string) $stored) {
+                    throw ValidationException::withMessages([
+                        'company.email_settings.smtp.password' => ['Enter the SMTP password when changing ephemeral connection settings.'],
+                    ]);
+                }
+            }
+        }
+
+        $company->email_settings = $this->mergeIncomingSettings($current, $incoming);
     }
 
     /**
