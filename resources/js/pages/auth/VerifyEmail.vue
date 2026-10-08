@@ -232,42 +232,14 @@ onMounted(async () => {
     if (data.verified) {
       verified.value = true;
 
-      // Check if user is already authenticated in this browser
-      // If backend returned user data, it means session was created
-      if (data.user) {
-        authStore.user = data.user;
-
-        // Verify session is actually working by fetching user
-        try {
-          await authStore.fetchUser();
-
-          // Session exists and works, redirect to dashboard. This page is
-          // served by the PUBLIC bundle whose router has no "home" route -
-          // a named push would throw in matcher.resolve and leave the page
-          // stuck on the spinner, so do a full navigation into the app bundle.
-          setTimeout(() => {
-            window.location.assign("/dashboard");
-          }, 2000);
-        } catch (fetchError) {
-          // Session not working (e.g., link opened in different browser)
-          // Redirect to login with success message
-          setTimeout(() => {
-            router.push({
-              name: "login",
-              query: { email_verified: "1" },
-            });
-          }, 2000);
-        }
-      } else {
-        // No user data returned, likely no session created
-        // Redirect to login with success message
-        setTimeout(() => {
-          router.push({
-            name: "login",
-            query: { email_verified: "1" },
-          });
-        }, 2000);
-      }
+      // Verification confirms the address only. Never adopt the link's user
+      // or refresh authentication here; sign-in is a separate user action.
+      setTimeout(() => {
+        router.push({
+          name: "login",
+          query: { email_verified: "1" },
+        });
+      }, 2000);
     } else {
       error.value = data.message || t("auth.failed_to_verify_email");
     }

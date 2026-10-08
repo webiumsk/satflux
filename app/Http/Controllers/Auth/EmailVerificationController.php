@@ -10,7 +10,6 @@ use App\Services\BtcPay\UserService;
 use App\Support\LogSanitizer;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -346,17 +345,9 @@ class EmailVerificationController extends Controller
                 }
             }
 
-            // Automatically log in the user after successful verification
-            Auth::login($user);
-            if ($request->hasSession()) {
-                $request->session()->regenerate();
-            }
-            $user->update(['last_login_at' => now()]);
-
             return response()->json([
-                'message' => 'Email verified successfully. You are now logged in.',
+                'message' => 'Email verified successfully. Sign in to continue.',
                 'verified' => true,
-                'user' => $user->makeVisible('role'),
             ]);
         });
     }
