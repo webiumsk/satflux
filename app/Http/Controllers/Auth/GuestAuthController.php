@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Services\Compliance\ComplianceGate;
 use App\Services\GuestProvisioningService;
 use App\Services\GuestRecoveryService;
+use Illuminate\Auth\SessionGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -143,6 +144,13 @@ class GuestAuthController extends Controller
 
             return $user;
         });
+
+        /** @var SessionGuard $guard */
+        $guard = Auth::guard('web');
+        $guard->setUser($user);
+        if ($request->hasSession()) {
+            $request->session()->put('password_hash_web', $guard->hashPasswordForCookie($user->getAuthPassword()));
+        }
 
         return response()->json([
             'message' => 'Recovery phrase enrolled.',
