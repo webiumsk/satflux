@@ -145,17 +145,25 @@ class EfakturaController extends Controller
         $validated = $request->validated();
         $stored = CompanyEfakturaSettings::fromCompany($company);
 
-        $result = $tester->test(
-            (string) ($validated['efaktura_sapi_base_url'] ?? '') !== ''
-                ? (string) $validated['efaktura_sapi_base_url']
-                : $stored->sapiBaseUrl(),
-            (string) ($validated['efaktura_sapi_client_id'] ?? '') !== ''
-                ? (string) $validated['efaktura_sapi_client_id']
-                : $stored->sapiClientId(),
-            (string) ($validated['efaktura_sapi_client_secret'] ?? '') !== ''
-                ? (string) $validated['efaktura_sapi_client_secret']
-                : $stored->sapiClientSecret(),
-        );
+        $baseUrl = rtrim(trim((string) ($validated['efaktura_sapi_base_url'] ?? '')), '/');
+        $baseUrl = $baseUrl !== '' ? $baseUrl : $stored->sapiBaseUrl();
+        $clientId = trim((string) ($validated['efaktura_sapi_client_id'] ?? ''));
+        $clientId = $clientId !== '' ? $clientId : $stored->sapiClientId();
+        $clientSecret = trim((string) ($validated['efaktura_sapi_client_secret'] ?? ''));
+
+        // A saved secret belongs to its saved provider and client. Testing a
+        // different connection must use an explicitly supplied secret.
+        if ($clientSecret === '') {
+            if ($baseUrl !== $stored->sapiBaseUrl() || $clientId !== $stored->sapiClientId()) {
+                throw ValidationException::withMessages([
+                    'efaktura_sapi_client_secret' => ['Enter the client secret when changing the provider URL or client ID.'],
+                ]);
+            }
+
+            $clientSecret = $stored->sapiClientSecret();
+        }
+
+        $result = $tester->test($baseUrl, $clientId, $clientSecret);
 
         $testedAt = null;
         if ($result['ok']) {

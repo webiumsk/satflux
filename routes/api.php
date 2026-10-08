@@ -670,7 +670,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/companies/{company}/efaktura/inbox/{receipt}/dismiss', [EfakturaInboundInboxController::class, 'dismiss'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/efaktura/test-connection', [EfakturaController::class, 'testConnection'])
-                ->middleware([EnsureCompanyOwnership::class, 'throttle:10,1']);
+                ->middleware([EnsureCompanyOwnership::class, EnsureCompanyRole::class.':owner', 'throttle:10,1']);
             Route::post('/companies/{company}/efaktura/compliance-bulk', [EfakturaController::class, 'complianceBulk'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/documents/{businessDocument}/mark-paid', [BusinessDocumentController::class, 'markPaid'])

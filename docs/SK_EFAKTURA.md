@@ -41,6 +41,8 @@ Záložka **E-faktúra** v nastaveniach firmy (`eu_sk`; platitelia DPH vidia pln
 2. **Prepojte svoj účet** - `client_id` + `client_secret` od poštára a tlačidlo **Otestovať pripojenie** (jednorazový OAuth pokus, úspech sa uloží ako `efaktura_connection_tested_at`).
 3. **Možnosti** - auto-send (pri prvom zapnutí modulu predvolene zaškrtnutý), inbound. Peppol participant ID je v "Rozšírené" - bežný merchant ho nerieši, derivuje sa z DIČ/IČO.
 
+Serverový test pripojenia firmy je vyhradený vlastníkovi (support/admin zachovávajú existujúci privilegovaný prístup). Uložený `client_secret` sa doplní len pri nezmenenej URL poskytovateľa a `client_id`; pri ich zmene treba secret zadať znova. Local-first test bez firemnej routy používa iba credentials dodané klientom, nikdy nedopĺňa uložené credentials zdieľanej firmy.
+
 U odberateľov SK stačí doplniť IČO/DIČ na kontakte (voliteľne explicitné **Peppol ID odberateľa**). Readiness checklist na zozname faktúr ukazuje počet kontaktov, ktorým údaje chýbajú.
 
 Každý merchant si vyberá iného digitálneho poštára - **base URL musí byť per firma**, nie globálne.
