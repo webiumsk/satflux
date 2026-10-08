@@ -27,7 +27,9 @@ class LoginController extends Controller
 
         $user = Auth::user();
 
-        if (! $user->canUsePasswordLogin()) {
+        $currentUser = $user->fresh();
+
+        if (! $currentUser->canUsePasswordLogin()) {
             Auth::logout();
 
             throw ValidationException::withMessages([
@@ -35,7 +37,13 @@ class LoginController extends Controller
             ]);
         }
 
-        if (! $user->hasVerifiedEmail() && ! (bool) ($user->is_guest ?? false)) {
+        // The password may have been retired while Auth::attempt was validating it.
+        if (! hash_equals($user->getAuthPassword(), $currentUser->getAuthPassword())) {
+            Auth::logout();
+            throw ValidationException::withMessages(['email' => __('auth.failed')]);
+        }
+
+        if (! $currentUser->hasVerifiedEmail() && ! (bool) ($currentUser->is_guest ?? false)) {
             Auth::logout();
 
             throw ValidationException::withMessages([

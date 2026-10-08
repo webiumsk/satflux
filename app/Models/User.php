@@ -436,6 +436,13 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return ! $this->hasRecoveryPhraseEnrolled();
     }
 
+    public function getRememberToken(): ?string
+    {
+        // Password-derived remember cookies must not bypass recovery-only login,
+        // including cookies issued before enrollment retired stored credentials.
+        return $this->canUsePasswordLogin() ? parent::getRememberToken() : null;
+    }
+
     /**
      * Get BTCPay API key or throw exception.
      *

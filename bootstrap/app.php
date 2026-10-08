@@ -9,6 +9,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\AuthenticateSession;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -30,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // CSP on the SPA shell and web views (opt-in via CSP_ENABLED)
         $middleware->web(append: [
             SetSecurityHeaders::class,
+            AuthenticateSession::class,
         ]);
         $middleware->statefulApi();
         // Browser-native CSP report-uri POSTs carry the session cookie but no

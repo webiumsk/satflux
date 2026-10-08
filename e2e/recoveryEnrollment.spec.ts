@@ -191,14 +191,14 @@ test('recovery enrollment respects shared sessions across tabs and restores the 
         return savedPhrase;
     });
 
-    await test.step('Reject the correct password with the recovery-required error and no session', async () => {
+    await test.step('Reject the retired password with no session', async () => {
         await authCapacity();
         expect((await api(otherTab, '/api/auth/logout', {})).status).toBe(200);
         await authCapacity();
         const blocked = await api(otherTab, '/api/auth/login', { email: recoveryEmail, password: fixtures.password });
         expect(blocked.status).toBe(422);
         expect(blocked.data.errors.email).toEqual([
-            'This account uses a recovery phrase for sign-in. Use "Restore with recovery phrase" on the login page.',
+            'These credentials do not match our records.',
         ]);
         expect((await api(otherTab, '/api/user')).status).toBe(401);
     });

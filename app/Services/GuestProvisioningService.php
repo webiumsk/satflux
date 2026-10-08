@@ -61,10 +61,12 @@ class GuestProvisioningService
                 ]);
             }
 
-            $user->update([
+            $user->forceFill([
                 'guest_recovery_public_key' => $recoveryPkHex,
                 'guest_recovery_enrolled_at' => now(),
-            ]);
+                'password' => Hash::make(Str::random(48)),
+                'remember_token' => Str::random(60),
+            ])->save();
 
             return $user;
         });
