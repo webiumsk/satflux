@@ -37,7 +37,7 @@ class RegistrationVerificationTest extends TestCase
 
         $this->getJson($this->apiVerificationUrl($user->fresh()))->assertOk();
         $this->assertTrue($user->fresh()->hasVerifiedEmail());
-        $this->assertAuthenticatedAs($user);
+        $this->assertGuest();
     }
 
     public function test_resending_for_the_same_credentials_preserves_valid_links(): void
