@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\Company;
 use App\Models\Store;
+use App\Models\StoreIntegration;
 use App\Services\Invoicing\CompanyBrandingService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class CompanyPermanentDeleteService
@@ -44,10 +46,6 @@ class CompanyPermanentDeleteService
 
     public function forceDelete(Company $company): void
     {
-        Store::query()
-            ->where('company_id', $company->id)
-            ->update(['company_id' => null]);
-
         if ($company->logo_path) {
             $this->brandingService->deleteLogo($company->fresh());
         }
@@ -55,6 +53,13 @@ class CompanyPermanentDeleteService
             $this->brandingService->deleteSignatureStamp($company->fresh());
         }
 
-        $company->forceDelete();
+        DB::transaction(function () use ($company): void {
+            $storeIds = Store::query()->where('company_id', $company->id)->lockForUpdate()->pluck('id')->all();
+            StoreIntegration::query()->where(function ($query) use ($company, $storeIds): void {
+                $query->where('company_id', $company->id)->orWhereIn('store_id', $storeIds);
+            })->update(['is_active' => false]);
+            Store::query()->whereIn('id', $storeIds)->update(['company_id' => null]);
+            $company->forceDelete();
+        });
     }
 }

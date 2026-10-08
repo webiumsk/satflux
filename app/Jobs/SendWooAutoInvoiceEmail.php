@@ -36,9 +36,15 @@ class SendWooAutoInvoiceEmail implements ShouldQueue
     /** @var array<int, int> */
     public array $backoff = [30, 300];
 
+    public ?string $companyIdAtDispatch = null;
+
     public function __construct(
         public string $inboxEntryId,
-    ) {}
+    ) {
+        $entry = IntegrationDocumentInbox::find($inboxEntryId);
+        $integration = $entry ? StoreIntegration::find($entry->store_integration_id) : null;
+        $this->companyIdAtDispatch = $integration?->company_id;
+    }
 
     public function handle(
         IntegrationAutoIssueService $autoIssueService,
@@ -90,7 +96,11 @@ class SendWooAutoInvoiceEmail implements ShouldQueue
         $integration = StoreIntegration::query()
             ->with(['store', 'company'])
             ->find($entry->store_integration_id);
-        if (! $integration) {
+        if (! $integration || ! $integration->is_active || ! $integration->hasCurrentCompanyLink()) {
+            return;
+        }
+
+        if ($this->companyIdAtDispatch === null || $integration->company_id !== $this->companyIdAtDispatch) {
             return;
         }
 

@@ -11,6 +11,7 @@ use App\Http\Requests\Invoicing\UpdateCompanyStoresRequest;
 use App\Models\AuditLog;
 use App\Models\Company;
 use App\Models\Store;
+use App\Models\StoreIntegration;
 use App\Services\Invoicing\BankInboundAddressService;
 use App\Services\Invoicing\CompanyBrandingService;
 use App\Services\Invoicing\CompanyDataResetService;
@@ -18,8 +19,10 @@ use App\Services\Invoicing\DocumentSequenceService;
 use App\Support\Invoicing\CompanyAppSettings;
 use App\Support\Invoicing\CompanyEfakturaEligibility;
 use App\Support\Invoicing\CompanyEfakturaSettings;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class CompanyController extends Controller
@@ -74,10 +77,10 @@ class CompanyController extends Controller
         ]);
 
         if ($storeId) {
-            Store::query()
-                ->where('user_id', $request->user()->id)
-                ->where('id', $storeId)
-                ->update(['company_id' => $company->id]);
+            $this->updateStoreCompany(
+                Store::query()->where('user_id', $request->user()->id)->where('id', $storeId),
+                $company->id,
+            );
         }
 
         $sequenceService->seedDefaultsForCompany($company, app()->getLocale());
@@ -185,10 +188,9 @@ class CompanyController extends Controller
 
     public function destroy(Company $company): JsonResponse
     {
-        Store::query()
-            ->where('company_id', $company->id)
-            ->update(['company_id' => null]);
+        $this->updateStoreCompany(Store::query()->where('company_id', $company->id), null);
 
+        StoreIntegration::query()->where('company_id', $company->id)->update(['is_active' => false]);
         $company->delete();
 
         return response()->json(['message' => 'Company deleted']);
@@ -203,19 +205,28 @@ class CompanyController extends Controller
             ->pluck('id')
             ->all();
 
-        Store::query()
-            ->where('user_id', $company->user_id)
-            ->where('company_id', $company->id)
-            ->whereNotIn('id', $owned)
-            ->update(['company_id' => null]);
-
-        Store::query()
-            ->whereIn('id', $owned)
-            ->update(['company_id' => $company->id]);
+        $this->updateStoreCompany(
+            Store::query()->where('user_id', $company->user_id)
+                ->where('company_id', $company->id)->whereNotIn('id', $owned),
+            null,
+        );
+        $this->updateStoreCompany(Store::query()->whereIn('id', $owned), $company->id);
 
         return response()->json([
             'data' => $company->fresh()->load('stores:id,name,company_id,default_currency'),
         ]);
+    }
+
+    /** @param Builder<Store> $query */
+    private function updateStoreCompany(Builder $query, ?string $companyId): void
+    {
+        DB::transaction(function () use ($query, $companyId): void {
+            $stores = $query->lockForUpdate()->get();
+            $changedIds = $stores->filter(fn (Store $store) => $store->company_id !== $companyId)->modelKeys();
+
+            StoreIntegration::query()->whereIn('store_id', $changedIds)->update(['is_active' => false]);
+            Store::query()->whereIn('id', $changedIds)->update(['company_id' => $companyId]);
+        });
     }
 
     /**
