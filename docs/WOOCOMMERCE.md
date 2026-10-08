@@ -38,6 +38,8 @@ Auth: `Authorization: Bearer {integration_token}`
 
 Rate limit: 60 requests/minute per IP.
 
+Document reads and issuance require both the integration's store and its linked company to match the server document. Another store's document is rejected with 404 even when both stores share a company; documents without a store are also rejected. Local-first inbox entries and PDF downloads are scoped to the integration ID.
+
 ## Webhooks to WooCommerce
 
 When a business document linked to a WooCommerce order is marked paid, Satflux POSTs to:
