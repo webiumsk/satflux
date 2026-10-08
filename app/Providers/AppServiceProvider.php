@@ -28,11 +28,15 @@ use App\Services\Invoicing\UsSalesTax\UsSalesTaxCalculationService;
 use App\Support\ErrorRateCounter;
 use App\Support\ProductionConfigValidator;
 use App\Support\Spreadsheet\NoFormulaValueBinder;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Auth\SessionGuard;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -72,6 +76,19 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->enforceProductionConfig();
+
+        // A session-only login must not leave a previous account's persistent
+        // cookie able to restore that account when the new session expires.
+        Event::listen(Login::class, function (Login $event): void {
+            if ($event->remember) {
+                return;
+            }
+
+            $guard = Auth::guard($event->guard);
+            if ($guard instanceof SessionGuard) {
+                Cookie::queue(Cookie::forget($guard->getRecallerName()));
+            }
+        });
 
         // XLSX formula-injection guard: exported strings are never formulas.
         Cell::setValueBinder(new NoFormulaValueBinder);
