@@ -29,12 +29,10 @@ class ProcessBtcPayWebhook implements ShouldQueue
     /** Maximum number of seconds the job may run. */
     public int $timeout = 120;
 
-    /**
-     * Deliberately no retries: handle() claims the event by setting processed_at
-     * up front, so a retry would be a silent no-op anyway. BTCPay redelivers
-     * failed webhooks on its side; sub-service failures are logged per branch.
-     */
-    public int $tries = 1;
+    public int $tries = 3;
+
+    /** @var array<int, int> */
+    public array $backoff = [10, 60];
 
     public function __construct(
         public WebhookEvent $webhookEvent
@@ -56,6 +54,28 @@ class ProcessBtcPayWebhook implements ShouldQueue
      */
     public function handle(): void
     {
+        $payload = $this->webhookEvent->payload;
+        $subscriptionStoreId = config('services.btcpay.subscription_store_id');
+        $isSubscriptionPayment = $subscriptionStoreId
+            && ($payload['storeId'] ?? null) === $subscriptionStoreId
+            && in_array($this->webhookEvent->event_type, ['InvoiceReceivedPayment', 'InvoiceSettled', 'invoice.paid'], true);
+
+        if ($isSubscriptionPayment) {
+            // Keep the claim separate from completion. A failure or worker crash
+            // rolls back the transaction; duplicate workers serialize on this row.
+            DB::transaction(function () {
+                $event = WebhookEvent::whereKey($this->webhookEvent->id)->lockForUpdate()->first();
+                if (! $event || $event->isProcessed()) {
+                    return;
+                }
+
+                $this->webhookEvent = $event;
+                $this->processEvent();
+            });
+
+            return;
+        }
+
         // Atomic claim: only the first worker to flip processed_at from NULL proceeds.
         $claimed = DB::table('webhook_events')
             ->where('id', $this->webhookEvent->id)
@@ -66,6 +86,11 @@ class ProcessBtcPayWebhook implements ShouldQueue
             return;
         }
 
+        $this->processEvent();
+    }
+
+    protected function processEvent(): void
+    {
         $payload = $this->webhookEvent->payload;
         $eventType = $this->webhookEvent->event_type;
         $storeId = $payload['storeId'] ?? null;
@@ -74,60 +99,64 @@ class ProcessBtcPayWebhook implements ShouldQueue
             ? Store::where('btcpay_store_id', $storeId)->first()
             : null;
         if ($store) {
-            // Invoice lifecycle changed - drop the cached store dashboard so
-            // the UI reflects the new status now, not when the 1h TTL runs
-            // out (the payload embeds recent invoices with their statuses).
-            if (str_starts_with((string) $eventType, 'Invoice')) {
-                try {
-                    $owner = $store->user;
-                    if ($owner instanceof User) {
-                        // md5 on purpose: must derive the exact key that
-                        // StoreDashboardController::show writes under.
-                        $apiKeyHash = md5($owner->getBtcPayApiKeyOrFail());
-                        Cache::forget("btcpay:dashboard:{$store->id}:{$apiKeyHash}");
+            // External mail and queued work must not escape a payment transaction
+            // that can still roll back. Without a transaction this runs immediately.
+            DB::afterCommit(function () use ($store, $eventType, $payload) {
+                // Invoice lifecycle changed - drop the cached store dashboard so
+                // the UI reflects the new status now, not when the 1h TTL runs
+                // out (the payload embeds recent invoices with their statuses).
+                if (str_starts_with((string) $eventType, 'Invoice')) {
+                    try {
+                        $owner = $store->user;
+                        if ($owner instanceof User) {
+                            // md5 on purpose: must derive the exact key that
+                            // StoreDashboardController::show writes under.
+                            $apiKeyHash = md5($owner->getBtcPayApiKeyOrFail());
+                            Cache::forget("btcpay:dashboard:{$store->id}:{$apiKeyHash}");
+                        }
+                    } catch (\Throwable) {
+                        // Owner without a merchant key has no cached dashboard.
                     }
-                } catch (\Throwable) {
-                    // Owner without a merchant key has no cached dashboard.
                 }
-            }
 
-            // Invoice activity is when a hijacked wallet costs money: re-check the
-            // BTCPay config against the Satflux baseline (throttled inside the job).
-            if (str_starts_with((string) $eventType, 'Invoice')) {
+                // Invoice activity is when a hijacked wallet costs money: re-check the
+                // BTCPay config against the Satflux baseline (throttled inside the job).
+                if (str_starts_with((string) $eventType, 'Invoice')) {
+                    try {
+                        VerifyWalletConfig::dispatch($store->id);
+                    } catch (\Throwable $e) {
+                        Log::error('Wallet config check dispatch failed', [
+                            'webhook_event_id' => $this->webhookEvent->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+
                 try {
-                    VerifyWalletConfig::dispatch($store->id);
+                    app(StoreEmailRuleDispatcher::class)->dispatchForWebhook($this->webhookEvent, $store);
                 } catch (\Throwable $e) {
-                    Log::error('Wallet config check dispatch failed', [
+                    Log::error('Store email rules: webhook dispatch failed', [
                         'webhook_event_id' => $this->webhookEvent->id,
                         'error' => $e->getMessage(),
                     ]);
                 }
-            }
 
-            try {
-                app(StoreEmailRuleDispatcher::class)->dispatchForWebhook($this->webhookEvent, $store);
-            } catch (\Throwable $e) {
-                Log::error('Store email rules: webhook dispatch failed', [
-                    'webhook_event_id' => $this->webhookEvent->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+                try {
+                    app(BusinessDocumentPaymentWebhookService::class)
+                        ->handleInvoicePayment($eventType, $payload, $store);
+                } catch (\Throwable $e) {
+                    Log::error('Business document payment webhook failed', [
+                        'webhook_event_id' => $this->webhookEvent->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
 
-            try {
-                app(BusinessDocumentPaymentWebhookService::class)
-                    ->handleInvoicePayment($eventType, $payload, $store);
-            } catch (\Throwable $e) {
-                Log::error('Business document payment webhook failed', [
-                    'webhook_event_id' => $this->webhookEvent->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-
-            $settlementEvents = ['InvoiceReceivedPayment', 'InvoicePaymentSettled', 'InvoiceSettled'];
-            $invoiceId = $payload['invoiceId'] ?? null;
-            if (is_string($invoiceId) && $invoiceId !== '' && in_array($eventType, $settlementEvents, true)) {
-                SyncInvoiceSettlements::dispatch($store->id, $invoiceId);
-            }
+                $settlementEvents = ['InvoiceReceivedPayment', 'InvoicePaymentSettled', 'InvoiceSettled'];
+                $invoiceId = $payload['invoiceId'] ?? null;
+                if (is_string($invoiceId) && $invoiceId !== '' && in_array($eventType, $settlementEvents, true)) {
+                    SyncInvoiceSettlements::dispatch($store->id, $invoiceId);
+                }
+            });
         }
 
         // Check if this is a subscription store
@@ -195,6 +224,7 @@ class ProcessBtcPayWebhook implements ShouldQueue
             $settledInvoice = $btcpaySubscriptionService->fetchSettledInvoice(
                 (string) config('services.btcpay.subscription_store_id'),
                 (string) $invoiceId,
+                throwOnFailure: true,
             );
             if ($settledInvoice === null) {
                 return;
@@ -332,37 +362,28 @@ class ProcessBtcPayWebhook implements ShouldQueue
                 $btcpaySubscriptionService->invoiceCreatedAt($settledInvoice),
             );
 
-            // Update user role and subscription tracking (legacy field)
-            $oldRole = $user->role;
-            $user->role = $planRole;
+            DB::afterCommit(function () use ($user, $planRole, $invoiceId, $invoiceData) {
+                try {
+                    app(SubscriptionBillingInvoiceService::class)->fulfillPaidInvoice(
+                        $user,
+                        $planRole,
+                        $invoiceId,
+                        $invoiceData,
+                    );
+                } catch (\Throwable $e) {
+                    Log::error('Subscription billing invoice failed', [
+                        'user_id' => $user->id,
+                        'invoice_id' => $invoiceId,
+                        'error' => $e->getMessage(),
+                    ]);
+                    report($e);
+                }
+            });
 
-            if ($subscriptionId) {
-                $user->btcpay_subscription_id = $subscriptionId;
-            }
-
-            $user->save();
-
-            try {
-                app(SubscriptionBillingInvoiceService::class)->fulfillPaidInvoice(
-                    $user,
-                    $planRole,
-                    $invoiceId,
-                    $invoiceData,
-                );
-            } catch (\Throwable $e) {
-                Log::error('Subscription billing invoice failed', [
-                    'user_id' => $user->id,
-                    'invoice_id' => $invoiceId,
-                    'error' => $e->getMessage(),
-                ]);
-                report($e);
-            }
-
-            Log::info('User role updated after subscription payment', [
+            Log::info('Subscription invoice processed', [
                 'user_id' => $user->id,
                 'user_email' => $user->email,
-                'old_role' => $oldRole,
-                'new_role' => $planRole,
+                'current_role' => $user->role,
                 'invoice_id' => $invoiceId,
                 'plan_id' => $planId,
                 'subscription_id' => $subscription->id,
@@ -374,6 +395,8 @@ class ProcessBtcPayWebhook implements ShouldQueue
                 'trace' => $e->getTraceAsString(),
                 'payload' => $payload,
             ]);
+
+            throw $e;
         }
     }
 

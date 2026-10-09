@@ -275,6 +275,7 @@ class SubscriptionController extends Controller
                 ]);
             }
 
+            $oldRole = $user->role;
             if ($paidInvoice) {
                 $subscription = $this->subscriptionService->activateSubscriptionForInvoice(
                     $user,
@@ -290,14 +291,16 @@ class SubscriptionController extends Controller
                     $this->btcpaySubscriptionService->resolveTrialEndsAt($checkoutDetails),
                     $subscriptionId
                 );
+
+                $user->role = $planName;
+                if ($subscriptionId) {
+                    $user->btcpay_subscription_id = $subscriptionId;
+                }
+                $user->save();
             }
 
-            $oldRole = $user->role;
-            $user->role = $planName;
-            if ($subscriptionId) {
-                $user->btcpay_subscription_id = $subscriptionId;
-            }
-            $user->save();
+            $activated = ! $subscription->isExpired()
+                && ($subscription->isActive() || $subscription->isInGracePeriod());
 
             if ($paidInvoice) {
                 try {
@@ -318,11 +321,12 @@ class SubscriptionController extends Controller
                 }
             }
 
-            Log::info('Subscription activated after checkout success', [
+            Log::info('Subscription checkout processed', [
+                'activated' => $activated,
                 'user_id' => $user->id,
                 'user_email' => $user->email,
                 'old_role' => $oldRole,
-                'new_role' => $planName,
+                'new_role' => $user->role,
                 'checkout_id' => $checkoutPlanId,
                 'plan_id' => $planId,
                 'subscription_id' => $subscription->id,
@@ -332,8 +336,8 @@ class SubscriptionController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Subscription activated successfully',
-                'activated' => true,
+                'message' => $activated ? 'Subscription activated successfully' : 'This payment was already applied to a subscription that is no longer active.',
+                'activated' => $activated,
                 'plan' => $planName,
                 'subscription' => [
                     'id' => $subscription->id,

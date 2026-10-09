@@ -103,6 +103,11 @@ class ProcessBtcPayWebhookTest extends TestCase
     {
         config(['services.btcpay.subscription_store_id' => 'sub-store-123']);
         config(['services.btcpay.subscription_plans.pro' => 'plan-pro-123']);
+        Http::fake([
+            'https://btcpay.example.test/api/v1/stores/sub-store-123/invoices/inv-1' => Http::response([
+                'id' => 'inv-1', 'status' => 'Settled', 'metadata' => [],
+            ]),
+        ]);
         $event = WebhookEvent::create([
             'event_type' => 'InvoiceSettled',
             'payload' => [

@@ -143,6 +143,76 @@ class SubscriptionPaymentIdempotencyTest extends TestCase
     }
 
     #[Test]
+    public function checkout_and_webhook_replays_cannot_restore_revoked_enterprise_access(): void
+    {
+        SubscriptionPlan::create([
+            'code' => 'enterprise', 'name' => 'enterprise', 'display_name' => 'Enterprise',
+            'price_eur' => 299, 'billing_period' => 'year',
+            'features' => ['business_invoicing'], 'is_active' => true,
+        ]);
+        SubscriptionPlan::create([
+            'code' => 'free', 'name' => 'free', 'display_name' => 'Free',
+            'price_eur' => 0, 'billing_period' => 'year',
+            'features' => [], 'is_active' => true,
+        ]);
+        $user = User::factory()->create(['role' => 'free']);
+        $admin = User::factory()->create(['role' => 'admin']);
+        app(SubscriptionCheckoutRegistry::class)->bind('checkout_enterprise', $user->id, 'enterprise');
+        $metadata = ['customerEmail' => $user->email, 'planId' => 'plan_ent_test'];
+        $this->fakeBtcPay([
+            'inv_enterprise' => ['status' => 'Settled', 'metadata' => $metadata],
+        ], [
+            'id' => 'checkout_enterprise', 'invoiceId' => 'inv_enterprise',
+            'plan' => ['id' => 'plan_ent_test'],
+            'subscriber' => ['customer' => ['id' => 'btcpay-enterprise-sub']],
+        ]);
+        $url = '/api/subscriptions/success?checkoutPlanId=checkout_enterprise';
+        $this->actingAs($user)->getJson($url)->assertOk()->assertJsonPath('activated', true);
+        $this->assertSame('enterprise', $user->fresh()->role);
+        $subscription = Subscription::where('user_id', $user->id)->firstOrFail();
+        $expiresAt = $subscription->expires_at->timestamp;
+        $staleUser = $user->fresh();
+
+        $this->actingAs($admin)->putJson('/api/admin/users/'.$user->id, ['role' => 'free'])->assertOk();
+        $this->assertSame('expired', $subscription->fresh()->status);
+        $this->actingAs($user->fresh())->getJson('/api/invoicing/companies')->assertForbidden();
+        app(SubscriptionEntitlementService::class)->activateSubscriptionForInvoice($staleUser, 'enterprise', 'inv_enterprise');
+        $this->assertSame('free', $staleUser->role);
+
+        $this->actingAs($user->fresh())->getJson($url)
+            ->assertOk()->assertJsonPath('activated', false)->assertJsonPath('user.role', 'free');
+        $this->runWebhook('InvoiceSettled', 'inv_enterprise', $metadata);
+        // An explicit operator retry of the same invoice also preserves revocation.
+        $this->artisan('subscriptions:fulfill-invoice', ['invoiceId' => 'inv_enterprise'])->assertSuccessful();
+
+        $this->assertSame('free', $user->fresh()->role);
+        $this->assertFalse($user->fresh()->hasActiveProEntitlement());
+        $this->assertSame('expired', $subscription->fresh()->status);
+        $this->assertSame($expiresAt, $subscription->fresh()->expires_at->timestamp);
+        $this->assertSame(1, DB::table('subscription_invoice_applications')->where('user_id', $user->id)->count());
+        $this->actingAs($user->fresh())->getJson('/api/invoicing/companies')->assertForbidden();
+    }
+
+    #[Test]
+    public function an_applied_invoice_cannot_recreate_a_deleted_subscription(): void
+    {
+        $user = User::factory()->create(['role' => 'free']);
+        $service = app(SubscriptionEntitlementService::class);
+        $subscription = $service->activateSubscriptionForInvoice($user, 'pro', 'inv_deleted');
+        $subscription->delete();
+        $user->forceFill(['role' => 'free'])->save();
+
+        try {
+            $service->activateSubscriptionForInvoice($user, 'pro', 'inv_deleted');
+            $this->fail('A historical invoice must not create a new entitlement.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Previously applied subscription invoice has no subscription.', $e->getMessage());
+            $this->assertSame('free', $user->fresh()->role);
+            $this->assertSame(0, Subscription::where('user_id', $user->id)->count());
+        }
+    }
+
+    #[Test]
     public function webhooks_after_the_success_redirect_do_not_extend_again(): void
     {
         $user = User::factory()->create(['role' => 'free']);

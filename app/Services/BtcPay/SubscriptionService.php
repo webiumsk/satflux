@@ -880,7 +880,7 @@ class SubscriptionService
      *
      * @return array<string, mixed>|null
      */
-    public function fetchSettledInvoice(string $storeId, string $invoiceId): ?array
+    public function fetchSettledInvoice(string $storeId, string $invoiceId, bool $throwOnFailure = false): ?array
     {
         $invoiceService = app(InvoiceService::class);
         $invoiceService->forgetInvoiceCache($storeId, $invoiceId);
@@ -892,6 +892,10 @@ class SubscriptionService
                 'invoice_id' => $invoiceId,
                 'error' => $e->getMessage(),
             ]);
+
+            if ($throwOnFailure) {
+                throw $e;
+            }
 
             return null;
         }
