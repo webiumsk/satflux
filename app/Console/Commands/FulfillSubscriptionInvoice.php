@@ -90,6 +90,7 @@ class FulfillSubscriptionInvoice extends Command
             ?? $invoice['subscriptionId']
             ?? ($invoice['subscription']['id'] ?? null);
 
+        $oldRole = $user->role;
         $createdTime = $invoice['createdTime'] ?? null;
         try {
             $subscription = $subscriptionService->activateSubscriptionForInvoice(
@@ -105,12 +106,11 @@ class FulfillSubscriptionInvoice extends Command
             return Command::FAILURE;
         }
 
-        $oldRole = $user->role;
-        $user->role = $planRole;
-        if ($subscriptionId) {
-            $user->btcpay_subscription_id = $subscriptionId;
+        if ($subscription->isExpired()) {
+            $this->warn('Invoice already applied to an expired subscription; access was not changed.');
+
+            return Command::SUCCESS;
         }
-        $user->save();
 
         $billingDoc = null;
         try {
@@ -130,7 +130,7 @@ class FulfillSubscriptionInvoice extends Command
             report($e);
         }
 
-        $this->info("Activated {$user->email}: {$oldRole} -> {$planRole}");
+        $this->info("Processed {$user->email}: {$oldRole} -> {$user->role}");
         $this->line("Subscription row: {$subscription->id}, expires {$subscription->expires_at}");
         if ($billingDoc) {
             $this->line("Billing document: {$billingDoc->id} ({$billingDoc->document_number})");

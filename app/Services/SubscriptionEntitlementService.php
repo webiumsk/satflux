@@ -157,7 +157,8 @@ class SubscriptionEntitlementService
     /**
      * Payment-driven activation: grant paid time for a settled BTCPay invoice
      * exactly once, whichever path (success redirect, webhook, manual command)
-     * sees it first. Repeats return the current subscription unchanged.
+     * sees it first. Repeats return the recorded subscription and never change
+     * the user's role, including after an administrator revoked the entitlement.
      *
      * A subscription created after the invoice itself (e.g. by a PlanStarted
      * webhook that raced ahead) is claimed by the invoice instead of extended,
@@ -216,7 +217,13 @@ class SubscriptionEntitlementService
                     ? Subscription::find($application->subscription_id)
                     : null;
 
-                return $recorded ?? $this->activateSubscription($user, $planName, $btcpaySubscriptionId, extendExisting: false);
+                if (! $recorded) {
+                    throw new \RuntimeException('Previously applied subscription invoice has no subscription.');
+                }
+
+                $user->refresh();
+
+                return $recorded;
             }
 
             $claimsExisting = $this->hasSubscriptionCreatedForInvoice($user, $planName, $invoiceCreatedAt);
@@ -228,6 +235,14 @@ class SubscriptionEntitlementService
             DB::table('subscription_invoice_applications')
                 ->where('btcpay_invoice_id', $btcpayInvoiceId)
                 ->update(['subscription_id' => $subscription->id]);
+
+            // Role promotion belongs to the first application of this payment,
+            // under the same user lock. Callers must not repeat it on old invoices.
+            $user->role = $planName;
+            if ($btcpaySubscriptionId) {
+                $user->btcpay_subscription_id = $btcpaySubscriptionId;
+            }
+            $user->save();
 
             return $subscription;
         });

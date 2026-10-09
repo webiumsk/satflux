@@ -101,8 +101,14 @@ class ProcessBtcPayWebhookTest extends TestCase
 
     public function test_handle_does_not_update_user_when_customer_email_not_found(): void
     {
+        config(['services.btcpay.base_url' => 'https://btcpay.example.test']);
         config(['services.btcpay.subscription_store_id' => 'sub-store-123']);
         config(['services.btcpay.subscription_plans.pro' => 'plan-pro-123']);
+        Http::fake([
+            'https://btcpay.example.test/api/v1/stores/sub-store-123/invoices/inv-1' => Http::response([
+                'id' => 'inv-1', 'status' => 'Settled', 'metadata' => [],
+            ]),
+        ]);
         $event = WebhookEvent::create([
             'event_type' => 'InvoiceSettled',
             'payload' => [
