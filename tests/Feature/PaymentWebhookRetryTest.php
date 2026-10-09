@@ -9,6 +9,7 @@ use App\Models\CompanySlotPurchase;
 use App\Models\ExpenseIsdocCreditBalance;
 use App\Models\ExpenseIsdocPackPurchase;
 use App\Models\Store;
+use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Models\WebhookEvent;
 use App\Services\BtcPay\BtcPayClient;
@@ -16,10 +17,12 @@ use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\SubscriptionService;
 use App\Services\Invoicing\BusinessDocumentPaymentWebhookService;
 use App\Services\Invoicing\CompanySlotService;
+use App\Services\Invoicing\SubscriptionBillingInvoiceService;
 use App\Services\StoreEmailRuleDispatcher;
 use Fiber;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository;
+use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -271,6 +274,57 @@ class PaymentWebhookRetryTest extends TestCase
         $this->assertSame('paid', $purchase->fresh()->status);
         $this->assertPurchasedQuantity('expense_isdoc_pack', $user);
         $this->assertNotNull($event->fresh()->processed_at);
+    }
+
+    #[Test]
+    public function settlement_dispatch_failure_does_not_skip_subscription_billing_after_commit(): void
+    {
+        config(['services.btcpay.subscription_plans.pro' => 'pro-plan']);
+        SubscriptionPlan::create([
+            'code' => 'pro', 'name' => 'pro', 'display_name' => 'Pro',
+            'price_eur' => 99, 'billing_period' => 'year',
+            'features' => ['business_invoicing'], 'is_active' => true,
+        ]);
+        $user = User::factory()->create(['role' => 'free']);
+        Store::factory()->create(['user_id' => $user->id, 'btcpay_store_id' => 'billing-store']);
+        $this->deliver([
+            'storeId' => 'billing-store', 'invoiceId' => 'subscription-invoice',
+            'type' => 'InvoiceSettled', 'deliveryId' => 'payment-delivery',
+        ])->assertOk();
+        Http::fake(['*' => Http::response([
+            'id' => 'subscription-invoice', 'status' => 'Settled',
+            'metadata' => ['customerEmail' => $user->email, 'planId' => 'pro-plan'],
+        ])]);
+        $this->mock(StoreEmailRuleDispatcher::class, function (MockInterface $mock) {
+            $mock->shouldReceive('dispatchForWebhook')->once();
+        });
+        $this->mock(BusinessDocumentPaymentWebhookService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('handleInvoicePayment')->once()->andReturnFalse();
+        });
+        $settlementAttempted = false;
+        $this->mock(Dispatcher::class, function (MockInterface $mock) use (&$settlementAttempted) {
+            $mock->shouldReceive('dispatch')->with(\Mockery::type(VerifyWalletConfig::class))->once()->andReturn(0);
+            $mock->shouldReceive('dispatch')->with(\Mockery::type(SyncInvoiceSettlements::class))->once()
+                ->andReturnUsing(function () use (&$settlementAttempted) {
+                    $settlementAttempted = true;
+                    throw new \RuntimeException('Synthetic settlement queue failure');
+                });
+        });
+        $event = WebhookEvent::where('delivery_id', 'payment-delivery')->firstOrFail();
+        $this->mock(SubscriptionBillingInvoiceService::class, function (MockInterface $mock) use ($event, &$settlementAttempted) {
+            $mock->shouldReceive('fulfillPaidInvoice')->once()->andReturnUsing(function () use ($event, &$settlementAttempted) {
+                $this->assertTrue($settlementAttempted);
+                $this->assertNotNull($event->fresh()->processed_at);
+
+                return null;
+            });
+        });
+
+        (new ProcessBtcPayWebhook($event))->handle();
+        $this->assertNotNull($event->fresh()->processed_at);
+        $this->assertSame('pro', $user->fresh()->role);
+        // A retry of the completed event must not repeat either side effect.
+        (new ProcessBtcPayWebhook($event->fresh()))->handle();
     }
 
     #[Test]

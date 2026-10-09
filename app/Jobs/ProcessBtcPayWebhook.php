@@ -170,7 +170,14 @@ class ProcessBtcPayWebhook implements ShouldQueue
                 $settlementEvents = ['InvoiceReceivedPayment', 'InvoicePaymentSettled', 'InvoiceSettled'];
                 $invoiceId = $payload['invoiceId'] ?? null;
                 if (is_string($invoiceId) && $invoiceId !== '' && in_array($eventType, $settlementEvents, true)) {
-                    SyncInvoiceSettlements::dispatch($store->id, $invoiceId);
+                    try {
+                        SyncInvoiceSettlements::dispatch($store->id, $invoiceId);
+                    } catch (\Throwable $e) {
+                        Log::error('Invoice settlement sync dispatch failed', [
+                            'webhook_event_id' => $this->webhookEvent->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
                 }
             });
         }
