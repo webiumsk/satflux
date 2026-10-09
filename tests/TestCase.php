@@ -17,6 +17,7 @@ abstract class TestCase extends BaseTestCase
         // Fail loudly when a test triggers an HTTP call no Http::fake() matches,
         // instead of silently hitting the real network.
         Http::preventStrayRequests();
+        config(['services.btcpay.webhook_base_url' => 'https://panel.test']);
     }
 
     public function createApplication()
