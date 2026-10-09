@@ -1,0 +1,34 @@
+# BTCPay 2.4.5 local implementation handoff
+
+Updated 2026-10-10. User instruction: keep all work local. Do not push to any remote repository, create external PRs, publish releases, install production plugins, or upgrade production without new explicit authorization. No PRs were created. The interrupted push did not create either proposed Kukks remote branch; both branch names were checked with read-only `git ls-remote`.
+
+## Local repositories and commits
+
+| Repository / checkout | Branch | Local compatibility commits |
+|---|---|---|
+| Satflux: `/home/peterhorvath/apps/bitcoin/satflux` | `fix/btcpay-245-wallets` | `03677d98` wallet setup/recovery; `ff025e63` webhook validation/reconciliation; `338fff46` website/POS/archived checkout; `bfaecfa1` audit and staging documentation |
+| Webium plugins: `/tmp/satflux-webium-245` (worktree of the local plugin repository) | `fix/btcpay-245-compat` | `3d648d1` exact-host dependencies/builds; `eed885d` address origins; `1feb820` Cashu HTTP protection; `4cf0cb9` package/staging documentation |
+| Kukks fork: `/tmp/satflux-kukks-245` (worktree of the local fork repository) | `fix/btcpay-245-wallets` | `10010a8` exact host; `25e4d4e` Blink; `a586d2c` NWC; `c4f2a8e` architecture/staging documentation |
+
+Satflux starts from `origin/master` `16b0abff`, Webium from `origin/main` `85e1456`, and Kukks from upstream `master` `1b71357`. References were refreshed on 2026-10-10. The Kukks fork's `origin/master` is 57 upstream commits behind the implementation baseline. Local branch `chore/kukks-upstream-2026-10` points to `1b71357` for separate review of that prerequisite; it has not been pushed. Broad readiness of unrelated upstream plugins has not been verified.
+
+Satflux's only remaining pre-existing working-tree edit is `public/og-image.webp`; it was excluded from every commit. The disposable plugin host submodules report a missing `.claude` instruction symlink, with no host code changes. Their committed gitlinks point to exact v2.4.5 `5d0745cae6be5d8210459e38813f317673aa97b8`.
+
+## Completed validation
+
+These results were recovered from the completed implementation runs; tests were not rerun solely for committing/documenting unchanged source.
+
+- Full Satflux PHP suite: 1,551 tests / 6,554 assertions, no failures; one existing PHPUnit deprecation. Log: `/tmp/satflux-245-php-complete.log`.
+- Focused wallet recovery/historical invoice suite: 115 tests / 444 assertions. Log: `/tmp/satflux-245-recovery-regressions.log`. Additional historical view regressions: 13 tests / 57 assertions, `/tmp/satflux-245-view-regressions.log`.
+- Frontend: 661 existing tests plus 2 new POS tests. Logs: `/tmp/satflux-245-js-tests-2.log`, `/tmp/satflux-245-pos-tests.log`.
+- PHPStan, Pint, baseline-aware TypeScript, ESLint (48 existing warnings), and Vite build passed. Logs use `/tmp/satflux-245-*`.
+- Webium plugin suites: 474 passing tests; Blink/NWC: 143 passing tests; total 617. Nine changed plugins build and package against the exact host. Packages: `/tmp/satflux-245-packages`.
+- Real isolated host: merchant/store authorization, address permission gates, NWC ownership/pending-invoice/private-relay denial, manual SEPA creation and settlement, archived authenticated reads, startup migrations/restart, and verified signed webhook delivery to isolated Satflux. It had no Bitcoin/NBXplorer backend or funded external wallets.
+
+## Remaining work and readiness
+
+Production upgrade readiness: **NO**. Funded address/NWC onboarding, payment, switch/reconnect, NWC notifications/load, Cashu mint/melt, subscriptions, paid Tickets/Raffle fulfillment, a legacy production-data migration rehearsal, and SamRock mobile pairing still need dedicated staging infrastructure and credentials. Do not run these against production to close the gap.
+
+The implementation architecture, wallet matrix, package versions, dry-run reconciliation commands, staging deployment sequence, and rollback considerations are in [BTCPAY_2_4_5_IMPLEMENTATION.md](BTCPAY_2_4_5_IMPLEMENTATION.md). Resolve every uncertain provisioning hold before rolling Satflux back; older code does not enforce the journal safeguard. Preserve additive journal data, wallet configuration, pending invoices, webhook IDs/secrets, and Tickets migration history.
+
+Prepared but unsubmitted review descriptions are `/tmp/satflux-245-pr-satflux.md`, `/tmp/satflux-245-pr-webium.md`, `/tmp/satflux-245-pr-kukks-sync.md`, and `/tmp/satflux-245-pr-kukks-wallets.md`. They are local text artifacts, not external PRs.
