@@ -23,6 +23,8 @@ Satflux shows a **backup reminder** until you confirm you have saved the phrase 
 
 On a new device, choose **Restore with recovery phrase** and type your 24 words. Your account and invoicing data sync back. Give the sync a moment to finish - the invoicing/company list may be briefly empty, so wait until it fills before creating a new company (otherwise you could create a duplicate). Add a [passkey](/documentation/passkeys) on the new device for convenience.
 
+Signing out clears the recovery phrase from your open Satflux tabs in that browser. Keep your backup before signing out. If your session expires or you sign out, choose an explicit sign-in action or **Restore with recovery phrase** to return; a retained phrase no longer signs you back in automatically. Reloading a tab with a valid session continues to work normally.
+
 ## Local-first data
 
 Invoicing data lives in your browser, encrypted, and syncs through a relay. Clearing your browser data on a device removes the local copy there - but as long as you have your recovery phrase, you can restore it.

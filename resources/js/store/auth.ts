@@ -1,6 +1,6 @@
 import { asApiError } from "../utils/apiError";
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, onScopeDispose } from 'vue';
 import api from '../services/api';
 import { ensureCsrfCookie } from '../services/csrf';
 import { useStoresStore } from './stores';
@@ -82,7 +82,15 @@ export interface User {
 export const useAuthStore = defineStore('auth', () => {
     const user = ref<User | null>(null);
     const loading = ref(false);
-    let autoRestoreInFlight = false;
+    let logoutGeneration = 0;
+    let disposed = false;
+    const logoutSignalKey = 'satflux.auth.logout.v1';
+    let lastLogoutSignal: string | null = null;
+    try {
+        lastLogoutSignal = sessionStorage.getItem(logoutSignalKey);
+    } catch {
+        // Browser storage may be unavailable.
+    }
 
     const isAuthenticated = computed(() => user.value !== null);
 
@@ -96,6 +104,81 @@ export const useAuthStore = defineStore('auth', () => {
         const storesStore = useStoresStore();
         storesStore.stores = [];
         storesStore.currentStore = null;
+    }
+
+    function readLogoutSignal(): string | null {
+        try {
+            return localStorage.getItem(logoutSignalKey);
+        } catch {
+            return lastLogoutSignal;
+        }
+    }
+
+    function applyLogoutSignal(signal: string | null): void {
+        lastLogoutSignal = signal;
+        logoutGeneration++;
+        try {
+            if (signal === null) sessionStorage.removeItem(logoutSignalKey);
+            else sessionStorage.setItem(logoutSignalKey, signal);
+        } catch {
+            // The in-memory generation still discards late profile responses.
+        }
+        clearLocalAuthAndTenantState();
+        try {
+            clearStoredGuestMnemonic();
+        } catch {
+            // Storage restrictions must not prevent the server logout request.
+        }
+        scheduleChoralaSync();
+    }
+
+    function synchronizeLogout(): boolean {
+        const signal = readLogoutSignal();
+        if (signal === lastLogoutSignal) return false;
+        applyLogoutSignal(signal);
+        return true;
+    }
+
+    function publishLogout(): void {
+        try {
+            // Only a random logout marker crosses tabs, never recovery material.
+            localStorage.setItem(logoutSignalKey, crypto.randomUUID());
+        } catch {
+            // Local cleanup and explicit-only recovery still work without storage.
+        }
+        applyLogoutSignal(readLogoutSignal());
+    }
+
+    function handleRemoteLogout(): void {
+        if (!synchronizeLogout()) return;
+        const generation = logoutGeneration;
+        void import('../router').then(({ default: router }) => {
+            if (!disposed && generation === logoutGeneration && !user.value) {
+                void router.replace({ name: 'login' });
+            }
+        });
+    }
+
+    const onStorage = (event: StorageEvent) => {
+        if (event.key === logoutSignalKey || event.key === null) handleRemoteLogout();
+    };
+    const onVisibility = () => {
+        if (document.visibilityState === 'visible') handleRemoteLogout();
+    };
+    synchronizeLogout();
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', handleRemoteLogout);
+    document.addEventListener('visibilitychange', onVisibility);
+    onScopeDispose(() => {
+        disposed = true;
+        window.removeEventListener('storage', onStorage);
+        window.removeEventListener('focus', handleRemoteLogout);
+        document.removeEventListener('visibilitychange', onVisibility);
+    });
+
+    function assertCurrentAuthOperation(generation: number): void {
+        synchronizeLogout();
+        if (generation !== logoutGeneration) throw new Error('Authentication cancelled by logout.');
     }
 
     function normalizeUserPayload(data: User): User {
@@ -127,10 +210,16 @@ export const useAuthStore = defineStore('auth', () => {
 
     /** Resolves true when the canonical /user payload was loaded; false when the reload failed (user left as is). */
     async function fetchUser(): Promise<boolean> {
+        synchronizeLogout();
+        const generation = logoutGeneration;
         try {
             await ensureCsrfCookie();
+            synchronizeLogout();
+            if (generation !== logoutGeneration) return false;
             hydrateAccountMnemonicSession();
             const response = await api.get('/user');
+            synchronizeLogout();
+            if (generation !== logoutGeneration) return false;
             const previousUserId = user.value?.id ?? null;
             user.value = normalizeUserPayload(response.data);
             if ((user.value?.id ?? null) !== previousUserId) {
@@ -143,6 +232,8 @@ export const useAuthStore = defineStore('auth', () => {
             }
             return true;
         } catch (rawError) {
+            synchronizeLogout();
+            if (generation !== logoutGeneration) return false;
             const error = asApiError(rawError);
             const status = error?.response?.status ?? error?.status;
             if (status === 403 && isEmailNotVerifiedResponse(error)) {
@@ -152,55 +243,31 @@ export const useAuthStore = defineStore('auth', () => {
                 return false;
             }
             if (status === 401 || status === 403) {
-                user.value = null;
+                clearLocalAuthAndTenantState();
                 scheduleChoralaSync();
-                await tryAutoRestoreGuestFromStoredSeed();
+                // A retained phrase must never turn logout/expiry into a login.
+                // Recovery authentication requires an explicit user action.
                 return false;
             }
             return false;
         }
     }
 
-    async function tryAutoRestoreGuestFromStoredSeed() {
-        if (autoRestoreInFlight) return;
-        const mnemonic = getStoredGuestMnemonic();
-        if (!mnemonic) return;
-
-        autoRestoreInFlight = true;
-        try {
-            await ensureCsrfCookie();
-            const chRes = await api.post('/auth/guest/recovery/challenge');
-            const { challenge_id, nonce } = chRes.data.data;
-            const message = guestRecoveryMessage(challenge_id, nonce);
-            const pk = guestRecoveryPublicKeyHexFromMnemonic(mnemonic);
-            const signature = signGuestRecoveryMessage(mnemonic, message);
-            await api.post('/auth/guest/recovery', {
-                challenge_id,
-                recovery_public_key: pk,
-                signature,
-            });
-            await fetchUser();
-            await syncAccountSeedAfterAuth(mnemonic);
-            const storesStore = useStoresStore();
-            await storesStore.fetchStores();
-        } catch {
-            // Keep user unauthenticated when auto-restore fails; manual restore remains available.
-        } finally {
-            autoRestoreInFlight = false;
-        }
-    }
-
     async function login(email: string, password: string, remember = false) {
+        synchronizeLogout();
+        const generation = logoutGeneration;
         loading.value = true;
         try {
             // Ensure CSRF cookie is set before login
             await ensureCsrfCookie();
+            assertCurrentAuthOperation(generation);
 
             const response = await api.post('/auth/login', {
                 email,
                 password,
                 remember,
             });
+            assertCurrentAuthOperation(generation);
             // Auth responses carry a raw user without the computed /user
             // payload fields (guest_recovery_enrolled, can_use_password_login,
             // plan_features, subscription) - load the canonical payload so the
@@ -208,6 +275,7 @@ export const useAuthStore = defineStore('auth', () => {
             // schedules the Chorala identity sync on the id transition.
             void response;
             await fetchUser();
+            assertCurrentAuthOperation(generation);
             if (getStoredGuestMnemonic() && isInvoicingLocalFirst()) {
                 void ensureEvoluBoundToAccountSeed();
             }
@@ -221,11 +289,16 @@ export const useAuthStore = defineStore('auth', () => {
         recoveryPublicKeyHex: string;
         mnemonic: string;
     }) {
+        synchronizeLogout();
+        const generation = logoutGeneration;
         loading.value = true;
         try {
             await enrollGuestRecoveryPublicKey(payload.recoveryPublicKeyHex);
+            assertCurrentAuthOperation(generation);
             await syncAccountSeedAfterAuth(payload.mnemonic);
+            assertCurrentAuthOperation(generation);
             await fetchUser();
+            assertCurrentAuthOperation(generation);
         } finally {
             loading.value = false;
         }
@@ -258,15 +331,20 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     async function continueAsGuest(recoveryPublicKeyHex?: string) {
+        synchronizeLogout();
+        const generation = logoutGeneration;
         loading.value = true;
         try {
             await ensureCsrfCookie();
+            assertCurrentAuthOperation(generation);
             const response = await api.post('/auth/guest', {
                 ...(recoveryPublicKeyHex
                     ? { recovery_public_key: recoveryPublicKeyHex }
                     : {}),
             });
+            assertCurrentAuthOperation(generation);
             await fetchUser();
+            assertCurrentAuthOperation(generation);
             return response.data;
         } finally {
             loading.value = false;
@@ -279,6 +357,8 @@ export const useAuthStore = defineStore('auth', () => {
      * a key to an existing session's account.
      */
     async function enrollGuestRecoveryPublicKey(recoveryPublicKeyHex: string) {
+        synchronizeLogout();
+        const generation = logoutGeneration;
         // Capture before awaiting CSRF setup: another tab can switch the shared
         // session while this tab still displays the original account.
         const expectedUserId = user.value?.id;
@@ -288,13 +368,16 @@ export const useAuthStore = defineStore('auth', () => {
         loading.value = true;
         try {
             await ensureCsrfCookie();
+            assertCurrentAuthOperation(generation);
             const response = await api.post('/account/recovery-key', {
                 expected_user_id: expectedUserId,
                 recovery_public_key: recoveryPublicKeyHex,
             });
+            assertCurrentAuthOperation(generation);
             if (response.data?.user) {
                 // Same user id - fetchUser will not re-trigger the Chorala sync.
                 await fetchUser();
+                assertCurrentAuthOperation(generation);
                 scheduleChoralaSync();
             }
             return response.data;
@@ -304,10 +387,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     async function restoreGuestFromMnemonic(mnemonic: string) {
+        synchronizeLogout();
+        const generation = logoutGeneration;
         loading.value = true;
         try {
             await ensureCsrfCookie();
+            assertCurrentAuthOperation(generation);
             const chRes = await api.post('/auth/guest/recovery/challenge');
+            assertCurrentAuthOperation(generation);
             const { challenge_id, nonce } = chRes.data.data;
             const message = guestRecoveryMessage(challenge_id, nonce);
             const pk = guestRecoveryPublicKeyHexFromMnemonic(mnemonic);
@@ -317,10 +404,14 @@ export const useAuthStore = defineStore('auth', () => {
                 recovery_public_key: pk,
                 signature,
             });
+            assertCurrentAuthOperation(generation);
             await fetchUser();
+            assertCurrentAuthOperation(generation);
             await syncAccountSeedAfterAuth(mnemonic);
+            assertCurrentAuthOperation(generation);
             const storesStore = useStoresStore();
             await storesStore.fetchStores();
+            assertCurrentAuthOperation(generation);
             return response.data;
         } finally {
             loading.value = false;
@@ -328,12 +419,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     async function logout() {
+        publishLogout();
         try {
             await api.post('/auth/logout');
         } finally {
-            clearLocalAuthAndTenantState();
-            clearStoredGuestMnemonic();
-            scheduleChoralaSync();
+            // Also invalidate profile reads started while the server logout was pending.
+            publishLogout();
         }
     }
 
