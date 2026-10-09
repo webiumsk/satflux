@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
@@ -35,39 +36,64 @@ class Btcpay245WalletCompatibilityTest extends TestCase
         config(['services.btcpay.base_url' => 'https://btcpay.test', 'services.btcpay.api_key' => 'server-key']);
     }
 
-    private function connectedStore(): Store
+    private function connectedStore(string $secret = self::OLD): Store
     {
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
         $store = Store::factory()->create(['user_id' => $user->id, 'btcpay_store_id' => 'wallet-store', 'wallet_type' => 'blink']);
         WalletConnection::create([
             'store_id' => $store->id, 'type' => 'blink', 'status' => 'connected',
-            'encrypted_secret' => Crypt::encryptString(self::OLD), 'submitted_by_user_id' => $user->id,
+            'encrypted_secret' => Crypt::encryptString($secret), 'submitted_by_user_id' => $user->id,
         ]);
 
         return $store;
     }
 
-    public function test_pending_archived_invoice_blocks_replacement_before_any_write(): void
+    public static function walletReplacements(): array
     {
-        $store = $this->connectedStore();
+        return [
+            'API key rotation' => [self::OLD, self::NEW, self::NEW, 'blink'],
+            'same address with a different adapter' => [
+                'type=blink;ln-address=alice@blink.sv;', 'alice@blink.sv',
+                'type=lnaddress;ln-address=alice@blink.sv;server=https://blink.sv;', 'lnaddress',
+            ],
+        ];
+    }
+
+    public static function blockedReplacements(): array
+    {
+        $cases = [];
+        foreach (self::walletReplacements() as $name => [$old, $new]) {
+            foreach (['Expired', 'Processing'] as $status) {
+                $cases[$name.' '.$status] = [$old, $new, $status];
+            }
+        }
+
+        return $cases;
+    }
+
+    #[DataProvider('blockedReplacements')]
+    public function test_pending_archived_invoice_blocks_replacement_before_any_write(string $old, string $new, string $status): void
+    {
+        $store = $this->connectedStore($old);
         Http::fake(['*/invoices*' => Http::response([[
-            'status' => 'Expired', 'archived' => true, 'monitoringExpiration' => now()->addHour()->timestamp,
+            'status' => $status, 'archived' => true, 'monitoringExpiration' => now()->addHour()->timestamp,
         ]])]);
         try {
-            app(WalletConnectionService::class)->createOrUpdate($store, 'blink', self::NEW, $store->user, 'pending');
+            app(WalletConnectionService::class)->createOrUpdate($store, 'blink', $new, $store->user, 'pending');
             $this->fail('A monitored invoice must prevent changing its receiving wallet.');
         } catch (ValidationException $e) {
             $this->assertStringContainsString('still being monitored', $e->getMessage());
         }
-        $this->assertSame(self::OLD, Crypt::decryptString($store->walletConnection->encrypted_secret));
+        $this->assertSame($old, Crypt::decryptString($store->walletConnection->encrypted_secret));
         $this->assertSame(0, WalletConfigurationAttempt::count());
         Http::assertNotSent(fn ($r) => in_array($r->method(), ['PUT', 'POST', 'DELETE'], true));
         Http::assertSent(fn ($r) => str_contains($r->url(), 'includeArchived=1') && $r->hasHeader('Authorization', 'Bearer merchant-key'));
     }
 
-    public function test_unknown_remote_result_blocks_invoices_and_recovers_from_persisted_journal(): void
+    #[DataProvider('walletReplacements')]
+    public function test_unknown_remote_result_blocks_invoices_and_recovers_from_persisted_journal(string $old, string $new, string $expected, string $expectedType): void
     {
-        $store = $this->connectedStore();
+        $store = $this->connectedStore($old);
         $actual = null;
         Http::fake(function ($r) use (&$actual) {
             if (str_contains($r->url(), '/invoices')) {
@@ -82,23 +108,25 @@ class Btcpay245WalletCompatibilityTest extends TestCase
             return Http::response([], 503);
         });
         try {
-            app(WalletConnectionService::class)->createOrUpdate($store, 'blink', self::NEW, $store->user, 'pending');
+            app(WalletConnectionService::class)->createOrUpdate($store, 'blink', $new, $store->user, 'pending');
             $this->fail('An unknown result must require reconciliation.');
         } catch (ValidationException) {
             $this->assertDatabaseHas('wallet_configuration_attempts', ['store_id' => $store->id, 'status' => 'uncertain']);
         }
-        $this->assertSame(self::OLD, Crypt::decryptString($store->walletConnection->encrypted_secret));
+        $this->assertSame($old, Crypt::decryptString($store->walletConnection->encrypted_secret));
         try {
             app(InvoiceService::class)->createInvoice('wallet-store', ['amount' => '1', 'currency' => 'BTC'], 'merchant-key');
             $this->fail('New invoices must be blocked until the wallet is known.');
         } catch (\RuntimeException $e) {
             $this->assertStringContainsString('paused', $e->getMessage());
         }
-        $actual = self::NEW;
+        $actual = $expected;
         // A fresh service instance uses only persisted state, as after a restart.
         $this->assertTrue(app(WalletConnectionService::class)->reconcileWalletUpdate($store->fresh(), $store->user));
-        $this->assertDatabaseHas('wallet_configuration_attempts', ['store_id' => $store->id, 'status' => 'confirmed']);
-        $this->assertSame(self::NEW, Crypt::decryptString($store->fresh()->walletConnection->encrypted_secret));
+        $this->assertDatabaseHas('wallet_configuration_attempts', ['store_id' => $store->id, 'status' => 'confirmed', 'connection_type' => $expectedType]);
+        $this->assertSame($expectedType, $store->fresh()->wallet_type);
+        $this->assertSame($expectedType, $store->fresh()->walletConnection->type);
+        $this->assertSame($expected, Crypt::decryptString($store->fresh()->walletConnection->encrypted_secret));
         Http::assertNotSent(fn ($r) => $r->method() === 'POST' && str_contains($r->url(), '/invoices'));
     }
 

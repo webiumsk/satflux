@@ -7,6 +7,20 @@ use Tests\TestCase;
 
 class WalletConnectionValidatorTest extends TestCase
 {
+    public function test_blink_migration_preserves_custodial_and_usd_connections(): void
+    {
+        $validator = new WalletConnectionValidator;
+        foreach (['api-key=secret;', 'apikey=secret;', 'wallet-id=wallet;', 'currency=USD;'] as $extra) {
+            $secret = 'type=blink;ln-address=alice@blink.sv;'.$extra;
+            $this->assertNull($validator->blinkAddressForLnAddressConnect($secret));
+            $this->assertSame($secret, $validator->formatBtcpayBlinkConnectionString($secret));
+        }
+        $custodial = 'type=blink;server=https://api.blink.sv/graphql;api-key=secret;wallet-id=wallet;currency=USD;';
+        $this->assertNull($validator->blinkAddressForLnAddressConnect($custodial));
+        $this->assertSame($custodial, $validator->formatBtcpayBlinkConnectionString($custodial));
+        $this->assertSame('alice@blink.sv', $validator->blinkAddressForLnAddressConnect('type=blink;username=alice;currency=BTC;'));
+    }
+
     protected WalletConnectionValidator $validator;
 
     protected function setUp(): void

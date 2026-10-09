@@ -113,12 +113,12 @@ class WalletConnectionTest extends TestCase
         ]);
 
         $response->assertStatus(201)
-            ->assertJsonPath('data.type', 'blink')
+            ->assertJsonPath('data.type', 'lnaddress')
             ->assertJsonPath('data.status', 'pending');
         $store->refresh();
-        $this->assertSame('blink', $store->wallet_type);
+        $this->assertSame('lnaddress', $store->wallet_type);
         $connection = WalletConnection::where('store_id', $store->id)->first();
-        $this->assertSame('type=blink;ln-address=satoshi@blink.sv;', Crypt::decryptString($connection->encrypted_secret));
+        $this->assertSame('type=lnaddress;ln-address=satoshi@blink.sv;server=https://blink.sv;', Crypt::decryptString($connection->encrypted_secret));
     }
 
     #[Test]
@@ -156,11 +156,11 @@ class WalletConnectionTest extends TestCase
         Http::assertSent(function (Request $request) {
             return $request->method() === 'POST'
                 && str_contains($request->url(), '/stores/blink-ln-store/lightning/BTC/connect')
-                && ($request->data()['ConnectionString'] ?? null) === 'type=blink;ln-address=satoshi@blink.sv;server=https://blink.sv;';
+                && ($request->data()['ConnectionString'] ?? null) === 'type=lnaddress;ln-address=satoshi@blink.sv;server=https://blink.sv;';
         });
         $this->assertDatabaseHas('wallet_connections', [
             'store_id' => $store->id,
-            'type' => 'blink',
+            'type' => 'lnaddress',
             'status' => 'connected',
         ]);
     }

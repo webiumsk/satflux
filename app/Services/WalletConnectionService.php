@@ -66,6 +66,16 @@ class WalletConnectionService
                 throw ValidationException::withMessages(['secret' => 'A previous wallet update needs reconciliation. No further changes are allowed until its result is confirmed.']);
             }
             $existing = WalletConnection::where('store_id', $store->id)->first();
+            // Explicitly submitting a Blink address moves it to our LNURL backend.
+            // Legacy reads still use their stored type; a changed adapter is a wallet
+            // replacement and must pass invoice monitoring and the durable journal.
+            if ($type === 'blink') {
+                $address = $this->validator->blinkAddressForLnAddressConnect($secret);
+                if ($address !== null) {
+                    $type = 'lnaddress';
+                    $secret = $this->validator->formatBtcpayLnAddressConnectionString($address);
+                }
+            }
             $replacement = ($existing && ($existing->type !== $type || Crypt::decryptString($existing->encrypted_secret) !== $secret))
                 || $store->wallet_type === 'cashu';
             // The journal is committed before contacting BTCPay. Existing-wallet

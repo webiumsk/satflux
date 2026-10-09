@@ -45,8 +45,8 @@ class WalletConnectionDetectorTest extends TestCase
     {
         $result = $this->detector->detect('type=blink;ln-address=satoshi@blink.sv;');
 
-        $this->assertSame('blink', $result['kind']);
-        $this->assertSame('blink', $result['connection_type']);
+        $this->assertSame('lnaddress', $result['kind']);
+        $this->assertSame('lnaddress', $result['connection_type']);
     }
 
     #[Test]
@@ -54,8 +54,8 @@ class WalletConnectionDetectorTest extends TestCase
     {
         $result = $this->detector->detect('satoshi@blink.sv');
 
-        $this->assertSame('blink', $result['kind']);
-        $this->assertSame('type=blink;ln-address=satoshi@blink.sv;server=https://blink.sv;', $result['normalized_secret']);
+        $this->assertSame('lnaddress', $result['kind']);
+        $this->assertSame('type=lnaddress;ln-address=satoshi@blink.sv;server=https://blink.sv;', $result['normalized_secret']);
         $this->assertNull($result['cashu_lightning_address']);
     }
 

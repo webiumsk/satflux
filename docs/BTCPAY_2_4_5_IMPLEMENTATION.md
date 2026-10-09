@@ -12,11 +12,29 @@ NWC cannot safely acquire arbitrary HTTP parameters. Nostr/NIP05 supplies a type
 
 | Wallet | 2.4.5 configuration | Required package | Verification boundary |
 |---|---|---|---|
-| Coinos / LnAddress | `type=lnaddress;ln-address=merchant@coinos.io;server=https://coinos.io;` | LnAddress Connect 1.0.2 | Parser/mocks pass; real host accepts origin through the permission gate, invalid test address then fails wallet validation; funded wallet pending |
-| Blitz | Its address domain as real HTTPS origin | Blitz 1.0.1 or LnAddress Connect 1.0.2 alias | Same boundary; legacy address parser retained |
-| Flash | Its address domain as real HTTPS origin | Flash 1.0.1 or LnAddress Connect 1.0.2 alias | Same boundary; legacy address parser retained |
-| Blink address | `type=blink;ln-address=name@blink.sv;server=https://blink.sv;` | Blink 1.1.3 | Existing address/custodial tests pass; real privilege gate exercised; funded wallet pending |
+| Coinos / LnAddress | `type=lnaddress;ln-address=merchant@coinos.io;server=https://coinos.io;` | LnAddress Connect 1.0.3 | Parser/mocks pass; real host accepts origin through the permission gate, invalid test address then fails wallet validation; funded wallet pending |
+| Blitz | Its address domain as real HTTPS origin | Blitz 1.0.1 or LnAddress Connect 1.0.3 alias | Same boundary; legacy address parser retained |
+| Flash | Its address domain as real HTTPS origin | Flash 1.0.1 or LnAddress Connect 1.0.3 alias | Same boundary; legacy address parser retained |
+| Blink address | `type=lnaddress;ln-address=name@blink.sv;server=https://blink.sv;` | LnAddress Connect 1.0.3 | Legacy address aliases, coexistence and migration guards tested; funded wallet pending |
+| Legacy Blink custodial / USD | Existing `type=blink` API-key or USD configuration | Blink 1.1.3 until explicitly migrated | Kept intact; LNAddress Connect has no sending, balance or USD support |
 | NWC | Original URI through `PUT /api/v1/stores/{storeId}/nwc/connection` | Nostr/NIP05 1.1.22 | Real authorization, foreign-store denial, pending-invoice refusal and private-relay denial pass; public wallet RPC/payment/reconnect pending |
+
+New Blink address submissions, including legacy address strings and bare usernames,
+use LNAddress Connect with Blink branding. Reading existing wallets does not rewrite
+their adapter. Explicit resubmission counts as an adapter replacement even when the
+address is unchanged, and uses the pending-invoice guard and durable journal below.
+While Kukks Blink is loaded, it retains legacy `type=blink` dispatch; the new
+`type=lnaddress` is handled by our receiver. Without Kukks, our plugin accepts legacy
+BTC address forms but refuses API-key, wallet-id and non-BTC currency configurations.
+
+Retirement sequence: audit every BTCPay store (including stores outside Satflux),
+stop invoice creation and wallet edits during each switch, drain all monitored
+unsettled invoices, submit the address connection, confirm remote and local config,
+and prove funded settlement and restart recovery on staging. Kukks Blink has no
+tracked-invoice persistence blob our receiver can import. Removing it with pending
+invoices is not a migration. Keep it until all custodial/USD stores are explicitly
+migrated too. The generic receiver needs amounts and LUD-21 verify; it provides
+receiving only. No deployed plugin is removed by this PR.
 
 Wallet updates preserve the previous receiving configuration instead of deleting it first. Satflux serializes its wallet edits with invoice creation, checks all monitored unsettled invoices (including archived invoices and Processing), and blocks changing their receiving wallet. Core's listener consults current store configuration, so postponing a switch is safer than attempting to keep multiple receiving nodes alive without host support. External/admin configuration writers must also be quiesced during a switch.
 
@@ -45,7 +63,7 @@ Store websites accept only absolute HTTP/HTTPS URLs. POS examples omit unsupport
 
 ## Packages and network policy
 
-Webium packages: Raffle **1.3.2.3**, CashuMelt **1.3.1.1**, SEPA **0.8.1**, Tickets **2.0.1**, LnAddress Connect **1.0.2**, Blitz **1.0.1**, Flash **1.0.1**. Kukks packages: Blink **1.1.3**, Nostr/NIP05 **1.1.22**. Host minimum is 2.4.5. Build scripts/CI pin the exact host and use its packer. NuGet changes align Npgsql 10.0.3, QRCoder 1.8.0, EF/Identity 10.0.12, Roslyn 5.9.0, and required test runtime dependencies. No plugin migration IDs, runners, history identities, fulfillment ownership, or Tickets legacy routes changed.
+Webium packages: Raffle **1.3.2.3**, CashuMelt **1.3.1.1**, SEPA **0.8.1**, Tickets **2.0.1**, LnAddress Connect **1.0.3**, Blitz **1.0.1**, Flash **1.0.1**. Kukks packages: Blink **1.1.3**, Nostr/NIP05 **1.1.22**. Host minimum is 2.4.5. Build scripts/CI pin the exact host, reject tracked source edits and use its packer. All address origin checks reject credentials and fragments before requests, addressing CodeRabbit review on Webium PR #32. NuGet changes align Npgsql 10.0.3, QRCoder 1.8.0, EF/Identity 10.0.12, Roslyn 5.9.0, and required test runtime dependencies. No plugin migration IDs, runners, history identities, fulfillment ownership, or Tickets legacy routes changed.
 
 Cashu mint/resolver/D21 and Blink clients use HTTPS by default, no redirects, 30-second HTTP timeouts, and host DNS-pinned SSRF protection. NWC uses guarded WebSockets with cancellation and a 10-second handshake deadline. Its per-operation transport replaces the upstream pool, whose socket construction could not accept the guarded HTTP invoker; staging must assess connection load and listener recovery. Existing protocol encryption logic is preserved.
 

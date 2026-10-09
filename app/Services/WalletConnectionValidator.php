@@ -13,6 +13,7 @@ class WalletConnectionValidator
      * Mirrors resources/js/utils/lnAddressWalletBrands.ts.
      */
     public const LN_ADDRESS_WALLET_BRANDS = [
+        'blink.sv' => 'blink',
         'blitzwalletapp.com' => 'blitz',
         'flashapp.me' => 'flash',
         'coinos.io' => 'coinos',
@@ -129,6 +130,25 @@ class WalletConnectionValidator
         return $result;
     }
 
+    /** Only BTC address configurations can move to our LNURL receiver. */
+    public function blinkAddressForLnAddressConnect(string $secret): ?string
+    {
+        $parsed = $this->parseBlinkConnectionString($secret);
+        if (! empty($parsed['errors']) || $parsed['variant'] !== 'ln_address') {
+            return null;
+        }
+        foreach (explode(';', $secret) as $part) {
+            $parameter = explode('=', trim($part), 2);
+            $key = strtolower(trim($parameter[0]));
+            if (in_array($key, ['api-key', 'apikey', 'wallet-id', 'walletid'], true)
+                || ($key === 'currency' && strtoupper(trim($parameter[1] ?? '')) !== 'BTC')) {
+                return null;
+            }
+        }
+
+        return $parsed['ln_address'];
+    }
+
     /**
      * The plugin defaults a bare username to the blink.sv domain - mirror that.
      */
@@ -168,10 +188,18 @@ class WalletConnectionValidator
     {
         $parsed = $this->parseBlinkConnectionString($secret);
         if (empty($parsed['errors']) && $parsed['variant'] === 'ln_address' && $parsed['ln_address']) {
+            if ($this->blinkAddressForLnAddressConnect($secret) === null) {
+                return trim($secret);
+            }
+
             return 'type=blink;ln-address='.$parsed['ln_address'].';server=https://'.$this->lnAddressDomain($parsed['ln_address']).';';
         }
 
         if (empty($parsed['errors']) && $parsed['variant'] === 'api_key') {
+            if (preg_match('/(?:^|;)\s*currency\s*=/i', $secret)) {
+                return trim($secret);
+            }
+
             return 'type=blink;server='.$parsed['server'].';api-key='.$parsed['api_key'].';wallet-id='.$parsed['wallet_id'];
         }
 
