@@ -15,6 +15,9 @@ class AccountSwitchRememberCookieTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** Cookie scope metadata retained when a browser's wire cookie values are copied. */
+    private array $cookieScopes = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -36,10 +39,16 @@ class AccountSwitchRememberCookieTest extends TestCase
             'CONTENT_TYPE' => 'application/json',
         ], json_encode($body, JSON_THROW_ON_ERROR));
         foreach ($response->headers->getCookies() as $cookie) {
+            $name = $cookie->getName();
+            $scope = [$name, $cookie->getPath(), $cookie->getDomain()];
             if ($cookie->getExpiresTime() !== 0 && $cookie->getExpiresTime() < time()) {
-                unset($cookies[$cookie->getName()]);
+                $existingValue = $cookies[$name] ?? null;
+                if ($existingValue !== null && ($this->cookieScopes[$existingValue] ?? null) === $scope) {
+                    unset($cookies[$name]);
+                }
             } else {
-                $cookies[$cookie->getName()] = $cookie->getValue();
+                $cookies[$name] = $cookie->getValue();
+                $this->cookieScopes[$cookie->getValue()] = $scope;
             }
         }
 
@@ -207,9 +216,12 @@ class AccountSwitchRememberCookieTest extends TestCase
         $rememberCookie = collect($initial->headers->getCookies())->first(fn ($cookie) => $cookie->getName() === $recaller);
         $response = $this->login($b, $cookies, false);
         $deletion = collect($response->headers->getCookies())->first(fn ($cookie) => $cookie->getName() === $recaller);
+        $this->assertNotNull($rememberCookie);
         $this->assertNotNull($deletion);
-        $this->assertSame($rememberCookie->getDomain(), $deletion->getDomain());
-        $this->assertSame($rememberCookie->getPath(), $deletion->getPath());
+        $this->assertSame('localhost', $rememberCookie->getDomain());
+        $this->assertSame('/panel', $rememberCookie->getPath());
+        $this->assertSame('localhost', $deletion->getDomain());
+        $this->assertSame('/panel', $deletion->getPath());
         $this->assertLessThan(time(), $deletion->getExpiresTime());
     }
 }
