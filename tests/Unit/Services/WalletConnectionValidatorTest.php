@@ -87,11 +87,11 @@ class WalletConnectionValidatorTest extends TestCase
     public function test_formats_btcpay_blink_connection_string(): void
     {
         $this->assertSame(
-            'type=blink;ln-address=satoshi@blink.sv;',
+            'type=blink;ln-address=satoshi@blink.sv;server=https://blink.sv;',
             $this->validator->formatBtcpayBlinkConnectionString('satoshi@blink.sv')
         );
         $this->assertSame(
-            'type=blink;ln-address=satoshi@blink.sv;',
+            'type=blink;ln-address=satoshi@blink.sv;server=https://blink.sv;',
             $this->validator->formatBtcpayBlinkConnectionString('type=blink;username=satoshi;')
         );
 
@@ -222,16 +222,16 @@ class WalletConnectionValidatorTest extends TestCase
     public function test_blitz_connection_string_parsing_and_formatting(): void
     {
         $this->assertSame(
-            'type=blitz;ln-address=satoshi@blitzwalletapp.com;',
+            'type=blitz;ln-address=satoshi@blitzwalletapp.com;server=https://blitzwalletapp.com;',
             $this->validator->formatBtcpayBlitzConnectionString('satoshi@blitzwalletapp.com')
         );
         // Bare username defaults to the blitzwalletapp.com domain - mirrors the plugin.
         $this->assertSame(
-            'type=blitz;ln-address=satoshi@blitzwalletapp.com;',
+            'type=blitz;ln-address=satoshi@blitzwalletapp.com;server=https://blitzwalletapp.com;',
             $this->validator->formatBtcpayBlitzConnectionString('type=blitz;ln-address=satoshi')
         );
         $this->assertSame(
-            'type=blitz;ln-address=satoshi@blitzwalletapp.com;',
+            'type=blitz;ln-address=satoshi@blitzwalletapp.com;server=https://blitzwalletapp.com;',
             $this->validator->formatBtcpayBlitzConnectionString('type=blitz;username=satoshi@blitzwalletapp.com;')
         );
     }
@@ -247,11 +247,11 @@ class WalletConnectionValidatorTest extends TestCase
     public function test_flash_connection_string_parsing_and_formatting(): void
     {
         $this->assertSame(
-            'type=flash;ln-address=satoshi@flashapp.me;',
+            'type=flash;ln-address=satoshi@flashapp.me;server=https://flashapp.me;',
             $this->validator->formatBtcpayFlashConnectionString('satoshi@flashapp.me')
         );
         $this->assertSame(
-            'type=flash;ln-address=satoshi@flashapp.me;',
+            'type=flash;ln-address=satoshi@flashapp.me;server=https://flashapp.me;',
             $this->validator->formatBtcpayFlashConnectionString('type=flash;ln-address=satoshi')
         );
     }
@@ -283,11 +283,11 @@ class WalletConnectionValidatorTest extends TestCase
     public function test_lnaddress_formatting_expands_bare_addresses(): void
     {
         $this->assertSame(
-            'type=lnaddress;ln-address=merchant@coinos.io;',
+            'type=lnaddress;ln-address=merchant@coinos.io;server=https://coinos.io;',
             $this->validator->formatBtcpayLnAddressConnectionString('merchant@coinos.io')
         );
         $this->assertSame(
-            'type=lnaddress;ln-address=merchant@coinos.io;',
+            'type=lnaddress;ln-address=merchant@coinos.io;server=https://coinos.io;',
             $this->validator->formatBtcpayLnAddressConnectionString('type=lnaddress;ln-address=merchant@coinos.io;')
         );
     }

@@ -55,7 +55,7 @@ class WalletConnectionDetectorTest extends TestCase
         $result = $this->detector->detect('satoshi@blink.sv');
 
         $this->assertSame('blink', $result['kind']);
-        $this->assertSame('type=blink;ln-address=satoshi@blink.sv;', $result['normalized_secret']);
+        $this->assertSame('type=blink;ln-address=satoshi@blink.sv;server=https://blink.sv;', $result['normalized_secret']);
         $this->assertNull($result['cashu_lightning_address']);
     }
 
@@ -68,7 +68,7 @@ class WalletConnectionDetectorTest extends TestCase
         $this->assertSame('lnaddress', $result['connection_type']);
         $this->assertSame('lnaddress', $result['store_wallet_type']);
         $this->assertSame('blitz', $result['brand']);
-        $this->assertSame('type=lnaddress;ln-address=satoshi@blitzwalletapp.com;', $result['normalized_secret']);
+        $this->assertSame('type=lnaddress;ln-address=satoshi@blitzwalletapp.com;server=https://blitzwalletapp.com;', $result['normalized_secret']);
         $this->assertNull($result['cashu_lightning_address']);
     }
 
@@ -78,7 +78,7 @@ class WalletConnectionDetectorTest extends TestCase
         $result = $this->detector->detect('type=blitz;ln-address=satoshi');
 
         $this->assertSame('blitz', $result['kind']);
-        $this->assertSame('type=blitz;ln-address=satoshi@blitzwalletapp.com;', $result['normalized_secret']);
+        $this->assertSame('type=blitz;ln-address=satoshi@blitzwalletapp.com;server=https://blitzwalletapp.com;', $result['normalized_secret']);
     }
 
     #[Test]
@@ -90,7 +90,7 @@ class WalletConnectionDetectorTest extends TestCase
         $this->assertSame('lnaddress', $result['connection_type']);
         $this->assertSame('lnaddress', $result['store_wallet_type']);
         $this->assertSame('flash', $result['brand']);
-        $this->assertSame('type=lnaddress;ln-address=satoshi@flashapp.me;', $result['normalized_secret']);
+        $this->assertSame('type=lnaddress;ln-address=satoshi@flashapp.me;server=https://flashapp.me;', $result['normalized_secret']);
         $this->assertNull($result['cashu_lightning_address']);
     }
 
@@ -101,7 +101,7 @@ class WalletConnectionDetectorTest extends TestCase
 
         $this->assertSame('lnaddress', $result['kind']);
         $this->assertSame('coinos', $result['brand']);
-        $this->assertSame('type=lnaddress;ln-address=merchant@coinos.io;', $result['normalized_secret']);
+        $this->assertSame('type=lnaddress;ln-address=merchant@coinos.io;server=https://coinos.io;', $result['normalized_secret']);
     }
 
     #[Test]
@@ -111,7 +111,7 @@ class WalletConnectionDetectorTest extends TestCase
 
         $this->assertSame('lnaddress', $result['kind']);
         $this->assertNull($result['brand']);
-        $this->assertSame('type=lnaddress;ln-address=satoshi@anywallet.example;', $result['normalized_secret']);
+        $this->assertSame('type=lnaddress;ln-address=satoshi@anywallet.example;server=https://anywallet.example;', $result['normalized_secret']);
     }
 
     #[Test]
@@ -120,7 +120,7 @@ class WalletConnectionDetectorTest extends TestCase
         $result = $this->detector->detect('type=flash;ln-address=satoshi');
 
         $this->assertSame('flash', $result['kind']);
-        $this->assertSame('type=flash;ln-address=satoshi@flashapp.me;', $result['normalized_secret']);
+        $this->assertSame('type=flash;ln-address=satoshi@flashapp.me;server=https://flashapp.me;', $result['normalized_secret']);
     }
 
     #[Test]

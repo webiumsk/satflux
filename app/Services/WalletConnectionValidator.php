@@ -51,7 +51,7 @@ class WalletConnectionValidator
                 }
 
                 if (strpos($part, '=') === false) {
-                    $result['errors'][] = "Invalid part format: {$part}";
+                    $result['errors'][] = 'Connection string contains a malformed parameter';
 
                     continue;
                 }
@@ -168,7 +168,11 @@ class WalletConnectionValidator
     {
         $parsed = $this->parseBlinkConnectionString($secret);
         if (empty($parsed['errors']) && $parsed['variant'] === 'ln_address' && $parsed['ln_address']) {
-            return 'type=blink;ln-address='.$parsed['ln_address'].';';
+            return 'type=blink;ln-address='.$parsed['ln_address'].';server=https://'.$this->lnAddressDomain($parsed['ln_address']).';';
+        }
+
+        if (empty($parsed['errors']) && $parsed['variant'] === 'api_key') {
+            return 'type=blink;server='.$parsed['server'].';api-key='.$parsed['api_key'].';wallet-id='.$parsed['wallet_id'];
         }
 
         return trim($secret);
@@ -269,7 +273,7 @@ class WalletConnectionValidator
     {
         $parsed = $this->parseBlitzConnectionString($secret);
         if (empty($parsed['errors']) && $parsed['ln_address']) {
-            return 'type=blitz;ln-address='.$parsed['ln_address'].';';
+            return 'type=blitz;ln-address='.$parsed['ln_address'].';server=https://'.$this->lnAddressDomain($parsed['ln_address']).';';
         }
 
         return trim($secret);
@@ -368,7 +372,7 @@ class WalletConnectionValidator
     {
         $parsed = $this->parseFlashConnectionString($secret);
         if (empty($parsed['errors']) && $parsed['ln_address']) {
-            return 'type=flash;ln-address='.$parsed['ln_address'].';';
+            return 'type=flash;ln-address='.$parsed['ln_address'].';server=https://'.$this->lnAddressDomain($parsed['ln_address']).';';
         }
 
         return trim($secret);
@@ -487,7 +491,7 @@ class WalletConnectionValidator
     {
         $parsed = $this->parseLnAddressConnectionString($secret);
         if (empty($parsed['errors']) && $parsed['ln_address']) {
-            return 'type=lnaddress;ln-address='.$parsed['ln_address'].';';
+            return 'type=lnaddress;ln-address='.$parsed['ln_address'].';server=https://'.$this->lnAddressDomain($parsed['ln_address']).';';
         }
 
         return trim($secret);
@@ -786,7 +790,6 @@ class WalletConnectionValidator
         Log::info('WalletConnectionValidator::validate called', [
             'type' => $type,
             'value_length' => strlen($value),
-            'value_preview' => substr($value, 0, 100).'...',
         ]);
 
         $errors = [];
@@ -804,7 +807,6 @@ class WalletConnectionValidator
                 'type' => $type,
                 'parsed_errors' => $parsed['errors'] ?? [],
                 'parsed_type' => $parsed['type'] ?? 'NULL',
-                'parsed_server' => $parsed['server'] ?? 'NULL',
             ]);
 
             if (! empty($parsed['errors'])) {
