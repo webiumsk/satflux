@@ -37,12 +37,6 @@ parameters:
 			path: app/Console/Commands/FulfillSubscriptionInvoice.php
 
 		-
-			message: '#^Property App\\Models\\User\:\:\$role \(''admin''\|''merchant''\|''support''\) does not accept ''enterprise''\|''pro''\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Console/Commands/FulfillSubscriptionInvoice.php
-
-		-
 			message: '#^Comparison operation "\>" between 0 and 0 is always false\.$#'
 			identifier: greater.alwaysFalse
 			count: 1
@@ -1132,12 +1126,6 @@ parameters:
 		-
 			message: '#^Negated boolean expression is always false\.$#'
 			identifier: booleanNot.alwaysFalse
-			count: 1
-			path: app/Jobs/ProcessBtcPayWebhook.php
-
-		-
-			message: '#^Property App\\Models\\User\:\:\$role \(''admin''\|''merchant''\|''support''\) does not accept ''enterprise''\|''pro''\.$#'
-			identifier: assign.propertyType
 			count: 1
 			path: app/Jobs/ProcessBtcPayWebhook.php
 
