@@ -8,7 +8,7 @@ Updated 2026-10-10. The user authorizes pushing only to their own repositories. 
 |---|---|---|
 | Satflux: `/home/peterhorvath/apps/bitcoin/satflux` | `fix/btcpay-245-wallets` | `03677d98` wallet setup/recovery; `ff025e63` webhook validation/reconciliation; `338fff46` website/POS/archived checkout; `bfaecfa1` audit and staging documentation |
 | Webium plugins: `/tmp/satflux-webium-245` (worktree of the local plugin repository) | `fix/btcpay-245-compat` | `3d648d1` exact-host dependencies/builds; `eed885d` address origins; `1feb820` Cashu HTTP protection; `4cf0cb9` package/staging documentation |
-| Kukks fork: `/tmp/satflux-kukks-245` (worktree of the local fork repository) | `fix/btcpay-245-wallets` | `10010a8` exact host; `25e4d4e` Blink; `a586d2c` NWC; `c4f2a8e` architecture/staging documentation |
+| Kukks fork: `/tmp/satflux-kukks-245` (worktree of the local fork repository) | `fix/btcpay-245-wallets` | `10010a8` exact host; `25e4d4e` Blink; `a586d2c` NWC; `c4f2a8e` architecture/staging documentation; `6871d24` CI for the stacked PR |
 
 Satflux starts from `origin/master` `16b0abff`, Webium from `origin/main` `85e1456`, and Kukks from upstream `master` `1b71357`. References were refreshed on 2026-10-10. The Kukks fork's `origin/master` is 57 upstream commits behind the implementation baseline. Local branch `chore/kukks-upstream-2026-10` points to `1b71357` for separate review of that prerequisite before the compatibility changes. Broad readiness of unrelated upstream plugins has not been verified.
 
@@ -32,3 +32,14 @@ Production upgrade readiness: **NO**. Funded address/NWC onboarding, payment, sw
 The implementation architecture, wallet matrix, package versions, dry-run reconciliation commands, staging deployment sequence, and rollback considerations are in [BTCPAY_2_4_5_IMPLEMENTATION.md](BTCPAY_2_4_5_IMPLEMENTATION.md). Resolve every uncertain provisioning hold before rolling Satflux back; older code does not enforce the journal safeguard. Preserve additive journal data, wallet configuration, pending invoices, webhook IDs/secrets, and Tickets migration history.
 
 Prepared review descriptions are `/tmp/satflux-245-pr-satflux.md`, `/tmp/satflux-245-pr-webium.md`, `/tmp/satflux-245-pr-kukks-sync.md`, and `/tmp/satflux-245-pr-kukks-wallets.md`. These files are the source text for draft PRs in the verified `webiumsk` repositories.
+
+## Published draft PRs
+
+All pushes target only the verified user-owned repositories. No PR was merged and no release or production deployment was performed.
+
+- [Satflux #389](https://github.com/webiumsk/satflux/pull/389), base `master`.
+- [Webium plugins #32](https://github.com/webiumsk/BTCPayServerPluginsWebium/pull/32), base `main`.
+- [Kukks fork upstream prerequisite #1](https://github.com/webiumsk/BTCPayServerPluginsKukks/pull/1), base `master`.
+- [Kukks fork Blink/NWC #2](https://github.com/webiumsk/BTCPayServerPluginsKukks/pull/2), base `chore/kukks-upstream-2026-10`. Review the prerequisite first, then retarget this PR to `master` after its merge. CI now runs for the stacked base branch as well.
+
+Check the PRs for current CI status; publication is not a staging-readiness sign-off.
