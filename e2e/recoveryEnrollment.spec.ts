@@ -240,6 +240,48 @@ test('recovery enrollment respects shared sessions across tabs and restores the 
                 await clearRecoveryStores(restoredTab);
             }
         });
+
+        await test.step('Logout clears a second tab and requires explicit recovery to sign back in', async () => {
+            // Opening a same-origin tab with an opener clones its sessionStorage,
+            // including the session-only recovery phrase, like a real user tab.
+            const popup = restoredTab.waitForEvent('popup');
+            await restoredTab.evaluate(() => { window.open('/dashboard', '_blank'); });
+            const backgroundTab = await popup;
+            observe(backgroundTab);
+            await expect(backgroundTab).toHaveURL(/\/dashboard/);
+            expect((await user(backgroundTab)).id).toBe(current.id);
+            const recoveryRequests: string[] = [];
+            backgroundTab.on('request', request => {
+                const path = new URL(request.url()).pathname;
+                if (path.startsWith('/api/auth/guest/recovery')) recoveryRequests.push(path);
+            });
+
+            await authCapacity();
+            await restoredTab.getByRole('button', { name: 'User menu', exact: true }).click();
+            const logout = restoredTab.waitForResponse(r => new URL(r.url()).pathname === '/api/auth/logout');
+            await restoredTab.getByRole('button', { name: 'Sign out', exact: true }).click();
+            expect((await logout).status()).toBe(200);
+            await expect(restoredTab).toHaveURL(/\/login/);
+            await expect(backgroundTab).toHaveURL(/\/login/);
+            await backgroundTab.reload();
+            await expect(backgroundTab).toHaveURL(/\/login/);
+            expect((await api(backgroundTab, '/api/user')).status).toBe(401);
+            expect(recoveryRequests).toEqual([]);
+
+            await authCapacity(2);
+            await backgroundTab.goto('/register');
+            await backgroundTab.getByRole('button', { name: 'Restore with recovery phrase', exact: true }).click();
+            await backgroundTab.getByRole('dialog').locator('textarea').fill(phrase);
+            const restored = backgroundTab.waitForResponse(r => new URL(r.url()).pathname === '/api/auth/guest/recovery');
+            await backgroundTab.getByRole('dialog').getByRole('button', { name: 'Restore and sign in', exact: true }).click();
+            expect((await restored).status()).toBe(200);
+            await expect(backgroundTab).toHaveURL(/\/dashboard/);
+            expect((await user(backgroundTab)).id).toBe(current.id);
+            await backgroundTab.reload();
+            await expect(backgroundTab).toHaveURL(/\/dashboard/);
+            expect((await user(backgroundTab)).id).toBe(current.id);
+            await backgroundTab.close();
+        });
     } catch (error) {
         // Playwright traces all browser contexts. Attach this page explicitly:
         // the fixture page's failure snapshot otherwise shows the stale tab.
