@@ -61,16 +61,32 @@ class ProcessBtcPayWebhook implements ShouldQueue
             && in_array($this->webhookEvent->event_type, ['InvoiceReceivedPayment', 'InvoiceSettled', 'invoice.paid'], true);
 
         if ($isSubscriptionPayment) {
+            $event = $this->webhookEvent->fresh();
+            if (! $event || $event->isProcessed()) {
+                return;
+            }
+
+            $invoiceData = $event->payload['invoiceData'] ?? $event->payload['invoice'] ?? $event->payload;
+            $invoiceId = $invoiceData['id'] ?? $invoiceData['invoiceId'] ?? null;
+            // Provider timeouts and retries must not hold the event row lock.
+            $settledInvoice = $invoiceId
+                ? app(SubscriptionService::class)->fetchSettledInvoice(
+                    (string) $subscriptionStoreId,
+                    (string) $invoiceId,
+                    throwOnFailure: true,
+                )
+                : null;
+
             // Keep the claim separate from completion. A failure or worker crash
             // rolls back the transaction; duplicate workers serialize on this row.
-            DB::transaction(function () {
+            DB::transaction(function () use ($settledInvoice) {
                 $event = WebhookEvent::whereKey($this->webhookEvent->id)->lockForUpdate()->first();
                 if (! $event || $event->isProcessed()) {
                     return;
                 }
 
                 $this->webhookEvent = $event;
-                $this->processEvent();
+                $this->processEvent($settledInvoice);
             });
 
             return;
@@ -89,7 +105,7 @@ class ProcessBtcPayWebhook implements ShouldQueue
         $this->processEvent();
     }
 
-    protected function processEvent(): void
+    protected function processEvent(?array $settledInvoice = null): void
     {
         $payload = $this->webhookEvent->payload;
         $eventType = $this->webhookEvent->event_type;
@@ -169,7 +185,7 @@ class ProcessBtcPayWebhook implements ShouldQueue
 
         // Handle invoice.paid event for subscription invoices
         if ($eventType === 'InvoiceReceivedPayment' || $eventType === 'InvoiceSettled' || $eventType === 'invoice.paid') {
-            $this->handleSubscriptionInvoicePaid($payload);
+            $this->handleSubscriptionInvoicePaid($payload, $settledInvoice);
         }
 
         if (in_array($eventType, ['PlanStarted', 'SubscriberActivated', 'plan.started', 'subscriber.activated'], true)) {
@@ -204,7 +220,7 @@ class ProcessBtcPayWebhook implements ShouldQueue
     /**
      * Handle subscription invoice payment.
      */
-    protected function handleSubscriptionInvoicePaid(array $payload): void
+    protected function handleSubscriptionInvoicePaid(array $payload, ?array $settledInvoice): void
     {
         try {
             $invoiceData = $payload['invoiceData'] ?? $payload['invoice'] ?? $payload;
@@ -219,17 +235,12 @@ class ProcessBtcPayWebhook implements ShouldQueue
             }
 
             // Payment events fire for partial and unconfirmed payments too:
-            // only a fresh BTCPay read showing Settled may grant anything.
-            $btcpaySubscriptionService = app(SubscriptionService::class);
-            $settledInvoice = $btcpaySubscriptionService->fetchSettledInvoice(
-                (string) config('services.btcpay.subscription_store_id'),
-                (string) $invoiceId,
-                throwOnFailure: true,
-            );
+            // only the fresh Settled invoice fetched before the transaction may grant anything.
             if ($settledInvoice === null) {
                 return;
             }
 
+            $btcpaySubscriptionService = app(SubscriptionService::class);
             $invoiceData = array_merge($invoiceData, $settledInvoice);
             $metadata = $invoiceData['metadata'] ?? [];
 

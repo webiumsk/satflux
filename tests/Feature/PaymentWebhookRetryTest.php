@@ -116,6 +116,43 @@ class PaymentWebhookRetryTest extends TestCase
     }
 
     #[Test]
+    public function a_worker_finishing_during_the_unlocked_lookup_does_not_grant_credits_twice(): void
+    {
+        $user = User::factory()->create();
+        $purchase = ExpenseIsdocPackPurchase::create([
+            'user_id' => $user->id, 'credits' => 25, 'price_eur' => 10,
+            'btcpay_invoice_id' => 'pack-invoice', 'status' => 'pending',
+        ]);
+        $this->deliver([
+            'storeId' => 'billing-store', 'invoiceId' => 'pack-invoice',
+            'type' => 'InvoiceSettled', 'deliveryId' => 'payment-delivery',
+        ])->assertOk();
+        $event = WebhookEvent::where('delivery_id', 'payment-delivery')->firstOrFail();
+        $transactionLevel = DB::transactionLevel();
+        $reads = 0;
+        Http::fake(function () use ($event, $transactionLevel, &$reads) {
+            $this->assertSame($transactionLevel, DB::transactionLevel(), 'Provider reads must precede the payment transaction.');
+            if (++$reads === 1) {
+                // Another worker completes this event while the first worker is
+                // still waiting for its provider response, before it can lock.
+                (new ProcessBtcPayWebhook($event->fresh()))->handle();
+                $this->assertNotNull($event->fresh()->processed_at);
+            }
+
+            return Http::response([
+                'id' => 'pack-invoice', 'status' => 'Settled',
+                'metadata' => ['purpose' => 'expense_isdoc_pack'],
+            ]);
+        });
+
+        (new ProcessBtcPayWebhook($event))->handle();
+        $this->assertSame(2, $reads);
+        $this->assertSame('paid', $purchase->fresh()->status);
+        $this->assertPurchasedQuantity('expense_isdoc_pack', $user);
+        $this->assertNotNull($event->fresh()->processed_at);
+    }
+
+    #[Test]
     public function a_failure_after_fulfillment_rolls_back_the_purchase_and_allows_retry(): void
     {
         $user = User::factory()->create();
