@@ -13,10 +13,15 @@ use App\Models\User;
 use App\Models\WebhookEvent;
 use App\Services\BtcPay\BtcPayClient;
 use App\Services\BtcPay\Exceptions\BtcPayException;
+use App\Services\BtcPay\SubscriptionService;
 use App\Services\Invoicing\BusinessDocumentPaymentWebhookService;
 use App\Services\Invoicing\CompanySlotService;
 use App\Services\StoreEmailRuleDispatcher;
+use Fiber;
+use Illuminate\Cache\ArrayStore;
+use Illuminate\Cache\Repository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -46,6 +51,120 @@ class PaymentWebhookRetryTest extends TestCase
     public static function packTypes(): array
     {
         return [['company_slot_pack'], ['expense_isdoc_pack']];
+    }
+
+    public static function earlyPaymentEvents(): array
+    {
+        return [['InvoiceReceivedPayment'], ['invoice.paid']];
+    }
+
+    public static function concurrentLookupStatuses(): array
+    {
+        return [['Settled'], ['Processing']];
+    }
+
+    #[Test]
+    #[DataProvider('packTypes')]
+    public function a_settled_delivery_retries_when_an_earlier_read_repopulates_the_cache(string $purpose): void
+    {
+        $user = User::factory()->create();
+        $purchase = $purpose === 'company_slot_pack'
+            ? CompanySlotPurchase::create([
+                'user_id' => $user->id, 'slots' => 5, 'price_sats' => 120000,
+                'btcpay_invoice_id' => 'pack-invoice', 'status' => 'pending',
+            ])
+            : ExpenseIsdocPackPurchase::create([
+                'user_id' => $user->id, 'credits' => 25, 'price_eur' => 10,
+                'btcpay_invoice_id' => 'pack-invoice', 'status' => 'pending',
+            ]);
+        $this->deliver([
+            'storeId' => 'billing-store', 'invoiceId' => 'pack-invoice',
+            'type' => 'InvoiceSettled', 'deliveryId' => 'payment-delivery',
+        ])->assertOk();
+        $event = WebhookEvent::where('delivery_id', 'payment-delivery')->firstOrFail();
+        $store = new class extends ArrayStore
+        {
+            public bool $pauseAfterEviction = false;
+
+            public function forget($key)
+            {
+                $result = parent::forget($key);
+                if ($this->pauseAfterEviction && $key === 'btcpay:invoice:billing-store:pack-invoice:server') {
+                    $this->pauseAfterEviction = false;
+                    Fiber::suspend('settlement-worker-evicted-cache');
+                }
+
+                return $result;
+            }
+        };
+        Cache::swap(new Repository($store));
+        $reads = 0;
+        Http::fake(function () use (&$reads, $purpose, $user) {
+            // Capture an earlier provider response, then delay its cache write.
+            $status = ++$reads === 1 ? 'Processing' : 'Settled';
+            $response = Http::response([
+                'id' => 'pack-invoice', 'status' => $status,
+                'metadata' => ['purpose' => $purpose, 'userId' => (string) $user->id],
+            ]);
+            if ($reads === 1) {
+                Fiber::suspend('earlier-processing-response-ready');
+            }
+
+            return $response;
+        });
+        $earlierRead = new Fiber(fn () => app(SubscriptionService::class)->fetchSettledInvoice('billing-store', 'pack-invoice'));
+        $this->assertSame('earlier-processing-response-ready', $earlierRead->start());
+        $store->pauseAfterEviction = true;
+        $job = new ProcessBtcPayWebhook($event);
+        $settlementWorker = new Fiber(fn () => $job->handle());
+        $this->assertSame('settlement-worker-evicted-cache', $settlementWorker->start());
+        $earlierRead->resume();
+        $this->assertNull($earlierRead->getReturn());
+
+        try {
+            $settlementWorker->resume();
+            $this->fail('An unconfirmed InvoiceSettled delivery must remain retryable.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('InvoiceSettled delivery did not return a settled invoice.', $e->getMessage());
+        }
+        $this->assertSame(1, $reads);
+        $this->assertNull($event->fresh()->processed_at);
+        $this->assertSame('pending', $purchase->fresh()->status);
+
+        $job->handle();
+        $this->assertSame(2, $reads);
+        $this->assertNotNull($event->fresh()->processed_at);
+        $this->assertSame('paid', $purchase->fresh()->status);
+        $this->assertPurchasedQuantity($purpose, $user);
+        $job->handle();
+        $this->assertSame(2, $reads);
+        $this->assertPurchasedQuantity($purpose, $user);
+    }
+
+    #[Test]
+    #[DataProvider('earlyPaymentEvents')]
+    public function early_unsettled_payment_events_are_processed_without_fulfillment(string $eventType): void
+    {
+        $user = User::factory()->create();
+        $purchase = CompanySlotPurchase::create([
+            'user_id' => $user->id, 'slots' => 5, 'price_sats' => 120000,
+            'btcpay_invoice_id' => 'pack-invoice', 'status' => 'pending',
+        ]);
+        $this->deliver([
+            'storeId' => 'billing-store', 'invoiceId' => 'pack-invoice',
+            'type' => $eventType, 'deliveryId' => 'payment-delivery',
+        ])->assertOk();
+        Http::fake(['*' => Http::response([
+            'id' => 'pack-invoice', 'status' => 'Processing',
+            'metadata' => ['purpose' => 'company_slot_pack'],
+        ])]);
+        $event = WebhookEvent::where('delivery_id', 'payment-delivery')->firstOrFail();
+        (new ProcessBtcPayWebhook($event))->handle();
+        $this->assertNotNull($event->fresh()->processed_at);
+        $this->assertSame('pending', $purchase->fresh()->status);
+        $this->assertSame(0, app(CompanySlotService::class)->paidSlotCount($user));
+        (new ProcessBtcPayWebhook($event->fresh()))->handle();
+        Http::assertSentCount(1);
     }
 
     #[Test]
@@ -116,7 +235,8 @@ class PaymentWebhookRetryTest extends TestCase
     }
 
     #[Test]
-    public function a_worker_finishing_during_the_unlocked_lookup_does_not_grant_credits_twice(): void
+    #[DataProvider('concurrentLookupStatuses')]
+    public function a_worker_finishing_during_the_unlocked_lookup_does_not_grant_credits_twice(string $firstResponseStatus): void
     {
         $user = User::factory()->create();
         $purchase = ExpenseIsdocPackPurchase::create([
@@ -130,9 +250,10 @@ class PaymentWebhookRetryTest extends TestCase
         $event = WebhookEvent::where('delivery_id', 'payment-delivery')->firstOrFail();
         $transactionLevel = DB::transactionLevel();
         $reads = 0;
-        Http::fake(function () use ($event, $transactionLevel, &$reads) {
+        Http::fake(function () use ($event, $transactionLevel, $firstResponseStatus, &$reads) {
             $this->assertSame($transactionLevel, DB::transactionLevel(), 'Provider reads must precede the payment transaction.');
-            if (++$reads === 1) {
+            $status = ++$reads === 1 ? $firstResponseStatus : 'Settled';
+            if ($reads === 1) {
                 // Another worker completes this event while the first worker is
                 // still waiting for its provider response, before it can lock.
                 (new ProcessBtcPayWebhook($event->fresh()))->handle();
@@ -140,7 +261,7 @@ class PaymentWebhookRetryTest extends TestCase
             }
 
             return Http::response([
-                'id' => 'pack-invoice', 'status' => 'Settled',
+                'id' => 'pack-invoice', 'status' => $status,
                 'metadata' => ['purpose' => 'expense_isdoc_pack'],
             ]);
         });

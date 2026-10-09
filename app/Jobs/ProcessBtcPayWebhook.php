@@ -237,6 +237,12 @@ class ProcessBtcPayWebhook implements ShouldQueue
             // Payment events fire for partial and unconfirmed payments too:
             // only the fresh Settled invoice fetched before the transaction may grant anything.
             if ($settledInvoice === null) {
+                // A terminal settlement delivery must not be completed on an
+                // unconfirmed read. This runs after the locked completion check.
+                if ($this->webhookEvent->event_type === 'InvoiceSettled') {
+                    throw new \RuntimeException('InvoiceSettled delivery did not return a settled invoice.');
+                }
+
                 return;
             }
 
