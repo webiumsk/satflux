@@ -51,7 +51,7 @@ export async function runConfigForConnection(connectionId) {
 
   if (!revealRes.ok) {
     throw new Error(
-      `Panel reveal failed: ${revealRes.status}`,
+      `Panel reveal failed: ${revealRes.status} ${JSON.stringify(revealBody)}`,
     );
   }
 
@@ -63,10 +63,7 @@ export async function runConfigForConnection(connectionId) {
     store_name,
   } = revealBody?.data ?? {};
   if (!secret || !btcpay_store_id) {
-    throw new Error("Invalid reveal response");
-  }
-  if (connectionType !== "aqua_descriptor") {
-    throw new Error("Lightning wallets require the merchant API provisioning path; privileged browser configuration is disabled for this wallet type");
+    throw new Error(`Invalid reveal response: ${JSON.stringify(revealBody)}`);
   }
   const isAqua = connectionType === "aqua_descriptor";
   const isBlinkReconfig = !isAqua && reconfig;

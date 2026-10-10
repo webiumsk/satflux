@@ -55,12 +55,6 @@ return [
         'allow_insecure_http' => (bool) env('BTCPAY_ALLOW_INSECURE_HTTP', false),
         // Seconds; BTCPay Greenfield user-by-email (per current API key hash).
         'user_by_email_cache_ttl' => (int) env('BTCPAY_USER_BY_EMAIL_CACHE_TTL', 300),
-        'webhook_base_url' => env('BTCPAY_WEBHOOK_BASE_URL'),
-        // Exact operator-approved origins; private HTTP also needs a host SSRF exception.
-        'webhook_private_origins' => array_values(array_filter(array_map(
-            'trim',
-            explode(';', (string) env('BTCPAY_WEBHOOK_PRIVATE_ORIGINS', '')),
-        ))),
         'webhook_secret' => env('BTCPAY_WEBHOOK_SECRET'),
         // Subscription store webhooks often use a different secret than merchant stores.
         'subscription_webhook_secret' => env('SUBSCRIPTION_WEBHOOK_SECRET') ?: env('BTCPAY_WEBHOOK_SECRET'),

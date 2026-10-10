@@ -24,9 +24,6 @@ class CashuPaymentsTest extends TestCase
         $btcpaySid = 'store-cashu-payments';
 
         Http::fake(function (Request $request) use ($baseUrl, $btcpaySid) {
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $request->url())) {
-                return Http::response([], 200);
-            }
             if (! str_contains($request->url(), "{$baseUrl}/api/v1/stores/{$btcpaySid}/plugins/cashumelt/payments")) {
                 return Http::response(['error' => 'unexpected URL'], 500);
             }
@@ -71,9 +68,6 @@ class CashuPaymentsTest extends TestCase
         $btcpaySid = 'store-cashu-payments-2';
 
         Http::fake(function (Request $request) use ($baseUrl, $btcpaySid) {
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $request->url())) {
-                return Http::response([], 200);
-            }
             if (! str_contains($request->url(), "{$baseUrl}/api/v1/stores/{$btcpaySid}/plugins/cashumelt/payments")) {
                 return Http::response(['error' => 'unexpected URL'], 500);
             }
@@ -117,9 +111,6 @@ class CashuPaymentsTest extends TestCase
         $btcpaySid = 'store-cashu-risk';
 
         Http::fake(function (Request $request) use ($baseUrl, $btcpaySid) {
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $request->url())) {
-                return Http::response([], 200);
-            }
             if (! str_contains($request->url(), "{$baseUrl}/api/v1/stores/{$btcpaySid}/plugins/cashumelt/payments")) {
                 return Http::response(['error' => 'unexpected URL'], 500);
             }
@@ -182,9 +173,6 @@ class CashuPaymentsTest extends TestCase
         $btcpaySid = 'store-fallback-payments';
 
         Http::fake(function (Request $request) use ($baseUrl, $btcpaySid) {
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $request->url())) {
-                return Http::response([], 200);
-            }
             if (! str_contains($request->url(), "{$baseUrl}/api/v1/stores/{$btcpaySid}/plugins/cashumelt/payments")) {
                 return Http::response(['error' => 'unexpected URL'], 500);
             }
@@ -227,9 +215,6 @@ class CashuPaymentsTest extends TestCase
         $btcpaySid = 'store-fallback-to-cashu';
 
         Http::fake(function (Request $request) use ($baseUrl, $btcpaySid) {
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $request->url())) {
-                return Http::response([], 200);
-            }
             $url = $request->url();
             if (str_contains($url, "{$baseUrl}/api/v1/stores/{$btcpaySid}/plugins/cashumelt/settings")) {
                 return Http::response(array_merge($request->data() ?? [], ['enabled' => true]), 200);
@@ -281,9 +266,6 @@ class CashuPaymentsTest extends TestCase
         $btcpaySid = 'store-cashu-retry';
 
         Http::fake(function (Request $request) use ($baseUrl, $btcpaySid) {
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $request->url())) {
-                return Http::response([], 200);
-            }
             if (! str_contains($request->url(), "{$baseUrl}/api/v1/stores/{$btcpaySid}/plugins/cashumelt/payments/q-retry/retry")) {
                 return Http::response(['error' => 'unexpected URL'], 500);
             }
@@ -415,9 +397,6 @@ class CashuPaymentsTest extends TestCase
         $btcpaySid = 'store-cashu-poll-url';
 
         Http::fake(function (Request $request) use ($baseUrl, $btcpaySid) {
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $request->url())) {
-                return Http::response([], 200);
-            }
             if (! str_contains($request->url(), "{$baseUrl}/api/v1/stores/{$btcpaySid}/plugins/cashumelt/payments")) {
                 return Http::response(['error' => 'unexpected URL'], 500);
             }
@@ -463,9 +442,6 @@ class CashuPaymentsTest extends TestCase
         $captured = null;
 
         Http::fake(function (Request $request) use (&$captured, $btcpaySid) {
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $request->url())) {
-                return Http::response([], 200);
-            }
             $url = $request->url();
             if (! str_contains($url, "/api/v1/stores/{$btcpaySid}/plugins/cashumelt/settings") || $request->method() !== 'PUT') {
                 return Http::response(['error' => 'unexpected URL'], 500);
@@ -508,9 +484,6 @@ class CashuPaymentsTest extends TestCase
         $captured = null;
 
         Http::fake(function (Request $request) use (&$captured, $btcpaySid) {
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $request->url())) {
-                return Http::response([], 200);
-            }
             $url = $request->url();
             if (! str_contains($url, "/api/v1/stores/{$btcpaySid}/plugins/cashumelt/settings") || $request->method() !== 'PUT') {
                 return Http::response(['error' => 'unexpected URL'], 500);
@@ -555,9 +528,6 @@ class CashuPaymentsTest extends TestCase
 
         $deletedMethods = [];
         Http::fake(function (Request $request) use (&$deletedMethods) {
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $request->url())) {
-                return Http::response([], 200);
-            }
             $url = $request->url();
 
             if (str_contains($url, 'cashumelt/settings') && $request->method() === 'PUT') {
@@ -608,9 +578,6 @@ class CashuPaymentsTest extends TestCase
         config(['services.btcpay.base_url' => 'https://btcpay.test']);
 
         Http::fake(function (Request $request) {
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $request->url())) {
-                return Http::response([], 200);
-            }
             $url = $request->url();
 
             if (str_contains($url, 'cashumelt/settings') && $request->method() === 'PUT') {
@@ -658,9 +625,6 @@ class CashuPaymentsTest extends TestCase
         $btcpaySid = 'store-cashu-plugin-bind-bug';
 
         Http::fake(function (Request $request) use ($btcpaySid) {
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $request->url())) {
-                return Http::response([], 200);
-            }
             $url = $request->url();
             if (! str_contains($url, "/api/v1/stores/{$btcpaySid}/plugins/cashumelt/settings") || $request->method() !== 'PUT') {
                 return Http::response(['error' => 'unexpected URL'], 500);

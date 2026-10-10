@@ -117,13 +117,9 @@ test.describe.serial('Local-first invoice BTCPay checkout (Greenfield stub)', ()
         const lineName = page.locator('input.invoicing-sf-input-table:visible').first();
         await expect(lineName).toBeVisible({ timeout: 15_000 });
         await lineName.fill('E2E Service');
-        await page.locator('input.invoicing-sf-input-table[type="number"][step="0.01"]:visible').fill('21.00');
 
         await page.locator('button[type="submit"]').click();
-        // Saving first navigates through the edit route while issuing. Wait
-        // for the final document view, where checkout actions are available.
-        await page.waitForURL((url) => /\/(?:invoices|documents)\/(?!new$)[^/]+$/.test(url.pathname), { timeout: 30_000 });
-        await expect(page.getByRole('button', { name: /create checkout link/i })).toBeVisible();
+        await page.waitForURL((url) => /\/invoices\/(?!new)/.test(url.pathname) || /\/documents\//.test(url.pathname), { timeout: 30_000 });
     });
 
     test('mints the ephemeral BTCPay checkout against the stub', async () => {

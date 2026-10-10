@@ -9,10 +9,8 @@ use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\LightningService;
 use App\Services\StoreChecklistService;
 use App\Services\WalletChangeConfirmationGuard;
-use App\Services\WalletConnectionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -69,12 +67,6 @@ class CashuController extends Controller
 
     public function updateSettings(Request $request, Store $store): JsonResponse
     {
-        return Cache::lock('wallet-update:'.$store->id, 1800)->block(10,
-            fn () => $this->saveSettings($request, $store->fresh()));
-    }
-
-    private function saveSettings(Request $request, Store $store): JsonResponse
-    {
         $previousWalletType = $store->wallet_type ?? null;
         $switchingFromLightning = $this->isLightningWalletTypeForCashuSwitch($previousWalletType)
             && $previousWalletType !== null;
@@ -103,9 +95,6 @@ class CashuController extends Controller
             $changeGuard->assert($store, $request->user());
         }
 
-        if ($previousWalletType !== null) {
-            app(WalletConnectionService::class)->assertWalletCanChange($store);
-        }
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
         $payload = $this->buildCashuMeltSettingsPayloadFromRequest($request);

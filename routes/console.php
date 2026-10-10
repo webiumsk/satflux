@@ -131,9 +131,3 @@ Schedule::command('wallet-connections:learn-payees')
 Schedule::command('model:prune', ['--model' => [EmailVerificationChallenge::class]])
     ->hourly()
     ->withoutOverlapping();
-
-// Read BTCPay with each merchant key and recover durable wallet update outcomes.
-Schedule::command('btcpay:reconcile-wallet-updates')
-    ->everyFiveMinutes()
-    ->withoutOverlapping()
-    ->runInBackground();

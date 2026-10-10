@@ -18,25 +18,10 @@ describe('detectWalletConnectionInput', () => {
     expect(result.cashuLightningAddress).toBe('x@minibits.cash');
   });
 
-  it('routes Blink addresses through LNAddressConnect', () => {
+  it('detects bare blink.sv address as blink, not cashu', () => {
     const result = detectWalletConnectionInput('satoshi@blink.sv');
-    expect(result.kind).toBe('lnaddress');
-    expect(result.lnAddressBrand).toBe('blink');
-    expect(result.normalizedSecret).toBe('type=lnaddress;ln-address=satoshi@blink.sv;');
-  });
-
-  it.each(['ln-address', 'lnaddress', 'username'])('moves legacy Blink %s address strings to LNAddressConnect', (key) => {
-    const result = detectWalletConnectionInput(`type=blink;${key}=satoshi;currency=BTC;`);
-    expect(result.connectionType).toBe('lnaddress');
-    expect(result.lnAddressBrand).toBe('blink');
-    expect(result.normalizedSecret).toBe('type=lnaddress;ln-address=satoshi@blink.sv;');
-  });
-
-  it.each(['api-key=secret;', 'wallet-id=wallet;', 'currency=USD;'])('preserves unsupported Blink modes: %s', (extra) => {
-    const secret = `type=blink;ln-address=satoshi@blink.sv;${extra}`;
-    const result = detectWalletConnectionInput(secret);
     expect(result.kind).toBe('blink');
-    expect(result.normalizedSecret).toBe(secret);
+    expect(result.normalizedSecret).toBe('type=blink;ln-address=satoshi@blink.sv;');
   });
 
   it('detects bare curated-domain addresses as lnaddress with the wallet brand', () => {

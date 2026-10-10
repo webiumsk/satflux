@@ -15,18 +15,6 @@ Zapojenie je **len konfiguračné**: `BTCPAY_BASE_URL` ukazuje na stub
 (`http://localhost:14142`), `BTCPAY_API_KEY` je ľubovoľný token (stub
 akceptuje akékoľvek `Authorization`). Žiadna zmena aplikačného kódu.
 
-Lokálny callback nastav explicitne v `.env` aplikácie (port musí zodpovedať
-bežiacej aplikácii; CI používa `8000`):
-
-```dotenv
-BTCPAY_WEBHOOK_BASE_URL=http://localhost:8080
-BTCPAY_WEBHOOK_PRIVATE_ORIGINS=http://localhost:8080
-```
-
-Stub doručuje na registrovanú URL. `APP_URL` sa pri registrácii webhooku
-nepoužíva ako fallback. Po zmene konfigurácie vyčisti cache cez
-`php artisan optimize:clear` v testovacej aplikácii.
-
 ### Greenfield podmnožina
 
 Stores (create/list/get/delete), store users, webhooks (create vracia

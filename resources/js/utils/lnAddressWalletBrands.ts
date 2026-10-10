@@ -6,10 +6,9 @@
  * Mirrors WalletConnectionValidator::LN_ADDRESS_WALLET_BRANDS.
  */
 
-export type LnAddressWalletBrand = 'blink' | 'blitz' | 'flash' | 'coinos';
+export type LnAddressWalletBrand = 'blitz' | 'flash' | 'coinos';
 
 export const LN_ADDRESS_WALLET_BRANDS: Readonly<Record<string, LnAddressWalletBrand>> = {
-  'blink.sv': 'blink',
   'blitzwalletapp.com': 'blitz',
   'flashapp.me': 'flash',
   'coinos.io': 'coinos',

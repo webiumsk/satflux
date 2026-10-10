@@ -93,9 +93,7 @@ async function runPoll() {
     { panelUrl },
   );
 
-  const connections = (await fetchPendingConnections()).filter(
-    (connection) => connection.type === "aqua_descriptor",
-  );
+  const connections = await fetchPendingConnections();
   logger.info(
     "poll_fetched",
     `Found ${connections.length} pending connection(s)`,

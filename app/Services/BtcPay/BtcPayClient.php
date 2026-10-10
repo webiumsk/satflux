@@ -131,17 +131,9 @@ class BtcPayClient
     /**
      * Make a POST request to BTCPay API.
      */
-    public function post(string $endpoint, array $data = [], bool $retry = true): array
+    public function post(string $endpoint, array $data = []): array
     {
-        $previous = $this->maxRetries;
-        if (! $retry) {
-            $this->maxRetries = 0;
-        }
-        try {
-            return $this->request('POST', $endpoint, ['json' => $data]);
-        } finally {
-            $this->maxRetries = $previous;
-        }
+        return $this->request('POST', $endpoint, ['json' => $data]);
     }
 
     /**
@@ -149,22 +141,14 @@ class BtcPayClient
      *
      * @param  array<string, string|int|bool>  $query  Optional query parameters
      */
-    public function put(string $endpoint, array $data = [], array $query = [], bool $retry = true): array
+    public function put(string $endpoint, array $data = [], array $query = []): array
     {
         $options = ['json' => $data];
         if ($query !== []) {
             $options['query'] = $query;
         }
 
-        $previous = $this->maxRetries;
-        if (! $retry) {
-            $this->maxRetries = 0;
-        }
-        try {
-            return $this->request('PUT', $endpoint, $options);
-        } finally {
-            $this->maxRetries = $previous;
-        }
+        return $this->request('PUT', $endpoint, $options);
     }
 
     /**
@@ -523,7 +507,7 @@ class BtcPayClient
             // Core Lightning rune (exact: a "rune" fragment would also hit e.g. "prune")
             'rune',
         ]);
-        $keyFragments = ['password', 'secret', 'token', 'apikey', 'api_key', 'macaroon', 'mnemonic', 'privatekey', 'connectionstring', 'uri'];
+        $keyFragments = ['password', 'secret', 'token', 'apikey', 'api_key', 'macaroon', 'mnemonic', 'privatekey', 'connectionstring'];
 
         foreach ($sanitized as $key => $value) {
             $normalizedKey = strtolower((string) $key);

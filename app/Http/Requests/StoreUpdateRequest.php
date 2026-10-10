@@ -42,7 +42,7 @@ class StoreUpdateRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'website' => ['nullable', 'string', 'url:http,https', 'max:500'],
+            'website' => ['nullable', 'string', 'url', 'max:500'],
             'support_url' => ['nullable', 'string', 'max:500'],
             'logo_url' => ['nullable', 'string', 'url', 'max:500'],
             'css_url' => ['nullable', 'string', 'url', 'max:500'],

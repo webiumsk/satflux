@@ -114,7 +114,6 @@ function guideIdFromDetection(
   if (kind === 'lnaddress') {
     // Bare curated addresses detect as lnaddress; open the matching wallet's guide.
     // Unbranded lnaddress input (unknown domain) matches no specific guide.
-    if (lnAddressBrand === 'blink') return 'blink';
     if (lnAddressBrand === 'blitz') return 'blitz';
     if (lnAddressBrand === 'flash') return 'flash';
     if (lnAddressBrand === 'coinos') return 'coinos';

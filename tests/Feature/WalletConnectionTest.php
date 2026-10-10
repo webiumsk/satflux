@@ -113,12 +113,12 @@ class WalletConnectionTest extends TestCase
         ]);
 
         $response->assertStatus(201)
-            ->assertJsonPath('data.type', 'lnaddress')
+            ->assertJsonPath('data.type', 'blink')
             ->assertJsonPath('data.status', 'pending');
         $store->refresh();
-        $this->assertSame('lnaddress', $store->wallet_type);
+        $this->assertSame('blink', $store->wallet_type);
         $connection = WalletConnection::where('store_id', $store->id)->first();
-        $this->assertSame('type=lnaddress;ln-address=satoshi@blink.sv;server=https://blink.sv;', Crypt::decryptString($connection->encrypted_secret));
+        $this->assertSame('type=blink;ln-address=satoshi@blink.sv;', Crypt::decryptString($connection->encrypted_secret));
     }
 
     #[Test]
@@ -128,9 +128,6 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
             if ($request->method() === 'POST' && str_contains($url, '/stores/blink-ln-store/lightning/BTC/connect')) {
                 return Http::response(['success' => true], 200);
             }
@@ -156,11 +153,11 @@ class WalletConnectionTest extends TestCase
         Http::assertSent(function (Request $request) {
             return $request->method() === 'POST'
                 && str_contains($request->url(), '/stores/blink-ln-store/lightning/BTC/connect')
-                && ($request->data()['ConnectionString'] ?? null) === 'type=lnaddress;ln-address=satoshi@blink.sv;server=https://blink.sv;';
+                && ($request->data()['ConnectionString'] ?? null) === 'type=blink;ln-address=satoshi@blink.sv;';
         });
         $this->assertDatabaseHas('wallet_connections', [
             'store_id' => $store->id,
-            'type' => 'lnaddress',
+            'type' => 'blink',
             'status' => 'connected',
         ]);
     }
@@ -172,9 +169,6 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
             if ($request->method() === 'POST' && str_contains($url, '/stores/blitz-store/lightning/BTC/connect')) {
                 return Http::response(['success' => true], 200);
             }
@@ -201,7 +195,7 @@ class WalletConnectionTest extends TestCase
         Http::assertSent(function (Request $request) {
             return $request->method() === 'POST'
                 && str_contains($request->url(), '/stores/blitz-store/lightning/BTC/connect')
-                && ($request->data()['ConnectionString'] ?? null) === 'type=blitz;ln-address=satoshi@blitzwalletapp.com;server=https://blitzwalletapp.com;';
+                && ($request->data()['ConnectionString'] ?? null) === 'type=blitz;ln-address=satoshi@blitzwalletapp.com;';
         });
 
         $store->refresh();
@@ -220,9 +214,6 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
             if ($request->method() === 'POST' && str_contains($url, '/stores/flash-store/lightning/BTC/connect')) {
                 return Http::response(['success' => true], 200);
             }
@@ -248,7 +239,7 @@ class WalletConnectionTest extends TestCase
         Http::assertSent(function (Request $request) {
             return $request->method() === 'POST'
                 && str_contains($request->url(), '/stores/flash-store/lightning/BTC/connect')
-                && ($request->data()['ConnectionString'] ?? null) === 'type=flash;ln-address=satoshi@flashapp.me;server=https://flashapp.me;';
+                && ($request->data()['ConnectionString'] ?? null) === 'type=flash;ln-address=satoshi@flashapp.me;';
         });
 
         $store->refresh();
@@ -265,9 +256,6 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
             if ($request->method() === 'POST' && str_contains($url, '/stores/lnaddr-store/lightning/BTC/connect')) {
                 return Http::response(['success' => true], 200);
             }
@@ -293,7 +281,7 @@ class WalletConnectionTest extends TestCase
         Http::assertSent(function (Request $request) {
             return $request->method() === 'POST'
                 && str_contains($request->url(), '/stores/lnaddr-store/lightning/BTC/connect')
-                && ($request->data()['ConnectionString'] ?? null) === 'type=lnaddress;ln-address=merchant@coinos.io;server=https://coinos.io;';
+                && ($request->data()['ConnectionString'] ?? null) === 'type=lnaddress;ln-address=merchant@coinos.io;';
         });
 
         $store->refresh();
@@ -355,9 +343,6 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
             if ($url === 'https://lud21wallet.example/.well-known/lnurlp/alice') {
                 return Http::response([
                     'tag' => 'payRequest',
@@ -401,9 +386,6 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
             if ($url === 'https://sharedwallet.example/.well-known/lnurlp/alice') {
                 return Http::response([
                     'tag' => 'payRequest',
@@ -593,9 +575,6 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
             if (str_contains($url, '/lightning/BTC') || str_contains($url, 'cashumelt/settings')) {
                 return Http::response(['success' => true], 200);
             }
@@ -624,9 +603,6 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
 
             if (str_contains($url, '/payment-methods/') && $request->method() === 'DELETE') {
                 return Http::response([], 204);
@@ -722,9 +698,6 @@ class WalletConnectionTest extends TestCase
         $putPayload = null;
         Http::fake(function (Request $request) use (&$putPayload) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
             if (str_contains($url, 'cashumelt/settings')) {
                 if ($request->method() === 'PUT') {
                     $putPayload = $request->data();
@@ -785,9 +758,6 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
 
             if (str_contains($url, '/payment-methods/') && $request->method() === 'DELETE') {
                 return Http::response([], 204);
@@ -880,9 +850,6 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) use ($btcpayStoreId) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
 
             if (str_contains($url, "/api/v1/stores/{$btcpayStoreId}/boltz/wallets") && $request->method() === 'POST') {
                 return Http::response(['id' => 'wallet-1', 'name' => 'boltz-test'], 200);
@@ -959,9 +926,6 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) use ($btcpayStoreId, $nwcUri) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
 
             if (str_contains($url, "/api/v1/stores/{$btcpayStoreId}/lightning/BTC/connect") && $request->method() === 'POST') {
                 $body = $request->data();
@@ -1018,9 +982,6 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) use ($btcpayStoreId) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
 
             if (str_contains($url, "/api/v1/stores/{$btcpayStoreId}/boltz/wallets") && $request->method() === 'POST') {
                 return Http::response(['message' => 'boltz import failed'], 500);
@@ -1307,9 +1268,6 @@ class WalletConnectionTest extends TestCase
         $putPayload = null;
         Http::fake(function (Request $request) use (&$putPayload) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
 
             if (str_contains($url, '/payment-methods/') && $request->method() === 'DELETE') {
                 return Http::response([], 204);
@@ -1388,9 +1346,6 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
             if (
                 $request->method() === 'DELETE'
                 && str_contains($url, '/stores/aqua-to-blink-store/lightning/BTC')
@@ -1445,9 +1400,6 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
             if (str_contains($url, '/plugins/cashumelt/settings')) {
                 return Http::response($request->method() === 'GET'
                     ? ['mintUrl' => 'https://mint.example/x']
@@ -1492,12 +1444,20 @@ class WalletConnectionTest extends TestCase
         $this->grantWalletChange($user, $store);
 
         $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", $this->blinkReplacementPayload())
-            ->assertStatus(422);
+            ->assertStatus(201)
+            ->assertJsonPath('data.status', 'pending');
+
         $connection = WalletConnection::where('store_id', $store->id)->firstOrFail();
-        $this->assertSame('connected', $connection->status);
-        $this->assertSame(self::VALID_BLINK_SECRET, Crypt::decryptString($connection->encrypted_secret));
-        $this->assertDatabaseHas('wallet_configuration_attempts', ['store_id' => $store->id, 'status' => 'uncertain']);
-        Http::assertNotSent(fn (Request $r) => $r->method() === 'DELETE' && str_contains($r->url(), '/lightning/'));
+        $this->assertTrue((bool) $connection->reconfig);
+        $this->assertSame('pending', $connection->status);
+        $this->assertNull($connection->config_fingerprint);
+        $this->assertStringContainsString('blink_rotated', Crypt::decryptString($connection->encrypted_secret));
+
+        // The wait-card poll keeps it pending as well: the old wallet is
+        // active, but it is not the wallet being submitted.
+        $this->actingAs($user)->getJson("/api/stores/{$store->id}/wallet-connection")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'pending');
     }
 
     #[Test]
@@ -1505,13 +1465,10 @@ class WalletConnectionTest extends TestCase
     {
         config(['services.btcpay.base_url' => 'https://btcpay.test']);
 
-        $liveConnectionString = null;
+        $liveConnectionString = self::VALID_BLINK_SECRET;
 
         Http::fake(function (Request $request) use (&$liveConnectionString) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
             if (str_contains($url, '/plugins/cashumelt/settings')) {
                 return Http::response($request->method() === 'GET'
                     ? ['mintUrl' => 'https://mint.example/x']
@@ -1527,10 +1484,6 @@ class WalletConnectionTest extends TestCase
                 return Http::response(['implementation' => 'some-node'], 200);
             }
             if ($request->method() === 'GET' && str_contains($url, '/stores/reconfig-heal/payment-methods')) {
-                if ($liveConnectionString === null) {
-                    return Http::response(['message' => 'temporarily unreachable'], 503);
-                }
-
                 return Http::response([
                     ['paymentMethodId' => 'BTC-CHAIN', 'enabled' => true, 'config' => null],
                     // Key order and trailing separator differ from what Satflux writes.
@@ -1561,7 +1514,8 @@ class WalletConnectionTest extends TestCase
         $this->grantWalletChange($user, $store);
 
         $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", $this->blinkReplacementPayload())
-            ->assertStatus(422);
+            ->assertStatus(201)
+            ->assertJsonPath('data.status', 'pending');
 
         // BTCPay ends up holding the new wallet (the write failed only transiently,
         // or the config bot / support configured it). The next poll heals the row.
@@ -1584,9 +1538,6 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
             if (str_contains($url, '/plugins/cashumelt/settings')) {
                 return Http::response($request->method() === 'GET'
                     ? ['mintUrl' => 'https://mint.example/x']
@@ -1631,13 +1582,13 @@ class WalletConnectionTest extends TestCase
 
         // Pending rows are replaced without an email code; the old wallet is still the active node.
         $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", $this->blinkReplacementPayload())
-            ->assertStatus(422);
+            ->assertStatus(201)
+            ->assertJsonPath('data.status', 'pending');
 
         $connection = WalletConnection::where('store_id', $store->id)->firstOrFail();
         $this->assertTrue((bool) $connection->reconfig, 'replacing a pending reconfig keeps the reconfig flag');
         $this->assertSame('pending', $connection->status);
-        $this->assertStringContainsString('blink_first_replacement', Crypt::decryptString($connection->encrypted_secret));
-        $this->assertDatabaseHas('wallet_configuration_attempts', ['store_id' => $store->id, 'status' => 'uncertain']);
+        $this->assertStringContainsString('blink_rotated', Crypt::decryptString($connection->encrypted_secret));
 
         $this->actingAs($user)->getJson("/api/stores/{$store->id}/wallet-connection")
             ->assertOk()
@@ -1651,9 +1602,6 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) {
             $url = $request->url();
-            if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
-                return Http::response([], 200);
-            }
             if (str_contains($url, '/plugins/cashumelt/settings')) {
                 return Http::response($request->method() === 'GET'
                     ? ['mintUrl' => 'https://mint.example/x']
@@ -1692,11 +1640,11 @@ class WalletConnectionTest extends TestCase
         $this->grantWalletChange($user, $store);
 
         $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", $this->blinkReplacementPayload())
-            ->assertStatus(422);
+            ->assertStatus(201)
+            ->assertJsonPath('data.status', 'pending');
 
         $this->actingAs($user)->getJson("/api/stores/{$store->id}/wallet-connection")
             ->assertOk()
-            ->assertJsonPath('configuration_pending', true)
             ->assertJsonPath('data.status', 'pending');
     }
 
@@ -2026,8 +1974,8 @@ class WalletConnectionTest extends TestCase
             ->postJson("/api/stores/{$store->id}/wallet-connection/configure", [
                 'connection_string' => self::VALID_BLINK_SECRET,
             ])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('secret');
+            ->assertStatus(200)
+            ->assertJsonPath('success', false);
 
         $this->assertNull($grant->fresh()->consumed_at, 'a failed BTCPay call must not burn the grant');
     }

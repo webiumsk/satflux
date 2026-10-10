@@ -118,7 +118,7 @@ class SetupStoreWebhooksTest extends TestCase
 
         $this->artisan('stores:setup-webhooks', ['--repair' => true, '--dry-run' => true])
             ->assertSuccessful()
-            ->expectsOutputToContain('found 1 canonical webhook(s)');
+            ->expectsOutputToContain('would remove 1 panel URL webhook(s)');
 
         Http::assertSentCount(1);
     }

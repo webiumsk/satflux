@@ -103,7 +103,6 @@ jobs:
             echo "VITE_EVOLU_RELAY_URL="
             echo "BTCPAY_BASE_URL=http://localhost:14142"
             echo "BTCPAY_API_KEY=stub-server-key"
-            echo "BTCPAY_WEBHOOK_BASE_URL=http://localhost:8000"
           } >> .env
           # Seed-first off for e2e: the seeded user logs in with a password
           # (an enrolled recovery key would disable password login), and an
@@ -112,8 +111,6 @@ jobs:
           # place - .env.example sets it to true and dotenv keeps the first
           # definition it sees.
           sed -i 's|^SEED_FIRST_REGISTRATION=.*|SEED_FIRST_REGISTRATION=false|' .env
-          # The disposable stub delivers to this exact local callback origin.
-          sed -i 's|^BTCPAY_WEBHOOK_PRIVATE_ORIGINS=.*|BTCPAY_WEBHOOK_PRIVATE_ORIGINS=http://localhost:8000|' .env
           mkdir -p bootstrap/cache && chmod -R 777 bootstrap/cache
           touch database/e2e.sqlite
 

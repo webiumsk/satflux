@@ -1,6 +1,30 @@
 parameters:
 	ignoreErrors:
 		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$btcpay_store_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/AttemptWalletConnectionConfig.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Console/Commands/AttemptWalletConnectionConfig.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/AttemptWalletConnectionConfig.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/AttemptWalletConnectionConfig.php
+
+		-
 			message: '#^Strict comparison using \!\=\= between ''admin''\|''merchant''\|''support'' and ''enterprise''\|''pro'' will always evaluate to true\.$#'
 			identifier: notIdentical.alwaysTrue
 			count: 1
@@ -889,6 +913,12 @@ parameters:
 			path: app/Http/Controllers/WalletConnectionController.php
 
 		-
+			message: '#^Offset ''message'' on non\-empty\-array on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/WalletConnectionController.php
+
+		-
 			message: '#^Using nullsafe property access "\?\-\>webhook_secret" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -1732,6 +1762,12 @@ parameters:
 		-
 			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/BtcPay/WebhookService.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
 			count: 1
 			path: app/Services/BtcPay/WebhookService.php
 

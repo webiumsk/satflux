@@ -207,7 +207,7 @@ class BusinessDocumentPayTest extends TestCase
     }
 
     #[Test]
-    public function pay_page_reads_old_archived_settled_invoice_through_authenticated_greenfield(): void
+    public function pay_page_marks_paid_when_btcpay_invoice_already_settled(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => 'test-key']);
         $company = Company::create([
@@ -241,8 +241,6 @@ class BusinessDocumentPayTest extends TestCase
             '*/api/v1/stores/btcpay-store-paid/invoices/btcpay-inv-paid' => Http::response([
                 'id' => 'btcpay-inv-paid',
                 'status' => 'Settled',
-                'archived' => true,
-                'monitoringExpiration' => now()->subMonths(2)->toIso8601String(),
                 'amount' => '75',
                 'currency' => 'EUR',
                 'metadata' => ['businessDocumentId' => $document->id],

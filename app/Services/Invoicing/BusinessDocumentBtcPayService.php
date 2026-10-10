@@ -312,12 +312,6 @@ class BusinessDocumentBtcPayService
             return false;
         }
 
-        if (($invoice['archived'] ?? false) && ($invoice['status'] ?? '') === 'New') {
-            // Archived checkout pages are private in BTCPay. Keep the original
-            // monitored invoice rather than creating a competing payment request.
-            throw new \RuntimeException(__('messages.business_invoice_pay_checkout_failed'));
-        }
-
         return in_array((string) ($invoice['status'] ?? ''), ['Expired', 'Invalid'], true);
     }
 
@@ -361,10 +355,6 @@ class BusinessDocumentBtcPayService
 
         $checkoutLink = isset($invoice['checkoutLink']) ? (string) $invoice['checkoutLink'] : null;
         $status = strtolower((string) ($invoice['status'] ?? ''));
-
-        if (($invoice['archived'] ?? false) && in_array($status, ['new', 'processing'], true)) {
-            return ['state' => 'unknown', 'checkout_link' => null, 'btcpay_invoice_id' => $btcpayInvoiceId];
-        }
 
         // Payable takes precedence: invoiceIndicatesPaid() counts Processing
         // as paid for the webhook/settlement flows, but an unconfirmed

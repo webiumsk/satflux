@@ -14,10 +14,10 @@ class SetupStoreWebhooks extends Command
 {
     protected $signature = 'stores:setup-webhooks
                             {--dry-run : List stores that would get webhooks without making changes}
-                            {--repair : Reuse the canonical subscription; adopt orphans in place; refuse duplicates or disabled subscriptions}
+                            {--repair : For every store: remove all Satflux panel URL webhooks in BTCPay, create one, update DB (fixes duplicates and secret mismatch)}
                             {--retry : Scheduled self-heal: only stores created in the last 7 days, with exponential backoff per failing store}';
 
-    protected $description = 'Create BTCPay webhooks for stores missing one (stores:setup-webhooks). One webhook per Satflux store is normal - same BTCPAY_WEBHOOK_BASE_URL, different secrets per BTCPay store. Use btcpay:reconcile-webhooks for a read-only cleanup report.';
+    protected $description = 'Create BTCPay webhooks for stores missing one (stores:setup-webhooks). One webhook per Satflux store is normal - same APP_URL, different secrets per BTCPay store. Use --repair to dedupe and re-sync secrets.';
 
     /** Scheduled retries stop after this window - older stores need a manual run or --repair. */
     private const RETRY_WINDOW_DAYS = 7;
@@ -64,7 +64,7 @@ class SetupStoreWebhooks extends Command
 
         if ($count === 0) {
             $this->info('All stores already have webhooks. Nothing to do.');
-            $this->comment('Tip: run btcpay:reconcile-webhooks --dry-run before repairing subscriptions.');
+            $this->comment('Tip: use --repair if BTCPay has duplicate webhooks or signatures fail (wrong secret in DB).');
 
             return Command::SUCCESS;
         }
@@ -158,7 +158,7 @@ class SetupStoreWebhooks extends Command
 
         $this->warn('Repair: each store will have exactly one BTCPay webhook for: '.$panelUrl);
         if (! $dryRun) {
-            $this->warn('Matching subscriptions are reused; duplicates and disabled subscriptions require operator review.');
+            $this->warn('Existing panel webhooks for that URL are deleted first, then one new webhook is created.');
         }
 
         $ok = 0;
@@ -180,17 +180,17 @@ class SetupStoreWebhooks extends Command
                 }
 
                 if ($dryRun) {
-                    $this->line("  {$store->name}: found {$matchCount} canonical webhook(s); would reuse one, create if absent, or investigate duplicates");
+                    $this->line("  {$store->name}: would remove {$matchCount} panel URL webhook(s), then create 1");
 
                     continue;
                 }
 
-                $createdData = $webhookService->replacePanelWebhookForStore($store->btcpay_store_id, null, $store->btcpay_webhook_id, $store->webhook_secret);
+                $createdData = $webhookService->replacePanelWebhookForStore($store->btcpay_store_id, null);
                 $store->update([
                     'btcpay_webhook_id' => $createdData['id'],
                     'webhook_secret' => $createdData['secret'],
                 ]);
-                $this->info("Repaired: {$store->name} (reused or created the canonical subscription)");
+                $this->info("Repaired: {$store->name} (removed {$matchCount} old panel webhook(s))");
                 $ok++;
             } catch (\Throwable $e) {
                 $this->error("Repair failed for {$store->name} ({$store->btcpay_store_id}): {$e->getMessage()}");

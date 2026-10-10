@@ -50,24 +50,6 @@ class LightningService
         }
 
         try {
-            if (str_starts_with($connectionString, 'type=nwc;key=')) {
-                try {
-                    $response = $this->client->put(
-                        "/api/v1/stores/{$storeId}/nwc/connection",
-                        ['uri' => substr($connectionString, strlen('type=nwc;key='))],
-                        retry: false,
-                    );
-
-                    return ['success' => true, 'message' => 'NWC connected successfully', 'data' => $response];
-                } catch (BtcPayException $e) {
-                    // Older hosts/plugins support the original merchant API. Never retry
-                    // validation/authentication failures or use a privileged key.
-                    if ($e->getStatusCode() !== 404) {
-                        throw $e;
-                    }
-                }
-            }
-
             // First, try to get Lightning node info to see if it exists
             // If it doesn't exist, we might need to create it first
             try {
@@ -103,7 +85,6 @@ class LightningService
                         'enabled' => true,
                         'config' => ['connectionString' => $connectionString],
                     ],
-                    retry: false,
                 );
 
                 Log::info('BTCPay Lightning connected via payment-methods API', [
