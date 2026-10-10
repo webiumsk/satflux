@@ -130,6 +130,51 @@ class WebhookServiceTest extends TestCase
         (new WebhookService($client))->replacePanelWebhookForStore('store');
     }
 
+    private function configuredPrivateOrigins(string $value): array
+    {
+        $key = 'BTCPAY_WEBHOOK_PRIVATE_ORIGINS';
+        $previousEnv = $_ENV[$key] ?? null;
+        $previousServer = $_SERVER[$key] ?? null;
+        $_ENV[$key] = $value;
+        $_SERVER[$key] = $value;
+        try {
+            $services = require config_path('services.php');
+
+            return $services['btcpay']['webhook_private_origins'];
+        } finally {
+            if ($previousEnv === null) {
+                unset($_ENV[$key]);
+            } else {
+                $_ENV[$key] = $previousEnv;
+            }
+            if ($previousServer === null) {
+                unset($_SERVER[$key]);
+            } else {
+                $_SERVER[$key] = $previousServer;
+            }
+        }
+    }
+
+    public function test_config_trims_private_origins_and_keeps_exact_matching(): void
+    {
+        $origins = $this->configuredPrivateOrigins(' http://a:8000 ; http://b:9000 ; ; ');
+        config(['services.btcpay.webhook_private_origins' => $origins]);
+        $this->assertCount(2, $origins);
+        $service = new WebhookService(app(BtcPayClient::class));
+        $service->validateDestination('http://b:9000/api/webhooks/btcpay');
+        $this->expectException(\RuntimeException::class);
+        $service->validateDestination('http://b:9001/api/webhooks/btcpay');
+    }
+
+    public function test_config_does_not_normalize_trailing_slashes_in_private_origins(): void
+    {
+        $origins = $this->configuredPrivateOrigins(' http://b:9000/ ');
+        config(['services.btcpay.webhook_private_origins' => $origins]);
+        $this->assertSame(['http://b:9000/'], $origins);
+        $this->expectException(\RuntimeException::class);
+        (new WebhookService(app(BtcPayClient::class)))->validateDestination('http://b:9000/api/webhooks/btcpay');
+    }
+
     public function test_private_callback_needs_exact_operator_origin(): void
     {
         $service = new WebhookService(app(BtcPayClient::class));
