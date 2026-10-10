@@ -291,7 +291,7 @@ class WalletConnectionService
 
                     if ($fallbackAddress !== null && $fallbackAddress !== '') {
                         try {
-                            $this->configureCashuFallback($store, $fallbackAddress, $userApiKey, $user);
+                            $this->saveCashuFallback($store, $fallbackAddress, $userApiKey, $user);
                         } catch (\Throwable $e) {
                             Log::error('Could not configure CashuMelt fallback at BTCPay', [
                                 'store_id' => $store->id,
@@ -325,6 +325,7 @@ class WalletConnectionService
                                 'message' => $e->getMessage(),
                             ]);
                         }
+                        app(WalletConfigIntegrityService::class)->baselineCashuFallback($store, false, $user);
                     }
 
                 }
@@ -666,6 +667,12 @@ class WalletConnectionService
      */
     public function configureCashuFallback(Store $store, string $lightningAddress, string $userApiKey, ?User $user = null): void
     {
+        Cache::lock('wallet-update:'.$store->id, 1800)->block(10,
+            fn () => $this->saveCashuFallback($store->fresh(), $lightningAddress, $userApiKey, $user));
+    }
+
+    private function saveCashuFallback(Store $store, string $lightningAddress, string $userApiKey, ?User $user): void
+    {
         $mintUrl = config('services.cashu.default_mint_url');
         try {
             $existing = $this->cashuService->getSettings($store->btcpay_store_id, $userApiKey);
@@ -681,6 +688,8 @@ class WalletConnectionService
             'lightningAddress' => $lightningAddress,
             'enabled' => true,
         ], $userApiKey);
+
+        app(WalletConfigIntegrityService::class)->baselineCashuFallback($store, true, $user);
 
         $store->forceFill([
             'cashu_fallback_enabled' => true,
