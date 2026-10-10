@@ -7,6 +7,7 @@ use App\Models\Store;
 use App\Models\User;
 use App\Models\WalletConnection;
 use App\Services\BtcPay\StoreService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -87,7 +88,7 @@ class WalletConfigIntegrityService
      * Satflux-driven change; best-effort (a failed read leaves the previous
      * fingerprint in place and the next verify retries).
      */
-    public function baseline(WalletConnection $connection, ?User $by = null, string $reason = 'connected'): bool
+    public function baseline(WalletConnection $connection, ?User $by = null, string $reason = 'connected', bool $learnPayee = true): bool
     {
         $store = $connection->store;
         if (! $store instanceof Store) {
@@ -125,7 +126,76 @@ class WalletConfigIntegrityService
 
         // A new wallet also means a new payee node: relearn it from a canary
         // invoice (best-effort; first settled payment is the fallback).
-        $this->payees->learn($connection, $by, $reason);
+        if ($learnPayee) {
+            $this->payees->learn($connection, $by, $reason);
+        }
+
+        return true;
+    }
+
+    /**
+     * Record only the Cashu method changed by Satflux's fallback setup. Keep
+     * every other expected method intact so a concurrent wallet swap is still
+     * detected. Call after the write, while holding the store's wallet lock.
+     */
+    public function baselineCashuFallback(Store $store, bool $enabled, ?User $by = null): bool
+    {
+        $connection = $store->walletConnection()->first();
+        if (! $connection || $connection->status !== 'connected' || $connection->config_fingerprint === null) {
+            return false;
+        }
+
+        try {
+            $snapshot = $this->snapshot($store);
+        } catch (\Throwable $e) {
+            Log::warning('Cashu fallback baseline skipped', [
+                'store_id' => $store->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+
+        $cashuIds = ['CASHU', 'CASHUMELT'];
+        $found = false;
+        foreach ($cashuIds as $id) {
+            if (! array_key_exists($id, $snapshot['configs'])) {
+                continue;
+            }
+            $found = true;
+            // The plugin writes only Enabled to its payment-method config.
+            // Do not approve an unexpected config or an unconfirmed write.
+            if ($snapshot['configs'][$id] !== ['enabled' => $enabled, 'config' => ['enabled' => $enabled]]) {
+                return false;
+            }
+        }
+        if ($enabled && ! $found) {
+            return false;
+        }
+
+        $fingerprint = $connection->config_fingerprint;
+        $configs = $connection->config_snapshot ?? [];
+        foreach ($cashuIds as $id) {
+            unset($fingerprint[$id], $configs[$id]);
+            if (array_key_exists($id, $snapshot['fingerprint'])) {
+                $fingerprint[$id] = $snapshot['fingerprint'][$id];
+                $configs[$id] = $snapshot['configs'][$id];
+            }
+        }
+        ksort($fingerprint);
+        ksort($configs);
+        // Other methods have not been verified; leave their verification time
+        // and any existing drift incident for the next complete check.
+        $connection->forceFill([
+            'config_fingerprint' => $fingerprint,
+            'config_snapshot' => $configs,
+        ])->save();
+        AuditLog::log('wallet_connection.config_baselined', 'wallet_connection', $connection->id, [
+            'store_id' => $store->id,
+            'reason' => 'cashu_fallback',
+            'methods' => array_values(array_intersect($cashuIds, array_keys($snapshot['fingerprint']))),
+            'cleared_drift' => false,
+        ], $by?->id);
 
         return true;
     }
@@ -136,6 +206,26 @@ class WalletConfigIntegrityService
      * @return array{status: 'ok'|'drift'|'baselined'|'skipped'|'error', diff?: array{changed: string[], added: string[], removed: string[], details?: array<string, array{expected: string|null, actual: string|null}>}}
      */
     public function verify(WalletConnection $connection): array
+    {
+        // A webhook or scheduler must not inspect half-applied wallet settings.
+        $result = Cache::lock('wallet-update:'.$connection->store_id, 1800)->get(function () use ($connection) {
+            $fresh = $connection->fresh();
+
+            return $fresh ? $this->verifyLocked($fresh) : ['status' => 'skipped'];
+        }) ?: ['status' => 'skipped'];
+        if ($result['status'] === 'baselined') {
+            // Canary invoice creation acquires the same store lock. Learn after
+            // releasing it so late baselining does not block its own invoice.
+            $fresh = $connection->fresh();
+            if ($fresh && $fresh->status === 'connected') {
+                $this->payees->learn($fresh, null, 'late');
+            }
+        }
+
+        return $result;
+    }
+
+    private function verifyLocked(WalletConnection $connection): array
     {
         if ($connection->status !== 'connected') {
             return ['status' => 'skipped'];
@@ -149,7 +239,7 @@ class WalletConfigIntegrityService
             // Connected before monitoring existed: the current config is the
             // best baseline we have - noted in the audit trail as "late".
             // (An empty array IS a baseline: a store without payment methods.)
-            return ['status' => $this->baseline($connection, null, 'late') ? 'baselined' : 'error'];
+            return ['status' => $this->baseline($connection, null, 'late', learnPayee: false) ? 'baselined' : 'error'];
         }
 
         try {

@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Store;
+use App\Models\User;
 use App\Models\WalletConnection;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\LightningService;
@@ -60,7 +62,7 @@ class AttemptWalletConnectionConfig extends Command
         /** @var WalletConnection $connection */
         foreach ($connections as $connection) {
             $store = $connection->store;
-            if (! $store || ! $store->btcpay_store_id) {
+            if (! $store instanceof Store || ! $store->btcpay_store_id) {
                 Log::warning('AttemptWalletConnectionConfig: store or btcpay_store_id missing', [
                     'connection_id' => $connection->id,
                 ]);
@@ -69,7 +71,7 @@ class AttemptWalletConnectionConfig extends Command
             }
 
             $user = $store->user;
-            if (! $user) {
+            if (! $user instanceof User) {
                 Log::warning('AttemptWalletConnectionConfig: store has no user', [
                     'connection_id' => $connection->id,
                     'store_id' => $store->id,
@@ -103,15 +105,11 @@ class AttemptWalletConnectionConfig extends Command
             $attempted++;
 
             try {
-                $result = $this->lightningService->connectLightningNode(
-                    $store->btcpay_store_id,
-                    'BTC',
-                    $plaintext,
-                    $apiKey
+                $updated = $this->walletConnectionService->createOrUpdate(
+                    $store, $connection->type, $plaintext, $user, 'pending',
                 );
-
-                if ($result['success'] ?? false) {
-                    $this->walletConnectionService->markConnected($connection, $user);
+                $result = ['success' => $updated->status === 'connected'];
+                if ($result['success']) {
                     $configured++;
                     $this->info("  [OK] Connection {$connection->id} (store: {$store->name}) configured.");
                     Log::info('AttemptWalletConnectionConfig: connection configured successfully', [
@@ -121,7 +119,7 @@ class AttemptWalletConnectionConfig extends Command
                 } else {
                     Log::debug('AttemptWalletConnectionConfig: BTCPay API did not accept connection', [
                         'connection_id' => $connection->id,
-                        'message' => $result['message'] ?? 'unknown',
+                        'message' => 'BTCPay has not confirmed the wallet connection',
                     ]);
                 }
             } catch (BtcPayException $e) {
