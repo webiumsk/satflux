@@ -163,4 +163,16 @@ class StoreSettingsTest extends TestCase
 
         $response->assertStatus(403);
     }
+
+    public function test_website_rejects_non_http_and_relative_urls_before_btcpay_calls(): void
+    {
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        foreach (['ftp://example.com', 'javascript:alert(1)', '/relative', '//example.com'] as $website) {
+            $this->actingAs($user)->putJson("/api/stores/{$store->id}/settings", [
+                'name' => 'Store', 'website' => $website,
+            ])->assertUnprocessable()->assertJsonValidationErrors('website');
+        }
+        Http::assertNothingSent();
+    }
 }

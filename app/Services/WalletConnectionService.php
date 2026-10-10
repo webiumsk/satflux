@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Events\WalletConnectionNeedsSupport;
+use App\Exceptions\WalletProvisioningException;
 use App\Models\AuditLog;
 use App\Models\Store;
 use App\Models\User;
+use App\Models\WalletConfigurationAttempt;
 use App\Models\WalletConnection;
 use App\Notifications\SupportNeededNotification;
 use App\Notifications\WalletConnectionChangedNotification;
@@ -13,11 +15,16 @@ use App\Notifications\WalletConnectionNeedsSupportMerchantNotification;
 use App\Notifications\WalletConnectionReadyNotification;
 use App\Services\BtcPay\BoltzService;
 use App\Services\BtcPay\CashuService;
+use App\Services\BtcPay\Exceptions\BtcPayException;
+use App\Services\BtcPay\InvoiceService;
 use App\Services\BtcPay\LightningService;
 use App\Services\BtcPay\StoreService;
 use App\Services\WalletSecurity\WalletConfigIntegrityService;
 use App\Services\WalletSecurity\WalletSecurityNotifier;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -51,12 +58,81 @@ class WalletConnectionService
         string $initialStatus = 'needs_support',
         ?string $fallbackLightningAddress = null,
     ): WalletConnection {
+        abort_unless((string) $store->user_id === (string) $user->id, 403);
+
+        return Cache::lock('wallet-update:'.$store->id, 1800)->block(10, function () use ($store, $type, $secret, $user, $initialStatus, $fallbackLightningAddress) {
+            $store = $store->fresh();
+            if (WalletConfigurationAttempt::where('store_id', $store->id)->unresolved()->exists()) {
+                throw ValidationException::withMessages(['secret' => 'A previous wallet update needs reconciliation. No further changes are allowed until its result is confirmed.']);
+            }
+            $existing = WalletConnection::where('store_id', $store->id)->first();
+            // Explicitly submitting a Blink address moves it to our LNURL backend.
+            // Legacy reads still use their stored type; a changed adapter is a wallet
+            // replacement and must pass invoice monitoring and the durable journal.
+            if ($type === 'blink') {
+                $address = $this->validator->blinkAddressForLnAddressConnect($secret);
+                if ($address !== null) {
+                    $type = 'lnaddress';
+                    $secret = $this->validator->formatBtcpayLnAddressConnectionString($address);
+                }
+            }
+            $replacement = ($existing && ($existing->type !== $type || Crypt::decryptString($existing->encrypted_secret) !== $secret))
+                || $store->wallet_type === 'cashu';
+            // The journal is committed before contacting BTCPay. Existing-wallet
+            // changes never share an outer transaction with store provisioning.
+            $attempt = null;
+            if ($replacement) {
+                $this->assertWalletCanChange($store);
+            }
+            if ($replacement && $initialStatus === 'pending' && in_array($type, ['blink', 'blitz', 'flash', 'lnaddress', 'nwc'], true)) {
+                $validation = $this->validator->validate($type, $secret);
+                if (! $validation['valid']) {
+                    throw ValidationException::withMessages(['secret' => $validation['errors']]);
+                }
+                $attempt = WalletConfigurationAttempt::create([
+                    'store_id' => $store->id, 'connection_type' => $type,
+                    'encrypted_secret' => Crypt::encryptString($secret), 'status' => 'applying',
+                ]);
+            }
+            try {
+                $connection = DB::transaction(fn () => $this->saveConnection($store, $type, $secret, $user, $initialStatus, $fallbackLightningAddress));
+                $attempt?->update(['status' => $connection->status === 'connected' ? 'confirmed' : 'uncertain',
+                    'encrypted_secret' => $connection->status === 'connected' ? null : $attempt->encrypted_secret]);
+
+                return $connection;
+            } catch (\Throwable $e) {
+                if ($attempt) {
+                    $attempt->update(['status' => 'uncertain']);
+                    // An old read after a timeout is not proof that the write
+                    // cannot still complete. Release only a confirmed rejection.
+                    try {
+                        if ($e instanceof WalletProvisioningException && $e->remoteRejected
+                            && ((! $existing && $store->fresh()->wallet_type === 'cashu')
+                                || ($existing && $this->btcpayLightningConfigMatches($store, $existing, $user->btcpay_api_key)))) {
+                            $attempt->update(['status' => 'rejected', 'encrypted_secret' => null]);
+                        }
+                    } catch (\Throwable) {
+                        // Recovery must retry the read after BTCPay is reachable.
+                    }
+                }
+                throw $e;
+            }
+        });
+    }
+
+    protected function saveConnection(
+        Store $store,
+        string $type,
+        string $secret,
+        User $user,
+        string $initialStatus = 'needs_support',
+        ?string $fallbackLightningAddress = null,
+    ): WalletConnection {
         Log::info('WalletConnectionService::createOrUpdate called', [
             'store_id' => $store->id,
             'store_btcpay_store_id' => $store->btcpay_store_id ?? 'NULL',
             'type' => $type,
             'secret_length' => strlen($secret),
-            'secret_preview' => substr($secret, 0, 50).'...',
             'user_id' => $user->id,
         ]);
 
@@ -110,6 +186,8 @@ class WalletConnectionService
 
         // Check if this is a new connection or update
         $existingConnection = WalletConnection::where('store_id', $store->id)->first();
+        $isReplacement = ($existingConnection && ($existingConnection->type !== $type || Crypt::decryptString($existingConnection->encrypted_secret) !== $secret))
+            || $store->wallet_type === 'cashu';
         $isNew = $existingConnection === null;
         $wasConnected = $existingConnection && $existingConnection->status === 'connected';
         $hadAquaDescriptor = $existingConnection && $existingConnection->type === 'aqua_descriptor';
@@ -152,7 +230,7 @@ class WalletConnectionService
                     'configuration_source' => null,
                     'encrypted_secret' => Crypt::encryptString($secret),
                     'status' => $initialStatus,
-                    'reconfig' => $hadReconfig
+                    'reconfig' => $isReplacement || $hadReconfig
                         || (in_array($type, ['blink', 'blitz', 'flash', 'lnaddress'], true) ? $blinkBotUseReconfigPath : $wasConnected),
                     'bot_failure_message' => null,
                     'bot_failed_at' => null,
@@ -195,6 +273,15 @@ class WalletConnectionService
                 }
 
                 if ($userApiKey) {
+                    $this->attemptBtcpayWalletSync(
+                        $store,
+                        $connection,
+                        $type,
+                        $secret,
+                        $user,
+                        $userApiKey,
+                    );
+
                     // CashuMelt stays enabled in parallel as the payout fallback (Boltz/Spark
                     // outages). The address comes from the request or is derived from
                     // blink/blitz ln-address secrets; without one we fall back to the old
@@ -240,14 +327,6 @@ class WalletConnectionService
                         }
                     }
 
-                    $this->attemptBtcpayWalletSync(
-                        $store,
-                        $connection,
-                        $type,
-                        $secret,
-                        $user,
-                        $userApiKey,
-                    );
                 }
             }
 
@@ -626,6 +705,88 @@ class WalletConnectionService
         ]);
     }
 
+    public function assertWalletCanChange(Store $store): void
+    {
+        if (WalletConfigurationAttempt::where('store_id', $store->id)->unresolved()->exists()) {
+            throw ValidationException::withMessages(['secret' => 'A previous wallet update needs reconciliation.']);
+        }
+        $merchant = $store->user;
+        $merchantKey = $merchant instanceof User ? $merchant->btcpay_api_key : null;
+        if (! $merchantKey) {
+            throw ValidationException::withMessages(['secret' => 'The merchant API key is required to safely change this wallet.']);
+        }
+        try {
+            $invoices = app(InvoiceService::class);
+            for ($skip = 0; $skip < 100000; $skip += 100) {
+                $page = $invoices->listInvoices((string) $store->btcpay_store_id,
+                    ['status' => ['New', 'Processing', 'Expired', 'Invalid'], 'includeArchived' => true], $skip, 100, $merchantKey);
+                foreach ($page as $invoice) {
+                    $status = $invoice['status'] ?? '';
+                    $until = isset($invoice['monitoringExpiration']) ? CarbonImmutable::parse($invoice['monitoringExpiration']) : null;
+                    if ($status === 'Processing' || ($status !== 'Settled' && ($until === null || $until->isFuture()))) {
+                        throw ValidationException::withMessages(['secret' => 'Outstanding invoices are still being monitored. Wait for them to finish before changing the wallet.']);
+                    }
+                }
+                if (count($page) < 100) {
+                    return;
+                }
+            }
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable) {
+            throw ValidationException::withMessages(['secret' => 'Could not verify outstanding invoices. The wallet was not changed.']);
+        }
+        throw ValidationException::withMessages(['secret' => 'Too many outstanding invoices to safely change the wallet.']);
+    }
+
+    /** Recover a committed remote update after a lost response or local commit failure.
+     * Reads configuration only; never writes another connection to BTCPay.
+     */
+    public function reconcileWalletUpdate(Store $store, User $user, bool $confirmRejected = false): bool
+    {
+        abort_unless((string) $store->user_id === (string) $user->id, 403);
+
+        return Cache::lock('wallet-update:'.$store->id, 1800)->block(10, function () use ($store, $user, $confirmRejected) {
+            $attempt = WalletConfigurationAttempt::where('store_id', $store->id)->unresolved()->latest('id')->first();
+            if (! $attempt) {
+                return true;
+            }
+            $desired = new WalletConnection(['type' => $attempt->connection_type, 'encrypted_secret' => $attempt->encrypted_secret]);
+            $key = $user->getBtcPayApiKeyOrFail();
+            if ($this->btcpayLightningConfigMatches($store, $desired, $key)) {
+                DB::transaction(function () use ($store, $user, $attempt) {
+                    $connection = WalletConnection::updateOrCreate(['store_id' => $store->id], [
+                        'type' => $attempt->connection_type, 'encrypted_secret' => $attempt->encrypted_secret,
+                        'status' => 'pending', 'reconfig' => true, 'configuration_source' => null,
+                        'submitted_by_user_id' => $user->id, 'secret_updated_at' => $attempt->created_at,
+                    ]);
+                    $store->update(['wallet_type' => $this->resolveStoreWalletType($attempt->connection_type)]);
+                    $this->markConnected($connection, $user);
+                    $attempt->update(['status' => 'confirmed', 'encrypted_secret' => null]);
+                });
+
+                return true;
+            }
+            $previous = WalletConnection::where('store_id', $store->id)->first();
+            if ($confirmRejected && $previous && $this->btcpayLightningConfigMatches($store, $previous, $key)) {
+                $attempt->update(['status' => 'rejected', 'encrypted_secret' => null]);
+
+                return true;
+            }
+
+            if ($confirmRejected && ! $previous && $store->wallet_type === 'cashu') {
+                $methods = $this->storeService->getStorePaymentMethods((string) $store->btcpay_store_id, $key, includeConfig: true);
+                if (! collect($methods)->contains(fn ($method) => ($method['paymentMethodId'] ?? '') === 'BTC-LN' && ($method['enabled'] ?? false))) {
+                    $attempt->update(['status' => 'rejected', 'encrypted_secret' => null]);
+
+                    return true;
+                }
+            }
+
+            return false;
+        });
+    }
+
     protected function resolveStoreWalletType(string $connectionType): string
     {
         return match ($connectionType) {
@@ -650,8 +811,8 @@ class WalletConnectionService
             return;
         }
 
-        // Lightning-address style connections share one flow: best-effort clear of
-        // the existing BTCPay Lightning config, then connect with the canonical string.
+        // Update the Lightning configuration in place. Deleting it first would
+        // interrupt existing invoices and leave a gap on validation failure.
         $lnFlows = [
             'blink' => ['label' => 'Blink', 'format' => fn (string $s): string => $this->validator->formatBtcpayBlinkConnectionString($s)],
             'blitz' => ['label' => 'Blitz', 'format' => fn (string $s): string => $this->validator->formatBtcpayBlitzConnectionString($s)],
@@ -660,19 +821,6 @@ class WalletConnectionService
         ];
 
         if (isset($lnFlows[$type])) {
-            try {
-                $this->lightningService->tryRemoveStoreLightningNodeConfiguration(
-                    $store->btcpay_store_id,
-                    'BTC',
-                    $userApiKey
-                );
-            } catch (\Throwable $e) {
-                Log::info("Best-effort clear BTCPay Lightning before {$lnFlows[$type]['label']} connect", [
-                    'store_id' => $store->id,
-                    'message' => $e->getMessage(),
-                ]);
-            }
-
             $btcpayString = $lnFlows[$type]['format']($secret);
             $this->tryConnectLightningAndMarkConnected($store, $connection, $btcpayString, $user, $userApiKey);
             // The connect call can fail transiently while BTCPay ends up configured
@@ -743,6 +891,23 @@ class WalletConnectionService
                 }
             }
         } catch (\Throwable $e) {
+            if ((bool) $connection->reconfig) {
+                // A lost response may follow a successful write. Confirm the desired
+                // configuration before rolling back; never treat an unrelated active node as success.
+                try {
+                    if ($this->btcpayLightningConfigMatches($store, $connection, $userApiKey)) {
+                        $this->markConnected($connection, $user);
+
+                        return;
+                    }
+                } catch (\Throwable) {
+                    // An uncertain remote result is recorded by the provisioning journal.
+                }
+                $failure = WalletProvisioningException::withMessages(['secret' => 'BTCPay did not confirm the wallet change. Reconciliation is required before accepting another change or creating new invoices.']);
+                $failure->remoteRejected = $e instanceof BtcPayException
+                    && in_array($e->getStatusCode(), [400, 401, 403, 409, 422], true);
+                throw $failure;
+            }
             Log::info('Greenfield Lightning connect not applied; config bot may configure', [
                 'store_id' => $store->id,
                 'connection_type' => $connection->type,
@@ -762,7 +927,7 @@ class WalletConnectionService
         }
 
         try {
-            if ((bool) $connection->reconfig) {
+            if ((bool) $connection->reconfig || $this->expectedBtcpayConnectionString($connection) !== null) {
                 // During replacements an active node may be the old wallet, so
                 // the probe alone proves nothing. A reconfig is connected only
                 // when BTCPay already holds the wallet being submitted (the
@@ -851,8 +1016,20 @@ class WalletConnectionService
      */
     protected static function canonicalConnectionString(string $value): string
     {
+        $parts = explode(';', $value);
+        $address = null;
+        foreach ($parts as $part) {
+            if (str_starts_with(trim($part), 'ln-address=')) {
+                $address = substr(trim($part), strlen('ln-address='));
+            }
+        }
+        if ($address && str_contains($address, '@')) {
+            $origin = 'https://'.strtolower(explode('@', $address, 2)[1]);
+            $parts = array_filter($parts, fn (string $part) => ! str_starts_with(trim($part), 'server=')
+                || rtrim(strtolower(substr(trim($part), strlen('server='))), '/') !== $origin);
+        }
         $pairs = [];
-        foreach (explode(';', $value) as $pair) {
+        foreach ($parts as $pair) {
             $pair = trim($pair);
             if ($pair === '') {
                 continue;
