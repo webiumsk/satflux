@@ -87,7 +87,7 @@ class Btcpay245WalletCompatibilityTest extends TestCase
         $this->assertSame($old, Crypt::decryptString($store->walletConnection->encrypted_secret));
         $this->assertSame(0, WalletConfigurationAttempt::count());
         Http::assertNotSent(fn ($r) => in_array($r->method(), ['PUT', 'POST', 'DELETE'], true));
-        Http::assertSent(fn ($r) => str_contains($r->url(), 'includeArchived=1') && $r->hasHeader('Authorization', 'Bearer merchant-key'));
+        Http::assertSent(fn ($r) => str_contains($r->url(), 'includeArchived=true') && $r->hasHeader('Authorization', 'Bearer merchant-key'));
     }
 
     #[DataProvider('walletReplacements')]

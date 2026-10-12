@@ -358,6 +358,9 @@ class WalletConnectionTest extends TestCase
             if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
                 return Http::response([], 200);
             }
+            if ($url === 'https://lud21wallet.example/verify/abc') {
+                return Http::response(['status' => 'OK', 'settled' => false, 'preimage' => null, 'pr' => 'lnbc10n1invoice']);
+            }
             if ($url === 'https://lud21wallet.example/.well-known/lnurlp/alice') {
                 return Http::response([
                     'tag' => 'payRequest',
@@ -403,6 +406,9 @@ class WalletConnectionTest extends TestCase
             $url = $request->url();
             if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
                 return Http::response([], 200);
+            }
+            if ($url === 'https://sharedwallet.example/verify/alice') {
+                return Http::response(['status' => 'OK', 'settled' => false, 'preimage' => null, 'pr' => 'lnbc10n1invoice']);
             }
             if ($url === 'https://sharedwallet.example/.well-known/lnurlp/alice') {
                 return Http::response([
@@ -573,7 +579,7 @@ class WalletConnectionTest extends TestCase
     #[Test]
     public function lnaddress_probe_requires_store_ownership(): void
     {
-        Http::fake();
+        Http::fake(['*/invoices*' => Http::response([], 200), '*' => Http::response([], 200)]);
 
         $owner = User::factory()->create();
         $store = Store::factory()->create(['user_id' => $owner->id]);
@@ -1729,7 +1735,7 @@ class WalletConnectionTest extends TestCase
     #[Test]
     public function first_wallet_connection_needs_no_email_code(): void
     {
-        Http::fake();
+        Http::fake(['*/invoices*' => Http::response([], 200), '*' => Http::response([], 200)]);
         $user = User::factory()->create();
         $store = Store::factory()->create(['user_id' => $user->id]);
 
@@ -1745,7 +1751,7 @@ class WalletConnectionTest extends TestCase
     #[Test]
     public function pending_wallet_connection_can_be_replaced_without_email_code(): void
     {
-        Http::fake();
+        Http::fake(['*/invoices*' => Http::response([], 200), '*' => Http::response([], 200)]);
         $user = User::factory()->create();
         $store = Store::factory()->create(['user_id' => $user->id]);
         WalletConnection::create([
@@ -1764,7 +1770,7 @@ class WalletConnectionTest extends TestCase
     #[Test]
     public function replacing_connected_wallet_without_grant_is_rejected(): void
     {
-        Http::fake();
+        Http::fake(['*/invoices*' => Http::response([], 200), '*' => Http::response([], 200)]);
         $user = User::factory()->create();
         $store = $this->connectedBlinkStore($user);
 
@@ -1787,7 +1793,7 @@ class WalletConnectionTest extends TestCase
     #[Test]
     public function guest_owner_must_upgrade_before_replacing_connected_wallet(): void
     {
-        Http::fake();
+        Http::fake(['*/invoices*' => Http::response([], 200), '*' => Http::response([], 200)]);
         $guest = User::factory()->guest()->create([
             'email' => 'guest+abc@guest.satflux.io',
             'guest_recovery_public_key' => str_repeat('a', 64),
@@ -1851,7 +1857,7 @@ class WalletConnectionTest extends TestCase
     #[Test]
     public function confirmed_code_grants_reveal_and_one_replacement(): void
     {
-        Http::fake();
+        Http::fake(['*/invoices*' => Http::response([], 200), '*' => Http::response([], 200)]);
         Notification::fake();
         $user = User::factory()->create([
             'guest_recovery_public_key' => str_repeat('a', 64),
@@ -1907,7 +1913,7 @@ class WalletConnectionTest extends TestCase
     #[Test]
     public function grant_is_scoped_to_the_store_it_was_issued_for(): void
     {
-        Http::fake();
+        Http::fake(['*/invoices*' => Http::response([], 200), '*' => Http::response([], 200)]);
         Notification::fake();
         $user = User::factory()->create([
             'guest_recovery_public_key' => str_repeat('a', 64),
@@ -1932,7 +1938,7 @@ class WalletConnectionTest extends TestCase
     #[Test]
     public function expired_grant_requires_a_new_code(): void
     {
-        Http::fake();
+        Http::fake(['*/invoices*' => Http::response([], 200), '*' => Http::response([], 200)]);
         Notification::fake();
         $user = User::factory()->create([
             'guest_recovery_public_key' => str_repeat('a', 64),
@@ -2035,7 +2041,7 @@ class WalletConnectionTest extends TestCase
     #[Test]
     public function configure_endpoint_on_connected_store_requires_grant(): void
     {
-        Http::fake();
+        Http::fake(['*/invoices*' => Http::response([], 200), '*' => Http::response([], 200)]);
         $user = User::factory()->create();
         $store = $this->connectedBlinkStore($user);
 
@@ -2051,7 +2057,7 @@ class WalletConnectionTest extends TestCase
     #[Test]
     public function samrock_complete_on_connected_store_requires_grant(): void
     {
-        Http::fake();
+        Http::fake(['*/invoices*' => Http::response([], 200), '*' => Http::response([], 200)]);
         $user = User::factory()->create();
         $store = $this->connectedBlinkStore($user);
 
@@ -2068,7 +2074,7 @@ class WalletConnectionTest extends TestCase
     #[Test]
     public function switching_connected_lightning_store_to_cashu_requires_grant(): void
     {
-        Http::fake();
+        Http::fake(['*/invoices*' => Http::response([], 200), '*' => Http::response([], 200)]);
         $user = User::factory()->create();
         $store = $this->connectedBlinkStore($user);
 

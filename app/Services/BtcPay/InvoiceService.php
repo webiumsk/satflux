@@ -66,21 +66,8 @@ class InvoiceService
             $query['take'] = $take;
         }
 
-        $originalApiKey = null;
-        if ($userApiKey) {
-            // Temporarily use user-level API key
-            $originalApiKey = $this->client->getApiKey();
-            $this->client->setApiKey($userApiKey);
-        }
-
-        try {
-            return $this->client->get("/api/v1/stores/{$storeId}/invoices", $query);
-        } finally {
-            // Restore original API key if we changed it
-            if ($userApiKey && $originalApiKey) {
-                $this->client->setApiKey($originalApiKey);
-            }
-        }
+        return $this->client->withUserKey($userApiKey,
+            fn (): array => $this->client->getList("/api/v1/stores/{$storeId}/invoices", $query));
     }
 
     /**

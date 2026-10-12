@@ -4,6 +4,7 @@ namespace App\Services\BtcPay;
 
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class CashuService
 {
@@ -40,6 +41,22 @@ class CashuService
                 []
             );
         });
+    }
+
+    public function assertNoUnresolvedSettlements(string $storeId, string $apiKey): void
+    {
+        try {
+            $result = $this->client->withUserKey($apiKey,
+                fn () => $this->client->get("/api/v1/stores/{$storeId}/plugins/cashumelt/safety"));
+        } catch (BtcPayException $e) {
+            if ($e->getStatusCode() === 404) {
+                throw ValidationException::withMessages(['cashu' => 'Update CashuMelt to version 1.4.0.0 or later before changing this wallet.']);
+            }
+            throw $e;
+        }
+        if (($result['safeToChangeWallet'] ?? null) !== true) {
+            throw ValidationException::withMessages(['cashu' => 'Outstanding Cashu settlements or change must be recovered before changing this wallet.']);
+        }
     }
 
     /**
