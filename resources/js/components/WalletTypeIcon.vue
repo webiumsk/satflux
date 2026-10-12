@@ -38,7 +38,7 @@ const props = withDefaults(
   defineProps<{
     /** store.wallet_type or connection.type */
     type: 'blink' | 'blitz' | 'flash' | 'lnaddress' | 'aqua_boltz' | 'cashu' | 'nwc' | 'aqua_descriptor' | null | undefined;
-    /** aqua_boltz / aqua_descriptor: aqua|bull; lnaddress: blitz|flash|coinos */
+    /** aqua_boltz / aqua_descriptor: aqua|bull; lnaddress: blink|blitz|flash|coinos */
     brand?: AquaBoltzWalletBrand | LnAddressWalletBrand | null | undefined;
     size?: 'sm' | 'md' | 'lg';
     showLabel?: boolean;
@@ -61,9 +61,9 @@ const resolvedBrand = computed((): AquaBoltzWalletBrand => {
   return 'aqua';
 });
 
-/** lnaddress connections carry the curated wallet brand (blitz/flash/coinos) or none. */
+/** lnaddress connections carry the curated wallet brand (blink/blitz/flash/coinos) or none. */
 const lnAddressBrand = computed((): LnAddressWalletBrand | null => {
-  if (props.brand === 'blitz' || props.brand === 'flash' || props.brand === 'coinos') {
+  if (props.brand === 'blink' || props.brand === 'blitz' || props.brand === 'flash' || props.brand === 'coinos') {
     return props.brand;
   }
   return null;
@@ -80,6 +80,7 @@ const iconSrc = computed(() => {
   if (props.type === 'blitz') return '/img/wallets/blitz-64.webp';
   if (props.type === 'flash') return '/img/wallets/flash-64.webp';
   if (props.type === 'lnaddress') {
+    if (lnAddressBrand.value === 'blink') return '/img/wallets/blink-64.webp';
     if (lnAddressBrand.value === 'blitz') return '/img/wallets/blitz-64.webp';
     if (lnAddressBrand.value === 'flash') return '/img/wallets/flash-64.webp';
     if (lnAddressBrand.value === 'coinos') return '/img/wallets/coinos-64.webp';
@@ -97,6 +98,7 @@ function walletTypeLabel(): string {
   if (props.type === 'blitz') return t('create_store.wallet_type_blitz');
   if (props.type === 'flash') return t('create_store.wallet_type_flash');
   if (props.type === 'lnaddress') {
+    if (lnAddressBrand.value === 'blink') return t('create_store.wallet_type_blink');
     if (lnAddressBrand.value === 'blitz') return t('create_store.wallet_type_blitz');
     if (lnAddressBrand.value === 'flash') return t('create_store.wallet_type_flash');
     if (lnAddressBrand.value === 'coinos') return t('create_store.wallet_type_coinos');

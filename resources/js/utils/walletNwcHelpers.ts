@@ -84,6 +84,26 @@ export function normalizeBlinkConnectionString(value: string): string {
   return trimmed;
 }
 
+/** Only BTC address configurations can move to LNAddressConnect. */
+export function blinkAddressForLnAddressConnect(secret: string): string | null {
+  const trimmed = secret.trim();
+  if (isBareBlinkLightningAddress(trimmed)) return trimmed;
+  if (!validateBlinkConnectionString(trimmed)) return null;
+  let address: string | null = null;
+  for (const part of trimmed.split(';')) {
+    const eq = part.indexOf('=');
+    if (eq < 0) continue;
+    const key = part.slice(0, eq).trim().toLowerCase();
+    const value = part.slice(eq + 1).trim();
+    if (['api-key', 'apikey', 'wallet-id', 'walletid'].includes(key)) return null;
+    if (key === 'currency' && value.toUpperCase() !== 'BTC') return null;
+    if (['ln-address', 'lnaddress', 'username'].includes(key)) {
+      address = value.includes('@') ? value : `${value}@blink.sv`;
+    }
+  }
+  return address;
+}
+
 /**
  * Blink connection string - either custodial (type=blink;server=...;api-key=...;wallet-id=...),
  * non-custodial (type=blink;ln-address=you@blink.sv;), or the bare blink.sv address shorthand.

@@ -17,13 +17,13 @@ describe('validateBlitzConnectionString', () => {
 });
 
 describe('routeLightningAddress', () => {
-  it('routes blink.sv addresses to blink with a canonical secret', () => {
+  it('routes blink.sv addresses to LNAddressConnect with a canonical secret', () => {
     const route = routeLightningAddress('satoshi@blink.sv');
     expect(route).toEqual({
-      target: 'blink',
+      target: 'lnaddress',
       address: 'satoshi@blink.sv',
-      connectionSecret: 'type=blink;ln-address=satoshi@blink.sv;',
-      brand: null,
+      connectionSecret: 'type=lnaddress;ln-address=satoshi@blink.sv;',
+      brand: 'blink',
     });
   });
 
@@ -63,7 +63,7 @@ describe('routeLightningAddress', () => {
   });
 
   it('is case-insensitive on the routed domains', () => {
-    expect(routeLightningAddress('Satoshi@Blink.SV')?.target).toBe('blink');
+    expect(routeLightningAddress('Satoshi@Blink.SV')?.target).toBe('lnaddress');
     expect(routeLightningAddress('Satoshi@BlitzWalletApp.com')?.target).toBe('lnaddress');
     expect(routeLightningAddress('Satoshi@FlashApp.ME')?.target).toBe('lnaddress');
     expect(routeLightningAddress('Satoshi@Coinos.IO')?.target).toBe('lnaddress');
@@ -78,6 +78,6 @@ describe('routeLightningAddress', () => {
   });
 
   it('trims surrounding whitespace', () => {
-    expect(routeLightningAddress('  satoshi@blink.sv  ')?.target).toBe('blink');
+    expect(routeLightningAddress('  satoshi@blink.sv  ')?.target).toBe('lnaddress');
   });
 });

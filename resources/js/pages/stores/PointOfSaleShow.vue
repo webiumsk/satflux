@@ -1145,6 +1145,7 @@
 </template>
 
 <script setup lang="ts">
+import { buildPosEmbedForm } from "@/utils/posEmbed";
 import { asApiError } from "../../utils/apiError";
 import { ref, computed, watch, watchEffect, inject, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -1303,26 +1304,9 @@ const btcpayAppUrl = computed(() => {
   return `${baseUrl}/apps/${id}/pos`;
 });
 
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-const embedFormCode = computed(() => {
-  if (!btcpayAppUrl.value) return "";
-  const buyLabel = escapeHtml(t("apps.pos_embed_buy_button_example"));
-  return `<form method="POST" action="${btcpayAppUrl.value}">
-  <input type="hidden" name="email" value="customer@example.com" />
-  <input type="hidden" name="orderId" value="CustomOrderId" />
-  <input type="hidden" name="notificationUrl" value="https://example.com/callbacks" />
-  <input type="hidden" name="redirectUrl" value="https://example.com/thankyou" />
-  <button type="submit" name="choiceKey" value="produkt">${buyLabel}</button>
-</form>`;
-});
+const embedFormCode = computed(() =>
+  buildPosEmbedForm(btcpayAppUrl.value, t("apps.pos_embed_buy_button_example")),
+);
 
 const embedIframeCode = computed(() => {
   if (!btcpayAppUrl.value) return "";

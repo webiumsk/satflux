@@ -2,6 +2,8 @@
 
 namespace App\Services\BtcPay;
 
+use App\Models\Store;
+use App\Models\WalletConfigurationAttempt;
 use Illuminate\Support\Facades\Cache;
 
 class InvoiceService
@@ -31,19 +33,16 @@ class InvoiceService
      */
     public function createInvoice(string $storeId, array $payload, ?string $userApiKey = null): array
     {
-        $originalApiKey = null;
-        if ($userApiKey) {
-            $originalApiKey = $this->client->getApiKey();
-            $this->client->setApiKey($userApiKey);
-        }
-
-        try {
-            return $this->client->post("/api/v1/stores/{$storeId}/invoices", $payload);
-        } finally {
-            if ($userApiKey && $originalApiKey) {
-                $this->client->setApiKey($originalApiKey);
+        $local = Store::where('btcpay_store_id', $storeId)->first();
+        $create = function () use ($storeId, $payload, $userApiKey, $local) {
+            if ($local && WalletConfigurationAttempt::where('store_id', $local->id)->unresolved()->exists()) {
+                throw new \RuntimeException('Invoice creation is paused until the wallet update is reconciled.');
             }
-        }
+
+            return $this->client->withUserKey($userApiKey, fn () => $this->client->post("/api/v1/stores/{$storeId}/invoices", $payload));
+        };
+
+        return $local ? Cache::lock('wallet-update:'.$local->id, 1800)->block(10, $create) : $create();
     }
 
     /** Archive (soft-delete) a BTCPay invoice - used for the payee-attestation canary. */

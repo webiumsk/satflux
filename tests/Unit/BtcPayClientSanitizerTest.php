@@ -86,11 +86,12 @@ class BtcPayClientSanitizerTest extends TestCase
 
         $sanitized = (new BtcPayClientSanitizerProbe('server-key'))->sanitizeForTest([
             'rune' => 'LIVERUNEVALUE',
+            'uri' => 'nostr+walletconnect://pubkey?secret=LIVENWCSECRET&relay=wss://relay.example',
             'note' => 'retry token=LIVETOKEN;api_key=LIVEAPIKEY; seed xprv9s21ZrQH143K3SECRETPRVKEYxyz123456789 and tprv8ZgxMBicQKsPdTESTNETPRVKEYabc987654',
         ]);
 
         $encoded = (string) json_encode($sanitized);
-        foreach (['LIVERUNEVALUE', 'LIVETOKEN', 'LIVEAPIKEY', 'SECRETPRVKEY', 'TESTNETPRVKEY'] as $secret) {
+        foreach (['LIVERUNEVALUE', 'LIVETOKEN', 'LIVEAPIKEY', 'SECRETPRVKEY', 'TESTNETPRVKEY', 'LIVENWCSECRET'] as $secret) {
             $this->assertStringNotContainsString($secret, $encoded);
         }
         $this->assertArrayHasKey('note', $sanitized);

@@ -46,7 +46,13 @@ test.describe.serial('BTCPay lifecycle (Greenfield stub)', () => {
         // and the panel webhook is registered with a stub-minted secret.
         const state = await stub<{ stores: Array<{ id: string }> }>('/_stub/state');
         expect(state.stores.length).toBeGreaterThan(0);
-        btcpayStoreId = state.stores[state.stores.length - 1]!.id;
+        const store = state.stores[state.stores.length - 1]!;
+        btcpayStoreId = store.id;
+        const webhooks = await stub<Array<{ url: string }>>(`/api/v1/stores/${btcpayStoreId}/webhooks`, {
+            headers: { Authorization: 'Bearer stub-merchant-key' },
+        });
+        expect(webhooks).toHaveLength(1);
+        expect(webhooks[0]!.url).toBe(`${new URL(page.url()).origin}/api/webhooks/btcpay`);
 
         await page.goto('/stores');
         await expect(page.getByText('E2E Stub Store').first()).toBeVisible();

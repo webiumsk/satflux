@@ -59,6 +59,20 @@ class WalletConnectionDetector
         // Matches connection strings and the bare 'name@blink.sv' non-custodial
         // shorthand - the latter must win over the Cashu Lightning-address heuristic.
         if ($this->looksLikeBlink($trimmed)) {
+            $address = $this->validator->blinkAddressForLnAddressConnect($trimmed);
+            if ($address !== null) {
+                return [
+                    'kind' => 'lnaddress',
+                    'connection_type' => 'lnaddress',
+                    'store_wallet_type' => 'lnaddress',
+                    'brand' => 'blink',
+                    'normalized_secret' => $this->validator->formatBtcpayLnAddressConnectionString($address),
+                    'cashu_mint_url' => null,
+                    'cashu_lightning_address' => null,
+                    'confidence' => 'high',
+                ];
+            }
+
             return [
                 'kind' => 'blink',
                 'connection_type' => 'blink',
