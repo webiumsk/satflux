@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\WalletConnection;
 use App\Services\BtcPay\BtcPayClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -467,6 +468,9 @@ class StoreTest extends TestCase
     {
         $baseUrl = rtrim(config('services.btcpay.base_url'), '/');
         $btcpaySid = 'cashu-store-btcpay-id';
+
+        // Replace setUp's generic store callback, which also matches plugin paths.
+        Http::swap(new Factory);
 
         Http::fake([
             $baseUrl.'/api/v1/stores/'.$btcpaySid.'/plugins/cashumelt/safety' => Http::response(['safeToChangeWallet' => true]),

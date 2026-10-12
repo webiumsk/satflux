@@ -43,10 +43,10 @@ class GuestInactivePurgeTest extends TestCase
             if (preg_match('#/api/v1/stores/([^/]+)/invoices(\?|$)#', $url, $m)) {
                 $storeId = $m[1];
                 if ($storeId === 'btcpay_store_test_2') {
-                    return Http::response(['data' => [['id' => 'inv_1', 'status' => 'New']]], 200);
+                    return Http::response([['id' => 'inv_1', 'status' => 'New']], 200);
                 }
 
-                return Http::response(['data' => []], 200);
+                return Http::response([], 200);
             }
 
             return Http::response(['message' => 'unfaked: '.$url], 404);
