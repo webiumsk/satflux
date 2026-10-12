@@ -630,6 +630,9 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) {
             $url = $request->url();
+            if (str_ends_with($url, '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true], 200);
+            }
             if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
                 return Http::response([], 200);
             }
@@ -791,6 +794,9 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) {
             $url = $request->url();
+            if (str_ends_with($url, '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true], 200);
+            }
             if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
                 return Http::response([], 200);
             }
@@ -1313,6 +1319,9 @@ class WalletConnectionTest extends TestCase
         $putPayload = null;
         Http::fake(function (Request $request) use (&$putPayload) {
             $url = $request->url();
+            if (str_ends_with($url, '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true], 200);
+            }
             if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
                 return Http::response([], 200);
             }

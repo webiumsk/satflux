@@ -469,6 +469,8 @@ class StoreTest extends TestCase
         $btcpaySid = 'cashu-store-btcpay-id';
 
         Http::fake([
+            $baseUrl.'/api/v1/stores/'.$btcpaySid.'/plugins/cashumelt/safety' => Http::response(['safeToChangeWallet' => true]),
+            $baseUrl.'/api/v1/stores/'.$btcpaySid.'/payment-methods*' => Http::response([['paymentMethodId' => 'CASHU', 'enabled' => true]]),
             $baseUrl.'/api/v1/stores/'.$btcpaySid.'/plugins/cashumelt/settings' => Http::response([
                 'mintUrl' => 'https://mint.example.com/Bitcoin',
                 'lightningAddress' => 'u@example.com',
