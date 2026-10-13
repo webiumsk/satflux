@@ -3,18 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Store;
+use App\Models\User;
 use App\Services\Auth\SensitiveActionAuthorization;
 use App\Services\BtcPay\CashuService;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\LightningService;
-use App\Services\StoreChecklistService;
+use App\Services\CashuWalletUpdateService;
 use App\Services\WalletChangeConfirmationGuard;
 use App\Services\WalletConnectionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -106,19 +105,10 @@ class CashuController extends Controller
         if ($previousWalletType !== null) {
             app(WalletConnectionService::class)->assertWalletCanChange($store);
         }
-        $userApiKey = $store->user->getBtcPayApiKeyOrFail();
-
         $payload = $this->buildCashuMeltSettingsPayloadFromRequest($request);
 
         try {
-            $updated = DB::transaction(function () use ($store, $payload, $userApiKey, $switchingFromLightning) {
-                $store->markAsPureCashu($switchingFromLightning);
-
-                return $this->cashuService->saveSettings($store->btcpay_store_id, $payload, $userApiKey);
-            });
-            if ($switchingFromLightning) {
-                $changeGuard->consumeGrant($store, $request->user());
-            }
+            $updated = app(CashuWalletUpdateService::class)->update($store, $request->user(), $payload, $switchingFromLightning);
         } catch (BtcPayException $e) {
             if ($e->getStatusCode() === 400
                 && str_contains($e->getMessage(), 'Request body must be a JSON object')) {
@@ -134,24 +124,6 @@ class CashuController extends Controller
         }
 
         $store->refresh();
-
-        $enabledAfterSave = (bool) ($updated['enabled'] ?? true);
-        if ($enabledAfterSave) {
-            try {
-                $this->lightningService->tryRemoveLightningCheckoutPaymentMethods(
-                    $store->btcpay_store_id,
-                    $userApiKey
-                );
-            } catch (\Throwable $e) {
-                Log::error('Could not remove Lightning payment methods at BTCPay after Cashu save', [
-                    'store_id' => $store->id,
-                    'btcpay_store_id' => $store->btcpay_store_id,
-                    'message' => $e->getMessage(),
-                ]);
-            }
-        }
-
-        StoreChecklistService::ensureChecklistInitialized($store);
 
         $data = $this->formatCashuSettingsForApi($updated);
         if (($data['mint_url'] ?? null) === null) {
@@ -171,7 +143,7 @@ class CashuController extends Controller
         $request->validate([
             'limit' => ['sometimes', 'integer', 'min:1', 'max:100'],
             'offset' => ['sometimes', 'integer', 'min:0'],
-            'settlementState' => ['sometimes', 'string', Rule::in(['SETTLED', 'PENDING', 'FAILED', 'MELT_COMPLETE'])],
+            'settlementState' => ['sometimes', 'string', Rule::in(['SETTLED', 'PENDING', 'FAILED', 'MELT_COMPLETE', 'MANUAL_REVIEW', 'EXPIRED_UNPAID'])],
         ]);
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
@@ -222,6 +194,37 @@ class CashuController extends Controller
                 'retry_after_seconds' => $result['retryAfterSeconds'] ?? $result['retry_after_seconds'] ?? null,
             ],
         ]);
+    }
+
+    public function confirmOriginalSettings(Request $request, Store $store, string $quoteId): JsonResponse
+    {
+        $this->ensureCashuStore($store);
+        $validated = $request->validate([
+            'mint_url' => ['required', 'string', 'max:2048', 'url', 'starts_with:https://'],
+            'lightning_address' => ['required', 'string', 'max:320', 'regex:/^[^@\s]+@[^@\s]*\.[^@\s]{2,}$/'],
+            'confirmed_original' => ['required', 'accepted'],
+            'password' => ['nullable', 'string'],
+        ]);
+        SensitiveActionAuthorization::assertAllowed($request->user(), $request);
+        /** @var User $owner */
+        $owner = $store->user;
+        try {
+            $result = $this->cashuService->confirmOriginalSettings(
+                $store->btcpay_store_id, $quoteId,
+                ['mintUrl' => $validated['mint_url'], 'lightningAddress' => $validated['lightning_address'], 'confirmedOriginal' => true],
+                $owner->getBtcPayApiKeyOrFail()
+            );
+        } catch (BtcPayException $e) {
+            if ($e->getStatusCode() === 400) {
+                throw ValidationException::withMessages(['recovery' => $e->getMessage()]);
+            }
+            if ($e->getStatusCode() === 404) {
+                throw ValidationException::withMessages(['recovery' => 'Recovery is unavailable for this payment. Refresh the list and ensure CashuMelt 1.4.0.2 or later is installed.']);
+            }
+            throw $e;
+        }
+
+        return response()->json(['data' => ['confirmed' => ($result['confirmed'] ?? false) === true]]);
     }
 
     protected function ensureCashuStore(Store $store): void
@@ -280,6 +283,7 @@ class CashuController extends Controller
             'retry_count' => (int) ($item['retryCount'] ?? $item['retry_count'] ?? 0),
             'needs_manual_review' => (bool) ($item['needsManualReview'] ?? $item['needs_manual_review'] ?? false),
             'failure_reason_code' => $item['failureReasonCode'] ?? $item['failure_reason_code'] ?? null,
+            'original_settings_required' => (bool) ($item['originalSettingsRequired'] ?? $item['original_settings_required'] ?? false),
         ];
     }
 

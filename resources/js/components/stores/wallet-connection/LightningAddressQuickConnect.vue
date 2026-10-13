@@ -179,6 +179,10 @@ async function submit() {
         if (revision !== addressRevision) {
           return;
         }
+        if (!probe.lud21 && probe.reason !== "no_verify") {
+          errorMessage.value = t("stores.ln_quick_probe_retry");
+          return;
+        }
         probeState.value = probe.lud21 ? "lnaddress" : "cashu";
         target = probeState.value;
       } finally {

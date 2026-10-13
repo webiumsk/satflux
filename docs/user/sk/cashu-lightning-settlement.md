@@ -19,7 +19,7 @@ Otvorte **Pripojenie peňaženky** obchodu a sekciu **Cashu**. Potvrďte beta up
 
 - **Mint URL** - Cashu mint použitý na konverziu (musí byť `https://`). Predvolený mint je navrhnutý.
 - **Lightning adresa** - kam sa vyrovnané sats vyplácajú. **Povinné.**
-- **Jednotka faktúry** - `sat` alebo `usd` (ako sa interpretujú sumy).
+- **Jednotka faktúry** - `sat`; výplata používa Lightning satoshi.
 - **Vyrovnávať platby cez Cashu → Lightning** - nechajte zapnuté, aby obchod používal túto vyrovnávaciu cestu.
 - Voliteľne: **dôveryhodné minty** a **stropy rezervy poplatku** (max v sats a/alebo ako % zo sumy), ktoré ohraničujú, koľko poplatku za smerovanie (routing) Lightning platby môže výplata minúť.
 
@@ -33,6 +33,16 @@ Otvorte **Pripojenie peňaženky** obchodu a sekciu **Cashu**. Potvrďte beta up
 ## Sledovanie vyrovnaní
 
 Stránka **Cashu vyrovnania** vypisuje každé vyrovnanie a jeho stav - `SETTLED`, `PENDING`, `FAILED` alebo `MELT_COMPLETE` (skonvertované, záznam BTCPay dobieha). Zaseknuté riadky viete **skúsiť znova**. Bežné dôvody zlyhania sú zobrazené zrozumiteľne (napr. routing poplatok prekročil váš strop, alebo mint nepotvrdil Lightning výplatu).
+
+## Obnova platby
+
+CashuMelt **1.4.0.1 a novší** uloží pri každej novej platbe pôvodný mint a nastavenia výplaty ešte pred zobrazením faktúry. Samostatné Cashu platby fungujú bez ďalšieho pripojenia Lightning peňaženky. Pri dočasnom výpadku sa opakovanie opiera o existujúcu platbu a doklad o výplate.
+
+Pri čakajúcej alebo neúspešnej platbe na stránke **Cashu vyrovnania** použite kontrolu/opakovanie platby. Pri `MELT_COMPLETE` sa doplní záznam BTCPay bez druhej výplaty obchodníkovi. Stav `MANUAL_REVIEW` vyžaduje kontrolu zobrazeného dôvodu; opakovaním nemožno obísť chýbajúce dôkazy o platbe.
+
+Ak staršej platbe chýbajú pôvodné nastavenia, zvoľte **Obnoviť platbu**. Satflux vyberie platbu automaticky. Zadajte **pôvodný mint URL** a **pôvodnú Lightning adresu výplaty**, potvrďte, že platili pri tejto platbe, a kliknite **Potvrdiť a zopakovať výplatu**. Účty s heslom potvrdia aj heslo. Navrhnuté hodnoty pochádzajú z aktuálnych nastavení obchodu, preto overte, že sa od platby nezmenili. Tento formulár vyžaduje **CashuMelt 1.4.0.2 alebo novší**.
+
+Plugin pred uložením údajov overí, že zadaný mint identifikuje presnú pôvodnú faktúru. Obnova nemení konfiguráciu peňaženky obchodu. Faktúru zákazníka nikdy neplaťte druhýkrát. Ak sa pôvodné údaje nedajú overiť, kontaktujte podporu alebo prevádzkovateľa mintu; platba zostáva chránená a neoznačí sa ako vyrovnaná.
 
 ## Dobré vedieť
 

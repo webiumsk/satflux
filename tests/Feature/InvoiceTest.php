@@ -27,9 +27,7 @@ class InvoiceTest extends TestCase
         Http::fake(function ($request) use ($invoices) {
             $url = (string) $request->url();
             if ($request->method() === 'GET' && str_contains($url, '/api/v1/stores/') && str_contains($url, '/invoices')) {
-                return Http::response([
-                    'data' => $invoices,
-                ], 200);
+                return Http::response($invoices, 200);
             }
 
             return Http::response([], 404);

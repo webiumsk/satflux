@@ -231,6 +231,19 @@ class CashuPaymentsTest extends TestCase
                 return Http::response([], 200);
             }
             $url = $request->url();
+            if (str_ends_with($url, '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true], 200);
+            }
+            if ($request->method() === 'GET' && str_contains($url, '/payment-methods')) {
+                return Http::response([['paymentMethodId' => 'CASHU', 'enabled' => true]], 200);
+            }
+            if ($request->method() === 'GET' && str_ends_with($url, '/cashumelt/settings')) {
+                return Http::response(isset($captured) && is_array($captured) ? array_merge($captured, ['enabled' => true]) : [
+                    'mintUrl' => str_contains($url, 'store-fallback-to-cashu') ? 'https://mint.example/x' : 'https://mint.example/m',
+                    'lightningAddress' => str_contains($url, 'store-fallback-to-cashu') ? 'merchant@example.com' : 'z@example.com',
+                    'enabled' => true,
+                ], 200);
+            }
             if (str_contains($url, "{$baseUrl}/api/v1/stores/{$btcpaySid}/plugins/cashumelt/settings")) {
                 return Http::response(array_merge($request->data() ?? [], ['enabled' => true]), 200);
             }
@@ -467,6 +480,19 @@ class CashuPaymentsTest extends TestCase
                 return Http::response([], 200);
             }
             $url = $request->url();
+            if (str_ends_with($url, '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true], 200);
+            }
+            if ($request->method() === 'GET' && str_contains($url, '/payment-methods')) {
+                return Http::response([['paymentMethodId' => 'CASHU', 'enabled' => true]], 200);
+            }
+            if ($request->method() === 'GET' && str_ends_with($url, '/cashumelt/settings')) {
+                return Http::response(isset($captured) && is_array($captured) ? array_merge($captured, ['enabled' => true]) : [
+                    'mintUrl' => str_contains($url, 'store-fallback-to-cashu') ? 'https://mint.example/x' : 'https://mint.example/m',
+                    'lightningAddress' => str_contains($url, 'store-fallback-to-cashu') ? 'merchant@example.com' : 'z@example.com',
+                    'enabled' => true,
+                ], 200);
+            }
             if (! str_contains($url, "/api/v1/stores/{$btcpaySid}/plugins/cashumelt/settings") || $request->method() !== 'PUT') {
                 return Http::response(['error' => 'unexpected URL'], 500);
             }
@@ -512,6 +538,19 @@ class CashuPaymentsTest extends TestCase
                 return Http::response([], 200);
             }
             $url = $request->url();
+            if (str_ends_with($url, '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true], 200);
+            }
+            if ($request->method() === 'GET' && str_contains($url, '/payment-methods')) {
+                return Http::response([['paymentMethodId' => 'CASHU', 'enabled' => true]], 200);
+            }
+            if ($request->method() === 'GET' && str_ends_with($url, '/cashumelt/settings')) {
+                return Http::response(isset($captured) && is_array($captured) ? array_merge($captured, ['enabled' => true]) : [
+                    'mintUrl' => str_contains($url, 'store-fallback-to-cashu') ? 'https://mint.example/x' : 'https://mint.example/m',
+                    'lightningAddress' => str_contains($url, 'store-fallback-to-cashu') ? 'merchant@example.com' : 'z@example.com',
+                    'enabled' => true,
+                ], 200);
+            }
             if (! str_contains($url, "/api/v1/stores/{$btcpaySid}/plugins/cashumelt/settings") || $request->method() !== 'PUT') {
                 return Http::response(['error' => 'unexpected URL'], 500);
             }
@@ -559,6 +598,19 @@ class CashuPaymentsTest extends TestCase
                 return Http::response([], 200);
             }
             $url = $request->url();
+            if (str_ends_with($url, '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true], 200);
+            }
+            if ($request->method() === 'GET' && str_contains($url, '/payment-methods')) {
+                return Http::response([['paymentMethodId' => 'CASHU', 'enabled' => true]], 200);
+            }
+            if ($request->method() === 'GET' && str_ends_with($url, '/cashumelt/settings')) {
+                return Http::response(isset($captured) && is_array($captured) ? array_merge($captured, ['enabled' => true]) : [
+                    'mintUrl' => str_contains($url, 'store-fallback-to-cashu') ? 'https://mint.example/x' : 'https://mint.example/m',
+                    'lightningAddress' => str_contains($url, 'store-fallback-to-cashu') ? 'merchant@example.com' : 'z@example.com',
+                    'enabled' => true,
+                ], 200);
+            }
 
             if (str_contains($url, 'cashumelt/settings') && $request->method() === 'PUT') {
                 return Http::response([
@@ -612,6 +664,19 @@ class CashuPaymentsTest extends TestCase
                 return Http::response([], 200);
             }
             $url = $request->url();
+            if (str_ends_with($url, '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true], 200);
+            }
+            if ($request->method() === 'GET' && str_contains($url, '/payment-methods')) {
+                return Http::response([['paymentMethodId' => 'CASHU', 'enabled' => true]], 200);
+            }
+            if ($request->method() === 'GET' && str_ends_with($url, '/cashumelt/settings')) {
+                return Http::response(isset($captured) && is_array($captured) ? array_merge($captured, ['enabled' => true]) : [
+                    'mintUrl' => str_contains($url, 'store-fallback-to-cashu') ? 'https://mint.example/x' : 'https://mint.example/m',
+                    'lightningAddress' => str_contains($url, 'store-fallback-to-cashu') ? 'merchant@example.com' : 'z@example.com',
+                    'enabled' => true,
+                ], 200);
+            }
 
             if (str_contains($url, 'cashumelt/settings') && $request->method() === 'PUT') {
                 return Http::response([
@@ -662,6 +727,19 @@ class CashuPaymentsTest extends TestCase
                 return Http::response([], 200);
             }
             $url = $request->url();
+            if (str_ends_with($url, '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true], 200);
+            }
+            if ($request->method() === 'GET' && str_contains($url, '/payment-methods')) {
+                return Http::response([['paymentMethodId' => 'CASHU', 'enabled' => true]], 200);
+            }
+            if ($request->method() === 'GET' && str_ends_with($url, '/cashumelt/settings')) {
+                return Http::response(isset($captured) && is_array($captured) ? array_merge($captured, ['enabled' => true]) : [
+                    'mintUrl' => str_contains($url, 'store-fallback-to-cashu') ? 'https://mint.example/x' : 'https://mint.example/m',
+                    'lightningAddress' => str_contains($url, 'store-fallback-to-cashu') ? 'merchant@example.com' : 'z@example.com',
+                    'enabled' => true,
+                ], 200);
+            }
             if (! str_contains($url, "/api/v1/stores/{$btcpaySid}/plugins/cashumelt/settings") || $request->method() !== 'PUT') {
                 return Http::response(['error' => 'unexpected URL'], 500);
             }

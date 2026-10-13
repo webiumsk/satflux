@@ -23,7 +23,7 @@ class LnAddressLud21Prober
 
     /**
      * @return array{lud21: bool, reason: string}
-     *                                            reason: 'ok'|'invalid_address'|'unreachable'|'invalid_lnurlp'|'no_verify'
+     *                                            reason: 'ok'|'invalid_address'|'unreachable'|'invalid_lnurlp'|'no_verify'|'invalid_verify'
      */
     public function probe(string $address): array
     {
@@ -34,13 +34,17 @@ class LnAddressLud21Prober
 
         [, $user, $domain] = $matches;
         $domain = strtolower($domain);
-        $cacheKey = 'lnaddress-lud21-probe:'.hash('sha256', $user.'@'.$domain);
+        $cacheKey = 'lnaddress-lud21-probe-v2:'.hash('sha256', $user.'@'.$domain);
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
+        }
+        $result = $this->probeUncached($user, $domain);
+        if (in_array($result['reason'], ['ok', 'no_verify'], true)) {
+            Cache::put($cacheKey, $result, self::CACHE_TTL_SECONDS);
+        }
 
-        return Cache::remember(
-            $cacheKey,
-            self::CACHE_TTL_SECONDS,
-            fn (): array => $this->probeUncached($user, $domain)
-        );
+        return $result;
     }
 
     /**
@@ -77,8 +81,21 @@ class LnAddressLud21Prober
         }
 
         $verify = $invoice['verify'] ?? null;
-        if (! is_string($verify) || ! $this->isSafeUrl($verify)) {
+        if ($verify === null || $verify === '') {
             return ['lud21' => false, 'reason' => 'no_verify'];
+        }
+        if (! is_string($verify) || ! $this->isSafeUrl($verify)) {
+            return ['lud21' => false, 'reason' => 'invalid_verify'];
+        }
+
+        $receipt = $this->getJson($verify);
+        if ($receipt === null) {
+            return ['lud21' => false, 'reason' => 'unreachable'];
+        }
+        if (($receipt['status'] ?? null) !== 'OK' || ! is_bool($receipt['settled'] ?? null)
+            || ($receipt['pr'] ?? null) !== $pr || $receipt['settled'] !== false
+            || ($receipt['preimage'] ?? null) !== null) {
+            return ['lud21' => false, 'reason' => 'invalid_verify'];
         }
 
         return ['lud21' => true, 'reason' => 'ok'];
@@ -99,7 +116,7 @@ class LnAddressLud21Prober
         if (strtolower($parts['scheme'] ?? '') !== 'https') {
             return false;
         }
-        if (isset($parts['user']) || isset($parts['pass'])) {
+        if (isset($parts['user']) || isset($parts['pass']) || isset($parts['fragment'])) {
             return false;
         }
         if (isset($parts['port']) && $parts['port'] !== 443) {

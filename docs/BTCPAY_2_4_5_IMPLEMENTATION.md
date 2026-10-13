@@ -99,3 +99,15 @@ For an existing false incident whose only diff is the CASHU method added by Satf
 6. Verify signed webhooks, invoice state transitions, subscription idempotency/renewals, Cashu payouts, SEPA confirmations, paid Tickets/Raffle bundles, historical/archived invoices, and SamRock/Boltz separately. Record live evidence and remove the production-upgrade block only after the critical paths pass.
 
 Rollback under maintenance: resolve all provisioning holds first. Old Satflux code does not understand the journal, so rolling it back while a hold exists would remove its invoice safeguard. Keep the additive table unless a coordinated DB restore is required. Restore the matched host/plugin set and database backup if host/plugin migrations require it; never attempt a blind schema downgrade. Preserve wallet secrets, outstanding invoices, webhook IDs/signing secrets, and Tickets' fork history. Re-run callback and invoice checks before enabling traffic.
+
+## Wallet safety and Linky connection follow-up
+
+Install CashuMelt 1.4.0.0 and LNAddressConnect 1.0.4.0 before rolling out these Satflux changes. No new .env variables are needed.
+
+Invoice-list queries serialize booleans as `true`/`false`; BTCPay's boolean binder rejects `includeArchived=1`. Invalid successful invoice-list bodies and malformed monitoring expirations fail closed. Existing monitored invoices, including archived invoices, remain protected.
+
+Only a successful probe that explicitly lacks `verify` offers the Cashu choice. Unreachable or malformed LNURL/LUD-21 responses require retry. A LUD-21 probe checks a real unpaid receipt bound to its issued invoice. Choosing Cashu replaces the primary connection and the warning states this explicitly.
+
+Cashu configuration requires the plugin's authenticated settlement-safety endpoint, including on a first connection. Existing Cashu stores also check independent plugin assets before switching to a different wallet. Missing/failed safety checks cannot bypass outstanding-invoice protection. Remote changes have a durable encrypted journal written before PUT. Local wallet state changes only after settings/payment-method readback agrees; uncertain results block invoice creation and further wallet changes until read-only reconciliation succeeds.
+
+BTCPay temporarily holds Cashu bearer assets; Satflux receives neither those assets nor wallet keys. Linky's hosted address still needs an external working LUD-21 endpoint for native integration. These fixes do not add verification to Linky/npub.cash and do not add NWC. Validate a low-value Linky payout and interrupted recovery in staging before merchant rollout.

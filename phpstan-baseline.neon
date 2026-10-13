@@ -159,7 +159,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
 			identifier: method.notFound
-			count: 4
+			count: 3
 			path: app/Http/Controllers/CashuController.php
 
 		-

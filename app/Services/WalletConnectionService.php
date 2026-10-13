@@ -679,8 +679,11 @@ class WalletConnectionService
             if (! empty($existing['mintUrl'])) {
                 $mintUrl = $existing['mintUrl'];
             }
-        } catch (\Throwable) {
-            // No existing settings - the default mint applies.
+        } catch (BtcPayException $e) {
+            if ($e->getStatusCode() !== 404) {
+                throw $e;
+            }
+            // Only an explicit missing configuration permits the default mint.
         }
 
         $this->cashuService->saveSettings($store->btcpay_store_id, [
@@ -725,13 +728,26 @@ class WalletConnectionService
             throw ValidationException::withMessages(['secret' => 'The merchant API key is required to safely change this wallet.']);
         }
         try {
+            if ($store->wallet_type === 'cashu' || $store->cashu_fallback_enabled) {
+                $this->cashuService->assertNoUnresolvedSettlements((string) $store->btcpay_store_id, $merchantKey);
+            }
             $invoices = app(InvoiceService::class);
             for ($skip = 0; $skip < 100000; $skip += 100) {
                 $page = $invoices->listInvoices((string) $store->btcpay_store_id,
                     ['status' => ['New', 'Processing', 'Expired', 'Invalid'], 'includeArchived' => true], $skip, 100, $merchantKey);
                 foreach ($page as $invoice) {
-                    $status = $invoice['status'] ?? '';
-                    $until = isset($invoice['monitoringExpiration']) ? CarbonImmutable::parse($invoice['monitoringExpiration']) : null;
+                    if (! is_array($invoice) || ! in_array($invoice['status'] ?? null, ['New', 'Processing', 'Expired', 'Invalid', 'Settled'], true)) {
+                        throw new \UnexpectedValueException('Invalid BTCPay invoice status.');
+                    }
+                    $status = $invoice['status'];
+                    $expiration = $invoice['monitoringExpiration'] ?? null;
+                    if ($expiration !== null && ! (is_int($expiration) || (is_string($expiration)
+                        && (ctype_digit($expiration) || preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/', $expiration))))) {
+                        throw new \UnexpectedValueException('Invalid BTCPay monitoring expiration.');
+                    }
+                    $until = $expiration === null ? null : (is_numeric($expiration)
+                        ? CarbonImmutable::createFromTimestampUTC((int) $expiration)
+                        : CarbonImmutable::parse($expiration));
                     if ($status === 'Processing' || ($status !== 'Settled' && ($until === null || $until->isFuture()))) {
                         throw ValidationException::withMessages(['secret' => 'Outstanding invoices are still being monitored. Wait for them to finish before changing the wallet.']);
                     }
@@ -742,7 +758,12 @@ class WalletConnectionService
             }
         } catch (ValidationException $e) {
             throw $e;
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            Log::warning('Wallet change blocked: outstanding invoice verification failed', [
+                'store_id' => $store->id,
+                'exception_class' => $e::class,
+                'http_status' => $e instanceof BtcPayException ? $e->getStatusCode() : null,
+            ]);
             throw ValidationException::withMessages(['secret' => 'Could not verify outstanding invoices. The wallet was not changed.']);
         }
         throw ValidationException::withMessages(['secret' => 'Too many outstanding invoices to safely change the wallet.']);
@@ -759,6 +780,9 @@ class WalletConnectionService
             $attempt = WalletConfigurationAttempt::where('store_id', $store->id)->unresolved()->latest('id')->first();
             if (! $attempt) {
                 return true;
+            }
+            if ($attempt->connection_type === 'cashu') {
+                return app(CashuWalletUpdateService::class)->reconcile($store, $user, $attempt);
             }
             $desired = new WalletConnection(['type' => $attempt->connection_type, 'encrypted_secret' => $attempt->encrypted_secret]);
             $key = $user->getBtcPayApiKeyOrFail();

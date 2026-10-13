@@ -125,7 +125,24 @@ class BtcPayClient
      */
     public function get(string $endpoint, array $query = []): array
     {
-        return $this->request('GET', $endpoint, ['query' => $query]);
+        return $this->request('GET', $endpoint, ['query' => self::normalizeQuery($query)]);
+    }
+
+    /** Read a JSON list without treating a malformed successful response as an empty list. */
+    public function getList(string $endpoint, array $query = []): array
+    {
+        return $this->request('GET', $endpoint, ['query' => self::normalizeQuery($query), 'expect_list' => true]);
+    }
+
+    private static function normalizeQuery(array $query): array
+    {
+        array_walk_recursive($query, function (&$value): void {
+            if (is_bool($value)) {
+                $value = $value ? 'true' : 'false';
+            }
+        });
+
+        return $query;
     }
 
     /**
@@ -182,7 +199,7 @@ class BtcPayClient
      */
     public function delete(string $endpoint, array $query = []): array
     {
-        $options = $query !== [] ? ['query' => $query] : [];
+        $options = $query !== [] ? ['query' => self::normalizeQuery($query)] : [];
 
         return $this->request('DELETE', $endpoint, $options);
     }
@@ -247,6 +264,11 @@ class BtcPayClient
                 // For DELETE requests, BTCPay may return 204 No Content (empty body)
                 // or 200 OK with empty/null body
                 $data = $response->json();
+
+                if (($options['expect_list'] ?? false)
+                    && (! is_array($data) || ! array_is_list($data) || ! str_starts_with(ltrim($response->body()), '['))) {
+                    throw new BtcPayException('BTCPay returned an invalid JSON list.', $response->status());
+                }
                 $this->logRequest($method, $endpoint, $options, $response, $data);
 
                 return $data ?? [];

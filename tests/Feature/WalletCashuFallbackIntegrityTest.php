@@ -43,6 +43,9 @@ class WalletCashuFallbackIntegrityTest extends TestCase
         $this->mock(PayeeAttestationService::class)->shouldReceive('learn')->andReturn(false);
 
         Http::fake(function ($request) {
+            if (str_ends_with($request->url(), '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true]);
+            }
             if (str_contains($request->url(), '/plugins/cashumelt/settings')) {
                 if ($request->method() === 'PUT') {
                     $this->cashuEnabled = (bool) $request['enabled'];
