@@ -18,10 +18,12 @@
   </component>
   <span
     v-else-if="type && !iconSrc"
-    class="inline-flex items-center font-semibold text-inherit"
-    :class="[sizeClass, type === 'cashu' ? 'text-emerald-400/95' : '']"
+    class="inline-flex items-center font-semibold"
+    :class="sizeClass"
   >
-    {{ labelText }}
+    <span :class="type === 'cashu' ? 'text-emerald-300' : 'text-inherit'">
+      {{ labelText }}
+    </span>
   </span>
   <span v-else-if="fallbackText" class="font-medium text-gray-500" :class="sizeClass">
     {{ fallbackText }}
