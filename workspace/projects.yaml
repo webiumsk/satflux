@@ -1,0 +1,276 @@
+{
+  "schema_version": 1,
+  "format_note": "JSON syntax is a YAML 1.2 subset; dependency-free validator uses the same document.",
+  "path_policy": "Environment override first, otherwise fallback relative to the Satflux checkout. Verify remotes before use; do not create/fetch/mutate projects.",
+  "projects": [
+    {
+      "id": "satflux",
+      "name": "Satflux core",
+      "repository_url": "https://github.com/webiumsk/satflux",
+      "kind": "repository",
+      "access_during_bootstrap": "orchestration-only",
+      "local_path": {
+        "environment_variable": "SATFLUX_ROOT",
+        "relative_to": "satflux-root",
+        "fallback": ".",
+        "verify_remote": true
+      },
+      "technology_stack": [
+        "PHP ^8.3",
+        "Laravel 12",
+        "Vue 3",
+        "TypeScript",
+        "PostgreSQL 16",
+        "Redis 7",
+        "Evolu",
+        "Nostr"
+      ],
+      "relationship_to_satflux": "Core multi-tenant control panel and business invoicing application",
+      "responsible_agent": "backend",
+      "key_integration_contracts": [
+        "Sanctum SPA/CSRF",
+        "Store/company isolation",
+        "Greenfield scoped keys",
+        "Signed webhooks",
+        "Local-first owner encryption"
+      ],
+      "build_entry_points": [
+        "npm run build"
+      ],
+      "test_entry_points": [
+        "Verified disposable PHP target: php artisan test; vendor/bin/pint --test; vendor/bin/phpstan analyse",
+        "npm run lint; npm run typecheck; npm run test:locale-parity; npm test",
+        "Isolated CI SQLite + BTCPay stub: npm run test:e2e",
+        ".github/workflows/ci.yml"
+      ],
+      "deployment_release_dependencies": [
+        "Compatible BTCPay plugin APIs before dependent consumer deployment",
+        "No bootstrap deployment; explicit applicable owner approval"
+      ]
+    },
+    {
+      "id": "webium-btcpay-plugins",
+      "name": "Webium BTCPay plugins",
+      "repository_url": "https://github.com/webiumsk/BTCPayServerPluginsWebium",
+      "kind": "repository",
+      "access_during_bootstrap": "read-only",
+      "local_path": {
+        "environment_variable": "SATFLUX_BTCPAY_PLUGINS_ROOT",
+        "relative_to": "satflux-root",
+        "fallback": "../BTCPayServerPlugins",
+        "verify_remote": true
+      },
+      "technology_stack": [
+        "C#",
+        ".NET 10 in current maintained work",
+        "BTCPay 2.4.5 exact-host pin"
+      ],
+      "relationship_to_satflux": "Maintained LNAddressConnect, CashuMelt, SEPA, Satflux Tickets, Raffle and related independent packages",
+      "responsible_agent": "btcpay-plugins",
+      "key_integration_contracts": [
+        "Store-scoped Greenfield permissions",
+        "LUD-21 settlement evidence",
+        "Cashu original mint/payout/recovery",
+        "satflux-tickets canonical routes plus aliases"
+      ],
+      "build_entry_points": [
+        "Current compatible checkout: scripts/verify-btcpay-host.sh",
+        "Authorized build phase: Plugins/<plugin>/build-plugin.sh"
+      ],
+      "test_entry_points": [
+        "Current checkout: scripts/tests/verify-btcpay-host.sh",
+        "dotnet test applicable Plugins/*.Tests/*.csproj on disposable infrastructure",
+        ".github/workflows/btcpay-245.yml in current maintained checkout"
+      ],
+      "deployment_release_dependencies": [
+        "Exact host 5d0745cae6be5d8210459e38813f317673aa97b8",
+        "Provider packages before new Satflux consumer APIs",
+        "Cashu plugin DB plus Data Protection keys; no mixed workers"
+      ]
+    },
+    {
+      "id": "satflux-woocommerce",
+      "name": "Satflux for WooCommerce",
+      "repository_url": "https://github.com/webiumsk/satflux-woocommerce",
+      "kind": "repository",
+      "access_during_bootstrap": "read-only",
+      "local_path": {
+        "environment_variable": "SATFLUX_WOOCOMMERCE_ROOT",
+        "relative_to": "satflux-root",
+        "fallback": "../../WP/btcpay-greenfield-tickets",
+        "verify_remote": true
+      },
+      "technology_stack": [
+        "PHP >=8.0 declared",
+        "WordPress >=5.8 declared",
+        "WooCommerce >=6.0 declared",
+        "HPOS",
+        "Blocks"
+      ],
+      "relationship_to_satflux": "Independent payment/connection/invoicing consumer; header version 2.0.23",
+      "responsible_agent": "wordpress",
+      "key_integration_contracts": [
+        "One-time OAuth-style code exchange",
+        "Scoped integration token/company inbox",
+        "HMAC settled webhook",
+        "Idempotent WooCommerce orders",
+        "Cached invoicing_enabled is not authority"
+      ],
+      "build_entry_points": [
+        "Authorized packaging only: scripts/build-release.sh; output dist/satflux-for-woocommerce-{version}.zip"
+      ],
+      "test_entry_points": [
+        "PHP lint on changed files",
+        "Isolated WordPress/WooCommerce connect/order/webhook/inbox/HPOS/Blocks functional tests",
+        "No comprehensive automated suite discovered"
+      ],
+      "deployment_release_dependencies": [
+        "Compatible Satflux exchange/inbox APIs and BTCPay first",
+        "v* tag or release workflow publishes; explicit approval gate"
+      ]
+    },
+    {
+      "id": "btcpay-server",
+      "name": "Owned BTCPay Server fork",
+      "repository_url": "https://github.com/webiumsk/btcpayserver",
+      "kind": "repository",
+      "access_during_bootstrap": "read-only",
+      "local_path": {
+        "environment_variable": "SATFLUX_BTCPAY_SERVER_ROOT",
+        "relative_to": "satflux-root",
+        "fallback": "../btcpayserver",
+        "verify_remote": true
+      },
+      "technology_stack": [
+        "C#",
+        ".NET",
+        "BTCPay Server"
+      ],
+      "relationship_to_satflux": "Read-only host reference; sibling checkout is not automatically the plugin pinned dependency",
+      "responsible_agent": "payments",
+      "key_integration_contracts": [
+        "Greenfield API/auth/webhooks",
+        "Plugin extension points",
+        "Exact host compatibility"
+      ],
+      "build_entry_points": [
+        "Inspect selected revision solution/project build instructions"
+      ],
+      "test_entry_points": [
+        "Selected revision BTCPayServer.Tests and upstream CI; isolated target only"
+      ],
+      "deployment_release_dependencies": [
+        "Upstream https://github.com/btcpayserver/btcpayserver remains read-only",
+        "Respect plugin exact-host pin and independent host releases"
+      ]
+    },
+    {
+      "id": "kukks-btcpay-plugins",
+      "name": "Owned Kukks plugin fork",
+      "repository_url": "https://github.com/webiumsk/BTCPayServerPluginsKukks",
+      "kind": "repository",
+      "access_during_bootstrap": "read-only",
+      "local_path": {
+        "environment_variable": "SATFLUX_KUKKS_PLUGINS_ROOT",
+        "relative_to": "satflux-root",
+        "fallback": "../BTCPayServerPluginsKukks",
+        "verify_remote": true
+      },
+      "technology_stack": [
+        "C#",
+        ".NET",
+        "BTCPay plugins"
+      ],
+      "relationship_to_satflux": "Optional legacy Blink API compatibility; NWC deferred",
+      "responsible_agent": "btcpay-plugins",
+      "key_integration_contracts": [
+        "Existing Blink API connections",
+        "BTCPay host/plugin compatibility"
+      ],
+      "build_entry_points": [
+        "Inspect selected revision plugin build/package instructions"
+      ],
+      "test_entry_points": [
+        "Existing Blink unit-test project; isolated host compatibility checks"
+      ],
+      "deployment_release_dependencies": [
+        "Optional package in installer set; independently versioned",
+        "Upstream https://github.com/Kukks/BTCPayServerPlugins remains read-only",
+        "No NWC initiative during bootstrap"
+      ]
+    },
+    {
+      "id": "legacy-ticket-plugins",
+      "name": "Historical ticket plugin fork",
+      "repository_url": "https://github.com/webiumsk/BTCPayServerPlugins",
+      "kind": "repository",
+      "access_during_bootstrap": "read-only",
+      "local_path": {
+        "environment_variable": "SATFLUX_LEGACY_TICKETS_ROOT",
+        "relative_to": "satflux-root",
+        "fallback": "../BTCPayServerPluginsTChukwuleta",
+        "verify_remote": true
+      },
+      "technology_stack": [
+        "C#",
+        ".NET",
+        "BTCPay plugin fork"
+      ],
+      "relationship_to_satflux": "Historical ticket reference, not canonical maintained Satflux Tickets distribution",
+      "responsible_agent": "btcpay-plugins",
+      "key_integration_contracts": [
+        "Historical satoshi-tickets compatibility reference"
+      ],
+      "build_entry_points": [
+        "Inspect selected revision build instructions; not default installer source"
+      ],
+      "test_entry_points": [
+        "Revision-specific isolated tests only"
+      ],
+      "deployment_release_dependencies": [
+        "Canonical maintained Tickets lives in Webium distribution",
+        "No external upstream publication"
+      ]
+    },
+    {
+      "id": "satflux-infrastructure",
+      "name": "Satflux shared development/test infrastructure",
+      "repository_url": "https://github.com/webiumsk/satflux",
+      "kind": "component",
+      "access_during_bootstrap": "orchestration-only",
+      "local_path": {
+        "environment_variable": "SATFLUX_ROOT",
+        "relative_to": "satflux-root",
+        "fallback": ".",
+        "verify_remote": true
+      },
+      "technology_stack": [
+        "Docker Compose",
+        "nginx/Caddy",
+        "PostgreSQL",
+        "Redis",
+        "Reverb",
+        "PHP workers",
+        "BTCPay stub"
+      ],
+      "relationship_to_satflux": "Embedded component of core repository; no separate infrastructure repo established",
+      "responsible_agent": "devops",
+      "key_integration_contracts": [
+        "Queue/scheduler/webhook processing",
+        "Isolated stub/E2E environment",
+        "Optional relay is distinct from Reverb"
+      ],
+      "build_entry_points": [
+        "Inspect Dockerfile/docker-compose*.yml; no container lifecycle during bootstrap"
+      ],
+      "test_entry_points": [
+        ".github/workflows/ci.yml isolated e2e/backend/frontend jobs",
+        "Read-only orchestration validators"
+      ],
+      "deployment_release_dependencies": [
+        "Shares Satflux Git lifecycle",
+        "Backup/restore and worker compatibility required before deployment"
+      ]
+    }
+  ]
+}
