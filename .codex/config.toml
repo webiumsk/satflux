@@ -1,0 +1,8 @@
+# Project-local only. Inherit user model, credentials, trust and approvals.
+[agents]
+enabled = true
+# Counts spawned threads, excluding main: 3 specialists + main = 4 total.
+max_concurrent_threads_per_session = 3
+
+[features]
+multi_agent = true
