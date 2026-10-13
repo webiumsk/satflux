@@ -43,6 +43,16 @@ class CashuService
         });
     }
 
+    public function confirmOriginalSettings(string $storeId, string $quoteId, array $data, string $apiKey): array
+    {
+        return $this->client->withUserKey($apiKey, function () use ($storeId, $quoteId, $data) {
+            return $this->client->post(
+                '/api/v1/stores/'.rawurlencode($storeId).'/plugins/cashumelt/payments/'.rawurlencode($quoteId).'/confirm-original',
+                $data
+            );
+        });
+    }
+
     public function assertNoUnresolvedSettlements(string $storeId, string $apiKey): void
     {
         try {

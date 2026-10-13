@@ -105,6 +105,37 @@
             {{ retryNotice }}
           </div>
 
+          <form
+            v-if="recoveryPayment"
+            class="mb-6 rounded-xl border border-amber-500/30 bg-gray-900/50 p-5 space-y-4"
+            data-testid="cashu-recovery-form"
+            @submit.prevent="confirmOriginalSettings"
+          >
+            <h2 class="text-lg font-semibold text-white">{{ t("stores.cashu_recovery_title") }}</h2>
+            <p class="text-sm text-gray-300">{{ t("stores.cashu_recovery_invoice", { invoice: recoveryPayment.invoice_id }) }}</p>
+            <p class="text-sm text-amber-200">{{ t("stores.cashu_recovery_explanation") }}</p>
+            <p class="text-sm text-gray-400">{{ t("stores.cashu_recovery_suggestions") }}</p>
+            <p v-if="recoveryError" role="alert" class="text-sm text-red-300">{{ recoveryError }}</p>
+            <label class="block text-sm text-gray-300" for="cashu-original-mint">{{ t("stores.cashu_recovery_mint") }}</label>
+            <input id="cashu-original-mint" v-model="recoveryMint" type="url" required :disabled="recovering" class="w-full rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-white" />
+            <label class="block text-sm text-gray-300" for="cashu-original-address">{{ t("stores.cashu_recovery_address") }}</label>
+            <input id="cashu-original-address" v-model="recoveryAddress" type="text" required :disabled="recovering" class="w-full rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-white" />
+            <template v-if="requiresPassword">
+              <label class="block text-sm text-gray-300" for="cashu-recovery-password">{{ t("account.current_password") }}</label>
+              <input id="cashu-recovery-password" v-model="recoveryPassword" type="password" autocomplete="current-password" required :disabled="recovering" class="w-full rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-white" />
+            </template>
+            <label class="flex items-start gap-3 text-sm text-gray-300">
+              <input v-model="confirmedOriginal" type="checkbox" :disabled="recovering" class="mt-1" />
+              {{ t("stores.cashu_recovery_confirm") }}
+            </label>
+            <div class="flex gap-3">
+              <button type="submit" :disabled="recovering || recoveryLoading || !confirmedOriginal || !recoveryMint.trim() || !recoveryAddress.trim() || (requiresPassword && !recoveryPassword)" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                {{ t(recovering ? "stores.cashu_payments_retrying" : "stores.cashu_recovery_submit") }}
+              </button>
+              <button type="button" :disabled="recovering" class="rounded-lg border border-gray-600 px-4 py-2 text-sm text-gray-300" @click="closeRecovery">{{ t("common.cancel") }}</button>
+            </div>
+          </form>
+
           <div class="overflow-x-auto rounded-xl border border-gray-700">
             <table class="min-w-full divide-y divide-gray-700 text-sm">
               <thead class="bg-gray-700/50">
@@ -151,6 +182,7 @@
                     class="px-4 py-3 text-gray-300 whitespace-nowrap tabular-nums"
                   >
                     {{ formatDate(p.created_at) }}
+                    <p v-if="p.invoice_id" class="mt-1 text-xs text-gray-500">{{ p.invoice_id }}</p>
                   </td>
                   <td
                     class="px-4 py-3 text-white font-medium whitespace-nowrap tabular-nums"
@@ -232,7 +264,15 @@
                   </td>
                   <td class="px-4 py-3">
                     <button
-                      v-if="canRetry(p)"
+                      v-if="needsOriginalSettings(p)"
+                      type="button"
+                      class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-amber-500/35 bg-amber-500/10 text-amber-200 disabled:opacity-50"
+                      :disabled="recovering || recoveryLoading"
+                      data-testid="cashu-recover"
+                      @click="openRecovery(p)"
+                    >{{ t("stores.cashu_recovery_action") }}</button>
+                    <button
+                      v-else-if="canRetry(p)"
                       type="button"
                       class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-red-500/35 bg-red-500/10 text-red-300 hover:bg-red-500/20 disabled:opacity-50 transition-colors"
                       :disabled="retryingQuoteIds.has(p.quote_id)"
@@ -297,12 +337,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import api from "../../services/api";
+import { useAuthStore } from "../../store/auth";
 import Select from "../ui/Select.vue";
 
 const { t } = useI18n();
+const authStore = useAuthStore();
+const requiresPassword = computed(() => authStore.user?.can_use_password_login ?? true);
 
 const props = defineProps<{
   store: { id: string };
@@ -312,6 +355,8 @@ type SettlementState = "SETTLED" | "PENDING" | "FAILED" | "MELT_COMPLETE";
 
 interface CashuPayment {
   quote_id: string;
+  invoice_id?: string | null;
+  original_settings_required?: boolean;
   created_at?: string | null;
   amount_sats?: number | null;
   settlement_state?: SettlementState | string | null;
@@ -353,6 +398,8 @@ const settlementStateOptions = computed(() => [
   { label: t("stores.cashu_settlement_option_pending"), value: "PENDING" },
   { label: t("stores.cashu_settlement_option_melt_complete"), value: "MELT_COMPLETE" },
   { label: t("stores.cashu_settlement_option_failed"), value: "FAILED" },
+  { label: t("stores.cashu_needs_review_badge"), value: "MANUAL_REVIEW" },
+  { label: t("stores.cashu_settlement_label_expired_unpaid"), value: "EXPIRED_UNPAID" },
 ]);
 
 const payments = ref<CashuPaymentsResponse>({
@@ -367,6 +414,17 @@ const error = ref<string | null>(null);
 const retryNotice = ref<string | null>(null);
 const retryingQuoteIds = ref<Set<string>>(new Set());
 const copiedPollQuoteId = ref<string | null>(null);
+const recoveryPayment = ref<CashuPayment | null>(null);
+const recoveryMint = ref("");
+const recoveryAddress = ref("");
+const recoveryPassword = ref("");
+const confirmedOriginal = ref(false);
+const recovering = ref(false);
+const recoveryLoading = ref(false);
+const recoveryError = ref<string | null>(null);
+let recoveryGeneration = 0;
+let paymentsGeneration = 0;
+let storeGeneration = 0;
 let copyPollResetTimer: ReturnType<typeof setTimeout> | null = null;
 
 function storeId(): string {
@@ -395,6 +453,10 @@ function formatAmount(amountSats?: number | null): string {
 function settlementStateLabel(state?: string | null): string {
   const s = (state ?? "").toString().toUpperCase();
   switch (s) {
+    case "MANUAL_REVIEW":
+      return t("stores.cashu_needs_review_badge");
+    case "EXPIRED_UNPAID":
+      return t("stores.cashu_settlement_label_expired_unpaid");
     case "SETTLED":
       return t("stores.cashu_settlement_label_settled");
     case "PENDING":
@@ -448,8 +510,78 @@ function failureReasonLabel(code?: string | null): string {
   return key ? t(key) : code;
 }
 
+function needsOriginalSettings(p: CashuPayment): boolean {
+  return p.settlement_state === "MANUAL_REVIEW" && (p.original_settings_required === true ||
+    p.settlement_error?.startsWith("Original mint and payout configuration must be confirmed") === true);
+}
+
+function apiError(err: unknown, fallback: string): string {
+  const e = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } }; message?: string };
+  const details = Object.values(e.response?.data?.errors ?? {}).flat();
+  return details[0] || e.response?.data?.message || e.message || t(fallback);
+}
+
+function closeRecovery() {
+  recoveryGeneration++;
+  recoveryPayment.value = null;
+  recoveryPassword.value = "";
+  recoveryMint.value = "";
+  recoveryAddress.value = "";
+  confirmedOriginal.value = false;
+  recoveryError.value = null;
+  recoveryLoading.value = false;
+}
+
+async function openRecovery(payment: CashuPayment) {
+  closeRecovery();
+  const generation = recoveryGeneration;
+  const sid = storeId();
+  recoveryPayment.value = payment;
+  recoveryLoading.value = true;
+  try {
+    const response = await api.get(`/stores/${sid}/cashu/settings`);
+    if (storeId() !== sid || generation !== recoveryGeneration) return;
+    recoveryMint.value = response.data?.data?.mint_url ?? "";
+    recoveryAddress.value = response.data?.data?.lightning_address ?? "";
+  } catch (err) {
+    if (storeId() === sid && generation === recoveryGeneration)
+      recoveryError.value = apiError(err, "stores.cashu_payments_load_error");
+  } finally {
+    if (storeId() === sid && generation === recoveryGeneration) recoveryLoading.value = false;
+  }
+}
+
+async function confirmOriginalSettings() {
+  if (!recoveryPayment.value || !confirmedOriginal.value || recovering.value || recoveryLoading.value) return;
+  const sid = storeId();
+  const generation = recoveryGeneration;
+  const startedStoreGeneration = storeGeneration;
+  const quoteId = recoveryPayment.value.quote_id;
+  recovering.value = true;
+  recoveryError.value = null;
+  try {
+    const response = await api.post(`/stores/${sid}/cashu/payments/${encodeURIComponent(quoteId)}/confirm-original`, {
+      mint_url: recoveryMint.value.trim(), lightning_address: recoveryAddress.value.trim(),
+      confirmed_original: true, ...(requiresPassword.value ? { password: recoveryPassword.value } : {}),
+    });
+    if (storeId() !== sid || generation !== recoveryGeneration) return;
+    if (response.data?.data?.confirmed !== true) throw new Error(t("stores.cashu_recovery_unconfirmed"));
+    closeRecovery();
+    retryNotice.value = t("stores.cashu_recovery_verified");
+    await retryPayment(quoteId);
+  } catch (err) {
+    if (storeId() === sid && generation === recoveryGeneration)
+      recoveryError.value = apiError(err, "stores.cashu_payments_retry_error");
+  } finally {
+    if (storeId() === sid && storeGeneration === startedStoreGeneration) {
+      recoveryPassword.value = "";
+      recovering.value = false;
+    }
+  }
+}
+
 function canRetry(p: CashuPayment): boolean {
-  if (!p.quote_id) return false;
+  if (!p.quote_id || needsOriginalSettings(p)) return false;
   const s = (p.settlement_state ?? "").toString().toUpperCase();
   if (s === "FAILED") {
     const err = (p.settlement_error ?? "").toString();
@@ -457,10 +589,12 @@ function canRetry(p: CashuPayment): boolean {
   }
   // The plugin also retries PENDING (stuck settlement) and MELT_COMPLETE
   // (merchant already paid - only the BTCPay accounting record is retried).
-  return s === "PENDING" || s === "MELT_COMPLETE";
+  return s === "PENDING" || s === "MELT_COMPLETE" || s === "MANUAL_REVIEW";
 }
 
 async function fetchPayments() {
+  const sid = storeId();
+  const generation = ++paymentsGeneration;
   loading.value = true;
   error.value = null;
   try {
@@ -472,9 +606,10 @@ async function fetchPayments() {
       params.settlementState = settlementState.value;
     }
 
-    const response = await api.get(`/stores/${storeId()}/cashu/payments`, {
+    const response = await api.get(`/stores/${sid}/cashu/payments`, {
       params,
     });
+    if (storeId() !== sid || generation !== paymentsGeneration) return;
     const d = response.data?.data ?? {};
 
     payments.value = {
@@ -484,6 +619,7 @@ async function fetchPayments() {
       items: (d.items ?? []) as CashuPayment[],
     };
   } catch (err: unknown) {
+    if (storeId() !== sid || generation !== paymentsGeneration) return;
     const e = err as {
       response?: { data?: { message?: string } };
       message?: string;
@@ -493,33 +629,39 @@ async function fetchPayments() {
       e.message ||
       t("stores.cashu_payments_load_error");
   } finally {
-    loading.value = false;
+    if (storeId() === sid && generation === paymentsGeneration) loading.value = false;
   }
 }
 
 async function retryPayment(quoteId: string) {
-  if (!quoteId) return;
+  if (!quoteId || retryingQuoteIds.value.has(quoteId)) return;
 
   const sid = storeId();
+  const generation = storeGeneration;
   retryNotice.value = null;
   retryingQuoteIds.value.add(quoteId);
   retryingQuoteIds.value = new Set(retryingQuoteIds.value);
   try {
     const response = await api.post(
-      `/stores/${sid}/cashu/payments/${quoteId}/retry`,
+      `/stores/${sid}/cashu/payments/${encodeURIComponent(quoteId)}/retry`,
     );
     // The store may have changed while the request was in flight.
-    if (storeId() !== sid) return;
+    if (storeId() !== sid || generation !== storeGeneration) return;
     const d = response.data?.data ?? {};
     if (d.settled) {
       retryNotice.value = t("stores.cashu_retry_settled");
+    } else if (d.error) {
+      retryNotice.value = d.error;
     } else if (d.retry_after_seconds != null) {
       retryNotice.value = t("stores.cashu_retry_in_progress", {
         seconds: d.retry_after_seconds,
       });
+    } else {
+      retryNotice.value = t("stores.cashu_recovery_pending");
     }
     await fetchPayments();
   } catch (err: unknown) {
+    if (storeId() !== sid || generation !== storeGeneration) return;
     const e = err as {
       response?: { data?: { message?: string } };
       message?: string;
@@ -529,8 +671,10 @@ async function retryPayment(quoteId: string) {
       e.message ||
       t("stores.cashu_payments_retry_error");
   } finally {
-    retryingQuoteIds.value.delete(quoteId);
-    retryingQuoteIds.value = new Set(retryingQuoteIds.value);
+    if (storeId() === sid && generation === storeGeneration) {
+      retryingQuoteIds.value.delete(quoteId);
+      retryingQuoteIds.value = new Set(retryingQuoteIds.value);
+    }
   }
 }
 
@@ -547,6 +691,10 @@ function onSettlementFilterChange() {
 watch(
   () => props.store.id,
   () => {
+    storeGeneration++;
+    closeRecovery();
+    recovering.value = false;
+    payments.value = { total: 0, offset: 0, limit, items: [] };
     offset.value = 0;
     settlementState.value = "";
     retryNotice.value = null;
@@ -554,6 +702,13 @@ watch(
     fetchPayments();
   },
 );
+
+onBeforeUnmount(() => {
+  storeGeneration++;
+  paymentsGeneration++;
+  closeRecovery();
+  if (copyPollResetTimer) clearTimeout(copyPollResetTimer);
+});
 
 onMounted(async () => {
   await fetchPayments();

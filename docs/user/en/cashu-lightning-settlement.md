@@ -19,7 +19,7 @@ Open the store's **Wallet connection** and the **Cashu** section. Confirm the be
 
 - **Mint URL** - the Cashu mint used for the conversion (must be `https://`). A default mint is suggested.
 - **Lightning Address** - where the settled sats are paid out. **Required.**
-- **Invoice unit** - `sat` or `usd` (how amounts are interpreted).
+- **Invoice unit** - `sat`; the payout uses Lightning satoshis.
 - **Settle payments via Cashu → Lightning** - keep it on so the store uses this settlement path.
 - Optional: **trusted mints**, and **fee-reserve caps** (a max in sats and/or as a % of the amount) that bound how much Lightning routing fee the payout may spend.
 
@@ -33,6 +33,16 @@ Editing an existing Cashu store re-asks for your password (unless you sign in by
 ## Watching settlements
 
 A **Cashu settlements** page lists each settlement and its state - `SETTLED`, `PENDING`, `FAILED`, or `MELT_COMPLETE` (converted, BTCPay's record catching up). You can **retry** stuck rows. Common failure reasons are shown in plain language (e.g. the routing fee exceeded your cap, or the mint did not confirm the Lightning payout).
+
+## Recovering a payment
+
+CashuMelt **1.4.0.1 and later** stores each new payment's original mint and payout settings before displaying the invoice. Primary Cashu payments work without a separate Lightning wallet connection. Temporary interruptions use the existing payment and payout receipt during retry.
+
+For a pending or failed payment, select **Check / retry payment** on **Cashu settlements**. A `MELT_COMPLETE` retry completes the BTCPay record without paying the merchant twice. `MANUAL_REVIEW` requires checking the displayed reason; repeated retries cannot bypass missing payment evidence.
+
+For an older payment missing its original settings, select **Recover payment**. Satflux selects the payment automatically. Enter the **original mint URL** and **original payout Lightning Address**, confirm they applied to this payment, and select **Confirm and retry payout**. Password accounts also confirm their password. The suggested values come from current store settings, so check that these have not changed since the payment. This recovery form requires **CashuMelt 1.4.0.2 or later**.
+
+The plugin verifies that the supplied mint identifies the exact funding invoice before saving recovery data. Recovery does not change your store's wallet configuration. Never pay the customer's invoice a second time. If the original data cannot be verified, contact support or the mint operator; the payment remains protected instead of being marked settled.
 
 ## Good to know
 

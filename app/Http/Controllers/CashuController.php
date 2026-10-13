@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Store;
+use App\Models\User;
 use App\Services\Auth\SensitiveActionAuthorization;
 use App\Services\BtcPay\CashuService;
 use App\Services\BtcPay\Exceptions\BtcPayException;
@@ -195,6 +196,37 @@ class CashuController extends Controller
         ]);
     }
 
+    public function confirmOriginalSettings(Request $request, Store $store, string $quoteId): JsonResponse
+    {
+        $this->ensureCashuStore($store);
+        $validated = $request->validate([
+            'mint_url' => ['required', 'string', 'max:2048', 'url', 'starts_with:https://'],
+            'lightning_address' => ['required', 'string', 'max:320', 'regex:/^[^@\s]+@[^@\s]*\.[^@\s]{2,}$/'],
+            'confirmed_original' => ['required', 'accepted'],
+            'password' => ['nullable', 'string'],
+        ]);
+        SensitiveActionAuthorization::assertAllowed($request->user(), $request);
+        /** @var User $owner */
+        $owner = $store->user;
+        try {
+            $result = $this->cashuService->confirmOriginalSettings(
+                $store->btcpay_store_id, $quoteId,
+                ['mintUrl' => $validated['mint_url'], 'lightningAddress' => $validated['lightning_address'], 'confirmedOriginal' => true],
+                $owner->getBtcPayApiKeyOrFail()
+            );
+        } catch (BtcPayException $e) {
+            if ($e->getStatusCode() === 400) {
+                throw ValidationException::withMessages(['recovery' => $e->getMessage()]);
+            }
+            if ($e->getStatusCode() === 404) {
+                throw ValidationException::withMessages(['recovery' => 'Recovery is unavailable for this payment. Refresh the list and ensure CashuMelt 1.4.0.2 or later is installed.']);
+            }
+            throw $e;
+        }
+
+        return response()->json(['data' => ['confirmed' => ($result['confirmed'] ?? false) === true]]);
+    }
+
     protected function ensureCashuStore(Store $store): void
     {
         if (($store->wallet_type ?? null) === 'cashu' || $store->cashu_fallback_enabled) {
@@ -251,6 +283,7 @@ class CashuController extends Controller
             'retry_count' => (int) ($item['retryCount'] ?? $item['retry_count'] ?? 0),
             'needs_manual_review' => (bool) ($item['needsManualReview'] ?? $item['needs_manual_review'] ?? false),
             'failure_reason_code' => $item['failureReasonCode'] ?? $item['failure_reason_code'] ?? null,
+            'original_settings_required' => (bool) ($item['originalSettingsRequired'] ?? $item['original_settings_required'] ?? false),
         ];
     }
 

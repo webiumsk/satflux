@@ -821,6 +821,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
 
         Route::get('payments', [CashuController::class, 'listPayments']);
         Route::post('payments/{quoteId}/retry', [CashuController::class, 'retryPayment']);
+        Route::post('payments/{quoteId}/confirm-original', [CashuController::class, 'confirmOriginalSettings'])
+            ->middleware(['throttle:10,1', AuditLog::class.':cashu.original_settings_confirmed']);
     });
 
     // SamRock (Aqua + Boltz)
