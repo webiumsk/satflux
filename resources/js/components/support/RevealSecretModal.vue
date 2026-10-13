@@ -60,6 +60,7 @@
                                       :type="connection.type"
                                       :brand="connection.type === 'aqua_descriptor' || connection.type === 'lnaddress' ? (connection.brand ?? undefined) : undefined"
                                       size="sm"
+                                      surface="light"
                                       :show-label="true"
                                     />
                                 </span>
