@@ -18,10 +18,12 @@
   </component>
   <span
     v-else-if="type && !iconSrc"
-    class="inline-flex items-center font-semibold text-inherit"
-    :class="[sizeClass, type === 'cashu' ? 'text-emerald-400/95' : '']"
+    class="inline-flex items-center font-semibold"
+    :class="sizeClass"
   >
-    {{ labelText }}
+    <span :class="type === 'cashu' ? cashuLabelClass : 'text-inherit'">
+      {{ labelText }}
+    </span>
   </span>
   <span v-else-if="fallbackText" class="font-medium text-gray-500" :class="sizeClass">
     {{ fallbackText }}
@@ -41,12 +43,15 @@ const props = withDefaults(
     /** aqua_boltz / aqua_descriptor: aqua|bull; lnaddress: blink|blitz|flash|coinos */
     brand?: AquaBoltzWalletBrand | LnAddressWalletBrand | null | undefined;
     size?: 'sm' | 'md' | 'lg';
+    /** Background behind the Cashu text label. */
+    surface?: 'dark' | 'light';
     showLabel?: boolean;
     fallbackText?: string;
     tag?: string;
   }>(),
   {
     size: 'md',
+    surface: 'dark',
     showLabel: false,
     tag: 'span',
   }
@@ -123,6 +128,8 @@ const sizeClass = computed(() => {
     default: return 'text-sm';
   }
 });
+
+const cashuLabelClass = computed(() => props.surface === 'light' ? 'text-emerald-700' : 'text-emerald-300');
 
 const labelClass = computed(() => {
   return props.tag === 'span' ? 'text-inherit' : '';
