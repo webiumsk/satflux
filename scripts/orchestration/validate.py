@@ -20,35 +20,45 @@ SKILLS = {'project-resume', 'architecture-review', 'security-review',
 
 
 def require(condition, message):
+    """Reject invalid workflow evidence with a diagnostic suitable for CLI output."""
     if not condition:
         raise ValueError(message)
 
 
 def normalize_remote(value):
+    """Normalize supported GitHub SSH/HTTPS origins for registry comparison."""
     value = re.sub(r'^git@github\.com:', 'https://github.com/', value.strip())
     return value.removesuffix('.git').rstrip('/')
 
 
 def resolve_project(project):
+    """Resolve the environment override or repository-relative registry fallback."""
     spec = project['local_path']
     override = os.environ.get(spec['environment_variable'])
     target = Path(override or spec['fallback']).expanduser()
     return (target if target.is_absolute() else ROOT / target).resolve()
 
 
+def read_git(target, *args):
+    """Read checkout metadata with a bounded Git subprocess, without shell expansion."""
+    return subprocess.check_output(['git', '-C', str(target), *args], text=True,
+                                   stderr=subprocess.PIPE, timeout=10).strip()
+
+
 def check_projects(projects):
+    """Require each selected directory to be the expected checkout root and origin."""
     for project in projects:
         target = resolve_project(project)
         require(target.is_dir(), f"{project['id']}: unresolved directory; set {project['local_path']['environment_variable']}")
-        def git(*args):
-            return subprocess.check_output(['git', '-C', str(target), *args],
-                                           text=True, stderr=subprocess.PIPE).strip()
-        require(normalize_remote(git('remote', 'get-url', 'origin')) == project['repository_url'],
+        require(Path(read_git(target, 'rev-parse', '--show-toplevel')).resolve() == target,
+                f"{project['id']}: selected directory is not the checkout root")
+        require(normalize_remote(read_git(target, 'remote', 'get-url', 'origin')) == project['repository_url'],
                 f"{project['id']}: origin does not match registry; do not use this checkout")
-        print(f"RESOLVED {project['id']}: {git('branch', '--show-current')} @ {git('rev-parse', '--short', 'HEAD')}")
+        print(f"RESOLVED {project['id']}: {read_git(target, 'branch', '--show-current')} @ {read_git(target, 'rev-parse', '--short', 'HEAD')}")
 
 
 def main():
+    """Validate orchestration structure and optionally verify registered checkouts."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check-projects', action='store_true',
                         help='Read local registered Git remotes/branches; never fetch or mutate.')
@@ -128,6 +138,9 @@ def main():
 if __name__ == '__main__':
     try:
         main()
+    except subprocess.TimeoutExpired:
+        print('FAIL: Git checkout check exceeded its 10-second timeout', file=sys.stderr)
+        sys.exit(1)
     except (ValueError, OSError, json.JSONDecodeError, subprocess.CalledProcessError) as error:
         print(f'FAIL: {error}', file=sys.stderr)
         sys.exit(1)

@@ -8,12 +8,15 @@ from probe_codex import Probe
 
 
 class ProbeTransportTests(unittest.TestCase):
+    """Verify RPC framing, timeout and error behavior using synthetic child processes."""
     def run_probe(self, source):
+        """Start a synthetic transport and register deterministic cleanup."""
         probe = Probe([sys.executable, '-u', '-c', source], os.environ.copy())
         self.addCleanup(probe.close)
         return probe
 
     def test_fragmented_frames_and_buffered_notifications(self):
+        """Accept fragmented replies without losing adjacent notification frames."""
         probe = self.run_probe('''
 import sys,time
 sys.stdin.readline()
@@ -29,6 +32,7 @@ time.sleep(1)
         self.assertEqual(probe.rpc({'id': 2, 'method': 'test'}, timeout=2), {'next': True})
 
     def test_partial_frame_has_bounded_timeout(self):
+        """Reject an incomplete reply without waiting indefinitely for a newline."""
         probe = self.run_probe('''
 import sys,time
 sys.stdin.readline()
@@ -41,6 +45,7 @@ time.sleep(5)
         self.assertLess(time.monotonic() - started, 2)
 
     def test_rpc_error_is_not_reported_as_pass(self):
+        """Treat a matching server error as failed evidence rather than a pass."""
         probe = self.run_probe('''
 import sys,time
 sys.stdin.readline()

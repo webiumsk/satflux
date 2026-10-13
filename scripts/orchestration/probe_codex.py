@@ -14,11 +14,13 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def require(condition, message):
+    """Reject invalid probe evidence even when Python optimization is enabled."""
     if not condition:
         raise RuntimeError(message)
 
 
 def stop(process):
+    """Bound subprocess shutdown and close all transport pipes."""
     if process.poll() is None:
         process.terminate()
         try:
@@ -34,6 +36,7 @@ def stop(process):
 class Probe:
     """Bounded unbuffered JSON-lines transport; drain diagnostics without exposing them."""
     def __init__(self, command, environment):
+        """Start an unbuffered child transport with separate diagnostic draining."""
         self.process = subprocess.Popen(command, cwd=ROOT, env=environment,
                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE, bufsize=0)
@@ -43,9 +46,11 @@ class Probe:
         self.pending = b''
 
     def send(self, request):
+        """Write one JSON-lines request to the existing child process."""
         self.process.stdin.write((json.dumps(request) + '\n').encode())
 
     def rpc(self, request, timeout=15):
+        """Await a matching RPC response within a bounded framing/read deadline."""
         self.send(request)
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
@@ -71,11 +76,13 @@ class Probe:
         raise RuntimeError(f"{request['method']}: timed out")
 
     def close(self):
+        """Release selector resources and stop the probe subprocess."""
         self.selector.close()
         stop(self.process)
 
 
 def sensitive_configuration_hashes():
+    """Fingerprint existing user settings/auth without exposing their contents."""
     # Never change HOME/CODEX_HOME. Fingerprint existing files without logging contents.
     user_directory = Path(os.environ.get('CODEX_HOME', str(Path.home() / '.codex')))
     return {name: hashlib.sha256((user_directory / name).read_bytes()).hexdigest()
@@ -83,7 +90,24 @@ def sensitive_configuration_hashes():
             for name in ('config.toml', 'auth.json', 'AGENTS.md', 'AGENTS.override.md')}
 
 
+def require_project_settings(result, root):
+    """Require matching settings originating in this checkout's project layer."""
+    config = result['config']
+    require(config['agents']['enabled'] is True, 'Agents not enabled')
+    require(config['agents']['max_concurrent_threads_per_session'] == 3,
+            'Unexpected project concurrency limit')
+    require(config['features']['multi_agent'] is True, 'Multi-agent feature not active')
+    for key in ('agents.enabled', 'agents.max_concurrent_threads_per_session',
+                'features.multi_agent'):
+        source = result.get('origins', {}).get(key, {}).get('name', {})
+        folder = source.get('dotCodexFolder')
+        require(source.get('type') == 'project' and isinstance(folder, str)
+                and Path(folder).resolve() == (root / '.codex').resolve(),
+                f'{key}: effective setting does not originate in this checkout project layer')
+
+
 def main():
+    """Probe installed configuration/discovery without model turns or global edits."""
     require(Path.cwd() == ROOT, 'Run from existing Satflux root; no cwd changes are made.')
     before = sensitive_configuration_hashes()
     environment = {k: v for k, v in os.environ.items()
@@ -101,11 +125,7 @@ def main():
             probe.send({'method': 'initialized', 'params': {}})
             result = probe.rpc({'id': 2, 'method': 'config/read', 'params': {
                 'cwd': str(ROOT), 'includeLayers': True}})
-            config = result['config']
-            require(config['agents']['enabled'] is True, 'Agents not enabled')
-            require(config['agents']['max_concurrent_threads_per_session'] == 3,
-                    'Project configuration not active; do not change real trust automatically')
-            require(config['features']['multi_agent'] is True, 'Multi-agent feature not active')
+            require_project_settings(result, ROOT)
             result = probe.rpc({'id': 3, 'method': 'skills/list', 'params': {
                 'cwds': [str(ROOT)], 'forceReload': True}})
             entry = next(x for x in result['data'] if x['cwd'] == str(ROOT))

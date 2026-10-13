@@ -176,3 +176,23 @@ remain historical evidence. The image hash was unchanged when switching branches
 the pre-existing modified image remains excluded from commit and PR scope. Re-run
 validation evidence and publication results belong in the PR handoff. Sibling writes,
 merging, deployments and starting the free-PRO audit are not authorized by this step.
+
+## PR review follow-up
+
+Bootstrap PR [#393](https://github.com/webiumsk/satflux/pull/393) is open against master.
+Its initial commit `bc4c4a2ee6b6b05f8a03c3c56a0fe6d3f559522e` passed PHP, Node and
+Playwright CI. CodeRabbit identified three validation issues: settings need checkout
+project-layer provenance, registry paths need exact checkout-root verification and
+Git metadata reads need bounded timeouts. Follow-up guards retain value checks,
+reject matching global/session/other-checkout origins and nested directories, and
+report a 10-second Git timeout as CLI failure. Nine synthetic tests and the installed
+CLI probe pass; all helper functions have docstrings. Independent security/QA review
+accepted these fixes. Updated-head CI/review is separate from the initial green run.
+
+The Product Owner requested recurring CI/CodeRabbit checks. Local reminder capability
+was tested with the installed Codex queue command into this same thread. Runtime
+watcher state is temporary and private, excluded from Git. Monitoring must use fixed
+read-only GitHub requests/reminders, deduplicate changes, retain managed permissions,
+stop when the PR closes and have a bounded lifetime. It must not automatically edit,
+publish, merge, deploy or begin the free-PRO audit. The recorded role-routing limit
+and non-production-only future billing audit scope remain unchanged.
