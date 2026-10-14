@@ -1,5 +1,16 @@
 # SATFLUX-003: temporary free PRO release readiness
 
+**Current owner correction (2026-10-14):** delivery is Satflux only. SATFLUX-004
+provider changes are withdrawn; its published feature branch was explicitly
+requested deleted and deletion is verified. No BTCPay implementation/configuration/
+billing change is permitted or planned. The owner accepted that Satflux purchase
+guards cannot close direct BTCPay purchase paths. Do not claim global provider
+closure, require the withdrawn provider artifact, or execute its historical runbook.
+Provider requirements below describe the earlier global-ban proposal; they are
+superseded for current delivery. Satflux compatibility, independent operational
+readiness and applicable merge/deployment/activation approvals still remain.
+See PROJECT_STATE and ROADMAP for the narrowed SATFLUX-005.
+
 ## Scope and disposition
 
 **2026-10-14 follow-up:** the owner subsequently approved SATFLUX-004 in owned

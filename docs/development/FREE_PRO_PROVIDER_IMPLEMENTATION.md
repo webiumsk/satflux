@@ -1,5 +1,14 @@
 # SATFLUX-004: BTCPay 2.4.5 scoped subscription sales pause
 
+**WITHDRAWN FROM DELIVERY (2026-10-14):** the Product Owner requires a Satflux-only
+solution and explicitly requested removal of the published provider feature branch.
+Deletion is verified; owned master and production remain unchanged. The local
+implementation is retained as historical evidence only. Do not republish, merge,
+deploy, configure or treat this mechanism as a release dependency. The owner accepted
+the stated limitation of Satflux guards for direct BTCPay purchases. This withdrawal
+supersedes the publication/design/next-milestone instructions below; current scope
+is in PROJECT_STATE and ROADMAP.
+
 **Publication follow-up (2026-10-14):** the Product Owner subsequently approved push.
 Provider `feat/satflux-pro-sales-pause` is published to owned `webiumsk/btcpayserver`
 at `734791fdd8ac6df46088c43fa0152ad5f185be3e`; the Satflux feature branch is also

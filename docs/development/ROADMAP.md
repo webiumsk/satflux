@@ -127,18 +127,22 @@ Upstream and conditional legacy plugins remain read-only; activation remains NO-
 
 ## Next proposed: SATFLUX-005 coordinated staging and release handoff
 
-Publication follow-up: the owner approved push and both reviewed feature branches
-are now on their owned origins. No PR/merge/release/deployment was performed; the
-initial feature-branch CI query returned no runs. Exact publication evidence is in
-PROJECT_STATE. Application source remains unchanged.
+Current owner correction: delivery is Satflux only. The owner explicitly requested
+removal of the provider feature branch, which is now verified absent. SATFLUX-004
+is withdrawn from delivery and must not be republished, merged or deployed. The
+Satflux feature branch remains published; no PR/merge/release/deployment was
+performed. Exact publication/deletion evidence is in PROJECT_STATE. Satflux source
+is unchanged. Direct BTCPay purchases/AutoRenew are outside the Satflux guard
+boundary; the owner accepted that limitation.
 
-1. Establish the correct separate Satflux/provider release bases and ancestry,
-   prepare reviewable PRs, and obtain exact head CI after publication authorization.
-2. Verify deployed host/build, exact offering/PRO/Enterprise mappings and conditional
-   legacy surfaces. Prove consistent artifacts/policy on all replicas and workers.
+1. Establish the correct Satflux release base, prepare its reviewable PR, and obtain
+   exact head CI. No BTCPay implementation, PR or rollout dependency is planned.
+2. Validate Satflux compatibility with the existing provider and prove consistent
+   Satflux artifacts/policy on all replicas and workers. Do not modify provider
+   configuration or claim closure of direct provider purchases.
 3. Complete hosted relay cost/quota/capacity evidence and private backup/restore.
 4. Resolve promotion-end historical access/notice and paid reopening terms; validate
-   cross-artifact staging, retained barriers, balances, dates and genuine fulfillment.
+   Satflux staging, retained balances/dates, ownership and genuine fulfillment.
 5. Obtain explicit applicable merge/release/deployment/activation approval against
    concrete reviewed evidence. No production activity is authorized by this roadmap.
 

@@ -1,5 +1,30 @@
 # Project state
 
+## Current owner constraint: Satflux only (2026-10-14)
+
+The Product Owner clarified that BTCPay changes are not wanted, accepted the stated
+limitation of Satflux-only purchase guards, and explicitly requested deletion of the
+published provider feature branch. Main deleted only
+`webiumsk/btcpayserver:feat/satflux-pro-sales-pause` with an exact expected-head lease
+for `734791fdd8ac6df46088c43fa0152ad5f185be3e`. Remote verification confirms the
+branch is absent and owned master remains
+`3ec6a9847bd06e5dad348caaec373276dc718520`. No provider PR/merge/deployment or
+production change occurred. The isolated local commit/worktree is retained solely
+as historical evidence; do not republish, integrate or deploy it.
+
+The published Satflux feature branch and implementation are preserved. Future
+implementation/release scope is **Satflux only**, without modifying BTCPay code,
+configuration or billing records. SATFLUX-004 is withdrawn from the delivery plan;
+its tests and runbook below are historical evidence, not an active dependency.
+Satflux guards do not establish a global ban on direct BTCPay purchases or host
+prefunded AutoRenew. Do not claim those provider paths are closed. The owner accepted
+this stated boundary; no further provider closure is authorized.
+
+Next milestone remains SATFLUX-005, narrowed to Satflux PR/head CI and staging of
+the approved effective access/purchase behavior. Relay cost/quota, replica/cache,
+private restore and promotion-end access evidence remain outstanding. No merge,
+deployment or promotion activation is authorized by this cleanup.
+
 ## Feature publication follow-up (2026-10-14)
 
 After the accepted SATFLUX-004 result, the Product Owner explicitly requested push.

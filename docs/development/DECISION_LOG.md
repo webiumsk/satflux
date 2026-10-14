@@ -172,3 +172,22 @@ application implementation or test rerun was necessary. No feature CI runs were
 returned by the current GitHub queries; no remote validation success is claimed.
 Release/base/ancestry review, exact head CI, operational evidence and explicit
 applicable merge/release/deployment/activation approvals remain outstanding.
+
+## 2026-10-14: provider work withdrawn; Satflux-only delivery
+
+The Product Owner clarified that BTCPay must not be changed and then explicitly
+requested deletion of the published provider feature branch. Main deleted only
+`webiumsk/btcpayserver:feat/satflux-pro-sales-pause`, protected by an expected-head
+lease for reviewed commit `734791fdd8ac6df46088c43fa0152ad5f185be3e`. Remote
+verification confirms absence; master remains
+`3ec6a9847bd06e5dad348caaec373276dc718520`. No provider merge/deployment or
+production mutation occurred. Local source is retained as historical evidence;
+no republication/integration/deployment is authorized.
+
+SATFLUX-004 is withdrawn from the release plan. The Satflux feature branch remains
+published and application code is unchanged. The owner accepted the stated limitation
+that Satflux guards do not block independently reachable direct BTCPay purchases;
+provider-side automatic credit renewals also remain outside those guards. Do not
+claim global purchase closure or deploy provider pause controls from the historical
+runbook. SATFLUX-005 is narrowed to Satflux review/CI/staging and its existing
+operational readiness. Merge/deployment/activation still require applicable approval.
