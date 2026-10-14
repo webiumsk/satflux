@@ -4574,5 +4574,20 @@
     "nop_history_step_published": "Für die Kasse bereitgestellt",
     "nop_history_step_received": "Von der Kasse empfangen",
     "nop_history_pending_step": "noch nicht"
+  },
+  "free_pro": {
+    "title": "PRO-Funktionen vorübergehend kostenlos",
+    "description": "Für registrierte Konten mit bestätigter E-Mail. Ohne Abonnement und ohne automatische Abbuchungen. Der Zugang gilt bis auf Weiteres.",
+    "verify_account": "E-Mail hinzufügen und bestätigen",
+    "verify_email": "E-Mail bestätigen",
+    "create_account": "Konto erstellen",
+    "open_app": "App öffnen",
+    "purchases_paused": "Neue Käufe sind vorübergehend ausgesetzt. Bestehende Daten, Firmenplätze und Guthaben bleiben verfügbar.",
+    "access_unavailable": "Der Zugriff konnte nicht bestätigt werden. Bitte verbinden Sie sich und versuchen Sie es erneut.",
+    "company_limit_reached": "Das Firmenlimit ist erreicht. Bestehende Firmen bleiben verfügbar.",
+    "available_features": "Verfügbare Funktionen",
+    "limits_apply": "Die PRO-Limits gelten weiterhin. Bestehende Daten bleiben verfügbar. Verwalten Sie bestehende Objekte, um Kapazität freizugeben.",
+    "verification_benefit": "Bestätigen Sie Ihre E-Mail und nutzen Sie PRO-Funktionen bis auf Weiteres kostenlos.",
+    "details": "Zugangsdetails"
   }
 }

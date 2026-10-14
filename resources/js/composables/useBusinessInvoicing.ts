@@ -1,18 +1,7 @@
 import { computed } from 'vue';
-import { useAuthStore } from '../store/auth';
-
+import { useEffectiveAccess } from './useEffectiveAccess';
 export function useBusinessInvoicing() {
-  const authStore = useAuthStore();
-
-  const canUse = computed(() => {
-    const u = authStore.user;
-    if (!u) return false;
-    const role = u.role ?? '';
-    if (role === 'admin' || role === 'support' || role === 'enterprise') {
-      return true;
-    }
-    return !!u.plan_features?.business_invoicing;
-  });
-
+  const { hasFeature } = useEffectiveAccess();
+  const canUse = computed(() => hasFeature('business_invoicing'));
   return { canUse };
 }

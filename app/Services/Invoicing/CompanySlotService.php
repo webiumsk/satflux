@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\CompanySlotPurchase;
 use App\Models\User;
 use App\Services\BtcPay\InvoiceService;
+use App\Services\PurchaseAvailabilityPolicy;
 use App\Services\SubscriptionEntitlementService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
@@ -29,6 +30,10 @@ class CompanySlotService
      */
     public function availablePacks(): array
     {
+        if (! app(PurchaseAvailabilityPolicy::class)->snapshot()['company_slots']) {
+            return [];
+        }
+
         $packs = [];
         foreach (config('pricing.company_slot_packs', []) as $pack) {
             $slots = (int) ($pack['slots'] ?? 0);
@@ -62,6 +67,8 @@ class CompanySlotService
      */
     public function startPurchase(User $user, int $slots): array
     {
+        app(PurchaseAvailabilityPolicy::class)->assertAllowed('company_slots');
+
         $max = $this->subscriptionService->maxCompaniesForUser($user);
         if ($max === null) {
             throw ValidationException::withMessages([

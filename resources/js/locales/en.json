@@ -4574,5 +4574,20 @@
     "nop_history_step_published": "Published to the cash register",
     "nop_history_step_received": "Received by the cash register",
     "nop_history_pending_step": "not yet"
+  },
+  "free_pro": {
+    "title": "PRO features temporarily free",
+    "description": "For verified registered accounts. No subscription and no automatic charges. Available until further notice.",
+    "verify_account": "Add and verify email",
+    "verify_email": "Verify email",
+    "create_account": "Create account",
+    "open_app": "Open app",
+    "purchases_paused": "New purchases are temporarily paused. Existing data, slots and credits remain available.",
+    "access_unavailable": "Access could not be verified. Please reconnect and try again.",
+    "company_limit_reached": "The company limit has been reached. Existing companies remain available.",
+    "available_features": "Available features",
+    "limits_apply": "PRO limits still apply. Existing data remains available. Manage your existing objects to free capacity.",
+    "verification_benefit": "Verify your email to access PRO features free until further notice.",
+    "details": "Access details"
   }
 }

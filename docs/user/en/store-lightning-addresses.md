@@ -3,9 +3,12 @@ title: Store Lightning addresses
 category: lightning-addresses
 order: 1
 meta_description: Host reusable you@your-store Lightning addresses that anyone can pay any time.
+updated: 2026-10-14
 ---
 
 # Store Lightning addresses
+
+> When [temporary free PRO access](/documentation/free-pro-access) is active, registered non-guest accounts with a verified email can use PRO features without a subscription purchase. The usual limits and ownership permissions still apply. Check Pricing and Account for the current mode.
 
 A **store Lightning address** is a reusable address hosted on your own store's domain - `username@your-store-domain` - that anyone can pay over Lightning without you having to create and share a new invoice each time. Put it on your website, socials, or a tip jar.
 
@@ -26,4 +29,4 @@ You can create several addresses (for example one per product or campaign), up t
 
 ## Plan limits
 
-The number of hosted addresses depends on your plan - the Free plan includes a small number and Pro raises it (see [Plans & limits](/documentation/plans-and-limits)). When you reach the limit, Satflux prompts you to upgrade. The exact number is shown on the page and on the Pricing page.
+The number of hosted addresses depends on your available access. Free has a count limit; PRO has no count limit (see [Plans & limits](/documentation/plans-and-limits)). Eligible accounts receive that PRO allowance while the promotion is active. New PRO purchases are paused in this mode, so a limit prompt does not offer a PRO purchase. Check the actual allowance on the page and in Pricing.

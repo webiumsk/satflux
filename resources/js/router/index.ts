@@ -449,7 +449,7 @@ router.beforeEach(async (to, from, next) => {
     }
 
     // Fetch user info for protected pages to determine auth state
-    if (!authStore.user && to.name !== 'login' && to.name !== 'register' && to.name !== 'password-reset') {
+    if (to.name !== 'login' && to.name !== 'register' && to.name !== 'password-reset') {
         try {
             await authStore.fetchUser();
         } catch (error) {

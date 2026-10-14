@@ -4574,5 +4574,20 @@
     "nop_history_step_published": "Publicado para la caja",
     "nop_history_step_received": "Recibido por la caja",
     "nop_history_pending_step": "todavía no"
+  },
+  "free_pro": {
+    "title": "Funciones PRO gratis temporalmente",
+    "description": "Para cuentas registradas con email verificado. Sin suscripción ni cobros automáticos. El acceso está disponible hasta nuevo aviso.",
+    "verify_account": "Añadir y verificar email",
+    "verify_email": "Verificar email",
+    "create_account": "Crear cuenta",
+    "open_app": "Abrir aplicación",
+    "purchases_paused": "Las nuevas compras están temporalmente suspendidas. Los datos, espacios y créditos existentes siguen disponibles.",
+    "access_unavailable": "No se pudo verificar el acceso. Conéctese e inténtelo de nuevo.",
+    "company_limit_reached": "Se ha alcanzado el límite de empresas. Las empresas existentes siguen disponibles.",
+    "available_features": "Funciones disponibles",
+    "limits_apply": "Los límites PRO siguen vigentes. Los datos existentes siguen disponibles. Gestione los objetos existentes para liberar capacidad.",
+    "verification_benefit": "Verifique su email para acceder gratis a las funciones PRO hasta nuevo aviso.",
+    "details": "Detalles del acceso"
   }
 }

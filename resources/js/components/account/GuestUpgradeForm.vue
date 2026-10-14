@@ -11,13 +11,19 @@
     />
   </div>
   <form v-else class="space-y-3" @submit.prevent="onSubmit">
+    <p v-if="promotionActive" class="text-sm text-indigo-200">
+      {{ t('free_pro.verification_benefit') }}
+      <router-link to="/documentation/free-pro-access" class="underline font-medium">{{ t('free_pro.details') }}</router-link>
+    </p>
     <p v-if="introFeatureLabel" class="text-sm text-gray-300">
       {{ t('account.guest_upgrade_modal_intro', { feature: introFeatureLabel }) }}
     </p>
     <p v-else-if="showDefaultDesc" class="text-xs text-gray-300">
       {{ t('account.guest_upgrade_desc_email_only') }}
     </p>
+    <label :for="`${idPrefix}-email`" class="block text-sm font-medium text-gray-200">{{ t('account.email') }}</label>
     <input
+      :id="`${idPrefix}-email`"
       v-model="form.email"
       type="email"
       required
@@ -26,7 +32,9 @@
       :placeholder="t('account.guest_upgrade_email_placeholder')"
     />
     <template v-if="!emailOnly">
+      <label :for="`${idPrefix}-password`" class="block text-sm font-medium text-gray-200">{{ t('account.new_password') }}</label>
       <input
+        :id="`${idPrefix}-password`"
         v-model="form.password"
         type="password"
         required
@@ -34,7 +42,9 @@
         class="w-full px-3 py-2 border border-gray-600 rounded-lg text-white bg-gray-900/70 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
         :placeholder="t('account.new_password')"
       />
+      <label :for="`${idPrefix}-password_confirmation`" class="block text-sm font-medium text-gray-200">{{ t('account.confirm_new_password') }}</label>
       <input
+        :id="`${idPrefix}-password_confirmation`"
         v-model="form.password_confirmation"
         type="password"
         required
@@ -107,6 +117,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { usePricing } from '../../composables/usePricing';
 import { useGuestUpgradeSubmit } from '../../composables/useGuestUpgradeSubmit';
 import EmailCodeVerification from './EmailCodeVerification.vue';
 
@@ -131,6 +142,8 @@ const emit = defineEmits<{
 }>();
 
 const { t, te } = useI18n();
+const { promotionActive, load: loadPricing } = usePricing();
+void loadPricing();
 const {
   emailOnly,
   loading,

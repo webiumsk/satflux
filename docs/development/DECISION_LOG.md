@@ -54,3 +54,37 @@ Prioritize centralized reversible entitlements, disabling new PRO purchases and
 upgrade prompts during promotion, preserving billing for future monetization,
 unchanged authorization/isolation/security and a safe return to paid plans.
 Implementation remains NOT AUTHORIZED.
+
+## 2026-10-14: SATFLUX-001 policy decisions and SATFLUX-002 authorization
+
+Status: explicit Product Owner approval for bounded Satflux implementation, tests,
+localization and documentation following the read-only audit. No external repository
+writes, push, merge, deployment, production billing/configuration change or activation
+is authorized. Historical audit-only instructions are superseded only within this
+approved source/test scope.
+
+Approved eligibility is non-guest plus verified email. Duration is indefinite.
+Use current PRO quotas, retain over-limit objects and existing purchased allowances.
+Existing manual PRO retains its current validity; no permanent grant or provenance
+migration was approved. Pause all new PRO/trial/PRO-credit purchases, company slots
+and ISDOC packs. Enterprise and administrative privileges remain unchanged.
+No paying subscribers or in-flight payments exist according to the owner; production
+records were neither accessed nor changed to verify those statements.
+
+Implement effective access separately from factual billing with an explicit PRO
+feature allowlist, preserving Enterprise exclusion, tenant/company-owner checks,
+guest/verification restrictions and existing fulfillment/reconciliation. Promotion
+defaults off; purchase flags default closed independently. No subscription, role,
+email verification, trial usage or balance is manufactured by promotional access.
+
+Source implementation passed independent security/QA review and full validation
+recorded in PROJECT_STATE. Targeted fixes preserve numbered WooCommerce completion,
+owner/member isolation, fresh verified local writes and actual-provider Enterprise
+credit behavior. PHPStan debt was reduced without adding suppressions.
+
+Release prerequisite: Satflux purchase guards alone cannot close direct BTCPay sales,
+funding portals or prefunded AutoRenew. Verify the exact deployed provider and a
+PRO-only closure before activation; plan deletion or subscription cancellation is
+not authorized. Hosted-relay costs and rollout propagation also require readiness
+evidence. Future notice/data-access policy, permanent manual grants and paid reopening
+remain separate owner decisions. Next milestone is SATFLUX-003 readiness.

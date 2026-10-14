@@ -110,6 +110,7 @@ use App\Models\EfakturaCpdsProvider;
 use App\Models\Store;
 use App\Services\BtcPay\StoreService;
 use App\Services\Invoicing\CompanySlotService;
+use App\Services\PurchaseAvailabilityPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
@@ -140,6 +141,7 @@ Route::get('/pricing', function () {
             'sats_per_month_display' => (int) ($pricing['pro']['sats_per_month_display'] ?? 0),
         ],
         'company_slot_packs' => app(CompanySlotService::class)->availablePacks(),
+        'access_policy' => app(PurchaseAvailabilityPolicy::class)->publicDescriptor(),
     ]);
 });
 

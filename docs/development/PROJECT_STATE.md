@@ -1,5 +1,60 @@
 # Project state
 
+## Current milestone: SATFLUX-002 (2026-10-14)
+
+The Product Owner approved bounded Satflux implementation after the SATFLUX-001
+read-only audit. SATFLUX-002 is implemented and validated locally on
+`feat/free-pro-access`, based on `7c4a6bc8731a434dc863928d616a30c823b94382`.
+This is source/test evidence, not a deployed version. No push, merge, deployment,
+production configuration change or external repository write is authorized or done.
+The original checkout and its pre-existing `public/og-image.webp` are preserved.
+
+Approved policy and implementation contracts are in
+[FREE_PRO_IMPLEMENTATION](FREE_PRO_IMPLEMENTATION.md): non-guest plus verified
+email, indefinite duration, current PRO quotas, existing manual PRO validity,
+preserved over-limit data and purchased balances, and paused PRO/slot/ISDOC sales.
+Effective access is separate from factual billing and excludes Enterprise/admin
+privileges. Promotional access defaults off; the three purchase controls default
+closed independently. Billing reconciliation and settlement remain intact.
+
+Independent source reviewers `/root/free_pro_security` and `/root/free_pro_qa`
+accepted the implementation with no unresolved blocking source findings. Review
+scope was the baseline plus the final working-tree changes, not production.
+Company-owner authorization, numbered WooCommerce retry completion, fresh guest/
+email checks and provider-derived Enterprise credit availability were corrected
+and covered by regressions. QA independently passed 55 PHP tests (282 assertions),
+32 affected frontend tests and additional auth/recovery coverage. Security
+inspected source and test evidence without modifying code or rerunning the suites.
+
+| Final validation | Observed result |
+| --- | --- |
+| Full PHPUnit | PASS: 1,631 tests, 6,891 assertions |
+| Full Vitest | PASS: 119 files, 708 tests |
+| Promotion browser smoke | PASS: 4 Playwright tests, including authentication setup |
+| Full Pint | PASS: 1,036 files |
+| Full PHPStan | PASS: no errors; 11 obsolete ignored occurrences removed, none added |
+| ESLint | PASS: 0 errors, 48 existing warnings; cap remains 52 |
+| Typecheck ratchet | PASS: no new errors, baseline unchanged |
+| Locale parity | PASS: EN/SK/ES/DE/CS; four existing SK-only informational keys |
+| Production frontend build | PASS; existing bundle/import warnings remain |
+| User documentation | 21 articles checked, including five localized access guides |
+| Graphify | Existing graph queried first; isolated AST-only update, no LLM extraction |
+| Diff whitespace | PASS |
+
+All execution used synthetic accounts and disposable SQLite databases. Existing
+email DNS validation passed against an internal-only fixture resolver with no
+external forwarding; validation was not weakened. Browser smoke used a separate
+isolated database and a loopback transport so WebCrypto retained its secure-context
+requirements. No real funds, merchant credentials or production services were used.
+
+**Next milestone: SATFLUX-003 - release and activation readiness.** Before activation,
+verify a complete PRO-only purchase closure at the exact deployed BTCPay provider,
+including direct checkout, credit portals and prefunded AutoRenew; Satflux-only
+guards do not prove that closure. Verify hosted-relay cost enforcement, configured
+plans, replica/cache propagation and reversal. Future notice/data-access terms and
+paid reopening need owner decisions. No subscription cancellation or plan deletion
+is an acceptable substitute. Obtain separate merge/deployment/activation approval.
+
 ## Observation baseline
 
 Bootstrap observation date: 2026-10-13. Scope: development orchestration only.
@@ -100,32 +155,24 @@ must be selected for actual future scope. Do not run deployment scripts as check
 8. New project configuration may need discovery in a future client session; this
    bootstrap does not restart the active session or modify user trust/configuration.
 
-## Proposed initiative and next step
+## Historical Free-PRO bootstrap boundary
 
-Temporarily free PRO is PROPOSED, NOT AUTHORIZED FOR IMPLEMENTATION.
-Next step after bootstrap is a read-only multi-agent audit, scoped in
-[ROADMAP](ROADMAP.md). Involve backend, payments, security, frontend, designer and QA
-in dependency-aware waves; include wordpress/btcpay-plugins when contracts require it.
-
-Pending Product Owner decisions: eligible accounts, duration/end mechanism, existing
-subscriber experience, verified/guest rules, quotas and cost/abuse budget, post-promotion
-access to data/documents, upgrade UX, Enterprise exclusion and rollout/rollback policy.
-No policy answer is inferred from this setup. No paid activation or guest conversion
-service may be reused to manufacture promotional subscriptions.
+The bootstrap permitted only a subsequent read-only audit. That historical boundary
+is superseded for bounded Satflux source/test implementation by the explicit owner
+approval recorded above and in [DECISION_LOG](DECISION_LOG.md). Older audit-only
+instructions are not release authorization. Backend, payments, frontend, designer,
+security and QA reviews were completed; related repositories remained read-only.
 
 Product Owner clarification: Satflux currently has ZERO paying subscribers. This is
-owner-provided context, not an independently verified billing finding. The future
-read-only audit should check available non-production evidence where possible and
-state its limits; it must not access or modify production billing data. Existing
-paying-customer migration, refunds and discontinued-paid-access communications are
+owner-provided context, not an independently verified billing finding. The audit used
+non-production evidence and stated its limits; it did not access or modify production
+billing data. Existing paying-customer migration, refunds and discontinued-paid-access communications are
 outside the intended scope unless evidence contradicts the assumption.
 
-The intended temporary policy gives PRO features to eligible registered users. Audit
-priorities are a centralized reversible promotional entitlement, disabling new PRO
-subscription purchases and upgrade prompts while active, preserving billing for
-future monetization, unchanged authorization/tenant/security boundaries, and a safe
-transition back to paid plans. Eligibility and transition details still need decisions.
-The audit is deferred until separately started; no implementation is authorized.
+The owner also reports no in-flight payments. Both statements remain owner-provided
+context. Billing handling is retained regardless of those assumptions. Eligibility,
+duration and quotas were approved; ending/reopening and deployment details remain
+separate decisions.
 
 ## Bootstrap validation record
 

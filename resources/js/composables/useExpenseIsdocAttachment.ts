@@ -1,3 +1,4 @@
+import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
 import { computed, onUnmounted, ref, type Ref } from 'vue';
 import { invoicingApi } from '../services/api';
 import type { IsdocExtractQuota } from '../components/invoicing/ExpenseIsdocExtractModal.vue';
@@ -43,6 +44,7 @@ function newPendingId() {
 }
 
 export function useExpenseIsdocAttachment(companyId: Ref<string>) {
+  const { purchases } = useEffectiveAccess();
   const localFirst = isInvoicingLocalFirst();
   const evolu = localFirst ? useInvoicingEvolu() : null;
   const quota = ref<IsdocExtractQuota | null>(null);
@@ -211,6 +213,7 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>) {
   }
 
   async function purchasePack(credits: number) {
+    if (!purchases.value.isdoc_packs) return;
     purchasing.value = true;
     try {
       const purchase = await invoicingApi.expenses.purchaseIsdocPack<{ checkoutLink?: string }>(companyId.value, credits);

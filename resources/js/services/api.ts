@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { classifyApiErrorForFlash, GLOBAL_API_ERROR_MESSAGE_KEYS, type GlobalApiErrorKind } from './apiError';
+import { classifyApiErrorForFlash, GLOBAL_API_ERROR_MESSAGE_KEYS, isPurchasePausedError, type GlobalApiErrorKind } from './apiError';
 import type { EmailChallengeSummary } from '../store/auth';
 import type { BlinkMigrationAlert, Store } from '../store/stores';
 import type { BtcPayApp, StoreDashboardStats, StoreSettings, UpdateStoreSettingsPayload } from '../types/btcpay';
@@ -127,6 +127,11 @@ api.interceptors.response.use(
         // Don't redirect on 401 in interceptor - let router guard handle it
         // Redirecting here causes infinite loops when router guard calls fetchUser()
         // Router guard will handle authentication redirects properly
+        if (isPurchasePausedError(error) && !error?.config?.skipErrorFlash) {
+            void import('../store/flash').then(({ useFlashStore }) => {
+                useFlashStore().errorKey('free_pro.purchases_paused');
+            });
+        }
         const kind = classifyApiErrorForFlash(error);
         if (kind && !error?.config?.skipErrorFlash) {
             notifyGlobalApiError(kind);

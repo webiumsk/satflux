@@ -571,7 +571,7 @@ const createdApiKey = ref<any>(null);
 const showApiKey = ref(false);
 
 const canAddApiKey = computed(() => {
-  if (!limit.value) return true;
+  if (!limit.value) return false;
   if (limit.value.unlimited) return true;
   return limit.value.current < (limit.value.max ?? 0);
 });

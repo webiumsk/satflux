@@ -225,11 +225,11 @@
 </template>
 
 <script setup lang="ts">
+import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
 import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { Store } from '../../store/stores';
-import { useAuthStore } from '../../store/auth';
 import { useFlashStore } from '../../store/flash';
 import api from '../../services/api';
 import DatePicker from '../ui/DatePicker.vue';
@@ -238,15 +238,10 @@ import UpgradeModal from './UpgradeModal.vue';
 import ProPlanBadge from './ProPlanBadge.vue';
 
 const { t } = useI18n();
-const authStore = useAuthStore();
 const flashStore = useFlashStore();
 
-const planCode = computed(() => (authStore.user?.plan?.code ?? 'free') as string);
-const userRole = computed(() => authStore.user?.role ?? '');
-const canUseXlsx = computed(() =>
-  planCode.value === 'pro' || planCode.value === 'enterprise' || userRole.value === 'admin' || userRole.value === 'support'
-);
-const showXlsxUpgradeModal = ref(false);
+const { hasFeature } = useEffectiveAccess();
+const canUseXlsx = computed(() => hasFeature("xlsx_exports"));const showXlsxUpgradeModal = ref(false);
 
 const props = defineProps<{ store: Store }>();
 

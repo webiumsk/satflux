@@ -6,6 +6,7 @@ use App\Models\ExpenseIsdocCreditBalance;
 use App\Models\ExpenseIsdocPackPurchase;
 use App\Models\User;
 use App\Services\BtcPay\InvoiceService;
+use App\Services\PurchaseAvailabilityPolicy;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -20,6 +21,10 @@ class BusinessExpenseIsdocPackService
      */
     public function availablePacks(): array
     {
+        if (! app(PurchaseAvailabilityPolicy::class)->snapshot()['isdoc_packs']) {
+            return [];
+        }
+
         return config('invoicing.expense_isdoc_packs', []);
     }
 
@@ -47,6 +52,8 @@ class BusinessExpenseIsdocPackService
      */
     public function startPurchase(User $user, int $credits): array
     {
+        app(PurchaseAvailabilityPolicy::class)->assertAllowed('isdoc_packs');
+
         $pack = $this->resolvePack($credits);
         $storeId = config('services.btcpay.subscription_store_id');
         if (! $storeId) {

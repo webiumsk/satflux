@@ -4578,5 +4578,20 @@
     "nop_history_step_published": "Sprístupnené pokladnici",
     "nop_history_step_received": "Prijaté pokladnicou",
     "nop_history_pending_step": "zatiaľ nie"
+  },
+  "free_pro": {
+    "title": "PRO funkcie dočasne zdarma",
+    "description": "Pre overené registrované účty. Bez predplatného a bez automatického spoplatnenia. Prístup platí do odvolania.",
+    "verify_account": "Pridať a overiť email",
+    "verify_email": "Overiť email",
+    "create_account": "Vytvoriť účet",
+    "open_app": "Otvoriť aplikáciu",
+    "purchases_paused": "Nové nákupy sú dočasne pozastavené. Existujúce dáta, sloty a kredity zostávajú dostupné.",
+    "access_unavailable": "Prístup sa nepodarilo overiť. Pripojte sa a skúste znova.",
+    "company_limit_reached": "Limit firiem bol dosiahnutý. Existujúce firmy zostávajú dostupné.",
+    "available_features": "Dostupné funkcie",
+    "limits_apply": "Limity PRO zostávajú v platnosti. Existujúce dáta sú dostupné. Správou existujúcich objektov môžete uvoľniť kapacitu.",
+    "verification_benefit": "Overte email a získajte PRO funkcie zdarma do odvolania.",
+    "details": "Podrobnosti prístupu"
   }
 }

@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\SubscriptionService as BtcPaySubscriptionService;
 use App\Services\Invoicing\SubscriptionBillingInvoiceService;
+use App\Services\PurchaseAvailabilityPolicy;
 use App\Services\SubscriptionCheckoutRegistry;
 use App\Services\SubscriptionCreditLedgerService;
 use App\Services\SubscriptionEntitlementService;
@@ -61,6 +62,10 @@ class SubscriptionController extends Controller
             return $blocked;
         }
 
+        if ($request->input('plan') === 'pro') {
+            app(PurchaseAvailabilityPolicy::class)->assertAllowed('pro_subscriptions');
+        }
+
         $storeId = config('services.btcpay.subscription_store_id');
         $offeringId = config('services.btcpay.subscription_offering_id');
         $planId = config("services.btcpay.subscription_plans.{$request->input('plan')}");
@@ -70,6 +75,8 @@ class SubscriptionController extends Controller
                 'message' => 'Subscription configuration is incomplete. Please contact support.',
             ], 500);
         }
+
+        app(PurchaseAvailabilityPolicy::class)->assertProviderPlanAllowed($planId, 'pro_subscriptions');
 
         try {
             $options = [];
@@ -490,6 +497,7 @@ class SubscriptionController extends Controller
 
             return response()->json([
                 'subscriber' => $subscriber,
+                'creditPurchasesAvailable' => app(PurchaseAvailabilityPolicy::class)->creditPurchasesAvailable($subscriber['plan']['id'] ?? null),
                 'creditBalance' => $creditBalance,
                 'billing' => $this->btcpaySubscriptionService->buildSubscriptionBillingSummary($subscriber, $creditBalance),
                 'creditHistory' => $creditHistory,
@@ -612,6 +620,8 @@ class SubscriptionController extends Controller
                     'message' => 'Active subscription required before purchasing credits.',
                 ], 422);
             }
+
+            app(PurchaseAvailabilityPolicy::class)->assertProviderPlanAllowed($planId, 'pro_credits');
 
             $baseUrl = config('app.url');
             $successUrl = config('services.btcpay.subscription_success_url') ?: "{$baseUrl}/billing/success";

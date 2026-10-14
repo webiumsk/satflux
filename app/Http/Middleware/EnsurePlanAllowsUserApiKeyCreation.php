@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\EffectiveAccessPolicy;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,8 +24,9 @@ class EnsurePlanAllowsUserApiKeyCreation
             return $next($request);
         }
 
-        $plan = $user->currentSubscriptionPlan();
-        $max = $plan?->max_api_keys;
+        $policy = app(EffectiveAccessPolicy::class);
+        $plan = $policy->plan($user);
+        $max = $policy->limit($user, 'max_user_api_keys');
         if ($max === null) {
             return $next($request);
         }
@@ -35,7 +37,7 @@ class EnsurePlanAllowsUserApiKeyCreation
                 'message' => "You have reached the maximum number of API keys ({$max}) for your plan.",
                 'current_count' => $currentCount,
                 'max_allowed' => $max,
-                'plan' => $plan?->display_name ?? 'Free',
+                'plan' => ($plan ? (string) $plan->getAttribute('display_name') : 'Free'),
             ], 403);
         }
 

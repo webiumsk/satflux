@@ -4574,5 +4574,20 @@
     "nop_history_step_published": "Zpřístupněno pokladně",
     "nop_history_step_received": "Přijato pokladnou",
     "nop_history_pending_step": "zatím ne"
+  },
+  "free_pro": {
+    "title": "PRO funkce dočasně zdarma",
+    "description": "Pro ověřené registrované účty. Bez předplatného a bez automatického zpoplatnění. Přístup platí do odvolání.",
+    "verify_account": "Přidat a ověřit email",
+    "verify_email": "Ověřit email",
+    "create_account": "Vytvořit účet",
+    "open_app": "Otevřít aplikaci",
+    "purchases_paused": "Nové nákupy jsou dočasně pozastaveny. Existující data, sloty a kredity zůstávají dostupné.",
+    "access_unavailable": "Přístup se nepodařilo ověřit. Připojte se a zkuste to znovu.",
+    "company_limit_reached": "Limit firem byl dosažen. Existující firmy zůstávají dostupné.",
+    "available_features": "Dostupné funkce",
+    "limits_apply": "Limity PRO zůstávají v platnosti. Existující data jsou dostupná. Správou existujících objektů můžete uvolnit kapacitu.",
+    "verification_benefit": "Ověřte email a získejte PRO funkce zdarma do odvolání.",
+    "details": "Podrobnosti přístupu"
   }
 }

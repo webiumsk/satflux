@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Notifications\VerifyEmailNotification;
 use App\Services\Auth\EmailVerificationService;
+use App\Services\EffectiveAccessPolicy;
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -145,26 +146,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
      */
     public function getMaxLightningAddresses(): ?int
     {
-        if ($this->hasUnlimitedAccess()) {
-            return null;
-        }
-
-        $plan = $this->currentSubscriptionPlan();
-        if (! $plan) {
-            return 1; // No plan = Free tier
-        }
-
-        // Free plan: always max 1 (never unlimited), even if max_ln_addresses is null in DB
-        $code = strtolower($plan->code ?? $plan->name ?? '');
-        if ($code === 'free') {
-            return (int) ($plan->max_ln_addresses ?? 1);
-        }
-
-        if ($plan->hasUnlimitedLnAddresses()) {
-            return null;
-        }
-
-        return (int) $plan->max_ln_addresses;
+        return app(EffectiveAccessPolicy::class)->limit($this, 'max_ln_addresses');
     }
 
     /**
@@ -175,20 +157,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
      */
     public function getMaxEventsPerStore(): ?int
     {
-        if ($this->hasUnlimitedAccess()) {
-            return null;
-        }
-
-        $plan = $this->currentSubscriptionPlan();
-        if (! $plan) {
-            return 1; // fallback for free / no plan
-        }
-
-        if ($plan->max_events === null) {
-            return null; // unlimited
-        }
-
-        return (int) $plan->max_events;
+        return app(EffectiveAccessPolicy::class)->limit($this, 'max_events');
     }
 
     /**
@@ -198,15 +167,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
      */
     public function getMaxRafflesPerStore(): ?int
     {
-        if ((bool) ($this->is_guest ?? false)) {
-            return 0;
-        }
-
-        if ($this->hasUnlimitedAccess() || $this->hasActivePaidSubscription()) {
-            return null;
-        }
-
-        return 1;
+        return app(EffectiveAccessPolicy::class)->limit($this, 'max_raffles');
     }
 
     /**
@@ -340,9 +301,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
      */
     public function planFeature(string $feature): bool
     {
-        $plan = $this->currentSubscriptionPlan();
-
-        return $plan ? $plan->hasFeature($feature) : false;
+        return app(EffectiveAccessPolicy::class)->allows($this, $feature);
     }
 
     /**

@@ -3,11 +3,16 @@ title: Companies and branding
 category: invoicing
 order: 2
 meta_description: Set up your company details, logo, numbering and bank account.
+updated: 2026-10-14
 ---
 
 # Companies and branding
 
+> When [temporary free PRO access](/documentation/free-pro-access) is active, registered non-guest accounts with a verified email can use PRO features without a subscription purchase. The usual limits and ownership permissions still apply. Check Pricing and Account for the current mode.
+
 A **company** holds the business details that appear on your documents. You can have more than one company (subject to your plan) - for example a sole trader and a limited company.
+
+During the promotion, new company-slot purchases are paused. Existing slots and companies are retained, including companies already above a limit. Creating another company still requires available capacity.
 
 ## Company profile
 

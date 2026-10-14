@@ -65,7 +65,7 @@
             </li>
           </ul>
           <p class="mt-6 text-sm text-gray-500">
-            {{ t('landing.invoicing_section.pro_note', { days: pricing.trial_days }) }}
+            {{ promotionActive ? t('free_pro.description') : t('landing.invoicing_section.pro_note', { days: pricing.trial_days }) }}
           </p>
         </div>
 
@@ -191,7 +191,7 @@ import { usePricing } from '../../composables/usePricing';
 const { t } = useI18n();
 const { canUse: canUseInvoicing } = useBusinessInvoicing();
 const { canUpgradeToPro } = useCurrentPlan();
-const { pricing, load: loadPricing } = usePricing();
+const { pricing, load: loadPricing, promotionActive } = usePricing();
 // Fetch the real trial_days (module-level cache - a no-op when another
 // landing section already loaded pricing).
 void loadPricing();

@@ -1,6 +1,6 @@
 # Development roadmap
 
-## Authorized now: persistent orchestration bootstrap
+## Completed: persistent orchestration bootstrap
 
 Deliver root instructions, ten Codex specialist definitions, thirteen reusable skills,
 portable project registry, ecosystem/workflow/state/decision documentation and offline
@@ -11,11 +11,12 @@ Bootstrap status: COMPLETED locally, with independent security and QA acceptance
 Configuration/discovery, registry, skill and preservation checks passed; see
 PROJECT_STATE for measured coverage and the native-routing limitation.
 
-## Next: temporarily free PRO audit
+## Completed: SATFLUX-001 temporarily free PRO audit
 
-Status: PROPOSED. Implementation: NOT AUTHORIZED. The next task is a read-only audit;
-do not start that audit, feature development or promotion policy changes during
-bootstrap publication.
+Status: COMPLETED. Backend, frontend, payments, security, designer and QA performed
+bounded independent reviews. The owner subsequently approved SATFLUX-002 in Satflux.
+The audit's historical read-only boundary remains applicable to external repositories
+and production. The work packages below describe the completed audit scope.
 
 Product objective: eligible registered users receive PRO features temporarily without purchasing
 a subscription. Preserve real subscription/billing history, historical payments and
@@ -25,19 +26,18 @@ controls unchanged, and end the promotion safely under an approved data-access p
 
 Audit five separate concepts: actual billing status, effective promotional entitlement,
 security authorization, administrative privilege and usage limits/operational cost.
-Preferred direction is a centralized reversible promotional entitlement policy;
-this is a proposal, not an approved implementation or historical decision.
+The reviewed direction was a centralized reversible promotional entitlement policy,
+subsequently approved for implementation as recorded in DECISION_LOG.
 
-The Product Owner reports ZERO paying subscribers. The future audit should verify
-this assumption against available non-production evidence where possible, documenting
-uncertainty without accessing or modifying production billing data. No existing
+The Product Owner reports ZERO paying subscribers. Audit evidence remains limited
+to non-production sources; production billing was not inspected. No existing
 paying-customer migration, refund handling or discontinued-paid-access communication
 is required under that stated assumption; revisit only if evidence contradicts it.
 
 Prioritize disabling new PRO subscription purchases and upgrade prompts during the
 promotion, preserving the existing billing architecture for future monetization,
 maintaining all security/authorization/tenant boundaries and defining a safe transition
-back to paid plans. These are audit/design requirements, not current product changes.
+back to paid plans. Release and production activation still require approval.
 
 ### Audit work packages
 
@@ -72,12 +72,28 @@ payment/idempotency/webhook tests. Resolve exact paths and current revision firs
 - Dependency/compatibility plan and independently reviewed security/QA findings.
 - Concrete owner decision request before any implementation phase is authorized.
 
-## Later milestones requiring approval
+## Completed locally: SATFLUX-002 temporary free PRO implementation
 
-1. Approve promotion eligibility, duration, quotas, subscriber/end-policy behavior and
-   reviewed architecture; then authorize bounded repository-specific implementation.
-2. Implement/test independently reviewable pieces without manufacturing billing state.
-3. Validate cross-repository behavior and migration-free/reversible rollout assumptions.
-4. Prepare separate PRs and a concrete rollout/rollback plan for merge/release approval.
+Owner-approved scope: eligible non-guest/email-verified accounts; indefinite duration;
+current PRO quotas; retain manual PRO validity, balances and over-limit objects; pause
+new PRO/trial/PRO-credit/slot/ISDOC purchases. Enterprise, administrative permissions,
+tenant isolation and billing history remain separate from promotional capabilities.
+
+Central policies, server feature adapters, additive API contracts, UI gates, five
+locales, access guides and regressions are implemented. Promotion defaults off,
+purchases default closed, and no fake subscriptions are created. Independent security
+and QA accepted the source scope. Full suites, browser smoke, static checks and docs
+validation passed; measured evidence is in PROJECT_STATE. No merge or deployment.
+
+## Next: SATFLUX-003 release and activation readiness (not authorized)
+
+1. Verify the exact deployed BTCPay provider and complete PRO-only closure for direct
+   checkout, funding portals and prefunded AutoRenew without cancelling subscriptions.
+   Provider repository or operational changes need specific authorization.
+2. Validate hosted-relay cost enforcement, current quota configuration, all replicas,
+   worker/config-cache propagation, supported-client behavior and reversal.
+3. Decide notice/data-access terms after promotion and the paid reopening procedure.
+4. Prepare the scoped Satflux PR and reviewed rollout/rollback evidence, then obtain
+   explicit applicable merge, deployment and activation approval.
 
 Existing payment integrations and deferred NWC work are not expanded by this roadmap.

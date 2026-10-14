@@ -23,7 +23,7 @@ class EnsurePlanAllowsBusinessInvoicing
             abort(401, 'Unauthenticated');
         }
 
-        if ($this->subscriptionService->canUseBusinessInvoicing($user)) {
+        if ($user->isSupport() || $user->isAdmin()) {
             return $next($request);
         }
 
@@ -32,13 +32,15 @@ class EnsurePlanAllowsBusinessInvoicing
         // may act on that company without a plan of their own.
         $company = $request->route('company');
         if ($company instanceof Company) {
-            if (! $company->isOwnedBy($user)
-                && $company->roleFor($user) !== null
-                && $company->user instanceof User
+            if (! $company->isAccessibleBy($user)) {
+                abort(403, 'Unauthorized access to company');
+            }
+            if ($company->user instanceof User
                 && $this->subscriptionService->canUseBusinessInvoicing($company->user)) {
                 return $next($request);
             }
-        } elseif ($this->hasEntitledMembership($user)) {
+        } elseif ($this->subscriptionService->canUseBusinessInvoicing($user)
+            || $this->hasEntitledMembership($user)) {
             // Company-less routes (the company index, ephemeral bridges): any
             // active membership under an entitled owner opens the module.
             return $next($request);

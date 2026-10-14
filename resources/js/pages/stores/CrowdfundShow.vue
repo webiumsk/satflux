@@ -46,11 +46,11 @@
 </template>
 
 <script setup lang="ts">
+import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
 import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { useAuthStore } from "../../store/auth";
 import { useAppsStore } from "../../store/apps";
 import { useFlashStore } from "../../store/flash";
 import AppShowLayout from "../../components/stores/AppShowLayout.vue";
@@ -69,7 +69,6 @@ onMounted(() => {
 });
 const route = useRoute();
 const router = useRouter();
-const authStore = useAuthStore();
 const appsStore = useAppsStore();
 const flashStore = useFlashStore();
 
@@ -95,16 +94,8 @@ const appId = computed(() => {
   return id != null && id !== "" ? String(id) : "";
 });
 
-const planCode = computed(() => (authStore.user?.plan?.code ?? "free") as string);
-const userRole = computed(() => (authStore.user?.role ?? "") as string);
-const canArchiveApp = computed(
-  () =>
-    planCode.value === "pro" ||
-    planCode.value === "enterprise" ||
-    userRole.value === "admin" ||
-    userRole.value === "support",
-);
-
+const { hasFeature } = useEffectiveAccess();
+const canArchiveApp = computed(() => hasFeature("app_archiving"));
 const layoutRef = ref<InstanceType<typeof AppShowLayout> | null>(null);
 const formRef = ref<InstanceType<typeof CrowdfundForm> | null>(null);
 

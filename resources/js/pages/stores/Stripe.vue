@@ -673,11 +673,11 @@
 </template>
 
 <script setup lang="ts">
+import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
 import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { useAuthStore } from "../../store/auth";
 import { useAppsStore } from "../../store/apps";
 import StoreSidebar from "../../components/stores/StoreSidebar.vue";
 import AppScrollPane from "../../components/layout/AppScrollPane.vue";
@@ -707,22 +707,10 @@ import api from "../../services/api";
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
-const authStore = useAuthStore();
 const appsStore = useAppsStore();
 const storesStore = useStoresStore();
-const authUser = computed(() => authStore.user);
-const planCode = computed(
-  () => (authUser.value?.plan?.code ?? "free") as string,
-);
-const userRole = computed(() => authUser.value?.role ?? "");
-const canAccessStripe = computed(
-  () =>
-    planCode.value === "pro" ||
-    planCode.value === "enterprise" ||
-    userRole.value === "admin" ||
-    userRole.value === "support",
-);
-const formReadonly = computed(() => !canAccessStripe.value);
+const { hasFeature } = useEffectiveAccess();
+const canAccessStripe = computed(() => hasFeature("stripe"));const formReadonly = computed(() => !canAccessStripe.value);
 
 const storeId = computed(() => route.params.id as string);
 const store = ref<Store | null>(null);

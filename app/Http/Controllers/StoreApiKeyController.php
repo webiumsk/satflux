@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Store;
 use App\Models\StoreApiKey;
+use App\Models\User;
 use App\Services\BtcPay\StoreApiKeyService;
+use App\Services\EffectiveAccessPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -48,9 +50,9 @@ class StoreApiKeyController extends Controller
         if ($viewer->isSupport()) {
             $maxApiKeys = 3;
         } else {
+            /** @var User $owner */
             $owner = $store->user;
-            $plan = $owner->currentSubscriptionPlan();
-            $maxApiKeys = $plan?->max_api_keys;
+            $maxApiKeys = app(EffectiveAccessPolicy::class)->limit($owner, 'max_api_keys');
         }
 
         return response()->json([

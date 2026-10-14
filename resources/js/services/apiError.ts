@@ -41,3 +41,10 @@ export const GLOBAL_API_ERROR_MESSAGE_KEYS: Record<GlobalApiErrorKind, string> =
     rate_limited: 'errors.rate_limited',
     server: 'errors.server_error',
 };
+
+export function isPurchasePausedError(error: unknown): boolean {
+    const code = (error as { response?: { data?: { code?: string } } })?.response?.data?.code;
+    return code === 'pro_purchase_temporarily_disabled'
+        || code === 'company_slot_purchase_temporarily_disabled'
+        || code === 'isdoc_pack_purchase_temporarily_disabled';
+}

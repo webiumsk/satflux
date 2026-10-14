@@ -1,6 +1,10 @@
 <template>
   <div
     v-if="open"
+    ref="dialogRoot"
+    tabindex="-1"
+    :aria-labelledby="dialogTitleId"
+    @keydown="onDialogKeydown"
     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
     role="dialog"
     aria-modal="true"
@@ -10,13 +14,13 @@
       <button
         type="button"
         class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-2xl leading-none"
-        :title="t('common.close')"
+        :aria-label="t('common.close')"
         @click="$emit('close')"
       >
         ×
       </button>
 
-      <h3 class="text-lg font-semibold text-gray-900 pr-8">{{ t('invoicing.expense_isdoc_detected_title') }}</h3>
+      <h3 :id="dialogTitleId" class="text-lg font-semibold text-gray-900 pr-8">{{ t('invoicing.expense_isdoc_detected_title') }}</h3>
       <p class="mt-3 text-sm text-gray-600 leading-relaxed">
         {{ bodyText }}
       </p>
@@ -83,6 +87,9 @@
 </template>
 
 <script setup lang="ts">
+import { useDialogFocus } from "@/composables/useDialogFocus";
+import { useId } from "vue";
+import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
@@ -107,20 +114,25 @@ const props = defineProps<{
   quota: IsdocExtractQuota | null;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   close: [];
   skip: [];
   confirm: [];
   purchase: [credits: number];
 }>();
 
+const dialogRoot = ref<HTMLElement | null>(null);
+const dialogTitleId = useId();
+const { onDialogKeydown } = useDialogFocus(dialogRoot, () => props.open, () => emit('close'));
+
 const { t } = useI18n();
+const { purchases } = useEffectiveAccess();
 
 const showPacks = ref(false);
 
 const canExtract = computed(() => props.quota?.can_extract ?? true);
 
-const packs = computed(() => props.quota?.packs ?? []);
+const packs = computed(() => purchases.value.isdoc_packs ? props.quota?.packs ?? [] : []);
 
 const showTopupLink = computed(
   () => !props.quota?.unlimited && packs.value.length > 0 && canExtract.value,

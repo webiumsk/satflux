@@ -3,6 +3,7 @@
 namespace App\Services\BtcPay;
 
 use App\Services\BtcPay\Exceptions\BtcPayException;
+use App\Services\PurchaseAvailabilityPolicy;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -37,6 +38,8 @@ class SubscriptionService
         string $planId,
         array $options = []
     ): array {
+        app(PurchaseAvailabilityPolicy::class)->assertProviderPlanAllowed($planId, 'pro_subscriptions');
+
         // Validate that plan and offering belong to the store
         // This is important for security - we don't want users to subscribe to plans from other stores
         // However, if API key lacks permissions, we'll skip validation and trust the config values
@@ -513,6 +516,8 @@ class SubscriptionService
         $amount,
         array $options = []
     ): array {
+        app(PurchaseAvailabilityPolicy::class)->assertProviderPlanAllowed($planId, 'pro_credits');
+
         $payload = [
             'storeId' => $storeId,
             'offeringId' => $offeringId,

@@ -3,6 +3,8 @@
 namespace App\Http\Middleware;
 
 use App\Models\Store;
+use App\Models\User;
+use App\Services\EffectiveAccessPolicy;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -40,9 +42,11 @@ class EnsureApiKeyLimit
         }
 
         // Enforce store owner's plan limit for this store (active keys per store)
+        /** @var User $owner */
         $owner = $store->user;
-        $plan = $owner->currentSubscriptionPlan();
-        $maxApiKeys = $plan?->max_api_keys;
+        $policy = app(EffectiveAccessPolicy::class);
+        $plan = $policy->plan($owner);
+        $maxApiKeys = $policy->limit($owner, 'max_api_keys');
 
         if ($maxApiKeys === null) {
             return $next($request);

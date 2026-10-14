@@ -3,11 +3,16 @@ title: Firmy a branding
 category: invoicing
 order: 2
 meta_description: Nastavte údaje firmy, logo, číslovanie a bankový účet.
+updated: 2026-10-14
 ---
 
 # Firmy a branding
 
+> Keď je aktívny [dočasný PRO prístup zdarma](/documentation/free-pro-access), registrované nehosťovské účty s overeným e-mailom môžu používať PRO funkcie bez nákupu predplatného. Bežné limity a vlastnícke oprávnenia naďalej platia. Aktuálny režim nájdete v Cenníku a Účte.
+
 **Firma** obsahuje údaje o podniku, ktoré sa zobrazujú na vašich dokladoch. Firiem môžete mať viac (podľa plánu) - napríklad živnostníka a s.r.o.
+
+Počas akcie sú nové nákupy firemných slotov pozastavené. Existujúce sloty a firmy zostávajú zachované, aj keď už prekračujú limit. Vytvorenie ďalšej firmy naďalej vyžaduje voľnú kapacitu.
 
 ## Profil firmy
 

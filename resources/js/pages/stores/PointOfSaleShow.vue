@@ -1145,6 +1145,7 @@
 </template>
 
 <script setup lang="ts">
+import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
 import { buildPosEmbedForm } from "@/utils/posEmbed";
 import { asApiError } from "../../utils/apiError";
 import { ref, computed, watch, watchEffect, inject, onMounted } from "vue";
@@ -1152,7 +1153,6 @@ import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { router as inertiaRouter } from "@inertiajs/vue3";
 import type { Store } from '../../store/stores';
-import { useAuthStore } from "../../store/auth";
 import { useAppsStore } from "../../store/apps";
 import { useFlashStore } from "../../store/flash";
 import ProductEditDrawer from "../../components/stores/ProductEditDrawer.vue";
@@ -1178,26 +1178,13 @@ const flashStore = useFlashStore();
 const isInertia = inject<boolean>("inertia", false);
 const route = !isInertia ? useRoute() : null;
 const vueRouter = !isInertia ? useRouter() : null;
-const authStore = useAuthStore();
 const appsStore = useAppsStore();
 
 const props = defineProps<{ store?: Store; app?: AppRef }>();
 
-const planCode = computed(
-  () => (authStore.user?.plan?.code ?? "free") as string,
-);
-const userRole = computed(() => (authStore.user?.role ?? "") as string);
-const canEditAdvancedOptions = computed(
-  () => planCode.value === "pro" || planCode.value === "enterprise",
-);
-const canArchiveApp = computed(
-  () =>
-    planCode.value === "pro" ||
-    planCode.value === "enterprise" ||
-    userRole.value === "admin" ||
-    userRole.value === "support",
-);
-
+const { hasFeature } = useEffectiveAccess();
+const canArchiveApp = computed(() => hasFeature("app_archiving"));
+const canEditAdvancedOptions = computed(() => hasFeature("advanced_pos"));
 const storeId = computed(
   () => (props.store?.id ?? route?.params?.id ?? "") as string,
 );
