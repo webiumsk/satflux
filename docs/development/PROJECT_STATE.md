@@ -1,6 +1,6 @@
 # Project state
 
-## Locally validated CI repair: SATFLUX-005 (2026-10-14)
+## Validated CI repair: SATFLUX-005 (2026-10-14)
 
 The owner requested CI diagnosis and repair on the existing Satflux feature branch.
 PR [#394](https://github.com/webiumsk/satflux/pull/394) targets master at observed
@@ -34,12 +34,22 @@ passes: 20 tests, three intentional promotion-only skips, zero failures/retries,
 2.5 minutes, including checkout creation and signed settlement. Independent reviewers
 `/root/ci_security_review` and `/root/ci_qa_review` accept the bounded final source;
 security also executed all six gate regressions. Graphify AST-only update and
-orchestration/doc-link/whitespace checks pass. At this local handoff, a fresh
-published-head CI result is not yet available; PR #394 checks remain the source
-for remote evidence. Tests use new disposable SQLite,
+orchestration/doc-link/whitespace checks pass. Published repair commit
+`7b06ed7f1c1b7bda708e62887953a7a6303c6582` passed
+[CI 38594038116](https://github.com/webiumsk/satflux/actions/runs/38594038116):
+all three PHP, frontend and E2E jobs succeeded. Remote results are 1,631 PHP tests /
+6,891 assertions, Pint 1,036 files, clean PHPStan, six gate regressions, real
+121-diagnostic typecheck, 119 Vitest files/708 tests, lint/locales/build/audits and
+20 E2E tests with three intentional skips and no retries. This completion record
+changes documentation only; PR #394 checks track any later published head.
+Tests use new disposable SQLite,
 synthetic accounts/stub, cached browser/runtime, an internal-only network and a
 loopback transport. No provider changes, real funds, production access, merge,
 deployment or activation are authorized.
+The task-specific containers, network and loopback proxy were removed/stopped after
+validation. The feature worktree is clean at the repair commit; the original checkout
+still contains only the preserved owner image edit. Next work is scoped Satflux PR
+review/staging/readiness, subject to the separate merge/deployment/activation gates.
 
 ## Current owner constraint: Satflux only (2026-10-14)
 

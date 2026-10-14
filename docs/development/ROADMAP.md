@@ -132,8 +132,11 @@ validated locally: unchanged production limits, isolated checkout fixture budget
 fail-closed typecheck execution and unchanged baseline allowances. Full independent
 E2E passes 20 tests with three intentional promo skips and no failures/retries; gate
 regressions, actual typecheck, 708 Vitest tests, lint/locales/build/seeder style pass.
-Independent security/QA accept source. Publication and fresh head CI follow this
-local evidence; no provider modifications are part of the repair.
+Independent security/QA accept source. Published repair `7b06ed7f` passed all three
+jobs in CI 38594038116, including 1,631 PHP tests, 708 Vitest tests and 20 E2E tests.
+The CI repair is complete; subsequent documentation-only heads must retain passing
+PR checks. No provider modifications are part of the repair. Remaining work is
+Satflux PR review/staging and the operational/approval gates below.
 
 Current owner correction: delivery is Satflux only. The owner explicitly requested
 removal of the provider feature branch, which is now verified absent. SATFLUX-004
