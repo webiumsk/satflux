@@ -1,10 +1,51 @@
 # Project state
 
+## Completed locally: SATFLUX-004 (2026-10-14)
+
+The Product Owner approved bounded provider implementation and isolated tests in
+owned `webiumsk/btcpayserver` for BTCPay 2.4.5. No push, merge, deployment, production
+changes or activation is authorized. Upstream, Kukks and other repositories remain
+read-only. Work uses the isolated `feat/satflux-pro-sales-pause` branch based on exact
+`5d0745cae6be5d8210459e38813f317673aa97b8`, imported from existing local reference
+objects without cloning or changing original checkout branches. The imported
+boundary is shallow; publication/base ancestry needs separate verification.
+
+Central provider policy/services, controller/UI and disposable tests are complete.
+Local provider commit: `734791fdd8ac6df46088c43fa0152ad5f185be3e`; clean feature
+worktree, original owned master unchanged. Task PostgreSQL/network were torn down.
+Acceptance, repository limits and the intent/settlement/reopening contract are in
+[FREE_PRO_PROVIDER_IMPLEMENTATION](FREE_PRO_PROVIDER_IMPLEMENTATION.md).
+The immutable pause defaults OFF, validates exact mapping, pauses every non-Enterprise
+plan in the configured offering, and separates new purchase/debit from genuine paid
+fulfillment. Existing settings hold durable monotonic scoped/subscriber barriers:
+reopening does not perform catch-up debit; fresh deliberate purchase can reauthorize
+renewal. No schema or persistence-model migration, application/package-version
+change or production change was introduced. UI view models were extended.
+
+Independent `/root/provider_pause_security` and `/root/provider_pause_qa` accept the
+bounded source. Native policy 20/20, real CLI/file/environment configuration 3/3,
+complete lifecycle integration 1/1 and operator documentation/help/link check 1/1
+PASS. Exact native Release build passes with zero errors and three obsolete setter
+warnings confined to synthetic invoice fixtures. Swagger and diff whitespace pass.
+Disposable PostgreSQL/internal-only/no-chain execution covers real API/HTTP/CSRF,
+balances/ledger/dates, scheduled targets, recovery, cold restart, reopening and
+fresh/historical obligations. Invoice events are synthetic; full upstream regression,
+real-chain regtest and provider Playwright were not executed. Frozen service SHA-256:
+`c72740723fb5673bb1f52640ca3382849424c32f5cb1fb5c493482457b45498f`.
+
+**Next milestone: SATFLUX-005 coordinated staging and release handoff.** Correct
+release bases/PR head CI, deployed build/mappings/legacy inventory, all replicas,
+relay costs/quotas, private restore and end-access/reopening terms remain unverified.
+Production activation remains NO-GO. Publication, merge, release, deployment and
+activation need their separate applicable approvals. Stock/older workers ignore
+resume barriers; binary downgrade is not a safe reopening procedure.
+
 ## Readiness follow-up: SATFLUX-003 (2026-10-14)
 
 The owner requested continuation after SATFLUX-002 and identified the deployed
 BTCPay version as **2.4.5**. The main agent completed documentation-only readiness
-preparation with independent payments, devops, security and QA reviews. No provider
+preparation with independent payments, devops, security and QA reviews. At this
+earlier milestone, no provider
 implementation, remote publication, merge, deployment or production changes were
 authorized or performed. Application source remains at `c0d532fb`.
 
@@ -43,11 +84,12 @@ passed. No feature PR exists and no feature-head CI is claimed. The source suite
 results below were not rerun for this documentation-only review; devops passed
 non-mutating shell syntax checks, and QA verified unchanged application scope.
 
-Next bounded work requires repository-specific approval for a central reversible
+The next bounded work identified at SATFLUX-003 required repository-specific approval for a central reversible
 PRO sales policy in owned `webiumsk/btcpayserver` on a selected 2.4.5-compatible
 revision, with isolated tests and independent reviews. Preserve prefunded/scheduled
 intent and prevent surprise catch-up spending. Conditional legacy work requires
 separate authorization only if installed; merge/deployment/activation stay separate.
+The owner subsequently approved and completed the provider scope in SATFLUX-004 above.
 
 ## Current milestone: SATFLUX-002 (2026-10-14)
 

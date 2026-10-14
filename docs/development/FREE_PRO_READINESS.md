@@ -2,6 +2,17 @@
 
 ## Scope and disposition
 
+**2026-10-14 follow-up:** the owner subsequently approved SATFLUX-004 in owned
+`webiumsk/btcpayserver`. The exact 2.4.5 provider mechanism is now implemented and
+independently accepted locally: policy 20, configuration 3, lifecycle integration 1
+and generated documentation 1 tests pass. See
+[FREE_PRO_PROVIDER_IMPLEMENTATION](FREE_PRO_PROVIDER_IMPLEMENTATION.md) for the
+source map, validated contract and safe reopening procedure. Production activation
+remains NO-GO: deployment identity/mappings, all-replica convergence, relay cost/quota
+enforcement, private restore and cross-artifact staging are still unverified. The
+SATFLUX-003 observations/proposal below are historical source evidence, not a claim
+that the later approved implementation is missing or remains unauthorized.
+
 The Product Owner's continuation authorizes readiness preparation after the approved
 Satflux implementation. This review changes documentation only. It does not authorize
 provider implementation, remote publication, merge, release, deployment, production
@@ -218,7 +229,7 @@ state; the owner-provided version is not deployment verification.
 | Exact artifact/CI/provider mapping | Reviewed feature release head passes required CI; exact host/build, historical PRO IDs and distinct Enterprise IDs recorded privately | MISSING |
 | Every-replica policy cycle | OFF -> ON -> OFF gives matching version/flags on all web/queue/scheduler replicas; recreated environment/cache and worker progress proven | MISSING |
 | Eligibility/privilege/isolation | Guest, unverified, verified, manual PRO, expired trial/grace, Enterprise, admin/support and company owner/member/outsider matrix respects existing boundaries | MISSING expanded staging; local regressions passed |
-| Complete provider sales pause | Direct API/UI/old checkout/portal, trial, zero-price, prefunded/AutoRenew and scheduled target-PRO deny before invoice/record/debit; Enterprise/merchant payments succeed | MISSING; mechanism not implemented |
+| Complete provider sales pause | Direct API/UI/old checkout/portal, trial, zero-price, prefunded/AutoRenew and scheduled target-PRO deny before invoice/record/debit; Enterprise/merchant payments succeed | SATFLUX-004 source implemented/accepted; selected native tests pass; live/cross-artifact staging MISSING |
 | Preservation and completion | Current quotas, over-limit objects, paid slots/credits/history retained; numbered Woo retries complete, new unnumbered work remains gated | MISSING expanded staging; local regressions passed |
 | Historical accessibility | Approved local/server read/export/PDF/ISDOC/attachments/accountant/migration and backup-navigation outcomes after promo-off; owners/members/outsiders tested | MISSING; future terms unresolved |
 | Webhook/recovery compatibility | Invalid/missing-secret signatures fail closed; duplicate/out-of-order genuine settlement/recovery remains idempotent across artifacts | MISSING cross-artifact staging; existing application suites passed |
@@ -233,6 +244,12 @@ activation. Both reviewed source and evidence without rerunning the application
 suites; QA checked unchanged application scope and diff whitespace.
 
 ## Promotion reversal versus code rollback
+
+SATFLUX-004 adds durable provider resume barriers. Turning its sales pause OFF retains
+automatic renewal holds until deliberate fresh purchase; genuine historical invoice
+fulfillment retains dating and an individual hold. Stock/older provider binaries ignore
+those barriers and can spend prefunded credit. Preserve settings/DB recovery and use
+the reviewed new artifact for reversal; see the provider implementation runbook.
 
 Routine reversal stays on the reviewed new artifact: set `FREE_PRO_ENABLED=false`,
 retain closed purchase flags, drain/recreate/reload and rebuild config consistently.
@@ -285,3 +302,8 @@ no catch-up spend semantics; conditional legacy work only if relevant; future no
 historical access and paid reopening; and explicit publication/merge/deployment/
 activation scope. No subscription cancellation, permanent manual grant, lower quota
 or unapproved external write is inferred from continuing this readiness review.
+
+The bounded provider implementation gate above was subsequently approved and completed
+in SATFLUX-004. Publication/merge/release/deployment/activation, conditional legacy
+changes and unresolved end-access terms remain separate gates. Next proposed milestone:
+SATFLUX-005 coordinated staging and release handoff.

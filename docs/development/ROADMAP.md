@@ -85,13 +85,13 @@ purchases default closed, and no fake subscriptions are created. Independent sec
 and QA accepted the source scope. Full suites, browser smoke, static checks and docs
 validation passed; measured evidence is in PROJECT_STATE. No merge or deployment.
 
-## SATFLUX-003 release and activation readiness
+## Completed: SATFLUX-003 release and activation readiness
 
 Documentation-only readiness was authorized by the owner's continuation and is
 completed with independent payments/devops/security/QA evidence in
 [FREE_PRO_READINESS](FREE_PRO_READINESS.md). The owner identifies deployed BTCPay
 as 2.4.5; the exact build and operational evidence remain unverified. Source handoff
-is ready, but activation is NO-GO. No provider implementation, publication, merge,
+is ready, but activation is NO-GO. At this earlier milestone no provider implementation, publication, merge,
 deployment or activation was authorized or executed.
 
 Remaining readiness work:
@@ -105,11 +105,36 @@ Remaining readiness work:
 4. Prepare the scoped Satflux PR and reviewed rollout/rollback evidence, then obtain
    explicit applicable merge, deployment and activation approval.
 
-Next implementation proposal, requiring specific approval: central reversible PRO
+The implementation proposal at SATFLUX-003, subsequently approved in SATFLUX-004:
+central reversible PRO
 sales policy in owned `webiumsk/btcpayserver` at the selected 2.4.5-compatible host.
 Cover direct and stale checkout/portal mutations, trials, prefunded/AutoRenew and
 target-PRO scheduled migration while retaining balances, settlement and Enterprise.
 Preserve stored intentions and prevent automatic catch-up spending on reopening.
 No legacy plugin work is inferred without verifying that it is installed.
+
+## Completed locally: SATFLUX-004 provider sales pause
+
+Owner approved bounded implementation and isolated tests in `webiumsk/btcpayserver`
+for exact 2.4.5, with no push/merge/deployment/production changes. Central policy,
+controllers/views, durable reopening barriers and operator/API documentation are
+complete. Independent security/QA accept source; native policy 20, configuration 3,
+lifecycle integration 1 and documentation 1 tests pass. Build/Swagger/whitespace
+pass. Synthetic invoices and no-chain integration do not establish real-chain or
+production readiness. See
+[FREE_PRO_PROVIDER_IMPLEMENTATION](FREE_PRO_PROVIDER_IMPLEMENTATION.md).
+Upstream and conditional legacy plugins remain read-only; activation remains NO-GO.
+
+## Next proposed: SATFLUX-005 coordinated staging and release handoff
+
+1. Establish the correct separate Satflux/provider release bases and ancestry,
+   prepare reviewable PRs, and obtain exact head CI after publication authorization.
+2. Verify deployed host/build, exact offering/PRO/Enterprise mappings and conditional
+   legacy surfaces. Prove consistent artifacts/policy on all replicas and workers.
+3. Complete hosted relay cost/quota/capacity evidence and private backup/restore.
+4. Resolve promotion-end historical access/notice and paid reopening terms; validate
+   cross-artifact staging, retained barriers, balances, dates and genuine fulfillment.
+5. Obtain explicit applicable merge/release/deployment/activation approval against
+   concrete reviewed evidence. No production activity is authorized by this roadmap.
 
 Existing payment integrations and deferred NWC work are not expanded by this roadmap.

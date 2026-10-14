@@ -115,3 +115,44 @@ staging acceptance gaps, operational/cache/backup/relay limitations and a local 
 handoff. Fresh master/CI evidence does not imply feature publication or deployment.
 Repository-specific provider implementation and subsequent publication/merge/release/
 activation require their own applicable approval.
+
+## 2026-10-14: SATFLUX-004 owned-provider implementation approval
+
+Status: explicit owner approval for scoped subscription sales-pause implementation
+and isolated tests in `webiumsk/btcpayserver` for BTCPay 2.4.5. No push, merge,
+deployment, release, production configuration/record changes or activation.
+Upstream and unrelated repositories remain read-only.
+
+Use exact v2.4.5 baseline `5d0745cae6be5d8210459e38813f317673aa97b8` in an isolated
+owned branch. Central pause defaults off and uses validated store/offering/plan
+identities; Enterprise, permissions, settlement/recovery and balances remain intact.
+Block new intent/execution and prefunded/scheduled PRO work, preserve stored
+preferences, and prevent surprise catch-up debit on reopening. Existing settings
+may hold a scoped resume barrier; no schema/subscriber/plan migration is authorized.
+Exact project dependencies may be restored privately for authorized isolated tests;
+no tools are installed or package versions changed. Independent security/QA review
+must assess the final provider implementation before release readiness advances.
+
+### SATFLUX-004 completion evidence
+
+The bounded provider implementation is complete locally on the exact approved host
+baseline, commit `734791fdd8ac6df46088c43fa0152ad5f185be3e`. Independent security and QA accept the final source; native policy 20,
+real configuration 3, lifecycle integration 1 and generated documentation/help 1
+tests pass. Release build has zero errors and three obsolete setter warnings only
+in synthetic invoice fixtures. Swagger and whitespace checks pass. Source fingerprint,
+contract, evidence limits and runbook are in
+[FREE_PRO_PROVIDER_IMPLEMENTATION](FREE_PRO_PROVIDER_IMPLEMENTATION.md).
+
+The enabled policy pauses all non-exempt plans in the configured offering, including
+unknown/new identities; only explicit distinct Enterprise IDs remain exempt. Durable
+uncached JSONB barriers in existing settings retain monotonic cutoff and individual
+historical-fulfillment holds. Turning OFF does not debit old credit automatically;
+deliberate fresh purchase reauthorizes future renewal and buys a full current period
+from held Grace. Historical obligations retain dating, genuine fulfillment and
+idempotency. Do not erase barriers or downgrade to stock workers to reopen sales.
+
+No push/merge/deploy or production mutation occurred. Synthetic invoice lifecycle
+coverage is not Bitcoin/NBXplorer regtest evidence or full upstream-suite acceptance.
+Next proposed milestone is SATFLUX-005 coordinated staging and release handoff;
+deployed build/mappings/replicas/legacy inventory, relay costs/quotas, private restore,
+exact release-head CI and end-access/reopening decisions still gate activation.
