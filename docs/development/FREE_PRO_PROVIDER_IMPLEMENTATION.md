@@ -1,5 +1,13 @@
 # SATFLUX-004: BTCPay 2.4.5 scoped subscription sales pause
 
+**Publication follow-up (2026-10-14):** the Product Owner subsequently approved push.
+Provider `feat/satflux-pro-sales-pause` is published to owned `webiumsk/btcpayserver`
+at `734791fdd8ac6df46088c43fa0152ad5f185be3e`; the Satflux feature branch is also
+published. Source and review fingerprints are unchanged. No PR, merge, release,
+deployment or production change occurred; remote CI and release-base review remain
+pending. The original authorization/no-push statements below describe SATFLUX-004
+before that separate publication approval. See PROJECT_STATE for evidence.
+
 ## Authorization and repository boundary
 
 The Product Owner approved implementation and isolated tests in owned

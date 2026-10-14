@@ -156,3 +156,19 @@ coverage is not Bitcoin/NBXplorer regtest evidence or full upstream-suite accept
 Next proposed milestone is SATFLUX-005 coordinated staging and release handoff;
 deployed build/mappings/replicas/legacy inventory, relay costs/quotas, private restore,
 exact release-head CI and end-access/reopening decisions still gate activation.
+
+## 2026-10-14: owner-approved feature branch publication
+
+The Product Owner requested push after the reviewed SATFLUX-004 handoff. Main
+published `feat/free-pro-access` to `webiumsk/satflux` and
+`feat/satflux-pro-sales-pause` to `webiumsk/btcpayserver`. Verified initial remote
+heads are `a5ed908e384936678d4b41bdddf89c07e2eb9489` and
+`734791fdd8ac6df46088c43fa0152ad5f185be3e`, respectively. Both were new remote
+branches; no force, tags, upstream write, PR creation, merge or deployment.
+
+Publication authorization supersedes the earlier no-push milestone boundary only
+for these owned feature branches. This follow-up changes documentation only; no
+application implementation or test rerun was necessary. No feature CI runs were
+returned by the current GitHub queries; no remote validation success is claimed.
+Release/base/ancestry review, exact head CI, operational evidence and explicit
+applicable merge/release/deployment/activation approvals remain outstanding.

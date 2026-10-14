@@ -127,6 +127,11 @@ Upstream and conditional legacy plugins remain read-only; activation remains NO-
 
 ## Next proposed: SATFLUX-005 coordinated staging and release handoff
 
+Publication follow-up: the owner approved push and both reviewed feature branches
+are now on their owned origins. No PR/merge/release/deployment was performed; the
+initial feature-branch CI query returned no runs. Exact publication evidence is in
+PROJECT_STATE. Application source remains unchanged.
+
 1. Establish the correct separate Satflux/provider release bases and ancestry,
    prepare reviewable PRs, and obtain exact head CI after publication authorization.
 2. Verify deployed host/build, exact offering/PRO/Enterprise mappings and conditional

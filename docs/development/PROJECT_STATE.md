@@ -1,5 +1,30 @@
 # Project state
 
+## Feature publication follow-up (2026-10-14)
+
+After the accepted SATFLUX-004 result, the Product Owner explicitly requested push.
+Main published the existing reviewed feature branches to their owned origins and
+verified exact remote heads:
+
+| Repository | Published branch | Verified initial publication head |
+| --- | --- | --- |
+| `webiumsk/satflux` | `feat/free-pro-access` | `a5ed908e384936678d4b41bdddf89c07e2eb9489` |
+| `webiumsk/btcpayserver` | `feat/satflux-pro-sales-pause` | `734791fdd8ac6df46088c43fa0152ad5f185be3e` |
+
+This publication record adds documentation only on the Satflux feature branch;
+application source and reviewed provider fingerprints are unchanged. Both branches
+were newly created remotely without force or tag publication. Original checkouts
+and the owner's pre-existing image modification remain untouched. No upstream
+write, PR creation, merge, release, deployment or production change occurred.
+GitHub run queries returned no feature-branch CI runs at this observation; local
+validation is not remote head CI evidence. Provider import remains locally shallow;
+successful branch publication does not establish a reviewed integration/PR base.
+
+SATFLUX-005 still needs correct release bases/PRs/head CI and the operational evidence
+below. Production activation remains NO-GO and requires separate applicable approval.
+The historical no-publication authorization statements below describe their original
+milestone scopes and are superseded only for this explicit feature push.
+
 ## Completed locally: SATFLUX-004 (2026-10-14)
 
 The Product Owner approved bounded provider implementation and isolated tests in
