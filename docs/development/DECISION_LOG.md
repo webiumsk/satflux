@@ -191,3 +191,31 @@ provider-side automatic credit renewals also remain outside those guards. Do not
 claim global purchase closure or deploy provider pause controls from the historical
 runbook. SATFLUX-005 is narrowed to Satflux review/CI/staging and its existing
 operational readiness. Merge/deployment/activation still require applicable approval.
+
+## 2026-10-14: approved Satflux CI repair
+
+The owner requested repair of PR #394 CI 38563933755 at `c22660c0`. Keep the scope
+Satflux only. A confirmed 429 is fixed by an independent ordinary checkout fixture
+account, not by increasing/disabling production limits. Real authentication/CSRF
+and signed settlement remain in the browser scenario; JSON/status diagnostics must
+not print document snapshots or auth state.
+
+The typecheck wrapper must reject silent nonzero/compiler failures. Its previous
+local zero-error success was unreliable and is superseded by the real captured
+121-error run. The baseline may refresh only the 32 proven equivalent existing
+diagnostic prefixes, retaining exactly 100 groups/121 occurrences and file/code
+allowances. No broad suppression or error-count increase is permitted. Independent
+security and QA must inspect the migration proof and regression behavior.
+
+Use the existing feature branch for the reviewed repair and authorized publication;
+final PR head CI is required. Local/remote test results remain distinct. No merge,
+deployment, activation, provider code/configuration or production billing changes.
+
+Local completion: independent security and QA accept the bounded fix. Full Playwright
+passes 20 tests, three intentional promotion-only skips, zero failures/retries in
+2.5 minutes; real checkout creation/signed settlement and recovery are exercised.
+Six runner regressions, actual 121-diagnostic typecheck, 119 Vitest files/708 tests,
+lint (zero errors/48 existing warnings), five-language parity, build, changed-seeder
+Pint/syntax, Graphify AST update and doc-link/whitespace checks pass. Browser/runtime
+and network remain disposable/synthetic, with no production connection. Fresh remote
+head CI must be checked after this publication; local results are not its substitute.

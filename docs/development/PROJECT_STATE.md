@@ -1,5 +1,46 @@
 # Project state
 
+## Locally validated CI repair: SATFLUX-005 (2026-10-14)
+
+The owner requested CI diagnosis and repair on the existing Satflux feature branch.
+PR [#394](https://github.com/webiumsk/satflux/pull/394) targets master at observed
+head `c22660c074d7b59cc59d2d1caaa792b5d9ff4d76`.
+[CI 38563933755](https://github.com/webiumsk/satflux/actions/runs/38563933755) failed
+typecheck and local-first checkout; PHP/Pint/PHPStan/security checks passed.
+CodeRabbit skipped review because the original PR exceeded its 100-file limit;
+its success status does not mean source review occurred.
+
+Independent diagnosis confirmed API 429 responses: earlier tests exhausted the
+shared account's 120/min budget. Checkout now uses a separate synthetic ordinary
+PRO account and stored authentication. Helpers negotiate JSON/check statuses and
+assert the actual checkout POST before waiting for its UI link. Production rate
+limits, auth/CSRF, effective access and payment fulfillment code are unchanged.
+
+The old local typecheck wrapper could incorrectly report zero errors when child
+pipe capture returned empty output after a nonzero compiler exit. That earlier
+local typecheck observation is superseded. The repaired gate uses private output
+files, the installed compiler directly and fails closed on crashes/silent/unparsed
+errors. Six regressions include genuine new diagnostics and increased occurrences.
+An isolated compile of baseline `7c4a6bc8` matched the original 100 groups/121
+occurrences; current source has the same counts. Full diagnostic/source-anchor
+comparison proved 32 changed prefixes are property/union display-order changes.
+Only those existing fingerprints were refreshed one-to-one; no new errors or higher
+counts were allowed. Independent security/QA reviewed the evidence and caps.
+
+Local lint (zero errors/48 existing warnings), five-language parity, build, 119
+Vitest files/708 tests, actual typecheck (121 existing errors, nothing new), six
+runner regressions and changed-seeder Pint/syntax checks pass. Independent full E2E
+passes: 20 tests, three intentional promotion-only skips, zero failures/retries,
+2.5 minutes, including checkout creation and signed settlement. Independent reviewers
+`/root/ci_security_review` and `/root/ci_qa_review` accept the bounded final source;
+security also executed all six gate regressions. Graphify AST-only update and
+orchestration/doc-link/whitespace checks pass. At this local handoff, a fresh
+published-head CI result is not yet available; PR #394 checks remain the source
+for remote evidence. Tests use new disposable SQLite,
+synthetic accounts/stub, cached browser/runtime, an internal-only network and a
+loopback transport. No provider changes, real funds, production access, merge,
+deployment or activation are authorized.
+
 ## Current owner constraint: Satflux only (2026-10-14)
 
 The Product Owner clarified that BTCPay changes are not wanted, accepted the stated

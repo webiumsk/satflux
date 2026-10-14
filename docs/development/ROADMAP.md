@@ -127,6 +127,14 @@ Upstream and conditional legacy plugins remain read-only; activation remains NO-
 
 ## Next proposed: SATFLUX-005 coordinated staging and release handoff
 
+The owner authorized repair of the failed checks in PR #394. Bounded CI repair is
+validated locally: unchanged production limits, isolated checkout fixture budget,
+fail-closed typecheck execution and unchanged baseline allowances. Full independent
+E2E passes 20 tests with three intentional promo skips and no failures/retries; gate
+regressions, actual typecheck, 708 Vitest tests, lint/locales/build/seeder style pass.
+Independent security/QA accept source. Publication and fresh head CI follow this
+local evidence; no provider modifications are part of the repair.
+
 Current owner correction: delivery is Satflux only. The owner explicitly requested
 removal of the provider feature branch, which is now verified absent. SATFLUX-004
 is withdrawn from delivery and must not be republished, merged or deployed. The
