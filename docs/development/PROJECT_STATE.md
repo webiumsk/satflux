@@ -1,5 +1,54 @@
 # Project state
 
+## Readiness follow-up: SATFLUX-003 (2026-10-14)
+
+The owner requested continuation after SATFLUX-002 and identified the deployed
+BTCPay version as **2.4.5**. The main agent completed documentation-only readiness
+preparation with independent payments, devops, security and QA reviews. No provider
+implementation, remote publication, merge, deployment or production changes were
+authorized or performed. Application source remains at `c0d532fb`.
+
+Disposition: documentation handoff ready; activation **NO-GO**. See the concrete
+source map, provider work proposal, staging matrix and ordered release/reversal
+procedure in [FREE_PRO_READINESS](FREE_PRO_READINESS.md). The modern subscription
+provider is owned BTCPay core, not the legacy Kukks plugin. The readable host
+reference `3ec6a9847bd06e5dad348caaec373276dc718520` has no complete PRO-only sales
+pause: independent checkout/portal/migration and prefunded AutoRenew remain outside
+Satflux flags. Retired/nonrenewable or hiding links is insufficient.
+
+Payments independently compared the exact local `v2.4.5` host reference
+`5d0745cae6be5d8210459e38813f317673aa97b8`: hosted service and plan/subscriber/
+checkout models match the owned reference, and the controller/store-binding changes
+add no sales guard. The gap therefore applies to 2.4.5. That upstream submodule is
+reference-only, not a write/publication target; actual deployed build remains unknown.
+
+Security and QA independently hold activation. Current-artifact promotion-off can
+block legacy historical reads/exports and local invoicing navigation despite data
+retention. Pre-policy code rollback ignores purchase flags and can reopen PRO and
+add-on sales. The runbook now states both limits; routine reversal stays on the
+reviewed new artifact. Planned end/access terms remain separate owner decisions.
+
+Operational evidence still needs exact deployed build/plan mapping, relay capacity/
+write-side quota/cost enforcement, all-replica environment/cache convergence, private
+artifact backup and isolated restore proof, exact release-head CI and expanded
+staging. Existing scripts/static health responses cannot establish those facts.
+No lower promotional quotas, subscription cancellation or permanent manual grants
+were approved. Owner-reported version/subscriber/payment facts remain attributed.
+
+Fresh GitHub read-only evidence: master is
+`7bb26f3f5ccb5c3e8a1ca29350090493d3135230` (bootstrap PR #393 merged), with tree
+`20c5fd77d31ebe2f3cdf3ba7707570cfce60649c`, identical to the implementation baseline.
+[Master CI 38482352651](https://github.com/webiumsk/satflux/actions/runs/38482352651)
+passed. No feature PR exists and no feature-head CI is claimed. The source suite
+results below were not rerun for this documentation-only review; devops passed
+non-mutating shell syntax checks, and QA verified unchanged application scope.
+
+Next bounded work requires repository-specific approval for a central reversible
+PRO sales policy in owned `webiumsk/btcpayserver` on a selected 2.4.5-compatible
+revision, with isolated tests and independent reviews. Preserve prefunded/scheduled
+intent and prevent surprise catch-up spending. Conditional legacy work requires
+separate authorization only if installed; merge/deployment/activation stay separate.
+
 ## Current milestone: SATFLUX-002 (2026-10-14)
 
 The Product Owner approved bounded Satflux implementation after the SATFLUX-001

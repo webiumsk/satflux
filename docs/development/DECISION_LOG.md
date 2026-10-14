@@ -88,3 +88,30 @@ PRO-only closure before activation; plan deletion or subscription cancellation i
 not authorized. Hosted-relay costs and rollout propagation also require readiness
 evidence. Future notice/data-access policy, permanent manual grants and paid reopening
 remain separate owner decisions. Next milestone is SATFLUX-003 readiness.
+
+## 2026-10-14: SATFLUX-003 readiness continuation and provider boundary
+
+Status: owner-authorized readiness preparation after the local implementation.
+The owner reports deployed BTCPay Server 2.4.5. This identifies the intended version,
+not the exact deployed build, plugin inventory or live purchase closure.
+Independent payments/devops/security/QA source reviews completed read-only; the
+coordinator records documentation only. No provider or production changes authorized.
+
+Activation is NO-GO: the modern core provider reference has independently reachable
+checkout, funding, migration and prefunded AutoRenew paths. Existing Retired/Renewable
+concepts do not provide a complete sales pause. Recommend separately authorizing a
+central reversible policy in owned `webiumsk/btcpayserver` at a selected compatible
+revision, preserving subscriber intentions/balances/settlement and Enterprise.
+No automatic catch-up debit on reopening; no blanket cancellation or plan deletion.
+
+Clarified reversal: current-artifact promotion-off may retain data while blocking
+regular legacy reads/exports and local invoicing navigation. Older code ignores new
+purchase flags and may reopen sales. Routine reversal uses the new reviewed artifact;
+code rollback needs separately proven selective purchase closure and access terms.
+No new historical read-only allowance or permanent manual grant was approved.
+
+Prepared [FREE_PRO_READINESS](FREE_PRO_READINESS.md) includes exact source references,
+staging acceptance gaps, operational/cache/backup/relay limitations and a local PR
+handoff. Fresh master/CI evidence does not imply feature publication or deployment.
+Repository-specific provider implementation and subsequent publication/merge/release/
+activation require their own applicable approval.

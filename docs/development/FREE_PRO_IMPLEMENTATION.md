@@ -123,8 +123,17 @@ Turn promotional access off through the approved configuration propagation
 procedure while leaving purchase flags closed. Preserve objects and real billing
 state; validate current access, company membership, Enterprise behavior and
 completion/recovery. Sales reopening and future historical-data access terms
-need separate approval. Rolling code back to earlier blanket invoicing gates
-can remove server read/export access and must not contradict announced terms.
+need separate approval. Promotion-off on this artifact can itself block legacy
+server company/document reads, exports and PDF/ISDOC when the owner loses all
+invoicing entitlement; local invoicing navigation can also be restricted. Retained
+records/encrypted bytes do not promise continued usable read/export access.
+
+Keep routine reversal on the reviewed new artifact. Pre-policy code does not read
+the new closed-sales flags and can reopen PRO/slot/ISDOC purchases. Emergency code
+rollback requires an independently proven selective closure or a forward fix
+retaining the guards, plus a reviewed access plan. Never restore an old billing
+snapshot merely to reverse the promotion. See the concrete prerequisites and
+reviewed sequence in [FREE_PRO_READINESS](FREE_PRO_READINESS.md).
 
 ## Validation and review
 

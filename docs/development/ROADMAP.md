@@ -85,7 +85,16 @@ purchases default closed, and no fake subscriptions are created. Independent sec
 and QA accepted the source scope. Full suites, browser smoke, static checks and docs
 validation passed; measured evidence is in PROJECT_STATE. No merge or deployment.
 
-## Next: SATFLUX-003 release and activation readiness (not authorized)
+## SATFLUX-003 release and activation readiness
+
+Documentation-only readiness was authorized by the owner's continuation and is
+completed with independent payments/devops/security/QA evidence in
+[FREE_PRO_READINESS](FREE_PRO_READINESS.md). The owner identifies deployed BTCPay
+as 2.4.5; the exact build and operational evidence remain unverified. Source handoff
+is ready, but activation is NO-GO. No provider implementation, publication, merge,
+deployment or activation was authorized or executed.
+
+Remaining readiness work:
 
 1. Verify the exact deployed BTCPay provider and complete PRO-only closure for direct
    checkout, funding portals and prefunded AutoRenew without cancelling subscriptions.
@@ -95,5 +104,12 @@ validation passed; measured evidence is in PROJECT_STATE. No merge or deployment
 3. Decide notice/data-access terms after promotion and the paid reopening procedure.
 4. Prepare the scoped Satflux PR and reviewed rollout/rollback evidence, then obtain
    explicit applicable merge, deployment and activation approval.
+
+Next implementation proposal, requiring specific approval: central reversible PRO
+sales policy in owned `webiumsk/btcpayserver` at the selected 2.4.5-compatible host.
+Cover direct and stale checkout/portal mutations, trials, prefunded/AutoRenew and
+target-PRO scheduled migration while retaining balances, settlement and Enterprise.
+Preserve stored intentions and prevent automatic catch-up spending on reopening.
+No legacy plugin work is inferred without verifying that it is installed.
 
 Existing payment integrations and deferred NWC work are not expanded by this roadmap.
