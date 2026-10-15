@@ -7,7 +7,7 @@ vi.mock('../services/api', () => ({ default: api }));
 vi.mock('../store/auth', () => ({ useAuthStore: () => ({ user: { can_use_password_login: true } }) }));
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 const legacy = { quote_id: 'opaque-quote', invoice_id: 'invoice-id', settlement_state: 'MANUAL_REVIEW', original_settings_required: true };
-const open = () => mount(StoreCashuPayments, { props: { store: { id: 'store-a' } }, global: { stubs: { Select: true } } });
+const open = () => mount(StoreCashuPayments, { props: { store: { id: 'store-a' } }, global: { stubs: { Select: true, CashuChangeRecovery: true } } });
 
 describe('Cashu merchant recovery', () => {
   beforeEach(() => {

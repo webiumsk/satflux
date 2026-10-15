@@ -35,9 +35,12 @@ class EmailVerificationChallenge extends Model
 
     public const PURPOSE_WALLET_CONNECTION_CHANGE = 'wallet_connection_change';
 
+    public const PURPOSE_CASHU_CHANGE_RECOVERY = 'cashu_change_recovery';
+
     public const PURPOSES = [
         self::PURPOSE_GUEST_UPGRADE,
         self::PURPOSE_WALLET_CONNECTION_CHANGE,
+        self::PURPOSE_CASHU_CHANGE_RECOVERY,
     ];
 
     protected $fillable = [

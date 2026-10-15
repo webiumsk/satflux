@@ -317,6 +317,47 @@ export interface CashuWalletSafety {
     unresolved_change: number | null;
 }
 
+export type CashuChangeAction = 'export' | 'verify';
+
+export interface CashuChangeSummary {
+    version: 1 | null;
+    status: 'available' | 'unsupported' | 'unavailable';
+    can_recover: boolean;
+    pending_sat: string | null;
+    swept_sat: string | null;
+    minimum_sweep_sat: string | null;
+    unresolved_records: number | null;
+    available_records: number | null;
+    exported_records: number | null;
+    sweeping_records: number | null;
+    manual_review_records: number | null;
+    unsupported_unit_records: number | null;
+    other_unresolved_records: number | null;
+}
+
+const CASHU_CHANGE_ERROR_CODES = new Set([
+    'cashu_change_unsupported', 'cashu_change_unavailable', 'cashu_change_recovery_refused', 'cashu_change_empty',
+    'challenge_missing', 'challenge_expired', 'challenge_locked', 'code_mismatch', 'resend_cooldown', 'send_limit_reached',
+]);
+
+/** Recovery failures expose only fixed codes/counters, never transport objects or bearer material. */
+async function cashuChangeFailure(error: unknown): Promise<unknown> {
+    const response = (error as { response?: { status?: number; data?: unknown } } | null)?.response;
+    let data = response?.data;
+    // Axios uses the requested Blob response type for JSON error responses as well.
+    if (typeof response?.status === 'number' && response.status >= 400 && data instanceof Blob && data.size <= 4096 && data.type.split(';')[0] === 'application/json') {
+        try { data = JSON.parse(await data.text()) as unknown; } catch { data = null; }
+    }
+    const body = data && typeof data === 'object' && !Array.isArray(data) ? data as Record<string, unknown> : {};
+    let code = typeof body.code === 'string' && CASHU_CHANGE_ERROR_CODES.has(body.code) ? body.code : 'cashu_change_unavailable';
+    if (response?.status === 403) code = 'cashu_change_forbidden';
+    if (response?.status === 401) code = 'cashu_change_forbidden';
+    if (response?.status === 429 && code === 'cashu_change_unavailable') code = 'cashu_change_rate_limited';
+    if (response?.status === 422 && body.errors && typeof body.errors === 'object' && 'password' in body.errors) code = 'cashu_change_password_invalid';
+    const boundedCounter = (value: unknown) => typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 2147483647 ? value : undefined;
+    return { response: { status: response?.status, data: { code, attempts_left: boundedCounter(body.attempts_left), retry_after: boundedCounter(body.retry_after) } } };
+}
+
 export interface CashuSettings {
     change_confirmation?: WalletChangeConfirmationState | null;
     mint_url?: string | null;
@@ -385,6 +426,38 @@ export const walletApi = {
         },
     },
     cashu: {
+        change: {
+            async getSummary(storeId: string, signal?: AbortSignal): Promise<CashuChangeSummary> {
+                try {
+                    const { data } = await api.get<ApiEnvelope<CashuChangeSummary>>(`/stores/${storeId}/cashu/change`, { signal, skipErrorFlash: true });
+                    return data.data;
+                } catch (error) { throw await cashuChangeFailure(error); }
+            },
+            async requestConfirmation(storeId: string, action: CashuChangeAction, confirmation: { password?: string } = {}, signal?: AbortSignal): Promise<EmailChallengeSummary> {
+                try {
+                    const { data } = await api.post<ApiEnvelope<{ challenge: EmailChallengeSummary }>>(`/stores/${storeId}/cashu/change/confirmation/request`, { action, ...confirmation }, { signal, skipErrorFlash: true });
+                    return data.data.challenge;
+                } catch (error) { throw await cashuChangeFailure(error); }
+            },
+            async resendConfirmation(storeId: string, action: CashuChangeAction, signal?: AbortSignal): Promise<EmailChallengeSummary> {
+                try {
+                    const { data } = await api.post<ApiEnvelope<{ challenge: EmailChallengeSummary }>>(`/stores/${storeId}/cashu/change/confirmation/resend`, { action }, { signal, skipErrorFlash: true });
+                    return data.data.challenge;
+                } catch (error) { throw await cashuChangeFailure(error); }
+            },
+            async exportTokens(storeId: string, code: string, signal?: AbortSignal): Promise<Blob> {
+                try {
+                    const { data } = await api.post<Blob>(`/stores/${storeId}/cashu/change/export`, { code, confirmed: true }, { signal, responseType: 'blob', skipErrorFlash: true });
+                    return data;
+                } catch (error) { throw await cashuChangeFailure(error); }
+            },
+            async verify(storeId: string, code: string, signal?: AbortSignal): Promise<boolean> {
+                try {
+                    const { data } = await api.post<ApiEnvelope<{ verified: boolean }>>(`/stores/${storeId}/cashu/change/verify`, { code, confirmed: true }, { signal, skipErrorFlash: true });
+                    return data.data.verified === true;
+                } catch (error) { throw await cashuChangeFailure(error); }
+            },
+        },
         async getSettings(storeId: string): Promise<CashuSettings> {
             const { data } = await api.get<ApiEnvelope<CashuSettings | null>>(`/stores/${storeId}/cashu/settings`);
             return data.data ?? {};

@@ -1,5 +1,46 @@
 # Project state
 
+## Authorized Cashu change recovery integration (2026-10-16)
+
+The Product Owner explicitly clarifies that the owned CashuMelt plugin may change
+alongside Satflux. BTCPay core and third-party plugins remain read-only. This
+supersedes the earlier blanket provider restriction only within this owned-plugin
+scope. No production access, real fund operations, merge, release publication or
+deployment is authorized.
+
+Satflux starts at `c652fdbd299ded7c42165ea894cafa72732c743f`, whose
+[CI 38819190804](https://github.com/webiumsk/satflux/actions/runs/38819190804)
+passed and was independently accepted by QA: 1,690 PHP tests/7,188 assertions,
+748 Vitest cases, 20 browser passes/three intentional skips/no retries, static
+checks, build and audits. Both PHP jobs freshly installed HttpFoundation 7.4.21.
+The owner subsequently supplies diagnostic evidence of unresolved change with
+completed payment rows; native recovery already exists but has no Greenfield API.
+
+The approved implementation contract is
+[CASHU_CHANGE_RECOVERY](CASHU_CHANGE_RECOVERY.md). It adds an aggregate balance/state
+API plus guarded export/verification to CashuMelt and a six-digit-code-protected
+owner recovery flow to Satflux. Implementation and frozen-source independent
+security/QA review are complete with no blockers. Full independent PHP passes
+1,737 tests/7,600 assertions, Pint 1,041 files and PHPStan reports no errors.
+Full frontend passes 778 cases, final independent focus 30 cases, actual typecheck
+retains 121 baseline diagnostics, lint has zero errors/48 existing warnings, and
+five-locale parity/production build pass. The AST-only Graphify update completes.
+Provider base is owned Webium main `79de74f4fd9f770539dd30ef29b7b8e6abdfe7b0`,
+branch `feat/cashu-change-recovery`, candidate CashuMelt 1.4.0.4. Satflux continues
+on `feat/free-pro-access`. Existing host pin, recovery services, locks and safety
+refusals remain authoritative. Provider graph is unavailable; targeted source
+inspection supplements Satflux Graphify queries. Publication and operational
+readiness must be assessed separately in both repositories. Plugin commit
+`b86e619380fbbbf1427a3e47124d30b369b78d94` is published in
+[draft PR #37](https://github.com/webiumsk/BTCPayServerPluginsWebium/pull/37), with
+independently verified green
+[CI 38824816578](https://github.com/webiumsk/BTCPayServerPluginsWebium/actions/runs/38824816578):
+nine builds, 583 maintained-plugin tests including 129 CashuMelt cases, zero skips.
+Independent QA verifies the local 1.4.0.4 package matches the tested DLL and includes
+no core/other-plugin assemblies; hashes are in the contract. Exact-head Satflux CI
+remains required after candidate publication. No real-host installation or wire-level
+cross-application recovery E2E was run. No real funds or production changes.
+
 ## Cashu blocked address change diagnostics (2026-10-16)
 
 The owner confirms unchanged saves work after the previous fix, but changing the

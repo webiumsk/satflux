@@ -1,5 +1,6 @@
 <template>
   <div class="space-y-6">
+    <CashuChangeRecovery ref="changeRecovery" :store-id="store.id" @changed="fetchPayments()" />
     <div
       class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700"
     >
@@ -18,7 +19,8 @@
           type="button"
           class="inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:pointer-events-none transition-colors shadow-lg shadow-indigo-900/20 shrink-0"
           :disabled="loading"
-          @click="fetchPayments()"
+          @click="refreshAll"
+          data-testid="cashu-payments-refresh"
         >
           {{ t("stores.cashu_payments_refresh") }}
         </button>
@@ -350,6 +352,7 @@ import api from "../../services/api";
 import { useAuthStore } from "../../store/auth";
 import Select from "../ui/Select.vue";
 import CashuWalletSafetySummary from './wallet-connection/CashuWalletSafetySummary.vue';
+import CashuChangeRecovery from './wallet-connection/CashuChangeRecovery.vue';
 
 const { t } = useI18n();
 const authStore = useAuthStore();
@@ -421,6 +424,7 @@ const payments = ref<CashuPaymentsResponse>({
 const loading = ref(false);
 const error = ref<string | null>(null);
 const walletSafety = ref<unknown>(null);
+const changeRecovery = ref<InstanceType<typeof CashuChangeRecovery> | null>(null);
 const retryNotice = ref<string | null>(null);
 const retryingQuoteIds = ref<Set<string>>(new Set());
 const copiedPollQuoteId = ref<string | null>(null);
@@ -648,6 +652,11 @@ async function fetchPayments() {
   } finally {
     if (storeId() === sid && generation === paymentsGeneration) loading.value = false;
   }
+}
+
+function refreshAll() {
+  void fetchPayments();
+  void changeRecovery.value?.refresh?.();
 }
 
 async function retryPayment(quoteId: string) {

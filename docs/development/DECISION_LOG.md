@@ -328,3 +328,35 @@ fresh exact-head CI; local vendor does not validate the locked security patch.
 Remaining frontend checks subsequently pass: actual typecheck (121 unchanged
 baseline diagnostics), lint (zero errors/48 existing warnings), five-locale parity
 and production build. Exact published-head CI remains required for handoff.
+
+## 2026-10-16: owned CashuMelt and Satflux change recovery implementation
+
+Status: explicitly authorized by the Product Owner. The restriction on changing
+BTCPay concerns core and third-party plugins; the owned CashuMelt plugin may be
+changed together with Satflux. Earlier blanket provider restrictions are superseded
+only for this bounded owned-plugin initiative, not the withdrawn core subscription
+sales-pause branch. No production access, fund operations, merge, release publication
+or deployment is authorized.
+
+Implement [CASHU_CHANGE_RECOVERY](CASHU_CHANGE_RECOVERY.md) using existing provider
+recovery services and advisory locks. Add only Greenfield-scoped summary/export/
+verification routes in CashuMelt and actual-owner-only action-bound six-digit
+confirmation in Satflux. Consume authorization before one provider dispatch, sanitize
+logs at source, retain uncertain outcomes and fresh verification, and keep unsupported
+old-plugin behavior explicit. Do not lower sweep limits or discard small balances.
+
+Separate repository branches, plugin 1.4.0.4 before dependent Satflux controls,
+unchanged exact host pin, frozen-source independent security and QA, and disposable
+stubbed tests are required. Preserve all existing billing, tenant and wallet-change
+protections. Main owns shared state and publication. Application and plugin specialists
+have disjoint writable ownership; core and other plugin source remain untouched.
+
+Implementation evidence: independent security accepts plugin manifest `00769c84...`
+and Satflux manifest `e1321b46...` (full hashes in the contract); independent QA
+accepts both. Plugin `b86e6193` has green exact-head CI 38824816578 (583 maintained
+tests), and the private 1.4.0.4 package matches the independently tested DLL. Satflux
+full PHP 1,737/7,600 assertions, full frontend 778 cases, independent final focus 30,
+Pint 1,041 files, PHPStan/typecheck/lint/parity/build and AST graph/docs checks pass.
+Fresh-lock exact-head Satflux CI remains required after publication; real-host
+installation and cross-application wire-level recovery remain staging acceptance.
+No package release, merge, deployment, production change or real recovery performed.

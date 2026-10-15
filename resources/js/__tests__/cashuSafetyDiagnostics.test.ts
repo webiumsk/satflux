@@ -20,7 +20,7 @@ const terminalRows = [
     { quote_id: 'quote-c', settlement_state: 'EXPIRED_UNPAID', reported_settlement_state: 'EXPIRED_UNPAID', amount_sats: 300 },
 ];
 const response = (safety: unknown = blocked, items = terminalRows) => ({ data: { data: { total: items.length, items, wallet_safety: safety } } });
-const open = () => mount(StoreCashuPayments, { props: { store: { id: 'store-a' } }, global: { stubs: { Select: true } } });
+const open = () => mount(StoreCashuPayments, { props: { store: { id: 'store-a' } }, global: { stubs: { Select: true, CashuChangeRecovery: true } } });
 
 beforeEach(() => { vi.resetAllMocks(); api.get.mockResolvedValue(response()); });
 

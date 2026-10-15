@@ -127,6 +127,21 @@ Upstream and conditional legacy plugins remain read-only; activation remains NO-
 
 ## Next proposed: SATFLUX-005 coordinated staging and release handoff
 
+Current approved prerequisite: implement the owned CashuMelt/Satflux
+[change recovery contract](CASHU_CHANGE_RECOVERY.md), candidate plugin 1.4.0.4,
+with owner-only action-bound email confirmation, private downloads, old-plugin
+fallback and independent security/QA. The owner explicitly permits this plugin
+work while keeping BTCPay core and third-party plugins unchanged. Prepare separate
+repository changes and provider-before-consumer release evidence; no real recovery,
+production operation, merge or release publication follows from implementation approval.
+
+Implementation is independently security/QA accepted. CashuMelt source is published
+as `b86e6193` in Webium draft PR #37 with green exact-head CI (583 tests). Local
+Satflux full PHP (1,737/7,600 assertions), frontend (778), Pint (1,041), PHPStan,
+typecheck/lint/parity/build pass. A private tested 1.4.0.4 package is prepared.
+Next: exact-head Satflux CI and coordinated owner staging/release approval; no
+production recovery or installation is implied by these tests.
+
 2026-10-16 follow-up: the owner confirms no-op saves work but actual address changes
 remain refused by CashuMelt 1.4.0.3. Implement the bounded Satflux-only
 [safety diagnostic contract](CASHU_SAFETY_DIAGNOSTICS.md), obtain independent review
