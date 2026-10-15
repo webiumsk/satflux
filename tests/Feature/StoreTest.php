@@ -34,6 +34,9 @@ class StoreTest extends TestCase
         Http::fake(function ($request) use ($baseUrl) {
             $url = (string) $request->url();
             $method = $request->method();
+            if ($method === 'GET' && str_ends_with($url, '/plugins/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true, 'unresolvedPayments' => 0, 'unresolvedChange' => 0], 200);
+            }
             if ($method === 'POST' && $url === $baseUrl.'/api/v1/stores') {
                 return Http::response([
                     'id' => 'test-store-id',

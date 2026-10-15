@@ -23,7 +23,9 @@ Open the store's **Wallet connection** and the **Cashu** section. Confirm the be
 - **Settle payments via Cashu → Lightning** - keep it on so the store uses this settlement path.
 - Optional: **trusted mints**, and **fee-reserve caps** (a max in sats and/or as a % of the amount) that bound how much Lightning routing fee the payout may spend.
 
-Editing an existing Cashu store re-asks for your password (unless you sign in by recovery phrase or passkey).
+Editing a configured Cashu wallet requires a six-digit code sent to your account email. Password accounts also confirm their password; recovery-phrase and passkey sessions use their existing authentication. Guests must first add an email address and upgrade their account. The first wallet setup needs no change-confirmation code.
+
+Saving settings without changing them only checks the existing configuration. A real change remains blocked while settlements or change need recovery. Settled or expired payment rows alone do not prove there is no remaining change. If safety cannot be checked, retry later or contact support; this is different from confirmed outstanding funds.
 
 ## Two ways it is used
 

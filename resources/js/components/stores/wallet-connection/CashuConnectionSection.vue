@@ -137,7 +137,7 @@
 
     <!-- Cashu: confirm password / LNURL / Nostr before editing -->
     <template
-      v-else-if="walletType === 'cashu' && cashuSectionMode === 'password'"
+      v-else-if="cashuSectionMode === 'password'"
     >
       <h3
         class="text-sm font-bold text-indigo-400 mb-4 uppercase tracking-wider"
@@ -195,6 +195,19 @@
     </template>
 
     <!-- Cashu: editing (first-time setup, after password, or switching from Lightning) -->
+    <div v-else-if="cashuSectionMode === 'code' && changeChallenge" class="bg-gray-900/50 border border-gray-700 rounded-xl p-6 max-w-md space-y-4">
+      <p class="text-sm text-gray-400">{{ t("stores.wallet_change_code_intro") }}</p>
+      <EmailCodeVerification
+        :challenge="changeChallenge"
+        :confirm="handleConfirmChangeCode"
+        :resend="handleResendChangeCode"
+        :allow-change-email="false"
+      />
+      <button type="button" class="text-sm text-gray-400 hover:text-white" @click="cancelChangeCode">
+        {{ t("common.cancel") }}
+      </button>
+    </div>
+
     <template v-else>
       <div v-if="walletType === 'cashu' && !switchIntent" class="mb-6">
         <button
@@ -460,9 +473,15 @@
 
         <div
           v-if="cashuErrorMessage"
+          role="alert"
           class="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300"
         >
-          {{ cashuErrorMessage }}
+          <p>{{ cashuErrorMessage }}</p>
+          <RouterLink
+            v-if="cashuRecoveryRequired"
+            :to="{ name: 'stores-show', params: { id: storeId }, query: { section: 'cashu' } }"
+            class="mt-2 inline-block underline underline-offset-2 font-medium hover:text-white"
+          >{{ t("stores.cashu_payments_title") }}</RouterLink>
         </div>
 
         <div
@@ -496,7 +515,11 @@ import { asApiError } from "../../../utils/apiError";
 import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../../store/auth";
-import { walletApi } from "../../../services/api";
+import { walletApi, type WalletChangeConfirmationState } from "../../../services/api";
+import type { EmailChallengeSummary } from "../../../store/auth";
+import EmailCodeVerification from "../../account/EmailCodeVerification.vue";
+import { RouterLink } from "vue-router";
+import { useGuestUpgradeModal } from "../../../composables/useGuestUpgradeModal";
 import { DEFAULT_CASHU_MINT_URL } from "../../../constants/cashu";
 import { getApiErrorMessage } from '../../../composables/useApiError';
 import {
@@ -527,9 +550,13 @@ const canUsePasswordLogin = computed(
   () => authStore.user?.can_use_password_login ?? true,
 );
 
-/** Native Cashu store: readonly summary -> password -> editing. */
-const cashuSectionMode = ref<"readonly" | "password" | "editing">("editing");
+/** Existing wallets use the same re-authentication and email-code grant as Lightning. */
+const cashuSectionMode = ref<"readonly" | "password" | "code" | "editing">("editing");
 const cashuInitializedFromFetch = ref(false);
+const changeConfirmation = ref<WalletChangeConfirmationState | null>(null);
+const changeChallenge = ref<EmailChallengeSummary | null>(null);
+const { openGuestUpgradeModal } = useGuestUpgradeModal();
+const cashuRecoveryRequired = ref(false);
 
 const passwordInput = ref("");
 const passwordError = ref("");
@@ -655,14 +682,19 @@ function maskCashuLightningAddress(addr: string): string {
 function resetCashuErrors() {
   Object.keys(cashuErrors).forEach((k) => delete cashuErrors[k]);
   cashuErrorMessage.value = "";
+  cashuRecoveryRequired.value = false;
 }
 
 async function fetchCashuSettings() {
+  const storeId = props.storeId;
   cashuLoading.value = true;
   resetCashuErrors();
 
   try {
-    const d = await walletApi.cashu.getSettings(props.storeId);
+    const d = await walletApi.cashu.getSettings(storeId);
+    if (storeId !== props.storeId) return;
+    changeConfirmation.value = d.change_confirmation ?? null;
+    changeChallenge.value = d.change_confirmation?.pending ?? null;
 
     const mintFromApi = (d.mint_url ?? "").trim();
     cashuForm.mint_url = mintFromApi || DEFAULT_CASHU_MINT_URL;
@@ -703,15 +735,19 @@ async function fetchCashuSettings() {
       cashuSectionMode.value = has ? "readonly" : "editing";
     }
   } catch (err) {
+    if (storeId !== props.storeId) return;
     cashuErrorMessage.value = getApiErrorMessage(err, "Failed to load Cashu settings");
   } finally {
-    cashuLoading.value = false;
-    syncCashuFieldsFromPasteDetection();
+    if (storeId === props.storeId) {
+      cashuLoading.value = false;
+      syncCashuFieldsFromPasteDetection();
+    }
   }
 }
 
 async function handleSaveCashu() {
-  if (!canSaveCashu.value) return;
+  if (!canSaveCashu.value || cashuSubmitting.value) return;
+  const storeId = props.storeId;
 
   cashuSubmitting.value = true;
   resetCashuErrors();
@@ -734,7 +770,8 @@ async function handleSaveCashu() {
       ),
     };
 
-    const d = await walletApi.cashu.updateSettings(props.storeId, payload);
+    const d = await walletApi.cashu.updateSettings(storeId, payload);
+    if (storeId !== props.storeId) return;
 
     cashuForm.mint_url = d.mint_url ?? cashuForm.mint_url;
     cashuForm.lightning_address =
@@ -768,14 +805,37 @@ async function handleSaveCashu() {
     cashuSectionMode.value = "readonly";
     emit("submitted");
   } catch (rawError) {
+    if (storeId !== props.storeId) return;
     const err = asApiError(rawError);
+    if (err.response?.data?.code === "wallet_change_confirmation_required") {
+      cashuErrorMessage.value = t("stores.wallet_change_grant_expired");
+      changeChallenge.value = null;
+      startCashuConnectionEdit();
+      return;
+    }
+    if (err.response?.data?.code === "guest_upgrade_required") {
+      promptGuestUpgrade();
+      return;
+    }
+    if (err.response?.data?.code === "cashu_outstanding_payments") {
+      cashuRecoveryRequired.value = true;
+      cashuErrorMessage.value = t("stores.cashu_wallet_change_recovery_required");
+      return;
+    }
+    if (err.response?.data?.code === "cashu_safety_unavailable") {
+      cashuErrorMessage.value = t("stores.cashu_wallet_change_safety_unavailable");
+      return;
+    }
     if (err.response?.status === 422 && err.response?.data?.errors) {
       const validationErrors = err.response?.data?.errors ?? {};
       Object.keys(validationErrors).forEach((key) => {
         const v = validationErrors[key];
         const msg = (Array.isArray(v) ? v[0] : v) ?? "";
         if (key === "cashu") {
-          cashuErrorMessage.value = msg;
+          cashuRecoveryRequired.value = msg === "Outstanding Cashu settlements or change must be recovered before changing this wallet.";
+          cashuErrorMessage.value = cashuRecoveryRequired.value
+            ? t("stores.cashu_wallet_change_recovery_required")
+            : msg;
         } else {
           cashuErrors[key] = msg;
         }
@@ -785,7 +845,7 @@ async function handleSaveCashu() {
         err.response?.data?.message || "Failed to save Cashu settings";
     }
   } finally {
-    cashuSubmitting.value = false;
+    if (storeId === props.storeId) cashuSubmitting.value = false;
   }
 }
 
@@ -816,12 +876,27 @@ watch(
     cashuBetaAccepted.value = false;
     passwordInput.value = "";
     passwordError.value = "";
+    changeConfirmation.value = null;
+    changeChallenge.value = null;
+    cashuSubmitting.value = false;
+    revealing.value = false;
+    resetCashuErrors();
+    if (props.walletType === "cashu" || props.switchIntent) void fetchCashuSettings();
   },
 );
 
 function startCashuConnectionEdit() {
   passwordError.value = "";
   passwordInput.value = "";
+  if (changeConfirmation.value?.guest_upgrade_required || authStore.user?.is_guest) {
+    promptGuestUpgrade();
+    return;
+  }
+  if (cashuSectionMode.value === "readonly") cashuBetaAccepted.value = false;
+  if (changeChallenge.value) {
+    cashuSectionMode.value = "code";
+    return;
+  }
   if (!canUsePasswordLogin.value) {
     void handleCashuConfirmPassword();
     return;
@@ -830,26 +905,70 @@ function startCashuConnectionEdit() {
 }
 
 async function handleCashuConfirmPassword() {
+  if (revealing.value) return;
   if (canUsePasswordLogin.value && !passwordInput.value.trim()) return;
   passwordError.value = "";
   revealing.value = true;
+  const storeId = props.storeId;
   try {
     const payload = canUsePasswordLogin.value
       ? { password: passwordInput.value }
       : {};
-    await walletApi.cashu.confirmEdit(props.storeId, payload);
+    const change = await walletApi.connection.change.request(storeId, payload);
+    if (storeId !== props.storeId) return;
     passwordInput.value = "";
+    if (change.required) {
+      if (!change.challenge) throw new Error("Wallet confirmation challenge is missing");
+      changeChallenge.value = change.challenge;
+      cashuSectionMode.value = "code";
+      return;
+    }
+    await walletApi.cashu.confirmEdit(storeId, payload);
+    if (storeId !== props.storeId) return;
     cashuSectionMode.value = "editing";
   } catch (rawError) {
+    if (storeId !== props.storeId) return;
     const err = asApiError(rawError);
+    if (err.response?.data?.code === "guest_upgrade_required") {
+      promptGuestUpgrade();
+      return;
+    }
     const msg =
       err.response?.data?.errors?.password?.[0] ||
       err.response?.data?.message ||
       t("stores.invalid_password");
     passwordError.value = msg;
   } finally {
-    revealing.value = false;
+    if (storeId === props.storeId) revealing.value = false;
   }
+}
+
+function promptGuestUpgrade() {
+  passwordError.value = t("stores.wallet_change_guest_required");
+  cashuErrorMessage.value = passwordError.value;
+  openGuestUpgradeModal("stores.wallet_change_feature_label");
+}
+
+async function handleConfirmChangeCode(code: string) {
+  const storeId = props.storeId;
+  await walletApi.connection.change.confirm(storeId, code);
+  if (storeId !== props.storeId) return;
+  changeChallenge.value = null;
+  cashuSectionMode.value = "editing";
+  cashuErrorMessage.value = "";
+}
+
+async function handleResendChangeCode() {
+  const storeId = props.storeId;
+  const next = await walletApi.connection.change.resend(storeId);
+  if (storeId !== props.storeId) return null;
+  if (next) changeChallenge.value = next;
+  return next;
+}
+
+function cancelChangeCode() {
+  cashuSectionMode.value = props.walletType === "cashu" && !props.switchIntent ? "readonly" : "editing";
+  passwordError.value = "";
 }
 
 </script>

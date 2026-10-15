@@ -2,9 +2,9 @@
 
 namespace App\Services\BtcPay;
 
+use App\Exceptions\CashuWalletSafetyException;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 
 class CashuService
 {
@@ -60,12 +60,17 @@ class CashuService
                 fn () => $this->client->get("/api/v1/stores/{$storeId}/plugins/cashumelt/safety"));
         } catch (BtcPayException $e) {
             if ($e->getStatusCode() === 404) {
-                throw ValidationException::withMessages(['cashu' => 'Update CashuMelt to version 1.4.0.0 or later before changing this wallet.']);
+                throw new CashuWalletSafetyException('cashu_safety_unavailable', 'Update CashuMelt to version 1.4.0.0 or later before changing this wallet.');
             }
-            throw $e;
+            throw new CashuWalletSafetyException('cashu_safety_unavailable', 'Cashu wallet safety could not be verified. The wallet was not changed.');
+        } catch (\Throwable) {
+            throw new CashuWalletSafetyException('cashu_safety_unavailable', 'Cashu wallet safety could not be verified. The wallet was not changed.');
+        }
+        if (($result['safeToChangeWallet'] ?? null) === false) {
+            throw new CashuWalletSafetyException('cashu_outstanding_payments', 'Outstanding Cashu settlements or change must be recovered before changing this wallet.');
         }
         if (($result['safeToChangeWallet'] ?? null) !== true) {
-            throw ValidationException::withMessages(['cashu' => 'Outstanding Cashu settlements or change must be recovered before changing this wallet.']);
+            throw new CashuWalletSafetyException('cashu_safety_unavailable', 'Cashu wallet safety could not be verified. The wallet was not changed.');
         }
     }
 

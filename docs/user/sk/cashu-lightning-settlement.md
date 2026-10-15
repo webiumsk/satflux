@@ -23,7 +23,9 @@ Otvorte **Pripojenie peňaženky** obchodu a sekciu **Cashu**. Potvrďte beta up
 - **Vyrovnávať platby cez Cashu → Lightning** - nechajte zapnuté, aby obchod používal túto vyrovnávaciu cestu.
 - Voliteľne: **dôveryhodné minty** a **stropy rezervy poplatku** (max v sats a/alebo ako % zo sumy), ktoré ohraničujú, koľko poplatku za smerovanie (routing) Lightning platby môže výplata minúť.
 
-Úprava existujúceho Cashu obchodu si znova vyžiada heslo (pokiaľ sa neprihlasujete frázou alebo passkeyom).
+Úprava nastavenej Cashu peňaženky vyžaduje šesťmiestny kód zaslaný na email účtu. Účty s heslom potvrdia aj heslo; pri prihlásení frázou alebo passkeyom sa použije existujúce overenie. Hosť musí najprv doplniť email a dokončiť registráciu. Prvé nastavenie peňaženky nevyžaduje kód na potvrdenie zmeny.
+
+Uloženie bez zmeny hodnôt iba overí existujúcu konfiguráciu. Skutočná zmena zostáva zablokovaná, kým platby alebo zostatok vyžadujú obnovu. Samotné vyrovnané alebo expirované platby nepotvrdzujú, že nezostal žiadny zostatok. Ak sa bezpečnosť nedá overiť, skúste to neskôr alebo kontaktujte podporu; táto chyba sa odlišuje od potvrdených nevysporiadaných prostriedkov.
 
 ## Dva spôsoby použitia
 

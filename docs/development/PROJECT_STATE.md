@@ -1,5 +1,59 @@
 # Project state
 
+## Reviewed Cashu wallet-change repair candidate (2026-10-15)
+
+The owner is testing the deployed but unmerged feature branch and reports missing
+six-digit email confirmation when editing Cashu, plus an outstanding-settlement
+error even on an unchanged save. Visible history is owner-reported as two settled
+payments and one expired unpaid payment. Production and the deployed plugin build
+were not inspected. Work remains Satflux only on PR
+[#394](https://github.com/webiumsk/satflux/pull/394), based on
+`8b2bbf6136357b8427fb82051aec932c7b7d4c87`; its prior
+[CI 38596184075](https://github.com/webiumsk/satflux/actions/runs/38596184075)
+passed all three jobs. That result does not validate the new repair.
+
+The bounded design, acceptance contract, provider source evidence and rollback
+constraints are in [CASHU_WALLET_CHANGE_FIX](CASHU_WALLET_CHANGE_FIX.md).
+Backend/frontend implementation reuses existing email grants and store locks,
+recognizes authoritative read-only no-ops, preserves unknown/outstanding safety,
+captures exact grant IDs in backward-compatible encrypted journals, and distinguishes
+translated safety errors in all five UI locales. Wizard-selected Cashu without a
+configured wallet retains first-setup behavior. The known fallback combined-write
+journal/readback limitation remains outside this bounded repair.
+
+Independent security and QA reviewed the source. Exact repaired-head CI is required
+after candidate publication; local evidence below precedes that remote run. Backend
+focused safety checks pass
+28 tests/147 assertions. Independent full PHP ran 1,656 cases: 1,648 passed and eight
+old fixture cases failed (seven lacked grants before newly centralized enforcement;
+one returned a store DTO instead of a safety DTO). Only those two fixture files were
+corrected; original assertions and owner-negative cases remain. Both complete classes
+then pass 32 tests/109 assertions. Exact repaired-head CI must repeat the complete PHP
+suite; the earlier partial pass is not a full green result.
+
+Full frontend validation passes: 121 files/726 Vitest tests, actual typecheck with
+121 unchanged baseline diagnostics, lint with zero errors/48 existing warnings,
+five-locale parity and production build. Independent QA separately
+passes 26 focused cases and reruns the expanded seven-case Cashu/Lightning switch
+suite, including visible translated safety errors, preserved input and no success
+event after refusal. Existing English/Slovak Cashu guides are updated; missing guide
+locales use the documented English fallback. Local results must not be reported as
+repaired-head remote CI. Current checks remain available through PR #394.
+
+Final independent source acceptance is by `/root/cashu_security_review` and
+`/root/ci_qa_review`. The 11-file application manifest (sorted path, NUL, content,
+NUL) is `141a69b0f473cbc552f79f42fb7b1c070699a5e690df08f89061305cac553251`.
+Full Pint passes 1,037 files, with four subsequent type-fix files checked again;
+independent full PHPStan passes with no errors. The final Cashu 28-case/147-assertion
+run also passes after those type fixes. No ratchet, compiler or dependency allowance
+was expanded. Graphify AST-only and orchestration/doc-link/whitespace checks pass.
+Independent QA accepts candidate publication subject to exact repaired-head CI.
+
+No new environment variable, migration, provider change, production mutation,
+merge or deployment is part of this repair. After reviewed publication and passing
+head CI, the next milestone remains SATFLUX-005 Satflux review/staging/readiness,
+with the existing operational evidence and separate release/activation approvals.
+
 ## Validated CI repair: SATFLUX-005 (2026-10-14)
 
 The owner requested CI diagnosis and repair on the existing Satflux feature branch.

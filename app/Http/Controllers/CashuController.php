@@ -10,7 +10,6 @@ use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\LightningService;
 use App\Services\CashuWalletUpdateService;
 use App\Services\WalletChangeConfirmationGuard;
-use App\Services\WalletConnectionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -45,13 +44,14 @@ class CashuController extends Controller
         return response()->json(['data' => ['ok' => true]]);
     }
 
-    public function getSettings(Store $store): JsonResponse
+    public function getSettings(Request $request, Store $store): JsonResponse
     {
         $wt = $store->wallet_type ?? null;
 
         if ($this->isLightningWalletTypeForCashuSwitch($wt) && ! $store->cashu_fallback_enabled) {
             return response()->json([
-                'data' => $this->emptyCashuSettingsPayload(),
+                'data' => [...$this->emptyCashuSettingsPayload(),
+                    'change_confirmation' => app(WalletChangeConfirmationGuard::class)->state($store, $request->user())],
             ]);
         }
 
@@ -62,7 +62,8 @@ class CashuController extends Controller
         $settings = $this->cashuService->getSettings($store->btcpay_store_id, $userApiKey);
 
         return response()->json([
-            'data' => $this->formatCashuSettingsForApi($settings),
+            'data' => [...$this->formatCashuSettingsForApi($settings),
+                'change_confirmation' => app(WalletChangeConfirmationGuard::class)->state($store, $request->user())],
         ]);
     }
 
@@ -97,14 +98,8 @@ class CashuController extends Controller
         ]);
 
         $changeGuard = app(WalletChangeConfirmationGuard::class);
-        if ($switchingFromLightning) {
-            // Lightning -> Cashu drops the connected wallet: email-code gate applies.
-            $changeGuard->assert($store, $request->user());
-        }
+        $changeGuard->assert($store, $request->user());
 
-        if ($previousWalletType !== null) {
-            app(WalletConnectionService::class)->assertWalletCanChange($store);
-        }
         $payload = $this->buildCashuMeltSettingsPayloadFromRequest($request);
 
         try {
@@ -126,6 +121,7 @@ class CashuController extends Controller
         $store->refresh();
 
         $data = $this->formatCashuSettingsForApi($updated);
+        $data['change_confirmation'] = $changeGuard->state($store, $request->user());
         if (($data['mint_url'] ?? null) === null) {
             $data['mint_url'] = $request->mint_url;
         }

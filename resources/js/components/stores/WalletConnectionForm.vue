@@ -5,7 +5,7 @@
     :wallet-type="walletType"
     v-model:switch-intent="switchToCashuIntent"
     :paste-detection="walletPasteDetection"
-    @switch-to-lightning="switchToLightningIntent = true"
+    @switch-to-lightning="startSwitchFromCashu"
     @submitted="$emit('submitted', 'cashu')"
     @cancel="$emit('cancel')"
   />
@@ -25,7 +25,7 @@
     </template>
 
     <!-- Password step: before revealing secret -->
-    <template v-else-if="existingConnection && viewMode === 'password'">
+    <template v-else-if="viewMode === 'password'">
       <div
         class="bg-gray-900/50 border border-gray-700 rounded-xl p-6 max-w-md"
       >
@@ -54,11 +54,7 @@
           <div class="flex gap-3">
             <button
               type="button"
-              @click="
-                viewMode = 'readonly';
-                passwordError = '';
-                passwordInput = '';
-              "
+              @click="cancelChangeCode"
               class="px-5 py-2.5 border border-gray-600 rounded-xl text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 transition-all"
             >
               {{ t("common.cancel") }}
@@ -77,7 +73,7 @@
     </template>
 
     <!-- Email-code step: a connected wallet is only replaced after the code -->
-    <template v-else-if="existingConnection && viewMode === 'code' && changeChallenge">
+    <template v-else-if="viewMode === 'code' && changeChallenge">
       <div class="bg-gray-900/50 border border-gray-700 rounded-xl p-6 max-w-md space-y-4">
         <p class="text-sm text-gray-400">
           {{ t("stores.wallet_change_code_intro") }}
@@ -227,7 +223,7 @@
         </div>
 
         <p v-if="errors.type" class="text-sm text-red-400">{{ errors.type }}</p>
-        <p v-if="errors.secret" class="text-sm text-red-400">{{ errors.secret }}</p>
+        <p v-if="errors.secret" role="alert" class="text-sm text-red-400">{{ errors.secret }}</p>
 
         <div
           v-if="testResult"
@@ -709,8 +705,8 @@ function lnAddressFromConnectionString(secret: string): string {
 }
 
 /** Shared post-reveal handoff: prefill the setup form and switch to editing. */
-function applyRevealedConnection(reveal: { secret?: string; type?: string }) {
-  form.type = (reveal.type ||
+function applyRevealedConnection(reveal: { secret?: string | null; type?: string }) {
+  form.type = ((reveal.type === "cashu" ? undefined : reveal.type) ||
     props.existingConnection?.type ||
     defaultWalletConnectionType(
       props.walletType,
@@ -827,6 +823,15 @@ function startSwitchToCashu() {
   switchToCashuIntent.value = true;
 }
 
+function startSwitchFromCashu() {
+  if (authStore.user?.is_guest) {
+    promptGuestUpgradeForWalletChange();
+    return;
+  }
+  switchToLightningIntent.value = true;
+  startWalletConnectionEdit();
+}
+
 watch(
   () => props.walletType,
   (wt) => {
@@ -846,6 +851,11 @@ watch(
     // A code issued for the previous store must never be entered here.
     changeChallenge.value = null;
     resumeEditingAfterGrant.value = false;
+    passwordInput.value = "";
+    passwordError.value = "";
+    revealing.value = false;
+    form.secret = "";
+    viewMode.value = initialWalletViewMode(props.existingConnection);
   },
 );
 
@@ -890,7 +900,7 @@ watch(
 const changeNeedsGuestUpgrade = computed(
   () =>
     props.existingConnection?.change_confirmation?.guest_upgrade_required === true ||
-    (props.existingConnection?.change_confirmation?.required === true && authStore.user?.is_guest === true),
+    ((props.existingConnection?.change_confirmation?.required === true || props.walletType === "cashu") && authStore.user?.is_guest === true),
 );
 
 function promptGuestUpgradeForWalletChange() {
@@ -924,23 +934,28 @@ function startWalletConnectionEdit() {
  * reports required=false and we fall back to the plain reveal.
  */
 async function handleConfirmPassword() {
+  if (revealing.value) return;
   if (canUsePasswordLogin.value && !passwordInput.value.trim()) return;
   passwordError.value = "";
   revealing.value = true;
+  const storeId = props.storeId;
   try {
     const payload = canUsePasswordLogin.value
       ? { password: passwordInput.value }
       : {};
-    const change = await walletApi.connection.change.request(props.storeId, payload);
+    const change = await walletApi.connection.change.request(storeId, payload);
+    if (storeId !== props.storeId) return;
     passwordInput.value = "";
     if (change.required && change.challenge) {
       changeChallenge.value = change.challenge;
       viewMode.value = "code";
       return;
     }
-    const reveal = await walletApi.connection.reveal(props.storeId, payload);
+    const reveal = await walletApi.connection.reveal(storeId, payload);
+    if (storeId !== props.storeId) return;
     applyRevealedConnection(reveal);
   } catch (rawError) {
+    if (storeId !== props.storeId) return;
     const err = asApiError(rawError);
     if (err.response?.data?.code === "guest_upgrade_required") {
       viewMode.value = "readonly";
@@ -953,7 +968,7 @@ async function handleConfirmPassword() {
       t("stores.invalid_password");
     passwordError.value = msg;
   } finally {
-    revealing.value = false;
+    if (storeId === props.storeId) revealing.value = false;
   }
 }
 
@@ -965,7 +980,9 @@ async function handleConfirmPassword() {
 const resumeEditingAfterGrant = ref(false);
 
 async function handleConfirmChangeCode(code: string) {
-  const grant = await walletApi.connection.change.confirm(props.storeId, code);
+  const storeId = props.storeId;
+  const grant = await walletApi.connection.change.confirm(storeId, code);
+  if (storeId !== props.storeId) return;
   changeChallenge.value = null;
   if (resumeEditingAfterGrant.value) {
     resumeEditingAfterGrant.value = false;
@@ -988,14 +1005,18 @@ function onGrantExpired(typedAddress?: string) {
 }
 
 async function handleResendChangeCode() {
-  const next = await walletApi.connection.change.resend(props.storeId);
+  const storeId = props.storeId;
+  const next = await walletApi.connection.change.resend(storeId);
+  if (storeId !== props.storeId) return null;
   if (next) changeChallenge.value = next;
   return next;
 }
 
 function cancelChangeCode() {
+  if (props.walletType === "cashu") switchToLightningIntent.value = false;
   viewMode.value = "readonly";
   passwordError.value = "";
+  passwordInput.value = "";
   resumeEditingAfterGrant.value = false;
   errors.general = "";
 }
@@ -1289,11 +1310,26 @@ async function handleSubmit() {
       promptGuestUpgradeForWalletChange();
       return;
     }
+    if (code === "cashu_outstanding_payments") {
+      errors.secret = t("stores.cashu_wallet_change_recovery_required");
+      return;
+    }
+    if (code === "cashu_safety_unavailable") {
+      errors.secret = t("stores.cashu_wallet_change_safety_unavailable");
+      return;
+    }
     if (err.response?.status === 422) {
       const validationErrors = err.response?.data?.errors ?? {};
       Object.keys(validationErrors).forEach((key) => {
         const v = validationErrors[key];
-        errors[key] = (Array.isArray(v) ? v[0] : v) ?? "";
+        const message = (Array.isArray(v) ? v[0] : v) ?? "";
+        if (key === "cashu") {
+          errors.secret = message === "Outstanding Cashu settlements or change must be recovered before changing this wallet."
+            ? t("stores.cashu_wallet_change_recovery_required")
+            : message;
+        } else {
+          errors[key] = message;
+        }
       });
     } else {
       errors.general =

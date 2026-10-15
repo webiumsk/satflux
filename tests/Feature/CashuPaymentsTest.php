@@ -489,7 +489,7 @@ class CashuPaymentsTest extends TestCase
             if ($request->method() === 'GET' && str_ends_with($url, '/cashumelt/settings')) {
                 return Http::response(isset($captured) && is_array($captured) ? array_merge($captured, ['enabled' => true]) : [
                     'mintUrl' => str_contains($url, 'store-fallback-to-cashu') ? 'https://mint.example/x' : 'https://mint.example/m',
-                    'lightningAddress' => str_contains($url, 'store-fallback-to-cashu') ? 'merchant@example.com' : 'z@example.com',
+                    'lightningAddress' => str_contains($url, 'store-fallback-to-cashu') ? 'merchant@example.com' : 'previous@example.com',
                     'enabled' => true,
                 ], 200);
             }
@@ -517,6 +517,7 @@ class CashuPaymentsTest extends TestCase
         ]);
 
         Sanctum::actingAs($user);
+        $this->grantWalletChange($user, $store);
 
         $this->putJson("/api/stores/{$store->id}/cashu/settings", [
             'mint_url' => 'https://mint.example/m',
@@ -547,7 +548,7 @@ class CashuPaymentsTest extends TestCase
             if ($request->method() === 'GET' && str_ends_with($url, '/cashumelt/settings')) {
                 return Http::response(isset($captured) && is_array($captured) ? array_merge($captured, ['enabled' => true]) : [
                     'mintUrl' => str_contains($url, 'store-fallback-to-cashu') ? 'https://mint.example/x' : 'https://mint.example/m',
-                    'lightningAddress' => str_contains($url, 'store-fallback-to-cashu') ? 'merchant@example.com' : 'z@example.com',
+                    'lightningAddress' => str_contains($url, 'store-fallback-to-cashu') ? 'merchant@example.com' : 'previous@example.com',
                     'enabled' => true,
                 ], 200);
             }
@@ -573,6 +574,7 @@ class CashuPaymentsTest extends TestCase
         ]);
 
         Sanctum::actingAs($user);
+        $this->grantWalletChange($user, $store);
 
         $this->putJson("/api/stores/{$store->id}/cashu/settings", [
             'mint_url' => 'https://mint.example/m',
@@ -736,7 +738,7 @@ class CashuPaymentsTest extends TestCase
             if ($request->method() === 'GET' && str_ends_with($url, '/cashumelt/settings')) {
                 return Http::response(isset($captured) && is_array($captured) ? array_merge($captured, ['enabled' => true]) : [
                     'mintUrl' => str_contains($url, 'store-fallback-to-cashu') ? 'https://mint.example/x' : 'https://mint.example/m',
-                    'lightningAddress' => str_contains($url, 'store-fallback-to-cashu') ? 'merchant@example.com' : 'z@example.com',
+                    'lightningAddress' => str_contains($url, 'store-fallback-to-cashu') ? 'merchant@example.com' : 'previous@example.com',
                     'enabled' => true,
                 ], 200);
             }
@@ -755,6 +757,7 @@ class CashuPaymentsTest extends TestCase
         ]);
 
         Sanctum::actingAs($user);
+        $this->grantWalletChange($user, $store);
 
         $this->putJson("/api/stores/{$store->id}/cashu/settings", [
             'mint_url' => 'https://mint.example/m',

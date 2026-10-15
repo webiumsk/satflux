@@ -2031,6 +2031,8 @@
     "cashu_recovery_verified": "Original settings verified. Checking the existing payment.",
     "cashu_recovery_pending": "The payment is still pending. Refresh later or retry the check.",
     "cashu_settlement_label_expired_unpaid": "Expired, unpaid",
+    "cashu_wallet_change_safety_unavailable": "We could not check whether Cashu payments or change still need recovery. Try again later. If the problem continues, contact support. Wallet settings were not changed.",
+    "cashu_wallet_change_recovery_required": "Some Cashu payments or change still need recovery. Open Cashu settlements, resolve the pending items, then try changing the wallet again. Wallet settings were not changed.",
     "cashu_payments_title": "Cashu settlements",
     "cashu_payments_subtitle": "Settlement rows from the BTCPay Cashu plugin for this store.",
     "cashu_payments_refresh": "Refresh",

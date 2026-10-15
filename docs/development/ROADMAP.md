@@ -127,6 +127,18 @@ Upstream and conditional legacy plugins remain read-only; activation remains NO-
 
 ## Next proposed: SATFLUX-005 coordinated staging and release handoff
 
+Current owner-reported branch testing adds a bounded Satflux Cashu repair before
+handoff: require existing-wallet email confirmation, permit authoritative unchanged
+saves without remote writes, retain first-setup behavior and distinguish translated
+outstanding/unavailable safety errors. See
+[CASHU_WALLET_CHANGE_FIX](CASHU_WALLET_CHANGE_FIX.md). Independent security/QA
+source review, 28 focused Cashu tests, 32 corrected fixture cases, 726 Vitest tests,
+Pint, PHPStan, unchanged typecheck baseline, lint/locales/build and graph/docs checks
+pass. Candidate publication must be followed by passing exact-head full CI; the
+initial local full run's eight corrected fixture failures are documented in state.
+No provider changes or production wallet inspection. This repair does not establish production activation
+readiness or resolve the existing fallback combined-write recovery limitation.
+
 The owner authorized repair of the failed checks in PR #394. Bounded CI repair is
 validated locally: unchanged production limits, isolated checkout fixture budget,
 fail-closed typecheck execution and unchanged baseline allowances. Full independent

@@ -229,3 +229,46 @@ six gate regressions, actual 121-error baseline with no new errors, 119 Vitest f
 builds and dependency audits succeeded. The completion follow-up changes docs only;
 later PR heads still need matching checks. Local task containers/network/proxy were
 stopped/removed; provider scope remains withdrawn. No merge or deployment occurred.
+
+## 2026-10-15: bounded Cashu wallet-change repair
+
+Status: authorized Satflux defect repair on the existing unmerged feature branch.
+The owner reports missing six-digit confirmation and an outstanding-settlement error
+on unchanged saves, with two settled and one expired unpaid payment displayed.
+These observations do not authorize inspecting or modifying production wallets.
+The no-BTCPay-change constraint remains binding.
+
+Reuse the existing password/session and email challenge, centralize configured Cashu
+and shared wallet-path enforcement under the store lock, and preserve tenant/guest/
+verification restrictions. Wizard selection alone is not a configured wallet: use
+the provider's exact empty settings response or explicit missing configuration to
+recognize first setup; unknown/malformed reads cannot remove a confirmation gate.
+
+Treat an authoritative exact settings/payment-method match on an existing pure
+Cashu store as read-only, with no provider mutation, journal or code consumption.
+Real changes retain outstanding-invoice and settlement checks. Explicit false safety
+means outstanding funds; missing/malformed/unavailable safety means verification is
+unavailable. Neither permits mutation. Terminal visible payment labels do not prove
+that no retained proofs or recoverable change exist.
+
+Capture and consume the exact pre-write grant ID after confirmed success; encrypted
+journal envelopes remain readable alongside legacy records. Failed local grant
+finalization must not discard recovery intent. An older reader cannot safely handle
+new unresolved envelopes, so prefer a forward correction over a blind code downgrade.
+The pre-existing fallback combined-write durable journal/readback gap is documented,
+not expanded into a provider or recovery redesign. No combined atomicity is claimed.
+
+Require independent security/QA source review and focused/static/frontend checks
+before publication; the complete backend suite and exact head CI must pass before
+final delivery. Main owns shared documentation and existing branch publication.
+No environment change, migration, billing rewrite, provider
+modification, merge, deployment or activation is authorized by this repair.
+
+Candidate evidence: independent security/QA accept final application manifest
+`141a69b0f473cbc552f79f42fb7b1c070699a5e690df08f89061305cac553251`.
+Focused Cashu 28/147 and both corrected fixture classes 32/109 pass; full Pint,
+PHPStan, 726 Vitest tests, actual unchanged 121-diagnostic typecheck, lint (zero
+errors/48 existing warnings), locale parity, build and graph/docs checks pass.
+Initial full PHP had 1,648 passes and eight old fixture failures; the targeted
+corrections preserve their assertions and negative ownership coverage. Exact-head
+remote full CI remains required, so this is not a claim of local full-suite success.

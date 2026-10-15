@@ -2032,6 +2032,8 @@
     "cashu_recovery_verified": "Pôvodné nastavenia sú overené. Kontrolujeme existujúcu platbu.",
     "cashu_recovery_pending": "Platba ešte čaká na vyrovnanie. Neskôr obnovte zoznam alebo zopakujte kontrolu.",
     "cashu_settlement_label_expired_unpaid": "Expirovaná, neuhradená",
+    "cashu_wallet_change_safety_unavailable": "Nepodarilo sa overiť, či Cashu platby alebo vrátené prostriedky ešte vyžadujú obnovu. Skúste to neskôr. Ak problém pretrváva, kontaktujte podporu. Nastavenie peňaženky sa nezmenilo.",
+    "cashu_wallet_change_recovery_required": "Niektoré Cashu platby alebo vrátené prostriedky ešte vyžadujú obnovu. Otvorte Cashu vyrovnania, vyriešte čakajúce položky a potom skúste zmeniť peňaženku znova. Nastavenie peňaženky sa nezmenilo.",
     "cashu_payments_title": "Cashu vyrovnania",
     "cashu_payments_subtitle": "Záznamy vyrovnania z BTCPay Cashu pluginu pre tento obchod.",
     "cashu_payments_refresh": "Obnoviť",

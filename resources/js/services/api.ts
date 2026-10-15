@@ -281,7 +281,11 @@ export interface WalletChangeRequestResult {
     challenge?: EmailChallengeSummary;
 }
 
-export interface WalletChangeGrant extends WalletSecretReveal {
+export interface WalletChangeGrant {
+    /** Cashu grants authorize settings changes without revealing a Lightning secret. */
+    secret: string | null;
+    type: string;
+    masked_secret?: string | null;
     granted_until: string | null;
 }
 
@@ -307,6 +311,7 @@ export interface SensitiveActionConfirmation {
 }
 
 export interface CashuSettings {
+    change_confirmation?: WalletChangeConfirmationState | null;
     mint_url?: string | null;
     lightning_address?: string | null;
     trusted_mint_urls?: string[] | string | null;
