@@ -292,3 +292,39 @@ and metadata. An isolated manifests-only PHP 8.3/Composer run passes strict vali
 and fresh `audit --locked` with no advisories. Existing vendor and production are
 untouched. Security/QA must independently accept the exact lock, and new-head CI must
 install it and repeat tests before delivery. No BTCPay, merge or deployment action.
+
+## 2026-10-16: expose blocked wallet-change evidence without weakening safety
+
+Owner testing confirms unchanged saves work, while a changed address is blocked.
+CashuMelt version 1.4.0.3 is owner-reported; visible history shows two settled rows
+and one expired unpaid row. Previous final head `6b289f75` passed all CI 38809977505,
+including the updated dependency, with independent final QA acceptance.
+
+Independent read-only source reviews establish missing visibility, not the live
+asset state: the provider counts retained recovery fields and separate change rows;
+Satflux discards those counts and normalizes some provider states for display.
+Keep the provider boolean authoritative and preserve existing recovery behavior.
+
+Within the authorized Satflux defect repair, add only safe diagnostic status/counts
+to existing error/payment-list responses and known original provider state alongside
+the existing normalized field. Counts are bounded integers or unknown, never inferred
+amounts or permission. Do not expose/log raw provider extras, errors or recovery
+material. The BTCPay client correction is limited to safety-endpoint logging and
+error redaction; authentication, retries and unrelated logs are preserved.
+
+Update the existing UI, five locales and user guides, test denied access, stale
+snapshots, counter validation, sensitive-extra stripping, read-only behavior and
+unchanged write/no-op/grant safety, then require independent security/QA and exact
+head CI. No production inspection, provider modification, fund movement, new recovery
+action, merge or deployment. Actual refusal diagnosis still needs the new read-only
+counts/raw state; do not claim it is solved from screenshots alone.
+
+Independent security and QA accept the frozen application/locale manifest recorded
+in [CASHU_SAFETY_DIAGNOSTICS](CASHU_SAFETY_DIAGNOSTICS.md). Focused backend checks,
+full frontend tests, full Pint and full PHPStan pass. A test-only translation mock
+was made compatible with the existing TypeScript target without changing assertions
+or expanding a baseline. Publication requires the remaining frontend checks and
+fresh exact-head CI; local vendor does not validate the locked security patch.
+Remaining frontend checks subsequently pass: actual typecheck (121 unchanged
+baseline diagnostics), lint (zero errors/48 existing warnings), five-locale parity
+and production build. Exact published-head CI remains required for handoff.

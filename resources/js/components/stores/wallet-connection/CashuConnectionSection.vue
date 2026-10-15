@@ -477,6 +477,7 @@
           class="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300"
         >
           <p>{{ cashuErrorMessage }}</p>
+          <CashuWalletSafetySummary v-if="walletSafetyRefusal" :safety="walletSafety" :refusal-status="walletSafetyRefusal" class="my-3" />
           <RouterLink
             v-if="cashuRecoveryRequired"
             :to="{ name: 'stores-show', params: { id: storeId }, query: { section: 'cashu' } }"
@@ -518,6 +519,7 @@ import { useAuthStore } from "../../../store/auth";
 import { walletApi, type WalletChangeConfirmationState } from "../../../services/api";
 import type { EmailChallengeSummary } from "../../../store/auth";
 import EmailCodeVerification from "../../account/EmailCodeVerification.vue";
+import CashuWalletSafetySummary from './CashuWalletSafetySummary.vue';
 import { RouterLink } from "vue-router";
 import { useGuestUpgradeModal } from "../../../composables/useGuestUpgradeModal";
 import { DEFAULT_CASHU_MINT_URL } from "../../../constants/cashu";
@@ -557,6 +559,9 @@ const changeConfirmation = ref<WalletChangeConfirmationState | null>(null);
 const changeChallenge = ref<EmailChallengeSummary | null>(null);
 const { openGuestUpgradeModal } = useGuestUpgradeModal();
 const cashuRecoveryRequired = ref(false);
+const walletSafety = ref<unknown>(null);
+const walletSafetyRefusal = ref<'blocked' | 'unavailable' | null>(null);
+let storeGeneration = 0;
 
 const passwordInput = ref("");
 const passwordError = ref("");
@@ -683,6 +688,8 @@ function resetCashuErrors() {
   Object.keys(cashuErrors).forEach((k) => delete cashuErrors[k]);
   cashuErrorMessage.value = "";
   cashuRecoveryRequired.value = false;
+  walletSafety.value = null;
+  walletSafetyRefusal.value = null;
 }
 
 async function fetchCashuSettings() {
@@ -748,6 +755,7 @@ async function fetchCashuSettings() {
 async function handleSaveCashu() {
   if (!canSaveCashu.value || cashuSubmitting.value) return;
   const storeId = props.storeId;
+  const generation = storeGeneration;
 
   cashuSubmitting.value = true;
   resetCashuErrors();
@@ -771,7 +779,7 @@ async function handleSaveCashu() {
     };
 
     const d = await walletApi.cashu.updateSettings(storeId, payload);
-    if (storeId !== props.storeId) return;
+    if (storeId !== props.storeId || generation !== storeGeneration) return;
 
     cashuForm.mint_url = d.mint_url ?? cashuForm.mint_url;
     cashuForm.lightning_address =
@@ -805,7 +813,7 @@ async function handleSaveCashu() {
     cashuSectionMode.value = "readonly";
     emit("submitted");
   } catch (rawError) {
-    if (storeId !== props.storeId) return;
+    if (storeId !== props.storeId || generation !== storeGeneration) return;
     const err = asApiError(rawError);
     if (err.response?.data?.code === "wallet_change_confirmation_required") {
       cashuErrorMessage.value = t("stores.wallet_change_grant_expired");
@@ -818,11 +826,15 @@ async function handleSaveCashu() {
       return;
     }
     if (err.response?.data?.code === "cashu_outstanding_payments") {
+      walletSafety.value = err.response.data.wallet_safety ?? null;
+      walletSafetyRefusal.value = 'blocked';
       cashuRecoveryRequired.value = true;
       cashuErrorMessage.value = t("stores.cashu_wallet_change_recovery_required");
       return;
     }
     if (err.response?.data?.code === "cashu_safety_unavailable") {
+      walletSafety.value = err.response.data.wallet_safety ?? null;
+      walletSafetyRefusal.value = 'unavailable';
       cashuErrorMessage.value = t("stores.cashu_wallet_change_safety_unavailable");
       return;
     }
@@ -833,6 +845,10 @@ async function handleSaveCashu() {
         const msg = (Array.isArray(v) ? v[0] : v) ?? "";
         if (key === "cashu") {
           cashuRecoveryRequired.value = msg === "Outstanding Cashu settlements or change must be recovered before changing this wallet.";
+          if (cashuRecoveryRequired.value) {
+            walletSafety.value = err.response?.data?.wallet_safety ?? null;
+            walletSafetyRefusal.value = 'blocked';
+          }
           cashuErrorMessage.value = cashuRecoveryRequired.value
             ? t("stores.cashu_wallet_change_recovery_required")
             : msg;
@@ -845,7 +861,7 @@ async function handleSaveCashu() {
         err.response?.data?.message || "Failed to save Cashu settings";
     }
   } finally {
-    if (storeId === props.storeId) cashuSubmitting.value = false;
+    if (storeId === props.storeId && generation === storeGeneration) cashuSubmitting.value = false;
   }
 }
 
@@ -871,6 +887,7 @@ watch(
 watch(
   () => props.storeId,
   () => {
+    storeGeneration++;
     cashuSectionMode.value = "editing";
     cashuInitializedFromFetch.value = false;
     cashuBetaAccepted.value = false;

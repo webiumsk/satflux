@@ -78,7 +78,7 @@ describe('Cashu to Lightning wallet change', () => {
         ['cashu_safety_unavailable', 'stores.cashu_wallet_change_safety_unavailable'],
         [undefined, 'stores.cashu_wallet_change_recovery_required'],
     ])('shows a visible translated save refusal for %s and preserves the entered connection', async (code, message) => {
-        mocks.create.mockRejectedValue({ response: { status: 422, data: { code, errors: { cashu: ['Outstanding Cashu settlements or change must be recovered before changing this wallet.'] } } } });
+        mocks.create.mockRejectedValue({ response: { status: 422, data: { code, wallet_safety: code ? { status: code === 'cashu_safety_unavailable' ? 'unavailable' : 'blocked', unresolved_payments: 0, unresolved_change: 1 } : undefined, errors: { cashu: ['Outstanding Cashu settlements or change must be recovered before changing this wallet.'] } } } });
         const wrapper = await open();
         await wrapper.get('[data-testid=switch]').trigger('click'); await flushPromises();
         const inputs = wrapper.findAll('input[autocomplete=one-time-code]');
@@ -96,8 +96,37 @@ describe('Cashu to Lightning wallet change', () => {
         });
         expect(wrapper.get('[role=alert]').text()).toBe(message);
         expect(wrapper.get('[role=alert]').isVisible()).toBe(true);
+        expect(wrapper.get('[data-testid=cashu-wallet-safety-status]').text()).toBe(code === 'cashu_safety_unavailable' ? 'stores.cashu_wallet_safety_unavailable' : 'stores.cashu_wallet_safety_blocked');
+        if (code === 'cashu_outstanding_payments') expect(wrapper.get('[data-testid=cashu-safety-change-count]').text()).toBe('1');
+        if (!code) expect(wrapper.get('[data-testid=cashu-safety-change-count]').text()).toBe('stores.cashu_wallet_safety_unknown');
         expect(paste.props('modelValue')).toBe('type=lnaddress;ln-address=replacement@wallet.example.test;');
         expect(wrapper.emitted('submitted')).toBeUndefined();
         expect(mocks.confirm).toHaveBeenCalledTimes(1); wrapper.unmount();
+    });
+
+    it('does not carry an old save refusal into a later editing session after switching away and back', async () => {
+        let reject!: (reason: unknown) => void;
+        mocks.create.mockImplementation(() => new Promise((_, rejectPromise) => { reject = rejectPromise; }));
+        const wrapper = await open();
+        const unlock = async () => {
+            await wrapper.get('[data-testid=switch]').trigger('click'); await flushPromises();
+            const inputs = wrapper.findAll('input[autocomplete=one-time-code]');
+            for (let i = 0; i < 6; i++) await inputs[i]!.setValue(String(i + 1));
+            await flushPromises();
+        };
+        await unlock();
+        const paste = wrapper.getComponent({ name: 'WalletConnectionSmartPaste' });
+        paste.vm.$emit('update:connectionType', 'lnaddress');
+        paste.vm.$emit('update:modelValue', 'type=lnaddress;ln-address=replacement@wallet.example.test;');
+        await flushPromises();
+        await wrapper.findAll('button').find(b => b.text() === 'stores.save_connection')!.trigger('click');
+        await wrapper.setProps({ storeId: 'store-b' }); await flushPromises();
+        await wrapper.setProps({ storeId: 'store-a' }); await flushPromises();
+        await unlock();
+        reject({ response: { status: 422, data: { code: 'cashu_outstanding_payments', wallet_safety: { status: 'blocked', unresolved_payments: 9, unresolved_change: 9 } } } });
+        await flushPromises();
+        expect(wrapper.find('[data-testid=cashu-wallet-safety]').exists()).toBe(false);
+        expect(wrapper.find('[role=alert]').exists()).toBe(false);
+        expect(mocks.create).toHaveBeenCalledTimes(1); expect(wrapper.emitted('submitted')).toBeUndefined(); wrapper.unmount();
     });
 });

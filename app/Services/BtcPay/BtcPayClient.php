@@ -327,7 +327,8 @@ class BtcPayClient
                 // may carry an API key secret in its path - redact before it
                 // reaches the log or the rethrown message. The original exception
                 // is deliberately not chained as previous for the same reason.
-                $safeMessage = self::redactEndpoint($e->getMessage());
+                $safetyRequest = $this->isCashuSafetyEndpoint($endpoint);
+                $safeMessage = $safetyRequest ? 'Cashu wallet safety request failed.' : self::redactEndpoint($e->getMessage());
                 $this->logRequest($method, $endpoint, $logOptions, null, null, "Exception: {$safeMessage}");
 
                 if ($attempt < $this->maxRetries) {
@@ -338,6 +339,9 @@ class BtcPayClient
                     continue;
                 }
 
+                if ($safetyRequest) {
+                    throw new BtcPayException("Cashu wallet safety request failed after {$this->maxRetries} retries.");
+                }
                 throw new BtcPayException("Request failed after {$this->maxRetries} retries: ".get_class($e).": {$safeMessage}");
             }
         }
@@ -369,6 +373,10 @@ class BtcPayClient
     protected function handleErrorResponse(Response $response, string $method, string $endpoint): void
     {
         $statusCode = $response->status();
+        if ($this->isCashuSafetyEndpoint($endpoint)) {
+            $this->logRequest($method, $endpoint, [], $response, null);
+            throw new BtcPayException("Cashu wallet safety request failed (HTTP {$statusCode}).", $statusCode);
+        }
         $body = $response->body();
         $json = $response->json();
 
@@ -467,6 +475,21 @@ class BtcPayClient
      */
     protected function logRequest(string $method, string $endpoint, array $options, ?Response $response, ?array $data, ?string $additional = null): void
     {
+        if ($this->isCashuSafetyEndpoint($endpoint)) {
+            try {
+                Log::channel('btcpay')->info('BTCPay API Request', [
+                    'method' => $method,
+                    'endpoint' => '/api/v1/stores/[redacted]/plugins/cashumelt/safety',
+                    'status' => $response?->status(),
+                ]);
+            } catch (\Exception $e) {
+                if (! app()->environment('testing')) {
+                    throw $e;
+                }
+            }
+
+            return;
+        }
         $logData = [
             'method' => $method,
             'endpoint' => self::redactEndpoint($endpoint),
@@ -500,6 +523,11 @@ class BtcPayClient
                 throw $e;
             }
         }
+    }
+
+    private function isCashuSafetyEndpoint(string $endpoint): bool
+    {
+        return preg_match('~^/api/v1/stores/[^/?]+/plugins/cashumelt/safety(?:\?.*)?$~D', $endpoint) === 1;
     }
 
     /**

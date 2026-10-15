@@ -46,6 +46,8 @@
           </div>
         </div>
 
+        <CashuWalletSafetySummary v-if="!loading" :safety="walletSafety" class="mb-6" />
+
         <div
           v-if="loading && payments.items.length === 0"
           class="text-center py-16"
@@ -193,6 +195,11 @@
                     <span :class="settlementPillClass(p.settlement_state)">
                       {{ settlementStateLabel(p.settlement_state) }}
                     </span>
+                    <template v-if="hasStateDiscrepancy(p)">
+                      <p class="mt-2 text-xs text-amber-200">{{ t('stores.cashu_provider_status', { status: settlementStateLabel(p.reported_settlement_state) }) }}</p>
+                      <p class="mt-1 text-xs text-gray-400">{{ t('stores.cashu_provider_status_discrepancy') }}</p>
+                    </template>
+                    <p v-else-if="p.settlement_state === 'SETTLED' && !p.reported_settlement_state" class="mt-2 text-xs text-gray-400">{{ t('stores.cashu_provider_status_unknown') }}</p>
                   </td>
                   <td class="px-4 py-3 align-top">
                     <div
@@ -342,6 +349,7 @@ import { useI18n } from "vue-i18n";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/auth";
 import Select from "../ui/Select.vue";
+import CashuWalletSafetySummary from './wallet-connection/CashuWalletSafetySummary.vue';
 
 const { t } = useI18n();
 const authStore = useAuthStore();
@@ -360,6 +368,7 @@ interface CashuPayment {
   created_at?: string | null;
   amount_sats?: number | null;
   settlement_state?: SettlementState | string | null;
+  reported_settlement_state?: SettlementState | string | null;
   settlement_error?: string | null;
   mint_quote_poll_url?: string | null;
   retry_count?: number | null;
@@ -411,6 +420,7 @@ const payments = ref<CashuPaymentsResponse>({
 
 const loading = ref(false);
 const error = ref<string | null>(null);
+const walletSafety = ref<unknown>(null);
 const retryNotice = ref<string | null>(null);
 const retryingQuoteIds = ref<Set<string>>(new Set());
 const copiedPollQuoteId = ref<string | null>(null);
@@ -468,6 +478,11 @@ function settlementStateLabel(state?: string | null): string {
     default:
       return state && String(state).trim() !== "" ? String(state) : "-";
   }
+}
+
+function hasStateDiscrepancy(payment: CashuPayment): boolean {
+  return typeof payment.reported_settlement_state === 'string' && payment.reported_settlement_state !== '' &&
+    payment.reported_settlement_state !== payment.settlement_state;
 }
 
 function settlementPillClass(state?: string | null): string {
@@ -597,6 +612,7 @@ async function fetchPayments() {
   const generation = ++paymentsGeneration;
   loading.value = true;
   error.value = null;
+  walletSafety.value = null;
   try {
     const params: Record<string, unknown> = {
       limit,
@@ -611,6 +627,7 @@ async function fetchPayments() {
     });
     if (storeId() !== sid || generation !== paymentsGeneration) return;
     const d = response.data?.data ?? {};
+    walletSafety.value = d.wallet_safety ?? null;
 
     payments.value = {
       total: Number(d.total ?? 0),
@@ -695,6 +712,7 @@ watch(
     closeRecovery();
     recovering.value = false;
     payments.value = { total: 0, offset: 0, limit, items: [] };
+    walletSafety.value = null;
     offset.value = 0;
     settlementState.value = "";
     retryNotice.value = null;

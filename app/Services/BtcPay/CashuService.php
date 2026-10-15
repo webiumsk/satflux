@@ -53,6 +53,36 @@ class CashuService
         });
     }
 
+    /** Read-only evidence for presentation; writes always perform their own fresh check. */
+    public function getWalletSafety(string $storeId, string $apiKey): array
+    {
+        try {
+            $result = $this->client->withUserKey($apiKey,
+                fn () => $this->client->get("/api/v1/stores/{$storeId}/plugins/cashumelt/safety"));
+
+            return $this->formatWalletSafety($result);
+        } catch (\Throwable) {
+            return $this->formatWalletSafety([]);
+        }
+    }
+
+    /** The provider boolean alone controls status; counters are record counts, not amounts. */
+    private function formatWalletSafety(array $result): array
+    {
+        $status = match ($result['safeToChangeWallet'] ?? null) {
+            true => 'safe',
+            false => 'blocked',
+            default => 'unavailable',
+        };
+        $count = static fn (mixed $value): ?int => is_int($value) && $value >= 0 && $value <= 2147483647 ? $value : null;
+
+        return [
+            'status' => $status,
+            'unresolved_payments' => $count($result['unresolvedPayments'] ?? null),
+            'unresolved_change' => $count($result['unresolvedChange'] ?? null),
+        ];
+    }
+
     public function assertNoUnresolvedSettlements(string $storeId, string $apiKey): void
     {
         try {
@@ -67,10 +97,10 @@ class CashuService
             throw new CashuWalletSafetyException('cashu_safety_unavailable', 'Cashu wallet safety could not be verified. The wallet was not changed.');
         }
         if (($result['safeToChangeWallet'] ?? null) === false) {
-            throw new CashuWalletSafetyException('cashu_outstanding_payments', 'Outstanding Cashu settlements or change must be recovered before changing this wallet.');
+            throw new CashuWalletSafetyException('cashu_outstanding_payments', 'Outstanding Cashu settlements or change must be recovered before changing this wallet.', $this->formatWalletSafety($result));
         }
         if (($result['safeToChangeWallet'] ?? null) !== true) {
-            throw new CashuWalletSafetyException('cashu_safety_unavailable', 'Cashu wallet safety could not be verified. The wallet was not changed.');
+            throw new CashuWalletSafetyException('cashu_safety_unavailable', 'Cashu wallet safety could not be verified. The wallet was not changed.', $this->formatWalletSafety($result));
         }
     }
 

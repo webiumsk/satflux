@@ -157,4 +157,39 @@ describe('Cashu wallet change confirmation', () => {
         expect(wrapper.find('[role=alert] a').exists()).toBe(recovery);
         expect(wrapper.emitted('submitted')).toBeUndefined(); wrapper.unmount();
     });
+
+    it('shows blocked-save record counts and keeps the edited settings', async () => {
+        mocks.updateSettings.mockRejectedValue({ response: { status: 422, data: { code: 'cashu_outstanding_payments', wallet_safety: { status: 'blocked', unresolved_payments: 0, unresolved_change: 1 } } } });
+        const wrapper = await open(); await edit(wrapper); await enterCode(wrapper); await acceptBeta(wrapper);
+        await wrapper.get('#cashu-mint-url').setValue('https://replacement.example.test');
+        await wrapper.get('form').trigger('submit'); await flushPromises();
+        expect(wrapper.get('[data-testid=cashu-safety-change-count]').text()).toBe('1');
+        expect(wrapper.get('[data-testid=cashu-wallet-safety-status]').text()).toBe('stores.cashu_wallet_safety_blocked');
+        expect((wrapper.get('#cashu-mint-url').element as HTMLInputElement).value).toBe('https://replacement.example.test');
+        expect(mocks.updateSettings).toHaveBeenCalledTimes(1); expect(wrapper.emitted('submitted')).toBeUndefined(); wrapper.unmount();
+    });
+
+    it('keeps legacy refusal evidence blocked with unknown counts', async () => {
+        mocks.updateSettings.mockRejectedValue({ response: { status: 422, data: { code: 'cashu_outstanding_payments' } } });
+        const wrapper = await open(); await edit(wrapper); await enterCode(wrapper); await acceptBeta(wrapper);
+        await wrapper.get('#cashu-mint-url').setValue('https://replacement.example.test');
+        await wrapper.get('form').trigger('submit'); await flushPromises();
+        expect(wrapper.get('[data-testid=cashu-wallet-safety-status]').text()).toBe('stores.cashu_wallet_safety_blocked');
+        expect(wrapper.get('[data-testid=cashu-safety-change-count]').text()).toBe('stores.cashu_wallet_safety_unknown'); wrapper.unmount();
+    });
+
+    it('ignores blocked-save diagnostics after switching stores and returning to the original store', async () => {
+        let reject!: (reason: unknown) => void;
+        mocks.updateSettings.mockImplementation(() => new Promise((_, rejectPromise) => { reject = rejectPromise; }));
+        const wrapper = await open(); await edit(wrapper); await enterCode(wrapper); await acceptBeta(wrapper);
+        await wrapper.get('#cashu-mint-url').setValue('https://replacement.example.test');
+        await wrapper.get('form').trigger('submit');
+        await wrapper.setProps({ storeId: 'store-b' }); await flushPromises();
+        await wrapper.setProps({ storeId: 'store-a' }); await flushPromises();
+        await edit(wrapper); await enterCode(wrapper); await acceptBeta(wrapper);
+        reject({ response: { status: 422, data: { code: 'cashu_outstanding_payments', wallet_safety: { status: 'blocked', unresolved_payments: 9, unresolved_change: 9 } } } });
+        await flushPromises();
+        expect(wrapper.find('[data-testid=cashu-wallet-safety]').exists()).toBe(false);
+        expect(wrapper.emitted('submitted')).toBeUndefined(); wrapper.unmount();
+    });
 });

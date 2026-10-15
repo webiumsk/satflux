@@ -310,6 +310,13 @@ export interface SensitiveActionConfirmation {
     confirm_via_nostr?: boolean;
 }
 
+/** Read-only provider snapshot. Counts are records, never monetary amounts or write grants. */
+export interface CashuWalletSafety {
+    status: 'safe' | 'blocked' | 'unavailable';
+    unresolved_payments: number | null;
+    unresolved_change: number | null;
+}
+
 export interface CashuSettings {
     change_confirmation?: WalletChangeConfirmationState | null;
     mint_url?: string | null;

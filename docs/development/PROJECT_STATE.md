@@ -1,5 +1,43 @@
 # Project state
 
+## Cashu blocked address change diagnostics (2026-10-16)
+
+The owner confirms unchanged saves work after the previous fix, but changing the
+payout address remains blocked while the visible list contains two settled and one
+expired unpaid row. The owner identifies CashuMelt as 1.4.0.3; its exact deployed
+commit and safety counters have not been inspected. Previous final Satflux commit
+`6b289f751b535cb09a061e6f4d94c466e1425417` passed
+[CI 38809977505](https://github.com/webiumsk/satflux/actions/runs/38809977505),
+independently verified by QA: 1,656 PHP tests/7,025 assertions, 726 Vitest tests,
+20 E2E passes/three intentional skips, Pint/PHPStan/typecheck/locales/build/audits.
+Fresh CI installed HttpFoundation 7.4.21. PR #394 was open at that head.
+
+Independent backend/frontend/security diagnosis confirms a Satflux visibility gap:
+provider safety counts are discarded, separate change records are not in the payment
+list, and normalized displayed `SETTLED` can conceal original `PENDING`/missing
+provider state. None establishes the actual cause or presence of funds for this
+account. Terminal rows cannot override the provider's refusal.
+
+The bounded Satflux-only follow-up contract is
+[CASHU_SAFETY_DIAGNOSTICS](CASHU_SAFETY_DIAGNOSTICS.md). It adds allowlisted read-only
+counts to existing responses, preserves original known provider state additively,
+explains discrepancies and unavailable evidence in five locales, and prevents safety
+response/error bodies from reaching client logs. Existing write checks, email grants,
+no-op behavior and recovery actions remain authoritative. Implementation review and
+verification use the frozen contract. Independent security and QA accept the same
+14-file application/locale manifest, recorded with local test evidence in that
+document. Full Pint passes 1,038 files, full PHPStan has no errors, complete frontend
+tests pass 122 files/748 cases, and independent diagnostics tests pass 18/18. Actual
+typecheck passes with 121 unchanged baseline diagnostics, lint has zero errors/48
+existing warnings, locale parity and production build pass. Fresh published-head
+CI remains the final gate; no resolved address change is claimed. The isolated PHP
+test container/network are removed.
+
+No BTCPay changes, production calls/data mutation, fund recovery, merge or deployment.
+After reviewed publication and green exact-head CI, the next evidence is the owner's
+two diagnostic counts and original displayed plugin state. Any provider recovery/code
+change retains its separate authorization boundary; SATFLUX-005 readiness remains open.
+
 ## Cashu CI dependency follow-up (2026-10-15)
 
 Published Cashu repair `e24608d1c03931b913936fb573e777c78c5b4b8b` passed all

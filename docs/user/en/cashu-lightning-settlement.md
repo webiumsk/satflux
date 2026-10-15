@@ -36,6 +36,10 @@ Saving settings without changing them only checks the existing configuration. A 
 
 A **Cashu settlements** page lists each settlement and its state - `SETTLED`, `PENDING`, `FAILED`, or `MELT_COMPLETE` (converted, BTCPay's record catching up). You can **retry** stuck rows. Common failure reasons are shown in plain language (e.g. the routing fee exceeded your cap, or the mint did not confirm the Lightning payout).
 
+**Wallet change safety** shows the latest plugin check and separate counts of unresolved payment records and change records. These are record counts, not amounts in satoshis. Change records are separate from the payment history, so completed-looking payments alone do not establish whether the wallet can change. Where the original plugin state differs from the displayed settlement state, the page shows that difference.
+
+If Cashu blocks the change and no supported recovery action is available, contact support with these two counts and the displayed plugin state. Zero or unavailable counts do not override a refusal. The check is a snapshot; saving performs a fresh safety check.
+
 ## Recovering a payment
 
 CashuMelt **1.4.0.1 and later** stores each new payment's original mint and payout settings before displaying the invoice. Primary Cashu payments work without a separate Lightning wallet connection. Temporary interruptions use the existing payment and payout receipt during retry.

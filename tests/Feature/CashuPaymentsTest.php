@@ -24,6 +24,9 @@ class CashuPaymentsTest extends TestCase
         $btcpaySid = 'store-cashu-payments';
 
         Http::fake(function (Request $request) use ($baseUrl, $btcpaySid) {
+            if ($request->method() === 'GET' && str_ends_with($request->url(), '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true, 'unresolvedPayments' => 0, 'unresolvedChange' => 0]);
+            }
             if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $request->url())) {
                 return Http::response([], 200);
             }
@@ -71,6 +74,9 @@ class CashuPaymentsTest extends TestCase
         $btcpaySid = 'store-cashu-payments-2';
 
         Http::fake(function (Request $request) use ($baseUrl, $btcpaySid) {
+            if ($request->method() === 'GET' && str_ends_with($request->url(), '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true, 'unresolvedPayments' => 0, 'unresolvedChange' => 0]);
+            }
             if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $request->url())) {
                 return Http::response([], 200);
             }
@@ -117,6 +123,9 @@ class CashuPaymentsTest extends TestCase
         $btcpaySid = 'store-cashu-risk';
 
         Http::fake(function (Request $request) use ($baseUrl, $btcpaySid) {
+            if ($request->method() === 'GET' && str_ends_with($request->url(), '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true, 'unresolvedPayments' => 0, 'unresolvedChange' => 0]);
+            }
             if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $request->url())) {
                 return Http::response([], 200);
             }
@@ -182,6 +191,9 @@ class CashuPaymentsTest extends TestCase
         $btcpaySid = 'store-fallback-payments';
 
         Http::fake(function (Request $request) use ($baseUrl, $btcpaySid) {
+            if ($request->method() === 'GET' && str_ends_with($request->url(), '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true, 'unresolvedPayments' => 0, 'unresolvedChange' => 0]);
+            }
             if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $request->url())) {
                 return Http::response([], 200);
             }
@@ -428,6 +440,9 @@ class CashuPaymentsTest extends TestCase
         $btcpaySid = 'store-cashu-poll-url';
 
         Http::fake(function (Request $request) use ($baseUrl, $btcpaySid) {
+            if ($request->method() === 'GET' && str_ends_with($request->url(), '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true, 'unresolvedPayments' => 0, 'unresolvedChange' => 0]);
+            }
             if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $request->url())) {
                 return Http::response([], 200);
             }

@@ -36,6 +36,10 @@ Uloženie bez zmeny hodnôt iba overí existujúcu konfiguráciu. Skutočná zme
 
 Stránka **Cashu vyrovnania** vypisuje každé vyrovnanie a jeho stav - `SETTLED`, `PENDING`, `FAILED` alebo `MELT_COMPLETE` (skonvertované, záznam BTCPay dobieha). Zaseknuté riadky viete **skúsiť znova**. Bežné dôvody zlyhania sú zobrazené zrozumiteľne (napr. routing poplatok prekročil váš strop, alebo mint nepotvrdil Lightning výplatu).
 
+Sekcia **Bezpečnosť zmeny peňaženky** zobrazuje poslednú kontrolu pluginu a oddelené počty nevyriešených záznamov platieb a vrátených prostriedkov. Ide o počty záznamov, nie sumy v satoshi. Záznamy vrátených prostriedkov sú oddelené od histórie platieb, preto samotné dokončené platby nepotvrdzujú, či možno peňaženku zmeniť. Ak sa pôvodný stav pluginu líši od zobrazeného stavu vyrovnania, prehľad upozorní na tento rozdiel.
+
+Ak Cashu blokuje zmenu a nie je dostupná podporovaná možnosť obnovy, kontaktujte podporu s týmito dvoma počtami a zobrazeným stavom pluginu. Nulové alebo nedostupné počty nerušia blokáciu. Kontrola zobrazuje posledný známy stav; uloženie vykoná novú bezpečnostnú kontrolu.
+
 ## Obnova platby
 
 CashuMelt **1.4.0.1 a novší** uloží pri každej novej platbe pôvodný mint a nastavenia výplaty ešte pred zobrazením faktúry. Samostatné Cashu platby fungujú bez ďalšieho pripojenia Lightning peňaženky. Pri dočasnom výpadku sa opakovanie opiera o existujúcu platbu a doklad o výplate.

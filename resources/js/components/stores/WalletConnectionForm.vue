@@ -224,6 +224,7 @@
 
         <p v-if="errors.type" class="text-sm text-red-400">{{ errors.type }}</p>
         <p v-if="errors.secret" role="alert" class="text-sm text-red-400">{{ errors.secret }}</p>
+        <CashuWalletSafetySummary v-if="walletSafetyRefusal" :safety="walletSafety" :refusal-status="walletSafetyRefusal" />
 
         <div
           v-if="testResult"
@@ -502,6 +503,7 @@ import { useGuestUpgradeModal } from "../../composables/useGuestUpgradeModal";
 import EmailCodeVerification from "../account/EmailCodeVerification.vue";
 import { useSamRockPairing } from "../../composables/useSamRockPairing";
 import CashuConnectionSection from "./wallet-connection/CashuConnectionSection.vue";
+import CashuWalletSafetySummary from './wallet-connection/CashuWalletSafetySummary.vue';
 import ConnectionReadonlyCard from "./wallet-connection/ConnectionReadonlyCard.vue";
 import { walletApi } from "../../services/api";
 import WalletConnectionSmartPaste from "./WalletConnectionSmartPaste.vue";
@@ -772,6 +774,9 @@ function startSamRockPairing() {
 const submitting = ref(false);
 const testing = ref(false);
 const errors = reactive<Record<string, string>>({});
+const walletSafety = ref<unknown>(null);
+const walletSafetyRefusal = ref<'blocked' | 'unavailable' | null>(null);
+let storeGeneration = 0;
 const testResult = ref<{
   success: boolean;
   message: string;
@@ -845,6 +850,7 @@ watch(
 watch(
   () => props.storeId,
   () => {
+    storeGeneration++;
     switchToCashuIntent.value = false;
     switchToLightningIntent.value = false;
     walletSetupTab.value = "ln";
@@ -855,6 +861,9 @@ watch(
     passwordError.value = "";
     revealing.value = false;
     form.secret = "";
+    walletSafety.value = null;
+    walletSafetyRefusal.value = null;
+    submitting.value = false;
     viewMode.value = initialWalletViewMode(props.existingConnection);
   },
 );
@@ -1229,7 +1238,12 @@ function onDetectCashuFromPaste(_payload: {
 }
 
 async function handleSubmit() {
+  if (submitting.value) return;
+  const storeId = props.storeId;
+  const generation = storeGeneration;
   submitting.value = true;
+  walletSafety.value = null;
+  walletSafetyRefusal.value = null;
   Object.keys(errors).forEach((k) => delete errors[k]);
   testResult.value = null;
 
@@ -1289,15 +1303,17 @@ async function handleSubmit() {
                 ? normalizeLnAddressConnectionString(form.secret)
                 : form.secret.trim();
 
-    await walletApi.connection.create(props.storeId, {
+    await walletApi.connection.create(storeId, {
       type: form.type,
       secret: secretPayload,
       fallback_lightning_address: advancedFallbackDerivable.value
         ? undefined
         : advancedFallbackAddress.value.trim(),
     });
+    if (storeId !== props.storeId || generation !== storeGeneration) return;
     emit("submitted", form.type);
   } catch (rawError) {
+    if (storeId !== props.storeId || generation !== storeGeneration) return;
     const err = asApiError(rawError);
     const code = err.response?.data?.code;
     if (code === "wallet_change_confirmation_required") {
@@ -1311,10 +1327,14 @@ async function handleSubmit() {
       return;
     }
     if (code === "cashu_outstanding_payments") {
+      walletSafety.value = err.response?.data?.wallet_safety ?? null;
+      walletSafetyRefusal.value = 'blocked';
       errors.secret = t("stores.cashu_wallet_change_recovery_required");
       return;
     }
     if (code === "cashu_safety_unavailable") {
+      walletSafety.value = err.response?.data?.wallet_safety ?? null;
+      walletSafetyRefusal.value = 'unavailable';
       errors.secret = t("stores.cashu_wallet_change_safety_unavailable");
       return;
     }
@@ -1324,6 +1344,10 @@ async function handleSubmit() {
         const v = validationErrors[key];
         const message = (Array.isArray(v) ? v[0] : v) ?? "";
         if (key === "cashu") {
+          if (message === "Outstanding Cashu settlements or change must be recovered before changing this wallet.") {
+            walletSafety.value = err.response?.data?.wallet_safety ?? null;
+            walletSafetyRefusal.value = 'blocked';
+          }
           errors.secret = message === "Outstanding Cashu settlements or change must be recovered before changing this wallet."
             ? t("stores.cashu_wallet_change_recovery_required")
             : message;
@@ -1336,7 +1360,7 @@ async function handleSubmit() {
         err.response?.data?.message || "Failed to save wallet connection";
     }
   } finally {
-    submitting.value = false;
+    if (storeId === props.storeId && generation === storeGeneration) submitting.value = false;
   }
 }
 </script>

@@ -167,6 +167,7 @@ class CashuController extends Controller
                 'offset' => (int) ($raw['offset'] ?? $offset),
                 'limit' => (int) ($raw['limit'] ?? $limit),
                 'items' => $items,
+                'wallet_safety' => $this->cashuService->getWalletSafety($store->btcpay_store_id, $userApiKey),
             ],
         ]);
     }
@@ -270,6 +271,8 @@ class CashuController extends Controller
             'amount_sats' => $item['amountSats'] ?? $item['amount_sats'] ?? null,
             'state' => $item['state'] ?? null,
             'settlement_state' => $settlementState,
+            'reported_settlement_state' => in_array($reported, ['SETTLED', 'PENDING', 'FAILED', 'MELT_COMPLETE', 'MANUAL_REVIEW', 'EXPIRED_UNPAID'], true)
+                ? $reported : null,
             'settlement_error' => $item['settlementError'] ?? $item['settlement_error'] ?? null,
             'settlement_reference' => $item['settlementReference'] ?? $item['settlement_reference'] ?? null,
             'created_at' => $item['createdAt'] ?? $item['created_at'] ?? null,

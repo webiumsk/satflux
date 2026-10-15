@@ -127,6 +127,14 @@ Upstream and conditional legacy plugins remain read-only; activation remains NO-
 
 ## Next proposed: SATFLUX-005 coordinated staging and release handoff
 
+2026-10-16 follow-up: the owner confirms no-op saves work but actual address changes
+remain refused by CashuMelt 1.4.0.3. Implement the bounded Satflux-only
+[safety diagnostic contract](CASHU_SAFETY_DIAGNOSTICS.md), obtain independent review
+and exact-head CI, then use the owner-visible counts/raw state to identify the
+provider refusal. This is not authorization to clear provider records, recover funds,
+modify BTCPay or claim the address change is unblocked. Previous final head
+`6b289f75` passed all CI including installed Symfony security patch validation.
+
 Current owner-reported branch testing adds a bounded Satflux Cashu repair before
 handoff: require existing-wallet email confirmation, permit authoritative unchanged
 saves without remote writes, retain first-setup behavior and distinguish translated
