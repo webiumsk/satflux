@@ -272,3 +272,23 @@ errors/48 existing warnings), locale parity, build and graph/docs checks pass.
 Initial full PHP had 1,648 passes and eight old fixture failures; the targeted
 corrections preserve their assertions and negative ownership coverage. Exact-head
 remote full CI remains required, so this is not a claim of local full-suite success.
+
+## 2026-10-15: repair newly failing Composer audit without suppressions
+
+The Cashu source commit `e24608d1` passed all application tests/static checks in
+CI 38808562407, including 1,656 PHP cases/7,025 assertions, 726 Vitest cases and
+20 browser cases (three intentional promotion skips). The final Composer audit
+failed on existing `symfony/http-foundation` 7.4.14 with `CVE-2026-108082`.
+
+Within the approved Satflux CI repair, update only this dependency to 7.4.21 using
+Composer's partial update and unchanged Laravel/PHP constraints. This contains both
+the security fix and the subsequent header-whitespace fix; do not stop at 7.4.19.
+See the [upstream release](https://symfony.com/blog/symfony-7-4-21-released) and
+[advisory](https://symfony.com/blog/cve-2026-108082-redos-in-headerutils-split-reachable-through-the-cache-control-request-header).
+Do not add audit ignores, broaden constraints or update unrelated dependencies.
+
+The generated lock changes one of 167 packages, retaining all other package objects
+and metadata. An isolated manifests-only PHP 8.3/Composer run passes strict validation
+and fresh `audit --locked` with no advisories. Existing vendor and production are
+untouched. Security/QA must independently accept the exact lock, and new-head CI must
+install it and repeat tests before delivery. No BTCPay, merge or deployment action.

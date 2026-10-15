@@ -136,7 +136,12 @@ source review, 28 focused Cashu tests, 32 corrected fixture cases, 726 Vitest te
 Pint, PHPStan, unchanged typecheck baseline, lint/locales/build and graph/docs checks
 pass. Candidate publication must be followed by passing exact-head full CI; the
 initial local full run's eight corrected fixture failures are documented in state.
-No provider changes or production wallet inspection. This repair does not establish production activation
+Published `e24608d1` then passed the full application suite (1,656 PHP tests, 726
+Vitest tests and 20 browser tests), but Composer audit identified a vulnerable
+previously locked Symfony dependency. A one-package 7.4.21 lock update passes strict
+validation and locked audit; independent review and installed-runtime head CI remain
+required. No provider changes or production wallet inspection. This repair does not
+establish production activation
 readiness or resolve the existing fallback combined-write recovery limitation.
 
 The owner authorized repair of the failed checks in PR #394. Bounded CI repair is

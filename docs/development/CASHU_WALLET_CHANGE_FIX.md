@@ -86,6 +86,12 @@ SQLite/stub environments cannot establish the state of the owner's wallet.
 
 Validation and review results are recorded in PROJECT_STATE after completion.
 
+Published source `e24608d1` passed all application checks in CI 38808562407
+(1,656 PHP cases, 726 Vitest cases, 20 browser passes and three intentional skips).
+Its Composer audit failed on an existing Symfony advisory. The separate lock-only
+follow-up upgrades `symfony/http-foundation` to 7.4.21 without changing the Cashu
+source or other dependencies; it needs its own installed-runtime head CI.
+
 ## Rollback and next gate
 
 No migration, billing-record rewrite, new environment variable or provider change.

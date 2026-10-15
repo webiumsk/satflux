@@ -1,5 +1,31 @@
 # Project state
 
+## Cashu CI dependency follow-up (2026-10-15)
+
+Published Cashu repair `e24608d1c03931b913936fb573e777c78c5b4b8b` passed all
+application checks in
+[CI 38808562407](https://github.com/webiumsk/satflux/actions/runs/38808562407):
+1,656 PHP tests/7,025 assertions, Pint/PHPStan, 121 Vitest files/726 tests,
+typecheck/lint/locales/build, and 20 browser tests with three intentional promotion
+skips. The overall run failed at Composer audit for the previously locked
+`symfony/http-foundation` 7.4.14, advisory `PKSA-xmwy-rmx5-m7h4` /
+`CVE-2026-108082` (HeaderUtils Cache-Control parsing ReDoS).
+
+The bounded follow-up changes only that package to 7.4.21 in the existing 7.4 line,
+including the upstream whitespace-parsing follow-up fix. Composer generated the
+partial lock update in a private manifests-only project with existing PHP/Composer,
+without installing packages, running scripts/plugins, or touching application/vendor
+state. The other 166 packages, root metadata, content hash and composer.json remain
+unchanged. Strict validation and fresh `composer audit --locked` pass with no
+advisories or abandoned packages. Lock SHA-256:
+`882b46a24fbc260a0479f859aef2cf691b96964a51c0af765287c7ee85e843f4`.
+
+Independent security/QA accept the exact lock above; exact follow-up head CI is
+required before completion. Tests against the unchanged local vendor do not
+validate the new lock; CI must install it and repeat the complete suite. The Cashu application manifest
+below is unchanged. No audit ignore, baseline expansion, provider or production
+change, merge or deployment. Temporary Cashu test containers/network are removed.
+
 ## Reviewed Cashu wallet-change repair candidate (2026-10-15)
 
 The owner is testing the deployed but unmerged feature branch and reports missing
