@@ -17,6 +17,17 @@ už před úpravou. Při blokaci použijte odkaz na vyrovnání a obnovu. Obnove
 zachová rozpracovaná nastavení; nedostupná kontrola neznamená, že lze peněženku
 bezpečně změnit.
 
+S CashuMelt **1.4.0.5 nebo novějším** přehled bezpečnosti rozlišuje selhané platby,
+ostatní nedokončené platby a dokončené záznamy s uchovanými podklady pro obnovu.
+Celkový počet proto může převyšovat počet selhaných řádků. Dotčené řádky ukazují
+důvod blokace a fázi obnovy. U staršího pluginu je tento rozpis neznámý.
+
+Chyba kontroly stavu na mintu, například HTTP 400, nepotvrzuje úhradu ani neuhrazení.
+Opakovaný pokus může obnovit podporované uložené podklady, ale chyba sama nepotvrdí
+neuhrazenou platbu. Pokud původní mint již neposkytuje stav a neexistují použitelné
+podklady pro obnovu, stav je třeba prověřit s jeho provozovatelem. Níže uvedená obnova
+vráceného zůstatku tyto samostatné platební záznamy nevyřeší.
+
 S CashuMelt **1.4.0.4 nebo novějším** otevřete **Cashu vyrovnání** obchodu a panel
 obnovy zůstatku. Částky jsou v satoshi, počty záznamů se uvádějí samostatně. Tokeny
 může stáhnout a obnovu ověřit pouze registrovaný vlastník obchodu s ověřeným emailem.

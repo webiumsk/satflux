@@ -18,6 +18,19 @@ und Wiederherstellung. Beim Aktualisieren dieses Status bleiben bearbeitete
 Einstellungen erhalten. Eine nicht verfügbare Prüfung bestätigt keinen sicheren
 Wallet-Wechsel.
 
+Mit CashuMelt **1.4.0.5 oder neuer** unterscheidet die Übersicht fehlgeschlagene
+Zahlungen, andere unvollständige Zahlungen und abgeschlossene Datensätze mit
+gespeicherten Wiederherstellungsdaten. Die Gesamtzahl kann die fehlgeschlagenen
+Zeilen übersteigen. Betroffene Zeilen zeigen den Sperrgrund und den nächsten
+Prüfschritt. Bei älteren Plugins bleibt diese Aufschlüsselung unbekannt.
+
+Ein Fehler der Statusabfrage beim Mint, etwa HTTP 400, bestätigt weder Zahlung noch
+Nichtzahlung. Ein erneuter Versuch kann unterstützte gespeicherte Daten nutzen;
+der Fehler allein belegt keine unbezahlte Zahlung. Sind beim ursprünglichen Mint
+weder Status noch nutzbare Wiederherstellungsdaten verfügbar, ist eine Klärung mit
+dem Mint-Betreiber nötig. Die folgende Restguthaben-Wiederherstellung löst diese
+separaten Zahlungsverpflichtungen nicht.
+
 Mit CashuMelt **1.4.0.4 oder neuer** öffnen Sie die **Cashu-Abrechnungen** des Shops
 und den Bereich zur Wiederherstellung. Beträge werden in Satoshi angezeigt,
 Datensätze separat gezählt. Nur der registrierte Shop-Inhaber mit bestätigter

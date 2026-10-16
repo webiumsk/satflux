@@ -585,7 +585,13 @@ function projectSafety(raw: unknown): CashuWalletSafety | null {
   const data = raw as Partial<CashuWalletSafety>;
   if (data.status !== 'safe' && data.status !== 'blocked' && data.status !== 'unavailable') return null;
   const count = (value: unknown): number | null => typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 2147483647 ? value : null;
-  return { status: data.status, unresolved_payments: count(data.unresolved_payments), unresolved_change: count(data.unresolved_change) };
+  const failed = count(data.failed_payments);
+  const other = count(data.other_non_terminal_payments);
+  const terminal = count(data.terminal_recovery_payments);
+  const total = count(data.unresolved_payments);
+  const validPartition = failed !== null && other !== null && terminal !== null && total !== null && failed + other + terminal === total;
+  return { status: data.status, unresolved_payments: total, unresolved_change: count(data.unresolved_change),
+    failed_payments: validPartition ? failed : null, other_non_terminal_payments: validPartition ? other : null, terminal_recovery_payments: validPartition ? terminal : null };
 }
 
 function currentStore(storeId: string, generation: number): boolean {
@@ -596,7 +602,7 @@ function setPreflightRefusal(status: 'blocked' | 'unavailable', raw: unknown) {
   safetyRequest++;
   preflightLoading.value = false;
   const snapshot = projectSafety(raw);
-  preflightSafety.value = { status, unresolved_payments: snapshot?.unresolved_payments ?? null, unresolved_change: snapshot?.unresolved_change ?? null };
+  preflightSafety.value = { ...snapshot, unresolved_payments: snapshot?.unresolved_payments ?? null, unresolved_change: snapshot?.unresolved_change ?? null, status };
 }
 
 /** Refresh only diagnostics; never replace typed settings or authentication state. */

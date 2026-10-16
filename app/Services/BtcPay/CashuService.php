@@ -75,11 +75,21 @@ class CashuService
             default => 'unavailable',
         };
         $count = static fn (mixed $value): ?int => is_int($value) && $value >= 0 && $value <= 2147483647 ? $value : null;
+        $unresolvedPayments = $count($result['unresolvedPayments'] ?? null);
+        $partition = [
+            'failed_payments' => $count($result['failedPayments'] ?? null),
+            'other_non_terminal_payments' => $count($result['otherNonTerminalPayments'] ?? null),
+            'terminal_recovery_payments' => $count($result['terminalRecoveryPayments'] ?? null),
+        ];
+        if ($unresolvedPayments === null || in_array(null, $partition, true) || array_sum($partition) !== $unresolvedPayments) {
+            $partition = array_fill_keys(array_keys($partition), null);
+        }
 
         return [
             'status' => $status,
-            'unresolved_payments' => $count($result['unresolvedPayments'] ?? null),
+            'unresolved_payments' => $unresolvedPayments,
             'unresolved_change' => $count($result['unresolvedChange'] ?? null),
+            ...$partition,
         ];
     }
 

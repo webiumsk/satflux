@@ -447,10 +447,12 @@ class CashuPaymentsTest extends TestCase
 
     public static function cashuSettingsSafetySnapshots(): array
     {
+        $unknownPartition = ['failed_payments' => null, 'other_non_terminal_payments' => null, 'terminal_recovery_payments' => null];
+
         return [
-            'safe' => [true, 200, ['status' => 'safe', 'unresolved_payments' => 0, 'unresolved_change' => 0]],
-            'blocked' => [false, 200, ['status' => 'blocked', 'unresolved_payments' => 1, 'unresolved_change' => 2]],
-            'unavailable' => [null, 404, ['status' => 'unavailable', 'unresolved_payments' => null, 'unresolved_change' => null]],
+            'safe' => [true, 200, ['status' => 'safe', 'unresolved_payments' => 0, 'unresolved_change' => 0, ...$unknownPartition]],
+            'blocked' => [false, 200, ['status' => 'blocked', 'unresolved_payments' => 1, 'unresolved_change' => 2, ...$unknownPartition]],
+            'unavailable' => [null, 404, ['status' => 'unavailable', 'unresolved_payments' => null, 'unresolved_change' => null, ...$unknownPartition]],
         ];
     }
 

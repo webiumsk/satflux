@@ -17,6 +17,18 @@ de editar. Si el cambio está bloqueado, sigue el enlace a liquidaciones y
 recuperación. Actualizar este estado conserva los ajustes que hayas editado;
 una comprobación no disponible no significa que sea seguro cambiar la cartera.
 
+Con CashuMelt **1.4.0.5 o posterior**, el resumen distingue pagos fallidos, otros
+pagos sin finalizar y registros completados que conservan datos de recuperación.
+El total puede superar el número de filas fallidas. Las filas afectadas muestran
+por qué bloquean el cambio y qué etapa requiere atención. Con plugins anteriores,
+este desglose aparece como desconocido.
+
+Un error al consultar el estado en el mint, como HTTP 400, no confirma si se pagó.
+El reintento puede recuperar datos guardados compatibles, pero el error no demuestra
+que un pago esté sin pagar. Si el mint original ya no proporciona el estado y no
+hay datos de recuperación utilizables, debe investigarse con su operador. La
+recuperación del saldo restante descrita abajo no resuelve estos registros de pago.
+
 Con CashuMelt **1.4.0.4 o posterior**, abre las **Liquidaciones Cashu** de la tienda
 y el panel de recuperación. Los importes se expresan en satoshis y los registros
 se cuentan por separado. Solo el propietario registrado con correo verificado

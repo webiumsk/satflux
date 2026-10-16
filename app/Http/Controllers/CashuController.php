@@ -18,6 +18,17 @@ use Illuminate\Validation\ValidationException;
 
 class CashuController extends Controller
 {
+    private const WALLET_CHANGE_BLOCK_REASONS = [
+        'non_terminal_settlement', 'retained_minted_proofs', 'retained_issuance_intent',
+        'retained_change_outputs', 'retained_payout_quote',
+    ];
+
+    private const RECOVERY_PHASES = [
+        'complete', 'expired_unpaid', 'terminal_recovery_review', 'original_settings_required',
+        'accounting_pending', 'payout_reconciliation', 'proofs_retained', 'issuance_restore',
+        'recovery_evidence_review', 'funding_verification',
+    ];
+
     public function __construct(
         protected CashuService $cashuService,
         protected LightningService $lightningService,
@@ -265,6 +276,8 @@ class CashuController extends Controller
         }
 
         $pollUrl = $item['mintQuotePollUrl'] ?? $item['mint_quote_poll_url'] ?? null;
+        $blocksWalletChange = $item['blocksWalletChange'] ?? null;
+        $recoveryPhase = $item['recoveryPhase'] ?? null;
 
         return [
             'quote_id' => $item['quoteId'] ?? $item['quote_id'] ?? null,
@@ -284,7 +297,27 @@ class CashuController extends Controller
             'needs_manual_review' => (bool) ($item['needsManualReview'] ?? $item['needs_manual_review'] ?? false),
             'failure_reason_code' => $item['failureReasonCode'] ?? $item['failure_reason_code'] ?? null,
             'original_settings_required' => (bool) ($item['originalSettingsRequired'] ?? $item['original_settings_required'] ?? false),
+            'blocks_wallet_change' => is_bool($blocksWalletChange) ? $blocksWalletChange : null,
+            'wallet_change_block_reasons' => $this->formatWalletChangeBlockReasons($item['walletChangeBlockReasons'] ?? null),
+            'recovery_phase' => is_string($recoveryPhase) && in_array($recoveryPhase, self::RECOVERY_PHASES, true) ? $recoveryPhase : null,
         ];
+    }
+
+    /** @return list<string>|null */
+    private function formatWalletChangeBlockReasons(mixed $reasons): ?array
+    {
+        if (! is_array($reasons) || ! array_is_list($reasons) || count($reasons) > count(self::WALLET_CHANGE_BLOCK_REASONS)) {
+            return null;
+        }
+        $accepted = [];
+        foreach ($reasons as $reason) {
+            if (! is_string($reason) || ! in_array($reason, self::WALLET_CHANGE_BLOCK_REASONS, true) || in_array($reason, $accepted, true)) {
+                return null;
+            }
+            $accepted[] = $reason;
+        }
+
+        return $accepted;
     }
 
     /**

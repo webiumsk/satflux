@@ -3,6 +3,24 @@
 This log starts with the current bootstrap. It does not reconstruct undocumented
 historical decisions. Product history is linked from PROJECT_STATE with source evidence.
 
+## 2026-10-16: recover durable Cashu payment phases without interpreting HTTP errors as settlement
+
+Status: bounded continuation of owner-authorized owned CashuMelt/Satflux repair.
+The owner confirms plugin 1.4.0.4 and two native failures; a counter of three
+obligations is not evidence of a third failure. Implement the reviewed contract
+[CASHU_PAYMENT_RECOVERY](CASHU_PAYMENT_RECOVERY.md), candidate 1.4.0.5, using existing
+restore-only issuance and exact original-payout recovery. Require original snapshot
+and issuance/proof binding; preserve legacy, incomplete, corrupt, mismatched and
+unknown evidence. Never infer unpaid/settled state from HTTP 400/404 or age.
+
+Expose only allowlisted read-only blocker categories/reasons/phases. Keep counts of
+FAILED, other unfinished and terminal-with-material records distinct. Diagnostics
+do not authorize operations. Automatic retry accounting is monotonic under the
+quote lock; explicit authorized manual retry retains existing reset behavior.
+Independent security/QA, disposable tests, package identity and separate exact-head
+CI remain delivery gates. No production/fund operations, core/third-party changes,
+merge, package release or deployment follow from source implementation approval.
+
 ## 2026-10-16: show Cashu wallet-change safety before editing
 
 Status: owner-authorized bounded Satflux UX follow-up. Present the existing

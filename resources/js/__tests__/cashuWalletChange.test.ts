@@ -340,4 +340,33 @@ describe('Cashu connection safety preflight', () => {
         expect(mocks.updateSettings).toHaveBeenCalledTimes(1); expect(wrapper.emitted('submitted')).toHaveLength(1); wrapper.unmount();
     });
 
+
+    it('preserves the valid payment-hold partition on the connection-screen preflight', async () => {
+        mocks.getSettings.mockResolvedValue({ ...settings, wallet_safety: { ...blocked, unresolved_payments: 3, failed_payments: 2, other_non_terminal_payments: 0, terminal_recovery_payments: 1 } });
+        const wrapper = await open(); await flushPromises();
+        expect(preflight(wrapper).get('[data-testid=cashu-safety-payment-count]').text()).toBe('3');
+        expect(preflight(wrapper).get('[data-testid=cashu-safety-failed-count]').text()).toBe('2');
+        expect(preflight(wrapper).get('[data-testid=cashu-safety-terminal-count]').text()).toBe('1');
+        expect(mocks.request).not.toHaveBeenCalled(); wrapper.unmount();
+    });
+
+    it('projects every category to unknown when the preflight partition is malformed', async () => {
+        mocks.getSettings.mockResolvedValue({ ...settings, wallet_safety: { ...blocked, unresolved_payments: 3, failed_payments: 2, other_non_terminal_payments: 0, terminal_recovery_payments: 0 } });
+        const wrapper = await open(); await flushPromises();
+        expect(preflight(wrapper).find('[data-testid=cashu-safety-payment-breakdown]').exists()).toBe(false);
+        expect(preflight(wrapper).text()).toContain('stores.cashu_safety_breakdown_unknown');
+        expect(preflight(wrapper).get('[data-testid=cashu-wallet-safety-status]').text()).toBe('stores.cashu_wallet_safety_blocked'); wrapper.unmount();
+    });
+
+    it('retains fresh refusal partition data while overriding a contradictory safe status', async () => {
+        mocks.getSettings.mockResolvedValue({ ...settings, wallet_safety: safe });
+        const wrapper = await open(); await edit(wrapper); await enterCode(wrapper); await acceptBeta(wrapper);
+        mocks.updateSettings.mockRejectedValueOnce({ response: { status: 422, data: { code: 'cashu_outstanding_payments', wallet_safety: { status: 'safe', unresolved_payments: 3, unresolved_change: 0, failed_payments: 2, other_non_terminal_payments: 0, terminal_recovery_payments: 1 } } } });
+        await wrapper.get('form').trigger('submit'); await flushPromises();
+        expect(preflight(wrapper).get('[data-testid=cashu-wallet-safety-status]').text()).toBe('stores.cashu_wallet_safety_blocked');
+        expect(preflight(wrapper).get('[data-testid=cashu-safety-failed-count]').text()).toBe('2');
+        expect(preflight(wrapper).get('[data-testid=cashu-safety-terminal-count]').text()).toBe('1');
+        expect(wrapper.emitted('submitted')).toBeUndefined(); expect(mocks.updateSettings).toHaveBeenCalledTimes(1); wrapper.unmount();
+    });
+
 });

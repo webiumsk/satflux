@@ -17,6 +17,18 @@ you start editing. If changes are blocked, follow the link to settlements and
 recovery. Refreshing this status preserves any settings you have already edited;
 an unavailable check does not mean the wallet is safe to change.
 
+With CashuMelt **1.4.0.5 or later**, the safety summary separates failed payments,
+other unfinished payments and completed records retaining recovery material. The
+total can exceed the number of failed rows. Affected rows show why they block a
+wallet change and which recovery stage needs attention. Older plugins show this
+breakdown as unknown.
+
+A funding-status error such as HTTP 400 does not establish whether a payment was
+paid. Retry can recover supported stored evidence, but cannot certify an unpaid
+payment from an error. If the original mint no longer provides the payment status
+and no usable recovery evidence exists, investigation with that mint is required.
+Change-token recovery below does not resolve these separate payment obligations.
+
 With CashuMelt **1.4.0.4 or later**, open the store's **Cashu settlements** and its
 change recovery panel. Amounts are in satoshi; record counts are separate. Only the
 verified, registered store owner can download tokens or verify recovery.

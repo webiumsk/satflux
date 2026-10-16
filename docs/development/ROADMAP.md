@@ -127,6 +127,19 @@ Upstream and conditional legacy plugins remain read-only; activation remains NO-
 
 ## Next proposed: SATFLUX-005 coordinated staging and release handoff
 
+Current recovery prerequisite: implement [CASHU_PAYMENT_RECOVERY](CASHU_PAYMENT_RECOVERY.md)
+for owner-confirmed native funding lookup failures on CashuMelt 1.4.0.4. Candidate
+1.4.0.5 preserves unknown-state holds, recovers only validated original durable
+evidence, fixes automatic retry accounting and explains all wallet blockers without
+equating total obligations to FAILED rows. Separate plugin/Satflux reviews, native
+and consumer regressions, package identity and exact-head CI precede staging handoff.
+Both source scopes are independently security accepted. Consumer independent PHP
+(124/900 assertions) and final frontend focus (76), UX, static/build gates pass.
+Native runtime QA, package identity and exact published-head CI remain required;
+the repository PRs record final handoff evidence.
+No core, third-party plugin, production or real-fund work. Install compatible plugin
+before the consumer; legacy diagnostic metadata remains explicitly unknown.
+
 Owner-approved UX follow-up: show wallet-change safety before editing the Cashu
 connection, with explicit blocked/unavailable states and recovery navigation.
 Refresh preserves edited settings and sends no codes or mutations. Use the existing

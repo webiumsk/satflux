@@ -18,6 +18,16 @@
         <dd class="font-semibold tabular-nums" data-testid="cashu-safety-change-count">{{ changeCount ?? t('stores.cashu_wallet_safety_unknown') }}</dd>
       </div>
     </dl>
+    <template v-if="status !== 'unavailable'">
+      <dl v-if="paymentPartition" class="grid gap-2 sm:grid-cols-3" data-testid="cashu-safety-payment-breakdown">
+        <div><dt>{{ t('stores.cashu_safety_failed_payments') }}</dt><dd class="font-semibold tabular-nums" data-testid="cashu-safety-failed-count">{{ paymentPartition.failed }}</dd></div>
+        <div><dt>{{ t('stores.cashu_safety_other_non_terminal') }}</dt><dd class="font-semibold tabular-nums" data-testid="cashu-safety-other-count">{{ paymentPartition.other }}</dd></div>
+        <div><dt>{{ t('stores.cashu_safety_terminal_recovery') }}</dt><dd class="font-semibold tabular-nums" data-testid="cashu-safety-terminal-count">{{ paymentPartition.terminal }}</dd></div>
+      </dl>
+      <p v-else data-testid="cashu-safety-breakdown-unknown">{{ t('stores.cashu_safety_breakdown_unknown') }}</p>
+      <p class="text-xs opacity-80">{{ t('stores.cashu_safety_breakdown_hint') }}</p>
+      <p class="text-xs opacity-80">{{ t('stores.cashu_payment_diagnostics_hint') }}</p>
+    </template>
     <p v-if="status === 'blocked' && !hasReportedRecords" data-testid="cashu-safety-unexplained">{{ t('stores.cashu_wallet_safety_unexplained') }}</p>
     <p v-if="status === 'blocked'">{{ t('stores.cashu_wallet_safety_help') }}</p>
     <p>{{ t('stores.cashu_wallet_safety_snapshot') }}</p>
@@ -48,5 +58,12 @@ function recordCount(value: unknown): number | null {
 }
 const paymentCount = computed(() => recordCount(snapshot.value?.unresolved_payments));
 const changeCount = computed(() => recordCount(snapshot.value?.unresolved_change));
+const paymentPartition = computed(() => {
+  const failed = recordCount(snapshot.value?.failed_payments);
+  const other = recordCount(snapshot.value?.other_non_terminal_payments);
+  const terminal = recordCount(snapshot.value?.terminal_recovery_payments);
+  return failed !== null && other !== null && terminal !== null && paymentCount.value !== null && failed + other + terminal === paymentCount.value
+    ? { failed, other, terminal } : null;
+});
 const hasReportedRecords = computed(() => (paymentCount.value ?? 0) > 0 || (changeCount.value ?? 0) > 0);
 </script>

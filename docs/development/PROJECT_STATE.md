@@ -1,5 +1,43 @@
 # Project state
 
+## Cashu funding-lookup recovery repair (2026-10-16)
+
+Continue the owner-authorized owned CashuMelt/Satflux recovery work. The owner
+confirms CashuMelt 1.4.0.4, native retry HTTP 400 and exactly two FAILED records.
+The safety count of three obligations does not establish a third failed payment;
+terminal records can retain recovery material. Source review identifies funding
+polling before durable recovery, insufficient blocker metadata and a worker retry
+counter reset. No actual merchant evidence category or recoverable balance is known.
+
+The bounded contract is [CASHU_PAYMENT_RECOVERY](CASHU_PAYMENT_RECOVERY.md), candidate
+plugin 1.4.0.5. Reuse existing restore/exact-payout paths with validated original
+issuance/proof binding; unknown funding cannot establish unpaid/settled status.
+Preserve all holds without sufficient evidence. Add read-only blocker categories,
+phase/reasons and monotonic automatic retries under the quote lock. Core, third-party
+plugins, billing, configuration and production remain unchanged. Main owns contracts,
+integration/Git and guides; specialists have disjoint plugin/backend/frontend scope.
+
+Baseline Satflux `94a3f593` is independently accepted with green
+[CI 38829804278](https://github.com/webiumsk/satflux/actions/runs/38829804278):
+1,744 PHP tests/7,657 assertions, 793 Vitest cases, 20 browser passes/three expected
+skips, static/build gates and fresh locked HttpFoundation 7.4.21. Existing production
+npm findings remain 40 (36 moderate/four high), permitted by the unchanged threshold.
+Provider baseline `b86e6193` is the reviewed 1.4.0.4 candidate in Webium PR #37.
+
+Source implementation and independent security review are complete: consumer
+11-file manifest `6866913178facfcea23cc5bcfa71d6871328c1781a23a5c61edf7e9f5183d296`,
+provider six-file manifest `1ee6a9ace00056766d1401be382abe93c4b1fe3f1a10a1d62cb1004af360ed8e`.
+Independent QA repeats 124 focused PHP cases/900 assertions and the final 76-case
+frontend focus. Four-file Pint, two-file PHPStan, typecheck (121 unchanged baseline
+diagnostics), lint (zero errors/48 warnings), five-locale parity and production build
+pass. Author full Vitest passes 815 cases before compact markup/compatibility fixes;
+final focus covers those changes. UX source review accepts the compact native
+disclosures. Plugin/test compilation passes with existing warnings only; native
+runtime/independent QA, package identity and exact published-head CI remain required.
+Existing PRs record final revisions/results. Use verified disposable SQLite/PostgreSQL
+and synthetic mints only. No production or real recovery is implied; the owner's
+actual outcome remains unknown until safe staging evidence.
+
 ## Authorized Cashu connection preflight follow-up (2026-10-16)
 
 The owner requests wallet-change blockers on the Cashu connection/settings screen

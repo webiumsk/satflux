@@ -315,6 +315,17 @@ export interface CashuWalletSafety {
     status: 'safe' | 'blocked' | 'unavailable';
     unresolved_payments: number | null;
     unresolved_change: number | null;
+    failed_payments?: number | null;
+    other_non_terminal_payments?: number | null;
+    terminal_recovery_payments?: number | null;
+}
+
+export type CashuWalletChangeBlockReason = 'non_terminal_settlement' | 'retained_minted_proofs' | 'retained_issuance_intent' | 'retained_change_outputs' | 'retained_payout_quote';
+export type CashuRecoveryPhase = 'complete' | 'expired_unpaid' | 'terminal_recovery_review' | 'original_settings_required' | 'accounting_pending' | 'payout_reconciliation' | 'proofs_retained' | 'issuance_restore' | 'recovery_evidence_review' | 'funding_verification';
+export interface CashuPaymentRecoveryDiagnostics {
+    blocks_wallet_change?: boolean | null;
+    wallet_change_block_reasons?: CashuWalletChangeBlockReason[] | null;
+    recovery_phase?: CashuRecoveryPhase | null;
 }
 
 export type CashuChangeAction = 'export' | 'verify';
