@@ -169,7 +169,7 @@ class WalletConnectionController extends Controller
         $user = $request->user();
         $connection = WalletConnection::where('store_id', $store->id)->first();
 
-        if (! $connection || ! $this->changeGuard->requiresConfirmation($store)) {
+        if (! $this->changeGuard->requiresConfirmation($store)) {
             return response()->json(['message' => 'No connected wallet to change.'], 404);
         }
         if ((bool) ($user->is_guest ?? false)) {
@@ -186,6 +186,22 @@ class WalletConnectionController extends Controller
             $this->emailCodes->consume($challenge);
             throw EmailCodeChallengeException::missing();
         }
+
+        if ($store->wallet_type === 'cashu' || (! $connection && $store->cashu_fallback_enabled)) {
+            AuditLog::log('wallet_connection.change_granted', 'store', $store->id, [
+                'store_id' => $store->id,
+                'challenge_id' => $challenge->id,
+            ], $user->id);
+
+            return response()->json(['data' => [
+                'granted_until' => $this->changeGuard->grantedUntil($store, $user)?->toIso8601String(),
+                'secret' => null,
+                'type' => 'cashu',
+                'masked_secret' => null,
+            ]]);
+        }
+
+        abort_unless($connection !== null, 404, 'No connected wallet to change.');
 
         try {
             $plaintext = $this->service->reveal($connection, $user);
@@ -413,8 +429,6 @@ class WalletConnectionController extends Controller
             ],
             $user->id
         );
-
-        $this->changeGuard->consumeGrant($store, $user);
 
         return response()->json([
             'data' => [
@@ -706,9 +720,6 @@ class WalletConnectionController extends Controller
             $store, $detected['connection_type'], $detected['normalized_secret'], $user, 'pending',
         );
         $connected = $connection->status === 'connected';
-        if ($connected) {
-            $this->changeGuard->consumeGrant($store, $user);
-        }
 
         return response()->json([
             'success' => $connected,

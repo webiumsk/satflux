@@ -1,0 +1,10 @@
+<?php
+
+return [
+
+    // Temporarily paused purchases
+    'pro_purchase_temporarily_disabled' => 'PRO-Käufe sind vorübergehend ausgesetzt.',
+    'company_slot_purchase_temporarily_disabled' => 'Käufe zusätzlicher Unternehmensplätze sind vorübergehend ausgesetzt.',
+    'isdoc_pack_purchase_temporarily_disabled' => 'Käufe von ISDOC-Paketen sind vorübergehend ausgesetzt.',
+    'isdoc_extract_limit_reached_no_purchase' => 'Das Limit für ISDOC-Extraktionen wurde erreicht. Paketkäufe sind vorübergehend ausgesetzt.',
+];

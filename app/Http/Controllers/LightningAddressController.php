@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Store;
+use App\Models\User;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\LightningAddressService;
+use App\Services\EffectiveAccessPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -124,6 +126,9 @@ class LightningAddressController extends Controller
      */
     public function store(Request $request, Store $store, string $username)
     {
+        /** @var User $storeOwner */
+        $storeOwner = $store->user;
+
         $request->validate([
             'username' => ['required', 'string'],
             'currencyCode' => ['nullable', 'string'],
@@ -181,7 +186,7 @@ class LightningAddressController extends Controller
                     return response()->json([
                         'message' => __('messages.lightning_address_limit_reached', [
                             'max' => $maxAddresses,
-                            'plan' => $store->user->currentSubscriptionPlan()?->display_name ?? 'Free',
+                            'plan' => app(EffectiveAccessPolicy::class)->plan($storeOwner)?->display_name ?? 'Free',
                         ]),
                     ], 403);
                 }
@@ -190,7 +195,7 @@ class LightningAddressController extends Controller
                     return response()->json([
                         'message' => __('messages.lightning_address_limit_reached', [
                             'max' => $maxAddresses,
-                            'plan' => $store->user->currentSubscriptionPlan()?->display_name ?? 'Free',
+                            'plan' => app(EffectiveAccessPolicy::class)->plan($storeOwner)?->display_name ?? 'Free',
                         ]),
                     ], 403);
                 }

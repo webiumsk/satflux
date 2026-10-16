@@ -39,7 +39,9 @@
           <p class="text-sm mt-2 text-amber-200/80">{{ t('invoicing.pro_required_detail') }}</p>
         </div>
 
-        <div class="border border-gray-600 rounded-xl p-6 bg-gray-800/80 hover:border-indigo-500 transition-colors relative group">
+        <FreeProNotice :active="accountPromotionActive" class="text-white" />
+        <p v-if="!purchases.pro_subscriptions" class="text-sm text-gray-300">{{ t("free_pro.purchases_paused") }}</p>
+        <div v-if="purchases.pro_subscriptions" class="border border-gray-600 rounded-xl p-6 bg-gray-800/80 hover:border-indigo-500 transition-colors relative group">
           <div class="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-purple-600/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
           <div class="relative z-10">
             <h3 class="text-lg font-bold text-white mb-2">{{ t('account.pro_plan') }}</h3>
@@ -103,6 +105,9 @@
 </template>
 
 <script setup lang="ts">
+import FreeProNotice from "@/components/account/FreeProNotice.vue";
+import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
+import { isPurchasePausedError } from "@/services/apiError";
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../store/auth';
@@ -122,6 +127,7 @@ import DashboardInvoicingFeaturesAside from './DashboardInvoicingFeaturesAside.v
 import { useGuestUpgradeStore } from '../../store/guestUpgrade';
 
 const { t } = useI18n();
+const { purchases, promotionActive: accountPromotionActive } = useEffectiveAccess();
 const authStore = useAuthStore();
 const { canUse } = useBusinessInvoicing();
 const { planFeatures, isInvoicingFeature, load: loadPlanFeatures } = usePlanFeatures();
@@ -139,6 +145,7 @@ function openGuestUpgradeModal(featureLabelKey: string): void {
 }
 
 async function upgradePlan(plan: string) {
+  if (plan === "pro" && !purchases.value.pro_subscriptions) return;
   upgrading.value = true;
   try {
     const response = await api.post('/subscriptions/checkout', { plan });
@@ -151,7 +158,7 @@ async function upgradePlan(plan: string) {
   } catch (error: unknown) {
     const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
     console.error('Failed to create checkout:', error);
-    alert(message || t('account.checkout_failed'));
+    alert(isPurchasePausedError(error) ? t('free_pro.purchases_paused') : message || t('account.checkout_failed'));
     upgrading.value = false;
   }
 }

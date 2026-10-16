@@ -261,29 +261,20 @@
 </template>
 
 <script setup lang="ts">
+import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
 import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { useAuthStore } from "../../store/auth";
 import { useFlashStore } from "../../store/flash";
 import api from "../../services/api";
 import UpgradeModal from "./UpgradeModal.vue";
 import ProPlanBadge from "./ProPlanBadge.vue";
 
 const { t } = useI18n();
-const authStore = useAuthStore();
 const flashStore = useFlashStore();
 
-const planCode = computed(() => (authStore.user?.plan?.code ?? "free") as string);
-const userRole = computed(() => authStore.user?.role ?? "");
-const canUseReports = computed(
-  () =>
-    planCode.value === "pro" ||
-    planCode.value === "enterprise" ||
-    userRole.value === "admin" ||
-    userRole.value === "support"
-);
-
+const { hasFeature } = useEffectiveAccess();
+const canUseReports = computed(() => hasFeature("automatic_csv_exports"));
 const props = defineProps({
   store: {
     type: Object,

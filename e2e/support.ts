@@ -10,6 +10,12 @@ export const seededUser = {
     password: process.env.E2E_USER_PASSWORD ?? 'E2e-password-123',
 };
 
+/** Separate API budget for the serial local-first checkout scenario. */
+export const checkoutUser = {
+    email: process.env.E2E_CHECKOUT_USER_EMAIL ?? 'e2e-checkout@satflux.test',
+    password: seededUser.password,
+};
+
 export const hasSeededUser = process.env.E2E_SEEDED_USER === '1';
 
 /**
@@ -30,6 +36,7 @@ export const btcpayStubUrl = process.env.BTCPAY_STUB_URL ?? 'http://localhost:14
 
 /** Storage-state file written by auth.setup.ts (one login per run). */
 export const AUTH_STATE_PATH = 'e2e/.auth/user.json';
+export const CHECKOUT_AUTH_STATE_PATH = 'e2e/.auth/checkout.json';
 
 /**
  * Playwright's storageState carries cookies but page.request calls still need
@@ -38,6 +45,7 @@ export const AUTH_STATE_PATH = 'e2e/.auth/user.json';
  */
 export async function apiHeaders(page: Page): Promise<Record<string, string>> {
     return {
+        Accept: 'application/json',
         Referer: page.url(),
         'X-XSRF-TOKEN': decodeURIComponent(
             (await page.context().cookies()).find((c) => c.name === 'XSRF-TOKEN')?.value ?? '',
@@ -51,11 +59,16 @@ export async function apiHeaders(page: Page): Promise<Record<string, string>> {
  */
 export async function deleteAllStores(page: Page): Promise<void> {
     const headers = await apiHeaders(page);
-    const existing = (await (
-        await page.request.get('/api/stores', { headers })
-    ).json()) as { data?: Array<{ id: string }> };
+    const response = await page.request.get('/api/stores', { headers });
+    if (!response.ok() || !response.headers()['content-type']?.includes('application/json')) {
+        throw new Error(`Store cleanup list failed (HTTP ${response.status()}).`);
+    }
+    const existing = (await response.json()) as { data?: Array<{ id: string }> };
     for (const stale of existing.data ?? []) {
-        await page.request.delete(`/api/stores/${stale.id}`, { headers });
+        const deleted = await page.request.delete(`/api/stores/${stale.id}`, { headers });
+        if (!deleted.ok()) {
+            throw new Error(`Store cleanup deletion failed (HTTP ${deleted.status()}).`);
+        }
     }
 }
 

@@ -1110,6 +1110,7 @@
 </template>
 
 <script setup lang="ts">
+import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
 import AppNavLink from "../layout/AppNavLink.vue";
 import { ref, computed, onMounted, onUnmounted, watch, inject } from "vue";
 import { useRouter, useRoute } from "vue-router";
@@ -1175,21 +1176,13 @@ const skipRaffleAvailabilityProbe = computed(
 );
 
 /** True when user has Pro-level access; null while auth user is not loaded (avoid flashing PRO badges). */
-const isProOrAdminUser = computed((): boolean | null => {
-  const u = authUser.value;
-  if (!u) return null;
-  const code = (u.plan?.code ?? "free") as string;
-  const role = u.role ?? "";
-  return (
-    code === "pro" ||
-    code === "enterprise" ||
-    role === "admin" ||
-    role === "support"
-  );
-});
+const { hasFeature } = useEffectiveAccess();
+const isProOrAdminUser = computed((): boolean | null =>
+  authUser.value ? hasFeature('advanced_statistics') : null,
+);
 /** Show sidebar PRO badge only when we know the user is on a plan without these features. */
 const showReportsProBadge = computed(() => isProOrAdminUser.value === false);
-const showStripeProBadge = computed(() => isProOrAdminUser.value === false);
+const showStripeProBadge = computed(() => !!authUser.value && !hasFeature('stripe'));
 
 const storesStore = useStoresStore();
 const showStoreDropdown = ref(false);

@@ -2,49 +2,48 @@
 title: Plány a limity
 category: reference
 order: 1
-meta_description: Čo zahŕňajú plány Free, Pro a Enterprise v Satfluxe.
+meta_description: Funkcie a limity Free, PRO a Enterprise a dočasný PRO prístup zdarma.
+updated: 2026-10-14
 ---
 
 # Plány a limity
 
-Satflux ponúka plán **Free** a platené plány **Pro** a **Enterprise**. Vyššie plány zvyšujú limity a odomykajú funkcie, ako je firemná fakturácia.
+Satflux má plány **Free**, **PRO** a **Enterprise**. Základný plán a predplatné opisujú fakturáciu; dostupné funkcie môžu zahŕňať aj dočasný prístup počas akcie.
+
+> Keď je aktívny [dočasný PRO prístup zdarma](/documentation/free-pro-access), registrované nehosťovské účty s overeným e-mailom získajú PRO funkcie až do ďalšieho oznámenia. Nové PRO predplatné, skúšobné doby, nákupy kreditu na predplatné, firemných slotov a ISDOC balíkov sú pozastavené. Aktuálny režim nájdete v **Cenníku** a **Účte**.
 
 ## V skratke
 
-- **Free** - začnite s obchodom, pokladňou, pár Lightning adresami, API kľúčom, základnými štatistikami a bez transakčných poplatkov.
-- **Pro** - všetko na chod podniku: **fakturácia** (firmy, náklady, párovanie platieb, import kontaktov), viac obchodov a Lightning adries, viac API kľúčov, Stripe, pokročilé štatistiky a vlastný branding.
-- **Enterprise** - neobmedzené obchody, viacero rolí používateľov, webhooky, vlastné reporty a firemná fakturácia s neobmedzeným počtom firiem.
+- **Free** - začnite s obchodom, pokladňou, Lightning adresami, API kľúčom, základným prehľadom platieb a bez transakčných poplatkov Satfluxu.
+- **PRO** - firemná fakturácia, náklady, párovanie bankových platieb, import kontaktov, ďalšie obchody a API kľúče, Stripe, exporty a pokročilé štatistiky.
+- **Enterprise** - vyššie limity, správa používateľov obchodu a neobmedzená extrakcia ISDOC. Pre Enterprise nás kontaktujte; akcia PRO zdarma tieto možnosti nepridáva.
 
-Presné limity a aktuálne ceny sú na stránke **Cenník** v aplikácii.
+Štandardné PRO zahŕňa **3 obchody**, **3 aktívne API kľúče na obchod**, **3 aktívne API kľúče panela na účet**, **3 vstupenkové udalosti na obchod** a **2 vlastnené fakturačné firmy**. PRO nemá limit počtu hostovaných Lightning adries a tombôl. Existujúce výnimky účtu a zakúpené firemné sloty naďalej platia. ISDOC používa existujúci základný limit **20 extrakcií na účet** a skôr zakúpené kredity; akcia neresetuje spotrebu.
 
-## Kde sa kontroluje plán
+Aktuálne limity sa zobrazujú v účte a na stránkach funkcií. Účty, ktoré už prekračujú limit, si ponechávajú existujúce objekty; vytváranie ďalších podlieha danému limitu.
 
-Niektoré funkcie kontrolujú plán. Napríklad **fakturácia** je dostupná v Pro a Enterprise - pri otvorení Fakturácie na Free pláne dostanete ponuku na upgrade. Admin a Enterprise účty majú fakturáciu vždy dostupnú.
+## Prístup k funkciám
 
-## Skúšobná doba zadarmo
+Fakturácia, Stripe a ďalšie PRO funkcie vyžadujú PRO prístup, či už z oprávneného účtu počas akcie, platného predplatného alebo existujúceho manuálneho pridelenia. Hosťovský účet ani účet s neovereným e-mailom nezískava prístup z akcie. Pridanie a potvrdenie e-mailu podľa [nastavenia účtu](/documentation/create-account) dokončí povýšenie hosťovského účtu.
 
-Účty na pláne Free, ktoré skúšobnú dobu ešte nevyužili, si môžu vyskúšať plný plán **Pro** zadarmo na **30 dní**:
+PRO prístup nikdy nedáva prístup k cudzím obchodom či firmám. Členovia zdieľanej firmy pracujú v rámci svojich rolí a prístupu vlastníka. Enterprise a administrátorské oprávnenia zostávajú nezmenené.
 
-- Skúšobná doba je dostupná **raz na účet**.
-- Počas nej máte všetko, čo Pro obsahuje - fakturáciu, Pro limit firiem, exporty, Stripe a ďalšie. Počas skúšobnej doby si môžete dokúpiť aj firemné sloty.
-- Skúšobná doba **nemá ochrannú lehotu**: keď skončí bez platby, účet sa okamžite vráti na Free a Pro funkcie (vrátane fakturácie) sa uzamknú. Vaše dáta zostávajú - nič sa nemaže.
-- Zaplatením Pro počas skúšobnej doby začína plný platený rok **od dátumu platby**. Firemné sloty kúpené počas skúšobnej doby na účte zostávajú a s plateným Pro sa opäť aktivujú.
+## Skúšobné doby a predplatné
 
-## Ďalšie firemné sloty (fakturácia)
+Počas aktívnej akcie nemožno začať nové PRO predplatné ani skúšobnú dobu alebo nakúpiť kredit na PRO predplatné. Prístup z akcie nevytvára predplatné, nečerpá skúšobnú dobu a nespôsobuje automatickú platbu.
 
-Plán Pro zahŕňa pevný počet fakturačných firiem. Ak potrebujete viac - napríklad podnikáte cez viacero firiem, alebo ste účtovná kancelária spravujúca firmy klientov - môžete si jednorazovo dokúpiť **ďalšie firemné sloty**, platené v bitcoine cez BTCPay.
+Bežný fakturačný systém zostáva zachovaný. Mimo režimu akcie, keď sú nákupy povolené, je štandardná PRO skúšobná doba **30 dní**, **raz na účet**. Skúšobná doba nemá ochrannú lehotu; platené predplatné používa vlastné fakturačné obdobie a pravidlá obnovovania. Existujúca história skúšobných dôb a platieb sa počas akcie zachováva. Skončenie skúšobnej doby neukončí PRO prístup oprávneného účtu z akcie, kým akcia pokračuje.
 
-Ako sloty fungujú:
+## Existujúce firemné sloty a ISDOC kredity
 
-- Slot patrí k vášmu **účtu**, nie ku konkrétnej firme. Zmazaním firmy sa jej slot uvoľní pre novú.
-- Sloty sú **jednorazový nákup** a nikdy neexpirujú. Nie sú predplatné.
-- Sloty platia len s **aktívnym plánom Pro** - zvyšujú limit firiem v Pro, samy o sebe fakturáciu neodomykajú a počas expirovaného Pro sú neaktívne.
-- Firmy, ktoré s vami niekto zdieľa (napríklad ako s účtovníkom pozvaným do firmy klienta), sa do vášho limitu **nepočítajú** - počítajú sa len firmy, ktoré vlastníte.
+Zakúpený firemný slot patrí k vášmu **účtu**, nie ku konkrétnej firme. Zmazaním firmy sa kapacita uvoľní pre ďalšiu. Zakúpené sloty neexpirujú a nie sú predplatným. Zvyšujú limit firiem, keď je dostupný prístup k fakturácii; samy fakturáciu neodomykajú. Firmy zdieľané s vami sa nepočítajú do limitu vlastnených firiem.
 
-Sloty sa predávajú v balíkoch po **1, 5 a 10** - väčšie balíky sú na slot lacnejšie. Aktuálne ceny v sats nájdete v nákupnom dialógu a v sekcii **Cenník**.
+Počas akcie zostávajú existujúce sloty a nepoužité ISDOC kredity zachované, ale **nové nákupy slotov a ISDOC balíkov sú pozastavené**. Vyčerpaný limit v tomto režime nezvýšite nákupom nového balíka.
 
-Sloty dokúpite cez ponuku, ktorá sa zobrazí pri dosiahnutí limitu firiem na stránke Fakturácia. Pri veľkom počte firiem môže byť vhodnejší plán Enterprise s neobmedzeným počtom firiem - kontaktujte nás.
+Keď sú mimo tohto režimu nákupy doplnkov povolené, bežné balíky firemných slotov sú **1, 5 a 10**, platené v bitcoine cez BTCPay. Ich ceny a dostupnosť sa zobrazujú v aplikácii.
 
-## Upgrade
+## Ako získať prístup
 
-Upgradujte zo stránky **Cenník** alebo cez ponuku, ktorá sa zobrazí pri dosiahnutí uzamknutej funkcie.
+Počas aktívnej akcie získajú oprávnené účty PRO prístup automaticky. Platobný formulár nepotrebujete. Ak máte hosťovský účet, pridajte a overte e-mail v **Účte**. Ak máte registrovaný účet s neovereným e-mailom, dokončite jeho overenie.
+
+Keď sú mimo tohto režimu PRO nákupy povolené, nákupné možnosti sa zobrazujú v **Cenníku** a príslušných výzvach. Návrat k platenému PRO vyžaduje samostatné oznámenie a zverejnené podmienky; prístup z akcie sa automaticky nezmení na platené predplatné.

@@ -1,3 +1,4 @@
+import type { EffectiveAccess, PurchaseAvailability } from '../types/access';
 import { asApiError } from "../utils/apiError";
 import { defineStore } from 'pinia';
 import { ref, computed, onScopeDispose } from 'vue';
@@ -76,6 +77,8 @@ export interface User {
         offline_payment_methods: boolean;
         business_invoicing?: boolean;
     };
+    effective_access?: EffectiveAccess;
+    purchase_availability?: PurchaseAvailability;
     evolu_relay_url?: string | null;
 }
 
@@ -162,17 +165,24 @@ export const useAuthStore = defineStore('auth', () => {
     const onStorage = (event: StorageEvent) => {
         if (event.key === logoutSignalKey || event.key === null) handleRemoteLogout();
     };
+    let lastAccessRefresh = 0;
+    const refreshAccess = () => {
+        handleRemoteLogout();
+        if (!user.value || disposed || Date.now() - lastAccessRefresh < 30_000) return;
+        lastAccessRefresh = Date.now();
+        void fetchUser();
+    };
     const onVisibility = () => {
-        if (document.visibilityState === 'visible') handleRemoteLogout();
+        if (document.visibilityState === 'visible') refreshAccess();
     };
     synchronizeLogout();
     window.addEventListener('storage', onStorage);
-    window.addEventListener('focus', handleRemoteLogout);
+    window.addEventListener('focus', refreshAccess);
     document.addEventListener('visibilitychange', onVisibility);
     onScopeDispose(() => {
         disposed = true;
         window.removeEventListener('storage', onStorage);
-        window.removeEventListener('focus', handleRemoteLogout);
+        window.removeEventListener('focus', refreshAccess);
         document.removeEventListener('visibilitychange', onVisibility);
     });
 

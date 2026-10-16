@@ -311,6 +311,8 @@ class SubscriptionEntitlementTest extends TestCase
     #[Test]
     public function checkout_skips_trial_when_user_already_consumed_trial(): void
     {
+        // Exercise the retained paid checkout mode, independently of closed sales.
+        config(['access.pro_purchases_enabled' => true]);
         $user = User::factory()->create(['trial_consumed_at' => now()->subMonth()]);
 
         config([

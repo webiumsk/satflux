@@ -1,12 +1,14 @@
 import { test as setup } from '@playwright/test';
-import { AUTH_STATE_PATH, hasSeededUser, loginWithEmail, seededUser } from './support';
+import {
+    AUTH_STATE_PATH, CHECKOUT_AUTH_STATE_PATH, checkoutUser,
+    hasBtcpayStub, hasLocalFirstBuild, hasSeededUser, loginWithEmail, seededUser,
+} from './support';
 
 /**
- * One login for the whole run: /api/auth/* is throttled at 5/min per IP and
- * the suite sits right at that budget - every spec that only NEEDS a session
- * (not the login flow itself) reuses this stored state instead of signing in
- * again. Specs that test authentication (auth.spec, emailLogin.spec) opt out
- * with an empty storageState.
+ * One login per enabled fixture: /api/auth/* is throttled at 5/min per IP.
+ * Specs needing only a session reuse stored state instead of signing in
+ * again. Checkout has its own account/API budget. Authentication specs
+ * (auth.spec, emailLogin.spec) opt out with an empty storageState.
  */
 setup('authenticate the seeded user', async ({ page }) => {
     if (!hasSeededUser) {
@@ -18,4 +20,11 @@ setup('authenticate the seeded user', async ({ page }) => {
 
     await loginWithEmail(page, seededUser.email, seededUser.password);
     await page.context().storageState({ path: AUTH_STATE_PATH });
+});
+
+setup('authenticate the isolated checkout user', async ({ page }) => {
+    if (hasSeededUser && hasBtcpayStub && hasLocalFirstBuild) {
+        await loginWithEmail(page, checkoutUser.email, checkoutUser.password);
+    }
+    await page.context().storageState({ path: CHECKOUT_AUTH_STATE_PATH });
 });

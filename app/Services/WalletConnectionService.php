@@ -65,6 +65,9 @@ class WalletConnectionService
             if (WalletConfigurationAttempt::where('store_id', $store->id)->unresolved()->exists()) {
                 throw ValidationException::withMessages(['secret' => 'A previous wallet update needs reconciliation. No further changes are allowed until its result is confirmed.']);
             }
+            $confirmation = app(WalletChangeConfirmationGuard::class);
+            $confirmation->assert($store, $user);
+            $grantId = $confirmation->activeGrant($store, $user)?->id;
             $existing = WalletConnection::where('store_id', $store->id)->first();
             // Explicitly submitting a Blink address moves it to our LNURL backend.
             // Legacy reads still use their stored type; a changed adapter is a wallet
@@ -78,10 +81,13 @@ class WalletConnectionService
             }
             $replacement = ($existing && ($existing->type !== $type || Crypt::decryptString($existing->encrypted_secret) !== $secret))
                 || $store->wallet_type === 'cashu';
+            $fallbackAddress = $fallbackLightningAddress ?: $this->validator->deriveLightningAddressFromSecret($type, $secret);
+            $fallbackReplacement = $store->cashu_fallback_enabled && $fallbackAddress !== null
+                && $fallbackAddress !== $store->cashu_fallback_address;
             // The journal is committed before contacting BTCPay. Existing-wallet
             // changes never share an outer transaction with store provisioning.
             $attempt = null;
-            if ($replacement) {
+            if ($replacement || $fallbackReplacement) {
                 $this->assertWalletCanChange($store);
             }
             if ($replacement && $initialStatus === 'pending' && in_array($type, ['blink', 'blitz', 'flash', 'lnaddress', 'nwc'], true)) {
@@ -91,17 +97,23 @@ class WalletConnectionService
                 }
                 $attempt = WalletConfigurationAttempt::create([
                     'store_id' => $store->id, 'connection_type' => $type,
-                    'encrypted_secret' => Crypt::encryptString($secret), 'status' => 'applying',
+                    'encrypted_secret' => Crypt::encryptString(json_encode(['secret' => $secret, 'confirmation_grant_id' => $grantId], JSON_THROW_ON_ERROR)), 'status' => 'applying',
                 ]);
             }
             try {
                 $connection = DB::transaction(fn () => $this->saveConnection($store, $type, $secret, $user, $initialStatus, $fallbackLightningAddress));
-                $attempt?->update(['status' => $connection->status === 'connected' ? 'confirmed' : 'uncertain',
-                    'encrypted_secret' => $connection->status === 'connected' ? null : $attempt->encrypted_secret]);
+                DB::transaction(function () use ($attempt, $connection, $confirmation, $store, $user, $grantId) {
+                    $attempt?->update(['status' => $connection->status === 'connected' ? 'confirmed' : 'uncertain',
+                        'encrypted_secret' => $connection->status === 'connected' ? null : $attempt->encrypted_secret]);
+                    if (! $attempt || $connection->status === 'connected') {
+                        $confirmation->consumeCapturedGrant($store, $user, $grantId);
+                    }
+                });
 
                 return $connection;
             } catch (\Throwable $e) {
                 if ($attempt) {
+                    $attempt->refresh();
                     $attempt->update(['status' => 'uncertain']);
                     // An old read after a timeout is not proof that the write
                     // cannot still complete. Release only a confirmed rejection.
@@ -667,8 +679,33 @@ class WalletConnectionService
      */
     public function configureCashuFallback(Store $store, string $lightningAddress, string $userApiKey, ?User $user = null): void
     {
-        Cache::lock('wallet-update:'.$store->id, 1800)->block(10,
-            fn () => $this->saveCashuFallback($store->fresh(), $lightningAddress, $userApiKey, $user));
+        Cache::lock('wallet-update:'.$store->id, 1800)->block(10, function () use ($store, $lightningAddress, $userApiKey, $user) {
+            $store = $store->fresh();
+            $user ??= $store->user;
+            abort_unless($user instanceof User, 403);
+            abort_unless((string) $store->user_id === (string) $user->id, 403);
+            if (WalletConfigurationAttempt::where('store_id', $store->id)->unresolved()->exists()) {
+                throw ValidationException::withMessages(['cashu' => 'A previous wallet update needs reconciliation.']);
+            }
+            try {
+                $current = $this->cashuService->getSettings($store->btcpay_store_id, $userApiKey);
+            } catch (BtcPayException $e) {
+                if ($e->getStatusCode() !== 404) {
+                    throw $e;
+                }
+                $current = [];
+            }
+            if ($store->cashu_fallback_enabled && $store->cashu_fallback_address === $lightningAddress
+                && ($current['enabled'] ?? null) === true && ($current['lightningAddress'] ?? null) === $lightningAddress) {
+                return;
+            }
+            $confirmation = app(WalletChangeConfirmationGuard::class);
+            $confirmation->assert($store, $user);
+            $grantId = $confirmation->activeGrant($store, $user)?->id;
+            $this->assertWalletCanChange($store);
+            $this->saveCashuFallback($store, $lightningAddress, $userApiKey, $user);
+            $confirmation->consumeCapturedGrant($store, $user, $grantId);
+        });
     }
 
     private function saveCashuFallback(Store $store, string $lightningAddress, string $userApiKey, ?User $user): void
@@ -686,6 +723,7 @@ class WalletConnectionService
             // Only an explicit missing configuration permits the default mint.
         }
 
+        $this->cashuService->assertNoUnresolvedSettlements((string) $store->btcpay_store_id, $userApiKey);
         $this->cashuService->saveSettings($store->btcpay_store_id, [
             'mintUrl' => $mintUrl,
             'lightningAddress' => $lightningAddress,
@@ -784,18 +822,24 @@ class WalletConnectionService
             if ($attempt->connection_type === 'cashu') {
                 return app(CashuWalletUpdateService::class)->reconcile($store, $user, $attempt);
             }
-            $desired = new WalletConnection(['type' => $attempt->connection_type, 'encrypted_secret' => $attempt->encrypted_secret]);
+            $decrypted = Crypt::decryptString($attempt->encrypted_secret);
+            $saved = json_decode($decrypted, true);
+            $secret = is_array($saved) && is_string($saved['secret'] ?? null) ? $saved['secret'] : $decrypted;
+            $grantId = is_array($saved) && is_string($saved['confirmation_grant_id'] ?? null) ? $saved['confirmation_grant_id'] : null;
+            $encryptedSecret = Crypt::encryptString($secret);
+            $desired = new WalletConnection(['type' => $attempt->connection_type, 'encrypted_secret' => $encryptedSecret]);
             $key = $user->getBtcPayApiKeyOrFail();
             if ($this->btcpayLightningConfigMatches($store, $desired, $key)) {
-                DB::transaction(function () use ($store, $user, $attempt) {
+                DB::transaction(function () use ($store, $user, $attempt, $encryptedSecret, $grantId) {
                     $connection = WalletConnection::updateOrCreate(['store_id' => $store->id], [
-                        'type' => $attempt->connection_type, 'encrypted_secret' => $attempt->encrypted_secret,
+                        'type' => $attempt->connection_type, 'encrypted_secret' => $encryptedSecret,
                         'status' => 'pending', 'reconfig' => true, 'configuration_source' => null,
                         'submitted_by_user_id' => $user->id, 'secret_updated_at' => $attempt->created_at,
                     ]);
                     $store->update(['wallet_type' => $this->resolveStoreWalletType($attempt->connection_type)]);
                     $this->markConnected($connection, $user);
                     $attempt->update(['status' => 'confirmed', 'encrypted_secret' => null]);
+                    app(WalletChangeConfirmationGuard::class)->consumeCapturedGrant($store, $user, $grantId);
                 });
 
                 return true;

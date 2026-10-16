@@ -1,17 +1,24 @@
 <template>
   <div
     v-if="show"
+    ref="dialogRoot"
+    tabindex="-1"
+    :aria-labelledby="dialogTitleId"
+    @keydown="onDialogKeydown"
     class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+    role="dialog"
+    aria-modal="true"
     @click.self="close"
   >
     <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
       <div class="mt-3">
         <!-- Header -->
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-medium text-gray-900">
-            {{ t('upgrade_modal.title') }}
+          <h3 :id="dialogTitleId" class="text-lg font-medium text-gray-900">
+            {{ recommendedPlan === 'pro' && !purchases.pro_subscriptions ? t(accountPromotionActive ? 'free_pro.title' : 'free_pro.purchases_paused') : t('upgrade_modal.title') }}
           </h3>
           <button
+            :aria-label="t('common.close')"
             @click="close"
             class="text-gray-400 hover:text-gray-500"
           >
@@ -30,7 +37,7 @@
           </div>
           
           <p class="text-center text-gray-700 mb-4">
-            {{ message || t('upgrade_modal.default_message') }}
+            {{ recommendedPlan === 'pro' && accountPromotionActive ? t('free_pro.limits_apply') : message || t('upgrade_modal.default_message') }}
           </p>
 
           <div v-if="limits.length > 0" class="bg-gray-50 rounded-lg p-4 mb-4">
@@ -45,7 +52,7 @@
             </ul>
           </div>
 
-          <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4">
+          <div v-if="recommendedPlan === 'enterprise' || purchases.pro_subscriptions" class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4">
             <p class="text-sm font-medium text-indigo-900 mb-2">
               {{ t('upgrade_modal.unlock_more') }}
             </p>
@@ -72,9 +79,12 @@
           </p>
         </div>
 
+        <FreeProNotice :active="accountPromotionActive && recommendedPlan === 'pro'" class="mb-4 text-gray-800" />
+        <p v-if="recommendedPlan === 'pro' && !purchases.pro_subscriptions" class="mb-4 text-sm text-gray-700">{{ t("free_pro.purchases_paused") }}</p>
         <!-- Actions -->
         <div class="flex flex-col space-y-2">
           <button
+            v-if="recommendedPlan !== 'pro' || purchases.pro_subscriptions"
             @click="handleUpgrade"
             :disabled="upgrading"
             class="w-full px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -87,7 +97,7 @@
             :disabled="upgrading"
             class="w-full px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
-            {{ t('upgrade_modal.maybe_later') }}
+            {{ recommendedPlan === 'pro' && !purchases.pro_subscriptions ? t('common.close') : t('upgrade_modal.maybe_later') }}
           </button>
         </div>
       </div>
@@ -96,6 +106,11 @@
 </template>
 
 <script setup lang="ts">
+import { useDialogFocus } from "@/composables/useDialogFocus";
+import { useId } from "vue";
+import FreeProNotice from "@/components/account/FreeProNotice.vue";
+import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
+import { isPurchasePausedError } from "@/services/apiError";
 import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -106,6 +121,7 @@ import { usePricing } from '../../composables/usePricing';
 import { useCurrentPlan } from '../../composables/useCurrentPlan';
 
 const { t } = useI18n();
+const { purchases, promotionActive: accountPromotionActive } = useEffectiveAccess();
 const { planFeatures, isInvoicingFeature, load: loadPlanFeatures } = usePlanFeatures();
 const { pricing, formatSats, load: loadPricing } = usePricing();
 const { canStartTrial } = useCurrentPlan();
@@ -137,6 +153,10 @@ const emit = defineEmits<{
 
 const upgrading = ref(false);
 const flashStore = useFlashStore();
+
+const dialogRoot = ref<HTMLElement | null>(null);
+const dialogTitleId = useId();
+const { onDialogKeydown } = useDialogFocus(dialogRoot, () => props.show, close);
 
 onMounted(() => {
   loadPlanFeatures();
@@ -175,6 +195,7 @@ function close() {
 }
 
 async function handleUpgrade() {
+  if (props.recommendedPlan === "pro" && !purchases.value.pro_subscriptions) return;
   upgrading.value = true;
   flashStore.clear();
   try {
@@ -190,7 +211,7 @@ async function handleUpgrade() {
     }
   } catch (rawError) {
     const err = asApiError(rawError);
-    flashStore.error(err.response?.data?.message || t('upgrade_modal.checkout_error'));
+    flashStore.error(isPurchasePausedError(err) ? t('free_pro.purchases_paused') : err.response?.data?.message || t('upgrade_modal.checkout_error'));
     upgrading.value = false;
   }
 }

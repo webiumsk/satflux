@@ -1,6 +1,7 @@
 import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Component } from "vue";
+import type { User } from "../store/auth";
 import { getStoredAccountMnemonic } from "../services/accountSeed";
 
 const mocks = vi.hoisted(() => ({
@@ -22,6 +23,8 @@ const mocks = vi.hoisted(() => ({
     listAccountEnvelopes: vi.fn(),
     reloadApp: vi.fn(),
     apiGet: vi.fn(),
+    apiPost: vi.fn(),
+    user: null as User | null,
     invoicingCompaniesList: vi.fn(),
 }));
 
@@ -36,16 +39,7 @@ vi.mock("vue-router", () => ({
 vi.mock("../store/auth", () => ({
     useAuthStore: () => ({
         isAuthenticated: true,
-        user: {
-            id: 1,
-            name: "Merchant",
-            email: "merchant@example.com",
-            role: "free",
-            is_guest: false,
-            guest_recovery_enrolled: true,
-            can_use_password_login: true,
-            evolu_relay_url: null,
-        },
+        get user() { return mocks.user; },
         fetchUser: vi.fn(),
         enrollGuestRecoveryPublicKey: vi.fn(),
     }),
@@ -107,7 +101,7 @@ vi.mock("../composables/useCurrentPlan", async () => {
 vi.mock("../services/api", () => ({
     default: {
         get: mocks.apiGet,
-        post: vi.fn(),
+        post: mocks.apiPost,
         put: vi.fn(),
     },
     invoicingApi: {
@@ -275,6 +269,11 @@ async function mountProfile(): Promise<VueWrapper> {
 describe("Profile recovery phrase owner switch guard", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mocks.user = {
+            id: 1, name: 'Synthetic Merchant', email: 'synthetic@example.test', role: 'free', is_guest: false,
+            email_verified_at: '2026-01-01', guest_recovery_enrolled: true, can_use_password_login: true, evolu_relay_url: null,
+            purchase_availability: { pro_subscriptions: false, pro_credits: false, company_slots: false, isdoc_packs: false },
+        };
         mocks.route.query = { restore_phrase: "1" };
         mocks.restoreWithAccountPasskey.mockResolvedValue({ recoveryPhrase: "passkey phrase" });
         mocks.unlockDeviceWithPassphrase.mockResolvedValue({ recoveryPhrase: "device phrase" });
@@ -427,4 +426,45 @@ describe("Profile recovery phrase owner switch guard", () => {
         expect(mocks.resetEvoluBootstrapForRetry).toHaveBeenCalledTimes(1);
         expect(mocks.reloadApp).toHaveBeenCalledTimes(1);
     }, 15000);
+
+    it("allows actual Enterprise subscriber credit purchases while PRO sales are paused", async () => {
+        mocks.user = { ...mocks.user!, role: 'enterprise', plan: {
+            code: 'enterprise', name: 'Enterprise', features: [], max_stores: null, max_api_keys: null, max_ln_addresses: null,
+        } };
+        mocks.apiGet.mockResolvedValue({ data: {
+            subscriber: { isActive: true }, creditPurchasesAvailable: true,
+            billing: { isTrial: false, nextChargeSats: 500 }, creditBalance: 0, creditHistory: [],
+        } });
+        mocks.apiPost.mockResolvedValue({ data: {} });
+        vi.spyOn(window, 'alert').mockImplementation(() => undefined);
+        const wrapper = await mountProfile();
+        await findButton(wrapper, 'account.tab_billing').trigger('click');
+        const addCredit = findButton(wrapper, 'account.add_credit');
+        expect(addCredit.isVisible()).toBe(true);
+        await addCredit.trigger('click');
+        await wrapper.get('input[type="number"]').setValue('500');
+        await findButton(wrapper, 'account.add_credit_btn').trigger('click');
+        await flushPromises();
+        expect(mocks.apiPost).toHaveBeenCalledWith('/subscriptions/credits', { amount: 500, currency: 'SATS' });
+        wrapper.unmount();
+    });
+
+    it("does not permit PRO subscriber credits based on an Enterprise account role", async () => {
+        mocks.user = { ...mocks.user!, role: 'enterprise', plan: {
+            code: 'enterprise', name: 'Enterprise', features: [], max_stores: null, max_api_keys: null, max_ln_addresses: null,
+        } };
+        mocks.apiGet.mockResolvedValue({ data: {
+            subscriber: { isActive: true, planId: 'pro-provider-plan' }, creditPurchasesAvailable: false,
+            billing: { isTrial: true, nextChargeSats: 500 }, creditBalance: 0, creditHistory: [],
+        } });
+        const wrapper = await mountProfile();
+        await findButton(wrapper, 'account.tab_billing').trigger('click');
+        expect(wrapper.findAll('button').some(button => button.text().includes('account.add_credit'))).toBe(false);
+        expect(wrapper.findAll('button').some(button => button.text().includes('account.pay_now'))).toBe(false);
+        const actions = wrapper.vm as unknown as { startCreditCheckout: (amount: number) => Promise<boolean> };
+        await expect(actions.startCreditCheckout(500)).resolves.toBe(false);
+        expect(mocks.apiPost).not.toHaveBeenCalled();
+        wrapper.unmount();
+    });
+
 });

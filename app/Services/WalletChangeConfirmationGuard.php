@@ -6,12 +6,16 @@ use App\Exceptions\WalletChangeConfirmationException;
 use App\Models\EmailVerificationChallenge;
 use App\Models\Store;
 use App\Models\User;
+use App\Models\WalletConfigurationAttempt;
 use App\Models\WalletConnection;
 use App\Services\Auth\EmailCodeChallengeService;
+use App\Services\BtcPay\CashuService;
+use App\Services\BtcPay\Exceptions\BtcPayException;
 use Carbon\CarbonInterface;
 
 /**
- * Replacing a CONNECTED wallet must be confirmed with a 6-digit email code
+ * Replacing a connected Lightning wallet or editing a configured Cashu wallet
+ * must be confirmed with a 6-digit email code
  * first. The confirmed challenge acts as a short grant (GRANT_MINUTES); every
  * write path that can swap the live wallet (wallet-connection POST and
  * /configure, SamRock complete, Lightning -> Cashu switch) calls assert() and
@@ -27,10 +31,44 @@ class WalletChangeConfirmationGuard
 
     public function requiresConfirmation(Store $store): bool
     {
-        return WalletConnection::query()
-            ->where('store_id', $store->id)
-            ->where('status', 'connected')
-            ->exists();
+        if ($store->cashu_fallback_enabled || WalletConnection::query()
+            ->where('store_id', $store->id)->where('status', 'connected')->exists()) {
+            return true;
+        }
+        if ($store->wallet_type !== 'cashu') {
+            return false;
+        }
+        // Selecting Cashu in the setup wizard is not proof it was configured.
+        // Once an update is known or pending, a remote 404 cannot remove the gate.
+        if (WalletConfigurationAttempt::query()->where('store_id', $store->id)
+            ->where('connection_type', 'cashu')->whereIn('status', ['applying', 'uncertain', 'confirmed'])->exists()) {
+            return true;
+        }
+        $merchant = $store->user;
+        if (! $merchant instanceof User) {
+            return true;
+        }
+        try {
+            $settings = app(CashuService::class)->getSettings((string) $store->btcpay_store_id, $merchant->getBtcPayApiKeyOrFail());
+        } catch (BtcPayException $e) {
+            return $e->getStatusCode() !== 404;
+        } catch (\Throwable) {
+            return true;
+        }
+        // CashuMelt returns this complete default DTO when no settings row exists.
+        // A partial or otherwise malformed response must never unlock replacement.
+        $empty = [
+            'storeId' => (string) $store->btcpay_store_id,
+            'mintUrl' => null, 'unit' => 'sat', 'lightningAddress' => null, 'enabled' => false,
+            'trustedMintUrls' => null, 'maxMeltFeeReserveSats' => null, 'maxMeltFeeReservePercentOfMinted' => null,
+        ];
+        foreach ($empty as $name => $value) {
+            if (! array_key_exists($name, $settings) || $settings[$name] !== $value) {
+                return true;
+            }
+        }
+
+        return count($settings) !== count($empty);
     }
 
     /**
@@ -81,6 +119,21 @@ class WalletChangeConfirmationGuard
     {
         $grant = $this->activeGrant($store, $user);
         if ($grant) {
+            $this->challenges->consume($grant);
+        }
+    }
+
+    /** Consume only the authorization captured before this operation, never a newer code. */
+    public function consumeCapturedGrant(Store $store, User $user, ?string $grantId): void
+    {
+        if ($grantId === null) {
+            return;
+        }
+        $grant = EmailVerificationChallenge::query()->whereKey($grantId)
+            ->where('user_id', $user->id)
+            ->where('purpose', EmailVerificationChallenge::PURPOSE_WALLET_CONNECTION_CHANGE)
+            ->whereNotNull('verified_at')->live()->first();
+        if ($grant && ($grant->payload['store_id'] ?? null) === $store->id) {
             $this->challenges->consume($grant);
         }
     }

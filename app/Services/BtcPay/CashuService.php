@@ -2,9 +2,9 @@
 
 namespace App\Services\BtcPay;
 
+use App\Exceptions\CashuWalletSafetyException;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 
 class CashuService
 {
@@ -53,6 +53,46 @@ class CashuService
         });
     }
 
+    /** Read-only evidence for presentation; writes always perform their own fresh check. */
+    public function getWalletSafety(string $storeId, string $apiKey): array
+    {
+        try {
+            $result = $this->client->withUserKey($apiKey,
+                fn () => $this->client->get("/api/v1/stores/{$storeId}/plugins/cashumelt/safety"));
+
+            return $this->formatWalletSafety($result);
+        } catch (\Throwable) {
+            return $this->formatWalletSafety([]);
+        }
+    }
+
+    /** The provider boolean alone controls status; counters are record counts, not amounts. */
+    private function formatWalletSafety(array $result): array
+    {
+        $status = match ($result['safeToChangeWallet'] ?? null) {
+            true => 'safe',
+            false => 'blocked',
+            default => 'unavailable',
+        };
+        $count = static fn (mixed $value): ?int => is_int($value) && $value >= 0 && $value <= 2147483647 ? $value : null;
+        $unresolvedPayments = $count($result['unresolvedPayments'] ?? null);
+        $partition = [
+            'failed_payments' => $count($result['failedPayments'] ?? null),
+            'other_non_terminal_payments' => $count($result['otherNonTerminalPayments'] ?? null),
+            'terminal_recovery_payments' => $count($result['terminalRecoveryPayments'] ?? null),
+        ];
+        if ($unresolvedPayments === null || in_array(null, $partition, true) || array_sum($partition) !== $unresolvedPayments) {
+            $partition = array_fill_keys(array_keys($partition), null);
+        }
+
+        return [
+            'status' => $status,
+            'unresolved_payments' => $unresolvedPayments,
+            'unresolved_change' => $count($result['unresolvedChange'] ?? null),
+            ...$partition,
+        ];
+    }
+
     public function assertNoUnresolvedSettlements(string $storeId, string $apiKey): void
     {
         try {
@@ -60,12 +100,17 @@ class CashuService
                 fn () => $this->client->get("/api/v1/stores/{$storeId}/plugins/cashumelt/safety"));
         } catch (BtcPayException $e) {
             if ($e->getStatusCode() === 404) {
-                throw ValidationException::withMessages(['cashu' => 'Update CashuMelt to version 1.4.0.0 or later before changing this wallet.']);
+                throw new CashuWalletSafetyException('cashu_safety_unavailable', 'Update CashuMelt to version 1.4.0.0 or later before changing this wallet.');
             }
-            throw $e;
+            throw new CashuWalletSafetyException('cashu_safety_unavailable', 'Cashu wallet safety could not be verified. The wallet was not changed.');
+        } catch (\Throwable) {
+            throw new CashuWalletSafetyException('cashu_safety_unavailable', 'Cashu wallet safety could not be verified. The wallet was not changed.');
+        }
+        if (($result['safeToChangeWallet'] ?? null) === false) {
+            throw new CashuWalletSafetyException('cashu_outstanding_payments', 'Outstanding Cashu settlements or change must be recovered before changing this wallet.', $this->formatWalletSafety($result));
         }
         if (($result['safeToChangeWallet'] ?? null) !== true) {
-            throw ValidationException::withMessages(['cashu' => 'Outstanding Cashu settlements or change must be recovered before changing this wallet.']);
+            throw new CashuWalletSafetyException('cashu_safety_unavailable', 'Cashu wallet safety could not be verified. The wallet was not changed.', $this->formatWalletSafety($result));
         }
     }
 

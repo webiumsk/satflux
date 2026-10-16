@@ -1,8 +1,12 @@
 # Browser tests
 
 The Playwright setup project signs into `E2eTestSeeder`'s shared account once.
-Most specs reuse its storage state. Authentication specs start with empty
-cookies. Run only against a development/test database and the BTCPay stub.
+Most specs reuse its storage state. Local-first checkout gets a separate ordinary
+PRO fixture and one setup login when the stub/local-first flags are enabled; its
+API budget is independent of the earlier store/invoice tests. Authentication specs
+start with empty cookies. Both state files under `e2e/.auth/` are gitignored. Run
+only against a development/test database and the BTCPay stub. The real 5/min/IP
+authentication and 120/min/user API limits remain enabled.
 
 ## Recovery enrollment across tabs
 

@@ -171,7 +171,6 @@ class SamRockController extends Controller
             $request->user(),
             $validated['fallback_lightning_address']
         );
-        $changeGuard->consumeGrant($store, $request->user());
 
         $fallbackConfigured = true;
         try {

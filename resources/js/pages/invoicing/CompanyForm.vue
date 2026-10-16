@@ -183,6 +183,8 @@
 </template>
 
 <script setup lang="ts">
+import { canCreateLocalCompany } from "@/composables/useEffectiveAccess";
+import { useAuthStore } from "@/store/auth";
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
@@ -389,6 +391,7 @@ onMounted(async () => {
   }
 });
 
+const authStore = useAuthStore();
 async function save() {
   if (localFirst && isRelaySyncing.value) {
     window.alert(t('invoicing.relay_sync_wait_hint'));
@@ -424,7 +427,16 @@ async function save() {
     };
 
     if (localFirst && evolu) {
+      // The server cannot count encrypted local companies; this is an advisory UI quota.
+      const expectedAccountId = authStore.user?.id;
+      const refreshed = await authStore.fetchUser();
+      if (!refreshed || expectedAccountId == null || authStore.user?.id !== expectedAccountId) { window.alert(t('free_pro.access_unavailable')); return; }
+      if (!authStore.user?.email_verified_at) { window.alert(t('free_pro.verify_email')); return; }
       const existing = await evolu.loadQuery(allCompaniesQuery);
+      if (authStore.user?.id !== expectedAccountId || !canCreateLocalCompany(authStore.user, existing.length)) {
+        window.alert(t('free_pro.company_limit_reached'));
+        return;
+      }
       const identityKey = normalizeCompanyIdentityKey(payload.legal_name);
       const duplicate = existing.some(
         (row) => normalizeCompanyIdentityKey(row.legalName) === identityKey,

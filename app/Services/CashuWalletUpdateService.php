@@ -26,16 +26,37 @@ class CashuWalletUpdateService
     public function update(Store $store, User $user, array $settings, bool $switching): array
     {
         abort_unless((string) $store->user_id === (string) $user->id, 403);
+        $this->confirmation->assert($store, $user);
+        $grantId = $this->confirmation->activeGrant($store, $user)?->id;
         if (WalletConfigurationAttempt::where('store_id', $store->id)->unresolved()->exists()) {
             throw ValidationException::withMessages(['cashu' => 'A previous wallet update needs reconciliation.']);
         }
         $key = $user->getBtcPayApiKeyOrFail();
-        $this->cashu->assertNoUnresolvedSettlements((string) $store->btcpay_store_id, $key);
         $settings['mintUrl'] = rtrim(trim($settings['mintUrl']), '/');
         $settings['lightningAddress'] = trim($settings['lightningAddress']);
+        // A real no-op is a read only: do not create a journal, consume the code,
+        // touch local state, or ask the plugin to rewrite a wallet holding ecash.
+        $current = null;
+        $unchanged = false;
+        if (! $switching && $store->wallet_type === 'cashu') {
+            try {
+                $unchanged = $this->matches($store, $settings, $key, $current);
+            } catch (BtcPayException $e) {
+                if ($e->getStatusCode() !== 404) {
+                    throw $e;
+                }
+            }
+        }
+        if ($unchanged) {
+            return $current ?? [];
+        }
+        $this->cashu->assertNoUnresolvedSettlements((string) $store->btcpay_store_id, $key);
+        if ($store->wallet_type !== null) {
+            app(WalletConnectionService::class)->assertWalletCanChange($store);
+        }
         $attempt = WalletConfigurationAttempt::create([
             'store_id' => $store->id, 'connection_type' => 'cashu',
-            'encrypted_secret' => Crypt::encryptString(json_encode($settings, JSON_THROW_ON_ERROR)), 'status' => 'applying',
+            'encrypted_secret' => Crypt::encryptString(json_encode(['settings' => $settings, 'confirmation_grant_id' => $grantId], JSON_THROW_ON_ERROR)), 'status' => 'applying',
         ]);
         $remoteApplied = false;
         try {
@@ -47,7 +68,7 @@ class CashuWalletUpdateService
             if (! $this->matches($store, $settings, $key)) {
                 throw ValidationException::withMessages(['cashu' => 'Cashu settings need reconciliation before this store can accept new invoices.']);
             }
-            $this->confirm($store, $user, $attempt, $switching);
+            $this->confirm($store, $user, $attempt, $switching, $grantId);
 
             return $updated;
         } catch (\Throwable $e) {
@@ -65,16 +86,20 @@ class CashuWalletUpdateService
     /** Reads only. A different configuration after a timeout is not a confirmed rejection. */
     public function reconcile(Store $store, User $user, WalletConfigurationAttempt $attempt): bool
     {
-        $settings = json_decode(Crypt::decryptString($attempt->encrypted_secret), true, flags: JSON_THROW_ON_ERROR);
+        $saved = json_decode(Crypt::decryptString($attempt->encrypted_secret), true, flags: JSON_THROW_ON_ERROR);
+        $settings = is_array($saved['settings'] ?? null) ? $saved['settings'] : $saved;
+        $grantId = is_array($saved['settings'] ?? null) && is_string($saved['confirmation_grant_id'] ?? null)
+            ? $saved['confirmation_grant_id'] : null;
         if (! is_array($settings) || ! $this->matches($store, $settings, $user->getBtcPayApiKeyOrFail())) {
             return false;
         }
-        $this->confirm($store, $user, $attempt, $store->wallet_type !== null && $store->wallet_type !== 'cashu');
+        $this->confirm($store, $user, $attempt, $store->wallet_type !== null && $store->wallet_type !== 'cashu', $grantId);
 
         return true;
     }
 
-    private function matches(Store $store, array $settings, string $key): bool
+    /** @param-out array $actual */
+    private function matches(Store $store, array $settings, string $key, ?array &$actual = null): bool
     {
         $actual = $this->cashu->getSettings($store->btcpay_store_id, $key);
         foreach ($settings as $name => $value) {
@@ -98,15 +123,13 @@ class CashuWalletUpdateService
             fn ($method) => in_array($method['paymentMethodId'] ?? null, ['BTC-LN', 'BTC-LNURL'], true) && ($method['enabled'] ?? false));
     }
 
-    private function confirm(Store $store, User $user, WalletConfigurationAttempt $attempt, bool $switching): void
+    private function confirm(Store $store, User $user, WalletConfigurationAttempt $attempt, bool $switching, ?string $grantId): void
     {
-        DB::transaction(function () use ($store, $user, $attempt, $switching) {
+        DB::transaction(function () use ($store, $user, $attempt, $switching, $grantId) {
             $store->markAsPureCashu($switching);
             StoreChecklistService::ensureChecklistInitialized($store);
             $attempt->update(['status' => 'confirmed', 'encrypted_secret' => null]);
-            if ($switching) {
-                $this->confirmation->consumeGrant($store, $user);
-            }
+            $this->confirmation->consumeCapturedGrant($store, $user, $grantId);
         });
     }
 }

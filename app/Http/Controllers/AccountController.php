@@ -9,11 +9,11 @@ use App\Services\BtcPay\LightningAddressService;
 use App\Services\BtcPay\RaffleService;
 use App\Services\BtcPay\TicketService;
 use App\Services\Compliance\ComplianceGate;
+use App\Services\EffectiveAccessPolicy;
 use App\Services\GuestUpgradeService;
-use App\Services\SubscriptionEntitlementService;
+use App\Services\PurchaseAvailabilityPolicy;
 use App\Support\Legal\LegalConsent;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -42,22 +42,29 @@ class AccountController extends Controller
         $plan = $user->currentSubscriptionPlan();
 
         $payload = $user->toArray();
-        $subscriptionService = app(SubscriptionEntitlementService::class);
-        $maxCompanies = $subscriptionService->maxCompaniesForUser($user);
-        $includedCompanies = $subscriptionService->includedCompaniesForUser($user);
+        $effective = app(EffectiveAccessPolicy::class)->snapshot($user);
+        // The plan remains billing/legacy state; promotion is serialized separately.
+        $includedCompanies = $plan?->getAttribute('max_companies');
+        if ($plan?->code === 'pro' && config('invoicing.beta_pro_max_companies') > 0) {
+            $includedCompanies = (int) config('invoicing.beta_pro_max_companies');
+        }
+        $maxCompanies = $includedCompanies === null ? null
+            : ($includedCompanies > 0 ? $includedCompanies + $effective['limits']['extra_company_slots'] : 0);
+        $payload['effective_access'] = $effective;
+        $payload['purchase_availability'] = app(PurchaseAvailabilityPolicy::class)->snapshot();
 
         $payload['plan'] = $plan ? [
             'code' => $plan->code,
             'name' => $plan->display_name,
             'max_stores' => $plan->max_stores,
             'max_api_keys' => $plan->max_api_keys,
-            'max_ln_addresses' => $user->getMaxLightningAddresses(),
+            'max_ln_addresses' => $plan->max_ln_addresses,
             'max_companies' => $maxCompanies,
             'included_companies' => $includedCompanies,
-            'extra_company_slots' => ($maxCompanies !== null && $includedCompanies !== null)
+            'extra_company_slots' => ($maxCompanies !== null)
                 ? max(0, $maxCompanies - $includedCompanies)
                 : 0,
-            'companies_unlimited' => $maxCompanies === null && $subscriptionService->canUseBusinessInvoicing($user),
+            'companies_unlimited' => $maxCompanies === null && ($user->hasUnlimitedAccess() || $plan->hasFeature('business_invoicing')),
             'features' => $plan->features ?? [],
         ] : null;
         $payload['subscription'] = $subscription ? [
@@ -68,11 +75,11 @@ class AccountController extends Controller
             'grace_ends_at' => $subscription->grace_ends_at?->toIso8601String(),
         ] : null;
         $payload['plan_features'] = [
-            'advanced_stats' => $user->planFeature('advanced_statistics'),
-            'automatic_exports' => $user->planFeature('automatic_csv_exports'),
-            'offline_payment_methods' => $user->planFeature('offline_payment_methods'),
-            'business_invoicing' => $user->planFeature('business_invoicing'),
-            'expense_isdoc_extract_unlimited' => $user->planFeature('expense_isdoc_extract_unlimited'),
+            'advanced_stats' => in_array('advanced_statistics', $effective['features'], true),
+            'automatic_exports' => in_array('automatic_csv_exports', $effective['features'], true),
+            'offline_payment_methods' => in_array('offline_payment_methods', $effective['features'], true),
+            'business_invoicing' => in_array('business_invoicing', $effective['features'], true),
+            'expense_isdoc_extract_unlimited' => in_array('expense_isdoc_extract_unlimited', $effective['features'], true),
         ];
         $payload['guest_recovery_enrolled'] = ! empty($user->guest_recovery_public_key ?? null);
         // Public owner identifier for validating local recovery envelopes against this session.
@@ -104,62 +111,13 @@ class AccountController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        // Admin and support have unlimited access to all features
-        if ($user->hasUnlimitedAccess()) {
-            $storeCount = $user->stores()->count();
-            $apiKeyCount = 0;
-            foreach ($user->stores as $store) {
-                $apiKeyCount += $store->apiKeys()->count();
-            }
-
-            $companyCount = $user->companies()->count();
-
-            return response()->json([
-                'stores' => [
-                    'current' => $storeCount,
-                    'max' => null,
-                    'unlimited' => true,
-                ],
-                'companies' => [
-                    'current' => $companyCount,
-                    'max' => null,
-                    'unlimited' => true,
-                ],
-                'ln_addresses' => [
-                    'current' => 0,
-                    'max' => null,
-                    'unlimited' => true,
-                ],
-                'api_keys' => [
-                    'current' => $apiKeyCount,
-                    'max' => null,
-                    'unlimited' => true,
-                ],
-                'events' => [
-                    'max' => null,
-                    'unlimited' => true,
-                ],
-                'raffles' => [
-                    'max' => null,
-                    'unlimited' => true,
-                    'allowed' => true,
-                ],
-            ]);
-        }
-
-        $cacheKey = 'user_limits_'.$user->id;
-        $limits = Cache::remember($cacheKey, 60, function () use ($user) {
-            $plan = $user->currentSubscriptionPlan();
-            $maxStores = $plan?->max_stores;
-            $maxApiKeys = $plan?->max_api_keys;
-            // Free plan fallback when plan is null or has null limits
-            if ($maxStores === null) {
-                $maxStores = 1;
-            }
-            if ($maxApiKeys === null) {
-                $maxApiKeys = 1;
-            }
-            $maxLnAddresses = $user->getMaxLightningAddresses();
+        // Do not cache access decisions: verification, policy and billing can change
+        // while old clients or workers still hold an earlier capability snapshot.
+        $effective = app(EffectiveAccessPolicy::class)->snapshot($user);
+        $limits = (function () use ($user, $effective) {
+            $maxStores = $effective['limits']['max_stores'];
+            $maxApiKeys = $effective['limits']['max_api_keys'];
+            $maxLnAddresses = $effective['limits']['max_ln_addresses'];
 
             $storeCount = $user->stores()->count();
             // API key limit is per store; for account we show max active keys in any single store
@@ -186,17 +144,16 @@ class AccountController extends Controller
                 }
             }
 
-            $maxEvents = $user->getMaxEventsPerStore();
-            $maxRaffles = $user->getMaxRafflesPerStore();
-            $subscriptionService = app(SubscriptionEntitlementService::class);
-            $maxCompanies = $subscriptionService->maxCompaniesForUser($user);
+            $maxEvents = $effective['limits']['max_events'];
+            $maxRaffles = $effective['limits']['max_raffles'];
+            $maxCompanies = $effective['limits']['max_companies'];
             $companyCount = $user->companies()->count();
 
             return [
                 'stores' => [
                     'current' => $storeCount,
                     'max' => $maxStores,
-                    'unlimited' => false,
+                    'unlimited' => $maxStores === null,
                 ],
                 'ln_addresses' => [
                     'current' => $lnAddressesCount,
@@ -220,10 +177,16 @@ class AccountController extends Controller
                 'companies' => [
                     'current' => $companyCount,
                     'max' => $maxCompanies,
-                    'unlimited' => $maxCompanies === null && $subscriptionService->canUseBusinessInvoicing($user),
+                    'unlimited' => $maxCompanies === null && in_array('business_invoicing', $effective['features'], true),
                 ],
             ];
-        });
+        })();
+        $limits['policy_version'] = $effective['policy_version'];
+        $limits['user_api_keys'] = [
+            'current' => $user->userApiKeys()->whereNull('revoked_at')->count(),
+            'max' => $effective['limits']['max_user_api_keys'],
+            'unlimited' => $effective['limits']['max_user_api_keys'] === null,
+        ];
 
         // When store_id is provided, add per-store counts for sidebar display
         if ($request->filled('store_id')) {

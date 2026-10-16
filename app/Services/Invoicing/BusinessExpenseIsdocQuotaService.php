@@ -4,6 +4,7 @@ namespace App\Services\Invoicing;
 
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Services\PurchaseAvailabilityPolicy;
 use Illuminate\Validation\ValidationException;
 
 class BusinessExpenseIsdocQuotaService
@@ -35,6 +36,7 @@ class BusinessExpenseIsdocQuotaService
             'purchased_credits' => $purchasedCredits,
             'can_extract' => $canExtract,
             'packs' => $this->packService->availablePacks(),
+            'purchases_available' => app(PurchaseAvailabilityPolicy::class)->snapshot()['isdoc_packs'],
             // Legacy keys for older UI
             'used' => min($freeUsed, $freeLimit),
             'limit' => $freeLimit,
@@ -48,9 +50,11 @@ class BusinessExpenseIsdocQuotaService
             return;
         }
 
-        throw ValidationException::withMessages([
-            'quota' => ['ISDOC extraction limit reached. Purchase a pack to continue.'],
-        ]);
+        $message = app(PurchaseAvailabilityPolicy::class)->snapshot()['isdoc_packs']
+            ? 'ISDOC extraction limit reached. Purchase a pack to continue.'
+            : __('messages.isdoc_extract_limit_reached_no_purchase');
+
+        throw ValidationException::withMessages(['quota' => [$message]]);
     }
 
     public function recordExtraction(User $user, ?string $expenseId, string $companyId): void

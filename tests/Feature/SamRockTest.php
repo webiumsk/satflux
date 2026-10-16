@@ -99,12 +99,15 @@ class SamRockTest extends TestCase
         $cashuSettingsPuts = [];
         Http::fake(function (Request $request) use ($store, &$cashuSettingsPuts) {
             $url = $request->url();
+            if (str_ends_with($url, '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true], 200);
+            }
 
             if (str_contains($url, '/plugins/cashumelt/settings')) {
                 if ($request->method() === 'GET') {
                     return Http::response([
                         'mintUrl' => 'https://mint.example/x',
-                        'lightningAddress' => 'old-fallback@example.com',
+                        'lightningAddress' => empty($cashuSettingsPuts) ? 'old-fallback@example.com' : 'fallback@example.com',
                         'enabled' => true,
                     ], 200);
                 }

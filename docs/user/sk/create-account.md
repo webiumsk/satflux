@@ -3,9 +3,12 @@ title: Vytvorte si účet v Satfluxe
 category: getting-started
 order: 2
 meta_description: Zaregistrujte sa cez 24-slovnú obnovovaciu frázu a zabezpečte si účet.
+updated: 2026-10-14
 ---
 
 # Vytvorte si účet v Satfluxe
+
+> Keď je aktívny [dočasný PRO prístup zdarma](/documentation/free-pro-access), registrované nehosťovské účty s overeným e-mailom môžu používať PRO funkcie bez nákupu predplatného. Bežné limity a vlastnícke oprávnenia naďalej platia. Aktuálny režim nájdete v Cenníku a Účte.
 
 Satflux môžete začať používať za necelú minútu - bez e-mailu.
 
@@ -23,7 +26,7 @@ Hneď po registrácii Satflux ponúkne pridať **passkey**. Passkey vám umožn�
 
 ## Pridajte e-mail (voliteľné)
 
-E-mail si môžete pridať neskôr v účte - slúži len na fakturáciu predplatného, notifikácie a potvrdzovanie citlivých zmien, nikdy nie ako prihlasovacie tajomstvo.
+E-mail si môžete pridať neskôr v účte. Na začiatok je voliteľný, ale jeho pridanie a overenie je potrebné na PRO prístup z akcie, keď je aktívna. Slúži aj na fakturáciu, notifikácie a potvrdzovanie citlivých zmien, nikdy nie ako prihlasovacie tajomstvo.
 
 1. Otvorte **Účet** a do rámčeka **Povýšiť hosťovský účet** zadajte svoj e-mail (alebo použite výzvu na povýšenie, ktorá sa zobrazí, keď funkcia vyžaduje e-mail).
 2. Pošleme vám **6-miestny kód**. Opíšte ho do formulára - kód platí 10 minút a funguje len raz.

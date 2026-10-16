@@ -2,49 +2,48 @@
 title: Plans & limits
 category: reference
 order: 1
-meta_description: What the Free, Pro and Enterprise plans include in Satflux.
+meta_description: Free, PRO and Enterprise features, limits and temporary free PRO access.
+updated: 2026-10-14
 ---
 
 # Plans & limits
 
-Satflux offers a **Free** plan and paid **Pro** and **Enterprise** plans. Higher plans raise limits and unlock features such as business invoicing.
+Satflux has **Free**, **PRO** and **Enterprise** plans. Your underlying plan and subscription describe billing; your available features can also include temporary promotional access.
+
+> When [temporary free PRO access](/documentation/free-pro-access) is active, registered non-guest accounts with a verified email receive PRO features until further notice. New PRO subscriptions, trials, subscription-credit purchases, company slots and ISDOC packs are paused. Check **Pricing** and **Account** for the current mode.
 
 ## At a glance
 
-- **Free** - get started with a store, Point of Sale, a couple of Lightning addresses, an API key, basic stats, and no transaction fees.
-- **Pro** - everything you need to run a business: **invoicing** (companies, expenses, bank matching, contact import), more stores and Lightning addresses, more API keys, Stripe, advanced stats and custom branding.
-- **Enterprise** - unlimited stores, multi-user roles, webhooks, custom reporting, and business invoicing with unlimited companies.
+- **Free** - get started with a store, Point of Sale, Lightning addresses, an API key, basic payment information and no Satflux transaction fees.
+- **PRO** - business invoicing, expenses, bank matching, contact import, additional stores and API keys, Stripe, exports and advanced statistics.
+- **Enterprise** - higher limits, store-user management and unlimited ISDOC extraction. Contact us about Enterprise; the free PRO promotion does not grant these capabilities.
 
-The exact limits and current pricing are shown on the **Pricing** page in the app.
+Standard PRO includes **3 stores**, **3 active API keys per store**, **3 active panel API keys per account**, **3 ticket events per store** and **2 owned invoicing companies**. PRO has no count limit for hosted Lightning addresses and raffles. Existing account allowances and purchased company slots remain applicable. ISDOC uses its existing base allowance of **20 extractions per account**, plus previously purchased credits; the promotion does not reset usage.
 
-## Where features are gated
+The actual applicable limits appear in your account and on the feature pages. Accounts already above a limit retain their existing objects; creating more remains subject to that limit.
 
-Some features check your plan. For example, **invoicing** is available on Pro and Enterprise - open Invoicing on a Free plan and you will be prompted to upgrade. Admin and Enterprise accounts always have invoicing available.
+## Feature access
 
-## Free trial
+Invoicing, Stripe and other PRO features require PRO access, whether from an eligible promotion account, a current subscription or an existing manual assignment. A guest or unverified account does not receive promotional access. Adding and confirming an email through [account setup](/documentation/create-account) completes guest conversion.
 
-Accounts on the Free plan that have not used their trial yet can try the full **Pro** plan free for **30 days**:
+PRO access never grants access to another user's stores or companies. Shared-company members work within their assigned roles and the owner's access. Enterprise and administrative permissions remain unchanged.
 
-- The trial is available **once per account**.
-- During the trial you have everything Pro includes - invoicing, the Pro company limit, exports, Stripe and more. You can also buy extra company slots during the trial.
-- The trial has **no grace period**: when it ends without payment, the account returns to Free immediately and Pro features (including invoicing) lock. Your data stays - nothing is deleted.
-- Paying for Pro during the trial starts a full paid year **from the payment date**. Any company slots bought during the trial stay on your account and become active again with paid Pro.
+## Trials and subscriptions
 
-## Extra company slots (invoicing)
+When the promotion is active, there is no new PRO trial or subscription to start and no PRO subscription credit to buy. Promotional access creates no subscription, consumes no trial and causes no automatic charge.
 
-The Pro plan includes a fixed number of invoicing companies. If you need more - for example you run several businesses, or you are an accounting office managing client companies - you can buy **extra company slots** as a one-off purchase, paid in bitcoin via BTCPay.
+The usual billing system remains in place. Outside the promotional mode, when purchases are enabled, the standard PRO trial is **30 days**, **once per account**. A trial has no grace period; a paid subscription uses its own billing period and renewal rules. Existing trial and payment history are retained during the promotion. A trial ending does not end an eligible account's promotional PRO access while the promotion continues.
 
-How slots work:
+## Existing company slots and ISDOC credits
 
-- A slot belongs to your **account**, not to a specific company. Deleting a company frees its slot for a new one.
-- Slots are a **one-off purchase** and never expire. They are not a subscription.
-- Slots only take effect with an **active Pro plan** - they raise the Pro company limit, but do not unlock invoicing on their own and are dormant while your Pro plan is expired.
-- Companies shared with you by someone else (for example as an accountant invited to a client's company) do **not** count against your limit - only companies you own do.
+A purchased company slot belongs to your **account**, not a specific company. Deleting a company frees capacity for another one. Purchased slots do not expire and are not subscriptions. They increase the company allowance when invoicing access is available; they do not unlock invoicing by themselves. Companies shared with you do not count against your owned-company limit.
 
-Slots are sold in packs of **1, 5 and 10** - larger packs are cheaper per slot. Current prices in sats are shown in the purchase dialog and in the **Pricing** section.
+During the promotion, existing slots and unused ISDOC credits are retained, but **new slot and ISDOC pack purchases are paused**. You cannot raise an exhausted allowance by buying a new pack in this mode.
 
-You can buy slots from the prompt shown when you reach your company limit on the Invoicing page. For many companies, the Enterprise plan with unlimited companies may be a better fit - contact us.
+When add-on purchases are enabled outside this mode, the usual company-slot packs are **1, 5 and 10**, paid in bitcoin through BTCPay. Their prices and availability appear in the app.
 
-## Upgrading
+## Getting access
 
-Upgrade from the **Pricing** page or the upgrade prompt shown when you reach a gated feature.
+When the promotion is active, eligible accounts get PRO access automatically. You do not need a checkout. If you are a guest, add and verify your email in **Account**. If your registered email is unverified, complete its verification.
+
+When PRO purchases are enabled outside this mode, purchase options appear on **Pricing** and in relevant prompts. A future return to paid PRO requires a separate announcement and published terms; promotional access does not automatically become a paid subscription.

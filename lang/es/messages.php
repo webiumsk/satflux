@@ -134,4 +134,10 @@ return [
 
     // SEPA Instant QR
     'sepa_certificate_files_required' => 'Sube un archivo PKCS#12 (.p12/.pfx) o el certificado PEM junto con su clave privada.',
+
+    // Temporarily paused purchases
+    'pro_purchase_temporarily_disabled' => 'Las compras de PRO están temporalmente suspendidas.',
+    'company_slot_purchase_temporarily_disabled' => 'Las compras de espacios para empresas están temporalmente suspendidas.',
+    'isdoc_pack_purchase_temporarily_disabled' => 'Las compras de paquetes ISDOC están temporalmente suspendidas.',
+    'isdoc_extract_limit_reached_no_purchase' => 'Se ha alcanzado el límite de extracciones ISDOC. Las compras de paquetes están temporalmente suspendidas.',
 ];

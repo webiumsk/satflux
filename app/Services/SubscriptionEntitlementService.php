@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
-use App\Services\Invoicing\CompanySlotService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -425,11 +424,7 @@ class SubscriptionEntitlementService
      */
     public function canUseXlsxExport(User $user): bool
     {
-        if ($user->hasUnlimitedAccess()) {
-            return true;
-        }
-
-        return $this->hasActiveProEntitlement($user);
+        return app(EffectiveAccessPolicy::class)->allows($user, 'xlsx_exports');
     }
 
     /**
@@ -438,11 +433,7 @@ class SubscriptionEntitlementService
      */
     public function canAccessExports(User $user): bool
     {
-        if ($user->hasUnlimitedAccess()) {
-            return true;
-        }
-
-        return $this->entitledPlanHasFeature($user, 'automatic_csv_exports');
+        return app(EffectiveAccessPolicy::class)->allows($user, 'automatic_csv_exports');
     }
 
     /**
@@ -450,11 +441,7 @@ class SubscriptionEntitlementService
      */
     public function canUseAutomaticExports(User $user): bool
     {
-        if ($user->hasUnlimitedAccess()) {
-            return true;
-        }
-
-        return $this->entitledPlanHasFeature($user, 'automatic_csv_exports');
+        return app(EffectiveAccessPolicy::class)->allows($user, 'automatic_csv_exports');
     }
 
     /**
@@ -462,11 +449,7 @@ class SubscriptionEntitlementService
      */
     public function canUseOfflinePaymentMethods(User $user): bool
     {
-        if ($user->hasUnlimitedAccess()) {
-            return true;
-        }
-
-        return $this->entitledPlanHasFeature($user, 'offline_payment_methods');
+        return app(EffectiveAccessPolicy::class)->allows($user, 'offline_payment_methods');
     }
 
     /**
@@ -474,11 +457,7 @@ class SubscriptionEntitlementService
      */
     public function canViewAdvancedStats(User $user): bool
     {
-        if ($user->hasUnlimitedAccess()) {
-            return true;
-        }
-
-        return $this->entitledPlanHasFeature($user, 'advanced_statistics');
+        return app(EffectiveAccessPolicy::class)->allows($user, 'advanced_statistics');
     }
 
     /**
@@ -486,20 +465,12 @@ class SubscriptionEntitlementService
      */
     public function canAccessStripe(User $user): bool
     {
-        if ($user->hasUnlimitedAccess()) {
-            return true;
-        }
-
-        return $this->entitledPlanHasFeature($user, 'stripe');
+        return app(EffectiveAccessPolicy::class)->allows($user, 'stripe');
     }
 
     public function canUseBusinessInvoicing(User $user): bool
     {
-        if ($user->hasUnlimitedAccess()) {
-            return true;
-        }
-
-        return $this->entitledPlanHasFeature($user, 'business_invoicing');
+        return app(EffectiveAccessPolicy::class)->allows($user, 'business_invoicing');
     }
 
     /**
@@ -508,13 +479,7 @@ class SubscriptionEntitlementService
      */
     public function maxCompaniesForUser(User $user): ?int
     {
-        $base = $this->includedCompaniesForUser($user);
-
-        if ($base === null || $base <= 0) {
-            return $base;
-        }
-
-        return $base + app(CompanySlotService::class)->paidSlotCount($user);
+        return app(EffectiveAccessPolicy::class)->limit($user, 'max_companies');
     }
 
     /**
@@ -522,31 +487,7 @@ class SubscriptionEntitlementService
      */
     public function includedCompaniesForUser(User $user): ?int
     {
-        if ($user->hasUnlimitedAccess()) {
-            return null;
-        }
-
-        if (! $this->canUseBusinessInvoicing($user)) {
-            return 0;
-        }
-
-        $plan = $user->currentSubscriptionPlan();
-        if (! $plan) {
-            return 0;
-        }
-
-        if ($plan->hasUnlimitedCompanies()) {
-            return null;
-        }
-
-        if ($plan->code === 'pro') {
-            $betaMax = config('invoicing.beta_pro_max_companies');
-            if ($betaMax !== null && $betaMax > 0) {
-                return $betaMax;
-            }
-        }
-
-        return $plan->max_companies ?? 0;
+        return app(EffectiveAccessPolicy::class)->limit($user, 'included_companies');
     }
 
     public function canCreateCompany(User $user): bool
@@ -569,11 +510,7 @@ class SubscriptionEntitlementService
      */
     public function canManageStoreUsers(User $user): bool
     {
-        if ($user->hasUnlimitedAccess()) {
-            return true;
-        }
-
-        return $this->entitledPlanHasFeature($user, 'per_store_user_management');
+        return app(EffectiveAccessPolicy::class)->allows($user, 'per_store_user_management');
     }
 
     /**

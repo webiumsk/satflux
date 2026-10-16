@@ -62,6 +62,15 @@ describe('global API error flash interceptor', () => {
         expect(errorKeySpy).not.toHaveBeenCalled();
     });
 
+    it('localizes stable server purchase denials for stale clients', async () => {
+        for (const code of ['pro_purchase_temporarily_disabled', 'company_slot_purchase_temporarily_disabled', 'isdoc_pack_purchase_temporarily_disabled']) {
+            await expect(rejectThroughInterceptor(axiosError({ response: { status: 403, data: { code } } }))).rejects.toBeTruthy();
+        }
+        await flushDynamicImports();
+        expect(errorKeySpy).toHaveBeenCalledTimes(3);
+        expect(errorKeySpy).toHaveBeenCalledWith('free_pro.purchases_paused');
+    });
+
     it('stays silent for component-level 4xx errors', async () => {
         for (const status of [401, 404, 422]) {
             await expect(

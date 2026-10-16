@@ -25,6 +25,9 @@
       <p v-if="canUse && isRelaySyncing" class="text-xs text-amber-800 max-w-xs text-right">
         {{ t('invoicing.relay_sync_wait_hint') }}
       </p>
+      <router-link v-else-if="canUse && !authStore.user?.email_verified_at" to="/account/check-email" class="text-sm text-indigo-700 underline">
+        {{ t('free_pro.verify_email') }}
+      </router-link>
       <div v-else-if="canUse && !canCreateCompany && companyLimitMax" class="max-w-xs text-right">
         <p class="text-xs text-amber-800">
           {{ t('invoicing.company_limit_reached', { max: companyLimitMax }) }}
@@ -32,6 +35,7 @@
         <button
           type="button"
           class="mt-1 text-xs text-indigo-700 hover:text-indigo-900 hover:underline font-medium"
+          v-if="purchases.company_slots"
           @click="showSlotModal = true"
         >
           {{ t('invoicing.company_slots_cta') }}
@@ -114,7 +118,8 @@
     <div v-if="!canUse" class="invoicing-alert-warn">
       <p class="font-medium">{{ t('invoicing.pro_required') }}</p>
       <p class="text-sm mt-2 opacity-90">{{ t('invoicing.pro_required_detail') }}</p>
-      <button type="button" class="invoicing-link mt-3" @click="showUpgrade = true">
+      <p v-if="!purchases.pro_subscriptions" class="text-sm mt-2">{{ t("free_pro.purchases_paused") }}</p>
+      <button v-else type="button" class="invoicing-link mt-3" @click="showUpgrade = true">
         {{ t('invoicing.upgrade_cta') }}
       </button>
     </div>
@@ -208,6 +213,7 @@
 </template>
 
 <script setup lang="ts">
+import { useEffectiveAccess, canCreateLocalCompany } from "@/composables/useEffectiveAccess";
 import { computed, onMounted, ref, unref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -588,19 +594,9 @@ async function runMergeDuplicates(): Promise<void> {
   }
 }
 
-const companyLimitMax = computed(() => {
-  const plan = authStore.user?.plan;
-  if (!plan || plan.companies_unlimited) return null;
-  return typeof plan.max_companies === 'number' ? plan.max_companies : null;
-});
-
-const canCreateCompany = computed(() => {
-  if (!canUse.value) return false;
-  if (isRelaySyncing.value) return false;
-  const max = companyLimitMax.value;
-  if (max === null) return true;
-  return companyList.value.length < max;
-});
+const { purchases, companyLimit: companyLimitMax } = useEffectiveAccess();
+const canCreateCompany = computed(() => !isRelaySyncing.value
+  && canCreateLocalCompany(authStore.user, companyList.value.length));
 
 function openCompany(c: { id: string }): void {
   router.push({ name: 'invoicing-invoices', params: { companyId: c.id } });

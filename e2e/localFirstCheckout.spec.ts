@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
     btcpayStubUrl,
+    CHECKOUT_AUTH_STATE_PATH,
     createStoreViaUi,
     deleteAllStores,
     dismissCookieConsent,
@@ -38,7 +39,7 @@ test.describe.serial('Local-first invoice BTCPay checkout (Greenfield stub)', ()
     }
 
     test.beforeAll(async ({ browser }) => {
-        page = await browser.newPage();
+        page = await browser.newPage({ storageState: CHECKOUT_AUTH_STATE_PATH });
         await dismissCookieConsent(page);
         await page.goto('/dashboard');
     });
@@ -127,7 +128,16 @@ test.describe.serial('Local-first invoice BTCPay checkout (Greenfield stub)', ()
     });
 
     test('mints the ephemeral BTCPay checkout against the stub', async () => {
+        const checkoutResponse = page.waitForResponse(response =>
+            response.request().method() === 'POST'
+            && new URL(response.url()).pathname.endsWith('/ephemeral/btcpay-checkout'),
+        );
         await page.getByRole('button', { name: /create checkout link/i }).click();
+        const response = await checkoutResponse;
+        // Assert the actual refusal/success before waiting for its UI result.
+        // Never print the ephemeral document snapshot or authentication state.
+        expect(response.status(), 'Checkout API must accept the issued invoice').toBe(200);
+        expect(response.headers()['content-type']).toContain('application/json');
 
         // The checkout link points at the stub's checkout page.
         const link = page.locator(`a[href*="${btcpayStubUrl.replace(/^https?:\/\//, '')}"]`).first();

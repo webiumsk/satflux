@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\EffectiveAccessPolicy;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -50,13 +51,14 @@ class EnsureStoreLimit
         }
 
         // Get user's current subscription plan
-        $plan = $user->currentSubscriptionPlan();
+        $policy = app(EffectiveAccessPolicy::class);
+        $plan = $policy->plan($user);
 
         // Get current store count
         $currentStoreCount = $user->stores()->count();
 
         // Check limit
-        $maxStores = $plan?->max_stores;
+        $maxStores = $policy->limit($user, 'max_stores');
 
         // If unlimited (null), allow
         if ($maxStores === null) {
@@ -69,7 +71,7 @@ class EnsureStoreLimit
                 'message' => "You have reached the maximum number of stores ({$maxStores}) for your plan.",
                 'current_count' => $currentStoreCount,
                 'max_allowed' => $maxStores,
-                'plan' => $plan?->display_name ?? 'Free',
+                'plan' => ($plan ? (string) $plan->getAttribute('display_name') : 'Free'),
             ], 403);
         }
 
