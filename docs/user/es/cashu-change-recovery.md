@@ -12,6 +12,11 @@ Por ello puede quedar saldo aunque los pagos hayan finalizado. El envío automá
 por Lightning empieza con 100 sat de saldo apto del mismo mint; un saldo menor puede
 seguir bloqueando el cambio de cartera.
 
+Los ajustes de conexión Cashu muestran la última comprobación de seguridad antes
+de editar. Si el cambio está bloqueado, sigue el enlace a liquidaciones y
+recuperación. Actualizar este estado conserva los ajustes que hayas editado;
+una comprobación no disponible no significa que sea seguro cambiar la cartera.
+
 Con CashuMelt **1.4.0.4 o posterior**, abre las **Liquidaciones Cashu** de la tienda
 y el panel de recuperación. Los importes se expresan en satoshis y los registros
 se cuentan por separado. Solo el propietario registrado con correo verificado

@@ -1,5 +1,35 @@
 # Project state
 
+## Authorized Cashu connection preflight follow-up (2026-10-16)
+
+The owner requests wallet-change blockers on the Cashu connection/settings screen
+before editing or saving. The bounded contract is the connection-screen follow-up
+in [CASHU_CHANGE_RECOVERY](CASHU_CHANGE_RECOVERY.md): an optional aggregate on the
+existing settings read, persistent advisory status, recovery navigation and a
+safety-only refresh that retains edited fields. No new mutation, authorization
+shortcut, provider change, configuration or production operation is included.
+
+Baseline `fec8a92353ca974d1d01bc35b37712b483a2de1d` is published in PR #394 and
+independently accepted with green
+[CI 38826049379](https://github.com/webiumsk/satflux/actions/runs/38826049379):
+1,737 PHP tests/7,600 assertions, 778 Vitest cases and 20 browser passes/three
+intentional promotion-fixture skips, no retries. All static/build gates pass and
+fresh PHP CI installs HttpFoundation 7.4.21. Composer audit has no advisories.
+The existing production npm audit reports 40 affected packages (36 moderate/four
+high), identical to baseline; its unchanged critical-only failure threshold permits
+success. JavaScript dependencies are unchanged. Do not describe that audit as clean.
+
+Implementation source is complete; independent security and UX reviews accept the
+eight-file production manifest `682b2c895ff99ff496f6a7d6e799f4e3c95c17339d2c082f355250eb4580f0fd`.
+Independent QA confirms the same source scope and passes focused PHP (25 cases/122
+assertions). Author frontend focus passes 47 cases and full Vitest passes 793 cases
+in 124 files. Targeted Pint (two PHP files), controller PHPStan, AST graph update and
+documentation validator pass. At this source snapshot, final frontend static/build
+checks, independent frontend focus and exact published-head CI remain required;
+the existing PR #394 records final completion evidence. No dependency, baseline,
+workflow or configuration changes. CashuMelt 1.4.0.4 and its reviewed package remain
+unchanged; coordinated staging/merge/release/deployment approval is separate.
+
 ## Authorized Cashu change recovery integration (2026-10-16)
 
 The Product Owner explicitly clarifies that the owned CashuMelt plugin may change

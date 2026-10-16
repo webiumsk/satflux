@@ -1,5 +1,17 @@
 <template>
   <div>
+    <div v-if="walletType === 'cashu'" class="mb-6 space-y-3" data-testid="cashu-safety-preflight">
+      <p v-if="preflightLoading" role="status" aria-live="polite" class="text-sm text-gray-300">{{ t('stores.cashu_wallet_safety_loading') }}</p>
+      <CashuWalletSafetySummary v-else :safety="preflightSafety" />
+      <template v-if="!preflightLoading && preflightSafety?.status === 'blocked'">
+        <p class="text-sm text-amber-100">{{ t('stores.cashu_wallet_safety_recovery_steps') }}</p>
+        <RouterLink
+          :to="{ name: 'stores-show', params: { id: storeId }, query: { section: 'cashu' } }"
+          class="inline-block text-sm font-medium text-indigo-300 underline underline-offset-2 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-400"
+        >{{ t('stores.cashu_wallet_safety_recovery_link') }}</RouterLink>
+      </template>
+      <button type="button" data-testid="cashu-safety-refresh" :disabled="preflightLoading" class="text-sm font-medium text-indigo-300 underline underline-offset-2 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-400 disabled:opacity-50" @click="refreshWalletSafety">{{ t('stores.cashu_wallet_safety_refresh') }}</button>
+    </div>
     <div v-if="switchIntent && walletType !== 'cashu'" class="mb-6">
       <button
         type="button"
@@ -513,10 +525,10 @@
 
 <script setup lang="ts">
 import { asApiError } from "../../../utils/apiError";
-import { computed, reactive, ref, watch } from "vue";
+import { computed, onBeforeUnmount, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../../store/auth";
-import { walletApi, type WalletChangeConfirmationState } from "../../../services/api";
+import { walletApi, type CashuWalletSafety, type WalletChangeConfirmationState } from "../../../services/api";
 import type { EmailChallengeSummary } from "../../../store/auth";
 import EmailCodeVerification from "../../account/EmailCodeVerification.vue";
 import CashuWalletSafetySummary from './CashuWalletSafetySummary.vue';
@@ -562,6 +574,46 @@ const cashuRecoveryRequired = ref(false);
 const walletSafety = ref<unknown>(null);
 const walletSafetyRefusal = ref<'blocked' | 'unavailable' | null>(null);
 let storeGeneration = 0;
+let settingsRequest = 0;
+let safetyRequest = 0;
+let mounted = true;
+const preflightSafety = ref<CashuWalletSafety | null>(null);
+const preflightLoading = ref(false);
+
+function projectSafety(raw: unknown): CashuWalletSafety | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const data = raw as Partial<CashuWalletSafety>;
+  if (data.status !== 'safe' && data.status !== 'blocked' && data.status !== 'unavailable') return null;
+  const count = (value: unknown): number | null => typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 2147483647 ? value : null;
+  return { status: data.status, unresolved_payments: count(data.unresolved_payments), unresolved_change: count(data.unresolved_change) };
+}
+
+function currentStore(storeId: string, generation: number): boolean {
+  return mounted && storeId === props.storeId && generation === storeGeneration;
+}
+
+function setPreflightRefusal(status: 'blocked' | 'unavailable', raw: unknown) {
+  safetyRequest++;
+  preflightLoading.value = false;
+  const snapshot = projectSafety(raw);
+  preflightSafety.value = { status, unresolved_payments: snapshot?.unresolved_payments ?? null, unresolved_change: snapshot?.unresolved_change ?? null };
+}
+
+/** Refresh only diagnostics; never replace typed settings or authentication state. */
+async function refreshWalletSafety() {
+  const storeId = props.storeId;
+  const generation = storeGeneration;
+  const request = ++safetyRequest;
+  preflightLoading.value = true;
+  try {
+    const data = await walletApi.cashu.getSettings(storeId);
+    if (currentStore(storeId, generation) && request === safetyRequest) preflightSafety.value = projectSafety(data.wallet_safety);
+  } catch {
+    if (currentStore(storeId, generation) && request === safetyRequest) preflightSafety.value = null;
+  } finally {
+    if (currentStore(storeId, generation) && request === safetyRequest) preflightLoading.value = false;
+  }
+}
 
 const passwordInput = ref("");
 const passwordError = ref("");
@@ -694,12 +746,17 @@ function resetCashuErrors() {
 
 async function fetchCashuSettings() {
   const storeId = props.storeId;
+  const generation = storeGeneration;
+  const request = ++settingsRequest;
+  const safetyVersion = ++safetyRequest;
   cashuLoading.value = true;
+  preflightLoading.value = true;
   resetCashuErrors();
 
   try {
     const d = await walletApi.cashu.getSettings(storeId);
-    if (storeId !== props.storeId) return;
+    if (!currentStore(storeId, generation) || request !== settingsRequest) return;
+    if (safetyVersion === safetyRequest) preflightSafety.value = projectSafety(d.wallet_safety);
     changeConfirmation.value = d.change_confirmation ?? null;
     changeChallenge.value = d.change_confirmation?.pending ?? null;
 
@@ -742,11 +799,13 @@ async function fetchCashuSettings() {
       cashuSectionMode.value = has ? "readonly" : "editing";
     }
   } catch (err) {
-    if (storeId !== props.storeId) return;
+    if (!currentStore(storeId, generation) || request !== settingsRequest) return;
+    if (safetyVersion === safetyRequest) preflightSafety.value = null;
     cashuErrorMessage.value = getApiErrorMessage(err, "Failed to load Cashu settings");
   } finally {
-    if (storeId === props.storeId) {
+    if (currentStore(storeId, generation) && request === settingsRequest) {
       cashuLoading.value = false;
+      if (safetyVersion === safetyRequest) preflightLoading.value = false;
       syncCashuFieldsFromPasteDetection();
     }
   }
@@ -812,6 +871,7 @@ async function handleSaveCashu() {
     cashuInitializedFromFetch.value = true;
     cashuSectionMode.value = "readonly";
     emit("submitted");
+    void refreshWalletSafety();
   } catch (rawError) {
     if (storeId !== props.storeId || generation !== storeGeneration) return;
     const err = asApiError(rawError);
@@ -826,6 +886,7 @@ async function handleSaveCashu() {
       return;
     }
     if (err.response?.data?.code === "cashu_outstanding_payments") {
+      setPreflightRefusal('blocked', err.response.data.wallet_safety);
       walletSafety.value = err.response.data.wallet_safety ?? null;
       walletSafetyRefusal.value = 'blocked';
       cashuRecoveryRequired.value = true;
@@ -833,6 +894,7 @@ async function handleSaveCashu() {
       return;
     }
     if (err.response?.data?.code === "cashu_safety_unavailable") {
+      setPreflightRefusal('unavailable', err.response.data.wallet_safety);
       walletSafety.value = err.response.data.wallet_safety ?? null;
       walletSafetyRefusal.value = 'unavailable';
       cashuErrorMessage.value = t("stores.cashu_wallet_change_safety_unavailable");
@@ -846,6 +908,7 @@ async function handleSaveCashu() {
         if (key === "cashu") {
           cashuRecoveryRequired.value = msg === "Outstanding Cashu settlements or change must be recovered before changing this wallet.";
           if (cashuRecoveryRequired.value) {
+            setPreflightRefusal('blocked', err.response?.data?.wallet_safety);
             walletSafety.value = err.response?.data?.wallet_safety ?? null;
             walletSafetyRefusal.value = 'blocked';
           }
@@ -888,6 +951,8 @@ watch(
   () => props.storeId,
   () => {
     storeGeneration++;
+    preflightSafety.value = null;
+    preflightLoading.value = false;
     cashuSectionMode.value = "editing";
     cashuInitializedFromFetch.value = false;
     cashuBetaAccepted.value = false;
@@ -900,7 +965,15 @@ watch(
     resetCashuErrors();
     if (props.walletType === "cashu" || props.switchIntent) void fetchCashuSettings();
   },
+  { flush: 'sync' },
 );
+
+onBeforeUnmount(() => {
+  mounted = false;
+  storeGeneration++;
+  settingsRequest++;
+  safetyRequest++;
+});
 
 function startCashuConnectionEdit() {
   passwordError.value = "";

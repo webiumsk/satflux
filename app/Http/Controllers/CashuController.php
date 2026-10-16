@@ -63,6 +63,7 @@ class CashuController extends Controller
 
         return response()->json([
             'data' => [...$this->formatCashuSettingsForApi($settings),
+                'wallet_safety' => $this->cashuService->getWalletSafety($store->btcpay_store_id, $userApiKey),
                 'change_confirmation' => app(WalletChangeConfirmationGuard::class)->state($store, $request->user())],
         ]);
     }

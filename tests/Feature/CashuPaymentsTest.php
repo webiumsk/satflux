@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\ReadsEmailCodes;
 use Tests\TestCase;
 
@@ -394,6 +395,8 @@ class CashuPaymentsTest extends TestCase
 
     public function test_cashu_get_settings_returns_defaults_for_blink_store(): void
     {
+        Http::fake();
+
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
         $store = Store::factory()->create([
             'user_id' => $user->id,
@@ -410,11 +413,16 @@ class CashuPaymentsTest extends TestCase
             ->assertJsonPath('data.unit', null)
             ->assertJsonPath('data.trusted_mint_urls', null)
             ->assertJsonPath('data.max_melt_fee_reserve_sats', null)
-            ->assertJsonPath('data.max_melt_fee_reserve_percent_of_minted', null);
+            ->assertJsonPath('data.max_melt_fee_reserve_percent_of_minted', null)
+            ->assertJsonMissingPath('data.wallet_safety');
+
+        Http::assertNothingSent();
     }
 
     public function test_cashu_get_settings_returns_defaults_for_nwc_store(): void
     {
+        Http::fake();
+
         $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
         $store = Store::factory()->create([
             'user_id' => $user->id,
@@ -431,7 +439,110 @@ class CashuPaymentsTest extends TestCase
             ->assertJsonPath('data.unit', null)
             ->assertJsonPath('data.trusted_mint_urls', null)
             ->assertJsonPath('data.max_melt_fee_reserve_sats', null)
-            ->assertJsonPath('data.max_melt_fee_reserve_percent_of_minted', null);
+            ->assertJsonPath('data.max_melt_fee_reserve_percent_of_minted', null)
+            ->assertJsonMissingPath('data.wallet_safety');
+
+        Http::assertNothingSent();
+    }
+
+    public static function cashuSettingsSafetySnapshots(): array
+    {
+        return [
+            'safe' => [true, 200, ['status' => 'safe', 'unresolved_payments' => 0, 'unresolved_change' => 0]],
+            'blocked' => [false, 200, ['status' => 'blocked', 'unresolved_payments' => 1, 'unresolved_change' => 2]],
+            'unavailable' => [null, 404, ['status' => 'unavailable', 'unresolved_payments' => null, 'unresolved_change' => null]],
+        ];
+    }
+
+    #[DataProvider('cashuSettingsSafetySnapshots')]
+    public function test_cashu_get_settings_includes_a_read_only_safety_snapshot_without_changing_settings(?bool $safe, int $status, array $expected): void
+    {
+        $user = User::factory()->create(['btcpay_api_key' => 'settings-merchant-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id,
+            'wallet_type' => 'cashu',
+            'btcpay_store_id' => 'settings-provider-store',
+        ]);
+        $settings = [
+            'mintUrl' => 'https://mint.example.test/Bitcoin',
+            'lightningAddress' => 'merchant@example.test',
+            'enabled' => true,
+            'unit' => 'sat',
+            'trustedMintUrls' => ['https://mint.example.test/Bitcoin'],
+            'maxMeltFeeReserveSats' => 20,
+            'maxMeltFeeReservePercentOfMinted' => 5,
+        ];
+        Http::fake(function (Request $request) use ($settings, $safe, $status, $expected) {
+            if (str_ends_with($request->url(), '/cashumelt/settings')) {
+                return Http::response($settings);
+            }
+            if (str_ends_with($request->url(), '/cashumelt/safety')) {
+                return Http::response([
+                    'safeToChangeWallet' => $safe,
+                    'unresolvedPayments' => $expected['unresolved_payments'],
+                    'unresolvedChange' => $expected['unresolved_change'],
+                    'proofs' => ['synthetic-private-marker'],
+                    'storeId' => 'settings-provider-store',
+                ], $status);
+            }
+
+            $this->fail('Unexpected provider request.');
+        });
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson("/api/stores/{$store->id}/cashu/settings");
+
+        $response->assertOk()
+            ->assertJsonPath('data.wallet_safety', $expected)
+            ->assertJsonPath('data.mint_url', $settings['mintUrl'])
+            ->assertJsonPath('data.lightning_address', $settings['lightningAddress'])
+            ->assertJsonPath('data.enabled', true)
+            ->assertJsonPath('data.unit', 'sat')
+            ->assertJsonPath('data.trusted_mint_urls', $settings['trustedMintUrls'])
+            ->assertJsonPath('data.max_melt_fee_reserve_sats', 20)
+            ->assertJsonPath('data.max_melt_fee_reserve_percent_of_minted', 5)
+            ->assertJsonPath('data.change_confirmation.required', true);
+        $this->assertStringNotContainsString('synthetic-private-marker', $response->getContent());
+        $this->assertStringNotContainsString('settings-provider-store', $response->getContent());
+        Http::assertSent(fn (Request $request) => str_ends_with($request->url(), '/cashumelt/safety')
+            && $request->hasHeader('Authorization', 'Bearer settings-merchant-key'));
+        Http::assertNotSent(fn (Request $request) => $request->method() !== 'GET');
+    }
+
+    public function test_cashu_get_settings_for_first_setup_does_not_contact_the_provider(): void
+    {
+        Http::fake();
+        $user = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $user->id, 'wallet_type' => null]);
+        Sanctum::actingAs($user);
+
+        $this->getJson("/api/stores/{$store->id}/cashu/settings")
+            ->assertOk()
+            ->assertJsonPath('data.mint_url', null)
+            ->assertJsonPath('data.change_confirmation.required', false)
+            ->assertJsonMissingPath('data.wallet_safety');
+
+        Http::assertNothingSent();
+    }
+
+    public static function deniedCashuSettingsReaders(): array
+    {
+        return [['anonymous', 401], ['other_owner', 403], ['unverified', 403]];
+    }
+
+    #[DataProvider('deniedCashuSettingsReaders')]
+    public function test_cashu_get_settings_preserves_authorization_before_provider_access(string $reader, int $status): void
+    {
+        Http::fake();
+        $owner = User::factory()->create(['email_verified_at' => $reader === 'unverified' ? null : now()]);
+        $store = Store::factory()->create(['user_id' => $owner->id, 'wallet_type' => 'cashu']);
+        if ($reader !== 'anonymous') {
+            Sanctum::actingAs($reader === 'other_owner' ? User::factory()->create() : $owner);
+        }
+
+        $this->getJson("/api/stores/{$store->id}/cashu/settings")->assertStatus($status);
+
+        Http::assertNothingSent();
     }
 
     public function test_list_payments_includes_mint_quote_poll_url_from_plugin(): void

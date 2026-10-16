@@ -12,6 +12,11 @@ dokončení platieb preto môžu zostať prostriedky. Automatické odoslanie cez
 začína od 100 sat oprávneného zostatku z rovnakého mintu; menší zostatok môže naďalej
 blokovať zmenu peňaženky.
 
+Nastavenia Cashu pripojenia zobrazujú poslednú bezpečnostnú kontrolu zmeny peňaženky
+už pred úpravou. Pri blokácii použite odkaz na vyrovnania a obnovu. Obnovenie stavu
+zachová rozpracované nastavenia; nedostupná kontrola neznamená, že peňaženku možno
+bezpečne zmeniť.
+
 S CashuMelt **1.4.0.4 alebo novším** otvorte **Cashu vyrovnania** obchodu a panel
 obnovy zostatku. Sumy sú v satoshi, počty záznamov sa uvádzajú samostatne. Tokeny
 môže stiahnuť a obnovu overiť iba registrovaný vlastník obchodu s overeným emailom.

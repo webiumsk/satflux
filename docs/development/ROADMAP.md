@@ -127,6 +127,17 @@ Upstream and conditional legacy plugins remain read-only; activation remains NO-
 
 ## Next proposed: SATFLUX-005 coordinated staging and release handoff
 
+Owner-approved UX follow-up: show wallet-change safety before editing the Cashu
+connection, with explicit blocked/unavailable states and recovery navigation.
+Refresh preserves edited settings and sends no codes or mutations. Use the existing
+settings read and safety service; preserve all write checks. Source is independently
+security/UX accepted; QA confirms source and focused PHP passes 25 cases/122
+assertions. Full author Vitest passes 793 cases. Complete final frontend static/build,
+independent frontend focus and exact-head CI before final handoff; PR #394 carries
+the published revision and final evidence.
+Baseline recovery source `fec8a923` passed CI 38826049379; existing npm dependency
+debt remains outside this bounded UI follow-up. Provider source/package stay fixed.
+
 Current approved prerequisite: implement the owned CashuMelt/Satflux
 [change recovery contract](CASHU_CHANGE_RECOVERY.md), candidate plugin 1.4.0.4,
 with owner-only action-bound email confirmation, private downloads, old-plugin

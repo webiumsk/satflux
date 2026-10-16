@@ -359,6 +359,7 @@ async function cashuChangeFailure(error: unknown): Promise<unknown> {
 }
 
 export interface CashuSettings {
+    wallet_safety?: CashuWalletSafety | null;
     change_confirmation?: WalletChangeConfirmationState | null;
     mint_url?: string | null;
     lightning_address?: string | null;

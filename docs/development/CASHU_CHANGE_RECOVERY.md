@@ -183,3 +183,37 @@ HTTP fakes and component tests cover their boundaries, with schema and native
 permission source reviewed independently. The final CI must repeat all application
 checks and existing browser smoke on the exact published consumer head. Manual
 staging acceptance remains a separate operator/owner step.
+
+## Connection-screen preflight follow-up (2026-10-16)
+
+The owner requests advance notice on the Cashu connection screen before attempting
+a settings change. Add an optional `wallet_safety` aggregate to the existing settings
+read, using the current merchant-scoped, read-only safety service. Preserve the
+empty Lightning-switch/first-setup branch without additional provider access.
+
+Existing Cashu connections show loading, safe, blocked or unavailable evidence
+before the edit action and throughout the existing confirmation/edit modes. Reuse
+the safety summary, add a recovery link and explain download, import into the owner's
+Cashu wallet, then explicit verification. Export alone retains the restriction and
+other unresolved records can still block changes. Missing/malformed evidence never
+becomes a safe claim. Refresh reads only safety presentation and preserves edited
+fields; store generations/unmount discard obsolete responses. No automatic code
+request, export, verification, mutation or new client authorization gate is added.
+
+Acceptance: independent UX/security/QA review; focused settings/safety backend and
+component regressions including no side effects before edit, preserved edits and
+stale responses; five-locale parity and existing static/build gates. Provider source,
+package, core, billing, configuration and production remain unchanged.
+
+The frozen preflight production scope is eight files (controller, connection
+component, API type and five locales), manifest:
+`682b2c895ff99ff496f6a7d6e799f4e3c95c17339d2c082f355250eb4580f0fd`.
+Independent security and UX source reviews accept it without blockers. Main and
+independent QA each pass the focused 25 PHP cases/122 assertions. Targeted Pint
+passes both changed PHP files and controller PHPStan reports no errors. Author
+frontend focus passes 47 cases and the full suite passes 124 files/793 cases.
+Graphify AST update and the orchestration/document-link validator pass. Independent
+QA confirms the source manifest, meaningful coverage and unchanged dependencies,
+ratchets and workflow. Final frontend static/build checks, independent frontend
+focus and exact-head CI are required before handoff; published PR #394 records
+their final evidence without treating this pre-publication snapshot as a CI result.

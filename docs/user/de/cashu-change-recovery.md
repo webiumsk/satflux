@@ -12,6 +12,12 @@ nach abgeschlossenen Zahlungen kann daher Guthaben verbleiben. Die automatische
 Lightning-Auszahlung beginnt ab 100 sat geeignetem Guthaben derselben Mint; ein
 kleinerer Betrag kann einen Wallet-Wechsel weiterhin blockieren.
 
+Die Cashu-Verbindungseinstellungen zeigen die letzte Sicherheitsprüfung bereits
+vor der Bearbeitung. Ist ein Wechsel blockiert, folgen Sie dem Link zu Abrechnungen
+und Wiederherstellung. Beim Aktualisieren dieses Status bleiben bearbeitete
+Einstellungen erhalten. Eine nicht verfügbare Prüfung bestätigt keinen sicheren
+Wallet-Wechsel.
+
 Mit CashuMelt **1.4.0.4 oder neuer** öffnen Sie die **Cashu-Abrechnungen** des Shops
 und den Bereich zur Wiederherstellung. Beträge werden in Satoshi angezeigt,
 Datensätze separat gezählt. Nur der registrierte Shop-Inhaber mit bestätigter

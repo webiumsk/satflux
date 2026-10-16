@@ -12,6 +12,11 @@ can therefore coexist with a remaining balance. Automatic Lightning sweeping sta
 at 100 sat for eligible change from the same mint; a smaller balance can still block
 a wallet change.
 
+The Cashu connection settings show the latest wallet-change safety check before
+you start editing. If changes are blocked, follow the link to settlements and
+recovery. Refreshing this status preserves any settings you have already edited;
+an unavailable check does not mean the wallet is safe to change.
+
 With CashuMelt **1.4.0.4 or later**, open the store's **Cashu settlements** and its
 change recovery panel. Amounts are in satoshi; record counts are separate. Only the
 verified, registered store owner can download tokens or verify recovery.

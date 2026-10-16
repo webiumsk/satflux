@@ -3,6 +3,18 @@
 This log starts with the current bootstrap. It does not reconstruct undocumented
 historical decisions. Product history is linked from PROJECT_STATE with source evidence.
 
+## 2026-10-16: show Cashu wallet-change safety before editing
+
+Status: owner-authorized bounded Satflux UX follow-up. Present the existing
+merchant-scoped safety evidence on the Cashu connection screen before edit/save,
+with recovery navigation and explicit unavailable status. Add the aggregate to the
+existing settings read; preserve first-setup/Lightning-switch behavior. Refresh must
+not overwrite edits, reuse grants, send codes or initiate fund operations. Retain
+server-side write checks and existing email confirmation. Update all five locales
+and user guides; independently review source and verify focused regressions plus
+existing static/build gates before publication. No provider/core/package change,
+production operation, merge or deployment follows from this authorization.
+
 ## 2026-10-13: project-local orchestration
 
 Status: authorized setup decision from the Product Owner's bootstrap request.
