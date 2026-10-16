@@ -1,5 +1,15 @@
 # Development roadmap
 
+## Current: Cashu recovery API export compatibility
+
+Correct the owned API controller classification for BTCPay 2.4.5 without changing
+core, native UI CSRF or recovery protections. Deliver CashuMelt 1.4.0.6 with an
+actual-host filter regression and exact Satflux request assertions. Independent
+security/QA and exact-head CI precede handoff. Provider PR #38 is owner-merged;
+prepare a new PR. See [CASHU_CHANGE_RECOVERY](CASHU_CHANGE_RECOVERY.md). Operator
+installation, a fresh email challenge and safe staging export/verification are
+the next acceptance step. No merge, release or deployment is performed here.
+
 ## Completed: persistent orchestration bootstrap
 
 Deliver root instructions, ten Codex specialist definitions, thirteen reusable skills,

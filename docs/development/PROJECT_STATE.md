@@ -1,5 +1,21 @@
 # Project state
 
+## Cashu recovery API export compatibility repair (2026-10-16)
+
+The owner reports refused Satflux change export while native BTCPay export works.
+Source diagnosis at Satflux `35f5e414` / CashuMelt `3486115a`: MVC `Controller`
+inheritance makes the exact BTCPay 2.4.5 global UI antiforgery filter require a native
+form token for API POSTs. Satflux sends correct JSON and the merchant key.
+The bounded fix and acceptance criteria are in
+[CASHU_CHANGE_RECOVERY](CASHU_CHANGE_RECOVERY.md): `ControllerBase`, plugin 1.4.0.6,
+actual-host filter regression and exact consumer request assertions. Preserve
+API/store/email-code/privacy protections and native UI/core/third-party source.
+
+Provider PR #38 is owner-merged; Satflux PR #394 remains open at the initial check.
+Prepare a separate provider PR/package. Independent security/QA, native regressions
+and exact-head CI precede handoff. No production state was inspected or changed;
+the reported balance and native export success are owner-provided evidence.
+
 ## Cashu funding-lookup recovery repair (2026-10-16)
 
 Continue the owner-authorized owned CashuMelt/Satflux recovery work. The owner

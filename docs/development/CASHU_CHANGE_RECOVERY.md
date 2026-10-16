@@ -1,5 +1,39 @@
 # Cashu change recovery across Satflux and CashuMelt
 
+## API export compatibility repair (2026-10-16)
+
+The owner reports a refused Satflux download while native BTCPay export succeeds.
+Pinned BTCPay 2.4.5 globally registers `UIControllerAntiforgeryTokenAttribute`;
+its fallback classifies MVC `Controller` subclasses as UI. The change API inherits
+that class, so API POSTs fail before confirmation parsing. GET summary succeeds.
+
+CashuMelt 1.4.0.6 changes the API to `ControllerBase`, matching existing plugin APIs.
+Keep API-key-only Greenfield authentication, store-modify authorization, strict JSON
+confirmation and privacy headers. No broad antiforgery exemption or core change.
+Native UI and Satflux browser CSRF protections remain in force.
+
+Acceptance requires the actual pinned-host antiforgery filter in an HTTP pipeline:
+valid API POST reaches the action without a form token, malformed JSON is rejected,
+non-API authentication and unauthorized stores are denied, and a native UI control
+still rejects missing CSRF. Consumer export/verify tests assert the exact outbound
+`{"confirmed":true}` body, JSON headers, merchant key and one dispatch. Existing
+recovery regressions must pass. No frontend, locale or configuration change is needed.
+
+Rejected codes remain consumed; retry with a new code after the plugin update.
+Download alone never releases wallet-change holds. Installation and real recovery
+remain operator acceptance. Provider PR #38 was owner-merged; prepare a new plugin
+PR/package and retain consumer tests in Satflux PR #394. No merge, release
+publication, installation or production operation is performed by this repair.
+
+Independent security source review accepts provider three-file manifest
+`160cfc30f8b2398223ff1357e9b25e05f99274ecb527692c6ac6b2425edd5e3e`
+and consumer one-test manifest
+`225f982fd1e4a23bc74f87b39eb802a9af36b0d9c058eb62e907c1e3ac7b919d`
+(sorted relative path + NUL + bytes + NUL). Main passes 47 consumer recovery tests /
+422 assertions and targeted Pint in verified disposable SQLite; docs/registry and
+Graphify checks pass. The regression reproduces API HTTP 400 with the prior DLL.
+Final native, independent QA, package and exact-head CI evidence belongs in the PRs.
+
 ## Authorization and baseline
 
 On 2026-10-16 the Product Owner explicitly authorizes implementation in Satflux and

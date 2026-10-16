@@ -1,5 +1,19 @@
 # Development decision log
 
+## 2026-10-16: Cashu recovery API controller classification
+
+Within the existing owner-authorized Satflux/owned-CashuMelt defect work, change
+the recovery API to `ControllerBase`. Pinned BTCPay 2.4.5 classifies its previous
+`Controller` base as UI and rejects API export/verify for missing form CSRF.
+Keep API-key-only authentication, store policy, strict JSON, private headers and
+Satflux single-use owner email codes. Do not exempt native UI or modify core.
+
+Require the actual host filter regression with a UI rejection control, denied
+non-API authentication and exact consumer wire assertions. Candidate 1.4.0.6 needs
+a new provider PR because #38 was owner-merged. Independent security/QA, native
+regressions, package identity and exact-head CI are handoff gates. No production
+access, recovery, merge, release publication or deployment is performed.
+
 This log starts with the current bootstrap. It does not reconstruct undocumented
 historical decisions. Product history is linked from PROJECT_STATE with source evidence.
 

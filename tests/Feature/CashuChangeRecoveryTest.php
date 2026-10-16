@@ -187,6 +187,9 @@ class CashuChangeRecoveryTest extends TestCase
             $this->assertNull(EmailVerificationChallenge::sole()->payload);
             $this->assertSame(1, AuditLog::where('action', 'cashu.change_recovery_authorized')->count());
             $this->assertSame(['confirmed' => true], $request->data());
+            $this->assertSame('{"confirmed":true}', $request->body());
+            $this->assertTrue($request->hasHeader('Content-Type', 'application/json'));
+            $this->assertTrue($request->hasHeader('Accept', 'application/json'));
 
             return Http::response(['tokens' => ['cashuAsynthetic-private-token'], 'private' => 'synthetic-private-extra']);
         });
@@ -206,7 +209,17 @@ class CashuChangeRecoveryTest extends TestCase
     {
         $store = $this->store();
         $code = $this->issue($store, 'verify');
-        Http::fake(['*' => Http::response(['verified' => true, 'tokens' => ['synthetic-private-token'], 'safeToChangeWallet' => false])]);
+        Http::fake(function ($request) {
+            $this->assertSame('{"confirmed":true}', $request->body());
+            $this->assertSame(['confirmed' => true], $request->data());
+            $this->assertTrue($request->hasHeader('Content-Type', 'application/json'));
+            $this->assertTrue($request->hasHeader('Accept', 'application/json'));
+            $this->assertTrue($request->hasHeader('Authorization', 'Bearer change-owner-key'));
+            $this->assertSame('POST', $request->method());
+            $this->assertStringEndsWith('/change/verify', $request->url());
+
+            return Http::response(['verified' => true, 'tokens' => ['synthetic-private-token'], 'safeToChangeWallet' => false]);
+        });
         $this->postJson($this->path($store, '/verify'), ['confirmed' => true, 'code' => $code])
             ->assertOk()->assertExactJson(['data' => ['verified' => true]]);
         Http::assertSentCount(1);
