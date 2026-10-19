@@ -687,10 +687,11 @@ The evidence, confidence limits, code references, test results and production
 diagnostic runbook are recorded in
 [the incident analysis](../security/incident-analysis-2026-10-18.md) and
 [the read-only runbook](../operations/SECURITY_RELIABILITY_DIAGNOSTICS_2026-10.md).
-Satflux has 82 focused tests/298 assertions passing; CashuMelt has 147/147 tests
-passing and builds successfully. Independent security and QA reviews completed.
-Changes remain uncommitted in isolated worktrees and have not been published or
-deployed. No production behavior is verified. Next milestone: collect only the
-runbook's redacted aggregate diagnostics, then prepare separately reviewed,
-clean-base changes/PRs after branch scope and exact-head CI are established. No
-account, wallet, billing, payment or production configuration action is implied.
+Satflux has 82 focused tests/298 assertions passing; its full PHP, Node and E2E
+CI jobs pass on PR #395. CashuMelt's 147/147 tests and build passed on PR #40;
+the latest independent review requested a narrow upgrade-era manual-review fix,
+now under re-review. Both changes are committed and published as open PRs. Neither
+is merged, packaged or deployed. No production behavior is verified. Next
+milestone: finish PR review and exact-head CI, then obtain redacted aggregate
+diagnostics from the operator. No account, wallet, billing, payment or production
+configuration action is implied.

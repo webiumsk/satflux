@@ -4,7 +4,7 @@
 
 This is an offline repository review of the supplied Laravel and BTCPay log files, screenshots, incident notes, and the Satflux and owned CashuMelt plugin source trees. No production server, database, deployment, live logs, BTCPay API, wallet, or infrastructure was accessed. Production behavior is not verified. The operator runbook is in [`docs/operations/SECURITY_RELIABILITY_DIAGNOSTICS_2026-10.md`](../operations/SECURITY_RELIABILITY_DIAGNOSTICS_2026-10.md).
 
-Reviewed Satflux base: `fa4eedf8bbbab777765a2b64e9a26b93c7c6e102` plus the uncommitted changes listed in this report. Reviewed CashuMelt base: `75a87e46bbe391e212429c6e9fc5441f6f806a0e` plus the uncommitted plugin changes. No production secrets or merchant identifiers are reproduced here.
+Reviewed Satflux base: merge commit `5e6953cf` plus the audit changes in PR #395. Reviewed CashuMelt base: `83ca4ad` plus the plugin changes in PR #40. No production secrets or merchant identifiers are reproduced here.
 
 Key source references: guest limits and lock are in `app/Http/Middleware/EnsureStoreLimit::handle` and `app/Http/Controllers/AppController::create`; upload authorization/validation/provider fallback are in `app/Services/BtcPay/BtcPayFileUploadService::uploadForStore`; webhook verification and store identity checks are in `app/Http/Controllers/WebhookController`; wallet snapshot persistence is in the wallet configuration service and covered by `tests/Feature/WalletConfigIntegrityTest.php`; app listing is in `app/Services/BtcPay/AppService::listApps`; expected subscriber absence is handled by `app/Http/Controllers/SubscriptionController::details` and `app/Services/BtcPay/SubscriptionService`; targeted logging changes are in `app/Services/BtcPay/BtcPayClient`, `AppService` and `StoreController`. CashuMelt quote polling/reconciliation fixes are in `CashuMeltPaymentService` and `CashuMeltReconciliationHostedService` in the owned plugin worktree. Regression evidence is in the correspondingly named feature tests and `CashuMeltFundingRecoveryTests`.
 
@@ -61,11 +61,11 @@ Key source references: guest limits and lock are in `app/Http/Middleware/EnsureS
 
 ## Changes and validation
 
-Satflux changes are in the current worktree and CashuMelt changes are in the separate owned plugin worktree; they have not been committed, pushed, merged, packaged, or deployed. No production action was taken.
+Satflux changes are committed and published in open PR #395; CashuMelt changes are committed and published in open plugin PR #40. Neither PR is merged, and no package or deployment was produced. No production action was taken.
 
 - Satflux focused PHPUnit regressions: **82 tests, 298 assertions passed** on the final source changes. Pint `--test` passed across all 20 changed PHP files; `git diff --check` passed.
 - CashuMelt focused legacy-row regression: **1/1 passed**. Full plugin suite: **147/147 passed**, zero skips. Plugin and test builds succeeded with existing warnings only; disposable PostgreSQL fixture was removed.
-- Independent security review found no high-severity issue in the reviewed fixes. It confirmed the need to validate the shared cache backend and noted that the lock lease is finite. Independent QA review completed; its proxy-log command concern was corrected to read standard Nginx access logs and smoke-tested with a synthetic record. Neither review accessed production.
+- Independent security review found no high-severity issue in the reviewed fixes. It confirmed the need to validate the shared cache backend and noted that the lock lease is finite. Independent QA review completed; its proxy-log command concern was corrected to read standard Nginx access logs and smoke-tested with a synthetic record. CI and CodeRabbit passed for CashuMelt before a narrow follow-up review comment on upgrade-era failure-state escalation. Satflux full PHP, Node and E2E CI pass; CodeRabbit identified stale worktree wording in this report, which is corrected in the current PR update. Neither review accessed production.
 
 ## Minimum next evidence and actions
 
