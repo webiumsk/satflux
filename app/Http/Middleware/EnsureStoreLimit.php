@@ -4,7 +4,9 @@ namespace App\Http\Middleware;
 
 use App\Services\EffectiveAccessPolicy;
 use Closure;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -37,17 +39,28 @@ class EnsureStoreLimit
 
         // Guest accounts: always at most one store (upgrade for more).
         if ((bool) ($user->is_guest ?? false)) {
-            $currentStoreCount = $user->stores()->count();
-            if ($currentStoreCount >= 1) {
-                return response()->json([
-                    'message' => __('auth.guest_one_store_only'),
-                    'code' => 'guest_store_limit',
-                    'current_count' => $currentStoreCount,
-                    'max_allowed' => 1,
-                ], 403);
-            }
+            try {
+                return Cache::lock('guest-store-provision:'.$user->id, 1800)->block(5, function () use ($user, $request, $next) {
+                    $currentStoreCount = $user->stores()->count();
+                    if ($currentStoreCount >= 1) {
+                        return response()->json([
+                            'message' => __('auth.guest_one_store_only'),
+                            'code' => 'guest_store_limit',
+                            'current_count' => $currentStoreCount,
+                            'max_allowed' => 1,
+                        ], 403);
+                    }
 
-            return $next($request);
+                    // Hold the shared lock until remote and local provisioning
+                    // completes so parallel requests cannot both pass the count.
+                    return $next($request);
+                });
+            } catch (LockTimeoutException) {
+                return response()->json([
+                    'message' => __('auth.guest_store_setup_busy'),
+                    'code' => 'guest_store_setup_busy',
+                ], 503);
+            }
         }
 
         // Get user's current subscription plan

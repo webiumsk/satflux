@@ -36,19 +36,13 @@ class AppService
     {
         return $this->client->withUserKey($userApiKey, function () use ($storeId) {
             try {
-                try {
-                    return $this->client->get("/stores/{$storeId}/apps");
-                } catch (BtcPayException $e) {
-                    if ($e->getStatusCode() === 404) {
-                        return $this->client->get("/api/v1/stores/{$storeId}/apps");
-                    }
-                    throw $e;
-                }
+                // /stores/{id}/apps is a BTCPay web UI route, not Greenfield.
+                // It can respond with a login redirect; never send API keys to
+                // that route or follow its redirect. Use the authenticated API.
+                return $this->client->get("/api/v1/stores/{$storeId}/apps");
             } catch (BtcPayException $e) {
                 Log::warning('BTCPay apps listing failed - endpoint may not exist', [
-                    'store_id' => $storeId,
-                    'error' => $e->getMessage(),
-                    'error_code' => $e->getCode(),
+                    'status_code' => $e->getStatusCode(),
                 ]);
 
                 // Return empty array instead of throwing to allow app creation to continue
@@ -76,10 +70,8 @@ class AppService
                 $endpoint = "/api/v1/stores/{$storeId}/apps/".$this->endpointPathFor($appType);
 
                 Log::info('Creating BTCPay app', [
-                    'store_id' => $storeId,
                     'app_type' => $appType,
-                    'endpoint' => $endpoint,
-                    'request_body' => $requestBody,
+                    'endpoint' => BtcPayClient::redactEndpointForLog($endpoint),
                 ]);
 
                 // Raw response needed: for crowdfunds BTCPay often returns the new
@@ -109,9 +101,8 @@ class AppService
                 return $this->findCreatedApp($storeId, $appType, $requestBody, $response, $userApiKey);
             } catch (BtcPayException $e) {
                 Log::error('BTCPay app creation failed', [
-                    'store_id' => $storeId,
                     'app_type' => $appType,
-                    'error' => $e->getMessage(),
+                    'status_code' => $e->getStatusCode(),
                 ]);
                 throw $e;
             }
@@ -147,10 +138,8 @@ class AppService
                 );
             } catch (BtcPayException $e) {
                 Log::error('BTCPay app retrieval failed', [
-                    'store_id' => $storeId,
-                    'app_id' => $appId,
                     'app_type' => $appType,
-                    'error' => $e->getMessage(),
+                    'status_code' => $e->getStatusCode(),
                 ]);
                 throw $e;
             }
@@ -196,11 +185,8 @@ class AppService
             $endpoints[] = "/api/v1/stores/{$storeId}/apps/{$appId}";
 
             Log::info('BTCPay app update request', [
-                'store_id' => $storeId,
-                'app_id' => $appId,
                 'app_type' => $appType,
-                'endpoints' => $endpoints,
-                'filtered_config' => $filteredConfig,
+                'endpoint_count' => count($endpoints),
             ]);
 
             try {
@@ -213,42 +199,34 @@ class AppService
                         $responseId = $response['id'] ?? $response['appId'] ?? $response['app_id'] ?? null;
                         if ($responseId && $responseId !== $appId) {
                             Log::error('CRITICAL: BTCPay returned different ID after update - new app may have been created!', [
-                                'expected_id' => $appId,
-                                'returned_id' => $responseId,
-                                'endpoint' => $endpoint,
+                                'app_type' => $appType,
+                                'endpoint' => BtcPayClient::redactEndpointForLog($endpoint),
                             ]);
                         }
 
                         Log::info('App update succeeded', [
-                            'endpoint' => $endpoint,
-                            'app_id' => $appId,
+                            'endpoint' => BtcPayClient::redactEndpointForLog($endpoint),
                             'app_type' => $appType,
-                            'returned_id' => $responseId,
                         ]);
 
                         return $response;
                     },
                     'Failed to update app',
                     retryOnStatuses: [404, 405],
-                    onError: function (BtcPayException $e, string $endpoint) use ($storeId, $appId, $appType, $filteredConfig) {
+                    onError: function (BtcPayException $e, string $endpoint) use ($appType) {
                         if ($e->getStatusCode() === 422) {
                             Log::error('BTCPay app update validation error', [
-                                'store_id' => $storeId,
-                                'app_id' => $appId,
                                 'app_type' => $appType,
-                                'endpoint' => $endpoint,
-                                'config_sent' => $filteredConfig,
-                                'error_message' => $e->getMessage(),
+                                'endpoint' => BtcPayClient::redactEndpointForLog($endpoint),
+                                'status_code' => $e->getStatusCode(),
                             ]);
                         }
                     },
                 );
             } catch (BtcPayException $e) {
                 Log::error('BTCPay app update failed', [
-                    'store_id' => $storeId,
-                    'app_id' => $appId,
                     'app_type' => $appType,
-                    'error' => $e->getMessage(),
+                    'status_code' => $e->getStatusCode(),
                 ]);
                 throw $e;
             }
@@ -285,18 +263,14 @@ class AppService
                 );
 
                 Log::info('BTCPay app deleted successfully', [
-                    'store_id' => $storeId,
-                    'app_id' => $appId,
                     'app_type' => $appType,
                 ]);
 
                 return true;
             } catch (BtcPayException $e) {
                 Log::error('BTCPay app deletion failed', [
-                    'store_id' => $storeId,
-                    'app_id' => $appId,
                     'app_type' => $appType,
-                    'error' => $e->getMessage(),
+                    'status_code' => $e->getStatusCode(),
                 ]);
                 throw $e;
             }
@@ -340,7 +314,7 @@ class AppService
 
                 if (in_array($e->getStatusCode(), $retryOnStatuses, true) && ($index + 1) < count($endpoints)) {
                     Log::info('BTCPay endpoint failed, trying next', [
-                        'endpoint' => $endpoint,
+                        'endpoint' => BtcPayClient::redactEndpointForLog($endpoint),
                         'status_code' => $e->getStatusCode(),
                         'remaining_endpoints' => count($endpoints) - ($index + 1),
                     ]);
@@ -429,9 +403,7 @@ class AppService
         }
 
         Log::warning('Could not find newly created app in apps list', [
-            'store_id' => $storeId,
             'app_type' => $appType,
-            'app_name' => $appName,
             'apps_count' => count($apps),
         ]);
 

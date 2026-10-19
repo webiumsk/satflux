@@ -678,3 +678,19 @@ read-only GitHub requests/reminders, deduplicate changes, retain managed permiss
 stop when the PR closes and have a bounded lifetime. It must not automatically edit,
 publish, merge, deploy or begin the free-PRO audit. The recorded role-routing limit
 and non-production-only future billing audit scope remain unchanged.
+
+## 2026-10-19: offline security and reliability investigation
+
+The Product Owner authorized source-level investigation and focused fixes in
+Satflux and the owned CashuMelt plugin, with no production access or deployment.
+The evidence, confidence limits, code references, test results and production
+diagnostic runbook are recorded in
+[the incident analysis](../security/incident-analysis-2026-10-18.md) and
+[the read-only runbook](../operations/SECURITY_RELIABILITY_DIAGNOSTICS_2026-10.md).
+Satflux has 82 focused tests/298 assertions passing; CashuMelt has 147/147 tests
+passing and builds successfully. Independent security and QA reviews completed.
+Changes remain uncommitted in isolated worktrees and have not been published or
+deployed. No production behavior is verified. Next milestone: collect only the
+runbook's redacted aggregate diagnostics, then prepare separately reviewed,
+clean-base changes/PRs after branch scope and exact-head CI are established. No
+account, wallet, billing, payment or production configuration action is implied.
