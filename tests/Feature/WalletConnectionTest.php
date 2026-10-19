@@ -220,6 +220,9 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) {
             $url = $request->url();
+            if (str_ends_with($url, '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true], 200);
+            }
             if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
                 return Http::response([], 200);
             }
@@ -265,6 +268,9 @@ class WalletConnectionTest extends TestCase
 
         Http::fake(function (Request $request) {
             $url = $request->url();
+            if (str_ends_with($url, '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true], 200);
+            }
             if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
                 return Http::response([], 200);
             }
@@ -677,6 +683,7 @@ class WalletConnectionTest extends TestCase
             'btcpay_store_id' => 'store-cashu-blitz-reconfig',
         ]);
 
+        $this->grantWalletChange($user, $store);
         $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [
             'type' => 'blitz',
             'secret' => 'satoshi@blitzwalletapp.com',
@@ -731,6 +738,9 @@ class WalletConnectionTest extends TestCase
         $putPayload = null;
         Http::fake(function (Request $request) use (&$putPayload) {
             $url = $request->url();
+            if (str_ends_with($url, '/cashumelt/safety')) {
+                return Http::response(['safeToChangeWallet' => true], 200);
+            }
             if ($request->method() === 'GET' && preg_match('~/stores/[^/]+/invoices(?:\?|$)~', $url)) {
                 return Http::response([], 200);
             }
@@ -841,6 +851,7 @@ class WalletConnectionTest extends TestCase
             'btcpay_store_id' => 'store-cashu-reconfig-bot',
         ]);
 
+        $this->grantWalletChange($user, $store);
         $response = $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [
             'type' => 'blink',
             'secret' => self::VALID_BLINK_SECRET,
@@ -1368,6 +1379,7 @@ class WalletConnectionTest extends TestCase
             'btcpay_store_id' => 'store-btcpay-cashu-switch',
         ]);
 
+        $this->grantWalletChange($user, $store);
         $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection", [
             'type' => 'blink',
             'secret' => self::VALID_BLINK_SECRET,

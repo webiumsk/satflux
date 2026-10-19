@@ -17,9 +17,9 @@ export default defineConfig({
     },
 
     projects: [
-        // One login per run (auth throttle is 5/min/IP): the setup project
-        // signs the seeded user in and saves the storage state; chromium
-        // specs start authenticated. Specs that test the login flow itself
+        // One login per fixture (auth throttle is 5/min/IP): setup saves
+        // shared state; checkout explicitly uses its separate fixture state.
+        // Chromium specs start authenticated. Specs testing the login flow
         // opt out with an empty storageState (auth.spec, emailLogin.spec).
         { name: 'setup', testMatch: /auth\.setup\.ts/ },
         {

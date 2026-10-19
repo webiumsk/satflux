@@ -3,15 +3,18 @@ title: Začnite s fakturáciou
 category: invoicing
 order: 1
 meta_description: Nastavte si prvú firmu a vystavte prvú faktúru v Satfluxe.
+updated: 2026-10-14
 ---
 
 # Začnite s fakturáciou
+
+> Keď je aktívny [dočasný PRO prístup zdarma](/documentation/free-pro-access), registrované nehosťovské účty s overeným e-mailom môžu používať PRO funkcie bez nákupu predplatného. Bežné limity a vlastnícke oprávnenia naďalej platia. Aktuálny režim nájdete v Cenníku a Účte.
 
 Fakturácia v Satfluxe umožňuje vystavovať riadne faktúry, cenové ponuky, proformy a dobropisy, viesť kontakty a sklad, párovať bankové platby a odovzdať účtovníkovi čistý balík.
 
 Fakturácia je **local-first**: dáta sú uložené súkromne vo vašom prehliadači a šifrované end-to-end, potom sa synchronizujú medzi zariadeniami. Preto majte obnovovaciu frázu zálohovanú.
 
-> Fakturácia je dostupná v pláne **Pro** (a Enterprise). Pozrite [plány a limity](/documentation/plans-and-limits).
+> Fakturácia je dostupná s **PRO prístupom** (a Enterprise). Pozrite [plány a limity](/documentation/plans-and-limits).
 
 ## Sprievodca prvým nastavením
 

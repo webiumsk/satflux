@@ -19,6 +19,9 @@ class SubscriptionTest extends TestCase
     {
         parent::setUp();
 
+        // Exercise the preserved paid flow explicitly; promotion defaults close sales.
+        config(['access.pro_purchases_enabled' => true]);
+
         config(['services.btcpay.base_url' => 'https://btcpay.example.test']);
         $this->app->forgetInstance(BtcPayClient::class);
     }

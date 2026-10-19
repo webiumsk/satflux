@@ -15,11 +15,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
+use Tests\Concerns\ReadsEmailCodes;
 use Tests\TestCase;
 
 class WalletCashuFallbackIntegrityTest extends TestCase
 {
-    use RefreshDatabase;
+    use ReadsEmailCodes, RefreshDatabase;
 
     private string $lightningConnection = '';
 
@@ -174,6 +175,7 @@ class WalletCashuFallbackIntegrityTest extends TestCase
     public function test_disabling_and_removing_fallback_is_an_authorized_cashu_change(): void
     {
         $connection = $this->connectCoinos();
+        $this->grantWalletChange($connection->store->user, $connection->store);
         $connection = app(WalletConnectionService::class)->createOrUpdate(
             $connection->store, 'blink', 'type=blink;server=https://api.blink.sv/graphql;api-key=test;wallet-id=wallet;',
             $connection->store->user, 'pending',
@@ -188,6 +190,8 @@ class WalletCashuFallbackIntegrityTest extends TestCase
     public function test_public_fallback_setup_also_holds_the_wallet_lock_and_records_cashu(): void
     {
         $connection = $this->connectCoinos();
+        $this->cashuEnabled = false;
+        $this->grantWalletChange($connection->store->user, $connection->store);
         $status = null;
         $this->duringCashuSave = function () use ($connection, &$status) {
             $status = app(WalletConfigIntegrityService::class)->verify($connection)['status'];

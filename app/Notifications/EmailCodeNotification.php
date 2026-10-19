@@ -39,6 +39,8 @@ class EmailCodeNotification extends Notification
 
         if ($this->purpose === EmailVerificationChallenge::PURPOSE_WALLET_CONNECTION_CHANGE) {
             $mail->line('Someone asked to change the wallet connection of your satflux.io store. Enter this code in satflux.io to continue:');
+        } elseif ($this->purpose === EmailVerificationChallenge::PURPOSE_CASHU_CHANGE_RECOVERY) {
+            $mail->line('Someone requested Cashu change recovery for your satflux.io store. Enter this code only for the export or verification action you requested:');
         } else {
             $mail->line('Enter this code in satflux.io to confirm your email address:');
         }

@@ -3,9 +3,12 @@ title: Share a company with your accountant
 category: invoicing
 order: 7
 meta_description: Invite your accountant to a company with end-to-end encrypted sharing.
+updated: 2026-10-14
 ---
 
 # Share a company with your accountant
+
+> When [temporary free PRO access](/documentation/free-pro-access) is active, registered non-guest accounts with a verified email can use PRO features without a subscription purchase. The usual limits and ownership permissions still apply. Check Pricing and Account for the current mode.
 
 You can give your accountant (or a colleague) access to a company without handing over your recovery phrase. Sharing is **end-to-end encrypted** - only the people you invite can read the data.
 
@@ -16,6 +19,8 @@ You can give your accountant (or a colleague) access to a company without handin
 3. Send them the invite link. When they accept, they join the company and can work in it under the role you gave them.
 
 An invited accountant does not need their own paid plan to work in a company you own.
+
+The company owner must have invoicing access. Promotional PRO access does not invite you automatically or change your role in a shared company.
 
 ## Managing members
 

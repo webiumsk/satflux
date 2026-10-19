@@ -23,7 +23,9 @@ Open the store's **Wallet connection** and the **Cashu** section. Confirm the be
 - **Settle payments via Cashu → Lightning** - keep it on so the store uses this settlement path.
 - Optional: **trusted mints**, and **fee-reserve caps** (a max in sats and/or as a % of the amount) that bound how much Lightning routing fee the payout may spend.
 
-Editing an existing Cashu store re-asks for your password (unless you sign in by recovery phrase or passkey).
+Editing a configured Cashu wallet requires a six-digit code sent to your account email. Password accounts also confirm their password; recovery-phrase and passkey sessions use their existing authentication. Guests must first add an email address and upgrade their account. The first wallet setup needs no change-confirmation code.
+
+Saving settings without changing them only checks the existing configuration. A real change remains blocked while settlements or change need recovery. Settled or expired payment rows alone do not prove there is no remaining change. If safety cannot be checked, retry later or contact support; this is different from confirmed outstanding funds.
 
 ## Two ways it is used
 
@@ -33,6 +35,10 @@ Editing an existing Cashu store re-asks for your password (unless you sign in by
 ## Watching settlements
 
 A **Cashu settlements** page lists each settlement and its state - `SETTLED`, `PENDING`, `FAILED`, or `MELT_COMPLETE` (converted, BTCPay's record catching up). You can **retry** stuck rows. Common failure reasons are shown in plain language (e.g. the routing fee exceeded your cap, or the mint did not confirm the Lightning payout).
+
+**Wallet change safety** shows the latest plugin check and separate counts of unresolved payment records and change records. These are record counts, not amounts in satoshis. Change records are separate from the payment history, so completed-looking payments alone do not establish whether the wallet can change. Where the original plugin state differs from the displayed settlement state, the page shows that difference.
+
+If Cashu blocks the change and no supported recovery action is available, contact support with these two counts and the displayed plugin state. Zero or unavailable counts do not override a refusal. The check is a snapshot; saving performs a fresh safety check.
 
 ## Recovering a payment
 

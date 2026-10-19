@@ -19,11 +19,12 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Tests\Concerns\ReadsEmailCodes;
 use Tests\TestCase;
 
 class Btcpay245WalletCompatibilityTest extends TestCase
 {
-    use RefreshDatabase;
+    use ReadsEmailCodes, RefreshDatabase;
 
     private const OLD = 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_old;wallet-id=old';
 
@@ -75,6 +76,7 @@ class Btcpay245WalletCompatibilityTest extends TestCase
     public function test_pending_archived_invoice_blocks_replacement_before_any_write(string $old, string $new, string $status): void
     {
         $store = $this->connectedStore($old);
+        $this->grantWalletChange($store->user, $store);
         Http::fake(['*/invoices*' => Http::response([[
             'status' => $status, 'archived' => true, 'monitoringExpiration' => now()->addHour()->timestamp,
         ]])]);
@@ -94,6 +96,7 @@ class Btcpay245WalletCompatibilityTest extends TestCase
     public function test_unknown_remote_result_blocks_invoices_and_recovers_from_persisted_journal(string $old, string $new, string $expected, string $expectedType): void
     {
         $store = $this->connectedStore($old);
+        $this->grantWalletChange($store->user, $store);
         $actual = null;
         Http::fake(function ($r) use (&$actual) {
             if (str_contains($r->url(), '/invoices')) {
@@ -162,6 +165,7 @@ class Btcpay245WalletCompatibilityTest extends TestCase
     public function test_confirmed_rejection_keeps_previous_wallet_without_an_uncertain_hold(): void
     {
         $store = $this->connectedStore();
+        $this->grantWalletChange($store->user, $store);
         Http::fake(function ($r) {
             if ($r->method() === 'PUT') {
                 return Http::response(['message' => 'Invalid wallet'], 422);

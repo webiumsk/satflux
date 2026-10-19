@@ -10,7 +10,6 @@ use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\LightningService;
 use App\Services\CashuWalletUpdateService;
 use App\Services\WalletChangeConfirmationGuard;
-use App\Services\WalletConnectionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -19,6 +18,17 @@ use Illuminate\Validation\ValidationException;
 
 class CashuController extends Controller
 {
+    private const WALLET_CHANGE_BLOCK_REASONS = [
+        'non_terminal_settlement', 'retained_minted_proofs', 'retained_issuance_intent',
+        'retained_change_outputs', 'retained_payout_quote',
+    ];
+
+    private const RECOVERY_PHASES = [
+        'complete', 'expired_unpaid', 'terminal_recovery_review', 'original_settings_required',
+        'accounting_pending', 'payout_reconciliation', 'proofs_retained', 'issuance_restore',
+        'recovery_evidence_review', 'funding_verification',
+    ];
+
     public function __construct(
         protected CashuService $cashuService,
         protected LightningService $lightningService,
@@ -45,13 +55,14 @@ class CashuController extends Controller
         return response()->json(['data' => ['ok' => true]]);
     }
 
-    public function getSettings(Store $store): JsonResponse
+    public function getSettings(Request $request, Store $store): JsonResponse
     {
         $wt = $store->wallet_type ?? null;
 
         if ($this->isLightningWalletTypeForCashuSwitch($wt) && ! $store->cashu_fallback_enabled) {
             return response()->json([
-                'data' => $this->emptyCashuSettingsPayload(),
+                'data' => [...$this->emptyCashuSettingsPayload(),
+                    'change_confirmation' => app(WalletChangeConfirmationGuard::class)->state($store, $request->user())],
             ]);
         }
 
@@ -62,7 +73,9 @@ class CashuController extends Controller
         $settings = $this->cashuService->getSettings($store->btcpay_store_id, $userApiKey);
 
         return response()->json([
-            'data' => $this->formatCashuSettingsForApi($settings),
+            'data' => [...$this->formatCashuSettingsForApi($settings),
+                'wallet_safety' => $this->cashuService->getWalletSafety($store->btcpay_store_id, $userApiKey),
+                'change_confirmation' => app(WalletChangeConfirmationGuard::class)->state($store, $request->user())],
         ]);
     }
 
@@ -97,14 +110,8 @@ class CashuController extends Controller
         ]);
 
         $changeGuard = app(WalletChangeConfirmationGuard::class);
-        if ($switchingFromLightning) {
-            // Lightning -> Cashu drops the connected wallet: email-code gate applies.
-            $changeGuard->assert($store, $request->user());
-        }
+        $changeGuard->assert($store, $request->user());
 
-        if ($previousWalletType !== null) {
-            app(WalletConnectionService::class)->assertWalletCanChange($store);
-        }
         $payload = $this->buildCashuMeltSettingsPayloadFromRequest($request);
 
         try {
@@ -126,6 +133,7 @@ class CashuController extends Controller
         $store->refresh();
 
         $data = $this->formatCashuSettingsForApi($updated);
+        $data['change_confirmation'] = $changeGuard->state($store, $request->user());
         if (($data['mint_url'] ?? null) === null) {
             $data['mint_url'] = $request->mint_url;
         }
@@ -171,6 +179,7 @@ class CashuController extends Controller
                 'offset' => (int) ($raw['offset'] ?? $offset),
                 'limit' => (int) ($raw['limit'] ?? $limit),
                 'items' => $items,
+                'wallet_safety' => $this->cashuService->getWalletSafety($store->btcpay_store_id, $userApiKey),
             ],
         ]);
     }
@@ -267,6 +276,8 @@ class CashuController extends Controller
         }
 
         $pollUrl = $item['mintQuotePollUrl'] ?? $item['mint_quote_poll_url'] ?? null;
+        $blocksWalletChange = $item['blocksWalletChange'] ?? null;
+        $recoveryPhase = $item['recoveryPhase'] ?? null;
 
         return [
             'quote_id' => $item['quoteId'] ?? $item['quote_id'] ?? null,
@@ -274,6 +285,8 @@ class CashuController extends Controller
             'amount_sats' => $item['amountSats'] ?? $item['amount_sats'] ?? null,
             'state' => $item['state'] ?? null,
             'settlement_state' => $settlementState,
+            'reported_settlement_state' => in_array($reported, ['SETTLED', 'PENDING', 'FAILED', 'MELT_COMPLETE', 'MANUAL_REVIEW', 'EXPIRED_UNPAID'], true)
+                ? $reported : null,
             'settlement_error' => $item['settlementError'] ?? $item['settlement_error'] ?? null,
             'settlement_reference' => $item['settlementReference'] ?? $item['settlement_reference'] ?? null,
             'created_at' => $item['createdAt'] ?? $item['created_at'] ?? null,
@@ -284,7 +297,27 @@ class CashuController extends Controller
             'needs_manual_review' => (bool) ($item['needsManualReview'] ?? $item['needs_manual_review'] ?? false),
             'failure_reason_code' => $item['failureReasonCode'] ?? $item['failure_reason_code'] ?? null,
             'original_settings_required' => (bool) ($item['originalSettingsRequired'] ?? $item['original_settings_required'] ?? false),
+            'blocks_wallet_change' => is_bool($blocksWalletChange) ? $blocksWalletChange : null,
+            'wallet_change_block_reasons' => $this->formatWalletChangeBlockReasons($item['walletChangeBlockReasons'] ?? null),
+            'recovery_phase' => is_string($recoveryPhase) && in_array($recoveryPhase, self::RECOVERY_PHASES, true) ? $recoveryPhase : null,
         ];
+    }
+
+    /** @return list<string>|null */
+    private function formatWalletChangeBlockReasons(mixed $reasons): ?array
+    {
+        if (! is_array($reasons) || ! array_is_list($reasons) || count($reasons) > count(self::WALLET_CHANGE_BLOCK_REASONS)) {
+            return null;
+        }
+        $accepted = [];
+        foreach ($reasons as $reason) {
+            if (! is_string($reason) || ! in_array($reason, self::WALLET_CHANGE_BLOCK_REASONS, true) || in_array($reason, $accepted, true)) {
+                return null;
+            }
+            $accepted[] = $reason;
+        }
+
+        return $accepted;
     }
 
     /**

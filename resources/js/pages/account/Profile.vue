@@ -752,7 +752,7 @@
                   >
                     {{ currentPlanName }}
                     <span
-                      v-if="!isPaidPlan"
+                      v-if="!isPaidPlan && !isPromotion"
                       class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-600 text-gray-100"
                     >
                       {{ t("account.plan_badge_standard") }}
@@ -770,7 +770,7 @@
                       {{ t("account.plan_badge_active") }}
                     </span>
                     <span
-                      v-else
+                      v-else-if="subscriber && !isPromotion"
                       class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-600 text-white"
                     >
                       {{ t("account.plan_badge_inactive") }}
@@ -811,9 +811,9 @@
                     >
                       {{ formatSats(pricing.pro.sats_per_month_display) }}
                     </span>
-                    <span>{{ currentPlanPrice }}</span>
+                    <span>{{ isPromotion ? formatSats(0) : currentPlanPrice }}</span>
                   </div>
-                  <div class="text-sm text-gray-400">
+                  <div v-if="!isPromotion" class="text-sm text-gray-400">
                     {{
                       isProPlan
                         ? t("account.per_month_paid_yearly")
@@ -831,7 +831,7 @@
               </div>
 
               <div
-                v-if="subscriptionBilling?.isTrial"
+                v-if="subscriptionBilling?.isTrial && !promotionMessagingActive"
                 class="mb-6 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
               >
                 <div class="flex items-start gap-3">
@@ -857,7 +857,7 @@
                   </p>
                 </div>
                 <button
-                  v-if="subscriptionBilling.nextChargeSats > 0"
+                  v-if="canPurchaseSubscriberCredits && subscriptionBilling.nextChargeSats > 0"
                   type="button"
                   class="inline-flex items-center justify-center rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-400 transition-colors disabled:opacity-50"
                   :disabled="payingNow"
@@ -874,7 +874,7 @@
                 <h6
                   class="text-sm font-medium text-gray-300 mb-4 uppercase tracking-wider"
                 >
-                  {{ t("account.current_plan_includes") }}
+                  {{ t("free_pro.available_features") }}
                 </h6>
                 <ul class="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <li
@@ -900,6 +900,7 @@
                 </ul>
               </div>
 
+              <FreeProNotice :active="promotionMessagingActive" class="mb-6 text-indigo-100" />
               <!-- Billing Information -->
               <div
                 v-if="isPaidPlan || creditBalance > 0"
@@ -928,6 +929,7 @@
                         }}</span
                       >
                       <button
+                        v-if="canPurchaseSubscriberCredits"
                         @click="showAddCreditModal = true"
                         class="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
                       >
@@ -1592,6 +1594,9 @@
 </template>
 
 <script setup lang="ts">
+import FreeProNotice from "@/components/account/FreeProNotice.vue";
+import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
+import { isPurchasePausedError } from "@/services/apiError";
 import { asApiError } from "../../utils/apiError";
 import { ref, onMounted, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -1679,11 +1684,14 @@ import {
 } from "../../evolu/relayOverrideStorage";
 import { dashboardInvoicingTabPath } from "../../utils/dashboardInvoicingTab";
 const { t, locale } = useI18n();
+const { purchases, promotionActive: accountPromotionActive } = useEffectiveAccess();
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const flashStore = useFlashStore();
-const { pricing, formatSats, load: loadPricing } = usePricing();
+const { pricing, formatSats, load: loadPricing, promotionActive: publicPromotionActive } = usePricing();
+const promotionMessagingActive = computed(() => accountPromotionActive.value
+  || (publicPromotionActive?.value === true && !authStore.user?.is_guest && !!authStore.user?.email_verified_at));
 const {
   planFeatures,
   isInvoicingFeature,
@@ -1723,6 +1731,8 @@ type CreditHistoryEntry = {
 };
 
 const subscriber = ref<any>(null);
+const subscriberCreditPurchasesAvailable = ref(false);
+const canPurchaseSubscriberCredits = computed(() => subscriberCreditPurchasesAvailable.value || purchases.value.pro_credits);
 const subscriptionBilling = ref<SubscriptionBilling | null>(null);
 const creditBalance = ref(0);
 const creditHistory = ref<CreditHistoryEntry[]>([]);
@@ -2238,17 +2248,18 @@ const serverLegacyLoading = ref(false);
 const serverLegacyDeleting = ref<string | null>(null);
 
 const { planCode: effectivePlanCode, canStartTrial } = useCurrentPlan();
+const { billingPlanCode, isPromotion } = useEffectiveAccess();
 
 // Plan information
 const currentPlanName = computed(() => {
-  const code = effectivePlanCode.value;
+  const code = billingPlanCode.value;
   if (code === "enterprise") return t("account.plan_enterprise");
   if (code === "pro") return t("account.plan_pro");
   return t("account.plan_free");
 });
 
 const currentPlanPrice = computed(() => {
-  const code = effectivePlanCode.value;
+  const code = billingPlanCode.value;
   const p = pricing.value;
   if (code === "enterprise") return "-";
   if (code === "pro") return formatSats(proEffectiveMonthlySats(p.pro));
@@ -2256,7 +2267,7 @@ const currentPlanPrice = computed(() => {
 });
 
 const currentPlanDescription = computed(() => {
-  const code = effectivePlanCode.value;
+  const code = billingPlanCode.value;
   if (code === "enterprise") return t("account.plan_desc_enterprise");
   if (code === "pro") return t("account.plan_desc_pro");
   return t("account.plan_desc_free");
@@ -2274,11 +2285,11 @@ const currentPlanFeatures = computed(() => {
 });
 
 const isPaidPlan = computed(() => {
-  const code = effectivePlanCode.value;
+  const code = billingPlanCode.value;
   return code === "pro" || code === "enterprise";
 });
 
-const isProPlan = computed(() => effectivePlanCode.value === "pro");
+const isProPlan = computed(() => billingPlanCode.value === "pro");
 
 // Upgrade options logic
 const showUpgradeOptions = computed(() => {
@@ -2289,13 +2300,13 @@ const showUpgradeOptions = computed(() => {
   if (role === "admin" || role === "support") {
     return false;
   }
-  return effectivePlanCode.value !== "enterprise";
+  return billingPlanCode.value !== "enterprise";
 });
 
-const showProUpgrade = computed(() => effectivePlanCode.value === "free");
+const showProUpgrade = computed(() => effectivePlanCode.value === "free" && purchases.value.pro_subscriptions);
 
 const showEnterpriseUpgrade = computed(() => {
-  const code = effectivePlanCode.value;
+  const code = billingPlanCode.value;
   return code === "free" || code === "pro";
 });
 
@@ -2368,6 +2379,7 @@ async function loadSubscriptionDetails() {
   try {
     const response = await api.get("/subscriptions/details");
     subscriber.value = response.data.subscriber;
+    subscriberCreditPurchasesAvailable.value = response.data.creditPurchasesAvailable === true;
     subscriptionBilling.value = response.data.billing || null;
     creditBalance.value = response.data.creditBalance || 0;
     creditHistory.value = response.data.creditHistory || [];
@@ -2379,6 +2391,7 @@ async function loadSubscriptionDetails() {
     }
     // Reset values on error
     subscriber.value = null;
+    subscriberCreditPurchasesAvailable.value = false;
     subscriptionBilling.value = null;
     creditBalance.value = 0;
     creditHistory.value = [];
@@ -2388,6 +2401,7 @@ async function loadSubscriptionDetails() {
 }
 
 async function startCreditCheckout(amount: number) {
+  if (!canPurchaseSubscriberCredits.value) return false;
   const response = await api.post("/subscriptions/credits", {
     amount,
     currency: "SATS",
@@ -2421,7 +2435,7 @@ async function handlePayNow() {
   } catch (rawError) {
     const error = asApiError(rawError);
     console.error("Failed to start subscription payment:", error);
-    alert(error.response?.data?.message || t("account.checkout_failed"));
+    alert(isPurchasePausedError(error) ? t("free_pro.purchases_paused") : error.response?.data?.message || t("account.checkout_failed"));
     payingNow.value = false;
   }
 }
@@ -2438,7 +2452,7 @@ async function handleAddCredit() {
   } catch (rawError) {
     const error = asApiError(rawError);
     console.error("Failed to add credit:", error);
-    alert(error.response?.data?.message || t("account.add_credit_failed"));
+    alert(isPurchasePausedError(error) ? t("free_pro.purchases_paused") : error.response?.data?.message || t("account.add_credit_failed"));
     addingCredit.value = false;
   }
 }
@@ -2476,6 +2490,7 @@ function formatDate(timestamp: number | string): string {
 }
 
 async function upgradePlan(plan: string) {
+  if (plan === "pro" && !purchases.value.pro_subscriptions) return;
   upgrading.value = true;
   try {
     const response = await api.post("/subscriptions/checkout", {
@@ -2491,7 +2506,7 @@ async function upgradePlan(plan: string) {
   } catch (rawError) {
     const error = asApiError(rawError);
     console.error("Failed to create checkout:", error);
-    alert(error.response?.data?.message || t("account.checkout_failed"));
+    alert(isPurchasePausedError(error) ? t("free_pro.purchases_paused") : error.response?.data?.message || t("account.checkout_failed"));
     upgrading.value = false;
   }
 }

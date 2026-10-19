@@ -134,4 +134,10 @@ return [
 
     // SEPA Instant QR
     'sepa_certificate_files_required' => 'Nahrajte buď PKCS#12 (.p12/.pfx) súbor, alebo PEM certifikát spolu s privátnym kľúčom.',
+
+    // Temporarily paused purchases
+    'pro_purchase_temporarily_disabled' => 'Nákupy PRO sú dočasne pozastavené.',
+    'company_slot_purchase_temporarily_disabled' => 'Nákupy firemných slotov sú dočasne pozastavené.',
+    'isdoc_pack_purchase_temporarily_disabled' => 'Nákupy ISDOC balíkov sú dočasne pozastavené.',
+    'isdoc_extract_limit_reached_no_purchase' => 'Dosiahli ste limit ISDOC extrakcií. Nákupy balíkov sú dočasne pozastavené.',
 ];

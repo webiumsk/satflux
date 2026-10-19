@@ -155,4 +155,10 @@ return [
 
     // SEPA Instant QR
     'sepa_certificate_files_required' => 'Upload either a PKCS#12 (.p12/.pfx) file or the PEM certificate together with its private key.',
+
+    // Temporarily paused purchases
+    'pro_purchase_temporarily_disabled' => 'PRO purchases are temporarily unavailable.',
+    'company_slot_purchase_temporarily_disabled' => 'Company slot purchases are temporarily unavailable.',
+    'isdoc_pack_purchase_temporarily_disabled' => 'ISDOC pack purchases are temporarily unavailable.',
+    'isdoc_extract_limit_reached_no_purchase' => 'ISDOC extraction limit reached. Pack purchases are temporarily unavailable.',
 ];

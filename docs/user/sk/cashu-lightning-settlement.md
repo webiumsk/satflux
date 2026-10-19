@@ -23,7 +23,9 @@ Otvorte **Pripojenie peňaženky** obchodu a sekciu **Cashu**. Potvrďte beta up
 - **Vyrovnávať platby cez Cashu → Lightning** - nechajte zapnuté, aby obchod používal túto vyrovnávaciu cestu.
 - Voliteľne: **dôveryhodné minty** a **stropy rezervy poplatku** (max v sats a/alebo ako % zo sumy), ktoré ohraničujú, koľko poplatku za smerovanie (routing) Lightning platby môže výplata minúť.
 
-Úprava existujúceho Cashu obchodu si znova vyžiada heslo (pokiaľ sa neprihlasujete frázou alebo passkeyom).
+Úprava nastavenej Cashu peňaženky vyžaduje šesťmiestny kód zaslaný na email účtu. Účty s heslom potvrdia aj heslo; pri prihlásení frázou alebo passkeyom sa použije existujúce overenie. Hosť musí najprv doplniť email a dokončiť registráciu. Prvé nastavenie peňaženky nevyžaduje kód na potvrdenie zmeny.
+
+Uloženie bez zmeny hodnôt iba overí existujúcu konfiguráciu. Skutočná zmena zostáva zablokovaná, kým platby alebo zostatok vyžadujú obnovu. Samotné vyrovnané alebo expirované platby nepotvrdzujú, že nezostal žiadny zostatok. Ak sa bezpečnosť nedá overiť, skúste to neskôr alebo kontaktujte podporu; táto chyba sa odlišuje od potvrdených nevysporiadaných prostriedkov.
 
 ## Dva spôsoby použitia
 
@@ -33,6 +35,10 @@ Otvorte **Pripojenie peňaženky** obchodu a sekciu **Cashu**. Potvrďte beta up
 ## Sledovanie vyrovnaní
 
 Stránka **Cashu vyrovnania** vypisuje každé vyrovnanie a jeho stav - `SETTLED`, `PENDING`, `FAILED` alebo `MELT_COMPLETE` (skonvertované, záznam BTCPay dobieha). Zaseknuté riadky viete **skúsiť znova**. Bežné dôvody zlyhania sú zobrazené zrozumiteľne (napr. routing poplatok prekročil váš strop, alebo mint nepotvrdil Lightning výplatu).
+
+Sekcia **Bezpečnosť zmeny peňaženky** zobrazuje poslednú kontrolu pluginu a oddelené počty nevyriešených záznamov platieb a vrátených prostriedkov. Ide o počty záznamov, nie sumy v satoshi. Záznamy vrátených prostriedkov sú oddelené od histórie platieb, preto samotné dokončené platby nepotvrdzujú, či možno peňaženku zmeniť. Ak sa pôvodný stav pluginu líši od zobrazeného stavu vyrovnania, prehľad upozorní na tento rozdiel.
+
+Ak Cashu blokuje zmenu a nie je dostupná podporovaná možnosť obnovy, kontaktujte podporu s týmito dvoma počtami a zobrazeným stavom pluginu. Nulové alebo nedostupné počty nerušia blokáciu. Kontrola zobrazuje posledný známy stav; uloženie vykoná novú bezpečnostnú kontrolu.
 
 ## Obnova platby
 

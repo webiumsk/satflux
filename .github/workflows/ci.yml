@@ -205,6 +205,9 @@ jobs:
       - name: Locale parity
         run: npm run test:locale-parity
 
+      - name: Typecheck gate regression tests
+        run: node --test scripts/typecheck-baseline.test.mjs
+
       - name: Typecheck
         run: npm run typecheck
 

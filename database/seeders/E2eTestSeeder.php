@@ -21,6 +21,8 @@ class E2eTestSeeder extends Seeder
 
     public const PASSWORD = 'E2e-password-123';
 
+    public const CHECKOUT_EMAIL = 'e2e-checkout@satflux.test';
+
     public function run(): void
     {
         if (App::environment('production')) {
@@ -79,10 +81,19 @@ class E2eTestSeeder extends Seeder
         // checkout scenario additionally needs the Pro entitlement
         // (business_invoicing) - give the fixture user an active Pro plan.
         if (env('E2E_BTCPAY') === '1') {
-            $user->forceFill([
-                'btcpay_user_id' => 'stub-merchant-user',
-                'btcpay_api_key' => 'stub-merchant-key',
-            ])->save();
+            // Checkout navigations have a separate real API rate-limit budget
+            // from the earlier store/invoice and authentication scenarios.
+            $checkoutUser = User::updateOrCreate(
+                ['email' => self::CHECKOUT_EMAIL],
+                [
+                    'name' => 'E2E Checkout User',
+                    'password' => Hash::make(self::PASSWORD),
+                    'email_verified_at' => now(),
+                    'is_guest' => false,
+                    'guest_recovery_public_key' => null,
+                    'guest_recovery_enrolled_at' => null,
+                ],
+            );
 
             $plan = SubscriptionPlan::firstOrCreate(
                 ['code' => 'pro'],
@@ -110,15 +121,22 @@ class E2eTestSeeder extends Seeder
                     'is_active' => true,
                 ])->save();
             }
-            Subscription::updateOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'plan_id' => $plan->id,
-                    'status' => 'active',
-                    'starts_at' => now(),
-                    'expires_at' => now()->addYear(),
-                ],
-            );
+            foreach ([$user, $checkoutUser] as $merchant) {
+                $merchant->forceFill([
+                    'btcpay_user_id' => $merchant->is($user) ? 'stub-merchant-user' : 'stub-checkout-user',
+                    'btcpay_api_key' => 'stub-merchant-key',
+                ])->save();
+
+                Subscription::updateOrCreate(
+                    ['user_id' => $merchant->id],
+                    [
+                        'plan_id' => $plan->id,
+                        'status' => 'active',
+                        'starts_at' => now(),
+                        'expires_at' => now()->addYear(),
+                    ],
+                );
+            }
         }
     }
 }

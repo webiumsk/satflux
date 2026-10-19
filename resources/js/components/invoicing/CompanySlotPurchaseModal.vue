@@ -1,6 +1,10 @@
 <template>
   <div
     v-if="open"
+    ref="dialogRoot"
+    tabindex="-1"
+    :aria-labelledby="dialogTitleId"
+    @keydown="onDialogKeydown"
     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
     role="dialog"
     aria-modal="true"
@@ -10,13 +14,13 @@
       <button
         type="button"
         class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-2xl leading-none"
-        :title="t('common.close')"
+        :aria-label="t('common.close')"
         @click="$emit('close')"
       >
         ×
       </button>
 
-      <h3 class="text-lg font-semibold text-gray-900 pr-8">{{ t('invoicing.company_slots_title') }}</h3>
+      <h3 :id="dialogTitleId" class="text-lg font-semibold text-gray-900 pr-8">{{ t('invoicing.company_slots_title') }}</h3>
       <p class="mt-3 text-sm text-gray-600 leading-relaxed">
         {{ t('invoicing.company_slots_body', { included: includedCompanies, extra: extraSlots }) }}
       </p>
@@ -49,7 +53,7 @@
       </div>
 
       <p v-else class="mt-5 text-sm text-gray-600">
-        {{ t('invoicing.company_slots_unavailable') }}
+        {{ t(purchases.company_slots ? 'invoicing.company_slots_unavailable' : 'free_pro.purchases_paused') }}
       </p>
 
       <div class="mt-6 flex justify-end">
@@ -62,6 +66,10 @@
 </template>
 
 <script setup lang="ts">
+import { useDialogFocus } from "@/composables/useDialogFocus";
+import { useId } from "vue";
+import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
+import { isPurchasePausedError } from "@/services/apiError";
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { invoicingApi } from '@/services/api';
@@ -78,9 +86,14 @@ const emit = defineEmits<{
   purchased: [];
 }>();
 
+const dialogRoot = ref<HTMLElement | null>(null);
+const dialogTitleId = useId();
+const { onDialogKeydown } = useDialogFocus(dialogRoot, () => props.open, () => emit('close'));
+
 const { t } = useI18n();
 const { pricing, formatSats, load } = usePricing();
 const authStore = useAuthStore();
+const { purchases } = useEffectiveAccess();
 
 const purchasing = ref(false);
 const purchaseError = ref('');
@@ -89,7 +102,7 @@ const purchased = ref(false);
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let baselineMax: number | null = null;
 
-const packs = computed(() => pricing.value.company_slot_packs);
+const packs = computed(() => purchases.value.company_slots ? pricing.value.company_slot_packs : []);
 const includedCompanies = computed(() => authStore.user?.plan?.included_companies ?? 0);
 const extraSlots = computed(() => authStore.user?.plan?.extra_company_slots ?? 0);
 
@@ -108,6 +121,7 @@ watch(
 );
 
 async function purchase(slots: number): Promise<void> {
+  if (!purchases.value.company_slots) return;
   purchasing.value = true;
   purchaseError.value = '';
   // Open the tab synchronously within the user activation so popup blockers
@@ -145,7 +159,7 @@ async function purchase(slots: number): Promise<void> {
         }
       }
     }
-    purchaseError.value = message || e.response?.data?.message || t('common.error');
+    purchaseError.value = isPurchasePausedError(e) ? t('free_pro.purchases_paused') : message || e.response?.data?.message || t('common.error');
   } finally {
     purchasing.value = false;
   }

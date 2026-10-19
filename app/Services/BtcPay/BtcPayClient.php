@@ -150,6 +150,9 @@ class BtcPayClient
      */
     public function post(string $endpoint, array $data = [], bool $retry = true): array
     {
+        if (in_array($this->privateCashuSuffix($endpoint), ['change/export', 'change/verify'], true)) {
+            $retry = false;
+        }
         $previous = $this->maxRetries;
         if (! $retry) {
             $this->maxRetries = 0;
@@ -327,7 +330,8 @@ class BtcPayClient
                 // may carry an API key secret in its path - redact before it
                 // reaches the log or the rethrown message. The original exception
                 // is deliberately not chained as previous for the same reason.
-                $safeMessage = self::redactEndpoint($e->getMessage());
+                $safetyRequest = $this->privateCashuSuffix($endpoint) !== null;
+                $safeMessage = $safetyRequest ? 'Private Cashu request failed.' : self::redactEndpoint($e->getMessage());
                 $this->logRequest($method, $endpoint, $logOptions, null, null, "Exception: {$safeMessage}");
 
                 if ($attempt < $this->maxRetries) {
@@ -338,6 +342,9 @@ class BtcPayClient
                     continue;
                 }
 
+                if ($safetyRequest) {
+                    throw new BtcPayException("Private Cashu request failed after {$this->maxRetries} retries.");
+                }
                 throw new BtcPayException("Request failed after {$this->maxRetries} retries: ".get_class($e).": {$safeMessage}");
             }
         }
@@ -369,6 +376,10 @@ class BtcPayClient
     protected function handleErrorResponse(Response $response, string $method, string $endpoint): void
     {
         $statusCode = $response->status();
+        if ($this->privateCashuSuffix($endpoint) !== null) {
+            $this->logRequest($method, $endpoint, [], $response, null);
+            throw new BtcPayException("Private Cashu request failed (HTTP {$statusCode}).", $statusCode);
+        }
         $body = $response->body();
         $json = $response->json();
 
@@ -467,6 +478,22 @@ class BtcPayClient
      */
     protected function logRequest(string $method, string $endpoint, array $options, ?Response $response, ?array $data, ?string $additional = null): void
     {
+        $privateCashuSuffix = $this->privateCashuSuffix($endpoint);
+        if ($privateCashuSuffix !== null) {
+            try {
+                Log::channel('btcpay')->info('BTCPay API Request', [
+                    'method' => $method,
+                    'endpoint' => '/api/v1/stores/[redacted]/plugins/cashumelt/'.$privateCashuSuffix,
+                    'status' => $response?->status(),
+                ]);
+            } catch (\Exception $e) {
+                if (! app()->environment('testing')) {
+                    throw $e;
+                }
+            }
+
+            return;
+        }
         $logData = [
             'method' => $method,
             'endpoint' => self::redactEndpoint($endpoint),
@@ -500,6 +527,12 @@ class BtcPayClient
                 throw $e;
             }
         }
+    }
+
+    private function privateCashuSuffix(string $endpoint): ?string
+    {
+        return preg_match('~^/api/v1/stores/[^/?]+/plugins/cashumelt/(safety|change(?:/(?:export|verify))?)(?:\?.*)?$~D', $endpoint, $matches) === 1
+            ? $matches[1] : null;
     }
 
     /**

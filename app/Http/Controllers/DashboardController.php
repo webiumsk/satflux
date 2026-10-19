@@ -7,6 +7,7 @@ use App\Models\Store;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\StoreService;
 use App\Services\DashboardAnalyticsService;
+use App\Services\EffectiveAccessPolicy;
 use App\Services\InvoiceSourceService;
 use App\Services\StoreInvoiceStatsService;
 use Carbon\CarbonImmutable;
@@ -234,10 +235,7 @@ class DashboardController extends Controller
         }
         $stores = $storesCollection->map(fn ($s) => ['id' => $s->id, 'name' => $s->name])->values()->all();
 
-        $plan = $user->currentSubscriptionPlan();
-        $planCode = $plan ? strtolower($plan->code ?? '') : 'free';
-        $canViewStats = in_array($user->role, ['admin', 'support'], true)
-            || in_array($planCode, ['pro', 'enterprise'], true);
+        $canViewStats = app(EffectiveAccessPolicy::class)->allows($user, 'advanced_statistics');
 
         $sales7d = [];
         $sales30d = [];
@@ -401,10 +399,7 @@ class DashboardController extends Controller
             return response()->json(['message' => __('messages.unauthorized')], 403);
         }
 
-        $plan = $user->currentSubscriptionPlan();
-        $planCode = $plan ? strtolower($plan->code ?? '') : 'free';
-        $canViewStats = in_array($user->role, ['admin', 'support'], true)
-            || in_array($planCode, ['pro', 'enterprise'], true);
+        $canViewStats = app(EffectiveAccessPolicy::class)->allows($user, 'advanced_statistics');
 
         $cacheKey = 'dashboard:analytics:'.$user->id.':'.md5(json_encode([
             $validated['from'], $validated['to'],

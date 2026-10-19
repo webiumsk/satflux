@@ -1,7 +1,8 @@
-import { ref, computed } from 'vue';
+import { ref, computed, getCurrentInstance, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { localeTagFor } from '@/i18n';
 import api from '../services/api';
+import { parsePurchaseAvailability, PURCHASES_UNAVAILABLE, type PublicAccessPolicy } from '../types/access';
 
 export interface PricingFree {
   sats_per_year: number;
@@ -23,6 +24,7 @@ export interface PricingData {
   free: PricingFree;
   pro: PricingPro;
   company_slot_packs: CompanySlotPack[];
+  access_policy?: PublicAccessPolicy;
 }
 
 export function proEffectiveMonthlySats(pro: PricingPro): number {
@@ -43,11 +45,16 @@ const fallback: PricingData = {
 
 const cached = ref<PricingData | null>(null);
 let fetchPromise: Promise<PricingData> | null = null;
+let loadedAt = 0;
+const POLICY_TTL_MS = 60_000;
 
 export function usePricing() {
   const { locale } = useI18n();
 
   const pricing = computed(() => cached.value ?? fallback);
+
+  const purchaseAvailability = computed(() => cached.value?.access_policy?.purchase_availability ?? PURCHASES_UNAVAILABLE);
+  const promotionActive = computed(() => cached.value?.access_policy?.promotion_active === true);
 
   const loaded = computed(() => cached.value !== null);
 
@@ -56,7 +63,7 @@ export function usePricing() {
   }
 
   async function load() {
-    if (cached.value) return cached.value;
+    if (cached.value && Date.now() - loadedAt < POLICY_TTL_MS) return cached.value;
     if (fetchPromise) return fetchPromise;
     fetchPromise = (async () => {
       try {
@@ -66,6 +73,7 @@ export function usePricing() {
           free: PricingFree;
           pro: PricingPro;
           company_slot_packs?: CompanySlotPack[];
+          access_policy?: PublicAccessPolicy;
         }>('/pricing');
         cached.value = {
           trial_days: data.trial_days ?? 30,
@@ -76,18 +84,41 @@ export function usePricing() {
             sats_per_month_display: data.pro?.sats_per_month_display ?? 21_000,
           },
           company_slot_packs: Array.isArray(data.company_slot_packs) ? data.company_slot_packs : [],
+          access_policy: data.access_policy ? {
+            ...data.access_policy,
+            purchase_availability: parsePurchaseAvailability(data.access_policy.purchase_availability),
+          } : undefined,
         };
+        loadedAt = Date.now();
         return cached.value!;
       } catch {
-        cached.value = fallback;
+        cached.value = null;
+        loadedAt = 0;
         return fallback;
+      } finally {
+        fetchPromise = null;
       }
     })();
     return fetchPromise;
   }
 
+  if (getCurrentInstance()) {
+    const refresh = () => { void load(); };
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    onMounted(() => {
+      window.addEventListener('focus', refresh);
+      document.addEventListener('visibilitychange', onVisible);
+    });
+    onBeforeUnmount(() => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', onVisible);
+    });
+  }
+
   return {
     pricing,
+    purchaseAvailability,
+    promotionActive,
     loaded,
     formatSats,
     load,

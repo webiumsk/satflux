@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Services\BtcPay\LightningAddressService;
+use App\Services\EffectiveAccessPolicy;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -25,8 +26,9 @@ class EnsurePlanAllowsLnAddressCreation
             return $next($request);
         }
 
-        $plan = $user->currentSubscriptionPlan();
-        $max = $plan?->max_ln_addresses;
+        $policy = app(EffectiveAccessPolicy::class);
+        $plan = $policy->plan($user);
+        $max = $policy->limit($user, 'max_ln_addresses');
         if ($max === null) {
             return $next($request);
         }
@@ -53,11 +55,11 @@ class EnsurePlanAllowsLnAddressCreation
             return response()->json([
                 'message' => __('messages.lightning_address_limit_reached', [
                     'max' => $max,
-                    'plan' => $plan?->display_name ?? 'Free',
+                    'plan' => ($plan ? (string) $plan->getAttribute('display_name') : 'Free'),
                 ]),
                 'current_count' => $currentCount,
                 'max_allowed' => $max,
-                'plan' => $plan?->display_name ?? 'Free',
+                'plan' => ($plan ? (string) $plan->getAttribute('display_name') : 'Free'),
             ], 403);
         }
 

@@ -1,5 +1,6 @@
 <template>
   <div class="space-y-6">
+    <CashuChangeRecovery ref="changeRecovery" :store-id="store.id" @changed="fetchPayments()" />
     <div
       class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700"
     >
@@ -18,7 +19,8 @@
           type="button"
           class="inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:pointer-events-none transition-colors shadow-lg shadow-indigo-900/20 shrink-0"
           :disabled="loading"
-          @click="fetchPayments()"
+          @click="refreshAll"
+          data-testid="cashu-payments-refresh"
         >
           {{ t("stores.cashu_payments_refresh") }}
         </button>
@@ -45,6 +47,8 @@
             />
           </div>
         </div>
+
+        <CashuWalletSafetySummary v-if="!loading" :safety="walletSafety" class="mb-6" />
 
         <div
           v-if="loading && payments.items.length === 0"
@@ -193,6 +197,25 @@
                     <span :class="settlementPillClass(p.settlement_state)">
                       {{ settlementStateLabel(p.settlement_state) }}
                     </span>
+                    <template v-if="hasStateDiscrepancy(p)">
+                      <p class="mt-2 text-xs text-amber-200">{{ t('stores.cashu_provider_status', { status: settlementStateLabel(p.reported_settlement_state) }) }}</p>
+                      <p class="mt-1 text-xs text-gray-400">{{ t('stores.cashu_provider_status_discrepancy') }}</p>
+                    </template>
+                    <p v-else-if="p.settlement_state === 'SETTLED' && !p.reported_settlement_state" class="mt-2 text-xs text-gray-400">{{ t('stores.cashu_provider_status_unknown') }}</p>
+                    <div class="mt-3 space-y-2 max-w-sm" data-testid="cashu-payment-diagnostics">
+                      <span class="inline-flex rounded-md border px-2 py-1 text-xs font-semibold" :class="p.blocks_wallet_change === true ? 'border-amber-500/40 bg-amber-500/10 text-amber-200' : 'border-gray-600 text-gray-300'" data-testid="cashu-payment-hold">{{ t(p.blocks_wallet_change === true ? 'stores.cashu_payment_hold_blocked' : p.blocks_wallet_change === false ? 'stores.cashu_payment_hold_clear' : 'stores.cashu_payment_hold_unknown') }}</span>
+                      <details v-if="p.blocks_wallet_change === true" class="space-y-2">
+                      <summary class="cursor-pointer rounded text-xs font-medium text-indigo-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-400">{{ t('stores.cashu_payment_recovery_details') }}</summary>
+                      <p class="text-xs text-gray-300">{{ t('stores.cashu_payment_recovery_phase', { phase: recoveryPhaseLabel(p.recovery_phase) }) }}</p>
+                      <p v-if="p.wallet_change_block_reasons == null" class="text-xs text-gray-400">{{ t('stores.cashu_payment_reasons_unknown') }}</p>
+                      <template v-else-if="p.wallet_change_block_reasons.length">
+                        <p class="text-xs font-medium text-gray-300">{{ t('stores.cashu_payment_hold_reasons') }}</p>
+                        <ul class="list-disc pl-4 text-xs text-gray-400 space-y-1"><li v-for="reason in p.wallet_change_block_reasons" :key="reason">{{ t(BLOCK_REASON_KEYS[reason]) }}</li></ul>
+                      </template>
+                      <p v-else class="text-xs text-gray-400">{{ t('stores.cashu_payment_reasons_none') }}</p>
+                      <p v-if="p.recovery_phase === 'funding_verification' || p.failure_reason_code === 'mint_poll_error'" class="text-xs text-amber-200">{{ t('stores.cashu_payment_funding_unknown') }}</p>
+                      </details>
+                    </div>
                   </td>
                   <td class="px-4 py-3 align-top">
                     <div
@@ -339,9 +362,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import api from "../../services/api";
+import api, { type CashuPaymentRecoveryDiagnostics, type CashuRecoveryPhase, type CashuWalletChangeBlockReason } from "../../services/api";
 import { useAuthStore } from "../../store/auth";
 import Select from "../ui/Select.vue";
+import CashuWalletSafetySummary from './wallet-connection/CashuWalletSafetySummary.vue';
+import CashuChangeRecovery from './wallet-connection/CashuChangeRecovery.vue';
 
 const { t } = useI18n();
 const authStore = useAuthStore();
@@ -353,18 +378,49 @@ const props = defineProps<{
 
 type SettlementState = "SETTLED" | "PENDING" | "FAILED" | "MELT_COMPLETE";
 
-interface CashuPayment {
+interface CashuPayment extends CashuPaymentRecoveryDiagnostics {
   quote_id: string;
   invoice_id?: string | null;
   original_settings_required?: boolean;
   created_at?: string | null;
   amount_sats?: number | null;
   settlement_state?: SettlementState | string | null;
+  reported_settlement_state?: SettlementState | string | null;
   settlement_error?: string | null;
   mint_quote_poll_url?: string | null;
   retry_count?: number | null;
   needs_manual_review?: boolean | null;
   failure_reason_code?: string | null;
+}
+
+const BLOCK_REASON_KEYS: Record<CashuWalletChangeBlockReason, string> = {
+  non_terminal_settlement: 'stores.cashu_block_non_terminal_settlement',
+  retained_minted_proofs: 'stores.cashu_block_retained_minted_proofs',
+  retained_issuance_intent: 'stores.cashu_block_retained_issuance_intent',
+  retained_change_outputs: 'stores.cashu_block_retained_change_outputs',
+  retained_payout_quote: 'stores.cashu_block_retained_payout_quote',
+};
+const RECOVERY_PHASE_KEYS: Record<CashuRecoveryPhase, string> = {
+  complete: 'stores.cashu_phase_complete', expired_unpaid: 'stores.cashu_phase_expired_unpaid',
+  terminal_recovery_review: 'stores.cashu_phase_terminal_recovery_review', original_settings_required: 'stores.cashu_phase_original_settings_required',
+  accounting_pending: 'stores.cashu_phase_accounting_pending', payout_reconciliation: 'stores.cashu_phase_payout_reconciliation',
+  proofs_retained: 'stores.cashu_phase_proofs_retained', issuance_restore: 'stores.cashu_phase_issuance_restore',
+  recovery_evidence_review: 'stores.cashu_phase_recovery_evidence_review', funding_verification: 'stores.cashu_phase_funding_verification',
+};
+
+/** Display only known structural metadata; it never selects or authorizes recovery actions. */
+function projectPaymentDiagnostics(raw: CashuPayment): CashuPaymentRecoveryDiagnostics {
+  const reasons: unknown = raw.wallet_change_block_reasons;
+  const validReasons = Array.isArray(reasons) && reasons.length <= 5 && new Set(reasons).size === reasons.length && reasons.every(reason => typeof reason === 'string' && Object.prototype.hasOwnProperty.call(BLOCK_REASON_KEYS, reason));
+  return {
+    blocks_wallet_change: typeof raw.blocks_wallet_change === 'boolean' ? raw.blocks_wallet_change : null,
+    recovery_phase: typeof raw.recovery_phase === 'string' && Object.prototype.hasOwnProperty.call(RECOVERY_PHASE_KEYS, raw.recovery_phase) ? raw.recovery_phase : null,
+    wallet_change_block_reasons: validReasons ? reasons as CashuWalletChangeBlockReason[] : null,
+  };
+}
+
+function recoveryPhaseLabel(phase?: CashuRecoveryPhase | null): string {
+  return phase ? t(RECOVERY_PHASE_KEYS[phase]) : t('stores.cashu_payment_phase_unknown');
 }
 
 /** Failure reason codes emitted by the CashuMelt plugin (CashuMeltFailureReasons). */
@@ -411,6 +467,8 @@ const payments = ref<CashuPaymentsResponse>({
 
 const loading = ref(false);
 const error = ref<string | null>(null);
+const walletSafety = ref<unknown>(null);
+const changeRecovery = ref<InstanceType<typeof CashuChangeRecovery> | null>(null);
 const retryNotice = ref<string | null>(null);
 const retryingQuoteIds = ref<Set<string>>(new Set());
 const copiedPollQuoteId = ref<string | null>(null);
@@ -468,6 +526,11 @@ function settlementStateLabel(state?: string | null): string {
     default:
       return state && String(state).trim() !== "" ? String(state) : "-";
   }
+}
+
+function hasStateDiscrepancy(payment: CashuPayment): boolean {
+  return typeof payment.reported_settlement_state === 'string' && payment.reported_settlement_state !== '' &&
+    payment.reported_settlement_state !== payment.settlement_state;
 }
 
 function settlementPillClass(state?: string | null): string {
@@ -597,6 +660,7 @@ async function fetchPayments() {
   const generation = ++paymentsGeneration;
   loading.value = true;
   error.value = null;
+  walletSafety.value = null;
   try {
     const params: Record<string, unknown> = {
       limit,
@@ -611,12 +675,13 @@ async function fetchPayments() {
     });
     if (storeId() !== sid || generation !== paymentsGeneration) return;
     const d = response.data?.data ?? {};
+    walletSafety.value = d.wallet_safety ?? null;
 
     payments.value = {
       total: Number(d.total ?? 0),
       offset: Number(d.offset ?? offset.value),
       limit: Number(d.limit ?? limit),
-      items: (d.items ?? []) as CashuPayment[],
+      items: ((d.items ?? []) as CashuPayment[]).map(payment => ({ ...payment, ...projectPaymentDiagnostics(payment) })),
     };
   } catch (err: unknown) {
     if (storeId() !== sid || generation !== paymentsGeneration) return;
@@ -631,6 +696,11 @@ async function fetchPayments() {
   } finally {
     if (storeId() === sid && generation === paymentsGeneration) loading.value = false;
   }
+}
+
+function refreshAll() {
+  void fetchPayments();
+  void changeRecovery.value?.refresh?.();
 }
 
 async function retryPayment(quoteId: string) {
@@ -695,6 +765,7 @@ watch(
     closeRecovery();
     recovering.value = false;
     payments.value = { total: 0, offset: 0, limit, items: [] };
+    walletSafety.value = null;
     offset.value = 0;
     settlementState.value = "";
     retryNotice.value = null;

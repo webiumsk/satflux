@@ -12,14 +12,17 @@
       />
       <div
         class="relative z-10 w-full max-w-lg max-h-[min(90vh,48rem)] overflow-y-auto rounded-2xl border border-gray-700 bg-gray-800 shadow-xl"
+        ref="dialogRoot"
+        tabindex="-1"
+        @keydown="onDialogKeydown"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="guest-upgrade-modal-title"
+        :aria-labelledby="dialogTitleId"
         @click.stop
       >
         <div class="p-6 sm:p-8 space-y-4">
           <div class="flex justify-between items-start gap-4">
-            <h3 id="guest-upgrade-modal-title" class="text-lg font-bold text-white">
+            <h3 :id="dialogTitleId" class="text-lg font-bold text-white">
               {{ t('account.guest_upgrade_title') }}
             </h3>
             <button
@@ -44,7 +47,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, useId } from 'vue';
+import { useDialogFocus } from '../../composables/useDialogFocus';
 import { useI18n } from 'vue-i18n';
 import GuestUpgradeForm from './GuestUpgradeForm.vue';
 import { useGuestUpgradeModal } from '../../composables/useGuestUpgradeModal';
@@ -53,6 +57,9 @@ const { t } = useI18n();
 const { open, featureLabelKey, closeGuestUpgradeModal } = useGuestUpgradeModal();
 
 const isOpen = computed(() => open.value);
+const dialogRoot = ref<HTMLElement | null>(null);
+const dialogTitleId = useId();
+const { onDialogKeydown } = useDialogFocus(dialogRoot, () => isOpen.value, closeGuestUpgradeModal);
 
 function onUpgradeSuccess(): void {
   // The code was confirmed in place; the store now holds the non-guest user

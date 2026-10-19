@@ -17,6 +17,7 @@ use App\Http\Controllers\Auth\PasskeyEnvelopeLoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\BlinkMigrationAlertController;
 use App\Http\Controllers\BoltzReadinessController;
+use App\Http\Controllers\CashuChangeRecoveryController;
 use App\Http\Controllers\CashuController;
 use App\Http\Controllers\ChoralaController;
 use App\Http\Controllers\ChoralaProxyController;
@@ -110,6 +111,7 @@ use App\Models\EfakturaCpdsProvider;
 use App\Models\Store;
 use App\Services\BtcPay\StoreService;
 use App\Services\Invoicing\CompanySlotService;
+use App\Services\PurchaseAvailabilityPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
@@ -140,6 +142,7 @@ Route::get('/pricing', function () {
             'sats_per_month_display' => (int) ($pricing['pro']['sats_per_month_display'] ?? 0),
         ],
         'company_slot_packs' => app(CompanySlotService::class)->availablePacks(),
+        'access_policy' => app(PurchaseAvailabilityPolicy::class)->publicDescriptor(),
     ]);
 });
 
@@ -815,6 +818,13 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
 
     // Cashu (wallet_type=cashu)
     Route::middleware([EnsureStoreOwnership::class])->prefix('stores/{store}/cashu')->group(function () {
+        Route::prefix('change')->group(function () {
+            Route::get('/', [CashuChangeRecoveryController::class, 'summary'])->middleware('throttle:30,1');
+            Route::post('confirmation/request', [CashuChangeRecoveryController::class, 'requestConfirmation'])->middleware('throttle:email-code-send');
+            Route::post('confirmation/resend', [CashuChangeRecoveryController::class, 'resendConfirmation'])->middleware('throttle:email-code-send');
+            Route::post('export', [CashuChangeRecoveryController::class, 'export'])->middleware('throttle:email-code-confirm');
+            Route::post('verify', [CashuChangeRecoveryController::class, 'verify'])->middleware('throttle:email-code-confirm');
+        });
         Route::post('confirm-edit', [CashuController::class, 'confirmEdit']);
         Route::get('settings', [CashuController::class, 'getSettings']);
         Route::put('settings', [CashuController::class, 'updateSettings']);

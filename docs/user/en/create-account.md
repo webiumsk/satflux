@@ -3,9 +3,12 @@ title: Create your Satflux account
 category: getting-started
 order: 2
 meta_description: Sign up with a 24-word recovery phrase and secure your account.
+updated: 2026-10-14
 ---
 
 # Create your Satflux account
+
+> When [temporary free PRO access](/documentation/free-pro-access) is active, registered non-guest accounts with a verified email can use PRO features without a subscription purchase. The usual limits and ownership permissions still apply. Check Pricing and Account for the current mode.
 
 You can start using Satflux in under a minute - no email required.
 
@@ -23,7 +26,7 @@ Right after signing up, Satflux offers to add a **passkey**. A passkey lets you 
 
 ## Add an email (optional)
 
-You can add an email address in your account later - it is only used for subscription billing, notifications and confirming sensitive changes, never as your login secret.
+You can add an email address in your account later. It is optional for getting started, but adding and verifying it is required for promotional PRO access when the promotion is active. It is also used for billing, notifications and confirming sensitive changes, never as your login secret.
 
 1. Open **Account** and enter your email in the **Upgrade guest account** box (or use the upgrade prompt that appears when a feature needs an email).
 2. We email you a **6-digit code**. Type it into the form - the code expires after 10 minutes and works only once.

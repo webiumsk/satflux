@@ -27,6 +27,9 @@ class BusinessExpenseIsdocPackTest extends TestCase
     {
         parent::setUp();
 
+        // Exercise the preserved paid flow explicitly; promotion defaults close sales.
+        config(['access.isdoc_pack_purchases_enabled' => true]);
+
         config([
             'services.btcpay.subscription_store_id' => 'sub-store-1',
             'services.btcpay.base_url' => 'https://btcpay.test',

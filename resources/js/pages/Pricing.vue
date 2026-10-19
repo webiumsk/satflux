@@ -4,10 +4,11 @@
       <div class="text-center mb-14">
         <h1 class="text-4xl font-bold tracking-tight">Simple pricing</h1>
         <p class="mt-3 text-gray-400 text-lg">
-          Two tiers. No hidden fees. Pay yearly for Pro.
+          {{ promotionActive ? t("free_pro.description") : t("landing.pricing_subtitle") }}
         </p>
       </div>
 
+      <FreeProNotice :active="promotionActive" :show-action="true" class="mb-8" />
       <div class="grid md:grid-cols-2 gap-8">
         <!-- Free -->
         <div
@@ -70,10 +71,10 @@
           </div>
           <h2 class="text-xl font-bold text-white">Pro</h2>
           <div class="mt-4 flex items-baseline">
-            <span class="text-4xl font-bold text-white">€99</span>
+            <span class="text-4xl font-bold text-white">{{ formatSats(promotionActive ? 0 : pricing.pro.sats_per_year) }}</span>
             <span class="text-gray-400 ml-2">/ year</span>
           </div>
-          <p class="text-sm text-gray-400 mt-1">Paid yearly · ~€8.25/month</p>
+          <p class="text-sm text-gray-400 mt-1">{{ promotionActive ? t("free_pro.description") : t("account.pro_yearly_price", { amount: formatSats(pricing.pro.sats_per_year) }) }}</p>
           <ul class="mt-6 space-y-3 flex-1">
             <li class="flex items-center text-gray-300 text-sm">
               <span class="text-green-400 mr-2">✓</span>
@@ -141,22 +142,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import FreeProNotice from "@/components/account/FreeProNotice.vue";
+import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
+import { isPurchasePausedError } from "@/services/apiError";
+import { useI18n } from "vue-i18n";
+import { computed, ref, onMounted } from "vue";
 import { useAuthStore } from "../store/auth";
+import { usePricing } from "@/composables/usePricing";
 import { useCurrentPlan } from "../composables/useCurrentPlan";
 import api from "../services/api";
 
+const { t } = useI18n();
+const { purchases, promotionActive: accountPromotionActive } = useEffectiveAccess();
 const authStore = useAuthStore();
 const { canUpgradeToPro, planCode: currentPlanCode } = useCurrentPlan();
+const { pricing, formatSats, promotionActive: publicPromotionActive, load: loadPricing } = usePricing();
+void loadPricing();
+const promotionActive = computed(() => publicPromotionActive.value || accountPromotionActive.value);
 const checkoutLoading = ref(false);
 
 async function goToCheckout() {
+  if (!purchases.value.pro_subscriptions) return;
   checkoutLoading.value = true;
   try {
     const { data } = await api.post("/subscriptions/checkout", { plan: "pro" });
     if (data.checkoutUrl) {
       window.location.href = data.checkoutUrl;
     }
+  } catch (error) {
+    alert(isPurchasePausedError(error) ? t("free_pro.purchases_paused") : t("account.checkout_failed"));
   } finally {
     checkoutLoading.value = false;
   }

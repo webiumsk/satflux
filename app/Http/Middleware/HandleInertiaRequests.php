@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\EffectiveAccessPolicy;
+use App\Services\PurchaseAvailabilityPolicy;
 use Closure;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -63,6 +65,9 @@ class HandleInertiaRequests extends Middleware
             'email_verified_at' => $user->email_verified_at,
             'name' => $user->name,
             'role' => $user->role ?? null,
+            'is_guest' => (bool) $user->is_guest,
+            'effective_access' => app(EffectiveAccessPolicy::class)->snapshot($user),
+            'purchase_availability' => app(PurchaseAvailabilityPolicy::class)->snapshot(),
             'plan' => (function () use ($user) {
                 $plan = $user->currentSubscriptionPlan();
 
@@ -71,7 +76,7 @@ class HandleInertiaRequests extends Middleware
                     'name' => $plan->display_name,
                     'max_stores' => $plan->max_stores,
                     'max_api_keys' => $plan->max_api_keys,
-                    'max_ln_addresses' => $user->getMaxLightningAddresses(),
+                    'max_ln_addresses' => $plan->max_ln_addresses,
                     'features' => $plan->features ?? [],
                 ] : null;
             })(),

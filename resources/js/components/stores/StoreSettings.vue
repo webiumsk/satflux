@@ -332,12 +332,12 @@
 </template>
 
 <script setup lang="ts">
+import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
 import { asApiError } from "../../utils/apiError";
 import type { StoreSettings, StoreSettingsForm, UpdateStoreSettingsPayload } from "../../types/btcpay";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { useAuthStore } from "../../store/auth";
 import { useStoresStore } from "../../store/stores";
 import { useFlashStore } from "../../store/flash";
 import { storesApi } from "../../services/api";
@@ -362,22 +362,11 @@ const emit = defineEmits(["update-store"]);
 
 const router = useRouter();
 const route = useRoute();
-const authStore = useAuthStore();
 const storesStore = useStoresStore();
 const flashStore = useFlashStore();
 
-const planCode = computed(
-  () => (authStore.user?.plan?.code ?? "free") as string,
-);
-const userRole = computed(() => authStore.user?.role ?? "");
-const hasPaidAccess = computed(
-  () =>
-    planCode.value === "pro" ||
-    planCode.value === "enterprise" ||
-    userRole.value === "admin" ||
-    userRole.value === "support",
-);
-const canEditBranding = computed(() => hasPaidAccess.value);
+const { hasFeature } = useEffectiveAccess();
+const hasPaidAccess = computed(() => hasFeature("store_customization"));const canEditBranding = computed(() => hasPaidAccess.value);
 const canEditPaymentOptions = computed(() => hasPaidAccess.value);
 const canEditRatesOptions = computed(() => hasPaidAccess.value);
 const canEditCheckoutOptions = computed(() => hasPaidAccess.value);

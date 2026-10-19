@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\SubscriptionPlan;
+use App\Services\PurchaseAvailabilityPolicy;
 
 /**
  * Public pricing: only FREE and PRO. Enterprise is internal (contact sales).
@@ -32,6 +33,9 @@ class PlanController extends Controller
                 ];
             });
 
-        return response()->json(['data' => $plans]);
+        return response()->json([
+            'data' => $plans,
+            'access_policy' => app(PurchaseAvailabilityPolicy::class)->publicDescriptor(),
+        ]);
     }
 }

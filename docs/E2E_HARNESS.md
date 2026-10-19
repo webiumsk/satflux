@@ -14,16 +14,26 @@ CI nemá reálny BTCPay Server; BTCPay scenáre bežia proti in-memory Greenfiel
 stubu (`e2e/btcpay-stub/server.mjs`, zapojený cez `BTCPAY_BASE_URL`) -
 [BTCPAY_E2E_SCENARIOS.md](BTCPAY_E2E_SCENARIOS.md).
 
-## Jeden login na beh (storage state)
+## Authenticated fixtures and real rate limits
 
-`/api/auth/*` má throttle 5/min na IP. `e2e/auth.setup.ts` (projekt `setup`
-v playwright.config) sa prihlási raz a uloží storage state do
-`e2e/.auth/user.json` (gitignore); projekt `chromium` na ňom závisí a specy
-so seedovaným používateľom štartujú prihlásené (btcpay, invoicingGuard,
-localFirstCheckout). Specy testujúce samotný login (`auth.spec`,
-`emailLogin.spec`) sa odhlasujú cez
-`test.use({ storageState: { cookies: [], origins: [] } })`. Rozpočet behu:
-setup 1 + emailLogin 2 + invalid 1 = 4 ≤ 5.
+`/api/auth/*` retains its 5/min/IP limit. `e2e/auth.setup.ts` saves the shared
+account's state in gitignored `e2e/.auth/user.json`. When the stub/local-first
+scenario is enabled, it also signs in the dedicated checkout account and saves
+`e2e/.auth/checkout.json`. Local-first checkout uses that state explicitly; earlier
+store/invoice scenarios cannot exhaust its separate 120/min/user API budget.
+`E2eTestSeeder` creates both ordinary PRO fixtures only under `E2E_BTCPAY=1` and
+still refuses production. No production limiter is disabled or increased.
+
+Authentication specs (`auth.spec`, `emailLogin.spec`) start with empty state.
+The initial login budget is two setup logins + two email-login tests + one invalid
+login = five requests. Recovery tests observe actual rate-limit capacity and wait
+when necessary. Serial retries reuse stored authentication instead of signing in
+again. Run the complete suite to verify accumulated request budgets.
+
+API helpers negotiate JSON and check successful responses before parsing or
+continuing cleanup. Checkout assertions check the actual POST status before waiting
+for its link. Failure output reports HTTP status without exposing document snapshots,
+session state or response bodies. Reports/traces remain private synthetic evidence.
 
 ## Lokálne spustenie
 

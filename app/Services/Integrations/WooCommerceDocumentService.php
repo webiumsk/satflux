@@ -4,12 +4,15 @@ namespace App\Services\Integrations;
 
 use App\Enums\BusinessDocumentStatus;
 use App\Enums\BusinessDocumentType;
+use App\Enums\IntegrationDocumentInboxStatus;
 use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentLine;
 use App\Models\Company;
 use App\Models\CompanyContact;
 use App\Models\IntegrationDocumentInbox;
+use App\Models\Store;
 use App\Models\StoreIntegration;
+use App\Models\User;
 use App\Services\Invoicing\BusinessDocumentIssueService;
 use App\Services\Invoicing\BusinessDocumentPdfService;
 use App\Services\Invoicing\CompanyPdfFilenameBuilder;
@@ -117,6 +120,31 @@ class WooCommerceDocumentService
         $store = $integration->store;
         $user = $store->user;
 
+        // A retry of an already numbered order is read-only completion, even
+        // after feature access ends. Pending entries still require access below.
+        $wcOrderId = (int) ($payload['woocommerce_order_id'] ?? 0);
+        if ($wcOrderId > 0) {
+            if ($this->shouldUseInbox($company)) {
+                $type = BusinessDocumentType::tryFrom((string) ($payload['type'] ?? 'invoice')) ?? BusinessDocumentType::Invoice;
+                $existing = IntegrationDocumentInbox::query()
+                    ->where('store_integration_id', $integration->id)
+                    ->where('woocommerce_order_id', $wcOrderId)
+                    ->where('document_type', $type->value)
+                    ->where('status', IntegrationDocumentInboxStatus::Pending)
+                    ->first();
+                if ($existing && ! empty($existing->payload_json['number'])) {
+                    return $existing;
+                }
+            } else {
+                /** @var Store $retryStore */
+                $retryStore = $store;
+                $existing = $this->existingDocumentForOrder($company, (string) $retryStore->id, $wcOrderId);
+                if ($existing && $existing->getAttribute('status') !== BusinessDocumentStatus::Draft && ! empty($existing->number)) {
+                    return $existing->load(['lines', 'contact', 'store']);
+                }
+            }
+        }
+
         if (! $this->subscriptionService->canUseBusinessInvoicing($user)) {
             throw ValidationException::withMessages([
                 'plan' => ['Business invoicing requires a PRO plan.'],
@@ -133,7 +161,6 @@ class WooCommerceDocumentService
             return $this->autoIssueService->maybeAutoIssue($company, $entry);
         }
 
-        $wcOrderId = (int) ($payload['woocommerce_order_id'] ?? 0);
         if ($wcOrderId <= 0) {
             return $this->createDraftForOrder($integration, $company, $payload, 0);
         }
@@ -239,10 +266,13 @@ class WooCommerceDocumentService
 
     public function issueDocument(StoreIntegration $integration, BusinessDocument $document): BusinessDocument
     {
+        $document = $document->fresh() ?? $document;
         $this->assertDocumentAccess($integration, $document);
         if ($document->status !== BusinessDocumentStatus::Draft) {
             return $document->load(['lines', 'contact', 'store', 'company']);
         }
+
+        $this->assertNewIssuanceEntitlement($integration);
 
         return $this->issueService->issue($document);
     }
@@ -251,8 +281,14 @@ class WooCommerceDocumentService
         StoreIntegration $integration,
         IntegrationDocumentInbox $inbox,
     ): IntegrationDocumentInbox {
+        $inbox = $inbox->fresh() ?? $inbox;
         $this->assertInboxAccess($integration, $inbox);
         $company = $this->resolveCompany($integration);
+
+        // Numbered entries are idempotent completion, not a new PRO operation.
+        if (empty($inbox->payload_json['number'])) {
+            $this->assertNewIssuanceEntitlement($integration);
+        }
 
         return $this->inboxService->issuePendingEntry($inbox, $company);
     }
@@ -378,6 +414,19 @@ class WooCommerceDocumentService
             'pdf_url' => $pdfUrl,
             'payment_url' => $payUrl,
         ];
+    }
+
+    private function assertNewIssuanceEntitlement(StoreIntegration $integration): void
+    {
+        /** @var Store $store */
+        $store = $integration->store;
+        /** @var User $owner */
+        $owner = $store->user;
+        if (! $this->subscriptionService->canUseBusinessInvoicing($owner)) {
+            throw ValidationException::withMessages([
+                'plan' => ['Business invoicing requires PRO access.'],
+            ]);
+        }
     }
 
     protected function resolveCompany(StoreIntegration $integration): Company

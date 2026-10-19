@@ -140,8 +140,8 @@ const raffleLimit = computed(() =>
 );
 
 const canCreateRaffle = computed(() => {
-    if (limits.value?.raffles?.allowed === false) return false;
-    if (raffleLimit.value == null) return true;
+    if (!limits.value?.raffles || limits.value.raffles.allowed === false) return false;
+    if (raffleLimit.value == null) return limits.value.raffles.unlimited === true;
     const current = limits.value?.raffles?.current ?? raffleCount.value;
     return current < raffleLimit.value;
 });

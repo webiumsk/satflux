@@ -3,9 +3,12 @@ title: Lightning adresy obchodu
 category: lightning-addresses
 order: 1
 meta_description: Hostujte opakovateľné adresy meno@váš-obchod, ktoré vám môže kedykoľvek každý zaplatiť.
+updated: 2026-10-14
 ---
 
 # Lightning adresy obchodu
+
+> Keď je aktívny [dočasný PRO prístup zdarma](/documentation/free-pro-access), registrované nehosťovské účty s overeným e-mailom môžu používať PRO funkcie bez nákupu predplatného. Bežné limity a vlastnícke oprávnenia naďalej platia. Aktuálny režim nájdete v Cenníku a Účte.
 
 **Lightning adresa obchodu** je opakovateľná adresa hostovaná na doméne vášho obchodu - `meno@doména-obchodu` - ktorú vám môže cez Lightning zaplatiť ktokoľvek bez toho, aby ste zakaždým museli vytvárať a zdieľať novú faktúru. Dajte ju na web, sociálne siete alebo tip jar.
 
@@ -26,4 +29,4 @@ Môžete vytvoriť viacero adries (napríklad jednu na produkt alebo kampaň), a
 
 ## Limity plánu
 
-Počet hostovaných adries závisí od plánu - Free plán zahŕňa malý počet a Pro ho zvyšuje (viď [Plány a limity](/documentation/plans-and-limits)). Pri dosiahnutí limitu Satflux ponúkne upgrade. Presné číslo je zobrazené na stránke aj na stránke Cenník.
+Počet hostovaných adries závisí od dostupného prístupu. Free má limit počtu; PRO ho nemá (viď [Plány a limity](/documentation/plans-and-limits)). Oprávnené účty získajú tento PRO limit počas aktívnej akcie. Nové PRO nákupy sú v tomto režime pozastavené, preto výzva pri limite neponúka nákup PRO. Aktuálny limit nájdete na stránke a v Cenníku.

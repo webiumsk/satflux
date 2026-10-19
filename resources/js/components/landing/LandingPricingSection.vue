@@ -12,6 +12,8 @@
       aria-hidden="true"
     ></div>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <FreeProNotice :active="promotionActive" :show-action="true" class="mb-8 text-white" />
+      <p v-if="!purchaseAvailability.pro_subscriptions" class="mb-6 text-center text-sm text-gray-300">{{ t("free_pro.purchases_paused") }}</p>
       <!-- Pricing Hero -->
       <div class="text-center mb-16">
         <h2
@@ -21,7 +23,7 @@
         </h2>
         <p class="text-xl text-gray-400 max-w-2xl mx-auto">
           {{
-            t("landing.pricing_hero_subheadline", {
+            promotionActive ? t("free_pro.description") : t("landing.pricing_hero_subheadline", {
               days: pricing.trial_days,
             })
           }}
@@ -97,7 +99,7 @@
           class="bg-gray-800 rounded-2xl p-8 border-2 border-indigo-500 shadow-2xl relative transform md:scale-[1.02] z-10"
         >
           <div
-            v-if="canStartTrial"
+            v-if="canStartTrial && !promotionActive"
             class="absolute top-0 right-0 -mt-4 mr-4 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide"
           >
             {{
@@ -116,23 +118,23 @@
           </p>
           <div class="flex items-baseline flex-wrap gap-x-1 mb-2">
             <span
-              v-if="proHasMonthlyDiscount(pricing.pro)"
+              v-if="!promotionActive && proHasMonthlyDiscount(pricing.pro)"
               class="text-xl font-medium text-gray-500 line-through mr-2"
               >{{ formatSats(pricing.pro.sats_per_month_display) }}</span
             >
             <span class="text-5xl font-extrabold text-white">{{
-              formatSats(proEffectiveMonthlySats(pricing.pro))
+              promotionActive ? formatSats(0) : formatSats(proEffectiveMonthlySats(pricing.pro))
             }}</span>
             <span class="text-indigo-300">{{
-              t("landing.pricing_pro_price_period")
+              promotionActive ? "" : t("landing.pricing_pro_price_period")
             }}</span>
             <span class="text-indigo-300/80 text-sm">{{
-              t("landing.pricing_pro_price_note")
+              promotionActive ? t("free_pro.description") : t("landing.pricing_pro_price_note")
             }}</span>
           </div>
           <p class="text-indigo-200/90 text-sm mb-6">
             {{
-              t("landing.pricing_pro_yearly_price", {
+              promotionActive ? "" : t("landing.pricing_pro_yearly_price", {
                 amount: formatSats(pricing.pro.sats_per_year),
               })
             }}
@@ -171,7 +173,7 @@
               </li>
             </ul>
             <p
-              v-if="pricing.company_slot_packs.length"
+              v-if="purchaseAvailability.company_slots && pricing.company_slot_packs.length"
               class="text-indigo-300/80 text-xs mt-3"
             >
               {{
@@ -220,14 +222,14 @@
             to="/register"
             class="block w-full text-center px-6 py-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-all"
           >
-            {{ t("landing.pricing_pro_cta_guest") }}
+            {{ promotionActive ? t("free_pro.create_account") : t("landing.pricing_pro_cta_guest") }}
           </router-link>
           <router-link
             v-else
-            to="/account"
+            :to="promotionActive && !authStore.user?.is_guest && authStore.user?.email_verified_at ? '/' : '/account'"
             class="block w-full text-center px-6 py-4 rounded-xl border border-indigo-500/50 text-indigo-200 font-bold hover:bg-indigo-950/40 transition-all"
           >
-            {{ t("landing.pricing_pro_current_plan") }}
+            {{ promotionActive ? (authStore.user?.is_guest ? t("free_pro.verify_account") : !authStore.user?.email_verified_at ? t("free_pro.verify_email") : t("free_pro.open_app")) : t("landing.pricing_pro_current_plan") }}
           </router-link>
         </div>
       </div>
@@ -350,7 +352,7 @@
               {{ t("landing.pricing_faq_custody_a") }}
             </p>
           </div>
-          <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+          <div v-if="!promotionActive" class="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
             <h4
               class="mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 font-semibold"
             >
@@ -360,7 +362,7 @@
               {{ t("landing.pricing_faq_switch_a") }}
             </p>
           </div>
-          <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+          <div v-if="!promotionActive" class="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
             <h4
               class="mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 font-semibold"
             >
@@ -375,7 +377,7 @@
               }}
             </p>
           </div>
-          <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+          <div v-if="!promotionActive" class="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
             <h4
               class="mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-indigo-300/90 font-semibold"
             >
@@ -406,6 +408,9 @@
 </template>
 
 <script setup lang="ts">
+import FreeProNotice from "@/components/account/FreeProNotice.vue";
+import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
+import { isPurchasePausedError } from "@/services/apiError";
 import { asApiError } from "../../utils/apiError";
 import { ref, computed } from "vue";
 import { useI18n } from "vue-i18n";
@@ -421,8 +426,11 @@ import ContactForm from "../legal/ContactForm.vue";
 import api from "../../services/api";
 
 const { t } = useI18n();
+const { promotionActive: accountPromotionActive } = useEffectiveAccess();
 const authStore = useAuthStore();
-const { pricing, formatSats } = usePricing();
+const { pricing, formatSats, promotionActive: publicPromotionActive, purchaseAvailability, load: loadPricing } = usePricing();
+void loadPricing();
+const promotionActive = computed(() => accountPromotionActive.value || publicPromotionActive.value);
 const { planFeatures, invoicingHighlightKeys } = usePlanFeatures();
 const { canUpgradeToPro, canStartTrial } = useCurrentPlan();
 
@@ -443,6 +451,7 @@ const proOtherFeatures = computed(() =>
 );
 
 async function handleUpgrade(plan: string) {
+  if (plan === "pro" && !purchaseAvailability.value.pro_subscriptions) return;
   // Both PRO and Enterprise can use the same checkout flow now
   subscribing.value = true;
   subscribeError.value = "";
@@ -464,7 +473,7 @@ async function handleUpgrade(plan: string) {
     const error = asApiError(rawError);
     console.error("Failed to create checkout:", error);
     subscribeError.value =
-      error.response?.data?.message || t("landing.failed_to_create_checkout");
+      isPurchasePausedError(error) ? t("free_pro.purchases_paused") : error.response?.data?.message || t("landing.failed_to_create_checkout");
     subscribing.value = false;
   }
 }
