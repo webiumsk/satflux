@@ -12,8 +12,9 @@ Consumer branch: `fix/tickets-media-passwordless`, based on Satflux `5e6953cf`.
 Provider changes extend the owned Tickets email feature branch; candidate version
 2.0.4 includes the previously tested 2.0.3 grouped inline-QR emails. Exact host pin:
 BTCPay 2.4.5, `5d0745cae6be5d8210459e38813f317673aa97b8`.
-The separate incident PR #395 is not included in this consumer base; do not infer
-that unrelated Files API hardening is merged or deployed.
+Incident PR #395 was not included in the initial consumer base; its later owner
+merge and feature-branch integration are recorded below. Neither repository state
+nor CI establishes the production deployment status.
 
 ## Confirmed source defects and resulting behavior
 
@@ -172,3 +173,16 @@ Published-head CI/review apply to this frontend delta. Backend/auth, provider so
 
 Reviewed CodeRabbit follow-up fingerprint (same filename/NUL/bytes format; Vue,
 regression test and two locale files): `fde926aaa8fd8bde086c7e2689501af0bb2b83b22dcac14dbebcb661997c35bb`.
+
+
+## Integration with owner-merged incident fixes
+
+The Product Owner merged #395 into master `d37153ce` and requested resolving #396's
+conflict. Preserve both dated decision-log sections, with the October 19 incident
+before the October 20 ticket/auth decisions. No application file needs a manual
+resolution; PHPStan baseline reductions from both branches combine. Retain #395's
+upload throttles and global Files guards alongside #396's event-scoped images and
+reset retirement. Independent integration QA accepts the result. Combined offline
+checks pass: 128 PHP tests/507 assertions, 13 frontend cases and full PHPStan with
+no errors. Fresh published-head CI remains required.
+Updating this PR branch is separate from merging #396 or deploying either service.

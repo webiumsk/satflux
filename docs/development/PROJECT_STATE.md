@@ -24,8 +24,8 @@ actual browser execution and persisted provider image lifecycle remain staging g
 Independent security found no high/medium blockers; QA's deletion-before-Save finding
 and security's missing old-query-link redirect are closed. Tests/checks and remaining
 staging gates are recorded in the contract. No new environment variable, production
-change, merge or deployment is included. The separate incident PR #395 is not
-part of this base. Graphify's query graph was unavailable; targeted source reads used.
+change or deployment is included. Incident PR #395 was absent from the initial
+ticket base; the integration follow-up below records its subsequent owner merge. Graphify's query graph was unavailable; targeted source reads used.
 
 ### Authorized Satflux publication follow-up
 
@@ -80,6 +80,22 @@ Independent QA accepts this bounded frontend delta and independently passes all
 (120 unchanged diagnostics), locale parity and production build pass. Fresh-head
 CI/review remain required.
 No backend, auth, provider, billing or production behavior is changed by this follow-up.
+
+### PR #396 integration after owner merge of #395
+
+The owner merged #395 into `master` at `d37153ce` (2026-10-20) and requested resolving
+#396's conflict. Integrate that base into `fix/tickets-media-passwordless`, preserving
+both decision-log append sections in chronological order. All application changes
+combine automatically; the only manual conflict is `DECISION_LOG.md`. Keep both
+PHPStan baseline reductions and image-route throttles. This branch update does not
+merge #396 into master or alter production/provider state.
+
+Prior ticket head `cfa0467f` has green [CI 39485258893](https://github.com/webiumsk/satflux/actions/runs/39485258893):
+1,836 PHP tests/8,425 assertions, Node and 20 browser passes. Its original CodeRabbit
+finding is resolved; incremental review was quota-limited despite a successful check.
+Independent integration QA accepts preservation of both parents and all decision
+sections. Combined offline checks pass: 128 PHP tests/507 assertions, 13 frontend
+tests and full PHPStan with no errors. Fresh published-head CI remains required.
 
 ## Cashu recovery API export compatibility repair (2026-10-16)
 
@@ -759,3 +775,20 @@ read-only GitHub requests/reminders, deduplicate changes, retain managed permiss
 stop when the PR closes and have a bounded lifetime. It must not automatically edit,
 publish, merge, deploy or begin the free-PRO audit. The recorded role-routing limit
 and non-production-only future billing audit scope remain unchanged.
+
+## 2026-10-19: offline security and reliability investigation
+
+The Product Owner authorized source-level investigation and focused fixes in
+Satflux and the owned CashuMelt plugin, with no production access or deployment.
+The evidence, confidence limits, code references, test results and production
+diagnostic runbook are recorded in
+[the incident analysis](../security/incident-analysis-2026-10-18.md) and
+[the read-only runbook](../operations/SECURITY_RELIABILITY_DIAGNOSTICS_2026-10.md).
+Satflux has 82 focused tests/298 assertions passing; its full PHP, Node and E2E
+CI jobs pass on PR #395. CashuMelt's 147/147 tests and build passed on PR #40;
+the latest independent review requested a narrow upgrade-era manual-review fix,
+now under re-review. Both changes are committed and published as open PRs. Neither
+is merged, packaged or deployed. No production behavior is verified. Next
+milestone: finish PR review and exact-head CI, then obtain redacted aggregate
+diagnostics from the operator. No account, wallet, billing, payment or production
+configuration action is implied.

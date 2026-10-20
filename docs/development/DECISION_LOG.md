@@ -405,6 +405,18 @@ Fresh-lock exact-head Satflux CI remains required after publication; real-host
 installation and cross-application wire-level recovery remain staging acceptance.
 No package release, merge, deployment, production change or real recovery performed.
 
+## 2026-10-19: offline security and reliability investigation
+
+Product Owner authorized offline analysis and focused reversible repository fixes
+for guest concurrency, BTCPay file upload authorization, webhook store identity,
+BTCPay app-list routing/logging and CashuMelt invalid-quote retries. Preserve
+passwordless guests and all existing payment operations. Satflux focused tests:
+82/82, 298 assertions; CashuMelt: 147/147 and successful build. Independent
+security and QA reviews are complete. Production log conclusions are limited to
+provided artifacts. No production access, changes, commits, package publication
+or deployment occurred. See the incident report and read-only runbook linked from
+PROJECT_STATE. The next milestone is operator-provided, redacted aggregate evidence;
+publication requires separately reviewed clean-base branches and exact-head CI.
 
 ## 2026-10-20: scoped ticket images and retirement of email password reset
 
@@ -470,3 +482,16 @@ Independent QA accepts the source and independently passes all 13 focused tests.
 Full lint/typecheck/locale parity/build pass; fresh published-head CI/review precede
 handoff. No production,
 backend/auth or provider modification is part of this follow-up.
+
+
+### Integration after PR #395 merge
+
+The owner merged #395 into `master` at `d37153ce` and requests resolving #396's
+conflict. Merge that base into the existing feature branch, preserving both the
+October 19 incident decisions and October 20 ticket/auth decisions. Only their
+append sections conflict; no manual application-code resolution is needed. The
+combined PHPStan baseline keeps both branches' reductions. Independent integration
+QA accepts the result; combined offline checks pass (128 PHP tests/507 assertions,
+13 frontend cases and full PHPStan). Require fresh combined-tree CI; this updates
+the PR branch and does not
+merge #396, publish the provider or deploy anything.

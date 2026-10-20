@@ -148,7 +148,8 @@ class UserServiceApiKeyRevocationTest extends TestCase
         foreach ($endpoints as $endpoint) {
             $this->assertStringNotContainsString('test-key', (string) $endpoint);
         }
-        $this->assertContains('/api/v1/users/btcpay-user-1/api-keys/***REDACTED***', $endpoints);
+        $this->assertContains('/api/v1/users/[redacted]/api-keys/[redacted]', $endpoints);
+        $this->assertStringNotContainsString('btcpay-user-1', implode(' ', array_map('strval', $endpoints)));
     }
 
     #[Test]

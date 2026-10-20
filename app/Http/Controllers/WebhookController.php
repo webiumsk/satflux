@@ -64,6 +64,22 @@ class WebhookController extends Controller
             return response()->json(['error' => 'Webhook secret not configured'], 401);
         }
 
+        // A valid global HMAC is not sufficient to establish tenant identity.
+        // Accept an unknown ID only for the separately configured subscription
+        // store, which intentionally has no row in the merchant stores table.
+        $subscriptionStoreId = config('services.btcpay.subscription_store_id');
+        $isSubscriptionStore = is_string($storeId)
+            && is_string($subscriptionStoreId)
+            && $subscriptionStoreId !== ''
+            && hash_equals($subscriptionStoreId, $storeId);
+        if (! $store && ! $isSubscriptionStore) {
+            Log::warning('BTCPay webhook rejected: store identity is not configured', [
+                'ip' => $request->ip(),
+            ]);
+
+            return response()->json(['error' => 'Unknown store'], 401);
+        }
+
         $eventType = $payload['type'] ?? $payload['eventType'] ?? 'unknown';
 
         // Replay protection: BTCPay sends a unique deliveryId per delivery

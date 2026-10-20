@@ -392,24 +392,10 @@ class BtcPayClient
             $message = $trimmed !== '' ? $trimmed : "HTTP {$statusCode}";
         }
 
-        // Include more details for 422 validation errors
-        if ($statusCode === 422) {
-            if (isset($json['errors'])) {
-                $message .= ' - Validation errors: '.json_encode($json['errors']);
-            }
-            // Also include the full response body for debugging
-            Log::error('BTCPay API 422 Validation Error', [
-                'endpoint' => self::redactEndpoint($endpoint),
-                'method' => $method,
-                'status_code' => $statusCode,
-                'response_body' => is_array($json) ? $this->sanitizeData($json) : $json,
-                'errors' => isset($json['errors']) && is_array($json['errors'])
-                    ? $this->sanitizeData($json['errors'])
-                    : ($json['errors'] ?? null),
-            ]);
-        }
-
-        $this->logRequest($method, $endpoint, [], $response, $json, "Error: {$message}");
+        // Never log BTCPay response bodies or validation details: they can echo
+        // customer data or wallet configuration. The status/route shape below
+        // retains enough operational context without carrying response values.
+        $this->logRequest($method, $endpoint, [], $response, null);
 
         // For server-side errors (5xx), expose only a generic message to callers so
         // internal BTCPay details don't leak to the frontend. The full message is logged above.
@@ -494,29 +480,17 @@ class BtcPayClient
 
             return;
         }
+        // Greenfield responses can contain subscriber identities, invoices,
+        // wallet configuration, and settlement material. Field-level redaction
+        // is brittle as BTCPay adds response shapes, so routine diagnostics log
+        // only the request shape and status, never query/body/response values.
         $logData = [
             'method' => $method,
-            'endpoint' => self::redactEndpoint($endpoint),
+            'endpoint' => self::redactEndpointForLog($endpoint),
         ];
-
-        if (isset($options['query'])) {
-            $logData['query'] = $options['query'];
-        }
-
-        if (isset($options['json'])) {
-            $logData['body'] = $this->sanitizeData($options['json']);
-        }
 
         if ($response) {
             $logData['status'] = $response->status();
-        }
-
-        if ($data !== null) {
-            $logData['response'] = $this->sanitizeData($data);
-        }
-
-        if ($additional) {
-            $logData['note'] = $additional;
         }
 
         try {
@@ -552,6 +526,36 @@ class BtcPayClient
                 : '***REDACTED***'),
             $endpoint
         ) ?? $endpoint;
+    }
+
+    /**
+     * Keep useful route shape while removing merchant, user, invoice and
+     * subscriber selectors that may occur in path segments or query strings.
+     */
+    public static function redactEndpointForLog(string $endpoint): string
+    {
+        $path = parse_url($endpoint, PHP_URL_PATH);
+        if (! is_string($path) || $path === '') {
+            return '[endpoint]';
+        }
+        $staticSegments = array_fill_keys([
+            'api', 'v1', 'stores', 'users', 'offerings', 'subscribers', 'credits',
+            'invoices', 'payments', 'payment-methods', 'webhooks', 'deliveries',
+            'apps', 'pos', 'crowdfund', 'points', 'lnurl', 'lightning-addresses',
+            'rates', 'currencies', 'refunds', 'checkout', 'sessions', 'files',
+            'server', 'api-keys', 'tokens', 'plans', 'addresses', 'payouts',
+            'onchain', 'derivation-schemes', 'pull-payments', 'cashumelt',
+            'satflux-tickets', 'store', 'settings', 'name', 'logo', 'current',
+        ], true);
+        $segments = explode('/', trim($path, '/'));
+        foreach ($segments as &$segment) {
+            if (! isset($staticSegments[strtolower($segment)])) {
+                $segment = '[redacted]';
+            }
+        }
+        unset($segment);
+
+        return '/'.implode('/', $segments);
     }
 
     /**

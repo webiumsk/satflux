@@ -6,8 +6,10 @@ use App\Models\App;
 use App\Models\Store;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\StoreAppService;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class AppController extends Controller
@@ -41,22 +43,41 @@ class AppController extends Controller
         }
 
         $owner = $store->user;
-        if ($owner && (bool) ($owner->is_guest ?? false)) {
+        $guestOwner = $owner && (bool) ($owner->is_guest ?? false);
+        if ($guestOwner) {
             if ($request->app_type !== 'PointOfSale') {
                 return response()->json([
                     'message' => __('auth.guest_feature_requires_account'),
                     'code' => 'guest_feature_locked',
                 ], 403);
             }
-            if ($this->storeApps->countActivePointOfSaleApps($store) >= 1) {
+
+            try {
+                // The cap check and remote/local creation must be serialized:
+                // otherwise concurrent requests can both create a BTCPay POS.
+                $data = Cache::lock('guest-pos-app-create:'.$store->id, 300)->block(5, function () use ($store, $request) {
+                    if ($this->storeApps->countActivePointOfSaleApps($store) >= 1) {
+                        return null;
+                    }
+
+                    return $this->storeApps->create($store, $request->app_type, $request->name, $request->config ?? []);
+                });
+            } catch (LockTimeoutException) {
+                return response()->json([
+                    'message' => __('auth.guest_pos_setup_busy'),
+                    'code' => 'guest_pos_setup_busy',
+                ], 503);
+            }
+
+            if ($data === null) {
                 return response()->json([
                     'message' => __('auth.guest_pos_limit_one'),
                     'code' => 'guest_pos_limit',
                 ], 403);
             }
+        } else {
+            $data = $this->storeApps->create($store, $request->app_type, $request->name, $request->config ?? []);
         }
-
-        $data = $this->storeApps->create($store, $request->app_type, $request->name, $request->config ?? []);
 
         return response()->json([
             'data' => $data,

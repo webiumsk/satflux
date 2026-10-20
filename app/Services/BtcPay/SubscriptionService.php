@@ -271,13 +271,13 @@ class SubscriptionService
 
             return $response;
         } catch (BtcPayException $e) {
-            Log::error('Failed to get subscriber', [
-                'store_id' => $storeId,
-                'offering_id' => $offeringId,
-                'customer_selector' => $customerSelector,
-                'error' => $e->getMessage(),
-                'status_code' => $e->getStatusCode(),
-            ]);
+            // A 404 is the normal state for an account that has not subscribed.
+            // Do not log the email/customer selector or provider response body.
+            if ($e->getStatusCode() !== 404) {
+                Log::warning('BTCPay subscriber lookup failed', [
+                    'status_code' => $e->getStatusCode(),
+                ]);
+            }
             throw $e;
         }
     }

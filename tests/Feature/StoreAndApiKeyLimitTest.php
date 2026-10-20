@@ -8,6 +8,7 @@ use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\BtcPay\BtcPayClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -68,6 +69,31 @@ class StoreAndApiKeyLimitTest extends TestCase
             'current_count' => 1,
             'max_allowed' => 1,
         ]);
+    }
+
+    public function test_parallel_guest_store_creation_times_out_before_any_btcpay_request(): void
+    {
+        $guest = User::factory()->create(['is_guest' => true]);
+        Sanctum::actingAs($guest);
+        Http::fake();
+
+        $lock = Cache::lock('guest-store-provision:'.$guest->id, 1800);
+        $this->assertTrue($lock->get());
+
+        try {
+            $response = $this->postJson('/api/stores', [
+                'name' => 'Guest store',
+                'default_currency' => 'EUR',
+                'timezone' => 'Europe/Prague',
+                'wallet_type' => 'blink',
+            ]);
+        } finally {
+            $lock->release();
+        }
+
+        $response->assertStatus(503)->assertJson(['code' => 'guest_store_setup_busy']);
+        Http::assertNothingSent();
+        $this->assertDatabaseCount('stores', 0);
     }
 
     public function test_user_at_api_key_limit_receives_403_when_creating_api_key(): void

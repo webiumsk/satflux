@@ -31,7 +31,7 @@ class StoreDashboardTest extends TestCase
             if ($method === 'GET' && str_contains($url, "/api/v1/stores/{$storeId}/invoices")) {
                 return Http::response($invoices, 200);
             }
-            if ($method === 'GET' && ($url === $baseUrl."/stores/{$storeId}/apps" || $url === $baseUrl."/api/v1/stores/{$storeId}/apps")) {
+            if ($method === 'GET' && $url === $baseUrl."/api/v1/stores/{$storeId}/apps") {
                 return Http::response($apps, 200);
             }
 

@@ -426,6 +426,24 @@ class SubscriptionTest extends TestCase
     }
 
     #[Test]
+    public function missing_subscriber_is_a_normal_empty_details_state(): void
+    {
+        $user = User::factory()->create(['email' => 'nosub@example.com']);
+        config(['services.btcpay.subscription_store_id' => 'test_subscription_btcpay_store']);
+        config(['services.btcpay.subscription_offering_id' => 'offering_test']);
+        Http::fake(['*' => Http::response([], 404)]);
+
+        $response = $this->actingAs($user)->getJson('/api/subscriptions/details');
+
+        $response->assertOk()->assertExactJson([
+            'subscriber' => null,
+            'creditBalance' => 0,
+            'billing' => null,
+            'creditHistory' => [],
+        ]);
+    }
+
+    #[Test]
     public function details_reconciles_local_subscription_from_btcpay_subscriber(): void
     {
         $this->seedSubscriptionPlans();

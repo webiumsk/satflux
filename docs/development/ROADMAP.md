@@ -6,13 +6,14 @@ Complete owner-authorized consumer/provider fixes and independent checks describ
 [TICKETS_MEDIA_PASSWORDLESS](TICKETS_MEDIA_PASSWORDLESS.md). Keep the old-account
 migration login while retiring reset mail/token consumption. Tickets 2.0.4 is
 packaged locally, and the owner authorizes the separate Satflux commit/push. Next
-milestone: finish the bounded CodeRabbit partial-create visibility fix and verify
-fresh-head CI/review. Full CI passes at `9bc086fe`; the owner marked PR #396 ready
-for review, and its one minor finding plus two terminology nits are being addressed.
-Provider publication/installation approval remains a separate gate. Provider installation on an
-approved test host precedes dependent
-Satflux installation and persistent image lifecycle acceptance. No deployment or
-production mutation is authorized by this repository implementation.
+milestone: verify published combined-tree CI after integrating owner-merged #395
+(`master` at `d37153ce`) into #396. Both decision-log sections are preserved;
+independent integration QA, 128 focused PHP cases, 13 frontend cases and full
+PHPStan pass. The
+prior ticket head `cfa0467f` has green full CI; CodeRabbit's original finding is
+resolved and its incremental review is quota-limited. Provider publication and
+installation approval remain separate gates. Verify Tickets 2.0.4 before deploying
+the dependent Satflux changes. No production mutation is part of this branch update.
 
 ## Current: Cashu recovery API export compatibility
 
@@ -246,3 +247,12 @@ boundary; the owner accepted that limitation.
    concrete reviewed evidence. No production activity is authorized by this roadmap.
 
 Existing payment integrations and deferred NWC work are not expanded by this roadmap.
+
+## Offline security/reliability follow-up — 2026-10-19
+
+The source fixes and local test evidence are recorded in
+[the incident analysis](../security/incident-analysis-2026-10-18.md). The immediate
+next milestone is operator execution of the linked read-only diagnostic runbook,
+followed by reconciliation of evidence and preparation of clean-base, separately
+reviewed changes. No production behavior is verified, and no deployment or
+operational intervention is authorized by this investigation.

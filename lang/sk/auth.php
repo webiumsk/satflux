@@ -30,5 +30,7 @@ return [
     'wallet_change_guest_upgrade_required' => 'Zmena pripojenej peňaženky vyžaduje účet s overeným e-mailom. Najprv povýšte hosťovský účet.',
     'guest_feature_requires_account' => 'Táto akcia vyžaduje plný účet. Upgradujte v nastaveniach účtu.',
     'guest_one_store_only' => 'Hosťovská relácia je obmedzená na jeden obchod. Pre viac obchodov vytvorte plný účet.',
+    'guest_store_setup_busy' => 'Vytváranie obchodu už prebieha. Skúste to o chvíľu znova.',
     'guest_pos_limit_one' => 'V hosťovskom režime môže byť na obchod len jedna PoS aplikácia.',
+    'guest_pos_setup_busy' => 'Nastavenie PoS práve prebieha. Skúste to znova o chvíľu.',
 ];
