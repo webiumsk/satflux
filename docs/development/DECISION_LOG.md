@@ -436,3 +436,14 @@ Commit/push only the reviewed consumer repair and its scoped tests/documentation
 `webiumsk/satflux`. Preserve local plugin changes and its installer without publishing
 them under this request. Exact-head CI/review and provider-first staging remain
 required; the push request does not authorize merging or deploying either repository.
+
+
+### PR #396 obsolete reset-test alignment
+
+The initial complete PHP CI run exposes five general-auth tests still asserting
+legacy reset behavior. Preserve the Product Owner's disabled-reset decision and
+update those expectations to the explicit 410/no-side-effect contract. Do not restore
+email resets, skip the tests or change application/CI configuration for this fix.
+The entire changed AuthTest and dedicated reset regressions pass locally (25 tests,
+118 assertions) with disposable SQLite/array mail and no network. Independent QA
+accepts the bounded test delta; fresh full CI is the next acceptance gate.

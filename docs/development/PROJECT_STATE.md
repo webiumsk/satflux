@@ -38,6 +38,21 @@ provider publication/installation and staging acceptance remain next gates. No m
 or deployment is authorized by the push request. Preserve the unrelated image edit
 in the original checkout and exclude disposable environment files/artifacts.
 
+### PR #396 PHP CI compatibility follow-up
+
+PR #396 head `12bb3d2b` passed Node and Playwright CI, but the PHP suite failed
+five obsolete `AuthTest` password-reset expectations while 1,831 tests passed
+(8,391 assertions). [CI run 39469452552](https://github.com/webiumsk/satflux/actions/runs/39469452552)
+is the source of these results. The approved reset contract is HTTP 410 with no
+mail or credential changes; five general-auth tests still expected 200/422, mail
+or a successful reset. Update those cases without changing application source,
+retaining registration, login/logout and email-verification assertions. Add explicit
+no-notification/no-token/no-login and hash/session/valid-token preservation assertions.
+
+Isolated offline `AuthTest` plus `PasswordResetLinkTest`: 25 passed, 118 assertions;
+changed-file Pint passes. Independent QA accepts the test-only delta. Fresh
+exact-head CI remains required; do not treat the initial failed run as acceptance.
+
 ## Cashu recovery API export compatibility repair (2026-10-16)
 
 The owner reports refused Satflux change export while native BTCPay export works.

@@ -6,7 +6,10 @@ Complete owner-authorized consumer/provider fixes and independent checks describ
 [TICKETS_MEDIA_PASSWORDLESS](TICKETS_MEDIA_PASSWORDLESS.md). Keep the old-account
 migration login while retiring reset mail/token consumption. Tickets 2.0.4 is
 packaged locally, and the owner authorizes the separate Satflux commit/push. Next
-milestone: exact-head consumer CI/review, followed by provider publication approval. Provider installation on an approved test host precedes dependent
+milestone: rerun exact-head consumer CI after correcting the five obsolete auth
+tests in PR #396, followed by provider publication approval. Node and Playwright
+passed the initial run; PHP needs fresh acceptance. Provider installation on an
+approved test host precedes dependent
 Satflux installation and persistent image lifecycle acceptance. No deployment or
 production mutation is authorized by this repository implementation.
 

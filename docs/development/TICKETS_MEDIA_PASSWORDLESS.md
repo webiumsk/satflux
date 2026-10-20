@@ -126,3 +126,19 @@ The DLL staged locally for packaging matches the Release DLL exercised by the
 Local installable artifact: Tickets `2.0.4.0`, package SHA-256
 `8ec8fe755a13fa984948304f19994d2dbdfbb0e5edfe21fbe2259b61fd9d7010`. The packaged DLL matches the tested DLL above.
 The package has not been published, installed or deployed.
+
+
+## PR #396 PHP CI correction
+
+At head `12bb3d2b`, complete CI reports 1,831 PHP passes and five failures, all
+legacy reset expectations in `tests/Feature/AuthTest.php`. Node and Playwright pass.
+The follow-up updates only those five cases and the unused notification import:
+uniform 410 for malformed/known/unknown requests; no notification/mail/token issuance;
+no login; invalid input cannot change credentials; a previously valid token cannot
+change the hash/remember token or be consumed. Other auth assertions remain intact.
+No application, plugin, production configuration or workflow change is included.
+
+`AuthTest` and `PasswordResetLinkTest` pass together offline: 25 tests, 118 assertions;
+changed-file Pint passes. Independent QA accepts the delta; require fresh exact-head
+CI before merging. The original source fingerprint above remains historical reviewed
+implementation evidence; this additional test file has SHA-256 `b08820d18391dd04cd6dc3aa5138238e2cc8635c6b447f577edb354a16880b73`.

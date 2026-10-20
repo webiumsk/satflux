@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Models\User;
 use App\Notifications\VerifyEmailNotification;
-use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Contracts\Notifications\Dispatcher as NotificationDispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -154,69 +153,104 @@ class AuthTest extends TestCase
         $response->assertStatus(401);
     }
 
-    public function test_password_reset_send_link_validates_email(): void
+    public function test_retired_password_reset_link_rejects_invalid_email_without_validation_side_effects(): void
     {
-        $response = $this->postJson('/api/auth/password/reset-link', [
-            'email' => 'not-an-email',
-        ]);
+        Notification::fake();
 
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['email']);
+        $this->postJson('/api/auth/password/reset-link', ['email' => 'not-an-email'])
+            ->assertStatus(410)
+            ->assertJsonPath('code', 'password_reset_unavailable')
+            ->assertJsonMissingValidationErrors();
+
+        Notification::assertNothingSent();
+        Mail::assertNothingSent();
+        $this->assertDatabaseCount('password_reset_tokens', 0);
+        $this->assertGuest();
     }
 
-    public function test_password_reset_send_link_returns_200_even_for_unknown_email(): void
+    public function test_retired_password_reset_link_has_the_same_response_for_unknown_and_existing_email(): void
     {
-        $response = $this->postJson('/api/auth/password/reset-link', [
-            'email' => 'unknown@example.com',
-        ]);
+        Notification::fake();
+        User::factory()->create(['email' => 'user@example.com']);
 
-        $response->assertStatus(200);
-        $response->assertJsonStructure(['message']);
+        $known = $this->postJson('/api/auth/password/reset-link', ['email' => 'user@example.com']);
+        $unknown = $this->postJson('/api/auth/password/reset-link', ['email' => 'unknown@example.com']);
+
+        foreach ([$known, $unknown] as $response) {
+            $response->assertStatus(410)->assertJsonPath('code', 'password_reset_unavailable');
+        }
+        $this->assertSame($known->json(), $unknown->json());
+        Notification::assertNothingSent();
+        Mail::assertNothingSent();
+        $this->assertDatabaseCount('password_reset_tokens', 0);
     }
 
-    public function test_password_reset_send_link_sends_notification_for_existing_user(): void
+    public function test_retired_password_reset_link_does_not_notify_an_existing_user(): void
     {
         Notification::fake();
         $user = User::factory()->create(['email' => 'user@example.com']);
+        $hash = $user->password;
 
-        $response = $this->postJson('/api/auth/password/reset-link', [
-            'email' => 'user@example.com',
-        ]);
+        $this->postJson('/api/auth/password/reset-link', ['email' => $user->email])
+            ->assertStatus(410)
+            ->assertJsonPath('code', 'password_reset_unavailable');
 
-        $response->assertStatus(200);
-        Notification::assertSentTo($user, ResetPassword::class);
+        Notification::assertNothingSent();
+        Mail::assertNothingSent();
+        $this->assertDatabaseCount('password_reset_tokens', 0);
+        $this->assertSame($hash, $user->fresh()->password);
+        $this->assertGuest();
     }
 
-    public function test_password_reset_validates_required_fields(): void
+    public function test_retired_password_reset_rejects_invalid_input_without_credential_changes(): void
     {
-        $response = $this->postJson('/api/auth/password/reset', [
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'user@example.com']);
+        $hash = $user->password;
+
+        $this->postJson('/api/auth/password/reset', [
             'token' => 'invalid-token',
-            'email' => 'user@example.com',
+            'email' => $user->email,
             'password' => 'short',
             'password_confirmation' => 'short',
-        ]);
+        ])->assertStatus(410)
+            ->assertJsonPath('code', 'password_reset_unavailable')
+            ->assertJsonMissingValidationErrors();
 
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['password']);
+        $this->assertSame($hash, $user->fresh()->password);
+        Notification::assertNothingSent();
+        Mail::assertNothingSent();
+        $this->assertGuest();
     }
 
-    public function test_password_reset_succeeds_with_valid_token(): void
+    public function test_retired_password_reset_cannot_consume_a_previously_valid_token(): void
     {
-        $user = User::factory()->create(['email' => 'user@example.com']);
+        Notification::fake();
+        $user = User::factory()->create([
+            'email' => 'user@example.com',
+            'password' => 'existing-password',
+            'remember_token' => 'existing-session',
+        ]);
+        $hash = $user->password;
         $token = Password::createToken($user);
 
-        $response = $this->postJson('/api/auth/password/reset', [
+        $this->postJson('/api/auth/password/reset', [
             'token' => $token,
-            'email' => 'user@example.com',
+            'email' => $user->email,
             'password' => 'new-secure-password',
             'password_confirmation' => 'new-secure-password',
-        ]);
-
-        $response->assertStatus(200);
-        $response->assertJsonStructure(['message']);
+        ])->assertStatus(410)
+            ->assertJsonPath('code', 'password_reset_unavailable');
 
         $user->refresh();
-        $this->assertTrue(Hash::check('new-secure-password', $user->password));
+        $this->assertSame($hash, $user->password);
+        $this->assertTrue(Hash::check('existing-password', $user->password));
+        $this->assertFalse(Hash::check('new-secure-password', $user->password));
+        $this->assertSame('existing-session', $user->remember_token);
+        $this->assertTrue(Password::broker()->tokenExists($user, $token));
+        Notification::assertNothingSent();
+        Mail::assertNothingSent();
+        $this->assertGuest();
     }
 
     public function test_email_verification_send_requires_email(): void
