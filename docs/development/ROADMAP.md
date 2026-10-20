@@ -232,3 +232,12 @@ boundary; the owner accepted that limitation.
    concrete reviewed evidence. No production activity is authorized by this roadmap.
 
 Existing payment integrations and deferred NWC work are not expanded by this roadmap.
+
+## Offline security/reliability follow-up — 2026-10-19
+
+The source fixes and local test evidence are recorded in
+[the incident analysis](../security/incident-analysis-2026-10-18.md). The immediate
+next milestone is operator execution of the linked read-only diagnostic runbook,
+followed by reconciliation of evidence and preparation of clean-base, separately
+reviewed changes. No production behavior is verified, and no deployment or
+operational intervention is authorized by this investigation.

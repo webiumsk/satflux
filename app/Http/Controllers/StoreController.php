@@ -46,9 +46,6 @@ class StoreController extends Controller
                 Log::info('BTCPay API returned stores', [
                     'user_id' => $user->id,
                     'btcpay_stores_count' => is_array($btcpayStores) ? count($btcpayStores) : 0,
-                    'btcpay_store_ids' => is_array($btcpayStores) ? array_map(function ($s) {
-                        return $s['id'] ?? $s['storeId'] ?? null;
-                    }, $btcpayStores) : [],
                 ]);
             } else {
                 Log::info('User does not have BTCPay API key', [
@@ -59,8 +56,7 @@ class StoreController extends Controller
             // If API fails, we'll use local stores only
             Log::warning('BTCPay API failed when listing stores', [
                 'user_id' => $user->id,
-                'error' => $e->getMessage(),
-                'error_code' => $e->getCode(),
+                'status_code' => $e->getStatusCode(),
             ]);
         }
 
@@ -68,7 +64,6 @@ class StoreController extends Controller
             'user_id' => $user->id,
             'local_stores_count' => $localStores->count(),
             'btcpay_stores_count' => count($btcpayStores),
-            'local_store_ids' => $localStores->keys()->toArray(),
         ]);
 
         // Only return stores that exist in BOTH local DB AND BTCPay Server
@@ -85,18 +80,12 @@ class StoreController extends Controller
 
             Log::info('Filtering stores', [
                 'user_id' => $user->id,
-                'btcpay_store_ids' => $btcpayStoreIds,
-                'local_stores_keys' => $localStores->keys()->toArray(),
+                'btcpay_stores_count' => count($btcpayStoreIds),
+                'local_stores_count' => $localStores->count(),
             ]);
 
-            $filteredStores = $localStores->filter(function ($localStore) use ($btcpayStoreIds, $user) {
+            $filteredStores = $localStores->filter(function ($localStore) use ($btcpayStoreIds) {
                 $matches = in_array($localStore->btcpay_store_id, $btcpayStoreIds);
-                Log::info('Store filter check', [
-                    'user_id' => $user->id,
-                    'local_store_id' => $localStore->id,
-                    'btcpay_store_id' => $localStore->btcpay_store_id,
-                    'matches' => $matches,
-                ]);
 
                 return $matches;
             });
@@ -117,8 +106,6 @@ class StoreController extends Controller
                 if (! $btcpayStore) {
                     Log::warning('BTCPay store not found for local store', [
                         'user_id' => $user->id,
-                        'local_store_id' => $localStore->id,
-                        'btcpay_store_id' => $localStore->btcpay_store_id,
                     ]);
 
                     return null; // Skip this store
@@ -127,19 +114,12 @@ class StoreController extends Controller
                 try {
                     // Merge BTCPay data with local metadata
                     $formatted = $this->formatter->fromBtcPay($btcpayStore, $localStore);
-                    Log::info('Store formatted successfully', [
-                        'user_id' => $user->id,
-                        'store_id' => $formatted['id'] ?? null,
-                        'store_name' => $formatted['name'] ?? null,
-                    ]);
 
                     return $formatted;
                 } catch (\Exception $e) {
                     Log::error('Error formatting store', [
                         'user_id' => $user->id,
-                        'local_store_id' => $localStore->id,
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString(),
+                        'exception_class' => get_class($e),
                     ]);
 
                     return null; // Skip this store

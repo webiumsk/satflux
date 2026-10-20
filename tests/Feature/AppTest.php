@@ -7,7 +7,9 @@ use App\Models\Store;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 class AppTest extends TestCase
@@ -60,6 +62,7 @@ class AppTest extends TestCase
 
     public function test_user_can_create_pos_app(): void
     {
+        Log::spy();
         $user = User::factory()->create();
         $store = Store::factory()->create([
             'user_id' => $user->id,
@@ -77,6 +80,11 @@ class AppTest extends TestCase
         ]);
 
         $response->assertStatus(201);
+        Log::shouldHaveReceived('info')->with('Creating BTCPay app', \Mockery::on(function (array $context): bool {
+            return $context['app_type'] === 'PointOfSale'
+                && ! array_key_exists('request_body', $context)
+                && ! array_key_exists('store_id', $context);
+        }));
         $response->assertJsonStructure([
             'data' => ['id', 'name', 'app_type'],
         ]);
@@ -85,6 +93,64 @@ class AppTest extends TestCase
             'store_id' => $store->id,
             'app_type' => 'PointOfSale',
         ]);
+    }
+
+    public function test_guest_can_create_only_one_active_pos_app_and_rejected_retry_does_not_call_btcpay(): void
+    {
+        $guest = User::factory()->guest()->create();
+        $store = Store::factory()->create(['user_id' => $guest->id]);
+
+        $this->actingAs($guest)->postJson("/api/stores/{$store->id}/apps", [
+            'app_type' => 'PointOfSale',
+            'name' => 'Guest PoS',
+        ])->assertCreated();
+
+        $this->actingAs($guest)->postJson("/api/stores/{$store->id}/apps", [
+            'app_type' => 'PointOfSale',
+            'name' => 'Second Guest PoS',
+        ])->assertForbidden()->assertJsonPath('code', 'guest_pos_limit');
+
+        $this->assertSame(1, App::where('store_id', $store->id)->where('app_type', 'PointOfSale')->count());
+        Http::assertSentCount(1);
+    }
+
+    public function test_guest_pos_lock_timeout_fails_without_calling_btcpay(): void
+    {
+        $guest = User::factory()->guest()->create();
+        $store = Store::factory()->create(['user_id' => $guest->id]);
+        $lock = Cache::lock('guest-pos-app-create:'.$store->id, 300);
+        $this->assertTrue($lock->get());
+
+        try {
+            $this->actingAs($guest)->postJson("/api/stores/{$store->id}/apps", [
+                'app_type' => 'PointOfSale',
+                'name' => 'Guest PoS',
+            ])->assertStatus(503)->assertJsonPath('code', 'guest_pos_setup_busy');
+        } finally {
+            $lock->release();
+        }
+
+        $this->assertSame(0, App::where('store_id', $store->id)->where('app_type', 'PointOfSale')->count());
+        Http::assertNothingSent();
+    }
+
+    public function test_non_guest_can_create_multiple_pos_apps_without_guest_lock(): void
+    {
+        $user = User::factory()->create();
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        App::factory()->create([
+            'store_id' => $store->id,
+            'app_type' => 'PointOfSale',
+            'btcpay_app_id' => 'existing-pos-app',
+        ]);
+
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/apps", [
+            'app_type' => 'PointOfSale',
+            'name' => 'Additional PoS',
+        ])->assertCreated();
+
+        $this->assertSame(2, App::where('store_id', $store->id)->where('app_type', 'PointOfSale')->count());
+        Http::assertSentCount(1);
     }
 
     public function test_app_creation_uses_store_default_currency(): void
@@ -196,6 +262,8 @@ class AppTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJsonCount(3, 'data');
+        Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), "/api/v1/stores/{$store->btcpay_store_id}/apps"));
+        Http::assertNotSent(fn (Request $request): bool => parse_url($request->url(), PHP_URL_PATH) === "/stores/{$store->btcpay_store_id}/apps");
     }
 
     public function test_crowdfund_update_put_clears_main_image_sets_enforce_target_and_form_id(): void

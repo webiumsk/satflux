@@ -30,5 +30,7 @@ return [
     'wallet_change_guest_upgrade_required' => 'Cambiar un monedero conectado requiere una cuenta con correo verificado. Actualice primero su cuenta de invitado.',
     'guest_feature_requires_account' => 'Esta acción requiere una cuenta completa. Mejore la cuenta en Ajustes.',
     'guest_one_store_only' => 'Las sesiones de invitado están limitadas a una tienda. Cree una cuenta completa para añadir más.',
+    'guest_store_setup_busy' => 'La creación de la tienda ya está en curso. Inténtelo de nuevo en breve.',
     'guest_pos_limit_one' => 'El modo invitado permite solo una aplicación Punto de venta por tienda.',
+    'guest_pos_setup_busy' => 'La configuración del punto de venta está ocupada. Inténtelo de nuevo en breve.',
 ];

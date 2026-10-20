@@ -404,3 +404,16 @@ Pint 1,041 files, PHPStan/typecheck/lint/parity/build and AST graph/docs checks 
 Fresh-lock exact-head Satflux CI remains required after publication; real-host
 installation and cross-application wire-level recovery remain staging acceptance.
 No package release, merge, deployment, production change or real recovery performed.
+
+## 2026-10-19: offline security and reliability investigation
+
+Product Owner authorized offline analysis and focused reversible repository fixes
+for guest concurrency, BTCPay file upload authorization, webhook store identity,
+BTCPay app-list routing/logging and CashuMelt invalid-quote retries. Preserve
+passwordless guests and all existing payment operations. Satflux focused tests:
+82/82, 298 assertions; CashuMelt: 147/147 and successful build. Independent
+security and QA reviews are complete. Production log conclusions are limited to
+provided artifacts. No production access, changes, commits, package publication
+or deployment occurred. See the incident report and read-only runbook linked from
+PROJECT_STATE. The next milestone is operator-provided, redacted aggregate evidence;
+publication requires separately reviewed clean-base branches and exact-head CI.

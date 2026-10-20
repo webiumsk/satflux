@@ -968,7 +968,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
 
     // Product Images
     Route::post('/stores/{store}/products/image', [ProductImageController::class, 'upload'])
-        ->middleware(['guest.restrict', EnsureStoreOwnership::class, AuditLog::class.':product.image.uploaded']);
+        ->middleware(['guest.restrict', EnsureStoreOwnership::class, AuditLog::class.':product.image.uploaded', 'throttle:10,1']);
 
     // Plans (public pricing)
     Route::get('/plans', [PlanController::class, 'index']);
@@ -1035,8 +1035,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
 
     // SatoshiTickets (Events, Ticket Types, Tickets, Orders)
     Route::prefix('stores/{store}/tickets')->middleware([EnsureStoreOwnership::class, 'guest.restrict'])->group(function () {
-        Route::post('/events/image', [TicketEventImageController::class, 'upload']);
-        Route::post('/events/{eventId}/logo', [TicketEventImageController::class, 'uploadLogo']);
+        Route::post('/events/image', [TicketEventImageController::class, 'upload'])->middleware('throttle:10,1');
+        Route::post('/events/{eventId}/logo', [TicketEventImageController::class, 'uploadLogo'])->middleware('throttle:10,1');
         Route::delete('/events/{eventId}/logo', [TicketEventImageController::class, 'deleteLogo']);
         Route::get('/events', [TicketController::class, 'listEvents']);
         Route::get('/events/{eventId}', [TicketController::class, 'getEvent']);

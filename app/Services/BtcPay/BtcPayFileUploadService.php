@@ -4,9 +4,11 @@ namespace App\Services\BtcPay;
 
 use App\Models\Store;
 use App\Services\BtcPay\Exceptions\BtcPayException;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Uploads files via Greenfield POST /api/v1/files so blobs live on BTCPay Server
@@ -23,6 +25,19 @@ class BtcPayFileUploadService
      */
     public function uploadForStore(UploadedFile $file, Store $store): array
     {
+        // The server-key fallback crosses the merchant API permission boundary.
+        // Keep authorization inside this service as well as at its HTTP routes,
+        // so a future caller cannot upload against another tenant's Store.
+        $actor = auth()->user();
+        if (! $actor || (bool) ($actor->is_guest ?? false) || (string) $store->user_id !== (string) $actor->id) {
+            throw new AuthorizationException('You are not allowed to upload files for this store.');
+        }
+        if (! $file->isValid()
+            || ! in_array($file->getMimeType(), ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true)
+            || $file->getSize() > 5 * 1024 * 1024) {
+            throw ValidationException::withMessages(['file' => 'Only JPEG, PNG, GIF, or WebP images up to 5 MB can be uploaded.']);
+        }
+
         $result = $this->postMultipartWithPermissionFallback($file, $store);
 
         $id = $result['id'] ?? null;

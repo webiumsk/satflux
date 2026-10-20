@@ -30,5 +30,7 @@ return [
     'wallet_change_guest_upgrade_required' => 'Changing a connected wallet requires an account with a verified email. Upgrade your guest account first.',
     'guest_feature_requires_account' => 'This action requires a full account. Upgrade from Account settings.',
     'guest_one_store_only' => 'Guest sessions are limited to one store. Create a full account to add more stores.',
+    'guest_store_setup_busy' => 'Store setup is already in progress. Please try again shortly.',
     'guest_pos_limit_one' => 'Guest mode allows only one Point of Sale app per store.',
+    'guest_pos_setup_busy' => 'Point of Sale setup is busy. Please try again shortly.',
 ];
