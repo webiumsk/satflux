@@ -404,3 +404,35 @@ Pint 1,041 files, PHPStan/typecheck/lint/parity/build and AST graph/docs checks 
 Fresh-lock exact-head Satflux CI remains required after publication; real-host
 installation and cross-application wire-level recovery remain staging acceptance.
 No package release, merge, deployment, production change or real recovery performed.
+
+
+## 2026-10-20: scoped ticket images and retirement of email password reset
+
+Status: owner-authorized implementation; publication and deployment remain separate.
+Fix event-scoped ticket-type paths and use the merchant-scoped event logo endpoint,
+matching the working store-logo permission model. Never fall back to the server key
+for ticket images or infer URLs from opaque file IDs. Require the owned Tickets
+2.0.4 additive logo response before deploying the consumer; preserve identity, schema,
+existing ticket email QR behavior, core and third-party plugins.
+
+Stage image replacement and removal until Save; retain the persisted event ID and
+pending changes on failure. Independent QA identified and closed removal before Save.
+Support JPEG/PNG/GIF/WebP up to 2 MiB in all three layers.
+
+The owner chooses a temporary migration password entry for old accounts without
+recovery/passkey credentials. Retire reset email and reset-token consumption uniformly,
+including framework notification suppression, without invalidating existing accounts,
+sessions or hashes. Redirect both historic URL formats on the server; this does not
+remove secrets from old incoming access logs. Do not attribute the reported default
+Laravel notices to abuse without request evidence. Independent security's missing
+query-link server redirect is closed. See the contract for reproducible checks and
+remaining provider persistence/staging gates. No production inspection was performed.
+
+
+### Satflux publication authorization
+
+The Product Owner subsequently requests pushing the Satflux changes to GitHub.
+Commit/push only the reviewed consumer repair and its scoped tests/documentation in
+`webiumsk/satflux`. Preserve local plugin changes and its installer without publishing
+them under this request. Exact-head CI/review and provider-first staging remain
+required; the push request does not authorize merging or deploying either repository.

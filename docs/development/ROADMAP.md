@@ -1,5 +1,15 @@
 # Development roadmap
 
+## Current: Tickets lifecycle, scoped images and passwordless migration
+
+Complete owner-authorized consumer/provider fixes and independent checks described in
+[TICKETS_MEDIA_PASSWORDLESS](TICKETS_MEDIA_PASSWORDLESS.md). Keep the old-account
+migration login while retiring reset mail/token consumption. Tickets 2.0.4 is
+packaged locally, and the owner authorizes the separate Satflux commit/push. Next
+milestone: exact-head consumer CI/review, followed by provider publication approval. Provider installation on an approved test host precedes dependent
+Satflux installation and persistent image lifecycle acceptance. No deployment or
+production mutation is authorized by this repository implementation.
+
 ## Current: Cashu recovery API export compatibility
 
 Correct the owned API controller classification for BTCPay 2.4.5 without changing

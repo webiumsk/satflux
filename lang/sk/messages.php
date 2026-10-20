@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'password_reset_unavailable' => 'Obnovenie hesla e-mailom nie je dostupné. Použite obnovovaciu frázu alebo passkey. Staršie účty môžu použiť migračné prihlásenie.',
     /*
     |--------------------------------------------------------------------------
     | General Application Messages

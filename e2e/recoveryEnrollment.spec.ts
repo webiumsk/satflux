@@ -8,6 +8,7 @@ import {
     dismissCookieConsent,
     hasBtcpayStub,
     hasSeededUser,
+    openMigrationLogin,
 } from './support';
 
 test.use({ storageState: { cookies: [], origins: [] }, actionTimeout: 15_000, locale: 'en-US' });
@@ -52,8 +53,7 @@ test('recovery enrollment respects shared sessions across tabs and restores the 
         }
     }
     async function login(tab: Page, email: string): Promise<void> {
-        await dismissCookieConsent(tab);
-        await tab.goto('/login?tab=email');
+        await openMigrationLogin(tab);
         await tab.getByRole('textbox', { name: /email/i }).fill(email);
         await tab.locator('input[type="password"]').fill(fixtures.password);
         for (let attempt = 0; attempt < 2; attempt++) {

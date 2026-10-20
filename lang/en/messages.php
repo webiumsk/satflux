@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'password_reset_unavailable' => 'Password reset by email is unavailable. Use your recovery phrase or passkey. Older accounts can use the migration sign-in.',
     /*
     |--------------------------------------------------------------------------
     | General Application Messages

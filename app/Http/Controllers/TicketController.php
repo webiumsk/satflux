@@ -3,18 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Store;
-use App\Services\BtcPay\BtcPayFileResolver;
+use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\TicketService;
 use App\Services\Tickets\EventBundleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
 
 class TicketController extends Controller
 {
     public function __construct(
         protected TicketService $ticketService,
-        protected BtcPayFileResolver $btcPayFileResolver,
         protected EventBundleService $eventBundleService,
     ) {}
 
@@ -87,7 +85,7 @@ class TicketController extends Controller
 
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
-        // Build request data - include eventLogoFileId (plugin 1.5), optional eventLogoUrl, and enable (default true = Active)
+        // Logos are managed only through the event-scoped multipart endpoint.
         $data = $this->eventBundleService->filterPayload($request->only([
             'title',
             'description',
@@ -101,8 +99,6 @@ class TicketController extends Controller
             'emailBody',
             'hasMaximumCapacity',
             'maximumEventCapacity',
-            'eventLogoUrl',
-            'eventLogoFileId',
             'enable',
             'bundledRaffleId',
             'bundledRaffleTicketsPerAdmission',
@@ -111,10 +107,6 @@ class TicketController extends Controller
         if (! array_key_exists('enable', $data)) {
             $data['enable'] = true;
         }
-        if ($request->has('eventLogoFileId')) {
-            $data['eventLogoFileId'] = $request->input('eventLogoFileId');
-        }
-        $this->ensureEventLogoUrl($data);
 
         $event = $this->ticketService->createEvent(
             $store->btcpay_store_id,
@@ -151,15 +143,9 @@ class TicketController extends Controller
             'emailBody',
             'hasMaximumCapacity',
             'maximumEventCapacity',
-            'eventLogoUrl',
-            'eventLogoFileId',
             'bundledRaffleId',
             'bundledRaffleTicketsPerAdmission',
         ]));
-        if ($request->has('eventLogoFileId')) {
-            $data['eventLogoFileId'] = $request->input('eventLogoFileId');
-        }
-        $this->ensureEventLogoUrl($data);
 
         $event = $this->ticketService->updateEvent(
             $store->btcpay_store_id,
@@ -187,8 +173,6 @@ class TicketController extends Controller
             'emailBody' => ['sometimes', 'nullable', 'string'],
             'hasMaximumCapacity' => ['sometimes', 'boolean'],
             'maximumEventCapacity' => ['sometimes', 'nullable', 'integer', 'min:1'],
-            'eventLogoUrl' => ['sometimes', 'nullable', 'string', 'max:500', Rule::when($request->filled('eventLogoUrl'), ['url'])],
-            'eventLogoFileId' => ['sometimes', 'nullable', 'string', 'max:255'],
         ];
 
         if ($forUpdate) {
@@ -203,41 +187,12 @@ class TicketController extends Controller
         return $rules;
     }
 
-    /**
-     * When payload has eventLogoFileId but no eventLogoUrl, resolve URL from BTCPay Files API (GET file)
-     * so the plugin receives a display URL (plugin may not persist eventLogoFileId).
-     */
-    protected function ensureEventLogoUrl(array &$data): void
-    {
-        $fileId = trim((string) ($data['eventLogoFileId'] ?? ''));
-        if ($fileId === '') {
-            return;
-        }
-        if (trim((string) ($data['eventLogoUrl'] ?? '')) !== '') {
-            return;
-        }
-        $url = $this->btcPayFileResolver->resolveEventLogoUrl($fileId);
-        if ($url !== null) {
-            $data['eventLogoUrl'] = $url;
-            $data['logoUrl'] = $url;
-        }
-    }
-
-    /**
-     * Normalize event response: eventLogoUrl (and logoUrl) and eventLogoFileId for frontend.
-     * If plugin returns only eventLogoFileId, build eventLogoUrl from BTCPay base URL so image displays.
-     */
+    /** Normalize provider logo fields without guessing a storage URL from a file ID. */
     protected function normalizeEventLogo(array $event): array
     {
-        if (! isset($event['eventLogoUrl']) && ! empty($event['logoUrl'])) {
-            $event['eventLogoUrl'] = $event['logoUrl'];
-        }
+        unset($event['storeId']);
+        $event['eventLogoUrl'] = $event['eventLogoUrl'] ?? $event['logoUrl'] ?? '';
         $event['eventLogoFileId'] = $event['eventLogoFileId'] ?? '';
-        $fileId = trim((string) ($event['eventLogoFileId'] ?? ''));
-        if (($event['eventLogoUrl'] ?? '') === '' && $fileId !== '') {
-            $baseUrl = rtrim(config('services.btcpay.base_url', ''), '/');
-            $event['eventLogoUrl'] = $baseUrl.'/LocalStorage/'.$fileId;
-        }
 
         return $event;
     }
@@ -453,12 +408,16 @@ class TicketController extends Controller
     {
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
-        $this->ticketService->deleteTicketType(
-            $store->btcpay_store_id,
-            $eventId,
-            $ticketTypeId,
-            $userApiKey
-        );
+        try {
+            $this->ticketService->deleteTicketType(
+                $store->btcpay_store_id,
+                $eventId,
+                $ticketTypeId,
+                $userApiKey
+            );
+        } catch (BtcPayException $e) {
+            return $this->ticketTypeFailure($e);
+        }
 
         return response()->json(['message' => 'Ticket type deleted successfully']);
     }
@@ -470,14 +429,28 @@ class TicketController extends Controller
     {
         $userApiKey = $store->user->getBtcPayApiKeyOrFail();
 
-        $ticketType = $this->ticketService->toggleTicketType(
-            $store->btcpay_store_id,
-            $eventId,
-            $ticketTypeId,
-            $userApiKey
-        );
+        try {
+            $ticketType = $this->ticketService->toggleTicketType(
+                $store->btcpay_store_id,
+                $eventId,
+                $ticketTypeId,
+                $userApiKey
+            );
+        } catch (BtcPayException $e) {
+            return $this->ticketTypeFailure($e);
+        }
 
         return response()->json(['data' => $ticketType]);
+    }
+
+    protected function ticketTypeFailure(BtcPayException $exception)
+    {
+        $status = $exception->getStatusCode();
+
+        return response()->json([
+            'message' => 'Unable to change the ticket type. Please refresh and try again.',
+            'code' => 'ticket_type_change_failed',
+        ], in_array($status, [403, 404, 409, 422], true) ? $status : 502);
     }
 
     // ──────────────────────────────────────────────────

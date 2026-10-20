@@ -1,5 +1,43 @@
 # Project state
 
+## Tickets media and passwordless migration repair (2026-10-20)
+
+Owner-authorized repository fixes are in `fix/tickets-media-passwordless` from
+Satflux `5e6953cf`; see [TICKETS_MEDIA_PASSWORDLESS](TICKETS_MEDIA_PASSWORDLESS.md).
+Correct nested ticket-type mutations, remove the privileged Files path from ticket
+images, stage image changes until Save and retain IDs on partial failures. The owned
+Tickets candidate 2.0.4 returns actual scoped logo URLs and allows 2 MiB raster images;
+install/verify the provider before the dependent consumer. Preserve grouped QR emails.
+
+The owner explicitly retains a temporary password migration entry for older accounts.
+Disable reset emails and both reset POSTs (uniform 410), redirect both historic reset
+URL formats server-side, and preserve guest/recovery/passkey/legacy migration login.
+Reported self-addressed reset emails are consistent with the old Laravel endpoint;
+the caller is unknown. No production behavior or deployment was verified.
+
+Local evidence: 44 focused PHP tests pass, with a final overlapping nine-test reset/
+migration rerun; independent QA passes 31 frontend tests; provider passes 24 tests.
+PHPStan, Pint, lint, typecheck, locale parity and final build pass. Tickets 2.0.4.0
+is packaged locally; its DLL matches the tested Release DLL. Browser discovery passes;
+actual browser execution and persisted provider image lifecycle remain staging gates.
+
+Independent security found no high/medium blockers; QA's deletion-before-Save finding
+and security's missing old-query-link redirect are closed. Tests/checks and remaining
+staging gates are recorded in the contract. No new environment variable, production
+change, merge or deployment is included. The separate incident PR #395 is not
+part of this base. Graphify's query graph was unavailable; targeted source reads used.
+
+### Authorized Satflux publication follow-up
+
+The owner authorizes committing and pushing the Satflux repair branch to the owned
+`webiumsk/satflux` repository. The reviewed 31-file source/test fingerprint remains
+`5b0b8c410790be6ef6ef9b37f91cfe3c8557f9713c74dce3571f10752ce0f83d`;
+only publication documentation changes after review. Publish the consumer separately
+from the locally prepared Tickets 2.0.4 provider. Exact-head CI and GitHub review,
+provider publication/installation and staging acceptance remain next gates. No merge
+or deployment is authorized by the push request. Preserve the unrelated image edit
+in the original checkout and exclude disposable environment files/artifacts.
+
 ## Cashu recovery API export compatibility repair (2026-10-16)
 
 The owner reports refused Satflux change export while native BTCPay export works.

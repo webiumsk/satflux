@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'password_reset_unavailable' => 'Das Zurücksetzen des Passworts per E-Mail ist nicht verfügbar. Verwenden Sie Ihre Wiederherstellungsphrase oder Ihren Passkey. Ältere Konten können die Migrationsanmeldung verwenden.',
 
     // Temporarily paused purchases
     'pro_purchase_temporarily_disabled' => 'PRO-Käufe sind vorübergehend ausgesetzt.',

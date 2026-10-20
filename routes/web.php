@@ -70,20 +70,15 @@ Route::middleware(['throttle:30,1'])->group(function () {
         ->where('payment_token', '[A-Za-z0-9]{64}');
 });
 
-// Password reset: same URL as API so SPA can POST /api/auth/password/reset-link
-// Web route is registered first → no Sanctum, no 401
+// Retired reset endpoints: keep throttling and return an explicit, uniform 410.
 Route::middleware(['throttle:password-reset'])->group(function () {
     Route::post('/api/auth/password/reset-link', [PasswordResetController::class, 'sendResetLink']);
     Route::post('/api/auth/password/reset', [PasswordResetController::class, 'reset']);
 });
 
-// Named route for password reset email link (Laravel ResetPassword notification calls route('password.reset'))
-Route::get('/reset-password/{token}', function (Request $request, string $token) {
-    $email = $request->query('email', '');
-    $url = rtrim(config('app.url'), '/').'/password/reset?token='.urlencode($token).'&email='.urlencode($email);
-
-    return redirect($url);
-})->name('password.reset');
+// Old emailed links must not forward reset tokens or email addresses to the SPA.
+Route::get('/reset-password/{token}', fn () => response('', 302, ['Location' => '/login']))->name('password.reset');
+Route::get('/password/reset', fn () => response('', 302, ['Location' => '/login']));
 
 // Named route for authentication redirects (used by Laravel auth middleware)
 Route::get('/login', function () {

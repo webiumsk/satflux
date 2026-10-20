@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'password_reset_unavailable' => 'El restablecimiento de contraseña por correo no está disponible. Usa tu frase de recuperación o passkey. Las cuentas antiguas pueden usar el acceso de migración.',
     /*
     |--------------------------------------------------------------------------
     | General Application Messages

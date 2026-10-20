@@ -3,66 +3,27 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Auth\Events\PasswordReset;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
-use Illuminate\Validation\Rules;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Http\JsonResponse;
 
 class PasswordResetController extends Controller
 {
-    /**
-     * Send a password reset link to the user.
-     * Only affects Panel DB (users table). BTCPay user/password is separate.
-     */
-    public function sendResetLink(Request $request)
+    /** Retired endpoints remain explicit for older clients without sending mail. */
+    public function sendResetLink(): JsonResponse
     {
-        $request->validate(['email' => ['required', 'email']]);
-
-        Password::sendResetLink(
-            $request->only('email')
-        );
-
-        // Sent, unknown user or throttled: always the same 200 (RESET_THROTTLED
-        // only happens for existing accounts, so reporting it leaks existence).
-        // The route is rate limited per IP either way.
-        return response()->json([
-            'message' => __('messages.password_reset_sent'),
-        ]);
+        return $this->unavailable();
     }
 
-    /**
-     * Handle an incoming new password request.
-     */
-    public function reset(Request $request)
+    /** Old reset tokens must not change credentials or authenticated sessions. */
+    public function reset(): JsonResponse
     {
-        $request->validate([
-            'token' => ['required'],
-            'email' => ['required', 'email'],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-        ]);
+        return $this->unavailable();
+    }
 
-        $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
-            function ($user, $password) {
-                $user->forceFill([
-                    'password' => Hash::make($password),
-                ])->setRememberToken(Str::random(60));
-
-                $user->save();
-
-                event(new PasswordReset($user));
-            }
-        );
-
-        if ($status != Password::PASSWORD_RESET) {
-            throw ValidationException::withMessages([
-                'email' => [__($status)],
-            ]);
-        }
-
-        return response()->json(['message' => __($status)]);
+    private function unavailable(): JsonResponse
+    {
+        return response()->json([
+            'code' => 'password_reset_unavailable',
+            'message' => __('messages.password_reset_unavailable'),
+        ], 410);
     }
 }

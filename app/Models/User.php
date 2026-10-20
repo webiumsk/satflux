@@ -352,9 +352,13 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return ! is_null($this->email_verified_at);
     }
 
-    /**
-     * Send our signed verification link (same URL shape as registration flow).
-     */
+    /** Password recovery uses recovery phrases/passkeys; email resets are retired. */
+    public function sendPasswordResetNotification($token): void
+    {
+        // Defense in depth for framework integrations that invoke the broker.
+    }
+
+    /** Send our signed verification link (same URL shape as registration flow). */
     public function sendEmailVerificationNotification(): void
     {
         if (! $this->email) {
