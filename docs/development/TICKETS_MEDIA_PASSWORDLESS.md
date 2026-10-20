@@ -142,3 +142,13 @@ No application, plugin, production configuration or workflow change is included.
 changed-file Pint passes. Independent QA accepts the delta; require fresh exact-head
 CI before merging. The original source fingerprint above remains historical reviewed
 implementation evidence; this additional test file has SHA-256 `b08820d18391dd04cd6dc3aa5138238e2cc8635c6b447f577edb354a16880b73`.
+
+
+At follow-up head `2c783de1`, complete CI passes all 1,836 PHP tests (8,425
+assertions), Pint, Node and Playwright. PHPStan then reports three unmatched baseline
+entries for removed ticket-code findings (two `eventLogoFileId` coalesce entries and
+one strict-null comparison entry). Remove precisely these three exceptions without
+regenerating the baseline or weakening any analysis setting. The earlier targeted
+file analysis did not cover whole-project unmatched-ignore enforcement. Full local
+PHPStan passes with no errors after this deletion; independent QA accepts the exact
+three-entry removal. Fresh published-head CI remains required.

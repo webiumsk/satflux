@@ -811,21 +811,9 @@ parameters:
 			path: app/Http/Controllers/TicketController.php
 
 		-
-			message: '#^Offset ''eventLogoFileId'' on non\-empty\-array on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Http/Controllers/TicketController.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getBtcPayApiKeyOrFail\(\)\.$#'
 			identifier: method.notFound
 			count: 2
-			path: app/Http/Controllers/TicketEventImageController.php
-
-		-
-			message: '#^Offset ''eventLogoFileId'' on non\-empty\-array on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
 			path: app/Http/Controllers/TicketEventImageController.php
 
 		-
@@ -1656,12 +1644,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Services/BtcPay/StoreApiKeyService.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between mixed and null will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Services/BtcPay/TicketService.php
 
 		-
 			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'

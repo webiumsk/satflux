@@ -447,3 +447,12 @@ email resets, skip the tests or change application/CI configuration for this fix
 The entire changed AuthTest and dedicated reset regressions pass locally (25 tests,
 118 assertions) with disposable SQLite/array mail and no network. Independent QA
 accepts the bounded test delta; fresh full CI is the next acceptance gate.
+
+
+The follow-up CI passes all 1,836 PHP tests/8,425 assertions, Pint, Node and
+Playwright, then exposes three unmatched baseline ignores for defects removed by
+the ticket repair. Delete exactly those three entries; preserve all other patterns,
+counts, PHPStan level and unmatched-ignore enforcement. Run the full PHPStan command
+without restricting paths: it passes with no errors. Independent QA accepts the
+exact three-entry deletion. Verify fresh exact-head CI. No application behavior
+changes are needed for this correction.

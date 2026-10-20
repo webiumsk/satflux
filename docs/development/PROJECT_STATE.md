@@ -53,6 +53,15 @@ Isolated offline `AuthTest` plus `PasswordResetLinkTest`: 25 passed, 118 asserti
 changed-file Pint passes. Independent QA accepts the test-only delta. Fresh
 exact-head CI remains required; do not treat the initial failed run as acceptance.
 
+At follow-up head `2c783de1`, [CI run 39480617117](https://github.com/webiumsk/satflux/actions/runs/39480617117)
+passes all 1,836 PHP tests (8,425 assertions), Pint, Node and Playwright. PHPStan
+then identifies exactly three obsolete baseline ignores in the changed ticket
+controller/service code. Remove only those unmatched entries, without regenerating
+or expanding the baseline or disabling unmatched-ignore reporting. The earlier
+changed-file analysis did not enforce this whole-project baseline check. Full
+local PHPStan passes with no errors; independent QA accepts exactly the three-entry
+removal. Fresh published-head CI is required for final acceptance.
+
 ## Cashu recovery API export compatibility repair (2026-10-16)
 
 The owner reports refused Satflux change export while native BTCPay export works.
