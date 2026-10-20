@@ -62,6 +62,25 @@ changed-file analysis did not enforce this whole-project baseline check. Full
 local PHPStan passes with no errors; independent QA accepts exactly the three-entry
 removal. Fresh published-head CI is required for final acceptance.
 
+### Ready-for-review CodeRabbit follow-up
+
+At `9bc086fe`, [CI run 39482230312](https://github.com/webiumsk/satflux/actions/runs/39482230312)
+passes PHP (1,836 tests/8,425 assertions), full PHPStan/Pint/Composer audit, Node and
+Playwright (20 passes). The owner marks PR #396 ready for review. CodeRabbit reviews
+this exact head and posts one minor actionable finding plus two terminology nits.
+
+The persisted event must remain visible/count toward limits after an image failure,
+even if the form is cancelled or list refresh fails. Upsert the returned creation
+into local events, refresh after a create/image partial failure, and show the image
+notice after refresh because loading clears notices. Retain the event ID and pending
+file for retry. Add regressions for successful/failed refresh plus Cancel/limit and
+retain the existing no-duplicate retry test. Align SK "podujatie" and DE "Event".
+Independent QA accepts this bounded frontend delta and independently passes all
+13 focused frontend tests. Full lint (zero errors/48 existing warnings), typecheck
+(120 unchanged diagnostics), locale parity and production build pass. Fresh-head
+CI/review remain required.
+No backend, auth, provider, billing or production behavior is changed by this follow-up.
+
 ## Cashu recovery API export compatibility repair (2026-10-16)
 
 The owner reports refused Satflux change export while native BTCPay export works.

@@ -152,3 +152,23 @@ regenerating the baseline or weakening any analysis setting. The earlier targete
 file analysis did not cover whole-project unmatched-ignore enforcement. Full local
 PHPStan passes with no errors after this deletion; independent QA accepts the exact
 three-entry removal. Fresh published-head CI remains required.
+
+
+## Ready-for-review CodeRabbit findings
+
+CodeRabbit reviewed head `9bc086fe` after the owner marked PR #396 ready. All three
+CI jobs pass at that head. Its actionable minor finding is a stale event list/count
+after create succeeds and image upload fails; cancelling the retained form could
+hide the durable event and encourage a duplicate creation.
+
+Upsert the saved creation locally before image handling, then refresh on a partial
+create failure before restoring the image error notice. Preserve the saved ID and
+pending image for direct retry; a failed list refresh cannot erase the known local
+creation. Regressions cover successful/failed refresh, Cancel with a one-event limit,
+notice ordering and same-ID/file retry. The two nonblocking SK/DE terminology nits
+are also corrected. Independent QA accepts the source and independently passes all
+13 focused tests. Full lint/typecheck/locale parity/production build pass.
+Published-head CI/review apply to this frontend delta. Backend/auth, provider source, billing and production remain unchanged.
+
+Reviewed CodeRabbit follow-up fingerprint (same filename/NUL/bytes format; Vue,
+regression test and two locale files): `fde926aaa8fd8bde086c7e2689501af0bb2b83b22dcac14dbebcb661997c35bb`.

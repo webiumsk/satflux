@@ -3589,7 +3589,7 @@
     "no_ticket_types": "Noch keine Tickettypen.",
     "add_first_ticket_type": "Ersten Tickettyp hinzufügen",
     "image_requirements": "Verwenden Sie ein JPEG-, PNG-, GIF- oder WebP-Bild bis 2 MB.",
-    "event_saved_image_failed": "Die Veranstaltung wurde gespeichert, aber die Bildänderung ist fehlgeschlagen. Die ausstehenden Bildänderungen bleiben erhalten. Speichern Sie erneut, um es bei derselben Veranstaltung noch einmal zu versuchen.",
+    "event_saved_image_failed": "Das Event wurde gespeichert, aber die Bildänderung ist fehlgeschlagen. Die ausstehenden Bildänderungen bleiben erhalten. Speichern Sie erneut, um es beim selben Event noch einmal zu versuchen.",
     "image_uploaded": "Bild hochgeladen",
     "event_updated": "Event aktualisiert",
     "event_created": "Event erstellt",

@@ -456,3 +456,17 @@ counts, PHPStan level and unmatched-ignore enforcement. Run the full PHPStan com
 without restricting paths: it passes with no errors. Independent QA accepts the
 exact three-entry deletion. Verify fresh exact-head CI. No application behavior
 changes are needed for this correction.
+
+
+### Ready-for-review partial-create visibility correction
+
+CodeRabbit review of `9bc086fe` identifies one minor stale-list/count path after
+an event is durably created but its image upload fails. Keep the known saved event
+in the local list before refresh, retain editing ID/pending image for retry and
+refresh before showing the image error (loading clears notices). Cancel must reveal
+the saved event and enforce its event limit even when the refresh request fails.
+Add bounded regression coverage and align existing SK/DE ticket terminology.
+Independent QA accepts the source and independently passes all 13 focused tests.
+Full lint/typecheck/locale parity/build pass; fresh published-head CI/review precede
+handoff. No production,
+backend/auth or provider modification is part of this follow-up.

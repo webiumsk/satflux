@@ -2155,7 +2155,13 @@ async function handleSubmitEvent() {
 
     // Retain the newly created ID before uploading: retrying Save must update the
     // same event rather than create a duplicate after a partial success.
-    if (savedEvent?.id) editingEvent.value = savedEvent;
+    if (savedEvent?.id) {
+      editingEvent.value = savedEvent;
+      if (!wasEditing) {
+        // Keep the persisted creation visible even if the follow-up refresh fails.
+        events.value = [savedEvent, ...events.value.filter((event) => event.id !== savedEvent.id)];
+      }
+    }
     if (pendingImageFile.value || pendingImageRemoval.value) {
       uploadingImage.value = true;
       try {
@@ -2178,6 +2184,8 @@ async function handleSubmitEvent() {
           pendingImageRemoval.value = false;
         }
       } catch {
+        // Refresh persisted creations before showing the error: loading clears messages.
+        if (!wasEditing) await loadEvents();
         showError(t("tickets.event_saved_image_failed"));
         return;
       } finally {

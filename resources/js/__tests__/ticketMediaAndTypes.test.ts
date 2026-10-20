@@ -17,9 +17,9 @@ vi.mock('../components/admin/RichTextEditor.vue', () => ({ default: { template: 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 const event = { id: 'event-a', storeId: 'store-a', title: 'Event', startDate: '2026-11-20T12:00:00Z', eventState: 'Active', eventType: 'Physical', hasMaximumCapacity: false };
 const ticketType = { id: 'type-a', eventId: event.id, name: 'Standard', price: 5, isDefault: false, ticketTypeState: 'Active' };
-const open = async () => {
+const open = async (eventLimit?: number) => {
     const wrapper = mount(TicketsShow, {
-        props: { store: { id: 'store-a', name: 'Synthetic store' }, app: { id: '', name: 'Tickets' } } as never,
+        props: { store: { id: 'store-a', name: 'Synthetic store' }, app: { id: '', name: 'Tickets' }, eventLimit } as never,
         global: { stubs: {
             AppShowLayout: { template: '<main><slot name="toolbar" :app="$attrs.app" :store="$attrs.store"/><slot/></main>' },
             DatePicker: true, UpgradeModal: true, UrlQrModal: true, RichTextEditor: true,
@@ -47,6 +47,7 @@ beforeEach(() => {
 });
 describe('ticket event media', () => {
     it('retains a failed image and retries against the saved event without duplicate creation', async () => {
+        mocks.fetchEvents.mockResolvedValueOnce([]).mockResolvedValue([event]);
         const wrapper = await open();
         await button(wrapper, 'tickets.create_event').trigger('click');
         await wrapper.get('input[placeholder="tickets.event_title_placeholder"]').setValue('Event');
@@ -57,6 +58,8 @@ describe('ticket event media', () => {
         await wrapper.get('form').trigger('submit'); await flushPromises();
         expect(mocks.createEvent).toHaveBeenCalledTimes(1);
         expect(mocks.error).toHaveBeenCalledWith('tickets.event_saved_image_failed');
+        expect(mocks.fetchEvents).toHaveBeenCalledTimes(2);
+        expect(mocks.error.mock.invocationCallOrder.at(-1)).toBeGreaterThan(mocks.clear.mock.invocationCallOrder.at(-1)!);
         expect(wrapper.find('form').exists()).toBe(true);
         expect(mocks.success).not.toHaveBeenCalled();
         await wrapper.get('form').trigger('submit'); await flushPromises();
@@ -66,6 +69,26 @@ describe('ticket event media', () => {
         expect(mocks.post.mock.calls[1][0]).toBe('/stores/store-a/tickets/events/event-a/logo');
         expect((mocks.post.mock.calls[1][1] as FormData).get('file')).toBe(image);
         expect(wrapper.find('form').exists()).toBe(false);
+        wrapper.unmount();
+    });
+    it.each([false, true])('shows a persisted creation and applies its limit after image failure and Cancel (refresh fails: %s)', async refreshFails => {
+        mocks.fetchEvents.mockResolvedValueOnce([]);
+        if (refreshFails) mocks.fetchEvents.mockRejectedValueOnce(new Error('list temporarily unavailable'));
+        else mocks.fetchEvents.mockResolvedValue([event]);
+        const wrapper = await open(1);
+        await button(wrapper, 'tickets.create_event').trigger('click');
+        await wrapper.get('input[placeholder="tickets.event_title_placeholder"]').setValue('Event');
+        await select(wrapper, new File(['image'], 'event.png', { type: 'image/png' }));
+        mocks.post.mockRejectedValueOnce(new Error('upstream unavailable'));
+        await wrapper.get('form').trigger('submit'); await flushPromises();
+        expect(mocks.fetchEvents).toHaveBeenCalledTimes(2);
+        expect(mocks.error).toHaveBeenLastCalledWith('tickets.event_saved_image_failed');
+        await button(wrapper, 'common.cancel').trigger('click');
+        expect(wrapper.find('form').exists()).toBe(false);
+        expect(wrapper.findAll('button[title="common.edit"]')).toHaveLength(1);
+        await button(wrapper, 'tickets.create_event').trigger('click');
+        expect(wrapper.find('form').exists()).toBe(false);
+        expect(mocks.createEvent).toHaveBeenCalledTimes(1);
         wrapper.unmount();
     });
     it.each([
