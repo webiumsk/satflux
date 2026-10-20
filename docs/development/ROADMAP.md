@@ -1,5 +1,20 @@
 # Development roadmap
 
+## Current: Tickets lifecycle, scoped images and passwordless migration
+
+Complete owner-authorized consumer/provider fixes and independent checks described in
+[TICKETS_MEDIA_PASSWORDLESS](TICKETS_MEDIA_PASSWORDLESS.md). Keep the old-account
+migration login while retiring reset mail/token consumption. Tickets 2.0.4 is
+packaged locally, and the owner authorizes the separate Satflux commit/push. Next
+milestone: verify published combined-tree CI after integrating owner-merged #395
+(`master` at `d37153ce`) into #396. Both decision-log sections are preserved;
+independent integration QA, 128 focused PHP cases, 13 frontend cases and full
+PHPStan pass. The
+prior ticket head `cfa0467f` has green full CI; CodeRabbit's original finding is
+resolved and its incremental review is quota-limited. Provider publication and
+installation approval remain separate gates. Verify Tickets 2.0.4 before deploying
+the dependent Satflux changes. No production mutation is part of this branch update.
+
 ## Current: Cashu recovery API export compatibility
 
 Correct the owned API controller classification for BTCPay 2.4.5 without changing

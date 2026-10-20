@@ -1,5 +1,102 @@
 # Project state
 
+## Tickets media and passwordless migration repair (2026-10-20)
+
+Owner-authorized repository fixes are in `fix/tickets-media-passwordless` from
+Satflux `5e6953cf`; see [TICKETS_MEDIA_PASSWORDLESS](TICKETS_MEDIA_PASSWORDLESS.md).
+Correct nested ticket-type mutations, remove the privileged Files path from ticket
+images, stage image changes until Save and retain IDs on partial failures. The owned
+Tickets candidate 2.0.4 returns actual scoped logo URLs and allows 2 MiB raster images;
+install/verify the provider before the dependent consumer. Preserve grouped QR emails.
+
+The owner explicitly retains a temporary password migration entry for older accounts.
+Disable reset emails and both reset POSTs (uniform 410), redirect both historic reset
+URL formats server-side, and preserve guest/recovery/passkey/legacy migration login.
+Reported self-addressed reset emails are consistent with the old Laravel endpoint;
+the caller is unknown. No production behavior or deployment was verified.
+
+Local evidence: 44 focused PHP tests pass, with a final overlapping nine-test reset/
+migration rerun; independent QA passes 31 frontend tests; provider passes 24 tests.
+PHPStan, Pint, lint, typecheck, locale parity and final build pass. Tickets 2.0.4.0
+is packaged locally; its DLL matches the tested Release DLL. Browser discovery passes;
+actual browser execution and persisted provider image lifecycle remain staging gates.
+
+Independent security found no high/medium blockers; QA's deletion-before-Save finding
+and security's missing old-query-link redirect are closed. Tests/checks and remaining
+staging gates are recorded in the contract. No new environment variable, production
+change or deployment is included. Incident PR #395 was absent from the initial
+ticket base; the integration follow-up below records its subsequent owner merge. Graphify's query graph was unavailable; targeted source reads used.
+
+### Authorized Satflux publication follow-up
+
+The owner authorizes committing and pushing the Satflux repair branch to the owned
+`webiumsk/satflux` repository. The reviewed 31-file source/test fingerprint remains
+`5b0b8c410790be6ef6ef9b37f91cfe3c8557f9713c74dce3571f10752ce0f83d`;
+only publication documentation changes after review. Publish the consumer separately
+from the locally prepared Tickets 2.0.4 provider. Exact-head CI and GitHub review,
+provider publication/installation and staging acceptance remain next gates. No merge
+or deployment is authorized by the push request. Preserve the unrelated image edit
+in the original checkout and exclude disposable environment files/artifacts.
+
+### PR #396 PHP CI compatibility follow-up
+
+PR #396 head `12bb3d2b` passed Node and Playwright CI, but the PHP suite failed
+five obsolete `AuthTest` password-reset expectations while 1,831 tests passed
+(8,391 assertions). [CI run 39469452552](https://github.com/webiumsk/satflux/actions/runs/39469452552)
+is the source of these results. The approved reset contract is HTTP 410 with no
+mail or credential changes; five general-auth tests still expected 200/422, mail
+or a successful reset. Update those cases without changing application source,
+retaining registration, login/logout and email-verification assertions. Add explicit
+no-notification/no-token/no-login and hash/session/valid-token preservation assertions.
+
+Isolated offline `AuthTest` plus `PasswordResetLinkTest`: 25 passed, 118 assertions;
+changed-file Pint passes. Independent QA accepts the test-only delta. Fresh
+exact-head CI remains required; do not treat the initial failed run as acceptance.
+
+At follow-up head `2c783de1`, [CI run 39480617117](https://github.com/webiumsk/satflux/actions/runs/39480617117)
+passes all 1,836 PHP tests (8,425 assertions), Pint, Node and Playwright. PHPStan
+then identifies exactly three obsolete baseline ignores in the changed ticket
+controller/service code. Remove only those unmatched entries, without regenerating
+or expanding the baseline or disabling unmatched-ignore reporting. The earlier
+changed-file analysis did not enforce this whole-project baseline check. Full
+local PHPStan passes with no errors; independent QA accepts exactly the three-entry
+removal. Fresh published-head CI is required for final acceptance.
+
+### Ready-for-review CodeRabbit follow-up
+
+At `9bc086fe`, [CI run 39482230312](https://github.com/webiumsk/satflux/actions/runs/39482230312)
+passes PHP (1,836 tests/8,425 assertions), full PHPStan/Pint/Composer audit, Node and
+Playwright (20 passes). The owner marks PR #396 ready for review. CodeRabbit reviews
+this exact head and posts one minor actionable finding plus two terminology nits.
+
+The persisted event must remain visible/count toward limits after an image failure,
+even if the form is cancelled or list refresh fails. Upsert the returned creation
+into local events, refresh after a create/image partial failure, and show the image
+notice after refresh because loading clears notices. Retain the event ID and pending
+file for retry. Add regressions for successful/failed refresh plus Cancel/limit and
+retain the existing no-duplicate retry test. Align SK "podujatie" and DE "Event".
+Independent QA accepts this bounded frontend delta and independently passes all
+13 focused frontend tests. Full lint (zero errors/48 existing warnings), typecheck
+(120 unchanged diagnostics), locale parity and production build pass. Fresh-head
+CI/review remain required.
+No backend, auth, provider, billing or production behavior is changed by this follow-up.
+
+### PR #396 integration after owner merge of #395
+
+The owner merged #395 into `master` at `d37153ce` (2026-10-20) and requested resolving
+#396's conflict. Integrate that base into `fix/tickets-media-passwordless`, preserving
+both decision-log append sections in chronological order. All application changes
+combine automatically; the only manual conflict is `DECISION_LOG.md`. Keep both
+PHPStan baseline reductions and image-route throttles. This branch update does not
+merge #396 into master or alter production/provider state.
+
+Prior ticket head `cfa0467f` has green [CI 39485258893](https://github.com/webiumsk/satflux/actions/runs/39485258893):
+1,836 PHP tests/8,425 assertions, Node and 20 browser passes. Its original CodeRabbit
+finding is resolved; incremental review was quota-limited despite a successful check.
+Independent integration QA accepts preservation of both parents and all decision
+sections. Combined offline checks pass: 128 PHP tests/507 assertions, 13 frontend
+tests and full PHPStan with no errors. Fresh published-head CI remains required.
+
 ## Cashu recovery API export compatibility repair (2026-10-16)
 
 The owner reports refused Satflux change export while native BTCPay export works.

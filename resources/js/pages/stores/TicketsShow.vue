@@ -191,7 +191,7 @@
                       >
                         <img
                           :src="imagePreview || eventForm.eventLogoUrl || ''"
-                          alt="Event image"
+                          :alt="t('tickets.event_image')"
                           class="w-full h-full object-cover"
                           @error="imagePreview = null"
                         />
@@ -199,6 +199,7 @@
                       <button
                         type="button"
                         @click="clearEventImage"
+                        :disabled="submitting"
                         class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg hover:bg-red-600 transition-colors"
                         :title="t('common.delete')"
                       >
@@ -235,19 +236,20 @@
                         />
                       </svg>
                     </div>
+                    <p class="text-xs text-gray-400 text-center">{{ t("tickets.image_requirements") }}</p>
                     <!-- Upload -->
                     <div class="w-32">
                       <input
                         ref="eventImageInput"
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/gif,image/webp"
                         class="hidden"
                         @change="onEventImageChange"
                       />
                       <button
                         type="button"
                         @click="eventImageInput?.click()"
-                        :disabled="uploadingImage"
+                        :disabled="uploadingImage || submitting"
                         class="w-full px-3 py-1.5 text-xs font-medium rounded-lg text-gray-300 bg-gray-700 border border-gray-600 hover:bg-gray-600 hover:text-white disabled:opacity-50 transition-colors"
                       >
                         <svg
@@ -1080,6 +1082,7 @@
                       <div class="flex items-center gap-1 ml-4">
                         <button
                           @click="handleToggleTicketType(event.id, tt)"
+                          :disabled="mutatingTicketType"
                           :title="
                             tt.ticketTypeState === 'Active'
                               ? t('tickets.disable')
@@ -1148,6 +1151,7 @@
                         </button>
                         <button
                           @click="handleDeleteTicketType(event.id, tt)"
+                          :disabled="mutatingTicketType"
                           :title="t('common.delete')"
                           class="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                         >
@@ -1849,12 +1853,14 @@ const imagePreview = ref<string | null>(null);
 const uploadingImage = ref(false);
 const eventImageInput = ref<HTMLInputElement | null>(null);
 const pendingImageFile = ref<File | null>(null);
+const pendingImageRemoval = ref(false);
 
 // Expanded event + tabs
 const expandedEventId = ref<string | null>(null);
 const activeTab = ref<"types" | "tickets">("types");
 const eventTicketTypes = ref<TicketType[]>([]);
 const loadingTicketTypes = ref(false);
+const mutatingTicketType = ref(false);
 
 // Tickets tab
 const eventTickets = ref<Ticket[]>([]);
@@ -1941,6 +1947,7 @@ function resetForm() {
   showEmailSettings.value = false;
   imagePreview.value = null;
   pendingImageFile.value = null;
+  pendingImageRemoval.value = false;
 }
 
 function cancelForm() {
@@ -1972,66 +1979,29 @@ async function onEventImageChange(e: Event) {
   const file = input.files?.[0];
   if (!file) return;
 
-  // Show preview immediately
+  if (!["image/jpeg", "image/png", "image/gif", "image/webp"].includes(file.type) || file.size > 2 * 1024 * 1024) {
+    showError(t("tickets.image_requirements"));
+    input.value = "";
+    return;
+  }
+
+  // Keep the selected image until Save succeeds, so a failed upload can be retried.
+  pendingImageFile.value = file;
+  pendingImageRemoval.value = false;
   const reader = new FileReader();
   reader.onload = (ev) => {
-    imagePreview.value = ev.target?.result as string;
+    if (pendingImageFile.value === file) {
+      imagePreview.value = ev.target?.result as string;
+    }
   };
   reader.readAsDataURL(file);
-
-  const eventId = editingEvent.value?.id;
-  if (eventId) {
-    // Edit flow: upload directly to plugin logo endpoint so logo is saved immediately
-    uploadingImage.value = true;
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const response = await api.post(
-        `/stores/${requireStoreId()}/tickets/events/${eventId}/logo`,
-        formData,
-      );
-      const d = response.data?.data ?? {};
-      eventForm.value.eventLogoFileId = d.eventLogoFileId ?? d.id ?? "";
-      eventForm.value.eventLogoUrl = d.eventLogoUrl ?? d.logoUrl ?? d.url ?? "";
-      showSuccess(t("tickets.image_uploaded"));
-    } catch (rawError) {
-      const err = asApiError(rawError);
-      imagePreview.value = null;
-      showError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Failed to upload image",
-      );
-    } finally {
-      uploadingImage.value = false;
-      if (input) input.value = "";
-    }
-  } else {
-    // Create flow: hold file in memory; upload via plugin logo endpoint after the event is created
-    pendingImageFile.value = file;
-    if (input) input.value = "";
-  }
+  input.value = "";
 }
 
-async function clearEventImage() {
-  const eventId = editingEvent.value?.id;
-  if (eventId) {
-    try {
-      const response = await api.delete(
-        `/stores/${requireStoreId()}/tickets/events/${eventId}/logo`,
-      );
-      const d = response.data?.data ?? {};
-      eventForm.value.eventLogoFileId = d.eventLogoFileId ?? "";
-      eventForm.value.eventLogoUrl = d.eventLogoUrl ?? "";
-    } catch (rawError) {
-      const err = asApiError(rawError);
-      showError(
-        err?.response?.data?.message || err?.message || "Failed to remove logo",
-      );
-      return;
-    }
-  }
-  // Clear pending file (create flow) and local state
+function clearEventImage() {
+  if (submitting.value) return;
+  // Stage removal just like replacement: Cancel must preserve the saved image.
+  pendingImageRemoval.value = !!editingEvent.value?.id;
   pendingImageFile.value = null;
   eventForm.value.eventLogoUrl = "";
   eventForm.value.eventLogoFileId = "";
@@ -2158,16 +2128,8 @@ async function handleSubmitEvent() {
     eventForm.value.maximumEventCapacity
   )
     data.maximumEventCapacity = eventForm.value.maximumEventCapacity;
-  // Plugin 1.5: send eventLogoFileId and eventLogoUrl when available so plugin can display URL
-  if (eventForm.value.eventLogoFileId) {
-    data.eventLogoFileId = eventForm.value.eventLogoFileId;
-    if (eventForm.value.eventLogoUrl)
-      data.eventLogoUrl = eventForm.value.eventLogoUrl;
-  } else if (eventForm.value.eventLogoUrl) {
-    data.eventLogoUrl = eventForm.value.eventLogoUrl;
-  } else {
-    data.eventLogoFileId = "";
-  }
+  // Image changes use the scoped logo endpoint. An omitted image in an older
+  // provider response must never be interpreted as a request to remove it.
 
   const bundlePer = Math.max(
     0,
@@ -2186,34 +2148,51 @@ async function handleSubmitEvent() {
   }
 
   try {
-    if (editingEvent.value) {
-      await ticketsStore.updateEvent(
-        requireStoreId(),
-        editingEvent.value.id,
-        data,
-      );
-      showSuccess(t("tickets.event_updated"));
-    } else {
-      const createdEvent = await ticketsStore.createEvent(requireStoreId(), data);
-      // Upload pending image via plugin logo endpoint now that we have an event ID
-      if (pendingImageFile.value && createdEvent?.id) {
-        uploadingImage.value = true;
-        try {
+    const wasEditing = !!editingEvent.value;
+    const savedEvent = editingEvent.value
+      ? await ticketsStore.updateEvent(requireStoreId(), editingEvent.value.id, data)
+      : await ticketsStore.createEvent(requireStoreId(), data);
+
+    // Retain the newly created ID before uploading: retrying Save must update the
+    // same event rather than create a duplicate after a partial success.
+    if (savedEvent?.id) {
+      editingEvent.value = savedEvent;
+      if (!wasEditing) {
+        // Keep the persisted creation visible even if the follow-up refresh fails.
+        events.value = [savedEvent, ...events.value.filter((event) => event.id !== savedEvent.id)];
+      }
+    }
+    if (pendingImageFile.value || pendingImageRemoval.value) {
+      uploadingImage.value = true;
+      try {
+        const eventId = editingEvent.value?.id;
+        if (!eventId) throw new Error(t("common.error"));
+        if (pendingImageFile.value) {
           const formData = new FormData();
           formData.append("file", pendingImageFile.value);
-          await api.post(
-            `/stores/${requireStoreId()}/tickets/events/${createdEvent.id}/logo`,
+          const response = await api.post(
+            `/stores/${requireStoreId()}/tickets/events/${eventId}/logo`,
             formData,
           );
-        } catch {
-          // Logo upload failed but event was created - not a fatal error
-        } finally {
-          uploadingImage.value = false;
+          const uploaded = response.data?.data;
+          if (!uploaded?.eventLogoUrl) throw new Error(t("common.error"));
+          eventForm.value.eventLogoFileId = uploaded.eventLogoFileId ?? "";
+          eventForm.value.eventLogoUrl = uploaded.eventLogoUrl;
           pendingImageFile.value = null;
+        } else {
+          await api.delete(`/stores/${requireStoreId()}/tickets/events/${eventId}/logo`);
+          pendingImageRemoval.value = false;
         }
+      } catch {
+        // Refresh persisted creations before showing the error: loading clears messages.
+        if (!wasEditing) await loadEvents();
+        showError(t("tickets.event_saved_image_failed"));
+        return;
+      } finally {
+        uploadingImage.value = false;
       }
-      showSuccess(t("tickets.event_created"));
     }
+    showSuccess(t(wasEditing ? "tickets.event_updated" : "tickets.event_created"));
     cancelForm();
     await loadEvents();
   } catch (rawError) {
@@ -2253,6 +2232,8 @@ function handleEditEvent(event: TicketEvent) {
       event.bundledRaffleTicketsPerAdmission ?? 0,
   };
   imagePreview.value = null;
+  pendingImageFile.value = null;
+  pendingImageRemoval.value = false;
   if (event.emailSubject || event.emailBody) showEmailSettings.value = true;
   showCreateForm.value = true;
   expandedEventId.value = null;
@@ -2379,6 +2360,8 @@ function handleEditTicketType(eventId: string, tt: TicketType) {
 }
 
 async function handleToggleTicketType(eventId: string, tt: TicketType) {
+  if (mutatingTicketType.value) return;
+  mutatingTicketType.value = true;
   clearMessages();
   try {
     await ticketsStore.toggleTicketType(requireStoreId(), eventId, tt.id);
@@ -2395,12 +2378,16 @@ async function handleToggleTicketType(eventId: string, tt: TicketType) {
         err?.message ||
         "Failed to toggle ticket type",
     );
+  } finally {
+    mutatingTicketType.value = false;
   }
 }
 
 async function handleDeleteTicketType(eventId: string, tt: TicketType) {
+  if (mutatingTicketType.value) return;
   if (!confirm(t("tickets.delete_ticket_type_confirm", { name: tt.name })))
     return;
+  mutatingTicketType.value = true;
   clearMessages();
   try {
     await ticketsStore.deleteTicketType(requireStoreId(), eventId, tt.id);
@@ -2413,6 +2400,8 @@ async function handleDeleteTicketType(eventId: string, tt: TicketType) {
         err?.message ||
         "Failed to delete ticket type",
     );
+  } finally {
+    mutatingTicketType.value = false;
   }
 }
 

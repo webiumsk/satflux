@@ -24,11 +24,7 @@
           {{ t("auth.welcome_back") }}
         </h2>
         <p class="mt-2 text-center text-sm text-gray-400">
-          {{
-            seedFirst
-              ? t("auth.seed_first_login_subtitle")
-              : t("auth.sign_in_to_account")
-          }}
+          {{ t("auth.seed_first_login_subtitle") }}
         </p>
       </div>
 
@@ -57,36 +53,6 @@
               {{ t("auth.email_verified") }}
             </p>
           </div>
-        </div>
-
-        <div
-          v-if="!seedFirst"
-          class="grid grid-cols-2 gap-1 mb-6 rounded-xl border border-gray-600 p-1"
-        >
-          <button
-            type="button"
-            class="py-2.5 px-1 text-xs sm:text-sm font-semibold rounded-lg transition-colors text-center leading-tight"
-            :class="
-              authMethodTab === 'guest'
-                ? 'bg-indigo-600 text-white shadow'
-                : 'text-gray-400 hover:text-white hover:bg-gray-700/60'
-            "
-            @click="authMethodTab = 'guest'"
-          >
-            {{ t("auth.tab_seed") }}
-          </button>
-          <button
-            type="button"
-            class="py-2.5 px-1 text-xs sm:text-sm font-semibold rounded-lg transition-colors text-center leading-tight"
-            :class="
-              authMethodTab === 'email'
-                ? 'bg-indigo-600 text-white shadow'
-                : 'text-gray-400 hover:text-white hover:bg-gray-700/60'
-            "
-            @click="authMethodTab = 'email'"
-          >
-            {{ t("auth.tab_email") }}
-          </button>
         </div>
 
         <div v-show="showSeedPanel" class="mb-2">
@@ -132,13 +98,13 @@
             :primary-label="t('auth.restore_guest_session')"
             @primary="showGuestRestoreModal = true"
           />
-          <p v-if="seedFirst" class="text-center text-sm text-gray-400 mt-4">
+          <p class="text-center text-sm text-gray-400 mt-4">
             <button
               type="button"
               class="font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
               @click="showLegacyEmailLogin = true"
             >
-              {{ t("auth.legacy_email_login_link") }}
+              {{ t("auth.migrate_older_account") }}
             </button>
           </p>
         </div>
@@ -149,14 +115,12 @@
           @submit.prevent="handleLogin"
         >
           <p
-            v-if="seedFirst"
             class="text-xs text-amber-200/90 leading-relaxed rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2"
             role="note"
           >
-            {{ t("auth.legacy_email_login_notice") }}
+            {{ t("auth.migration_login_notice") }}
           </p>
           <button
-            v-if="seedFirst"
             type="button"
             class="text-sm text-gray-400 hover:text-white transition-colors"
             @click="showLegacyEmailLogin = false"
@@ -216,15 +180,6 @@
                 {{ t("auth.remember_me") }}
               </label>
             </div>
-
-            <div class="text-sm">
-              <router-link
-                to="/password/reset"
-                class="font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
-              >
-                {{ t("auth.forgot_password") }}
-              </router-link>
-            </div>
           </div>
 
           <div class="space-y-4">
@@ -233,7 +188,7 @@
               :disabled="loading"
               class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-900 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20"
             >
-              {{ loading ? t("auth.signing_in") : t("auth.sign_in") }}
+              {{ loading ? t("auth.signing_in") : t("auth.migration_login_continue") }}
             </button>
           </div>
 
@@ -260,7 +215,7 @@
 
 <script setup lang="ts">
 import { asApiError } from "../../utils/apiError";
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../store/auth";
@@ -269,7 +224,6 @@ import { useFlashStore } from "../../store/flash";
 import GuestRestoreModal from "../../components/auth/GuestRestoreModal.vue";
 import AuthSeedGuestPanel from "../../components/auth/AuthSeedGuestPanel.vue";
 import { isPublicMarketingPath, navigateToAppPath } from "../../utils/publicMarketingRoutes";
-import { isSeedFirstRegistration } from "../../config/auth";
 import { usePasskeyAccountLogin } from "../../composables/usePasskeyAccountLogin";
 
 const { t } = useI18n();
@@ -310,7 +264,6 @@ async function handlePasskeyLogin(): Promise<void> {
 }
 
 onMounted(() => {
-  applyAuthTabFromQuery();
   void probePasskeySupport();
 });
 
@@ -326,49 +279,10 @@ const form = ref({
 });
 
 const loading = ref(false);
-const seedFirst = computed(() => isSeedFirstRegistration());
-const authMethodTab = ref<"guest" | "email">("guest");
 const showLegacyEmailLogin = ref(false);
 const showGuestRestoreModal = ref(false);
-
-const showSeedPanel = computed(
-  () =>
-    authMethodTab.value === "guest" &&
-    (!seedFirst.value || !showLegacyEmailLogin.value),
-);
-
-const showEmailForm = computed(
-  () =>
-    authMethodTab.value === "email" ||
-    (seedFirst.value && showLegacyEmailLogin.value),
-);
-
-function applyAuthTabFromQuery() {
-  const legacyRaw = route.query.legacy;
-  const legacy = Array.isArray(legacyRaw) ? legacyRaw[0] : legacyRaw;
-  if (legacy === "1" || legacy === "true") {
-    showLegacyEmailLogin.value = true;
-  }
-
-  const raw = route.query.tab;
-  const q = Array.isArray(raw) ? raw[0] : raw;
-  if (!q || typeof q !== "string") return;
-  if (q === "email") {
-    authMethodTab.value = "email";
-    if (seedFirst.value) {
-      showLegacyEmailLogin.value = true;
-    }
-    return;
-  }
-  if (q === "guest") {
-    authMethodTab.value = "guest";
-  }
-}
-
-watch(
-  () => route.query.tab,
-  () => applyAuthTabFromQuery(),
-);
+const showSeedPanel = computed(() => !showLegacyEmailLogin.value);
+const showEmailForm = computed(() => showLegacyEmailLogin.value);
 
 function redirectAfterAuth(target?: string | null) {
   const path = target && target.trim() !== "" ? target : "/dashboard";

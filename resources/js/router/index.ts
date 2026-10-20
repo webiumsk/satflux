@@ -80,7 +80,7 @@ const router = createRouter({
         {
             path: '/password/reset',
             name: 'password-reset',
-            component: () => import('../pages/auth/PasswordReset.vue'),
+            redirect: () => ({ path: '/login', query: {} }),
             meta: { requiresGuest: true, titleKey: 'seo.password_reset_title', descriptionKey: 'seo.password_reset_description' },
         },
         {

@@ -2,6 +2,7 @@
 
 namespace App\Services\BtcPay;
 
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 
 class TicketService
@@ -53,8 +54,7 @@ class TicketService
     }
 
     /**
-     * Create a new event.
-     * Sends both eventLogoUrl and logoUrl so the plugin accepts the image either way.
+     * Create a new event. Images use the separate event-scoped logo endpoint.
      */
     public function createEvent(string $storeId, array $data, ?string $userApiKey = null): array
     {
@@ -69,8 +69,7 @@ class TicketService
     }
 
     /**
-     * Update an event.
-     * Sends both eventLogoUrl and logoUrl so the plugin accepts the image either way.
+     * Update an event. Images use the separate event-scoped logo endpoint.
      */
     public function updateEvent(string $storeId, string $eventId, array $data, ?string $userApiKey = null): array
     {
@@ -109,8 +108,12 @@ class TicketService
      * POST /api/v1/stores/{storeId}/satflux-tickets/events/{eventId}/logo
      * Returns updated EventData including eventLogoUrl and eventLogoFileId.
      */
-    public function uploadEventLogo(string $storeId, string $eventId, $file, ?string $userApiKey = null): array
+    public function uploadEventLogo(string $storeId, string $eventId, UploadedFile $file, string $userApiKey): array
     {
+        if (trim($userApiKey) === '') {
+            throw new \InvalidArgumentException('A merchant API key is required for event images.');
+        }
+
         return $this->withApiKey($userApiKey, function () use ($storeId, $eventId, $file) {
             return $this->client->postMultipart(
                 "/api/v1/stores/{$storeId}/satflux-tickets/events/{$eventId}/logo",
@@ -124,8 +127,12 @@ class TicketService
      * DELETE /api/v1/stores/{storeId}/satflux-tickets/events/{eventId}/logo
      * Returns updated EventData.
      */
-    public function deleteEventLogo(string $storeId, string $eventId, ?string $userApiKey = null): array
+    public function deleteEventLogo(string $storeId, string $eventId, string $userApiKey): array
     {
+        if (trim($userApiKey) === '') {
+            throw new \InvalidArgumentException('A merchant API key is required for event images.');
+        }
+
         return $this->withApiKey($userApiKey, function () use ($storeId, $eventId) {
             return $this->client->delete(
                 "/api/v1/stores/{$storeId}/satflux-tickets/events/{$eventId}/logo"
@@ -187,8 +194,7 @@ class TicketService
     {
         return $this->withApiKey($userApiKey, function () use ($storeId, $eventId, $ticketTypeId) {
             return $this->client->delete(
-                "/api/v1/stores/{$storeId}/satflux-tickets/ticket-types/{$ticketTypeId}",
-                ['eventId' => $eventId]
+                "/api/v1/stores/{$storeId}/satflux-tickets/events/{$eventId}/ticket-types/{$ticketTypeId}"
             );
         });
     }
@@ -200,9 +206,9 @@ class TicketService
     {
         return $this->withApiKey($userApiKey, function () use ($storeId, $eventId, $ticketTypeId) {
             return $this->client->put(
-                "/api/v1/stores/{$storeId}/satflux-tickets/ticket-types/{$ticketTypeId}/toggle",
+                "/api/v1/stores/{$storeId}/satflux-tickets/events/{$eventId}/ticket-types/{$ticketTypeId}/toggle",
                 [],
-                ['eventId' => $eventId]
+                retry: false
             );
         });
     }
@@ -267,9 +273,8 @@ class TicketService
     // ──────────────────────────────────────────────────
 
     /**
-     * Keys allowed in plugin CreateEventRequest / UpdateEventRequest (plugin ignores unknown fields).
-     * Include eventLogoUrl and logoUrl: plugin create path often needs a display URL; file id alone may be ignored
-     * until the event exists (upload-logo flow works on update only).
+     * Keys allowed in plugin CreateEventRequest / UpdateEventRequest.
+     * Arbitrary logo IDs/URLs are excluded; only event-scoped uploads can bind files.
      * enable: when true, event is created as Active; when false, as Disabled (inactive).
      */
     protected const EVENT_PAYLOAD_KEYS = [
@@ -285,35 +290,20 @@ class TicketService
         'emailBody',
         'hasMaximumCapacity',
         'maximumEventCapacity',
-        'eventLogoFileId',
-        'eventLogoUrl',
-        'logoUrl',
         'enable',
         'bundledRaffleId',
         'bundledRaffleTicketsPerAdmission',
     ];
 
     /**
-     * Normalize event payload for plugin: only send fields the plugin expects (UpdateEventRequest).
-     * Sends eventLogoFileId plus eventLogoUrl/logoUrl when present (BtcPayFileResolver / TicketController).
+     * Normalize event payload for the plugin without file-resolution or upload side effects.
      */
     protected function normalizeEventPayloadForBtcPay(array $data): array
     {
-        $fileId = isset($data['eventLogoFileId']) ? ($data['eventLogoFileId'] === null ? '' : (string) $data['eventLogoFileId']) : null;
-        if ($fileId !== null) {
-            $data['eventLogoFileId'] = $fileId;
-        }
         $payload = array_intersect_key($data, array_flip(self::EVENT_PAYLOAD_KEYS));
         foreach (['emailBody', 'emailSubject'] as $key) {
             if (array_key_exists($key, $payload) && is_string($payload[$key])) {
                 $payload[$key] = $this->normalizeTicketEmailPlaceholders($payload[$key]);
-            }
-        }
-
-        // Keep empty eventLogoFileId so update/create can clear logo (frontend sends ""; do not strip).
-        foreach (['eventLogoUrl', 'logoUrl'] as $logoKey) {
-            if (array_key_exists($logoKey, $payload) && trim((string) $payload[$logoKey]) === '') {
-                unset($payload[$logoKey]);
             }
         }
 

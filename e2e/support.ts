@@ -105,15 +105,16 @@ export async function dismissCookieConsent(page: Page): Promise<void> {
     });
 }
 
-/**
- * `/login?tab=email` reveals the email form in BOTH build modes: with
- * VITE_SEED_FIRST_REGISTRATION=true the form hides behind a "legacy login"
- * link, without it behind the Email tab - the query param short-circuits
- * both (Login.vue applyAuthTabFromQuery).
- */
-export async function loginWithEmail(page: Page, email: string, password: string): Promise<void> {
+/** Open the explicit older-account migration entry; query parameters cannot reveal it. */
+export async function openMigrationLogin(page: Page): Promise<void> {
     await dismissCookieConsent(page);
-    await page.goto('/login?tab=email');
+    await page.goto('/login');
+    await page.getByRole('button', { name: 'Migrate an older account', exact: true }).click();
+}
+
+/** Authenticate an older synthetic fixture before enrolling recovery credentials. */
+export async function loginWithEmail(page: Page, email: string, password: string): Promise<void> {
+    await openMigrationLogin(page);
     await page.fill('input[type="email"]', email);
     await page.fill('input[type="password"]', password);
     await page.click('button[type="submit"]');

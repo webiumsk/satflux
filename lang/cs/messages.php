@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'password_reset_unavailable' => 'Obnovení hesla e-mailem není dostupné. Použijte obnovovací frázi nebo passkey. Starší účty mohou použít migrační přihlášení.',
 
     // Temporarily paused purchases
     'pro_purchase_temporarily_disabled' => 'Nákupy PRO jsou dočasně pozastavené.',

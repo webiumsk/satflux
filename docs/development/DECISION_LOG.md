@@ -417,3 +417,81 @@ provided artifacts. No production access, changes, commits, package publication
 or deployment occurred. See the incident report and read-only runbook linked from
 PROJECT_STATE. The next milestone is operator-provided, redacted aggregate evidence;
 publication requires separately reviewed clean-base branches and exact-head CI.
+
+## 2026-10-20: scoped ticket images and retirement of email password reset
+
+Status: owner-authorized implementation; publication and deployment remain separate.
+Fix event-scoped ticket-type paths and use the merchant-scoped event logo endpoint,
+matching the working store-logo permission model. Never fall back to the server key
+for ticket images or infer URLs from opaque file IDs. Require the owned Tickets
+2.0.4 additive logo response before deploying the consumer; preserve identity, schema,
+existing ticket email QR behavior, core and third-party plugins.
+
+Stage image replacement and removal until Save; retain the persisted event ID and
+pending changes on failure. Independent QA identified and closed removal before Save.
+Support JPEG/PNG/GIF/WebP up to 2 MiB in all three layers.
+
+The owner chooses a temporary migration password entry for old accounts without
+recovery/passkey credentials. Retire reset email and reset-token consumption uniformly,
+including framework notification suppression, without invalidating existing accounts,
+sessions or hashes. Redirect both historic URL formats on the server; this does not
+remove secrets from old incoming access logs. Do not attribute the reported default
+Laravel notices to abuse without request evidence. Independent security's missing
+query-link server redirect is closed. See the contract for reproducible checks and
+remaining provider persistence/staging gates. No production inspection was performed.
+
+
+### Satflux publication authorization
+
+The Product Owner subsequently requests pushing the Satflux changes to GitHub.
+Commit/push only the reviewed consumer repair and its scoped tests/documentation in
+`webiumsk/satflux`. Preserve local plugin changes and its installer without publishing
+them under this request. Exact-head CI/review and provider-first staging remain
+required; the push request does not authorize merging or deploying either repository.
+
+
+### PR #396 obsolete reset-test alignment
+
+The initial complete PHP CI run exposes five general-auth tests still asserting
+legacy reset behavior. Preserve the Product Owner's disabled-reset decision and
+update those expectations to the explicit 410/no-side-effect contract. Do not restore
+email resets, skip the tests or change application/CI configuration for this fix.
+The entire changed AuthTest and dedicated reset regressions pass locally (25 tests,
+118 assertions) with disposable SQLite/array mail and no network. Independent QA
+accepts the bounded test delta; fresh full CI is the next acceptance gate.
+
+
+The follow-up CI passes all 1,836 PHP tests/8,425 assertions, Pint, Node and
+Playwright, then exposes three unmatched baseline ignores for defects removed by
+the ticket repair. Delete exactly those three entries; preserve all other patterns,
+counts, PHPStan level and unmatched-ignore enforcement. Run the full PHPStan command
+without restricting paths: it passes with no errors. Independent QA accepts the
+exact three-entry deletion. Verify fresh exact-head CI. No application behavior
+changes are needed for this correction.
+
+
+### Ready-for-review partial-create visibility correction
+
+CodeRabbit review of `9bc086fe` identifies one minor stale-list/count path after
+an event is durably created but its image upload fails. Keep the known saved event
+in the local list before refresh, retain editing ID/pending image for retry and
+refresh before showing the image error (loading clears notices). Cancel must reveal
+the saved event and enforce its event limit even when the refresh request fails.
+Add bounded regression coverage and align existing SK/DE ticket terminology.
+Independent QA accepts the source and independently passes all 13 focused tests.
+Full lint/typecheck/locale parity/build pass; fresh published-head CI/review precede
+handoff. No production,
+backend/auth or provider modification is part of this follow-up.
+
+
+### Integration after PR #395 merge
+
+The owner merged #395 into `master` at `d37153ce` and requests resolving #396's
+conflict. Merge that base into the existing feature branch, preserving both the
+October 19 incident decisions and October 20 ticket/auth decisions. Only their
+append sections conflict; no manual application-code resolution is needed. The
+combined PHPStan baseline keeps both branches' reductions. Independent integration
+QA accepts the result; combined offline checks pass (128 PHP tests/507 assertions,
+13 frontend cases and full PHPStan). Require fresh combined-tree CI; this updates
+the PR branch and does not
+merge #396, publish the provider or deploy anything.

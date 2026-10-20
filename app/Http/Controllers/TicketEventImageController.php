@@ -3,147 +3,89 @@
 namespace App\Http\Controllers;
 
 use App\Models\Store;
-use App\Services\BtcPay\BtcPayClient;
-use App\Services\BtcPay\BtcPayFileUploadService;
+use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\TicketService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class TicketEventImageController extends Controller
 {
-    public function __construct(
-        protected BtcPayClient $btcPayClient,
-        protected TicketService $ticketService,
-        protected BtcPayFileUploadService $btcPayFileUploadService
-    ) {}
+    public function __construct(protected TicketService $ticketService) {}
 
-    /**
-     * Upload an image for a ticket event (logo/banner).
-     * Uses BTCPay Server core Files API: POST /api/v1/files.
-     * Tries store owner's API key first (so file is in user context and plugin can resolve URL).
-     * On 403 Insufficient API Permissions (endpoint requires btcpay.server.canmodifyserversettings),
-     * falls back to server API key so upload still works.
-     */
+    /** Legacy pre-event uploads cannot safely associate a file with an owned event. */
     public function upload(Request $request, Store $store)
     {
-        $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,gif,webp|max:2048', // 2MB
-        ]);
-
-        $user = $request->user();
-        if ($store->user_id !== $user->id) {
-            return response()->json(['message' => __('messages.unauthorized')], 403);
-        }
-
-        try {
-            $data = $this->btcPayFileUploadService->uploadForStore($request->file('image'), $store);
-
-            Log::info('Ticket event image uploaded (BTCPay Files API)', [
-                'store_id' => $store->id,
-                'user_id' => $user->id,
-                'file_id' => $data['id'],
-                'storage_name' => $data['storage_name'],
-            ]);
-
-            return response()->json([
-                'message' => 'Image uploaded successfully',
-                'data' => [
-                    'id' => $data['id'],
-                    'eventLogoFileId' => $data['id'],
-                    'url' => $data['url'],
-                    'image_url' => $data['image_url'],
-                ],
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Failed to upload ticket event image', [
-                'store_id' => $store->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json(['message' => 'Failed to upload image: '.$e->getMessage()], 500);
-        }
+        return response()->json([
+            'message' => 'Create the event before uploading its image.',
+            'code' => 'ticket_event_required',
+        ], 410);
     }
 
-    /**
-     * Upload event logo to an existing event (plugin endpoint, store-level permission).
-     * POST /api/v1/stores/{storeId}/satflux-tickets/events/{eventId}/logo
-     */
+    /** Upload a logo with the store owner's scoped merchant key, like a store logo. */
     public function uploadLogo(Request $request, Store $store, string $eventId)
     {
         $request->validate([
             'file' => ['required', 'image', 'mimes:jpeg,png,gif,webp', 'max:2048'],
         ]);
 
-        if ($store->user_id !== $request->user()?->id) {
-            return response()->json(['message' => __('messages.unauthorized')], 403);
-        }
-
         try {
-            $userApiKey = $store->user->getBtcPayApiKeyOrFail();
             $event = $this->ticketService->uploadEventLogo(
                 $store->btcpay_store_id,
                 $eventId,
                 $request->file('file'),
-                $userApiKey
+                $store->user->getBtcPayApiKeyOrFail()
             );
-            Log::info('Ticket event logo uploaded (plugin logo endpoint)', [
-                'store_id' => $store->id,
-                'event_id' => $eventId,
-            ]);
 
-            return response()->json(['data' => $this->normalizeEventLogo($event)]);
+            $event = $this->normalizeEventLogo($event);
+            if (trim((string) $event['eventLogoUrl']) === '') {
+                return response()->json([
+                    'message' => 'The ticket plugin must return the saved image URL. Refresh the event before retrying.',
+                    'code' => 'ticket_event_logo_response_incomplete',
+                ], 502);
+            }
+
+            return response()->json(['data' => $event]);
         } catch (\Exception $e) {
-            Log::error('Failed to upload ticket event logo', [
-                'store_id' => $store->id,
-                'event_id' => $eventId,
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json(['message' => 'Failed to upload logo: '.$e->getMessage()], 500);
+            return $this->logoFailure($e, $store, 'upload');
         }
     }
 
-    /**
-     * Delete event logo (plugin endpoint).
-     * DELETE /api/v1/stores/{storeId}/satflux-tickets/events/{eventId}/logo
-     */
+    /** Delete only through the event-scoped endpoint; never accept an arbitrary file ID. */
     public function deleteLogo(Request $request, Store $store, string $eventId)
     {
-        if ($store->user_id !== $request->user()?->id) {
-            return response()->json(['message' => __('messages.unauthorized')], 403);
-        }
-
         try {
-            $userApiKey = $store->user->getBtcPayApiKeyOrFail();
             $event = $this->ticketService->deleteEventLogo(
                 $store->btcpay_store_id,
                 $eventId,
-                $userApiKey
+                $store->user->getBtcPayApiKeyOrFail()
             );
 
             return response()->json(['data' => $this->normalizeEventLogo($event)]);
         } catch (\Exception $e) {
-            Log::error('Failed to delete ticket event logo', [
-                'store_id' => $store->id,
-                'event_id' => $eventId,
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json(['message' => 'Failed to delete logo: '.$e->getMessage()], 500);
+            return $this->logoFailure($e, $store, 'delete');
         }
+    }
+
+    protected function logoFailure(\Exception $exception, Store $store, string $operation)
+    {
+        $upstreamStatus = $exception instanceof BtcPayException ? $exception->getStatusCode() : null;
+        Log::warning('Ticket event logo operation failed', [
+            'store_id' => $store->id,
+            'operation' => $operation,
+            'upstream_status' => $upstreamStatus,
+        ]);
+
+        return response()->json([
+            'message' => 'Unable to '.$operation.' the event image. Please try again.',
+            'code' => 'ticket_event_logo_'.$operation.'_failed',
+        ], in_array($upstreamStatus, [403, 404, 422], true) ? $upstreamStatus : 502);
     }
 
     protected function normalizeEventLogo(array $event): array
     {
-        if (! isset($event['eventLogoUrl']) && ! empty($event['logoUrl'])) {
-            $event['eventLogoUrl'] = $event['logoUrl'];
-        }
+        unset($event['storeId']);
+        $event['eventLogoUrl'] = $event['eventLogoUrl'] ?? $event['logoUrl'] ?? '';
         $event['eventLogoFileId'] = $event['eventLogoFileId'] ?? '';
-        $fileId = trim((string) ($event['eventLogoFileId'] ?? ''));
-        if (($event['eventLogoUrl'] ?? '') === '' && $fileId !== '') {
-            $baseUrl = rtrim(config('services.btcpay.base_url', ''), '/');
-            $event['eventLogoUrl'] = $baseUrl.'/LocalStorage/'.$fileId;
-        }
 
         return $event;
     }
