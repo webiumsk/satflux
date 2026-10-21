@@ -436,7 +436,7 @@ context rather than an exact complete 2.1.2 source-to-source reconstruction.
   serialize the three shared-database collections without removing their explicit
   operation-concurrency tests. The initial failure evidence was preserved separately;
   acceptance is the clean rerun from another fresh database.
-- Consumer related PHP scope passes **115 tests / 343 assertions**, including 38 new
+- Related consumer PHP tests pass **115 tests / 343 assertions**, including 38 new
   timezone cases. SQLite memory, network disabled, merchant-key HTTP fakes only.
   Full PHPStan and changed-file Pint pass without baseline additions.
 - Frontend author passes 60 focused tests under America/New_York, changed-file lint,
@@ -541,3 +541,28 @@ live database state is claimed. Production acceptance remains: separately approv
 provider-first installation and the consumer release, verify the configured venue/time
 and Store settings reload in the deployed UI, retain backups and avoid destructive
 schema rollback. Source publication, merge and deployment remain separate operations.
+
+### PR #397 CodeRabbit error-classification follow-up
+
+CodeRabbit reviews published head e8333505 and posts four minor findings: one confirmed
+write/capability error-classification defect and three prose/spacing corrections. Keep
+catalog validation in a separate safe catch. Map create/update write failures only when
+the payload includes new time fields and the provider code exactly matches the existing
+shared event-time code/field allowlist. Unknown, missing and prefix-lookalike codes keep
+the inherited exception path; legacy UTC-only writes remain unchanged. No new provider,
+frontend, retry, credential, tenant, payment or production behavior is introduced.
+
+The old source reproduces ten failing regression cases. Final related PHP scope passes
+152 tests / 513 assertions; independent QA passes all 65 focused timezone cases / 229
+assertions. Full PHPStan, changed-file Pint and diff checks pass. Independent security
+accepts the bounded three-file code/test fingerprint
+`a58189fb91208e0d63b47e022ad88a47fd00f4ce8b635896a12b9453b88ea978`
+using the existing sorted path/space/hash/LF algorithm. No additional plugin build is
+needed because provider source and the installer are unchanged.
+
+Response privacy is tested with debug=false: unrelated write errors retain generic
+HTTP 500 responses without private upstream details. This narrow change does not
+claim production-log redaction or change global debug-mode handling. CodeRabbit's
+initial docstring-coverage warning (23.91% vs 80%) is advisory; its GitHub status and
+PHP/Node/Playwright CI are successful at e8333505. Fresh published-head CI/review are
+required after this follow-up; no merge or deployment is authorized.

@@ -349,3 +349,9 @@ The Product Owner authorizes publication of the reviewed consumer follow-up to P
 on `feat/tickets-sales-ordering`. Next source gate: exact-head GitHub CI/review, then
 separately approved provider-first installation and deployed acceptance. Existing local
 verification is not presented as a completed remote CI run.
+
+PR #397 head e8333505 passes GitHub PHP/Node/Playwright CI. Address its four minor
+CodeRabbit findings with a bounded event-error classification fix plus documentation
+corrections. Preserve catalog capability handling and unrelated write error behavior;
+152 related PHP cases / 513 assertions, full PHPStan and Pint pass locally. Obtain
+independent follow-up acceptance and verify fresh published-head CI before merge.

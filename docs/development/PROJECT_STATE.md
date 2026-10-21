@@ -977,12 +977,12 @@ merge, production migration or deployment has occurred in this follow-up.
 
 ### Independent final local acceptance
 
-Independent security accepts final provider150/consumer20 fingerprints. Independent
-QA passes final8 actual native guard database cases,8 compiled browser smoke cases
-and final archive/DLL/resource equality, in addition to baseline31 browser/5 real
+Independent security accepts final provider 150 / consumer 20 fingerprints. Independent
+QA passes final 8 actual native guard database cases, 8 compiled browser smoke cases
+and final archive/DLL/resource equality, in addition to baseline 31 browser / 5 real
 upgrade groups and focused frontend checks. No remaining blocker in authorized scope.
-Local installer2.2.0.0 final archive SHA302e206578c213b4740637df34ce8f4f5a3d96503f901e5531171251eedf82b3
-contains tested DLL15fbf88ce04543226540be0fe1347d8ece46cf871223eaf7a50702856c726c0c.
+Local installer 2.2.0.0 final archive SHA 302e206578c213b4740637df34ce8f4f5a3d96503f901e5531171251eedf82b3
+contains tested DLL 15fbf88ce04543226540be0fe1347d8ece46cf871223eaf7a50702856c726c0c.
 Next milestone is separately coordinated provider installation before the Satflux
 consumer release and deployed acceptance. Nothing was merged or deployed. Current
 follow-up source changes are local; the previously pushed branch head is unchanged.
@@ -1000,3 +1000,30 @@ results. Exact published-head CI and GitHub review are the next source gates; in
 provider 2.2.0 before consumer deployment. This authorizes no plugin publication,
 merge, production migration or deployment. The unrelated original image edit remains
 excluded from this branch and commit.
+
+### PR #397 CodeRabbit follow-up
+
+At published head `e8333505`, GitHub CI run 39694269173 passes PHP, Node and Playwright;
+CodeRabbit reviews the same head and reports four minor comments. Three concern prose
+and acceptance-label spacing. One confirmed error-classification defect maps unrelated
+BTCPay write failures to timezone upgrade/time errors whenever a new time field is sent.
+
+Separate catalog validation from event writes in both create and update. Map write
+errors only when new time fields are present and the provider code exactly matches the
+shared allowlisted event-time field map; otherwise preserve the existing exception path.
+Catalog failures still block writes and return safe capability errors. Legacy UTC-only
+behavior, tenant/merchant-key checks and provider/frontend source remain unchanged.
+
+New tests reproduce 10 failures on the old source. The corrected related PHP scope
+passes 152 tests / 513 assertions; full PHPStan and changed-file Pint pass. Production
+error-response tests use debug=false and confirm no upstream private message is returned.
+This does not claim production log redaction or live verification. Independent review
+and fresh published-head CI remain the delivery gates for this bounded follow-up.
+
+Independent follow-up QA passes 65 focused cases / 229 assertions; security accepts
+code/test digest a58189fb91208e0d63b47e022ad88a47fd00f4ce8b635896a12b9453b88ea978.
+All four CodeRabbit comments are addressed. Its initial docstring-coverage advisory
+remains distinct from the successful GitHub checks; do not add boilerplate or weaken
+configuration to suppress it. Publish the reviewed bounded fix to the existing PR
+under the owner's authorization, then verify fresh-head CI. No plugin repack, merge,
+production access or deployment is part of this follow-up.

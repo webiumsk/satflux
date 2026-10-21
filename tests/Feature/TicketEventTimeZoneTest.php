@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Store;
 use App\Models\User;
+use App\Services\BtcPay\Exceptions\BtcPayException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -209,22 +210,127 @@ class TicketEventTimeZoneTest extends TestCase
         Http::assertNotSent(fn (Request $request) => $request->method() !== 'GET');
     }
 
+    public static function unrelatedWriteFailures(): array
+    {
+        $cases = [];
+        foreach (['POST', 'PUT'] as $method) {
+            foreach ([[404, 'event-not-found'], [404, null], [422, 'event-has-active-tickets'], [422, null], [403, 'forbidden'], [500, 'upstream-unavailable'], [422, 'event-start-local-unrecognized']] as [$status, $code]) {
+                $cases[$method.' '.$status.' '.($code ?? 'no-code')] = [$method, $status, $code];
+            }
+        }
+
+        return $cases;
+    }
+
+    #[DataProvider('unrelatedWriteFailures')]
+    public function test_unrelated_write_failures_retain_the_existing_exception_path(string $method, int $status, ?string $code): void
+    {
+        $store = $this->fixture();
+        Http::fake(fn (Request $request) => str_ends_with($request->url(), '/time-zones')
+            ? Http::response(['timeZones' => ['Europe/Bratislava']])
+            : ($request->method() === 'GET' ? Http::response([])
+                : Http::response(['code' => $code, 'message' => 'Synthetic non-time failure'], $status)));
+        $this->withoutExceptionHandling();
+        try {
+            $this->json($method, $method === 'POST' ? "/api/stores/{$store->id}/tickets/events" : $this->route($store), [
+                'title' => 'Synthetic event', 'eventType' => 'Physical', 'timeZone' => 'Europe/Bratislava', 'startLocal' => '2027-11-28T09:00',
+            ]);
+            $this->fail('Unrelated provider errors must not become event-time responses.');
+        } catch (BtcPayException $exception) {
+            $this->assertSame($status, $exception->getStatusCode());
+            $this->assertSame($code, $exception->getErrorCode());
+        }
+        $this->assertCount(1, Http::recorded(fn (Request $request) => $request->method() === $method));
+        foreach (Http::recorded() as [$request]) {
+            $this->assertTrue($request->hasHeader('Authorization', 'Bearer merchant-key'));
+        }
+    }
+
+    public static function writeMethods(): array
+    {
+        return [['POST'], ['PUT']];
+    }
+
+    #[DataProvider('writeMethods')]
+    public function test_production_error_response_for_unrelated_write_failure_does_not_expose_upstream_details(string $method): void
+    {
+        config(['app.debug' => false]);
+        $store = $this->fixture();
+        Http::fake(fn (Request $request) => str_ends_with($request->url(), '/time-zones')
+            ? Http::response(['timeZones' => ['Europe/Bratislava']])
+            : ($request->method() === 'GET' ? Http::response([])
+                : Http::response(['code' => 'event-not-found', 'message' => 'private-provider-detail'], 404)));
+        $response = $this->json($method, $method === 'POST' ? "/api/stores/{$store->id}/tickets/events" : $this->route($store), [
+            'title' => 'Synthetic event', 'timeZone' => 'Europe/Bratislava', 'startLocal' => '2027-11-28T09:00',
+        ]);
+        $response->assertStatus(500)->assertExactJson(['message' => 'Server Error']);
+        $this->assertStringNotContainsString('private-provider-detail', $response->getContent());
+    }
+
+    #[DataProvider('writeMethods')]
+    public function test_legacy_utc_only_writes_keep_the_existing_exception_path_even_for_known_codes(string $method): void
+    {
+        $store = $this->fixture();
+        Http::fake(fn (Request $request) => $request->method() === 'GET' ? Http::response([])
+            : Http::response(['code' => 'event-start-local-invalid', 'message' => 'Synthetic failure'], 422));
+        $this->withoutExceptionHandling();
+        try {
+            $this->json($method, $method === 'POST' ? "/api/stores/{$store->id}/tickets/events" : $this->route($store), [
+                'title' => 'Synthetic legacy event', 'startDate' => '2027-11-28T08:00:00Z',
+            ]);
+            $this->fail('Legacy writes must retain their existing exception path.');
+        } catch (BtcPayException $exception) {
+            $this->assertSame(422, $exception->getStatusCode());
+            $this->assertSame('event-start-local-invalid', $exception->getErrorCode());
+        }
+        $this->assertCount(1, Http::recorded(fn (Request $request) => $request->method() === $method));
+        Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/time-zones'));
+    }
+
+    public static function catalogWriteFailures(): array
+    {
+        return [['POST', 404, 'ticket_event_timezone_unsupported'], ['PUT', 404, 'ticket_event_timezone_unsupported'],
+            ['POST', 502, 'ticket_event_timezone_unavailable'], ['PUT', 502, 'ticket_event_timezone_unavailable']];
+    }
+
+    #[DataProvider('catalogWriteFailures')]
+    public function test_catalog_failure_remains_mapped_and_prevents_create_and_update(string $method, int $status, string $code): void
+    {
+        $store = $this->fixture();
+        Http::fake(fn (Request $request) => str_ends_with($request->url(), '/time-zones')
+            ? Http::response(['message' => 'private-provider-detail'], $status) : Http::response([]));
+        $response = $this->json($method, $method === 'POST' ? "/api/stores/{$store->id}/tickets/events" : $this->route($store), [
+            'title' => 'Synthetic event', 'timeZone' => 'Europe/Bratislava', 'startLocal' => '2027-11-28T09:00',
+        ]);
+        $response->assertStatus($status)->assertJsonPath('code', $code);
+        $this->assertStringNotContainsString('private-provider-detail', $response->getContent());
+        Http::assertNotSent(fn (Request $request) => $request->method() !== 'GET');
+    }
+
     public static function civilErrors(): array
     {
-        return [['event-start-local-nonexistent', 'startLocal'], ['event-start-local-ambiguous', 'startLocal'],
-            ['event-end-local-invalid', 'endLocal'], ['event-end-local-ambiguous', 'endLocal'],
-            ['event-date-range-invalid', 'endLocal']];
+        $cases = [];
+        foreach (['POST', 'PUT'] as $method) {
+            foreach ([['event-start-local-nonexistent', 'startLocal'], ['event-start-local-ambiguous', 'startLocal'],
+                ['event-end-local-invalid', 'endLocal'], ['event-end-local-ambiguous', 'endLocal'], ['event-date-range-invalid', 'endLocal']] as [$code, $field]) {
+                $cases[] = [$method, $code, $field];
+            }
+        }
+
+        return $cases;
     }
 
     #[DataProvider('civilErrors')]
-    public function test_provider_validation_codes_are_safe_and_field_specific(string $code, string $field): void
+    public function test_provider_validation_codes_are_safe_and_field_specific(string $method, string $code, string $field): void
     {
         $store = $this->fixture();
-        Http::fake([
-            '*/time-zones' => Http::response(['timeZones' => ['Europe/Bratislava']]),
-            '*' => Http::response(['code' => $code, 'message' => 'private-provider-detail'], 422),
+        Http::fake(fn (Request $request) => str_ends_with($request->url(), '/time-zones')
+            ? Http::response(['timeZones' => ['Europe/Bratislava']])
+            : ($request->method() === 'GET' ? Http::response([])
+                : Http::response(['code' => $code, 'message' => 'private-provider-detail'], 422)));
+        $response = $this->json($method, $method === 'POST' ? "/api/stores/{$store->id}/tickets/events" : $this->route($store), [
+            'title' => 'Synthetic event', 'timeZone' => 'Europe/Bratislava', 'startLocal' => '2026-10-25T02:30',
         ]);
-        $response = $this->putJson($this->route($store), ['timeZone' => 'Europe/Bratislava', 'startLocal' => '2026-10-25T02:30']);
         $response->assertUnprocessable()->assertJsonPath('code', $code)->assertJsonPath("errors.{$field}.0", $code);
         $this->assertStringNotContainsString('private-provider-detail', $response->getContent());
     }

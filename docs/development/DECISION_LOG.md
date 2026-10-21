@@ -543,7 +543,7 @@ current workflow; existing host dependency advisories and staging gates remain.
 ## 2026-10-22: public sales language and time-zone presentation
 
 The approved 2.1.0 follow-up corrects plugin presentation without editing BTCPay
-core. Host invariant culture is not an anonymous customer's language preference.
+core. The host's invariant culture is not an anonymous customer's language preference.
 Use allowlisted EN/SK/ES/DE/CS choice or bounded weighted browser languages, and
 a CSRF-protected presentation-only language POST preserving the existing session
 and incomplete draft. Do not change invoice language/settings or recreate intents.
@@ -614,3 +614,13 @@ The Product Owner explicitly authorizes pushing Satflux changes to its existing 
 feature branch. Publish the reviewed timezone/default/settings consumer and its docs
 as an update to PR #397; keep plugin source/package publication separate. No merge,
 production change or deployment is authorized. Preserve the unrelated image edit.
+
+### PR #397 review: classify catalog and write failures separately
+
+Confirm and fix the bounded CodeRabbit error-classification finding within the approved
+Tickets scope. Catalog failures remain safely mapped; event writes use that mapping
+only for exact allowlisted event-time codes when new time fields are present. Preserve
+legacy UTC-only and unrelated provider exception behavior. Keep the shared code/field
+map as the sole classification authority; no prefix matching or payment/API contract
+expansion. Correct the three documentation comments in the same follow-up. Existing
+publication authorization applies to the reviewed fix; no merge or deployment follows.

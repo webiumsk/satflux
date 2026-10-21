@@ -135,9 +135,15 @@ class TicketController extends Controller
 
         try {
             $this->eventTimeZoneService->validatePayload($store, $data + $request->only(['startDate', 'endDate']));
+        } catch (BtcPayException $exception) {
+            return $this->eventTimeZoneFailure($exception);
+        }
+
+        try {
             $event = $this->ticketService->createEvent($store->btcpay_store_id, $data, $userApiKey);
         } catch (BtcPayException $exception) {
-            if (! $this->eventTimeZoneService->usesTimeZoneFields($data)) {
+            if (! $this->eventTimeZoneService->usesTimeZoneFields($data)
+                || ! $this->eventTimeZoneService->isEventTimeError($exception)) {
                 throw $exception;
             }
 
@@ -183,9 +189,15 @@ class TicketController extends Controller
 
         try {
             $this->eventTimeZoneService->validatePayload($store, $data + $request->only(['startDate', 'endDate']));
+        } catch (BtcPayException $exception) {
+            return $this->eventTimeZoneFailure($exception);
+        }
+
+        try {
             $event = $this->ticketService->updateEvent($store->btcpay_store_id, $eventId, $data, $userApiKey);
         } catch (BtcPayException $exception) {
-            if (! $this->eventTimeZoneService->usesTimeZoneFields($data)) {
+            if (! $this->eventTimeZoneService->usesTimeZoneFields($data)
+                || ! $this->eventTimeZoneService->isEventTimeError($exception)) {
                 throw $exception;
             }
 

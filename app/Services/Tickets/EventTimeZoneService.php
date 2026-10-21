@@ -11,6 +11,18 @@ use Illuminate\Validation\ValidationException;
 /** The plugin owns the timezone catalog and civil-time conversion. */
 class EventTimeZoneService
 {
+    private const EVENT_TIME_ERROR_FIELDS = [
+        'event-time-zone-invalid' => 'timeZone',
+        'event-start-local-invalid' => 'startLocal',
+        'event-start-local-nonexistent' => 'startLocal',
+        'event-start-local-ambiguous' => 'startLocal',
+        'event-end-local-invalid' => 'endLocal',
+        'event-end-local-nonexistent' => 'endLocal',
+        'event-end-local-ambiguous' => 'endLocal',
+        'event-date-conflict' => 'startLocal',
+        'event-date-range-invalid' => 'endLocal',
+    ];
+
     public function __construct(protected TicketService $tickets) {}
 
     /** @return array{timeZones: list<string>} */
@@ -57,23 +69,20 @@ class EventTimeZoneService
         }
     }
 
+    public function isEventTimeError(BtcPayException $exception): bool
+    {
+        $code = $exception->getErrorCode();
+
+        return $code !== null && isset(self::EVENT_TIME_ERROR_FIELDS[$code]);
+    }
+
     /** @return array{code: string, errors?: array<string, list<string>>} */
     public function error(BtcPayException $exception): array
     {
         $code = $exception->getErrorCode();
-        $fields = [
-            'event-time-zone-invalid' => 'timeZone',
-            'event-start-local-invalid' => 'startLocal',
-            'event-start-local-nonexistent' => 'startLocal',
-            'event-start-local-ambiguous' => 'startLocal',
-            'event-end-local-invalid' => 'endLocal',
-            'event-end-local-nonexistent' => 'endLocal',
-            'event-end-local-ambiguous' => 'endLocal',
-            'event-date-conflict' => 'startLocal',
-            'event-date-range-invalid' => 'endLocal',
-        ];
-        if ($code !== null && isset($fields[$code])) {
-            return ['code' => $code, 'errors' => [$fields[$code] => [$code]]];
+
+        if ($code !== null && isset(self::EVENT_TIME_ERROR_FIELDS[$code])) {
+            return ['code' => $code, 'errors' => [self::EVENT_TIME_ERROR_FIELDS[$code] => [$code]]];
         }
 
         return ['code' => match ($exception->getStatusCode()) {
