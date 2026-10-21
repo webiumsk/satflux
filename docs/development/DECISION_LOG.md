@@ -538,3 +538,79 @@ and recording archive/DLL hashes. Commit and push only the scoped Satflux featur
 branch. This authorizes neither plugin source publication nor merge, installation,
 release publication or deployment. Exact-head CI requires a pull request under the
 current workflow; existing host dependency advisories and staging gates remain.
+
+
+## 2026-10-22: public sales language and time-zone presentation
+
+The approved 2.1.0 follow-up corrects plugin presentation without editing BTCPay
+core. Host invariant culture is not an anonymous customer's language preference.
+Use allowlisted EN/SK/ES/DE/CS choice or bounded weighted browser languages, and
+a CSRF-protected presentation-only language POST preserving the existing session
+and incomplete draft. Do not change invoice language/settings or recreate intents.
+
+Events currently store UTC instants without a venue time-zone field. Render those
+instants in the visitor's browser zone and explicitly label the zone; keep UTC when
+formatting is unavailable. Do not hardcode CET or reinterpret stored dates. Venue
+time-zone authoring is a separate product decision, not silently inferred from
+location text or language. Candidate version is 2.1.1; no schema change is required.
+
+
+## 2026-10-22: automatic header language and content-addressed assets
+
+The Product Owner requests changing language immediately from the header rather
+than submitting a separate language button. Use the five constant dictionaries in
+the existing DOM; update text/allowed attributes, local dates/amounts and form
+language without HTTP requests or recipient-data transport. Retain input identity,
+drafts, delivery choice, nonce and frozen checkout intent. The bounded backend
+presentation action remains compatible.
+
+Unversioned URLs allowed an old 2.1.0 script to be reused against the 2.1.1 page
+in offline reproduction, matching the reported failure pair. Require content-hash
+asset paths, exact version validation and explicit caching while retaining old
+routes; do not weaken CSP. Reproduce the real shared host layout/CSP and check
+actual generated route contracts, not only an overridden layout. This does not
+confirm the operator's cache origin or authorize production cache/config changes.
+Stored 08:00 UTC and browser-local 09:00 CET represent the same winter instant.
+
+## 2026-10-22: physical event venue time, virtual visitor time
+
+Status: Product Owner authorizes implementation and confirms every existing physical
+Tickets event belongs to `Europe/Bratislava`. Add explicit IANA metadata with a
+metadata-only historical backfill; never rewrite UTC instants. Future physical events
+must choose a venue zone in existing authoring forms; old API clients remain compatible
+with a clearly labelled unknown-zone UTC fallback. Physical public/ticket output uses
+venue time even for foreign visitors; virtual public output uses visitor time. Provider
+2.2.0 owns the catalog and civil conversion. Reject DST gaps and ambiguous edited civil
+hours rather than silently choose an offset; UTC instant API compatibility remains.
+Sparse date writes preserve original precision on unrelated edits. Install provider
+before dependent Satflux consumer. See TICKETS_SALES_ORDERING.md for contract/review
+ownership. No production operation, merge or deployment follows from this decision.
+
+### 2026-10-22 clarification: store default with event override
+
+The Product Owner approves using the Satflux store's saved timezone as the initial
+choice for a new physical event, retaining a per-event override. Snapshot the chosen
+zone on the event; later store changes must not alter existing events. Apply defaults
+only from the matching store after provider validation, before user interaction.
+Do not infer a zone from IP, browser location or a missing catalog.
+
+Source inspection of pinned BTCPay 2.4.5 shows no persisted store timezone in its
+standard Store API: the unknown outbound `timeZone` extension is not mapped. Satflux's
+local `Store.timezone` is authoritative. Fix settings reload to prefer it rather than
+show UTC and risk overwriting the saved choice on an ordinary subsequent save. The
+manual form defaults UTC while the guest provisioner explicitly stores Europe/Vienna;
+these are code findings, not production observations. Do not automatically rewrite
+existing store records or change provisioning defaults in this milestone. Native
+BTCPay event creation keeps explicit venue selection because it cannot read Satflux's
+local store preference; do not invent a core field or cross-service write bridge.
+
+The independent review also requires a native stale-schedule guard: original UTC
+baseline hints detect concurrent start/end changes before civil conversion or writes,
+retain the draft and require a fresh reload. These hints do not replace authorization.
+
+### 2026-10-22: publish reviewed Satflux follow-up
+
+The Product Owner explicitly authorizes pushing Satflux changes to its existing owned
+feature branch. Publish the reviewed timezone/default/settings consumer and its docs
+as an update to PR #397; keep plugin source/package publication separate. No merge,
+production change or deployment is authorized. Preserve the unrelated image edit.

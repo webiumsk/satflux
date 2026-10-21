@@ -285,3 +285,67 @@ packaged without rebuilding; see the implementation record for artifact integrit
 Next: consumer PR/exact-head CI, separate provider source publication review, then
 representative provider-first staging and release/rollback approval. Building the
 installer and pushing the consumer do not authorize installation or deployment.
+
+
+### Tickets 2.1.1 presentation correction - 2026-10-22
+
+Complete independent browser acceptance of automatic/manual language choice,
+draft preservation and DST-aware visitor-zone display; then deliver the verified
+local installer. Keep hosted BTCPay checkout language independent and UTC storage
+unchanged. The 108 non-database tests and 7 JS tests pass; source security review
+accepts the bounded delta. Separate plugin source publication, exact-head consumer
+PR CI and representative staging/release gates remain. No production action is
+implied by the local package.
+
+Final local 2.1.1 gate completed: 39 focused and 32 existing browser checks pass;
+the rebuilt accessible picker passes six viewport/theme scenarios across interaction
+states and final draft/time smoke checks. The final DLL passes 108 non-database
+regressions, zero skips. Next: deliver the checked installer and prepare separate
+source publication/CI and staging when requested. Existing host dependency warnings
+and production release/rollback gates remain; no live resolution is claimed.
+
+
+### Tickets 2.1.2 host/cache integration - 2026-10-22
+
+Finish independent actual shared-layout/CSP/production-asset browser validation
+for the header language selector and content-hash paths, including stale-script
+reproduction, five languages, no-request draft retention and DST. The exact-host
+build, 115 non-database tests and 10 JS tests pass; independent security accepts
+the frozen scope. Deliver the checked local 2.1.2 installer after final QA. Keep
+operator cache provenance unconfirmed until browser/network evidence is supplied;
+no production changes or clock/data adjustment are authorized. Separate source
+publication, CI, representative staging and release/rollback gates remain.
+
+Final local 2.1.2 milestone complete: 26 actual shared-layout/CSP/resource browser
+cases and independent installer integrity pass, alongside 115 .NET/10 JS tests and
+security review. Next: hand off the local installer, then separately prepare source
+publication/CI and representative staging when requested. Never rewrite event UTC
+dates to compensate for display or claim production cache provenance from a local
+reproduction. Core and production configuration remain untouched.
+
+## Tickets venue-time correction - 2.2.0
+
+Owner-approved milestone: preserve UTC instants; render physical events in explicit
+venue IANA time and virtual events in visitor time. Historical physical-zone backfill
+is Europe/Bratislava per owner confirmation. Extend existing native/Satflux forms,
+provider catalog/conversion and sparse updates; independently review and test real
+metadata-only migration, DST, cross-browser-zone display and old-provider refusal.
+Prepare a local 2.2.0 installer, then await separate installation/consumer release and
+production acceptance. No production changes are authorized by local verification.
+
+Venue-time implementation now includes the owner-approved Store default with per-event
+override and a fix for misleading UTC on Store settings reload. Final local suites
+pass: provider172, PHP125 and focusedfrontend74; final artifact/review identity is in
+TICKETS_SALES_ORDERING.md. Next gate: final independent candidate QA, then separately
+coordinate provider installation before consumer publication/deployment. Existing
+Store values previously overwritten to UTC need operator confirmation, not inference.
+
+Final local independent QA/security gate is complete: actual final native guard8,
+browser smoke8 and exact installer integrity pass. Next milestone is provider2.2.0
+installation before releasing dependent Satflux changes, followed by deployed UX
+acceptance; no production action or source publication was performed here.
+
+The Product Owner authorizes publication of the reviewed consumer follow-up to PR397
+on `feat/tickets-sales-ordering`. Next source gate: exact-head GitHub CI/review, then
+separately approved provider-first installation and deployed acceptance. Existing local
+verification is not presented as a completed remote CI run.

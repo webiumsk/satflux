@@ -860,3 +860,143 @@ Consumer publication is scoped to the 23 reviewed application/test/localization/
 files. Feature-branch pushes alone do not trigger this repository's CI workflow;
 exact-head PR CI and representative provider-first staging are the next gates.
 No production configuration or `.env` change is required by this milestone.
+
+
+## 2026-10-22: Tickets 2.1.1 public language and local times
+
+The Product Owner reported successful 2.1.0 operation with incorrect public UI
+language/time presentation. Source and an offline browser reproduction confirm
+invariant host culture forces English and the old view explicitly displays UTC.
+The focused 2.1.1 candidate resolves supported browser/explicit language, preserves
+drafts during a bounded presentation-only language POST, and formats UTC instants
+in the visitor's labelled browser zone with an accurate UTC fallback. No event
+persistence, checkout/fulfillment, core or third-party plugin change is included.
+
+Exact-host Release build passes; 108 non-database .NET cases (including 23 new
+presentation cases) and 7 production-JS cases pass with no skips. The original
+15 PostgreSQL cases belong to the preceding 2.1.0 acceptance and were not rerun for
+this presentation-only delta. Independent security accepts the frozen eight-file
+scope. Independent QA passes 39 focused browser checks and 32 existing browser
+regressions. A scoped CSS correction closes the new picker contrast finding; the
+final rebuilt embedded assets pass six light/dark viewport scenarios across all
+button states, 44px keyboard/label checks and draft/local-time smoke tests.
+
+Local installer version 2.1.1.0 contains the tested DLL SHA256
+`2e4d27ee3c9aab3bab750e8c5dfcfc70c73f6aaf3e260976bc6277cdd888bcc9`.
+Archive SHA256 is `3c173ddf1257943744b6d7a411b2d4e516b93b26580d90bf558b7211d33293b9`.
+The previous installer and original plugin WIP remain unchanged. Consumer code
+remains the already pushed `a9be6a17e63f6070b4145b3509070bd8466ee900`; its new
+follow-up docs are local. Plugin changes remain uncommitted/unpublished. No live
+behavior, installation, merge or production deployment is independently verified.
+
+Independent final archive QA also passes: 103 entries, exact browser-tested DLL
+and assets, CRC/path/sidecar checksums and no forbidden configuration/key/database
+artifacts. The checked local installer is ready for Product Owner delivery; no
+plugin source publication or production installation is performed.
+
+
+## 2026-10-22: Tickets 2.1.2 header switch and asset freshness
+
+The Product Owner reports 2.1.1 URL language works but its button and time
+enhancement do not. Independent offline reproduction using the actual unchanged
+shared BTCPay layout, pinned CSP and production asset handlers establishes that
+fresh 2.1.1 assets work, while replaying 2.1.0 JS at the identical unversioned URL
+reproduces both the UTC display and ineffective language button. No missing nonce
+cause is supported. Actual operator cache provenance remains unverified. Earlier
+layout-override QA was narrower and did not establish this host/cache integration.
+
+Candidate 2.1.2 moves language selection to the header and changes constant public
+copy, accessible labels, amounts and local dates immediately in the existing DOM.
+It sends no request and preserves recipient inputs/drafts, quantities, delivery
+choice and nonce; hidden form language/shareable URL stay synchronized. Embedded
+JS/CSS have content-hash paths with exact version validation/cache policy; old
+paths remain compatible. UTC storage, CSP, CSRF, payment/session/recovery and
+private virtual-location boundaries remain unchanged.
+
+Exact-host build passes (zero errors, 19 existing warnings). All 115 non-database
+.NET and 10 production-JS cases pass, zero skips. Independent security accepts the
+frozen eight-file digest
+`a82819c1b2b71127e6bd8eaa3ded0c281311571b830d9642eaee3a32a06c81d6`.
+Final full-layout/browser/cache and installer QA remain the local delivery gate.
+The local 2.1.2.0 archive SHA256 is
+`58dabe1628d9350f87ca8f9eaa05f0e1c7c91efe6d27ead7a8f486374dbbb207`;
+its exact tested DLL SHA256 is
+`06e3f19ddaa3592524a2bd99496e8816e873a1f921dc187a33abcd64212e2a65`.
+The prior installer/original WIP/pinned core remain unchanged. No plugin source
+commit/publication, merge, production access or deployment is performed.
+
+Final 2.1.2 delivery gate passes: independent QA accepts 26 focused actual shared-
+layout/CSP/resource-route browser cases and the exact 103-entry installer. Header
+switching preserves drafts without requests, new hash paths bypass the reproduced
+stale legacy script, and browser-zone/DST times are correct. Synthetic-DI/page/
+submit, Chrome-engine and non-production limits are detailed in the handoff.
+Operator Brave/+/-/empty-console feedback is consistent; actual cache origin is
+still unverified. Ready to deliver the checked local installer; publication/CI and
+representative staging remain separate next steps under applicable authorization.
+
+QA additionally passes the host-filter CSRF check (missing token 400, valid
+synthetic token 200) and stops its disposable harness. All required local delivery
+gates are complete; source/package fingerprints remain unchanged.
+
+## Tickets 2.2.0 venue-time correction (2026-10-22)
+
+Owner-approved implementation separates physical venue time from virtual visitor time.
+The owner confirms all historical physical events are `Europe/Bratislava`; the additive
+provider migration backfills only their null timezone metadata and preserves all UTC
+instants. New authoring extends existing forms, with provider-owned IANA catalog/civil
+conversion and safe partial date updates. See TICKETS_SALES_ORDERING.md for the full
+contract, bounded agent ownership, provider-first rollout and rollback limitations.
+Independent security/QA and exact-host tests are in progress; no production migration,
+installation, deployment or merge has been performed. Graphify graph/tool remain
+unavailable; targeted source reads were used. Existing unrelated image edits remain
+untouched in the original checkout. The prior 2.1.2 installer remains immutable.
+
+### Store timezone clarification
+
+The owner approved store-default plus event-override behavior. Source review confirms
+that BTCPay 2.4.5 does not persist Satflux's outbound store `timeZone`; use local
+`Store.timezone` as authority. Settings reload previously defaulted to UTC instead
+of reading local data, allowing a later Save to overwrite it. A focused correction
+and reload/save regression now pass within 125 related PHP cases / 386 assertions.
+No store records or provisioning defaults were changed. The initial 2.2.0 candidate
+is preserved; final follow-up adds safe new-event defaults and native stale-schedule
+rejection before a replacement local artifact/review. No release or deployment yet.
+
+### Final 2.2.0 source/test follow-up
+
+Store-default behavior and the local settings read fix are complete. Native stale
+forms compare original start/end UTC ticks plus original venue/type before conversion
+or writes, preserve drafts and require reload on conflict. Exact-host final build
+passes; provider172/172 (21 PG) and consumer125/386 pass; frontend74 focused tests,
+full PHPStan/Pint, final typecheck (120 unchanged) and production build pass.
+Independent security accepts bounded source, including closure of both stale native
+schedule reproductions; final actual-artifact QA remains the last local gate.
+Final source digests and the new archive302e2065/DLL15fbf88c identity are recorded in
+TICKETS_SALES_ORDERING.md. Prior candidates are preserved. No source publication,
+merge, production migration or deployment has occurred in this follow-up.
+
+### Independent final local acceptance
+
+Independent security accepts final provider150/consumer20 fingerprints. Independent
+QA passes final8 actual native guard database cases,8 compiled browser smoke cases
+and final archive/DLL/resource equality, in addition to baseline31 browser/5 real
+upgrade groups and focused frontend checks. No remaining blocker in authorized scope.
+Local installer2.2.0.0 final archive SHA302e206578c213b4740637df34ce8f4f5a3d96503f901e5531171251eedf82b3
+contains tested DLL15fbf88ce04543226540be0fe1347d8ece46cf871223eaf7a50702856c726c0c.
+Next milestone is separately coordinated provider installation before the Satflux
+consumer release and deployed acceptance. Nothing was merged or deployed. Current
+follow-up source changes are local; the previously pushed branch head is unchanged.
+
+### Owner-authorized Satflux publication
+
+The Product Owner authorizes pushing the prepared Satflux follow-up to the existing
+`feat/tickets-sales-ordering` branch and PR #397. Remote head before publication is
+`a9be6a17e63f6070b4145b3509070bd8466ee900`; it matches the local parent. The reviewed
+20-file consumer fingerprint remains
+`0efce0679cc1e1b9269c7b993c8be2cc8ba0b5476eff835c1a3815f3303c124e`.
+Only publication documentation is added after final independent review. Previous
+local test results remain evidence for unchanged application source, not new CI
+results. Exact published-head CI and GitHub review are the next source gates; install
+provider 2.2.0 before consumer deployment. This authorizes no plugin publication,
+merge, production migration or deployment. The unrelated original image edit remains
+excluded from this branch and commit.

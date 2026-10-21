@@ -146,3 +146,398 @@ embedded JS/CSS; no host/other-plugin/test DLLs, configuration, keys or database
 are included. All 20 reviewed source/artifact fingerprints remain unchanged and
 the final consumer scope contains exactly 23 files. This checks artifact integrity,
 not installation, live payment processing or production behavior.
+
+
+### 2.1.1 language and time-zone follow-up contract
+
+After the consumer was pushed at `a9be6a17e63f6070b4145b3509070bd8466ee900`,
+the Product Owner reported that the installed 2.1.0 candidate works, but public
+copy remains English and event times are displayed in UTC instead of local time.
+This is operator feedback, not independently verified production behavior.
+
+Repository evidence confirms the pinned host's `SetCultureMiddleware` resets both
+current cultures to invariant; using that UI culture always selects the English
+public-sales dictionary. The plugin also explicitly renders UTC and never converts
+its `<time>` values. The event schema has no venue time-zone field.
+
+Bounded fix: select EN/SK/ES/DE/CS independently from explicit allowlisted language
+and weighted browser preferences; provide a visible language switch preserving
+checkout drafts. A separate CSRF-protected presentation-only action may re-render
+incomplete drafts without creating orders/invoices or changing frozen checkout
+intent. Continue preserving chosen language across the existing flow. Render UTC
+instants in the visitor's browser zone through Intl, explicitly label the zone, and
+retain an accurate UTC fallback without JavaScript/Intl. Do not assume the visitor
+is in the venue zone, hardcode CET, alter stored event dates or change API payloads.
+
+Acceptance includes `2026-11-28T08:00:00Z` -> 09:00 in Europe/Bratislava, summer
+DST, non-European zones, five-locale copy/date/number formatting, invalid and
+quality-zero language preferences, no-JavaScript fallback, draft-preserving change
+and existing checkout/CSRF/privacy regressions. Independent security and QA review
+are required for this bounded delta. Candidate version is 2.1.1; the old 2.1.0
+installer remains immutable. No core/third-party/production change or plugin source
+publication is authorized by this local correction.
+
+
+### Final 2.1.1 acceptance and local package - 2026-10-22
+
+Independent security accepts the final eight-file presentation scope. Main
+recomputed its raw-byte/path-ordered SHA256:
+`7db281678fef1f6e1c48332746977e663f610a0cb8482a5e5620c84b9d790497`.
+Paths, in order from plugin repository root: `Services/TicketSalesText.cs`,
+`ViewModels/Models/TicketSalesPageViewModel.cs`,
+`Controllers/UITicketSalesPublicController.cs`,
+`Views/UITicketSalesPublic/EventSummary.cshtml`, `Resources/js/ticket-sales.js`,
+`Resources/css/ticket-sales.css` (all prefixed
+`Plugins/BTCPayServer.Plugins.SatfluxTickets/`), followed by
+`Plugins/BTCPayServer.Plugins.SatfluxTickets.Tests/TicketSalesPresentationTests.cs`
+and `Plugins/BTCPayServer.Plugins.SatfluxTickets.Tests/TicketSalesClientTests.cjs`.
+For each ordered path, concatenate path, ASCII space, lowercase raw-byte SHA256
+and LF, then SHA256 the resulting UTF-8 text. Version/changelog/README and consumer
+documentation are outside this presentation digest.
+
+Final exact-host Release build passes with zero errors and 19 existing warnings.
+The final rebuilt DLL passes **108/108 non-database .NET tests, zero skips**,
+including 23 new presentation cases. Run with `--no-build --no-restore -c Release`
+and filter `FullyQualifiedName!~TicketTypeOrderDatabaseTests&FullyQualifiedName!~TicketSalesDatabaseTests`,
+with `TICKETS_ORDER_TEST_CONNECTION` unset. All **7 production-JS cases** pass.
+The unchanged 15 PostgreSQL cases remain preceding milestone evidence and were
+not rerun. No application warning/test allowance or dependency was changed.
+
+Independent QA reproduces the original issue offline against 2.1.0. Its new
+**39 browser checks** and **32 existing regressions** pass: browser/explicit language,
+quality-zero/invalid/bounded preferences, all five languages and dynamic contacts,
+Bratislava winter/summer, New York/UTC/Tokyo, both DST transitions, immutable UTC
+attributes, no-JavaScript/Intl-failure fallbacks and incomplete draft preservation.
+A new secondary-button contrast finding (2.72:1 on white when focused) is corrected
+with plugin-scoped static colors. The final rebuilt embedded CSS passes **six
+light/dark viewport combinations** for default, hover, keyboard focus and active
+states, associated labels and 44px targets, plus final draft/09:00 local-time smoke.
+All 106 frozen functional source/project files remain unchanged across the final
+CSS-only rebuild. Text contrast is above 14:1 in the corrected button.
+
+Harness limits remain explicit: the actual compiled Razor, embedded assets and
+production locale helper run locally with synthetic fixtures. The valid-session
+language POST echo is synthetic; real controller session rejection/CSRF/limits are
+covered by tests and independent source tracing. This is not a full deployed-host
+valid-session integration test, real payment/email test or production verification.
+The picker does not change hosted BTCPay invoice language.
+
+Final installer `BTCPayServer.Plugins.SatfluxTickets.btcpay`, manifest 2.1.1.0:
+
+- Archive SHA256: `3c173ddf1257943744b6d7a411b2d4e516b93b26580d90bf558b7211d33293b9`.
+- Sidecar manifest SHA256: `0cc6fcb60fb43897ee7f632475db1569a844fafef0fa6f4f1cc8003c846e4430`.
+- Packaged/tested DLL SHA256: `2e4d27ee3c9aab3bab750e8c5dfcfc70c73f6aaf3e260976bc6277cdd888bcc9`.
+- Embedded JS SHA256: `872b8695e15792f921ebee55414e80b64a0652ab92e1b5bbd874ac4d97a2b709`.
+- Embedded CSS SHA256: `c8191577495f5af0860b366401ae7de9cbc391a2d73a52d4d66330134692c5f4`.
+
+No deployment, installation, merge or plugin source publication occurred. Earlier
+2.1.0 and pre-contrast local candidates are preserved as evidence; only the final
+archive hash above identifies the delivered candidate. Original plugin WIP and
+BTCPay core remain unchanged. Existing SignalR/PKCS host/transitive warnings and
+pending-intent rollback constraints from 2.1.0 still apply.
+
+Independent final package QA accepts the delivered archive: 103 entries /
+12,938,815 bytes; CRC, safe unique paths, both sidecar checksums, standalone identity
+and BTCPay >=2.4.5 requirement pass. Packaged DLL and embedded assets exactly match
+the final browser-tested build. No host/other-plugin/test assemblies, configuration,
+keys or database artifacts are bundled; file set matches 2.1.0. The old installer
+is unchanged. This closes local package acceptance, not staging or production gates.
+
+
+### 2.1.2 follow-up contract - 2026-10-22
+
+The Product Owner reports that explicit URL language works in 2.1.1, but the
+manual button and local-time enhancement do not, and requests automatic header
+selection. This supersedes the previous POST-based primary language interaction.
+Do not reinterpret the stored 08:00 UTC instant: 09:00 CET in the Satflux browser
+is the same instant for the reported winter event.
+
+Source review confirms identical unversioned asset URLs across 2.1.0/2.1.1 and no
+explicit asset cache policy. Stale 2.1.0 JS would explain both symptoms, but the
+operator's actual asset bytes/cache headers are not available. Pinned default CSP
+permits same-origin external scripts and inert JSON; no nonce failure is confirmed.
+Previous QA used a layout override, so it did not establish complete host layout,
+CSP or cache integration. New QA must reproduce the real pinned layout and CSP.
+
+Accepted scope: a header select switches EN/SK/ES/DE/CS immediately using constant
+public copy and text/attribute updates, preserving buyer DOM/drafts and nonce.
+Update dates/money, dynamic contacts, accessible labels, document/form language;
+never translate merchant-authored content automatically. Use versioned embedded
+JS/CSS paths plus explicit cache behaviour, retaining legacy routes safely. No CSP
+weakening, storage/API date changes, core changes or new payment operations.
+
+Main owns version 2.1.2, documentation/build/package and publication boundaries.
+The plugin specialist owns the bounded text/controller-asset/view/JS/CSS/test
+delta; security reviews input/DOM/asset isolation read-only; independent QA owns
+synthetic full-layout/CSP/cache reproduction and final browser/artifact acceptance.
+Preserve preceding installers and uncommitted work. No deployment, plugin source
+publication or production change is authorized by this local correction.
+
+
+### Final 2.1.2 local acceptance - 2026-10-22
+
+Operator feedback identifies Brave, working quantity buttons and an empty console.
+This is consistent with the stale-script reproduction, but the actual operator
+response bytes/cache source remain unknown. No browser Shields, proxy, production
+cache or stored dates were modified. Satflux `TicketsShow.vue` uses browser-local
+Intl formatting and UTC ISO serialization; 08:00 UTC and 09:00 CET are correct
+representations of the same reported winter instant.
+
+Independent security accepts the frozen eight-file presentation scope, using the
+previously documented paths/order/algorithm:
+`a82819c1b2b71127e6bd8eaa3ded0c281311571b830d9642eaee3a32a06c81d6`.
+Main recomputed the same fingerprint. All public-controller changes versus 2.1.1
+are asset actions; payment/session/reconciliation actions and shared layout are
+unchanged. New constant translation data uses default-escaped inert JSON and
+allowlisted own-key/string validation; updates use textContent/fixed aria labels,
+not HTML insertion. Header switching performs no requests and retains input DOM,
+delivery mode, incomplete values, CSRF token, nonce and frozen checkout href.
+
+Exact-host Release build passes with zero errors and 19 existing warnings. Final
+**115/115 non-database .NET tests pass, zero skips**, with the existing explicit
+PostgreSQL class exclusions and no test connection variable. **10/10 production-JS
+cases pass**; security independently reruns these and syntax/diff checks. The 15
+PostgreSQL cases remain previous milestone evidence, not a rerun.
+
+Independent QA accepts **26/26 focused browser cases** using the unchanged actual
+compiled plugin/shared host layouts, pinned host CSP/taghelpers/antiforgery/static
+assets and real production asset methods. The harness reflects production route
+prefixes/templates/parameter shapes at startup, avoiding the old URL mapping gap.
+Cases cover all three aliases with/without a path base; HTTP asset bytes/hashes and
+cache policies; invalid versions; replayed stale legacy JS bypass; five immediate
+languages with zero requests and retained invalid/complete drafts; DST, UTC/New
+York/Bratislava; mobile light/dark 320/390 and 44px/no overflow; readonly pending
+and known-checkout states; fallback/private virtual location; runtime startup
+exceptions and synthetic form submission.
+
+Pinned default CSP produces no app violations. A separate stricter test blocking
+all inline scripts preserves plugin operation; expected blocked host inline code
+is not reported as an app defect. Initial failing QA assertions were synthetic
+locale/header mismatch and broad host noscript/absent-anchor selectors, corrected
+without application changes; the final bounded cases pass.
+
+Harness boundaries: page DTOs and unrelated DI are synthetic, production resource
+methods are delegated after route-contract checks, and submission endpoints are
+synthetic. This is not a full BTCPay startup, real invoice/email/DB-session test,
+Brave binary test or production cache verification. Startup diagnostics handle
+exceptions after the script executes; they cannot reveal an external script that
+never loads. Explicit UTC/no-JavaScript fallback remains accurate.
+
+Final local standalone installer version 2.1.2.0, BTCPay >=2.4.5:
+
+- Archive SHA256: `58dabe1628d9350f87ca8f9eaa05f0e1c7c91efe6d27ead7a8f486374dbbb207`.
+- Sidecar manifest SHA256: `72c34f324ef41e4712ac030c6ea1bef8e173c1917f3c530b4ce97d1934a1d304`.
+- Tested/browser/packaged DLL SHA256: `06e3f19ddaa3592524a2bd99496e8816e873a1f921dc187a33abcd64212e2a65`.
+- Embedded JS SHA256: `58dd430d763fd2c270c7155e2e22818a4592663b20303390f431189026ba1577`.
+- Embedded CSS SHA256: `2e33e0140ae241a9b3d486501661bdf357833f82da5dade9ee0080417523058e`.
+
+Independent package QA accepts all 103 entries / 12,941,682 bytes, CRC/safe paths,
+sidecar checksums/manifest, exact embedded bytes and unchanged file set. No host,
+other-plugin, test, configuration, key or database payload is included. The prior
+2.1.1 archive and original WIP fingerprint remain unchanged. Source changes remain
+local/uncommitted; no merge, publication, production access or deployment occurred.
+Existing host dependency advisories and separate staging/release gates remain.
+
+Final independent host-filter CSRF check also passes: a synthetic submit without
+a token returns 400; a valid synthetic token returns 200. This is additional to
+the 26 browser cases and does not invoke real invoice/session/database operations.
+The local harness is stopped; no application or package changes followed review.
+
+## Tickets 2.2.0: venue time zones (2026-10-22)
+
+The Product Owner corrected the earlier visitor-time design: physical events must
+show the venue's local time independently of the visitor's browser, VPN or location;
+virtual events retain visitor time. The owner explicitly confirmed that **all
+existing physical events belong to Europe/Bratislava**. This supersedes the earlier
+UTC-only/visitor-time presentation decisions above; their evidence remains historical.
+Implementation and local installer preparation are authorized. Production migrations,
+installation, deployment and merges have not been performed or authorized here.
+
+### Acceptance and integration contract
+
+- Preserve UTC instants, precision, reminders, sale cutoff and payment/fulfillment
+  semantics. Add nullable `Event.TimeZone` (IANA, at most 100 characters).
+- Migration `20261022120000_EventVenueTimeZone` adds metadata and backfills only
+  existing Physical rows with a null zone to `Europe/Bratislava`; it never changes
+  dates, reminders or virtual rows. Future old-client physical creates without a
+  zone remain unknown and render clearly labelled UTC. No inferred future venue.
+- Provider 2.2.0 owns an immutable bounded IANA catalog and civil-to-UTC conversion.
+  Authenticated store-scoped `GET .../satflux-tickets/time-zones` returns
+  `{timeZones: string[]}`. Satflux proxies through its existing local-store UUID
+  authorization boundary as `{data:{timeZones:string[]}}`, using the owner's key.
+- Existing `startDate` / `endDate` are UTC or explicit-offset instants. New
+  `startLocal` / `endLocal` are civil `YYYY-MM-DDTHH:mm[:ss]` values with explicit
+  `timeZone`. A date cannot be supplied as both instant and civil. The provider
+  rejects invalid zones, DST gaps and ambiguous civil hours with safe field-specific
+  HTTP 422 codes. This milestone does not add an offset-choice UI; existing explicit
+  instant API values still represent both occurrences of an overlapping hour.
+- PUT becomes safely partial. Omitted dates preserve the exact stored instant.
+  Omitted or null `timeZone` preserves metadata; empty strings fail validation.
+  Explicit `endLocal:null` clears the end; omission preserves it. Clean zone/type-only
+  edits never reschedule an event. Date fields are sent only when explicitly edited.
+- Physical public HTML is formatted server-side in the venue zone, with the actual
+  date-specific UTC offset and IANA label. All five localized strings are precomputed;
+  the client uses them verbatim. No browser timezone database can alter them. No-JS
+  output is already correct. Virtual public output continues visitor formatting with
+  a truthful UTC fallback and never publishes private authoring zone or virtual location.
+- Extend existing Satflux and native BTCPay event forms; no new page. Physical civil
+  inputs avoid browser-local inverse conversion. Provider errors preserve the draft.
+  Native virtual browser aliases Calcutta/Kiev/Katmandu normalize only to equivalent
+  catalog-supported Kolkata/Kyiv/Kathmandu; an unknown zone has a visible UTC fallback.
+- Issued physical tickets use venue time. The existing email `{{EventDate}}` remains
+  a date-only token, using the physical venue calendar date. QR, recipient grouping,
+  email delivery and invoice state handling remain unchanged.
+
+### Ownership and review gates
+
+| Scope | Owner | Files / acceptance |
+| --- | --- | --- |
+| Provider | `tickets_locale_timezone_fix` | Event entity/DTOs, central time service, migration/snapshot, API/native/public/issued-ticket views and scripts, date-only email mapping, Swagger and tests; no core/dependency changes |
+| Consumer frontend | `tickets_ordering_satflux_ui` | Existing TicketsShow form, Pinia, scoped time helper, five locales and focused tests; no shared DatePicker changes or inverse physical conversion |
+| Consumer backend / integration | Main | Store-scoped proxy/routes/time validation, safe capability/errors, PHP tests, metadata/docs/build/package; preserve prior WIP |
+| Independent security | `tickets_sales_security_final` | Read-only authorization, catalog bounds, partial-write/migration/privacy/security review |
+| Independent QA | `tickets_sales_independent_qa` | Disposable synthetic browser/host/native/migration tests; actual timezone/offset oracles and exact artifact identity |
+
+### Rollout and rollback
+
+Install and verify provider 2.2.0 before deploying the dependent consumer. An older
+provider's missing catalog fails visibly and stops new-field writes; it cannot silently
+ignore a venue selection. No environment variable or production timezone change is
+required. The owner-approved backfill runs only through the normal provider migration
+lifecycle when an operator installs the package; it was tested locally, not applied to
+production. Back up the plugin database before the separately approved installation.
+
+Roll back consumer UI independently. Retain additive metadata during binary rollback;
+do not drop the timezone column or rewrite UTC dates. An older public binary may
+reintroduce visitor-time display for physical events. Preserve the prior invoice-attempt
+sentinel safeguards and avoid mixed old/new workers as documented above. No rollback
+operation may reset payment markers, wallets or existing orders.
+
+Verification and final independent review results are recorded after the source freeze
+and exact-host runs; pending checks are not acceptance.
+
+### 2.2.0 local verification and candidate identity
+
+The current-source provider fingerprint covers 150 source/resource/test files:
+`badc4049fe7e61b58123959bf646f935dead5196f87dcd83aa1f92ebde2a5871`.
+The consumer fingerprint covers 18 changed application/test/locale files:
+`109d999dac3bedcdba9c5a3c13da9438e8221ed5d14654e04103c1449dffd9b5`.
+Algorithm: sort repository-relative paths; SHA256 the UTF-8 concatenation of
+`path + space + raw-file-SHA256 + LF`. Documentation is excluded. The earlier 2.1.2
+manifest preserves six presentation/resource hashes, not a complete prior source
+snapshot; reviews attest the bounded current timezone paths and previously accepted
+context rather than an exact complete 2.1.2 source-to-source reconstruction.
+
+- Exact pinned-host Release build passes: 19 existing warnings, zero errors. Existing
+  host dependency advisories remain outside this scoped change; no dependency/core
+  source or baseline change was made.
+- Full plugin suite passes **165/165, zero skipped**, including 20 actual PostgreSQL
+  cases. A clean disposable database exposed concurrent test-fixture migrations;
+  serialize the three shared-database collections without removing their explicit
+  operation-concurrency tests. The initial failure evidence was preserved separately;
+  acceptance is the clean rerun from another fresh database.
+- Consumer related PHP scope passes **115 tests / 343 assertions**, including 38 new
+  timezone cases. SQLite memory, network disabled, merchant-key HTTP fakes only.
+  Full PHPStan and changed-file Pint pass without baseline additions.
+- Frontend author passes 60 focused tests under America/New_York, changed-file lint,
+  five-locale parity, full typecheck with 120 unchanged baselined diagnostics and the
+  final production build. Independent QA additionally passes 29 focused cases and 15
+  independent venue/sparse-write cases. These are focused results, not a newly claimed
+  full application-suite run.
+- Provider pure client tests pass 13/13; actual native ordering script passes 13 Chrome
+  assertions against a synthetic DOM. No new runtime dependency was installed.
+
+The local installer is **2.2.0.0**, 103 archive entries / 12,962,544 bytes.
+Archive SHA256:
+`83753a96a2147c9f7202b006d6c243e9ad195f4d16ac8cc408935de2be5bfc8d`.
+Packaged DLL matches the tested Release DLL:
+`d7995cb102675ccfdbad98d0b9c175ffd9cd557090bb559b757cd0cfb32e8f9d`.
+Sidecar SHA256:
+`fd006a8eb10ed4d3edf179bdd0cc5f5ccbc73c9f139b255962a2e6d809bed87e`.
+The manifest requires BTCPay >=2.4.5. Older installers remain immutable. This is a
+locally prepared artifact, not a published release or verified production installation.
+Independent final compiled browser/upgrade evidence and dispositions follow below.
+
+### Store-default clarification and final follow-up
+
+The owner approves **store default + per-event override**. Satflux may preselect a
+new physical event's zone from the matching local Store only after the provider catalog
+validates it and before any user interaction. Existing events keep their saved zone;
+store changes never rewrite their metadata or instants. Unknown defaults remain an
+explicit selection, and an asynchronous response must not overwrite a user's choice
+or cross stores. Native BTCPay creation still requires a venue selection: its pinned
+standard Store API has no persisted timezone field, and this milestone adds no bridge.
+
+`StoreSettingsController` previously ignored the local timezone on reload and defaulted
+to UTC when BTCPay omitted the field. A later normal Save could overwrite the local
+choice. Prefer local data consistently with `StoreResponseFormatter`; regression tests
+use the actual pinned response shape without a fabricated upstream timezone. Existing
+local values already overwritten to UTC cannot be reconstructed from source alone;
+no automatic store-data repair or provisioning-default change is attempted.
+
+The initial 2.2.0 candidate above is retained as baseline evidence. Its independent
+QA passes 31 actual compiled public/native/issued browser cases, five grouped real
+prior-to-latest EF/API/email cases, and archive identity checks. A follow-up adds the
+approved Store default/read correction and detects stale native schedule baselines
+before conversion, upload or save. Final acceptance/artifact identity below supersede
+the initial candidate; do not install the earlier local candidate as the final result.
+
+### Final follow-up verification (supersedes initial candidate)
+
+Final frozen source fingerprints use the same documented path/space/hash/LF algorithm:
+provider 150 files `1b2a1fe36e6c5fb425ea3e5c18018e8be93d6500ccb5ef7742bd423d623c9cb4`;
+consumer 20 files `0efce0679cc1e1b9269c7b993c8be2cc8ba0b5476eff835c1a3815f3303c124e`.
+Independent security recomputed all per-file hashes. The native baseline now includes
+start/end UTC ticks **and original event type/venue zone**, covering the no-JavaScript
+same-instant concurrent-zone scenario as well as concurrent date edits. This detects
+changed schedule context observed at update load, not general event-metadata CAS.
+
+- Final exact-host Release build passes: 19 existing warnings, zero errors.
+- Final full provider suite: **172/172 passed, zero skipped**, including 21 PostgreSQL
+  cases with five native stale-form scenarios in one actual-controller database case.
+- Final consumer PHP: **125 tests / 386 assertions** for StoreSettings, Tickets and
+  documentation; full PHPStan and changed-file Pint pass. Tests use isolated no-network
+  SQLite and stubbed merchant-key HTTP; production state was not inspected.
+- Final focused frontend: **74/74** under America/New_York; independent QA reruns 43
+  Store/default editor cases. Final changed-file lint has zero warnings/errors; the
+  earlier whole-project lint retained 48 existing warnings. Five-locale JSON parity
+  remains unchanged and passed earlier in this source milestone. Root-owned final
+  typecheck passes with 120 unchanged diagnostics and production build passes (2m47s).
+  Incomplete agent-background build/typecheck attempts were not counted as results.
+- Independent security reruns the 13 pure provider client cases successfully. The
+  earlier 13 actual native-order browser assertions remain valid for unchanged code.
+
+Final local installer: **2.2.0.0**, 103 entries / 12,964,595 bytes.
+Archive SHA256 `302e206578c213b4740637df34ce8f4f5a3d96503f901e5531171251eedf82b3`.
+Packaged/tested DLL SHA256 `15fbf88ce04543226540be0fe1347d8ece46cf871223eaf7a50702856c726c0c`.
+Sidecar SHA256 `fd006a8eb10ed4d3edf179bdd0cc5f5ccbc73c9f139b255962a2e6d809bed87e`.
+The earlier 83753a96 candidate and all prior installers remain unchanged. The final
+artifact is local; no package publication, source push, merge, deployment or production
+migration is claimed. Final independent browser/guard/archive disposition follows.
+
+### Independent final disposition
+
+Security reviewer `tickets_sales_security_final` accepts the bounded final source and
+independently verifies both source manifests, owner-key/tenant boundaries, catalog
+bounds, privacy, metadata-only migration and closure of both native schedule race
+reproductions. Store baselines are concurrency hints, never an authorization mechanism.
+Existing full-form metadata editing still has no general compare-and-swap contract;
+this milestone does not claim one.
+
+QA reviewer `tickets_sales_independent_qa` verifies the **actual final DLL and archive**:
+8 native-controller database guard cases pass (including same-instant no-JS zone/type
+races and missing/invalid anchors); 8 final compiled browser smoke cases pass; exact
+archive/DLL/embedded-resource identity, guard fields, safe archive entries and manifest
+all pass. The unchanged baseline separately records 31 compiled public/native/issued
+browser cases, 5 real previous-to-latest EF/API/email groups and the independent
+frontend venue/default cases. These are distinct layers, not a combined unique test
+count. The final Store-default focused independent frontend rerun passes 43 cases.
+
+Browser checks use local Chrome with the actual compiled views/resources and pinned
+host layout/CSP/CSRF through a synthetic disposable harness. Native test DI/component
+lookup is supplied by the harness; authenticated production sessions, Brave and real
+invoices/funds were not exercised. No production cache provenance, installation or
+live database state is claimed. Production acceptance remains: separately approve
+provider-first installation and the consumer release, verify the configured venue/time
+and Store settings reload in the deployed UI, retain backups and avoid destructive
+schema rollback. Source publication, merge and deployment remain separate operations.

@@ -88,7 +88,8 @@ class StoreSettingsController extends Controller
             'lazy_payment_methods' => $get('lazyPaymentMethods', false),
             'default_payment_method' => $get('defaultPaymentMethod'),
             'payment_method_criteria' => $get('paymentMethodCriteria', []),
-            'timezone' => $get('timeZone', $get('timezone', 'UTC')),
+            // BTCPay 2.4.5 does not persist this Satflux setting in its store API.
+            'timezone' => $store->timezone ?? $get('timeZone', $get('timezone', 'UTC')),
             'preferred_exchange' => $get('preferredExchange', $get('preferred_exchange')),
             'store_url' => rtrim(config('app.url', ''), '/').'/stores/'.$store->id,
             // LNURL: default enabled so Lightning Addresses work; BTCPay may expose lnurlEnabled, lnurlClassicMode, allowPayeeToPassComment

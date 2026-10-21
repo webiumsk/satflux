@@ -1035,6 +1035,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
 
     // SatoshiTickets (Events, Ticket Types, Tickets, Orders)
     Route::prefix('stores/{store}/tickets')->middleware([EnsureStoreOwnership::class, 'guest.restrict'])->group(function () {
+        Route::get('/time-zones', [TicketController::class, 'eventTimeZones']);
         Route::post('/events/image', [TicketEventImageController::class, 'upload'])->middleware('throttle:10,1');
         Route::post('/events/{eventId}/logo', [TicketEventImageController::class, 'uploadLogo'])->middleware('throttle:10,1');
         Route::delete('/events/{eventId}/logo', [TicketEventImageController::class, 'deleteLogo']);

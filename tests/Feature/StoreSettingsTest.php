@@ -56,6 +56,7 @@ class StoreSettingsTest extends TestCase
             'user_id' => $user->id,
             'btcpay_store_id' => 'store-1',
             'name' => 'My Store',
+            'timezone' => 'Europe/Vienna',
         ]);
         $btcpayStore = [
             'id' => 'store-1',
@@ -75,6 +76,37 @@ class StoreSettingsTest extends TestCase
             ->assertJsonPath('data.timezone', 'Europe/Vienna')
             ->assertJsonPath('data.preferred_exchange', 'kraken')
             ->assertJsonPath('data.store_url', rtrim(config('app.url'), '/').'/stores/'.$store->id);
+    }
+
+    public function test_store_timezone_survives_real_btcpay_response_without_zone_and_ordinary_save_reload(): void
+    {
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id, 'btcpay_store_id' => 'store-1',
+            'name' => 'Venue store', 'default_currency' => 'EUR', 'timezone' => 'Europe/Bratislava',
+        ]);
+        // The pinned host returns no timeZone field; do not invent support in the fake.
+        $this->fakeStoreGet('store-1', ['id' => 'store-1', 'name' => 'Venue store', 'defaultCurrency' => 'EUR']);
+        $response = $this->actingAs($user)->getJson("/api/stores/{$store->id}/settings")->assertOk()
+            ->assertJsonPath('data.timezone', 'Europe/Bratislava');
+        $this->putJson("/api/stores/{$store->id}/settings", [
+            'name' => 'Renamed store', 'default_currency' => 'EUR', 'timezone' => $response->json('data.timezone'),
+        ])->assertOk()->assertJsonPath('data.timezone', 'Europe/Bratislava');
+        $this->getJson("/api/stores/{$store->id}/settings")->assertOk()->assertJsonPath('data.timezone', 'Europe/Bratislava');
+        $this->assertDatabaseHas('stores', ['id' => $store->id, 'timezone' => 'Europe/Bratislava']);
+        Http::assertSent(fn ($request) => $request->method() === 'PUT' && $request->hasHeader('Authorization', 'Bearer merchant-key'));
+    }
+
+    public function test_local_timezone_is_authoritative_even_if_a_provider_reports_another_zone(): void
+    {
+        $user = User::factory()->create(['btcpay_api_key' => 'merchant-key']);
+        $store = Store::factory()->create([
+            'user_id' => $user->id, 'btcpay_store_id' => 'store-1', 'timezone' => 'Pacific/Chatham',
+        ]);
+        $this->fakeStoreGet('store-1', ['id' => 'store-1', 'timeZone' => 'UTC']);
+        $this->actingAs($user)->getJson("/api/stores/{$store->id}/settings")->assertOk()
+            ->assertJsonPath('data.timezone', 'Pacific/Chatham');
+        $this->assertDatabaseHas('stores', ['id' => $store->id, 'timezone' => 'Pacific/Chatham']);
     }
 
     public function test_user_cannot_get_store_settings_for_other_users_store(): void

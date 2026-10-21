@@ -53,6 +53,18 @@ class TicketService
         });
     }
 
+    /** Read the provider-authoritative IANA catalog with merchant credentials. */
+    public function getEventTimeZones(string $storeId, string $userApiKey): array
+    {
+        if (trim($userApiKey) === '') {
+            throw new \InvalidArgumentException('A merchant API key is required for event time zones.');
+        }
+
+        return $this->withApiKey($userApiKey, fn () => $this->client->get(
+            '/api/v1/stores/'.rawurlencode($storeId).'/satflux-tickets/time-zones'
+        ));
+    }
+
     /**
      * Create a new event. Images use the separate event-scoped logo endpoint.
      */
@@ -318,6 +330,9 @@ class TicketService
         'location',
         'startDate',
         'endDate',
+        'timeZone',
+        'startLocal',
+        'endLocal',
         'currency',
         'redirectUrl',
         'emailSubject',
