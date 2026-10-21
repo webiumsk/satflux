@@ -495,3 +495,46 @@ QA accepts the result; combined offline checks pass (128 PHP tests/507 assertion
 13 frontend cases and full PHPStan). Require fresh combined-tree CI; this updates
 the PR branch and does not
 merge #396, publish the provider or deploy anything.
+
+## 2026-10-21: unified Tickets sales and persisted merchant ordering
+
+Status: implementation authorized by the Product Owner after reviewing the public
+sales prototype and confirming that existing event authoring must be preserved.
+
+The public sales page remains in the owned Satflux Tickets plugin on the BTCPay
+host, using existing URLs. Combine event information, ticket selection and contact
+entry before the existing hosted payment. Render saved title, full rich description,
+physical/virtual type, optional image/location/end date, UTC times, effective
+currency, capacities, redirects, email templates and optional raffle bundle. Remata
+is example content only; introduce no accommodation-specific authoring fields or
+universal free-entry claims.
+
+Extend existing management lists in Satflux and native BTCPay with inline ordering;
+no new Satflux page, tab or competing event/type form. The plugin owns the saved
+order. Use a complete permutation, safe revision compare-and-swap and event-level
+membership serialization; preserve disabled/default types, prices and sales counters.
+Explicit old name/price sorting remains supported. Additive migration backfills by
+name and ID because historical creation order was not stored.
+
+The public retry flow must preserve immutable checkout intent, reuse the exact
+invoice and retain hosted fulfillment authority. Independent security review found
+a pre-existing incorrect internal-tag-prefix lookup and a related missing-invoice-ID
+settlement recovery gap, now within the bounded integration review. Do not create
+an additional invoice when existing intent evidence conflicts or lookup is unknown.
+
+Separate owned repository branches and reviews are required. Candidate plugin
+version is 2.1.0, retaining the uncommitted 2.0.4 dependency. No core/third-party
+plugin source changes, real-fund tests, production changes, commits/publication,
+merges or deployment are implied. Strict inventory holds and zero-price fulfillment
+remain outside scope. See [implementation record](TICKETS_SALES_ORDERING.md).
+
+
+### Tickets 2.1.0 local packaging and Satflux branch publication
+
+The Product Owner explicitly requested an installable Tickets 2.1.0 package and
+push of the Satflux branch to GitHub. Package the accepted, unchanged Release DLL
+using the exact pinned BTCPay 2.4.5 packer, preserving standalone plugin identity
+and recording archive/DLL hashes. Commit and push only the scoped Satflux feature
+branch. This authorizes neither plugin source publication nor merge, installation,
+release publication or deployment. Exact-head CI requires a pull request under the
+current workflow; existing host dependency advisories and staging gates remain.

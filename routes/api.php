@@ -1046,6 +1046,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
         Route::put('/events/{eventId}/toggle', [TicketController::class, 'toggleEvent']);
         Route::get('/events/{eventId}/ticket-types', [TicketController::class, 'listTicketTypes']);
         Route::post('/events/{eventId}/ticket-types', [TicketController::class, 'createTicketType']);
+        Route::get('/events/{eventId}/ticket-types/order', [TicketController::class, 'getTicketTypeOrder']);
+        Route::put('/events/{eventId}/ticket-types/order', [TicketController::class, 'updateTicketTypeOrder']);
         Route::put('/events/{eventId}/ticket-types/{ticketTypeId}', [TicketController::class, 'updateTicketType']);
         Route::delete('/events/{eventId}/ticket-types/{ticketTypeId}', [TicketController::class, 'deleteTicketType']);
         Route::put('/events/{eventId}/ticket-types/{ticketTypeId}/toggle', [TicketController::class, 'toggleTicketType']);

@@ -51,6 +51,7 @@
               <button
                 type="button"
                 @click="onCreateEventClick"
+                :disabled="orderLocked"
                 class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-600/20 transition-all hover:scale-105"
               >
                 <svg
@@ -572,6 +573,7 @@
             <button
               v-if="!loadingEvents"
               @click="loadEvents"
+              :disabled="orderLocked"
               class="text-sm text-gray-400 hover:text-white transition-colors"
             >
               <svg
@@ -644,6 +646,7 @@
             </p>
             <button
               @click="onCreateEventClick"
+                :disabled="orderLocked"
               class="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
             >
               {{ t("tickets.create_first_event") }}
@@ -798,7 +801,7 @@
                       <button
                         @click="handleToggleEvent(event)"
                         :disabled="
-                          event.eventState === 'Active' &&
+                          orderLocked || event.eventState === 'Active' &&
                           (event.ticketsSold ?? 0) > 0
                         "
                         :title="
@@ -858,6 +861,7 @@
                       </button>
                       <button
                         @click="handleEditEvent(event)"
+                        :disabled="orderLocked"
                         :title="t('common.edit')"
                         class="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                       >
@@ -899,7 +903,7 @@
                       <div class="flex-1"></div>
                       <button
                         @click="handleDeleteEvent(event)"
-                        :disabled="(event.ticketsSold ?? 0) > 0"
+                        :disabled="orderLocked || (event.ticketsSold ?? 0) > 0"
                         :title="
                           (event.ticketsSold ?? 0) > 0
                             ? t('tickets.cannot_delete_event_with_sold_tickets')
@@ -940,6 +944,7 @@
                 <div class="flex border-b border-gray-700">
                   <button
                     @click="activeTab = 'types'"
+                    :disabled="orderLocked"
                     :class="[
                       'px-6 py-3 text-sm font-medium transition-colors border-b-2',
                       activeTab === 'types'
@@ -950,6 +955,7 @@
                     {{ t("tickets.ticket_types") }}
                   </button>
                   <button
+                    :disabled="orderLocked"
                     @click="
                       activeTab = 'tickets';
                       loadTicketsIfNeeded(event.id);
@@ -966,15 +972,15 @@
                 </div>
 
                 <!-- ═══ TAB: Ticket Types ═══ -->
-                <div v-if="activeTab === 'types'" class="p-6 space-y-5">
-                  <div class="flex items-center justify-between">
+                <div v-if="activeTab === 'types'" :ref="setOrderPanel" class="p-6 space-y-5">
+                  <div class="flex flex-wrap items-center justify-between gap-3">
                     <h4
                       class="text-sm font-semibold text-gray-200 uppercase tracking-wider"
                     >
                       {{ t("tickets.ticket_types") }}
                     </h4>
                     <button
-                      v-if="!showTicketTypeForm"
+                      v-if="!showTicketTypeForm && !orderLocked"
                       @click="openTicketTypeForm(event.id)"
                       class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 hover:bg-indigo-500/20 transition-colors"
                     >
@@ -993,6 +999,38 @@
                       </svg>
                       {{ t("tickets.add_ticket_type") }}
                     </button>
+                  </div>
+
+                  <div class="space-y-3">
+                    <button
+                      v-if="!orderingTypes && !showTicketTypeForm && eventTicketTypes.length > 1"
+                      type="button"
+                      data-edit-order
+                      :disabled="loadingOrder || loadingTicketTypes || mutatingTicketType"
+                      class="inline-flex min-h-11 items-center rounded-lg border border-gray-600 px-3 py-2 text-sm text-gray-200 hover:bg-gray-700 focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-50"
+                      @click="beginTypeOrder(event.id)"
+                    >{{ loadingOrder ? t('common.loading') : t('tickets.order_edit') }}</button>
+                    <div v-if="orderingTypes" class="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 space-y-3" :aria-busy="savingOrder || loadingOrder">
+                      <p class="text-sm text-gray-200">{{ t('tickets.order_hint') }}</p>
+                      <p class="text-xs text-gray-400">{{ t('tickets.order_finish_first') }}</p>
+                      <div class="flex flex-wrap items-center gap-3">
+                        <button type="button" :disabled="!canSaveOrder"
+                          class="min-h-11 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-300 disabled:opacity-50"
+                          @click="saveTypeOrder">{{ savingOrder ? t('tickets.saving') : t('tickets.order_save') }}</button>
+                        <button type="button" :disabled="savingOrder || loadingOrder"
+                          class="min-h-11 rounded-lg border border-gray-600 px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-50"
+                          @click="cancelTypeOrder">{{ t('common.cancel') }}</button>
+                        <span class="text-xs text-gray-300">{{ orderDirty ? t('tickets.order_unsaved') : t('tickets.order_unchanged') }}</span>
+                      </div>
+                    </div>
+                    <div v-if="orderError" role="alert" class="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+                      <p>{{ t(`tickets.order_error_${orderError}`) }}</p>
+                      <button v-if="orderError === 'conflict' || orderError === 'load'" type="button"
+                        :disabled="loadingOrder || savingOrder"
+                        class="mt-2 min-h-11 rounded-lg border border-amber-500/40 px-3 py-2 font-medium underline focus-visible:ring-2 focus-visible:ring-amber-300 disabled:opacity-50"
+                        @click="beginTypeOrder(event.id)">{{ t('tickets.order_reload') }}</button>
+                    </div>
+                    <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ orderAnnouncement }}</p>
                   </div>
 
                   <!-- Loading ticket types -->
@@ -1028,12 +1066,28 @@
                     class="space-y-3"
                   >
                     <div
-                      v-for="tt in eventTicketTypes"
+                      v-for="(tt, typeIndex) in displayedTicketTypes"
                       :key="tt.id"
-                      class="flex items-center justify-between p-4 bg-gray-900/60 rounded-xl border border-gray-700/50"
+                      :data-ticket-type-id="tt.id"
+                      class="flex flex-wrap items-center justify-between gap-y-3 p-4 bg-gray-900/60 rounded-xl border border-gray-700/50"
+                      @dragover.prevent
+                      @drop.prevent="dropTypeOrder(typeIndex)"
                     >
+                      <div v-if="orderingTypes" class="mr-3 flex shrink-0 items-center gap-1">
+                        <button type="button" :data-order-handle="tt.id" :draggable="!savingOrder && !loadingOrder"
+                          :disabled="savingOrder || loadingOrder"
+                          :aria-label="t('tickets.order_drag', { name: tt.name })"
+                          :title="t('tickets.order_drag', { name: tt.name })"
+                          class="flex min-h-11 min-w-11 cursor-grab items-center justify-center rounded-lg text-gray-300 hover:bg-gray-700 focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-50"
+                          @dragstart="startTypeDrag($event, tt.id)" @dragend="draggedTypeId = null"
+                          @keydown.alt.up.prevent="moveTypeOrder(tt.id, typeIndex - 1)"
+                          @keydown.alt.down.prevent="moveTypeOrder(tt.id, typeIndex + 1)">
+                          <span aria-hidden="true" class="text-xl">⠿</span>
+                        </button>
+                        <span class="w-5 text-center text-sm tabular-nums text-gray-400" aria-hidden="true">{{ typeIndex + 1 }}</span>
+                      </div>
                       <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 mb-1">
+                        <div class="flex flex-wrap items-center gap-2 mb-1">
                           <span class="text-white font-medium truncate">{{
                             tt.name
                           }}</span>
@@ -1053,7 +1107,7 @@
                           >
                         </div>
                         <div
-                          class="flex items-center gap-4 text-sm text-gray-400"
+                          class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-400"
                         >
                           <span class="font-semibold text-indigo-300"
                             >{{ tt.price }} {{ event.currency || "" }}</span
@@ -1079,10 +1133,20 @@
                           >
                         </div>
                       </div>
-                      <div class="flex items-center gap-1 ml-4">
+                      <div v-if="orderingTypes" class="ml-auto flex shrink-0 items-center gap-1">
+                        <button type="button" :disabled="typeIndex === 0 || savingOrder || loadingOrder"
+                          :aria-label="t('tickets.order_up', { name: tt.name })" :title="t('tickets.order_up', { name: tt.name })"
+                          class="min-h-11 min-w-11 rounded-lg border border-gray-600 text-gray-200 hover:bg-gray-700 focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-40"
+                          @click="moveTypeOrder(tt.id, typeIndex - 1)"><span aria-hidden="true">↑</span></button>
+                        <button type="button" :disabled="typeIndex === displayedTicketTypes.length - 1 || savingOrder || loadingOrder"
+                          :aria-label="t('tickets.order_down', { name: tt.name })" :title="t('tickets.order_down', { name: tt.name })"
+                          class="min-h-11 min-w-11 rounded-lg border border-gray-600 text-gray-200 hover:bg-gray-700 focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-40"
+                          @click="moveTypeOrder(tt.id, typeIndex + 1)"><span aria-hidden="true">↓</span></button>
+                      </div>
+                      <div v-else class="flex items-center gap-1 ml-4">
                         <button
                           @click="handleToggleTicketType(event.id, tt)"
-                          :disabled="mutatingTicketType"
+                          :disabled="mutatingTicketType || orderLocked"
                           :title="
                             tt.ticketTypeState === 'Active'
                               ? t('tickets.disable')
@@ -1132,6 +1196,7 @@
                         </button>
                         <button
                           @click="handleEditTicketType(event.id, tt)"
+                          :disabled="mutatingTicketType || orderLocked"
                           :title="t('common.edit')"
                           class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                         >
@@ -1151,7 +1216,7 @@
                         </button>
                         <button
                           @click="handleDeleteTicketType(event.id, tt)"
-                          :disabled="mutatingTicketType"
+                          :disabled="mutatingTicketType || orderLocked"
                           :title="t('common.delete')"
                           class="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                         >
@@ -1769,7 +1834,9 @@
 import type { AppRef } from "../../types/btcpayApps";
 import type { Store } from "../../store/stores";
 import { asApiError } from "../../utils/apiError";
-import { ref, computed, nextTick, onMounted } from "vue";
+import { ref, computed, nextTick, onMounted, onBeforeUnmount, inject } from "vue";
+import { onBeforeRouteLeave, onBeforeRouteUpdate, routerKey } from "vue-router";
+import { useTicketTypeOrdering } from "../../composables/useTicketTypeOrdering";
 import { useI18n } from "vue-i18n";
 import {
   useTicketsStore,
@@ -1861,6 +1928,101 @@ const activeTab = ref<"types" | "tickets">("types");
 const eventTicketTypes = ref<TicketType[]>([]);
 const loadingTicketTypes = ref(false);
 const mutatingTicketType = ref(false);
+const typeOrdering = useTicketTypeOrdering(
+  eventTicketTypes,
+  async (eventId) => {
+    const storeId = requireStoreId();
+    const [types, order] = await Promise.all([
+      ticketsStore.fetchTicketTypes(storeId, eventId),
+      ticketsStore.fetchTicketTypeOrder(storeId, eventId),
+    ]);
+    return { types, order };
+  },
+  (eventId, order) => ticketsStore.saveTicketTypeOrder(requireStoreId(), eventId, order),
+);
+const {
+  editing: orderingTypes, loading: loadingOrder, saving: savingOrder,
+  error: orderError, dirty: orderDirty, locked: orderLocked, canSave: canSaveOrder, rows: displayedTicketTypes,
+} = typeOrdering;
+const draggedTypeId = ref<string | null>(null);
+const orderAnnouncement = ref("");
+const orderPanel = ref<HTMLElement | null>(null);
+function setOrderPanel(element: unknown) {
+  orderPanel.value = element instanceof HTMLElement ? element : null;
+}
+
+async function focusOrderHandle(id?: string) {
+  await nextTick();
+  const handles = orderPanel.value?.querySelectorAll<HTMLButtonElement>("[data-order-handle]");
+  const handle = id ? Array.from(handles ?? []).find(button => button.dataset.orderHandle === id) : handles?.[0];
+  handle?.focus();
+}
+
+async function beginTypeOrder(eventId: string) {
+  if (await typeOrdering.load(eventId)) {
+    orderAnnouncement.value = t("tickets.order_hint");
+    await focusOrderHandle();
+  }
+}
+
+function moveTypeOrder(id: string, destination: number) {
+  if (!typeOrdering.move(id, destination)) return;
+  const type = eventTicketTypes.value.find(item => item.id === id);
+  orderAnnouncement.value = t("tickets.order_moved", { name: type?.name, position: destination + 1, count: displayedTicketTypes.value.length });
+  void focusOrderHandle(id);
+}
+
+function startTypeDrag(event: DragEvent, id: string) {
+  if (!orderingTypes.value || savingOrder.value || loadingOrder.value) {
+    event.preventDefault();
+    return;
+  }
+  draggedTypeId.value = id;
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", id);
+  }
+}
+
+function dropTypeOrder(destination: number) {
+  if (draggedTypeId.value) moveTypeOrder(draggedTypeId.value, destination);
+  draggedTypeId.value = null;
+}
+
+async function saveTypeOrder() {
+  if (await typeOrdering.save()) {
+    orderAnnouncement.value = t("tickets.order_saved");
+    showSuccess(t("tickets.order_saved"));
+    await nextTick();
+    orderPanel.value?.querySelector<HTMLButtonElement>("[data-edit-order]")?.focus();
+  }
+}
+
+async function cancelTypeOrder() {
+  typeOrdering.cancel();
+  draggedTypeId.value = null;
+  orderAnnouncement.value = "";
+  await nextTick();
+  orderPanel.value?.querySelector<HTMLButtonElement>("[data-edit-order]")?.focus();
+}
+
+function allowOrderNavigation() {
+  if (loadingOrder.value || savingOrder.value) return false;
+  const allowed = !orderingTypes.value || !orderDirty.value || window.confirm(t("tickets.order_discard_confirm"));
+  if (allowed) typeOrdering.cancel();
+  return allowed;
+}
+if (inject(routerKey, null)) {
+  onBeforeRouteLeave(() => allowOrderNavigation());
+  onBeforeRouteUpdate(() => allowOrderNavigation());
+}
+function protectOrderDraft(event: BeforeUnloadEvent) {
+  if (orderDirty.value || loadingOrder.value || savingOrder.value) {
+    event.preventDefault();
+    event.returnValue = "";
+  }
+}
+
 
 // Tickets tab
 const eventTickets = ref<Ticket[]>([]);
@@ -1955,10 +2117,12 @@ function cancelForm() {
   showCreateForm.value = false;
 }
 function goBack() {
+  if (orderLocked.value) { showError(t("tickets.order_finish_first")); return; }
   window.history.back();
 }
 
 function onCreateEventClick() {
+  if (orderLocked.value) { showError(t("tickets.order_finish_first")); return; }
   if (props.eventLimit != null && events.value.length >= props.eventLimit) {
     showUpgradeModal.value = true;
     return;
@@ -2038,6 +2202,7 @@ function cancelTicketTypeForm() {
 }
 
 function openTicketTypeForm(eventId: string) {
+  if (orderLocked.value) return;
   resetTicketTypeForm();
   // Only the first ticket type for an event should be default
   ttForm.value.isDefault = eventTicketTypes.value.length === 0;
@@ -2048,7 +2213,7 @@ function openTicketTypeForm(eventId: string) {
 // ── Data Loading ────────────────────────────────
 
 async function loadEvents() {
-  if (!props.store) return;
+  if (!props.store || orderLocked.value) return;
   loadingEvents.value = true;
   clearMessages();
   try {
@@ -2083,6 +2248,8 @@ async function loadTicketTypes(eventId: string) {
 // ── Expand / Collapse ───────────────────────────
 
 function toggleExpandEvent(event: TicketEvent) {
+  if (orderLocked.value) { showError(t("tickets.order_finish_first")); return; }
+  typeOrdering.cancel();
   if (expandedEventId.value === event.id) {
     expandedEventId.value = null;
     eventTicketTypes.value = [];
@@ -2211,6 +2378,7 @@ async function handleSubmitEvent() {
 }
 
 function handleEditEvent(event: TicketEvent) {
+  if (orderLocked.value) { showError(t("tickets.order_finish_first")); return; }
   editingEvent.value = event;
   eventForm.value = {
     title: event.title,
@@ -2243,6 +2411,7 @@ function handleEditEvent(event: TicketEvent) {
 }
 
 async function handleToggleEvent(event: TicketEvent) {
+  if (orderLocked.value) { showError(t("tickets.order_finish_first")); return; }
   if (event.eventState === "Active" && (event.ticketsSold ?? 0) > 0) {
     showError(t("tickets.cannot_deactivate_event_with_sold_tickets"));
     return;
@@ -2279,6 +2448,7 @@ async function handleToggleEvent(event: TicketEvent) {
 }
 
 async function handleDeleteEvent(event: TicketEvent) {
+  if (orderLocked.value) { showError(t("tickets.order_finish_first")); return; }
   if ((event.ticketsSold ?? 0) > 0) {
     showError(t("tickets.cannot_delete_event_with_sold_tickets"));
     return;
@@ -2346,6 +2516,7 @@ async function handleSubmitTicketType(eventId: string) {
 const UNLIMITED_QUANTITY = 999999;
 
 function handleEditTicketType(eventId: string, tt: TicketType) {
+  if (orderLocked.value) return;
   editingTicketType.value = tt;
   const q = tt.quantity;
   ttForm.value = {
@@ -2360,7 +2531,7 @@ function handleEditTicketType(eventId: string, tt: TicketType) {
 }
 
 async function handleToggleTicketType(eventId: string, tt: TicketType) {
-  if (mutatingTicketType.value) return;
+  if (mutatingTicketType.value || orderLocked.value) return;
   mutatingTicketType.value = true;
   clearMessages();
   try {
@@ -2384,7 +2555,7 @@ async function handleToggleTicketType(eventId: string, tt: TicketType) {
 }
 
 async function handleDeleteTicketType(eventId: string, tt: TicketType) {
-  if (mutatingTicketType.value) return;
+  if (mutatingTicketType.value || orderLocked.value) return;
   if (!confirm(t("tickets.delete_ticket_type_confirm", { name: tt.name })))
     return;
   mutatingTicketType.value = true;
@@ -2589,7 +2760,9 @@ async function loadRaffleBundleOptions() {
 onMounted(() => {
   loadEvents();
   loadRaffleBundleOptions();
+  window.addEventListener("beforeunload", protectOrderDraft);
 });
+onBeforeUnmount(() => window.removeEventListener("beforeunload", protectOrderDraft));
 </script>
 
 <style scoped>

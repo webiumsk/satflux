@@ -256,3 +256,32 @@ next milestone is operator execution of the linked read-only diagnostic runbook,
 followed by reconciliation of evidence and preparation of clean-base, separately
 reviewed changes. No production behavior is verified, and no deployment or
 operational intervention is authorized by this investigation.
+
+## Tickets sales and ordering - 2026-10-21
+
+Authorized implementation: extend the existing Satflux/native type lists with saved
+merchant order and unify the plugin-hosted public sales page. Preserve authoring,
+URLs, hosted checkout and fulfillment. The provider 2.1.0 candidate precedes the
+Satflux ordering consumer; old provider 404 must remain a clear upgrade state.
+
+The [implementation record](TICKETS_SALES_ORDERING.md) tracks ownership, exact
+contract, isolated tests and independent review. Complete server recovery and
+concurrency tests, actual rendered-page QA, final security review and final checks
+before handoff. Then prepare separate reviewable repository publication only under
+applicable authorization. No production rollout or merge is authorized here.
+
+
+Tickets local milestone completed: source/security/QA accepted, frozen plugin
+100/100 (15 PostgreSQL), 32 browser and 9 visual scenarios, consumer 850 Vitest and 77 relevant
+PHP/documentation tests pass, together with build/typecheck/lint/locales/PHPStan/Pint.
+Next: independent repository publication and exact-head CI handoff, then provider-first
+representative staging. Preserve pending-intent compatibility during any plugin
+rollback; no mixed old/new workers or automatic attempt-marker resets.
+
+
+Tickets delivery follow-up: the Product Owner authorized local installer creation
+for 2.1.0 and commit/push of the Satflux consumer branch. The exact reviewed DLL is
+packaged without rebuilding; see the implementation record for artifact integrity.
+Next: consumer PR/exact-head CI, separate provider source publication review, then
+representative provider-first staging and release/rollback approval. Building the
+installer and pushing the consumer do not authorize installation or deployment.

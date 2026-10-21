@@ -46,6 +46,11 @@ export interface TicketType {
     ticketTypeState: 'Active' | 'Disabled';
 }
 
+export interface TicketTypeOrder {
+    ticketTypeIds: string[];
+    revision: number;
+}
+
 export interface Ticket {
     id: string;
     eventId: string;
@@ -196,6 +201,19 @@ export const useTicketsStore = defineStore('tickets', () => {
         }
     }
 
+    async function fetchTicketTypeOrder(storeId: string, eventId: string): Promise<TicketTypeOrder> {
+        const response = await api.get(`/stores/${storeId}/tickets/events/${eventId}/ticket-types/order`);
+        return response.data.data;
+    }
+
+    async function saveTicketTypeOrder(storeId: string, eventId: string, order: TicketTypeOrder): Promise<TicketTypeOrder> {
+        const response = await api.put(`/stores/${storeId}/tickets/events/${eventId}/ticket-types/order`, {
+            ticketTypeIds: order.ticketTypeIds,
+            expectedRevision: order.revision,
+        });
+        return response.data.data;
+    }
+
     async function createTicketType(storeId: string, eventId: string, data: Partial<TicketType>) {
         loading.value = true;
         try {
@@ -327,6 +345,8 @@ export const useTicketsStore = defineStore('tickets', () => {
         toggleEvent,
         // ticket types
         fetchTicketTypes,
+        fetchTicketTypeOrder,
+        saveTicketTypeOrder,
         createTicketType,
         updateTicketType,
         deleteTicketType,

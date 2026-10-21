@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Store;
+use App\Models\User;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\TicketService;
 use App\Services\Tickets\EventBundleService;
@@ -281,11 +282,73 @@ class TicketController extends Controller
             $store->btcpay_store_id,
             $eventId,
             $userApiKey,
-            $request->input('sortBy', 'Name'),
+            $request->input('sortBy', 'DisplayOrder'),
             $request->input('sortDir', 'asc')
         );
 
         return response()->json(['data' => $ticketTypes]);
+    }
+
+    public function getTicketTypeOrder(Store $store, string $eventId)
+    {
+        /** @var User $owner */
+        $owner = $store->user;
+        $userApiKey = $owner->getBtcPayApiKeyOrFail();
+
+        try {
+            $snapshot = $this->ticketService->getTicketTypeOrder($store->btcpay_store_id, $eventId, $userApiKey);
+        } catch (BtcPayException $exception) {
+            return $this->ticketTypeOrderFailure($exception);
+        }
+
+        return $this->ticketTypeOrderResponse($snapshot);
+    }
+
+    public function updateTicketTypeOrder(Request $request, Store $store, string $eventId)
+    {
+        $data = $request->validate([
+            'ticketTypeIds' => ['present', 'array', 'list', 'max:1000'],
+            'ticketTypeIds.*' => ['required', 'string', 'max:128', 'distinct:strict'],
+            'expectedRevision' => ['required', 'integer', 'min:0', 'max:9007199254740991'],
+        ]);
+        /** @var User $owner */
+        $owner = $store->user;
+        $userApiKey = $owner->getBtcPayApiKeyOrFail();
+
+        try {
+            $snapshot = $this->ticketService->updateTicketTypeOrder($store->btcpay_store_id, $eventId, $data, $userApiKey);
+        } catch (BtcPayException $exception) {
+            return $this->ticketTypeOrderFailure($exception);
+        }
+
+        return $this->ticketTypeOrderResponse($snapshot);
+    }
+
+    protected function ticketTypeOrderResponse(array $snapshot)
+    {
+        $ids = $snapshot['ticketTypeIds'] ?? null;
+        $revision = $snapshot['revision'] ?? null;
+        if (! is_array($ids) || ! array_is_list($ids) || count($ids) > 1000
+            || ! is_int($revision) || $revision < 0 || $revision > 9007199254740991
+            || count(array_unique($ids, SORT_REGULAR)) !== count($ids)
+            || collect($ids)->contains(fn ($id) => ! is_string($id) || trim($id) === '' || strlen($id) > 128)) {
+            return response()->json([
+                'message' => 'Unable to read the ticket order. Please refresh and try again.',
+                'code' => 'ticket_type_order_unavailable',
+            ], 502);
+        }
+
+        return response()->json(['data' => ['ticketTypeIds' => $ids, 'revision' => $revision]]);
+    }
+
+    protected function ticketTypeOrderFailure(BtcPayException $exception)
+    {
+        $status = $exception->getStatusCode();
+
+        return response()->json([
+            'message' => 'Unable to change the ticket order. Please refresh and try again.',
+            'code' => $status === 409 ? 'ticket_type_order_conflict' : 'ticket_type_order_unavailable',
+        ], in_array($status, [403, 404, 409, 422], true) ? $status : 502);
     }
 
     /**

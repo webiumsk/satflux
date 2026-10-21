@@ -792,3 +792,71 @@ is merged, packaged or deployed. No production behavior is verified. Next
 milestone: finish PR review and exact-head CI, then obtain redacted aggregate
 diagnostics from the operator. No account, wallet, billing, payment or production
 configuration action is implied.
+
+## 2026-10-21: Tickets sales and merchant ordering implementation
+
+The Product Owner approved the generic public sales design and authorized its
+implementation together with persisted inline ticket-type ordering. Existing
+Satflux event/type forms remain authoritative; public sales and hosted payment stay
+on the BTCPay host. The feature contract and ownership are recorded in
+[TICKETS_SALES_ORDERING](TICKETS_SALES_ORDERING.md).
+
+Fresh GitHub evidence verifies PR #396 merged into master at
+`fe0ace6eeeab4019a557326c4b05166b53e99f59`; the new consumer branch starts there.
+The owned plugin branch starts at `6bdd68828673c8a75aa744f9f3483b7a251a938d`,
+with the prior uncommitted Tickets 2.0.4 candidate preserved as a dependency.
+Original checkouts and the owner's modified image are untouched. The feature
+candidate is 2.1.0; repository publication and deployment status are separate gates.
+
+Current local evidence: 67 related PHP tests/209 assertions, followed by 34 new
+order-specific tests/91 assertions including audited admin/support access; full
+PHPStan passes without expanding its baseline. Frontend specialist reports focused
+31 cases, lint, five-locale parity, unchanged typecheck ratchet and build passing.
+Actual rendered plugin-page QA, provider database tests and final security review
+are in progress. Do not treat these interim results as final acceptance.
+
+
+### Final Tickets local acceptance
+
+Implementation and independent source/security/QA review are complete locally.
+The frozen provider passes 100/100 tests, including 15 actual disposable PostgreSQL
+cases; exact-host build and guard pass. Independent browser QA passes 32 actual
+compiled-Razor/embedded-asset checks plus 9 visual/contrast scenarios, including
+private virtual-location exclusion and stable responsive contact/summary behaviour.
+The provider DLL SHA256 is
+`a24b3e36f55545b82fa4894df608adc670bd09b92b913a8f1db327127240b2da`.
+
+Final consumer verification passes 850 Vitest cases/128 files (serialized without
+changing timeouts), 77 relevant PHP/documentation cases/241 assertions, PHPStan,
+Pint, lint, five-locale parity, unchanged typecheck ratchet and production build.
+Earlier parallel local timeouts are superseded by the unchanged complete serial
+pass; quiet agent-reporter output was expected. See the implementation record for
+review scope and limitations rather than inferring deployment readiness.
+
+New branches remain local/uncommitted. Original plugin WIP and pinned core source
+are unchanged; no production or remote publication was performed. Next milestone:
+separate repository publication/CI handoff, provider-first staging and reviewed
+release/rollback planning. No installer, merge or deployment occurred. Existing
+Greenfield purchase recovery, strict inventory holds, all-zero checkout and external
+email/raffle exactly-once guarantees remain outside this completed layout scope.
+
+
+### Tickets delivery authorization and local installer
+
+The Product Owner subsequently authorized a local installable Tickets 2.1.0 package
+and commit/push of the Satflux consumer branch `feat/tickets-sales-ordering` to the
+owned GitHub repository. This supersedes the local-only publication gate above for
+these two actions. Plugin repository publication, merge, installation and deployment
+remain separate gates.
+
+The pinned BTCPay 2.4.5 PluginPacker produced the standalone 2.1.0.0 installer from
+the unchanged reviewed Release DLL. Archive SHA256:
+`d892b22df02ddbe5970e2faab70489d14f05be30c056ca822b5965077c0b6df3`.
+The package sidecar declares `BTCPayServer >=2.4.5`; its DLL checksum matches the
+accepted build above. Existing host/transitive dependency advisories remain open;
+packaging does not upgrade dependencies or establish production readiness.
+
+Consumer publication is scoped to the 23 reviewed application/test/localization/doc
+files. Feature-branch pushes alone do not trigger this repository's CI workflow;
+exact-head PR CI and representative provider-first staging are the next gates.
+No production configuration or `.env` change is required by this milestone.
