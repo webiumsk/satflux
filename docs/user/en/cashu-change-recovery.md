@@ -50,3 +50,11 @@ support; their records are preserved.
 Older plugins show that this capability is unsupported. An unavailable check does
 not mean a zero balance. The existing **Cashu recovery** section in BTCPay remains
 available for supported native recovery operations.
+
+## Lightning checkout and Cashu availability
+
+With the updated plugin, CashuMelt is hidden from new checkout whenever any Lightning wallet is configured, including Blink API, LN addresses and Boltz. A Lightning outage does not automatically offer Cashu. Existing Cashu quotes remain available for recovery under their original settings.
+
+Re-enabling an existing Cashu configuration with the same mint, unit, payout address, trust list and fee caps does not change its payment destination. Changing the payment destination remains blocked while funds are unresolved. Combining re-enable with changes to any of those values also retains the fund-safety checks. Enabling Cashu does not make it appear alongside a configured Lightning wallet.
+
+A BTCPay invoice paid directly through Lightning can be settled while a separate Cashu quote remains pending. HTTP 400 from the mint does not determine whether that quote was funded. The invoice status alone cannot clear its recovery hold. When changing wallet credentials, detection occurs after leaving the input or using Save/Test; typing alone does not select another wallet.

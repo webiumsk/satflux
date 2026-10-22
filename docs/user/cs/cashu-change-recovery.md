@@ -49,3 +49,11 @@ jejich záznamy zůstanou zachovány.
 Starší plugin zobrazí, že tuto možnost nepodporuje. Nedostupná kontrola neznamená
 nulový zůstatek. Stávající sekce **Cashu recovery** v BTCPay zůstává dostupná pro
 podporované úkony obnovy přímo v pluginu.
+
+## Lightning checkout a dostupnost Cashu
+
+S aktualizovaným pluginem se CashuMelt v novém checkoutu nezobrazuje, pokud je nakonfigurovaná jakákoli Lightning peněženka včetně Blink API, LN adresy a Boltz. Výpadek Lightningu automaticky nenabídne Cashu. Existující Cashu quote zůstávají dostupné k obnově s původním nastavením.
+
+Opětovné zapnutí existujícího Cashu nastavení se stejným mintem, jednotkou, cílovou adresou, důvěryhodnými minty a limity poplatků nemění cíl platby. Změna cíle platby zůstává při nevyjasněných prostředcích blokovaná. Také spojení opětovného zapnutí se změnou kteréhokoli z těchto údajů nadále podléhá kontrole bezpečnosti prostředků. Zapnutí Cashu neznamená jeho zobrazení vedle nakonfigurované Lightning peněženky.
+
+Faktura BTCPay zaplacená přímo přes Lightning může být vyrovnaná, zatímco samostatný Cashu quote zůstává čekající. HTTP 400 z mintu neurčuje, zda byl tento quote uhrazen. Samotný stav faktury jeho blokaci obnovy neuvolní. Při změně údajů peněženky se detekce provede po opuštění pole nebo přes Uložit/Testovat; samotné psaní nevybere jinou peněženku.

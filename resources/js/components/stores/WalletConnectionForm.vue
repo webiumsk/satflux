@@ -159,10 +159,12 @@
           v-model="form.secret"
           v-model:connection-type="form.type"
           input-id="wallet-connection-smart-paste"
+          detection-trigger="blur"
+          @detected="onAdvancedCandidateDetected"
           @detect-cashu="onDetectCashuFromPaste"
         />
 
-        <div v-if="form.secret.trim()" class="max-w-md">
+        <div v-if="advancedCandidateReviewed && form.secret.trim()" class="max-w-md">
           <template v-if="advancedFallbackDerivable">
             <p class="text-sm text-gray-500">
               {{ t("stores.wallet_fallback_derived_note") }}
@@ -495,7 +497,7 @@
 <script setup lang="ts">
 import type { WalletConnectionDetails } from "../../services/api";
 import { asApiError } from "../../utils/apiError";
-import { ref, reactive, computed, watch, nextTick } from "vue";
+import { ref, reactive, computed, watch, nextTick, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore, type EmailChallengeSummary } from "../../store/auth";
@@ -716,6 +718,7 @@ function applyRevealedConnection(reveal: { secret?: string | null; type?: string
     )) as WalletConnectionFormType;
   form.secret = reveal.secret || "";
   sanitizeSecretForDeclaredType();
+  reviewedAdvancedSecret.value = form.secret;
   quickConnectAddress.value =
     form.type === "lnaddress" ? lnAddressFromConnectionString(form.secret) : "";
   syncWalletSetupTabAfterReveal();
@@ -777,6 +780,9 @@ const errors = reactive<Record<string, string>>({});
 const walletSafety = ref<unknown>(null);
 const walletSafetyRefusal = ref<'blocked' | 'unavailable' | null>(null);
 let storeGeneration = 0;
+let testRequestVersion = 0;
+let candidateGeneration = 0;
+let componentMounted = true;
 const testResult = ref<{
   success: boolean;
   message: string;
@@ -790,16 +796,61 @@ const form = reactive({
   ),
   secret: "",
 });
+const reviewedAdvancedSecret = ref<string | null>(null);
+const advancedCandidateReviewed = computed(() => reviewedAdvancedSecret.value === form.secret);
+
+watch(() => form.secret, () => {
+  reviewedAdvancedSecret.value = null;
+  delete errors.secret;
+  delete errors.type;
+}, { flush: 'sync' });
+
+watch(() => [props.storeId, form.secret, form.type, advancedFallbackAddress.value], () => {
+  candidateGeneration++;
+  testRequestVersion++;
+  testing.value = false;
+  testResult.value = null;
+}, { flush: 'sync' });
+
+onBeforeUnmount(() => {
+  componentMounted = false;
+  testRequestVersion++;
+  candidateGeneration++;
+  storeGeneration++;
+});
 
 const aquaWalletBrand = ref<AquaBoltzWalletBrand>("aqua");
 
 const detectedAquaWalletBrand = computed((): AquaBoltzWalletBrand | null =>
-  detectWalletBrandFromDescriptor(form.secret),
+  advancedCandidateReviewed.value ? detectWalletBrandFromDescriptor(form.secret) : null,
 );
 
 const walletPasteDetection = computed(() =>
-  detectWalletConnectionInput(form.secret ?? ""),
+  detectWalletConnectionInput(advancedCandidateReviewed.value ? form.secret : ""),
 );
+
+function onAdvancedCandidateDetected(value: string) {
+  if (value !== form.secret) return;
+  reviewedAdvancedSecret.value = value;
+  const detected = detectWalletConnectionInput(value);
+  if (detected.confidence === 'high' && detected.connectionType) form.type = detected.connectionType;
+  if (detected.brand) aquaWalletBrand.value = detected.brand;
+}
+
+/** Save/Test always classify the current value, including keyboard/programmatic activation without blur. */
+function reviewAdvancedCandidateForAction(): boolean {
+  onAdvancedCandidateDetected(form.secret);
+  const detection = walletPasteDetection.value;
+  if (detection.kind === 'cashu_wallet_nwc') {
+    errors.secret = t('stores.wallet_cashu_nwc_rejected');
+    return false;
+  }
+  if (detection.kind === 'cashu') {
+    onDetectCashuFromPaste({ mintUrl: detection.cashuMintUrl ?? '', lightningAddress: detection.cashuLightningAddress });
+    return false;
+  }
+  return true;
+}
 
 /** Stable brand for read-only view (no mutable chip state). */
 const readonlyAquaWalletBrand = computed((): AquaBoltzWalletBrand => {
@@ -1121,6 +1172,7 @@ async function handleTestConnection() {
     };
     return;
   }
+  if (!reviewAdvancedCandidateForAction()) return;
   if (form.type === "blink" && !validateBlinkConnectionString(form.secret)) {
     testResult.value = {
       success: false,
@@ -1172,17 +1224,23 @@ async function handleTestConnection() {
   }
   testing.value = true;
   testResult.value = null;
+  const storeId = props.storeId;
+  const generation = storeGeneration;
+  const requestVersion = ++testRequestVersion;
+  const current = () => componentMounted && storeId === props.storeId && generation === storeGeneration && requestVersion === testRequestVersion;
   try {
-    const result = await walletApi.connection.test(props.storeId, {
+    const result = await walletApi.connection.test(storeId, {
       connection_string: formatConnectionStringForApi(form.secret, form.type),
       crypto_code: "BTC",
     });
+    if (!current()) return;
     testResult.value = {
       success: result.success ?? false,
       message: result.message || "Connection test completed",
       requires_manual_config: result.requires_manual_config ?? false,
     };
   } catch (rawError) {
+    if (!current()) return;
     const err = asApiError(rawError);
     testResult.value = {
       success: false,
@@ -1191,7 +1249,7 @@ async function handleTestConnection() {
         "Failed to test connection. Please try again.",
     };
   } finally {
-    testing.value = false;
+    if (current()) testing.value = false;
   }
 }
 
@@ -1246,6 +1304,11 @@ async function handleSubmit() {
   walletSafetyRefusal.value = null;
   Object.keys(errors).forEach((k) => delete errors[k]);
   testResult.value = null;
+  if (!reviewAdvancedCandidateForAction()) {
+    submitting.value = false;
+    return;
+  }
+  const candidateVersion = candidateGeneration;
 
   if (form.type === "blink" && !validateBlinkConnectionString(form.secret)) {
     errors.secret = "Invalid Blink connection string format.";
@@ -1310,10 +1373,10 @@ async function handleSubmit() {
         ? undefined
         : advancedFallbackAddress.value.trim(),
     });
-    if (storeId !== props.storeId || generation !== storeGeneration) return;
+    if (!componentMounted || storeId !== props.storeId || generation !== storeGeneration || candidateVersion !== candidateGeneration) return;
     emit("submitted", form.type);
   } catch (rawError) {
-    if (storeId !== props.storeId || generation !== storeGeneration) return;
+    if (!componentMounted || storeId !== props.storeId || generation !== storeGeneration || candidateVersion !== candidateGeneration) return;
     const err = asApiError(rawError);
     const code = err.response?.data?.code;
     if (code === "wallet_change_confirmation_required") {

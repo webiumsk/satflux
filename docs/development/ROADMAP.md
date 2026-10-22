@@ -1,5 +1,18 @@
 # Development roadmap
 
+## Current: wallet detection and Lightning-exclusive Cashu checkout
+
+Complete reviewed isolated Satflux/provider fixes described in
+[WALLET_CHECKOUT_CASHU_POLICY](WALLET_CHECKOUT_CASHU_POLICY.md). The owner chooses
+no Cashu in new checkout whenever any Lightning wallet is configured. Retain all
+existing quote evidence/recovery and restore enable-only availability without
+changing payout targets. Both scopes pass independent security and QA; provider
+full suite passes 163 cases with no skips. Next milestone: hand off the local
+CashuMelt 1.4.0.8 candidate and separate consumer/provider commits for owner-approved
+publication, followed by provider-first installation and representative staging.
+The reported direct-LN settlement does not clear the separate Cashu funding hold.
+Use the read-only runbook before any further production evidence or active recovery.
+
 ## Current: bounded monitoring for wallet verification probes
 
 Complete the isolated `fix/wallet-probe-monitoring` repair and retain all existing
