@@ -154,3 +154,61 @@ Representative browser/provider-first staging, source publication and installati
 approval remain separate gates. No live wallet, real-fund test, current production
 configuration, deployment or incident resolution has been verified. Existing
 funding HTTP 400 remains unresolved even when the BTCPay invoice settled by LN.
+
+## PR review and CI follow-up (2026-10-22)
+
+Initial consumer PR #399 (`eae6f32f`) passes PHP and Playwright CI. Its Node job
+stops at npm's production dependency audit before lint/typecheck/tests/build:
+locked DOMPurify 3.4.16 is reported critical. Update only the direct minimum and
+locked package to upstream-patched 3.4.17; all other lock entries remain unchanged.
+Do not lower the audit threshold or use a forced broad dependency update.
+Upstream conditions concern non-default sanitizer modes; this is not evidence of
+exploitable Satflux XSS. Existing moderate/high dependency advisories remain for
+separate triage.
+
+CodeRabbit correctly identifies that LIMIT 20 can hide relevant older payment rows.
+The runbook now emits matching_rows and rows_truncated using window counts before
+LIMIT, retaining exact store/amount filters, read-only mode, timeouts and projections
+that exclude private recovery contents. Truncation is not evidence of absent funds.
+The provider's LNURL-only description now acknowledges its configured payment method
+while preserving Unknown/null/no-payout classification. Its persisted-snapshot test
+explicitly compares before and after unchanged re-enable, rather than relying on
+a consumer HTTP fake.
+
+The provider's three-file follow-up passes author focused tests **11/11**, no skips,
+on a newly verified disposable PostgreSQL fixture and the unchanged pinned host.
+Independent source security accepts the provider delta and runbook. Provider
+three-file fingerprint (same line-hash algorithm as above):
+`c3d36beb75245a633ee1df1b5586fc02a05343997056f8e92d531e86a6eeb989`.
+Earlier provider fingerprints, full-suite results and package hashes above describe
+the original pre-review revision. The existing local 1.4.0.8 archive is intentionally
+unchanged and does not contain this description follow-up. A refreshed package
+requires a separate reviewed build; no release or deployment is performed here.
+
+Independent follow-up QA passes **6/6** provider cases without rebuilding, against
+the tested DLL. Runbook SQL smoke passes four synthetic boundaries: zero matches,
+20 matches without truncation, 21 matches capped at 20 with total 21/truncation,
+and three foreign-store matches excluded. Each diagnostic transaction confirms
+read-only mode and rolls back; synthetic setup/cleanup is confined to the disposable
+fixture. An omitted oldest row retains its synthetic proof marker in the database.
+Both independent reviewers verify that every non-DOMPurify lock entry is identical.
+The patched-lock production audit exits zero at the unchanged critical threshold:
+**0 critical, 6 high, 35 moderate**; DOMPurify is absent from the remaining findings.
+This is not a vulnerability-free dependency-tree claim. Provider follow-up is
+published as `dd230ca6ecec68adb442b032fc671d896a574551` on existing PR #42.
+
+CodeRabbit's incremental provider review after `dd230ca` is blocked by its free OSS
+review limit; the green status still references the previous reviewed commit.
+Do not treat that status as a new-head source review. Independent security/QA
+above cover the follow-up. The original CodeRabbit findings are addressed in code;
+no manual thread resolution or extra reviewer request is implied.
+
+Patched-version validation passes seven temporary sanitizer checks, including the
+actual FAQ component, the existing raffle/documentation option contracts and the
+three advisory regression fixtures. Preconditions assert DOMPurify 3.4.17 from an
+isolated verified tarball; the shared installation remains unchanged. Production
+build passes in the isolated source copy and its module-inspection hook confirms
+the patched package is bundled; existing large-chunk warnings remain. Independent
+QA reviews the fixture contracts, version/integrity, audit JSON and build evidence.
+No manual browser test or exhaustive exploitation assessment is claimed.
+The new provider commit `dd230ca` passes compatibility CI run `39836684816`.

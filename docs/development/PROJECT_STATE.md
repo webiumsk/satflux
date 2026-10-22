@@ -1,5 +1,33 @@
 # Project state
 
+## Wallet checkout PR review follow-up (2026-10-22)
+
+Published consumer [PR #399](https://github.com/webiumsk/satflux/pull/399) at
+`eae6f32f` passes PHP and Playwright CI; Node stops at the production dependency
+audit before lint/tests/build because locked DOMPurify 3.4.16 is affected by newly
+reported advisories. Review follow-up updates only DOMPurify to the patched 3.4.17
+while preserving every other locked dependency; security thresholds stay intact.
+No demonstrated Satflux XSS or production exploitation is claimed.
+
+CodeRabbit's consumer finding is valid: the read-only Cashu query now reports total
+matches and truncation while keeping payment output capped at 20 rows. Provider
+[PR #42](https://github.com/webiumsk/BTCPayServerPluginsWebium/pull/42) at `f3c7087`
+has green compatibility CI. Its valid description finding is corrected for an
+LNURL-only store without granting an outbound payout adapter. Provider tests also
+explicitly compare the persisted original snapshot before/after unchanged re-enable.
+The earlier local 1.4.0.8 archive predates this description follow-up and is retained
+unchanged; repository review does not rebuild or publish that package.
+
+Follow-up verification passes 11 author/6 independent provider tests, four SQL
+boundary cases, seven patched-version sanitizer checks and the production build.
+The patched-lock audit passes with zero critical findings (6 high/35 moderate
+remain). New provider commit `dd230ca` passes CI; its incremental CodeRabbit
+review is quota-limited. Source security and independent QA accept the follow-up.
+Follow-up verification and remaining gates are recorded in
+[the contract](WALLET_CHECKOUT_CASHU_POLICY.md). Exact new-head CI and incremental
+CodeRabbit availability must be checked after publication. No merge, deployment,
+production access or unresolved-funding override is included.
+
 ## Wallet detection and Lightning-exclusive Cashu checkout (2026-10-22)
 
 Owner-authorized fixes are isolated in Satflux `fix/wallet-detection-cashu-checkout`

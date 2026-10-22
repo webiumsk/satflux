@@ -1,5 +1,21 @@
 # Development decision log
 
+## 2026-10-22 - Resolve wallet checkout review without relaxing safety gates
+
+Consumer #399's initial Node CI fails on npm's critical dependency-audit finding
+for locked DOMPurify 3.4.16; PHP and Playwright pass at `eae6f32f`. Apply the upstream
+3.4.17 patch only and preserve audit thresholds. Upstream non-default-mode attack
+conditions do not establish exploitable Satflux XSS. Other pre-existing dependency
+advisories require separate triage, not a forced major upgrade in this fix.
+
+Accept CodeRabbit's capped-query ambiguity and LNURL-only description findings.
+Expose total matching row count/truncation without returning recovery contents or
+removing the read-only timeout/cap. Correct the provider description while retaining
+Unknown/null/no-payout classification and configured-Lightning checkout exclusion.
+Make persisted snapshot-before/after preservation explicit in the provider test.
+No settlement, funds guard, core, third-party plugin or production change follows.
+Previously built package checksums remain historical; no silent artifact replacement.
+
 ## 2026-10-22 - Hide Cashu checkout with any configured Lightning wallet
 
 The owner reports draft-character wallet detection, selectable parallel Cashu and

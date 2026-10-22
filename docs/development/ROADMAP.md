@@ -1,5 +1,15 @@
 # Development roadmap
 
+## Current: wallet checkout review and CI
+
+Address valid findings on Satflux #399 and owned plugins #42: a bounded query must
+advertise omitted rows, LNURL-only classification must be consistent, and original
+snapshots remain unchanged during re-enable. Patch the critical-audit-blocking
+DOMPurify dependency without lowering CI policy or broad dependency updates.
+Next milestone: verified new-head CI and independent review, then owner-approved
+merge/package refresh and provider-first staging. The previous local 1.4.0.8
+archive remains the pre-review artifact until explicitly rebuilt and verified.
+
 ## Current: wallet detection and Lightning-exclusive Cashu checkout
 
 Complete reviewed isolated Satflux/provider fixes described in

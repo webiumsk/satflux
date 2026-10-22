@@ -56,7 +56,9 @@ SELECT "Enabled", "Unit",
 FROM "BTCPayServer.Plugins.CashuMelt"."CashuMeltStoreSettings"
 WHERE "StoreId" = :'cashu_store_id';
 
-SELECT "AmountSats", "Unit", "State", "SettlementState",
+SELECT count(*) OVER () AS matching_rows,
+       (count(*) OVER () > 20) AS rows_truncated,
+       "AmountSats", "Unit", "State", "SettlementState",
        "CreatedAt", "PaidAt", "SettledAt", "QuoteExpiresAt", "LastCheckedAt",
        "RetryCount", "NeedsManualReview",
        ("SettingsSnapshotJson" IS NOT NULL) AS has_snapshot,
@@ -76,14 +78,18 @@ ROLLBACK;
 ```
 
 Expected output: `transaction_read_only` is `on`, followed by zero/one settings row
-and a small set of state/timestamp/boolean
-rows. No rows can mean a different database, store, amount or no matching record;
+and at most 20 state/timestamp/boolean rows. Each payment row includes
+`matching_rows` (the total matching rows before the cap) and `rows_truncated`.
+No rows can mean a different database, store, amount or no matching record;
 it is not proof of no payment. Missing schema/column means stop and report the
 schema/version mismatch; do not run migrations as diagnosis. If a query errors,
 issue only `ROLLBACK;` before leaving the session. Never substitute `SELECT *`.
 
 Interpretation:
 
+- `rows_truncated = true` means older matching rows were omitted. Do not infer
+  absence of recovery evidence from the displayed subset; retain the hold and
+  request a separately scoped read-only investigation of the omitted records.
 - `has_snapshot` and `has_mint_quote` identify whether original evidence exists;
   they do not prove that evidence is valid or that funds can be recovered.
 - `has_proofs`, issuance, change outputs or a payout quote require preserving
