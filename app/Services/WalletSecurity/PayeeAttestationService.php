@@ -39,9 +39,9 @@ class PayeeAttestationService
     ) {}
 
     /**
-     * Learn the payee node from a canary invoice (never paid, archived right
-     * after reading). Best-effort: returns false when the invoice cannot be
-     * created or carries no Lightning destination (lazy payment methods).
+     * Learn the payee node from a canary invoice (not intended to be paid,
+     * archived right after reading). Best-effort: returns false when the invoice
+     * cannot be created or carries no Lightning destination (lazy payment methods).
      */
     public function learn(WalletConnection $connection, ?User $by = null, string $reason = 'connected'): bool
     {
@@ -78,7 +78,10 @@ class PayeeAttestationService
                 'amount' => self::CANARY_AMOUNT_BTC,
                 'currency' => 'BTC',
                 'metadata' => ['satflux_canary' => true, 'itemDesc' => 'Satflux wallet check (not payable)'],
-                'checkout' => ['expirationMinutes' => 1, 'paymentMethods' => self::LIGHTNING_METHODS],
+                // These unpublished probes must not inherit customer-invoice
+                // monitoring (normally one day). Archiving does not end it;
+                // keep a short observation buffer after checkout expiration.
+                'checkout' => ['expirationMinutes' => 1, 'monitoringMinutes' => 1, 'paymentMethods' => self::LIGHTNING_METHODS],
             ], $apiKey);
             $invoiceId = isset($invoice['id']) ? (string) $invoice['id'] : null;
             if ($invoiceId === null || $invoiceId === '') {

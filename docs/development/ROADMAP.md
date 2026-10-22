@@ -1,5 +1,18 @@
 # Development roadmap
 
+## Current: bounded monitoring for wallet verification probes
+
+Complete the isolated `fix/wallet-probe-monitoring` repair and retain all existing
+wallet-change safety gates. Future automatic probes request one-minute checkout
+validity plus one minute of monitoring; pre-existing deadlines remain unchanged.
+Independent source security and 24 focused QA tests pass. Main verification passes
+151 PHP tests plus 8 documentation tests, changed-file Pint and full PHPStan. See
+[WALLET_PROBE_MONITORING](WALLET_PROBE_MONITORING.md) for broader checks, read-only
+operator diagnosis and rollback. Next milestone: review/publish the focused Satflux
+change and validate actual probe expiry with representative direct Lightning and
+LNURL providers in isolation before deployment approval. No production access,
+configuration change, merge or deployment is included.
+
 ## Current: Tickets lifecycle, scoped images and passwordless migration
 
 Complete owner-authorized consumer/provider fixes and independent checks described in

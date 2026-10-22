@@ -143,7 +143,11 @@ class PayeeAttestationTest extends TestCase
         $this->assertSame(['canary-1'], $this->archived, 'the canary invoice is archived right after reading');
         $this->assertDatabaseHas('audit_logs', ['action' => 'wallet_connection.payee_learned', 'target_id' => $connection->id]);
         Http::assertSent(fn (Request $r) => $r->method() === 'POST' && str_ends_with($r->url(), '/invoices')
-            && ($r['metadata']['satflux_canary'] ?? false) === true && $r['currency'] === 'BTC');
+            && ($r['metadata']['satflux_canary'] ?? false) === true && $r['currency'] === 'BTC'
+            && $r['amount'] === PayeeAttestationService::CANARY_AMOUNT_BTC
+            && $r['checkout']['expirationMinutes'] === 1
+            && $r['checkout']['monitoringMinutes'] === 1
+            && $r['checkout']['paymentMethods'] === PayeeAttestationService::LIGHTNING_METHODS);
     }
 
     #[Test]

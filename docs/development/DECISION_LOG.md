@@ -1,5 +1,28 @@
 # Development decision log
 
+## 2026-10-22 - Bound future wallet-attestation probe monitoring
+
+The owner reports a monitored-invoice hold despite creating no customer invoices
+on a new store. Source tracing confirms automatic real 100-sat Lightning probes
+can inherit approximately one day of monitoring despite one-minute checkout
+validity. Archive is a soft flag, not cancellation. This is a confirmed repository
+defect; the reported production invoice and deadline remain unverified.
+
+Choose an explicit one-minute monitoring buffer for newly created probes only,
+following independent security review. Keep checkout validity, amount, LN-only
+methods, merchant credentials, locks and every outstanding-payment/Cashu/journal/
+confirmation/ownership guard unchanged. Do not exempt metadata-marked probes or
+retroactively alter old invoices. A marker is merchant-controlled, not provenance.
+
+Two new regressions reproduce the omission before the service fix. Independent
+QA verifies exact locked dependencies and passes 24 tests/150 assertions; security
+accepts the three-file digest recorded in the contract. The deadline regression
+proves guard release only, not a full provider wallet replacement. Actual BOLT11
+expiry and delayed settlement require isolated provider acceptance; there is no
+production cancellation or immediate-unblock claim. Document safe read-only
+diagnosis and rollback. No new environment variable, schema, plugin/core change,
+production mutation, merge or deployment is authorized by this repair.
+
 ## 2026-10-16: Cashu recovery API controller classification
 
 Within the existing owner-authorized Satflux/owned-CashuMelt defect work, change
