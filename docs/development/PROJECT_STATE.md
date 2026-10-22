@@ -1,5 +1,31 @@
 # Project state
 
+## Wallet attestation probe monitoring repair (2026-10-22)
+
+The owner reports an outstanding-invoice wallet-change hold on a new store with
+no manually created invoice. Read-only tracing against Satflux `fe0ace6e` and
+BTCPay 2.4.5 confirms automatic payee probes used one-minute expiration but
+inherited the store monitoring duration (normally one day); archival does not end
+monitoring. The actual production blocking invoice has not been inspected.
+
+The isolated `fix/wallet-probe-monitoring` candidate explicitly requests one minute
+of monitoring for future probes only. Keep every wallet-change guard unchanged.
+Existing invoices retain original deadlines; no metadata/archive/amount exemption,
+core/plugin/schema/environment change or production mutation is included.
+See [WALLET_PROBE_MONITORING](WALLET_PROBE_MONITORING.md) for acceptance, read-only
+operator steps, rollback, review/test evidence and provider-expiry limitations.
+Five user-documentation locales explain the hold. Tickets PR #397 and its working
+tree are separate; this branch starts from the current default branch.
+
+Independent security accepts source digest `4505e84b69cb37c4385f128f25b652822b84b5f8415aadc966473c4dae2dc767`
+without blockers. Independent QA passes 24 focused tests/150 assertions after
+verifying all 167 installed dependencies against the lockfile. Main's broader
+verification passes 151 PHP tests/768 assertions plus 8 documentation tests/26
+assertions, changed-file Pint and full PHPStan. Details are recorded in the contract.
+Representative direct-Lightning/LNURL
+expiry validation remains a deployment acceptance gate. No current production
+store has been unblocked or verified by this repository investigation.
+
 ## Tickets media and passwordless migration repair (2026-10-20)
 
 Owner-authorized repository fixes are in `fix/tickets-media-passwordless` from
