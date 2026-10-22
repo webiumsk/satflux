@@ -53,6 +53,18 @@ class TicketService
         });
     }
 
+    /** Read the provider-authoritative IANA catalog with merchant credentials. */
+    public function getEventTimeZones(string $storeId, string $userApiKey): array
+    {
+        if (trim($userApiKey) === '') {
+            throw new \InvalidArgumentException('A merchant API key is required for event time zones.');
+        }
+
+        return $this->withApiKey($userApiKey, fn () => $this->client->get(
+            '/api/v1/stores/'.rawurlencode($storeId).'/satflux-tickets/time-zones'
+        ));
+    }
+
     /**
      * Create a new event. Images use the separate event-scoped logo endpoint.
      */
@@ -147,12 +159,46 @@ class TicketService
     /**
      * List ticket types for an event.
      */
-    public function listTicketTypes(string $storeId, string $eventId, ?string $userApiKey = null, string $sortBy = 'Name', string $sortDir = 'asc'): array
+    public function listTicketTypes(string $storeId, string $eventId, ?string $userApiKey = null, string $sortBy = 'DisplayOrder', string $sortDir = 'asc'): array
     {
         return $this->withApiKey($userApiKey, function () use ($storeId, $eventId, $sortBy, $sortDir) {
             return $this->client->get(
                 "/api/v1/stores/{$storeId}/satflux-tickets/events/{$eventId}/ticket-types",
                 ['sortBy' => $sortBy, 'sortDir' => $sortDir]
+            );
+        });
+    }
+
+    /**
+     * Read the provider's complete ordering snapshot using merchant credentials.
+     */
+    public function getTicketTypeOrder(string $storeId, string $eventId, string $userApiKey): array
+    {
+        if (trim($userApiKey) === '') {
+            throw new \InvalidArgumentException('A merchant API key is required for ticket ordering.');
+        }
+
+        return $this->withApiKey($userApiKey, function () use ($storeId, $eventId) {
+            return $this->client->get(
+                '/api/v1/stores/'.rawurlencode($storeId).'/satflux-tickets/events/'.rawurlencode($eventId).'/ticket-types/order'
+            );
+        });
+    }
+
+    /**
+     * Compare-and-swap ordering must not be replayed after an uncertain response.
+     */
+    public function updateTicketTypeOrder(string $storeId, string $eventId, array $data, string $userApiKey): array
+    {
+        if (trim($userApiKey) === '') {
+            throw new \InvalidArgumentException('A merchant API key is required for ticket ordering.');
+        }
+
+        return $this->withApiKey($userApiKey, function () use ($storeId, $eventId, $data) {
+            return $this->client->put(
+                '/api/v1/stores/'.rawurlencode($storeId).'/satflux-tickets/events/'.rawurlencode($eventId).'/ticket-types/order',
+                $data,
+                retry: false
             );
         });
     }
@@ -284,6 +330,9 @@ class TicketService
         'location',
         'startDate',
         'endDate',
+        'timeZone',
+        'startLocal',
+        'endLocal',
         'currency',
         'redirectUrl',
         'emailSubject',

@@ -12,9 +12,11 @@ export interface TicketEvent {
     title: string;
     description?: string;
     eventType: 'Physical' | 'Virtual';
+    /** Physical venue IANA zone; null retains the legacy explicit-UTC display. */
+    timeZone?: string | null;
     location?: string;
     startDate: string;
-    endDate?: string;
+    endDate?: string | null;
     currency?: string;
     redirectUrl?: string;
     emailSubject?: string;
@@ -33,6 +35,11 @@ export interface TicketEvent {
     bundledRaffleTicketsPerAdmission?: number;
 }
 
+export type TicketEventWrite = Partial<TicketEvent> & {
+    startLocal?: string;
+    endLocal?: string | null;
+};
+
 export interface TicketType {
     id: string;
     eventId: string;
@@ -44,6 +51,11 @@ export interface TicketType {
     quantityAvailable?: number;
     isDefault: boolean;
     ticketTypeState: 'Active' | 'Disabled';
+}
+
+export interface TicketTypeOrder {
+    ticketTypeIds: string[];
+    revision: number;
 }
 
 export interface Ticket {
@@ -113,6 +125,15 @@ export const useTicketsStore = defineStore('tickets', () => {
         }
     }
 
+    async function fetchTimeZones(storeId: string): Promise<string[]> {
+        const response = await api.get(`/stores/${storeId}/tickets/time-zones`);
+        const zones: unknown = response.data?.data?.timeZones;
+        if (!Array.isArray(zones) || zones.length === 0 || zones.some(zone => typeof zone !== 'string' || !zone.trim())) {
+            throw new Error('Invalid event time zone catalog');
+        }
+        return [...new Set(zones as string[])];
+    }
+
     async function fetchEvent(storeId: string, eventId: string) {
         loading.value = true;
         try {
@@ -124,7 +145,7 @@ export const useTicketsStore = defineStore('tickets', () => {
         }
     }
 
-    async function createEvent(storeId: string, data: Partial<TicketEvent>) {
+    async function createEvent(storeId: string, data: TicketEventWrite) {
         loading.value = true;
         try {
             const response = await api.post(`/stores/${storeId}/tickets/events`, data);
@@ -136,7 +157,7 @@ export const useTicketsStore = defineStore('tickets', () => {
         }
     }
 
-    async function updateEvent(storeId: string, eventId: string, data: Partial<TicketEvent>) {
+    async function updateEvent(storeId: string, eventId: string, data: TicketEventWrite) {
         loading.value = true;
         try {
             const response = await api.put(`/stores/${storeId}/tickets/events/${eventId}`, data);
@@ -194,6 +215,19 @@ export const useTicketsStore = defineStore('tickets', () => {
         } finally {
             loading.value = false;
         }
+    }
+
+    async function fetchTicketTypeOrder(storeId: string, eventId: string): Promise<TicketTypeOrder> {
+        const response = await api.get(`/stores/${storeId}/tickets/events/${eventId}/ticket-types/order`);
+        return response.data.data;
+    }
+
+    async function saveTicketTypeOrder(storeId: string, eventId: string, order: TicketTypeOrder): Promise<TicketTypeOrder> {
+        const response = await api.put(`/stores/${storeId}/tickets/events/${eventId}/ticket-types/order`, {
+            ticketTypeIds: order.ticketTypeIds,
+            expectedRevision: order.revision,
+        });
+        return response.data.data;
     }
 
     async function createTicketType(storeId: string, eventId: string, data: Partial<TicketType>) {
@@ -320,6 +354,7 @@ export const useTicketsStore = defineStore('tickets', () => {
         loading,
         // events
         fetchEvents,
+        fetchTimeZones,
         fetchEvent,
         createEvent,
         updateEvent,
@@ -327,6 +362,8 @@ export const useTicketsStore = defineStore('tickets', () => {
         toggleEvent,
         // ticket types
         fetchTicketTypes,
+        fetchTicketTypeOrder,
+        saveTicketTypeOrder,
         createTicketType,
         updateTicketType,
         deleteTicketType,

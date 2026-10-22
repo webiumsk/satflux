@@ -3,18 +3,39 @@
 namespace App\Http\Controllers;
 
 use App\Models\Store;
+use App\Models\User;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\TicketService;
 use App\Services\Tickets\EventBundleService;
+use App\Services\Tickets\EventTimeZoneService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class TicketController extends Controller
 {
     public function __construct(
         protected TicketService $ticketService,
         protected EventBundleService $eventBundleService,
+        protected EventTimeZoneService $eventTimeZoneService,
     ) {}
+
+    public function eventTimeZones(Store $store)
+    {
+        try {
+            return response()->json(['data' => $this->eventTimeZoneService->catalog($store)]);
+        } catch (BtcPayException $exception) {
+            return $this->eventTimeZoneFailure($exception);
+        }
+    }
+
+    protected function eventTimeZoneFailure(BtcPayException $exception)
+    {
+        return response()->json([
+            'message' => 'The event time settings could not be saved.',
+            ...$this->eventTimeZoneService->error($exception),
+        ], in_array($exception->getStatusCode(), [400, 403, 404, 422], true) ? $exception->getStatusCode() : 502);
+    }
 
     // ──────────────────────────────────────────────────
     //  EVENTS
@@ -77,6 +98,7 @@ class TicketController extends Controller
             }
         }
 
+        $this->rejectEmptyEventTimeZone($request);
         $request->validate(array_merge($this->baseEventValidationRules($request), $this->eventBundleService->validationRules()));
 
         if ($response = $this->eventBundleService->validateForStore($request, $store)) {
@@ -93,6 +115,9 @@ class TicketController extends Controller
             'location',
             'startDate',
             'endDate',
+            'timeZone',
+            'startLocal',
+            'endLocal',
             'currency',
             'redirectUrl',
             'emailSubject',
@@ -108,11 +133,22 @@ class TicketController extends Controller
             $data['enable'] = true;
         }
 
-        $event = $this->ticketService->createEvent(
-            $store->btcpay_store_id,
-            $data,
-            $userApiKey
-        );
+        try {
+            $this->eventTimeZoneService->validatePayload($store, $data + $request->only(['startDate', 'endDate']));
+        } catch (BtcPayException $exception) {
+            return $this->eventTimeZoneFailure($exception);
+        }
+
+        try {
+            $event = $this->ticketService->createEvent($store->btcpay_store_id, $data, $userApiKey);
+        } catch (BtcPayException $exception) {
+            if (! $this->eventTimeZoneService->usesTimeZoneFields($data)
+                || ! $this->eventTimeZoneService->isEventTimeError($exception)) {
+                throw $exception;
+            }
+
+            return $this->eventTimeZoneFailure($exception);
+        }
 
         return response()->json(['data' => $this->normalizeEventLogo($event)], 201);
     }
@@ -122,6 +158,7 @@ class TicketController extends Controller
      */
     public function updateEvent(Request $request, Store $store, string $eventId)
     {
+        $this->rejectEmptyEventTimeZone($request);
         $request->validate(array_merge($this->baseEventValidationRules($request, forUpdate: true), $this->eventBundleService->validationRules()));
 
         if ($response = $this->eventBundleService->validateForStore($request, $store)) {
@@ -137,6 +174,9 @@ class TicketController extends Controller
             'location',
             'startDate',
             'endDate',
+            'timeZone',
+            'startLocal',
+            'endLocal',
             'currency',
             'redirectUrl',
             'emailSubject',
@@ -147,12 +187,22 @@ class TicketController extends Controller
             'bundledRaffleTicketsPerAdmission',
         ]));
 
-        $event = $this->ticketService->updateEvent(
-            $store->btcpay_store_id,
-            $eventId,
-            $data,
-            $userApiKey
-        );
+        try {
+            $this->eventTimeZoneService->validatePayload($store, $data + $request->only(['startDate', 'endDate']));
+        } catch (BtcPayException $exception) {
+            return $this->eventTimeZoneFailure($exception);
+        }
+
+        try {
+            $event = $this->ticketService->updateEvent($store->btcpay_store_id, $eventId, $data, $userApiKey);
+        } catch (BtcPayException $exception) {
+            if (! $this->eventTimeZoneService->usesTimeZoneFields($data)
+                || ! $this->eventTimeZoneService->isEventTimeError($exception)) {
+                throw $exception;
+            }
+
+            return $this->eventTimeZoneFailure($exception);
+        }
 
         return response()->json(['data' => $this->normalizeEventLogo($event)]);
     }
@@ -167,6 +217,9 @@ class TicketController extends Controller
             'eventType' => ['sometimes', 'string', 'in:Physical,Virtual'],
             'location' => ['sometimes', 'nullable', 'string', 'max:255'],
             'endDate' => ['sometimes', 'nullable', 'string'],
+            'timeZone' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'startLocal' => ['sometimes', 'required', 'string', 'max:19', 'regex:/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?\z/D'],
+            'endLocal' => ['sometimes', 'nullable', 'string', 'max:19', 'regex:/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?\z/D'],
             'currency' => ['sometimes', 'nullable', 'string', 'max:10'],
             'redirectUrl' => ['sometimes', 'nullable', 'string', 'url', 'max:500'],
             'emailSubject' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -180,11 +233,23 @@ class TicketController extends Controller
             $rules['startDate'] = ['sometimes', 'required', 'string'];
         } else {
             $rules['title'] = ['required', 'string', 'max:255'];
-            $rules['startDate'] = ['required', 'string'];
+            $rules['startDate'] = ['required_without:startLocal', 'string'];
             $rules['enable'] = ['sometimes', 'boolean'];
         }
 
         return $rules;
+    }
+
+    /** Empty input is not an explicit null, even after TrimStrings middleware. */
+    protected function rejectEmptyEventTimeZone(Request $request): void
+    {
+        if (! $request->isJson() || ! $request->exists('timeZone')) {
+            return;
+        }
+        $raw = json_decode($request->getContent(), true);
+        if (is_array($raw) && is_string($raw['timeZone'] ?? null) && trim($raw['timeZone']) === '') {
+            throw ValidationException::withMessages(['timeZone' => ['event-time-zone-invalid']]);
+        }
     }
 
     /** Normalize provider logo fields without guessing a storage URL from a file ID. */
@@ -281,11 +346,73 @@ class TicketController extends Controller
             $store->btcpay_store_id,
             $eventId,
             $userApiKey,
-            $request->input('sortBy', 'Name'),
+            $request->input('sortBy', 'DisplayOrder'),
             $request->input('sortDir', 'asc')
         );
 
         return response()->json(['data' => $ticketTypes]);
+    }
+
+    public function getTicketTypeOrder(Store $store, string $eventId)
+    {
+        /** @var User $owner */
+        $owner = $store->user;
+        $userApiKey = $owner->getBtcPayApiKeyOrFail();
+
+        try {
+            $snapshot = $this->ticketService->getTicketTypeOrder($store->btcpay_store_id, $eventId, $userApiKey);
+        } catch (BtcPayException $exception) {
+            return $this->ticketTypeOrderFailure($exception);
+        }
+
+        return $this->ticketTypeOrderResponse($snapshot);
+    }
+
+    public function updateTicketTypeOrder(Request $request, Store $store, string $eventId)
+    {
+        $data = $request->validate([
+            'ticketTypeIds' => ['present', 'array', 'list', 'max:1000'],
+            'ticketTypeIds.*' => ['required', 'string', 'max:128', 'distinct:strict'],
+            'expectedRevision' => ['required', 'integer', 'min:0', 'max:9007199254740991'],
+        ]);
+        /** @var User $owner */
+        $owner = $store->user;
+        $userApiKey = $owner->getBtcPayApiKeyOrFail();
+
+        try {
+            $snapshot = $this->ticketService->updateTicketTypeOrder($store->btcpay_store_id, $eventId, $data, $userApiKey);
+        } catch (BtcPayException $exception) {
+            return $this->ticketTypeOrderFailure($exception);
+        }
+
+        return $this->ticketTypeOrderResponse($snapshot);
+    }
+
+    protected function ticketTypeOrderResponse(array $snapshot)
+    {
+        $ids = $snapshot['ticketTypeIds'] ?? null;
+        $revision = $snapshot['revision'] ?? null;
+        if (! is_array($ids) || ! array_is_list($ids) || count($ids) > 1000
+            || ! is_int($revision) || $revision < 0 || $revision > 9007199254740991
+            || count(array_unique($ids, SORT_REGULAR)) !== count($ids)
+            || collect($ids)->contains(fn ($id) => ! is_string($id) || trim($id) === '' || strlen($id) > 128)) {
+            return response()->json([
+                'message' => 'Unable to read the ticket order. Please refresh and try again.',
+                'code' => 'ticket_type_order_unavailable',
+            ], 502);
+        }
+
+        return response()->json(['data' => ['ticketTypeIds' => $ids, 'revision' => $revision]]);
+    }
+
+    protected function ticketTypeOrderFailure(BtcPayException $exception)
+    {
+        $status = $exception->getStatusCode();
+
+        return response()->json([
+            'message' => 'Unable to change the ticket order. Please refresh and try again.',
+            'code' => $status === 409 ? 'ticket_type_order_conflict' : 'ticket_type_order_unavailable',
+        ], in_array($status, [403, 404, 409, 422], true) ? $status : 502);
     }
 
     /**

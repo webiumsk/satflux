@@ -1035,6 +1035,7 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
 
     // SatoshiTickets (Events, Ticket Types, Tickets, Orders)
     Route::prefix('stores/{store}/tickets')->middleware([EnsureStoreOwnership::class, 'guest.restrict'])->group(function () {
+        Route::get('/time-zones', [TicketController::class, 'eventTimeZones']);
         Route::post('/events/image', [TicketEventImageController::class, 'upload'])->middleware('throttle:10,1');
         Route::post('/events/{eventId}/logo', [TicketEventImageController::class, 'uploadLogo'])->middleware('throttle:10,1');
         Route::delete('/events/{eventId}/logo', [TicketEventImageController::class, 'deleteLogo']);
@@ -1046,6 +1047,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
         Route::put('/events/{eventId}/toggle', [TicketController::class, 'toggleEvent']);
         Route::get('/events/{eventId}/ticket-types', [TicketController::class, 'listTicketTypes']);
         Route::post('/events/{eventId}/ticket-types', [TicketController::class, 'createTicketType']);
+        Route::get('/events/{eventId}/ticket-types/order', [TicketController::class, 'getTicketTypeOrder']);
+        Route::put('/events/{eventId}/ticket-types/order', [TicketController::class, 'updateTicketTypeOrder']);
         Route::put('/events/{eventId}/ticket-types/{ticketTypeId}', [TicketController::class, 'updateTicketType']);
         Route::delete('/events/{eventId}/ticket-types/{ticketTypeId}', [TicketController::class, 'deleteTicketType']);
         Route::put('/events/{eventId}/ticket-types/{ticketTypeId}/toggle', [TicketController::class, 'toggleTicketType']);

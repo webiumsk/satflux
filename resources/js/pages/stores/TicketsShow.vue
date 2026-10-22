@@ -51,6 +51,7 @@
               <button
                 type="button"
                 @click="onCreateEventClick"
+                :disabled="orderLocked"
                 class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-600/20 transition-all hover:scale-105"
               >
                 <svg
@@ -134,7 +135,8 @@
                   <div class="flex gap-3">
                     <button
                       type="button"
-                      @click="eventForm.eventType = 'Physical'"
+                      @click="changeEventKind('Physical')"
+                      :disabled="submitting"
                       :class="[
                         'flex-1 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all',
                         eventForm.eventType === 'Physical'
@@ -146,7 +148,8 @@
                     </button>
                     <button
                       type="button"
-                      @click="eventForm.eventType = 'Virtual'"
+                      @click="changeEventKind('Virtual')"
+                      :disabled="submitting"
                       :class="[
                         'flex-1 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all',
                         eventForm.eventType === 'Virtual'
@@ -314,6 +317,26 @@
                 </div>
               </div>
 
+              <div v-if="eventForm.eventType === 'Physical'" class="space-y-2">
+                <label for="ticket-event-time-zone" class="block text-sm font-medium text-gray-300">{{ t('tickets.event_time_zone') }} <span class="text-red-400">*</span></label>
+                <select id="ticket-event-time-zone" :value="eventForm.timeZone" :disabled="loadingTimeZones || submitting"
+                  required class="input-field disabled:opacity-50" :aria-invalid="!!timeFieldErrors.timeZone"
+                  aria-describedby="ticket-event-time-hint ticket-event-zone-error" @change="changeEventTimeZone(($event.target as HTMLSelectElement).value)">
+                  <option value="">{{ t('tickets.event_time_zone_choose') }}</option>
+                  <option v-if="eventForm.timeZone && !eventTimeZones.includes(eventForm.timeZone)" :value="eventForm.timeZone">{{ eventForm.timeZone }}</option>
+                  <option v-for="zone in eventTimeZones" :key="zone" :value="zone">{{ zone }}</option>
+                </select>
+                <p id="ticket-event-time-hint" class="text-sm text-gray-400">{{ eventForm.timeZone ? t('tickets.event_time_zone_hint', { zone: eventForm.timeZone }) : t('tickets.event_time_zone_missing') }}</p>
+                <p class="text-xs text-gray-400">{{ t('tickets.event_time_zone_change_hint') }}</p>
+                <p v-if="timeFieldErrors.timeZone" id="ticket-event-zone-error" class="text-sm text-red-300" role="alert">{{ timeFieldErrors.timeZone }}</p>
+                <p v-if="loadingTimeZones" role="status" class="text-sm text-gray-400">{{ t('common.loading') }}</p>
+                <div v-if="timeZonesError" role="alert" class="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+                  <p>{{ t(timeZonesError === 'upgrade' ? 'tickets.event_time_zone_upgrade' : 'tickets.event_time_zone_load_error') }}</p>
+                  <button type="button" class="mt-2 min-h-11 rounded-lg border border-amber-500/40 px-3 py-2 underline focus-visible:ring-2 focus-visible:ring-amber-300" @click="loadEventTimeZones(true)">{{ t('tickets.event_time_zone_retry') }}</button>
+                </div>
+              </div>
+              <p v-else class="text-sm text-gray-400">{{ t('tickets.event_time_virtual_hint', { zone: browserTimeZone }) }}</p>
+
               <!-- Start Date & End Date -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -321,23 +344,54 @@
                     >{{ t("tickets.start_date") }}
                     <span class="text-red-400">*</span></label
                   >
+                  <input
+                    v-if="eventForm.eventType === 'Physical'"
+                    id="ticket-event-start-local"
+                    :disabled="submitting"
+                    v-model="eventForm.startDate"
+                    type="datetime-local"
+                    step="60"
+                    required
+                    class="input-field [color-scheme:dark]"
+                    :aria-label="t('tickets.start_date')"
+                    :aria-invalid="!!timeFieldErrors.startLocal"
+                    :aria-describedby="timeFieldErrors.startLocal ? 'ticket-event-time-hint ticket-event-start-error' : 'ticket-event-time-hint'"
+                    @input="markEventTimeInput('startLocal')"
+                  />
                   <DatePicker
+                    v-else
                     v-model="eventForm.startDate"
                     type="datetime"
                     :placeholder="t('tickets.start_date')"
                     min-date="today"
                   />
+                  <p v-if="timeFieldErrors.startLocal" id="ticket-event-start-error" class="mt-2 text-sm text-red-300" role="alert">{{ timeFieldErrors.startLocal }}</p>
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-300 mb-1">{{
                     t("tickets.end_date")
                   }}</label>
+                  <input
+                    v-if="eventForm.eventType === 'Physical'"
+                    id="ticket-event-end-local"
+                    :disabled="submitting"
+                    v-model="eventForm.endDate"
+                    type="datetime-local"
+                    step="60"
+                    class="input-field [color-scheme:dark]"
+                    :aria-label="t('tickets.end_date')"
+                    :aria-invalid="!!timeFieldErrors.endLocal"
+                    :aria-describedby="timeFieldErrors.endLocal ? 'ticket-event-time-hint ticket-event-end-error' : 'ticket-event-time-hint'"
+                    @input="markEventTimeInput('endLocal')"
+                  />
                   <DatePicker
+                    v-else
                     v-model="eventForm.endDate"
                     type="datetime"
                     :placeholder="t('tickets.end_date')"
                     min-date="today"
                   />
+                  <p v-if="timeFieldErrors.endLocal" id="ticket-event-end-error" class="mt-2 text-sm text-red-300" role="alert">{{ timeFieldErrors.endLocal }}</p>
                 </div>
               </div>
 
@@ -526,7 +580,7 @@
                 </button>
                 <button
                   type="submit"
-                  :disabled="submitting"
+                  :disabled="submitting || (eventForm.eventType === 'Physical' && loadingTimeZones)"
                   class="btn-primary"
                 >
                   <svg
@@ -572,6 +626,7 @@
             <button
               v-if="!loadingEvents"
               @click="loadEvents"
+              :disabled="orderLocked"
               class="text-sm text-gray-400 hover:text-white transition-colors"
             >
               <svg
@@ -644,6 +699,7 @@
             </p>
             <button
               @click="onCreateEventClick"
+                :disabled="orderLocked"
               class="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
             >
               {{ t("tickets.create_first_event") }}
@@ -760,7 +816,8 @@
                             d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                           />
                         </svg>
-                        {{ formatDate(event.startDate) }}
+                        {{ formatEventDate(event) }}
+                        <span class="ml-2 text-xs text-gray-400">{{ eventTimeLabel(event) }}</span>
                       </div>
                       <div
                         v-if="event.ticketsSold != null"
@@ -798,7 +855,7 @@
                       <button
                         @click="handleToggleEvent(event)"
                         :disabled="
-                          event.eventState === 'Active' &&
+                          orderLocked || event.eventState === 'Active' &&
                           (event.ticketsSold ?? 0) > 0
                         "
                         :title="
@@ -858,6 +915,7 @@
                       </button>
                       <button
                         @click="handleEditEvent(event)"
+                        :disabled="orderLocked"
                         :title="t('common.edit')"
                         class="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                       >
@@ -899,7 +957,7 @@
                       <div class="flex-1"></div>
                       <button
                         @click="handleDeleteEvent(event)"
-                        :disabled="(event.ticketsSold ?? 0) > 0"
+                        :disabled="orderLocked || (event.ticketsSold ?? 0) > 0"
                         :title="
                           (event.ticketsSold ?? 0) > 0
                             ? t('tickets.cannot_delete_event_with_sold_tickets')
@@ -940,6 +998,7 @@
                 <div class="flex border-b border-gray-700">
                   <button
                     @click="activeTab = 'types'"
+                    :disabled="orderLocked"
                     :class="[
                       'px-6 py-3 text-sm font-medium transition-colors border-b-2',
                       activeTab === 'types'
@@ -950,6 +1009,7 @@
                     {{ t("tickets.ticket_types") }}
                   </button>
                   <button
+                    :disabled="orderLocked"
                     @click="
                       activeTab = 'tickets';
                       loadTicketsIfNeeded(event.id);
@@ -966,15 +1026,15 @@
                 </div>
 
                 <!-- ═══ TAB: Ticket Types ═══ -->
-                <div v-if="activeTab === 'types'" class="p-6 space-y-5">
-                  <div class="flex items-center justify-between">
+                <div v-if="activeTab === 'types'" :ref="setOrderPanel" class="p-6 space-y-5">
+                  <div class="flex flex-wrap items-center justify-between gap-3">
                     <h4
                       class="text-sm font-semibold text-gray-200 uppercase tracking-wider"
                     >
                       {{ t("tickets.ticket_types") }}
                     </h4>
                     <button
-                      v-if="!showTicketTypeForm"
+                      v-if="!showTicketTypeForm && !orderLocked"
                       @click="openTicketTypeForm(event.id)"
                       class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 hover:bg-indigo-500/20 transition-colors"
                     >
@@ -993,6 +1053,38 @@
                       </svg>
                       {{ t("tickets.add_ticket_type") }}
                     </button>
+                  </div>
+
+                  <div class="space-y-3">
+                    <button
+                      v-if="!orderingTypes && !showTicketTypeForm && eventTicketTypes.length > 1"
+                      type="button"
+                      data-edit-order
+                      :disabled="loadingOrder || loadingTicketTypes || mutatingTicketType"
+                      class="inline-flex min-h-11 items-center rounded-lg border border-gray-600 px-3 py-2 text-sm text-gray-200 hover:bg-gray-700 focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-50"
+                      @click="beginTypeOrder(event.id)"
+                    >{{ loadingOrder ? t('common.loading') : t('tickets.order_edit') }}</button>
+                    <div v-if="orderingTypes" class="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 space-y-3" :aria-busy="savingOrder || loadingOrder">
+                      <p class="text-sm text-gray-200">{{ t('tickets.order_hint') }}</p>
+                      <p class="text-xs text-gray-400">{{ t('tickets.order_finish_first') }}</p>
+                      <div class="flex flex-wrap items-center gap-3">
+                        <button type="button" :disabled="!canSaveOrder"
+                          class="min-h-11 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-300 disabled:opacity-50"
+                          @click="saveTypeOrder">{{ savingOrder ? t('tickets.saving') : t('tickets.order_save') }}</button>
+                        <button type="button" :disabled="savingOrder || loadingOrder"
+                          class="min-h-11 rounded-lg border border-gray-600 px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-50"
+                          @click="cancelTypeOrder">{{ t('common.cancel') }}</button>
+                        <span class="text-xs text-gray-300">{{ orderDirty ? t('tickets.order_unsaved') : t('tickets.order_unchanged') }}</span>
+                      </div>
+                    </div>
+                    <div v-if="orderError" role="alert" class="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+                      <p>{{ t(`tickets.order_error_${orderError}`) }}</p>
+                      <button v-if="orderError === 'conflict' || orderError === 'load'" type="button"
+                        :disabled="loadingOrder || savingOrder"
+                        class="mt-2 min-h-11 rounded-lg border border-amber-500/40 px-3 py-2 font-medium underline focus-visible:ring-2 focus-visible:ring-amber-300 disabled:opacity-50"
+                        @click="beginTypeOrder(event.id)">{{ t('tickets.order_reload') }}</button>
+                    </div>
+                    <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ orderAnnouncement }}</p>
                   </div>
 
                   <!-- Loading ticket types -->
@@ -1028,12 +1120,28 @@
                     class="space-y-3"
                   >
                     <div
-                      v-for="tt in eventTicketTypes"
+                      v-for="(tt, typeIndex) in displayedTicketTypes"
                       :key="tt.id"
-                      class="flex items-center justify-between p-4 bg-gray-900/60 rounded-xl border border-gray-700/50"
+                      :data-ticket-type-id="tt.id"
+                      class="flex flex-wrap items-center justify-between gap-y-3 p-4 bg-gray-900/60 rounded-xl border border-gray-700/50"
+                      @dragover.prevent
+                      @drop.prevent="dropTypeOrder(typeIndex)"
                     >
+                      <div v-if="orderingTypes" class="mr-3 flex shrink-0 items-center gap-1">
+                        <button type="button" :data-order-handle="tt.id" :draggable="!savingOrder && !loadingOrder"
+                          :disabled="savingOrder || loadingOrder"
+                          :aria-label="t('tickets.order_drag', { name: tt.name })"
+                          :title="t('tickets.order_drag', { name: tt.name })"
+                          class="flex min-h-11 min-w-11 cursor-grab items-center justify-center rounded-lg text-gray-300 hover:bg-gray-700 focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-50"
+                          @dragstart="startTypeDrag($event, tt.id)" @dragend="draggedTypeId = null"
+                          @keydown.alt.up.prevent="moveTypeOrder(tt.id, typeIndex - 1)"
+                          @keydown.alt.down.prevent="moveTypeOrder(tt.id, typeIndex + 1)">
+                          <span aria-hidden="true" class="text-xl">⠿</span>
+                        </button>
+                        <span class="w-5 text-center text-sm tabular-nums text-gray-400" aria-hidden="true">{{ typeIndex + 1 }}</span>
+                      </div>
                       <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 mb-1">
+                        <div class="flex flex-wrap items-center gap-2 mb-1">
                           <span class="text-white font-medium truncate">{{
                             tt.name
                           }}</span>
@@ -1053,7 +1161,7 @@
                           >
                         </div>
                         <div
-                          class="flex items-center gap-4 text-sm text-gray-400"
+                          class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-400"
                         >
                           <span class="font-semibold text-indigo-300"
                             >{{ tt.price }} {{ event.currency || "" }}</span
@@ -1079,10 +1187,20 @@
                           >
                         </div>
                       </div>
-                      <div class="flex items-center gap-1 ml-4">
+                      <div v-if="orderingTypes" class="ml-auto flex shrink-0 items-center gap-1">
+                        <button type="button" :disabled="typeIndex === 0 || savingOrder || loadingOrder"
+                          :aria-label="t('tickets.order_up', { name: tt.name })" :title="t('tickets.order_up', { name: tt.name })"
+                          class="min-h-11 min-w-11 rounded-lg border border-gray-600 text-gray-200 hover:bg-gray-700 focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-40"
+                          @click="moveTypeOrder(tt.id, typeIndex - 1)"><span aria-hidden="true">↑</span></button>
+                        <button type="button" :disabled="typeIndex === displayedTicketTypes.length - 1 || savingOrder || loadingOrder"
+                          :aria-label="t('tickets.order_down', { name: tt.name })" :title="t('tickets.order_down', { name: tt.name })"
+                          class="min-h-11 min-w-11 rounded-lg border border-gray-600 text-gray-200 hover:bg-gray-700 focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-40"
+                          @click="moveTypeOrder(tt.id, typeIndex + 1)"><span aria-hidden="true">↓</span></button>
+                      </div>
+                      <div v-else class="flex items-center gap-1 ml-4">
                         <button
                           @click="handleToggleTicketType(event.id, tt)"
-                          :disabled="mutatingTicketType"
+                          :disabled="mutatingTicketType || orderLocked"
                           :title="
                             tt.ticketTypeState === 'Active'
                               ? t('tickets.disable')
@@ -1132,6 +1250,7 @@
                         </button>
                         <button
                           @click="handleEditTicketType(event.id, tt)"
+                          :disabled="mutatingTicketType || orderLocked"
                           :title="t('common.edit')"
                           class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                         >
@@ -1151,7 +1270,7 @@
                         </button>
                         <button
                           @click="handleDeleteTicketType(event.id, tt)"
-                          :disabled="mutatingTicketType"
+                          :disabled="mutatingTicketType || orderLocked"
                           :title="t('common.delete')"
                           class="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                         >
@@ -1769,11 +1888,15 @@
 import type { AppRef } from "../../types/btcpayApps";
 import type { Store } from "../../store/stores";
 import { asApiError } from "../../utils/apiError";
-import { ref, computed, nextTick, onMounted } from "vue";
+import { ref, computed, nextTick, onMounted, onBeforeUnmount, inject } from "vue";
+import { onBeforeRouteLeave, onBeforeRouteUpdate, routerKey } from "vue-router";
+import { useTicketTypeOrdering } from "../../composables/useTicketTypeOrdering";
 import { useI18n } from "vue-i18n";
+import { eventDatePayload, eventTimeDraft, rebaseEventTimeDraft, supportsEventTimeZone, type EventTimeKind } from "../../utils/ticketEventTime";
 import {
   useTicketsStore,
   type TicketEvent,
+  type TicketEventWrite,
   type TicketType,
   type Ticket,
 } from "../../store/tickets";
@@ -1833,6 +1956,7 @@ const eventForm = ref({
   title: "",
   description: "",
   eventType: "Physical" as "Physical" | "Virtual",
+  timeZone: "",
   location: "",
   startDate: "",
   endDate: "",
@@ -1848,6 +1972,139 @@ const eventForm = ref({
   bundledRaffleTicketsPerAdmission: 0,
 });
 
+const timeBaseline = ref({ startDate: "", endDate: "" });
+const timeFieldErrors = ref<Record<string, string>>({});
+const eventTimeZones = ref<string[]>([]);
+const loadingTimeZones = ref(false);
+const timeZonesError = ref<"upgrade" | "load" | null>(null);
+const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+let timeZonesStoreId: string | null = null;
+let timeZonesGeneration = 0;
+// A Store setting is a one-time suggestion for a new form, never an event override.
+let eventFormStoreId: string | null = null;
+let storeTimeZoneCandidate: { storeId: string; zone: string } | null = null;
+
+function applyStoreEventTimeZoneDefault() {
+  const candidate = storeTimeZoneCandidate;
+  if (!candidate || !showCreateForm.value || editingEvent.value || submitting.value ||
+      eventFormStoreId !== candidate.storeId || props.store?.id !== candidate.storeId ||
+      timeZonesStoreId !== candidate.storeId || eventForm.value.eventType !== "Physical" ||
+      eventForm.value.timeZone || eventForm.value.startDate || eventForm.value.endDate ||
+      !eventTimeZones.value.includes(candidate.zone) || !supportsEventTimeZone(candidate.zone)) return;
+  eventForm.value.timeZone = candidate.zone;
+  storeTimeZoneCandidate = null;
+  timeFieldErrors.value.timeZone = "";
+}
+
+function markEventTimeInput(field: "startLocal" | "endLocal") {
+  storeTimeZoneCandidate = null;
+  timeFieldErrors.value[field] = "";
+}
+
+
+async function loadEventTimeZones(refresh = false) {
+  const storeId = requireStoreId();
+  if (!refresh && timeZonesStoreId === storeId && eventTimeZones.value.length > 0) {
+    applyStoreEventTimeZoneDefault();
+    return;
+  }
+  const generation = ++timeZonesGeneration;
+  loadingTimeZones.value = true;
+  timeZonesError.value = null;
+  try {
+    const zones = await ticketsStore.fetchTimeZones(storeId);
+    if (generation !== timeZonesGeneration || props.store?.id !== storeId) return;
+    eventTimeZones.value = zones;
+    timeZonesStoreId = storeId;
+    applyStoreEventTimeZoneDefault();
+  } catch (cause) {
+    if (generation !== timeZonesGeneration || props.store?.id !== storeId) return;
+    eventTimeZones.value = [];
+    timeZonesStoreId = null;
+    timeZonesError.value = asApiError(cause).response?.status === 404 ? "upgrade" : "load";
+  } finally {
+    if (generation === timeZonesGeneration) loadingTimeZones.value = false;
+  }
+}
+
+function currentTimeDraft() {
+  return {
+    startDate: eventForm.value.startDate, endDate: eventForm.value.endDate,
+    baselineStart: timeBaseline.value.startDate, baselineEnd: timeBaseline.value.endDate,
+  };
+}
+
+function changeEventClock(kind: EventTimeKind, zone: string) {
+  const draft = rebaseEventTimeDraft(currentTimeDraft(), editingEvent.value, kind, zone || null);
+  eventForm.value.startDate = draft.startDate;
+  eventForm.value.endDate = draft.endDate;
+  timeBaseline.value = { startDate: draft.baselineStart, endDate: draft.baselineEnd };
+  eventForm.value.eventType = kind;
+  eventForm.value.timeZone = zone;
+  timeFieldErrors.value = {};
+}
+
+function changeEventKind(kind: EventTimeKind) {
+  if (submitting.value) return;
+  if (kind === eventForm.value.eventType) return;
+  storeTimeZoneCandidate = null;
+  changeEventClock(kind, eventForm.value.timeZone);
+}
+
+function changeEventTimeZone(zone: string) {
+  if (submitting.value) return;
+  storeTimeZoneCandidate = null;
+  if (zone && !supportsEventTimeZone(zone)) {
+    timeFieldErrors.value.timeZone = t("tickets.event_time_zone_browser_error");
+    return;
+  }
+  changeEventClock(eventForm.value.eventType, zone);
+}
+
+function showEventTimeErrors(cause: unknown): boolean {
+  const error = asApiError(cause);
+  if (error.response?.status !== 422) return false;
+  const data = error.response.data;
+  const fields = data?.errors;
+  const code = typeof data?.code === "string" ? data.code : "";
+  const fieldNames: Record<string, string> = { timeZone: "timeZone", startLocal: "startLocal", endLocal: "endLocal", startDate: "startLocal", endDate: "endLocal" };
+  if (!Object.keys(fields || {}).some(field => fieldNames[field]) && !code.startsWith("event-") && code !== "ticket_event_time_invalid") return false;
+  for (const [field, messages] of Object.entries(fields || {})) {
+    const target = fieldNames[field];
+    if (!target) continue;
+    const reason = Array.isArray(messages) ? messages[0] : messages;
+    const suffix = typeof reason === "string" && reason.endsWith("-nonexistent") ? "gap" :
+      typeof reason === "string" && reason.endsWith("-ambiguous") ? "overlap" :
+      reason === "event-date-range-invalid" ? "range" : field === "timeZone" ? "zone" : "invalid";
+    timeFieldErrors.value[target] = t(`tickets.event_time_error_${suffix}`);
+  }
+  if (Object.keys(timeFieldErrors.value).length === 0) {
+    const target = code.includes("zone") ? "timeZone" : code.includes("end") || code === "event-date-range-invalid" ? "endLocal" : "startLocal";
+    const suffix = code.endsWith("-nonexistent") ? "gap" : code.endsWith("-ambiguous") ? "overlap" : code === "event-date-range-invalid" ? "range" : "invalid";
+    timeFieldErrors.value[target] = t(`tickets.event_time_error_${suffix}`);
+  }
+  showError(t("tickets.event_time_validation_failed"));
+  void nextTick(() => {
+    const first = timeFieldErrors.value.timeZone ? "ticket-event-time-zone" : timeFieldErrors.value.startLocal ? "ticket-event-start-local" : "ticket-event-end-local";
+    document.getElementById(first)?.focus();
+  });
+  return true;
+}
+
+function eventTimeLabel(event: TicketEvent) {
+  if (event.eventType === "Virtual") return t("tickets.event_time_viewer_label", { zone: browserTimeZone });
+  return event.timeZone && supportsEventTimeZone(event.timeZone) ? event.timeZone : t("tickets.event_time_missing_label");
+}
+
+function formatEventDate(event: TicketEvent) {
+  try {
+    const zone = event.eventType === "Physical" ? (event.timeZone && supportsEventTimeZone(event.timeZone) ? event.timeZone : "UTC") : undefined;
+    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", ...(zone ? { timeZone: zone } : {}) }).format(new Date(event.startDate));
+  } catch {
+    return event.startDate;
+  }
+}
+
 // Image upload
 const imagePreview = ref<string | null>(null);
 const uploadingImage = ref(false);
@@ -1861,6 +2118,101 @@ const activeTab = ref<"types" | "tickets">("types");
 const eventTicketTypes = ref<TicketType[]>([]);
 const loadingTicketTypes = ref(false);
 const mutatingTicketType = ref(false);
+const typeOrdering = useTicketTypeOrdering(
+  eventTicketTypes,
+  async (eventId) => {
+    const storeId = requireStoreId();
+    const [types, order] = await Promise.all([
+      ticketsStore.fetchTicketTypes(storeId, eventId),
+      ticketsStore.fetchTicketTypeOrder(storeId, eventId),
+    ]);
+    return { types, order };
+  },
+  (eventId, order) => ticketsStore.saveTicketTypeOrder(requireStoreId(), eventId, order),
+);
+const {
+  editing: orderingTypes, loading: loadingOrder, saving: savingOrder,
+  error: orderError, dirty: orderDirty, locked: orderLocked, canSave: canSaveOrder, rows: displayedTicketTypes,
+} = typeOrdering;
+const draggedTypeId = ref<string | null>(null);
+const orderAnnouncement = ref("");
+const orderPanel = ref<HTMLElement | null>(null);
+function setOrderPanel(element: unknown) {
+  orderPanel.value = element instanceof HTMLElement ? element : null;
+}
+
+async function focusOrderHandle(id?: string) {
+  await nextTick();
+  const handles = orderPanel.value?.querySelectorAll<HTMLButtonElement>("[data-order-handle]");
+  const handle = id ? Array.from(handles ?? []).find(button => button.dataset.orderHandle === id) : handles?.[0];
+  handle?.focus();
+}
+
+async function beginTypeOrder(eventId: string) {
+  if (await typeOrdering.load(eventId)) {
+    orderAnnouncement.value = t("tickets.order_hint");
+    await focusOrderHandle();
+  }
+}
+
+function moveTypeOrder(id: string, destination: number) {
+  if (!typeOrdering.move(id, destination)) return;
+  const type = eventTicketTypes.value.find(item => item.id === id);
+  orderAnnouncement.value = t("tickets.order_moved", { name: type?.name, position: destination + 1, count: displayedTicketTypes.value.length });
+  void focusOrderHandle(id);
+}
+
+function startTypeDrag(event: DragEvent, id: string) {
+  if (!orderingTypes.value || savingOrder.value || loadingOrder.value) {
+    event.preventDefault();
+    return;
+  }
+  draggedTypeId.value = id;
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", id);
+  }
+}
+
+function dropTypeOrder(destination: number) {
+  if (draggedTypeId.value) moveTypeOrder(draggedTypeId.value, destination);
+  draggedTypeId.value = null;
+}
+
+async function saveTypeOrder() {
+  if (await typeOrdering.save()) {
+    orderAnnouncement.value = t("tickets.order_saved");
+    showSuccess(t("tickets.order_saved"));
+    await nextTick();
+    orderPanel.value?.querySelector<HTMLButtonElement>("[data-edit-order]")?.focus();
+  }
+}
+
+async function cancelTypeOrder() {
+  typeOrdering.cancel();
+  draggedTypeId.value = null;
+  orderAnnouncement.value = "";
+  await nextTick();
+  orderPanel.value?.querySelector<HTMLButtonElement>("[data-edit-order]")?.focus();
+}
+
+function allowOrderNavigation() {
+  if (loadingOrder.value || savingOrder.value) return false;
+  const allowed = !orderingTypes.value || !orderDirty.value || window.confirm(t("tickets.order_discard_confirm"));
+  if (allowed) typeOrdering.cancel();
+  return allowed;
+}
+if (inject(routerKey, null)) {
+  onBeforeRouteLeave(() => allowOrderNavigation());
+  onBeforeRouteUpdate(() => allowOrderNavigation());
+}
+function protectOrderDraft(event: BeforeUnloadEvent) {
+  if (orderDirty.value || loadingOrder.value || savingOrder.value) {
+    event.preventDefault();
+    event.returnValue = "";
+  }
+}
+
 
 // Tickets tab
 const eventTickets = ref<Ticket[]>([]);
@@ -1925,10 +2277,13 @@ function shortTicketNumber(ticketNumber: string): string {
 }
 
 function resetForm() {
+  eventFormStoreId = null;
+  storeTimeZoneCandidate = null;
   eventForm.value = {
     title: "",
     description: "",
     eventType: "Physical",
+    timeZone: "",
     location: "",
     startDate: "",
     endDate: "",
@@ -1944,6 +2299,8 @@ function resetForm() {
     bundledRaffleTicketsPerAdmission: 0,
   };
   editingEvent.value = null;
+  timeBaseline.value = { startDate: "", endDate: "" };
+  timeFieldErrors.value = {};
   showEmailSettings.value = false;
   imagePreview.value = null;
   pendingImageFile.value = null;
@@ -1955,10 +2312,12 @@ function cancelForm() {
   showCreateForm.value = false;
 }
 function goBack() {
+  if (orderLocked.value) { showError(t("tickets.order_finish_first")); return; }
   window.history.back();
 }
 
 function onCreateEventClick() {
+  if (orderLocked.value) { showError(t("tickets.order_finish_first")); return; }
   if (props.eventLimit != null && events.value.length >= props.eventLimit) {
     showUpgradeModal.value = true;
     return;
@@ -1968,6 +2327,9 @@ function onCreateEventClick() {
   showCreateForm.value = !showCreateForm.value;
   expandedEventId.value = null;
   if (opening) {
+    eventFormStoreId = requireStoreId();
+    storeTimeZoneCandidate = { storeId: eventFormStoreId, zone: props.store?.timezone || "" };
+    void loadEventTimeZones();
     applyNewEventEmailDefaults();
   }
 }
@@ -2008,17 +2370,6 @@ function clearEventImage() {
   imagePreview.value = null;
 }
 
-function toISOString(localDatetime: string): string {
-  if (!localDatetime) return "";
-  return new Date(localDatetime).toISOString();
-}
-
-function fromISOToLocal(iso: string): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 function resetTicketTypeForm() {
   ttForm.value = {
@@ -2038,6 +2389,7 @@ function cancelTicketTypeForm() {
 }
 
 function openTicketTypeForm(eventId: string) {
+  if (orderLocked.value) return;
   resetTicketTypeForm();
   // Only the first ticket type for an event should be default
   ttForm.value.isDefault = eventTicketTypes.value.length === 0;
@@ -2048,7 +2400,7 @@ function openTicketTypeForm(eventId: string) {
 // ── Data Loading ────────────────────────────────
 
 async function loadEvents() {
-  if (!props.store) return;
+  if (!props.store || orderLocked.value) return;
   loadingEvents.value = true;
   clearMessages();
   try {
@@ -2083,6 +2435,8 @@ async function loadTicketTypes(eventId: string) {
 // ── Expand / Collapse ───────────────────────────
 
 function toggleExpandEvent(event: TicketEvent) {
+  if (orderLocked.value) { showError(t("tickets.order_finish_first")); return; }
+  typeOrdering.cancel();
   if (expandedEventId.value === event.id) {
     expandedEventId.value = null;
     eventTicketTypes.value = [];
@@ -2106,48 +2460,68 @@ async function handleSubmitEvent() {
   submitting.value = true;
   clearMessages();
 
-  const data: Partial<TicketEvent> = {
-    title: eventForm.value.title,
-    eventType: eventForm.value.eventType,
-    startDate: toISOString(eventForm.value.startDate),
-    hasMaximumCapacity: eventForm.value.hasMaximumCapacity,
-  };
-  if (eventForm.value.description)
-    data.description = eventForm.value.description;
-  if (eventForm.value.location) data.location = eventForm.value.location;
-  if (eventForm.value.endDate)
-    data.endDate = toISOString(eventForm.value.endDate);
-  if (eventForm.value.currency) data.currency = eventForm.value.currency;
-  if (eventForm.value.redirectUrl)
-    data.redirectUrl = eventForm.value.redirectUrl;
-  if (eventForm.value.emailSubject)
-    data.emailSubject = eventForm.value.emailSubject;
-  if (eventForm.value.emailBody) data.emailBody = eventForm.value.emailBody;
-  if (
-    eventForm.value.hasMaximumCapacity &&
-    eventForm.value.maximumEventCapacity
-  )
-    data.maximumEventCapacity = eventForm.value.maximumEventCapacity;
-  // Image changes use the scoped logo endpoint. An omitted image in an older
-  // provider response must never be interpreted as a request to remove it.
-
-  const bundlePer = Math.max(
-    0,
-    Number(eventForm.value.bundledRaffleTicketsPerAdmission) || 0,
-  );
-  data.bundledRaffleTicketsPerAdmission = bundlePer;
-  if (bundlePer > 0) {
-    if (!eventForm.value.bundledRaffleId) {
-      showError(t("tickets.raffle_bundle_select_required"));
-      submitting.value = false;
+  try {
+    timeFieldErrors.value = {};
+    if (eventFormStoreId !== requireStoreId()) {
+      showError(t("common.error"));
       return;
     }
-    data.bundledRaffleId = eventForm.value.bundledRaffleId;
-  } else {
-    data.bundledRaffleId = null;
-  }
+    if (eventForm.value.eventType === "Physical") {
+      if (loadingTimeZones.value || timeZonesStoreId !== requireStoreId() || eventTimeZones.value.length === 0) {
+        showError(t(timeZonesError.value === "upgrade" ? "tickets.event_time_zone_upgrade" : "tickets.event_time_zone_load_error"));
+        return;
+      }
+      if (!eventForm.value.timeZone || !eventTimeZones.value.includes(eventForm.value.timeZone) || !supportsEventTimeZone(eventForm.value.timeZone)) {
+        timeFieldErrors.value.timeZone = t("tickets.event_time_zone_choose");
+        document.getElementById("ticket-event-time-zone")?.focus();
+        return;
+      }
+      if (!eventForm.value.startDate) {
+        timeFieldErrors.value.startLocal = t("tickets.event_time_start_required");
+        document.getElementById("ticket-event-start-local")?.focus();
+        return;
+      }
+    }
+    const submittedTimes = currentTimeDraft();
+    const data: TicketEventWrite = {
+      title: eventForm.value.title,
+      eventType: eventForm.value.eventType,
+      ...eventDatePayload(submittedTimes, eventForm.value.eventType, eventForm.value.timeZone, !!editingEvent.value),
+      hasMaximumCapacity: eventForm.value.hasMaximumCapacity,
+    };
+    if (eventForm.value.description)
+      data.description = eventForm.value.description;
+    if (eventForm.value.location) data.location = eventForm.value.location;
+    if (eventForm.value.currency) data.currency = eventForm.value.currency;
+    if (eventForm.value.redirectUrl)
+      data.redirectUrl = eventForm.value.redirectUrl;
+    if (eventForm.value.emailSubject)
+      data.emailSubject = eventForm.value.emailSubject;
+    if (eventForm.value.emailBody) data.emailBody = eventForm.value.emailBody;
+    if (
+      eventForm.value.hasMaximumCapacity &&
+      eventForm.value.maximumEventCapacity
+    )
+      data.maximumEventCapacity = eventForm.value.maximumEventCapacity;
+    // Image changes use the scoped logo endpoint. An omitted image in an older
+    // provider response must never be interpreted as a request to remove it.
 
-  try {
+    const bundlePer = Math.max(
+      0,
+      Number(eventForm.value.bundledRaffleTicketsPerAdmission) || 0,
+    );
+    data.bundledRaffleTicketsPerAdmission = bundlePer;
+    if (bundlePer > 0) {
+      if (!eventForm.value.bundledRaffleId) {
+        showError(t("tickets.raffle_bundle_select_required"));
+        submitting.value = false;
+        return;
+      }
+      data.bundledRaffleId = eventForm.value.bundledRaffleId;
+    } else {
+      data.bundledRaffleId = null;
+    }
+
     const wasEditing = !!editingEvent.value;
     const savedEvent = editingEvent.value
       ? await ticketsStore.updateEvent(requireStoreId(), editingEvent.value.id, data)
@@ -2157,6 +2531,7 @@ async function handleSubmitEvent() {
     // same event rather than create a duplicate after a partial success.
     if (savedEvent?.id) {
       editingEvent.value = savedEvent;
+      timeBaseline.value = { startDate: submittedTimes.startDate, endDate: submittedTimes.endDate };
       if (!wasEditing) {
         // Keep the persisted creation visible even if the follow-up refresh fails.
         events.value = [savedEvent, ...events.value.filter((event) => event.id !== savedEvent.id)];
@@ -2196,7 +2571,20 @@ async function handleSubmitEvent() {
     cancelForm();
     await loadEvents();
   } catch (rawError) {
+    if (rawError instanceof RangeError) {
+      timeFieldErrors.value.startLocal = t("tickets.event_time_error_invalid");
+      showError(t("tickets.event_time_validation_failed"));
+      return;
+    }
+    if (showEventTimeErrors(rawError)) return;
     const err = asApiError(rawError);
+    if (err.response?.data?.code === "ticket_event_timezone_unsupported") {
+      timeZonesError.value = "upgrade";
+      eventTimeZones.value = [];
+      timeZonesStoreId = null;
+      showError(t("tickets.event_time_zone_upgrade"));
+      return;
+    }
     const msg =
       err?.response?.data?.message ||
       (Array.isArray(err?.response?.data)
@@ -2211,14 +2599,22 @@ async function handleSubmitEvent() {
 }
 
 function handleEditEvent(event: TicketEvent) {
+  if (orderLocked.value) { showError(t("tickets.order_finish_first")); return; }
+  eventFormStoreId = requireStoreId();
+  storeTimeZoneCandidate = null;
+  let initialTimes: ReturnType<typeof eventTimeDraft>;
+  try { initialTimes = eventTimeDraft(event); } catch { showError(t("tickets.event_time_error_invalid")); return; }
+  timeBaseline.value = { startDate: initialTimes.startDate, endDate: initialTimes.endDate };
+  timeFieldErrors.value = {};
   editingEvent.value = event;
   eventForm.value = {
     title: event.title,
     description: event.description || "",
     eventType: event.eventType || "Physical",
+    timeZone: event.timeZone || "",
     location: event.location || "",
-    startDate: fromISOToLocal(event.startDate),
-    endDate: event.endDate ? fromISOToLocal(event.endDate) : "",
+    startDate: initialTimes.startDate,
+    endDate: initialTimes.endDate,
     currency: event.currency || "",
     redirectUrl: event.redirectUrl || "",
     emailSubject: event.emailSubject || "",
@@ -2231,6 +2627,7 @@ function handleEditEvent(event: TicketEvent) {
     bundledRaffleTicketsPerAdmission:
       event.bundledRaffleTicketsPerAdmission ?? 0,
   };
+  void loadEventTimeZones();
   imagePreview.value = null;
   pendingImageFile.value = null;
   pendingImageRemoval.value = false;
@@ -2243,6 +2640,7 @@ function handleEditEvent(event: TicketEvent) {
 }
 
 async function handleToggleEvent(event: TicketEvent) {
+  if (orderLocked.value) { showError(t("tickets.order_finish_first")); return; }
   if (event.eventState === "Active" && (event.ticketsSold ?? 0) > 0) {
     showError(t("tickets.cannot_deactivate_event_with_sold_tickets"));
     return;
@@ -2279,6 +2677,7 @@ async function handleToggleEvent(event: TicketEvent) {
 }
 
 async function handleDeleteEvent(event: TicketEvent) {
+  if (orderLocked.value) { showError(t("tickets.order_finish_first")); return; }
   if ((event.ticketsSold ?? 0) > 0) {
     showError(t("tickets.cannot_delete_event_with_sold_tickets"));
     return;
@@ -2346,6 +2745,7 @@ async function handleSubmitTicketType(eventId: string) {
 const UNLIMITED_QUANTITY = 999999;
 
 function handleEditTicketType(eventId: string, tt: TicketType) {
+  if (orderLocked.value) return;
   editingTicketType.value = tt;
   const q = tt.quantity;
   ttForm.value = {
@@ -2360,7 +2760,7 @@ function handleEditTicketType(eventId: string, tt: TicketType) {
 }
 
 async function handleToggleTicketType(eventId: string, tt: TicketType) {
-  if (mutatingTicketType.value) return;
+  if (mutatingTicketType.value || orderLocked.value) return;
   mutatingTicketType.value = true;
   clearMessages();
   try {
@@ -2384,7 +2784,7 @@ async function handleToggleTicketType(eventId: string, tt: TicketType) {
 }
 
 async function handleDeleteTicketType(eventId: string, tt: TicketType) {
-  if (mutatingTicketType.value) return;
+  if (mutatingTicketType.value || orderLocked.value) return;
   if (!confirm(t("tickets.delete_ticket_type_confirm", { name: tt.name })))
     return;
   mutatingTicketType.value = true;
@@ -2589,7 +2989,9 @@ async function loadRaffleBundleOptions() {
 onMounted(() => {
   loadEvents();
   loadRaffleBundleOptions();
+  window.addEventListener("beforeunload", protectOrderDraft);
 });
+onBeforeUnmount(() => window.removeEventListener("beforeunload", protectOrderDraft));
 </script>
 
 <style scoped>

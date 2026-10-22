@@ -96,7 +96,7 @@ class EventBundleService
     {
         return array_filter(
             $payload,
-            fn ($v, $k) => $k === 'bundledRaffleId' || ($v !== null && ($k !== 'eventLogoUrl' || (string) $v !== '')),
+            fn ($v, $k) => in_array($k, ['bundledRaffleId', 'timeZone', 'endDate', 'endLocal'], true) || ($v !== null && ($k !== 'eventLogoUrl' || (string) $v !== '')),
             ARRAY_FILTER_USE_BOTH
         );
     }
