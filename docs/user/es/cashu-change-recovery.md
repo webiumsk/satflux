@@ -51,3 +51,11 @@ pueden necesitar soporte; sus registros se conservan.
 Los plugins antiguos muestran que esta función no está disponible. Una comprobación
 no disponible no significa saldo cero. La sección existente **Cashu recovery** de
 BTCPay sigue disponible para las operaciones de recuperación admitidas.
+
+## Checkout Lightning y disponibilidad de Cashu
+
+Con el plugin actualizado, CashuMelt se oculta en nuevos checkouts cuando hay cualquier cartera Lightning configurada, incluidas Blink API, direcciones LN y Boltz. Un fallo de Lightning no ofrece Cashu automáticamente. Las cotizaciones Cashu existentes siguen disponibles para recuperación con su configuración original.
+
+Reactivar una configuración Cashu con el mismo mint, unidad, dirección de destino, lista de confianza y límites de comisiones no cambia el destino del pago. Cambiar el destino del pago sigue bloqueado mientras haya fondos sin resolver. Combinar la reactivación con cambios en cualquiera de esos valores también mantiene las comprobaciones de seguridad de los fondos. Activar Cashu no lo muestra junto a una cartera Lightning configurada.
+
+Una factura BTCPay pagada directamente por Lightning puede estar liquidada mientras una cotización Cashu separada sigue pendiente. HTTP 400 del mint no determina si esa cotización se financió. El estado de la factura por sí solo no libera su bloqueo de recuperación. Al cambiar credenciales, la detección se realiza al salir del campo o mediante Guardar/Probar; escribir no selecciona otra cartera.
