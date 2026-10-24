@@ -8,6 +8,8 @@
   },
   "scripts": {
     "dev": "vite",
+    "prebuild": "npm run build:chorala-widget",
+    "build:chorala-widget": "node scripts/build-chorala-widget.mjs",
     "build": "vite build && node scripts/fix-manifest.js",
     "preview": "vite preview",
     "lint": "eslint resources/js --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --max-warnings=52",

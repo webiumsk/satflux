@@ -12,10 +12,10 @@ vi.mock('../composables/useSamRockPairing', () => ({ useSamRockPairing: () => ({
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 
 const challenge = { purpose: 'wallet_change', email: 'owner@example.test', expires_at: '2099-01-01T00:00:00Z', resend_available_at: '2000-01-01T00:00:00Z', attempts_left: 5, sends_left: 3 };
-const open = async () => {
+const open = async (walletType = 'cashu') => {
     const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/stores/:id', component: { template: '<div />' } }] });
     await router.push('/stores/store-a'); await router.isReady();
-    return mount(WalletConnectionForm, { props: { storeId: 'store-a', walletType: 'cashu', existingConnection: null }, global: { plugins: [router], stubs: {
+    return mount(WalletConnectionForm, { props: { storeId: 'store-a', walletType, existingConnection: null }, global: { plugins: [router], stubs: {
         CashuConnectionSection: { template: '<button data-testid="switch" @click="$emit(\'switch-to-lightning\')">switch</button>' },
         WalletConnectionSmartPaste: true, LightningAddressQuickConnect: true, WalletConnectionTypeGuide: true,
     } } });
@@ -128,5 +128,37 @@ describe('Cashu to Lightning wallet change', () => {
         expect(wrapper.find('[data-testid=cashu-wallet-safety]').exists()).toBe(false);
         expect(wrapper.find('[role=alert]').exists()).toBe(false);
         expect(mocks.create).toHaveBeenCalledTimes(1); expect(wrapper.emitted('submitted')).toBeUndefined(); wrapper.unmount();
+    });
+
+    it.each(['cashu', 'lnaddress'].flatMap((walletType) => [
+        ['lnaddress', 'type=lnaddress;ln-address=alice@coinos.io;', 'alice@coinos.io'],
+        ['blink', 'type=blink;ln-address=alice;', 'alice@blink.sv'],
+        ['blitz', 'type=blitz;ln-address=alice;', 'alice@blitzwalletapp.com'],
+        ['flash', 'type=flash;username=alice;', 'alice@flashapp.me'],
+        ['blitz', 'type=blitz;username=other;ln-address=alice@blitzwalletapp.com;', 'alice@blitzwalletapp.com'],
+    ].map(([type, secret, address]) => ({ walletType, type, secret, address }))))('returns an unsupported $type address to capability review from $walletType', async ({ walletType, type, secret, address }) => {
+        mocks.create.mockRejectedValue({ response: { status: 422, data: { code: 'lud21_unsupported' } } });
+        const wrapper = await open(walletType);
+        if (walletType === 'cashu') {
+            await wrapper.get('[data-testid=switch]').trigger('click'); await flushPromises();
+            const inputs = wrapper.findAll('input[autocomplete=one-time-code]');
+            for (let i = 0; i < 6; i++) await inputs[i]!.setValue(String(i + 1));
+            await flushPromises();
+        } else {
+            await wrapper.get('#wallet-setup-tab-advanced').trigger('click');
+        }
+        const paste = wrapper.getComponent({ name: 'WalletConnectionSmartPaste' });
+        paste.vm.$emit('update:connectionType', type);
+        paste.vm.$emit('update:modelValue', secret);
+        await flushPromises();
+        await wrapper.findAll('button').find(b => b.text() === 'stores.save_connection')!.trigger('click');
+        await flushPromises();
+        const quickConnect = wrapper.getComponent({ name: 'LightningAddressQuickConnect' });
+        expect(quickConnect.props('initialAddress')).toBe(address);
+        expect(quickConnect.isVisible()).toBe(true);
+        expect(paste.isVisible()).toBe(false);
+        expect(mocks.create).toHaveBeenCalledTimes(1);
+        expect(wrapper.emitted('submitted')).toBeUndefined();
+        wrapper.unmount();
     });
 });

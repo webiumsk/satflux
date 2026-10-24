@@ -74,10 +74,12 @@ describe('detectWalletConnectionInput', () => {
     expect(detectWalletConnectionInput('type=flash;ln-address=satoshi;').kind).toBe('flash');
   });
 
-  it('detects any other Lightning address as cashu', () => {
-    const result = detectWalletConnectionInput('satoshi@getalby.com');
-    expect(result.kind).toBe('cashu');
-    expect(result.cashuLightningAddress).toBe('satoshi@getalby.com');
+  it.each(['satoshi@getalby.com', 'satoshi@minibits.cash'])('sends the bare address %s through native capability preflight', (address) => {
+    const result = detectWalletConnectionInput(address);
+    expect(result.kind).toBe('lnaddress');
+    expect(result.connectionType).toBe('lnaddress');
+    expect(result.normalizedSecret).toBe(`type=lnaddress;ln-address=${address};`);
+    expect(result.cashuLightningAddress).toBeNull();
     expect(result.cashuMintUrl).toBeNull();
   });
 

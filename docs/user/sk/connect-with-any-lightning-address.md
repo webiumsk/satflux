@@ -7,21 +7,20 @@ meta_description: Nasmerujte Lightning backend obchodu na akúkoľvek adresu vy@
 
 # Pripojenie akoukoľvek Lightning adresou
 
-Najjednoduchší spôsob pripojenia peňaženky je vložiť jednu **Lightning adresu** (`vy@penazenka.com`). Otvorte **Pripojenie peňaženky**, ostaňte na tabe **Lightning adresa**, zadajte adresu a pripojte. Satflux vyberie správny backend automaticky podľa domény adresy.
+Otvorte **Pripojenie peňaženky**, vyberte **Lightning adresa**, zadajte `vy@penazenka.com` a pripojte ju. Satflux overí podporu overovania platieb pre **konkrétnu adresu**, vrátane Blink, Blitz, Flash a Coinos. Značka peňaženky ani spoločná doména nezaručujú podporu LUD-21.
 
-## Čo sa pripojí natívne
+## Priame Lightning pripojenie
 
-- **Blink** (`vy@blink.sv`) - nekustodiálne, len na príjem. Odporúčané na rýchly štart.
-- **Blitz** (`…@blitzwalletapp.com`), **Flash** (`…@flashapp.me`), **Coinos** (`…@coinos.io`) - pripoja sa natívne.
-- **Akákoľvek peňaženka s podporou LUD-21** overenia platieb - Satflux adresu pri pripojení skontroluje (rýchly „probe“) a ak peňaženka LUD-21 podporuje, pripojí ju ako štandardnú Lightning adresu.
+Ak adresa podporuje **LUD-21**, Satflux ju pripojí cez LNAddressConnect. Staršia Coinos adresa a adresa presunutá do Coinos v3 môžu mať odlišné schopnosti aj na doméne `coinos.io`.
 
-## Ostatné adresy - Cashu (beta)
+## Bez LUD-21 - CashuMelt (beta)
 
-Ak adresa nepatrí medzi vyššie uvedené a nepodporuje LUD-21, Satflux ju vie použiť tak, že na ňu **vyrovnáva cez Cashu mint (beta)**. Uvidíte krátke beta upozornenie a potvrdzovacie zaškrtávacie pole. Ako to funguje a aké sú limity, viď [Cashu Lightning vyrovnanie](/documentation/cashu-lightning-settlement).
+Ak adresa vráti platnú Lightning faktúru, ale nemá endpoint na overenie úhrady, Satflux skontroluje dostupnosť CashuMelt pre váš obchod. Ak je dostupný, zobrazí mint a pred uložením si vyžiada váš výslovný súhlas. Zachová existujúci výber mintu; inak ponúkne predvolený mint nastavený prevádzkovateľom.
 
-## Dobré vedieť
+Cashu vyrovnanie závisí od dôvery v mint a od poplatkov. Overuje Lightning výplatu poskytovateľovi adresy; nedokazuje jeho ďalší interný prevod, napríklad doručenie na Ark zostatok. Pozrite si [Cashu Lightning vyrovnanie](/documentation/cashu-lightning-settlement).
 
-- Potrebujete len samotnú adresu - žiaden API kľúč. (Blink podporuje aj kustodiálne pripojenie cez API kľúč, ale nekustodiálna `@blink.sv` adresa je odporúčaný spôsob.)
-- Peňaženka ostáva **vaša**; Satflux len smeruje BTCPay Lightning do nej.
-- Chcete plne nekustodiálne nastavenie cez QR? Použite **Aqua** cez [SamRock](/documentation/connect-aqua-with-samrock).
-- Chcete opakovateľnú adresu na príjem hostovanú na vlastnom obchode (`vy@váš-obchod`)? To je iná funkcia - viď [Lightning adresy obchodu](/documentation/store-lightning-addresses).
+## Ak adresu nemožno overiť
+
+Časový limit, neplatná odpoveď, chýbajúci plugin alebo nedokončená platba sa zobrazia ako chyba s možnosťou opakovania alebo vysvetlením nedostupnosti. Satflux peňaženku potichu neprepne. Zmena existujúcej peňaženky naďalej vyžaduje obvyklé potvrdenie a bezpečnostné kontroly platieb; existujúce faktúry si ponechajú pôvodné platobné nastavenia.
+
+Na toto nastavenie potrebujete len Lightning adresu. Ďalšie možnosti nájdete v článku [Výber peňaženky](/documentation/choosing-your-wallet). Adresa na príjem hostovaná obchodom je samostatná funkcia: [Lightning adresy obchodu](/documentation/store-lightning-addresses).

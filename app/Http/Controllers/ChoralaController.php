@@ -15,13 +15,17 @@ class ChoralaController extends Controller
 
     public function widgetToken(Request $request)
     {
-        $jwt = $this->choralaWidgetTokenService->createTokenForUser($request->user());
+        $issuedAt = time();
+        $jwt = $this->choralaWidgetTokenService->createTokenForUser($request->user(), $issuedAt);
 
         if ($jwt === null) {
             return response()->json(['message' => 'Chorala widget SSO is not configured.'], 404);
         }
 
-        return response()->json(['jwt' => $jwt]);
+        return response()->json([
+            'jwt' => $jwt,
+            'expires_at' => $issuedAt + ChoralaWidgetTokenService::TOKEN_TTL_SECONDS,
+        ])->header('Cache-Control', 'no-store');
     }
 
     public function widgetSettings()

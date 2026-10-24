@@ -62,6 +62,9 @@ class ChoralaWidgetTokenTest extends TestCase
         $this->assertArrayHasKey('iat', $decoded);
         $this->assertArrayHasKey('exp', $decoded);
         $this->assertGreaterThan(time(), $decoded['exp']);
+        $this->assertSame($decoded['exp'], $response->json('expires_at'));
+        $this->assertSame(3600, $decoded['exp'] - $decoded['iat']);
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
     }
 
     public function test_widget_token_omits_null_name_for_chorala_jwt_schema(): void

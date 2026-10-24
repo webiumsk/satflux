@@ -136,9 +136,9 @@
 
       <div
         id="wallet-setup-panel-ln"
-        v-show="showWalletSetupTabs && walletSetupTab === 'ln'"
-        role="tabpanel"
-        aria-labelledby="wallet-setup-tab-ln"
+        v-show="(showWalletSetupTabs && walletSetupTab === 'ln') || addressRecoveryRequested"
+        :role="showWalletSetupTabs ? 'tabpanel' : undefined"
+        :aria-labelledby="showWalletSetupTabs ? 'wallet-setup-tab-ln' : undefined"
       >
         <LightningAddressQuickConnect
           :store-id="storeId"
@@ -150,7 +150,7 @@
 
       <div
         id="wallet-setup-panel-advanced"
-        v-show="!showWalletSetupTabs || walletSetupTab === 'advanced'"
+        v-show="!addressRecoveryRequested && (!showWalletSetupTabs || walletSetupTab === 'advanced')"
         role="tabpanel"
         aria-labelledby="wallet-setup-tab-advanced"
         class="space-y-6"
@@ -163,6 +163,10 @@
           @detected="onAdvancedCandidateDetected"
           @detect-cashu="onDetectCashuFromPaste"
         />
+
+        <p v-if="saveCandidateChanged" role="status" aria-live="polite" class="text-sm text-amber-400">
+          {{ t("stores.wallet_connection_details_changed") }}
+        </p>
 
         <div v-if="advancedCandidateReviewed && form.secret.trim()" class="max-w-md">
           <template v-if="advancedFallbackDerivable">
@@ -514,6 +518,7 @@ import WalletConnectionTypeGuide from "./WalletConnectionTypeGuide.vue";
 import { isValidAquaBoltzDescriptor } from "../../utils/aquaBoltzDescriptor";
 import { detectWalletConnectionInput, isValidCashuLightningAddress } from "../../utils/detectWalletConnectionInput";
 import {
+  blinkAddressForLnAddressConnect,
   fallbackAddressDerivableFromSecret,
   isCashuWalletNwcUri,
   normalizeBlinkConnectionString,
@@ -526,6 +531,7 @@ import {
   validateNwcUri,
 } from "../../utils/walletNwcHelpers";
 import {
+  lnAddressFromConnectionSecret,
   normalizeLnAddressConnectionString,
   validateLnAddressConnectionString,
   type LnAddressWalletBrand,
@@ -558,6 +564,8 @@ const walletSetupTabsList: ReadonlyArray<{ id: WalletSetupTabId; labelKey: strin
   { id: "advanced", labelKey: "create_store.tab_advanced" },
 ];
 const walletSetupTab = ref<WalletSetupTabId>("ln");
+/** A rejected advanced address returns to the shared capability/consent form. */
+const addressRecoveryRequested = ref(false);
 
 /** CashuMelt parallel fallback: every store keeps at least one Lightning address. */
 const samrockFallbackAddress = ref("");
@@ -704,12 +712,35 @@ const quickConnectAddress = ref("");
 function lnAddressFromConnectionString(secret: string): string {
   const trimmed = secret.trim();
   if (!trimmed.includes(";") && !trimmed.includes("=")) return trimmed;
-  const match = trimmed.match(/(?:^|;)\s*(?:ln-address|lnaddress|username)\s*=\s*([^;]+)/i);
-  return match?.[1]?.trim() ?? "";
+  const values = new Map<string, string>();
+  for (const part of trimmed.split(";")) {
+    const separator = part.indexOf("=");
+    if (separator < 0) continue;
+    const value = part.slice(separator + 1).trim();
+    if (value) values.set(part.slice(0, separator).trim().toLowerCase(), value);
+  }
+  return values.get("ln-address") ?? values.get("lnaddress") ?? values.get("username") ?? "";
+}
+
+/** Keep reviewed Blink address shorthands on the native per-address path. */
+function normalizeLnAddressCandidate(secret: string): string {
+  const address = blinkAddressForLnAddressConnect(secret);
+  return normalizeLnAddressConnectionString(address ?? secret);
+}
+
+/** Preserve the provider's legacy username defaults when reviewing alternatives. */
+function addressForCapabilityReview(type: string, secret: string): string | null {
+  if (type === "lnaddress") return lnAddressFromConnectionSecret(normalizeLnAddressCandidate(secret));
+  if (type === "blink") return blinkAddressForLnAddressConnect(secret);
+  const domain = type === "blitz" ? "blitzwalletapp.com" : type === "flash" ? "flashapp.me" : null;
+  if (!domain) return null;
+  const address = lnAddressFromConnectionString(secret);
+  return address ? (address.includes("@") ? address : `${address}@${domain}`) : null;
 }
 
 /** Shared post-reveal handoff: prefill the setup form and switch to editing. */
 function applyRevealedConnection(reveal: { secret?: string | null; type?: string }) {
+  addressRecoveryRequested.value = false;
   form.type = ((reveal.type === "cashu" ? undefined : reveal.type) ||
     props.existingConnection?.type ||
     defaultWalletConnectionType(
@@ -775,6 +806,7 @@ function startSamRockPairing() {
 }
 
 const submitting = ref(false);
+const saveCandidateChanged = ref(false);
 const testing = ref(false);
 const errors = reactive<Record<string, string>>({});
 const walletSafety = ref<unknown>(null);
@@ -905,6 +937,8 @@ watch(
     switchToCashuIntent.value = false;
     switchToLightningIntent.value = false;
     walletSetupTab.value = "ln";
+    addressRecoveryRequested.value = false;
+    quickConnectAddress.value = "";
     // A code issued for the previous store must never be entered here.
     changeChallenge.value = null;
     resumeEditingAfterGrant.value = false;
@@ -915,6 +949,7 @@ watch(
     walletSafety.value = null;
     walletSafetyRefusal.value = null;
     submitting.value = false;
+    saveCandidateChanged.value = false;
     viewMode.value = initialWalletViewMode(props.existingConnection);
   },
 );
@@ -1082,6 +1117,7 @@ function cancelChangeCode() {
 }
 
 function handleCancelEdit() {
+  addressRecoveryRequested.value = false;
   switchToCashuIntent.value = false;
   walletSetupTab.value = "ln";
   form.secret = "";
@@ -1194,7 +1230,7 @@ async function handleTestConnection() {
     };
     return;
   }
-  if (form.type === "lnaddress" && !validateLnAddressConnectionString(form.secret)) {
+  if (form.type === "lnaddress" && !validateLnAddressConnectionString(normalizeLnAddressCandidate(form.secret))) {
     testResult.value = {
       success: false,
       message: t("stores.lnaddress_invalid_connection"),
@@ -1264,7 +1300,7 @@ function formatConnectionStringForApi(value: string, type: string): string {
     return normalizeFlashConnectionString(value);
   }
   if (type === "lnaddress") {
-    return normalizeLnAddressConnectionString(value);
+    return normalizeLnAddressCandidate(value);
   }
   if (type !== "nwc") {
     return value.trim();
@@ -1297,6 +1333,7 @@ function onDetectCashuFromPaste(_payload: {
 
 async function handleSubmit() {
   if (submitting.value) return;
+  saveCandidateChanged.value = false;
   const storeId = props.storeId;
   const generation = storeGeneration;
   submitting.value = true;
@@ -1325,7 +1362,7 @@ async function handleSubmit() {
     submitting.value = false;
     return;
   }
-  if (form.type === "lnaddress" && !validateLnAddressConnectionString(form.secret)) {
+  if (form.type === "lnaddress" && !validateLnAddressConnectionString(normalizeLnAddressCandidate(form.secret))) {
     errors.secret = t("stores.lnaddress_invalid_connection");
     submitting.value = false;
     return;
@@ -1352,6 +1389,18 @@ async function handleSubmit() {
     return;
   }
 
+  // Snapshot the reviewed candidate after action-time detection and validation.
+  // Deferred detection may change its type when Save is invoked without blur.
+  const submittedSecret = form.secret;
+  const submittedAddress = addressForCapabilityReview(form.type, submittedSecret);
+  const canHandleResult = () => {
+    if (!componentMounted || storeId !== props.storeId || generation !== storeGeneration) return false;
+    if (candidateVersion !== candidateGeneration) {
+      saveCandidateChanged.value = true;
+      return false;
+    }
+    return true;
+  };
   try {
     const secretPayload =
       form.type === "nwc"
@@ -1363,7 +1412,7 @@ async function handleSubmit() {
             : form.type === "flash"
               ? normalizeFlashConnectionString(form.secret)
               : form.type === "lnaddress"
-                ? normalizeLnAddressConnectionString(form.secret)
+                ? normalizeLnAddressCandidate(form.secret)
                 : form.secret.trim();
 
     await walletApi.connection.create(storeId, {
@@ -1373,12 +1422,20 @@ async function handleSubmit() {
         ? undefined
         : advancedFallbackAddress.value.trim(),
     });
-    if (!componentMounted || storeId !== props.storeId || generation !== storeGeneration || candidateVersion !== candidateGeneration) return;
+    if (!canHandleResult()) return;
     emit("submitted", form.type);
   } catch (rawError) {
-    if (!componentMounted || storeId !== props.storeId || generation !== storeGeneration || candidateVersion !== candidateGeneration) return;
+    if (!canHandleResult()) return;
     const err = asApiError(rawError);
     const code = err.response?.data?.code;
+    if (err.response?.status === 422 && code === "lud21_unsupported" && submittedAddress) {
+      quickConnectAddress.value = submittedAddress;
+      addressRecoveryRequested.value = !showWalletSetupTabs.value;
+      walletSetupTab.value = "ln";
+      // The shared form probes this address again and obtains a fresh,
+      // store-scoped Cashu alternative before asking for explicit consent.
+      return;
+    }
     if (code === "wallet_change_confirmation_required") {
       // Grant expired (or never granted): back through the confirmation step.
       onGrantExpired();

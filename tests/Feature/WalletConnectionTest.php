@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Notification;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Concerns\ReadsEmailCodes;
 use Tests\TestCase;
+use Tests\Unit\Bolt11Test;
 
 class WalletConnectionTest extends TestCase
 {
@@ -26,6 +27,15 @@ class WalletConnectionTest extends TestCase
     protected const VALID_BLINK_SECRET = 'type=blink;server=https://api.blink.sv/graphql;api-key=blink_test123;wallet-id=wallet456';
 
     protected const VALID_AQUA_DESCRIPTOR = 'ct(slip77(xpub6D4BDPcP2GT577Vvch3Reb8P8CH),elsh(wpkh(xpub6E8...)))';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Most tests exercise connection lifecycle, not provider capabilities.
+        // Probe-specific cases replace this binding with synthetic DNS/HTTP.
+        $this->mock(LnAddressLud21Prober::class)->shouldReceive('probe')
+            ->andReturn(['lud21' => true, 'reason' => 'ok']);
+    }
 
     #[Test]
     public function user_can_get_wallet_connection_for_own_store(): void
@@ -459,16 +469,17 @@ class WalletConnectionTest extends TestCase
     public function lnaddress_probe_reports_missing_lud21_when_callback_has_no_verify(): void
     {
         $this->fakeProberDns();
+        $this->travelTo(now()->setTimestamp(1496314658));
 
         Http::fake([
             'https://plainwallet.example/.well-known/lnurlp/bob' => Http::response([
                 'tag' => 'payRequest',
                 'callback' => 'https://plainwallet.example/pay/lnurl/bob',
-                'minSendable' => 1000,
+                'minSendable' => 250000000,
                 'maxSendable' => 10000000000,
             ], 200),
             'https://plainwallet.example/pay/lnurl/bob*' => Http::response([
-                'pr' => 'lnbc10n1invoice',
+                'pr' => Bolt11Test::SPEC_COFFEE,
             ], 200),
         ]);
 

@@ -7,21 +7,20 @@ meta_description: Point your store's Lightning backend at any you@wallet address
 
 # Connect with any Lightning address
 
-The simplest way to connect a wallet is to paste a single **Lightning address** (`you@wallet.com`). Open **Wallet connection**, stay on the **Lightning address** tab, type your address, and connect. Satflux picks the right backend automatically from the address domain.
+Open **Wallet connection**, choose **Lightning address**, enter `you@wallet.com`, and connect. Satflux checks payment verification for the **specific address**, including Blink, Blitz, Flash and Coinos addresses. A wallet brand or shared domain does not guarantee LUD-21 support.
 
-## What connects natively
+## Direct Lightning connection
 
-- **Blink** (`you@blink.sv`) - non-custodial, receive-only. Recommended for a fast start.
-- **Blitz** (`…@blitzwalletapp.com`), **Flash** (`…@flashapp.me`), **Coinos** (`…@coinos.io`) - connect natively.
-- **Any wallet that supports LUD-21** payment verification - Satflux checks the address when you connect (a quick "probe") and, if the wallet supports LUD-21, connects it as a standard Lightning address.
+If the address supports **LUD-21**, Satflux connects it through LNAddressConnect. An older Coinos address and an address migrated to Coinos v3 can have different capabilities even on `coinos.io`.
 
-## Other addresses - Cashu (beta)
+## Without LUD-21 - CashuMelt (beta)
 
-If the address is not one of the above and does not support LUD-21, Satflux can still use it by **settling to that address through a Cashu mint (beta)**. You will see a short beta notice and a consent checkbox to confirm. See [Cashu Lightning settlement](/documentation/cashu-lightning-settlement) for how that works and its limits.
+If the address returns a valid Lightning invoice but has no payment-verification endpoint, Satflux checks whether CashuMelt is available for your store. When available, it shows the mint and asks for your explicit consent before saving. It preserves an existing mint selection; otherwise it offers the operator-configured default.
 
-## Good to know
+Cashu settlement depends on mint trust and fees. It verifies the Lightning payout to the address provider; it does not prove any later transfer inside that provider, such as delivery to an Ark balance. See [Cashu Lightning settlement](/documentation/cashu-lightning-settlement).
 
-- You only need the address itself - no API key. (Blink also supports a custodial API-key connection, but the non-custodial `@blink.sv` address is the recommended way.)
-- The wallet stays **yours**; Satflux only routes BTCPay's Lightning to it.
-- Prefer a QR-based, fully non-custodial setup? Use **Aqua** via [SamRock](/documentation/connect-aqua-with-samrock) instead.
-- Want a reusable receive address hosted on your own store (`you@your-store`)? That is a different feature - see [Store Lightning addresses](/documentation/store-lightning-addresses).
+## If the address cannot be checked
+
+A timeout, invalid response, missing plugin, or outstanding payment is shown as a retry or availability error. Satflux does not silently switch wallets. Changing an existing wallet still requires the usual confirmation and payment-safety checks; existing invoices keep their original payment settings.
+
+You need only the Lightning address for this setup. For other connection methods, see [Choosing your wallet](/documentation/choosing-your-wallet). A receive address hosted by your store is a separate feature: [Store Lightning addresses](/documentation/store-lightning-addresses).

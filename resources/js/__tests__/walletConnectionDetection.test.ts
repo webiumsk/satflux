@@ -144,7 +144,24 @@ describe('Wallet connection detection boundaries', () => {
         await button(wrapper, 'stores.save_connection').trigger('click');
         await input(wrapper).setValue('new-incomplete-candidate');
         resolve(); await flushPromises();
-        expect(api.create).toHaveBeenCalledTimes(1); expect(wrapper.emitted('submitted')).toBeUndefined(); wrapper.unmount();
+        expect(api.create).toHaveBeenCalledTimes(1); expect(wrapper.emitted('submitted')).toBeUndefined();
+        expect(wrapper.get('[role=status]').text()).toBe('stores.wallet_connection_details_changed');
+        await wrapper.setProps({ storeId: 'store-b' }); await flushPromises();
+        expect(wrapper.find('[role=status]').exists()).toBe(false);
+        wrapper.unmount();
+    });
+
+    it('does not show a retry notice for a pending save from a previous store', async () => {
+        let reject!: (value: unknown) => void;
+        api.create.mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; }));
+        const wrapper = await open(); await input(wrapper).setValue(blitz);
+        await button(wrapper, 'stores.save_connection').trigger('click');
+        await input(wrapper).setValue('type=flash;ln-address=merchant@flashapp.me;');
+        await wrapper.setProps({ storeId: 'store-b' }); await flushPromises();
+        reject({ response: { status: 422, data: { code: 'lud21_unsupported' } } }); await flushPromises();
+        expect(wrapper.find('[role=status]').exists()).toBe(false);
+        expect(wrapper.emitted('submitted')).toBeUndefined();
+        wrapper.unmount();
     });
 
     it('routes a latest Cashu candidate on Save without blur and never submits the old connection', async () => {

@@ -694,3 +694,16 @@ legacy UTC-only and unrelated provider exception behavior. Keep the shared code/
 map as the sole classification authority; no prefix matching or payment/API contract
 expansion. Correct the three documentation comments in the same follow-up. Existing
 publication authorization applies to the reviewed fix; no merge or deployment follows.
+
+## 2026-10-24: PR #400 review fixes preserve authoritative wallet checks
+
+The owner explicitly requested remediation. Integrate already-merged #399 through
+master `709befa2` without rewriting the feature history. Treat settings 404 as absent
+configuration consistently with existing consumers, but require a separate fresh,
+strictly safe Cashu response; maintained provider source returns 200 for empty
+configuration, so do not claim a proven provider regression. Cache only successful
+presentation invoice scans for ten seconds, scoped by store/credential/server/state;
+never reuse that advisory for a mutation. Keep unresolved-write and safety checks
+fresh. Repair timer scheduling and visible retry guidance while preserving
+identity/account revisions and stale-result isolation. Independent security and QA
+review accepted this bounded scope; main retains publication ownership.

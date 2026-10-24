@@ -391,3 +391,13 @@ CodeRabbit findings with a bounded event-error classification fix plus documenta
 corrections. Preserve catalog capability handling and unrelated write error behavior;
 152 related PHP cases / 513 assertions, full PHPStan and Pint pass locally. Obtain
 independent follow-up acceptance and verify fresh published-head CI before merge.
+
+### PR #400 remediation follow-up
+
+The owner authorized CI/review fixes after #399 merged. The feature branch now
+contains master `709befa2`, deterministic compatibility discovery, defensive Cashu
+404 handling with strict safety, a short presentation-only invoice cache, reliable
+Chorala renewal scheduling and localized edited-save guidance. Independent QA and
+security accepted this delta; the full 959-case frontend run and selected PHP
+regressions pass. Publish the reviewed correction to the existing PR and inspect
+its new CI/review. No merge or deployment approval is inferred.

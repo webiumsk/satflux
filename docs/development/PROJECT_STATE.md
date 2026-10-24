@@ -1110,3 +1110,32 @@ remains distinct from the successful GitHub checks; do not add boilerplate or we
 configuration to suppress it. Publish the reviewed bounded fix to the existing PR
 under the owner's authorization, then verify fresh-head CI. No plugin repack, merge,
 production access or deployment is part of this follow-up.
+
+## 2026-10-24: PR #400 CI and review remediation
+
+The Product Owner authorized fixing the CI and CodeRabbit findings in
+[PR #400](https://github.com/webiumsk/satflux/pull/400). PR #399 is now merged;
+master `709befa2` was merged into the existing feature branch as `bc7a7240` before
+implementation. The original checkout and its pre-existing image edit are preserved.
+No external repository, billing policy or deployment configuration changed.
+
+The three CI failures were missing deterministic LUD-21 discovery in the BTCPay
+compatibility fixture, which now reaches its original invoice/recovery assertions.
+Cashu settings 404 can use the configured default only after fresh strict safety
+verification. Successful presentation invoice scans have a ten-second scoped cache;
+final writes still check freshly. Chorala reschedules early/clock-shifted callbacks.
+Edited pending saves show localized retry guidance without stale recovery or
+cross-store notices.
+
+Independent reviewers `/root/review400_independent_security` and
+`/root/review400_independent_qa` accepted the bounded working-tree remediation
+against `bc7a7240`, with no blocking findings. QA independently ran 40 focused
+frontend cases and the final 23-case wallet subset; locale parity passed. Coordinator
+validation passed all 959 Vitest cases in 136 files, 86 unique selected PHP cases
+across the initial run and corrected-fixture rerun, PHPStan, build, locale parity and
+typecheck gate tests. Pint passed all 1,054 files. Typecheck retains 120 baselined errors; ESLint retains 48
+warnings with no new errors. Shared local DOMPurify is 3.4.16 while the preserved
+lockfile specifies 3.4.17; exact locked dependency validation remains GitHub CI.
+The full offline PHP suite was not rerun because of the recorded DNS restriction.
+Fresh remote CI and CodeRabbit status must be read for the newly published revision.
+Merge, staging acceptance and deployment remain separate approval/verification gates.
