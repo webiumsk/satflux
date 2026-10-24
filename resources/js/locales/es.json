@@ -1588,6 +1588,7 @@
     "ln_quick_probe_note": "monedero desconocido - la compatibilidad se verifica al conectar",
     "ln_quick_probe_checking": "Verificando compatibilidad del monedero...",
     "ln_quick_probe_retry": "No se pudo verificar el monedero. Inténtelo de nuevo. Su método de pago no ha cambiado.",
+    "wallet_connection_details_changed": "Los datos de conexión cambiaron mientras se guardaban. Revise los datos actuales y vuelva a guardarlos.",
     "ln_quick_probe_cashu_fallback": "Esta dirección no ofrece verificación de pagos (LUD-21). Al continuar, Cashu (beta) será el método de pago principal de la tienda y reemplazará la conexión Lightning existente.",
     "blink_eu_legacy_notice": "Las cuentas Blink en la UE son non-custodial: conecte con type=blink;ln-address=usted{'@'}blink.sv; (solo recepción). El formato con clave API sigue funcionando para cuentas custodial fuera de la UE.",
     "blink_migration_modal_title": "El monedero Blink puede dejar de funcionar",

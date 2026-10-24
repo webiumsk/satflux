@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\WalletConfigurationAttempt;
 use App\Services\BtcPay\CashuService;
 use App\Services\BtcPay\Exceptions\BtcPayException;
+use Illuminate\Support\Facades\Cache;
 
 /** Read-only connection decisions; the existing wallet writers retain final authority. */
 class LightningAddressCapabilityService
@@ -39,7 +40,7 @@ class LightningAddressCapabilityService
                 'unavailable' => 'lud21_unavailable',
                 default => 'lud21_invalid',
             },
-            'alternatives' => $outcome === 'unsupported' ? [$this->cashuAlternative($store)] : [],
+            'alternatives' => $outcome === 'unsupported' ? [$this->cashuAlternative($store, $fresh)] : [],
         ];
     }
 
@@ -53,7 +54,7 @@ class LightningAddressCapabilityService
     }
 
     /** @return array{type: string, available: bool, blocked_reason: string|null, mint_url: string|null, requires_consent: bool} */
-    private function cashuAlternative(Store $store): array
+    private function cashuAlternative(Store $store, bool $fresh): array
     {
         $alternative = ['type' => 'cashu', 'available' => false, 'blocked_reason' => null, 'mint_url' => null, 'requires_consent' => true];
         if ($store->wallet_type !== null && ! in_array($store->wallet_type, ['cashu', 'blink', 'blitz', 'flash', 'lnaddress', 'aqua_boltz', 'nwc'], true)) {
@@ -71,7 +72,12 @@ class LightningAddressCapabilityService
         try {
             $settings = $this->cashu->getSettings($store->btcpay_store_id, $key);
         } catch (BtcPayException $e) {
-            return [...$alternative, 'blocked_reason' => $e->getStatusCode() === 404 ? 'cashu_plugin_unavailable' : 'cashu_settings_unavailable'];
+            if ($e->getStatusCode() !== 404) {
+                return [...$alternative, 'blocked_reason' => 'cashu_settings_unavailable'];
+            }
+            // Older consumers allow an absent configuration to use the default
+            // mint. The separate safety endpoint must still prove plugin support.
+            $settings = [];
         } catch (\Throwable) {
             return [...$alternative, 'blocked_reason' => 'cashu_settings_unavailable'];
         }
@@ -90,13 +96,36 @@ class LightningAddressCapabilityService
         }
         if ($store->wallet_type !== null) {
             try {
-                app(WalletConnectionService::class)->assertWalletCanChange($store);
+                $this->assertAdvisoryWalletCanChange($store, $key, $fresh);
             } catch (\Throwable) {
                 return [...$alternative, 'blocked_reason' => 'wallet_change_unavailable'];
             }
         }
 
         return [...$alternative, 'available' => true];
+    }
+
+    /** Briefly reuse successful invoice scans for presentation, never for a save. */
+    private function assertAdvisoryWalletCanChange(Store $store, string $merchantKey, bool $fresh): void
+    {
+        $check = function () use ($store): bool {
+            app(WalletConnectionService::class)->assertWalletCanChange($store);
+
+            return true;
+        };
+        if ($fresh) {
+            $check();
+
+            return;
+        }
+        $fingerprint = hash('sha256', json_encode([
+            $store->user_id, $merchantKey, config('services.btcpay.base_url'),
+            $store->btcpay_store_id, $store->wallet_type, $store->cashu_fallback_enabled,
+            $store->getRawOriginal('updated_at'),
+        ], JSON_THROW_ON_ERROR));
+        // Exceptions are not cached. Unresolved writes and Cashu safety are
+        // independently checked on every request before reaching this advisory.
+        Cache::remember('wallet-change-advisory:'.$store->id.':'.$fingerprint, 10, $check);
     }
 
     private function validMint(string $mint): bool

@@ -121,9 +121,9 @@ keep wallet reconciliation and the original invoice snapshots intact. Restoring
 the old Chorala proxy integration restores its known CSRF failure, so prefer a
 forward fix for feedback transport rather than weakening CSRF.
 
-## Compatibility with open PR #399
+## Compatibility with PR #399
 
-GitHub review confirmed PR #399 remains open at
+The initial GitHub review found PR #399 open at
 `a615d0431d7843e18675339a8a30ca3da7de2dd8`, based on `5942032a`. Its PHP,
 frontend and Playwright checks passed. Seven files overlap this change and merge
 without text conflicts, but a combined-source regression exposed stale recovery
@@ -146,8 +146,42 @@ checkout policy and this change's primary-wallet alternative are separate decisi
 Retain its DOMPurify 3.4.17 manifest/lock update. Shared test dependencies still
 contain 3.4.16, so focused wallet tests do not establish full locked-release coverage.
 
-Recommended source order is #399 first, then this branch. The associated provider
+PR #399 has since merged into master at `709befa2` and is incorporated into this
+branch before the PR #400 review corrections. The associated provider
 PR [#42](https://github.com/webiumsk/BTCPayServerPluginsWebium/pull/42) is merged;
 installation of its tested plugin version remains a separate deployment check.
-No GitHub merge, deployment, base-branch change or history rewrite is performed by
-this compatibility follow-up.
+No GitHub merge, deployment or history rewrite is performed by this follow-up.
+
+## PR #400 review corrections
+
+Settings HTTP 404 now follows the existing consumer convention for absent Cashu
+configuration, allowing an operator-approved default mint. A fresh, strictly safe
+response from the separate safety endpoint is still required. The maintained
+provider returns HTTP 200 with empty settings for an unconfigured store, so the 404
+handling is defensive compatibility rather than evidence of a provider regression.
+
+Successful invoice scans used to present an alternative are reused for ten seconds,
+scoped to the local store, merchant credentials, server and wallet state. Failures
+are not cached; unresolved configuration attempts and Cashu safety are checked on
+every request. Fresh capability evaluations bypass this advisory cache. Final wallet
+writers continue to enforce their authoritative checks before any journal or remote
+mutation. A newly active invoice can therefore reject an explicitly requested change
+even after a recent available alternative was displayed.
+
+Chorala reschedules a valid identity when a timer fired early or the clock moved
+backwards, including optional SSO responses. Existing retry timers are preserved.
+Editing connection details while a save is pending now shows a localized review
+and save-again notice when its obsolete response arrives. It cannot route the old
+address to Cashu recovery or display the notice in a different store.
+
+The BTCPay compatibility tests now mock supported LUD-21 for their synthetic address
+with a fresh check, allowing their invoice and recovery assertions to run without
+real discovery. Production capability validation remains unchanged.
+
+The reviewed correction passed all 959 Vitest cases in 136 files. The 86 unique
+selected PHP cases passed across the initial run and corrected-fixture rerun,
+including the three originally failing compatibility cases and a real Cashu save
+refusal after a new invoice appears. PHPStan, production build, typecheck, locale
+parity, Pint (1,054 files) and typecheck-gate tests passed with unchanged baselines. Independent QA and
+security accepted the remediation. Full locked-dependency and complete PHP-suite
+results remain the responsibility of the new GitHub CI run.

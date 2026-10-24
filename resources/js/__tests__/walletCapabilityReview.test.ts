@@ -32,6 +32,48 @@ describe('Advanced address capability review', () => {
         api.update.mockResolvedValue({});
     });
 
+    it('asks to save the current address after an obsolete unsupported response without offering stale recovery', async () => {
+        let reject!: (error: unknown) => void;
+        api.create.mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; }));
+        const router = createRouter({ history: createMemoryHistory(), routes: [
+            { path: '/stores/:id', component: { template: '<div />' } },
+        ] });
+        await router.push('/stores/store-a');
+        await router.isReady();
+        const wrapper = mount(WalletConnectionForm, {
+            props: { storeId: 'store-a', walletType: 'blink', existingConnection: null },
+            global: { plugins: [router], stubs: { WalletTypeIcon: true, WalletConnectionTypeGuide: true } },
+        });
+        try {
+            await flushPromises();
+            await wrapper.get('#wallet-setup-tab-advanced').trigger('click');
+            const input = wrapper.get('#wallet-connection-smart-paste');
+            const save = () => wrapper.findAll('button').find(button => button.text() === 'stores.save_connection')!;
+            await input.setValue('old@coinos.io');
+            await save().trigger('click');
+            await input.setValue('current@coinos.io');
+            reject({ response: { status: 422, data: unsupported } });
+            await flushPromises();
+            expect(wrapper.get('[role=status]').text()).toBe('stores.wallet_connection_details_changed');
+            expect(wrapper.get('#wallet-setup-tab-advanced').attributes('aria-selected')).toBe('true');
+            expect(api.probe).not.toHaveBeenCalled();
+            expect(api.update).not.toHaveBeenCalled();
+            expect(wrapper.emitted('submitted')).toBeUndefined();
+
+            await save().trigger('click');
+            await flushPromises();
+            expect(api.create).toHaveBeenLastCalledWith('store-a', {
+                type: 'lnaddress', secret: 'type=lnaddress;ln-address=current@coinos.io;',
+                fallback_lightning_address: undefined,
+            });
+            expect(wrapper.find('[role=status]').exists()).toBe(false);
+            expect(wrapper.get<HTMLInputElement>('#ln-quick-address').element.value).toBe('current@coinos.io');
+            expect(api.update).not.toHaveBeenCalled();
+        } finally {
+            wrapper.unmount();
+        }
+    });
+
     it.each([
         ['migrated@coinos.io', 'migrated@coinos.io'],
         ['type=blink;ln-address=merchant;', 'merchant@blink.sv'],

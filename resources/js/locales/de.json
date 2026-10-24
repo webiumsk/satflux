@@ -2638,6 +2638,7 @@
     "ln_quick_probe_note": "unbekannte Wallet - Unterstützung wird beim Verbinden geprüft",
     "ln_quick_probe_checking": "Wallet-Unterstützung wird geprüft...",
     "ln_quick_probe_retry": "Die Wallet konnte nicht verifiziert werden. Bitte erneut versuchen. Ihre Zahlungsmethode wurde nicht geändert.",
+    "wallet_connection_details_changed": "Die Verbindungsdaten wurden während des Speicherns geändert. Prüfen Sie die aktuellen Angaben und speichern Sie erneut.",
     "ln_quick_probe_cashu_fallback": "Diese Adresse bietet keine Zahlungsverifizierung (LUD-21). Wenn Sie fortfahren, wird Cashu (Beta) zur primären Zahlungsmethode des Stores und ersetzt die vorhandene Lightning-Verbindung.",
     "blink_eu_legacy_notice": "Blink-Konten in der EU sind non-custodial: Verbinden Sie sich mit type=blink;ln-address=sie{'@'}blink.sv; (nur Empfang). Das API-Schlüssel-Format funktioniert weiterhin für Custodial-Konten außerhalb der EU.",
     "blink_migration_modal_title": "Blink-Wallet kann ausfallen",

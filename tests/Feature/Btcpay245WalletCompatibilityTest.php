@@ -10,6 +10,7 @@ use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\InvoiceService;
 use App\Services\BtcPay\LightningService;
 use App\Services\Invoicing\BusinessDocumentBtcPayService;
+use App\Services\LnAddressLud21Prober;
 use App\Services\WalletConnectionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
@@ -35,6 +36,10 @@ class Btcpay245WalletCompatibilityTest extends TestCase
         parent::setUp();
         Notification::fake();
         config(['services.btcpay.base_url' => 'https://btcpay.test', 'services.btcpay.api_key' => 'server-key']);
+        // These cases exercise wallet replacement safety and reconciliation.
+        // Keep the fresh capability preflight deterministic for their address.
+        $this->mock(LnAddressLud21Prober::class)->shouldReceive('probe')
+            ->with('alice@blink.sv', true)->andReturn(['lud21' => true, 'reason' => 'ok']);
     }
 
     private function connectedStore(string $secret = self::OLD): Store

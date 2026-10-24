@@ -164,6 +164,10 @@
           @detect-cashu="onDetectCashuFromPaste"
         />
 
+        <p v-if="saveCandidateChanged" role="status" aria-live="polite" class="text-sm text-amber-400">
+          {{ t("stores.wallet_connection_details_changed") }}
+        </p>
+
         <div v-if="advancedCandidateReviewed && form.secret.trim()" class="max-w-md">
           <template v-if="advancedFallbackDerivable">
             <p class="text-sm text-gray-500">
@@ -802,6 +806,7 @@ function startSamRockPairing() {
 }
 
 const submitting = ref(false);
+const saveCandidateChanged = ref(false);
 const testing = ref(false);
 const errors = reactive<Record<string, string>>({});
 const walletSafety = ref<unknown>(null);
@@ -944,6 +949,7 @@ watch(
     walletSafety.value = null;
     walletSafetyRefusal.value = null;
     submitting.value = false;
+    saveCandidateChanged.value = false;
     viewMode.value = initialWalletViewMode(props.existingConnection);
   },
 );
@@ -1327,6 +1333,7 @@ function onDetectCashuFromPaste(_payload: {
 
 async function handleSubmit() {
   if (submitting.value) return;
+  saveCandidateChanged.value = false;
   const storeId = props.storeId;
   const generation = storeGeneration;
   submitting.value = true;
@@ -1386,6 +1393,14 @@ async function handleSubmit() {
   // Deferred detection may change its type when Save is invoked without blur.
   const submittedSecret = form.secret;
   const submittedAddress = addressForCapabilityReview(form.type, submittedSecret);
+  const canHandleResult = () => {
+    if (!componentMounted || storeId !== props.storeId || generation !== storeGeneration) return false;
+    if (candidateVersion !== candidateGeneration) {
+      saveCandidateChanged.value = true;
+      return false;
+    }
+    return true;
+  };
   try {
     const secretPayload =
       form.type === "nwc"
@@ -1407,14 +1422,13 @@ async function handleSubmit() {
         ? undefined
         : advancedFallbackAddress.value.trim(),
     });
-    if (!componentMounted || storeId !== props.storeId || generation !== storeGeneration || candidateVersion !== candidateGeneration) return;
+    if (!canHandleResult()) return;
     emit("submitted", form.type);
   } catch (rawError) {
-    if (!componentMounted || storeId !== props.storeId || generation !== storeGeneration || candidateVersion !== candidateGeneration) return;
+    if (!canHandleResult()) return;
     const err = asApiError(rawError);
     const code = err.response?.data?.code;
     if (err.response?.status === 422 && code === "lud21_unsupported" && submittedAddress) {
-      if (form.secret !== submittedSecret) return;
       quickConnectAddress.value = submittedAddress;
       addressRecoveryRequested.value = !showWalletSetupTabs.value;
       walletSetupTab.value = "ln";

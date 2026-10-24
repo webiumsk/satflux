@@ -2638,6 +2638,7 @@
     "ln_quick_probe_note": "neznámá peněženka - podporu ověříme při připojení",
     "ln_quick_probe_checking": "Ověřuji podporu peněženky...",
     "ln_quick_probe_retry": "Peněženku se nepodařilo ověřit. Zkuste to znovu. Její platební metoda se nezměnila.",
+    "wallet_connection_details_changed": "Údaje připojení se během ukládání změnily. Zkontrolujte aktuální údaje a uložte je znovu.",
     "ln_quick_probe_cashu_fallback": "Tato adresa neposkytuje ověřování plateb (LUD-21). Pokračováním se Cashu (beta) stane hlavní platební metodou Store a nahradí existující Lightning připojení.",
     "blink_eu_legacy_notice": "Blink účty v EU jsou non-custodial: připojte se přes type=blink;ln-address=vy{'@'}blink.sv; (pouze příjem). Formát s API klíčem dál platí pro custodial účty mimo EU.",
     "blink_migration_modal_title": "Peněženka Blink může přestat fungovat",

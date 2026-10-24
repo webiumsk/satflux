@@ -203,7 +203,13 @@ export async function syncChoralaIdentity(options: { throwOnError?: boolean } = 
     attachIdentityListeners();
     const { userId, revision } = observeIdentity();
     if (!userId) return;
-    if (lastSyncedUserId === userId && identityExpiresAt > Date.now() + IDENTITY_REFRESH_MARGIN_MS) return;
+    const refreshDelay = identityExpiresAt - Date.now() - IDENTITY_REFRESH_MARGIN_MS;
+    if (lastSyncedUserId === userId && refreshDelay > 0) {
+        // A timer can fire before the refresh window after a clock adjustment.
+        // Keep an existing retry, or schedule the next check instead of stopping.
+        if (refreshTimer === null) scheduleRefresh(refreshDelay);
+        return;
+    }
     let loading = identityLoading;
     if (!loading || loading.userId !== userId || loading.revision !== revision) {
         const promise = (async () => {

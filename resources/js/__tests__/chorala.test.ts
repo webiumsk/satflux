@@ -134,6 +134,43 @@ describe('Chorala direct transport and identity', () => {
         expect(mocks.get.mock.calls.filter(([path]) => path === '/chorala/widget-token')).toHaveLength(2);
     });
 
+    it('reschedules an early callback after the wall clock moves backwards', async () => {
+        const sync = service.syncChoralaIdentity();
+        await completeScript();
+        await sync;
+        vi.setSystemTime(Date.now() - 1);
+        await vi.advanceTimersByTimeAsync(55 * 60_000);
+        expect(mocks.get.mock.calls.filter(([path]) => path === '/chorala/widget-token')).toHaveLength(1);
+        expect(vi.getTimerCount()).toBe(1);
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(mocks.get.mock.calls.filter(([path]) => path === '/chorala/widget-token')).toHaveLength(2);
+        expect(window.Chorala).toHaveBeenLastCalledWith('refreshIdentity', { jwt: 'synthetic-token' });
+        expect(vi.getTimerCount()).toBe(1);
+    });
+
+    it('keeps rechecking optional SSO after an early callback without recreating the widget', async () => {
+        mocks.get.mockImplementation((path: string) => path.endsWith('widget-settings')
+            ? Promise.resolve({ data: { settings: {} } })
+            : Promise.reject({ response: { status: 404, data: { message: 'Chorala widget SSO is not configured.' } } }));
+        const open = service.openChoralaWidget();
+        await completeScript();
+        await open;
+        const sdk = window.Chorala;
+        vi.setSystemTime(Date.now() - 60_000);
+        await vi.advanceTimersByTimeAsync(10 * 60_000);
+        expect(mocks.get.mock.calls.filter(([path]) => path === '/chorala/widget-token')).toHaveLength(1);
+        expect(vi.getTimerCount()).toBe(1);
+        await vi.advanceTimersByTimeAsync(60_000);
+        expect(mocks.get.mock.calls.filter(([path]) => path === '/chorala/widget-token')).toHaveLength(2);
+        await vi.advanceTimersByTimeAsync(10 * 60_000);
+        expect(mocks.get.mock.calls.filter(([path]) => path === '/chorala/widget-token')).toHaveLength(3);
+        expect(window.Chorala).toBe(sdk);
+        expect(sdk).toHaveBeenLastCalledWith('refreshIdentity', {});
+        expect(vi.mocked(sdk!).mock.calls.filter(([command]) => command === 'init')).toHaveLength(1);
+        expect(vi.mocked(sdk!).mock.calls.filter(([command]) => command === 'open')).toHaveLength(1);
+        expect(vi.getTimerCount()).toBe(1);
+    });
+
     it('preserves the same-user client on a transient refresh failure and recovers without identify', async () => {
         const open = service.openChoralaWidget();
         await completeScript();
