@@ -716,9 +716,15 @@ function lnAddressFromConnectionString(secret: string): string {
   return values.get("ln-address") ?? values.get("lnaddress") ?? values.get("username") ?? "";
 }
 
+/** Keep reviewed Blink address shorthands on the native per-address path. */
+function normalizeLnAddressCandidate(secret: string): string {
+  const address = blinkAddressForLnAddressConnect(secret);
+  return normalizeLnAddressConnectionString(address ?? secret);
+}
+
 /** Preserve the provider's legacy username defaults when reviewing alternatives. */
 function addressForCapabilityReview(type: string, secret: string): string | null {
-  if (type === "lnaddress") return lnAddressFromConnectionSecret(secret);
+  if (type === "lnaddress") return lnAddressFromConnectionSecret(normalizeLnAddressCandidate(secret));
   if (type === "blink") return blinkAddressForLnAddressConnect(secret);
   const domain = type === "blitz" ? "blitzwalletapp.com" : type === "flash" ? "flashapp.me" : null;
   if (!domain) return null;
@@ -1166,7 +1172,7 @@ async function handleTestConnection() {
     };
     return;
   }
-  if (form.type === "lnaddress" && !validateLnAddressConnectionString(form.secret)) {
+  if (form.type === "lnaddress" && !validateLnAddressConnectionString(normalizeLnAddressCandidate(form.secret))) {
     testResult.value = {
       success: false,
       message: t("stores.lnaddress_invalid_connection"),
@@ -1230,7 +1236,7 @@ function formatConnectionStringForApi(value: string, type: string): string {
     return normalizeFlashConnectionString(value);
   }
   if (type === "lnaddress") {
-    return normalizeLnAddressConnectionString(value);
+    return normalizeLnAddressCandidate(value);
   }
   if (type !== "nwc") {
     return value.trim();
@@ -1265,8 +1271,6 @@ async function handleSubmit() {
   if (submitting.value) return;
   const storeId = props.storeId;
   const generation = storeGeneration;
-  const submittedSecret = form.secret;
-  const submittedAddress = addressForCapabilityReview(form.type, submittedSecret);
   submitting.value = true;
   walletSafety.value = null;
   walletSafetyRefusal.value = null;
@@ -1288,7 +1292,7 @@ async function handleSubmit() {
     submitting.value = false;
     return;
   }
-  if (form.type === "lnaddress" && !validateLnAddressConnectionString(form.secret)) {
+  if (form.type === "lnaddress" && !validateLnAddressConnectionString(normalizeLnAddressCandidate(form.secret))) {
     errors.secret = t("stores.lnaddress_invalid_connection");
     submitting.value = false;
     return;
@@ -1315,6 +1319,10 @@ async function handleSubmit() {
     return;
   }
 
+  // Snapshot the reviewed candidate after action-time detection and validation.
+  // Deferred detection may change its type when Save is invoked without blur.
+  const submittedSecret = form.secret;
+  const submittedAddress = addressForCapabilityReview(form.type, submittedSecret);
   try {
     const secretPayload =
       form.type === "nwc"
@@ -1326,7 +1334,7 @@ async function handleSubmit() {
             : form.type === "flash"
               ? normalizeFlashConnectionString(form.secret)
               : form.type === "lnaddress"
-                ? normalizeLnAddressConnectionString(form.secret)
+                ? normalizeLnAddressCandidate(form.secret)
                 : form.secret.trim();
 
     await walletApi.connection.create(storeId, {

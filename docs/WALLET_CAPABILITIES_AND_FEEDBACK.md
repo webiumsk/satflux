@@ -120,3 +120,34 @@ No database migration or BTCPay plugin protocol change is required. Rollback mus
 keep wallet reconciliation and the original invoice snapshots intact. Restoring
 the old Chorala proxy integration restores its known CSRF failure, so prefer a
 forward fix for feedback transport rather than weakening CSRF.
+
+## Compatibility with open PR #399
+
+GitHub review confirmed PR #399 remains open at
+`a615d0431d7843e18675339a8a30ca3da7de2dd8`, based on `5942032a`. Its PHP,
+frontend and Playwright checks passed. Seven files overlap this change and merge
+without text conflicts, but a combined-source regression exposed stale recovery
+metadata when Save classifies an address without a prior blur. Snapshotting the
+submitted address after classification and validation fixes that integration.
+
+The form also normalizes reviewed BTC Blink address shorthands before native
+validation and submission. Existing API-key/non-BTC Blink restrictions and native
+connection-string parameters are preserved. Raw input remains unchanged.
+
+The new four-case regression covers Coinos, Blink, Blitz and Flash and requires
+fresh capability review and explicit mint consent. Independent QA passed 57 focused
+wallet cases in a combined-source preview, including PR #399's detection tests.
+The tested form is byte-identical to a fresh conflict-free three-way merge.
+Independent security review found no blocker in this compatibility delta.
+
+PR #399's enable-only Cashu path is restricted to existing pure-Cashu wallets and
+does not intercept an explicit native-Lightning-to-Cashu switch. Its parallel
+checkout policy and this change's primary-wallet alternative are separate decisions.
+Retain its DOMPurify 3.4.17 manifest/lock update. Shared test dependencies still
+contain 3.4.16, so focused wallet tests do not establish full locked-release coverage.
+
+Recommended source order is #399 first, then this branch. The associated provider
+PR [#42](https://github.com/webiumsk/BTCPayServerPluginsWebium/pull/42) is merged;
+installation of its tested plugin version remains a separate deployment check.
+No GitHub merge, deployment, base-branch change or history rewrite is performed by
+this compatibility follow-up.
