@@ -1,0 +1,10 @@
+Chorala widget, Copyright (c) 2026 Chorala contributors, MIT licensed.
+Source: https://github.com/2ge/chorala/tree/main/packages/widget
+Pinned distribution: https://chorala.com/widget.js, retrieved 2026-10-24.
+Upstream SHA-256: 3af734560f49ca71c70271d09595394865f897e20c87b230585ae97f2317cf73
+The upstream distribution's exact source revision was not established.
+Widget license: https://github.com/2ge/chorala/blob/910d5f217796db97d2d9e2fbbf15ce35d1418d70/packages/widget/LICENSE
+Bundled Preact: Copyright (c) 2015-present Jason Miller, MIT licensed.
+Preact license: https://github.com/preactjs/preact/blob/10.29.2/LICENSE
+Satflux modification: refresh an existing API client's JWT without rebuilding
+widget UI; ordinary identify retains account-boundary reset behavior.

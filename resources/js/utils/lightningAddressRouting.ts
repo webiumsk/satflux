@@ -1,22 +1,15 @@
 /**
- * Domain-based routing of a bare Lightning address to a wallet connection target.
+ * Capability-based routing of a bare Lightning address to a wallet connection target.
  * The primary onboarding path: the merchant types one Lightning address and we
  * pick the backend for them - no connection strings.
  *
- * - curated LUD-21 domains   → lnaddress (Blink, Blitz, Flash, Coinos - type=lnaddress;...)
- * - known Cashu wallet (minibits) → CashuMelt directly
- * - any other LN address     → probe (server-side LUD-21 check decides lnaddress vs Cashu)
+ * Every address is probed server-side before choosing LNAddressConnect or
+ * offering CashuMelt. A domain identifies a brand, never payment capabilities.
  */
 
 import { isValidCashuLightningAddress } from './detectWalletConnectionInput';
 import {
-  CASHU_WALLET_LN_DOMAINS,
-} from './walletNwcHelpers';
-import {
-  isCuratedLnAddressBareAddress,
   lnAddressBrandForAddress,
-  lnAddressDomain,
-  normalizeLnAddressConnectionString,
   type LnAddressWalletBrand,
 } from './lnAddressWalletBrands';
 
@@ -26,9 +19,9 @@ export type LightningAddressRoute = {
   target: LightningAddressTarget;
   /** The address as typed, trimmed. */
   address: string;
-  /** Connection secret for blink/lnaddress targets; null for cashu/probe. */
+  /** Connection secret for blink/lnaddress targets; null before probing. */
   connectionSecret: string | null;
-  /** Curated wallet brand for lnaddress targets (blitz/flash/coinos), else null. */
+  /** Wallet branding only; this never establishes LUD-21 support. */
   brand: LnAddressWalletBrand | null;
 };
 
@@ -45,23 +38,5 @@ export function routeLightningAddress(input: string): LightningAddressRoute | nu
     return null;
   }
 
-  if (isCuratedLnAddressBareAddress(address)) {
-    return {
-      target: 'lnaddress',
-      address,
-      connectionSecret: normalizeLnAddressConnectionString(address),
-      brand: lnAddressBrandForAddress(address),
-    };
-  }
-
-  const domain = lnAddressDomain(address);
-  if (
-    domain &&
-    CASHU_WALLET_LN_DOMAINS.some((d) => domain === d || domain.endsWith(`.${d}`))
-  ) {
-    return { target: 'cashu', address, connectionSecret: null, brand: null };
-  }
-
-  // Unknown domain - the server-side LUD-21 probe decides lnaddress vs Cashu.
-  return { target: 'probe', address, connectionSecret: null, brand: null };
+  return { target: 'probe', address, connectionSecret: null, brand: lnAddressBrandForAddress(address) };
 }

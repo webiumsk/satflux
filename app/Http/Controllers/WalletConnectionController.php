@@ -13,7 +13,7 @@ use App\Models\WalletConnection;
 use App\Services\Auth\EmailCodeChallengeService;
 use App\Services\Auth\SensitiveActionAuthorization;
 use App\Services\BtcPay\LightningService;
-use App\Services\LnAddressLud21Prober;
+use App\Services\LightningAddressCapabilityService;
 use App\Services\WalletChangeConfirmationGuard;
 use App\Services\WalletConnectionDetector;
 use App\Services\WalletConnectionService;
@@ -305,17 +305,17 @@ class WalletConnectionController extends Controller
     }
 
     /**
-     * Probe an unknown Lightning-address domain for LUD-21 verify support -
+     * Probe a Lightning address for LUD-21 verify support and safe alternatives -
      * QuickConnect decides between a native lnaddress connection and the
      * CashuMelt path based on the result.
      */
-    public function lnaddressProbe(Request $request, LnAddressLud21Prober $prober)
+    public function lnaddressProbe(Request $request, LightningAddressCapabilityService $capabilities)
     {
         $request->validate([
             'address' => ['required', 'string', 'max:320', 'regex:/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/'],
         ]);
 
-        $result = $prober->probe($request->string('address')->toString());
+        $result = $capabilities->evaluate($request->route('store'), $request->string('address')->toString());
 
         return response()->json(['data' => $result]);
     }

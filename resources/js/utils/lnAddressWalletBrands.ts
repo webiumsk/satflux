@@ -1,8 +1,7 @@
 /**
  * Curated LN address domains → wallet brand for the universal lnaddress
  * connection type (BTCPay "LN Address Connect" plugin, LUD-21 verify).
- * Branding only - any domain whose LNURL server supports LUD-21 works; unknown
- * domains go through the server-side probe endpoint first.
+ * Branding only - every address goes through the server-side capability probe.
  * Mirrors WalletConnectionValidator::LN_ADDRESS_WALLET_BRANDS.
  */
 
@@ -21,13 +20,13 @@ export function lnAddressDomain(address: string): string | null {
   return match?.[1]?.toLowerCase() ?? null;
 }
 
-/** Wallet brand for an address at a curated LUD-21 domain, else null. */
+/** Wallet brand for an address at a curated domain, else null. */
 export function lnAddressBrandForAddress(address: string): LnAddressWalletBrand | null {
   const domain = lnAddressDomain(address);
   return domain ? (LN_ADDRESS_WALLET_BRANDS[domain] ?? null) : null;
 }
 
-/** Bare Lightning address at one of the curated LUD-21 wallet domains. */
+/** Bare Lightning address at one of the curated wallet-brand domains. */
 export function isCuratedLnAddressBareAddress(value: string): boolean {
   return lnAddressBrandForAddress(value) !== null;
 }

@@ -7,6 +7,8 @@ use Firebase\JWT\JWT;
 
 class ChoralaWidgetTokenService
 {
+    public const TOKEN_TTL_SECONDS = 3600;
+
     public function isConfigured(): bool
     {
         $projectKey = config('services.chorala.project_key');
@@ -16,7 +18,7 @@ class ChoralaWidgetTokenService
             && is_string($secret) && $secret !== '';
     }
 
-    public function createTokenForUser(User $user): ?string
+    public function createTokenForUser(User $user, ?int $issuedAt = null): ?string
     {
         if (! $this->isConfigured()) {
             return null;
@@ -32,10 +34,11 @@ class ChoralaWidgetTokenService
             'is_guest' => (bool) ($user->is_guest ?? false),
         ], static fn ($value) => $value !== null && $value !== '');
 
+        $issuedAt ??= time();
         $payload = [
             'id' => (string) $user->id,
-            'iat' => time(),
-            'exp' => time() + 3600,
+            'iat' => $issuedAt,
+            'exp' => $issuedAt + self::TOKEN_TTL_SECONDS,
         ];
 
         if (is_string($user->email) && $user->email !== '') {

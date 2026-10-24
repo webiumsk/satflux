@@ -79,6 +79,15 @@ class WalletConnectionService
                     $secret = $this->validator->formatBtcpayLnAddressConnectionString($address);
                 }
             }
+            // Branding is not evidence: even curated domains can host migrated
+            // addresses without LUD-21. Reject before creating a local row or journal.
+            if (in_array($type, ['lnaddress', 'blitz', 'flash'], true)) {
+                $address = $this->validator->deriveLightningAddressFromSecret($type, $secret);
+                if ($address === null) {
+                    throw ValidationException::withMessages(['secret' => 'A full Lightning address is required.']);
+                }
+                app(LightningAddressCapabilityService::class)->assertSupported($store, $address);
+            }
             $replacement = ($existing && ($existing->type !== $type || Crypt::decryptString($existing->encrypted_secret) !== $secret))
                 || $store->wallet_type === 'cashu';
             $fallbackAddress = $fallbackLightningAddress ?: $this->validator->deriveLightningAddressFromSecret($type, $secret);

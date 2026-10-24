@@ -11,6 +11,7 @@ use App\Models\WalletConfigurationAttempt;
 use App\Services\Auth\EmailCodeChallengeService;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\CashuWalletUpdateService;
+use App\Services\LnAddressLud21Prober;
 use App\Services\WalletChangeConfirmationGuard;
 use App\Services\WalletConnectionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -498,6 +499,10 @@ class CashuWalletUpdateSafetyTest extends TestCase
 
     public function test_grant_persistence_failure_keeps_lightning_intent_for_read_only_reconciliation(): void
     {
+        // This case exercises post-provisioning grant persistence, not provider discovery.
+        $this->mock(LnAddressLud21Prober::class)->shouldReceive('probe')
+            ->with('merchant@coinos.io', true)->once()
+            ->andReturn(['lud21' => true, 'reason' => 'ok']);
         $store = $this->configuredStore();
         $grant = $this->grantWalletChange($store->user, $store);
         $secret = 'type=lnaddress;ln-address=merchant@coinos.io;server=https://coinos.io;';

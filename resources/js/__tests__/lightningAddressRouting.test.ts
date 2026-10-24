@@ -17,33 +17,33 @@ describe('validateBlitzConnectionString', () => {
 });
 
 describe('routeLightningAddress', () => {
-  it('routes blink.sv addresses to LNAddressConnect with a canonical secret', () => {
+  it('probes blink.sv addresses while retaining wallet branding', () => {
     const route = routeLightningAddress('satoshi@blink.sv');
     expect(route).toEqual({
-      target: 'lnaddress',
+      target: 'probe',
       address: 'satoshi@blink.sv',
-      connectionSecret: 'type=lnaddress;ln-address=satoshi@blink.sv;',
+      connectionSecret: null,
       brand: 'blink',
     });
   });
 
-  it('routes curated LUD-21 domains to lnaddress with the wallet brand', () => {
+  it('probes curated domains without inferring capabilities from the wallet brand', () => {
     expect(routeLightningAddress('satoshi@blitzwalletapp.com')).toEqual({
-      target: 'lnaddress',
+      target: 'probe',
       address: 'satoshi@blitzwalletapp.com',
-      connectionSecret: 'type=lnaddress;ln-address=satoshi@blitzwalletapp.com;',
+      connectionSecret: null,
       brand: 'blitz',
     });
     expect(routeLightningAddress('satoshi@flashapp.me')).toEqual({
-      target: 'lnaddress',
+      target: 'probe',
       address: 'satoshi@flashapp.me',
-      connectionSecret: 'type=lnaddress;ln-address=satoshi@flashapp.me;',
+      connectionSecret: null,
       brand: 'flash',
     });
     expect(routeLightningAddress('satoshi@coinos.io')).toEqual({
-      target: 'lnaddress',
+      target: 'probe',
       address: 'satoshi@coinos.io',
-      connectionSecret: 'type=lnaddress;ln-address=satoshi@coinos.io;',
+      connectionSecret: null,
       brand: 'coinos',
     });
   });
@@ -58,15 +58,15 @@ describe('routeLightningAddress', () => {
     });
   });
 
-  it('routes known Cashu wallet domains (minibits) straight to cashu', () => {
-    expect(routeLightningAddress('x@minibits.cash')?.target).toBe('cashu');
+  it('also probes known Cashu wallet domains before offering a payment method', () => {
+    expect(routeLightningAddress('x@minibits.cash')?.target).toBe('probe');
   });
 
   it('is case-insensitive on the routed domains', () => {
-    expect(routeLightningAddress('Satoshi@Blink.SV')?.target).toBe('lnaddress');
-    expect(routeLightningAddress('Satoshi@BlitzWalletApp.com')?.target).toBe('lnaddress');
-    expect(routeLightningAddress('Satoshi@FlashApp.ME')?.target).toBe('lnaddress');
-    expect(routeLightningAddress('Satoshi@Coinos.IO')?.target).toBe('lnaddress');
+    expect(routeLightningAddress('Satoshi@Blink.SV')?.brand).toBe('blink');
+    expect(routeLightningAddress('Satoshi@BlitzWalletApp.com')?.brand).toBe('blitz');
+    expect(routeLightningAddress('Satoshi@FlashApp.ME')?.brand).toBe('flash');
+    expect(routeLightningAddress('Satoshi@Coinos.IO')?.brand).toBe('coinos');
   });
 
   it('rejects invalid Lightning addresses', () => {
@@ -78,6 +78,6 @@ describe('routeLightningAddress', () => {
   });
 
   it('trims surrounding whitespace', () => {
-    expect(routeLightningAddress('  satoshi@blink.sv  ')?.target).toBe('lnaddress');
+    expect(routeLightningAddress('  satoshi@blink.sv  ')?.address).toBe('satoshi@blink.sv');
   });
 });

@@ -35,10 +35,7 @@
         size="sm"
         show-label
       />
-      <span v-if="effectiveTarget === 'cashu'" class="text-xs text-gray-500">
-        {{ t("stores.ln_quick_cashu_note") }}
-      </span>
-      <span v-else-if="effectiveTarget === 'probe'" class="text-xs text-gray-500">
+      <span v-if="effectiveTarget === 'probe'" class="text-xs text-gray-500">
         {{ t("stores.ln_quick_probe_note") }}
       </span>
     </div>
@@ -49,12 +46,18 @@
       {{ t("stores.ln_quick_invalid_address") }}
     </p>
 
-    <!-- Probe outcome: unknown wallet without LUD-21 falls back to the Cashu path -->
+    <!-- A confirmed missing verification capability may offer the Cashu path. -->
     <p
       v-if="effectiveTarget === 'cashu' && probeState === 'cashu'"
       class="text-sm text-gray-400 leading-relaxed"
     >
       {{ t("stores.ln_quick_probe_cashu_fallback") }}
+    </p>
+    <p
+      v-if="effectiveTarget === 'cashu' && cashuMintUrl"
+      class="break-all text-sm text-gray-400"
+    >
+      {{ t("stores.ln_quick_cashu_mint", { mint: cashuMintUrl }) }}
     </p>
 
     <!-- Compact Cashu beta consent (only when routed to CashuMelt) -->
@@ -74,6 +77,7 @@
 
     <div
       v-if="errorMessage"
+      role="alert"
       class="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300"
     >
       {{ errorMessage }}
@@ -93,10 +97,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { walletApi } from "../../../services/api";
-import { DEFAULT_CASHU_MINT_URL } from "../../../constants/cashu";
 import {
   routeLightningAddress,
   type LightningAddressTarget,
@@ -126,21 +129,30 @@ const cashuConsent = ref(false);
 const submitting = ref(false);
 const probing = ref(false);
 const errorMessage = ref("");
+const cashuMintUrl = ref<string | null>(null);
 
 /** Result of the server-side LUD-21 probe for the current address. */
 const probeState = ref<"idle" | "lnaddress" | "cashu">("idle");
 
-/** Bumped on every address edit so an in-flight probe can detect it is stale. */
+/** Bumped when the address, store or mounted form changes. */
 let addressRevision = 0;
 
 const route = computed(() => routeLightningAddress(address.value));
 
-// A new address invalidates the previous probe verdict and its consent.
-watch(address, () => {
+// Capabilities and consent belong to this exact address and store.
+watch([address, () => props.storeId], () => {
   addressRevision += 1;
   probeState.value = "idle";
   cashuConsent.value = false;
-});
+  cashuMintUrl.value = null;
+  errorMessage.value = "";
+}, { flush: "sync" });
+
+watch(() => props.initialAddress, (value) => {
+  address.value = value ?? "";
+}, { flush: "sync" });
+
+onBeforeUnmount(() => { addressRevision += 1; });
 
 /**
  * Where the current address would land: probe results upgrade 'probe' to
@@ -156,13 +168,41 @@ const effectiveTarget = computed((): LightningAddressTarget | null => {
 
 const canSubmit = computed(() => {
   if (!effectiveTarget.value) return false;
-  if (effectiveTarget.value === "cashu" && !cashuConsent.value) return false;
+  if (effectiveTarget.value === "cashu" && (!cashuConsent.value || !cashuMintUrl.value)) return false;
   return true;
 });
 
+/** Accept only a complete server-provided alternative, never a client default mint. */
+function offerCashu(alternatives: unknown): void {
+  probeState.value = "idle";
+  cashuConsent.value = false;
+  cashuMintUrl.value = null;
+  const alternative = Array.isArray(alternatives)
+    ? alternatives.find((item) => item && item.type === "cashu") as Record<string, unknown> | undefined
+    : undefined;
+  if (alternative?.available === true && alternative.requires_consent === true
+      && typeof alternative.mint_url === "string") {
+    try {
+      const url = new URL(alternative.mint_url);
+      if (url.protocol === "https:" && !url.username && !url.password && !url.hash) {
+        cashuMintUrl.value = alternative.mint_url;
+        probeState.value = "cashu";
+        return;
+      }
+    } catch {
+      // An incomplete/invalid alternative must not lead to a wallet update.
+    }
+  }
+  errorMessage.value = t("stores.ln_quick_cashu_unavailable");
+}
+
 async function submit() {
   const r = route.value;
-  if (!r || submitting.value) return;
+  if (!r || submitting.value || !canSubmit.value) return;
+
+  const revision = addressRevision;
+  const storeId = props.storeId;
+  const isCurrent = () => revision === addressRevision && storeId === props.storeId;
 
   submitting.value = true;
   errorMessage.value = "";
@@ -170,55 +210,62 @@ async function submit() {
     let target = effectiveTarget.value;
 
     if (target === "probe") {
-      const revision = addressRevision;
       probing.value = true;
       try {
-        const probe = await walletApi.connection.lnaddressProbe(props.storeId, r.address);
+        const probe = await walletApi.connection.lnaddressProbe(storeId, r.address);
         // The address changed while the probe was in flight - drop the stale
         // verdict instead of applying it to the new address.
-        if (revision !== addressRevision) {
+        if (!isCurrent()) {
           return;
         }
-        if (!probe.lud21 && probe.reason !== "no_verify") {
+        if (probe.lud21 && probe.reason === "ok") {
+          probeState.value = "lnaddress";
+        } else if (!probe.lud21 && probe.reason === "no_verify" && probe.outcome === "unsupported") {
+          offerCashu(probe.alternatives);
+          // The merchant must review the server-selected mint and consent
+          // in a separate submission, including after a changed capability.
+          return;
+        } else {
           errorMessage.value = t("stores.ln_quick_probe_retry");
           return;
         }
-        probeState.value = probe.lud21 ? "lnaddress" : "cashu";
         target = probeState.value;
       } finally {
         probing.value = false;
       }
-      // No LUD-21 → the Cashu consent checkbox appears; the merchant confirms
-      // and submits again.
-      if (target === "cashu" && !cashuConsent.value) {
-        return;
-      }
     }
 
+    if (!isCurrent()) return;
     if (target === "cashu") {
-      await walletApi.cashu.updateSettings(props.storeId, {
-        mint_url: DEFAULT_CASHU_MINT_URL,
+      if (!cashuConsent.value || !cashuMintUrl.value) return;
+      await walletApi.cashu.updateSettings(storeId, {
+        mint_url: cashuMintUrl.value,
         lightning_address: r.address,
         enabled: true,
       });
     } else if (target === "lnaddress") {
-      await walletApi.connection.create(props.storeId, {
+      await walletApi.connection.create(storeId, {
         type: "lnaddress",
         secret: r.connectionSecret ?? normalizeLnAddressConnectionString(r.address),
       });
     } else if (target === "blink") {
-      await walletApi.connection.create(props.storeId, {
+      await walletApi.connection.create(storeId, {
         type: "blink",
         secret: r.connectionSecret!,
       });
     } else {
       return;
     }
-    emit("submitted", target);
+    if (isCurrent()) emit("submitted", target);
   } catch (rawError) {
+    if (!isCurrent()) return;
     const err = asApiError(rawError);
     if (err.response?.data?.code === "wallet_change_confirmation_required") {
       emit("confirmation-required", address.value);
+      return;
+    }
+    if (err.response?.status === 422 && err.response.data?.code === "lud21_unsupported") {
+      offerCashu(err.response.data.alternatives);
       return;
     }
     const validationErrors = err.response?.data?.errors;

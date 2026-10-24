@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserMessage;
 use App\Models\WalletConnection;
 use App\Notifications\WalletConfigDriftNotification;
+use App\Services\LnAddressLud21Prober;
 use App\Services\WalletConnectionService;
 use App\Services\WalletSecurity\PayeeAttestationService;
 use App\Services\WalletSecurity\WalletConfigIntegrityService;
@@ -39,6 +40,8 @@ class WalletCashuFallbackIntegrityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->mock(LnAddressLud21Prober::class)->shouldReceive('probe')
+            ->andReturn(['lud21' => true, 'reason' => 'ok']);
         Notification::fake();
         config(['services.discord.support_webhook_url' => null]);
         $this->mock(PayeeAttestationService::class)->shouldReceive('learn')->andReturn(false);

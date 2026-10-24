@@ -120,6 +120,9 @@ return [
         'widget_primary_color' => env('CHORALA_WIDGET_PRIMARY_COLOR'),
         'widget_url' => rtrim((string) env('CHORALA_WIDGET_URL', 'https://chorala.com'), '/'),
         'end_user_jwt_secret' => env('CHORALA_END_USER_JWT_SECRET'),
+        // The SDK cannot send Laravel CSRF headers. CHORALA_USE_PROXY is
+        // deprecated and ignored; allow exact application origins in Chorala.
+        'use_proxy' => false,
     ],
 
     'discord' => [

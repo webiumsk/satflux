@@ -369,6 +369,20 @@ async function cashuChangeFailure(error: unknown): Promise<unknown> {
     return { response: { status: response?.status, data: { code, attempts_left: boundedCounter(body.attempts_left), retry_after: boundedCounter(body.retry_after) } } };
 }
 
+export interface LightningAddressCapabilities {
+    lud21: boolean;
+    reason: string;
+    outcome: 'supported' | 'unsupported' | 'unavailable' | 'invalid';
+    code: string;
+    alternatives: Array<{
+        type: 'cashu';
+        available: boolean;
+        blocked_reason: string | null;
+        mint_url: string | null;
+        requires_consent: true;
+    }>;
+}
+
 export interface CashuSettings {
     wallet_safety?: CashuWalletSafety | null;
     change_confirmation?: WalletChangeConfirmationState | null;
@@ -428,9 +442,9 @@ export const walletApi = {
             const { data } = await api.post<{ success?: boolean; message?: string; requires_manual_config?: boolean }>(`/stores/${storeId}/wallet-connection/test`, payload);
             return data;
         },
-        /** Server-side LUD-21 verify probe for unknown Lightning-address domains. */
-        async lnaddressProbe(storeId: string, address: string): Promise<{ lud21: boolean; reason: string }> {
-            const { data } = await api.post<ApiEnvelope<{ lud21: boolean; reason: string }>>(
+        /** Per-address capability check; alternatives require explicit merchant consent. */
+        async lnaddressProbe(storeId: string, address: string): Promise<LightningAddressCapabilities> {
+            const { data } = await api.post<ApiEnvelope<LightningAddressCapabilities>>(
                 `/stores/${storeId}/wallet-connection/lnaddress-probe`,
                 { address },
             );

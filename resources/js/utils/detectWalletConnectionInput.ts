@@ -30,7 +30,6 @@ export type WalletConnectionDetection = {
 
 import { isValidAquaBoltzDescriptor } from './aquaBoltzDescriptor';
 import {
-  isCuratedLnAddressBareAddress,
   lnAddressBrandForAddress,
   normalizeLnAddressConnectionString,
   lnAddressFromConnectionSecret,
@@ -213,10 +212,12 @@ export function detectWalletConnectionInput(input: string): WalletConnectionDete
     };
   }
 
-  // type=lnaddress; strings and bare addresses at curated LUD-21 domains
-  // (Coinos, ...) - must win over the Cashu Lightning-address heuristic.
-  // Legacy type=blitz/flash strings keep their own kinds above.
-  if (trimmed.toLowerCase().includes('type=lnaddress;') || isCuratedLnAddressBareAddress(trimmed)) {
+  // A bare address never proves a payment capability. Use the shared native
+  // save preflight for every domain; a missing verify capability returns the
+  // merchant to capability review and explicit Cashu consent. Deliberate
+  // mint+address input still selects the Cashu form below.
+  if (trimmed.toLowerCase().includes('type=lnaddress;')
+      || (!trimmed.includes(';') && !trimmed.includes('=') && looksLikeLightningAddress(trimmed))) {
     const address = lnAddressFromConnectionSecret(trimmed);
     return {
       kind: 'lnaddress',

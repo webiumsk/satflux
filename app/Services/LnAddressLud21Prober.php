@@ -2,12 +2,13 @@
 
 namespace App\Services;
 
+use App\Services\WalletSecurity\Bolt11;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Server-side LUD-21 support probe for unknown Lightning-address domains -
+ * Server-side LUD-21 support probe for individual Lightning addresses -
  * mirrors the BTCPay LnAddress plugin's save-time CheckVerifySupport: fetch
  * the LNURLp descriptor, request an invoice with a clamped amount and check
  * that the callback response carries a usable https verify URL.
@@ -25,7 +26,7 @@ class LnAddressLud21Prober
      * @return array{lud21: bool, reason: string}
      *                                            reason: 'ok'|'invalid_address'|'unreachable'|'invalid_lnurlp'|'no_verify'|'invalid_verify'
      */
-    public function probe(string $address): array
+    public function probe(string $address, bool $fresh = false): array
     {
         $trimmed = trim($address);
         if (! preg_match('/^([^@\s;=]+)@([^@\s;=]+\.[^@\s;=]{2,})$/', $trimmed, $matches)) {
@@ -34,9 +35,9 @@ class LnAddressLud21Prober
 
         [, $user, $domain] = $matches;
         $domain = strtolower($domain);
-        $cacheKey = 'lnaddress-lud21-probe-v2:'.hash('sha256', $user.'@'.$domain);
+        $cacheKey = 'lnaddress-lud21-probe-v3:'.hash('sha256', $user.'@'.$domain);
         $cached = Cache::get($cacheKey);
-        if (is_array($cached)) {
+        if (! $fresh && is_array($cached)) {
             return $cached;
         }
         $result = $this->probeUncached($user, $domain);
@@ -76,12 +77,21 @@ class LnAddressLud21Prober
         $separator = str_contains($callback, '?') ? '&' : '?';
         $invoice = $this->getJson($callback.$separator.'amount='.$amount);
         $pr = $invoice['pr'] ?? null;
-        if ($invoice === null || ! is_string($pr) || $pr === '') {
+        if ($invoice === null || ($invoice['status'] ?? null) === 'ERROR' || ! is_string($pr) || $pr === '') {
             return ['lud21' => false, 'reason' => 'invalid_lnurlp'];
         }
 
         $verify = $invoice['verify'] ?? null;
         if ($verify === null || $verify === '') {
+            // Missing verify is actionable only when the provider actually minted
+            // a payable invoice. An error or arbitrary pr must not suggest Cashu.
+            if (($descriptor['tag'] ?? null) !== 'payRequest'
+                || ! is_numeric($descriptor['minSendable'] ?? null) || ! is_numeric($descriptor['maxSendable'] ?? null)
+                || $min < 1 || $max < $min
+                || ! $this->isPayableInvoice($pr, $amount)) {
+                return ['lud21' => false, 'reason' => 'invalid_lnurlp'];
+            }
+
             return ['lud21' => false, 'reason' => 'no_verify'];
         }
         if (! is_string($verify) || ! $this->isSafeUrl($verify)) {
@@ -99,6 +109,21 @@ class LnAddressLud21Prober
         }
 
         return ['lud21' => true, 'reason' => 'ok'];
+    }
+
+    private function isPayableInvoice(string $invoice, int $amount): bool
+    {
+        try {
+            $decoded = Bolt11::decode($invoice);
+
+            return $decoded['network'] === 'bc'
+                && $decoded['amount_msat'] === $amount
+                && is_string($decoded['payment_hash'])
+                && strlen($decoded['payment_hash']) === 64
+                && now()->timestamp < $decoded['timestamp'] + $decoded['expiry'];
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**
