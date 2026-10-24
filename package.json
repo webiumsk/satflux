@@ -54,7 +54,7 @@
     "@types/qrcode": "^1.5.6",
     "axios": "^1.7.0",
     "bech32": "^2.0.0",
-    "dompurify": "^3.4.12",
+    "dompurify": "^3.4.17",
     "html5-qrcode": "^2.3.8",
     "laravel-echo": "^1.16.0",
     "lowlight": "^3.1.0",

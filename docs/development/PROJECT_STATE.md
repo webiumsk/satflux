@@ -1,5 +1,62 @@
 # Project state
 
+## Wallet checkout PR review follow-up (2026-10-22)
+
+Published consumer [PR #399](https://github.com/webiumsk/satflux/pull/399) at
+`eae6f32f` passes PHP and Playwright CI; Node stops at the production dependency
+audit before lint/tests/build because locked DOMPurify 3.4.16 is affected by newly
+reported advisories. Review follow-up updates only DOMPurify to the patched 3.4.17
+while preserving every other locked dependency; security thresholds stay intact.
+No demonstrated Satflux XSS or production exploitation is claimed.
+
+CodeRabbit's consumer finding is valid: the read-only Cashu query now reports total
+matches and truncation while keeping payment output capped at 20 rows. Provider
+[PR #42](https://github.com/webiumsk/BTCPayServerPluginsWebium/pull/42) at `f3c7087`
+has green compatibility CI. Its valid description finding is corrected for an
+LNURL-only store without granting an outbound payout adapter. Provider tests also
+explicitly compare the persisted original snapshot before/after unchanged re-enable.
+The earlier local 1.4.0.8 archive predates this description follow-up and is retained
+unchanged; repository review does not rebuild or publish that package.
+
+Follow-up verification passes 11 author/6 independent provider tests, four SQL
+boundary cases, seven patched-version sanitizer checks and the production build.
+The patched-lock audit passes with zero critical findings (6 high/35 moderate
+remain). New provider commit `dd230ca` passes CI; its incremental CodeRabbit
+review is quota-limited. Source security and independent QA accept the follow-up.
+Follow-up verification and remaining gates are recorded in
+[the contract](WALLET_CHECKOUT_CASHU_POLICY.md). Exact new-head CI and incremental
+CodeRabbit availability must be checked after publication. No merge, deployment,
+production access or unresolved-funding override is included.
+
+## Wallet detection and Lightning-exclusive Cashu checkout (2026-10-22)
+
+Owner-authorized fixes are isolated in Satflux `fix/wallet-detection-cashu-checkout`
+from `5942032a` and owned plugin `fix/cashumelt-checkout-settings` from `6bdd688`.
+The owner explicitly requires Cashu hidden whenever any Lightning wallet is
+configured, including API wallets and Boltz. The owner reports installed CashuMelt
+1.4.0.7 and later confirms the first invoice settled directly through Lightning;
+its separate Cashu funding quote remains unknown after HTTP 400. No production
+access or Cashu-fund outcome has been verified.
+
+Detect wallet input on blur/manual action with current-candidate and async guards.
+Suppress new Cashu prompts/empty placeholder activation using configured Lightning
+presence, while preserving exact store/invoice/quote-bound old prompts. Candidate
+CashuMelt 1.4.0.8 permits identical-target re-enable under the existing PG lease;
+Satflux preserves owner/email grants, encrypted intent and Lightning methods on
+that availability-only path. Destination/risk changes retain existing guards.
+No settlement rewrite, schema, new environment variable or BTCPay core change.
+
+See [the implementation contract](WALLET_CHECKOUT_CASHU_POLICY.md) and
+[read-only funding runbook](CASHUMELT_FUNDING_READONLY_RUNBOOK.md). Both scopes pass
+independent security review. Main passes 260 PHP tests/1,794 assertions, full
+PHPStan and changed-file Pint. Frontend passes related 88-case coverage, final
+17-case focus, lint/typecheck/parity/build. Independent QA passes 21 PHP/178
+assertions, 17 checked-in Vue cases and five additional lifecycle cases.
+Versioned provider author suite passes 163/163, zero skipped; independent provider
+QA passes 22/22 and the read-only SQL smoke. Frozen hashes and package identity
+are recorded in the contract. Existing host dependency advisories remain inherited.
+No push, release, installation or deployment follows from these local fixes.
+
 ## Wallet attestation probe monitoring repair (2026-10-22)
 
 The owner reports an outstanding-invoice wallet-change hold on a new store with

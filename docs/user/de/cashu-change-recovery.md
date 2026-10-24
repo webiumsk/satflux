@@ -53,3 +53,11 @@ unterstützte Einheiten können Unterstützung erfordern; ihre Datensätze bleib
 Bei älteren Plugins wird die fehlende Unterstützung angezeigt. Eine nicht verfügbare
 Prüfung bedeutet kein Nullguthaben. Der bestehende Bereich **Cashu recovery** in
 BTCPay bleibt für unterstützte Wiederherstellungsaktionen verfügbar.
+
+## Lightning-Checkout und Cashu-Verfügbarkeit
+
+Mit dem aktualisierten Plugin wird CashuMelt in neuen Checkouts ausgeblendet, sobald eine Lightning-Wallet konfiguriert ist, einschließlich Blink API, LN-Adressen und Boltz. Ein Lightning-Ausfall bietet Cashu nicht automatisch an. Bestehende Cashu-Quotes bleiben mit ihren ursprünglichen Einstellungen zur Wiederherstellung verfügbar.
+
+Das erneute Aktivieren einer Cashu-Konfiguration mit identischem Mint, Einheit, Zieladresse, Vertrauensliste und Gebührenlimits ändert das Zahlungsziel nicht. Eine Änderung des Zahlungsziels bleibt bei ungeklärten Mitteln gesperrt. Auch die Kombination aus erneuter Aktivierung und Änderungen dieser Werte unterliegt weiterhin den Sicherheitsprüfungen für die Mittel. Die Aktivierung zeigt Cashu nicht neben einer konfigurierten Lightning-Wallet an.
+
+Eine direkt über Lightning bezahlte BTCPay-Rechnung kann abgeschlossen sein, während ein separater Cashu-Quote aussteht. HTTP 400 vom Mint bestimmt nicht, ob dieser Quote finanziert wurde. Der Rechnungsstatus allein hebt seine Wiederherstellungssperre nicht auf. Beim Ändern von Wallet-Zugangsdaten erfolgt die Erkennung nach Verlassen des Feldes oder über Speichern/Testen; Tippen allein wählt keine andere Wallet.

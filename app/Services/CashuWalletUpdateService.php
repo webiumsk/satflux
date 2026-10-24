@@ -50,22 +50,29 @@ class CashuWalletUpdateService
         if ($unchanged) {
             return $current ?? [];
         }
-        $this->cashu->assertNoUnresolvedSettlements((string) $store->btcpay_store_id, $key);
-        if ($store->wallet_type !== null) {
-            app(WalletConnectionService::class)->assertWalletCanChange($store);
+        $enableOnlySettings = ! $switching && $store->wallet_type === 'cashu'
+            ? $this->enableOnlySettings($settings, $current, (string) $store->btcpay_store_id) : null;
+        $enableOnly = $enableOnlySettings !== null;
+        if ($enableOnly) {
+            $settings = $enableOnlySettings;
+        } else {
+            $this->cashu->assertNoUnresolvedSettlements((string) $store->btcpay_store_id, $key);
+            if ($store->wallet_type !== null) {
+                app(WalletConnectionService::class)->assertWalletCanChange($store);
+            }
         }
         $attempt = WalletConfigurationAttempt::create([
             'store_id' => $store->id, 'connection_type' => 'cashu',
-            'encrypted_secret' => Crypt::encryptString(json_encode(['settings' => $settings, 'confirmation_grant_id' => $grantId], JSON_THROW_ON_ERROR)), 'status' => 'applying',
+            'encrypted_secret' => Crypt::encryptString(json_encode(['settings' => $settings, 'confirmation_grant_id' => $grantId, 'enabled_only' => $enableOnly], JSON_THROW_ON_ERROR)), 'status' => 'applying',
         ]);
         $remoteApplied = false;
         try {
             $updated = $this->cashu->saveSettings($store->btcpay_store_id, $settings, $key);
             $remoteApplied = true;
-            if ($settings['enabled'] ?? true) {
+            if (($settings['enabled'] ?? true) && ! $enableOnly) {
                 $this->lightning->tryRemoveLightningCheckoutPaymentMethods($store->btcpay_store_id, $key);
             }
-            if (! $this->matches($store, $settings, $key)) {
+            if (! $this->matches($store, $settings, $key, preserveLightning: $enableOnly)) {
                 throw ValidationException::withMessages(['cashu' => 'Cashu settings need reconciliation before this store can accept new invoices.']);
             }
             $this->confirm($store, $user, $attempt, $switching, $grantId);
@@ -90,7 +97,9 @@ class CashuWalletUpdateService
         $settings = is_array($saved['settings'] ?? null) ? $saved['settings'] : $saved;
         $grantId = is_array($saved['settings'] ?? null) && is_string($saved['confirmation_grant_id'] ?? null)
             ? $saved['confirmation_grant_id'] : null;
-        if (! is_array($settings) || ! $this->matches($store, $settings, $user->getBtcPayApiKeyOrFail())) {
+        $enableOnly = ($saved['enabled_only'] ?? false) === true;
+        if (($enableOnly && $store->wallet_type !== 'cashu') || ! is_array($settings)
+            || ! $this->matches($store, $settings, $user->getBtcPayApiKeyOrFail(), preserveLightning: $enableOnly)) {
             return false;
         }
         $this->confirm($store, $user, $attempt, $store->wallet_type !== null && $store->wallet_type !== 'cashu', $grantId);
@@ -99,7 +108,7 @@ class CashuWalletUpdateService
     }
 
     /** @param-out array $actual */
-    private function matches(Store $store, array $settings, string $key, ?array &$actual = null): bool
+    private function matches(Store $store, array $settings, string $key, ?array &$actual = null, bool $preserveLightning = false): bool
     {
         $actual = $this->cashu->getSettings($store->btcpay_store_id, $key);
         foreach ($settings as $name => $value) {
@@ -119,8 +128,49 @@ class CashuWalletUpdateService
             return false;
         }
 
-        return ! ($settings['enabled'] ?? true) || ! collect($methods)->contains(
+        return $preserveLightning || ! ($settings['enabled'] ?? true) || ! collect($methods)->contains(
             fn ($method) => in_array($method['paymentMethodId'] ?? null, ['BTC-LN', 'BTC-LNURL'], true) && ($method['enabled'] ?? false));
+    }
+
+    /** Restore availability only; the provider still checks the target under its exclusive lease. */
+    private function enableOnlySettings(array $requested, ?array $current, string $storeId): ?array
+    {
+        $fields = ['mintUrl', 'unit', 'lightningAddress', 'trustedMintUrls', 'maxMeltFeeReserveSats', 'maxMeltFeeReservePercentOfMinted'];
+        if (($current['storeId'] ?? null) !== $storeId
+            || ($current['enabled'] ?? null) !== false || ($requested['enabled'] ?? null) !== true
+            || array_diff(array_keys($requested), [...$fields, 'enabled']) !== []) {
+            return null;
+        }
+        $effective = ['enabled' => true];
+        foreach ($fields as $name) {
+            if (! array_key_exists($name, $current)) {
+                return null;
+            }
+            if ($name === 'maxMeltFeeReservePercentOfMinted' && $current[$name] !== null
+                && ! (is_int($current[$name]) || is_float($current[$name]))) {
+                return null;
+            }
+            $effective[$name] = array_key_exists($name, $requested) ? $requested[$name] : $current[$name];
+            $same = $effective[$name] === $current[$name];
+            // Percentage caps are bounded; integer and decimal JSON forms are equivalent.
+            if ($name === 'maxMeltFeeReservePercentOfMinted' && is_numeric($effective[$name]) && is_numeric($current[$name])) {
+                $same = (float) $effective[$name] === (float) $current[$name];
+            }
+            if (! $same) {
+                return null;
+            }
+        }
+        if (! is_string($effective['mintUrl']) || ! str_starts_with($effective['mintUrl'], 'https://')
+            || ! in_array($effective['unit'], ['sat', 'usd'], true)
+            || ! is_string($effective['lightningAddress']) || ! preg_match('/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/', $effective['lightningAddress'])
+            || ! (is_null($effective['trustedMintUrls']) || is_string($effective['trustedMintUrls']))
+            || ! (is_null($effective['maxMeltFeeReserveSats']) || (is_int($effective['maxMeltFeeReserveSats']) && $effective['maxMeltFeeReserveSats'] >= 0))
+            || ! (is_null($effective['maxMeltFeeReservePercentOfMinted']) || ((is_int($effective['maxMeltFeeReservePercentOfMinted']) || is_float($effective['maxMeltFeeReservePercentOfMinted']))
+                && is_finite((float) $effective['maxMeltFeeReservePercentOfMinted']) && $effective['maxMeltFeeReservePercentOfMinted'] >= 0 && $effective['maxMeltFeeReservePercentOfMinted'] <= 100))) {
+            return null;
+        }
+
+        return $effective;
     }
 
     private function confirm(Store $store, User $user, WalletConfigurationAttempt $attempt, bool $switching, ?string $grantId): void

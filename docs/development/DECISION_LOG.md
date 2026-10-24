@@ -1,5 +1,52 @@
 # Development decision log
 
+## 2026-10-22 - Resolve wallet checkout review without relaxing safety gates
+
+Consumer #399's initial Node CI fails on npm's critical dependency-audit finding
+for locked DOMPurify 3.4.16; PHP and Playwright pass at `eae6f32f`. Apply the upstream
+3.4.17 patch only and preserve audit thresholds. Upstream non-default-mode attack
+conditions do not establish exploitable Satflux XSS. Other pre-existing dependency
+advisories require separate triage, not a forced major upgrade in this fix.
+
+Accept CodeRabbit's capped-query ambiguity and LNURL-only description findings.
+Expose total matching row count/truncation without returning recovery contents or
+removing the read-only timeout/cap. Correct the provider description while retaining
+Unknown/null/no-payout classification and configured-Lightning checkout exclusion.
+Make persisted snapshot-before/after preservation explicit in the provider test.
+No settlement, funds guard, core, third-party plugin or production change follows.
+Previously built package checksums remain historical; no silent artifact replacement.
+
+## 2026-10-22 - Hide Cashu checkout with any configured Lightning wallet
+
+The owner reports draft-character wallet detection, selectable parallel Cashu and
+blocked unchanged-target re-enable. The explicit product choice is to hide Cashu
+with every configured Lightning wallet, including Blink API and Boltz, even when
+excluded or unavailable. Preserve already materialized Cashu prompts and recovery;
+do not substitute a new quote for unverifiable/partial existing prompt material.
+Exact server-side store/invoice/quote binding is mandatory. Host request-time
+StoreData determines eligibility; no cross-system transaction with simultaneous
+core configuration edits is claimed.
+
+Detect only committed input on the existing wallet-change screen, with latest-value
+Save/Test and stale-response guards. Preserve the creation wizard's existing
+default behavior and all email/ownership restrictions. Re-enable with identical
+mint/unit/payout/trust/caps is availability-only: compare fresh provider settings
+under its exclusive store lease, preserve consumer grants/journals/Lightning
+methods, and retain intent during read-only recovery. Combined changes keep the
+fund guard; existing provider standalone fee/trust edits are not tightened.
+
+The owner later confirms the first invoice paid directly through Lightning and is
+Settled. That supports an unused parallel quote hypothesis but does not establish
+the separate mint quote's funding outcome. HTTP 400 remains unknown; no automatic
+cleanup, paid/unpaid override or safety-hold release is authorized. Deliver an exact
+read-only diagnostic runbook before asking for additional production data.
+
+Consumer critical-source security hash is `a56ad0da3d63fc2e0f9403e2e5af0fd2aecabadc01086bca58be49097362dcb6`;
+provider source/version/docs/test hash is `f42a707e2c486e6a1f27fc70d8ad372888de1f1a9d65cbbac2ff8c8c3410f461`.
+Independent source reviews find no change-specific blockers; QA and isolated
+runtime checks are recorded in the contract. No new core/third-party changes,
+schema/configuration, production access, publication or deployment is included.
+
 ## 2026-10-22 - Bound future wallet-attestation probe monitoring
 
 The owner reports a monitored-invoice hold despite creating no customer invoices
