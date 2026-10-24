@@ -14,10 +14,12 @@ const props = withDefaults(
     connectionType: 'blink' | 'blitz' | 'flash' | 'lnaddress' | 'nwc' | 'aqua_descriptor';
     inputId?: string;
     showTypeOverride?: boolean;
+    detectionTrigger?: 'input' | 'blur';
   }>(),
   {
     inputId: 'wallet-connection-smart-paste',
     showTypeOverride: true,
+    detectionTrigger: 'input',
   },
 );
 
@@ -25,12 +27,15 @@ const emit = defineEmits<{
   'update:modelValue': [value: string];
   'update:connectionType': [value: 'blink' | 'blitz' | 'flash' | 'lnaddress' | 'nwc' | 'aqua_descriptor'];
   'detect-cashu': [payload: { mintUrl: string; lightningAddress: string | null }];
+  'detected': [value: string];
 }>();
 
 const { t } = useI18n();
 const manualType = ref<'blink' | 'blitz' | 'flash' | 'lnaddress' | 'nwc' | 'aqua_descriptor' | null>(null);
 
-const detection = computed(() => detectWalletConnectionInput(props.modelValue));
+const committedValue = ref<string | null>(props.modelValue.trim() ? props.modelValue : null);
+const hasCommittedDetection = computed(() => props.detectionTrigger === 'input' || committedValue.value === props.modelValue);
+const detection = computed(() => detectWalletConnectionInput(hasCommittedDetection.value ? props.modelValue : ''));
 
 const effectiveKind = computed((): DetectedWalletKind => {
   if (manualType.value) {
@@ -55,30 +60,44 @@ const detectedLabel = computed(() => {
 
 watch(
   () => props.modelValue,
-  (value) => {
-    const result = detectWalletConnectionInput(value);
-    if (result.kind === 'cashu' || result.kind === 'cashu_wallet_nwc') {
-      emit('detect-cashu', {
-        mintUrl: result.cashuMintUrl ?? '',
-        lightningAddress: result.cashuLightningAddress,
-      });
+  () => {
+    if (props.detectionTrigger === 'blur') {
+      manualType.value = null;
+      committedValue.value = null;
       return;
     }
-    if (result.confidence === 'high' && result.connectionType) {
-      manualType.value = null;
-      if (result.connectionType !== props.connectionType) {
-        emit('update:connectionType', result.connectionType);
-      }
-    }
+    commitDetection();
   },
+  { flush: 'sync' },
 );
+
+function commitDetection() {
+  committedValue.value = props.modelValue;
+  const result = detectWalletConnectionInput(props.modelValue);
+  emit('detected', props.modelValue);
+  if (result.kind === 'cashu' || result.kind === 'cashu_wallet_nwc') {
+    emit('detect-cashu', {
+      mintUrl: result.cashuMintUrl ?? '',
+      lightningAddress: result.cashuLightningAddress,
+    });
+    return;
+  }
+  if (result.confidence === 'high' && result.connectionType) {
+    manualType.value = null;
+    if (result.connectionType !== props.connectionType) {
+      emit('update:connectionType', result.connectionType);
+    }
+  }
+}
 
 function onInput(event: Event) {
   emit('update:modelValue', (event.target as HTMLTextAreaElement).value);
 }
 
 function setManualType(type: 'blink' | 'blitz' | 'flash' | 'lnaddress' | 'nwc' | 'aqua_descriptor') {
+  committedValue.value = props.modelValue;
   manualType.value = type;
+  emit('detected', props.modelValue);
   emit('update:connectionType', type);
 }
 </script>
@@ -104,10 +123,11 @@ function setManualType(type: 'blink' | 'blitz' | 'flash' | 'lnaddress' | 'nwc' |
       :placeholder="t('stores.wallet_smart_paste_placeholder')"
       required
       @input="onInput"
+      @blur="commitDetection"
     />
 
     <div
-      v-if="modelValue.trim()"
+      v-if="hasCommittedDetection && modelValue.trim()"
       class="flex flex-wrap items-center gap-2"
     >
       <span class="text-xs uppercase tracking-wider text-gray-500">
@@ -148,7 +168,7 @@ function setManualType(type: 'blink' | 'blitz' | 'flash' | 'lnaddress' | 'nwc' |
     </div>
 
     <div
-      v-if="showTypeOverride && effectiveKind === 'unknown' && modelValue.trim()"
+      v-if="showTypeOverride && hasCommittedDetection && effectiveKind === 'unknown' && modelValue.trim()"
       class="flex flex-wrap gap-2"
     >
       <button
