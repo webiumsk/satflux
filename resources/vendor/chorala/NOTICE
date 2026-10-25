@@ -1,10 +1,13 @@
 Chorala widget, Copyright (c) 2026 Chorala contributors, MIT licensed.
-Source: https://github.com/2ge/chorala/tree/main/packages/widget
-Pinned distribution: https://chorala.com/widget.js, retrieved 2026-10-24.
-Upstream SHA-256: 3af734560f49ca71c70271d09595394865f897e20c87b230585ae97f2317cf73
-The upstream distribution's exact source revision was not established.
-Widget license: https://github.com/2ge/chorala/blob/910d5f217796db97d2d9e2fbbf15ce35d1418d70/packages/widget/LICENSE
-Bundled Preact: Copyright (c) 2015-present Jason Miller, MIT licensed.
+Owned source: https://github.com/webiumsk/chorala/tree/9b010f092cf14ac421922d4924a1af4a1a3c524c/packages/widget
+Runtime source revision: fecff764ff9aa001986e49b3e5a6eecb8f075aa7
+Pinned build: @chorala/widget, Node 24.22.1, pnpm 10.33.0, tsup 8.5.1, esbuild 0.28.1.
+Source bundle SHA-256: 9ec5e5a5b569df3b1cc30cdc2e099b3c7d7dd60dfddc4899b67e261ccd337828
+Source bundle size: 46,503 bytes, including the source-map footer.
+Lockfile SHA-256: d9004b86383dcea939c2b5e0c9b5a5ccb0c665749d12da0719b966da2a9306bf
+Widget license: https://github.com/webiumsk/chorala/blob/9b010f092cf14ac421922d4924a1af4a1a3c524c/packages/widget/LICENSE
+Bundled Preact 10.29.2: Copyright (c) 2015-present Jason Miller, MIT licensed.
 Preact license: https://github.com/preactjs/preact/blob/10.29.2/LICENSE
-Satflux modification: refresh an existing API client's JWT without rebuilding
-widget UI; ordinary identify retains account-boundary reset behavior.
+Satflux packaging: prepend this provenance notice and omit the undistributed source-map footer.
+The widget's identity refresh, diagnostic-origin filtering and EN/SK/ES/DE/CS/FR
+translations are maintained in the pinned MIT package, without minified-code patches.

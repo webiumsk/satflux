@@ -47,12 +47,21 @@ The Chorala widget uses its direct API with the configured Chorala origin. Legac
 and shell metadata explicitly select direct transport. The existing proxy stays
 protected by CSRF. Satflux session and CSRF headers are never sent to Chorala.
 
-The widget's MIT-licensed client is locally pinned and imported as a Vite asset.
-Its upstream `identify` command destroys the UI, so it is reserved for account
-boundaries. A narrow local `refreshIdentity` patch updates only the existing API
-client's JWT and preserves drafts and attachments. The offline generator verifies
-the upstream hash and unique patch anchors. Source provenance and license notices
-are in [the vendor README](../resources/vendor/chorala/README.md).
+The widget's MIT-licensed client is locally pinned from the reviewed owned Chorala
+fork and imported as a Vite asset. Its `identify` command resets account-bound UI,
+so it is reserved for account boundaries. The package's `refreshIdentity` updates
+only the existing API client's JWT and preserves drafts and attachments. The offline
+generator verifies the exact artifact hash, embedded licenses and syntax without
+minified-code patches. Source provenance and build details are in
+[the vendor README](../resources/vendor/chorala/README.md).
+
+The pinned client includes EN/SK/ES/DE/CS and inherited FR. Submitted diagnostic URL
+and referrer values contain only HTTP origins; paths, user information, query
+parameters and fragments are excluded. Screenshots remain explicitly user initiated
+and reviewable. Deploying the owned server alone does not update Satflux's pinned
+browser asset: the matching Satflux client must also be built and deployed before
+claiming these client-side improvements. No instance settings or deployment are
+changed by this source update.
 
 The token lifetime remains one hour. The endpoint returns matching expiry metadata
 with `Cache-Control: no-store`. Client refresh is deduplicated and bound to the
