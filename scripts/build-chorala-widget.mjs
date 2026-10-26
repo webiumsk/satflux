@@ -5,7 +5,7 @@ import { Script } from 'node:vm';
 
 const directory = new URL('../resources/vendor/chorala/', import.meta.url);
 const source = await readFile(new URL('source-widget.js', directory), 'utf8');
-const expectedHash = 'd90f61007e68a518fb81954debda2d8983a7121987ad04528c34a1147d5d8b46';
+const expectedHash = '3d1d76ecf4f022988a2ce69e321f0c000f7ecc4b648b310a4f41ff50c69d83fa';
 if (createHash('sha256').update(source).digest('hex') !== expectedHash) {
     throw new Error('The pinned Chorala widget source changed. Review the source, licenses and provenance before updating its hash.');
 }

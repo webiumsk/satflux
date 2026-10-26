@@ -7,8 +7,8 @@ this directory and in the served asset. `NOTICE` records the exact owned source
 revision, build tools, lockfile hash and byte-for-byte artifact hash.
 
 `source-widget.js` is the unchanged reviewed `@chorala/widget` artifact from
-`webiumsk/chorala` revision `eec30fddde5d1d32da9e6848ff2cef32ba4ebe7a`
-(runtime source `eec30fddde5d1d32da9e6848ff2cef32ba4ebe7a`). Do not edit it.
+`webiumsk/chorala` revision `3833327cd61101bf7d626162f0abecf24762e2d3`
+(runtime source `3833327cd61101bf7d626162f0abecf24762e2d3`). Do not edit it.
 It replaces the older public distribution whose exact producing revision was
 unknown; that historical source remains available in Git history.
 
@@ -44,9 +44,17 @@ user initiated and reviewable. The widget includes EN/SK/ES/DE/CS plus inherited
 Changelog bodies render a safe Markdown subset: paragraphs, headings, lists,
 emphasis, labelled web links, quotes and code. The renderer belongs to the MIT
 widget package; no AGPL dashboard code is embedded. HTML and images remain inert
-text. Existing changelog data does not require an import or migration. This asset
+text. Existing changelog content does not require reimporting. This asset
 must be included in a new Satflux frontend build; upgrading the feedback server
 alone does not update the widget embedded in Satflux.
+
+The updated widget displays the server's optional `displayDate` calendar day
+without timezone shifts, falling back to the publication date for older servers.
+The matching Chorala server migration restores historical source dates by their
+original import identities; deploy it before this client to recover chronology
+after title edits. Publication timestamps stay separate. Panels now constrain
+their content region for native wheel, keyboard and touch scrolling, retaining
+the header, tabs and footer within the viewport.
 
 The client still calls the configured Chorala API directly. Exact application
 origins must be allowed in the project; pinning the script does not remove CORS
