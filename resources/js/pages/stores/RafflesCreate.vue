@@ -29,6 +29,15 @@
       </template>
       <template #default>
         <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <p v-if="limitsLoading" role="status" class="mb-4 text-gray-300">{{ t('common.loading') }}</p>
+          <div v-else-if="limitsError" role="alert" class="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
+            <p>{{ t('raffles.creation_check_failed') }}</p>
+            <button type="button" class="mt-3 underline" @click="retry">{{ t('common.retry') }}</button>
+          </div>
+          <div v-else-if="denied" role="alert" class="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-100">
+            <p>{{ denialMessage }}</p>
+            <button v-if="raffleLimit !== 0 && purchases.pro_subscriptions" type="button" class="mt-3 underline" @click="showUpgradeModal = true">{{ t('upgrade_modal.upgrade_now') }}</button>
+          </div>
           <form class="space-y-6 bg-gray-800 rounded-xl border border-gray-700 p-6" @submit.prevent="submit">
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-1">{{ t('raffles.field_name') }} *</label>
@@ -83,8 +92,8 @@
     </AppShowLayout>
   </RafflesPageLayout>
   <UpgradeModal
-    :show="showUpgradeModal"
-    :message="t('raffles.limit_modal_message')"
+    :show="showUpgradeModal && denied && purchases.pro_subscriptions"
+    :message="denialMessage"
     :limits="
       raffleLimit != null
         ? [{ feature: 'raffles', current: raffleCount, max: raffleLimit }]
@@ -96,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted } from 'vue';
+import { ref, reactive, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import RafflesPageLayout from '../../components/stores/RafflesPageLayout.vue';
@@ -104,7 +113,8 @@ import AppShowLayout from '../../components/stores/AppShowLayout.vue';
 import RichTextEditor from '../../components/admin/RichTextEditor.vue';
 import RaffleTicketPricingFields from '../../components/stores/RaffleTicketPricingFields.vue';
 import UpgradeModal from '../../components/stores/UpgradeModal.vue';
-import { useAccountLimits } from '../../composables/useAccountLimits';
+import { useRaffleCreationLimits } from '../../composables/useRaffleCreationLimits';
+import { useEffectiveAccess } from '../../composables/useEffectiveAccess';
 import { useStorePageShell } from '../../composables/useStorePageShell';
 import { useAppsStore } from '../../store/apps';
 import { useRafflesStore } from '../../store/raffles';
@@ -116,8 +126,9 @@ const router = useRouter();
 const flashStore = useFlashStore();
 const rafflesStore = useRafflesStore();
 const appsStore = useAppsStore();
-const { limits } = useAccountLimits();
 const { storeId, store, error, loadStore, goSettings, goSection } = useStorePageShell();
+const { purchases } = useEffectiveAccess();
+const { loading: limitsLoading, error: limitsError, raffleLimit, raffleCount, canCreateRaffle, denied, retry } = useRaffleCreationLimits(storeId);
 const apps = computed(() => appsStore.apps);
 
 const virtualApp = computed(() => ({ id: '', name: t('raffles.create') }));
@@ -133,52 +144,23 @@ const unlimitedTickets = ref(false);
 const saving = ref(false);
 const pricingInitialized = ref(false);
 const showUpgradeModal = ref(false);
-const raffleCount = ref(0);
-
-const raffleLimit = computed(() =>
-    limits.value?.raffles?.unlimited ? null : (limits.value?.raffles?.max ?? null),
-);
-
-const canCreateRaffle = computed(() => {
-    if (!limits.value?.raffles || limits.value.raffles.allowed === false) return false;
-    if (raffleLimit.value == null) return limits.value.raffles.unlimited === true;
-    const current = limits.value?.raffles?.current ?? raffleCount.value;
-    return current < raffleLimit.value;
-});
-
-onMounted(async () => {
-    if (storeId.value) {
-        await appsStore.fetchApps(storeId.value);
-    }
-    if (limits.value?.raffles?.current != null) {
-        raffleCount.value = limits.value.raffles.current;
-    } else {
-        try {
-            const list = await rafflesStore.fetchRaffles(storeId.value);
-            raffleCount.value = list.length;
-        } catch {
-            raffleCount.value = 0;
-        }
-    }
-});
+const denialMessage = computed(() => raffleLimit.value === 0
+    ? t('raffles.creation_unavailable') : t('raffles.limit_reached', { max: raffleLimit.value }));
 
 watch(storeId, (id) => {
     if (id) {
-        void appsStore.fetchApps(id);
+        void appsStore.fetchApps(id).catch(() => {});
     }
-});
+}, { immediate: true });
 
 watch(
-    canCreateRaffle,
-    (can) => {
-        showUpgradeModal.value = !can;
-    },
-    { immediate: true },
+    denied,
+    () => { showUpgradeModal.value = false; },
+    { flush: 'sync' },
 );
 
 function onUpgradeModalClose() {
     showUpgradeModal.value = false;
-    router.push({ name: 'stores-raffles', params: { id: storeId.value } });
 }
 
 watch(
@@ -208,6 +190,7 @@ function raffleDescriptionForApi(html: string): string | null {
 }
 
 async function submit() {
+    if (saving.value || !canCreateRaffle.value) return;
     saving.value = true;
     try {
         const raffle = await rafflesStore.createRaffle(storeId.value, {

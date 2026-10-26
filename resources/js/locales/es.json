@@ -727,6 +727,9 @@
     "manual_tickets_success": "{count} boleto(s) añadido(s)",
     "manual_tickets_failed": "No se pudieron añadir los boletos",
     "manual_ticket_badge": "Entrada manual",
+    "creation_unavailable": "Esta cuenta no puede crear rifas. Registra una cuenta completa para continuar.",
+    "limit_reached": "Esta tienda ha alcanzado su límite de {max} rifas.",
+    "creation_check_failed": "No se pudo verificar la disponibilidad y los límites de las rifas. Inténtalo de nuevo.",
     "limit_modal_message": "En el plan gratuito puedes tener como máximo 1 rifa por tienda. Actualiza a PRO para rifas ilimitadas."
   },
   "stores": {

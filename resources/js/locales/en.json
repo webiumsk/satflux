@@ -3756,6 +3756,9 @@
     "manual_tickets_success": "{count} ticket(s) added",
     "manual_tickets_failed": "Could not add manual tickets",
     "manual_ticket_badge": "Manual",
+    "creation_unavailable": "Raffle creation is unavailable for this account. Register a full account to continue.",
+    "limit_reached": "This store has reached its limit of {max} raffles.",
+    "creation_check_failed": "Could not verify raffle availability and limits. Try again.",
     "limit_modal_message": "You have reached the maximum number of raffles (1) per store on the Free plan. Upgrade to PRO for unlimited raffles."
   },
   "landing": {
