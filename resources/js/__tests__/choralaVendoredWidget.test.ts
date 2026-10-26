@@ -192,6 +192,7 @@ it('the shipped widget renders changelog Markdown without activating HTML, image
                 body,
                 labels: ['Satflux', 'development-history'],
                 publishedAt: '2026-10-26T08:00:00.000Z',
+                displayDate: '2026-08-16',
             }]);
         }
         throw new Error('Unexpected widget request.');
@@ -212,6 +213,11 @@ it('the shipped widget renders changelog Markdown without activating HTML, image
     const shadow = document.querySelector('[data-chorala-widget]')!.shadowRoot!;
     [...shadow.querySelectorAll('button')].find(button => button.textContent === 'Novinky')!.click();
     await vi.waitFor(() => expect(shadow.querySelector('.chorala-markdown')).not.toBeNull());
+    const region = shadow.querySelector('.chorala-body')!;
+    expect(region.tagName).toBe('SECTION');
+    expect(region.getAttribute('tabindex')).toBe('0');
+    expect(region.getAttribute('aria-label')).toBe('Novinky');
+    expect(shadow.querySelector('.chorala-cl time')?.getAttribute('datetime')).toBe('2026-08-16');
     const rendered = shadow.querySelector('.chorala-markdown')!;
     expect(rendered.querySelector('h4')?.textContent).toBe('Improvements');
     expect(rendered.querySelectorAll('ul > li')).toHaveLength(2);

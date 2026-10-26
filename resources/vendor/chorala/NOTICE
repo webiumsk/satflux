@@ -1,11 +1,11 @@
 Chorala widget, Copyright (c) 2026 Chorala contributors, MIT licensed.
-Owned source: https://github.com/webiumsk/chorala/tree/eec30fddde5d1d32da9e6848ff2cef32ba4ebe7a/packages/widget
-Runtime source revision: eec30fddde5d1d32da9e6848ff2cef32ba4ebe7a
+Owned source: https://github.com/webiumsk/chorala/tree/3833327cd61101bf7d626162f0abecf24762e2d3/packages/widget
+Runtime source revision: 3833327cd61101bf7d626162f0abecf24762e2d3
 Pinned build: @chorala/widget, Node 24.22.1, pnpm 10.33.0, tsup 8.5.1, esbuild 0.28.1.
-Source bundle SHA-256: d90f61007e68a518fb81954debda2d8983a7121987ad04528c34a1147d5d8b46
-Source bundle size: 50,608 bytes, including the source-map footer.
+Source bundle SHA-256: 3d1d76ecf4f022988a2ce69e321f0c000f7ecc4b648b310a4f41ff50c69d83fa
+Source bundle size: 51,640 bytes, including the source-map footer.
 Lockfile SHA-256: d9004b86383dcea939c2b5e0c9b5a5ccb0c665749d12da0719b966da2a9306bf
-Widget license: https://github.com/webiumsk/chorala/blob/eec30fddde5d1d32da9e6848ff2cef32ba4ebe7a/packages/widget/LICENSE
+Widget license: https://github.com/webiumsk/chorala/blob/3833327cd61101bf7d626162f0abecf24762e2d3/packages/widget/LICENSE
 Bundled Preact 10.29.2: Copyright (c) 2015-present Jason Miller, MIT licensed.
 Preact license: https://github.com/preactjs/preact/blob/10.29.2/LICENSE
 Satflux packaging: prepend this provenance notice and omit the undistributed source-map footer.
