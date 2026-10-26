@@ -163,3 +163,69 @@ it.each([
     expect(form.textContent).toContain(titleLabel);
     expect(requests.some(url => new URL(url).searchParams.get('locale') === locale)).toBe(true);
 });
+
+it('the shipped widget renders changelog Markdown without activating HTML, images or unsafe links', async () => {
+    const requests: string[] = [];
+    const body = [
+        'Development changes merged on 2026-10-25 (UTC).',
+        '',
+        '## Improvements',
+        '- Preserved **feedback drafts** and `wallet_id`. ([#401](https://github.com/webiumsk/satflux/pull/401))',
+        '- Improved *translations*.',
+        '',
+        '[Original changelog](<https://github.com/webiumsk/satflux/pulls>)',
+        '',
+        '<img src="https://untrusted.example.test/pixel" onerror="alert(1)">',
+        '![tracking](https://untrusted.example.test/another-pixel)',
+        '[unsafe](javascript:alert(1))',
+        '[credentials](https://name:password@untrusted.example.test/)',
+    ].join('\n');
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+        requests.push(url);
+        if (url.startsWith('https://feedback.example.test/api/v1/public/boards')) {
+            return Response.json({ boards: [], posts: [] });
+        }
+        if (url === 'https://feedback.example.test/api/v1/public/changelog') {
+            return Response.json([{
+                id: 'synthetic-changelog',
+                title: 'Satflux development history - 2026-10-25',
+                body,
+                labels: ['Satflux', 'development-history'],
+                publishedAt: '2026-10-26T08:00:00.000Z',
+            }]);
+        }
+        throw new Error('Unexpected widget request.');
+    }));
+    window.Chorala = Object.assign(() => undefined, {
+        q: [['init', {
+            projectKey: 'pk_synthetic_markdown',
+            apiUrl: 'https://feedback.example.test/api/v1',
+            locale: 'sk',
+            settings: { mode: 'manual' },
+        }]],
+    });
+    window.eval(widget);
+    await vi.waitFor(() => {
+        window.Chorala?.('open');
+        expect(document.querySelector('[data-chorala-widget]')?.shadowRoot?.querySelector('.chorala-panel')).not.toBeNull();
+    });
+    const shadow = document.querySelector('[data-chorala-widget]')!.shadowRoot!;
+    [...shadow.querySelectorAll('button')].find(button => button.textContent === 'Novinky')!.click();
+    await vi.waitFor(() => expect(shadow.querySelector('.chorala-markdown')).not.toBeNull());
+    const rendered = shadow.querySelector('.chorala-markdown')!;
+    expect(rendered.querySelector('h4')?.textContent).toBe('Improvements');
+    expect(rendered.querySelectorAll('ul > li')).toHaveLength(2);
+    expect(rendered.querySelector('strong')?.textContent).toBe('feedback drafts');
+    expect(rendered.querySelector('em')?.textContent).toBe('translations');
+    expect(rendered.querySelector('code')?.textContent).toBe('wallet_id');
+    const links = [...rendered.querySelectorAll('a')];
+    expect(links.map(link => link.textContent)).toEqual(['#401', 'Original changelog']);
+    expect(links[1].href).toBe('https://github.com/webiumsk/satflux/pulls');
+    for (const link of links) {
+        expect(link.target).toBe('_blank');
+        expect(link.rel.split(' ')).toEqual(expect.arrayContaining(['noopener', 'noreferrer']));
+    }
+    expect(rendered.querySelector('img, script, iframe, svg, [onerror]')).toBeNull();
+    expect(rendered.textContent).toContain('<img src=');
+    expect(requests).toHaveLength(2);
+});

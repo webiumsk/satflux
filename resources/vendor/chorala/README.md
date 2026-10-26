@@ -7,8 +7,8 @@ this directory and in the served asset. `NOTICE` records the exact owned source
 revision, build tools, lockfile hash and byte-for-byte artifact hash.
 
 `source-widget.js` is the unchanged reviewed `@chorala/widget` artifact from
-`webiumsk/chorala` revision `9b010f092cf14ac421922d4924a1af4a1a3c524c`
-(runtime source `fecff764ff9aa001986e49b3e5a6eecb8f075aa7`). Do not edit it.
+`webiumsk/chorala` revision `eec30fddde5d1d32da9e6848ff2cef32ba4ebe7a`
+(runtime source `eec30fddde5d1d32da9e6848ff2cef32ba4ebe7a`). Do not edit it.
 It replaces the older public distribution whose exact producing revision was
 unknown; that historical source remains available in Git history.
 
@@ -40,6 +40,13 @@ identity after SSO has explicitly been disabled.
 Feedback diagnostic URL and referrer values contain HTTP origins only, excluding
 paths, user information, query parameters and fragments. Screenshot capture remains
 user initiated and reviewable. The widget includes EN/SK/ES/DE/CS plus inherited FR.
+
+Changelog bodies render a safe Markdown subset: paragraphs, headings, lists,
+emphasis, labelled web links, quotes and code. The renderer belongs to the MIT
+widget package; no AGPL dashboard code is embedded. HTML and images remain inert
+text. Existing changelog data does not require an import or migration. This asset
+must be included in a new Satflux frontend build; upgrading the feedback server
+alone does not update the widget embedded in Satflux.
 
 The client still calls the configured Chorala API directly. Exact application
 origins must be allowed in the project; pinning the script does not remove CORS
