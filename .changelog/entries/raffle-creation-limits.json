@@ -1,0 +1,7 @@
+{
+  "id": "raffle-creation-limits",
+  "source": "https://github.com/webiumsk/satflux/pull/404",
+  "title": "Reliable raffle creation",
+  "body": "Raffle creation now loads account limits before deciding whether a new raffle is allowed. Administrators and accounts with available capacity can proceed without a misleading upgrade notice.\n\nConnection failures offer a retry, while guests and accounts at their limit receive a clear explanation.",
+  "labels": ["fix"]
+}

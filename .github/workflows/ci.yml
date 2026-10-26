@@ -11,6 +11,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changelog:
+    name: Changelog automation (offline)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "22"
+      - name: Test changelog synchronization and deployment guards
+        run: node --test scripts/changelog/*.test.mjs
+      - name: Validate reviewed changelog fragments
+        run: node scripts/changelog/check.mjs
+      - name: Check deployment script syntax
+        run: bash -n deploy.sh
+
   backend:
     name: PHP (tests)
     runs-on: ubuntu-latest

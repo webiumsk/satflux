@@ -112,6 +112,9 @@ fi
 
 echo -e "${GREEN}✓ Git pull completed → deployed branch: $BRANCH${NC}"
 
+# Bind an optional changelog publication request to the revision actually deployed.
+DEPLOYED_SHA=$(git rev-parse HEAD)
+
 # Step 2a: Build PHP image (picks up Dockerfile changes like new extensions)
 echo -e "${YELLOW}Step 2a: Building PHP image...${NC}"
 $DC_CMD build php
@@ -263,3 +266,23 @@ echo "Next steps:"
 echo "1. Verify the application is accessible at your domain"
 echo "2. Check logs if needed: docker compose -f $COMPOSE_FILE --project-name $PROJECT_NAME logs -f"
 echo "3. Monitor application for any issues"
+
+# BEGIN CHORALA CHANGELOG HOOK
+# This opt-in hook does not change deployment success or rerun a deployment.
+# Keep token values in the environment, never expanded Docker arguments/logs.
+if [ "${CHORALA_CHANGELOG_ENABLED:-false}" = "true" ]; then
+    (
+        set +x
+        export CHORALA_CHANGELOG_ENABLED CHORALA_DEPLOY_ENVIRONMENT CHORALA_DEPLOY_HEALTH_URL
+        export CHORALA_DEPLOY_TOKEN CHORALA_DEPLOY_TOKEN_FILE
+        export CHORALA_DEPLOY_SHA="$DEPLOYED_SHA"
+        CHORALA_DEPLOY_HOST_SHA=$(git rev-parse HEAD)
+        export CHORALA_DEPLOY_HOST_SHA
+        docker exec --user root \
+            --env CHORALA_CHANGELOG_ENABLED --env CHORALA_DEPLOY_ENVIRONMENT \
+            --env CHORALA_DEPLOY_HEALTH_URL --env CHORALA_DEPLOY_TOKEN --env CHORALA_DEPLOY_TOKEN_FILE \
+            --env CHORALA_DEPLOY_SHA --env CHORALA_DEPLOY_HOST_SHA \
+            "$PHP_CONTAINER" node /var/www/scripts/changelog/dispatch.mjs
+    ) || echo -e "${YELLOW}Warning: Changelog publication was not confirmed for $DEPLOYED_SHA. Retry only the changelog dispatch after checking its workflow; do not redeploy solely for this warning.${NC}"
+fi
+# END CHORALA CHANGELOG HOOK
