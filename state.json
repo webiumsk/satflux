@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "context": {
+    "repository": "webiumsk/satflux",
+    "apiBase": "https://feedback.satflux.io/api/v1",
+    "projectId": "proj_fiwq9gCDBKsVEDovCemoA"
+  },
+  "entries": {}
+}
