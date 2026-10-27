@@ -1,0 +1,1328 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Satflux API",
+        "version": "1.0.0",
+        "description": "Initial reviewed scope: account, stores and raffle list/create. Other APIs are explicitly deferred in route-coverage.json. SPA authentication uses the Sanctum session cookie, not a Bearer token. First GET /sanctum/csrf-cookie, then send credentials and the decoded XSRF-TOKEN cookie as X-XSRF-TOKEN on writes; CSRF mismatch returns 419. Browser Origin/Referer must match configured stateful domains. Local store UUIDs identify Satflux routes. Ownership, verified-email, guest and entitlement checks remain server-side. Lists here are unpaginated. Nullable max means unlimited, zero means blocked. Counts can be unavailable; do not use counts as authorization."
+    },
+    "servers": [
+        {
+            "url": "/api",
+            "description": "Same-origin API; interactive requests disabled in the portal."
+        }
+    ],
+    "paths": {
+        "/user": {
+            "get": {
+                "operationId": "get_user",
+                "summary": "Read the current account",
+                "tags": [
+                    "satflux"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "responses": {
+                    "401": {
+                        "description": "Unauthenticated or invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Role, email, ownership, guest or quota denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Account"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/user/limits": {
+            "get": {
+                "operationId": "get_user_limits",
+                "summary": "Read effective account limits",
+                "tags": [
+                    "satflux"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "responses": {
+                    "401": {
+                        "description": "Unauthenticated or invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Role, email, ownership, guest or quota denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AccountLimits"
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "store_id",
+                        "in": "query",
+                        "required": false,
+                        "description": "Optional owned local store UUID for event/raffle counts. Upstream count failures currently fall back to zero; never infer authorization from those counts.",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ]
+            }
+        },
+        "/stores": {
+            "get": {
+                "operationId": "get_stores",
+                "summary": "List accessible local stores",
+                "tags": [
+                    "satflux"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "responses": {
+                    "401": {
+                        "description": "Unauthenticated or invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Role, email, ownership, guest or quota denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Store"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "Returns an unpaginated data array. Only stores matched in local ownership records and upstream access are included; upstream failure can produce an empty list. The existing Pay Button/API-key formatter includes an upstream btcpay_store_id; route parameters still require local id."
+            }
+        },
+        "/stores/{store}/raffles": {
+            "get": {
+                "operationId": "get_stores_store_raffles",
+                "summary": "List store raffles",
+                "tags": [
+                    "satflux"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "responses": {
+                    "401": {
+                        "description": "Unauthenticated or invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Role, email, ownership, guest or quota denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Upstream or application error; inspect the safe error/code fields",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Upstream or application error; inspect the safe error/code fields",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Upstream or application error; inspect the safe error/code fields",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Upstream or application error; inspect the safe error/code fields",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Upstream or application error; inspect the safe error/code fields",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Plugin unavailable, upstream failure or raffle quota verification failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Raffle"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "store",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Local Satflux store UUID; ownership middleware applies, including existing audited staff exceptions."
+                    }
+                ]
+            },
+            "post": {
+                "operationId": "post_stores_store_raffles",
+                "summary": "Create a raffle within the store owner quota",
+                "tags": [
+                    "satflux"
+                ],
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ],
+                "responses": {
+                    "401": {
+                        "description": "Unauthenticated or invalid credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Role, email, ownership, guest or quota denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Upstream or application error; inspect the safe error/code fields",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Upstream or application error; inspect the safe error/code fields",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Upstream or application error; inspect the safe error/code fields",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Upstream or application error; inspect the safe error/code fields",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Upstream or application error; inspect the safe error/code fields",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Plugin unavailable, upstream failure or raffle quota verification failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "419": {
+                        "description": "Missing or invalid CSRF token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Raffle"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "store",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Local Satflux store UUID; ownership middleware applies, including existing audited staff exceptions."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RaffleCreate"
+                            },
+                            "example": {
+                                "name": "Synthetic raffle",
+                                "ticketCurrency": "SATS",
+                                "ticketPrice": 100
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Error": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "code": {
+                        "type": "string"
+                    },
+                    "errors": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "required": [],
+                "additionalProperties": true
+            },
+            "Account": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "role": {
+                        "type": "string"
+                    },
+                    "is_guest": {
+                        "type": "boolean"
+                    },
+                    "plan": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": true
+                    },
+                    "subscription": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": true
+                    },
+                    "effective_access": {
+                        "type": "object",
+                        "properties": {},
+                        "required": [],
+                        "additionalProperties": true
+                    },
+                    "purchase_availability": {
+                        "type": "object",
+                        "properties": {},
+                        "required": [],
+                        "additionalProperties": true
+                    }
+                },
+                "required": [
+                    "id",
+                    "effective_access",
+                    "purchase_availability"
+                ],
+                "additionalProperties": true
+            },
+            "AccountLimits": {
+                "type": "object",
+                "properties": {
+                    "stores": {
+                        "type": "object",
+                        "properties": {
+                            "current": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "Optional count, not an authorization decision."
+                            },
+                            "max": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "minimum": 0,
+                                "description": "null means unlimited; zero means unavailable."
+                            },
+                            "unlimited": {
+                                "type": "boolean"
+                            },
+                            "allowed": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "max",
+                            "unlimited"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "api_keys": {
+                        "type": "object",
+                        "properties": {
+                            "current": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "Optional count, not an authorization decision."
+                            },
+                            "max": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "minimum": 0,
+                                "description": "null means unlimited; zero means unavailable."
+                            },
+                            "unlimited": {
+                                "type": "boolean"
+                            },
+                            "allowed": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "max",
+                            "unlimited"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "ln_addresses": {
+                        "type": "object",
+                        "properties": {
+                            "current": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "Optional count, not an authorization decision."
+                            },
+                            "max": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "minimum": 0,
+                                "description": "null means unlimited; zero means unavailable."
+                            },
+                            "unlimited": {
+                                "type": "boolean"
+                            },
+                            "allowed": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "max",
+                            "unlimited"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "events": {
+                        "type": "object",
+                        "properties": {
+                            "current": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "Optional count, not an authorization decision."
+                            },
+                            "max": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "minimum": 0,
+                                "description": "null means unlimited; zero means unavailable."
+                            },
+                            "unlimited": {
+                                "type": "boolean"
+                            },
+                            "allowed": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "max",
+                            "unlimited"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "raffles": {
+                        "type": "object",
+                        "properties": {
+                            "current": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "Optional count, not an authorization decision."
+                            },
+                            "max": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "minimum": 0,
+                                "description": "null means unlimited; zero means unavailable."
+                            },
+                            "unlimited": {
+                                "type": "boolean"
+                            },
+                            "allowed": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "max",
+                            "unlimited"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "companies": {
+                        "type": "object",
+                        "properties": {
+                            "current": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "Optional count, not an authorization decision."
+                            },
+                            "max": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "minimum": 0,
+                                "description": "null means unlimited; zero means unavailable."
+                            },
+                            "unlimited": {
+                                "type": "boolean"
+                            },
+                            "allowed": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "max",
+                            "unlimited"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "user_api_keys": {
+                        "type": "object",
+                        "properties": {
+                            "current": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "Optional count, not an authorization decision."
+                            },
+                            "max": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "minimum": 0,
+                                "description": "null means unlimited; zero means unavailable."
+                            },
+                            "unlimited": {
+                                "type": "boolean"
+                            },
+                            "allowed": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "max",
+                            "unlimited"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "policy_version": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "stores",
+                    "api_keys",
+                    "ln_addresses",
+                    "events",
+                    "raffles",
+                    "companies",
+                    "user_api_keys",
+                    "policy_version"
+                ],
+                "additionalProperties": false
+            },
+            "Store": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "btcpay_store_id": {
+                        "type": "string",
+                        "description": "Existing deliberate Pay Button/API-key formatting exception; use id for Satflux API routes."
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "additionalProperties": true
+            },
+            "Raffle": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "ticketCurrency": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "ticketPrice": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "description": "Major units of ticketCurrency; SATS values are whole satoshis."
+                    },
+                    "ticketPriceSats": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 1
+                    },
+                    "maxTickets": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 1
+                    }
+                },
+                "required": [],
+                "additionalProperties": true
+            },
+            "RaffleCreate": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 8000
+                    },
+                    "ticketCurrency": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "pattern": "^[A-Za-z]{3,16}$"
+                    },
+                    "ticketPrice": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "exclusiveMinimum": 0
+                    },
+                    "ticketPriceSats": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 1
+                    },
+                    "maxTickets": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 1
+                    }
+                },
+                "required": [
+                    "name"
+                ],
+                "additionalProperties": true,
+                "anyOf": [
+                    {
+                        "required": [
+                            "ticketCurrency",
+                            "ticketPrice"
+                        ],
+                        "properties": {
+                            "ticketCurrency": {
+                                "type": "string"
+                            },
+                            "ticketPrice": {
+                                "type": "number"
+                            }
+                        }
+                    },
+                    {
+                        "required": [
+                            "ticketPriceSats"
+                        ],
+                        "properties": {
+                            "ticketPriceSats": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                ],
+                "description": "Supply ticketCurrency and positive ticketPrice, or legacy ticketPriceSats. SATS price must be a whole number; currency pair takes precedence."
+            },
+            "ConnectCredentials": {
+                "type": "object",
+                "properties": {
+                    "btcpay_url": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "api_key": {
+                        "type": "string",
+                        "description": "Merchant BTCPay API credential returned once to the trusted plugin."
+                    },
+                    "store_id": {
+                        "type": "string",
+                        "description": "Provider store ID required by the existing WordPress BTCPay integration."
+                    },
+                    "integration_token": {
+                        "type": "string",
+                        "description": "Sensitive credential returned once to the trusted plugin; never log or expose in examples."
+                    },
+                    "integration_secret": {
+                        "type": "string",
+                        "description": "Sensitive credential returned once to the trusted plugin; never log or expose in examples."
+                    },
+                    "invoicing_enabled": {
+                        "type": "string",
+                        "enum": [
+                            "0",
+                            "1"
+                        ]
+                    },
+                    "satflux_store_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "satflux_company_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "btcpay_url",
+                    "api_key",
+                    "store_id",
+                    "integration_token",
+                    "integration_secret",
+                    "invoicing_enabled"
+                ],
+                "additionalProperties": false
+            },
+            "Connection": {
+                "type": "object",
+                "properties": {
+                    "store": {
+                        "$ref": "#/components/schemas/Store"
+                    },
+                    "company": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "id": {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "invoicing_enabled": {
+                        "type": "boolean"
+                    },
+                    "auto_issue_enabled": {
+                        "type": "boolean"
+                    },
+                    "inbox_mode": {
+                        "type": "boolean"
+                    },
+                    "local_first": {
+                        "type": "boolean"
+                    },
+                    "uses_server_invoicing": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "integration_inbox_path": {
+                        "type": "string"
+                    },
+                    "invoices_path": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "store",
+                    "company",
+                    "invoicing_enabled",
+                    "auto_issue_enabled",
+                    "inbox_mode",
+                    "local_first",
+                    "uses_server_invoicing",
+                    "integration_inbox_path",
+                    "invoices_path"
+                ],
+                "additionalProperties": false
+            },
+            "Contact": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "company_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "company_id"
+                ],
+                "additionalProperties": true
+            },
+            "ServerDocument": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "total": {
+                        "type": [
+                            "string",
+                            "number"
+                        ],
+                        "description": "Major currency units; Eloquent decimals serialize as strings."
+                    },
+                    "currency": {
+                        "type": "string"
+                    },
+                    "payment_token": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "pdf_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "payment_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "status",
+                    "currency",
+                    "total",
+                    "number",
+                    "payment_token",
+                    "pdf_url",
+                    "payment_url"
+                ],
+                "additionalProperties": false
+            },
+            "PendingInboxDocument": {
+                "type": "object",
+                "properties": {
+                    "inbox_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "evolu_document_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "woocommerce_order_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "payload": {
+                        "type": "object",
+                        "properties": {},
+                        "required": [],
+                        "additionalProperties": true
+                    },
+                    "number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "auto_issued": {
+                        "type": "boolean"
+                    },
+                    "email_queued": {
+                        "type": "boolean"
+                    },
+                    "emailed": {
+                        "type": "boolean"
+                    },
+                    "pdf_available": {
+                        "type": "boolean"
+                    },
+                    "summary": {
+                        "type": "object",
+                        "properties": {},
+                        "required": [],
+                        "additionalProperties": true
+                    },
+                    "auto_issue_skipped": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "inbox_id",
+                    "evolu_document_id",
+                    "woocommerce_order_id",
+                    "status",
+                    "payload",
+                    "number",
+                    "auto_issued",
+                    "email_queued",
+                    "emailed",
+                    "pdf_available",
+                    "summary"
+                ],
+                "additionalProperties": true
+            },
+            "InboxDocument": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Pending entry may use inbox ID; issued representation uses nullable Evolu ID."
+                    },
+                    "inbox_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "evolu_document_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "woocommerce_order_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "currency": {
+                        "type": "string"
+                    },
+                    "payment_token": {
+                        "type": "null"
+                    },
+                    "pdf_url": {
+                        "type": "null"
+                    },
+                    "payment_url": {
+                        "type": "null"
+                    },
+                    "summary": {
+                        "type": "object",
+                        "properties": {},
+                        "required": [],
+                        "additionalProperties": true
+                    },
+                    "auto_issue_skipped": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "status"
+                ],
+                "additionalProperties": true
+            }
+        },
+        "securitySchemes": {
+            "sessionCookie": {
+                "type": "apiKey",
+                "in": "cookie",
+                "name": "laravel_session",
+                "description": "Configured Laravel session cookie name may differ. Initialize /sanctum/csrf-cookie and send X-XSRF-TOKEN on state-changing SPA requests."
+            },
+            "integrationToken": {
+                "type": "http",
+                "scheme": "bearer",
+                "description": "Per-integration scoped token; current company link required."
+            },
+            "btcpaySignature": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "BTCPay-Sig",
+                "description": "sha256= plus HMAC-SHA256 of exact raw bytes; never enter the signing secret here."
+            },
+            "bankInboundSecret": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-Bank-Inbound-Secret",
+                "description": "Native bank notification shared secret. Mailgun alternative uses signed body fields; see operation."
+            }
+        }
+    },
+    "x-provenance": {
+        "generator": "dedoc/scramble 0.13.49",
+        "overlays": "app/Services/ApiDocumentation/DocumentationSchemas.php",
+        "examples": "Synthetic only; no runtime response calls."
+    }
+}

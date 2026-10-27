@@ -4144,6 +4144,20 @@
     "marked_helpful": "Als hilfreich markiert"
   },
   "admin": {
+    "api_docs": {
+      "title": "API-Referenz",
+      "description": "Geprüfte Schnittstellen von Satflux, WooCommerce-Integration und Webhooks an einem Ort. Die technische Referenz ist auf Englisch.",
+      "read_only": "Referenz nur zum Lesen. Das Senden von API-Anfragen auf dieser Seite ist deaktiviert.",
+      "back": "Zurück zur Administration",
+      "denied": "Sie haben keinen Zugriff auf diese API-Referenz.",
+      "loading": "API-Referenz wird geladen...",
+      "load_error": "Die API-Referenz konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
+      "retry": "Erneut versuchen",
+      "document": "API-Dokument",
+      "providers": "Anbieterreferenzen",
+      "providers_hint": "Die Dokumentation der Anbieter wird separat geöffnet und hat eigene Versionen und Authentifizierungsregeln.",
+      "new_tab": "(öffnet in einem neuen Tab)"
+    },
     "regwatch": {
       "title": "RegWatch",
       "description": "Erkannte Änderungen an offiziellen Rechts- und Steuerquellen zur Überprüfung",

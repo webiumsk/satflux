@@ -401,3 +401,18 @@ Chorala renewal scheduling and localized edited-save guidance. Independent QA an
 security accepted this delta; the full 959-case frontend run and selected PHP
 regressions pass. Publish the reviewed correction to the existing PR and inspect
 its new CI/review. No merge or deployment approval is inferred.
+
+## 2026-10-27: API reference initial implementation ready
+
+Owner-authorized `feat/api-documentation` adds protected Scalar/OpenAPI reference
+for 14 selected Satflux/WooCommerce/webhook operations and an explicit 449-entry
+API inventory. Independent QA/security accept final functional digest `88db19b2`;
+final build and focused/backend/frontend/schema/browser checks pass. Six legacy
+PHP DNS failures reproduce unchanged on clean base; remote CI remains a separate
+gate. See [implementation evidence](API_DOCUMENTATION_IMPLEMENTATION.md).
+
+Next publish the reviewed branch when authorized and verify exact-head CI/review.
+Merge/deployment remain owner decisions. Later expand the 435 deferred operations
+with reviewed schemas; provider/plugin specifications retain independent versions.
+No provider upgrade, billing-policy change or public interactive API console is
+part of this milestone.

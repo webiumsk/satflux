@@ -1139,3 +1139,40 @@ lockfile specifies 3.4.17; exact locked dependency validation remains GitHub CI.
 The full offline PHP suite was not rerun because of the recorded DNS restriction.
 Fresh remote CI and CodeRabbit status must be read for the newly published revision.
 Merge, staging acceptance and deployment remain separate approval/verification gates.
+
+## 2026-10-27: protected API reference implemented
+
+The owner authorized a new branch and implementation. `feat/api-documentation`
+starts at merged master `7252d531`; unrelated original-checkout edits are preserved.
+Only Satflux changed. `/admin/api-docs` uses bundled Scalar with authenticated,
+verified admin/support catalog/spec endpoints and three reviewed static OpenAPI
+documents. Fourteen operations cover representative account/store/raffle APIs,
+seven WooCommerce connect/integration operations and two inbound webhooks. The
+449-entry API inventory explicitly defers 435 operations; this is initial coverage.
+See [reference](../API_REFERENCE.md) and [implementation](API_DOCUMENTATION_IMPLEMENTATION.md).
+
+Scramble 0.13.49 is build-time only; default runtime routes are disabled. CI checks
+isolated deterministic generation, route/source drift and OpenAPI validity.
+Cookie/CSRF, scoped bearer, connect-code and distinct bank/BTCPay authentication
+contracts remain separate. Browser interaction, AI/MCP uploads, telemetry and
+external schema transport are disabled. No business authorization, billing,
+subscription, provider repository or deployment behavior was changed.
+
+Independent QA and security accept the 31-file functional/artifact digest
+`88db19b214786e511fbb1ffbc8354036c53b0ba81b3689d158e7bb7be7f8f08a`.
+QA found and verified fixes for MCP schema upload and Mailgun field aliases.
+Eight focused PHP tests / 170 assertions, 17 portal tests, eight validator cases,
+all three schemas and nine synthetic Chrome scenarios pass. Full frontend run
+passes 1,000 cases / 138 files before scoped dependency follow-ups; affected cases
+pass again on final pins. Final build, PHPStan, Pint, locales and Composer
+validation/audit pass. ESLint retains 48 warnings; typecheck retains 120 baseline
+errors. Existing 2,009-case PHP run has six email-DNS failures, all independently
+reproduced on the clean base in the same network-disabled environment.
+
+New dependency advisories are patched. Production npm audit matches base counts
+(35 moderate / six high / zero critical); existing advisories remain separate
+maintenance work. The private renderer chunk is about 821 KB gzip and loads with
+its route. Browser QA uses synthetic transport/authentication, not deployed state.
+Private milestone evidence is retained under `api-documentation-2026-10-27`.
+Next is owner-authorized publication and exact-head remote CI/review. No agent
+push, merge or deployment occurred; deferred BTCPay 2.4.6 work remains deferred.

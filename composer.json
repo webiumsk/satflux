@@ -2,7 +2,11 @@
     "name": "satflux.io/satflux.io",
     "type": "project",
     "description": "BTCPay Server Control Panel",
-    "keywords": ["laravel", "btcpay", "control-panel"],
+    "keywords": [
+        "laravel",
+        "btcpay",
+        "control-panel"
+    ],
     "license": "MIT",
     "require": {
         "php": "^8.3",
@@ -27,6 +31,7 @@
         "trinetus/pay-by-square-generator": "^1.0"
     },
     "require-dev": {
+        "dedoc/scramble": "0.13.49",
         "fakerphp/faker": "^1.23",
         "larastan/larastan": "^3.10",
         "laravel/pint": "^1.13",

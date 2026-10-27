@@ -411,6 +411,12 @@ const router = createRouter({
             meta: { public: true, titleKey: 'seo.faq_title', descriptionKey: 'seo.faq_description' },
         },
         {
+            path: '/admin/api-docs',
+            name: 'admin-api-docs',
+            component: () => import('../pages/admin/ApiDocumentation.vue'),
+            meta: { requiresAuth: true, requiresSupportOrAdmin: true },
+        },
+        {
             path: '/admin/faq',
             name: 'admin-faq',
             component: () => import('../pages/admin/faq/Items.vue'),

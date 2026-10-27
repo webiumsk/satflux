@@ -68,6 +68,27 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
+      - name: Check generated API contracts and route coverage
+        env:
+          APP_ENV: testing
+          APP_URL: http://localhost
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ":memory:"
+          CACHE_STORE: array
+          CACHE_DRIVER: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+          MAIL_MAILER: array
+          LOG_CHANNEL: "null"
+          BROADCAST_CONNECTION: "null"
+          BTCPAY_BASE_URL: http://127.0.0.1:14142
+          BTCPAY_API_KEY: synthetic-api-documentation-key
+          BTCPAY_WEBHOOK_BASE_URL: http://localhost
+          SEED_FIRST_REGISTRATION: "false"
+          COMPLIANCE_SCREENING_ENABLED: "false"
+          COMPLIANCE_LIST_SCREENING_ENABLED: "false"
+        run: php artisan api-docs:export --check
+
       - name: Run tests
         run: php artisan test
 
@@ -212,6 +233,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Validate OpenAPI schemas offline
+        run: |
+          node --test scripts/api-docs/validate.test.mjs
+          node scripts/api-docs/validate.mjs
 
       - name: Security audit (npm, production deps)
         run: npm audit --omit=dev --audit-level=critical

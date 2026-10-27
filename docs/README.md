@@ -11,6 +11,7 @@ Public docs in this repository:
 | [INVOICING_LOCAL_FIRST_ROLLOUT.md](INVOICING_LOCAL_FIRST_ROLLOUT.md) | Evolu local-first invoicing |
 | [OFAC_COMPLIANCE.md](OFAC_COMPLIANCE.md) | Sanctions compliance plan |
 | [WOOCOMMERCE.md](WOOCOMMERCE.md) | WooCommerce integration |
+| [API_REFERENCE.md](API_REFERENCE.md) | Protected API portal, coverage and regeneration |
 | [SATFLUX_TICKETS.md](SATFLUX_TICKETS.md) | Satflux Tickets plugin maintenance |
 | [BTCPAY_2_4_5_COMPATIBILITY_AUDIT.md](BTCPAY_2_4_5_COMPATIBILITY_AUDIT.md) | BTCPay 2.4.5 conflicts, verified tests, and upgrade prerequisites |
 | [BTCPAY_2_4_5_IMPLEMENTATION.md](BTCPAY_2_4_5_IMPLEMENTATION.md) | Implemented fixes, wallet matrix, evidence, staging gate, and rollback |
