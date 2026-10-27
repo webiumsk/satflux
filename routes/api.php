@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\RegWatchController;
 use App\Http\Controllers\Admin\SystemHealthController;
 use App\Http\Controllers\Admin\WalletChangeLogController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\ApiDocumentationController;
 use App\Http\Controllers\AppController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\GuestAuthController;
@@ -1194,3 +1195,10 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, EnsureSupportOrA
     Route::delete('/categories/{category}', [FaqCategoryController::class, 'destroy'])
         ->middleware(AuditLog::class.':faq_category.deleted');
 });
+
+// Static, reviewed API contracts. No public generator or runtime inference route.
+Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, EnsureSupportOrAdminRole::class, 'throttle:60,1'])
+    ->prefix('admin/api-docs')->group(function () {
+        Route::get('/catalog', [ApiDocumentationController::class, 'catalog']);
+        Route::get('/specs/{document}', [ApiDocumentationController::class, 'specification']);
+    });

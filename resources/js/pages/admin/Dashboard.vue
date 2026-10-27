@@ -10,6 +10,14 @@
         <p class="text-gray-400 mt-1">{{ t("admin.dashboard.description") }}</p>
       </div>
 
+      <router-link
+        to="/admin/api-docs"
+        class="mb-8 block rounded-xl border border-indigo-500/40 bg-gray-800 p-5 text-indigo-300 hover:border-indigo-400 focus-visible:outline focus-visible:outline-2"
+      >
+        <span class="font-semibold">{{ t('admin.api_docs.title') }}</span>
+        <span class="mt-1 block text-sm text-gray-400">{{ t('admin.api_docs.description') }}</span>
+      </router-link>
+
       <!-- Platform Overview (Admin only) -->
       <div v-if="userRole === 'admin'" class="mb-10">
         <h2 class="text-lg font-semibold text-white mb-4">

@@ -16,13 +16,23 @@ WooCommerce (SATFLUX plugin)
 
 1. Merchant opens **WooCommerce → Satflux → Connection** and clicks **Connect to Satflux.io**.
 2. Browser redirects to `GET /woocommerce/connect?return_url=...` (HTTPS required, user must be logged in).
-3. Satflux redirects back with:
+3. The merchant confirms the destination host and owned store through a
+   CSRF-protected POST. Satflux redirects back with `satflux_connect_code`, a
+   single-use code that expires after 10 minutes.
+4. The plugin exchanges that code through
+   `GET /api/integrations/woocommerce/oauth-exchange?code=...`. Its `data` response
+   contains:
    - `btcpay_url`, `api_key`, `store_id` (BTCPay GUID)
-   - `satflux_store_id`, `satflux_company_id` (when linked)
+   - `satflux_store_id` (when requested), `satflux_company_id` (when linked)
    - `integration_token`, `integration_secret` (for invoicing API + webhooks)
    - `invoicing_enabled=0|1`
 
 Canonical connect URL is `/woocommerce/satflux-tickets/connect`; the legacy `/woocommerce/satoshi-tickets/connect` remains supported for plugins in the field.
+
+Do not log or persist the connect code in analytics, or expose the returned
+credentials in browser examples. The exchange is authorized by the single-use
+code; it does not require an existing integration bearer token. See the protected
+[API reference](API_REFERENCE.md) for the separate connect and bearer contracts.
 
 ## Integration API (invoicing)
 
@@ -35,6 +45,7 @@ Auth: `Authorization: Bearer {integration_token}`
 | POST | `/api/integrations/woocommerce/documents` | Create draft from WC order |
 | POST | `/api/integrations/woocommerce/documents/{id}/issue` | Issue document |
 | GET | `/api/integrations/woocommerce/documents/{id}` | Status, PDF URL, pay link |
+| GET | `/api/integrations/woocommerce/documents/{documentId}/pdf` | Auto-issued local-first inbox PDF for the authenticated integration |
 
 Rate limit: 60 requests/minute per IP.
 

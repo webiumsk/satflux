@@ -4148,6 +4148,20 @@
     "marked_helpful": "Označené ako užitočné"
   },
   "admin": {
+    "api_docs": {
+      "title": "API dokumentácia",
+      "description": "Overené rozhrania Satfluxu, WooCommerce integrácie a webhookov na jednom mieste. Technická dokumentácia je v angličtine.",
+      "read_only": "Dokumentácia je iba na čítanie. Odosielanie API požiadaviek z tejto stránky je vypnuté.",
+      "back": "Späť do administrácie",
+      "denied": "K tejto API dokumentácii nemáte prístup.",
+      "loading": "Načítava sa API dokumentácia...",
+      "load_error": "API dokumentáciu sa nepodarilo načítať. Skúste to znova.",
+      "retry": "Skúsiť znova",
+      "document": "API dokument",
+      "providers": "Dokumentácia poskytovateľov",
+      "providers_hint": "Dokumentácia poskytovateľov sa otvára samostatne a má vlastné verzie a pravidlá autentifikácie.",
+      "new_tab": "(otvorí sa na novej karte)"
+    },
     "regwatch": {
       "title": "RegWatch",
       "description": "Zistené zmeny na oficiálnych právnych a daňových zdrojoch čakajúce na kontrolu",

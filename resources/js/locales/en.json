@@ -4144,6 +4144,20 @@
     "marked_helpful": "Marked as helpful"
   },
   "admin": {
+    "api_docs": {
+      "title": "API reference",
+      "description": "Reviewed Satflux, WooCommerce integration and webhook contracts in one place. Technical reference is in English.",
+      "read_only": "Read-only reference. Sending API requests from this page is disabled.",
+      "back": "Back to administration",
+      "denied": "You do not have access to this API reference.",
+      "loading": "Loading API reference...",
+      "load_error": "The API reference could not be loaded. Try again.",
+      "retry": "Try again",
+      "document": "API document",
+      "providers": "Provider references",
+      "providers_hint": "Provider documentation opens separately and follows its own version and authentication rules.",
+      "new_tab": "(opens in a new tab)"
+    },
     "regwatch": {
       "title": "RegWatch",
       "description": "Detected changes on official legal and tax sources awaiting review",
