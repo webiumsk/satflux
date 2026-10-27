@@ -22,7 +22,8 @@
               <button
                 v-if="!pluginUnavailable && !listError"
                 type="button"
-                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500"
+                :disabled="!ready || raffleLimit === 0"
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 @click="onCreateClick"
               >
                 {{ t('raffles.create') }}
@@ -33,6 +34,9 @@
       </template>
       <template #default>
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+          <div v-if="denied && (showLimitNotice || raffleLimit === 0)" role="alert" class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-6 text-amber-100">
+            {{ denialMessage }}
+          </div>
           <div v-if="pluginUnavailable" class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-6 text-amber-100">
             <p class="font-medium">{{ t('raffles.plugin_not_installed') }}</p>
           </div>
@@ -43,12 +47,14 @@
 
           <div v-else-if="listError" class="rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-red-200">
             <p>{{ listError }}</p>
+            <button type="button" class="mt-3 underline" @click="retry">{{ t('common.retry') }}</button>
           </div>
 
           <div v-else-if="raffles.length === 0" class="text-center py-16 rounded-xl border border-gray-700 bg-gray-800/50">
             <p class="text-gray-300 mb-2">{{ t('raffles.no_raffles') }}</p>
             <p class="text-sm text-gray-500 mb-6">{{ t('raffles.no_raffles_description') }}</p>
             <button
+              v-if="!denied"
               type="button"
               class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500"
               @click="onCreateClick"
@@ -100,8 +106,8 @@
     </AppShowLayout>
   </RafflesPageLayout>
   <UpgradeModal
-    :show="showUpgradeModal"
-    :message="t('raffles.limit_modal_message')"
+    :show="showUpgradeModal && denied && purchases.pro_subscriptions"
+    :message="denialMessage"
     :limits="
       raffleLimit != null
         ? [{ feature: 'raffles', current: raffleCount, max: raffleLimit }]
@@ -119,43 +125,38 @@ import { useI18n } from 'vue-i18n';
 import RafflesPageLayout from '../../components/stores/RafflesPageLayout.vue';
 import AppShowLayout from '../../components/stores/AppShowLayout.vue';
 import UpgradeModal from '../../components/stores/UpgradeModal.vue';
-import { useAccountLimits } from '../../composables/useAccountLimits';
+import { useRaffleCreationLimits } from '../../composables/useRaffleCreationLimits';
+import { useEffectiveAccess } from '../../composables/useEffectiveAccess';
 import { useStorePageShell } from '../../composables/useStorePageShell';
 import { useAppsStore } from '../../store/apps';
-import { useRafflesStore, type Raffle, type RaffleStatus } from '../../store/raffles';
+import type { Raffle, RaffleStatus } from '../../store/raffles';
 import { formatRaffleTicketPrice } from '../../utils/rafflePricing';
 
 const { t } = useI18n();
 const router = useRouter();
-const rafflesStore = useRafflesStore();
 const appsStore = useAppsStore();
-const { limits } = useAccountLimits();
 const { storeId, store, error, loadStore, goSettings, goSection } = useStorePageShell();
+const { purchases } = useEffectiveAccess();
+const { raffles, ready, loading: listLoading, error: limitsError, raffleLimit, raffleCount, canCreateRaffle, denied, retry } = useRaffleCreationLimits(storeId);
 const apps = computed(() => appsStore.apps);
 
 const virtualApp = computed(() => ({ id: '', name: t('raffles.title') }));
 
-const raffles = ref<Raffle[]>([]);
-const listLoading = ref(true);
-const listError = ref('');
-const pluginUnavailable = ref(false);
 const showUpgradeModal = ref(false);
-
-const raffleLimit = computed(() =>
-    limits.value?.raffles?.unlimited ? null : (limits.value?.raffles?.max ?? null),
-);
-
-const raffleCount = computed(() => limits.value?.raffles?.current ?? raffles.value.length);
-
-const canCreateRaffle = computed(() => {
-    if (!limits.value?.raffles || limits.value.raffles.allowed === false) return false;
-    if (raffleLimit.value == null) return limits.value.raffles.unlimited === true;
-    return raffleCount.value < raffleLimit.value;
+const showLimitNotice = ref(false);
+const pluginUnavailable = computed(() => {
+    const failure = limitsError.value as { response?: { status?: number; data?: { code?: string } } } | null;
+    return failure?.response?.status === 404 && failure.response.data?.code === 'raffle_plugin_unavailable';
 });
+const listError = computed(() => limitsError.value && !pluginUnavailable.value ? t('raffles.creation_check_failed') : '');
+const denialMessage = computed(() => raffleLimit.value === 0
+    ? t('raffles.creation_unavailable') : t('raffles.limit_reached', { max: raffleLimit.value }));
 
 function onCreateClick() {
+    if (!ready.value) return;
     if (!canCreateRaffle.value) {
-        showUpgradeModal.value = true;
+        showLimitNotice.value = true;
+        showUpgradeModal.value = raffleLimit.value !== 0 && purchases.value.pro_subscriptions;
         return;
     }
     router.push({ name: 'stores-raffles-create', params: { id: storeId.value } });
@@ -184,27 +185,10 @@ function formatDate(iso: string): string {
     }
 }
 
-async function loadRaffles() {
-    listLoading.value = true;
-    listError.value = '';
-    pluginUnavailable.value = false;
-    try {
-        raffles.value = await rafflesStore.fetchRaffles(storeId.value);
-    } catch (err: unknown) {
-        const e = err as { response?: { status?: number; data?: { code?: string; message?: string } } };
-        if (e.response?.status === 404 && e.response?.data?.code === 'raffle_plugin_unavailable') {
-            pluginUnavailable.value = true;
-        } else {
-            listError.value = e.response?.data?.message || t('raffles.load_failed');
-        }
-    } finally {
-        listLoading.value = false;
-    }
-}
+watch(ready, () => { showUpgradeModal.value = false; showLimitNotice.value = false; }, { flush: 'sync' });
 
 watch(storeId, (id) => {
     if (id) {
-        loadRaffles();
         appsStore.fetchApps(id).catch(() => {
             // Sidebar apps are optional; avoid unhandled rejection if fetch fails.
         });

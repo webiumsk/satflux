@@ -1,0 +1,117 @@
+name: Chorala changelog
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Changelog operation
+        type: choice
+        required: true
+        default: draft
+        options: [initialize, draft, publish]
+      source_sha:
+        description: Exact deployed or CI-approved master commit (not needed for initialize)
+        type: string
+        required: false
+      environment:
+        description: Must be production for publish
+        type: string
+        required: false
+
+# Both draft preparation and deployment publication use the same journal writer.
+# Keep queued events instead of replacing an earlier pending deployment event.
+concurrency:
+  group: chorala-changelog-webiumsk-satflux
+  cancel-in-progress: false
+  queue: max
+
+permissions:
+  contents: write # The synchronizer writes only its fixed journal branch.
+  actions: read
+
+jobs:
+  synchronize:
+    name: Synchronize reviewed changelog
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: >-
+      vars.CHORALA_CHANGELOG_ENABLED == 'true' &&
+      github.repository == 'webiumsk/satflux' &&
+      (
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.path == '.github/workflows/ci.yml' &&
+          github.event.workflow_run.head_branch == 'master' &&
+          github.event.workflow_run.head_repository.full_name == 'webiumsk/satflux'
+        ) ||
+        (
+          github.event_name == 'workflow_dispatch' &&
+          github.ref == 'refs/heads/master'
+        )
+      )
+    steps:
+      # Never execute a triggering PR's or historical deployment's scripts with
+      # secrets. The selected commit is read as fragment data by trusted code.
+      - name: Checkout trusted default branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: master
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+
+      - name: Validate event and source before exposing project credentials
+        env:
+          EXPECTED_REPOSITORY: webiumsk/satflux
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+
+          const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+          const repository = process.env.EXPECTED_REPOSITORY;
+          if (process.env.GITHUB_REPOSITORY !== repository) throw new Error('Unexpected repository');
+          let mode;
+          let sha;
+          if (process.env.GITHUB_EVENT_NAME === 'workflow_run') {
+            const run = event.workflow_run;
+            if (run?.conclusion !== 'success' || run.event !== 'push'
+              || run.path !== '.github/workflows/ci.yml'
+              || run.head_branch !== 'master' || run.head_repository?.full_name !== repository) {
+              throw new Error('Only successful owned master push CI may prepare drafts');
+            }
+            mode = 'draft';
+            sha = run.head_sha;
+          } else if (process.env.GITHUB_EVENT_NAME === 'workflow_dispatch') {
+            if (process.env.GITHUB_REF !== 'refs/heads/master') throw new Error('Use trusted master workflow');
+            mode = event.inputs?.mode;
+            if (!['initialize', 'draft', 'publish'].includes(mode)) throw new Error('Invalid changelog mode');
+            if (mode === 'publish' && event.inputs?.environment !== 'production') {
+              throw new Error('Publication requires a production deployment confirmation');
+            }
+            sha = event.inputs?.source_sha || (mode === 'initialize' ? process.env.GITHUB_SHA : '');
+          } else {
+            throw new Error('Unsupported changelog event');
+          }
+          if (!/^[0-9a-f]{40}$/.test(sha ?? '')) throw new Error('An exact source commit is required');
+          execFileSync('git', ['merge-base', '--is-ancestor', sha, 'refs/remotes/origin/master'], { stdio: 'ignore' });
+          appendFileSync(process.env.GITHUB_ENV, `MODE=${mode}\nSOURCE_SHA=${sha}\n`);
+          NODE
+
+      - name: Synchronize reviewed fragments
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHORALA_API_URL: ${{ vars.CHORALA_API_URL }}
+          CHORALA_PROJECT_ID: ${{ vars.CHORALA_PROJECT_ID }}
+          CHORALA_API_KEY: ${{ secrets.CHORALA_CHANGELOG_API_KEY }}
+        run: node scripts/changelog/sync.mjs

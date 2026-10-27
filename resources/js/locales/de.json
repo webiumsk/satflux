@@ -3756,6 +3756,9 @@
     "manual_tickets_success": "{count} Ticket(s) hinzugefügt",
     "manual_tickets_failed": "Manuelle Tickets konnten nicht hinzugefügt werden",
     "manual_ticket_badge": "Manuell",
+    "creation_unavailable": "Mit diesem Konto können keine Verlosungen erstellt werden. Registrieren Sie ein vollständiges Konto, um fortzufahren.",
+    "limit_reached": "Dieser Shop hat sein Limit von {max} Verlosungen erreicht.",
+    "creation_check_failed": "Verfügbarkeit und Limits der Verlosungen konnten nicht geprüft werden. Versuchen Sie es erneut.",
     "limit_modal_message": "Sie haben die maximale Anzahl von Tombolas (1) pro Store im Free-Plan erreicht. Upgraden Sie auf PRO für unbegrenzte Tombolas."
   },
   "landing": {

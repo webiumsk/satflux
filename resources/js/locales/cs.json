@@ -3756,6 +3756,9 @@
     "manual_tickets_success": "Přidáno {count} lístků",
     "manual_tickets_failed": "Lístky se nepodařilo přidat",
     "manual_ticket_badge": "Manuální",
+    "creation_unavailable": "Tento účet nemůže vytvářet tomboly. Chcete-li pokračovat, zaregistrujte si plný účet.",
+    "limit_reached": "Tento obchod dosáhl limitu {max} tombol.",
+    "creation_check_failed": "Nepodařilo se ověřit dostupnost a limity tombol. Zkuste to znovu.",
     "limit_modal_message": "Na bezplatném plánu můžete mít maximálně 1 tombolu na obchod. Pro neomezené tomboly přejděte na PRO."
   },
   "landing": {
