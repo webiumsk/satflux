@@ -193,7 +193,7 @@ final class DocumentationSchemas
     {
         $nullableString = ['type' => ['string', 'null']];
         $uuid = ['type' => 'string', 'format' => 'uuid'];
-        $limit = $this->obj(['current' => ['type' => 'integer', 'minimum' => 0, 'description' => 'Optional count, not an authorization decision.'], 'max' => ['type' => ['integer', 'null'], 'minimum' => 0, 'description' => 'null means unlimited; zero means unavailable.'], 'unlimited' => ['type' => 'boolean'], 'allowed' => ['type' => 'boolean']], ['max', 'unlimited']);
+        $limit = $this->obj(['current' => ['type' => 'integer', 'minimum' => 0, 'description' => 'Optional count, not an authorization decision.'], 'max' => ['type' => ['integer', 'null'], 'minimum' => 0, 'description' => 'null means unlimited; zero means the feature is blocked.'], 'unlimited' => ['type' => 'boolean'], 'allowed' => ['type' => 'boolean']], ['max', 'unlimited']);
         $schemas = [
             'Error' => $this->obj(['message' => ['type' => 'string'], 'error' => ['type' => 'string'], 'code' => ['type' => 'string'], 'errors' => ['type' => 'object', 'additionalProperties' => ['type' => 'array', 'items' => ['type' => 'string']]]], [], true),
             'Account' => $this->obj(['id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'email' => $nullableString, 'role' => ['type' => 'string'], 'is_guest' => ['type' => 'boolean'], 'plan' => ['type' => ['object', 'null'], 'additionalProperties' => true], 'subscription' => ['type' => ['object', 'null'], 'additionalProperties' => true], 'effective_access' => $this->obj([], [], true), 'purchase_availability' => $this->obj([], [], true)], ['id', 'effective_access', 'purchase_availability'], true),

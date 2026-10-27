@@ -1144,12 +1144,19 @@ Merge, staging acceptance and deployment remain separate approval/verification g
 
 The owner authorized a new branch and implementation. `feat/api-documentation`
 starts at merged master `7252d531`; unrelated original-checkout edits are preserved.
-Only Satflux changed. `/admin/api-docs` uses bundled Scalar with authenticated,
-verified admin/support catalog/spec endpoints and three reviewed static OpenAPI
+Only Satflux changed. `/admin/api-docs` uses bundled Scalar with authenticated
+admin/support catalog/spec endpoints and three reviewed static OpenAPI
 documents. Fourteen operations cover representative account/store/raffle APIs,
 seven WooCommerce connect/integration operations and two inbound webhooks. The
 449-entry API inventory explicitly defers 435 operations; this is initial coverage.
 See [reference](../API_REFERENCE.md) and [implementation](API_DOCUMENTATION_IMPLEMENTATION.md).
+
+The backend reuses `RequireVerifiedEmail`, including its existing exception for
+an unverified admin/support account (`User::isSupport()`) using a Sanctum PAT
+named `btcpay-config-bot`.
+Ordinary unverified staff sessions remain denied. Existing guest handling is
+unchanged; the staff role check still applies. No stricter verification policy
+is introduced by this portal.
 
 Scramble 0.13.49 is build-time only; default runtime routes are disabled. CI checks
 isolated deterministic generation, route/source drift and OpenAPI validity.
@@ -1176,3 +1183,31 @@ its route. Browser QA uses synthetic transport/authentication, not deployed stat
 Private milestone evidence is retained under `api-documentation-2026-10-27`.
 Next is owner-authorized publication and exact-head remote CI/review. No agent
 push, merge or deployment occurred; deferred BTCPay 2.4.6 work remains deferred.
+
+## 2026-10-27: PR #405 clean-install and review follow-up
+
+The owner authorizes fixing and pushing the existing PR. At published head
+`4c14d216`, PHP CI passes 2,017 cases / 9,369 assertions and changelog passes;
+Node/E2E fail at `npm ci`, before application tests. The failure is reproduced
+with exact CI npm 10.9.9. Move the SDK utility security override to project scope
+and restore 27 missing dev/optional esbuild lock entries. No existing locked
+versions change. Normal pristine npm 10 and 11 installs now pass; independent QA
+repeats npm 10 installation with an empty task cache. No global tool configuration,
+CI bypass, legacy-peer flag, audit threshold or provider repository changes occur.
+
+Four CodeRabbit findings are corrected: consistent zero-limit meaning, production
+JSON plus matching assets, inherited admin/support bot-PAT email-verification
+exception, and auto-issued inbox-only PDF scope. Real PAT tests cover both staff
+roles, wrong token names and nonstaff denial. Runtime auth behavior is unchanged.
+
+Independent QA/security accept 34-file digest
+`dc86ea040cfd7f3ffdb941670de9394f7d14e43ffa174ca15648bb13f9beff1c`.
+Fresh dependencies pass 1,000 frontend tests / 138 files, build, lint (48 inherited
+warnings), typecheck (120 baseline errors), locales, 17 portal cases, eight validator
+cases and all three schemas. Eleven PHP cases / 230 assertions, extra independent
+PAT probes (3 / 45), export and scoped Pint pass. Runtime npm audit remains
+35 moderate / six high / zero low or critical; no new advisory is introduced.
+Local Node 22.18 differs from CI's 22.23.3 patch; npm is the exact 10.9.9 version.
+Next publish the accepted follow-up and verify fresh-head CI/review. No merge or
+deployment approval is inferred. CodeRabbit's prior docstring advisory remains
+separate from its successful GitHub check; no boilerplate or gate weakening is used.

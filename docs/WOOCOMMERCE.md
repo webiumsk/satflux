@@ -45,7 +45,7 @@ Auth: `Authorization: Bearer {integration_token}`
 | POST | `/api/integrations/woocommerce/documents` | Create draft from WC order |
 | POST | `/api/integrations/woocommerce/documents/{id}/issue` | Issue document |
 | GET | `/api/integrations/woocommerce/documents/{id}` | Status, PDF URL, pay link |
-| GET | `/api/integrations/woocommerce/documents/{documentId}/pdf` | Integration-scoped PDF download |
+| GET | `/api/integrations/woocommerce/documents/{documentId}/pdf` | Auto-issued local-first inbox PDF for the authenticated integration |
 
 Rate limit: 60 requests/minute per IP.
 

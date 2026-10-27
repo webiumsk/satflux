@@ -6,6 +6,14 @@ Open **Admin -> API reference** after signing in. The catalog and every document
 also enforce authorization on the server. Existing public `/documentation` user
 manuals remain separate.
 
+The existing `RequireVerifiedEmail` policy has a service-token exception: an
+unverified admin/support account (`User::isSupport()`) authenticated with a
+Sanctum personal access token named `btcpay-config-bot` can read the backend
+catalog and specifications. Ordinary unverified staff sessions remain denied.
+The existing guest handling is unchanged; authentication and staff-role checks
+still apply. This portal does not grant access to merchant data or change that
+shared verification policy.
+
 ## Initial coverage
 
 Choose one of three documents:

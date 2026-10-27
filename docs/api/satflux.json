@@ -605,7 +605,7 @@
                                     "null"
                                 ],
                                 "minimum": 0,
-                                "description": "null means unlimited; zero means unavailable."
+                                "description": "null means unlimited; zero means the feature is blocked."
                             },
                             "unlimited": {
                                 "type": "boolean"
@@ -634,7 +634,7 @@
                                     "null"
                                 ],
                                 "minimum": 0,
-                                "description": "null means unlimited; zero means unavailable."
+                                "description": "null means unlimited; zero means the feature is blocked."
                             },
                             "unlimited": {
                                 "type": "boolean"
@@ -663,7 +663,7 @@
                                     "null"
                                 ],
                                 "minimum": 0,
-                                "description": "null means unlimited; zero means unavailable."
+                                "description": "null means unlimited; zero means the feature is blocked."
                             },
                             "unlimited": {
                                 "type": "boolean"
@@ -692,7 +692,7 @@
                                     "null"
                                 ],
                                 "minimum": 0,
-                                "description": "null means unlimited; zero means unavailable."
+                                "description": "null means unlimited; zero means the feature is blocked."
                             },
                             "unlimited": {
                                 "type": "boolean"
@@ -721,7 +721,7 @@
                                     "null"
                                 ],
                                 "minimum": 0,
-                                "description": "null means unlimited; zero means unavailable."
+                                "description": "null means unlimited; zero means the feature is blocked."
                             },
                             "unlimited": {
                                 "type": "boolean"
@@ -750,7 +750,7 @@
                                     "null"
                                 ],
                                 "minimum": 0,
-                                "description": "null means unlimited; zero means unavailable."
+                                "description": "null means unlimited; zero means the feature is blocked."
                             },
                             "unlimited": {
                                 "type": "boolean"
@@ -779,7 +779,7 @@
                                     "null"
                                 ],
                                 "minimum": 0,
-                                "description": "null means unlimited; zero means unavailable."
+                                "description": "null means unlimited; zero means the feature is blocked."
                             },
                             "unlimited": {
                                 "type": "boolean"

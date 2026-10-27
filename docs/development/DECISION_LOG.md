@@ -727,3 +727,19 @@ the CSS parser 6.1.4 -> 6.1.5 patch is the sole pre-existing package version cha
 Security and QA accept digest `88db19b2`; remaining baseline advisories, incomplete
 API coverage and offline PHP DNS failures are recorded rather than hidden by
 weakened gates. Main owns publication and the next remote-CI handoff.
+
+## 2026-10-27: repair PR #405 with reproducible npm 10 installs
+
+The owner authorizes remediation and push to the same branch/PR. Keep security
+patches and locked versions while moving the SDK utility override to project scope
+for npm 10 peer resolution; restore missing esbuild dev/optional records. Require
+normal clean-install evidence with CI's exact npm, not success over existing
+node_modules, a CI toolchain change, legacy-peer flags or an audit bypass.
+
+Correct all four reviewed reference inaccuracies. Document the existing named-PAT
+exception for both admin and support because `User::isSupport()` includes both;
+do not change authorization to fit previous prose. Add real-PAT regression coverage.
+Independent QA/security accept digest `dc86ea04`; normal npm 10/11 installs and
+fresh-dependency tests/build pass. Publication is authorized; merge/deployment is
+not. Retain the docstring advisory separately instead of adding boilerplate or
+weakening review configuration.

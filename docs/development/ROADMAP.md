@@ -416,3 +416,10 @@ Merge/deployment remain owner decisions. Later expand the 435 deferred operation
 with reviewed schemas; provider/plugin specifications retain independent versions.
 No provider upgrade, billing-policy change or public interactive API console is
 part of this milestone.
+
+PR #405 follow-up is authorized for publication: npm 10 clean-install failure
+reproduced and repaired without dependency-version churn or weaker gates; all four
+CodeRabbit documentation findings corrected. Independent QA/security accept digest
+`dc86ea04`. Normal pristine npm 10/11 installs, full 1,000-case frontend suite,
+build/style/type/locales, 11 focused PHP cases and schema/export checks pass.
+Next verify exact published-head CI and review; merge/deployment remain separate.

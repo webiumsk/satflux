@@ -91,8 +91,8 @@
   },
   "overrides": {
     "@scalar/api-reference": {
-      "@ai-sdk/provider-utils": "4.0.33",
       "postcss-selector-parser": "6.1.5"
-    }
+    },
+    "@ai-sdk/provider-utils": "4.0.33"
   }
 }

@@ -7,8 +7,14 @@ owner decisions.
 
 ## Contract and acceptance
 
-- `/admin/api-docs` is a Vue portal for verified admin/support accounts. Backend
-  catalog and specification endpoints independently enforce the same roles.
+- `/admin/api-docs` is a Vue portal for admin/support accounts. Backend catalog
+  and specification endpoints independently enforce Sanctum authentication, the
+  existing email-verification policy and staff roles. `RequireVerifiedEmail`
+  retains its existing exception for an unverified admin/support account
+  (`User::isSupport()`) authenticated with a Sanctum personal access token named
+  `btcpay-config-bot`; its existing
+  guest handling is also unchanged. This feature does not introduce a stricter
+  verification policy or grant merchant/store access.
 - `GET /api/admin/api-docs/catalog` returns `documents` and `providers` arrays.
   Document entries have `id`, `title`, `url`, `description`; document IDs are
   `satflux`, `woocommerce`, `webhooks`.
@@ -99,3 +105,42 @@ Independent QA and security accept the final 31-file functional/artifact scope a
 digest `88db19b214786e511fbb1ffbc8354036c53b0ba81b3689d158e7bb7be7f8f08a`.
 The matching build result is recorded in project state. Remote CI and production
 deployment are separate evidence.
+
+## PR #405 CI and review remediation
+
+The owner authorized fixing and pushing the CI/review findings on 2026-10-27.
+Published head `4c14d216` passes remote PHP (2,017 tests / 9,369 assertions), export,
+style/static analysis/audit and changelog. Node/E2E fail before their test stages
+because npm 10.9.9 rejects the npm 11-generated lock as incomplete. Previous local
+install/build success did not establish clean-install compatibility with CI.
+
+Acceptance for the follow-up: a normal clean `npm ci` using CI's npm 10.9.9,
+unchanged security patches, no legacy-peer or weakened audit/check configuration,
+regenerated and valid contracts, all four reviewed documentation corrections and
+independent QA/security acceptance. Preserve existing auth/billing/provider logic.
+Use existing cached npm tooling; no global configuration change is required.
+
+The frontend specialist owns only npm package/lock files, the backend specialist
+owns the PAT regression tests, and the coordinator owns documentation/schema
+wording, regenerated artifacts, shared state and integration/publication.
+Independent security/QA review is read-only. Publication updates the same PR;
+merge and deployment remain separate.
+
+The repaired lock passes normal pristine installs with npm 10.9.9 and npm 11.17.0.
+The SDK utility override is project-level so npm 10 applies it consistently across
+peer dependency contexts; the CSS override remains scoped to Scalar. No existing
+locked version changes or removals are required. Twenty-seven missing development/
+optional esbuild 0.28.2 records are restored. Patched utility 4.0.33 and CSS parser
+6.1.5 remain installed; audit results do not add advisory packages or vulnerable nodes.
+
+Independent QA and security accept the 34-file follow-up scope at digest
+`dc86ea040cfd7f3ffdb941670de9394f7d14e43ffa174ca15648bb13f9beff1c`.
+QA independently installs from an empty dependency directory and task cache.
+Fresh-install validation passes all 1,000 frontend tests / 138 files, 17 focused
+portal cases, eight validator cases, three specifications, build, locale parity,
+lint and the unchanged typecheck ratchet. Eleven PHP cases / 230 assertions and
+three additional independent PAT probes / 45 assertions pass. Export drift and
+assigned-file Pint checks pass. Local Node is 22.18.0 with exact CI npm 10.9.9;
+the remote CI Node patch 22.23.3 is a separate verification after publication.
+The prior CodeRabbit docstring advisory is not a failed GitHub check; no coverage
+threshold, review configuration or code-quality gate was weakened to suppress it.

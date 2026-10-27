@@ -31,7 +31,9 @@ and rejects any remaining Scramble diagnostic. Eloquent serialization and dynami
 service/proxy results still require explicit reviewed response overlays. Request validation inference is kept
 where useful; buyer arrays are corrected to objects and conditional raffle pricing
 is specified explicitly. Runtime generation routes from Scramble are disabled,
-including in local environments. Production needs only the reviewed JSON files.
+including in local environments. Production needs the reviewed JSON files and the
+matching built application assets. Scramble and the export tooling are not needed
+at runtime.
 
 ## Scope and provenance
 

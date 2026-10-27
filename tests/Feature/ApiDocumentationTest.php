@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Jobs\ProcessBankNotificationEmail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
@@ -51,9 +52,56 @@ class ApiDocumentationTest extends TestCase
 
     public function test_unverified_staff_cannot_read_the_reference(): void
     {
-        $user = User::factory()->unverified()->create();
-        $user->forceFill(['role' => 'admin'])->save();
-        $this->actingAs($user)->getJson('/api/admin/api-docs/catalog')->assertForbidden();
+        foreach (['admin', 'support'] as $role) {
+            Auth::forgetGuards();
+            $user = User::factory()->unverified()->create();
+            $user->forceFill(['role' => $role])->save();
+            $this->actingAs($user, 'web');
+            foreach (['catalog', 'specs/satflux', 'specs/woocommerce', 'specs/webhooks'] as $path) {
+                $this->getJson('/api/admin/api-docs/'.$path)->assertForbidden()
+                    ->assertJsonPath('code', 'email_not_verified');
+            }
+        }
+    }
+
+    public function test_unverified_staff_config_bot_pat_retains_existing_verification_exception(): void
+    {
+        foreach (['admin', 'support'] as $role) {
+            Auth::forgetGuards();
+            $user = User::factory()->unverified()->create();
+            $user->forceFill(['role' => $role])->save();
+            $token = $user->createToken('btcpay-config-bot')->plainTextToken;
+            foreach (['catalog', 'specs/satflux', 'specs/woocommerce', 'specs/webhooks'] as $path) {
+                $this->getJson('/api/admin/api-docs/'.$path, ['Authorization' => 'Bearer '.$token])
+                    ->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+            }
+        }
+        Http::assertNothingSent();
+    }
+
+    public function test_other_pat_name_does_not_bypass_staff_verification(): void
+    {
+        foreach (['admin', 'support'] as $role) {
+            Auth::forgetGuards();
+            $user = User::factory()->unverified()->create();
+            $user->forceFill(['role' => $role])->save();
+            $token = $user->createToken('synthetic-other-service')->plainTextToken;
+            foreach (['catalog', 'specs/satflux', 'specs/woocommerce', 'specs/webhooks'] as $path) {
+                $this->getJson('/api/admin/api-docs/'.$path, ['Authorization' => 'Bearer '.$token])
+                    ->assertForbidden()->assertJsonPath('code', 'email_not_verified');
+            }
+        }
+    }
+
+    public function test_config_bot_pat_name_does_not_grant_a_nonstaff_role(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $user->forceFill(['role' => 'free'])->save();
+        $token = $user->createToken('btcpay-config-bot')->plainTextToken;
+        foreach (['catalog', 'specs/satflux', 'specs/woocommerce', 'specs/webhooks'] as $path) {
+            $this->getJson('/api/admin/api-docs/'.$path, ['Authorization' => 'Bearer '.$token])
+                ->assertForbidden();
+        }
     }
 
     public function test_scramble_does_not_register_public_runtime_documentation(): void
