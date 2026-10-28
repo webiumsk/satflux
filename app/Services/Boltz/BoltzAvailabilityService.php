@@ -54,7 +54,7 @@ class BoltzAvailabilityService
     /** Cover direct Lightning configuration calls as well as descriptor forms. */
     public function assertConnectionStringAvailable(string $connectionString): void
     {
-        if (str_starts_with(strtolower(ltrim($connectionString)), 'ct(')
+        if (preg_match('/^ct\s*\(/i', ltrim($connectionString))
             || preg_match('/(?:^|;)\s*type\s*=\s*boltz\s*(?:;|$)/i', $connectionString)) {
             $this->assertNewConnectionsAvailable();
         }

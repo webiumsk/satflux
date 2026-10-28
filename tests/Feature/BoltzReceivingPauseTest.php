@@ -11,12 +11,14 @@ use App\Services\BtcPay\LightningService;
 use App\Services\StoreProvisioningService;
 use App\Services\StoreResponseFormatter;
 use App\Services\WalletConnectionService;
+use App\Services\WalletConnectionValidator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class BoltzReceivingPauseTest extends TestCase
@@ -216,6 +218,95 @@ class BoltzReceivingPauseTest extends TestCase
         $this->assertDatabaseCount('stores', 1);
         $this->assertDatabaseCount('wallet_connections', 0);
         Http::assertNothingSent();
+    }
+
+    #[DataProvider('formattedDescriptorProvider')]
+    public function test_formatted_descriptors_are_blocked_before_native_configuration_or_provisioning(string $descriptor): void
+    {
+        $this->assertTrue(app(WalletConnectionValidator::class)->validateAquaDescriptor($descriptor));
+        Http::fake(fn () => Http::response(['implementation' => 'synthetic'], 200));
+        [$user, $store] = $this->ownedStore();
+        $before = $this->fingerprint($store->fresh());
+
+        $attempts = [
+            'native connection' => fn () => app(LightningService::class)->connectLightningNode('synthetic-store', 'BTC', $descriptor),
+            'native connection test' => fn () => app(LightningService::class)->testConnection('synthetic-store', 'BTC', $descriptor),
+            'store provisioning' => fn () => app(StoreProvisioningService::class)->create($user, [
+                'wallet_type' => 'nwc', 'connection_string' => $descriptor,
+            ]),
+        ];
+        foreach ($attempts as $entryPoint => $attempt) {
+            $refusal = null;
+            try {
+                $attempt();
+            } catch (HttpResponseException $exception) {
+                $refusal = $exception->getResponse();
+            }
+
+            $this->assertNotNull($refusal, "The {$entryPoint} pause guard was bypassed; fake transport recorded ".Http::recorded()->count().' requests.');
+            $this->assertSame(503, $refusal->getStatusCode());
+            $this->assertSame(BoltzAvailabilityService::CODE, $refusal->getData()->code);
+        }
+
+        $this->actingAs($user)->postJson("/api/stores/{$store->id}/wallet-connection/configure", [
+            'connection_string' => $descriptor,
+        ])->assertStatus(503)->assertJsonPath('code', BoltzAvailabilityService::CODE);
+
+        $this->assertSame($before, $this->fingerprint($store->fresh()));
+        $this->assertDatabaseCount('stores', 1);
+        $this->assertDatabaseCount('wallet_connections', 0);
+        $this->assertDatabaseCount('wallet_configuration_attempts', 0);
+        Http::assertNothingSent();
+    }
+
+    /** @return array<string, array{string}> */
+    public static function formattedDescriptorProvider(): array
+    {
+        $variants = [];
+        foreach ([
+            'aqua' => 'slip77(synthetic-test-blinding-key),elsh(wpkh(xpubSYNTHETIC/0/*)))',
+            'bull' => 'slip77(synthetic-test-blinding-key),elwpkh(xpubSYNTHETIC/0/*))',
+        ] as $brand => $suffix) {
+            foreach ([
+                'space' => 'ct (',
+                'tab' => "ct\t(",
+                'newline' => "CT\n(",
+                'leading whitespace and mixed case' => " \t cT \r\n\t(",
+            ] as $format => $prefix) {
+                $variants["{$brand}: {$format}"] = [$prefix.$suffix];
+            }
+        }
+
+        return $variants;
+    }
+
+    public function test_supported_native_wallet_connections_remain_available_during_the_pause(): void
+    {
+        Http::fake(fn () => Http::response(['implementation' => 'synthetic'], 200));
+
+        foreach ([
+            'type=blink;ln-address=merchant@example.test;',
+            'type=nwc;key=nostr+walletconnect://synthetic?relay=wss://relay.test&secret=synthetic',
+        ] as $connectionString) {
+            $result = app(LightningService::class)->connectLightningNode('synthetic-store', 'BTC', $connectionString);
+            $this->assertTrue($result['success']);
+        }
+
+        Http::assertSentCount(3);
+        $this->assertDatabaseCount('wallet_connections', 0);
+    }
+
+    public function test_internal_receiving_compatibility_mode_still_allows_formatted_descriptors(): void
+    {
+        config(['services.boltz.receiving_enabled' => true]);
+        Http::fake(fn () => Http::response(['implementation' => 'synthetic'], 200));
+        $descriptor = self::formattedDescriptorProvider()['bull: leading whitespace and mixed case'][0];
+
+        $result = app(LightningService::class)->connectLightningNode('synthetic-store', 'BTC', $descriptor);
+
+        $this->assertTrue($result['success']);
+        Http::assertSentCount(2);
+        $this->assertDatabaseCount('wallet_connections', 0);
     }
 
     private function fingerprint(Model $model): string
