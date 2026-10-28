@@ -1211,3 +1211,91 @@ Local Node 22.18 differs from CI's 22.23.3 patch; npm is the exact 10.9.9 versio
 Next publish the accepted follow-up and verify fresh-head CI/review. No merge or
 deployment approval is inferred. CodeRabbit's prior docstring advisory remains
 separate from its successful GitHub check; no boilerplate or gate weakening is used.
+
+
+## 2026-10-28 - Support tables and chronological messages
+
+Owner confirms PR406 merged; verified latest master d3cb91ba is the base of
+`fix/support-admin-message-usability`. Support connections now have confined,
+keyboard-accessible horizontal scrolling, compact pills and mobile text wrapping.
+Admin creation/login and message timestamps share DD.MM.YYYY HH:mm browser-local
+time. The mixed message feed is chronological, with category/unread filters,
+visible read labels, accessible actions and owned local-UUID invoice destinations
+that recognize actual BTCPay invoicestate paths. Encrypted cursor continuation
+bounds upstream scans without cutting off older matches; cursor expiry refreshes
+the first page. The security banner and red alert labels remain.
+
+Independent QA and security accept the 18-file source digest `5c2bd32c`. QA found and
+reverified three fixes: mobile support overflow, long critical-message overflow
+and expired-cursor retry. Targeted backend 26 tests/191 assertions; final component 22;
+independent traversal 1/1242 and security 3/43 pass. Full frontend suite 1024/140 files
+passed before the final recovery followup; final targeted 22 and independent
+recovery browser checks cover that followup. Final build, typecheck (120 inherited
+baseline errors, none new), lint (48 inherited warnings), locale parity, API export,
+Pint 1076 and PHPStan pass. Three obsolete PHPStan baseline entries (five occurrences)
+were removed; no ratchet was increased. Existing EN/SK security docs and five UI
+locales updated, with inherited per-article fallback retained.
+
+Local port 8080 still mounts the preserved dirty bootstrap checkout, not this feature
+worktree. Its configured external provider and existing database/auth were not used
+for QA. Browser checks use synthetic components; PHP uses disposable SQLite and
+fake HTTP. No full-stack auth E2E, production access, push, merge or deployment.
+Upstream offset pagination can shift if notifications arrive during traversal;
+refresh starts anew. Local code is ready for publication on owner request; add its
+canonical PR-linked changelog fragment when the PR number is known.
+
+
+## 2026-10-28 - Usability publication
+
+Owner authorizes publication. Reviewed implementation `51a929de` is pushed to
+`fix/support-admin-message-usability` and PR407 is open against master. The
+publication followup adds the canonical PR407 changelog fragment for Chorala;
+no runtime implementation hashes change. Verify fresh CI and CodeRabbit against
+the final followup head separately from local checks. No merge, deployment or
+production publication is performed. The original dirty checkout remains preserved.
+
+
+## 2026-10-28 - PR407 filtered-message pagination review fix
+
+Exact-head CI 40745248257 at `33242fd8` passed PHP 2070/9831 assertions, frontend 1027,
+Playwright 20, static checks and Composer audit. CodeRabbit's successful check also
+posted one valid minor finding 4404620462: trailing excluded notifications caused
+has_more=true, then a terminal empty page hid Previous. Its 63.16% docstring advisory
+is separate from that functional finding and the successful check.
+
+Consume trailing nonmatches through the existing bounded peek before calculating
+has_more. Keep Previous outside the list-only branch so legitimate terminal empty
+scan pages remain navigable. Two PHP and two component regressions fail on the
+previous head and pass with the fix. Independent QA/security accept four-file
+digest `949cf289`: PHP 28/218, component 24, QA traversal/boundaries 2/1463 and three
+browser scenarios pass. Security probes 4/52, concrete regressions 2/27 and focused
+component 13 pass. Final build, PHPStan, unchanged typecheck ratchet 120, scoped Pint
+and focused ESLint pass. No locale/dependency/auth changes or gate relaxation.
+
+Publish the reviewed followup to PR407 and verify its new CI/review independently.
+The canonical PR407 changelog fragment remains unchanged. No merge, deployment,
+production access or local port 8080 runtime switch is performed.
+
+
+## 2026-10-28 - PR407 MIME security-audit remediation
+
+Failed PHP job 123046518471 at `bbae0712`/run 40753609416 passed all 2072 tests/9858
+assertions, Pint 1076, PHPStan and API export. Only composer audit failed on medium
+PKSA-wtxr-p26d-nn42/CVE-2026-45070 in symfony/mime 7.4.13. Node 1029 and E2E 20
+passed separately. Fresh October 28 advisory-range metadata and official security
+release v7.4.22 supersede stale indexed descriptions naming 7.4.12 as patched.
+
+Use native Composer to update only symfony/mime 7.4.13 to 7.4.22. No composer.json,
+other package, runtime requirement, audit ignore, CI or quality-gate change. Lock
+SHA `8f3133e4` matches independently accepted QA/security scope. Fresh normal 168-package
+install, strict validation, platform checks and full unfiltered audit pass with
+zero advisories. Actual installed MIME version/reference matches lock. Author mail
+regressions 53/343 and independentQA 38/254 pass, including actual array-mail MIME
+serialization of verification codes, PDF attachments and CSV exports. Security
+reproduces 33 malformed parameter names accepted by old 7.4.13, rejects all 33 with new
+7.4.22 and passes 8 normal MIME scenarios. Fresh-vendor PHPStan and API export pass.
+
+Publish the accepted lock-only update to PR407 and verify its fresh full PHP job
+through the Composer audit step. The earlier tests passing do not establish that
+this final job is green. Preserve original local checkout/runtime and canonical
+Chorala fragment; no production mail/data access, merge or deployment.

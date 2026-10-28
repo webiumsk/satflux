@@ -743,3 +743,52 @@ Independent QA/security accept digest `dc86ea04`; normal npm 10/11 installs and
 fresh-dependency tests/build pass. Publication is authorized; merge/deployment is
 not. Retain the docstring advisory separately instead of adding boilerplate or
 weakening review configuration.
+
+
+## 2026-10-28 - Chronological messages with separate critical visibility
+
+The owner requests date-based message ordering, including security alerts. Replace
+security pinning with one chronological feed while retaining critical labels, the
+global unread-security banner and a dedicated critical filter. Apply category and
+unread filtering before continuation, with user-scoped local keysets and encrypted
+user/filter/page-size-bound cursors. Bounded upstream scans may return empty
+continuation pages; they must not make older matches permanently unreachable.
+Recognize actual BTCPay invoicestate invoice paths and resolve only owned stores to
+local UUIDs. Preserve the existing 30-day read-local-message window and every unread
+local alert. Document upstream offset insertion limits instead of claiming snapshot
+stability. Automatically refresh expired cursors once, isolating stale responses.
+
+Use the current merged master in an isolated feature worktree and preserve the
+dirty bootstrap checkout served at local port 8080. Verification uses synthetic browser
+data and disposable PHP targets. QA/security accept source digest `5c2bd32c`; obsolete
+PHPStan exceptions are removed, with no baseline or auth/security gate relaxation.
+Publication, PR-linked changelog synchronization and actual runtime deployment are
+separate from this local implementation milestone.
+
+
+The owner authorizes pushing the usability branch. PR407 is the canonical source
+for one combined reviewed changelog fragment; keep the previously accepted runtime
+implementation unchanged. CI/check initiation is evidence of publication, not
+evidence of approval, merge or deployment.
+
+
+## 2026-10-28 - Empty filtered-feed continuation remains navigable
+
+Do not infer another filtered page from uninspected raw rows. Reuse the bounded
+peek to consume excluded trailing rows, retaining a continuation if the scan budget
+prevents proving exhaustion. A later scan can legitimately end empty, so Previous
+must remain available outside the message-list branch. Regression tests reproduce
+both failures before the fix; independent QA/security accept four-file `949cf289`.
+Preserve the 500-row budget, cursor/ownership checks, canonical changelog and all
+quality ratchets. Record old green CI separately from fresh followup verification.
+
+
+## 2026-10-28 - Distinguish passing PHP tests from a failed security audit
+
+Treat run 40753609416's passing 2072 PHP tests separately from its failed Composer
+audit. Follow the live October 28 advisory range and official MIME 7.4.22 security
+release, not stale indexed patch-version descriptions. Target only symfony/mime
+with native Composer and verify actual freshly installed version/reference, normal
+mail behavior and malformed MIME-parameter rejection. Preserve audit enforcement,
+all other packages and runtime constraints. Independent QA/security accept lock
+SHA `8f3133e4`; require fresh exact-head PHP-job completion through audit after push.

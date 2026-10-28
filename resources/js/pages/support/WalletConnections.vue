@@ -1,10 +1,10 @@
 <template>
   <div
-    class="min-h-0 flex-1 max-md:flex-none max-md:overflow-visible md:overflow-y-auto overscroll-y-contain custom-scrollbar"
+    class="min-h-0 min-w-0 flex-1 max-md:flex-none max-md:overflow-visible md:overflow-y-auto overscroll-y-contain custom-scrollbar"
   >
     <div class="max-w-7xl mx-auto py-8 px-4">
       <div class="mb-6">
-        <h1 class="text-3xl font-bold text-white">
+        <h1 id="wallet-connections-heading" class="text-3xl font-bold text-white">
           Wallet Connections Needing Support
         </h1>
         <p class="mt-2 text-sm text-gray-400">
@@ -77,9 +77,21 @@
 
         <!-- Desktop Table View -->
         <div
-          class="hidden md:block bg-gray-800 border border-gray-700 shadow-lg rounded-b-lg overflow-hidden"
+          class="hidden md:block max-w-full overflow-x-auto bg-gray-800 border border-gray-700 shadow-lg rounded-b-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500"
+          role="region"
+          aria-labelledby="wallet-connections-heading"
+          tabindex="0"
         >
-          <table class="min-w-full divide-y divide-gray-700">
+          <table class="w-full min-w-[80rem] table-fixed divide-y divide-gray-700">
+            <colgroup>
+              <col class="w-[17%]" />
+              <col class="w-[12%]" />
+              <col class="w-[11%]" />
+              <col class="w-[16%]" />
+              <col class="w-[13%]" />
+              <col class="w-[15%]" />
+              <col class="w-[16%]" />
+            </colgroup>
             <thead class="bg-gray-700/50">
               <tr>
                 <th
@@ -124,7 +136,7 @@
                 v-for="connection in filteredConnections"
                 :key="connection.id"
               >
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-4 py-4 break-words [overflow-wrap:anywhere]">
                   <div class="text-sm font-medium text-white">
                     {{ connection.store_name }}
                   </div>
@@ -132,9 +144,9 @@
                     {{ connection.submitted_by }}
                   </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-4 py-4 whitespace-nowrap">
                   <span
-                    class="px-2 py-1 inline-flex items-center gap-1.5 text-xs leading-5 font-semibold rounded-full"
+                    class="px-2 py-0.5 inline-flex items-center text-xs leading-5 font-semibold rounded-full [&>span]:text-xs [&>span]:leading-5 [&_img]:w-8"
                     :class="
                       connection.type === 'blink'
                         ? 'bg-blue-500/20 text-blue-400'
@@ -144,28 +156,28 @@
                     <WalletTypeIcon
                       :type="connection.type"
                       :brand="connection.type === 'aqua_descriptor' || connection.type === 'lnaddress' ? (connection.brand ?? undefined) : undefined"
-                      size="lg"
+                      size="sm"
                     />
                   </span>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-4 py-4 whitespace-nowrap">
                   <span
-                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                    class="px-2 py-0.5 inline-flex items-center text-xs leading-5 font-semibold rounded-full"
                     :class="getStatusBadgeClass(connection.status)"
                   >
                     {{ formatStatus(connection.status) }}
                   </span>
                 </td>
-                <td class="px-6 py-4">
+                <td class="px-4 py-4">
                   <code
-                    class="text-sm text-gray-300 font-mono bg-gray-700/50 px-2 py-1 rounded"
+                    class="block break-all text-xs text-gray-300 font-mono bg-gray-700/50 px-2 py-1 rounded"
                     >{{ connection.masked_secret }}</code
                   >
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                  {{ connection.submitted_at ? formatDate(connection.submitted_at) : '-' }}
+                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-400">
+                  {{ formatDateTime(connection.submitted_at) }}
                 </td>
-                <td class="px-6 py-4 max-w-xs">
+                <td class="px-4 py-4 break-words [overflow-wrap:anywhere]">
                   <span
                     v-if="
                       connection.status === 'needs_support' &&
@@ -176,7 +188,7 @@
                   >
                     {{
                       connection.bot_failed_at
-                        ? formatDate(connection.bot_failed_at) + ": "
+                        ? formatDateTime(connection.bot_failed_at) + ": "
                         : ""
                     }}{{ connection.bot_failure_message.slice(0, 80)
                     }}{{
@@ -185,8 +197,8 @@
                   </span>
                   <span v-else class="text-gray-500 text-xs">-</span>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div class="flex items-center space-x-3">
+                <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                  <div class="flex flex-col items-start gap-2">
                     <button
                       @click="revealSecret(connection)"
                       class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-800"
@@ -246,8 +258,8 @@
             :key="connection.id"
             class="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg"
           >
-            <div class="flex justify-between items-start mb-4">
-              <div>
+            <div class="flex flex-col gap-3 mb-4">
+              <div class="min-w-0 break-words [overflow-wrap:anywhere]">
                 <div class="text-lg font-bold text-white">
                   {{ connection.store_name }}
                 </div>
@@ -255,9 +267,9 @@
                   {{ connection.submitted_by }}
                 </div>
               </div>
-              <div class="flex flex-col items-end space-y-2">
+              <div class="flex flex-wrap items-center gap-2">
                 <span
-                  class="px-2 py-1 inline-flex items-center gap-1.5 text-xs leading-5 font-semibold rounded-full"
+                  class="px-2 py-0.5 inline-flex items-center text-xs leading-5 font-semibold rounded-full [&>span]:text-xs [&>span]:leading-5 [&_img]:w-8"
                   :class="
                     connection.type === 'blink'
                       ? 'bg-blue-500/20 text-blue-400'
@@ -267,11 +279,11 @@
                   <WalletTypeIcon
                     :type="connection.type"
                     :brand="connection.type === 'aqua_descriptor' || connection.type === 'lnaddress' ? (connection.brand ?? undefined) : undefined"
-                    size="lg"
+                    size="sm"
                   />
                 </span>
                 <span
-                  class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                  class="px-2 py-0.5 inline-flex items-center text-xs leading-5 font-semibold rounded-full"
                   :class="getStatusBadgeClass(connection.status)"
                 >
                   {{ formatStatus(connection.status) }}
@@ -284,7 +296,7 @@
                 connection.status === 'needs_support' &&
                 connection.bot_failure_message
               "
-              class="mb-3 p-2 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-400"
+              class="mb-3 p-2 break-words [overflow-wrap:anywhere] bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-400"
             >
               <span class="font-medium">Bot failure:</span>
               {{ connection.bot_failure_message }}
@@ -304,7 +316,7 @@
               <div class="flex justify-between items-center text-sm">
                 <span class="text-gray-500">Submitted:</span>
                 <span class="text-gray-400">{{
-                  connection.submitted_at ? formatDate(connection.submitted_at) : '-'
+                  formatDateTime(connection.submitted_at)
                 }}</span>
               </div>
 
@@ -380,6 +392,7 @@ import RevealSecretModal from "../../components/support/RevealSecretModal.vue";
 import WalletTypeIcon from "../../components/WalletTypeIcon.vue";
 import Select from "../../components/ui/Select.vue";
 import { getApiErrorMessage } from "../../composables/useApiError";
+import { formatDateTime } from "../../utils/formatDateTime";
 
 const loading = ref(true);
 const error = ref<string | null>(null);
@@ -410,20 +423,6 @@ async function loadConnections() {
   } finally {
     loading.value = false;
   }
-}
-
-function formatDate(dateString: string): string {
-  if (!dateString) return "N/A";
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "N/A";
-
-  // European format: DD.MM.YYYY HH:mm
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${day}.${month}.${year} ${hours}:${minutes}`;
 }
 
 function formatStatus(status: string): string {

@@ -2,90 +2,42 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Store;
-use App\Models\User;
 use App\Models\UserMessage;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\NotificationService;
+use App\Services\Messages\MessageFeedService;
 use App\Services\WalletSecurity\WalletSecurityNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class MessageController extends Controller
 {
     public function __construct(
-        protected NotificationService $notificationService
+        protected NotificationService $notificationService,
+        protected MessageFeedService $feed
     ) {}
 
-    /**
-     * List notifications from BTCPay for the authenticated user.
-     */
     /** Prefix that tells a Satflux-local message id apart from a BTCPay notification id. */
     public const LOCAL_ID_PREFIX = 'sf_';
 
+    /** List the merged, filtered chronological notification feed. */
     public function index(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $apiKey = $user->btcpay_api_key;
-        $page = max((int) $request->get('page', 1), 1);
-        // Satflux-local security messages ride on top of page 1 of the BTCPay feed.
-        $local = $page === 1 ? $this->localMessages($user) : [];
-
-        if (! $apiKey) {
-            return response()->json([
-                'data' => $local,
-                'meta' => [
-                    'current_page' => 1,
-                    'last_page' => 1,
-                    'per_page' => 20,
-                    'total' => count($local),
-                ],
-                'available' => $local !== [],
-            ]);
+        $options = $request->validate([
+            'category' => ['sometimes', 'string', 'in:all,critical,invoices,other'],
+            'unread' => ['sometimes', 'in:0,1,true,false'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'cursor' => ['sometimes', 'string', 'max:4096'],
+        ]);
+        if (($options['page'] ?? 1) > 1 && ! isset($options['cursor'])) {
+            throw ValidationException::withMessages(['cursor' => ['Use the next message cursor to continue.']]);
         }
+        $options['unread'] = $request->boolean('unread');
+        $options['per_page'] = (int) ($options['per_page'] ?? 20);
 
-        try {
-            $perPage = min(max((int) $request->get('per_page', 20), 1), 100);
-            $skip = ($page - 1) * $perPage;
-
-            $result = $this->notificationService->listNotifications($apiKey, [
-                'skip' => $skip,
-                'take' => $perPage,
-            ]);
-
-            $raw = $result['data'] ?? [];
-            $items = array_map([$this, 'mapBtcPayNotification'], is_array($raw) ? $raw : []);
-            $items = array_merge($local, $items);
-
-            // BTCPay doesn't return total; we use a heuristic for pagination
-            $hasMore = count($raw) >= $perPage;
-            $total = $hasMore ? $skip + count($raw) + 1 : $skip + count($raw);
-
-            return response()->json([
-                'data' => $items,
-                'meta' => [
-                    'current_page' => $page,
-                    'last_page' => $hasMore ? $page + 1 : $page,
-                    'per_page' => $perPage,
-                    'total' => $total,
-                ],
-                'available' => true,
-            ]);
-        } catch (BtcPayException $e) {
-            if ($e->getStatusCode() === 403) {
-                return response()->json([
-                    'data' => $local,
-                    'meta' => [
-                        'current_page' => 1,
-                        'last_page' => 1,
-                        'per_page' => 20,
-                        'total' => count($local),
-                    ],
-                    'available' => $local !== [],
-                ]);
-            }
-            throw $e;
-        }
+        return response()->json($this->feed->list($request->user(), $options));
     }
 
     /**
@@ -97,14 +49,18 @@ class MessageController extends Controller
         $apiKey = $user->btcpay_api_key;
         $securityUnread = UserMessage::query()
             ->where('user_id', $user->id)
-            ->where('type', WalletSecurityNotifier::TYPE)
+            ->whereIn('type', [WalletSecurityNotifier::TYPE, 'critical'])
             ->whereNull('read_at')
             ->count();
 
+        $localUnread = UserMessage::query()->where('user_id', $user->id)->whereNull('read_at')->count();
+        $localAvailable = UserMessage::query()->where('user_id', $user->id)
+            ->where(fn ($query) => $query->whereNull('read_at')->orWhere('created_at', '>=', now()->subDays(30)))->exists();
+
         if (! $apiKey) {
             return response()->json([
-                'data' => ['unread' => $securityUnread, 'security_unread' => $securityUnread],
-                'available' => $securityUnread > 0,
+                'data' => ['unread' => $localUnread, 'security_unread' => $securityUnread],
+                'available' => $localAvailable,
             ]);
         }
 
@@ -112,14 +68,14 @@ class MessageController extends Controller
             $unread = $this->notificationService->getUnreadCount($apiKey);
 
             return response()->json([
-                'data' => ['unread' => $unread + $securityUnread, 'security_unread' => $securityUnread],
+                'data' => ['unread' => $unread + $localUnread, 'security_unread' => $securityUnread],
                 'available' => true,
             ]);
         } catch (BtcPayException $e) {
             if ($e->getStatusCode() === 403) {
                 return response()->json([
-                    'data' => ['unread' => $securityUnread, 'security_unread' => $securityUnread],
-                    'available' => $securityUnread > 0,
+                    'data' => ['unread' => $localUnread, 'security_unread' => $securityUnread],
+                    'available' => $localAvailable,
                 ]);
             }
             throw $e;
@@ -139,7 +95,7 @@ class MessageController extends Controller
                 ->firstOrFail();
             $message->markAsRead();
 
-            return response()->json(['data' => $this->mapLocalMessage($message)]);
+            return response()->json(['data' => $this->feed->mapLocal($message)]);
         }
         $apiKey = $user->btcpay_api_key;
 
@@ -151,7 +107,7 @@ class MessageController extends Controller
             $updated = $this->notificationService->markAsSeen($apiKey, $id, true);
 
             return response()->json([
-                'data' => $this->mapBtcPayNotification($updated),
+                'data' => $this->feed->mapRemote($updated, $user),
             ]);
         } catch (BtcPayException $e) {
             if ($e->getStatusCode() === 404) {
@@ -181,8 +137,8 @@ class MessageController extends Controller
                 'seen' => false,
             ]);
 
-            $unread = $result['data'] ?? [];
-            foreach (is_array($unread) ? $unread : [] as $n) {
+            $unread = $result['data'];
+            foreach ($unread as $n) {
                 $nid = $n['id'] ?? null;
                 if ($nid) {
                     try {
@@ -200,158 +156,5 @@ class MessageController extends Controller
             }
             throw $e;
         }
-    }
-
-    /**
-     * Satflux-local messages (security alerts): all unread ones, then read
-     * ones from the last 30 days (capped), newest first.
-     *
-     * @return list<array<string, mixed>>
-     */
-    protected function localMessages(User $user): array
-    {
-        // Every unread one (an unread security alert must never be unreachable),
-        // then the recently read ones, capped.
-        $unread = UserMessage::query()
-            ->where('user_id', $user->id)
-            ->whereNull('read_at')
-            ->latest('created_at')
-            ->get();
-        $read = UserMessage::query()
-            ->where('user_id', $user->id)
-            ->whereNotNull('read_at')
-            ->where('created_at', '>=', now()->subDays(30))
-            ->latest('created_at')
-            ->limit(20)
-            ->get();
-        $rows = $unread->concat($read);
-
-        $out = [];
-        foreach ($rows as $row) {
-            $out[] = $this->mapLocalMessage($row);
-        }
-
-        return $out;
-    }
-
-    /** @return array<string, mixed> */
-    protected function mapLocalMessage(UserMessage $message): array
-    {
-        return [
-            'id' => self::LOCAL_ID_PREFIX.$message->id,
-            'type' => $message->type,
-            'title' => $message->title,
-            'body' => $message->body,
-            'link' => $message->link,
-            'link_text' => $message->link_text,
-            'read_at' => $message->read_at?->toIso8601String(),
-            'created_at' => $message->created_at?->toIso8601String(),
-        ];
-    }
-
-    /**
-     * Map BTCPay notification to frontend format.
-     *
-     * @param  array{id?: string, identifier?: string, type?: string, body?: string, storeId?: string, link?: string, createdTime?: int, seen?: bool}  $n
-     */
-    protected function mapBtcPayNotification(array $n): array
-    {
-        $id = $n['id'] ?? '';
-        $body = $n['body'] ?? '';
-        $type = $n['type'] ?? 'info';
-        $createdTime = $n['createdTime'] ?? 0;
-        $seen = $n['seen'] ?? false;
-
-        $title = $this->deriveTitle($type, $body);
-
-        $link = $this->rewriteNotificationLinkToSatflux($n['link'] ?? null, $n['storeId'] ?? null);
-
-        return [
-            'id' => $id,
-            'type' => $type,
-            'title' => $title,
-            'body' => $body,
-            'link' => $link,
-            'link_text' => null,
-            'read_at' => $seen ? gmdate('Y-m-d\TH:i:s\Z', $createdTime) : null,
-            'created_at' => gmdate('Y-m-d\TH:i:s\Z', $createdTime),
-        ];
-    }
-
-    /**
-     * Rewrite BTCPay notification links to Satflux URLs.
-     * Users never log in to BTCPay - links must stay within the panel.
-     *
-     * @param  string|null  $link  Original link from BTCPay (e.g. /stores/xxx/invoices/yyy or relative path)
-     * @param  string|null  $storeId  BTCPay store ID from notification
-     */
-    protected function rewriteNotificationLinkToSatflux(?string $link, ?string $storeId): ?string
-    {
-        if (! $link) {
-            return null;
-        }
-        $link = trim($link);
-        if ($link === '') {
-            return null;
-        }
-        // Already absolute - if it points to BTCPay, we drop it; if external, leave as-is would be rare
-        if (str_starts_with($link, 'http')) {
-            $btcpayBase = rtrim(config('services.btcpay.base_url', ''), '/');
-            if ($btcpayBase !== '' && str_starts_with($link, $btcpayBase)) {
-                return null; // BTCPay URL - do not expose
-            }
-
-            return $link; // External URL (e.g. payout explorer) - keep
-        }
-        $path = str_starts_with($link, '/') ? $link : '/'.$link;
-        $panelUrl = rtrim(config('app.url', ''), '/');
-        if ($panelUrl === '') {
-            return null;
-        }
-        // /stores/{btcpay_store_id}/invoices/{invoice_id}
-        if (preg_match('#^/stores/([^/]+)/invoices/([^/]+)(?:/.*)?$#', $path, $m)) {
-            $btcpayStoreId = $m[1];
-            $invoiceId = $m[2];
-            $store = Store::where('btcpay_store_id', $btcpayStoreId)->first();
-            if ($store) {
-                return "{$panelUrl}/stores/{$store->id}/invoices/{$invoiceId}";
-            }
-        }
-        // /i/{invoice_id} - short invoice link; we'd need storeId from notification
-        if (preg_match('#^/i/([^/]+)$#', $path, $m) && $storeId) {
-            $invoiceId = $m[1];
-            $store = Store::where('btcpay_store_id', $storeId)->first();
-            if ($store) {
-                return "{$panelUrl}/stores/{$store->id}/invoices/{$invoiceId}";
-            }
-        }
-
-        return null; // Unmapped BTCPay path - no link
-    }
-
-    protected function deriveTitle(string $type, string $body): string
-    {
-        $typeLabels = [
-            'InvoiceCreated' => 'Invoice created',
-            'InvoiceReceivedPayment' => 'Payment received',
-            'InvoiceProcessing' => 'Invoice processing',
-            'InvoiceExpired' => 'Invoice expired',
-            'InvoiceSettled' => 'Invoice settled',
-            'InvoiceInvalid' => 'Invoice invalid',
-            'PayoutComplete' => 'Payout complete',
-            'PayoutFailed' => 'Payout failed',
-            'NewVersion' => 'New version available',
-        ];
-
-        if (isset($typeLabels[$type])) {
-            return $typeLabels[$type];
-        }
-
-        $firstLine = trim(explode("\n", $body)[0] ?? '');
-        if (strlen($firstLine) > 80) {
-            return substr($firstLine, 0, 77).'...';
-        }
-
-        return $firstLine ?: 'Notification';
     }
 }
