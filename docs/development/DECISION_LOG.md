@@ -764,3 +764,9 @@ data and disposable PHP targets. QA/security accept source digest `5c2bd32c`; ob
 PHPStan exceptions are removed, with no baseline or auth/security gate relaxation.
 Publication, PR-linked changelog synchronization and actual runtime deployment are
 separate from this local implementation milestone.
+
+
+The owner authorizes pushing the usability branch. PR407 is the canonical source
+for one combined reviewed changelog fragment; keep the previously accepted runtime
+implementation unchanged. CI/check initiation is evidence of publication, not
+evidence of approval, merge or deployment.

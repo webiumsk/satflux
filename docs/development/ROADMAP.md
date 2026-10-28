@@ -440,3 +440,9 @@ Next verify exact published-head CI and review; merge/deployment remain separate
 
 Local port 8080 remains a separate stale bootstrap preview; synthetic QA does not
 certify that runtime or its existing database/provider configuration.
+
+
+PR407 now contains the reviewed support/admin/messages change on the owned
+feature branch. Its canonical Chorala fragment passes schema validation, and all
+53 offline changelog tests pass. Verify exact-head CI/CodeRabbit before owner
+merge/deployment.

@@ -1243,3 +1243,13 @@ fake HTTP. No full-stack auth E2E, production access, push, merge or deployment.
 Upstream offset pagination can shift if notifications arrive during traversal;
 refresh starts anew. Local code is ready for publication on owner request; add its
 canonical PR-linked changelog fragment when the PR number is known.
+
+
+## 2026-10-28 - Usability publication
+
+Owner authorizes publication. Reviewed implementation `51a929de` is pushed to
+`fix/support-admin-message-usability` and PR407 is open against master. The
+publication followup adds the canonical PR407 changelog fragment for Chorala;
+no runtime implementation hashes change. Verify fresh CI and CodeRabbit against
+the final followup head separately from local checks. No merge, deployment or
+production publication is performed. The original dirty checkout remains preserved.

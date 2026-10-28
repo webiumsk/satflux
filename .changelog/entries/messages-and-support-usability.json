@@ -1,0 +1,9 @@
+{
+  "id": "messages-and-support-usability",
+  "source": "https://github.com/webiumsk/satflux/pull/407",
+  "title": "Clearer messages and support tables",
+  "body": "Messages now show exact dates and times and appear newest first. Filter by critical alerts, invoices or other messages, combine this with unread-only filtering, and distinguish read messages more clearly. Invoice notifications open the relevant store's invoice. Older filtered messages remain accessible, and expired pagination automatically refreshes.\n\nWallet connections in support now scroll horizontally, use compact badges and wrap long text on mobile. Admin user creation and last-login timestamps include the time.",
+  "labels": [
+    "fix"
+  ]
+}
