@@ -2,8 +2,8 @@
 title: "Wallet security alerts and change monitoring"
 category: wallet-connection
 order: 8
-meta_description: "How Satflux protects your receiving wallet: email-code confirmation for changes, pinned security messages, and automatic detection of configuration changes made outside Satflux."
-updated: 2026-09-06
+meta_description: "How Satflux protects your receiving wallet: email-code confirmation for changes, clearly marked security messages, and automatic detection of configuration changes made outside Satflux."
+updated: 2026-10-28
 ---
 
 Your receiving wallet decides where every payment ends up. Satflux therefore treats every change to it as a security event.
@@ -14,7 +14,7 @@ Replacing a **connected** wallet (a new connection string, a new Lightning addre
 
 ## Security messages
 
-Some events create a **security message** in Messages, pinned above the regular payment notifications with a red "Security" label. While you have unread security messages, a red bar is shown under the page header on every page. These events are:
+Some events create a **security message** in Messages with a red "Security" label. All messages appear newest first and show their date and time. Use the **Critical** filter to find security messages, **Invoices** for invoice notifications, or **Unread only** together with either filter. Read and unread messages have separate labels. Invoice notifications link to the relevant store's invoices when that store is available to your account. While you have unread security messages, a red bar is shown under the page header on every page. These events are:
 
 - **Wallet connection replaced** - the receiving wallet of a store was changed (also sent by email).
 - **Wallet secret revealed** - the stored connection secret was shown, either by you (after the email code) or by Satflux support.

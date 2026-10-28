@@ -297,7 +297,7 @@ class WalletConfigIntegrityTest extends TestCase
     }
 
     #[Test]
-    public function security_messages_are_pinned_on_top_of_the_feed_and_can_be_read(): void
+    public function recent_security_messages_are_available_in_the_feed_and_can_be_read(): void
     {
         $this->fakeBtcPay();
         $user = User::factory()->create();

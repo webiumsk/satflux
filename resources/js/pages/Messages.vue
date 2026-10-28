@@ -30,8 +30,31 @@
         </button>
       </div>
 
+      <!-- Filters stay available while a new page loads. -->
+      <div class="flex flex-col sm:flex-row sm:items-end gap-4 rounded-xl border border-gray-700 bg-gray-800/50 p-4">
+        <div class="flex-1">
+          <label for="message-category" class="block text-sm font-medium text-gray-300 mb-2">{{ t("messages.filter_category") }}</label>
+          <select
+            id="message-category"
+            v-model="category"
+            class="w-full rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            @change="resetFilters"
+          >
+            <option v-for="option in categories" :key="option" :value="option">{{ t(`messages.filter_${option}`) }}</option>
+          </select>
+        </div>
+        <label class="inline-flex items-center gap-2 py-2 text-sm text-gray-200 cursor-pointer">
+          <input v-model="unreadOnly" type="checkbox" class="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500" @change="resetFilters" />
+          {{ t("messages.filter_unread") }}
+        </label>
+      </div>
+
+      <div v-if="actionError" role="alert" class="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">{{ actionError }}</div>
+      <p v-if="scanLimited && !loading && !loadError" role="status" class="text-sm text-amber-200">{{ t("messages.history_limited") }}</p>
+
       <!-- Loading -->
-      <div v-if="loading" class="flex justify-center py-12">
+      <div v-if="loading" role="status" class="flex justify-center py-12">
+        <span class="sr-only">{{ t("messages.loading") }}</span>
         <svg
           class="animate-spin h-10 w-10 text-indigo-500"
           fill="none"
@@ -40,6 +63,11 @@
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
         </svg>
+      </div>
+
+      <div v-else-if="loadError" role="alert" class="rounded-xl border border-red-500/40 bg-red-500/10 p-6 text-center">
+        <p class="text-sm text-red-200">{{ t("messages.load_error") }}</p>
+        <button type="button" class="mt-3 rounded-lg border border-gray-600 px-3 py-2 text-sm text-white hover:bg-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400" @click="loadMessages(meta.current_page)">{{ t("messages.retry") }}</button>
       </div>
 
       <!-- Not available (no BTCPay API key or old key without notification permissions) -->
@@ -60,7 +88,7 @@
 
       <!-- Empty state -->
       <div
-        v-else-if="messages.length === 0"
+        v-else-if="messages.length === 0 && !hasMore"
         class="bg-gray-800/50 border border-gray-700 rounded-2xl p-12 text-center"
       >
         <div class="flex justify-center mb-4">
@@ -70,88 +98,101 @@
             </svg>
           </div>
         </div>
-        <h3 class="text-lg font-medium text-white mb-2">{{ t("messages.empty_title") }}</h3>
-        <p class="text-gray-400 text-sm">{{ t("messages.empty_subtitle") }}</p>
+        <h3 class="text-lg font-medium text-white mb-2">{{ t(filtered ? "messages.filtered_empty_title" : "messages.empty_title") }}</h3>
+        <p class="text-gray-400 text-sm">{{ t(filtered ? "messages.filtered_empty_subtitle" : "messages.empty_subtitle") }}</p>
       </div>
 
       <!-- Message list -->
       <div v-else class="space-y-3">
-        <div
+        <p v-if="messages.length === 0" role="status" class="rounded-xl border border-gray-700 p-6 text-sm text-gray-300">{{ t("messages.scan_empty") }}</p>
+        <article
           v-for="msg in messages"
           :key="msg.id"
           :class="[
-            'rounded-xl border p-4 transition-colors cursor-pointer',
-            msg.type === 'security' && !msg.read_at
+            'rounded-xl border p-4 transition-colors',
+            isCritical(msg) && !msg.read_at
               ? 'bg-red-500/10 border-red-500/60 hover:border-red-400 ring-1 ring-red-500/30'
               : msg.read_at
-                ? 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
-                : 'bg-gray-800 border-indigo-500/30 hover:border-indigo-500/50',
+                ? 'bg-gray-900/40 border-gray-700'
+                : 'bg-indigo-500/10 border-indigo-400/70 border-l-4',
           ]"
-          @click="openMessage(msg)"
         >
           <div class="flex items-start gap-4">
             <div
               :class="[
                 'flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center',
-                getTypeIconBg(msg.type),
+                getTypeIconBg(messageIconType(msg)),
               ]"
             >
-              <svg class="w-5 h-5" :class="getTypeIconColor(msg.type)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getTypeIconPath(msg.type)" />
+              <svg class="w-5 h-5" :class="getTypeIconColor(messageIconType(msg))" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getTypeIconPath(messageIconType(msg))" />
               </svg>
             </div>
-            <div class="flex-1 min-w-0">
+            <div class="flex-1 min-w-0 break-words [overflow-wrap:anywhere]">
               <div class="flex items-center gap-2 flex-wrap">
                 <span
-                  v-if="msg.type === 'security'"
+                  v-if="isCritical(msg)"
                   class="inline-flex items-center rounded-md bg-red-500/20 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-red-300"
                   >{{ t("messages.security_label") }}</span
                 >
                 <h3 class="text-sm font-semibold text-white">{{ msg.title }}</h3>
                 <span
-                  v-if="!msg.read_at"
-                  class="inline-block w-2 h-2 rounded-full"
-                  :class="msg.type === 'security' ? 'bg-red-500' : 'bg-indigo-500'"
-                />
+                  class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
+                  :class="msg.read_at ? 'bg-gray-700/60 text-gray-300' : isCritical(msg) ? 'bg-red-500/20 text-red-200' : 'bg-indigo-500/20 text-indigo-200'"
+                >
+                  <span v-if="!msg.read_at" aria-hidden="true" class="h-1.5 w-1.5 rounded-full bg-current" />
+                  {{ t(msg.read_at ? "messages.read" : "messages.unread") }}
+                </span>
               </div>
               <p
                 v-if="msg.body"
                 class="mt-1 text-sm"
-                :class="msg.type === 'security' ? 'text-red-100/90' : 'text-gray-400 line-clamp-2'"
+                :class="isCritical(msg) ? 'text-red-100/90' : 'text-gray-400 line-clamp-2'"
               >{{ msg.body }}</p>
-              <div class="mt-2 flex items-center justify-between gap-2">
-                <span class="text-xs text-gray-500">{{ formatDate(msg.created_at) }}</span>
-                <a
-                  v-if="msg.link"
-                  :href="msg.link"
-                  class="text-xs font-medium text-indigo-400 hover:text-indigo-300"
-                  @click.stop.prevent="openMessage(msg)"
-                >
-                  {{ msg.link_text || t("messages.view") }}
-                </a>
+              <div class="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <time :datetime="msg.created_at" class="text-xs text-gray-400">{{ formatDateTime(msg.created_at) }}</time>
+                <div class="flex flex-wrap items-center gap-3">
+                  <button
+                    v-if="!msg.read_at"
+                    type="button"
+                    :disabled="markingIds.has(msg.id) || markingAll"
+                    class="rounded px-1 py-1 text-xs font-medium text-gray-200 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400 disabled:opacity-50"
+                    @click="markMessageRead(msg)"
+                  >{{ t("messages.mark_read") }}</button>
+                  <a
+                    v-if="safeLink(msg.link)"
+                    :href="safeLink(msg.link)!.href"
+                    :target="safeLink(msg.link)!.external ? '_blank' : undefined"
+                    :rel="safeLink(msg.link)!.external ? 'noopener noreferrer' : undefined"
+                    class="rounded px-1 py-1 text-xs font-medium text-indigo-300 hover:text-indigo-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400"
+                    @click="openMessage(msg, $event)"
+                  >{{ msg.link_text || t(msg.category === 'invoices' ? "messages.view_invoice" : "messages.view") }}</a>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </article>
 
         <!-- Pagination -->
-        <div v-if="meta.last_page > 1" class="flex justify-center gap-2 pt-4">
+        <div v-if="meta.current_page > 1 || hasMore" class="flex justify-center gap-2 pt-4">
           <button
-            :disabled="meta.current_page <= 1"
+            type="button"
+            :disabled="loading || meta.current_page <= 1"
             class="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-600 text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
             @click="loadPage(meta.current_page - 1)"
           >
             {{ t("messages.previous") }}
           </button>
           <span class="px-3 py-1.5 text-sm text-gray-400">
-            {{ meta.current_page }} / {{ meta.last_page }}
+            {{ t("messages.page_label", { page: meta.current_page }) }}
           </span>
           <button
-            :disabled="meta.current_page >= meta.last_page"
+            type="button"
+            :disabled="loading || !hasMore"
             class="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-600 text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
             @click="loadPage(meta.current_page + 1)"
           >
-            {{ t("messages.next") }}
+            {{ t(messages.length === 0 ? "messages.continue_search" : "messages.next") }}
           </button>
         </div>
       </div>
@@ -161,10 +202,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { computed, ref, onMounted, onBeforeUnmount } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
+import { isAxiosError } from "axios";
 import api from "../services/api";
+import { formatDateTime } from "../utils/formatDateTime";
 
 const { t } = useI18n();
 const router = useRouter();
@@ -172,6 +215,7 @@ const router = useRouter();
 interface Message {
   id: string | number;
   type: string;
+  category?: "critical" | "invoices" | "other";
   title: string;
   body: string | null;
   link: string | null;
@@ -180,90 +224,147 @@ interface Message {
   created_at: string;
 }
 
+const categories = ["all", "critical", "invoices", "other"] as const;
+const category = ref<(typeof categories)[number]>("all");
+const unreadOnly = ref(false);
+const filtered = computed(() => category.value !== "all" || unreadOnly.value);
 const loading = ref(true);
+const loadError = ref(false);
+const actionError = ref("");
+const scanLimited = ref(false);
+const hasMore = ref(false);
+const pageCursors = ref<(string | null)[]>([null]);
 const markingAll = ref(false);
+const markingIds = ref(new Set<string | number>());
 const messages = ref<Message[]>([]);
 const meta = ref({ current_page: 1, last_page: 1, per_page: 20, total: 0 });
 const unreadCount = ref(0);
 const available = ref(true);
+let requestVersion = 0;
+let countVersion = 0;
+let active = true;
+
+const isCritical = (msg: Message) => msg.category === "critical" || msg.type === "security";
+const messageIconType = (msg: Message) => msg.category === "invoices" ? "invoice" : isCritical(msg) ? "security" : msg.type;
 
 const loadMessages = async (page = 1) => {
+  const version = ++requestVersion;
+  const cursor = pageCursors.value[page - 1];
   loading.value = true;
+  loadError.value = false;
+  meta.value.current_page = page;
   try {
-    const { data } = await api.get("/messages", { params: { page, per_page: 20 } });
+    const { data } = await api.get("/messages", { params: {
+      page, per_page: 20, category: category.value, unread: unreadOnly.value ? 1 : 0,
+      ...(cursor ? { cursor } : {}),
+    } });
+    if (!active || version !== requestVersion) return;
     messages.value = data.data ?? [];
     meta.value = data.meta ?? meta.value;
+    scanLimited.value = data.meta?.scan_limited === true;
+    hasMore.value = data.meta?.has_more === true && typeof data.meta?.next_cursor === "string";
+    pageCursors.value = pageCursors.value.slice(0, page);
+    if (hasMore.value) pageCursors.value[page] = data.meta.next_cursor;
     available.value = data.available !== false;
-    window.dispatchEvent(new CustomEvent("messages-updated"));
-  } catch (e) {
-    console.error("Failed to load messages:", e);
+    // A read action may empty the final page of the unread filter.
+    if (messages.value.length === 0 && page > 1 && !hasMore.value && unreadOnly.value) {
+      await loadMessages(page - 1);
+    }
+  } catch (error) {
+    if (!active || version !== requestVersion) return;
+    if (cursor && isAxiosError<{ errors?: { cursor?: unknown } }>(error)
+      && error.response?.status === 422 && Array.isArray(error.response.data?.errors?.cursor)) {
+      // Cursor expiry or changed feed options require a fresh first page, once.
+      pageCursors.value = [null];
+      await loadMessages(1);
+      return;
+    }
+    loadError.value = true;
   } finally {
-    loading.value = false;
+    if (active && version === requestVersion) loading.value = false;
   }
 };
 
 const loadMessageCount = async () => {
+  const version = ++countVersion;
   try {
     const { data } = await api.get("/messages/count");
-    unreadCount.value = data.data?.unread ?? 0;
-    available.value = data.available !== false;
+    if (active && version === countVersion) unreadCount.value = data.data?.unread ?? 0;
   } catch {
-    unreadCount.value = 0;
+    // Keep the last confirmed count; the list has its own availability/error state.
   }
 };
 
-const openMessage = async (msg: Message) => {
-  if (msg.link) {
-    const sameOrigin = msg.link.startsWith(window.location.origin + "/");
-    if (sameOrigin) {
-      // Satflux-local messages (security alerts) point into this app: stay in the SPA.
-      void router.push(msg.link.slice(window.location.origin.length));
-    } else {
-      window.open(msg.link, "_blank", "noopener,noreferrer");
-    }
+const safeLink = (link: string | null): { href: string; external: boolean } | null => {
+  if (!link || Array.from(link).some(char => char === "\\" || char.charCodeAt(0) <= 32 || char.charCodeAt(0) === 127)) return null;
+  if (!/^https?:\/\//i.test(link) && !/^\/(?!\/)/.test(link)) return null;
+  try {
+    const url = new URL(link, window.location.origin);
+    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return null;
+    const external = url.origin !== window.location.origin;
+    return { href: external ? url.href : `${url.pathname}${url.search}${url.hash}`, external };
+  } catch {
+    return null;
   }
-  if (!msg.read_at) {
-    try {
-      await api.patch(`/messages/${msg.id}/read`);
-      msg.read_at = new Date().toISOString();
-      unreadCount.value = Math.max(0, unreadCount.value - 1);
-      window.dispatchEvent(new CustomEvent("messages-updated"));
-    } catch (e) {
-      console.error("Failed to mark message as read:", e);
-    }
+};
+
+const markMessageRead = async (msg: Message) => {
+  if (msg.read_at || markingIds.value.has(msg.id) || markingAll.value) return;
+  markingIds.value.add(msg.id);
+  actionError.value = "";
+  try {
+    await api.patch(`/messages/${encodeURIComponent(msg.id)}/read`);
+    window.dispatchEvent(new CustomEvent("messages-updated"));
+    if (!active) return;
+    msg.read_at = new Date().toISOString();
+    await Promise.all([loadMessageCount(), ...(unreadOnly.value ? [loadMessages(meta.value.current_page)] : [])]);
+  } catch {
+    if (active) actionError.value = t("messages.read_error");
+  } finally {
+    markingIds.value.delete(msg.id);
   }
+};
+
+const openMessage = (msg: Message, event: MouseEvent) => {
+  const destination = safeLink(msg.link);
+  if (!destination) return;
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+    void markMessageRead(msg);
+    return;
+  }
+  event.preventDefault();
+  if (destination.external) window.open(destination.href, "_blank", "noopener,noreferrer");
+  else void router.push(destination.href);
+  void markMessageRead(msg);
 };
 
 const markAllAsRead = async () => {
+  if (markingAll.value) return;
   markingAll.value = true;
+  actionError.value = "";
   try {
     await api.post("/messages/mark-all-read");
-    messages.value = messages.value.map((m: Message) => ({ ...m, read_at: m.read_at ?? new Date().toISOString() }));
-    unreadCount.value = 0;
+    if (!active) return;
     window.dispatchEvent(new CustomEvent("messages-updated"));
-  } catch (e) {
-    console.error("Failed to mark all as read:", e);
+    // Reload confirmed state rather than claiming every message was marked locally.
+    await Promise.all([loadMessages(1), loadMessageCount()]);
+  } catch {
+    if (active) actionError.value = t("messages.read_error");
   } finally {
     markingAll.value = false;
   }
 };
 
-const loadPage = (page: number) => {
-  loadMessages(page);
+const resetFilters = () => {
+  pageCursors.value = [null];
+  void loadMessages(1);
 };
 
-const formatDate = (dateStr: string) => {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) {
-    return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-  }
-  if (diffDays === 1) return t("messages.yesterday");
-  if (diffDays < 7) return d.toLocaleDateString(undefined, { weekday: "long" });
-  return d.toLocaleDateString();
+const loadPage = (page: number) => {
+  void loadMessages(page);
 };
+
+onBeforeUnmount(() => { active = false; requestVersion += 1; countVersion += 1; });
 
 const getTypeIconBg = (type: string) => {
   const map: Record<string, string> = {

@@ -168,11 +168,11 @@
                   </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                  {{ user.created_at ? formatDate(user.created_at) : "-" }}
+                  {{ formatDateTime(user.created_at) }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                   {{
-                    user.last_login_at ? formatDate(user.last_login_at) : "-"
+                    formatDateTime(user.last_login_at)
                   }}
                 </td>
                 <td
@@ -347,6 +347,7 @@ import api from "../../services/api";
 import { useAuthStore } from "../../store/auth";
 import Select from "../../components/ui/Select.vue";
 import { getApiErrorMessage } from "../../composables/useApiError";
+import { formatDateTime } from "../../utils/formatDateTime";
 
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
@@ -514,15 +515,6 @@ const getRoleBadgeClass = (role: string) => {
     admin: "bg-red-500/20 text-red-300",
   };
   return classes[role] || classes.free;
-};
-
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 };
 
 onMounted(() => {

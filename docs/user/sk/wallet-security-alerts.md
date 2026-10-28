@@ -2,8 +2,8 @@
 title: "Bezpečnostné upozornenia a sledovanie zmien peňaženky"
 category: wallet-connection
 order: 8
-meta_description: "Ako Satflux chráni vašu prijímaciu peňaženku: potvrdenie zmien e-mailovým kódom, pripnuté bezpečnostné správy a automatická detekcia zmien konfigurácie mimo Satfluxu."
-updated: 2026-09-06
+meta_description: "Ako Satflux chráni vašu prijímaciu peňaženku: potvrdenie zmien e-mailovým kódom, výrazne označené bezpečnostné správy a automatická detekcia zmien konfigurácie mimo Satfluxu."
+updated: 2026-10-28
 ---
 
 Prijímacia peňaženka rozhoduje o tom, kam skončí každá platba. Satflux preto berie každú jej zmenu ako bezpečnostnú udalosť.
@@ -14,7 +14,7 @@ Nahradenie **pripojenej** peňaženky (nový connection string, nová Lightning 
 
 ## Bezpečnostné správy
 
-Niektoré udalosti vytvoria **bezpečnostnú správu** v Správach, pripnutú nad bežné platobné notifikácie s červeným štítkom "Bezpečnosť". Kým máte neprečítané bezpečnostné správy, na každej stránke sa pod hlavičkou zobrazuje červený pruh. Ide o tieto udalosti:
+Niektoré udalosti vytvoria **bezpečnostnú správu** v Správach s červeným štítkom "Bezpečnosť". Všetky správy sú zoradené od najnovších a zobrazujú dátum aj čas. Filter **Kritické** vyhľadá bezpečnostné správy, **Faktúry** oznámenia o faktúrach a možnosť **Iba neprečítané** môžete kombinovať s oboma filtrami. Prečítané a neprečítané správy majú samostatné štítky. Oznámenia o faktúrach odkazujú na faktúry príslušného obchodu, ak je obchod dostupný vášmu účtu. Kým máte neprečítané bezpečnostné správy, na každej stránke sa pod hlavičkou zobrazuje červený pruh. Ide o tieto udalosti:
 
 - **Pripojenie peňaženky nahradené** - prijímacia peňaženka obchodu bola zmenená (posiela sa aj e-mailom).
 - **Secret peňaženky odhalený** - uložený secret pripojenia bol zobrazený, buď vami (po e-mailovom kóde), alebo podporou Satfluxu.

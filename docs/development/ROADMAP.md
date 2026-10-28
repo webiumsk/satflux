@@ -423,3 +423,20 @@ CodeRabbit documentation findings corrected. Independent QA/security accept dige
 `dc86ea04`. Normal pristine npm 10/11 installs, full 1,000-case frontend suite,
 build/style/type/locales, 11 focused PHP cases and schema/export checks pass.
 Next verify exact published-head CI and review; merge/deployment remain separate.
+
+
+## 2026-10-28 - Support/admin/message usability
+
+- [x] Start from verified merged master d3cb91ba; preserve dirty bootstrap checkout.
+- [x] Confined support-table scrolling, compact pills and mobile wrapping.
+- [x] Consistent date/time on admin creation/login and every message.
+- [x] Chronological merged messages, category/unread filters, owned invoice links,
+  distinct read state and bounded complete-history continuation.
+- [x] Independent QA/security acceptance of `5c2bd32c`; targeted PHP 26/191, final
+  component 22, full frontend 1024 before recovery followup, browser regressions,
+  static checks, locale parity and final production build pass.
+- [ ] On publication request: create owned PR, attach its reviewed changelog
+  fragment and verify fresh CI/CodeRabbit; no merge/deployment approval inferred.
+
+Local port 8080 remains a separate stale bootstrap preview; synthetic QA does not
+certify that runtime or its existing database/provider configuration.

@@ -743,3 +743,24 @@ Independent QA/security accept digest `dc86ea04`; normal npm 10/11 installs and
 fresh-dependency tests/build pass. Publication is authorized; merge/deployment is
 not. Retain the docstring advisory separately instead of adding boilerplate or
 weakening review configuration.
+
+
+## 2026-10-28 - Chronological messages with separate critical visibility
+
+The owner requests date-based message ordering, including security alerts. Replace
+security pinning with one chronological feed while retaining critical labels, the
+global unread-security banner and a dedicated critical filter. Apply category and
+unread filtering before continuation, with user-scoped local keysets and encrypted
+user/filter/page-size-bound cursors. Bounded upstream scans may return empty
+continuation pages; they must not make older matches permanently unreachable.
+Recognize actual BTCPay invoicestate invoice paths and resolve only owned stores to
+local UUIDs. Preserve the existing 30-day read-local-message window and every unread
+local alert. Document upstream offset insertion limits instead of claiming snapshot
+stability. Automatically refresh expired cursors once, isolating stale responses.
+
+Use the current merged master in an isolated feature worktree and preserve the
+dirty bootstrap checkout served at local port 8080. Verification uses synthetic browser
+data and disposable PHP targets. QA/security accept source digest `5c2bd32c`; obsolete
+PHPStan exceptions are removed, with no baseline or auth/security gate relaxation.
+Publication, PR-linked changelog synchronization and actual runtime deployment are
+separate from this local implementation milestone.

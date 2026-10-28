@@ -1211,3 +1211,35 @@ Local Node 22.18 differs from CI's 22.23.3 patch; npm is the exact 10.9.9 versio
 Next publish the accepted follow-up and verify fresh-head CI/review. No merge or
 deployment approval is inferred. CodeRabbit's prior docstring advisory remains
 separate from its successful GitHub check; no boilerplate or gate weakening is used.
+
+
+## 2026-10-28 - Support tables and chronological messages
+
+Owner confirms PR406 merged; verified latest master d3cb91ba is the base of
+`fix/support-admin-message-usability`. Support connections now have confined,
+keyboard-accessible horizontal scrolling, compact pills and mobile text wrapping.
+Admin creation/login and message timestamps share DD.MM.YYYY HH:mm browser-local
+time. The mixed message feed is chronological, with category/unread filters,
+visible read labels, accessible actions and owned local-UUID invoice destinations
+that recognize actual BTCPay invoicestate paths. Encrypted cursor continuation
+bounds upstream scans without cutting off older matches; cursor expiry refreshes
+the first page. The security banner and red alert labels remain.
+
+Independent QA and security accept the 18-file source digest `5c2bd32c`. QA found and
+reverified three fixes: mobile support overflow, long critical-message overflow
+and expired-cursor retry. Targeted backend 26 tests/191 assertions; final component 22;
+independent traversal 1/1242 and security 3/43 pass. Full frontend suite 1024/140 files
+passed before the final recovery followup; final targeted 22 and independent
+recovery browser checks cover that followup. Final build, typecheck (120 inherited
+baseline errors, none new), lint (48 inherited warnings), locale parity, API export,
+Pint 1076 and PHPStan pass. Three obsolete PHPStan baseline entries (five occurrences)
+were removed; no ratchet was increased. Existing EN/SK security docs and five UI
+locales updated, with inherited per-article fallback retained.
+
+Local port 8080 still mounts the preserved dirty bootstrap checkout, not this feature
+worktree. Its configured external provider and existing database/auth were not used
+for QA. Browser checks use synthetic components; PHP uses disposable SQLite and
+fake HTTP. No full-stack auth E2E, production access, push, merge or deployment.
+Upstream offset pagination can shift if notifications arrive during traversal;
+refresh starts anew. Local code is ready for publication on owner request; add its
+canonical PR-linked changelog fragment when the PR number is known.
