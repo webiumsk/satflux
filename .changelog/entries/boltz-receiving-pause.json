@@ -1,0 +1,9 @@
+{
+  "id": "boltz-receiving-pause",
+  "source": "https://github.com/webiumsk/satflux/pull/406",
+  "title": "Paused Boltz receiving setup and clearer wallet warnings",
+  "body": "New Aqua/Bull descriptor and Aqua SamRock receiving connections are paused while the Satflux Boltz integration is unavailable. Existing Boltz stores display a warning and a link to choose another supported wallet. Wallet records, invoice history and recovery remain available. Affected merchants can also be notified by email to update their connection.",
+  "labels": [
+    "fix"
+  ]
+}
