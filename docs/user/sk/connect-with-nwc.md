@@ -3,7 +3,13 @@ title: Pripojenie cez NWC (Nostr Wallet Connect)
 category: wallet-connection
 order: 6
 meta_description: Pripojte vlastný Lightning uzol cez Nostr Wallet Connect pairing string, napr. z Alby Hub.
+updated: 2026-10-28
 ---
+
+> **Pripojenia na príjem cez Boltz sú pozastavené.** Nové pripojenia cez deskriptor Aqua/Bull Bitcoin a párovanie Aqua cez SamRock sú v Satfluxe pozastavené, pretože naše prijímacie prepojenie cez Boltz nie je dostupné. Bull obnovil Lightning v mobilnej aplikácii, jeho náhradná služba však nie je podporovaným backendom Satfluxu. Aqua momentálne umožňuje odosielanie cez Indra, prijímanie Lightningu nie je dostupné. Návody pre staré pripojenia neumožňujú nové nastavenie.
+>
+> Použite [podporovanú Lightning adresu](/documentation/connect-with-any-lightning-address) alebo [NWC z vlastného uzla](/documentation/connect-with-nwc). Ak už máte nastavenú Bitcoin on-chain peňaženku, ponechajte ju dostupnú.
+
 
 # Pripojenie cez NWC (Nostr Wallet Connect)
 
@@ -28,4 +34,3 @@ nostr+walletconnect://…?relay=…&secret=…
 
 - Server musí mať k dispozícii **BTCPay Nostr plugin**, aby NWC pripojenia fungovali.
 - NWC pairing stringy z **Cashu ecash peňaženiek** (napr. Minibits) sa tu neprijímajú. Na použitie takej peňaženky nastavte [Cashu → Lightning](/documentation/cashu-lightning-settlement) - zadajte jej mint URL a vašu Lightning adresu.
-- Väčšina obchodníkov NWC nepotrebuje. Ak chcete len rýchlo prijímať Lightning, použite [akúkoľvek Lightning adresu](/documentation/connect-with-any-lightning-address) alebo [Aqua cez SamRock](/documentation/connect-aqua-with-samrock).

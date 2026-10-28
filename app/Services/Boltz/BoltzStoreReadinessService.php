@@ -65,6 +65,13 @@ class BoltzStoreReadinessService
      */
     public function readiness(Store $store, bool $refresh = false): array
     {
+        // Evaluate before the cache: an older ready snapshot cannot bypass a pause.
+        if (app(BoltzAvailabilityService::class)->isAffected($store)) {
+            return $this->result('unavailable', ['provider_suspended'], $store,
+                ['reachable' => null, 'enabled' => null, 'wallet_readonly' => null],
+                null, null, null, null);
+        }
+
         $cacheKey = "boltz:readiness:{$store->id}";
 
         if (! $refresh) {

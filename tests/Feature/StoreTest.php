@@ -20,6 +20,8 @@ class StoreTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Preserve store-provisioning contract coverage; the pause has its own suite.
+        config(['services.boltz.receiving_enabled' => true]);
 
         // Store creation requires server-level API key; use fixed base URL so Http::fake matches
         config(['services.btcpay.api_key' => 'test-server-api-key']);

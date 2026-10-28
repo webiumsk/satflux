@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\Boltz\BoltzAvailabilityService;
 use App\Services\WalletConnectionValidator;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -56,6 +57,9 @@ class StoreCreateRequest extends FormRequest
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {
+            if (is_string($this->input('wallet_type'))) {
+                app(BoltzAvailabilityService::class)->assertConnectionTypeAvailable($this->input('wallet_type'));
+            }
             // If connection_string is provided, validate it matches the wallet_type
             if ($this->filled('connection_string') && in_array($this->wallet_type, ['blink', 'aqua_boltz', 'blitz', 'flash', 'lnaddress'], true)) {
                 $connectionString = $this->connection_string;

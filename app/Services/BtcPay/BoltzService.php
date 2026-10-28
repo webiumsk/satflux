@@ -3,6 +3,7 @@
 namespace App\Services\BtcPay;
 
 use App\Models\Store;
+use App\Services\Boltz\BoltzAvailabilityService;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\WalletConnectionValidator;
 use Illuminate\Support\Facades\Log;
@@ -72,6 +73,7 @@ class BoltzService
         string $coreDescriptor,
         ?string $userApiKey = null
     ): array {
+        app(BoltzAvailabilityService::class)->assertNewConnectionsAvailable();
         $descriptor = $this->validator->stripDescriptorChecksum(trim($coreDescriptor));
 
         if (! $this->validator->validateAquaDescriptor($descriptor)) {

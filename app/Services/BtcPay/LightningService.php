@@ -2,6 +2,7 @@
 
 namespace App\Services\BtcPay;
 
+use App\Services\Boltz\BoltzAvailabilityService;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use Illuminate\Support\Facades\Log;
 
@@ -43,6 +44,7 @@ class LightningService
      */
     public function connectLightningNode(string $storeId, string $cryptoCode, string $connectionString, ?string $userApiKey = null): array
     {
+        app(BoltzAvailabilityService::class)->assertConnectionStringAvailable($connectionString);
         $originalApiKey = null;
         if ($userApiKey) {
             $originalApiKey = $this->client->getApiKey();
@@ -299,6 +301,7 @@ class LightningService
      */
     public function testConnection(string $storeId, string $cryptoCode, string $connectionString, ?string $userApiKey = null): array
     {
+        app(BoltzAvailabilityService::class)->assertConnectionStringAvailable($connectionString);
         $originalApiKey = null;
         if ($userApiKey) {
             $originalApiKey = $this->client->getApiKey();

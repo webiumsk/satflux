@@ -26,6 +26,7 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         <ArchivedStoreBanner :store="store" />
+        <BoltzServiceBanner :store="store" />
 
         <!-- Settings View -->
         <div v-if="showSettings" class="max-w-4xl mx-auto">
@@ -283,6 +284,7 @@
 </template>
 
 <script setup lang="ts">
+import BoltzServiceBanner from '../../components/stores/BoltzServiceBanner.vue';
 import type { Store } from '../../store/stores';
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';

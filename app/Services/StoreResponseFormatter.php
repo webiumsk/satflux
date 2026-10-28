@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Store;
 use App\Models\StoreChecklist;
 use App\Models\WalletConnection;
+use App\Services\Boltz\BoltzAvailabilityService;
 use Illuminate\Support\Collection;
 
 /**
@@ -44,6 +45,7 @@ class StoreResponseFormatter
             'checklist_items' => $this->checklistItemsPayload($store),
             'wallet_connection' => $this->walletConnectionPayload($store, $store->walletConnection),
             'blink_migration_alert' => $this->blinkMigrationAlertService->payload($store),
+            'boltz_service_alert' => app(BoltzAvailabilityService::class)->payload($store),
         ];
     }
 
@@ -71,6 +73,7 @@ class StoreResponseFormatter
             'checklist_items' => $this->checklistItemsPayload($localStore),
             'wallet_connection' => $this->walletConnectionPayload($localStore, $localStore->walletConnection),
             'blink_migration_alert' => $this->blinkMigrationAlertService->payload($localStore),
+            'boltz_service_alert' => app(BoltzAvailabilityService::class)->payload($localStore),
             'btcpay_store_id' => $localStore->btcpay_store_id,
             // Pay Button: anyone can create invoice (needed for Pay Button page)
             'anyone_can_create_invoice' => $btcpayStore['anyoneCanCreateInvoice'] ?? false,

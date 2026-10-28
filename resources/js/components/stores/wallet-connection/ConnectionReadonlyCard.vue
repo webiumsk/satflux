@@ -7,22 +7,18 @@
     </h3>
     <div
       v-if="connection.configuration_source === 'samrock'"
-      class="mb-6 p-4 rounded-xl border border-green-500/30 bg-green-500/10"
+      class="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10"
     >
-      <p class="text-sm text-green-300">
+      <p class="text-sm text-amber-200">
         {{ t("stores.samrock_connected_note") }}
       </p>
+      <p class="mt-2 text-sm text-amber-200">{{ t('stores.boltz_setup_paused') }}</p>
     </div>
     <div
       v-else-if="connection.type === 'aqua_descriptor'"
       class="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10"
     >
-      <p class="text-sm text-amber-400">
-        {{ t("stores.aqua_warning_btcpay") }}
-      </p>
-      <p class="text-sm text-amber-400 mt-2">
-        {{ t("stores.aqua_limits_warning") }}
-      </p>
+      <p class="text-sm text-amber-200">{{ t('stores.boltz_setup_paused') }}</p>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
       <div>
@@ -49,8 +45,8 @@
         >
         <span
           class="font-medium"
-          :class="getStatusColorClass(connection.status)"
-          >{{ formatStatus(connection.status) }}</span
+          :class="connection.type === 'aqua_descriptor' ? 'text-amber-300' : getStatusColorClass(connection.status)"
+          >{{ connection.type === 'aqua_descriptor' ? t('stores.boltz_status_unavailable') : formatStatus(connection.status) }}</span
         >
       </div>
     </div>

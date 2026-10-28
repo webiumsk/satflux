@@ -3,7 +3,7 @@
     "scope": "Runtime api/* routes, excluding automatically added HEAD; framework/vendor/web routes are outside this inventory.",
     "source_hashes": {
         "app/Http/Controllers/AccountController.php": "dfde669dd986edd469c84d46dde0c8033dc6e65992ccd48c3fd03038fe09e96c",
-        "app/Http/Controllers/StoreController.php": "62d17585a0f426f468842dd4fdb2f7164a4047a933836abdec66743289730dc9",
+        "app/Http/Controllers/StoreController.php": "77214a46a3059b3c48b6c6d65c455ee6735a3e3d55a80f9185533cafe25faac9",
         "app/Http/Controllers/RaffleController.php": "8fd52be5b76da0758ba81da7276016a4b64afb6474f8e62c467e62bf79ea4e41",
         "app/Http/Controllers/WebhookController.php": "2ffa9405fca64630844ff19ff71ce4a28727b513114e9a6543812e43763804a5",
         "app/Http/Controllers/Invoicing/BankInboundWebhookController.php": "426a9c1b401310111cde9333e25b433c33e4c2982649b1d1bc958c88350e89d4",
@@ -15,7 +15,7 @@
         "app/Services/Raffle/RafflePayloadService.php": "745f42104327b34f3c0fab3d1e0ead6cf996835afd9adb29ea62261cf8d5f9e2",
         "app/Http/Middleware/AuthenticateWooCommerceIntegration.php": "edbb38f8fb1e3e8202c402c5ea1c69ffe1c5fe749b189146e658533d0f9f186a",
         "app/Http/Middleware/EnsureStoreOwnership.php": "80e69ff001736b77345b8d9805bb2c440093ac231db3d52d57d0fec1acc20b72",
-        "app/Services/StoreResponseFormatter.php": "ae94369b174e83552d1e9b7ea2004914ee4820ed84125276171a1a2bc154fb39",
+        "app/Services/StoreResponseFormatter.php": "ad6aa7a44546342644813a3a81ff48ce8061dd09244da50466b8b284ed1e5e3b",
         "app/Models/CompanyContact.php": "65e0ddae6c38852ef8277e1a3c8168b36e14230b32dc636814ccf6a12d869b47",
         "app/Models/BusinessDocument.php": "560b6a2aeb66b153fd0757cfc7dd7df3ee2aab289cca5af866cc06fa8cbd3c48",
         "app/Models/User.php": "2d8b883197a2f943e32323deef201dc217dbb843f324c77ac2eed4f81dbe7d2d",

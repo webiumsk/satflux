@@ -27,7 +27,7 @@ type GuideId = 'nwc' | 'blink' | 'blitz' | 'flash' | 'coinos' | 'aqua' | 'bull' 
 const openIds = ref<GuideId[]>([]);
 
 // Order mirrors how we prioritize backends: Blink and Blitz first (LN address
-// quick connect), then Aqua/Bull (Boltz), Cashu as the universal fallback, and
+// quick connect), Cashu as the universal fallback, and
 // NWC deliberately last - it needs a self-hosted Alby Hub, so almost nobody uses it.
 const items: Array<{
   id: GuideId;
@@ -60,20 +60,6 @@ const items: Array<{
     subtitleKey: 'stores.wallet_guide_sub_coinos',
     iconType: 'lnaddress',
     brand: 'coinos',
-  },
-  {
-    id: 'aqua',
-    titleKey: 'stores.wallet_detect_aqua',
-    subtitleKey: 'stores.wallet_guide_sub_aqua',
-    iconType: 'aqua_boltz',
-    brand: 'aqua',
-  },
-  {
-    id: 'bull',
-    titleKey: 'stores.wallet_detect_bull',
-    subtitleKey: 'stores.wallet_guide_sub_bull',
-    iconType: 'aqua_boltz',
-    brand: 'bull',
   },
   {
     id: 'cashu',

@@ -2,8 +2,14 @@
 title: "Vytvorenie prvého obchodu"
 category: getting-started
 order: 3
-meta_description: "Nový obchod v Satfluxe vytvoríte v troch krokoch: základné údaje, typ peňaženky a potvrdenie. Obchod sa potom vytvorí v BTCPay Serveri a zobrazí sa krátky checklist, aby ste mohli dokončiť nastavenie peňaženky a otestovať platbu."
+meta_description: "Vytvorte obchod, vyberte podporovanú prijímaciu peňaženku a dokončite nastavenie. Boltz deskriptory a SamRock sú pozastavené."
+updated: 2026-10-28
 ---
+
+> **Pripojenia na príjem cez Boltz sú pozastavené.** Nové pripojenia cez deskriptor Aqua/Bull Bitcoin a párovanie Aqua cez SamRock sú v Satfluxe pozastavené, pretože naše prijímacie prepojenie cez Boltz nie je dostupné. Bull obnovil Lightning v mobilnej aplikácii, jeho náhradná služba však nie je podporovaným backendom Satfluxu. Aqua momentálne umožňuje odosielanie cez Indra, prijímanie Lightningu nie je dostupné. Návody pre staré pripojenia neumožňujú nové nastavenie.
+>
+> Použite [podporovanú Lightning adresu](/documentation/connect-with-any-lightning-address) alebo [NWC z vlastného uzla](/documentation/connect-with-nwc). Ak už máte nastavenú Bitcoin on-chain peňaženku, ponechajte ju dostupnú.
+
 
 Nový obchod v Satfluxe vytvoríte v troch krokoch: základné údaje, typ peňaženky a potvrdenie. Obchod sa potom vytvorí v BTCPay Serveri a zobrazí sa krátky checklist, aby ste mohli dokončiť nastavenie peňaženky a otestovať platbu.
 
@@ -23,11 +29,11 @@ Keď sú všetky polia vyplnené, kliknite na **Ďalší krok**.
 
 Zvoľte, ako bude obchod prijímať Lightning (a on-chain) platby:
 
-- **Blink** - Rýchle nastavenie, vhodné na rýchly štart. Peňaženku Blink pripojíte v tomto kroku alebo neskôr (napr. cez connection string). Porovnanie Blink a Aqua nájdete v článku Výber peňaženky.
+- **Blink** - Rýchle nastavenie, vhodné na rýchly štart. Peňaženku Blink pripojíte v tomto kroku alebo neskôr (napr. cez connection string). Podporované možnosti nájdete v článku Výber peňaženky.
 
-- **Aqua (Aqua + Boltz)** - Nekustodiálne: vaše kľúče, Liquid + Lightning. Používa sa plugin Boltz v BTCPay. Nastavenie môžete urobiť v tomto kroku alebo dokončiť neskôr. Detaily sú v článkoch Výber peňaženky a Pripojenie peňaženky.
+- **Ďalšie podporované pripojenia** - Použite Lightning adresu alebo NWC pripojenie z vlastného uzla. Deskriptory Aqua/Bull a SamRock sú pozastavené.
 
-V tomto kroku môžete voliteľne zadať **connection string** (Blink) alebo **descriptor** (Aqua). Ak to preskočíte, pripojenie dokončíte neskôr v **Pripojenie peňaženky** a podľa checklistu po vytvorení obchodu.
+Podporované prijímacie prepojenie môžete nastaviť v tomto kroku alebo neskôr v **Pripojení peňaženky**. Deskriptory a SamRock počas pozastavenia Boltz nie sú dostupné.
 
 Kliknutím na **Späť** zmeníte základné údaje, alebo na **Ďalší krok** pokračujete.
 

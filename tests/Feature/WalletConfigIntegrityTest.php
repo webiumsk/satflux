@@ -435,6 +435,7 @@ class WalletConfigIntegrityTest extends TestCase
     #[Test]
     public function samrock_completion_records_a_baseline(): void
     {
+        config(['services.boltz.receiving_enabled' => true]);
         $this->fakeBtcPay();
         $user = User::factory()->create();
         $store = Store::factory()->create(['user_id' => $user->id, 'wallet_type' => 'aqua_boltz']);

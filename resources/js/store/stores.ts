@@ -24,6 +24,11 @@ export interface Store {
     /** Aqua vs Bull when wallet_type is aqua_boltz */
     wallet_brand?: AquaBoltzWalletBrand | LnAddressWalletBrand | null;
     blink_migration_alert?: BlinkMigrationAlert | null;
+    boltz_service_alert?: {
+        active: boolean;
+        code: 'boltz_receiving_unavailable';
+        new_connections_available: boolean;
+    } | null;
     created_at: string;
     updated_at: string;
     logo_url?: string | null;

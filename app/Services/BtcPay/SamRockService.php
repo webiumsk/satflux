@@ -2,6 +2,8 @@
 
 namespace App\Services\BtcPay;
 
+use App\Services\Boltz\BoltzAvailabilityService;
+
 class SamRockService
 {
     public function __construct(protected BtcPayClient $client) {}
@@ -11,6 +13,8 @@ class SamRockService
      */
     public function createOtp(string $btcpayStoreId, array $payload, string $apiKey): array
     {
+        app(BoltzAvailabilityService::class)->assertNewConnectionsAvailable();
+
         return $this->client->withUserKey($apiKey, function () use ($btcpayStoreId, $payload) {
             return $this->client->post("/api/v1/stores/{$btcpayStoreId}/samrock/otps", $payload);
         });

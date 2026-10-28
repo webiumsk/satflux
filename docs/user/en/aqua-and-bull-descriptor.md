@@ -1,34 +1,19 @@
 ---
-title: Aqua & Bull Bitcoin descriptors
+title: "Aqua and Bull descriptor connections are paused"
 category: wallet-connection
 order: 4
-meta_description: Connect Aqua or Bull Bitcoin by pasting a watch-only output descriptor - fully non-custodial.
+meta_description: "Boltz receiving connections are paused"
+updated: 2026-10-28
 ---
 
-# Aqua & Bull Bitcoin descriptors
+# Aqua and Bull descriptor connections are paused
 
-Both **Aqua** and **Bull Bitcoin** connect by pasting a **watch-only output descriptor**. This is fully non-custodial: the descriptor lets BTCPay watch for payments, but it holds **no private keys** - your keys stay in the wallet. Satflux rejects anything containing private keys.
+New Aqua/Bull Bitcoin descriptor connections and Aqua SamRock pairing are paused in Satflux because our Boltz receiving integration is unavailable. Bull mobile Lightning has resumed, but its replacement service is not a supported Satflux backend. Aqua currently supports Lightning sending through Indra, while receiving is unavailable. Instructions for these old connections do not enable new setup.
 
-For Aqua, the QR method is easier - see [Connect Aqua with SamRock](/documentation/connect-aqua-with-samrock). Bull Bitcoin uses the descriptor method described here.
+Use a [supported Lightning address](/documentation/connect-with-any-lightning-address) or [NWC from your own node](/documentation/connect-with-nwc). Keep an already configured Bitcoin on-chain wallet available where applicable.
 
-## Where to get the descriptor
+## Existing connections
 
-- **Aqua**: Settings → Boltz → export the watch-only output descriptor. It looks like `ct(slip77(...),elsh(wpkh(...)))`.
-- **Bull Bitcoin**: wallet settings → export the watch-only descriptor. Bull's descriptor uses the `elwpkh(...)` format.
+For an existing Boltz store, open **Wallet connection**, choose **Change connection**, complete the existing confirmation and select another supported receiving wallet. Review pending payments and recovery with support before replacing a connection. Existing wallet records, invoice history and recovery are preserved.
 
-Satflux tells the two apart automatically from the descriptor shape.
-
-## Steps
-
-1. Open **Wallet connection** and choose the **Advanced (connection strings)** tab.
-2. Paste the descriptor into the box. Satflux detects whether it is Aqua or Bull Bitcoin and validates the format.
-3. Save. Satflux configures BTCPay and enables Lightning through the **Boltz** swap (Lightning over Liquid).
-
-## Troubleshooting
-
-- **"Contains a private key"** - you exported the wrong string. Export the **watch-only** descriptor, never a seed or `xprv`/`zprv`.
-- **"Already in use"** - a descriptor can be connected to only one store. Disconnect it elsewhere first.
-- **Wrong format** - Aqua descriptors are `elsh(wpkh(...))`, Bull are `elwpkh(...)`. Make sure you copied the whole string, unbroken.
-- **Lightning not working yet** - descriptor connections enable Lightning via Boltz; check the Boltz readiness indicator on the store. It can take a moment to become ready.
-
-To change or remove it later, see [Revoking or changing wallet credentials](/documentation/revoking-or-changing-wallet-credentials).
+Availability checked on 2026-10-28.
