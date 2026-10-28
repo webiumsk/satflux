@@ -3,7 +3,7 @@ title: Create your Satflux account
 category: getting-started
 order: 2
 meta_description: Sign up with a 24-word recovery phrase and secure your account.
-updated: 2026-10-14
+updated: 2026-10-28
 ---
 
 # Create your Satflux account
@@ -16,9 +16,13 @@ You can start using Satflux in under a minute - no email required.
 
 1. Open the **Register** page and choose **Create account with recovery phrase**.
 2. Satflux generates a **24-word recovery phrase**. Write it down in order and keep it somewhere safe and offline.
-3. Confirm the phrase to finish. You are signed in.
+3. Confirm that you have saved the phrase. If a human-verification check appears, complete it to create the account and sign in.
 
 > Your recovery phrase backs up your Satflux account, your BTCPay store, and your local invoicing data. It is the only way to restore access - **Satflux does not store it and cannot recover it for you.**
+
+## Verification during signup
+
+When signup protection is enabled, Cloudflare Turnstile checks the creation of a new account after you confirm your phrase backup. Your recovery phrase is not submitted to the verification service. If verification expires or fails, use the retry button; the confirmed phrase stays the same while you keep this registration page open. Keep your written backup. Existing account sign-in and recovery do not require this signup check.
 
 ## Add a passkey (recommended)
 

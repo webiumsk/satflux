@@ -792,3 +792,24 @@ with native Composer and verify actual freshly installed version/reference, norm
 mail behavior and malformed MIME-parameter rejection. Preserve audit enforcement,
 all other packages and runtime constraints. Independent QA/security accept lock
 SHA `8f3133e4`; require fresh exact-head PHP-job completion through audit after push.
+
+
+## 2026-10-28 - Gate new account creation with Turnstile only
+
+The owner narrows the prior abuse proposal to Turnstile, leaving existing accounts
+and their address/status handling alone. Enforce the challenge on the server before
+new guest or enabled legacy registration side effects. Preserve authenticated retry
+and signed recovery behavior; a public recovery key is never a login proof.
+
+Use deployment-owned exact hostnames, a fixed Siteverify endpoint and register action; do not
+trust incoming Host/forwarded-IP fields for the proof. Omit remoteip from Siteverify,
+retain existing rate limits, and defer proxy/origin hardening as separate work.
+Incomplete enabled configuration and provider failures cannot disable the gate.
+Known public test credentials must fail closed in production.
+
+Keep confirmed enrollment local after backup, require explicit fresh-proof retries,
+and treat CF code as a trusted CSP origin without claiming executed third-party
+code can be unloaded. Preserve all quality baselines; the public-config contract
+test gains only the additive expected object. QA/security accept `305d24d0`.
+Actual activation requires verified real keys and deployed configuration; a local
+implementation, a merged PR or a disabled flag does not establish protection.

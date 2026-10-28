@@ -209,7 +209,17 @@
     "failed_to_verify_email": "No se pudo verificar el correo.",
     "verification_failed": "Verificación fallida: {status}",
     "failed_to_connect": "No se pudo conectar al servidor. Inténtelo de nuevo.",
-    "failed_to_verify_email_link": "No se pudo verificar el correo. El enlace puede ser inválido o haber expirado."
+    "failed_to_verify_email_link": "No se pudo verificar el correo. El enlace puede ser inválido o haber expirado.",
+    "turnstile_config_loading": "Preparando la creación de la cuenta…",
+    "turnstile_title": "Verifica para crear tu cuenta",
+    "turnstile_description": "Completa la verificación a continuación. Tu frase de recuperación guardada no cambiará si necesitas intentarlo de nuevo.",
+    "turnstile_loading": "Cargando verificación…",
+    "turnstile_error": "No se pudo completar la verificación. Inténtalo de nuevo.",
+    "turnstile_expired": "La verificación ha caducado o ya se ha utilizado. Verifica de nuevo.",
+    "turnstile_unavailable": "La verificación de la cuenta no está disponible temporalmente. Puedes intentarlo de nuevo o restaurar una cuenta existente.",
+    "turnstile_retry": "Intentar de nuevo",
+    "turnstile_back": "Volver a las opciones de cuenta",
+    "turnstile_registration_error": "No se pudo crear tu cuenta. Conserva tu frase de recuperación guardada e inténtalo de nuevo."
   },
   "dashboard": {
     "title": "Tablero de control",

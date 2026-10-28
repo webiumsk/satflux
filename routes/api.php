@@ -113,6 +113,7 @@ use App\Models\Store;
 use App\Services\BtcPay\StoreService;
 use App\Services\Invoicing\CompanySlotService;
 use App\Services\PurchaseAvailabilityPolicy;
+use App\Services\Turnstile\RegistrationTurnstile;
 use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
@@ -191,6 +192,7 @@ Route::get('/config', function () {
 
     return response()->json([
         'btcpay_base_url' => $publicBase,
+        'turnstile' => app(RegistrationTurnstile::class)->publicConfiguration(),
         'btcpay_lightning_address_domain' => (string) (config('services.btcpay.lightning_address_domain') ?? ''),
         'efaktura_enabled' => (bool) config('efaktura.enabled'),
         // Exposed unconditionally - readiness messaging shows the statutory

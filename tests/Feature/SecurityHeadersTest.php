@@ -53,6 +53,39 @@ class SecurityHeadersTest extends TestCase
     }
 
     #[Test]
+    public function enabled_turnstile_has_scoped_script_and_frame_sources_without_loosening_connect_policy(): void
+    {
+        config([
+            'security.csp.enabled' => true,
+            'security.csp.report_only' => false,
+            'turnstile.enabled' => true,
+        ]);
+
+        $policy = (string) $this->get('/register')->headers->get('Content-Security-Policy');
+        foreach (['script-src', 'frame-src'] as $directive) {
+            preg_match('/'.preg_quote($directive, '/').' ([^;]+)/', $policy, $matches);
+            $this->assertStringContainsString('https://challenges.cloudflare.com', $matches[1] ?? '');
+        }
+        preg_match('/connect-src ([^;]+)/', $policy, $connect);
+        $this->assertStringNotContainsString('https://challenges.cloudflare.com', $connect[1] ?? '');
+        $this->assertStringNotContainsString("'unsafe-eval'", $policy);
+        $this->assertStringContainsString("object-src 'none'", $policy);
+    }
+
+    #[Test]
+    public function disabled_turnstile_does_not_expand_csp_sources(): void
+    {
+        config([
+            'security.csp.enabled' => true,
+            'security.csp.report_only' => false,
+            'turnstile.enabled' => false,
+        ]);
+
+        $policy = (string) $this->get('/register')->headers->get('Content-Security-Policy');
+        $this->assertStringNotContainsString('https://challenges.cloudflare.com', $policy);
+    }
+
+    #[Test]
     public function connect_src_is_an_explicit_allowlist_not_bare_wildcards(): void
     {
         config([

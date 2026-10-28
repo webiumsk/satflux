@@ -1842,7 +1842,17 @@
     "guest_restore_hint": "Enter the same 24-word phrase you saved when you created the account. This restores your BTCPay store and links invoicing sync (may take up to a minute on first open).",
     "guest_restore_placeholder": "word1 word2 … (24 words)",
     "guest_restore_submit": "Restore and sign in",
-    "guest_restore_error": "Could not restore. Check your phrase and try again."
+    "guest_restore_error": "Could not restore. Check your phrase and try again.",
+    "turnstile_config_loading": "Preparing account creation…",
+    "turnstile_title": "Verify to create your account",
+    "turnstile_description": "Complete the verification below. Your saved recovery phrase stays the same if you need to try again.",
+    "turnstile_loading": "Loading verification…",
+    "turnstile_error": "Verification could not be completed. Please try again.",
+    "turnstile_expired": "Verification expired or was already used. Please verify again.",
+    "turnstile_unavailable": "Account verification is temporarily unavailable. You can try again or restore an existing account.",
+    "turnstile_retry": "Try again",
+    "turnstile_back": "Back to account options",
+    "turnstile_registration_error": "Your account could not be created. Keep your saved recovery phrase and try again."
   },
   "dashboard": {
     "title": "Dashboard",

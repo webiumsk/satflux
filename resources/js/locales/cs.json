@@ -1842,7 +1842,17 @@
     "guest_restore_hint": "Zadejte stejnou 24slovnou frázi, kterou jste si uložili při vytváření účtu. Obnoví se BTCPay store a propojí se sync fakturace (při prvním otevření to může trvat až minutu).",
     "guest_restore_placeholder": "slovo1 slovo2 … (24 slov)",
     "guest_restore_submit": "Obnovit a přihlásit",
-    "guest_restore_error": "Obnova selhala. Zkontrolujte frázi a zkuste to znovu."
+    "guest_restore_error": "Obnova selhala. Zkontrolujte frázi a zkuste to znovu.",
+    "turnstile_config_loading": "Připravujeme vytvoření účtu…",
+    "turnstile_title": "Ověřte se před vytvořením účtu",
+    "turnstile_description": "Dokončete ověření níže. Pokud budete muset zkusit postup znovu, vaše uložená obnovovací fráze zůstane stejná.",
+    "turnstile_loading": "Načítání ověření…",
+    "turnstile_error": "Ověření se nepodařilo dokončit. Zkuste to znovu.",
+    "turnstile_expired": "Ověření vypršelo nebo již bylo použito. Ověřte se znovu.",
+    "turnstile_unavailable": "Ověření účtu je dočasně nedostupné. Zkuste to znovu nebo obnovte existující účet.",
+    "turnstile_retry": "Zkusit znovu",
+    "turnstile_back": "Zpět na možnosti účtu",
+    "turnstile_registration_error": "Účet se nepodařilo vytvořit. Ponechte si uloženou obnovovací frázi a zkuste to znovu."
   },
   "dashboard": {
     "title": "Přehled",

@@ -460,3 +460,20 @@ The reviewed one-package symfony/mime 7.4.13→7.4.22 lock update `8f3133e4` pas
 strict validation/full audit (zero advisories), platform checks, mail regressions,
 independent QA/security and PHPStan/API checks. Publish and wait for the new full
 PHP CI job, including audit, before reporting this failure resolved remotely.
+
+
+## 2026-10-28 - Turnstile-only registration scope
+
+- [x] Implement server-validated challenge before fresh guest/legacy creation.
+- [x] Preserve existing accounts, login/recovery, phrase privacy and API defenses.
+- [x] Complete signup UI, CSP, five locales and secure activation runbook.
+- [x] Independent QA/security accept 25-file `305d24d0`; targeted suites, full Node 1050,
+  browser 6, build/static/Composer checks pass. Update one exact public-config test
+  expectation without weakening assertions (focused 44/482 pass).
+- [ ] Publish reviewed branch/PR-linked changelog and verify fresh full CI.
+- [ ] Obtain real Managed-widget configuration securely, deploy reviewed client
+  and server, enable protection and verify the actual public configuration.
+
+Existing account cleanup/labels, new creation budgets and proxy/firewall changes
+remain outside this approved implementation. No active production protection is
+claimed from local tests or default-disabled configuration.

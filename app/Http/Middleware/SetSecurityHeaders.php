@@ -65,12 +65,14 @@ class SetSecurityHeaders
             $btcpayUrl = (string) config('services.btcpay.base_url', '');
         }
         $btcpayOrigin = $this->originOf($btcpayUrl);
+        // Signup loads the explicit Turnstile widget only after phrase backup.
+        $turnstileOrigin = config('turnstile.enabled') ? 'https://challenges.cloudflare.com' : null;
 
         $directives = [
             'default-src' => ["'self'"],
             // 'wasm-unsafe-eval': Evolu's sqlite WASM module (local-first invoicing DB).
             // Allows WebAssembly compilation only - JS eval stays blocked.
-            'script-src' => array_filter(["'self'", "'wasm-unsafe-eval'", $matomoOrigin, $choralaOrigin]),
+            'script-src' => array_filter(["'self'", "'wasm-unsafe-eval'", $matomoOrigin, $choralaOrigin, $turnstileOrigin]),
             // 'unsafe-inline' styles: Vue transitions/components set inline style attributes.
             // Google Fonts: WooCommerce connect pages (resources/views/woocommerce/*).
             'style-src' => ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
@@ -84,7 +86,7 @@ class SetSecurityHeaders
             'worker-src' => ["'self'", 'blob:'],
             // YouTube embeds: landing SK video + documentation articles (both use youtube-nocookie);
             // Chorala widget may render its UI in an iframe.
-            'frame-src' => array_filter(["'self'", 'blob:', 'https://www.youtube-nocookie.com', 'https://www.youtube.com', $choralaOrigin, $btcpayOrigin]),
+            'frame-src' => array_filter(["'self'", 'blob:', 'https://www.youtube-nocookie.com', 'https://www.youtube.com', $choralaOrigin, $btcpayOrigin, $turnstileOrigin]),
             'object-src' => ["'none'"],
             'base-uri' => ["'self'"],
             'form-action' => ["'self'"],

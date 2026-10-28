@@ -3,7 +3,7 @@ title: Vytvorte si účet v Satfluxe
 category: getting-started
 order: 2
 meta_description: Zaregistrujte sa cez 24-slovnú obnovovaciu frázu a zabezpečte si účet.
-updated: 2026-10-14
+updated: 2026-10-28
 ---
 
 # Vytvorte si účet v Satfluxe
@@ -16,9 +16,13 @@ Satflux môžete začať používať za necelú minútu - bez e-mailu.
 
 1. Otvorte stránku **Registrácia** a zvoľte **Vytvoriť účet s obnovovacou frázou**.
 2. Satflux vygeneruje **24-slovnú obnovovaciu frázu**. Zapíšte si ju v poradí a uložte na bezpečné, offline miesto.
-3. Potvrďte frázu. Ste prihlásení.
+3. Potvrďte, že ste si frázu uložili. Ak sa zobrazí overenie človeka, dokončite ho. Potom sa účet vytvorí a budete prihlásení.
 
 > Obnovovacia fráza zálohuje váš Satflux účet, BTCPay obchod aj lokálne fakturačné dáta. Je to jediný spôsob obnovy prístupu - **Satflux ju neukladá a nevie ju obnoviť.**
+
+## Overenie pri registrácii
+
+Keď je zapnutá ochrana registrácie, Cloudflare Turnstile overí vytvorenie nového účtu po potvrdení zálohy frázy. Obnovovacia fráza sa overovacej službe neposiela. Ak overenie vyprší alebo zlyhá, použite tlačidlo na opakovanie; potvrdená fráza zostane rovnaká, kým ponecháte túto registračnú stránku otvorenú. Písomnú zálohu si uschovajte. Prihlásenie a obnova existujúceho účtu toto registračné overenie nevyžadujú.
 
 ## Pridajte passkey (odporúčané)
 
