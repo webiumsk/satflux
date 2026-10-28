@@ -453,3 +453,10 @@ phantom filtered next page and Previous remains on terminal empty results. QA an
 security accept `949cf289`; PHP 28/218, component 24, independent boundaries 2/1463,
 browser 3 and build/static checks pass. Publish and verify fresh-head CI/CodeRabbit;
 base `33242fd8` CI was green, not evidence for the new head.
+
+
+PR407 PHP-job failure is isolated to Composer audit, with 2072 PHP tests passing.
+The reviewed one-package symfony/mime 7.4.13→7.4.22 lock update `8f3133e4` passes fresh
+strict validation/full audit (zero advisories), platform checks, mail regressions,
+independent QA/security and PHPStan/API checks. Publish and wait for the new full
+PHP CI job, including audit, before reporting this failure resolved remotely.

@@ -1275,3 +1275,27 @@ and focused ESLint pass. No locale/dependency/auth changes or gate relaxation.
 Publish the reviewed followup to PR407 and verify its new CI/review independently.
 The canonical PR407 changelog fragment remains unchanged. No merge, deployment,
 production access or local port 8080 runtime switch is performed.
+
+
+## 2026-10-28 - PR407 MIME security-audit remediation
+
+Failed PHP job 123046518471 at `bbae0712`/run 40753609416 passed all 2072 tests/9858
+assertions, Pint 1076, PHPStan and API export. Only composer audit failed on medium
+PKSA-wtxr-p26d-nn42/CVE-2026-45070 in symfony/mime 7.4.13. Node 1029 and E2E 20
+passed separately. Fresh October 28 advisory-range metadata and official security
+release v7.4.22 supersede stale indexed descriptions naming 7.4.12 as patched.
+
+Use native Composer to update only symfony/mime 7.4.13 to 7.4.22. No composer.json,
+other package, runtime requirement, audit ignore, CI or quality-gate change. Lock
+SHA `8f3133e4` matches independently accepted QA/security scope. Fresh normal 168-package
+install, strict validation, platform checks and full unfiltered audit pass with
+zero advisories. Actual installed MIME version/reference matches lock. Author mail
+regressions 53/343 and independentQA 38/254 pass, including actual array-mail MIME
+serialization of verification codes, PDF attachments and CSV exports. Security
+reproduces 33 malformed parameter names accepted by old 7.4.13, rejects all 33 with new
+7.4.22 and passes 8 normal MIME scenarios. Fresh-vendor PHPStan and API export pass.
+
+Publish the accepted lock-only update to PR407 and verify its fresh full PHP job
+through the Composer audit step. The earlier tests passing do not establish that
+this final job is green. Preserve original local checkout/runtime and canonical
+Chorala fragment; no production mail/data access, merge or deployment.

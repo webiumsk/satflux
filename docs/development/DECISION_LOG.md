@@ -781,3 +781,14 @@ must remain available outside the message-list branch. Regression tests reproduc
 both failures before the fix; independent QA/security accept four-file `949cf289`.
 Preserve the 500-row budget, cursor/ownership checks, canonical changelog and all
 quality ratchets. Record old green CI separately from fresh followup verification.
+
+
+## 2026-10-28 - Distinguish passing PHP tests from a failed security audit
+
+Treat run 40753609416's passing 2072 PHP tests separately from its failed Composer
+audit. Follow the live October 28 advisory range and official MIME 7.4.22 security
+release, not stale indexed patch-version descriptions. Target only symfony/mime
+with native Composer and verify actual freshly installed version/reference, normal
+mail behavior and malformed MIME-parameter rejection. Preserve audit enforcement,
+all other packages and runtime constraints. Independent QA/security accept lock
+SHA `8f3133e4`; require fresh exact-head PHP-job completion through audit after push.
