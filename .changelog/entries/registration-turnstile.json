@@ -1,0 +1,10 @@
+{
+  "id": "registration-turnstile",
+  "source": "https://github.com/webiumsk/satflux/pull/408",
+  "title": "Human verification for new accounts",
+  "body": "New accounts can now be protected by Cloudflare Turnstile verification after the recovery phrase has been backed up. When enabled, verification completes before the account and store are created. Verification failures can be retried using the same confirmed phrase. Existing accounts, sign-in and recovery are unchanged.",
+  "labels": [
+    "feature",
+    "security"
+  ]
+}

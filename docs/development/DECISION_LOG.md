@@ -813,3 +813,9 @@ code can be unloaded. Preserve all quality baselines; the public-config contract
 test gains only the additive expected object. QA/security accept `305d24d0`.
 Actual activation requires verified real keys and deployed configuration; a local
 implementation, a merged PR or a disabled flag does not establish protection.
+
+
+Publish the authorized Turnstile implementation as PR408 with one canonical
+changelog fragment. Retain the independently accepted runtime scope while adding
+publication metadata. Distinguish default-disabled readiness from actual deployed
+protection; runtime credentials stay server-side and activation requires verification.

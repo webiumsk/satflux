@@ -477,3 +477,8 @@ PHP CI job, including audit, before reporting this failure resolved remotely.
 Existing account cleanup/labels, new creation budgets and proxy/firewall changes
 remain outside this approved implementation. No active production protection is
 claimed from local tests or default-disabled configuration.
+
+
+PR408 publishes the reviewed Turnstile-only change with a canonical PR-linked
+changelog fragment. Verify final CI/review, then prepare real widget configuration
+and activation. Existing accounts/statuses and recovery remain outside changes.

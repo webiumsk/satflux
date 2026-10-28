@@ -1339,3 +1339,10 @@ Default disabled supports compatible rollout, not a claim of active production
 protection. Deploy both client/server before setting TURNSTILE_ENABLED=true; then
 verify actual public configuration. No existing-account/data/status changes or
 production tests, merge/deployment, live Cloudflare calls or runtime switch.
+
+
+PR408 is open from `feat/registration-turnstile`, implementation `340a8e11`, with
+independent accepted 25-file `305d24d0` unchanged. Add its canonical Chorala fragment
+and verify final exact-head CI/CodeRabbit. Activation remains pending actual
+Managed-widget keys in the Satflux backend environment and deployed configuration;
+no production protection or merge/deployment is inferred from publication.
