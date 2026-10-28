@@ -1,0 +1,9 @@
+{
+  "id": "registration-turnstile-async-loading",
+  "source": "https://github.com/webiumsk/satflux/pull/409",
+  "title": "Restored account verification during registration",
+  "body": "Fixed a loading error that prevented the Turnstile verification widget from appearing after the recovery phrase backup. Verification can now initialize correctly and be retried with the same confirmed phrase.",
+  "labels": [
+    "fix"
+  ]
+}

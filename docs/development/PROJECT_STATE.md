@@ -1369,3 +1369,13 @@ Owner supplied the PUBLIC Site Key and will place Secret Key in the protected
 Satflux backend environment. Never copy the secret into chat/source or public API
 config. Keep TURNSTILE_ENABLED=false until reviewed code is deployed, then enable
 and verify public configuration. No activation or secret installation is claimed.
+
+
+## 2026-10-28 - Turnstile async SDK incident
+
+PR408 merged as `1e1f2d09`. The owner reports deployment and server environment setup. Read-only public checks confirm enabled registration configuration, the supplied public Site Key, action `register` and the required Cloudflare script/frame CSP origins. This verifies runtime configuration, not successful account creation or an exact deployed revision. The public health endpoint denied this diagnostic request. No production signup, Siteverify, account or wallet write was attempted.
+
+The merged PR408 loader combines an async/defer SDK script with `turnstile.ready()`. The current public Cloudflare SDK rejects that combination with code3857 before widget rendering; permissive synthetic readiness mocks missed the incompatibility. Prepare a bounded supported SDK onload handshake fix on a separate branch, preserving post-backup loading, manual retry, timeout, fixed provider origin and backend verification. Independent real-SDK browser reproduction and QA/security acceptance are required before publication; merge and deployment remain owner actions.
+
+
+PR409 publishes the isolated fix; source/test digest `a18a4557` is independently accepted by security, and QA accepts source/tests/runbook digest `be6bf93e`. The actual SDK reproduces old3857 before rendering, initializes successfully with the fixed callback and recovers when the previous failed load left a global. All provider challenge traffic was intercepted; no human challenge, server-secret/hostname decision or production account creation was tested. Independent focused regressions pass26; local lint passes with48 existing warnings, typecheck tolerates the unchanged120 baseline, locale parity and frontend build pass. Fresh CI remains a separate publication gate. The fix includes its own PR409 changelog fragment; merge/deployment require the owner.

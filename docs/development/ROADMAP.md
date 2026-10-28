@@ -489,3 +489,11 @@ and aligns six German strings with formal auth copy. Independent acceptance
 `dab15e0d` covers the final 25 files; 23 component and seven browser scenarios
 pass. Prior PHP/Node CI passed; rerun the exact-head workflow for corrected E2E.
 Public Site Key received; Secret Key and deployment remain operator setup.
+
+
+## Current: Turnstile async SDK compatibility fix
+
+Replace unsupported async `turnstile.ready()` usage with Cloudflare's explicit SDK readiness callback. Verify against the actual SDK in an isolated, network-intercepted browser as well as focused regressions; preserve fail-closed account creation and recovery identity. Public production configuration is enabled with appropriate CSP, but successful verification is not established. Publish reviewed fix, verify exact-head CI and hand off for owner merge/deployment.
+
+
+PR409 fix is published and independently accepted (`a18a4557` source/tests, `be6bf93e` with runbook). Real-SDK failure/initialization/retry evidence and26 focused regressions pass. Lint/typecheck/locale/build pass locally. Next: exact-head CI, owner merge and deployment of rebuilt frontend, then confirm actual browser verification. Do not change environment keys to work around this loader bug.

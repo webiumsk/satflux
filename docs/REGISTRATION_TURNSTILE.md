@@ -43,6 +43,12 @@ The browser mounts the challenge only after the phrase-backup wizard is closed. 
 
 When Turnstile is enabled, CSP permits `https://challenges.cloudflare.com` for scripts and frames. It does not add JavaScript eval, inline scripts or a broad network wildcard. Only the enabled signup verification step initiates loading the widget script; sign-in and recovery do not initiate that load. Removing a widget does not unload already executed third-party code from the current document. Cloudflare receives challenge/browser information as part of its verification; recovery material is excluded from application verification requests.
 
+## Async SDK loading
+
+The verification step loads Cloudflare's explicit-rendering SDK asynchronously and waits for its named `onload` callback before rendering. A script `load` event or an early `window.turnstile` global alone is not the readiness signal. Concurrent attempts share the same pending load; failed or timed-out loads require a fresh manual retry.
+
+Do not call `turnstile.ready()` on this asynchronous script. The Cloudflare SDK rejects that combination with error `3857`, preventing the widget from rendering even when public configuration and CSP are correct. Regression verification must include the real SDK readiness contract; a mock whose `ready()` always succeeds cannot catch this failure. Keep SDK fixtures outside shipped application assets and intercept challenge/account traffic in isolated browser checks.
+
 ## Failure and rollback
 
 A rejected proof must not create a local user, send registration mail or provision BTCPay resources. The UI offers an accessible retry without silently generating another phrase or automatically repeating account creation. Restoring an existing account remains available if new-account verification is unavailable.
