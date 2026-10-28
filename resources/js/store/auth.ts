@@ -340,7 +340,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    async function continueAsGuest(recoveryPublicKeyHex?: string) {
+    async function continueAsGuest(recoveryPublicKeyHex?: string, turnstileToken?: string) {
         synchronizeLogout();
         const generation = logoutGeneration;
         loading.value = true;
@@ -351,6 +351,7 @@ export const useAuthStore = defineStore('auth', () => {
                 ...(recoveryPublicKeyHex
                     ? { recovery_public_key: recoveryPublicKeyHex }
                     : {}),
+                ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
             });
             assertCurrentAuthOperation(generation);
             await fetchUser();

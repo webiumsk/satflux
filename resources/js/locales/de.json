@@ -1842,7 +1842,17 @@
     "guest_restore_hint": "Geben Sie dieselbe 24-Wörter-Phrase ein, die Sie bei der Kontoerstellung gespeichert haben. Dadurch werden Ihr BTCPay-Store und die Rechnungssynchronisation wiederhergestellt (beim ersten Öffnen kann es bis zu einer Minute dauern).",
     "guest_restore_placeholder": "wort1 wort2 … (24 Wörter)",
     "guest_restore_submit": "Wiederherstellen und anmelden",
-    "guest_restore_error": "Wiederherstellung fehlgeschlagen. Prüfen Sie Ihre Phrase und versuchen Sie es erneut."
+    "guest_restore_error": "Wiederherstellung fehlgeschlagen. Prüfen Sie Ihre Phrase und versuchen Sie es erneut.",
+    "turnstile_config_loading": "Kontoerstellung wird vorbereitet…",
+    "turnstile_title": "Bestätigen Sie die Prüfung, um Ihr Konto zu erstellen",
+    "turnstile_description": "Schließen Sie die Prüfung unten ab. Ihre gespeicherte Wiederherstellungsphrase bleibt bei einem erneuten Versuch unverändert.",
+    "turnstile_loading": "Prüfung wird geladen…",
+    "turnstile_error": "Die Prüfung konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut.",
+    "turnstile_expired": "Die Prüfung ist abgelaufen oder wurde bereits verwendet. Bitte bestätigen Sie sie erneut.",
+    "turnstile_unavailable": "Die Kontoprüfung ist vorübergehend nicht verfügbar. Versuchen Sie es erneut oder stellen Sie ein bestehendes Konto wieder her.",
+    "turnstile_retry": "Erneut versuchen",
+    "turnstile_back": "Zurück zu den Kontooptionen",
+    "turnstile_registration_error": "Ihr Konto konnte nicht erstellt werden. Bewahren Sie Ihre gespeicherte Wiederherstellungsphrase auf und versuchen Sie es erneut."
   },
   "dashboard": {
     "title": "Übersicht",

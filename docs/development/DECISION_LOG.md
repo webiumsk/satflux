@@ -792,3 +792,40 @@ with native Composer and verify actual freshly installed version/reference, norm
 mail behavior and malformed MIME-parameter rejection. Preserve audit enforcement,
 all other packages and runtime constraints. Independent QA/security accept lock
 SHA `8f3133e4`; require fresh exact-head PHP-job completion through audit after push.
+
+
+## 2026-10-28 - Gate new account creation with Turnstile only
+
+The owner narrows the prior abuse proposal to Turnstile, leaving existing accounts
+and their address/status handling alone. Enforce the challenge on the server before
+new guest or enabled legacy registration side effects. Preserve authenticated retry
+and signed recovery behavior; a public recovery key is never a login proof.
+
+Use deployment-owned exact hostnames, a fixed Siteverify endpoint and register action; do not
+trust incoming Host/forwarded-IP fields for the proof. Omit remoteip from Siteverify,
+retain existing rate limits, and defer proxy/origin hardening as separate work.
+Incomplete enabled configuration and provider failures cannot disable the gate.
+Known public test credentials must fail closed in production.
+
+Keep confirmed enrollment local after backup, require explicit fresh-proof retries,
+and treat CF code as a trusted CSP origin without claiming executed third-party
+code can be unloaded. Preserve all quality baselines; the public-config contract
+test gains only the additive expected object. QA/security accept `305d24d0`.
+Actual activation requires verified real keys and deployed configuration; a local
+implementation, a merged PR or a disabled flag does not establish protection.
+
+
+Publish the authorized Turnstile implementation as PR408 with one canonical
+changelog fragment. Retain the independently accepted runtime scope while adding
+publication metadata. Distinguish default-disabled readiness from actual deployed
+protection; runtime credentials stay server-side and activation requires verification.
+
+
+## 2026-10-28 - Keep one visible registration failure
+
+Use the accessible inline signup error as the single failure presentation. Remove
+the duplicate global toast to fix E2E selection and UX while preserving 409
+identity protections; do not mask it with a relaxed locator. Keep German signup
+copy consistent with formal auth language. QA/security accept `dab15e0d`; unchanged
+backend evidence remains valid and fresh CI must verify the new full revision.
+Widget activation remains distinct from reviewed code and public-key receipt.

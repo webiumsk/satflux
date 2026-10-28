@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Services\Compliance\ComplianceGate;
 use App\Services\GuestProvisioningService;
 use App\Services\GuestRecoveryService;
+use App\Services\Turnstile\RegistrationTurnstile;
 use Illuminate\Auth\SessionGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class GuestAuthController extends Controller
         protected GuestProvisioningService $guestProvisioningService,
         protected GuestRecoveryService $guestRecoveryService,
         protected ComplianceGate $complianceGate,
+        protected RegistrationTurnstile $turnstile,
     ) {}
 
     /**
@@ -57,6 +59,8 @@ class GuestAuthController extends Controller
                 'store_id' => $existingStoreId,
             ]);
         }
+
+        $this->turnstile->assertValid($request);
 
         try {
             $guestEmail = $this->guestProvisioningService->generateGuestEmail();

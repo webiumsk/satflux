@@ -1299,3 +1299,73 @@ Publish the accepted lock-only update to PR407 and verify its fresh full PHP job
 through the Composer audit step. The earlier tests passing do not establish that
 this final job is green. Preserve original local checkout/runtime and canonical
 Chorala fragment; no production mail/data access, merge or deployment.
+
+
+## 2026-10-28 - Turnstile-only registration implementation
+
+Owner authorizes Turnstile now and explicitly leaves existing accounts/address
+format alone. Limit this change to fresh account verification; do not implement
+the broader audit's rate-limit, origin/proxy, cleanup or admin-label proposals.
+New branch `feat/registration-turnstile` starts from merged master `97091276`.
+
+Server-side Siteverify protects fresh guest and enabled legacy email registration
+before account writes, mail or BTCPay provisioning. Fixed HTTPS endpoint, one
+bounded request/no redirects, strict success/action/static-host verification and
+production dummy-key rejection fail closed when enabled. Existing authenticated
+retries, login, signed recovery, passkeys and upgrades remain separate. Public
+configuration contains only enabled, public Site Key and action.
+
+The widget loads after the phrase-backup modal is removed. The confirmed enrollment
+stays in browser memory through explicit fresh-token retries; no recovery phrase
+is sent to the provider or registration API. Loader readiness/timeouts/cleanup and
+late-callback guards are tested. CSP allows only the fixed CF script/frame origin
+when enabled. Five UI locales, existing EN/SK signup docs with inherited article
+fallback, and an activation runbook are updated. No new dependencies or migrations.
+
+Independent QA/security accept 25-file digest `305d24d0`. QA PHP 110/829, component 22
+and six synthetic browser scenarios pass; security independent 6/77 and 22 frontend
+pass. Full frontend 1050/142 files, final build, PHPStan, typecheck 120-baseline with
+no new errors, lint 48 inherited warnings, locale parity, Pint 1079, strict Composer
+validation, zero-advisory audit and generated API checks pass. Full local PHP 2116
+execution exposed one outdated public-config exact-response expectation; only that
+expected additive object was updated, preserving assertExactJson. Focused 44/482
+pass after the adjustment, all 24 prior source hashes remain unchanged; fresh full
+CI must establish the final whole-suite result.
+
+Real Managed-widget credentials and deployment target/configuration are not
+verified. An asynchronous question requests widget readiness/public Site Key only;
+secrets must stay in the protected Satflux backend environment, never chat/source.
+Default disabled supports compatible rollout, not a claim of active production
+protection. Deploy both client/server before setting TURNSTILE_ENABLED=true; then
+verify actual public configuration. No existing-account/data/status changes or
+production tests, merge/deployment, live Cloudflare calls or runtime switch.
+
+
+PR408 is open from `feat/registration-turnstile`, implementation `340a8e11`, with
+independent accepted 25-file `305d24d0` unchanged. Add its canonical Chorala fragment
+and verify final exact-head CI/CodeRabbit. Activation remains pending actual
+Managed-widget keys in the Satflux backend environment and deployed configuration;
+no production protection or merge/deployment is inferred from publication.
+
+
+## 2026-10-28 - PR408 integration review followup
+
+Exact-head `7ec299a6` PHP CI passed 2116 tests/10342 assertions, Pint/PHPStan/API
+checks and audit; Node 1050 passed. E2E 19 passed/1 failed because the correct 409
+ownership message appeared twice (inline plus toast), making a strict locator
+ambiguous. Remove only the duplicate Register toast; preserve inline error/retry
+and every identity guard. Do not weaken the E2E locator. Regressions reproduce
+the old behavior and pass after the fix.
+
+CodeRabbit minor 4406666199 identifies informal German signup copy in a formal
+auth section; align six values with Sie/Ihr/Ihre, preserving keys/placeholders.
+Independent QA/security accept final 25-file digest `dab15e0d`. Followup 23
+component tests and seven actual-SFC browser scenarios pass, including the real
+global FlashMessage/Pinia integration. UI build/typecheck and locale parity pass.
+All backend runtime hashes remain unchanged. Publish one combined followup and
+verify fresh exact-head CI/review.
+
+Owner supplied the PUBLIC Site Key and will place Secret Key in the protected
+Satflux backend environment. Never copy the secret into chat/source or public API
+config. Keep TURNSTILE_ENABLED=false until reviewed code is deployed, then enable
+and verify public configuration. No activation or secret installation is claimed.

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Services\Auth\RegistrationService;
 use App\Services\Compliance\ComplianceGate;
+use App\Services\Turnstile\RegistrationTurnstile;
 use App\Support\Legal\LegalConsent;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules;
@@ -14,6 +15,7 @@ class RegisterController extends Controller
     public function __construct(
         protected RegistrationService $registrationService,
         protected ComplianceGate $complianceGate,
+        protected RegistrationTurnstile $turnstile,
     ) {}
 
     /**
@@ -31,6 +33,8 @@ class RegisterController extends Controller
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ], LegalConsent::registrationRules()));
+
+        $this->turnstile->assertValid($request);
 
         $this->complianceGate->assertRegistrationAllowed(
             $request,

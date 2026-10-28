@@ -25,6 +25,11 @@ class PublicConfigTest extends TestCase
                 // presets appear only when e-faktura is globally on.
                 'efaktura_mandatory_from' => (string) config('efaktura.mandatory_from'),
                 'efaktura_cpds_presets' => [],
+                'turnstile' => [
+                    'enabled' => false,
+                    'site_key' => null,
+                    'action' => 'register',
+                ],
             ]);
     }
 
