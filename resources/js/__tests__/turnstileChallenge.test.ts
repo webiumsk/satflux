@@ -20,7 +20,7 @@ beforeEach(() => {
     options = [];
     api = {
         render: vi.fn((_container: HTMLElement, settings: TurnstileOptions) => { options.push(settings); return `synthetic-widget-${options.length}`; }),
-        remove: vi.fn(), ready: callback => callback(),
+        remove: vi.fn(), ready: vi.fn(() => { throw new Error("[Cloudflare Turnstile] Remove async/defer before using ready(). Code: 3857"); }),
     };
     mocks.load.mockResolvedValue(api);
 });
@@ -92,63 +92,147 @@ describe("registration verification widget", () => {
     });
 });
 
+function scriptCallback(script: HTMLScriptElement) {
+    const callbackName = new URL(script.src).searchParams.get("onload")!;
+    const callback = (window as unknown as Record<string, () => void>)[callbackName]!;
+    expect(callback).toBeTypeOf("function");
+    return { callbackName, callback };
+}
+
+function currentScript() {
+    return document.querySelector<HTMLScriptElement>("script[data-satflux-turnstile]")!;
+}
+
 describe("fixed challenge script loader", () => {
-    it("keeps an early SDK global behind the shared ready promise", async () => {
+    it("accepts the asynchronous SDK callback without calling unsupported ready", async () => {
+        const { loadTurnstile } = await vi.importActual<typeof import("../services/turnstile")>("../services/turnstile");
+        const pending = loadTurnstile();
+        const script = currentScript();
+        window.turnstile = api;
+        script.dispatchEvent(new Event("load"));
+        scriptCallback(script).callback();
+        await expect(pending).resolves.toBe(api);
+        expect(api.ready).not.toHaveBeenCalled();
+    });
+
+    it("keeps an early SDK global behind the shared callback promise", async () => {
         const { loadTurnstile } = await vi.importActual<typeof import("../services/turnstile")>("../services/turnstile");
         const first = loadTurnstile();
-        let ready!: () => void;
-        const earlyApi = { ...api, ready: vi.fn((callback: () => void) => { ready = callback; }) };
-        window.turnstile = earlyApi;
+        window.turnstile = api;
         const second = loadTurnstile();
         expect(second).toBe(first);
-        document.querySelector("script[data-satflux-turnstile]")!.dispatchEvent(new Event("load"));
+        currentScript().dispatchEvent(new Event("load"));
         let resolved = false;
         void second.then(() => { resolved = true; });
         await flushPromises();
         expect(resolved).toBe(false);
         expect(loadTurnstile()).toBe(first);
-        ready();
-        await expect(second).resolves.toBe(earlyApi);
+        scriptCallback(currentScript()).callback();
+        await expect(second).resolves.toBe(api);
+        expect(api.ready).not.toHaveBeenCalled();
     });
 
     it("shares concurrent requests and loads only the fixed Cloudflare script", async () => {
         const { loadTurnstile } = await vi.importActual<typeof import("../services/turnstile")>("../services/turnstile");
         const first = loadTurnstile();
-        const second = loadTurnstile();
-        expect(first).toBe(second);
-        const script = document.querySelector<HTMLScriptElement>("script[data-satflux-turnstile]")!;
-        expect(script.src).toBe("https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit");
+        expect(loadTurnstile()).toBe(first);
+        const script = currentScript();
+        const url = new URL(script.src);
+        expect(url.origin + url.pathname).toBe("https://challenges.cloudflare.com/turnstile/v0/api.js");
+        expect(url.searchParams.get("render")).toBe("explicit");
+        expect([...url.searchParams.keys()]).toEqual(["render", "onload"]);
+        const { callbackName, callback } = scriptCallback(script);
+        expect(callbackName).toMatch(/^satfluxTurnstileLoaded[0-9]+$/);
+        expect(script.async).toBe(true);
+        expect(script.defer).toBe(true);
         expect(document.querySelectorAll("script[data-satflux-turnstile]")).toHaveLength(1);
         window.turnstile = api;
-        script.dispatchEvent(new Event("load"));
+        callback();
         await expect(first).resolves.toBe(api);
+        expect((window as unknown as Record<string, unknown>)[callbackName]).toBeUndefined();
         await expect(loadTurnstile()).resolves.toBe(api);
+        expect(document.querySelectorAll("script[data-satflux-turnstile]")).toHaveLength(1);
     });
 
-    it("times out script loading and permits a fresh explicit retry", async () => {
+    it("times out and ignores a stale callback during a fresh explicit retry", async () => {
         const { loadTurnstile } = await vi.importActual<typeof import("../services/turnstile")>("../services/turnstile");
         const first = loadTurnstile();
+        const oldScript = currentScript();
+        const old = scriptCallback(oldScript);
         const rejection = expect(first).rejects.toThrow("Registration verification is unavailable.");
+        window.turnstile = api;
         await vi.advanceTimersByTimeAsync(15_000);
         await rejection;
-        expect(document.querySelector("script[data-satflux-turnstile]")).toBeNull();
+        expect(currentScript()).toBeNull();
+        expect((window as unknown as Record<string, unknown>)[old.callbackName]).toBeUndefined();
         const second = loadTurnstile();
-        const script = document.querySelector<HTMLScriptElement>("script[data-satflux-turnstile]")!;
-        window.turnstile = api;
-        script.dispatchEvent(new Event("load"));
+        const script = currentScript();
+        const fresh = scriptCallback(script);
+        expect(fresh.callbackName).not.toBe(old.callbackName);
+        let resolved = false;
+        void second.then(() => { resolved = true; });
+        old.callback();
+        oldScript.dispatchEvent(new Event("load"));
+        await flushPromises();
+        expect(resolved).toBe(false);
+        expect((window as unknown as Record<string, unknown>)[fresh.callbackName]).toBe(fresh.callback);
+        expect(loadTurnstile()).toBe(second);
+        fresh.callback();
         await expect(second).resolves.toBe(api);
+        expect(api.ready).not.toHaveBeenCalled();
     });
 
     it("rejects a script error without caching a failed load", async () => {
         const { loadTurnstile } = await vi.importActual<typeof import("../services/turnstile")>("../services/turnstile");
         const first = loadTurnstile();
+        const old = scriptCallback(currentScript());
         const rejection = expect(first).rejects.toThrow("Registration verification is unavailable.");
-        document.querySelector("script[data-satflux-turnstile]")!.dispatchEvent(new Event("error"));
+        currentScript().dispatchEvent(new Event("error"));
         await rejection;
+        expect(currentScript()).toBeNull();
+        expect((window as unknown as Record<string, unknown>)[old.callbackName]).toBeUndefined();
         const second = loadTurnstile();
-        const script = document.querySelector<HTMLScriptElement>("script[data-satflux-turnstile]")!;
         window.turnstile = api;
-        script.dispatchEvent(new Event("load"));
+        scriptCallback(currentScript()).callback();
         await expect(second).resolves.toBe(api);
+    });
+
+    it("rejects callback readiness without a usable API and permits retry", async () => {
+        const { loadTurnstile } = await vi.importActual<typeof import("../services/turnstile")>("../services/turnstile");
+        const first = loadTurnstile();
+        const rejection = expect(first).rejects.toThrow("Registration verification is unavailable.");
+        scriptCallback(currentScript()).callback();
+        await rejection;
+        expect(currentScript()).toBeNull();
+        const second = loadTurnstile();
+        window.turnstile = api;
+        scriptCallback(currentScript()).callback();
+        await expect(second).resolves.toBe(api);
+    });
+
+    it("does not overwrite an occupied callback name or delete another owner's replacement", async () => {
+        const { loadTurnstile } = await vi.importActual<typeof import("../services/turnstile")>("../services/turnstile");
+        const first = loadTurnstile();
+        const { callbackName, callback } = scriptCallback(currentScript());
+        const callbacks = window as unknown as Record<string, (() => void) | undefined>;
+        const occupiedName = `satfluxTurnstileLoaded${Number(callbackName.replace("satfluxTurnstileLoaded", "")) + 1}`;
+        const foreign = vi.fn();
+        callbacks[occupiedName] = foreign;
+        callbacks[callbackName] = foreign;
+        const rejection = expect(first).rejects.toThrow("Registration verification is unavailable.");
+        await vi.advanceTimersByTimeAsync(15_000);
+        await rejection;
+        expect(callbacks[callbackName]).toBe(foreign);
+        const second = loadTurnstile();
+        const fresh = scriptCallback(currentScript());
+        expect(fresh.callbackName).not.toBe(occupiedName);
+        expect(callbacks[occupiedName]).toBe(foreign);
+        window.turnstile = api;
+        callback();
+        fresh.callback();
+        await expect(second).resolves.toBe(api);
+        expect(foreign).not.toHaveBeenCalled();
+        delete callbacks[occupiedName];
+        delete callbacks[callbackName];
     });
 });
