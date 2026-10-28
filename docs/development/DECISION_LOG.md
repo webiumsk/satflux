@@ -834,3 +834,6 @@ Widget activation remains distinct from reviewed code and public-key receipt.
 ## 2026-10-28 - Verify Turnstile asynchronous readiness against the provider SDK
 
 Do not combine an asynchronously loaded Turnstile script with `turnstile.ready()`; the provider rejects this with3857. Use the documented named SDK onload handshake, registered before script insertion, with bounded cleanup and stale-attempt protection. A browser script load event or an early global alone does not release the pending handshake. Include independent real-SDK initialization evidence in addition to mocks; intercept all challenge/account traffic and never create production accounts for QA. Enabled public configuration and CSP are separate evidence from successful token verification.
+
+
+Accept PR409's bounded asynchronous SDK compatibility fix after independent security/QA review and actual-SDK failure/initialization/retry evidence. Preserve server proof verification, post-backup loading and callback cleanup; neither a successful SDK render nor enabled public configuration establishes a completed human challenge or valid server secret. Publish a separate immutable user-facing PR409 changelog correction and keep owner merge/deployment separate.
