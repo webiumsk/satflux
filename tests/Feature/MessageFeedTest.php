@@ -73,6 +73,54 @@ class MessageFeedTest extends TestCase
             ->assertOk()->assertJsonPath('data.0.id', 'secondInvoice');
     }
 
+    public function test_full_filtered_page_does_not_offer_a_phantom_page_for_trailing_nonmatches(): void
+    {
+        $time = now()->timestamp;
+        $rows = [];
+        for ($i = 0; $i < 20; $i++) {
+            $rows[] = $this->row('invoice'.$i, $time - $i);
+        }
+        for ($i = 20; $i < 23; $i++) {
+            $rows[] = $this->row('payout'.$i, $time - $i, 'payout');
+        }
+        $user = $this->userWithFeed($rows);
+
+        $this->actingAs($user)->getJson('/api/messages?category=invoices&per_page=20')->assertOk()
+            ->assertJsonCount(20, 'data')
+            ->assertJsonPath('meta.has_more', false)
+            ->assertJsonPath('meta.next_cursor', null)
+            ->assertJsonPath('meta.scan_limited', false)
+            ->assertJsonPath('meta.total', 20)
+            ->assertJsonPath('meta.total_is_exact', true);
+    }
+
+    public function test_trailing_nonmatches_beyond_the_scan_budget_require_continuation_before_declaring_exhaustion(): void
+    {
+        $time = now()->timestamp;
+        $rows = [];
+        for ($i = 0; $i < 20; $i++) {
+            $rows[] = $this->row('invoice'.$i, $time - $i);
+        }
+        for ($i = 20; $i < 521; $i++) {
+            $rows[] = $this->row('payout'.$i, $time - $i, 'payout');
+        }
+        $user = $this->userWithFeed($rows);
+
+        $first = $this->actingAs($user)->getJson('/api/messages?category=invoices&per_page=20')->assertOk()
+            ->assertJsonCount(20, 'data')
+            ->assertJsonPath('meta.has_more', true)
+            ->assertJsonPath('meta.scan_limited', true)
+            ->assertJsonPath('meta.total_is_exact', false);
+        $this->assertNotEmpty($first->json('meta.next_cursor'));
+        $this->getJson('/api/messages?category=invoices&per_page=20&cursor='.urlencode($first->json('meta.next_cursor')))->assertOk()
+            ->assertJsonCount(0, 'data')
+            ->assertJsonPath('meta.has_more', false)
+            ->assertJsonPath('meta.next_cursor', null)
+            ->assertJsonPath('meta.scan_limited', false)
+            ->assertJsonPath('meta.total', 20)
+            ->assertJsonPath('meta.total_is_exact', true);
+    }
+
     public function test_sparse_filter_has_bounded_empty_continuation_and_eventually_reaches_older_match(): void
     {
         $time = now()->timestamp;

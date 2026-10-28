@@ -770,3 +770,14 @@ The owner authorizes pushing the usability branch. PR407 is the canonical source
 for one combined reviewed changelog fragment; keep the previously accepted runtime
 implementation unchanged. CI/check initiation is evidence of publication, not
 evidence of approval, merge or deployment.
+
+
+## 2026-10-28 - Empty filtered-feed continuation remains navigable
+
+Do not infer another filtered page from uninspected raw rows. Reuse the bounded
+peek to consume excluded trailing rows, retaining a continuation if the scan budget
+prevents proving exhaustion. A later scan can legitimately end empty, so Previous
+must remain available outside the message-list branch. Regression tests reproduce
+both failures before the fix; independent QA/security accept four-file `949cf289`.
+Preserve the 500-row budget, cursor/ownership checks, canonical changelog and all
+quality ratchets. Record old green CI separately from fresh followup verification.

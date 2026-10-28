@@ -446,3 +446,10 @@ PR407 now contains the reviewed support/admin/messages change on the owned
 feature branch. Its canonical Chorala fragment passes schema validation, and all
 53 offline changelog tests pass. Verify exact-head CI/CodeRabbit before owner
 merge/deployment.
+
+
+PR407 CodeRabbit finding 4404620462 is fixed in a bounded four-file followup: no
+phantom filtered next page and Previous remains on terminal empty results. QA and
+security accept `949cf289`; PHP 28/218, component 24, independent boundaries 2/1463,
+browser 3 and build/static checks pass. Publish and verify fresh-head CI/CodeRabbit;
+base `33242fd8` CI was green, not evidence for the new head.

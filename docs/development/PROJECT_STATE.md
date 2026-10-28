@@ -1253,3 +1253,25 @@ publication followup adds the canonical PR407 changelog fragment for Chorala;
 no runtime implementation hashes change. Verify fresh CI and CodeRabbit against
 the final followup head separately from local checks. No merge, deployment or
 production publication is performed. The original dirty checkout remains preserved.
+
+
+## 2026-10-28 - PR407 filtered-message pagination review fix
+
+Exact-head CI 40745248257 at `33242fd8` passed PHP 2070/9831 assertions, frontend 1027,
+Playwright 20, static checks and Composer audit. CodeRabbit's successful check also
+posted one valid minor finding 4404620462: trailing excluded notifications caused
+has_more=true, then a terminal empty page hid Previous. Its 63.16% docstring advisory
+is separate from that functional finding and the successful check.
+
+Consume trailing nonmatches through the existing bounded peek before calculating
+has_more. Keep Previous outside the list-only branch so legitimate terminal empty
+scan pages remain navigable. Two PHP and two component regressions fail on the
+previous head and pass with the fix. Independent QA/security accept four-file
+digest `949cf289`: PHP 28/218, component 24, QA traversal/boundaries 2/1463 and three
+browser scenarios pass. Security probes 4/52, concrete regressions 2/27 and focused
+component 13 pass. Final build, PHPStan, unchanged typecheck ratchet 120, scoped Pint
+and focused ESLint pass. No locale/dependency/auth changes or gate relaxation.
+
+Publish the reviewed followup to PR407 and verify its new CI/review independently.
+The canonical PR407 changelog fragment remains unchanged. No merge, deployment,
+production access or local port 8080 runtime switch is performed.

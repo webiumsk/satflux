@@ -123,7 +123,10 @@ class MessageFeedService
             }
         }
 
-        $hasMore = $localIndex < $local->count() || ! $remoteDone || $remoteIndex < count($remote);
+        // Consume trailing nonmatches before advertising another filtered page.
+        // A scan budget exhaustion still needs a continuation, even without a peek.
+        $pendingRemote = $peek();
+        $hasMore = $localIndex < $local->count() || $pendingRemote !== null || $scanLimited;
         $page = $state['page'];
         $state['page']++;
         $state['emitted'] += count($items);

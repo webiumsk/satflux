@@ -172,29 +172,29 @@
             </div>
           </div>
         </article>
+      </div>
 
-        <!-- Pagination -->
-        <div v-if="meta.current_page > 1 || hasMore" class="flex justify-center gap-2 pt-4">
-          <button
-            type="button"
-            :disabled="loading || meta.current_page <= 1"
-            class="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-600 text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-            @click="loadPage(meta.current_page - 1)"
-          >
-            {{ t("messages.previous") }}
-          </button>
-          <span class="px-3 py-1.5 text-sm text-gray-400">
-            {{ t("messages.page_label", { page: meta.current_page }) }}
-          </span>
-          <button
-            type="button"
-            :disabled="loading || !hasMore"
-            class="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-600 text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-            @click="loadPage(meta.current_page + 1)"
-          >
-            {{ t(messages.length === 0 ? "messages.continue_search" : "messages.next") }}
-          </button>
-        </div>
+      <!-- Pagination -->
+      <div v-if="!loading && !loadError && available && (meta.current_page > 1 || hasMore)" class="flex justify-center gap-2 pt-4">
+        <button
+          type="button"
+          :disabled="loading || meta.current_page <= 1"
+          class="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-600 text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="loadPage(meta.current_page - 1)"
+        >
+          {{ t("messages.previous") }}
+        </button>
+        <span class="px-3 py-1.5 text-sm text-gray-400">
+          {{ t("messages.page_label", { page: meta.current_page }) }}
+        </span>
+        <button
+          type="button"
+          :disabled="loading || !hasMore"
+          class="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-600 text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="loadPage(meta.current_page + 1)"
+        >
+          {{ t(messages.length === 0 ? "messages.continue_search" : "messages.next") }}
+        </button>
       </div>
     </div>
   </div>

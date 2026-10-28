@@ -84,6 +84,31 @@ describe('message feed usability', () => {
         expect(listCalls().at(-1)![1].params).not.toHaveProperty('cursor');
     });
 
+    it.each(['all', 'invoices'])('keeps Previous available on an empty terminal continuation page for %s messages', async category => {
+        mocks.get.mockImplementation((path: string, options?: { params: { cursor?: string } }) => Promise.resolve(path === '/messages/count'
+            ? { data: { data: { unread: 1 } } }
+            : options?.params.cursor ? response([], { current_page: 2, has_more: false, next_cursor: null })
+                : response([message()], { has_more: true, next_cursor: 'terminal-synthetic-cursor' })));
+        const wrapper = mountPage();
+        await flushPromises();
+        if (category !== 'all') {
+            await wrapper.get('select').setValue(category);
+            await flushPromises();
+        }
+        await wrapper.findAll('button').find(button => button.text() === 'messages.next')!.trigger('click');
+        await flushPromises();
+        expect(listCalls().at(-1)![1].params).toMatchObject({ page: 2, cursor: 'terminal-synthetic-cursor', category });
+        expect(wrapper.find('article').exists()).toBe(false);
+        const previous = wrapper.findAll('button').find(button => button.text() === 'messages.previous');
+        expect(previous).toBeDefined();
+        expect(previous!.attributes('disabled')).toBeUndefined();
+        await previous!.trigger('click');
+        await flushPromises();
+        expect(listCalls().at(-1)![1].params).toMatchObject({ page: 1, category });
+        expect(listCalls().at(-1)![1].params).not.toHaveProperty('cursor');
+        expect(wrapper.get('article h3').text()).toBe('Synthetic invoice settled');
+    });
+
     it('discards cursor history when the category or unread filter changes', async () => {
         mocks.get.mockImplementation((path: string) => Promise.resolve(path === '/messages/count'
             ? { data: { data: { unread: 1 } } }
