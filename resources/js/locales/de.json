@@ -1844,15 +1844,15 @@
     "guest_restore_submit": "Wiederherstellen und anmelden",
     "guest_restore_error": "Wiederherstellung fehlgeschlagen. Prüfen Sie Ihre Phrase und versuchen Sie es erneut.",
     "turnstile_config_loading": "Kontoerstellung wird vorbereitet…",
-    "turnstile_title": "Bestätige die Prüfung, um dein Konto zu erstellen",
-    "turnstile_description": "Schließe die Prüfung unten ab. Deine gespeicherte Wiederherstellungsphrase bleibt bei einem erneuten Versuch unverändert.",
+    "turnstile_title": "Bestätigen Sie die Prüfung, um Ihr Konto zu erstellen",
+    "turnstile_description": "Schließen Sie die Prüfung unten ab. Ihre gespeicherte Wiederherstellungsphrase bleibt bei einem erneuten Versuch unverändert.",
     "turnstile_loading": "Prüfung wird geladen…",
-    "turnstile_error": "Die Prüfung konnte nicht abgeschlossen werden. Bitte versuche es erneut.",
-    "turnstile_expired": "Die Prüfung ist abgelaufen oder wurde bereits verwendet. Bitte bestätige sie erneut.",
-    "turnstile_unavailable": "Die Kontoprüfung ist vorübergehend nicht verfügbar. Versuche es erneut oder stelle ein bestehendes Konto wieder her.",
+    "turnstile_error": "Die Prüfung konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut.",
+    "turnstile_expired": "Die Prüfung ist abgelaufen oder wurde bereits verwendet. Bitte bestätigen Sie sie erneut.",
+    "turnstile_unavailable": "Die Kontoprüfung ist vorübergehend nicht verfügbar. Versuchen Sie es erneut oder stellen Sie ein bestehendes Konto wieder her.",
     "turnstile_retry": "Erneut versuchen",
     "turnstile_back": "Zurück zu den Kontooptionen",
-    "turnstile_registration_error": "Dein Konto konnte nicht erstellt werden. Bewahre deine gespeicherte Wiederherstellungsphrase auf und versuche es erneut."
+    "turnstile_registration_error": "Ihr Konto konnte nicht erstellt werden. Bewahren Sie Ihre gespeicherte Wiederherstellungsphrase auf und versuchen Sie es erneut."
   },
   "dashboard": {
     "title": "Übersicht",

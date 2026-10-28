@@ -122,6 +122,26 @@ describe("Turnstile registration flow", () => {
         expect(wrapper.html()).not.toContain(enrollment.mnemonic);
     });
 
+    it("shows an existing-session conflict once without changing the browser owner", async () => {
+        const message = "Already signed in to another account.";
+        mocks.continueAsGuest.mockRejectedValueOnce({
+            response: { status: 409, data: { code: "already_authenticated", message } },
+        });
+        const wrapper = mountPage();
+        await flushPromises();
+        await finishBackup(wrapper);
+        wrapper.findComponent({ name: "TurnstileChallenge" }).vm.$emit("verified", "synthetic-one-token");
+        await flushPromises();
+        expect(wrapper.findAll("[role=alert]")).toHaveLength(1);
+        expect(wrapper.findAll("p").filter(paragraph => paragraph.text() === message)).toHaveLength(1);
+        expect(mocks.error).not.toHaveBeenCalled();
+        expect(mocks.storeGuestMnemonic).not.toHaveBeenCalled();
+        expect(mocks.initEvolu).not.toHaveBeenCalled();
+        expect(mocks.fetchStores).not.toHaveBeenCalled();
+        expect(mocks.replace).not.toHaveBeenCalled();
+        expect(wrapper.findComponent({ name: "TurnstileChallenge" }).exists()).toBe(false);
+    });
+
     it("ignores duplicate verification callbacks while creation is in flight", async () => {
         let complete!: (value: { store_id: string }) => void;
         mocks.continueAsGuest.mockReturnValue(new Promise(resolve => { complete = resolve; }));

@@ -27,7 +27,7 @@ beforeEach(() => {
 });
 
 it("does not overwrite the session phrase or Evolu owner when enrollment is rejected by an existing session", async () => {
-    mocks.continueAsGuest.mockRejectedValue({ response: { data: { message: "Already signed in to another account." } } });
+    mocks.continueAsGuest.mockRejectedValue({ response: { status: 409, data: { code: "already_authenticated", message: "Already signed in to another account." } } });
     const { default: Register } = await import("../pages/auth/Register.vue");
     const wrapper = shallowMount(Register, { global: { stubs: { "router-link": true } } });
     await flushPromises();
@@ -40,5 +40,7 @@ it("does not overwrite the session phrase or Evolu owner when enrollment is reje
     expect(mocks.storeGuestMnemonic).not.toHaveBeenCalled();
     expect(mocks.initEvolu).not.toHaveBeenCalled();
     expect(mocks.replace).not.toHaveBeenCalled();
-    expect(mocks.error).toHaveBeenCalledWith("Already signed in to another account.");
+    expect(wrapper.findAll("[role=alert]")).toHaveLength(1);
+    expect(wrapper.findAll("p").filter(message => message.text() === "Already signed in to another account.")).toHaveLength(1);
+    expect(mocks.error).not.toHaveBeenCalled();
 });

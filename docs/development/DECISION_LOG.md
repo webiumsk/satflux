@@ -819,3 +819,13 @@ Publish the authorized Turnstile implementation as PR408 with one canonical
 changelog fragment. Retain the independently accepted runtime scope while adding
 publication metadata. Distinguish default-disabled readiness from actual deployed
 protection; runtime credentials stay server-side and activation requires verification.
+
+
+## 2026-10-28 - Keep one visible registration failure
+
+Use the accessible inline signup error as the single failure presentation. Remove
+the duplicate global toast to fix E2E selection and UX while preserving 409
+identity protections; do not mask it with a relaxed locator. Keep German signup
+copy consistent with formal auth language. QA/security accept `dab15e0d`; unchanged
+backend evidence remains valid and fresh CI must verify the new full revision.
+Widget activation remains distinct from reviewed code and public-key receipt.

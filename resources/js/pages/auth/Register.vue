@@ -113,7 +113,6 @@ import AuthSeedGuestPanel from "../../components/auth/AuthSeedGuestPanel.vue";
 import TurnstileChallenge from "../../components/auth/TurnstileChallenge.vue";
 import { useAuthStore } from "../../store/auth";
 import { useStoresStore } from "../../store/stores";
-import { useFlashStore } from "../../store/flash";
 import api from "../../services/api";
 import { storeGuestMnemonic } from "../../services/guestRecovery";
 import {
@@ -125,7 +124,6 @@ import { isPasskeyPrfSupported } from "../../services/deviceUnlock/passkeyPrf";
 const { t } = useI18n();
 const router = useRouter();
 const authStore = useAuthStore();
-const flashStore = useFlashStore();
 const guestLoading = ref(false);
 const showGuestBackupWizard = ref(false);
 const showGuestRestoreModal = ref(false);
@@ -275,7 +273,6 @@ async function submitEnrollment(turnstileToken?: string) {
       : code === "turnstile_unavailable"
         ? t("auth.turnstile_unavailable")
         : err.response?.data?.message || t("auth.turnstile_registration_error");
-    flashStore.error(registrationError.value);
   } finally {
     if (active) guestLoading.value = false;
   }

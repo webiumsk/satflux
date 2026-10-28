@@ -482,3 +482,10 @@ claimed from local tests or default-disabled configuration.
 PR408 publishes the reviewed Turnstile-only change with a canonical PR-linked
 changelog fragment. Verify final CI/review, then prepare real widget configuration
 and activation. Existing accounts/statuses and recovery remain outside changes.
+
+
+PR408 followup fixes a duplicated ownership error without E2E selector changes
+and aligns six German strings with formal auth copy. Independent acceptance
+`dab15e0d` covers the final 25 files; 23 component and seven browser scenarios
+pass. Prior PHP/Node CI passed; rerun the exact-head workflow for corrected E2E.
+Public Site Key received; Secret Key and deployment remain operator setup.

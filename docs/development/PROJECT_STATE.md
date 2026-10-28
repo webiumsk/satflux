@@ -1346,3 +1346,26 @@ independent accepted 25-file `305d24d0` unchanged. Add its canonical Chorala fra
 and verify final exact-head CI/CodeRabbit. Activation remains pending actual
 Managed-widget keys in the Satflux backend environment and deployed configuration;
 no production protection or merge/deployment is inferred from publication.
+
+
+## 2026-10-28 - PR408 integration review followup
+
+Exact-head `7ec299a6` PHP CI passed 2116 tests/10342 assertions, Pint/PHPStan/API
+checks and audit; Node 1050 passed. E2E 19 passed/1 failed because the correct 409
+ownership message appeared twice (inline plus toast), making a strict locator
+ambiguous. Remove only the duplicate Register toast; preserve inline error/retry
+and every identity guard. Do not weaken the E2E locator. Regressions reproduce
+the old behavior and pass after the fix.
+
+CodeRabbit minor 4406666199 identifies informal German signup copy in a formal
+auth section; align six values with Sie/Ihr/Ihre, preserving keys/placeholders.
+Independent QA/security accept final 25-file digest `dab15e0d`. Followup 23
+component tests and seven actual-SFC browser scenarios pass, including the real
+global FlashMessage/Pinia integration. UI build/typecheck and locale parity pass.
+All backend runtime hashes remain unchanged. Publish one combined followup and
+verify fresh exact-head CI/review.
+
+Owner supplied the PUBLIC Site Key and will place Secret Key in the protected
+Satflux backend environment. Never copy the secret into chat/source or public API
+config. Keep TURNSTILE_ENABLED=false until reviewed code is deployed, then enable
+and verify public configuration. No activation or secret installation is claimed.
