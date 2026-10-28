@@ -206,13 +206,13 @@
             existingConnection.status === 'connected' &&
             walletType === 'aqua_boltz'
           "
-          class="border-l-2 border-green-500/40 pl-3 text-sm space-y-1"
+          class="border-l-2 border-amber-500/40 pl-3 text-sm space-y-1"
         >
-          <p class="font-medium text-green-400">
-            {{ t("stores.aqua_wallet_connected_title") }}
+          <p class="font-medium text-amber-300">
+            {{ t("stores.boltz_service_alert_title") }}
           </p>
           <p class="text-gray-400 leading-relaxed">
-            {{ t("stores.aqua_wallet_connected_samrock_hint") }}
+            {{ t("stores.boltz_setup_paused") }}
           </p>
         </div>
 
@@ -221,10 +221,7 @@
           class="border-l-2 border-amber-500/40 pl-3 space-y-1"
         >
           <p class="text-sm text-amber-300/90">
-            {{ t("stores.aqua_warning_btcpay") }}
-          </p>
-          <p class="text-sm text-amber-300/70">
-            {{ t("stores.aqua_limits_warning") }}
+            {{ t("stores.boltz_setup_paused") }}
           </p>
         </div>
 
@@ -292,6 +289,7 @@
 
       <div
         id="wallet-setup-panel-samrock"
+        v-if="BOLTZ_RECEIVING_AVAILABLE"
         v-show="showWalletSetupTabs && walletSetupTab === 'samrock'"
         role="tabpanel"
         aria-labelledby="wallet-setup-tab-samrock"
@@ -306,11 +304,11 @@
           "
           class="p-4 rounded-xl border border-green-500/25 bg-green-500/10 text-sm text-green-100 space-y-1"
         >
-          <p class="font-medium text-green-400">
-            {{ t("stores.aqua_wallet_connected_title") }}
+          <p class="font-medium text-amber-300">
+            {{ t("stores.boltz_service_alert_title") }}
           </p>
           <p class="text-gray-300 leading-relaxed">
-            {{ t("stores.aqua_wallet_connected_samrock_hint") }}
+            {{ t("stores.boltz_setup_paused") }}
           </p>
         </div>
         <h3 class="text-sm font-bold text-indigo-400 uppercase tracking-wider">
@@ -499,6 +497,7 @@
 </template>
 
 <script setup lang="ts">
+import { BOLTZ_RECEIVING_AVAILABLE } from "../../utils/boltzAvailability";
 import type { WalletConnectionDetails } from "../../services/api";
 import { asApiError } from "../../utils/apiError";
 import { ref, reactive, computed, watch, nextTick, onBeforeUnmount } from "vue";
@@ -556,11 +555,10 @@ interface Props {
 const props = defineProps<Props>();
 
 const switchToCashuIntent = ref(false);
-/** Setup tabs: Lightning address quick-connect (default) / Aqua-Bull SamRock / advanced strings. */
+/** Supported setup tabs: Lightning address quick-connect and advanced strings. */
 type WalletSetupTabId = "ln" | "samrock" | "advanced";
 const walletSetupTabsList: ReadonlyArray<{ id: WalletSetupTabId; labelKey: string }> = [
   { id: "ln", labelKey: "create_store.tab_lightning_address" },
-  { id: "samrock", labelKey: "create_store.tab_samrock" },
   { id: "advanced", labelKey: "create_store.tab_advanced" },
 ];
 const walletSetupTab = ref<WalletSetupTabId>("ln");
@@ -675,10 +673,10 @@ function defaultWalletConnectionType(
   if (walletType === "blitz") return "blitz";
   if (walletType === "flash") return "flash";
   if (walletType === "lnaddress") return "lnaddress";
-  return "aqua_descriptor";
+  return "blink";
 }
 
-/** Pending = user can still use SamRock QR or finish manual descriptor; do not lock to readonly. */
+/** Pending connections allow selecting a supported replacement instead of locking to readonly. */
 function initialWalletViewMode(conn: Props["existingConnection"]): ViewMode {
   if (!conn) {
     return "create";
@@ -793,6 +791,7 @@ function onQuickConnectSubmitted(target: "blink" | "blitz" | "cashu" | "lnaddres
 }
 
 function startSamRockPairing() {
+  if (!BOLTZ_RECEIVING_AVAILABLE) return;
   if (!samrockFallbackValid.value) return;
   if (route.query.samrock) {
     const q = { ...route.query };
@@ -982,7 +981,7 @@ watch(
 watch(
   () => [props.autoSamrock, showWalletSetupForm.value, showWalletSetupTabs.value] as const,
   async () => {
-    if (!props.autoSamrock || autoSamrockConsumed.value) return;
+    if (!BOLTZ_RECEIVING_AVAILABLE || !props.autoSamrock || autoSamrockConsumed.value) return;
     if (!showWalletSetupForm.value || !showWalletSetupTabs.value) return;
     autoSamrockConsumed.value = true;
     // Open the tab only - QR generation now needs the fallback Lightning address first.
@@ -1172,7 +1171,7 @@ function syncWalletSetupTabAfterReveal() {
   }
   const hasDescriptor = validateDescriptor(form.secret);
   walletSetupTab.value =
-    hasDescriptor || !showWalletSetupTabs.value ? "advanced" : "samrock";
+    hasDescriptor || !showWalletSetupTabs.value ? "advanced" : "ln";
 }
 
 watch(
@@ -1204,11 +1203,15 @@ async function handleTestConnection() {
   if (!form.secret.trim()) {
     testResult.value = {
       success: false,
-      message: "Please enter a connection string or descriptor first.",
+      message: t("stores.wallet_connection_input_required"),
     };
     return;
   }
   if (!reviewAdvancedCandidateForAction()) return;
+  if (!BOLTZ_RECEIVING_AVAILABLE && form.type === "aqua_descriptor") {
+    testResult.value = { success: false, message: t("stores.boltz_setup_paused") };
+    return;
+  }
   if (form.type === "blink" && !validateBlinkConnectionString(form.secret)) {
     testResult.value = {
       success: false,
@@ -1342,6 +1345,11 @@ async function handleSubmit() {
   Object.keys(errors).forEach((k) => delete errors[k]);
   testResult.value = null;
   if (!reviewAdvancedCandidateForAction()) {
+    submitting.value = false;
+    return;
+  }
+  if (!BOLTZ_RECEIVING_AVAILABLE && form.type === "aqua_descriptor") {
+    errors.secret = t("stores.boltz_setup_paused");
     submitting.value = false;
     return;
   }

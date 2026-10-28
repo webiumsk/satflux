@@ -108,6 +108,8 @@
             class="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity"
           ></div>
 
+          <BoltzServiceBanner :store="store" class="relative z-10" @click.stop />
+
           <BlinkMigrationBanner
             v-if="store.blink_migration_alert?.active"
             :store-id="store.id"
@@ -205,6 +207,7 @@
 </template>
 
 <script setup lang="ts">
+import BoltzServiceBanner from '../../components/stores/BoltzServiceBanner.vue';
 import { onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { storeToRefs } from "pinia";

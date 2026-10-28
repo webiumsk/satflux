@@ -91,6 +91,9 @@ return [
     ],
 
     'boltz' => [
+        // Re-enable only after qualifying Satflux/BTCPay merchant receiving.
+        // This is deliberately not inferred from mobile-wallet announcements.
+        'receiving_enabled' => false,
         // Upstream Boltz backend REST API (read-only; pairs/limits/fees). Informational only -
         // the authoritative per-invoice validation happens in the BTCPay Boltz plugin.
         'api_url' => rtrim((string) env('BOLTZ_API_URL', 'https://api.boltz.exchange'), '/'),

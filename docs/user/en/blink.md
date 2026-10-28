@@ -3,7 +3,13 @@ title: Connect Blink
 category: wallet-connection
 order: 5
 meta_description: Connect the Blink wallet to your store - the fast, non-custodial receive-only address, or the legacy API key.
+updated: 2026-10-28
 ---
+
+> **Boltz receiving connections are paused.** New Aqua/Bull Bitcoin descriptor connections and Aqua SamRock pairing are paused in Satflux because our Boltz receiving integration is unavailable. Bull mobile Lightning has resumed, but its replacement service is not a supported Satflux backend. Aqua currently supports Lightning sending through Indra, while receiving is unavailable. Instructions for these old connections do not enable new setup.
+>
+> Use a [supported Lightning address](/documentation/connect-with-any-lightning-address) or [NWC from your own node](/documentation/connect-with-nwc). Keep an already configured Bitcoin on-chain wallet available where applicable.
+
 
 # Connect Blink
 
@@ -29,6 +35,5 @@ You get the API key in the **Blink dashboard → API Keys** (create a key with r
 
 - Want the simplest start? Use the **`@blink.sv` address**.
 - Already have an API key set up? It still works.
-- Want to hold your own keys with a QR setup? Consider **Aqua** via [SamRock](/documentation/connect-aqua-with-samrock).
 
 See [We cannot access or move your funds](/documentation/we-cannot-access-or-move-your-funds) for exactly what "receive-only" means.

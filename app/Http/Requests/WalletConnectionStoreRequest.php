@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\Boltz\BoltzAvailabilityService;
 use App\Services\WalletConnectionValidator;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -46,6 +47,10 @@ class WalletConnectionStoreRequest extends FormRequest
         $validator->after(function ($validator) {
             $type = $this->input('type');
             $secret = $this->input('secret');
+
+            if (is_string($type)) {
+                app(BoltzAvailabilityService::class)->assertConnectionTypeAvailable($type);
+            }
 
             if ($type && $secret) {
                 $connectionValidator = new WalletConnectionValidator;

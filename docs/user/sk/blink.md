@@ -3,7 +3,13 @@ title: Pripojenie Blink
 category: wallet-connection
 order: 5
 meta_description: Pripojte peňaženku Blink k obchodu - rýchla nekustodiálna adresa len na príjem, alebo starší API kľúč.
+updated: 2026-10-28
 ---
+
+> **Pripojenia na príjem cez Boltz sú pozastavené.** Nové pripojenia cez deskriptor Aqua/Bull Bitcoin a párovanie Aqua cez SamRock sú v Satfluxe pozastavené, pretože naše prijímacie prepojenie cez Boltz nie je dostupné. Bull obnovil Lightning v mobilnej aplikácii, jeho náhradná služba však nie je podporovaným backendom Satfluxu. Aqua momentálne umožňuje odosielanie cez Indra, prijímanie Lightningu nie je dostupné. Návody pre staré pripojenia neumožňujú nové nastavenie.
+>
+> Použite [podporovanú Lightning adresu](/documentation/connect-with-any-lightning-address) alebo [NWC z vlastného uzla](/documentation/connect-with-nwc). Ak už máte nastavenú Bitcoin on-chain peňaženku, ponechajte ju dostupnú.
+
 
 # Pripojenie Blink
 
@@ -29,6 +35,5 @@ API kľúč získate v **Blink dashboarde → API Keys** (vytvorte kľúč s pr�
 
 - Chcete najjednoduchší štart? Použite **`@blink.sv` adresu**.
 - Máte už nastavený API kľúč? Stále funguje.
-- Chcete držať vlastné kľúče s QR nastavením? Zvážte **Aqua** cez [SamRock](/documentation/connect-aqua-with-samrock).
 
 Čo presne znamená „len na príjem“, viď [Nemôžeme pristupovať k vaším prostriedkom ani ich presúvať](/documentation/we-cannot-access-or-move-your-funds).

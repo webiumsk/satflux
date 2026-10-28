@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreCreateRequest;
 use App\Models\Store;
+use App\Services\Boltz\BoltzAvailabilityService;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\StoreService;
 use App\Services\StoreChecklistService;
@@ -162,6 +163,8 @@ class StoreController extends Controller
         ]);
 
         $next = $validated['wallet_type'];
+
+        app(BoltzAvailabilityService::class)->assertConnectionTypeAvailable($next);
 
         if ($store->wallet_type === $next) {
             StoreChecklistService::ensureChecklistInitialized($store);

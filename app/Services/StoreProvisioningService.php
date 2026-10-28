@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Store;
 use App\Models\User;
+use App\Services\Boltz\BoltzAvailabilityService;
 use App\Services\BtcPay\CashuService;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\LightningService;
@@ -48,6 +49,8 @@ class StoreProvisioningService
     public function create(User $user, array $data): Store
     {
         $walletType = $data['wallet_type'] ?? null;
+        app(BoltzAvailabilityService::class)->assertConnectionTypeAvailable((string) $walletType);
+        app(BoltzAvailabilityService::class)->assertConnectionStringAvailable((string) ($data['connection_string'] ?? ''));
         // One normalized value for both BTCPay and the local record: empty
         // string means "no preference" (null = BTCPay exchange recommendation).
         $preferredExchange = ($data['preferred_exchange'] ?? null) ?: null;

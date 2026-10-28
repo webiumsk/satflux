@@ -13,6 +13,13 @@ class SamRockTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Preserve pairing contract tests without weakening the default pause.
+        config(['services.boltz.receiving_enabled' => true]);
+    }
+
     public function test_samrock_create_otp_returns_404_for_cashu_store(): void
     {
         $user = User::factory()->create();

@@ -13,6 +13,7 @@ use App\Notifications\SupportNeededNotification;
 use App\Notifications\WalletConnectionChangedNotification;
 use App\Notifications\WalletConnectionNeedsSupportMerchantNotification;
 use App\Notifications\WalletConnectionReadyNotification;
+use App\Services\Boltz\BoltzAvailabilityService;
 use App\Services\BtcPay\BoltzService;
 use App\Services\BtcPay\CashuService;
 use App\Services\BtcPay\Exceptions\BtcPayException;
@@ -59,6 +60,8 @@ class WalletConnectionService
         ?string $fallbackLightningAddress = null,
     ): WalletConnection {
         abort_unless((string) $store->user_id === (string) $user->id, 403);
+
+        app(BoltzAvailabilityService::class)->assertConnectionTypeAvailable($type);
 
         return Cache::lock('wallet-update:'.$store->id, 1800)->block(10, function () use ($store, $type, $secret, $user, $initialStatus, $fallbackLightningAddress) {
             $store = $store->fresh();
@@ -625,6 +628,7 @@ class WalletConnectionService
      */
     public function markConnected(WalletConnection $connection, User $markedBy): void
     {
+        app(BoltzAvailabilityService::class)->assertConnectionTypeAvailable($connection->type);
         $wasNeedsSupport = $connection->status === 'needs_support';
 
         $connection->update([
@@ -893,6 +897,7 @@ class WalletConnectionService
         User $user,
         string $userApiKey,
     ): void {
+        app(BoltzAvailabilityService::class)->assertConnectionTypeAvailable($type);
         if ($connection->status !== 'pending') {
             return;
         }
@@ -1133,6 +1138,11 @@ class WalletConnectionService
      */
     public function syncStatusFromBtcpay(Store $store, WalletConnection $connection, User $user): bool
     {
+        // A saved or previously active node must not resurrect paused receiving.
+        if ($connection->type === 'aqua_descriptor'
+            && ! app(BoltzAvailabilityService::class)->receivingEnabled()) {
+            return false;
+        }
         $owner = $store->user;
         if (! $owner instanceof User) {
             return false;

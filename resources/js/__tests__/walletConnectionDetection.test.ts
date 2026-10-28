@@ -48,7 +48,6 @@ describe('Wallet connection detection boundaries', () => {
 
     it.each([
         [blink, 'blink'],
-        ['ct(slip77(synthetic-test-only),elwpkh(xpubSyntheticTestOnly))', 'aqua_descriptor'],
     ])('shows fallback only after committing %s and saves its configured value', async (secret, type) => {
         const wrapper = await open(); await input(wrapper).setValue(secret);
         expect(wrapper.find('#wallet-advanced-fallback').exists()).toBe(false);
@@ -58,6 +57,32 @@ describe('Wallet connection detection boundaries', () => {
         expect(api.test).not.toHaveBeenCalled(); expect(api.create).not.toHaveBeenCalled();
         await button(wrapper, 'stores.save_connection').trigger('click'); await flushPromises();
         expect(api.create).toHaveBeenCalledExactlyOnceWith('store-a', { type, secret, fallback_lightning_address: 'owner@wallet.example.test' }); wrapper.unmount();
+    });
+
+    it.each([
+        'ct(slip77(synthetic-test-only),elwpkh(xpubSyntheticTestOnly))',
+        'ct(slip77(synthetic-test-only),elsh(wpkh(xpubSyntheticTestOnly)))',
+    ])('refuses a paused Boltz descriptor on Test and Save without a prior blur: %s', async (secret) => {
+        const wrapper = await open();
+        await input(wrapper).setValue(secret);
+        await button(wrapper, 'stores.test_connection').trigger('click');
+        await flushPromises();
+        expect(api.test).not.toHaveBeenCalled();
+        expect(wrapper.text()).toContain('stores.boltz_setup_paused');
+        await button(wrapper, 'stores.save_connection').trigger('click');
+        await flushPromises();
+        expect(api.create).not.toHaveBeenCalled();
+        expect(wrapper.text()).toContain('stores.boltz_setup_paused');
+        wrapper.unmount();
+    });
+
+    it('does not offer or auto-open SamRock even for a stale setup link', async () => {
+        const wrapper = await open({ walletType: 'aqua_boltz', autoSamrock: true });
+        expect(wrapper.find('#wallet-setup-tab-samrock').exists()).toBe(false);
+        expect(wrapper.find('#wallet-setup-panel-samrock').exists()).toBe(false);
+        expect(wrapper.find('#wallet-setup-tab-ln').exists()).toBe(true);
+        expect(wrapper.find('#wallet-setup-tab-advanced').exists()).toBe(true);
+        wrapper.unmount();
     });
 
     it('does not route partial mint URLs to Cashu before the user leaves the field', async () => {

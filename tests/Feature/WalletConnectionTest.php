@@ -31,6 +31,8 @@ class WalletConnectionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Exercise the preserved adapter lifecycle separately from the default pause.
+        config(['services.boltz.receiving_enabled' => true]);
         // Most tests exercise connection lifecycle, not provider capabilities.
         // Probe-specific cases replace this binding with synthetic DNS/HTTP.
         $this->mock(LnAddressLud21Prober::class)->shouldReceive('probe')

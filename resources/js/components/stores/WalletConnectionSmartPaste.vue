@@ -167,6 +167,10 @@ function setManualType(type: 'blink' | 'blitz' | 'flash' | 'lnaddress' | 'nwc' |
       </span>
     </div>
 
+    <p v-if="effectiveKind === 'aqua_descriptor'" role="alert" class="text-sm text-amber-300 leading-relaxed">
+      {{ t('stores.boltz_setup_paused') }}
+    </p>
+
     <div
       v-if="showTypeOverride && hasCommittedDetection && effectiveKind === 'unknown' && modelValue.trim()"
       class="flex flex-wrap gap-2"
@@ -198,13 +202,6 @@ function setManualType(type: 'blink' | 'blitz' | 'flash' | 'lnaddress' | 'nwc' |
         @click="setManualType('lnaddress')"
       >
         {{ t('stores.wallet_detect_lnaddress') }}
-      </button>
-      <button
-        type="button"
-        class="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-600 text-gray-300 hover:border-indigo-500/50"
-        @click="setManualType('aqua_descriptor')"
-      >
-        {{ t('stores.wallet_detect_aqua') }}
       </button>
       <button
         type="button"
@@ -245,13 +242,6 @@ function setManualType(type: 'blink' | 'blitz' | 'flash' | 'lnaddress' | 'nwc' |
     >
       <p class="font-medium text-amber-200/90">{{ t('stores.wallet_guide_nwc_alby_requirement') }}</p>
       <p class="text-gray-300">{{ t('stores.nwc_connection_hint') }}</p>
-    </div>
-
-    <div
-      v-if="effectiveKind === 'aqua_descriptor'"
-      class="border-l-2 border-amber-500/40 pl-3"
-    >
-      <p class="text-sm text-amber-300/90">{{ t('stores.aqua_warning_btcpay') }}</p>
     </div>
 
     <div

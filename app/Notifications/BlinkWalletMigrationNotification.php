@@ -37,7 +37,7 @@ class BlinkWalletMigrationNotification extends Notification
         $mail = (new MailMessage)
             ->subject('Action required: migrate your Blink wallet connection')
             ->line('Blink API custody is no longer available in the EU. If your Blink account is in Europe, Lightning payments may stop working.')
-            ->line('We recommend migrating to Aqua or Bull Bitcoin via Wallet connection (SamRock QR or watch-only descriptor).')
+            ->line('Choose a supported Lightning address or your own Alby Hub via NWC in Wallet connection. New Aqua/Bull connections through Boltz are currently unavailable.')
             ->line('The following stores still use Blink:');
 
         foreach ($this->stores as $store) {

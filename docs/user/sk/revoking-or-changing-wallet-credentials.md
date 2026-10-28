@@ -2,12 +2,18 @@
 title: "Odvolanie alebo zmena údajov peňaženky"
 category: wallet-connection
 order: 7
-meta_description: "How to disconnect or update Blink API key / Aqua descriptor. That you can revoke in the wallet app and reconnect with a new credential."
+meta_description: "Bezpečne zmeňte podporované prepojenie peňaženky a prejdite z pozastaveného prijímania Boltz."
+updated: 2026-10-28
 ---
+
+> **Pripojenia na príjem cez Boltz sú pozastavené.** Nové pripojenia cez deskriptor Aqua/Bull Bitcoin a párovanie Aqua cez SamRock sú v Satfluxe pozastavené, pretože naše prijímacie prepojenie cez Boltz nie je dostupné. Bull obnovil Lightning v mobilnej aplikácii, jeho náhradná služba však nie je podporovaným backendom Satfluxu. Aqua momentálne umožňuje odosielanie cez Indra, prijímanie Lightningu nie je dostupné. Návody pre staré pripojenia neumožňujú nové nastavenie.
+>
+> Použite [podporovanú Lightning adresu](/documentation/connect-with-any-lightning-address) alebo [NWC z vlastného uzla](/documentation/connect-with-nwc). Ak už máte nastavenú Bitcoin on-chain peňaženku, ponechajte ju dostupnú.
+
 
 **Odvolanie alebo zmena údajov peňaženky**
 
-**Zmeniť** údaje peňaženky (Blink connection string alebo Aqua deskriptor) môžete kedykoľvek tak, že v paneli Satflux zadáte nové. Akciu „odpojiť“ (disconnect) neponúkame: v BTCPay môžete len **nahradiť** pripojenie novým údajom, nie ho odstrániť bez náhrady. Ak teda chcete prestať používať danú peňaženku, odvoláte alebo zmeníte ju v aplikácii peňaženky a potom k obchodu **pripojíte nový** údaj.
+**Zmeniť** údaje peňaženky (podporovaný connection string alebo Lightning adresa) môžete kedykoľvek tak, že v paneli Satflux zadáte nové. Akciu „odpojiť“ (disconnect) neponúkame: v BTCPay môžete len **nahradiť** pripojenie novým údajom, nie ho odstrániť bez náhrady. Ak teda chcete prestať používať danú peňaženku, odvoláte alebo zmeníte ju v aplikácii peňaženky a potom k obchodu **pripojíte nový** údaj.
 
 ---
 
@@ -20,7 +26,7 @@ Nahradenie peňaženky, ktorá je už **pripojená**, je citlivá zmena, preto j
 3. Na adresu vášho účtu pošleme **6-miestny kód**. Zadajte ho do formulára - kód platí 10 minút a nový si môžete vyžiadať po krátkom odpočte.
 4. Formulár sa otvorí s predvyplneným aktuálnym údajom. Nahraďte ho a uložte. Potvrdenie platí 15 minút; ak vyprší, Satflux si pred uložením vyžiada nový kód.
 
-Kým kód nepotvrdíte, na obchode sa nič nemení. To isté potvrdenie platí aj pre opätovné párovanie cez SamRock a prepnutie Lightning obchodu na Cashu. **Hosťovský účet** nemá e-mail, na ktorý by kód prišiel, preto ho treba najprv povýšiť pridaním e-mailovej adresy (pozri [Vytvorte si účet](/documentation/create-account)). Prvé pripojenie peňaženky k novému obchodu kód nevyžaduje.
+Kým kód nepotvrdíte, na obchode sa nič nemení. To isté potvrdenie platí aj pre prepnutie Lightning obchodu na Cashu. **Hosťovský účet** nemá e-mail, na ktorý by kód prišiel, preto ho treba najprv povýšiť pridaním e-mailovej adresy (pozri [Vytvorte si účet](/documentation/create-account)). Prvé pripojenie peňaženky k novému obchodu kód nevyžaduje.
 
 ---
 
@@ -36,15 +42,9 @@ Teda: v Blink odvoláte alebo obmeníte kľúč, potom v Satfluxe (a podľa potr
 
 ---
 
-**Aqua: použiť iný deskriptor, potom aktualizovať v Satfluxe**
+**Existujúce Aqua/Bull cez Boltz: vyberte iné podporované pripojenie**
 
-1. **V Aqua:** Ak chcete prestať používať aktuálny deskriptor, exportujte **nový** watch-only deskriptor (napr. z inej peňaženky alebo inej derivácie). BTCPay povoľuje každý deskriptor len raz na inštanciu, takže „nový“ údaj znamená iný deskriptor (iná peňaženka alebo iný export).
-
-1. **V Satfluxe:** Otvorte obchod → **Pripojenie peňaženky**. Vo formulári **nahraďte** starý deskriptor novým a uložte.
-
-1. **V BTCPay:** Rovnako ako pri Blink neexistuje „odpojiť“ - konfiguráciu Lightning/peňaženky **nahradíte** novým deskriptorom. Ak to vyžaduje vaša konfigurácia, support môže musieť zmenu v BTCPay aplikovať.
-
-Teda: v aplikácii peňaženky odvoláte alebo zmeníte údaj (nový kľúč alebo nový deskriptor), potom v Satfluxe odošlete nový údaj a tým obchod znova pripojíte.
+Nové deskriptory a SamRock sú pozastavené. Overte rozpracované platby a obnovu, potom cez **Zmeniť pripojenie** vyberte podporovanú Lightning adresu alebo NWC peňaženku. Nový export deskriptora neobnoví pozastaveného poskytovateľa.
 
 ---
 
@@ -52,7 +52,7 @@ Teda: v aplikácii peňaženky odvoláte alebo zmeníte údaj (nový kľúč ale
 
 - V Satfluxe ani v BTCPay **neponúkame** „odpojiť“ - len **zmeniť/nahradiť** pripojenie.
 
-- Ak chcete prestať používať údaj: odvolajte alebo zmeňte ho v **Blink** alebo **Aqua**, potom v Satfluxe zadajte **nový** connection string alebo deskriptor, aby obchod používal nový údaj.
+- Ak chcete prestať používať údaj: overte rozpracované platby a v Satfluxe vyberte iné **podporované** pripojenie, aby obchod používal nový údaj.
 
 - Obchod má vždy jedno aktívne pripojenie peňaženky; zmeníte ho tak, že ho nahradíte iným.
 

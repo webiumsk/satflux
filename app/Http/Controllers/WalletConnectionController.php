@@ -12,6 +12,7 @@ use App\Models\WalletConfigurationAttempt;
 use App\Models\WalletConnection;
 use App\Services\Auth\EmailCodeChallengeService;
 use App\Services\Auth\SensitiveActionAuthorization;
+use App\Services\Boltz\BoltzAvailabilityService;
 use App\Services\BtcPay\LightningService;
 use App\Services\LightningAddressCapabilityService;
 use App\Services\WalletChangeConfirmationGuard;
@@ -709,6 +710,8 @@ class WalletConnectionController extends Controller
             'connection_string' => ['required', 'string', 'max:4096'],
             'crypto_code' => ['nullable', 'string', 'in:BTC'],
         ]);
+        app(BoltzAvailabilityService::class)
+            ->assertConnectionStringAvailable($request->string('connection_string')->toString());
         $store = $request->route('store');
         $user = $request->user();
         $this->changeGuard->assert($store, $user);

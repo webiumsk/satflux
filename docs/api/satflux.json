@@ -810,6 +810,30 @@
                 ],
                 "additionalProperties": false
             },
+            "BoltzServiceAlert": {
+                "type": "object",
+                "properties": {
+                    "active": {
+                        "type": "boolean",
+                        "description": "This store currently uses the paused Boltz receiving integration."
+                    },
+                    "code": {
+                        "type": "string",
+                        "enum": [
+                            "boltz_receiving_unavailable"
+                        ]
+                    },
+                    "new_connections_available": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "active",
+                    "code",
+                    "new_connections_available"
+                ],
+                "additionalProperties": false
+            },
             "Store": {
                 "type": "object",
                 "properties": {
@@ -823,6 +847,9 @@
                     "btcpay_store_id": {
                         "type": "string",
                         "description": "Existing deliberate Pay Button/API-key formatting exception; use id for Satflux API routes."
+                    },
+                    "boltz_service_alert": {
+                        "$ref": "#/components/schemas/BoltzServiceAlert"
                     }
                 },
                 "required": [

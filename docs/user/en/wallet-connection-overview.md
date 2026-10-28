@@ -2,8 +2,14 @@
 title: Wallet connection overview
 category: wallet-connection
 order: 1
-meta_description: The three ways to connect a wallet to your store - Lightning address, SamRock QR, and Advanced paste - and what Satflux stores.
+meta_description: "Connect a supported Lightning address or use Advanced for connection strings and NWC. Boltz setup is paused."
+updated: 2026-10-28
 ---
+
+> **Boltz receiving connections are paused.** New Aqua/Bull Bitcoin descriptor connections and Aqua SamRock pairing are paused in Satflux because our Boltz receiving integration is unavailable. Bull mobile Lightning has resumed, but its replacement service is not a supported Satflux backend. Aqua currently supports Lightning sending through Indra, while receiving is unavailable. Instructions for these old connections do not enable new setup.
+>
+> Use a [supported Lightning address](/documentation/connect-with-any-lightning-address) or [NWC from your own node](/documentation/connect-with-nwc). Keep an already configured Bitcoin on-chain wallet available where applicable.
+
 
 # Wallet connection overview
 
@@ -11,13 +17,12 @@ Before your store can take payments it needs a wallet. Open **Wallet connection*
 
 You will find **Wallet connection** in the store, and the same setup runs during store creation.
 
-## Three ways to connect
+## Two ways to connect
 
-Satflux offers three tabs. Most people use the first.
+Satflux offers two active tabs. Most people use the first.
 
 1. **Lightning address** (default, easiest) - paste one Lightning address like `you@wallet.com` and Satflux figures out the rest. See [Connect with any Lightning address](/documentation/connect-with-any-lightning-address).
-2. **SamRock (QR)** - the easiest way to connect **Aqua**: generate a one-time QR code and scan it in the Aqua app, which configures BTCPay for you. See [Connect Aqua with SamRock](/documentation/connect-aqua-with-samrock).
-3. **Advanced (connection strings)** - one smart-paste box that auto-detects what you paste: a Blink connection string, an Aqua or **Bull Bitcoin** watch-only descriptor, an NWC pairing string, or any Lightning address. Satflux recognizes the format and sets the right type.
+2. **Advanced (connection strings)** - paste a supported Blink connection string, NWC pairing string or Lightning address. Descriptors are unavailable during the Boltz pause.
 
 The built-in **wallet guide** in the app lists every supported wallet with step-by-step instructions.
 

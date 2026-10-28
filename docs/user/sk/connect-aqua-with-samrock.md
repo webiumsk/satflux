@@ -1,30 +1,19 @@
 ---
-title: Pripojenie Aqua cez SamRock
+title: "Párovanie Aqua cez SamRock je pozastavené"
 category: wallet-connection
 order: 3
-meta_description: Najjednoduchší, plne nekustodiálny spôsob pripojenia peňaženky Aqua - naskenujte jednorazový QR kód.
+meta_description: "Pripojenia na príjem cez Boltz sú pozastavené"
+updated: 2026-10-28
 ---
 
-# Pripojenie Aqua cez SamRock
+# Párovanie Aqua cez SamRock je pozastavené
 
-**SamRock** je najjednoduchší spôsob pripojenia peňaženky **Aqua** a je plne nekustodiálny - kľúče ostávajú v Aqua. Namiesto exportu a vkladania descriptora naskenujete jednorazový QR kód a aplikácia Aqua nastaví BTCPay za vás.
+Nové pripojenia cez deskriptor Aqua/Bull Bitcoin a párovanie Aqua cez SamRock sú v Satfluxe pozastavené, pretože naše prijímacie prepojenie cez Boltz nie je dostupné. Bull obnovil Lightning v mobilnej aplikácii, jeho náhradná služba však nie je podporovaným backendom Satfluxu. Aqua momentálne umožňuje odosielanie cez Indra, prijímanie Lightningu nie je dostupné. Návody pre staré pripojenia neumožňujú nové nastavenie.
 
-## Kroky
+Použite [podporovanú Lightning adresu](/documentation/connect-with-any-lightning-address) alebo [NWC z vlastného uzla](/documentation/connect-with-nwc). Ak už máte nastavenú Bitcoin on-chain peňaženku, ponechajte ju dostupnú.
 
-1. Otvorte **Pripojenie peňaženky** a zvoľte tab **SamRock (QR)**.
-2. Zadajte **záložnú Lightning adresu**. Uchová sa ako Cashu záložná výplata, aby platby dorazili aj keď je Lightning swap cesta dočasne nedostupná.
-3. Kliknite **Generovať QR**. Satflux zobrazí jednorazový kód (platný pár minút).
-4. V aplikácii **Aqua** naskenujte QR. Aqua nastaví Bitcoin, Lightning (cez Boltz) a voliteľne Liquid na vašom BTCPay obchode.
-5. Satflux zistí, keď párovanie prebehne, a pripojenie dokončí.
+## Existujúce pripojenia
 
-To je všetko - žiaden descriptor na kopírovanie. Satflux pri SamRock pripojení neukladá žiaden privátny descriptor; kľúče ostávajú v Aqua; BTCPay používa len watch-only descriptor.
+Pri existujúcom Boltz obchode otvorte **Pripojenie peňaženky**, zvoľte **Zmeniť prepojenie**, dokončite existujúce potvrdenie a vyberte inú podporovanú prijímaciu peňaženku. Pred zmenou overte s podporou rozpracované platby a možnosti obnovy. Existujúce záznamy peňaženky, história faktúr a obnova zostávajú zachované.
 
-## Poznámky
-
-- **Bull Bitcoin** SamRock nepoužíva - pripojíte ho vložením watch-only descriptora. Viď [Descriptory Aqua a Bull Bitcoin](/documentation/aqua-and-bull-descriptor).
-- SamRock nastaví Lightning cez **Boltz** swap (Lightning cez Liquid). Satflux zobrazuje indikátor pripravenosti Boltz, aby ste videli, že funguje.
-- Ak je obchod momentálne len na Cashu, najprv ho prepnite na Lightning nastavenie, potom použite SamRock.
-
-## Radšej vložiť descriptor?
-
-Aqua viete pripojiť aj manuálne cez watch-only output descriptor - viď [Descriptory Aqua a Bull Bitcoin](/documentation/aqua-and-bull-descriptor).
+Dostupnosť overená 28. 10. 2026.

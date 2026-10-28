@@ -21,6 +21,9 @@ class BoltzReadinessTest extends TestCase
         parent::setUp();
 
         config([
+            // Retain the provider contract scenarios for a qualified future resume.
+            // Default paused behavior is covered by BoltzReceivingPauseTest.
+            'services.boltz.receiving_enabled' => true,
             'services.btcpay.base_url' => 'https://btcpay.test',
             'services.boltz.api_url' => 'https://boltz.test',
         ]);

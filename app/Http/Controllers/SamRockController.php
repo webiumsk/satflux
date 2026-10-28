@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Store;
+use App\Services\Boltz\BoltzAvailabilityService;
 use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\SamRockService;
 use App\Services\WalletChangeConfirmationGuard;
@@ -22,6 +23,7 @@ class SamRockController extends Controller
     public function createOtp(Request $request, Store $store): JsonResponse
     {
         $this->ensureSamRockEligibleStore($store);
+        app(BoltzAvailabilityService::class)->assertNewConnectionsAvailable();
 
         $validated = $request->validate([
             'btc' => ['sometimes', 'boolean'],
@@ -78,7 +80,9 @@ class SamRockController extends Controller
             'data' => [
                 'otp' => $raw['otp'] ?? $otp,
                 'expires_at' => $raw['expiresAt'] ?? null,
-                'setup_url' => $raw['setupUrl'] ?? null,
+                // Keep status/cancellation usable without re-exposing an activation link.
+                'setup_url' => app(BoltzAvailabilityService::class)->receivingEnabled()
+                    ? ($raw['setupUrl'] ?? null) : null,
                 'status' => $raw['status'] ?? null,
                 'error_message' => $raw['errorMessage'] ?? null,
             ],
@@ -88,6 +92,8 @@ class SamRockController extends Controller
     public function getOtpQr(Request $request, Store $store, string $otp): Response|JsonResponse
     {
         $this->ensureSamRockEligibleStore($store);
+        // Pairing QR codes enable activation; they are not refund/recovery data.
+        app(BoltzAvailabilityService::class)->assertNewConnectionsAvailable();
 
         $format = $request->query('format', 'png');
         $accept = $format === 'svg' ? 'image/svg+xml' : 'image/png';
@@ -132,6 +138,7 @@ class SamRockController extends Controller
     public function complete(Request $request, Store $store): JsonResponse
     {
         $this->ensureSamRockEligibleStore($store);
+        app(BoltzAvailabilityService::class)->assertNewConnectionsAvailable();
 
         $validated = $request->validate([
             'otp' => ['required', 'string'],

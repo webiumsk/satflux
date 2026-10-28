@@ -40,6 +40,8 @@
             </p>
           </div>
 
+          <BoltzServiceBanner :store="store" :show-action="false" />
+
           <div v-if="loading" class="text-center py-24">
              <svg class="animate-spin mx-auto h-12 w-12 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -94,6 +96,7 @@
 </template>
 
 <script setup lang="ts">
+import BoltzServiceBanner from '../../components/stores/BoltzServiceBanner.vue';
 import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';

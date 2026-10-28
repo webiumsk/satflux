@@ -2,8 +2,14 @@
 title: Výber peňaženky
 category: getting-started
 order: 4
-meta_description: Blink, Aqua, Bull Bitcoin, akákoľvek Lightning adresa, Cashu alebo NWC - ako si vybrať, ako obchod prijíma Lightning.
+meta_description: "Vyberte podporovanú Lightning adresu, Cashu alebo NWC prijímacie prepojenie; Boltz pripojenia sú pozastavené."
+updated: 2026-10-28
 ---
+
+> **Pripojenia na príjem cez Boltz sú pozastavené.** Nové pripojenia cez deskriptor Aqua/Bull Bitcoin a párovanie Aqua cez SamRock sú v Satfluxe pozastavené, pretože naše prijímacie prepojenie cez Boltz nie je dostupné. Bull obnovil Lightning v mobilnej aplikácii, jeho náhradná služba však nie je podporovaným backendom Satfluxu. Aqua momentálne umožňuje odosielanie cez Indra, prijímanie Lightningu nie je dostupné. Návody pre staré pripojenia neumožňujú nové nastavenie.
+>
+> Použite [podporovanú Lightning adresu](/documentation/connect-with-any-lightning-address) alebo [NWC z vlastného uzla](/documentation/connect-with-nwc). Ak už máte nastavenú Bitcoin on-chain peňaženku, ponechajte ju dostupnú.
+
 
 # Výber peňaženky
 
@@ -15,16 +21,12 @@ Satflux pripája k obchodu **vašu vlastnú** peňaženku - nikdy nedrží vaše
 |---|---|---|---|
 | **Blink adresa** (`vy@blink.sv`) | Nekustodiálne, len príjem | Vložíte adresu | Najrýchlejší štart |
 | **Akákoľvek Lightning adresa** | Podľa peňaženky | Vložíte `vy@penazenka.com` | Blitz, Flash, Coinos alebo akúkoľvek LUD-21 peňaženku |
-| **Aqua** (cez SamRock) | Držíte kľúče vy | Naskenujete QR v Aqua | Najjednoduchšie plne samo-kustodiálne nastavenie |
-| **Bull Bitcoin** | Držíte kľúče vy | Vložíte watch-only descriptor | Samo-kustódia s Bull Bitcoin |
 | **Cashu** (beta) | Lightning (vyrovnané cez mint) | Mint URL + Lightning adresa | Vyrovnanie Lightningu cez mint |
 | **NWC** (napr. Alby Hub) | Vlastný uzol/hub | Vložíte pairing string | Pokročilí samohostitelia |
 
 ## Ako sa rozhodnúť
 
 - **Chcete rýchly štart?** Vložte svoju **Blink** `@blink.sv` adresu alebo [akúkoľvek Lightning adresu](/documentation/connect-with-any-lightning-address) z peňaženky, ktorú už používate.
-- **Chcete jednoducho držať vlastné kľúče?** Pripojte **Aqua** cez [SamRock](/documentation/connect-aqua-with-samrock) - naskenujete QR a hotovo.
-- **Používate Bull Bitcoin?** Vložte jeho [watch-only descriptor](/documentation/aqua-and-bull-descriptor).
 - **Chcete vyrovnávať Lightning cez Cashu mint?** Viď [Cashu Lightning vyrovnanie](/documentation/cashu-lightning-settlement) - je to beta.
 - **Máte vlastný Alby Hub?** Použite [NWC](/documentation/connect-with-nwc).
 

@@ -208,10 +208,6 @@
                   class="px-3 py-1 rounded-md bg-gray-800/80 border border-indigo-500/30 text-xs font-medium text-indigo-200/90"
                   >Cashu</span
                 >
-                <span
-                  class="px-3 py-1 rounded-md bg-gray-800/80 border border-gray-600 text-xs font-medium text-gray-300"
-                  >SamRock</span
-                >
               </div>
             </div>
             <div class="flex shrink-0 gap-3 self-center md:self-auto">

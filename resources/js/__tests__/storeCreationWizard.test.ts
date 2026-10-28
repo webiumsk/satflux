@@ -61,6 +61,17 @@ function button(wrapper: Awaited<ReturnType<typeof mountWizard>>, key: string) {
 }
 
 describe("first store wizard", () => {
+    it("offers supported setup tabs without a new SamRock activation path", async () => {
+        const wrapper = await mountWizard();
+        await wrapper.get("#name").setValue("First Store");
+        await button(wrapper, "create_store.next_step").trigger("click");
+        await flushPromises();
+        expect(wrapper.find("#create-ln-tab-ln").exists()).toBe(true);
+        expect(wrapper.find("#create-ln-tab-advanced").exists()).toBe(true);
+        expect(wrapper.find("#create-ln-tab-samrock").exists()).toBe(false);
+        expect(wrapper.find("#create-ln-panel-samrock").exists()).toBe(false);
+    });
+
     it("Back then Next updates the existing store and keeps its local id", async () => {
         const wrapper = await mountWizard();
         await wrapper.get("#name").setValue("First Store");

@@ -383,6 +383,7 @@
 
           <div
             id="create-ln-panel-samrock"
+            v-if="BOLTZ_RECEIVING_AVAILABLE"
             v-show="lightningSetupTab === 'samrock'"
             role="tabpanel"
             aria-labelledby="create-ln-tab-samrock"
@@ -629,6 +630,7 @@
 </template>
 
 <script setup lang="ts">
+import { BOLTZ_RECEIVING_AVAILABLE } from "../../utils/boltzAvailability";
 import { asApiError, type ApiErrorLike } from "../../utils/apiError";
 import { ref, computed, onMounted, onUnmounted, watch, nextTick, defineAsyncComponent } from "vue";
 import { useSamRockPairing } from "../../composables/useSamRockPairing";
@@ -697,15 +699,14 @@ const botWaitFailureDetail = ref("");
 let botWaitCountdownInterval: ReturnType<typeof setInterval> | null = null;
 let botPollInterval: ReturnType<typeof setInterval> | null = null;
 
-/** Step 2 tabs: Lightning address quick-connect (default) / Aqua-Bull SamRock / advanced strings. */
+/** Supported setup tabs: Lightning address quick-connect and advanced strings. */
 type LightningSetupTabId = "ln" | "samrock" | "advanced";
 const lightningSetupTabs: ReadonlyArray<{ id: LightningSetupTabId; labelKey: string }> = [
   { id: "ln", labelKey: "create_store.tab_lightning_address" },
-  { id: "samrock", labelKey: "create_store.tab_samrock" },
   { id: "advanced", labelKey: "create_store.tab_advanced" },
 ];
 const lightningSetupTab = ref<LightningSetupTabId>("ln");
-const connectionType = ref<"blink" | "blitz" | "flash" | "lnaddress" | "nwc" | "aqua_descriptor">("aqua_descriptor");
+const connectionType = ref<"blink" | "blitz" | "flash" | "lnaddress" | "nwc" | "aqua_descriptor">("blink");
 
 /** SamRock pairing (step 2, Aqua tab) - shared flow lives in useSamRockPairing */
 const {
@@ -770,7 +771,7 @@ function validatePasteConnection(): boolean {
   if (connectionType.value === "nwc") {
     return validateNwcUri(cs);
   }
-  return isValidAquaBoltzDescriptor(cs);
+  return BOLTZ_RECEIVING_AVAILABLE && isValidAquaBoltzDescriptor(cs);
 }
 
 function validateCashuFields(): boolean {
@@ -907,6 +908,7 @@ async function onQuickConnectSubmitted(target: "blink" | "lnaddress" | "cashu") 
 }
 
 async function startSamRockPairing() {
+  if (!BOLTZ_RECEIVING_AVAILABLE) return;
   const sid = createdStoreId.value;
   if (!sid || !samrockFallbackValid.value) return;
 
@@ -1045,6 +1047,10 @@ function goBackFromStep2() {
 }
 
 async function submitWalletConfiguration() {
+  if (!BOLTZ_RECEIVING_AVAILABLE && (connectionType.value === "aqua_descriptor" || pasteDetection.value.kind === "aqua_descriptor")) {
+    flashStore.error(t("stores.boltz_setup_paused"));
+    return;
+  }
   const sid = createdStoreId.value;
   if (!sid) {
     flashStore.error(t("create_store.failed_to_create"));

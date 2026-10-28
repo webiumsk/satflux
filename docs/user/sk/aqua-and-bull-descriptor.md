@@ -1,34 +1,19 @@
 ---
-title: Descriptory Aqua a Bull Bitcoin
+title: "Deskriptorové pripojenia Aqua a Bull sú pozastavené"
 category: wallet-connection
 order: 4
-meta_description: Pripojte Aqua alebo Bull Bitcoin vložením watch-only output descriptora - plne nekustodiálne.
+meta_description: "Pripojenia na príjem cez Boltz sú pozastavené"
+updated: 2026-10-28
 ---
 
-# Descriptory Aqua a Bull Bitcoin
+# Deskriptorové pripojenia Aqua a Bull sú pozastavené
 
-**Aqua** aj **Bull Bitcoin** sa pripájajú vložením **watch-only output descriptora**. Je to plne nekustodiálne: descriptor umožní BTCPay sledovať platby, ale neobsahuje **žiadne privátne kľúče** - tie ostávajú v peňaženke. Satflux odmietne čokoľvek, čo obsahuje privátne kľúče.
+Nové pripojenia cez deskriptor Aqua/Bull Bitcoin a párovanie Aqua cez SamRock sú v Satfluxe pozastavené, pretože naše prijímacie prepojenie cez Boltz nie je dostupné. Bull obnovil Lightning v mobilnej aplikácii, jeho náhradná služba však nie je podporovaným backendom Satfluxu. Aqua momentálne umožňuje odosielanie cez Indra, prijímanie Lightningu nie je dostupné. Návody pre staré pripojenia neumožňujú nové nastavenie.
 
-Pre Aqua je jednoduchšia QR metóda - viď [Pripojenie Aqua cez SamRock](/documentation/connect-aqua-with-samrock). Bull Bitcoin používa descriptorovú metódu opísanú tu.
+Použite [podporovanú Lightning adresu](/documentation/connect-with-any-lightning-address) alebo [NWC z vlastného uzla](/documentation/connect-with-nwc). Ak už máte nastavenú Bitcoin on-chain peňaženku, ponechajte ju dostupnú.
 
-## Kde získať descriptor
+## Existujúce pripojenia
 
-- **Aqua**: Nastavenia → Boltz → exportujte watch-only output descriptor. Vyzerá ako `ct(slip77(...),elsh(wpkh(...)))`.
-- **Bull Bitcoin**: nastavenia peňaženky → exportujte watch-only descriptor. Bull používa formát `elwpkh(...)`.
+Pri existujúcom Boltz obchode otvorte **Pripojenie peňaženky**, zvoľte **Zmeniť prepojenie**, dokončite existujúce potvrdenie a vyberte inú podporovanú prijímaciu peňaženku. Pred zmenou overte s podporou rozpracované platby a možnosti obnovy. Existujúce záznamy peňaženky, história faktúr a obnova zostávajú zachované.
 
-Satflux ich rozlíši automaticky podľa tvaru descriptora.
-
-## Kroky
-
-1. Otvorte **Pripojenie peňaženky** a zvoľte tab **Advanced (connection strings)**.
-2. Vložte descriptor do poľa. Satflux rozpozná, či ide o Aqua alebo Bull Bitcoin, a overí formát.
-3. Uložte. Satflux nastaví BTCPay a zapne Lightning cez **Boltz** swap (Lightning cez Liquid).
-
-## Riešenie problémov
-
-- **„Obsahuje privátny kľúč“** - exportovali ste zlý reťazec. Exportujte **watch-only** descriptor, nikdy nie seed ani `xprv`/`zprv`.
-- **„Už sa používa“** - descriptor môže byť pripojený len k jednému obchodu. Najprv ho inde odpojte.
-- **Zlý formát** - Aqua descriptory sú `elsh(wpkh(...))`, Bull sú `elwpkh(...)`. Skontrolujte, že ste skopírovali celý reťazec bez prerušenia.
-- **Lightning zatiaľ nefunguje** - descriptorové pripojenia zapínajú Lightning cez Boltz; skontrolujte indikátor pripravenosti Boltz na obchode. Chvíľu môže trvať, kým bude pripravený.
-
-Na neskoršiu zmenu alebo odpojenie viď [Zrušenie alebo zmena údajov peňaženky](/documentation/revoking-or-changing-wallet-credentials).
+Dostupnosť overená 28. 10. 2026.
