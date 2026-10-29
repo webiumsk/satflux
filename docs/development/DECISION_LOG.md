@@ -1,5 +1,15 @@
 # Development decision log
 
+## 2026-10-30 - Publish isolated Blink probe diagnostics
+
+The owner authorizes pushing diagnostics to the owned Satflux repository and
+plans to deploy separately. Isolate the reviewed change from SEPA implementation
+and local environment repairs. Preserve API results and payment protections;
+log only stage, hostname, bounded category and available HTTP status. Independent
+source security/QA accepted the implementation; local tests and scoped checks
+are recorded in [the runbook](BLINK_PROBE_DIAGNOSTICS.md). No merge or agent-run
+deployment is implied by this publication.
+
 ## 2026-10-22 - Resolve wallet checkout review without relaxing safety gates
 
 Consumer #399's initial Node CI fails on npm's critical dependency-audit finding

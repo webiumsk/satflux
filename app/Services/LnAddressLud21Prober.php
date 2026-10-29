@@ -22,6 +22,8 @@ class LnAddressLud21Prober
     /** Probe results are user-specific because LNURLp descriptors live under /lnurlp/{user}. */
     private const CACHE_TTL_SECONDS = 300;
 
+    private string $requestStage = 'descriptor';
+
     /**
      * @return array{lud21: bool, reason: string}
      *                                            reason: 'ok'|'invalid_address'|'unreachable'|'invalid_lnurlp'|'no_verify'|'invalid_verify'
@@ -59,7 +61,7 @@ class LnAddressLud21Prober
             return ['lud21' => false, 'reason' => 'invalid_address'];
         }
 
-        $descriptor = $this->getJson($lnurlpUrl);
+        $descriptor = $this->getJsonForStage($lnurlpUrl, 'descriptor');
         if ($descriptor === null) {
             return ['lud21' => false, 'reason' => 'unreachable'];
         }
@@ -75,7 +77,7 @@ class LnAddressLud21Prober
         $amount = min(max($min, self::MIN_PROBE_MSAT), max($max, 1));
 
         $separator = str_contains($callback, '?') ? '&' : '?';
-        $invoice = $this->getJson($callback.$separator.'amount='.$amount);
+        $invoice = $this->getJsonForStage($callback.$separator.'amount='.$amount, 'invoice');
         $pr = $invoice['pr'] ?? null;
         if ($invoice === null || ($invoice['status'] ?? null) === 'ERROR' || ! is_string($pr) || $pr === '') {
             return ['lud21' => false, 'reason' => 'invalid_lnurlp'];
@@ -98,7 +100,7 @@ class LnAddressLud21Prober
             return ['lud21' => false, 'reason' => 'invalid_verify'];
         }
 
-        $receipt = $this->getJson($verify);
+        $receipt = $this->getJsonForStage($verify, 'verify');
         if ($receipt === null) {
             return ['lud21' => false, 'reason' => 'unreachable'];
         }
@@ -189,6 +191,29 @@ class LnAddressLud21Prober
         return $ips === [] ? null : array_values(array_unique($ips));
     }
 
+    /** @return array<string, mixed>|null */
+    private function getJsonForStage(string $url, string $stage): ?array
+    {
+        $previousStage = $this->requestStage;
+        $this->requestStage = $stage;
+
+        try {
+            return $this->getJson($url);
+        } finally {
+            $this->requestStage = $previousStage;
+        }
+    }
+
+    private function logFailure(string $host, string $category, ?int $status = null): void
+    {
+        $context = ['stage' => $this->requestStage, 'url_host' => $host, 'category' => $category];
+        if ($status !== null) {
+            $context['http_status'] = $status;
+        }
+
+        Log::info('LUD-21 probe failed', $context);
+    }
+
     /**
      * @return array<string, mixed>|null
      */
@@ -197,7 +222,7 @@ class LnAddressLud21Prober
         $host = strtolower((string) parse_url($url, PHP_URL_HOST));
         $ips = $this->resolvePublicIps($host);
         if ($ips === null) {
-            Log::info('LUD-21 probe refused: host does not resolve to public addresses only', ['url_host' => $host]);
+            $this->logFailure($host, 'dns_rejected');
 
             return null;
         }
@@ -211,17 +236,22 @@ class LnAddressLud21Prober
                 ])
                 ->acceptJson()
                 ->get($url);
-        } catch (\Throwable $e) {
-            Log::info('LUD-21 probe request failed', ['url_host' => $host, 'message' => $e->getMessage()]);
+        } catch (\Throwable) {
+            $this->logFailure($host, 'request_failed');
 
             return null;
         }
 
         if (! $response->successful()) {
+            $this->logFailure($host, 'http_error', $response->status());
+
             return null;
         }
 
         $json = $response->json();
+        if (! is_array($json)) {
+            $this->logFailure($host, 'invalid_json', $response->status());
+        }
 
         return is_array($json) ? $json : null;
     }

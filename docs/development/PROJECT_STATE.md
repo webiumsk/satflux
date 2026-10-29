@@ -1,5 +1,15 @@
 # Project state
 
+## Blink probe diagnostic publication candidate - 2026-10-30
+
+The owner authorizes publishing the independently reviewed diagnostics in a
+separate `fix/blink-probe-diagnostics` branch from `5cc0688a`. Only the prober,
+its synthetic privacy regressions and scoped documentation are included. Preserve
+separate SEPA work and unrelated local edits. The owner reports local Blink
+connection success and will perform live deployment; the live failure cause is
+still unverified. See [the runbook](BLINK_PROBE_DIAGNOSTICS.md) for safe logs,
+66-test evidence, scoped static checks and the full-local-PHPStan dependency limit.
+
 ## Wallet checkout PR review follow-up (2026-10-22)
 
 Published consumer [PR #399](https://github.com/webiumsk/satflux/pull/399) at

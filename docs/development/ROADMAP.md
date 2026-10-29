@@ -1,5 +1,12 @@
 # Development roadmap
 
+## Blink probe diagnostics - 2026-10-30
+
+Publish the owner-authorized, independently reviewed diagnostic-only branch;
+then verify its remote CI. The owner handles live rollout and supplies sanitized
+`LUD-21 probe failed` evidence if the issue recurs. No wallet-routing or plugin
+change is included. See [the runbook](BLINK_PROBE_DIAGNOSTICS.md).
+
 ## Current: wallet checkout review and CI
 
 Address valid findings on Satflux #399 and owned plugins #42: a bounded query must
