@@ -6,8 +6,8 @@ Accept the three minor incremental CodeRabbit comments on `0e0098db`. Distinguis
 historical uncommitted QA observations from committed runnable commands; retain
 old source hashes as historical evidence. Use a repository-safe agent identifier
 for reviewer attribution. Let Playwright discover its installed browser unless
-BROWSER_EXECUTABLE_PATH explicitly overrides it. Independent QA accepts19 option
-checks and121 actual native assertions; product source is unchanged. Do not
+BROWSER_EXECUTABLE_PATH explicitly overrides it. Independent QA accepts 19 option
+checks and 121 actual native assertions; product source is unchanged. Do not
 install a browser, change test expectations or suppress the documentation metric.
 
 ## 2026-10-30 - Preserve partial settings behavior in PR411 review fixes
