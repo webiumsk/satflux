@@ -3,6 +3,7 @@ title: Pay Button
 category: payments
 order: 2
 meta_description: Pridajte na web Bitcoin „pay“ tlačidlo pomocou krátkeho HTML úryvku.
+updated: 2026-10-30
 ---
 
 # Pay Button
@@ -23,3 +24,9 @@ Vložte úryvok do HTML stránky tam, kde má tlačidlo byť. Keď naň návšte
 
 - Úryvok je samostatný - na vašom webe netreba účet ani plugin.
 - Pre plnohodnotný obchod je namiesto jednotlivých tlačidiel vhodnejšia WooCommerce integrácia.
+
+## Email kupujúceho a návratová adresa
+
+Voliteľný **Email kupujúceho** identifikuje zákazníka na faktúre. Nezapína emailové oznámenia obchodníkovi. Tie nastavíte v emailových pravidlách obchodu.
+
+Presmerovanie prehliadača musí byť úplná HTTP alebo HTTPS adresa, napríklad `https://example.com/thanks?order=123`. Relatívne cesty a iné schémy URL sa odmietnu. Pred kopírovaním vygenerovaného kódu opravte neplatnú adresu.

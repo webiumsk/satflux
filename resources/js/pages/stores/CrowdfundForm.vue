@@ -268,6 +268,7 @@
                     v-model.number="form.resetEveryAmount"
                     type="number"
                     min="1"
+                    step="1"
                     class="block w-24 px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <Select
@@ -747,6 +748,13 @@ async function handleSubmit() {
       return;
     }
 
+    if (form.value.recurringGoal && (
+      !Number.isSafeInteger(form.value.resetEveryAmount) || form.value.resetEveryAmount < 1
+    )) {
+      flashStore.error(t("stores.crowdfund_reset_interval_invalid"));
+      return;
+    }
+
     // If switching from code view, parse JSON first
     if (perksViewMode.value === "code") {
       try {
@@ -890,11 +898,9 @@ async function handleSubmit() {
 
     // Handle recurring goal settings
     if (form.value.recurringGoal) {
-      // Ensure minimum value of 1 for resetEveryAmount
-      const resetAmount =
-        form.value.resetEveryAmount >= 1 ? form.value.resetEveryAmount : 1;
+      const resetAmount = form.value.resetEveryAmount;
 
-      // Map resetEveryUnit to BTCPay format (Day, Hour, Week, Month, Year)
+      // The server maps the Week alias to a checked number of days.
       config.crowdfundBehavior = {
         ...config.crowdfundBehavior,
         resetEvery: form.value.resetEveryUnit,
@@ -929,7 +935,12 @@ async function handleSubmit() {
     flashStore.success(t("settings.settings_updated"));
   } catch (rawError) {
     const err = asApiError(rawError);
-    const msg = err.response?.data?.message || t("settings.failed_to_update");
+    const fields = err.response?.data?.errors;
+    const recurrenceError = fields && ["config.resetEvery", "config.resetEveryAmount", "config.startDate"]
+      .some(field => fields[field] !== undefined);
+    const msg = recurrenceError
+      ? t("stores.crowdfund_reset_interval_invalid")
+      : err.response?.data?.message || t("settings.failed_to_update");
     flashStore.error(msg);
   } finally {
     saving.value = false;

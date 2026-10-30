@@ -137,8 +137,11 @@
             <input
               id="invoice_expiration"
               v-model.number="form.invoice_expiration"
+              :disabled="!canEditPaymentOptions || !isActive"
               type="number"
               min="1"
+              max="34560"
+              step="1"
               class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-xl shadow-sm text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
             />
           </div>
@@ -184,8 +187,11 @@
             <input
               id="monitoring_expiration"
               v-model.number="form.monitoring_expiration"
+              :disabled="!canEditPaymentOptions || !isActive"
               type="number"
-              min="0"
+              min="10"
+              max="34560"
+              step="1"
               class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-xl shadow-sm text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
             />
           </div>
@@ -231,6 +237,7 @@ import { currencies } from "../../data/currencies";
 defineProps<{
   form: StoreSettingsForm;
   canEditPaymentOptions: boolean;
+  isActive: boolean;
   timezoneOptions: { label: string; value: string }[];
   speedPolicyOptions: { label: string; value: string }[];
   networkFeeModeOptions: { label: string; value: string }[];

@@ -221,7 +221,7 @@ class TicketController extends Controller
             'startLocal' => ['sometimes', 'required', 'string', 'max:19', 'regex:/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?\z/D'],
             'endLocal' => ['sometimes', 'nullable', 'string', 'max:19', 'regex:/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?\z/D'],
             'currency' => ['sometimes', 'nullable', 'string', 'max:10'],
-            'redirectUrl' => ['sometimes', 'nullable', 'string', 'url', 'max:500'],
+            'redirectUrl' => ['sometimes', 'nullable', 'string', 'url:http,https', 'max:500'],
             'emailSubject' => ['sometimes', 'nullable', 'string', 'max:255'],
             'emailBody' => ['sometimes', 'nullable', 'string'],
             'hasMaximumCapacity' => ['sometimes', 'boolean'],

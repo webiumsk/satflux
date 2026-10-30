@@ -1,5 +1,42 @@
 # Project state
 
+## PR411 incremental review portability fixes - 2026-10-30
+
+CI and CodeRabbit completed successfully on `0e0098db`; both original findings
+are resolved. Three new minor comments require only review-evidence clarity and
+browser-test portability. The follow-up labels the one-off component fixture and
+old manifests as historical, formats reviewer identity as an agent identifier,
+and delegates browser selection to Playwright unless an explicit override is set.
+Independent QA passes 19 launch-option checks and 121 actual native assertions;
+syntax/ESLint/diff checks pass. No product source changes or browser installation.
+Fresh checks must cover the resulting published head. Documentation coverage is
+40% against 80%, a separate advisory. See [evidence](../BTCPAY_2_4_7_IMPLEMENTATION.md#incremental-review-of-0e0098db).
+
+## PR411 CodeRabbit follow-up - 2026-10-30
+
+The published compatibility revision `7bb1677d` passed remote CI. Both actionable
+CodeRabbit findings are valid: payment-sound URLs still accepted FTP, and mounted
+inactive Payment controls could prevent unrelated saves for legacy durations.
+The follow-up restricts sound URLs to HTTP(S), disables inactive/inaccessible
+bounded controls and omits only invalid inactive durations. Preserve valid and
+nullable values, active range/step validation, entitlement stripping and existing
+minutes/seconds conversion. See [review evidence](../BTCPAY_2_4_7_IMPLEMENTATION.md#pr411-coderabbit-follow-up).
+Fresh exact-head CI remains separate from prior success. No merge or deployment.
+
+## BTCPay 2.4.7 consumer compatibility implemented - 2026-10-30
+
+The owner authorized implementation and publication of the compatibility branch.
+[Implementation and validation](../BTCPAY_2_4_7_IMPLEMENTATION.md) cover settings
+seconds/minutes, safe CSS/redirect URLs, accurate Pay Button buyer email and
+numeric Crowdfund recurrence on create/update. All five locales and feature docs
+are updated. Full PHP passes 2,193 tests/10,571 assertions; frontend passes 1,080.
+Pint, PHPStan, API documentation, lint/typecheck/parity/build pass with existing
+warning/deprecation baselines retained. Independent QA/security accept core source.
+
+Provider changes and local packages have a separate repository lifecycle. Preserve
+SEPA isolation and conditional core/Raffle schema inventory gates; no merge,
+production package installation or deployment follows from source publication.
+
 ## Blink probe diagnostic publication candidate - 2026-10-30
 
 The owner authorizes publishing the independently reviewed diagnostics in a

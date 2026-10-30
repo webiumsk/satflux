@@ -3,6 +3,7 @@
 namespace App\Services\BtcPay;
 
 use App\Services\BtcPay\Apps\AppItemTemplateNormalizer;
+use App\Services\BtcPay\Apps\CrowdfundRecurrence;
 use App\Services\BtcPay\Apps\CrowdfundUpdatePayloadBuilder;
 use App\Services\BtcPay\Apps\PosUpdatePayloadBuilder;
 use App\Services\BtcPay\Exceptions\BtcPayException;
@@ -336,6 +337,9 @@ class AppService
     {
         $requestBody = [];
         $appTypeLower = strtolower($appType);
+        if ($appTypeLower === 'crowdfund') {
+            $config = (new CrowdfundRecurrence)->normalize($config);
+        }
 
         // According to BTCPay API docs, request body uses 'appName' (not 'name');
         // appType lives in the URL, not the body.

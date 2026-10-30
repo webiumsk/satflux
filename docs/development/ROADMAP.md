@@ -1,5 +1,29 @@
 # Development roadmap
 
+## Current: PR411 minor review follow-up - 2026-10-30
+
+Publish the independently accepted browser portability and review-record fixes.
+All CI/checks passed on the prior `0e0098db`; original findings are resolved.
+Verify fresh exact-head checks and the three minor review threads after pushing.
+Preserve the separate 40% documentation advisory and owner merge/deployment gates.
+
+## Current: PR411 compatibility review - 2026-10-30
+
+Resolve the verified sound-URL and hidden-duration CodeRabbit findings while
+preserving nullable settings, tenant/permission guards and wire units. Publish
+the independently reviewed follow-up to the existing authorized branch and verify
+new-head CI. If BTCPay itself persists an invalid duration, its merged-store
+validation still requires an explicit merchant correction in Payment settings;
+consumer omission does not repair upstream data. Merge/deployment remain owner gates.
+
+## Completed locally: BTCPay 2.4.7 consumer compatibility - 2026-10-30
+
+[The implementation](../BTCPAY_2_4_7_IMPLEMENTATION.md) passes full PHP/frontend
+and static/style/documentation gates plus independent QA/security. Publish only
+the owner-authorized compatibility branch. Coordinate the separately qualified
+provider artifacts, SEPA prerequisite and target schema inventory before any
+explicitly approved merge/installation/deployment.
+
 ## Blink probe diagnostics - 2026-10-30
 
 Publish the owner-authorized, independently reviewed diagnostic-only branch;

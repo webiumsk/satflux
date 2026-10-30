@@ -3,6 +3,7 @@ title: Pay Button
 category: payments
 order: 2
 meta_description: Add a Bitcoin "pay" button to your website with a snippet of HTML.
+updated: 2026-10-30
 ---
 
 # Pay Button
@@ -23,3 +24,9 @@ Paste the snippet into your page's HTML where you want the button to appear. Whe
 
 - The snippet is self-contained - no account or plugin required on your site.
 - For a full shop, a WooCommerce integration is a better fit than individual buttons.
+
+## Buyer email and return address
+
+The optional **Buyer email** identifies the customer on the invoice. It does not enable merchant email notifications. Configure those through the store's email rules.
+
+The browser redirect must be a complete HTTP or HTTPS address, such as `https://example.com/thanks?order=123`. Relative paths and other URL schemes are rejected. Correct an invalid address before copying the generated code.

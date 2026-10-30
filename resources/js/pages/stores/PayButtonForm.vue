@@ -501,34 +501,22 @@
 
           <div>
             <label
-              for="emailNotifications"
+              for="buyerEmail"
               class="block text-sm font-medium text-gray-300 mb-1"
             >
-              Email Notifications
+              {{ t('stores.pay_button_buyer_email') }}
             </label>
             <input
-              id="emailNotifications"
-              v-model="form.emailNotifications"
+              id="buyerEmail"
+              v-model="form.buyerEmail"
               type="email"
               placeholder="user@example.com"
+              aria-describedby="pay-button-buyer-email-help"
               class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
-            <div
-              class="mt-3 flex items-center bg-gray-900 border border-gray-700 p-4 rounded-xl"
-            >
-              <input
-                id="receiveEmailNotifications"
-                v-model="form.receiveEmailNotifications"
-                type="checkbox"
-                class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-600 bg-gray-800 rounded transition-colors"
-              />
-              <label
-                for="receiveEmailNotifications"
-                class="ml-3 block text-sm font-medium text-white cursor-pointer"
-              >
-                Receive email notification updates
-              </label>
-            </div>
+            <p id="pay-button-buyer-email-help" class="mt-1 text-xs text-gray-500">
+              {{ t('stores.pay_button_buyer_email_help') }}
+            </p>
           </div>
 
           <div>
@@ -536,17 +524,23 @@
               for="browserRedirect"
               class="block text-sm font-medium text-gray-300 mb-1"
             >
-              Browser Redirect
+              {{ t('stores.pay_button_browser_redirect') }}
             </label>
             <input
               id="browserRedirect"
               v-model="form.browserRedirect"
               type="url"
+              maxlength="2048"
+              :aria-invalid="redirectError ? 'true' : undefined"
+              :aria-describedby="redirectError ? 'pay-button-redirect-error' : 'pay-button-redirect-help'"
               placeholder="https://example.com/success"
               class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
-            <p class="mt-1 text-xs text-gray-500">
-              Where to redirect the customer after payment is complete.
+            <p v-if="redirectError" id="pay-button-redirect-error" role="alert" class="mt-1 text-sm text-red-400">
+              {{ redirectError }}
+            </p>
+            <p v-else id="pay-button-redirect-help" class="mt-1 text-xs text-gray-500">
+              {{ t('stores.pay_button_browser_redirect_help') }}
             </p>
           </div>
         </div>
@@ -683,6 +677,7 @@ import { currencies } from "../../data/currencies";
 import Select from "../../components/ui/Select.vue";
 import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
 import { escapeAttr } from "../../utils/escapeAttr";
+import { isAbsoluteHttpUrl } from "../../utils/httpUrl";
 
 const { t } = useI18n();
 const { btcPayUrl, load: loadBtcpayConfig } = useBtcPayUrl();
@@ -728,11 +723,16 @@ const form = ref({
   simpleInputStyle: false,
   fitButtonInline: false,
   serverIpn: "",
-  emailNotifications: "",
-  receiveEmailNotifications: true,
+  buyerEmail: "",
   browserRedirect: "",
   checkoutQueryString: "",
 });
+
+const redirectError = computed(() =>
+  form.value.browserRedirect && !isAbsoluteHttpUrl(form.value.browserRedirect)
+    ? t("stores.pay_button_redirect_invalid")
+    : ""
+);
 
 const previewAmount = ref(1);
 
@@ -812,6 +812,8 @@ function getImageHeight() {
 }
 
 const generatedCode = computed(() => {
+  if (redirectError.value) return "";
+
   // Don't generate code if store is not loaded yet
   if (!props.store || !props.store.btcpay_store_id) {
     return "<!-- Loading store information... -->";
@@ -1016,8 +1018,8 @@ function generateHtmlCode(): string {
     html += `  <input type="hidden" name="notificationURL" value="${escapeAttr(form.value.serverIpn)}" />
 `;
   }
-  if (form.value.emailNotifications) {
-    html += `  <input type="hidden" name="buyerEmail" value="${escapeAttr(form.value.emailNotifications)}" />
+  if (form.value.buyerEmail) {
+    html += `  <input type="hidden" name="buyerEmail" value="${escapeAttr(form.value.buyerEmail)}" />
 `;
   }
   if (form.value.browserRedirect) {

@@ -96,6 +96,7 @@
           />
           <StoreSettingsPayment
             v-show="activeSettingsTab === 'payment'"
+            :is-active="activeSettingsTab === 'payment'"
             :form="settingsForm"
             :can-edit-payment-options="canEditPaymentOptions"
             :timezone-options="timezoneOptions"
@@ -607,6 +608,7 @@ function closeDeleteStoreModal() {
   deleteStoreError.value = "";
 }
 
+/** Load wire settings and convert duration seconds to the form's whole minutes. */
 async function fetchSettings() {
   if (!props.store) return;
 
@@ -708,6 +710,10 @@ async function fetchSettings() {
   }
 }
 
+/**
+ * Submit form minutes as API seconds, omitting invalid inactive durations and
+ * stripping fields the current user cannot edit without changing local values.
+ */
 async function handleSettingsSubmit() {
   if (!props.store) return;
   flashStore.clear();
@@ -725,6 +731,26 @@ async function handleSettingsSubmit() {
     urlFields.forEach((key) => {
       if (payload[key] === "") payload[key] = null;
     });
+    // Hidden legacy durations must not block an unrelated tab's update.
+    // Preserve valid values and let the active Payment controls validate edits.
+    if (activeSettingsTab.value !== "payment") {
+      for (const [key, min] of [
+        ["invoice_expiration", 1],
+        ["monitoring_expiration", 10],
+      ] as const) {
+        const minutes = payload[key];
+        // Empty inputs retain the API's existing nullable/default semantics.
+        if (minutes === "" || minutes === null) continue;
+        if (
+          typeof minutes !== "number" ||
+          !Number.isInteger(minutes) ||
+          minutes < min ||
+          minutes > 34560
+        ) {
+          delete payload[key];
+        }
+      }
+    }
     // Time fields: UI uses minutes, API expects seconds
     if (typeof payload.display_expiration_timer === "number") {
       payload.display_expiration_timer = Math.round(
