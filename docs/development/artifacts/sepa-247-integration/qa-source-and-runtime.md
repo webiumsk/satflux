@@ -4,7 +4,7 @@ Reviewer: `sepa247_qa`, independent of plugin/backend implementation authors. So
 
 ## Scope and provenance
 
-Provider base `ed250c2e75d1287ac75ec163506a1fbdca1fbaf7` plus the prepared `8afed1a` merge and frozen positive-credit guard. Consumer base `4ff5c32ab2c4d9d5e7d786498c37515cd4abb439` plus prepared `885168f2`, the new retry regression for HTTP 503, five-locale hints and SEPA articles. An accompanying source manifest captures 22 provider and 28 consumer changed files before main's publication/documentation changes.
+Provider base `ed250c2e75d1287ac75ec163506a1fbdca1fbaf7` plus the prepared `8afed1a` merge and frozen positive-credit guard. Consumer base `4ff5c32ab2c4d9d5e7d786498c37515cd4abb439` plus prepared `885168f2`, the new retry regression for HTTP 503, five-locale hints and SEPA articles. The [QA source manifest](qa-reviewed-source.json) captures 22 provider and 28 consumer changed files before the coordinator's publication/documentation changes. This includes the two prepared SEPA plan/runbook documents in addition to the 22 provider and 26 consumer files covered by the separate [security source manifest](reviewed-source.json).
 
 ## Executed independent checks
 
