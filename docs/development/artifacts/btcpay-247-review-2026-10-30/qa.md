@@ -10,11 +10,11 @@ No blocking finding in the reviewed change. Backend payment sound validation is 
 
 Frontend duration controls are disabled when inactive or inaccessible; invalid inactive invoice/monitoring fields are omitted without model mutation, valid inactive fields retained, seconds/minutes conversions unchanged. Active editable fields retain range/step validation and preserve optional clearing; nullable empty values are retained on active and inactive tabs. Existing inaccessible payment field stripping remains.
 
-## Reproducible evidence
+## Reproducible and historical evidence
 
 - `node node_modules/vitest/vitest.mjs run resources/js/__tests__/btcpay247Forms.test.ts resources/js/__tests__/btcpay247SettingsDurations.test.ts resources/js/__tests__/btcpay247Crowdfund.test.ts`: Final frozen source: 3 files, 40 tests passed, 5.73s.
-- `node <disposable-review-harness>/browser.cjs --base`: independently compiled published-base Payment component, mounted in an isolated synthetic native Chromium form, reproduces inactive monitoring0 invalidity (`form.checkValidity=false`, `disabled=false`, `willValidate=true`).
-- `node <disposable-review-harness>/browser.cjs`: current actual Payment component, native Chromium, 24 active/inactive + permitted/inaccessible/value combinations, 74 assertions passed. Covers zero, max+1, min/max valid, fractions, NaN; inactive native submit succeeds, active invalid numeric native submit blocked; empty/NaN-rendered blank remains optional as before. Other Select/Badge UI stubbed; no Laravel, environment file, wallet, merchant credentials or live network API is used.
+- Historical one-off evidence, not reproducible from this repository: the independent component fixture compiled the published-base Payment component and reproduced inactive monitoring zero invalidity (`form.checkValidity=false`, `disabled=false`, `willValidate=true`). The uncommitted `browser.cjs` fixture is held only in reviewer `cr411_qa`'s disposable workspace; it has no durable repository location and may be removed during cleanup.
+- The same historical fixture passed 74 assertions against the reviewed component across 24 active/inactive, permitted/inaccessible and value combinations. It covered zero, max+1, min/max valid, fractions and NaN; inactive native submit succeeded, active invalid numeric native submit was blocked, and blank remained optional. Other Select/Badge UI was stubbed. These are recorded observations, not runnable commands; use the committed shared-form harness below to reproduce current behavior. No Laravel, environment file, wallet, merchant credentials or live network API was used.
 - `node resources/js/__tests__/btcpay247SettingsDurations.browser.mjs`: final frozen actual parent/child shared-form browser harness, 121 assertions passed, exit 0. Includes optional active/inactive clearing and payload preservation. Temporary Vite cache only, explicit synthetic API and access stubs.
 - `git diff --check`: passed.
 - Initial Chromium launch failed sandbox socket creation. Same synthetic harness succeeded using normal approved escalated execution; no browser installed.
@@ -27,7 +27,7 @@ Pinned upstream `GreenfieldStoresController.UpdateStore` merges omitted request 
 
 No source writes, dependency installation, production environment access, container changes, Git publication or deployment. Root graph query was already completed by coordinator; target worktree graph absent, no graph build installed or run. Full remote CI remains coordinator-owned and must be attributed to exact new head, separately from this working-tree review.
 
-## Final reviewed frontend SHA-256
+## Historical reviewed frontend SHA-256 at 0e0098db
 
 - StoreSettings.vue: `362d7c960ffff68614e7e68b025508789713f10674d65ee55997ec92be766461`
 - StoreSettingsPayment.vue: `27e98fbc69860da3982b06c92ba792ad007f2021118ead2bffb20ecbeffcde37`

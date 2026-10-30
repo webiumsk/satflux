@@ -1,6 +1,6 @@
 # Independent security review - PR411 CodeRabbit follow-up
 
-Reviewer: actual Codex security specialist `/root/cr411_security`, independent of implementation authors.
+Reviewer: actual Codex security specialist `cr411_security` (agent identifier), independent of implementation authors.
 Repository: webiumsk/satflux, branch fix/btcpay-247-compatibility.
 Reviewed base: 7bb1677dd51a971e4337b6e7318c1f5d97dd1a16 plus the eight frozen working-tree files hashed below. Frontend author confirmed final second source freeze after preserving optional/nullable clearing; main confirmed backend source scope. No implementation, Git publication, deployment or production state changes by reviewer.
 
@@ -31,7 +31,7 @@ Graphify query executed from the existing root graph for store-update ownership/
 
 No PHPUnit, Vitest or Chromium runtime execution by this reviewer; main/QA/author results remain separately attributable. No Docker, network, real store, wallet, token, database, external URL or production environment was used. Unresolved introduced security findings: none.
 
-## Reviewed source hashes (SHA-256)
+## Historical reviewed source hashes at 0e0098db (SHA-256)
 
 - `app/Http/Requests/StoreUpdateRequest.php`: `8967bc6ffae5289729b53d3296c871f96ca01f43f8705c18d05a68635e3094d2`
 - `app/Services/BtcPay/Apps/CrowdfundRecurrence.php`: `06f600086be89e3931fa1c49054572df4853dbf2572433320b32a902233a37f9`

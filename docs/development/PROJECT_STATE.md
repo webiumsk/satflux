@@ -1,5 +1,17 @@
 # Project state
 
+## PR411 incremental review portability fixes - 2026-10-30
+
+CI and CodeRabbit completed successfully on `0e0098db`; both original findings
+are resolved. Three new minor comments require only review-evidence clarity and
+browser-test portability. The follow-up labels the one-off component fixture and
+old manifests as historical, formats reviewer identity as an agent identifier,
+and delegates browser selection to Playwright unless an explicit override is set.
+Independent QA passes19 launch-option checks and121 actual native assertions;
+syntax/ESLint/diff checks pass. No product source changes or browser installation.
+Fresh checks must cover the resulting published head. Documentation coverage is
+40% against80%, a separate advisory. See [evidence](../BTCPAY_2_4_7_IMPLEMENTATION.md#incremental-review-of-0e0098db).
+
 ## PR411 CodeRabbit follow-up - 2026-10-30
 
 The published compatibility revision `7bb1677d` passed remote CI. Both actionable

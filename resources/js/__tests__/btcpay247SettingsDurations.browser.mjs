@@ -69,7 +69,11 @@ let browser;
 let assertions = 0;
 try {
   await server.listen();
-  browser = await chromium.launch({ executablePath: process.env.BROWSER_EXECUTABLE_PATH || '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox'] });
+  browser = await chromium.launch({
+    ...(process.env.BROWSER_EXECUTABLE_PATH ? { executablePath: process.env.BROWSER_EXECUTABLE_PATH } : {}),
+    headless: true,
+    args: ['--no-sandbox'],
+  });
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
