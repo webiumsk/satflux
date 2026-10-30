@@ -15,6 +15,21 @@ meta_description: Prijímajte eurové bankové prevody cez SEPA Instant QR kód,
 2. Zadajte bankové údaje (účet, ktorý má prijímať eurové prevody) a zapnite metódu.
 3. Voliteľne nastavte e-mailové potvrdzovanie prichádzajúcich platieb, aby ich obchod vedel spárovať.
 
+## Overovanie bankového e-mailu
+
+Automatické potvrdenie vyžaduje overený pôvod z banky a zhodu prijímacieho účtu,
+referencie platby, sumy a meny. Správy s chýbajúcimi alebo nejednoznačnými údajmi
+neoznačia faktúru ako zaplatenú. Ak automatické overenie nie je dostupné,
+skontrolujte prevod v bankovej aplikácii a použite ručné potvrdenie.
+
+Operátor servera musí nastaviť dôveryhodné overovanie bankových správ. Samotné
+doručenie cez poskytovateľa e-mailu neoveruje odosielajúcu banku. Nepodporované
+formáty správ a staršie verzie pluginu vyžadujú ručnú kontrolu. Čas potvrdenia
+závisí od doručenia bankovej notifikácie a spracovania; okamžité potvrdenie nie je
+zaručené. FIO používa interval kontroly obmedzený bankou.
+
+Automatické overovanie bankového e-mailu aktuálne podporuje klasický kreditný formát Tatra banky. Kompaktné správy a notifikácie SLSP vyžadujú ručnú kontrolu.
+
 ## Kde je moja platba
 
 Každá čakajúca platba alebo platba na kontrolu, ktorej referencia začína na `QR-`, má tlačidlo **Kde je moja platba**. Opýta sa verejnej diagnostiky Notifikátora okamžitých platieb (NOP) Finančnej správy SR, čo o tejto referencii vie, a ukáže časovú os: vznik ID transakcie, uloženie oznámenia banky, spárovanie s pokladnicou, sprístupnenie, prijatie.

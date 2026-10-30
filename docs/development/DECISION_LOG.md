@@ -1,5 +1,15 @@
 # Development decision log
 
+## 2026-10-30 - Integrate SEPA isolation with exact BTCPay 2.4.7
+
+Apply the prepared consumer repair to merged compatibility instead of modifying
+the dirty original checkout. Require matching contract-v2 origin/original-account
+proof; preserve scoped ownership, positive-credit tolerance and explicit manual
+behavior. Include the reviewed automatic nonpositive-amount rejection in the
+companion provider. Keep old compatibility-only archives, independent histories,
+review manifests and synthetic runtime evidence. Publish only reviewed source
+branches and verified local installable candidates; no release/deployment follows.
+
 ## 2026-10-30 - Keep review evidence reproducible and the browser test portable
 
 Accept the three minor incremental CodeRabbit comments on `0e0098db`. Distinguish

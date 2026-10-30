@@ -1,5 +1,17 @@
 # Project state
 
+## SEPA isolation integrated on merged 2.4.7 consumer - 2026-10-30
+
+The owner authorized SEPA integration and plugin source publication. This branch
+applies reviewed consumer `885168f2` to merged `4ff5c32a`, with five-locale docs,
+truthful bank-format hints and a stable-identity provider-failure retry regression.
+Companion provider combines compatibility and isolation as repaired SEPA 0.8.2.0
+for exact BTCPay 2.4.7. [Integration evidence](SEPA_247_INTEGRATION.md) records
+contracts, independent reviews, 2,253 PHP / 1,094 frontend passes and all local
+gates. Independent provider QA passes 165 cases with zero skips. Final provider
+archive and fresh repository-specific CI remain distinct gates. No production
+operation, merge or deployment is included in this source publication.
+
 ## PR411 incremental review portability fixes - 2026-10-30
 
 CI and CodeRabbit completed successfully on `0e0098db`; both original findings

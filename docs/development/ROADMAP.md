@@ -1,5 +1,14 @@
 # Development roadmap
 
+## Current: publish matched SEPA isolation source - 2026-10-30
+
+Consumer isolation is rebased on merged 2.4.7 compatibility with independent
+source/runtime acceptance, 2,253 PHP and 1,094 frontend tests plus existing gates.
+Publish this branch separately from the repaired provider 0.8.2.0; verify both
+exact-head CI/reviews and final local archive identity. Provider-first installation
+and actual MTA attestation remain operator work after applicable approval. See
+[the integration record](SEPA_247_INTEGRATION.md).
+
 ## Current: PR411 minor review follow-up - 2026-10-30
 
 Publish the independently accepted browser portability and review-record fixes.

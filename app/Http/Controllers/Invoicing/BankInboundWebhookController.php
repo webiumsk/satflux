@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Invoicing;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessBankNotificationEmail;
+use App\Services\Invoicing\BankEmailOriginVerifier;
 use App\Services\Invoicing\BankInboundWebhookPayloadNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,9 +12,13 @@ use Illuminate\Support\Facades\Validator;
 
 class BankInboundWebhookController extends Controller
 {
-    public function handle(Request $request, BankInboundWebhookPayloadNormalizer $normalizer): JsonResponse
-    {
-        if ($normalizer->isMailgunPayload($request)) {
+    public function handle(
+        Request $request,
+        BankInboundWebhookPayloadNormalizer $normalizer,
+        BankEmailOriginVerifier $originVerifier,
+    ): JsonResponse {
+        $isMailgun = $normalizer->isMailgunPayload($request);
+        if ($isMailgun) {
             if ($authFailure = $this->mailgunAuthFailure($request, $normalizer)) {
                 return $authFailure;
             }
@@ -35,6 +40,12 @@ class BankInboundWebhookController extends Controller
             'subject' => $validated['subject'] ?? '',
             'body' => $validated['body'],
             'headers' => $validated['headers'] ?? '',
+            // Only the protected native receiving-MTA adapter may attest bank
+            // identity. Mailgun delivery auth and MIME headers cannot do so.
+            '_verified_bank_domain' => $isMailgun ? null : $originVerifier->nativeVerifiedDomain(
+                $request->input('bank_authentication'),
+                $validated['from'],
+            ),
         ]);
 
         return response()->json(['accepted' => true]);

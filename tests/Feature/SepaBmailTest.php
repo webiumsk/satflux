@@ -2,26 +2,35 @@
 
 namespace Tests\Feature;
 
+use App\Enums\BankTransactionDirection;
 use App\Models\Store;
 use App\Models\User;
+use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\Invoicing\BankInboundAddressService;
 use App\Services\Invoicing\BankInboundEmailService;
+use App\Services\SepaEmailConfirmationService;
+use App\Support\Invoicing\ParsedBankTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 /**
  * Store-scoped b-mail channel: bank credit-notification e-mails confirm
- * pending SEPA payment requests through the plugin's amount-verified
- * report endpoint.
+ * pending SEPA payment requests through the plugin's store/account-bound
+ * report endpoint after verified bank-origin and explicit credit checks.
  */
 class SepaBmailTest extends TestCase
 {
     use RefreshDatabase;
+
+    private const RECIPIENT_IBAN = 'SK4811000000002944116480';
+
+    private const E2E_REFERENCE = 'QR-ab29e346f1d841c8a95a63d857490818';
 
     private User $user;
 
@@ -54,21 +63,48 @@ class SepaBmailTest extends TestCase
         return "https://btcpay.test/api/v1/stores/{$this->store->btcpay_store_id}/plugins/sepa-instant-qr/payment-requests/report";
     }
 
+    private function fakeCapablePlugin(int $version = 2): void
+    {
+        Http::fake([
+            str_replace('/payment-requests/report', '/settings', $this->reportUrl()) => Http::response([
+                'confirmationContractVersion' => $version,
+            ]),
+            $this->reportUrl() => Http::response(['outcome' => 'settled']),
+        ]);
+    }
+
+    private function creditBody(string $reference = self::E2E_REFERENCE): string
+    {
+        return '01.06.2026 12:31 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN." zvyseny o 12,50 EUR.\n"
+            .'Referencia platitela: '.$reference."\n"
+            .'Informacia pre prijemcu: Invoice payment';
+    }
+
+    private function nativePayload(array $overrides = []): array
+    {
+        return array_replace([
+            'to' => $this->addressService->buildStoreAddress($this->store),
+            'from' => 'notify@tatrabanka.sk',
+            'subject' => 'Obrat na ucte',
+            'body' => $this->creditBody(),
+            'bank_authentication' => [
+                'dkim_result' => 'pass',
+                'dkim_domain' => 'tatrabanka.sk',
+                'dmarc_result' => 'pass',
+            ],
+        ], $overrides);
+    }
+
     #[Test]
     public function store_address_reports_the_e2e_reference_from_the_body(): void
     {
-        Http::fake([$this->reportUrl() => Http::response(['outcome' => 'settled'])]);
+        $this->fakeCapablePlugin();
 
         $address = $this->addressService->buildStoreAddress($this->store);
         $this->assertLessThanOrEqual(50, strlen($address));
         $this->assertStringStartsWith('ps', $address);
 
-        $response = $this->postJson('/api/webhooks/bank-inbound', [
-            'to' => $address,
-            'from' => 'notify@tatrabanka.sk',
-            'subject' => 'Obrat na ucte',
-            'body' => 'Suma: 12,50 EUR. Referencia platitela: QR-ab29e346f1d841c8a95a63d857490818. 01.06.2026',
-        ], [
+        $response = $this->postJson('/api/webhooks/bank-inbound', $this->nativePayload(), [
             'X-Bank-Inbound-Secret' => 'test-inbound-secret',
         ]);
 
@@ -81,6 +117,8 @@ class SepaBmailTest extends TestCase
                 && $request->data()['reference'] === 'QR-ab29e346f1d841c8a95a63d857490818'
                 && abs($request->data()['amount'] - 12.50) < 0.001
                 && $request->data()['currency'] === 'EUR'
+                && $request->data()['creditorIban'] === self::RECIPIENT_IBAN
+                && $request->data()['bankOriginVerified'] === true
                 && is_string($request->data()['dedupKey'] ?? null);
         });
     }
@@ -88,19 +126,237 @@ class SepaBmailTest extends TestCase
     #[Test]
     public function falls_back_to_the_variable_symbol_reference(): void
     {
-        Http::fake([$this->reportUrl() => Http::response(['outcome' => 'settled'])]);
+        $this->fakeCapablePlugin();
 
         $address = $this->addressService->buildStoreAddress($this->store);
-        $this->postJson('/api/webhooks/bank-inbound', [
-            'to' => $address,
-            'from' => 'notify@tatrabanka.sk',
-            'subject' => 'Obrat na ucte',
-            'body' => 'Suma: 5,00 EUR. VS: 1234567890. 01.06.2026',
-        ], [
+        $this->postJson('/api/webhooks/bank-inbound', $this->nativePayload([
+            'body' => $this->creditBody('/VS1234567890/SS/KS'),
+        ]), [
             'X-Bank-Inbound-Secret' => 'test-inbound-secret',
         ])->assertOk();
 
-        Http::assertSent(fn (Request $request) => $request->data()['reference'] === '1234567890');
+        Http::assertSent(fn (Request $request) => $request->method() === 'POST'
+            && $request->data()['reference'] === '1234567890');
+    }
+
+    #[Test]
+    #[TestWith(['missing'])]
+    #[TestWith(['dkim-fail'])]
+    #[TestWith(['dmarc-fail'])]
+    #[TestWith(['non-bank-domain'])]
+    #[TestWith(['suffix-impersonation'])]
+    #[TestWith(['raw-headers-only'])]
+    public function unverified_native_bank_origin_cannot_report_a_payment(string $case): void
+    {
+        Http::fake();
+        $payload = $this->nativePayload();
+        if ($case === 'missing' || $case === 'raw-headers-only') {
+            unset($payload['bank_authentication']);
+        } elseif ($case === 'dkim-fail') {
+            $payload['bank_authentication']['dkim_result'] = 'fail';
+        } elseif ($case === 'dmarc-fail') {
+            $payload['bank_authentication']['dmarc_result'] = 'fail';
+        } else {
+            $payload['bank_authentication']['dkim_domain'] = $case === 'non-bank-domain'
+                ? 'attacker.test' : 'tatrabanka.sk.attacker.test';
+        }
+        $payload['bankOriginVerified'] = true;
+        $payload['headers'] = 'Authentication-Results: attacker.test; dkim=pass header.d=tatrabanka.sk; dmarc=pass';
+
+        $this->postJson('/api/webhooks/bank-inbound', $payload, [
+            'X-Bank-Inbound-Secret' => 'test-inbound-secret',
+        ])->assertOk();
+
+        Http::assertNothingSent();
+    }
+
+    #[Test]
+    public function native_bank_attestation_cannot_bypass_the_delivery_secret(): void
+    {
+        Http::fake();
+
+        $this->postJson('/api/webhooks/bank-inbound', $this->nativePayload(), [
+            'X-Bank-Inbound-Secret' => 'wrong-secret',
+        ])->assertForbidden();
+
+        Http::assertNothingSent();
+    }
+
+    #[Test]
+    #[TestWith(['missing-account'])]
+    #[TestWith(['invalid-account'])]
+    #[TestWith(['implicit-direction'])]
+    #[TestWith(['implicit-currency'])]
+    #[TestWith(['ambiguous-reference'])]
+    public function incomplete_or_ambiguous_transaction_evidence_cannot_report(string $case): void
+    {
+        Http::fake();
+        $body = match ($case) {
+            'missing-account' => 'Kredit. Suma: 12,50 EUR. Referencia platitela: '.self::E2E_REFERENCE,
+            'invalid-account' => str_replace(self::RECIPIENT_IBAN, 'SK4811000000002944116481', $this->creditBody()),
+            'implicit-direction' => 'Suma: 12,50 EUR. VS: 1234567890.',
+            'implicit-currency' => 'Kredit. Suma: 12,50. VS: 1234567890.',
+            'ambiguous-reference' => $this->creditBody(self::E2E_REFERENCE.' QR-00000000000000000000000000000001'),
+        };
+
+        $this->postJson('/api/webhooks/bank-inbound', $this->nativePayload(['body' => $body]), [
+            'X-Bank-Inbound-Secret' => 'test-inbound-secret',
+        ])->assertOk();
+
+        Http::assertNothingSent();
+    }
+
+    #[Test]
+    #[TestWith([0])]
+    #[TestWith([1])]
+    public function old_plugin_without_enforced_confirmation_contract_receives_no_report(int $version): void
+    {
+        $this->fakeCapablePlugin($version);
+
+        $this->postJson('/api/webhooks/bank-inbound', $this->nativePayload(), [
+            'X-Bank-Inbound-Secret' => 'test-inbound-secret',
+        ])->assertOk();
+
+        Http::assertSentCount(1);
+        Http::assertNotSent(fn (Request $request) => $request->method() === 'POST');
+    }
+
+    #[Test]
+    public function mailgun_delivery_authentication_does_not_attest_a_bank_sender(): void
+    {
+        Http::fake();
+        $signingKey = 'synthetic-mailgun-signing-key';
+        config(['bank_inbound.mailgun_webhook_signing_key' => $signingKey]);
+        $timestamp = (string) time();
+        $token = 'synthetic-mailgun-token';
+
+        $this->postJson('/api/webhooks/bank-inbound', [
+            'recipient' => $this->addressService->buildStoreAddress($this->store),
+            'sender' => 'notify@tatrabanka.sk',
+            'subject' => 'Obrat na ucte',
+            'body-plain' => $this->creditBody(),
+            'timestamp' => $timestamp,
+            'token' => $token,
+            'signature' => hash_hmac('sha256', $timestamp.$token, $signingKey),
+            'bank_authentication' => $this->nativePayload()['bank_authentication'],
+            'message-headers' => json_encode([
+                ['Authentication-Results', 'attacker.test; dkim=pass header.d=tatrabanka.sk; dmarc=pass'],
+                ['Authentication-Results', 'attacker.test; dkim=pass header.d=tatrabanka.sk; dmarc=pass'],
+            ], JSON_THROW_ON_ERROR),
+        ])->assertOk();
+
+        Http::assertNothingSent();
+    }
+
+    #[Test]
+    #[TestWith([false])]
+    #[TestWith([true])]
+    public function authenticated_bank_mail_cannot_use_payer_text_as_a_larger_credit(bool $embeddedClassic): void
+    {
+        Http::fake();
+        $body = "Prijata platba 1,00 EUR\nVas ucet: ".self::RECIPIENT_IBAN."\nInformacia pre prijemcu: ";
+        $body .= $embeddedClassic
+            ? "\n01.06.2026 12:31 bol zostatok Vasho uctu ".self::RECIPIENT_IBAN.' zvyseny o 100,00 EUR.'
+            : 'Suma: 100,00 EUR';
+        $body .= "\nReferencia platitela: ".self::E2E_REFERENCE;
+
+        $this->postJson('/api/webhooks/bank-inbound', $this->nativePayload(['body' => $body]), [
+            'X-Bank-Inbound-Secret' => 'test-inbound-secret',
+        ])->assertOk();
+
+        Http::assertNothingSent();
+    }
+
+    #[Test]
+    public function classic_credit_reports_the_bank_amount_and_account_instead_of_payer_instructions(): void
+    {
+        $this->fakeCapablePlugin();
+        $body = '01.06.2026 12:31 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN." zvyseny o 1,00 EUR.\n"
+            ."Informacia pre prijemcu: Suma: 100,00 USD. Vas ucet: SK6807200002891987426353\n"
+            .'Referencia platitela: '.self::E2E_REFERENCE;
+
+        $this->postJson('/api/webhooks/bank-inbound', $this->nativePayload(['body' => $body]), [
+            'X-Bank-Inbound-Secret' => 'test-inbound-secret',
+        ])->assertOk();
+
+        Http::assertSent(fn (Request $request) => $request->method() === 'POST'
+            && (float) $request->data()['amount'] === 1.0
+            && $request->data()['currency'] === 'EUR'
+            && $request->data()['creditorIban'] === self::RECIPIENT_IBAN);
+    }
+
+    #[Test]
+    public function an_invoice_number_in_payer_remittance_cannot_become_a_payment_reference(): void
+    {
+        Http::fake();
+        $body = '01.06.2026 12:31 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN." zvyseny o 12,50 EUR.\n"
+            .'Informacia pre prijemcu: Invoice 1234567890';
+
+        $this->postJson('/api/webhooks/bank-inbound', $this->nativePayload(['body' => $body]), [
+            'X-Bank-Inbound-Secret' => 'test-inbound-secret',
+        ])->assertOk();
+
+        Http::assertNothingSent();
+    }
+
+    #[Test]
+    public function a_later_settled_row_does_not_hide_an_earlier_review_outcome(): void
+    {
+        $secondReference = 'QR-00000000000000000000000000000002';
+        Http::fake(fn (Request $request) => Http::response($request->method() === 'GET'
+            ? ['confirmationContractVersion' => 2]
+            : ['outcome' => $request->data()['reference'] === self::E2E_REFERENCE ? 'review' : 'settled']));
+        $row = fn (string $reference) => new ParsedBankTransaction(
+            bookedAt: now(), amount: 12.50, currency: 'EUR', direction: BankTransactionDirection::Credit,
+            recipientIban: self::RECIPIENT_IBAN, isExplicitCredit: true, hasExplicitCurrency: true,
+            e2eReference: $reference,
+        );
+
+        $result = app(SepaEmailConfirmationService::class)->handle($this->store, [
+            ...$this->nativePayload(), '_verified_bank_domain' => 'tatrabanka.sk',
+        ], [$row(self::E2E_REFERENCE), $row($secondReference)]);
+
+        $this->assertSame(2, $result['reported']);
+        $this->assertSame('review', $result['outcome']);
+        Http::assertSentCount(3);
+        $posts = Http::recorded(fn (Request $request) => $request->method() === 'POST')->values();
+        $this->assertNotSame($posts[0][0]->data()['dedupKey'], $posts[1][0]->data()['dedupKey']);
+    }
+
+    #[Test]
+    public function failed_report_can_retry_with_the_original_payment_identity(): void
+    {
+        $unavailable = true;
+        $reports = [];
+        Http::fake(function (Request $request) use (&$unavailable, &$reports) {
+            if ($request->method() === 'GET') {
+                return Http::response(['confirmationContractVersion' => 2]);
+            }
+
+            $reports[] = $request->data();
+
+            return $unavailable
+                ? Http::response(['message' => 'Synthetic provider unavailable'], 503)
+                : Http::response(['outcome' => 'settled']);
+        });
+        $service = app(BankInboundEmailService::class);
+        $payload = [...$this->nativePayload(), '_verified_bank_domain' => 'tatrabanka.sk'];
+
+        try {
+            $service->handle($payload);
+            $this->fail('An unavailable report must propagate to the existing queue retry path.');
+        } catch (BtcPayException $exception) {
+            $this->assertSame(503, $exception->getStatusCode());
+        }
+
+        $unavailable = false;
+        $result = $service->handle($payload);
+
+        $this->assertSame(1, $result['reported']);
+        $this->assertSame('settled', $result['outcome']);
+        $this->assertCount(2, $reports);
+        $this->assertSame($reports[0], $reports[1]);
+        $this->assertSame(64, strlen($reports[1]['dedupKey']));
     }
 
     #[Test]

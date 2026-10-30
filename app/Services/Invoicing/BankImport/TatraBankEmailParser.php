@@ -3,6 +3,7 @@
 namespace App\Services\Invoicing\BankImport;
 
 use App\Enums\BankTransactionDirection;
+use App\Support\Invoicing\BankAccountIdentifier;
 use App\Support\Invoicing\BankSymbolNormalizer;
 use App\Support\Invoicing\BankTransactionDirectionGuesser;
 use App\Support\Invoicing\ParsedBankTransaction;
@@ -71,6 +72,8 @@ class TatraBankEmailParser implements BankNotificationParser
 
         [$variableSymbol, $constantSymbol, $specificSymbol, $referenciaName] = $this->parseReferenciaPlatitela($referencia);
 
+        $isVariableSymbolExplicit = $variableSymbol !== null;
+
         if ($variableSymbol === null) {
             $variableSymbol = $this->inferVariableSymbol($text, $informacia, $referencia);
         }
@@ -86,6 +89,14 @@ class TatraBankEmailParser implements BankNotificationParser
 
         $reference = $this->resolveReference($informacia, $popis, $referencia, $subject, $text);
 
+        $e2eReferences = $this->explicitE2eReferences($text);
+        // Bank authentication does not authenticate the payer's remittance as
+        // an amount. Only the supported opening bank statement is evidence.
+        $hasBankCreditHeader = preg_match(
+            '/\A(?:V[aá][zž]en[yý]\s+klient,\s*)?\d{1,2}\.?\s*\d{1,2}\.?\s*\d{4}\s+\d{1,2}:\d{2}\s+bol zostatok Vasho uctu\s+\S+\s+(?:zvyseny|znizeny)\s+o\s+[\d\s,]+\s+[A-Z]{3}\.?[ \t]*(?:\n|$)/iu',
+            $text,
+        ) === 1;
+
         return new ParsedBankTransaction(
             bookedAt: $bookedAt,
             amount: abs($amount),
@@ -96,6 +107,12 @@ class TatraBankEmailParser implements BankNotificationParser
             specificSymbol: $specificSymbol,
             counterpartyName: $counterparty,
             reference: $reference,
+            recipientIban: BankAccountIdentifier::normalize($main[2]),
+            isExplicitCredit: $hasBankCreditHeader && $direction === BankTransactionDirection::Credit && $amount > 0,
+            hasExplicitCurrency: true,
+            e2eReference: count($e2eReferences) === 1 ? $e2eReferences[0] : null,
+            isReferenceAmbiguous: count($e2eReferences) > 1,
+            isVariableSymbolExplicit: $isVariableSymbolExplicit,
         );
     }
 
@@ -145,17 +162,55 @@ class TatraBankEmailParser implements BankNotificationParser
 
         $reference = $this->resolveReference($informacia, $popis, $referencia, $subject, $text);
 
+        $currency = $this->matchCurrency($text);
+        $e2eReferences = $this->explicitE2eReferences($text);
+
         return new ParsedBankTransaction(
             bookedAt: $bookedAt,
             amount: abs($amount),
-            currency: $this->matchCurrency($text) ?? 'EUR',
+            currency: $currency ?? 'EUR',
             direction: $direction,
             variableSymbol: $variableSymbol,
             constantSymbol: $constantSymbol,
             specificSymbol: $specificSymbol,
             counterpartyName: $counterparty,
             reference: $reference,
+            recipientIban: $this->explicitRecipientIban($text),
+            // Compact imports use permissive heuristics, including payer
+            // remittance. No bounded bank-authored credit format is proven.
+            isExplicitCredit: false,
+            hasExplicitCurrency: $currency !== null,
+            e2eReference: count($e2eReferences) === 1 ? $e2eReferences[0] : null,
+            isReferenceAmbiguous: count($e2eReferences) > 1,
+            isVariableSymbolExplicit: false,
         );
+    }
+
+    /** @return list<string> */
+    protected function explicitE2eReferences(string $text): array
+    {
+        preg_match_all(
+            '/(?:^|[\n.;]\s*)Referencia\s+platite[lľ]a\s*:\s*(QR-[0-9a-f]{32})(?=\s*(?:[\n.;]|$))/iu',
+            $text,
+            $matches,
+        );
+
+        return array_values(array_unique($matches[1]));
+    }
+
+    protected function explicitRecipientIban(string $text): ?string
+    {
+        preg_match_all(
+            '/^(?:IBAN\s+pr[ií]jemcu|[uú][cč]et\s+pr[ií]jemcu|V[aá][sš]\s+[uú][cč]et)\s*:\s*([A-Z]{2}[0-9]{2}[A-Z0-9 \t]+?)[ \t]*[.;]?$/imu',
+            $text,
+            $matches,
+        );
+        $accounts = array_values(array_unique(array_filter(array_map(
+            BankAccountIdentifier::normalize(...),
+            $matches[1],
+        ))));
+
+        return count($accounts) === 1 ? $accounts[0] : null;
     }
 
     protected function matchField(string $text, string $label): ?string

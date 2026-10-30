@@ -9,6 +9,146 @@ use Tests\TestCase;
 
 class TatraBankEmailParserTest extends TestCase
 {
+    private const RECIPIENT_IBAN = 'SK4811000000002944116480';
+
+    private const E2E_REFERENCE = 'QR-ab29e346f1d841c8a95a63d857490818';
+
+    #[Test]
+    public function an_inferred_invoice_number_remains_import_metadata_instead_of_an_explicit_payment_symbol(): void
+    {
+        $body = '01.06.2026 12:31 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN." zvyseny o 12,50 EUR.\n"
+            .'Informacia pre prijemcu: Invoice 1234567890';
+
+        $row = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Obrat', $body)[0];
+
+        $this->assertSame('1234567890', $row->variableSymbol);
+        $this->assertFalse($row->isVariableSymbolExplicit);
+        $this->assertNull($row->e2eReference);
+    }
+
+    #[Test]
+    public function payer_remittance_cannot_promote_a_compact_amount_to_settlement_evidence(): void
+    {
+        $body = "Prijata platba 1,00 EUR\nVas ucet: ".self::RECIPIENT_IBAN."\n"
+            ."Informacia pre prijemcu: Suma: 100,00 EUR\nReferencia platitela: ".self::E2E_REFERENCE;
+
+        $row = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Prijata platba', $body)[0];
+
+        $this->assertFalse($row->isExplicitCredit);
+    }
+
+    #[Test]
+    public function an_embedded_classic_notification_in_payer_text_is_not_a_bank_credit_header(): void
+    {
+        $body = "Prijata platba 1,00 EUR\nInformacia pre prijemcu:\n"
+            .'01.06.2026 12:31 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN." zvyseny o 100,00 EUR.\n"
+            .'Referencia platitela: '.self::E2E_REFERENCE;
+
+        $row = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Prijata platba', $body)[0];
+
+        $this->assertFalse($row->isExplicitCredit);
+    }
+
+    #[Test]
+    public function classic_bank_header_keeps_actual_amount_currency_and_account_over_remittance_text(): void
+    {
+        $body = '01.06.2026 12:31 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN." zvyseny o 1,00 EUR.\n"
+            ."Informacia pre prijemcu: Suma: 100,00 USD. Vas ucet: SK6807200002891987426353\n"
+            .'Referencia platitela: '.self::E2E_REFERENCE;
+
+        $row = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Obrat', $body)[0];
+
+        $this->assertTrue($row->isExplicitCredit);
+        $this->assertSame(1.0, $row->amount);
+        $this->assertSame('EUR', $row->currency);
+        $this->assertSame(self::RECIPIENT_IBAN, $row->recipientIban);
+    }
+
+    #[Test]
+    public function classic_credit_carries_observed_recipient_and_explicit_settlement_evidence(): void
+    {
+        $body = '01.06.2026 12:31 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN." zvyseny o 12,50 EUR.\n"
+            .'Referencia platitela: '.self::E2E_REFERENCE."\n"
+            .'Informacia pre prijemcu: Invoice payment';
+
+        $row = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Obrat', $body)[0];
+
+        $this->assertSame(self::RECIPIENT_IBAN, $row->recipientIban);
+        $this->assertNull($row->counterpartyIban);
+        $this->assertTrue($row->isExplicitCredit);
+        $this->assertTrue($row->hasExplicitCurrency);
+        $this->assertSame(self::E2E_REFERENCE, $row->e2eReference);
+    }
+
+    #[Test]
+    public function invalid_own_account_is_not_promoted_to_beneficiary_evidence(): void
+    {
+        $body = "01.06.2026 12:31 bol zostatok Vasho uctu SK4811000000002944116481 zvyseny o 12,50 EUR.\n"
+            .'Referencia platitela: '.self::E2E_REFERENCE;
+
+        $row = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Obrat', $body)[0];
+
+        $this->assertNull($row->recipientIban);
+        $this->assertTrue($row->isExplicitCredit);
+        $this->assertTrue($row->hasExplicitCurrency);
+    }
+
+    #[Test]
+    public function compact_import_defaults_are_not_explicit_settlement_proof(): void
+    {
+        $row = (new TatraBankEmailParser)->parse(
+            'notify@tatrabanka.sk',
+            'Obrat na ucte',
+            'Suma: 12,50. VS: 1234567890. 01.06.2026',
+        )[0];
+
+        $this->assertSame(BankTransactionDirection::Credit, $row->direction);
+        $this->assertSame('EUR', $row->currency);
+        $this->assertNull($row->recipientIban);
+        $this->assertFalse($row->isExplicitCredit);
+        $this->assertFalse($row->hasExplicitCurrency);
+    }
+
+    #[Test]
+    public function explicit_currency_does_not_make_unknown_compact_direction_a_credit_proof(): void
+    {
+        $row = (new TatraBankEmailParser)->parse(
+            'notify@tatrabanka.sk',
+            'Obrat na ucte',
+            'Suma: 12,50 EUR. VS: 1234567890. 01.06.2026',
+        )[0];
+
+        $this->assertFalse($row->isExplicitCredit);
+        $this->assertTrue($row->hasExplicitCurrency);
+        $this->assertNull($row->recipientIban);
+    }
+
+    #[Test]
+    public function e2e_reference_comes_from_the_transaction_field_instead_of_arbitrary_message_text(): void
+    {
+        $otherReference = 'QR-00000000000000000000000000000001';
+        $body = '01.06.2026 12:31 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN." zvyseny o 12,50 EUR.\n"
+            .'Referencia platitela: '.self::E2E_REFERENCE."\n"
+            .'Informacia pre prijemcu: See unrelated reference '.$otherReference;
+
+        $row = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Obrat', $body)[0];
+
+        $this->assertSame(self::E2E_REFERENCE, $row->e2eReference);
+    }
+
+    #[Test]
+    public function classic_debit_preserves_import_direction_without_credit_proof(): void
+    {
+        $body = '01.06.2026 12:31 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN.' znizeny o 12,50 EUR.';
+
+        $row = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Debet', $body)[0];
+
+        $this->assertSame(BankTransactionDirection::Debit, $row->direction);
+        $this->assertSame(self::RECIPIENT_IBAN, $row->recipientIban);
+        $this->assertFalse($row->isExplicitCredit);
+        $this->assertTrue($row->hasExplicitCurrency);
+    }
+
     #[Test]
     public function parses_credit_with_variable_symbol(): void
     {

@@ -15,6 +15,21 @@ meta_description: Accept euro bank transfers via a SEPA Instant QR code, alongsi
 2. Enter your bank details (the account that should receive the euro transfers) and enable the method.
 3. Optionally set up e-mail confirmation of incoming payments so the store can reconcile them.
 
+## Bank e-mail verification
+
+Automatic confirmation requires verified bank origin and a matching receiving
+account, payment reference, amount and currency. Messages with missing or ambiguous
+evidence do not mark an invoice paid. Check the transfer in your banking app and
+use manual confirmation when automatic verification is unavailable.
+
+The server operator must configure a trusted bank-mail verifier. Delivery by an
+e-mail provider alone does not verify the bank sender. Unsupported notification
+formats and older plugin versions require manual verification. Confirmation time
+depends on bank notification delivery and processing; it is not guaranteed to be
+instant. FIO confirmation uses a bank-limited polling interval.
+
+Automatic bank-mail verification currently supports the classic Tatra banka credit format. Compact messages and SLSP notifications require manual verification.
+
 ## Where is my payment
 
 Every awaiting or needs-review payment whose reference starts with `QR-` has a **Where is my payment** button. It asks the public diagnostics service of the Slovak Financial Administration's instant payment notifier (NOP) what it knows about that reference and shows the timeline: transaction id created, bank notification stored, matched to the cash register, published, received.

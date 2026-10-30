@@ -145,7 +145,13 @@ final class DocumentationSchemas
             $op['security'] = [['bankInboundSecret' => []], (object) []];
             $op['x-body-authentication'] = ['alternative' => 'Mailgun', 'requiredFields' => ['timestamp', 'token', 'signature'], 'algorithm' => 'HMAC-SHA256(timestamp + token)', 'note' => 'OpenAPI cannot express body-field security schemes. The empty security alternative means signed Mailgun body, never unauthenticated acceptance.'];
             $op['description'] = 'Two alternatives: native JSON with X-Bank-Inbound-Secret (constant-time shared-secret comparison), or Mailgun form fields. Mailgun mode is selected when recipient, stripped-text or body-plain is filled: signature is lowercase hex HMAC-SHA256(timestamp + token, Mailgun signing key), NOT raw-body HMAC. Timestamp must be numeric and within configured max age (default 300 seconds, absolute clock difference); token replay is rejected using the configured cache. Mailgun signature fields are mandatory for that alternative; no bank header is required. Both paths fail closed when their configured secret is missing. HTTP 200 only means job accepted; it does not establish a payment.';
+            $op['description'] .= ' SEPA automatic confirmation additionally requires observed beneficiary/credit evidence and bank-origin verification. Only an authenticated native receiving-MTA adapter may supply bank_authentication from independently verified DKIM/DMARC results; arbitrary MIME authentication headers and Mailgun delivery authentication do not prove bank origin. Incomplete or unverified SEPA notifications remain unconfirmed and require manual bank verification.';
             $native = $this->obj(['to' => ['type' => 'string', 'maxLength' => 255], 'from' => ['type' => 'string', 'maxLength' => 255], 'body' => ['type' => 'string', 'maxLength' => 65535], 'subject' => ['type' => 'string', 'maxLength' => 500], 'headers' => ['type' => 'string', 'maxLength' => 65535]], ['to', 'from', 'body']);
+            $native['properties']['bank_authentication'] = $this->obj([
+                'dkim_result' => ['type' => 'string', 'description' => 'Verified receiving-MTA result. Only pass can establish origin.'],
+                'dkim_domain' => ['type' => 'string', 'description' => 'Verified DKIM signing domain aligned with the bank From domain; only supported bank domains qualify.'],
+                'dmarc_result' => ['type' => 'string', 'description' => 'Verified receiving-MTA result. Only pass can establish origin.'],
+            ]);
             $mailgun = $this->obj([
                 'recipient' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 255],
                 'sender' => ['type' => 'string'],

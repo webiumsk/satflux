@@ -25,7 +25,7 @@ class ProcessBankNotificationEmail implements ShouldQueue
     }
 
     /**
-     * @param  array{to: string, from: string, subject: string, body: string, headers?: string}  $payload
+     * @param  array{to: string, from: string, subject: string, body: string, headers?: string, _verified_bank_domain?: ?string}  $payload
      */
     public function __construct(
         public array $payload,
