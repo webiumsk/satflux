@@ -1,5 +1,14 @@
 # Development roadmap
 
+## Current: PR411 compatibility review - 2026-10-30
+
+Resolve the verified sound-URL and hidden-duration CodeRabbit findings while
+preserving nullable settings, tenant/permission guards and wire units. Publish
+the independently reviewed follow-up to the existing authorized branch and verify
+new-head CI. If BTCPay itself persists an invalid duration, its merged-store
+validation still requires an explicit merchant correction in Payment settings;
+consumer omission does not repair upstream data. Merge/deployment remain owner gates.
+
 ## Completed locally: BTCPay 2.4.7 consumer compatibility - 2026-10-30
 
 [The implementation](../BTCPAY_2_4_7_IMPLEMENTATION.md) passes full PHP/frontend

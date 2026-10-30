@@ -30,7 +30,7 @@ class Btcpay247ValidationTest extends TestCase
     }
 
     #[DataProvider('storeValues')]
-    public function test_store_settings_validate_seconds_and_css_before_forwarding(string $field, mixed $value, bool $accepted): void
+    public function test_store_settings_validate_seconds_and_asset_urls_before_forwarding(string $field, mixed $value, bool $accepted): void
     {
         $store = $this->fixture();
         Http::fake(['*' => Http::response(['id' => 'synthetic-store'], 200)]);
@@ -48,7 +48,7 @@ class Btcpay247ValidationTest extends TestCase
         $response->assertOk();
         $wireFields = [
             'invoice_expiration' => 'invoiceExpiration', 'display_expiration_timer' => 'displayExpirationTimer',
-            'monitoring_expiration' => 'monitoringExpiration', 'css_url' => 'cssUrl',
+            'monitoring_expiration' => 'monitoringExpiration', 'css_url' => 'cssUrl', 'payment_sound_url' => 'paymentSoundUrl',
         ];
         Http::assertSent(fn (Request $request) => $request->method() === 'PUT'
             && $request->hasHeader('Authorization', 'Bearer synthetic-merchant-key')
@@ -63,6 +63,7 @@ class Btcpay247ValidationTest extends TestCase
                 $cases[$field.' '.$value] = [$field, $value, $accepted];
             }
             $cases[$field.' null'] = [$field, null, true];
+            $cases[$field.' empty'] = [$field, '', true];
         }
         foreach ([
             'https://example.test/theme.css' => true, 'http://example.test/theme.css?v=2' => true,
@@ -71,6 +72,15 @@ class Btcpay247ValidationTest extends TestCase
         ] as $url => $accepted) {
             $cases['css '.$url] = ['css_url', $url, $accepted];
         }
+        foreach ([
+            'https://example.test/paid.mp3' => true, 'http://example.test/paid.mp3?v=2' => true,
+            'ftp://example.test/paid.mp3' => false, 'javascript:alert(1)' => false,
+            'data:audio/mpeg;base64,AAAA' => false, '/paid.mp3' => false, '' => true,
+            'https://example.test/'.str_repeat('a', 480).'.mp3' => false,
+        ] as $url => $accepted) {
+            $cases['payment sound '.$url] = ['payment_sound_url', $url, $accepted];
+        }
+        $cases['payment sound null'] = ['payment_sound_url', null, true];
 
         return $cases;
     }

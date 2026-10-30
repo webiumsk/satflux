@@ -46,7 +46,7 @@ class StoreUpdateRequest extends FormRequest
             'support_url' => ['nullable', 'string', 'max:500'],
             'logo_url' => ['nullable', 'string', 'url', 'max:500'],
             'css_url' => ['nullable', 'string', 'url:http,https', 'max:500'],
-            'payment_sound_url' => ['nullable', 'string', 'url', 'max:500'],
+            'payment_sound_url' => ['nullable', 'string', 'url:http,https', 'max:500'],
             'brand_color' => ['nullable', 'string', 'max:20'],
             'apply_brand_color_to_backend' => ['nullable', 'boolean'],
             'default_currency' => ['required', 'string', 'max:10'],

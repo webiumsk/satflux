@@ -15,6 +15,12 @@ class CrowdfundRecurrence
 
     private const MAX_TIMESTAMP = 253402300799;
 
+    /**
+     * Validate a merged Crowdfund configuration and convert weekly intervals to days.
+     * Configurations without recurrence fields preserve partial updates; explicit zero disables resets.
+     *
+     * @throws ValidationException When an interval or its next UTC reset exceeds the host's limits.
+     */
     public function normalize(array $config): array
     {
         if (! array_key_exists('resetEvery', $config) && ! array_key_exists('resetEveryAmount', $config)) {
@@ -87,6 +93,7 @@ class CrowdfundRecurrence
         return $config;
     }
 
+    /** Parse Unix seconds or a bounded ISO date within the host's UTC calendar. */
     private function startDate(mixed $value): DateTimeImmutable
     {
         if ($value === null || $value === '') {

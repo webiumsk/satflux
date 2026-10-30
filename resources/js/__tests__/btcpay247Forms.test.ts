@@ -79,7 +79,7 @@ describe('store payment duration inputs', () => {
   it('enforces whole-minute bounds without converting the entered values a second time', async () => {
     const form = { invoice_expiration: 1, monitoring_expiration: 10 };
     const wrapper = mount(StoreSettingsPayment, {
-      props: { form: form as never, canEditPaymentOptions: true, timezoneOptions: [], speedPolicyOptions: [], networkFeeModeOptions: [] },
+      props: { form: form as never, canEditPaymentOptions: true, isActive: true, timezoneOptions: [], speedPolicyOptions: [], networkFeeModeOptions: [] },
       global: { stubs: { Select: true, ProPlanBadge: true } },
     });
     const invoice = wrapper.get('#invoice_expiration');

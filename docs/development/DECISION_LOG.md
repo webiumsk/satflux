@@ -1,5 +1,17 @@
 # Development decision log
 
+## 2026-10-30 - Preserve partial settings behavior in PR411 review fixes
+
+Accept both verified CodeRabbit findings on `7bb1677d`. Restrict payment-sound
+assets to HTTP(S). Disable the two newly bounded Payment duration controls when
+inactive or inaccessible and omit only invalid inactive values, retaining valid
+and nullable values and the existing paid-field filter. Do not clamp or silently
+rewrite merchant settings. Preserve optional active fields, numeric range/step
+validation and server-side authorization. Upstream merged-store validation may
+still reject its own invalid persisted values; the merchant must correct those
+explicitly. Documentation coverage is an advisory to improve useful contracts,
+not evidence of runtime correctness or authority to expand the patch.
+
 ## 2026-10-30 - Publish the reviewed BTCPay 2.4.7 consumer branch
 
 The owner approved the audited compatibility implementation and explicitly asked

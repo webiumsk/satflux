@@ -1,5 +1,16 @@
 # Project state
 
+## PR411 CodeRabbit follow-up - 2026-10-30
+
+The published compatibility revision `7bb1677d` passed remote CI. Both actionable
+CodeRabbit findings are valid: payment-sound URLs still accepted FTP, and mounted
+inactive Payment controls could prevent unrelated saves for legacy durations.
+The follow-up restricts sound URLs to HTTP(S), disables inactive/inaccessible
+bounded controls and omits only invalid inactive durations. Preserve valid and
+nullable values, active range/step validation, entitlement stripping and existing
+minutes/seconds conversion. See [review evidence](../BTCPAY_2_4_7_IMPLEMENTATION.md#pr411-coderabbit-follow-up).
+Fresh exact-head CI remains separate from prior success. No merge or deployment.
+
 ## BTCPay 2.4.7 consumer compatibility implemented - 2026-10-30
 
 The owner authorized implementation and publication of the compatibility branch.

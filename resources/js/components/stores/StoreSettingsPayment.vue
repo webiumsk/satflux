@@ -137,6 +137,7 @@
             <input
               id="invoice_expiration"
               v-model.number="form.invoice_expiration"
+              :disabled="!canEditPaymentOptions || !isActive"
               type="number"
               min="1"
               max="34560"
@@ -186,6 +187,7 @@
             <input
               id="monitoring_expiration"
               v-model.number="form.monitoring_expiration"
+              :disabled="!canEditPaymentOptions || !isActive"
               type="number"
               min="10"
               max="34560"
@@ -235,6 +237,7 @@ import { currencies } from "../../data/currencies";
 defineProps<{
   form: StoreSettingsForm;
   canEditPaymentOptions: boolean;
+  isActive: boolean;
   timezoneOptions: { label: string; value: string }[];
   speedPolicyOptions: { label: string; value: string }[];
   networkFeeModeOptions: { label: string; value: string }[];
