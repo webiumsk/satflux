@@ -1,5 +1,13 @@
 # Development roadmap
 
+## Completed locally: BTCPay 2.4.7 consumer compatibility - 2026-10-30
+
+[The implementation](../BTCPAY_2_4_7_IMPLEMENTATION.md) passes full PHP/frontend
+and static/style/documentation gates plus independent QA/security. Publish only
+the owner-authorized compatibility branch. Coordinate the separately qualified
+provider artifacts, SEPA prerequisite and target schema inventory before any
+explicitly approved merge/installation/deployment.
+
 ## Blink probe diagnostics - 2026-10-30
 
 Publish the owner-authorized, independently reviewed diagnostic-only branch;

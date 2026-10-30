@@ -1,5 +1,15 @@
 # Development decision log
 
+## 2026-10-30 - Publish the reviewed BTCPay 2.4.7 consumer branch
+
+The owner approved the audited compatibility implementation and explicitly asked
+for the Satflux branch on GitHub and local installable plugin archives. Retain
+separate repository histories, existing SEPA work and release gates. Publish only
+the scoped consumer changes and their tests/docs; no merge or deployment authority
+is inferred. Correct seconds/minutes without changing wire format, preserve
+recurrence integers and sparse updates, and retain server-side authorization.
+Independent QA/security accepted the core source and existing ratchets stay intact.
+
 ## 2026-10-30 - Publish isolated Blink probe diagnostics
 
 The owner authorizes pushing diagnostics to the owned Satflux repository and

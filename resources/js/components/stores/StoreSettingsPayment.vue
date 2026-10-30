@@ -139,6 +139,8 @@
               v-model.number="form.invoice_expiration"
               type="number"
               min="1"
+              max="34560"
+              step="1"
               class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-xl shadow-sm text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
             />
           </div>
@@ -185,7 +187,9 @@
               id="monitoring_expiration"
               v-model.number="form.monitoring_expiration"
               type="number"
-              min="0"
+              min="10"
+              max="34560"
+              step="1"
               class="appearance-none block w-full px-4 py-2 border border-gray-600 rounded-xl shadow-sm text-white bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
             />
           </div>

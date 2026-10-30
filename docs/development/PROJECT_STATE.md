@@ -1,5 +1,19 @@
 # Project state
 
+## BTCPay 2.4.7 consumer compatibility implemented - 2026-10-30
+
+The owner authorized implementation and publication of the compatibility branch.
+[Implementation and validation](../BTCPAY_2_4_7_IMPLEMENTATION.md) cover settings
+seconds/minutes, safe CSS/redirect URLs, accurate Pay Button buyer email and
+numeric Crowdfund recurrence on create/update. All five locales and feature docs
+are updated. Full PHP passes 2,193 tests/10,571 assertions; frontend passes 1,080.
+Pint, PHPStan, API documentation, lint/typecheck/parity/build pass with existing
+warning/deprecation baselines retained. Independent QA/security accept core source.
+
+Provider changes and local packages have a separate repository lifecycle. Preserve
+SEPA isolation and conditional core/Raffle schema inventory gates; no merge,
+production package installation or deployment follows from source publication.
+
 ## Blink probe diagnostic publication candidate - 2026-10-30
 
 The owner authorizes publishing the independently reviewed diagnostics in a

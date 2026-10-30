@@ -7,9 +7,8 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Maps satflux crowdfund config to the Greenfield CrowdfundAppRequest PUT body.
- * Extracted verbatim from AppService::updateApp - the mapping quirks
- * (id enforcement, sounds default, resetEvery consistency, formId semantics)
- * mirror BTCPay server behavior and are covered by AppTest.
+ * Retains store/app identity and legacy field mappings while preserving the
+ * integer recurrence contract shared with the create path.
  */
 class CrowdfundUpdatePayloadBuilder
 {
@@ -21,6 +20,7 @@ class CrowdfundUpdatePayloadBuilder
      */
     public function build(array $config, string $appId, string $storeId): array
     {
+        $config = (new CrowdfundRecurrence)->normalize($config);
         $filteredConfig = [];
 
         // For Crowdfund PUT body (CrowdfundAppRequest / AppBaseData), include id, storeId, appType.
@@ -57,6 +57,7 @@ class CrowdfundUpdatePayloadBuilder
             'notificationUrl',
             'disqusShortname',
             'resetEvery',
+            'resetEveryAmount',
             'displayPerksValue',
             'displayPerksRanking',
             'sortPerksByPopularity',
@@ -113,15 +114,6 @@ class CrowdfundUpdatePayloadBuilder
             }
         }
 
-        // If resetEveryAmount is set (not 0), startDate is required by BTCPay API
-        $hasResetEveryAmount = isset($filteredConfig['resetEveryAmount']) && $filteredConfig['resetEveryAmount'] != 0;
-        if ($hasResetEveryAmount && ! isset($filteredConfig['startDate'])) {
-            $filteredConfig['startDate'] = (int) time();
-            Log::warning('startDate was required but missing, using current timestamp', [
-                'resetEveryAmount' => $filteredConfig['resetEveryAmount'] ?? null,
-            ]);
-        }
-
         // Boolean fields that need explicit conversion
         $booleanFields = [
             'enabled',
@@ -129,7 +121,6 @@ class CrowdfundUpdatePayloadBuilder
             'soundsEnabled',
             'animationsEnabled',
             'disqusEnabled',
-            'resetEveryAmount',
             'displayPerksValue',
             'displayPerksRanking',
             'sortPerksByPopularity',
@@ -236,24 +227,6 @@ class CrowdfundUpdatePayloadBuilder
             }
         }
 
-        [$resetEveryAmount, $resetEvery] = $this->normalizeResetEvery($config);
-        $filteredConfig['resetEveryAmount'] = $resetEveryAmount;
-        if ($resetEvery !== null) {
-            $filteredConfig['resetEvery'] = $resetEvery;
-        }
-
-        // If resetEveryAmount > 0 and resetEvery is not 'Never', ensure startDate is set
-        if ($resetEveryAmount > 0 && $resetEvery !== 'Never' && $resetEvery !== null) {
-            if (! isset($filteredConfig['startDate']) || $filteredConfig['startDate'] === null) {
-                $filteredConfig['startDate'] = now()->timestamp;
-                Log::info('Auto-setting startDate for recurring goal', [
-                    'resetEveryAmount' => $resetEveryAmount,
-                    'resetEvery' => $resetEvery,
-                    'startDate' => $filteredConfig['startDate'],
-                ]);
-            }
-        }
-
         // Crowdfund: Greenfield uses formId (BTCPay UI: same keys as FormDataService - "", Email, Address, or a store form UUID).
         // Never persist formId as ""; that value hits a BTCPay code path with a null Form and NREs in the crowdfund UI.
         if (isset($config['checkout']) && is_array($config['checkout'])) {
@@ -273,7 +246,6 @@ class CrowdfundUpdatePayloadBuilder
         }
 
         // Ensure all boolean fields are actually boolean (not strings) at the end.
-        // NOTE: resetEveryAmount is NOT a boolean, it's a number (0 or 1)!
         $booleanFieldNames = [
             'enabled',
             'enforceTargetAmount',
@@ -293,17 +265,6 @@ class CrowdfundUpdatePayloadBuilder
                 } else {
                     $filteredConfig[$field] = (bool) $originalValue;
                 }
-            }
-        }
-
-        // Convert resetEveryAmount to number (0 or 1), not boolean
-        if (array_key_exists('resetEveryAmount', $filteredConfig)) {
-            $originalValue = $filteredConfig['resetEveryAmount'];
-            unset($filteredConfig['resetEveryAmount']);
-            if (is_string($originalValue)) {
-                $filteredConfig['resetEveryAmount'] = in_array(strtolower($originalValue), ['true', '1', 'yes'], true) ? 1 : 0;
-            } else {
-                $filteredConfig['resetEveryAmount'] = (bool) $originalValue ? 1 : 0;
             }
         }
 
@@ -338,56 +299,5 @@ class CrowdfundUpdatePayloadBuilder
         }
 
         return $filteredConfig;
-    }
-
-    /**
-     * Normalize the resetEveryAmount/resetEvery pair to a consistent state:
-     * amount 0 forces 'Never'; a positive amount cannot combine with 'Never'.
-     *
-     * @return array{0: int, 1: string|null}
-     */
-    protected function normalizeResetEvery(array $config): array
-    {
-        $resetEveryAmount = null;
-        if (isset($config['resetEveryAmount'])) {
-            $resetValue = $config['resetEveryAmount'];
-            if (is_bool($resetValue)) {
-                $resetEveryAmount = $resetValue ? 1 : 0;
-            } elseif (is_numeric($resetValue)) {
-                $resetEveryAmount = (int) $resetValue;
-            } else {
-                $resetEveryAmount = 0;
-            }
-        }
-
-        $resetEvery = null;
-        if (isset($config['resetEvery'])) {
-            $resetEveryValue = $config['resetEvery'];
-            if (is_string($resetEveryValue) && in_array($resetEveryValue, ['Day', 'Hour', 'Week', 'Month', 'Year', 'Never'])) {
-                $resetEvery = $resetEveryValue;
-            }
-        }
-
-        if ($resetEveryAmount !== null) {
-            if ($resetEveryAmount === 0) {
-                $resetEvery = 'Never';
-            } else {
-                if ($resetEvery === 'Never' || $resetEvery === null) {
-                    $resetEvery = 'Day';
-                }
-                if ($resetEveryAmount < 1) {
-                    $resetEveryAmount = 1;
-                }
-            }
-        } else {
-            if ($resetEvery !== null && $resetEvery !== 'Never') {
-                $resetEveryAmount = 1;
-            } else {
-                $resetEveryAmount = 0;
-                $resetEvery = 'Never';
-            }
-        }
-
-        return [$resetEveryAmount, $resetEvery];
     }
 }
