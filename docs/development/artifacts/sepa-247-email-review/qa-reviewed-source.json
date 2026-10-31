@@ -1,0 +1,24 @@
+{
+  "repository": "webiumsk/satflux",
+  "base_revision": "4b607bb20b6c29c36ae5d113ca743490c0699044",
+  "scope": "Consumer review corrections; functional source, tests, generated API and five-locale guidance. Shared handoff prose is excluded.",
+  "sha256": {
+    "app/Services/ApiDocumentation/DocumentationSchemas.php": "126de3050ff1ea984a6b8a8584d42203b7b199f9591e7ed157e8bc260278bcde",
+    "app/Services/Invoicing/BankImport/TatraBankEmailParser.php": "f19847420b85d03c600590b0207599e657d3ac98330ad8cd3bf2c7b971e61ee6",
+    "app/Services/SepaEmailConfirmationService.php": "065c80b3f8cc54948b37dc5bcbe6b1e47726d5ed3665e164d24ea496ef3f4eac",
+    "docs/api/route-coverage.json": "c7fe4bbd5ee1bf6963c2399b286a6d79bfc7a881bccbc51f59c1b4760080fb9d",
+    "docs/api/webhooks.json": "0515f605a85df5db3670cf781a1c6bdcf021e6e3e99d456917a598b857766dc8",
+    "docs/user/cs/sepa-instant-qr.md": "2bdc1794b603ffb6324c60e8d959936ee0664ea8ed649ca17310dc9990836f1b",
+    "docs/user/de/sepa-instant-qr.md": "49ccb04715fa2624377fa018f3d3ba09dac5dda001e982d1b7914b848cdbe313",
+    "docs/user/en/sepa-instant-qr.md": "01cd05f7001fa4e68fca7157154569dbec66cbf4925866e776217aa4e8288ef0",
+    "docs/user/es/sepa-instant-qr.md": "3842811824bb2dd1fbd92407cdd83ba5fb22bfbbe200948b652f68fa1b7a3c28",
+    "docs/user/sk/sepa-instant-qr.md": "d2b172ac16392b35518fad94dcc0789748fc17bed6483ccf05393f3372929dd9",
+    "resources/js/locales/cs.json": "9a4ba7f0142cfeb9d5da74f016d08fa632b2132c7d37297654b297421feefcf7",
+    "resources/js/locales/de.json": "f2f1323dc690b7a97443a6773789e158a6e6f0c61c66b013a525426a72162ab9",
+    "resources/js/locales/en.json": "03f4eaa08d9ed545a66d6347a5334ae83566220aad622bf6aafca6aabb21e791",
+    "resources/js/locales/es.json": "9131819fa76de7dd0fa12448a83bc8f5d401937a7f327d5cdde197d6c313931f",
+    "resources/js/locales/sk.json": "3866c499e516cd5edcecdbb0a27d6fc01331ee712943b2bd4059b16a3954d877",
+    "tests/Feature/SepaBmailTest.php": "65138cb382e3537ccce0728b56225c82b3ab4cafa5370ebb6199f5c83639cb40",
+    "tests/Unit/TatraBankEmailParserTest.php": "761f33bf8a355c614ce6b59fb6e28e30ee1f8bb1b99c273dadf7e0684fea0544"
+  }
+}

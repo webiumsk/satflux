@@ -13,7 +13,22 @@ meta_description: Accept euro bank transfers via a SEPA Instant QR code, alongsi
 
 1. Open your store and go to **SEPA Instant QR**.
 2. Enter your bank details (the account that should receive the euro transfers) and enable the method.
-3. Optionally set up e-mail confirmation of incoming payments so the store can reconcile them.
+3. Optionally send bank notifications directly to the store’s b-mail address. Supported Tatra banka messages can automatically confirm incoming payments after verification.
+
+## Bank e-mail verification
+
+Automatic confirmation requires verified bank origin and a matching receiving
+account, payment reference, amount and currency. Messages with missing or ambiguous
+evidence do not mark an invoice paid. Check the transfer in your banking app and
+use manual confirmation when automatic verification is unavailable.
+
+The server operator must configure a trusted bank-mail verifier. Delivery by an
+e-mail provider alone does not verify the bank sender. Unsupported notification
+formats and older plugin versions require manual verification. Confirmation time
+depends on bank notification delivery and processing; it is not guaranteed to be
+instant. FIO confirmation uses a bank-limited polling interval.
+
+Supported classic plain-text Tatra banka messages can confirm payments automatically after the bank signature, receiving account, reference, amount and currency are verified. Other layouts, unsigned messages and SLSP e-mails require manual verification. Supported coverage is limited to the documented classic profile; check with the server operator when your bank changes its notification format. Fio and NOP automatic confirmation remain available.
 
 ## Where is my payment
 
@@ -22,7 +37,7 @@ Every awaiting or needs-review payment whose reference starts with `QR-` has a *
 What to expect:
 
 - **NOP knows this id** appears for stores that confirm through NOP with an eKasa certificate, and for payments a notification-enabled bank account (Tatra banka, SLSP) reported.
-- **NOP has not seen this id** is the normal answer for stores that confirm manually, through Fio or through e-mail: their references are generated locally, so NOP has nothing to show even when the money has already arrived (and even when Fio or e-mail confirmation has already settled the invoice). It does not mean the customer has not paid - check your bank account.
+- **NOP has not seen this id** is the normal answer for stores that confirm manually, through Fio or with bank e-mails requiring manual review: their references are generated locally, so NOP has nothing to show even when the money has already arrived (including payments already confirmed through Fio). It does not mean the customer has not paid - check your bank account.
 - The timeline never says which account was credited. Always check the transfer in your banking app before marking a payment as paid - satflux does not confirm anything from this screen.
 
 The same data is on [kdejemojaplatba.sk](https://www.kdejemojaplatba.sk/), an independent viewer of the same service.

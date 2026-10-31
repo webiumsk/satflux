@@ -13,7 +13,22 @@ meta_description: Prijímajte eurové bankové prevody cez SEPA Instant QR kód,
 
 1. Otvorte obchod a prejdite na **SEPA Instant QR**.
 2. Zadajte bankové údaje (účet, ktorý má prijímať eurové prevody) a zapnite metódu.
-3. Voliteľne nastavte e-mailové potvrdzovanie prichádzajúcich platieb, aby ich obchod vedel spárovať.
+3. Voliteľne nastavte posielanie bankových notifikácií priamo na b-mailovú adresu obchodu. Podporované správy Tatra banky môžu po overení automaticky potvrdiť prijatú platbu.
+
+## Overovanie bankového e-mailu
+
+Automatické potvrdenie vyžaduje overený pôvod z banky a zhodu prijímacieho účtu,
+referencie platby, sumy a meny. Správy s chýbajúcimi alebo nejednoznačnými údajmi
+neoznačia faktúru ako zaplatenú. Ak automatické overenie nie je dostupné,
+skontrolujte prevod v bankovej aplikácii a použite ručné potvrdenie.
+
+Operátor servera musí nastaviť dôveryhodné overovanie bankových správ. Samotné
+doručenie cez poskytovateľa e-mailu neoveruje odosielajúcu banku. Nepodporované
+formáty správ a staršie verzie pluginu vyžadujú ručnú kontrolu. Čas potvrdenia
+závisí od doručenia bankovej notifikácie a spracovania; okamžité potvrdenie nie je
+zaručené. FIO používa interval kontroly obmedzený bankou.
+
+Podporované klasické textové správy Tatra banky môžu platbu potvrdiť automaticky po overení bankového podpisu, účtu príjemcu, referencie, sumy a meny. Iné formáty, nepodpísané správy a e-maily SLSP vyžadujú manuálne overenie. Podpora je obmedzená na zdokumentovaný klasický formát; pri zmene bankových notifikácií sa obráťte na operátora servera. Automatické potvrdenie cez Fio a NOP zostáva dostupné.
 
 ## Kde je moja platba
 
@@ -22,7 +37,7 @@ Každá čakajúca platba alebo platba na kontrolu, ktorej referencia začína n
 Čo očakávať:
 
 - **NOP toto ID pozná** sa zobrazí pri obchodoch, ktoré potvrdzujú cez NOP s eKasa certifikátom, a pri platbách, ktoré nahlásil notifikačný bankový účet (Tatra banka, SLSP).
-- **NOP toto ID nevidel** je bežná odpoveď pri obchodoch s manuálnym, Fio alebo e-mailovým potvrdzovaním: ich referencie sa generujú lokálne, takže NOP nemá čo ukázať, ani keď peniaze už prišli (a ani keď Fio alebo e-mailové potvrdenie faktúru už uzavrelo). Neznamená to, že zákazník nezaplatil - skontrolujte bankový účet.
+- **NOP toto ID nevidel** je bežná odpoveď pri obchodoch s ručným potvrdzovaním, cez Fio alebo s bankovými e-mailmi na ručnú kontrolu: ich referencie sa generujú lokálne, takže NOP nemá čo ukázať, ani keď peniaze už prišli (vrátane platieb už potvrdených cez Fio). Neznamená to, že zákazník nezaplatil - skontrolujte bankový účet.
 - Časová os nikdy nehovorí, na ktorý účet peniaze prišli. Pred označením platby ako zaplatenej ju vždy skontrolujte v bankovej aplikácii - satflux z tejto obrazovky nič nepotvrdzuje.
 
 Rovnaké údaje ukazuje aj [kdejemojaplatba.sk](https://www.kdejemojaplatba.sk/), nezávislý prehliadač tej istej služby.

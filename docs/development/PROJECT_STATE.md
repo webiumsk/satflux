@@ -1,5 +1,42 @@
 # Project state
 
+## Ready for source review: automatic Tatra B-mail via Mailgun - 2026-10-31
+
+The owner rejected permanent manual-only operation and selected Tatra banka via
+existing Mailgun intake. This candidate adds original-MIME intake, encrypted
+queue payloads, independent local DKIM verification and a strict historical Tatra
+plain-text profile with a positive real-parser reporting path. It preserves
+original account/amount/currency checks, QR case, unknown-outcome review, generic
+company imports and FIO/NOP. Canonical credit identity excludes invoice reference
+and rendering; conservative collisions cannot prove a second invoice paid.
+
+[Evidence](artifacts/tatra-bmail-automation-2026-10-31/README.md) records final focused
+PHP158/687, independent PHP108/579 plus output-cap1/2, Node26 real-crypto cases,
+security acceptance of24 source files plus the deployment installer, and QA41
+hashes. PHPStan/Pint/API/OpenAPI/locale checks and existing lint/typecheck ratchets
+pass. Deployment guards pass53 after a subprocess-capable rerun. The root npm
+manifest is unchanged; isolated locked verifier dependencies are installed by the
+normal deployment script. No deployment command was executed.
+
+A real current Tatra message is unavailable locally. Historical witnesses and
+synthetic QR/keys/DNS qualify the bounded implementation, not actual bank signing,
+current layout or active Mailgun routing. The operator must verify that coverage
+and approve deployment/Mailgun .mime configuration separately. Prior manual-only
+and alleged-reference-theft claims are superseded by the candid design/security
+record. Fresh exact-head CI follows source publication; no merge or real funds.
+
+## SEPA isolation integrated on merged 2.4.7 consumer - 2026-10-30
+
+The owner authorized SEPA integration and plugin source publication. This branch
+applies reviewed consumer `885168f2` to merged `4ff5c32a`, with five-locale docs,
+truthful bank-format hints and a stable-identity provider-failure retry regression.
+Companion provider combines compatibility and isolation as repaired SEPA 0.8.2.0
+for exact BTCPay 2.4.7. [Integration evidence](SEPA_247_INTEGRATION.md) records
+contracts, independent reviews, 2,253 PHP / 1,094 frontend passes and all local
+gates. Independent provider QA passes 165 cases with zero skips. Final provider
+archive and fresh repository-specific CI remain distinct gates. No production
+operation, merge or deployment is included in this source publication.
+
 ## PR411 incremental review portability fixes - 2026-10-30
 
 CI and CodeRabbit completed successfully on `0e0098db`; both original findings

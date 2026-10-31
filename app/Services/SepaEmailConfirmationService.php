@@ -6,21 +6,24 @@ use App\Enums\BankTransactionDirection;
 use App\Models\AuditLog;
 use App\Models\Store;
 use App\Models\User;
-use App\Services\BtcPay\Exceptions\BtcPayException;
 use App\Services\BtcPay\SepaService;
+use App\Services\Invoicing\BankEmailOriginVerifier;
+use App\Support\Invoicing\BankAccountIdentifier;
 use App\Support\Invoicing\ParsedBankTransaction;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Confirms SEPA payment requests from bank notification emails (b-mail):
  * a store-scoped inbound address receives the bank's credit notification,
- * the shared bank parsers extract amount/currency/symbols, and the payment
- * is reported to the BTCPay plugin's amount-verified endpoint - mismatches
- * land in the plugin's manual review, never auto-settle.
+ * only an authenticated bank credit with an observed receiving account can
+ * reach the plugin's store/account-bound reporting contract.
  */
 class SepaEmailConfirmationService
 {
-    public function __construct(protected SepaService $sepaService) {}
+    public function __construct(
+        protected SepaService $sepaService,
+        protected BankEmailOriginVerifier $originVerifier,
+    ) {}
 
     /**
      * @param  list<ParsedBankTransaction>  $rows
@@ -34,28 +37,66 @@ class SepaEmailConfirmationService
         ));
 
         if ($credits === []) {
-            Log::info('SEPA b-mail: no credit transaction parsed', [
-                'store_id' => $store->id,
-                'from' => $payload['from'] ?? '',
-                'subject' => $payload['subject'] ?? '',
-            ]);
-
             return ['store_id' => $store->id, 'reported' => 0, 'outcome' => null];
+        }
+
+        $verifiedDomain = $payload['_verified_bank_domain'] ?? null;
+        if (! $this->originVerifier->matchesSender(
+            is_string($verifiedDomain) ? $verifiedDomain : null,
+            (string) ($payload['from'] ?? ''),
+        )) {
+            return $this->review($store, 'unverified_bank_origin');
+        }
+
+        $eligible = array_filter($credits, fn (ParsedBankTransaction $row) => $row->isExplicitCredit
+            && $row->hasExplicitCurrency
+            && ! $row->isReferenceAmbiguous
+            && BankAccountIdentifier::normalize($row->recipientIban) !== null
+            && $this->referenceCandidates($row) !== []);
+        if ($eligible === []) {
+            return $this->review($store, 'incomplete_credit_evidence');
         }
 
         /** @var User $owner */
         $owner = $store->user;
         $apiKey = $owner->getBtcPayApiKeyOrFail();
-        $dedupKey = substr(hash('sha256', ($payload['to'] ?? '').'|'.($payload['body'] ?? '')), 0, 40);
+
+        // Old plugins ignore new fields. Never send them an automatic report.
+        $settings = $this->sepaService->getSettings($store->btcpay_store_id, $apiKey);
+        $contractVersion = $settings['confirmationContractVersion'] ?? null;
+        if (! is_int($contractVersion) || $contractVersion < 2) {
+            return $this->review($store, 'unsupported_plugin_contract');
+        }
 
         $reported = 0;
+        $requiresReview = count($eligible) !== count($credits);
         $finalOutcome = null;
-        foreach ($credits as $row) {
-            $outcome = $this->reportRow($store, $row, (string) ($payload['body'] ?? ''), $dedupKey, $apiKey);
-            if ($outcome !== null) {
+        foreach ($eligible as $index => $row) {
+            // Strict bank profiles supply an invoice-independent event identity.
+            // Preserve legacy synthetic-row retry compatibility for other rows.
+            $dedupKey = $row->sepaCreditIdentity ?? hash('sha256', json_encode([
+                $store->id,
+                BankAccountIdentifier::normalize($row->recipientIban),
+                $row->bankTransactionId,
+                hash('sha256', (string) ($payload['body'] ?? '')),
+                $index,
+                $row->e2eReference,
+                $row->variableSymbol,
+                $row->currency,
+                $row->amount,
+            ], JSON_THROW_ON_ERROR));
+            $outcome = $this->reportRow($store, $row, $dedupKey, $apiKey);
+            if ($outcome === 'unknown') {
+                $requiresReview = true;
+            } elseif ($outcome !== null) {
                 $reported++;
                 $finalOutcome = $outcome;
+                $requiresReview = $requiresReview || $outcome === 'review';
             }
+        }
+
+        if ($requiresReview) {
+            $finalOutcome = 'review';
         }
 
         AuditLog::log('sepa.bmail_processed', 'store', $store->id, [
@@ -66,30 +107,20 @@ class SepaEmailConfirmationService
         return ['store_id' => $store->id, 'reported' => $reported, 'outcome' => $finalOutcome];
     }
 
-    /**
-     * Tries the reference candidates in confidence order until the plugin
-     * recognizes one (outcome other than "unknown").
-     */
-    protected function reportRow(Store $store, ParsedBankTransaction $row, string $body, string $dedupKey, string $apiKey): ?string
+    protected function reportRow(Store $store, ParsedBankTransaction $row, string $dedupKey, string $apiKey): ?string
     {
         $outcome = null;
-        foreach ($this->referenceCandidates($row, $body) as $reference) {
-            try {
-                $result = $this->sepaService->reportPayment($store->btcpay_store_id, [
-                    'reference' => $reference,
-                    'amount' => abs($row->amount),
-                    'currency' => strtoupper($row->currency),
-                    'dedupKey' => $dedupKey,
-                ], $apiKey);
-            } catch (BtcPayException $e) {
-                Log::warning('SEPA b-mail: report failed', [
-                    'store_id' => $store->id,
-                    'reference' => $reference,
-                    'error' => $e->getMessage(),
-                ]);
-
-                continue;
-            }
+        foreach ($this->referenceCandidates($row) as $reference) {
+            // Let transport errors retry through the existing queue backoff;
+            // this stable identity prevents duplicate recording on recovery.
+            $result = $this->sepaService->reportPayment($store->btcpay_store_id, [
+                'reference' => $reference,
+                'amount' => abs($row->amount),
+                'currency' => strtoupper($row->currency),
+                'creditorIban' => BankAccountIdentifier::normalize($row->recipientIban),
+                'bankOriginVerified' => true,
+                'dedupKey' => $dedupKey,
+            ], $apiKey);
 
             $outcome = $result['outcome'] ?? null;
             if ($outcome !== null && $outcome !== 'unknown') {
@@ -103,23 +134,36 @@ class SepaEmailConfirmationService
     /**
      * @return list<string>
      */
-    protected function referenceCandidates(ParsedBankTransaction $row, string $body): array
+    protected function referenceCandidates(ParsedBankTransaction $row): array
     {
-        $candidates = [];
-
-        // The plugin reference travels as the SEPA end-to-end id and lands
-        // in the notification body (Tatra: "Referencia platitela").
-        if (preg_match_all('/QR-[0-9a-fA-F]{32}/', $body, $matches)) {
-            foreach ($matches[0] as $match) {
-                $candidates[] = $match;
-            }
+        if ($row->isReferenceAmbiguous) {
+            return [];
         }
 
-        // CZ profile / bysquare flows correlate by the variable symbol.
-        if ($row->variableSymbol !== null && $row->variableSymbol !== '') {
-            $candidates[] = $row->variableSymbol;
+        // Only reference evidence from a proven bank-owned transaction field
+        // can identify a request. Only the strict ordered Tatra profile sets
+        // this evidence; a label in payer-controlled text is insufficient.
+        if ($row->e2eReference !== null) {
+            return [$row->e2eReference];
+        }
+        if ($row->isVariableSymbolExplicit && $row->variableSymbol !== null && $row->variableSymbol !== '') {
+            return [$row->variableSymbol];
         }
 
-        return array_values(array_unique($candidates));
+        return [];
+    }
+
+    /** @return array{store_id: string, reported: int, outcome: string} */
+    private function review(Store $store, string $reason): array
+    {
+        Log::notice('SEPA b-mail requires manual verification', [
+            'store_id' => $store->id,
+            'reason' => $reason,
+        ]);
+        AuditLog::log('sepa.bmail_review_required', 'store', $store->id, [
+            'reason' => $reason,
+        ], $store->user_id);
+
+        return ['store_id' => $store->id, 'reported' => 0, 'outcome' => 'review'];
     }
 }

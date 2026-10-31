@@ -1,0 +1,21 @@
+{
+  "name": "@satflux/bank-mail-verifier",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "mailauth": "8.0.4",
+    "mailparser": "3.14.1"
+  },
+  "overrides": {
+    "mailauth": {
+      "joi": "18.3.1"
+    }
+  }
+}

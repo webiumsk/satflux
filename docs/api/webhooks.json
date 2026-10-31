@@ -172,17 +172,6 @@
                         }
                     }
                 },
-                "x-body-authentication": {
-                    "alternative": "Mailgun",
-                    "requiredFields": [
-                        "timestamp",
-                        "token",
-                        "signature"
-                    ],
-                    "algorithm": "HMAC-SHA256(timestamp + token)",
-                    "note": "OpenAPI cannot express body-field security schemes. The empty security alternative means signed Mailgun body, never unauthenticated acceptance."
-                },
-                "description": "Two alternatives: native JSON with X-Bank-Inbound-Secret (constant-time shared-secret comparison), or Mailgun form fields. Mailgun mode is selected when recipient, stripped-text or body-plain is filled: signature is lowercase hex HMAC-SHA256(timestamp + token, Mailgun signing key), NOT raw-body HMAC. Timestamp must be numeric and within configured max age (default 300 seconds, absolute clock difference); token replay is rejected using the configured cache. Mailgun signature fields are mandatory for that alternative; no bank header is required. Both paths fail closed when their configured secret is missing. HTTP 200 only means job accepted; it does not establish a payment.",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -209,6 +198,29 @@
                                     "headers": {
                                         "type": "string",
                                         "maxLength": 65535
+                                    },
+                                    "bank_authentication": {
+                                        "type": "object",
+                                        "properties": {
+                                            "dkim_result": {
+                                                "type": "string",
+                                                "description": "Verified receiving-MTA result. Only pass can establish origin."
+                                            },
+                                            "dkim_domain": {
+                                                "type": "string",
+                                                "description": "Verified DKIM signing domain aligned with the bank From domain; only supported bank domains qualify."
+                                            },
+                                            "dmarc_result": {
+                                                "type": "string",
+                                                "description": "Verified receiving-MTA result. Only pass can establish origin."
+                                            }
+                                        },
+                                        "required": [
+                                            "dkim_result",
+                                            "dkim_domain",
+                                            "dmarc_result"
+                                        ],
+                                        "additionalProperties": false
                                     }
                                 },
                                 "required": [
@@ -511,6 +523,169 @@
                                     }
                                 ],
                                 "description": "Recipient is mandatory. Sender fallback precedence is sender, from, From; body fallback precedence is stripped-text, body-plain, stripped-html, body-html. The first truthy value is trimmed. Normalized sender and body must be nonempty and at most 255 and 65535 characters respectively. Signature covers timestamp plus token regardless of selected email aliases."
+                            }
+                        }
+                    }
+                },
+                "x-body-authentication": {
+                    "alternative": "Mailgun",
+                    "requiredFields": [
+                        "timestamp",
+                        "token",
+                        "signature"
+                    ],
+                    "algorithm": "HMAC-SHA256(timestamp + token)",
+                    "note": "OpenAPI cannot express body-field security schemes. The empty security alternative means signed Mailgun body, never unauthenticated acceptance."
+                },
+                "description": "Two alternatives: native JSON with X-Bank-Inbound-Secret (constant-time shared-secret comparison), or Mailgun form fields. Mailgun mode is selected when recipient, stripped-text or body-plain is filled: signature is lowercase hex HMAC-SHA256(timestamp + token, Mailgun signing key), NOT raw-body HMAC. Timestamp must be numeric and within configured max age (default 300 seconds, absolute clock difference); token replay is rejected using the configured cache. Mailgun signature fields are mandatory for that alternative; no bank header is required. Both paths fail closed when their configured secret is missing. HTTP 200 only means job accepted; it does not establish a payment. SEPA automatic confirmation additionally requires observed beneficiary/credit evidence and bank-origin verification. Only an authenticated native receiving-MTA adapter may supply bank_authentication from independently verified DKIM/DMARC results; arbitrary MIME authentication headers and Mailgun delivery authentication do not prove bank origin. Incomplete or unverified SEPA notifications remain unconfirmed and require manual bank verification."
+            }
+        },
+        "/webhooks/bank-inbound.mime": {
+            "post": {
+                "operationId": "post_webhooks_bank_inbound_mime",
+                "summary": "Receive an authenticated bank email notification",
+                "tags": [
+                    "webhooks"
+                ],
+                "security": [
+                    {}
+                ],
+                "responses": {
+                    "403": {
+                        "description": "Invalid signature, stale timestamp or replay",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Missing or oversized original MIME",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Mailgun signing key not configured",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "accepted": {
+                                            "type": "boolean",
+                                            "const": true
+                                        }
+                                    },
+                                    "required": [
+                                        "accepted"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-body-authentication": {
+                    "alternative": "Mailgun",
+                    "requiredFields": [
+                        "timestamp",
+                        "token",
+                        "signature"
+                    ],
+                    "algorithm": "HMAC-SHA256(timestamp + token)",
+                    "note": "Signed Mailgun body fields are required; the empty OpenAPI security object is not unauthenticated acceptance."
+                },
+                "description": "Mailgun original-MIME destination. Requires signed timestamp/token delivery authentication and body-mime up to 262144 UTF-8 bytes. Original MIME is encrypted before queueing. A local locked verifier independently checks an aligned Tatra DKIM signature, full body coverage, signed sender/recipient/MIME controls and a single supported plain-text part before parsing the strict Tatra transaction format. Parsed Mailgun body fields and supplied authentication headers do not establish bank origin. HTTP 200 only acknowledges intake, not payment. Invalid bank proof requires review; temporary verifier/DNS errors retry through the queue. Configure the Mailgun destination with this .mime suffix; no credentials belong in the URL.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "recipient": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "body-mime": {
+                                        "type": "string",
+                                        "maxLength": 262144,
+                                        "description": "Original UTF-8 MIME bytes, preserving all line endings; maximum is also enforced in bytes."
+                                    },
+                                    "timestamp": {
+                                        "type": "string",
+                                        "pattern": "^[0-9]+$"
+                                    },
+                                    "token": {
+                                        "type": "string",
+                                        "minLength": 1
+                                    },
+                                    "signature": {
+                                        "type": "string",
+                                        "description": "Mailgun lowercase hex HMAC-SHA256(timestamp + token)."
+                                    }
+                                },
+                                "required": [
+                                    "recipient",
+                                    "body-mime",
+                                    "timestamp",
+                                    "token",
+                                    "signature"
+                                ],
+                                "additionalProperties": true
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "recipient": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "body-mime": {
+                                        "type": "string",
+                                        "maxLength": 262144,
+                                        "description": "Original UTF-8 MIME bytes, preserving all line endings; maximum is also enforced in bytes."
+                                    },
+                                    "timestamp": {
+                                        "type": "string",
+                                        "pattern": "^[0-9]+$"
+                                    },
+                                    "token": {
+                                        "type": "string",
+                                        "minLength": 1
+                                    },
+                                    "signature": {
+                                        "type": "string",
+                                        "description": "Mailgun lowercase hex HMAC-SHA256(timestamp + token)."
+                                    }
+                                },
+                                "required": [
+                                    "recipient",
+                                    "body-mime",
+                                    "timestamp",
+                                    "token",
+                                    "signature"
+                                ],
+                                "additionalProperties": true
                             }
                         }
                     }

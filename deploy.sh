@@ -196,6 +196,8 @@ if ! docker exec "$PHP_CONTAINER" test -d node_modules; then
 else
     docker exec --user root "$PHP_CONTAINER" npm install
 fi
+# Install the isolated bank-mail runtime on each deployment from its exact lock.
+docker exec --user root "$PHP_CONTAINER" npm ci --prefix runtime/bank-mail-verifier --omit=dev --ignore-scripts
 # Vite bakes VITE_* at build time; pass deploy env file so flags in .env.standalone win over a stale .env on disk
 docker exec --env-file "$ENV_FILE" --user root "$PHP_CONTAINER" npm run build
 

@@ -141,11 +141,35 @@ final class DocumentationSchemas
             foreach ([400, 401] as $code) {
                 $op['responses'][(string) $code] = $this->response($this->ref('Error'), $code === 400 ? 'Invalid JSON payload' : 'Signature, configured secret or store identity invalid');
             }
+        } elseif ($path === '/webhooks/bank-inbound.mime') {
+            $op['security'] = [(object) []];
+            $op['x-body-authentication'] = ['alternative' => 'Mailgun', 'requiredFields' => ['timestamp', 'token', 'signature'], 'algorithm' => 'HMAC-SHA256(timestamp + token)', 'note' => 'Signed Mailgun body fields are required; the empty OpenAPI security object is not unauthenticated acceptance.'];
+            $op['description'] = 'Mailgun original-MIME destination. Requires signed timestamp/token delivery authentication and body-mime up to 262144 UTF-8 bytes. Original MIME is encrypted before queueing. A local locked verifier independently checks an aligned Tatra DKIM signature, full body coverage, signed sender/recipient/MIME controls and a single supported plain-text part before parsing the strict Tatra transaction format. Parsed Mailgun body fields and supplied authentication headers do not establish bank origin. HTTP 200 only acknowledges intake, not payment. Invalid bank proof requires review; temporary verifier/DNS errors retry through the queue. Configure the Mailgun destination with this .mime suffix; no credentials belong in the URL.';
+            $mime = $this->obj([
+                'recipient' => ['type' => 'string', 'maxLength' => 255],
+                'body-mime' => ['type' => 'string', 'maxLength' => 262144, 'description' => 'Original UTF-8 MIME bytes, preserving all line endings; maximum is also enforced in bytes.'],
+                'timestamp' => ['type' => 'string', 'pattern' => '^[0-9]+$'],
+                'token' => ['type' => 'string', 'minLength' => 1],
+                'signature' => ['type' => 'string', 'description' => 'Mailgun lowercase hex HMAC-SHA256(timestamp + token).'],
+            ], ['recipient', 'body-mime', 'timestamp', 'token', 'signature'], true);
+            $op['requestBody'] = ['required' => true, 'content' => ['multipart/form-data' => ['schema' => $mime], 'application/x-www-form-urlencoded' => ['schema' => $mime]]];
+            $schema = $this->obj(['accepted' => ['type' => 'boolean', 'const' => true]], ['accepted']);
+            foreach ([403, 422, 503] as $code) {
+                $op['responses'][(string) $code] = $this->response($this->ref('Error'), match ($code) {
+                    403 => 'Invalid signature, stale timestamp or replay', 422 => 'Missing or oversized original MIME', default => 'Mailgun signing key not configured'
+                });
+            }
         } else {
             $op['security'] = [['bankInboundSecret' => []], (object) []];
             $op['x-body-authentication'] = ['alternative' => 'Mailgun', 'requiredFields' => ['timestamp', 'token', 'signature'], 'algorithm' => 'HMAC-SHA256(timestamp + token)', 'note' => 'OpenAPI cannot express body-field security schemes. The empty security alternative means signed Mailgun body, never unauthenticated acceptance.'];
             $op['description'] = 'Two alternatives: native JSON with X-Bank-Inbound-Secret (constant-time shared-secret comparison), or Mailgun form fields. Mailgun mode is selected when recipient, stripped-text or body-plain is filled: signature is lowercase hex HMAC-SHA256(timestamp + token, Mailgun signing key), NOT raw-body HMAC. Timestamp must be numeric and within configured max age (default 300 seconds, absolute clock difference); token replay is rejected using the configured cache. Mailgun signature fields are mandatory for that alternative; no bank header is required. Both paths fail closed when their configured secret is missing. HTTP 200 only means job accepted; it does not establish a payment.';
+            $op['description'] .= ' SEPA automatic confirmation additionally requires observed beneficiary/credit evidence and bank-origin verification. Only an authenticated native receiving-MTA adapter may supply bank_authentication from independently verified DKIM/DMARC results; arbitrary MIME authentication headers and Mailgun delivery authentication do not prove bank origin. Incomplete or unverified SEPA notifications remain unconfirmed and require manual bank verification.';
             $native = $this->obj(['to' => ['type' => 'string', 'maxLength' => 255], 'from' => ['type' => 'string', 'maxLength' => 255], 'body' => ['type' => 'string', 'maxLength' => 65535], 'subject' => ['type' => 'string', 'maxLength' => 500], 'headers' => ['type' => 'string', 'maxLength' => 65535]], ['to', 'from', 'body']);
+            $native['properties']['bank_authentication'] = $this->obj([
+                'dkim_result' => ['type' => 'string', 'description' => 'Verified receiving-MTA result. Only pass can establish origin.'],
+                'dkim_domain' => ['type' => 'string', 'description' => 'Verified DKIM signing domain aligned with the bank From domain; only supported bank domains qualify.'],
+                'dmarc_result' => ['type' => 'string', 'description' => 'Verified receiving-MTA result. Only pass can establish origin.'],
+            ], ['dkim_result', 'dkim_domain', 'dmarc_result']);
             $mailgun = $this->obj([
                 'recipient' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 255],
                 'sender' => ['type' => 'string'],

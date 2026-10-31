@@ -1,5 +1,31 @@
 # Development decision log
 
+## 2026-10-31 - Implement useful automatic Tatra B-mail with real verification
+
+Use existing Mailgun MIME delivery and Node runtime, isolated locked mailauth/
+mailparser dependencies and no new service. Verify actual signed message content
+before strict known-format transaction parsing; encrypt raw jobs and replace
+private downstream exceptions. Preserve observed QR case and reference-independent
+conservative event identity. Install runtime dependencies through normal deploy
+source, without executing deployment. Keep unknown formats unconfirmed.
+
+The debtor choosing a reference is normal and earlier selection probes did not
+prove theft by that fact alone. Product acceptance requires a positive automatic
+path; cd951b3b's manual-only fallback was temporary. Independent security/QA and
+synthetic cryptographic/real-parser tests qualify source; current bank format and
+actual routing remain explicit operational evidence gaps. Do not invent a bank
+transaction ID, claim all-bank coverage or use real funds in automated tests.
+
+## 2026-10-30 - Integrate SEPA isolation with exact BTCPay 2.4.7
+
+Apply the prepared consumer repair to merged compatibility instead of modifying
+the dirty original checkout. Require matching contract-v2 origin/original-account
+proof; preserve scoped ownership, positive-credit tolerance and explicit manual
+behavior. Include the reviewed automatic nonpositive-amount rejection in the
+companion provider. Keep old compatibility-only archives, independent histories,
+review manifests and synthetic runtime evidence. Publish only reviewed source
+branches and verified local installable candidates; no release/deployment follows.
+
 ## 2026-10-30 - Keep review evidence reproducible and the browser test portable
 
 Accept the three minor incremental CodeRabbit comments on `0e0098db`. Distinguish
