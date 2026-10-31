@@ -1,5 +1,26 @@
 # Project state
 
+## Wallet drift hotfix reviewed; bank-origin incident open - 2026-11-01
+
+GitHub confirms consumer PR412 merged at `9c329264` and provider PR45 at
+`9c6d7b30`; deployment is owner-reported, with actual runtime revisions unverified.
+A production excerpt confirms a SEPA_INSTANT-only wallet false alarm and a later
+bank-mail `unverified_bank_origin` review. The wallet repair excludes only that
+activation flag from both current and legacy comparisons, preserving crypto
+monitoring, saved baselines and fresh-read/lock requirements for resolution.
+
+Independent security and QA accept the frozen two-file patch. Focused author
+suites pass 35 tests / 247 assertions; independent QA passes 38 / 323 including
+private diagnostic controls. Full PHPStan and scoped Pint pass. See the
+[incident and recovery record](WALLET_SEPA_DRIFT_INCIDENT.md) for acceptance,
+reviewed hashes and operational limits. No UI/plugin/package change is included.
+Git publication and exact-head CI follow; no merge or deployment is performed.
+
+The bank payment remains unconfirmed. Parsed-only Mailgun intake cannot establish
+bank origin; the actual route and runtime revision still need verification. No
+current original bank message is available. Route recovery, actual template
+qualification and existing diagnostic gaps remain separate from the wallet fix.
+
 ## Ready for source review: automatic Tatra B-mail via Mailgun - 2026-10-31
 
 The owner rejected permanent manual-only operation and selected Tatra banka via

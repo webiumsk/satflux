@@ -1,5 +1,20 @@
 # Development decision log
 
+## 2026-11-01 - Separate SEPA activation from crypto wallet drift
+
+The generic payment-method monitor incorrectly classified the SEPA activation
+Boolean as a crypto receiving-wallet change. Exclude exact case-insensitive
+SEPA_INSTANT alongside the existing LNURL rule in snapshots and both comparison
+maps. Preserve unknown methods, crypto/Cashu guards, saved baseline, payee evidence,
+locks and fresh authenticated verification. Existing SEPA-only incidents may clear
+only through successful matching verification, retaining historical audits.
+
+Independent security and QA accept the bounded patch; publish it separately from
+bank-mail diagnosis. The supplied origin-review log proves processing reached the
+origin guard, not authenticated payment or the exact active Mailgun route. Keep
+unknown bank origin unconfirmed and distinguish owner-reported deployment from
+verified merges. See [evidence](WALLET_SEPA_DRIFT_INCIDENT.md).
+
 ## 2026-10-31 - Implement useful automatic Tatra B-mail with real verification
 
 Use existing Mailgun MIME delivery and Node runtime, isolated locked mailauth/
