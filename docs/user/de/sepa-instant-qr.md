@@ -13,7 +13,7 @@ Mit **SEPA Instant QR** können Sie beim Bezahlen **Banküberweisungen in Euro**
 
 1. Öffnen Sie Ihren Shop und wählen Sie **SEPA Instant QR**.
 2. Geben Sie die Bankdaten des Kontos ein, auf dem die Euroüberweisungen eingehen sollen, und aktivieren Sie die Methode.
-3. Lassen Sie Bankbenachrichtigungen optional direkt an die B-Mail-Adresse des Shops zur Prüfung senden. Aktuelle E-Mail-Formate erfordern eine manuelle Prüfung und Bestätigung.
+3. Lassen Sie Bankbenachrichtigungen optional direkt an die B-Mail-Adresse des Shops senden. Unterstützte Nachrichten der Tatra banka können Zahlungseingänge nach Prüfung automatisch bestätigen.
 
 ## Prüfung von Bank-E-Mails
 
@@ -21,7 +21,7 @@ Eine automatische Bestätigung erfordert einen verifizierten Bankursprung sowie 
 
 Der Serverbetreiber muss eine vertrauenswürdige Prüfung von Banknachrichten konfigurieren. Die Zustellung durch einen E-Mail-Anbieter allein verifiziert die absendende Bank nicht. Nicht unterstützte Nachrichtenformate und ältere Plugin-Versionen erfordern eine manuelle Prüfung. Die Bestätigungsdauer hängt von der Zustellung und Verarbeitung der Bankbenachrichtigung ab; eine sofortige Bestätigung ist nicht garantiert. FIO verwendet ein von der Bank begrenztes Abfrageintervall.
 
-E-Mails von Tatra banka und SLSP erfordern derzeit eine manuelle Prüfung. Zahlungsreferenzen lassen sich auch bei verifiziertem Bankabsender nicht zuverlässig von Texten des Zahlers trennen. Prüfen Sie die Überweisung in Ihrer Banking-App, bevor Sie sie manuell bestätigen. Die automatische Bestätigung über Fio und NOP bleibt verfügbar.
+Unterstützte klassische Klartextnachrichten der Tatra banka können Zahlungen nach Prüfung der Banksignatur, des Empfängerkontos, der Referenz, des Betrags und der Währung automatisch bestätigen. Andere Formate, unsignierte Nachrichten und SLSP-E-Mails erfordern eine manuelle Prüfung. Die Unterstützung ist auf das dokumentierte klassische Format begrenzt; wenden Sie sich bei Formatänderungen an den Serverbetreiber. Die automatische Bestätigung über Fio und NOP bleibt verfügbar.
 
 ## Wo ist meine Zahlung
 

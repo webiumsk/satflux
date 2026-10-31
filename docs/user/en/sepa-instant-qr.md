@@ -13,7 +13,7 @@ meta_description: Accept euro bank transfers via a SEPA Instant QR code, alongsi
 
 1. Open your store and go to **SEPA Instant QR**.
 2. Enter your bank details (the account that should receive the euro transfers) and enable the method.
-3. Optionally send bank notifications directly to the store’s b-mail address for review. Current e-mail formats require manual verification and confirmation.
+3. Optionally send bank notifications directly to the store’s b-mail address. Supported Tatra banka messages can automatically confirm incoming payments after verification.
 
 ## Bank e-mail verification
 
@@ -28,7 +28,7 @@ formats and older plugin versions require manual verification. Confirmation time
 depends on bank notification delivery and processing; it is not guaranteed to be
 instant. FIO confirmation uses a bank-limited polling interval.
 
-Tatra banka and SLSP e-mails currently require manual verification. Their payment references cannot be reliably separated from payer-supplied text, even when the bank sender is verified. Check the transfer in your banking app before confirming it manually. Fio and NOP automatic confirmation remain available.
+Supported classic plain-text Tatra banka messages can confirm payments automatically after the bank signature, receiving account, reference, amount and currency are verified. Other layouts, unsigned messages and SLSP e-mails require manual verification. Supported coverage is limited to the documented classic profile; check with the server operator when your bank changes its notification format. Fio and NOP automatic confirmation remain available.
 
 ## Where is my payment
 

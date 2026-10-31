@@ -13,7 +13,7 @@ meta_description: Přijímejte bankovní převody v eurech pomocí SEPA Instant 
 
 1. Otevřete obchod a přejděte na **SEPA Instant QR**.
 2. Zadejte bankovní údaje účtu, který má přijímat převody v eurech, a metodu zapněte.
-3. Volitelně nechte banku posílat oznámení přímo na b-mailovou adresu obchodu ke kontrole. Aktuální e-mailové formáty vyžadují ruční ověření a potvrzení.
+3. Volitelně nastavte zasílání bankovních oznámení přímo na b-mailovou adresu obchodu. Podporované zprávy Tatra banky mohou po ověření automaticky potvrdit přijatou platbu.
 
 ## Ověřování bankovního e-mailu
 
@@ -21,7 +21,7 @@ Automatické potvrzení vyžaduje ověřený původ z banky a shodu přijímací
 
 Provozovatel serveru musí nastavit důvěryhodné ověřování bankovních zpráv. Samotné doručení přes poskytovatele e-mailu neověřuje odesílající banku. Nepodporované formáty zpráv a starší verze pluginu vyžadují ruční kontrolu. Doba potvrzení závisí na doručení bankovního oznámení a zpracování; okamžité potvrzení není zaručeno. FIO používá interval kontroly omezený bankou.
 
-E-maily Tatra banky a SLSP aktuálně vyžadují ruční kontrolu. Referenci platby nelze spolehlivě oddělit od textu plátce ani při ověřeném odesílateli z banky. Před ručním potvrzením zkontrolujte převod v bankovní aplikaci. Automatické potvrzení přes Fio a NOP zůstává dostupné.
+Podporované klasické textové zprávy Tatra banky mohou platbu potvrdit automaticky po ověření bankovního podpisu, účtu příjemce, reference, částky a měny. Jiné formáty, nepodepsané zprávy a e-maily SLSP vyžadují ruční ověření. Podpora je omezena na zdokumentovaný klasický formát; při změně bankovních oznámení kontaktujte provozovatele serveru. Automatické potvrzení přes Fio a NOP zůstává dostupné.
 
 ## Kde je moje platba
 

@@ -24,6 +24,8 @@ final class ParsedBankTransaction
         public readonly ?string $e2eReference = null,
         public readonly bool $isReferenceAmbiguous = false,
         public readonly bool $isVariableSymbolExplicit = false,
+        // Conservative bank-credit fingerprint, not a bank-issued event ID.
+        public readonly ?string $sepaCreditIdentity = null,
     ) {}
 
     /**

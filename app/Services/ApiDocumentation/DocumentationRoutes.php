@@ -24,6 +24,7 @@ final class DocumentationRoutes
             'POST api/integrations/woocommerce/documents/{documentId}/issue' => 'woocommerce',
             'POST api/webhooks/btcpay' => 'webhooks',
             'POST api/webhooks/bank-inbound' => 'webhooks',
+            'POST api/webhooks/bank-inbound.mime' => 'webhooks',
         ];
     }
 

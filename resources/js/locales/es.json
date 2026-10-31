@@ -4733,7 +4733,7 @@
     "bmail_copy": "Copiar dirección",
     "bmail_copied": "¡Copiado!",
     "bmail_copy_failed": "No se pudo copiar la dirección",
-    "bmail_setup_hint": "Configura tu banco para enviar las notificaciones de pagos recibidos directamente a esta dirección, sin reenvíos. Los correos de Tatra banka y SLSP requieren actualmente verificación manual porque las referencias de pago no se pueden separar de forma fiable del texto del pagador.",
+    "bmail_setup_hint": "Configure su banco para enviar las notificaciones de pagos recibidos directamente a esta dirección, sin reenvíos. Los mensajes compatibles de Tatra banka pueden confirmar pagos automáticamente tras verificar el origen bancario y los datos de la operación. Otros formatos y los mensajes de SLSP requieren verificación manual.",
     "bmail_latency_hint": "El tiempo de confirmación depende de la entrega de la notificación bancaria y su procesamiento. La confirmación inmediata no está garantizada.",
     "test_help": "Ejecuta una comprobación en vivo del backend de confirmación configurado (para NOP: una llamada de estado mTLS con tu certificado).",
     "test_button": "Probar backend de confirmación",

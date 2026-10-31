@@ -21,9 +21,9 @@ use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 /**
- * Store-scoped b-mail keeps current unbounded text formats on manual review.
- * Explicit synthetic structured rows exercise the reporting contract without
- * claiming a supported bank-email format provides trustworthy references.
+ * Strict authenticated Tatra plaintext runs through the real production parser.
+ * QR values in the public historical layout are explicitly synthetic adaptations.
+ * Unsupported body formats remain on manual review.
  */
 class SepaBmailTest extends TestCase
 {
@@ -81,6 +81,17 @@ class SepaBmailTest extends TestCase
             .'Informacia pre prijemcu: Invoice payment';
     }
 
+    /** Historical Tatra layout; account, balances and QR value are synthetic. */
+    private function strictCreditBody(string $reference = self::E2E_REFERENCE, string $note = 'Invoice payment'): string
+    {
+        return "Vazeny klient,\n"
+            .'01.06.2026 12:31 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN." zvyseny o 12,50 EUR.\n"
+            ."uctovny zostatok: 1 012,50 EUR\naktualny zostatok: 1 012,50 EUR\n"
+            ."disponibilny zostatok: 1 012,50 EUR\nPopis transakcie: CCINT 1100/000000-261426464\n"
+            .'Referencia platitela: '.$reference."\nInformacia pre prijemcu: ".$note."\n"
+            ."S pozdravom\nTATRA BANKA, a.s.";
+    }
+
     private function nativePayload(array $overrides = []): array
     {
         return array_replace([
@@ -132,6 +143,76 @@ class SepaBmailTest extends TestCase
     }
 
     #[Test]
+    #[TestWith(['QR-ab29e346f1d841c8a95a63d857490818', 'QR-ab29e346f1d841c8a95a63d857490818'])]
+    #[TestWith(['QR-AB29E346F1D841C8A95A63D857490818', 'QR-AB29E346F1D841C8A95A63D857490818'])]
+    #[TestWith(['/VS1234567890/SS/KS', '1234567890'])]
+    public function authenticated_strict_plaintext_runs_the_real_parser_and_reports_the_observed_credit(string $bankReference, string $expectedReference): void
+    {
+        $this->fakeCapablePlugin();
+        $payload = $this->nativePayload(['body' => $this->strictCreditBody($bankReference)]);
+
+        $this->postJson('/api/webhooks/bank-inbound', $payload, [
+            'X-Bank-Inbound-Secret' => 'test-inbound-secret',
+        ])->assertOk()->assertJsonPath('accepted', true);
+
+        Http::assertSent(fn (Request $request) => $request->method() === 'POST'
+            && $request->data()['reference'] === $expectedReference
+            && (float) $request->data()['amount'] === 12.50
+            && $request->data()['currency'] === 'EUR'
+            && $request->data()['creditorIban'] === self::RECIPIENT_IBAN
+            && $request->data()['bankOriginVerified'] === true
+            && strlen($request->data()['dedupKey']) === 64);
+        $audit = AuditLog::where('action', 'sepa.bmail_processed')->sole();
+        $this->assertSame(['reported' => 1, 'outcome' => 'settled'], $audit->metadata);
+    }
+
+    #[Test]
+    #[TestWith(['QR-00000000000000000000000000000002'])]
+    #[TestWith(['/VS1234567890/SS/KS'])]
+    public function a_complete_bank_prefix_cannot_promote_a_reference_in_remittance_after_a_blank_bank_field(string $injectedReference): void
+    {
+        Http::fake();
+        $body = str_replace('Referencia platitela: '.self::E2E_REFERENCE, 'Referencia platitela: ', $this->strictCreditBody());
+        $body = str_replace('Invoice payment', "Invoice payment\nReferencia platitela: ".$injectedReference, $body);
+
+        $this->postJson('/api/webhooks/bank-inbound', $this->nativePayload(['body' => $body]), [
+            'X-Bank-Inbound-Secret' => 'test-inbound-secret',
+        ])->assertOk();
+
+        Http::assertNothingSent();
+        $audit = AuditLog::where('action', 'sepa.bmail_review_required')->sole();
+        $this->assertSame('incomplete_credit_evidence', $audit->metadata['reason']);
+    }
+
+    #[Test]
+    public function one_bank_credit_keeps_the_same_dedup_key_across_candidate_notes_and_formatting(): void
+    {
+        $reports = [];
+        Http::fake(function (Request $request) use (&$reports) {
+            if ($request->method() === 'GET') {
+                return Http::response(['confirmationContractVersion' => 2]);
+            }
+            $reports[] = $request->data();
+
+            return Http::response(['outcome' => count($reports) === 1 ? 'settled' : 'duplicate']);
+        });
+        $first = $this->strictCreditBody();
+        $second = $this->strictCreditBody('QR-00000000000000000000000000000002', 'Another invoice');
+        $third = str_replace(['01.06.2026', '1 012,50', "\n"], ['1.6.2026', '1012,50', "\r\n  "], $second);
+        $service = app(BankInboundEmailService::class);
+        foreach ([$first, $second, $third] as $body) {
+            $service->handle([...$this->verifiedPayload(), 'body' => $body]);
+        }
+
+        $this->assertCount(3, $reports);
+        $this->assertNotSame($reports[0]['reference'], $reports[1]['reference']);
+        $this->assertSame($reports[0]['dedupKey'], $reports[1]['dedupKey']);
+        $this->assertSame($reports[1]['dedupKey'], $reports[2]['dedupKey']);
+        // The companion provider owns atomic dedup reservation. This verifies
+        // the real parser/consumer supplies the same event key to that boundary.
+    }
+
+    #[Test]
     public function trusted_structured_evidence_uses_the_store_account_bound_contract(): void
     {
         $this->fakeCapablePlugin();
@@ -159,7 +240,7 @@ class SepaBmailTest extends TestCase
     public function unverified_native_bank_origin_cannot_report_a_payment(string $case): void
     {
         Http::fake();
-        $payload = $this->nativePayload();
+        $payload = $this->nativePayload(['body' => $this->strictCreditBody()]);
         if ($case === 'missing' || $case === 'raw-headers-only') {
             unset($payload['bank_authentication']);
         } elseif ($case === 'dkim-fail') {

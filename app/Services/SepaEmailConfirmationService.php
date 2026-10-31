@@ -72,7 +72,9 @@ class SepaEmailConfirmationService
         $requiresReview = count($eligible) !== count($credits);
         $finalOutcome = null;
         foreach ($eligible as $index => $row) {
-            $dedupKey = hash('sha256', json_encode([
+            // Strict bank profiles supply an invoice-independent event identity.
+            // Preserve legacy synthetic-row retry compatibility for other rows.
+            $dedupKey = $row->sepaCreditIdentity ?? hash('sha256', json_encode([
                 $store->id,
                 BankAccountIdentifier::normalize($row->recipientIban),
                 $row->bankTransactionId,
@@ -139,8 +141,8 @@ class SepaEmailConfirmationService
         }
 
         // Only reference evidence from a proven bank-owned transaction field
-        // can identify a request. Current email parsers leave these unset; a
-        // matching label in payer-controlled text is insufficient.
+        // can identify a request. Only the strict ordered Tatra profile sets
+        // this evidence; a label in payer-controlled text is insufficient.
         if ($row->e2eReference !== null) {
             return [$row->e2eReference];
         }

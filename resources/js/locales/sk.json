@@ -4737,7 +4737,7 @@
     "bmail_copy": "Kopírovať adresu",
     "bmail_copied": "Skopírované!",
     "bmail_copy_failed": "Adresu sa nepodarilo skopírovať",
-    "bmail_setup_hint": "Nastavte banku tak, aby posielala notifikácie o prijatých platbách priamo na túto adresu, bez preposielania. E-maily Tatra banky a SLSP aktuálne vyžadujú ručnú kontrolu, pretože referenciu platby nemožno spoľahlivo oddeliť od textu platiteľa.",
+    "bmail_setup_hint": "Nastavte banku, aby posielala oznámenia o prijatých platbách priamo na túto adresu, bez preposielania. Podporované správy Tatra banky môžu platbu potvrdiť automaticky po overení pôvodu a údajov transakcie. Ostatné formáty a správy SLSP vyžadujú manuálne overenie.",
     "bmail_latency_hint": "Čas potvrdenia závisí od doručenia bankovej notifikácie a spracovania. Okamžité potvrdenie nie je zaručené.",
     "test_help": "Spustí živú kontrolu nastaveného potvrdzovacieho backendu (pre NOP: mTLS status volanie s vaším certifikátom).",
     "test_button": "Otestovať potvrdzovací backend",

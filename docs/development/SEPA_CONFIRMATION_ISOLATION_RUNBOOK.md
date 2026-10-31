@@ -42,39 +42,52 @@ returns false and one that throws. Never reset a real account cursor for testing
 
 ## Trusted bank-mail ingress
 
-Raw Mailgun delivery proves forwarding-service authentication, not bank origin.
-Sender text, a bank-like subject or arbitrary MIME `Authentication-Results` cannot
-authorize settlement. Legacy unverified messages remain for manual bank checking;
-the invoice must not be marked paid from them.
+Tatra automatic confirmation uses Mailgun original-MIME delivery. Configure the
+route destination to `https://<your-app>/api/webhooks/bank-inbound.mime` only after
+operator deployment approval. The `.mime` suffix requests `body-mime`; standard
+parsed Mailgun deliveries remain accepted for legacy imports but do not establish
+bank origin. No route or bank settings are changed by source preparation.
 
-A protected native receiving-MTA adapter may send this optional metadata alongside
-the existing normalized payload:
+Install the isolated locked runtime dependencies with
+`npm ci --prefix runtime/bank-mail-verifier --ignore-scripts` in the deployed
+checkout. Node22 already exists in the PHP image. The PHP queue worker launches
+the local verifier over argv/stdin; there is no new network service. Configure
+`BANK_MAIL_NODE_BINARY` only when Node is not available on the worker PATH.
 
-```json
-{
-  "bank_authentication": {
-    "dkim_result": "pass",
-    "dkim_domain": "tatrabanka.sk",
-    "dmarc_result": "pass"
-  }
-}
-```
+Intake verifies the existing Mailgun token/timestamp HMAC and replay cache. It
+preserves original MIME bytes (including CRLFs), limits them to 256KiB and encrypts
+them before queueing. Keep the app encryption key with queue recovery backups.
+Failed jobs retain ciphertext and sanitized errors, never raw mail. The verifier
+independently verifies an aligned Tatra DKIM signature over the complete body,
+signed From/To/Subject and MIME controls. Its signed recipient must match the
+store address. Sender-supplied authentication headers, partial-body signatures,
+ambiguous MIME, HTML and missing proof cannot authorize payment. Temporary DNS or
+process errors retry through the existing bounded queue backoff.
 
-The existing native webhook secret authenticates that adapter. The adapter must
-perform actual DKIM/DMARC verification and remove untrusted authentication headers
-before attesting a bank domain; it must never copy these values from user-supplied
-mail. Do not expose the secret to merchants, browsers or example commands.
-Supported signing/From domains are Tatra banka and SLSP, including aligned bank
-subdomains. Incoming Mailgun form fields cannot set the internal verified-domain
-marker, even if they include this object.
+The initial profile is one UTF-8/ASCII text/plain part and the documented classic
+Tatra numeric prefix: greeting, valid date/time and receiving account, positive
+EUR credit, three balances, constrained CCINT/CSO account description, then the
+QR/E2E or structured VS reference before free recipient/name text. Required
+fields cannot be skipped or reordered. Duplicate/reserved labels, markup and
+unknown layouts require review. Public historical examples establish this
+bounded profile; the synthetic QR fixture is not proof of actual current Tatra
+rendering. No current original EML is available for interoperability qualification.
+SLSP remains review-only. Generic company bank importing and FIO/NOP are unchanged.
 
-Automatic SEPA parsing currently recognizes the bounded opening classic Tatra
-bank statement (optional greeting, date/time, own full checksum-valid SK/CZ IBAN,
-explicit credit amount and currency). Other formats, inferred currencies/directions,
-masked accounts, ambiguous references and generic compact notifications remain
-review-only. The payment reference must come from its explicit transaction field,
-not arbitrary payer notes. Generic company bank importing is preserved and is not
-represented as covered by this SEPA origin repair.
+Credit dedup uses a versioned canonical fingerprint of receiving account, bank
+booking minute, amount/currency, all balances and bank transaction description.
+It excludes invoice references, free notes and message rendering. This is not a
+bank-issued unique ID: indistinguishable legitimate credits can collide, so they
+must not be counted twice automatically. Provider dedup remains store/source/
+account scoped; a repeated key cannot prove that a second invoice was paid.
+Review outstanding intent and old confirmation history before rollout.
+
+Existing authenticated native receiving-MTA adapters may continue submitting the
+optional complete `bank_authentication` object (`dkim_result`, `dkim_domain`,
+`dmarc_result`). Such adapters remain responsible for real verification on the
+exact selected body. Mailgun inputs cannot supply the internal verified-domain
+marker. The concrete MIME verifier is Tatra-only; accepting a legacy notification
+or acknowledging HTTP200 does not establish a payment.
 
 ## Recording and NOP recovery boundaries
 

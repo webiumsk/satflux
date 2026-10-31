@@ -141,6 +141,24 @@ final class DocumentationSchemas
             foreach ([400, 401] as $code) {
                 $op['responses'][(string) $code] = $this->response($this->ref('Error'), $code === 400 ? 'Invalid JSON payload' : 'Signature, configured secret or store identity invalid');
             }
+        } elseif ($path === '/webhooks/bank-inbound.mime') {
+            $op['security'] = [(object) []];
+            $op['x-body-authentication'] = ['alternative' => 'Mailgun', 'requiredFields' => ['timestamp', 'token', 'signature'], 'algorithm' => 'HMAC-SHA256(timestamp + token)', 'note' => 'Signed Mailgun body fields are required; the empty OpenAPI security object is not unauthenticated acceptance.'];
+            $op['description'] = 'Mailgun original-MIME destination. Requires signed timestamp/token delivery authentication and body-mime up to 262144 UTF-8 bytes. Original MIME is encrypted before queueing. A local locked verifier independently checks an aligned Tatra DKIM signature, full body coverage, signed sender/recipient/MIME controls and a single supported plain-text part before parsing the strict Tatra transaction format. Parsed Mailgun body fields and supplied authentication headers do not establish bank origin. HTTP 200 only acknowledges intake, not payment. Invalid bank proof requires review; temporary verifier/DNS errors retry through the queue. Configure the Mailgun destination with this .mime suffix; no credentials belong in the URL.';
+            $mime = $this->obj([
+                'recipient' => ['type' => 'string', 'maxLength' => 255],
+                'body-mime' => ['type' => 'string', 'maxLength' => 262144, 'description' => 'Original UTF-8 MIME bytes, preserving all line endings; maximum is also enforced in bytes.'],
+                'timestamp' => ['type' => 'string', 'pattern' => '^[0-9]+$'],
+                'token' => ['type' => 'string', 'minLength' => 1],
+                'signature' => ['type' => 'string', 'description' => 'Mailgun lowercase hex HMAC-SHA256(timestamp + token).'],
+            ], ['recipient', 'body-mime', 'timestamp', 'token', 'signature'], true);
+            $op['requestBody'] = ['required' => true, 'content' => ['multipart/form-data' => ['schema' => $mime], 'application/x-www-form-urlencoded' => ['schema' => $mime]]];
+            $schema = $this->obj(['accepted' => ['type' => 'boolean', 'const' => true]], ['accepted']);
+            foreach ([403, 422, 503] as $code) {
+                $op['responses'][(string) $code] = $this->response($this->ref('Error'), match ($code) {
+                    403 => 'Invalid signature, stale timestamp or replay', 422 => 'Missing or oversized original MIME', default => 'Mailgun signing key not configured'
+                });
+            }
         } else {
             $op['security'] = [['bankInboundSecret' => []], (object) []];
             $op['x-body-authentication'] = ['alternative' => 'Mailgun', 'requiredFields' => ['timestamp', 'token', 'signature'], 'algorithm' => 'HMAC-SHA256(timestamp + token)', 'note' => 'OpenAPI cannot express body-field security schemes. The empty security alternative means signed Mailgun body, never unauthenticated acceptance.'];

@@ -1,15 +1,25 @@
 # SEPA confirmation isolation on BTCPay 2.4.7
 
-## Current bank-email capability
+## Current automatic Tatra bank-email path
 
-PR412 review 5719928957 identified a body-controlled reference boundary missed
-by the initial qualification below. The consumer now leaves all current
-Tatra/SLSP email references untrusted for SEPA, requires manual verification and
-excludes provider `unknown` outcomes from reported counts. Five-locale guidance
-and the optional origin-attestation schema match this behavior. The
-[follow-up evidence](artifacts/sepa-247-email-review/README.md) supersedes earlier
-classic-Tatra automatic-support claims and the changed consumer source hashes.
-Provider c1912bf and its delivered archives are unchanged.
+The consumer includes original-MIME Mailgun intake, local bank DKIM verification
+and a strict Tatra plain-text transaction profile. A real-parser positive test
+uses ephemeral synthetic bank signatures and offline DNS through the production
+CLI, queue and reporting contract. No trusted-row injection establishes this gate.
+The canonical credit fingerprint excludes invoice references and mutable text.
+Unknown formats or unverifiable evidence remain review-only; FIO/NOP are unchanged.
+
+The bank reference may legitimately be payer-selected. Earlier selection probes
+did not prove theft or underpayment by that fact alone. Review 5719928957 led to
+cd951b3b's temporary all-email fallback; that source state did not complete the
+owner's automatic-confirmation goal. Current proof and limitations are in the
+[Tatra automation evidence](artifacts/tatra-bmail-automation-2026-10-31/README.md),
+which supersedes earlier consumer capability statements and changed source hashes.
+No current original bank message is available: public historical templates plus
+synthetic QR adaptation qualify a bounded implementation, not all current Tatra
+notification layouts or an installed Mailgun route. Provider rollout remains
+separate. The new Raffle/Tickets content follow-up has independent source and
+archive identities; it does not change SEPA contract v2.
 
 ## Source and delivery scope
 
@@ -47,6 +57,6 @@ Initial full PHP attempts failed at the test runner's default 128 MB child-proce
 
 Install the independently qualified repaired provider first, verify actual settings `confirmationContractVersion: 2`, then deploy the reviewed consumer. Keep plugin database and Data Protection keys together and reconcile pending invoices using their original intent. The plugin reservation transaction is not atomic with host payment persistence; preserve stable-reference retry/reconciliation. Do not downgrade to unbound automatic confirmation to work around incomplete evidence.
 
-The existing anonymous checkout-manual endpoint remains a merchant opt-in default-off feature; it is not verified bank proof. Native receiving-MTA DKIM/DMARC attestation must be configured and verified by the operator before automatic bank-mail behavior is claimed. All currently recognized Tatra/SLSP email formats require manual review: no proven bank-owned reference boundary separates reference labels from payer remittance. Receiving-MTA attestation alone cannot resolve that boundary. Generic company bank imports and automatic FIO/NOP confirmation remain unchanged. Production installation, real bank latency/coverage and a successful deployed revision are not established by these fixtures.
+The existing anonymous checkout-manual endpoint remains a merchant opt-in default-off feature; it is not verified bank proof. Native receiving-MTA DKIM/DMARC attestation must be configured and verified by the operator before automatic bank-mail behavior is claimed. Only independently authenticated messages matching the strict ordered Tatra plain-text profile may report automatically. SLSP, HTML, unsigned and unrecognized layouts remain review-only. Generic company imports and automatic FIO/NOP confirmation remain unchanged. Production installation, real bank latency/coverage and a successful deployed revision are not established by these fixtures.
 
 Primary Graphify was queried before exploration; target worktree graphs are absent and no graph was rebuilt or installed. The exact host dependency's lost temporary Git metadata was restored into durable private storage, preserving the previous checkout; tracked upstream source remains unmodified. No global credentials/trust configuration or upstream repository publication changed.

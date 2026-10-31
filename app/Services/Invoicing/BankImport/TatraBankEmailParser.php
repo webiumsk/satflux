@@ -3,6 +3,7 @@
 namespace App\Services\Invoicing\BankImport;
 
 use App\Enums\BankTransactionDirection;
+use App\Services\Invoicing\BankEmailOriginVerifier;
 use App\Support\Invoicing\BankAccountIdentifier;
 use App\Support\Invoicing\BankSymbolNormalizer;
 use App\Support\Invoicing\BankTransactionDirectionGuesser;
@@ -26,7 +27,12 @@ class TatraBankEmailParser implements BankNotificationParser
     public function parse(string $from, string $subject, string $body): array
     {
         $text = $this->normalizeBody($body);
-        $classic = $this->parseClassic($text, $subject);
+        // Select the Tatra profile using sender identity, never a body label.
+        // Origin is independently authenticated before SEPA reporting.
+        $evidence = (new BankEmailOriginVerifier)->matchesSender('tatrabanka.sk', $from)
+            ? (new TatraBankSepaEvidenceParser)->parse($body)
+            : null;
+        $classic = $this->parseClassic($text, $subject, $evidence);
 
         if ($classic !== null) {
             return [$classic];
@@ -47,7 +53,8 @@ class TatraBankEmailParser implements BankNotificationParser
         return trim($text);
     }
 
-    protected function parseClassic(string $text, string $subject): ?ParsedBankTransaction
+    /** @param array{e2e: ?string, vs: ?string, identity: string}|null $evidence */
+    protected function parseClassic(string $text, string $subject, ?array $evidence = null): ?ParsedBankTransaction
     {
         if (! preg_match(
             '/(\d{1,2}\.?\s*\d{1,2}\.?\s*\d{4}\s+\d{1,2}:\d{2})\s+bol zostatok Vasho uctu\s+(\S+)\s+(zvyseny|znizeny)\s+o\s+([\d\s,]+)\s+([A-Z]{3})/iu',
@@ -107,9 +114,9 @@ class TatraBankEmailParser implements BankNotificationParser
             recipientIban: BankAccountIdentifier::normalize($main[2]),
             isExplicitCredit: $hasBankCreditHeader && $direction === BankTransactionDirection::Credit && $amount > 0,
             hasExplicitCurrency: true,
-            // Body labels can be supplied in payer remittance. Without a
-            // proven bank-owned field boundary, reference metadata is import-
-            // only and must not identify a SEPA request automatically.
+            e2eReference: $evidence['e2e'] ?? null,
+            isVariableSymbolExplicit: ($evidence['vs'] ?? null) !== null,
+            sepaCreditIdentity: $evidence['identity'] ?? null,
         );
     }
 

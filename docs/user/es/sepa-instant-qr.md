@@ -13,7 +13,7 @@ meta_description: Acepta transferencias bancarias en euros mediante un código Q
 
 1. Abre tu tienda y entra en **SEPA Instant QR**.
 2. Introduce los datos de la cuenta bancaria que recibirá las transferencias en euros y activa el método.
-3. Si lo deseas, haz que el banco envíe notificaciones directamente a la dirección de correo bancario de la tienda para su revisión. Los formatos actuales requieren verificación y confirmación manuales.
+3. Opcionalmente, configura el envío de notificaciones bancarias directamente a la dirección de correo bancario de la tienda. Los mensajes compatibles de Tatra banka pueden confirmar automáticamente los pagos recibidos tras su verificación.
 
 ## Verificación del correo bancario
 
@@ -21,7 +21,7 @@ La confirmación automática requiere un origen bancario verificado y una cuenta
 
 El operador del servidor debe configurar un verificador de correo bancario de confianza. La entrega por un proveedor de correo electrónico no verifica por sí sola el banco remitente. Los formatos de notificación no admitidos y las versiones antiguas del plugin requieren verificación manual. El tiempo de confirmación depende de la entrega y el procesamiento de la notificación bancaria; no se garantiza una confirmación inmediata. FIO utiliza un intervalo de consulta limitado por el banco.
 
-Los correos de Tatra banka y SLSP requieren actualmente verificación manual. Sus referencias de pago no se pueden separar de forma fiable del texto del pagador, incluso con el remitente bancario verificado. Comprueba la transferencia en tu aplicación bancaria antes de confirmarla manualmente. La confirmación automática mediante Fio y NOP sigue disponible.
+Los mensajes clásicos de texto sin formato compatibles de Tatra banka pueden confirmar pagos automáticamente tras verificar la firma bancaria, la cuenta receptora, la referencia, el importe y la moneda. Otros formatos, los mensajes sin firma y los correos de SLSP requieren verificación manual. La compatibilidad se limita al formato clásico documentado; consulta al operador del servidor si el banco cambia sus notificaciones. La confirmación automática mediante Fio y NOP sigue disponible.
 
 ## Dónde está mi pago
 

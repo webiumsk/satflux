@@ -1,5 +1,15 @@
 # Development roadmap
 
+## Next: verify source CI and operational Tatra compatibility - 2026-10-31
+
+Automatic Tatra B-mail source is prepared through Mailgun original MIME, real
+signature verification, strict parsing and conservative once-only allocation.
+Independent QA/security and focused/static/locale gates pass. Preserve explicit
+limits: no current original bank message, no live route or deployment proof.
+Qualify actual Tatra delivery privately and review provider-first rollout before
+owner-authorized installation/deployment. Source preparation alone does not mark
+bank interoperability or the rollout complete.
+
 ## Current: publish matched SEPA isolation source - 2026-10-30
 
 Consumer isolation is rebased on merged 2.4.7 compatibility with independent

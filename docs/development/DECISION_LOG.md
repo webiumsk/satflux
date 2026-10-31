@@ -1,5 +1,21 @@
 # Development decision log
 
+## 2026-10-31 - Implement useful automatic Tatra B-mail with real verification
+
+Use existing Mailgun MIME delivery and Node runtime, isolated locked mailauth/
+mailparser dependencies and no new service. Verify actual signed message content
+before strict known-format transaction parsing; encrypt raw jobs and replace
+private downstream exceptions. Preserve observed QR case and reference-independent
+conservative event identity. Install runtime dependencies through normal deploy
+source, without executing deployment. Keep unknown formats unconfirmed.
+
+The debtor choosing a reference is normal and earlier selection probes did not
+prove theft by that fact alone. Product acceptance requires a positive automatic
+path; cd951b3b's manual-only fallback was temporary. Independent security/QA and
+synthetic cryptographic/real-parser tests qualify source; current bank format and
+actual routing remain explicit operational evidence gaps. Do not invent a bank
+transaction ID, claim all-bank coverage or use real funds in automated tests.
+
 ## 2026-10-30 - Integrate SEPA isolation with exact BTCPay 2.4.7
 
 Apply the prepared consumer repair to merged compatibility instead of modifying
