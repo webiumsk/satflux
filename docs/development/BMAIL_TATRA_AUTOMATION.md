@@ -37,9 +37,10 @@ must not create a synthetic prefix. Generic company import remains separate.
 
 ## Mailgun verification
 
-The application currently treats Mailgun delivery authentication separately from
-bank origin and implements no independent raw-message verifier. Native receipt
-can consume operator attestation, but that is not an implemented Mailgun solution.
+Before this candidate, the application separated Mailgun delivery authentication
+from bank origin but had no independent raw-message verifier. Native receipt
+could consume operator attestation, which did not implement Mailgun verification.
+The current candidate includes independent MIME verification as described below.
 
 [Mailgun's May 2026 release](https://www.mailgun.com/releases/authentication-results-in-inbound-route-url-posts/)
 announces inbound authentication results. Its release note does not define a

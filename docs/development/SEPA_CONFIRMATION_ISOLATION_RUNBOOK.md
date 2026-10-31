@@ -42,11 +42,30 @@ returns false and one that throws. Never reset a real account cursor for testing
 
 ## Trusted bank-mail ingress
 
-Tatra automatic confirmation uses Mailgun original-MIME delivery. Configure the
-route destination to `https://<your-app>/api/webhooks/bank-inbound.mime` only after
-operator deployment approval. The `.mime` suffix requests `body-mime`; standard
-parsed Mailgun deliveries remain accepted for legacy imports but do not establish
-bank origin. No route or bank settings are changed by source preparation.
+Tatra automatic confirmation uses Mailgun original-MIME delivery. After operator
+deployment approval, configure separate, non-overlapping recipient routes:
+
+| Recipient | Destination | Route action |
+| --- | --- | --- |
+| Store SEPA addresses (default prefix `ps`) | `https://<your-app>/api/webhooks/bank-inbound.mime` | Forward original MIME, then `stop()` |
+| Company bank-import addresses (default prefix `pay`) | `https://<your-app>/api/webhooks/bank-inbound` | Keep parsed delivery, then `stop()` |
+
+With the default domain/prefixes, use these distinct Mailgun recipient expressions;
+adapt them to the actual configured domain/prefixes before applying:
+
+```text
+match_recipient("^ps[a-z0-9]{8,16}@payments[.]satflux[.]io$")
+match_recipient("^pay[a-z0-9]{8,16}@payments[.]satflux[.]io$")
+```
+
+Do not redirect a shared catch-all to the MIME endpoint: it accepts only store
+addresses and rejects companies during processing, which would stop their bank
+imports after intake acknowledgement. Narrow existing catch-alls or put the
+dedicated routes first with `stop()` so no duplicate/different-format delivery
+continues through another route. The `.mime` suffix requests `body-mime`;
+the company route must keep its parsed destination. Parsed delivery does not
+establish bank origin for SEPA. No route or bank setting is changed by source
+preparation.
 
 Install the isolated locked runtime dependencies with
 `npm ci --prefix runtime/bank-mail-verifier --ignore-scripts` in the deployed

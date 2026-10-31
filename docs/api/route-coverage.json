@@ -13,7 +13,7 @@
         "app/Services/Integrations/IntegrationDocumentInboxService.php": "2956a493f786bd077578f18d993f5d76bd065a0c94ec8223279cc24afb8f908e",
         "app/Services/Invoicing/BankInboundWebhookPayloadNormalizer.php": "5e107b9923b78e34b98abf39d83e3386fe4e0b74696e1ba87139a2387ba9cfdd",
         "app/Services/Invoicing/BankEmailOriginVerifier.php": "97c1fcf9a4555bb0023237ff7a03a1d7eac35cd594d1a6358a32ef4713fb4d92",
-        "app/Services/Invoicing/BankMimeVerificationService.php": "9abb0a7e0a15fd2744af42f99f4a8d4e03dc2a35116686deb6fda56d8416263f",
+        "app/Services/Invoicing/BankMimeVerificationService.php": "82f57b4d7d6600ccc2f155c1210f4b38c5b4bb5679e55daf0485a99411ce225f",
         "app/Services/Invoicing/BankInboundEmailService.php": "34e8be389daf168d0d1da21664b66d51fb77ff80bc40de4d412f7c07e6940298",
         "app/Services/Invoicing/BankImport/TatraBankEmailParser.php": "67738444c44b769389a34a5dd4fe9129596e63f27875451b54ce848d87cb65c1",
         "app/Services/Invoicing/BankImport/TatraBankSepaEvidenceParser.php": "eb62a9b13eb72699db7ad49ca00bcfcf7a0a5fe0b1270f193f62d91e8def85eb",

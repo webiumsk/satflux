@@ -1,5 +1,10 @@
 # Tatra B-mail automatic-confirmation candidate
 
+Qualification snapshot of consumer52fb0e0f. The later
+[review follow-up](../tatra-bmail-review2-2026-10-31/README.md) adds a permanent
+unsupported-encoding review path and clarifies operator/history documentation.
+The immutable source hashes and executed results below identify the 52fb snapshot.
+
 Consumer base: cd951b3b7e27a2f30278c0d414d603f483b83f62. Owner priority: Tatra banka
 through existing Mailgun intake. This implements a positive automatic path; the
 previous manual-only source state did not complete that product requirement.

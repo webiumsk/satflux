@@ -1,11 +1,16 @@
 # PR412 outside-diff bank-email corrections
 
+Historical snapshot of the temporary manual-only result at cd951b3b. The later
+[Tatra automatic-confirmation qualification](../tatra-bmail-automation-2026-10-31/README.md)
+supersedes this capability description. The original review reports, manifests
+and executed evidence below are preserved for their reviewed revision.
+
 Base consumer: `4b607bb20b6c29c36ae5d113ca743490c0699044`. Review:
 [5719928957](https://github.com/webiumsk/satflux/pull/412#pullrequestreview-5719928957).
 The three findings were outside the incremental diff and did not appear as new
 inline threads. Successful checks did not establish that the findings were absent.
 
-## Final behavior
+## Historical behavior at cd951b3b
 
 Current Tatra/SLSP parsers retain generic company-import metadata but provide no
 trusted E2E or explicit-variable-symbol evidence to automatic SEPA matching.

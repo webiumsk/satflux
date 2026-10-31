@@ -35,6 +35,9 @@ class BankMimeVerificationService
         if (strlen($rawMime) > 262144) {
             return $this->review($owner, 'mime_size');
         }
+        if (! mb_check_encoding($rawMime, 'UTF-8')) {
+            return $this->review($owner, 'unverified_bank_mime');
+        }
 
         try {
             $result = $this->verify($rawMime, $recipient);

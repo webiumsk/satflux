@@ -100,6 +100,23 @@ class BankMimeConfirmationTest extends TestCase
         $this->assertSame('unverified_bank_mime', AuditLog::where('action', 'sepa.bmail_review_required')->sole()->metadata['reason']);
     }
 
+    public function test_invalid_utf8_is_review_only_without_starting_the_verifier(): void
+    {
+        $mock = Mockery::mock(BankMimeVerificationService::class, [
+            app(BankInboundAddressService::class), app(BankEmailOriginVerifier::class),
+        ])->makePartial()->shouldAllowMockingProtectedMethods();
+        $mock->shouldNotReceive('verify');
+        $this->app->instance(BankMimeVerificationService::class, $mock);
+
+        $rawMime = "From: b-mail@tatrabanka.sk\r\n\r\nUnsupported encoding: \xE9\r\n";
+        $this->assertFalse(mb_check_encoding($rawMime, 'UTF-8'));
+        $this->post('/api/webhooks/bank-inbound.mime', $this->delivery($rawMime), ['Accept' => 'application/json'])
+            ->assertOk()->assertJsonPath('accepted', true);
+
+        Http::assertNothingSent();
+        $this->assertSame('unverified_bank_mime', AuditLog::where('action', 'sepa.bmail_review_required')->sole()->metadata['reason']);
+    }
+
     #[TestWith(['retryable'])]
     #[TestWith(['broken-process'])]
     public function test_transient_verification_failure_keeps_ciphertext_for_queue_retry(string $status): void
