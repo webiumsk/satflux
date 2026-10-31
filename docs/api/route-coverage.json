@@ -6,12 +6,27 @@
         "app/Http/Controllers/StoreController.php": "77214a46a3059b3c48b6c6d65c455ee6735a3e3d55a80f9185533cafe25faac9",
         "app/Http/Controllers/RaffleController.php": "8fd52be5b76da0758ba81da7276016a4b64afb6474f8e62c467e62bf79ea4e41",
         "app/Http/Controllers/WebhookController.php": "2ffa9405fca64630844ff19ff71ce4a28727b513114e9a6543812e43763804a5",
-        "app/Http/Controllers/Invoicing/BankInboundWebhookController.php": "426a9c1b401310111cde9333e25b433c33e4c2982649b1d1bc958c88350e89d4",
+        "app/Http/Controllers/Invoicing/BankInboundWebhookController.php": "3defbbcf9b03ca38cc7c342047c8a14cc22c5b80f683e670e60fa5bc0c2f209d",
         "app/Http/Controllers/Integrations/WooCommerceIntegrationController.php": "d7ab20d376bf93ee07d4b7e020e6e1f4785ac0f97140d104bb609a10f0b149f5",
         "app/Http/Controllers/Integrations/WooCommerceConnectController.php": "e94b334fe370ade6cb0d7d136a3cd523afac7647f645a63276fb9039e996b44b",
         "app/Services/Integrations/WooCommerceDocumentService.php": "c29e03fc1096e9ab26c0c29beb7b48a09797d6ff674ed23ef51bbb1b83f757a2",
         "app/Services/Integrations/IntegrationDocumentInboxService.php": "2956a493f786bd077578f18d993f5d76bd065a0c94ec8223279cc24afb8f908e",
         "app/Services/Invoicing/BankInboundWebhookPayloadNormalizer.php": "5e107b9923b78e34b98abf39d83e3386fe4e0b74696e1ba87139a2387ba9cfdd",
+        "app/Services/Invoicing/BankEmailOriginVerifier.php": "97c1fcf9a4555bb0023237ff7a03a1d7eac35cd594d1a6358a32ef4713fb4d92",
+        "app/Services/Invoicing/BankMimeVerificationService.php": "82f57b4d7d6600ccc2f155c1210f4b38c5b4bb5679e55daf0485a99411ce225f",
+        "app/Services/Invoicing/BankInboundEmailService.php": "34e8be389daf168d0d1da21664b66d51fb77ff80bc40de4d412f7c07e6940298",
+        "app/Services/Invoicing/BankImport/TatraBankEmailParser.php": "67738444c44b769389a34a5dd4fe9129596e63f27875451b54ce848d87cb65c1",
+        "app/Services/Invoicing/BankImport/TatraBankSepaEvidenceParser.php": "eb62a9b13eb72699db7ad49ca00bcfcf7a0a5fe0b1270f193f62d91e8def85eb",
+        "app/Services/SepaEmailConfirmationService.php": "34045bf33ec5c3677dc953742e84541df85650dffd3ac6a3f1fdad1b2b5ddb8a",
+        "app/Support/Invoicing/ParsedBankTransaction.php": "2d961e8893991f6a58017df00ced15e6d7844c63d8d6707038be384e41761843",
+        "app/Support/Invoicing/BankAccountIdentifier.php": "f394a0920c42b190dfcf9524c14b809d4c02b847d52a6995b217c3db0401a562",
+        "app/Jobs/ProcessBankNotificationEmail.php": "f2554138812c36db5856efea0b173bccfb1d2bbe7eff95e6612778a39d1ae3f9",
+        "bootstrap/app.php": "a96287a10883c45c677043fafdaa8c95cd06e0cc4f4b7a1fa1ee63ade5aff4f5",
+        "config/bank_inbound.php": "87fc64b8bcc09e404ae2af2df13a11e3c2872270a1ba6ac6c43817dc6c9cc2c8",
+        "runtime/bank-mail-verifier/cli.mjs": "bfddc7a1a4c5f641a8682a088fa054dcaccc32051920dcbd3212ef8bf89ac4b0",
+        "runtime/bank-mail-verifier/verifier.mjs": "a0553fb7df2eaec2e82bcaea0257246176bca181678436417a7360160fb8cb06",
+        "runtime/bank-mail-verifier/package.json": "4db6dce25a0713fb2e4e763a92905538474b71916ea9a0a44413e85e4d1d5831",
+        "runtime/bank-mail-verifier/package-lock.json": "2df2a5a08cd03d4e92105907dee3025f4a9a2ea7690103e3a4b001e7ff270f03",
         "app/Services/Raffle/RafflePayloadService.php": "745f42104327b34f3c0fab3d1e0ead6cf996835afd9adb29ea62261cf8d5f9e2",
         "app/Http/Middleware/AuthenticateWooCommerceIntegration.php": "edbb38f8fb1e3e8202c402c5ea1c69ffe1c5fe749b189146e658533d0f9f186a",
         "app/Http/Middleware/EnsureStoreOwnership.php": "80e69ff001736b77345b8d9805bb2c440093ac231db3d52d57d0fec1acc20b72",
@@ -5624,6 +5639,16 @@
         {
             "route": "POST api/webhooks/bank-inbound",
             "action": "App\\Http\\Controllers\\Invoicing\\BankInboundWebhookController@handle",
+            "middleware": [
+                "api"
+            ],
+            "status": "documented",
+            "reason": "Reviewed Scramble inference with explicit auth/response overlays.",
+            "document": "webhooks"
+        },
+        {
+            "route": "POST api/webhooks/bank-inbound.mime",
+            "action": "App\\Http\\Controllers\\Invoicing\\BankInboundWebhookController@handleMime",
             "middleware": [
                 "api"
             ],

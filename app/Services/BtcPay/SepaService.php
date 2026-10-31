@@ -102,11 +102,11 @@ class SepaService
     }
 
     /**
-     * Amount-verified confirmation report (b-mail channel): the plugin
-     * matches amount/currency against the pending request - mismatches go
-     * to manual review, never auto-settle.
+     * Contract-v2 confirmation report: the plugin requires trusted bank origin,
+     * receiving IBAN and store-bound amount/currency evidence. Callers must
+     * check confirmationContractVersion before sending to an older plugin.
      *
-     * @param  array{reference: string, amount: float, currency: string, dedupKey?: string}  $data
+     * @param  array{reference: string, amount: float, currency: string, creditorIban: string, bankOriginVerified: bool, dedupKey?: string}  $data
      * @return array { outcome }
      */
     public function reportPayment(string $storeId, array $data, ?string $userApiKey = null): array

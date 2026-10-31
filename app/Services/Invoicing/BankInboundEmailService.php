@@ -32,7 +32,7 @@ class BankInboundEmailService
     }
 
     /**
-     * @param  array{to: string, from: string, subject: string, body: string, headers?: string}  $payload
+     * @param  array{to: string, from: string, subject: string, body: string, headers?: string, _verified_bank_domain?: ?string}  $payload
      * @return array{company_id: string, imported: int, auto_matched: int}|array{store_id: string, reported: int, outcome: string|null}
      */
     public function handle(array $payload): array

@@ -1,0 +1,15 @@
+{
+  "reviewer": "sepa247_security",
+  "repository": "webiumsk/satflux",
+  "base_revision": "52fb0e0f9977bbca809e3ca48060a431c9c6945a",
+  "scope": "CodeRabbit review5720326942: UTF-8 MIME permanent-rejection guard and three documentation corrections; five-file uncommitted snapshot",
+  "files": {
+    "app/Services/Invoicing/BankMimeVerificationService.php": "82f57b4d7d6600ccc2f155c1210f4b38c5b4bb5679e55daf0485a99411ce225f",
+    "docs/development/BMAIL_TATRA_AUTOMATION.md": "e66e9690fc3c85643f33202a97e40b163473ee8198ee1023125f774cb9885e9c",
+    "docs/development/SEPA_CONFIRMATION_ISOLATION_RUNBOOK.md": "97b6fc69c04b6f2d77d2f341c09570a6c1832805172b752feeec127fe4a9cfbc",
+    "docs/development/artifacts/sepa-247-email-review/README.md": "488267dc915c38a8c975c568e9312f3584119f6c721387d9a5978eca46056fb6",
+    "tests/Feature/BankMimeConfirmationTest.php": "4b565f40855a3dddf56deec5a149efcc015d538f3c4d0a7fe3ef28a1f40314df"
+  },
+  "scoped_diff_sha256": "eaf55a344d2e9c1bfe4c0156e629cc8bd70d5c3824d2cc33ce5e1b375b4b620f",
+  "disposition": "accepted: no open blocking security findings; final main regression execution is a separate gate"
+}

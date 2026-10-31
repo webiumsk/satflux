@@ -1,0 +1,24 @@
+{
+  "archives": {
+    "checked": 70,
+    "mismatches": []
+  },
+  "metadata": {
+    "checked": 4,
+    "mismatches": []
+  },
+  "new_archives": [
+    {
+      "archive": "BTCPayServer.Plugins.BTCPayRaffle/1.3.2.6/BTCPayServer.Plugins.BTCPayRaffle.btcpay",
+      "sha256": "0fe076bfbcbadc917bc00c9f56cd2328b4ca5aee63052ce458858468328ceff2",
+      "size": 3288937,
+      "approved_hash_matches": true
+    },
+    {
+      "archive": "BTCPayServer.Plugins.SatfluxTickets/2.2.3.2/BTCPayServer.Plugins.SatfluxTickets.btcpay",
+      "sha256": "6d6779a7da3eaa774f0c57e6de51fad18ae63ca84f40af03227983c29359d80a",
+      "size": 12974317,
+      "approved_hash_matches": true
+    }
+  ]
+}

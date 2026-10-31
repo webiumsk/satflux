@@ -18,6 +18,14 @@ final class ParsedBankTransaction
         public readonly ?string $counterpartyIban = null,
         public readonly ?string $reference = null,
         public readonly ?string $bankTransactionId = null,
+        public readonly ?string $recipientIban = null,
+        public readonly bool $isExplicitCredit = false,
+        public readonly bool $hasExplicitCurrency = false,
+        public readonly ?string $e2eReference = null,
+        public readonly bool $isReferenceAmbiguous = false,
+        public readonly bool $isVariableSymbolExplicit = false,
+        // Conservative bank-credit fingerprint, not a bank-issued event ID.
+        public readonly ?string $sepaCreditIdentity = null,
     ) {}
 
     /**

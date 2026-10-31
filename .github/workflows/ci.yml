@@ -68,6 +68,19 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
+      - name: Setup bank-mail verifier runtime
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: runtime/bank-mail-verifier/package-lock.json
+
+      - name: Install and test locked bank-mail verifier
+        run: |
+          npm ci --prefix runtime/bank-mail-verifier --ignore-scripts
+          npm test --prefix runtime/bank-mail-verifier
+          npm audit --prefix runtime/bank-mail-verifier --omit=dev --audit-level=high
+
       - name: Check generated API contracts and route coverage
         env:
           APP_ENV: testing

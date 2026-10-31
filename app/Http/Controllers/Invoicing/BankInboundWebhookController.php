@@ -4,21 +4,44 @@ namespace App\Http\Controllers\Invoicing;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessBankNotificationEmail;
+use App\Services\Invoicing\BankEmailOriginVerifier;
 use App\Services\Invoicing\BankInboundWebhookPayloadNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Validator;
 
 class BankInboundWebhookController extends Controller
 {
-    public function handle(Request $request, BankInboundWebhookPayloadNormalizer $normalizer): JsonResponse
-    {
-        if ($normalizer->isMailgunPayload($request)) {
+    public function handleMime(
+        Request $request,
+        BankInboundWebhookPayloadNormalizer $normalizer,
+    ): JsonResponse {
+        // A .mime destination makes Mailgun supply the original message.
+        // Do not silently accept a parsed delivery on this dedicated route.
+        if ($authFailure = $this->mailgunAuthFailure($request, $normalizer)) {
+            return $authFailure;
+        }
+
+        return $this->dispatchMime($request);
+    }
+
+    public function handle(
+        Request $request,
+        BankInboundWebhookPayloadNormalizer $normalizer,
+        BankEmailOriginVerifier $originVerifier,
+    ): JsonResponse {
+        $isMailgun = $normalizer->isMailgunPayload($request);
+        if ($isMailgun) {
             if ($authFailure = $this->mailgunAuthFailure($request, $normalizer)) {
                 return $authFailure;
             }
         } elseif ($authFailure = $this->nativeAuthFailure($request)) {
             return $authFailure;
+        }
+
+        if ($isMailgun && $request->has('body-mime')) {
+            return $this->dispatchMime($request);
         }
 
         $validated = Validator::make($normalizer->normalize($request), [
@@ -35,6 +58,34 @@ class BankInboundWebhookController extends Controller
             'subject' => $validated['subject'] ?? '',
             'body' => $validated['body'],
             'headers' => $validated['headers'] ?? '',
+            // Only the protected native receiving-MTA adapter may attest bank
+            // identity. Mailgun delivery auth and MIME headers cannot do so.
+            '_verified_bank_domain' => $isMailgun ? null : $originVerifier->nativeVerifiedDomain(
+                $request->input('bank_authentication'),
+                $validated['from'],
+            ),
+        ]);
+
+        return response()->json(['accepted' => true]);
+    }
+
+    private function dispatchMime(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'recipient' => ['required', 'string', 'max:255'],
+            'body-mime' => ['required', 'string', 'max:262144'],
+        ]);
+        if (strlen($validated['body-mime']) > 262144) {
+            return response()->json(['message' => 'Bank MIME message is too large.'], 422);
+        }
+
+        ProcessBankNotificationEmail::dispatch([
+            'to' => strtolower(trim($validated['recipient'])),
+            'from' => '',
+            'subject' => '',
+            'body' => '',
+            // Raw bank mail must not appear in serialized/failed job payloads.
+            '_encrypted_bank_mime' => Crypt::encryptString($validated['body-mime']),
         ]);
 
         return response()->json(['accepted' => true]);

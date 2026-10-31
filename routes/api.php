@@ -278,6 +278,7 @@ Route::get('/debug/stores', function (Request $request) {
 // Webhooks (no auth required - verified via signature)
 Route::post('/webhooks/btcpay', [WebhookController::class, 'handle']);
 Route::post('/webhooks/bank-inbound', [BankInboundWebhookController::class, 'handle']);
+Route::post('/webhooks/bank-inbound.mime', [BankInboundWebhookController::class, 'handleMime']);
 
 // Public E-shop Integration API (rate limited, no auth required - uses tokens)
 Route::middleware(['throttle:10,1'])->group(function () {
