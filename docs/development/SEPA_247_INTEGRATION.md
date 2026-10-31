@@ -1,5 +1,16 @@
 # SEPA confirmation isolation on BTCPay 2.4.7
 
+## Current bank-email capability
+
+PR412 review 5719928957 identified a body-controlled reference boundary missed
+by the initial qualification below. The consumer now leaves all current
+Tatra/SLSP email references untrusted for SEPA, requires manual verification and
+excludes provider `unknown` outcomes from reported counts. Five-locale guidance
+and the optional origin-attestation schema match this behavior. The
+[follow-up evidence](artifacts/sepa-247-email-review/README.md) supersedes earlier
+classic-Tatra automatic-support claims and the changed consumer source hashes.
+Provider c1912bf and its delivered archives are unchanged.
+
 ## Source and delivery scope
 
 The owner requested integration of the prepared SEPA isolation repair with the merged 2.4.7 compatibility work and publication of plugin source. Consumer branch `fix/sepa-confirmation-isolation-247` starts at merged Satflux `4ff5c32a` and applies prepared `885168f2`. Companion provider branch `fix/btcpay-247-compatibility` combines `ed250c2` and `8afed1a`, pins exact host `2868deedd9d911b715fec7306ea9cada36d86bff`, and identifies the repaired plugin as 0.8.2.0 with host minimum 2.4.7. Compatibility-only 0.8.1.1 remains a different archived candidate.
@@ -22,9 +33,9 @@ New consumer with old plugin fails closed on missing contract v2; old reports to
 
 The independent reviewer found an inherited medium issue: an integrity-consistent NOP zero/negative amount could pass a large configured tolerance. Automatic evidence now rejects nonpositive amounts before dedup reservation and recording. PostgreSQL regressions exercise actual NOP parsing, no reservation/recording on rejection, a corrected positive retry with the same event identity and unchanged explicit manual zero-due behavior. Configured tolerance for positive credits remains unchanged.
 
-## Verified consumer gates
+## Initial integration validation (before PR412 follow-up)
 
-The final isolated consumer run passes 2,253 PHP tests / 10,706 assertions. All 1,094 frontend tests pass with two workers. PHPStan, affected-file Pint, current generated API contracts, five-locale parity, full lint (48 existing warnings), typecheck (120 unchanged baseline errors) and production build pass. Existing build/deprecation notices are retained.
+The initial isolated consumer run passed 2,253 PHP tests / 10,706 assertions. All 1,094 frontend tests pass with two workers. PHPStan, affected-file Pint, current generated API contracts, five-locale parity, full lint (48 existing warnings), typecheck (120 unchanged baseline errors) and production build pass. Existing build/deprecation notices are retained.
 
 Independent QA executes 62 consumer tests / 149 assertions and 165 provider tests with zero failures/skips. Exact-host guard and guard regression pass. Provider host plus all eight maintained plugins and eight test projects build with SDK 10.0.403 / runtime 10.0.14; the complete provider suite also passes 907 tests across eight projects with zero failures/skips. Final shipped archive identity and fresh remote CI remain separate evidence gates.
 
@@ -36,6 +47,6 @@ Initial full PHP attempts failed at the test runner's default 128 MB child-proce
 
 Install the independently qualified repaired provider first, verify actual settings `confirmationContractVersion: 2`, then deploy the reviewed consumer. Keep plugin database and Data Protection keys together and reconcile pending invoices using their original intent. The plugin reservation transaction is not atomic with host payment persistence; preserve stable-reference retry/reconciliation. Do not downgrade to unbound automatic confirmation to work around incomplete evidence.
 
-The existing anonymous checkout-manual endpoint remains a merchant opt-in default-off feature; it is not verified bank proof. Native receiving-MTA DKIM/DMARC attestation must be configured and verified by the operator before automatic bank-mail behavior is claimed. Classic Tatra credit evidence is supported; compact/SLSP/ambiguous formats remain review-only. Production installation, real bank latency/coverage and a successful deployed revision are not established by these fixtures.
+The existing anonymous checkout-manual endpoint remains a merchant opt-in default-off feature; it is not verified bank proof. Native receiving-MTA DKIM/DMARC attestation must be configured and verified by the operator before automatic bank-mail behavior is claimed. All currently recognized Tatra/SLSP email formats require manual review: no proven bank-owned reference boundary separates reference labels from payer remittance. Receiving-MTA attestation alone cannot resolve that boundary. Generic company bank imports and automatic FIO/NOP confirmation remain unchanged. Production installation, real bank latency/coverage and a successful deployed revision are not established by these fixtures.
 
 Primary Graphify was queried before exploration; target worktree graphs are absent and no graph was rebuilt or installed. The exact host dependency's lost temporary Git metadata was restored into durable private storage, preserving the previous checkout; tracked upstream source remains unmodified. No global credentials/trust configuration or upstream repository publication changed.

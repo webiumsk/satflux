@@ -13,7 +13,7 @@ Mit **SEPA Instant QR** können Sie beim Bezahlen **Banküberweisungen in Euro**
 
 1. Öffnen Sie Ihren Shop und wählen Sie **SEPA Instant QR**.
 2. Geben Sie die Bankdaten des Kontos ein, auf dem die Euroüberweisungen eingehen sollen, und aktivieren Sie die Methode.
-3. Richten Sie optional eine E-Mail-Bestätigung eingehender Zahlungen ein, damit der Shop sie zuordnen kann.
+3. Lassen Sie Bankbenachrichtigungen optional direkt an die B-Mail-Adresse des Shops zur Prüfung senden. Aktuelle E-Mail-Formate erfordern eine manuelle Prüfung und Bestätigung.
 
 ## Prüfung von Bank-E-Mails
 
@@ -21,7 +21,7 @@ Eine automatische Bestätigung erfordert einen verifizierten Bankursprung sowie 
 
 Der Serverbetreiber muss eine vertrauenswürdige Prüfung von Banknachrichten konfigurieren. Die Zustellung durch einen E-Mail-Anbieter allein verifiziert die absendende Bank nicht. Nicht unterstützte Nachrichtenformate und ältere Plugin-Versionen erfordern eine manuelle Prüfung. Die Bestätigungsdauer hängt von der Zustellung und Verarbeitung der Bankbenachrichtigung ab; eine sofortige Bestätigung ist nicht garantiert. FIO verwendet ein von der Bank begrenztes Abfrageintervall.
 
-Die automatische Bank-E-Mail-Prüfung unterstützt derzeit das klassische Gutschriftformat der Tatra banka. Kompakte Nachrichten und SLSP-Benachrichtigungen erfordern eine manuelle Prüfung.
+E-Mails von Tatra banka und SLSP erfordern derzeit eine manuelle Prüfung. Zahlungsreferenzen lassen sich auch bei verifiziertem Bankabsender nicht zuverlässig von Texten des Zahlers trennen. Prüfen Sie die Überweisung in Ihrer Banking-App, bevor Sie sie manuell bestätigen. Die automatische Bestätigung über Fio und NOP bleibt verfügbar.
 
 ## Wo ist meine Zahlung
 
@@ -30,7 +30,7 @@ Jede ausstehende oder zu prüfende Zahlung mit einer Referenz, die mit `QR-` beg
 Was Sie erwarten können:
 
 - **NOP kennt diese ID** erscheint bei Shops, die Zahlungen über NOP mit einem eKasa-Zertifikat bestätigen, sowie bei Zahlungen, die ein Bankkonto mit aktivierten Benachrichtigungen gemeldet hat (Tatra banka, SLSP).
-- **NOP hat diese ID nicht gesehen** ist bei manueller Bestätigung oder Bestätigung über Fio oder E-Mail normal: Die Referenzen werden lokal erzeugt, daher hat NOP auch dann nichts anzuzeigen, wenn das Geld bereits eingegangen und die Rechnung bestätigt ist. Dies bedeutet nicht, dass der Kunde nicht bezahlt hat - prüfen Sie Ihr Bankkonto.
+- **NOP hat diese ID nicht gesehen** ist bei manueller Bestätigung, Bestätigung über Fio oder Bank-E-Mails zur manuellen Prüfung normal: Die Referenzen werden lokal erzeugt, daher hat NOP auch dann nichts anzuzeigen, wenn das Geld bereits eingegangen und die Rechnung bestätigt ist. Dies bedeutet nicht, dass der Kunde nicht bezahlt hat - prüfen Sie Ihr Bankkonto.
 - Der Verlauf zeigt niemals, welchem Konto das Geld gutgeschrieben wurde. Prüfen Sie den Eingang in Ihrer Banking-App, bevor Sie eine Zahlung als bezahlt markieren - satflux bestätigt über diese Ansicht keine Zahlung.
 
 Dieselben Daten zeigt [kdejemojaplatba.sk](https://www.kdejemojaplatba.sk/), ein unabhängiger Betrachter desselben Dienstes.

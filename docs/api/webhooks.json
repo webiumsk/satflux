@@ -215,7 +215,11 @@
                                                 "description": "Verified receiving-MTA result. Only pass can establish origin."
                                             }
                                         },
-                                        "required": [],
+                                        "required": [
+                                            "dkim_result",
+                                            "dkim_domain",
+                                            "dmarc_result"
+                                        ],
                                         "additionalProperties": false
                                     }
                                 },

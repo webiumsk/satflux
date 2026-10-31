@@ -4733,7 +4733,7 @@
     "bmail_copy": "Kopírovat adresu",
     "bmail_copied": "Zkopírováno!",
     "bmail_copy_failed": "Adresu se nepodařilo zkopírovat",
-    "bmail_setup_hint": "Nastavte banku tak, aby posílala oznámení o přijatých platbách přímo na tuto adresu, bez přeposílání. Automatické ověření aktuálně podporuje klasický kreditní formát Tatra banky; kompaktní zprávy a oznámení SLSP vyžadují ruční kontrolu.",
+    "bmail_setup_hint": "Nastavte banku tak, aby posílala oznámení o přijatých platbách přímo na tuto adresu, bez přeposílání. E-maily Tatra banky a SLSP aktuálně vyžadují ruční kontrolu, protože referenci platby nelze spolehlivě oddělit od textu plátce.",
     "bmail_latency_hint": "Doba potvrzení závisí na doručení bankovní notifikace a zpracování. Okamžité potvrzení není zaručeno.",
     "test_help": "Spustí živou kontrolu nastaveného potvrzovacího backendu (pro NOP: mTLS status volání s vaším certifikátem).",
     "test_button": "Otestovat potvrzovací backend",

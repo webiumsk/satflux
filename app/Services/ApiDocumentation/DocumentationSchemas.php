@@ -151,7 +151,7 @@ final class DocumentationSchemas
                 'dkim_result' => ['type' => 'string', 'description' => 'Verified receiving-MTA result. Only pass can establish origin.'],
                 'dkim_domain' => ['type' => 'string', 'description' => 'Verified DKIM signing domain aligned with the bank From domain; only supported bank domains qualify.'],
                 'dmarc_result' => ['type' => 'string', 'description' => 'Verified receiving-MTA result. Only pass can establish origin.'],
-            ]);
+            ], ['dkim_result', 'dkim_domain', 'dmarc_result']);
             $mailgun = $this->obj([
                 'recipient' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 255],
                 'sender' => ['type' => 'string'],

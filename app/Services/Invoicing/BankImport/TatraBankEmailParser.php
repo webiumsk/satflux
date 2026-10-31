@@ -72,8 +72,6 @@ class TatraBankEmailParser implements BankNotificationParser
 
         [$variableSymbol, $constantSymbol, $specificSymbol, $referenciaName] = $this->parseReferenciaPlatitela($referencia);
 
-        $isVariableSymbolExplicit = $variableSymbol !== null;
-
         if ($variableSymbol === null) {
             $variableSymbol = $this->inferVariableSymbol($text, $informacia, $referencia);
         }
@@ -89,7 +87,6 @@ class TatraBankEmailParser implements BankNotificationParser
 
         $reference = $this->resolveReference($informacia, $popis, $referencia, $subject, $text);
 
-        $e2eReferences = $this->explicitE2eReferences($text);
         // Bank authentication does not authenticate the payer's remittance as
         // an amount. Only the supported opening bank statement is evidence.
         $hasBankCreditHeader = preg_match(
@@ -110,9 +107,9 @@ class TatraBankEmailParser implements BankNotificationParser
             recipientIban: BankAccountIdentifier::normalize($main[2]),
             isExplicitCredit: $hasBankCreditHeader && $direction === BankTransactionDirection::Credit && $amount > 0,
             hasExplicitCurrency: true,
-            e2eReference: count($e2eReferences) === 1 ? $e2eReferences[0] : null,
-            isReferenceAmbiguous: count($e2eReferences) > 1,
-            isVariableSymbolExplicit: $isVariableSymbolExplicit,
+            // Body labels can be supplied in payer remittance. Without a
+            // proven bank-owned field boundary, reference metadata is import-
+            // only and must not identify a SEPA request automatically.
         );
     }
 
@@ -163,7 +160,6 @@ class TatraBankEmailParser implements BankNotificationParser
         $reference = $this->resolveReference($informacia, $popis, $referencia, $subject, $text);
 
         $currency = $this->matchCurrency($text);
-        $e2eReferences = $this->explicitE2eReferences($text);
 
         return new ParsedBankTransaction(
             bookedAt: $bookedAt,
@@ -180,22 +176,7 @@ class TatraBankEmailParser implements BankNotificationParser
             // remittance. No bounded bank-authored credit format is proven.
             isExplicitCredit: false,
             hasExplicitCurrency: $currency !== null,
-            e2eReference: count($e2eReferences) === 1 ? $e2eReferences[0] : null,
-            isReferenceAmbiguous: count($e2eReferences) > 1,
-            isVariableSymbolExplicit: false,
         );
-    }
-
-    /** @return list<string> */
-    protected function explicitE2eReferences(string $text): array
-    {
-        preg_match_all(
-            '/(?:^|[\n.;]\s*)Referencia\s+platite[lľ]a\s*:\s*(QR-[0-9a-f]{32})(?=\s*(?:[\n.;]|$))/iu',
-            $text,
-            $matches,
-        );
-
-        return array_values(array_unique($matches[1]));
     }
 
     protected function explicitRecipientIban(string $text): ?string

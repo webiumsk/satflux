@@ -65,7 +65,7 @@ class TatraBankEmailParserTest extends TestCase
     }
 
     #[Test]
-    public function classic_credit_carries_observed_recipient_and_explicit_settlement_evidence(): void
+    public function classic_credit_carries_observed_amount_and_recipient_but_no_trusted_reference(): void
     {
         $body = '01.06.2026 12:31 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN." zvyseny o 12,50 EUR.\n"
             .'Referencia platitela: '.self::E2E_REFERENCE."\n"
@@ -77,7 +77,8 @@ class TatraBankEmailParserTest extends TestCase
         $this->assertNull($row->counterpartyIban);
         $this->assertTrue($row->isExplicitCredit);
         $this->assertTrue($row->hasExplicitCurrency);
-        $this->assertSame(self::E2E_REFERENCE, $row->e2eReference);
+        $this->assertNull($row->e2eReference);
+        $this->assertFalse($row->isVariableSymbolExplicit);
     }
 
     #[Test]
@@ -124,7 +125,7 @@ class TatraBankEmailParserTest extends TestCase
     }
 
     #[Test]
-    public function e2e_reference_comes_from_the_transaction_field_instead_of_arbitrary_message_text(): void
+    public function a_body_label_does_not_prove_a_bank_owned_reference_field(): void
     {
         $otherReference = 'QR-00000000000000000000000000000001';
         $body = '01.06.2026 12:31 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN." zvyseny o 12,50 EUR.\n"
@@ -133,7 +134,8 @@ class TatraBankEmailParserTest extends TestCase
 
         $row = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Obrat', $body)[0];
 
-        $this->assertSame(self::E2E_REFERENCE, $row->e2eReference);
+        $this->assertNull($row->e2eReference);
+        $this->assertFalse($row->isVariableSymbolExplicit);
     }
 
     #[Test]
@@ -212,6 +214,8 @@ MAIL;
         $this->assertCount(1, $rows);
         $this->assertSame(BankTransactionDirection::Credit, $rows[0]->direction);
         $this->assertSame('1234056789', $rows[0]->variableSymbol);
+        $this->assertFalse($rows[0]->isVariableSymbolExplicit);
+        $this->assertNull($rows[0]->e2eReference);
         $this->assertSame('9087654321', $rows[0]->constantSymbol);
         $this->assertSame('5428175648', $rows[0]->specificSymbol);
         $this->assertSame('1100/000000-261426464', $rows[0]->counterpartyName);

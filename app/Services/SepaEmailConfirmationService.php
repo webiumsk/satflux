@@ -84,7 +84,9 @@ class SepaEmailConfirmationService
                 $row->amount,
             ], JSON_THROW_ON_ERROR));
             $outcome = $this->reportRow($store, $row, $dedupKey, $apiKey);
-            if ($outcome !== null) {
+            if ($outcome === 'unknown') {
+                $requiresReview = true;
+            } elseif ($outcome !== null) {
                 $reported++;
                 $finalOutcome = $outcome;
                 $requiresReview = $requiresReview || $outcome === 'review';
@@ -136,8 +138,9 @@ class SepaEmailConfirmationService
             return [];
         }
 
-        // Only the parser's explicitly labelled E2E field can identify a QR
-        // request. A QR string elsewhere in an email is not row evidence.
+        // Only reference evidence from a proven bank-owned transaction field
+        // can identify a request. Current email parsers leave these unset; a
+        // matching label in payer-controlled text is insufficient.
         if ($row->e2eReference !== null) {
             return [$row->e2eReference];
         }

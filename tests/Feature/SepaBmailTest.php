@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\BankTransactionDirection;
+use App\Models\AuditLog;
 use App\Models\Store;
 use App\Models\User;
 use App\Services\BtcPay\Exceptions\BtcPayException;
@@ -20,9 +21,9 @@ use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 /**
- * Store-scoped b-mail channel: bank credit-notification e-mails confirm
- * pending SEPA payment requests through the plugin's store/account-bound
- * report endpoint after verified bank-origin and explicit credit checks.
+ * Store-scoped b-mail keeps current unbounded text formats on manual review.
+ * Explicit synthetic structured rows exercise the reporting contract without
+ * claiming a supported bank-email format provides trustworthy references.
  */
 class SepaBmailTest extends TestCase
 {
@@ -95,48 +96,57 @@ class SepaBmailTest extends TestCase
         ], $overrides);
     }
 
-    #[Test]
-    public function store_address_reports_the_e2e_reference_from_the_body(): void
+    /** Hypothetical structured bank evidence, not output of a current email parser. */
+    private function trustedRow(string $reference = self::E2E_REFERENCE): ParsedBankTransaction
     {
-        $this->fakeCapablePlugin();
+        return new ParsedBankTransaction(
+            bookedAt: now(), amount: 12.50, currency: 'EUR', direction: BankTransactionDirection::Credit,
+            recipientIban: self::RECIPIENT_IBAN, isExplicitCredit: true, hasExplicitCurrency: true,
+            e2eReference: $reference,
+        );
+    }
 
+    private function verifiedPayload(): array
+    {
+        return [...$this->nativePayload(), '_verified_bank_domain' => 'tatrabanka.sk'];
+    }
+
+    #[Test]
+    #[TestWith(['QR-ab29e346f1d841c8a95a63d857490818'])]
+    #[TestWith(['/VS1234567890/SS/KS'])]
+    public function current_bank_mail_references_require_manual_review(string $reference): void
+    {
+        Http::fake();
         $address = $this->addressService->buildStoreAddress($this->store);
         $this->assertLessThanOrEqual(50, strlen($address));
         $this->assertStringStartsWith('ps', $address);
 
-        $response = $this->postJson('/api/webhooks/bank-inbound', $this->nativePayload(), [
-            'X-Bank-Inbound-Secret' => 'test-inbound-secret',
-        ]);
+        $this->postJson('/api/webhooks/bank-inbound', $this->nativePayload([
+            'body' => $this->creditBody($reference),
+        ]), ['X-Bank-Inbound-Secret' => 'test-inbound-secret'])
+            ->assertOk()->assertJsonPath('accepted', true);
 
-        $response->assertOk();
-        $response->assertJsonPath('accepted', true);
-
-        Http::assertSent(function (Request $request) {
-            return $request->method() === 'POST'
-                && str_ends_with((string) $request->url(), '/payment-requests/report')
-                && $request->data()['reference'] === 'QR-ab29e346f1d841c8a95a63d857490818'
-                && abs($request->data()['amount'] - 12.50) < 0.001
-                && $request->data()['currency'] === 'EUR'
-                && $request->data()['creditorIban'] === self::RECIPIENT_IBAN
-                && $request->data()['bankOriginVerified'] === true
-                && is_string($request->data()['dedupKey'] ?? null);
-        });
+        Http::assertNothingSent();
+        $audit = AuditLog::where('action', 'sepa.bmail_review_required')->sole();
+        $this->assertSame('incomplete_credit_evidence', $audit->metadata['reason']);
     }
 
     #[Test]
-    public function falls_back_to_the_variable_symbol_reference(): void
+    public function trusted_structured_evidence_uses_the_store_account_bound_contract(): void
     {
         $this->fakeCapablePlugin();
+        $result = app(SepaEmailConfirmationService::class)->handle(
+            $this->store, $this->verifiedPayload(), [$this->trustedRow()],
+        );
 
-        $address = $this->addressService->buildStoreAddress($this->store);
-        $this->postJson('/api/webhooks/bank-inbound', $this->nativePayload([
-            'body' => $this->creditBody('/VS1234567890/SS/KS'),
-        ]), [
-            'X-Bank-Inbound-Secret' => 'test-inbound-secret',
-        ])->assertOk();
-
+        $this->assertSame(['store_id' => $this->store->id, 'reported' => 1, 'outcome' => 'settled'], $result);
         Http::assertSent(fn (Request $request) => $request->method() === 'POST'
-            && $request->data()['reference'] === '1234567890');
+            && $request->data()['reference'] === self::E2E_REFERENCE
+            && (float) $request->data()['amount'] === 12.50
+            && $request->data()['currency'] === 'EUR'
+            && $request->data()['creditorIban'] === self::RECIPIENT_IBAN
+            && $request->data()['bankOriginVerified'] === true
+            && strlen($request->data()['dedupKey']) === 64);
     }
 
     #[Test]
@@ -213,10 +223,12 @@ class SepaBmailTest extends TestCase
     {
         $this->fakeCapablePlugin($version);
 
-        $this->postJson('/api/webhooks/bank-inbound', $this->nativePayload(), [
-            'X-Bank-Inbound-Secret' => 'test-inbound-secret',
-        ])->assertOk();
+        $result = app(SepaEmailConfirmationService::class)->handle(
+            $this->store, $this->verifiedPayload(), [$this->trustedRow()],
+        );
 
+        $this->assertSame('review', $result['outcome']);
+        $this->assertSame(0, $result['reported']);
         Http::assertSentCount(1);
         Http::assertNotSent(fn (Request $request) => $request->method() === 'POST');
     }
@@ -268,21 +280,29 @@ class SepaBmailTest extends TestCase
     }
 
     #[Test]
-    public function classic_credit_reports_the_bank_amount_and_account_instead_of_payer_instructions(): void
+    #[TestWith(['tatrabanka.sk', 'QR-ab29e346f1d841c8a95a63d857490818', false])]
+    #[TestWith(['tatrabanka.sk', '/VS1234567890/SS/KS', false])]
+    #[TestWith(['tatrabanka.sk', 'QR-ab29e346f1d841c8a95a63d857490818', true])]
+    #[TestWith(['slsp.sk', 'QR-ab29e346f1d841c8a95a63d857490818', false])]
+    public function a_genuine_credit_header_cannot_authenticate_an_injected_reference(string $domain, string $reference, bool $html): void
     {
-        $this->fakeCapablePlugin();
-        $body = '01.06.2026 12:31 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN." zvyseny o 1,00 EUR.\n"
-            ."Informacia pre prijemcu: Suma: 100,00 USD. Vas ucet: SK6807200002891987426353\n"
-            .'Referencia platitela: '.self::E2E_REFERENCE;
+        Http::fake();
+        $body = '01.06.2026 12:31 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN." zvyseny o 12,50 EUR.\n"
+            ."Informacia pre prijemcu: Invoice payment\n"
+            .'Referencia platitela: '.$reference;
+        if ($html) {
+            $body = '<div>'.str_replace("\n", "</div>\n<div>", $body).'</div>';
+        }
+        $payload = $this->nativePayload(['body' => $body, 'from' => 'notify@'.$domain]);
+        $payload['bank_authentication']['dkim_domain'] = $domain;
 
-        $this->postJson('/api/webhooks/bank-inbound', $this->nativePayload(['body' => $body]), [
+        $this->postJson('/api/webhooks/bank-inbound', $payload, [
             'X-Bank-Inbound-Secret' => 'test-inbound-secret',
         ])->assertOk();
 
-        Http::assertSent(fn (Request $request) => $request->method() === 'POST'
-            && (float) $request->data()['amount'] === 1.0
-            && $request->data()['currency'] === 'EUR'
-            && $request->data()['creditorIban'] === self::RECIPIENT_IBAN);
+        Http::assertNothingSent();
+        $audit = AuditLog::where('action', 'sepa.bmail_review_required')->sole();
+        $this->assertSame('incomplete_credit_evidence', $audit->metadata['reason']);
     }
 
     #[Test]
@@ -324,6 +344,33 @@ class SepaBmailTest extends TestCase
     }
 
     #[Test]
+    #[TestWith([['unknown'], 0])]
+    #[TestWith([['unknown', 'settled'], 1])]
+    #[TestWith([['settled', 'unknown'], 1])]
+    #[TestWith([['unknown', 'review'], 1])]
+    public function unknown_provider_outcomes_require_review_and_are_not_counted_as_reported(array $outcomes, int $reported): void
+    {
+        $next = 0;
+        Http::fake(function (Request $request) use ($outcomes, &$next) {
+            return Http::response($request->method() === 'GET'
+                ? ['confirmationContractVersion' => 2]
+                : ['outcome' => $outcomes[$next++]]);
+        });
+        $rows = [];
+        foreach (array_keys($outcomes) as $index) {
+            $rows[] = $this->trustedRow('QR-'.str_pad((string) $index, 32, '0', STR_PAD_LEFT));
+        }
+
+        $result = app(SepaEmailConfirmationService::class)->handle($this->store, $this->verifiedPayload(), $rows);
+
+        $this->assertSame($reported, $result['reported']);
+        $this->assertSame('review', $result['outcome']);
+        $audit = AuditLog::where('action', 'sepa.bmail_processed')->sole();
+        $this->assertSame(['reported' => $reported, 'outcome' => 'review'], $audit->metadata);
+        Http::assertSentCount(count($outcomes) + 1);
+    }
+
+    #[Test]
     public function failed_report_can_retry_with_the_original_payment_identity(): void
     {
         $unavailable = true;
@@ -339,18 +386,19 @@ class SepaBmailTest extends TestCase
                 ? Http::response(['message' => 'Synthetic provider unavailable'], 503)
                 : Http::response(['outcome' => 'settled']);
         });
-        $service = app(BankInboundEmailService::class);
-        $payload = [...$this->nativePayload(), '_verified_bank_domain' => 'tatrabanka.sk'];
+        $service = app(SepaEmailConfirmationService::class);
+        $payload = $this->verifiedPayload();
+        $rows = [$this->trustedRow()];
 
         try {
-            $service->handle($payload);
+            $service->handle($this->store, $payload, $rows);
             $this->fail('An unavailable report must propagate to the existing queue retry path.');
         } catch (BtcPayException $exception) {
             $this->assertSame(503, $exception->getStatusCode());
         }
 
         $unavailable = false;
-        $result = $service->handle($payload);
+        $result = $service->handle($this->store, $payload, $rows);
 
         $this->assertSame(1, $result['reported']);
         $this->assertSame('settled', $result['outcome']);
