@@ -2,8 +2,9 @@
 
 ## Current: publish reviewed wallet false-alarm repair - 2026-11-01
 
-Publish the independently reviewed SEPA activation exclusion from current and
-historical crypto wallet comparisons, then verify exact-head CI. After an approved
+Verify exact-head CI and review for published
+[PR #413](https://github.com/webiumsk/satflux/pull/413), the independently reviewed
+SEPA activation exclusion from current and historical crypto wallet comparisons. After an approved
 deployment, a successful normal fresh verification can resolve SEPA-only alerts
 without accepting a new baseline. Preserve real crypto differences and history.
 See the [incident record](WALLET_SEPA_DRIFT_INCIDENT.md).

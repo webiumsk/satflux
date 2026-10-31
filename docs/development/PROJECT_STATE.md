@@ -14,7 +14,9 @@ suites pass 35 tests / 247 assertions; independent QA passes 38 / 323 including
 private diagnostic controls. Full PHPStan and scoped Pint pass. See the
 [incident and recovery record](WALLET_SEPA_DRIFT_INCIDENT.md) for acceptance,
 reviewed hashes and operational limits. No UI/plugin/package change is included.
-Git publication and exact-head CI follow; no merge or deployment is performed.
+Published [PR #413](https://github.com/webiumsk/satflux/pull/413) on
+`fix/wallet-drift-sepa-method`; exact-head CI is pending. No merge or deployment
+is performed.
 
 The bank payment remains unconfirmed. Parsed-only Mailgun intake cannot establish
 bank origin; the actual route and runtime revision still need verification. No

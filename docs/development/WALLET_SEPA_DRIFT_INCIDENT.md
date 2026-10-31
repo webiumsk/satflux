@@ -9,9 +9,10 @@ and provider PR #45 as `9c6d7b3057684d30b737ad66425cdbb6c43eb4f6`.
 Actual production revisions remain unverified independently.
 
 The supplied application excerpt records a SEPA_INSTANT-only added-method drift
-at 22:50:02 on October 31 and `unverified_bank_origin` at 22:50:46. This proves
-processing reached the bank-origin review guard for a parsed credit; it does not
-establish a bank-authenticated credit or identify the exact payment by itself.
+at 22:50:02 on October 31 and `unverified_bank_origin` at 22:50:46. In the reviewed
+source this reason is reached after parsing at least one credit row; the log
+shows origin rejection. It does not establish a bank-authenticated credit or
+identify the exact payment by itself. The actual deployed revision is unverified.
 Earlier 21:59 database/Redis DNS errors do not prove that later processing failed.
 No merchant identifiers, raw logs, session data or bank message are retained here.
 
@@ -75,7 +76,10 @@ SQLite memory, synthetic configuration, faked HTTP/notifications and disabled
 container networking. No production database, wallet, bank transfer or merchant
 credential was used. Existing Graphify queries provided orientation; the worktree
 has no graph and none was installed or rebuilt. No frontend validation is claimed
-for a source change that contains no frontend delta. Remote CI is a separate gate.
+for a source change that contains no frontend delta. The final documentation was independently checked by both reviewers; security
+requested qualifying the parsed-credit inference against reviewed source, which
+is reflected above. Published [PR #413](https://github.com/webiumsk/satflux/pull/413)
+on `fix/wallet-drift-sepa-method`; exact-head remote CI remains a separate gate.
 
 ## Recovery after an approved deployment
 
