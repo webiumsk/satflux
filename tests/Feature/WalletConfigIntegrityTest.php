@@ -14,13 +14,16 @@ use App\Models\WalletConnection;
 use App\Models\WebhookEvent;
 use App\Notifications\WalletConfigDriftNotification;
 use App\Services\WalletConnectionService;
+use App\Services\WalletSecurity\PayeeAttestationService;
 use App\Services\WalletSecurity\WalletConfigIntegrityService;
 use App\Services\WalletSecurity\WalletSecurityNotifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -41,6 +44,10 @@ class WalletConfigIntegrityTest extends TestCase
     private bool $lnurlEnabled = false;
 
     private bool $noMethods = false;
+
+    private string $onchainDescriptor = 'xpub...';
+
+    private array $additionalMethods = [];
 
     /**
      * Fake BTCPay once per test: payment-methods answers with the current
@@ -65,7 +72,7 @@ class WalletConfigIntegrityTest extends TestCase
                     return Http::response([], 200);
                 }
                 $methods = [
-                    ['paymentMethodId' => 'BTC-CHAIN', 'enabled' => true, 'config' => ['derivationScheme' => 'xpub...']],
+                    ['paymentMethodId' => 'BTC-CHAIN', 'enabled' => true, 'config' => ['derivationScheme' => $this->onchainDescriptor]],
                     ['paymentMethodId' => 'BTC-LN', 'enabled' => $this->lnEnabled, 'config' => ['connectionString' => $this->lnConnectionString, 'label' => 'x']],
                 ];
                 if ($this->lnurlEnabled) {
@@ -73,7 +80,7 @@ class WalletConfigIntegrityTest extends TestCase
                     $methods[] = ['paymentMethodId' => 'BTC-LNURL', 'enabled' => true, 'config' => ['useBech32Scheme' => true]];
                 }
 
-                return Http::response($methods, 200);
+                return Http::response(array_merge($methods, $this->additionalMethods), 200);
             }
 
             return Http::response([], 200);
@@ -190,6 +197,172 @@ class WalletConfigIntegrityTest extends TestCase
         $this->fakeBtcPay(self::SECRET, lnEnabled: false);
 
         $this->assertSame('drift', $integrity->verify($connection->fresh())['status']);
+    }
+
+    #[Test]
+    public function sepa_activation_lifecycle_does_not_change_the_crypto_wallet_baseline(): void
+    {
+        Notification::fake();
+        $this->fakeBtcPay();
+        [$user, $store, $connection] = $this->connectedStore();
+        $integrity = app(WalletConfigIntegrityService::class);
+        $this->assertTrue($integrity->baseline($connection, $user, learnPayee: false));
+        $expected = $connection->fresh()->only(['config_fingerprint', 'config_snapshot']);
+
+        foreach ([false, true, false, null] as $enabled) {
+            $this->additionalMethods = $enabled === null ? [] : [
+                ['paymentMethodId' => 'SEPA_INSTANT', 'enabled' => $enabled, 'config' => $enabled],
+            ];
+            $this->assertSame(['BTC-CHAIN', 'BTC-LN'], array_keys($integrity->snapshot($store)['fingerprint']));
+            $this->assertSame('ok', $integrity->verify($connection->fresh())['status']);
+            $this->assertSame($expected, $connection->fresh()->only(['config_fingerprint', 'config_snapshot']));
+            $this->assertNull($connection->fresh()->drift_detected_at);
+        }
+
+        $this->assertSame(0, AuditLog::where('action', 'wallet_connection.drift_detected')->count());
+        $this->assertSame(0, UserMessage::where('type', 'security')->count());
+        Notification::assertNothingSent();
+    }
+
+    #[Test]
+    public function a_legacy_sepa_only_incident_requires_a_fresh_matching_read_to_resolve_without_rebaselining(): void
+    {
+        Notification::fake();
+        $this->mock(PayeeAttestationService::class)->shouldNotReceive('learn');
+        $this->fakeBtcPay();
+        [$user, $store, $connection] = $this->connectedStore();
+        $integrity = app(WalletConfigIntegrityService::class);
+        $this->assertTrue($integrity->baseline($connection, $user, learnPayee: false));
+        $legacyConfig = ['enabled' => false, 'config' => false];
+        $incident = ['changed' => ['SEPA_INSTANT'], 'added' => [], 'removed' => []];
+        $connection->forceFill([
+            'config_fingerprint' => array_merge($connection->config_fingerprint, [
+                'SEPA_INSTANT' => hash('sha256', json_encode($legacyConfig)),
+            ]),
+            'config_snapshot' => array_merge($connection->config_snapshot, ['SEPA_INSTANT' => $legacyConfig]),
+            'config_verified_at' => now()->subHour(),
+            'drift_detected_at' => now()->subMinutes(30),
+            'drift_details' => $incident,
+        ])->save();
+        AuditLog::log('wallet_connection.drift_detected', 'wallet_connection', $connection->id, ['diff' => $incident], null);
+        $expected = $connection->fresh()->only(['config_fingerprint', 'config_snapshot']);
+        $before = $connection->fresh()->only(['config_verified_at', 'drift_detected_at', 'drift_details']);
+        $this->additionalMethods = [['paymentMethodId' => 'SEPA_INSTANT', 'enabled' => true, 'config' => true]];
+
+        $lock = Cache::lock('wallet-update:'.$store->id, 1800);
+        $this->assertTrue($lock->get());
+        $requests = count(Http::recorded());
+        try {
+            $this->assertSame('skipped', $integrity->verify($connection->fresh())['status']);
+            $this->assertSame($requests, count(Http::recorded()));
+            $this->assertEquals($before, $connection->fresh()->only(array_keys($before)));
+        } finally {
+            $lock->release();
+        }
+
+        $this->btcpayDown();
+        $this->assertSame('error', $integrity->verify($connection->fresh())['status']);
+        $this->assertEquals($before, $connection->fresh()->only(array_keys($before)));
+        $this->assertSame(0, AuditLog::where('action', 'wallet_connection.drift_resolved')->count());
+
+        $this->fakeBtcPay();
+        $apiKey = $user->btcpay_api_key;
+        $user->update(['btcpay_api_key' => null]);
+        $requests = count(Http::recorded());
+        $this->assertSame('error', $integrity->verify($connection->fresh())['status']);
+        $this->assertSame($requests, count(Http::recorded()));
+        $this->assertEquals($before, $connection->fresh()->only(array_keys($before)));
+        $user->update(['btcpay_api_key' => $apiKey]);
+
+        $this->assertSame('ok', $integrity->verify($connection->fresh())['status']);
+        $fresh = $connection->fresh();
+        $this->assertNull($fresh->drift_detected_at);
+        $this->assertNull($fresh->drift_details);
+        $this->assertTrue($fresh->config_verified_at->greaterThan($before['config_verified_at']));
+        $this->assertSame($expected, $fresh->only(array_keys($expected)));
+        $this->assertSame(1, AuditLog::where('action', 'wallet_connection.config_baselined')->count());
+        $this->assertSame(1, AuditLog::where('action', 'wallet_connection.drift_detected')->count());
+        $this->assertSame(1, AuditLog::where('action', 'wallet_connection.drift_resolved')->count());
+        $this->assertSame('ok', $integrity->verify($connection->fresh())['status']);
+        $this->assertSame(1, AuditLog::where('action', 'wallet_connection.drift_resolved')->count());
+        Notification::assertNothingSent();
+    }
+
+    #[Test]
+    #[DataProvider('monitoredMethodIds')]
+    public function a_sepa_activation_does_not_hide_a_simultaneous_monitored_wallet_change(string $id): void
+    {
+        Notification::fake();
+        $this->fakeBtcPay();
+        $this->additionalMethods = [['paymentMethodId' => $id, 'enabled' => true, 'config' => ['enabled' => true]]];
+        [$user, , $connection] = $this->connectedStore();
+        $integrity = app(WalletConfigIntegrityService::class);
+        $this->assertTrue($integrity->baseline($connection, $user, learnPayee: false));
+        $expected = $connection->fresh()->only(['config_fingerprint', 'config_snapshot']);
+        $this->additionalMethods = [
+            ['paymentMethodId' => $id, 'enabled' => false, 'config' => ['enabled' => false]],
+            ['paymentMethodId' => 'SEPA_INSTANT', 'enabled' => true, 'config' => true],
+        ];
+
+        $result = $integrity->verify($connection->fresh());
+
+        $this->assertSame('drift', $result['status']);
+        $this->assertSame([$id], $result['diff']['changed']);
+        $this->assertSame([], $result['diff']['added']);
+        $this->assertSame([], $result['diff']['removed']);
+        $this->assertNotNull($connection->fresh()->drift_detected_at);
+        $this->assertSame($expected, $connection->fresh()->only(array_keys($expected)));
+    }
+
+    public static function monitoredMethodIds(): array
+    {
+        return array_map(fn ($id) => [$id], ['CASHU', 'CASHUMELT', 'UNKNOWN', 'SEPA_INSTANT_EVIL', 'FAKE_SEPA_INSTANT']);
+    }
+
+    #[Test]
+    public function sepa_does_not_resolve_a_crypto_incident_until_the_original_wallet_returns(): void
+    {
+        Notification::fake();
+        $this->fakeBtcPay();
+        [$user, , $connection] = $this->connectedStore();
+        $integrity = app(WalletConfigIntegrityService::class);
+        $this->assertTrue($integrity->baseline($connection, $user, learnPayee: false));
+        $expected = $connection->fresh()->only(['config_fingerprint', 'config_snapshot']);
+        $this->additionalMethods = [['paymentMethodId' => 'SEPA_INSTANT', 'enabled' => true, 'config' => true]];
+        $this->lnConnectionString = self::OTHER_SECRET;
+        $this->onchainDescriptor = 'different-xpub';
+
+        foreach ([true, false] as $sepaEnabled) {
+            $this->additionalMethods[0]['enabled'] = $sepaEnabled;
+            $this->additionalMethods[0]['config'] = $sepaEnabled;
+            $result = $integrity->verify($connection->fresh());
+            $this->assertSame('drift', $result['status']);
+            $this->assertSame(['BTC-CHAIN', 'BTC-LN'], $result['diff']['changed']);
+            $this->assertSame([], $result['diff']['added']);
+            $this->assertNotNull($connection->fresh()->drift_detected_at);
+        }
+        $this->assertSame(0, AuditLog::where('action', 'wallet_connection.drift_resolved')->count());
+        $this->assertSame($expected, $connection->fresh()->only(array_keys($expected)));
+
+        $this->fakeBtcPay();
+        $this->onchainDescriptor = 'xpub...';
+        $this->assertSame('ok', $integrity->verify($connection->fresh())['status']);
+        $this->assertNull($connection->fresh()->drift_detected_at);
+    }
+
+    #[Test]
+    public function legacy_and_live_fingerprints_exclude_only_exact_case_insensitive_sepa_ids(): void
+    {
+        foreach (['SEPA_INSTANT', 'sepa_instant', 'SePa_InStAnT'] as $id) {
+            $this->assertSame(['changed' => [], 'added' => [], 'removed' => []], WalletConfigIntegrityService::diff([$id => 'before'], [$id => 'after']));
+            $this->assertSame(['changed' => [], 'added' => [], 'removed' => []], WalletConfigIntegrityService::diff([$id => 'before'], []));
+            $this->assertSame(['changed' => [], 'added' => [], 'removed' => []], WalletConfigIntegrityService::diff([], [$id => 'after']));
+        }
+        foreach (['SEPA_INSTANT_EVIL', 'FAKE_SEPA_INSTANT', 'SEPA_INSTANT ', 'BTC-LN', 'BTC-CHAIN', 'CASHU', 'CASHUMELT', 'UNKNOWN'] as $id) {
+            $this->assertSame([$id], WalletConfigIntegrityService::diff([$id => 'before'], [$id => 'after'])['changed']);
+            $this->assertSame([$id], WalletConfigIntegrityService::diff([$id => 'before'], [])['removed']);
+            $this->assertSame([$id], WalletConfigIntegrityService::diff([], [$id => 'after'])['added']);
+        }
     }
 
     #[Test]

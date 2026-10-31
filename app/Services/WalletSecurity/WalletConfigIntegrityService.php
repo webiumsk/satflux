@@ -14,11 +14,12 @@ use Illuminate\Support\Facades\Log;
  * Detects wallet configuration changes made outside Satflux.
  *
  * When Satflux (or its config bot) connects a wallet, the store's BTCPay
- * payment-method configs are hashed per method and stored on the row as the
- * expected fingerprint. verify() re-reads the live config (includeConfig=true,
+ * monitored payment-method configs are hashed per method and stored on the
+ * row as the expected fingerprint. verify() re-reads the live config (includeConfig=true,
  * merchant key) and compares: any difference - a swapped Lightning connection
  * string, an on-chain descriptor, a method enabled or disabled - is drift.
- * Merchants have no BTCPay UI access, so drift is never a legitimate edit.
+ * Presentation settings and the SEPA activation flag are excluded: they do
+ * not identify a crypto receiving wallet or attest a bank beneficiary.
  *
  * Detection only: nothing is reverted automatically (phase 1).
  */
@@ -34,13 +35,15 @@ class WalletConfigIntegrityService
     ) {}
 
     /**
-     * Payment methods that never decide where funds go (LNURL only shapes how
-     * Lightning invoices are presented and is toggled by Satflux's own store
-     * settings) - excluded so they cannot raise false drift.
+     * LNURL shapes invoice presentation; SEPA_INSTANT exposes an activation
+     * flag, not the bank beneficiary held in the plugin's separate settings.
+     * Exclude only these known methods; unknown methods stay monitored.
      */
     public static function isIgnoredMethod(string $paymentMethodId): bool
     {
-        return str_ends_with(strtoupper($paymentMethodId), '-LNURL');
+        $id = strtoupper($paymentMethodId);
+
+        return $id === 'SEPA_INSTANT' || str_ends_with($id, '-LNURL');
     }
 
     /**
@@ -360,6 +363,12 @@ class WalletConfigIntegrityService
      */
     public static function diff(array $expected, array $actual): array
     {
+        // Older baselines may contain methods excluded from new snapshots.
+        // Filter both sides without replacing the stored wallet baseline.
+        $monitored = fn ($id) => ! self::isIgnoredMethod((string) $id);
+        $expected = array_filter($expected, $monitored, ARRAY_FILTER_USE_KEY);
+        $actual = array_filter($actual, $monitored, ARRAY_FILTER_USE_KEY);
+
         $changed = [];
         foreach ($expected as $id => $hash) {
             if (array_key_exists($id, $actual) && $actual[$id] !== $hash) {

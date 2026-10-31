@@ -1,5 +1,20 @@
 # Development roadmap
 
+## Current: publish reviewed wallet false-alarm repair - 2026-11-01
+
+Verify exact-head CI and review for published
+[PR #413](https://github.com/webiumsk/satflux/pull/413), the independently reviewed
+SEPA activation exclusion from current and historical crypto wallet comparisons. After an approved
+deployment, a successful normal fresh verification can resolve SEPA-only alerts
+without accepting a new baseline. Preserve real crypto differences and history.
+See the [incident record](WALLET_SEPA_DRIFT_INCIDENT.md).
+
+Continue bank-mail diagnosis from the observed `unverified_bank_origin`: inspect
+the active store MIME route and deployed revision, then recover original delivery
+if available. Confirm actual bank signing/layout and provider evidence before
+claiming payment success. Source tests do not establish live interoperability.
+No real transfer, forced-paid operation or production rebaseline is a test step.
+
 ## Next: verify source CI and operational Tatra compatibility - 2026-10-31
 
 Automatic Tatra B-mail source is prepared through Mailgun original MIME, real
