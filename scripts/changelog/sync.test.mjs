@@ -141,6 +141,126 @@ test('a manual publication is acknowledged without another publication transitio
     await run('publish'); assert.equal(client.publishes, 0);
 });
 
+test('CRLF editor bodies acknowledge existing publications and allow later drafts without rewriting either', async () => {
+    const { ledger, client } = fixture();
+    const first = item();
+    const next = fragment({ ...note, id: 'next-fix', source: 'https://github.com/webiumsk/satflux/pull/405' }, 'next-fix.json');
+    const body = first.payload.body.replace(/\n/g, '\r\n');
+    client.rows.push({ ...first.payload, body, id: 'clg_existing', status: 'published' });
+    ledger.state.entries[first.id] = { hash: first.hash, source: first.source, sourceSha: sha,
+        phase: 'created', entryId: 'clg_existing' };
+    const result = await synchronize({ mode: 'draft', sha, entries: [first, next], ledger, client });
+    assert.deepEqual(result, { created: 1, published: 0, unchanged: 2 });
+    assert.equal(client.creates, 1); assert.equal(client.publishes, 0);
+    assert.equal(client.rows[0].body, body);
+    assert.equal(ledger.state.entries[first.id].phase, 'published');
+    assert.equal(ledger.state.entries[first.id].hash, 'f34eb9ad70ef8576f079f24dc20a57244560f2aea67bd08dd2eff4921e1ebd97');
+    assert.equal(ledger.state.entries[next.id].phase, 'created');
+});
+
+test('lost create responses with CRLF bodies reconcile without another POST', async () => {
+    const { ledger, client, run } = fixture(); client.loseCreate = true;
+    await assert.rejects(run(), /lost/);
+    client.rows[0].body = client.rows[0].body.replace(/\n/g, '\r\n');
+    await run(); await run();
+    assert.equal(client.creates, 1); assert.equal(client.publishes, 0);
+    assert.equal(ledger.state.entries['raffle-fix'].phase, 'created');
+    assert.equal(ledger.state.entries['raffle-fix'].hash, item().hash);
+});
+
+test('CRLF uncertain publications reconcile only an already-published result', async () => {
+    const accepted = fixture(); accepted.client.losePublish = true;
+    await assert.rejects(accepted.run('publish'), /lost/);
+    accepted.client.rows[0].body = accepted.client.rows[0].body.replace(/\n/g, '\r\n');
+    await accepted.run('publish');
+    assert.equal(accepted.client.publishes, 1);
+    assert.equal(accepted.ledger.state.entries['raffle-fix'].phase, 'published');
+
+    const unresolved = fixture();
+    unresolved.client.publish = async () => { unresolved.client.publishes++; throw Error('timeout'); };
+    await assert.rejects(unresolved.run('publish'), /timeout/);
+    unresolved.client.rows[0].body = unresolved.client.rows[0].body.replace(/\n/g, '\r\n');
+    await assert.rejects(unresolved.run('publish'), /Uncertain publication/);
+    assert.equal(unresolved.client.publishes, 1);
+    assert.equal(unresolved.ledger.state.entries['raffle-fix'].phase, 'publish_pending');
+});
+
+test('CRLF source fragments round-trip through LF provider bodies without changing raw source hashes', async () => {
+    const { ledger, client } = fixture();
+    const source = { ...note, body: 'First paragraph.\r\n\r\nSecond paragraph.' };
+    const entry = fragment(source, 'raffle-fix.json');
+    const create = client.create.bind(client);
+    client.create = payload => create({ ...payload, body: payload.body.replace(/\r\n/g, '\n') });
+    await synchronize({ mode: 'draft', sha, entries: [entry], ledger, client });
+    assert.equal(ledger.state.entries[entry.id].hash, entry.hash);
+    const editedSource = fragment({ ...source, body: source.body.replace(/\r\n/g, '\n') }, 'raffle-fix.json');
+    assert.notEqual(entry.hash, editedSource.hash);
+    await assert.rejects(synchronize({ mode: 'draft', sha, entries: [editedSource], ledger, client }), /immutable/);
+    assert.equal(client.creates, 1); assert.equal(client.publishes, 0);
+});
+
+test('CRLF create and publication acknowledgements preserve the provider body and publish only once', async () => {
+    const { ledger, client, run } = fixture();
+    const create = client.create.bind(client);
+    client.create = payload => create({ ...payload, body: payload.body.replace(/\n/g, '\r\n') });
+    await run();
+    const body = client.rows[0].body;
+    await run('publish'); await run('publish');
+    assert.equal(client.creates, 1); assert.equal(client.publishes, 1);
+    assert.equal(client.rows[0].body, body);
+    assert.equal(ledger.state.entries['raffle-fix'].hash, item().hash);
+    assert.equal(ledger.state.entries['raffle-fix'].phase, 'published');
+});
+
+test('CRLF equivalence does not accept changed text, whitespace, source or metadata', async t => {
+    const mutations = {
+        text: row => { row.body = row.body.replace('checks', 'ignores'); },
+        title: row => { row.title += ' '; },
+        'bare carriage return': row => { row.body = row.body.replace('\r\n', '\r'); },
+        'extra body space': row => { row.body = row.body.replace('limits.', 'limits. '); },
+        'trailing space': row => { row.body += ' '; },
+        'trailing newline': row => { row.body += '\r\n'; },
+        'different source': row => { row.body = row.body.replace('/404)', '/405)'); },
+        labels: row => { row.labels = ['fix', 'manual']; },
+        'linked posts': row => { row.linkedPostIds = ['post_private']; },
+        audience: row => { row.segmentId = 'segment_private'; },
+    };
+    for (const [name, mutate] of Object.entries(mutations)) {
+        await t.test(name, async () => {
+            const { ledger, client, run } = fixture(); await run();
+            client.rows[0].body = client.rows[0].body.replace(/\n/g, '\r\n');
+            client.rows[0].status = 'published';
+            mutate(client.rows[0]);
+            const saves = ledger.saves;
+            await assert.rejects(run('publish'));
+            assert.equal(client.creates, 1); assert.equal(client.publishes, 0);
+            assert.equal(ledger.saves, saves);
+            assert.equal(ledger.state.entries['raffle-fix'].phase, 'created');
+        });
+    }
+});
+
+test('LF and CRLF copies remain duplicate sources, including uncertain create recovery', async () => {
+    const { ledger, client, run } = fixture(); client.loseCreate = true;
+    await assert.rejects(run(), /lost/);
+    client.rows.push({ ...client.rows[0], id: 'clg_duplicate', body: client.rows[0].body.replace(/\n/g, '\r\n') });
+    await assert.rejects(run(), /Duplicate/);
+    assert.equal(client.creates, 1); assert.equal(client.publishes, 0);
+    assert.equal(ledger.state.entries['raffle-fix'].phase, 'create_pending');
+});
+
+test('label order remains fingerprinted when a remote body uses CRLF', async () => {
+    const { ledger, client } = fixture();
+    const entry = fragment({ ...note, labels: ['fix', 'improvement'] }, 'raffle-fix.json');
+    const run = mode => synchronize({ mode, sha, entries: [entry], ledger, client });
+    await run('draft');
+    client.rows[0].body = client.rows[0].body.replace(/\n/g, '\r\n');
+    client.rows[0].labels.reverse();
+    await assert.rejects(run('publish'), /content or audience changed/);
+    assert.equal(client.creates, 1); assert.equal(client.publishes, 0);
+    assert.equal(ledger.state.entries['raffle-fix'].phase, 'created');
+});
+
 test('immutable fragment mismatch is rejected before provider mutation', async () => {
     const { ledger, client, run } = fixture(); await run();
     ledger.state.entries['raffle-fix'].hash = 'b'.repeat(64);

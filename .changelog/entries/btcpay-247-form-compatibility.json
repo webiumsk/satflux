@@ -1,0 +1,7 @@
+{
+  "id": "btcpay-247-form-compatibility",
+  "source": "https://github.com/webiumsk/satflux/pull/411",
+  "title": "Clearer payment setup and form validation",
+  "body": "Pay Button setup accepts a buyer email to identify the customer on an invoice. Store payment durations and recurring crowdfunding goals validate supported values with guidance for correcting invalid entries. Redirect, custom CSS and payment-sound links require complete HTTP or HTTPS URLs.",
+  "labels": ["improvement"]
+}

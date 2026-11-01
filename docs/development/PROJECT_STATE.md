@@ -1,5 +1,24 @@
 # Project state
 
+## Chorala changelog CRLF recovery independently accepted - 2026-11-02
+
+Public GETs confirm that the configured feed stops at PR #406. The next eight
+Satflux changelog synchronizations failed because the two managed published
+bodies contain CRLF while their immutable source/journal hashes use LF. Other
+fields and source hashes agree. The journal still records two created drafts,
+with no deploymentSha; successful Chorala image CI is a separate pipeline.
+
+The comparison-only CRLF/LF repair preserves raw bodies, hashes, IDs and
+publication guards. Missing notes for merged PRs #411, #413 and combined #415
+bring the inventory to eight. Author and independent QA pass all 71 offline
+cases; QA reproduces baseline failure and fixed two acknowledgements/six drafts,
+zero publication PATCH, plus 11 adverse scenarios. Independent security accepts
+92 cases/310 assertions, including both historical hash goldens. Source syntax,
+fragment schema/source uniqueness and whitespace checks pass. New-head CI remains
+separate. See [incident and recovery evidence](CHORALA_CHANGELOG_RECOVERY.md).
+Original primary edits and retained worktrees are preserved. No production
+mutation, workflow retry, merge, deployment or notification was performed.
+
 ## Exact Platba bank-description compatibility in progress - 2026-11-01
 
 The owner obtained a bank-direct private copy and supplied the fixed public

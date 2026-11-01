@@ -115,6 +115,22 @@ journal. After a lost response or failed acknowledgement:
 - Deleted managed entries are not recreated. Changed text, labels, audience or
   linked posts stop publication; published entries are never reset to drafts.
 
+Remote body comparison treats CRLF pairs and LF as equivalent, including the
+final PR-source link. No other whitespace is ignored: lone carriage returns,
+extra spaces, trailing newlines, text, source, label order, linked posts and
+audience changes still stop synchronization. Comparison does not rewrite remote
+bodies, source fragments or recorded hashes. Existing journal hashes remain the
+raw reviewed source fingerprints, so editing even a fragment's line endings
+still requires reconciliation.
+
+The 2026-11-02 missing-note investigation found stored CRLF bodies
+on the two previously published managed entries. After this comparison repair
+is merged and its master-push CI passes, draft synchronization can acknowledge
+those publications and prepare later reviewed fragments without another POST or
+publication transition for the existing entries. Do not reset the journal or
+republish those rows. Draft synchronization alone does not publish new notes;
+publication still requires the confirmed deployed SHA and production dispatch.
+
 Keep the state branch and its history backed up with the repository. Do not delete
 the branch, clear pending entries or force-push a reset as a retry mechanism.
 For a missing or unresolved result, inspect the intended Chorala project and exact
