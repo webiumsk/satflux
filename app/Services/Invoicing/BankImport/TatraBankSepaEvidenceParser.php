@@ -23,6 +23,24 @@ final class TatraBankSepaEvidenceParser
     /** @return array{e2e: ?string, vs: ?string, identity: string}|null */
     public function parse(string $body): ?array
     {
+        $stage = 'unsupported_content';
+
+        return $this->evaluate($body, $stage);
+    }
+
+    /** First failed validation in the existing strict profile; never parsed values. */
+    public function diagnose(string $body): string
+    {
+        $stage = 'unsupported_content';
+        $this->evaluate($body, $stage);
+
+        return $stage;
+    }
+
+    /** @return array{e2e: ?string, vs: ?string, identity: string}|null */
+    private function evaluate(string $body, string &$stage): ?array
+    {
+        $stage = 'unsupported_content';
         // Never flatten HTML/entities into apparent bank-owned text fields.
         $text = str_replace("\r\n", "\n", $body);
         if (strlen($text) > 65535 || ! mb_check_encoding($text, 'UTF-8')
@@ -32,14 +50,17 @@ final class TatraBankSepaEvidenceParser
         $lines = array_values(array_filter(array_map(
             fn (string $line) => trim($line, ' '), explode("\n", $text),
         ), fn (string $line) => $line !== ''));
+        $stage = 'greeting_or_line_count';
         if (count($lines) < 10 || count($lines) > 16 || $lines[0] !== 'Vazeny klient,') {
             return null;
         }
 
+        $stage = 'credit_header';
         $money = '(?:0|[1-9][0-9]{0,11}|[1-9][0-9]{0,2}(?: [0-9]{3}){1,3}),[0-9]{2}';
         if (preg_match('/\A([0-9]{1,2})\.([0-9]{1,2})\.([0-9]{4}) ([0-9]{1,2}):([0-9]{2}) bol zostatok Vasho uctu ((?:SK|CZ)[0-9]{22}) zvyseny o ('.$money.') EUR\.\z/D', $lines[1], $header) !== 1) {
             return null;
         }
+        $stage = 'credit_datetime';
         [$day, $month, $year, $hour, $minute] = array_map(intval(...), array_slice($header, 1, 5));
         if (! checkdate($month, $day, $year) || $year < 2000 || $hour > 23 || $minute > 59) {
             return null;
@@ -49,12 +70,14 @@ final class TatraBankSepaEvidenceParser
         if ($date === false || $date->format('Y-m-d H:i') !== $timestamp) {
             return null;
         }
+        $stage = 'creditor_or_amount';
         $iban = BankAccountIdentifier::normalize($header[6]);
         $amount = str_replace(' ', '', $header[7]);
         if ($iban === null || $amount === '0,00') {
             return null;
         }
 
+        $stage = 'balances';
         $balances = [];
         foreach (['uctovny zostatok', 'aktualny zostatok', 'disponibilny zostatok'] as $index => $label) {
             if (preg_match('/\A'.$label.': (-?'.$money.') EUR\z/D', $lines[$index + 2], $balance) !== 1) {
@@ -63,9 +86,11 @@ final class TatraBankSepaEvidenceParser
             $canonicalBalance = str_replace(' ', '', $balance[1]);
             $balances[] = $canonicalBalance === '-0,00' ? '0,00' : $canonicalBalance;
         }
-        if (preg_match('/\APopis transakcie: (CCINT|CSO) ([0-9]{4})\/([0-9]{1,6})-([0-9]{1,10})\z/D', $lines[5], $description) !== 1) {
+        $stage = 'transaction_description';
+        if (preg_match('/\APopis transakcie: (CCINT|CSO|Platba) ([0-9]{4})\/([0-9]{1,6})-([0-9]{1,10})\z/D', $lines[5], $description) !== 1) {
             return null;
         }
+        $stage = 'trusted_reference';
         if (preg_match('/\AReferencia platitela: (QR-[0-9a-fA-F]{32}|\/VS[0-9]{1,10}\/SS[0-9]{0,10}\/KS[0-9]{0,10})\z/D', $lines[6], $reference) !== 1) {
             return null;
         }
@@ -78,6 +103,7 @@ final class TatraBankSepaEvidenceParser
             preg_match('/\A\/VS([0-9]{1,10})\//D', $reference[1], $symbol);
             $vs = $symbol[1];
         }
+        $stage = 'tail';
         if (! $this->validTail(array_slice($lines, 7))) {
             return null;
         }
@@ -91,6 +117,8 @@ final class TatraBankSepaEvidenceParser
             $description[1], $description[2],
             ltrim($description[3], '0') ?: '0', ltrim($description[4], '0') ?: '0',
         ], JSON_THROW_ON_ERROR));
+
+        $stage = 'matched';
 
         return ['e2e' => $e2e, 'vs' => $vs, 'identity' => $identity];
     }

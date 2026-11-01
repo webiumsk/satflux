@@ -18,6 +18,7 @@ use Mockery;
 use PHPUnit\Framework\Attributes\TestWith;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
+use Tests\Unit\TatraBankSepaEvidenceDiagnosticsTest;
 
 class BankMimeConfirmationTest extends TestCase
 {
@@ -91,13 +92,102 @@ class BankMimeConfirmationTest extends TestCase
         Queue::assertNothingPushed();
     }
 
-    public function test_invalid_bank_mime_is_review_only_without_provider_calls(): void
+    #[TestWith(['invalid_input'])]
+    #[TestWith(['message_too_large'])]
+    #[TestWith(['invalid_headers'])]
+    #[TestWith(['missing_identity'])]
+    #[TestWith(['unsigned_message'])]
+    #[TestWith(['too_many_signatures'])]
+    #[TestWith(['partial_body_signature'])]
+    #[TestWith(['unsupported_mime'])]
+    #[TestWith(['invalid_mime'])]
+    #[TestWith(['identity_mismatch'])]
+    #[TestWith(['unsupported_sender'])]
+    #[TestWith(['unsupported_content'])]
+    #[TestWith(['invalid_signature'])]
+    #[TestWith(['input_too_large'])]
+    #[TestWith(['invalid_json'])]
+    public function test_invalid_bank_mime_is_review_only_without_provider_calls(string $reason): void
     {
-        $this->stubVerification(['status' => 'invalid', 'reason' => 'signature']);
+        $this->stubVerification(['status' => 'invalid', 'reason' => $reason]);
         $this->postJson('/api/webhooks/bank-inbound.mime', $this->delivery('Synthetic unsigned bank MIME'))
             ->assertOk();
         Http::assertNothingSent();
-        $this->assertSame('unverified_bank_mime', AuditLog::where('action', 'sepa.bmail_review_required')->sole()->metadata['reason']);
+        $this->assertDatabaseCount('bank_transactions', 0);
+        $this->assertSame([
+            'reason' => 'unverified_bank_mime', 'verifier_reason' => $reason,
+        ], AuditLog::where('action', 'sepa.bmail_review_required')->sole()->metadata);
+    }
+
+    #[TestWith([null])]
+    #[TestWith([false])]
+    #[TestWith([42])]
+    #[TestWith([['invalid_signature']])]
+    #[TestWith(['INVALID_SIGNATURE'])]
+    #[TestWith(['invalid_signature '])]
+    #[TestWith(['verified'])]
+    #[TestWith(['dns_unavailable'])]
+    #[TestWith(['verification_timeout'])]
+    #[TestWith(['verification_unavailable'])]
+    #[TestWith(['invalid_utf8'])]
+    public function test_invalid_verifier_reason_has_a_fixed_unknown_diagnostic(mixed $reason): void
+    {
+        $this->stubVerification(['status' => 'invalid', 'reason' => $reason]);
+        $this->postJson('/api/webhooks/bank-inbound.mime', $this->delivery('Synthetic unsigned bank MIME'))->assertOk();
+
+        Http::assertNothingSent();
+        $this->assertSame([
+            'reason' => 'unverified_bank_mime', 'verifier_reason' => 'unknown',
+        ], AuditLog::where('action', 'sepa.bmail_review_required')->sole()->metadata);
+    }
+
+    #[TestWith(['known'])]
+    #[TestWith(['newline'])]
+    #[TestWith(['oversized'])]
+    public function test_rejection_diagnostics_never_copy_private_verifier_output(string $case): void
+    {
+        $privateMarker = 'synthetic-private-mime-signature-recipient-domain-marker';
+        $reason = match ($case) {
+            'known' => 'invalid_signature',
+            'newline' => "invalid_signature\r\n".$privateMarker,
+            'oversized' => str_repeat($privateMarker, 10000),
+        };
+        $this->stubVerification([
+            'status' => 'invalid', 'reason' => $reason,
+            'rawMime' => $privateMarker, 'recipient' => $this->recipient,
+            'signature' => $privateMarker, 'bankDomain' => $privateMarker,
+            'body' => $privateMarker, 'stderr' => $privateMarker,
+        ]);
+        $this->postJson('/api/webhooks/bank-inbound.mime', $this->delivery($privateMarker))->assertOk();
+
+        Http::assertNothingSent();
+        $this->assertDatabaseCount('bank_transactions', 0);
+        $audit = AuditLog::where('action', 'sepa.bmail_review_required')->sole();
+        $this->assertSame([
+            'reason' => 'unverified_bank_mime', 'verifier_reason' => $case === 'known' ? 'invalid_signature' : 'unknown',
+        ], $audit->metadata);
+        $this->assertStringNotContainsString($privateMarker, $audit->toJson());
+        $this->assertStringNotContainsString($this->recipient, $audit->toJson());
+    }
+
+    public function test_store_mime_never_falls_back_to_company_extraction_or_envelope_sender_proof(): void
+    {
+        $mock = Mockery::mock(BankMimeVerificationService::class, [
+            app(BankInboundAddressService::class), app(BankEmailOriginVerifier::class),
+        ])->makePartial()->shouldAllowMockingProtectedMethods();
+        $mock->shouldReceive('verify')->once()->andReturn(['status' => 'invalid']);
+        $mock->shouldNotReceive('extractCompany');
+        $this->app->instance(BankMimeVerificationService::class, $mock);
+
+        $this->postJson('/api/webhooks/bank-inbound.mime', array_merge($this->delivery('Unsigned company-compatible body'), [
+            'sender' => 'bank@tatrabanka.sk', 'mode' => 'company', '_verified_bank_domain' => 'tatrabanka.sk',
+        ]))->assertOk();
+
+        $this->assertDatabaseCount('bank_transactions', 0);
+        Http::assertNothingSent();
+        $this->assertSame([
+            'reason' => 'unverified_bank_mime', 'verifier_reason' => 'unknown',
+        ], AuditLog::where('action', 'sepa.bmail_review_required')->sole()->metadata);
     }
 
     public function test_invalid_utf8_is_review_only_without_starting_the_verifier(): void
@@ -114,19 +204,28 @@ class BankMimeConfirmationTest extends TestCase
             ->assertOk()->assertJsonPath('accepted', true);
 
         Http::assertNothingSent();
-        $this->assertSame('unverified_bank_mime', AuditLog::where('action', 'sepa.bmail_review_required')->sole()->metadata['reason']);
+        $this->assertSame([
+            'reason' => 'unverified_bank_mime', 'verifier_reason' => 'invalid_utf8',
+        ], AuditLog::where('action', 'sepa.bmail_review_required')->sole()->metadata);
     }
 
     #[TestWith(['retryable'])]
     #[TestWith(['broken-process'])]
-    public function test_transient_verification_failure_keeps_ciphertext_for_queue_retry(string $status): void
+    #[TestWith([null])]
+    #[TestWith([false])]
+    #[TestWith([0])]
+    #[TestWith([['invalid']])]
+    #[TestWith(['invalid '])]
+    #[TestWith(['verified '])]
+    public function test_transient_verification_failure_keeps_ciphertext_for_queue_retry(mixed $status): void
     {
-        $this->stubVerification(['status' => $status]);
+        $this->stubVerification(['status' => $status, 'reason' => 'invalid_signature']);
         $payload = [
             'to' => $this->recipient, 'from' => '', 'subject' => '', 'body' => '',
             '_encrypted_bank_mime' => Crypt::encryptString('Synthetic signed MIME'),
         ];
         $job = new ProcessBankNotificationEmail($payload);
+        $auditCount = AuditLog::count();
         try {
             app()->call([$job, 'handle']);
             $this->fail('Transient or malformed verifier results must retry.');
@@ -134,6 +233,7 @@ class BankMimeConfirmationTest extends TestCase
             $this->assertStringContainsString('temporarily unavailable', $e->getMessage());
         }
         $this->assertSame($payload, $job->payload);
+        $this->assertDatabaseCount('audit_logs', $auditCount);
         Http::assertNothingSent();
     }
 
@@ -192,6 +292,97 @@ class BankMimeConfirmationTest extends TestCase
         });
     }
 
+    #[TestWith([false])]
+    #[TestWith([true])]
+    #[TestWith([false, 'QR-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'])]
+    #[TestWith([true, '/VS1234567890/SS/KS'])]
+    public function test_ascii_wire_and_signed_mime_profiles_report_the_same_credit_identity(bool $whitespaceVariant, ?string $platbaReference = null): void
+    {
+        $reports = [];
+        Http::fake([
+            '*/plugins/sepa-instant-qr/settings' => Http::response(['confirmationContractVersion' => 2]),
+            '*/plugins/sepa-instant-qr/payment-requests/report' => function ($request) use (&$reports) {
+                $reports[] = $request->data();
+
+                return Http::response(['outcome' => count($reports) === 1 ? 'settled' : 'duplicate']);
+            },
+        ]);
+        $baseBody = $platbaReference === null ? $this->classicBody()
+            : str_replace("\n", "\r\n", TatraBankSepaEvidenceDiagnosticsTest::platbaBody($platbaReference))."\r\n";
+        $this->withSignedFixture($baseBody, function (string $rawMime) {
+            $this->postJson('/api/webhooks/bank-inbound.mime', $this->delivery($rawMime))->assertOk();
+        });
+        $body = $whitespaceVariant
+            ? str_replace("\r\n", " \t\r\n", str_replace(' ', " \t  ", $baseBody))
+            : $baseBody;
+        $this->withSignedFixture($body, function (string $rawMime) {
+            $this->postJson('/api/webhooks/bank-inbound.mime', $this->delivery($rawMime))->assertOk();
+        }, asciiWire: true);
+        Http::assertSentCount(4);
+        $this->assertCount(2, $reports);
+        foreach (['reference', 'creditorIban', 'amount', 'currency', 'dedupKey', 'bankOriginVerified'] as $field) {
+            $this->assertArrayHasKey($field, $reports[0]);
+            $this->assertSame($reports[0][$field], $reports[1][$field]);
+        }
+        $this->assertTrue($reports[1]['bankOriginVerified']);
+        if ($platbaReference !== null) {
+            $this->assertSame(str_starts_with($platbaReference, 'QR-') ? $platbaReference : '1234567890', $reports[0]['reference']);
+            $this->assertSame('SK4811000000002944116480', $reports[0]['creditorIban']);
+            $this->assertSame(12.5, $reports[0]['amount']);
+            $this->assertSame('EUR', $reports[0]['currency']);
+            $this->assertSame('592726f4848318a1d34384d1f834da3f320de0086a4a68f5a5ddc9e068f1e3f8', $reports[0]['dedupKey']);
+        }
+        $this->assertSame(['settled', 'duplicate'], AuditLog::where('action', 'sepa.bmail_processed')->orderBy('id')->get()->pluck('metadata.outcome')->all());
+        $this->assertSame(0, AuditLog::where('action', 'sepa.bmail_review_required')->count());
+    }
+
+    public function test_unsigned_encoding_header_cannot_select_another_decoding_for_store_confirmation(): void
+    {
+        $this->withSignedFixture($this->classicBody(), function (string $rawMime) {
+            $changed = str_replace('Content-Transfer-Encoding: 7bit', 'Content-Transfer-Encoding: quoted-printable', $rawMime);
+            $this->assertNotSame($rawMime, $changed);
+            $this->postJson('/api/webhooks/bank-inbound.mime', $this->delivery($changed))->assertOk();
+            Http::assertNothingSent();
+            $this->assertSame('invalid_signature', AuditLog::where('action', 'sepa.bmail_review_required')->sole()->metadata['verifier_reason']);
+        }, asciiWire: true);
+    }
+
+    #[TestWith(['base64'])]
+    #[TestWith(['quoted_printable'])]
+    #[TestWith(['nested'])]
+    public function test_authenticated_ascii_wire_cannot_confirm_an_encoded_or_embedded_credit(string $format): void
+    {
+        $body = match ($format) {
+            'base64' => base64_encode($this->classicBody())."\r\n",
+            'quoted_printable' => str_replace('Vazeny', '=56azeny', $this->classicBody()),
+            'nested' => "--synthetic-boundary\r\nContent-Type: text/plain\r\n\r\n".$this->classicBody()."--synthetic-boundary--\r\n",
+        };
+        $this->withSignedFixture($body, function (string $rawMime) {
+            $this->postJson('/api/webhooks/bank-inbound.mime', $this->delivery($rawMime))->assertOk();
+            Http::assertNothingSent();
+            $this->assertDatabaseCount('bank_transactions', 0);
+            $this->assertSame(0, AuditLog::where('action', 'sepa.bmail_processed')->where('metadata->outcome', 'settled')->count());
+        }, asciiWire: true);
+    }
+
+    public function test_unusable_optional_sender_never_blocks_valid_store_bank_proof(): void
+    {
+        $this->withSignedFixture($this->classicBody(), function (string $rawMime) {
+            Http::fake([
+                '*/plugins/sepa-instant-qr/settings' => Http::response(['confirmationContractVersion' => 2]),
+                '*/plugins/sepa-instant-qr/payment-requests/report' => Http::response(['outcome' => 'settled']),
+            ]);
+            $processed = 0;
+            foreach (BankCompanyMimeImportTest::unusableEnvelopeSenders() as [$sender]) {
+                $this->post('/api/webhooks/bank-inbound.mime', array_merge($this->delivery($rawMime), ['sender' => $sender]), ['Accept' => 'application/json'])
+                    ->assertOk()->assertJsonPath('accepted', true);
+                Http::assertSentCount(++$processed * 2);
+            }
+            $this->assertSame($processed, AuditLog::where('action', 'sepa.bmail_processed')->where('target_id', $this->store->id)->count());
+            $this->assertSame(0, AuditLog::where('action', 'sepa.bmail_review_required')->count());
+        });
+    }
+
     public function test_valid_mailgun_delivery_cannot_hide_a_tampered_bank_body(): void
     {
         $this->withSignedFixture($this->classicBody(), function (string $rawMime) {
@@ -199,7 +390,9 @@ class BankMimeConfirmationTest extends TestCase
             $this->assertNotSame($rawMime, $tampered);
             $this->postJson('/api/webhooks/bank-inbound.mime', $this->delivery($tampered))->assertOk();
             Http::assertNothingSent();
-            $this->assertSame('unverified_bank_mime', AuditLog::where('action', 'sepa.bmail_review_required')->sole()->metadata['reason']);
+            $this->assertSame([
+                'reason' => 'unverified_bank_mime', 'verifier_reason' => 'invalid_signature',
+            ], AuditLog::where('action', 'sepa.bmail_review_required')->sole()->metadata);
         });
     }
 
@@ -210,7 +403,11 @@ class BankMimeConfirmationTest extends TestCase
             $this->recipient = app(BankInboundAddressService::class)->buildStoreAddress($otherStore);
             $this->postJson('/api/webhooks/bank-inbound.mime', $this->delivery($rawMime))->assertOk();
             Http::assertNothingSent();
-            $this->assertSame($otherStore->id, AuditLog::where('action', 'sepa.bmail_review_required')->sole()->target_id);
+            $audit = AuditLog::where('action', 'sepa.bmail_review_required')->sole();
+            $this->assertSame($otherStore->id, $audit->target_id);
+            $this->assertSame([
+                'reason' => 'unverified_bank_mime', 'verifier_reason' => 'identity_mismatch',
+            ], $audit->metadata);
         });
     }
 
@@ -226,12 +423,12 @@ class BankMimeConfirmationTest extends TestCase
     }
 
     /** Real production CLI and crypto; only DNS is replaced by a test preload. */
-    private function withSignedFixture(string $body, callable $callback): void
+    private function withSignedFixture(string $body, callable $callback, bool $asciiWire = false): void
     {
         $directory = sys_get_temp_dir().'/satflux-bank-mime-'.bin2hex(random_bytes(8));
         mkdir($directory, 0700);
         try {
-            $producer = new Process(['node', base_path('runtime/bank-mail-verifier/test/build-message.mjs')], base_path(), null,
+            $producer = new Process(['node', base_path('runtime/bank-mail-verifier/test/'.($asciiWire ? 'build-ascii-wire-message.mjs' : 'build-message.mjs'))], base_path(), null,
                 json_encode(['recipient' => $this->recipient, 'body' => $body], JSON_THROW_ON_ERROR), 15);
             $producer->mustRun();
             $fixture = json_decode($producer->getOutput(), true, 16, JSON_THROW_ON_ERROR);
@@ -246,7 +443,13 @@ class BankMimeConfirmationTest extends TestCase
             $preflight = new Process([$directory.'/node', base_path('runtime/bank-mail-verifier/cli.mjs')], base_path(), null,
                 json_encode(['rawMime' => $fixture['rawMime'], 'recipient' => $this->recipient], JSON_THROW_ON_ERROR), 15);
             $this->assertSame(0, $preflight->run(), $preflight->getErrorOutput());
-            $this->assertSame('verified', json_decode($preflight->getOutput(), true)['status']);
+            $verified = json_decode($preflight->getOutput(), true);
+            $this->assertSame('verified', $verified['status']);
+            if ($asciiWire) {
+                $this->assertSame('tatra-ascii-relaxed-v1', $verified['bodyProfile']);
+            } else {
+                $this->assertArrayNotHasKey('bodyProfile', $verified);
+            }
             $callback($fixture['rawMime']);
         } finally {
             foreach (['dns.json', 'node'] as $file) {

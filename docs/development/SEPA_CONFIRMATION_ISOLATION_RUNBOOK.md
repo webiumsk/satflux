@@ -42,56 +42,194 @@ returns false and one that throws. Never reset a real account cursor for testing
 
 ## Trusted bank-mail ingress
 
-Tatra automatic confirmation uses Mailgun original-MIME delivery. After operator
-deployment approval, configure separate, non-overlapping recipient routes:
+Tatra automatic confirmation uses Mailgun original-MIME delivery. The compatible
+consumer can share one MIME destination between store SEPA addresses and company
+bank-import addresses. This supports the one-inbound-route limit on Mailgun Free;
+check the actual account plan and region rather than assuming another route can
+be created.
 
-| Recipient | Destination | Route action |
-| --- | --- | --- |
-| Store SEPA addresses (default prefix `ps`) | `https://<your-app>/api/webhooks/bank-inbound.mime` | Forward original MIME, then `stop()` |
-| Company bank-import addresses (default prefix `pay`) | `https://<your-app>/api/webhooks/bank-inbound` | Keep parsed delivery, then `stop()` |
-
-With the default domain/prefixes, use these distinct Mailgun recipient expressions;
-adapt them to the actual configured domain/prefixes before applying:
+After compatible consumer deployment and worker reload approval, edit the existing
+route in the domain's receiving region. Preserve its intended recipient scope and
+other unrelated routes. With the default domain/prefixes, a single combined rule is:
 
 ```text
-match_recipient("^ps[a-z0-9]{8,16}@payments[.]satflux[.]io$")
-match_recipient("^pay[a-z0-9]{8,16}@payments[.]satflux[.]io$")
+match_recipient("^(?:ps|pay)[a-z0-9]{8,16}@payments[.]satflux[.]io$")
+forward("https://<your-app>/api/webhooks/bank-inbound.mime")
+stop()
 ```
 
-Do not redirect a shared catch-all to the MIME endpoint: it accepts only store
-addresses and rejects companies during processing, which would stop their bank
-imports after intake acknowledgement. Narrow existing catch-alls or put the
-dedicated routes first with `stop()` so no duplicate/different-format delivery
-continues through another route. The `.mime` suffix requests `body-mime`;
-the company route must keep its parsed destination. Parsed delivery does not
-establish bank origin for SEPA. No route or bank setting is changed by source
-preparation.
+Adapt the domain and prefixes to actual configuration. An existing domain-wide
+recipient rule may also keep its scope and use this same MIME destination; unknown
+recipients are rejected by server-owned address resolution. No additional Mailgun
+storage action is required. Do not add a second destination for the same message
+or infer payment from an intake acknowledgement.
+
+The server selects policy using the persisted recipient owner:
+
+| Recipient | Processing policy |
+| --- | --- |
+| Store SEPA address (default `ps`) | Existing strict Tatra bank signature and transaction-evidence verification |
+| Company import address (default `pay`) | Separate bounded legacy MIME extraction into existing Tatra/SLSP importing and local matching; no SEPA bank-origin proof |
+
+The optional Mailgun envelope sender is encrypted and retains precedence for
+company importing; forwarded-message detection remains active. Company MIME can
+contain supported multipart/charset formats. It does not relax the store's UTF-8,
+single plain-text, signature or recipient-binding requirements. Unknown owners,
+owner changes and invalid store proof cannot choose the company policy.
+
+Older consumers reject company MIME. Therefore do not switch a shared route until
+all web and queue workers support this contract. Existing parsed company/native
+receivers remain compatible; two separate routes may still be used on other plans
+but are not required. Roll back route/worker configuration together and account for
+pending encrypted jobs before downgrading. No route, bank setting or deployment is
+changed by preparing this source. See [the design and evidence](BANK_MAIL_SINGLE_ROUTE.md).
 
 Install the isolated locked runtime dependencies with
 `npm ci --prefix runtime/bank-mail-verifier --ignore-scripts` in the deployed
-checkout. Node22 already exists in the PHP image. The PHP queue worker launches
+checkout. The PHP Dockerfile installs Node22. After rebuilding/reloading, inspect
+the effective Laravel `bank_inbound.node_binary` configuration in each worker,
+including any `BANK_MAIL_NODE_BINARY` override and cached configuration. Run that
+selected executable with `--version`; an unqualified `node --version` can report
+a different binary. The PHP queue worker launches
 the local verifier over argv/stdin; there is no new network service. Configure
 `BANK_MAIL_NODE_BINARY` only when Node is not available on the worker PATH.
 
 Intake verifies the existing Mailgun token/timestamp HMAC and replay cache. It
 preserves original MIME bytes (including CRLFs), limits them to 256KiB and encrypts
-them before queueing. Keep the app encryption key with queue recovery backups.
-Failed jobs retain ciphertext and sanitized errors, never raw mail. The verifier
+them before queueing. The same raw bound applies to companies; decoded text is
+limited to 65,535 bytes, so attachment-heavy or oversized legacy messages may need
+manual import rather than silently exceeding the supported profile. Keep the app encryption key with queue recovery backups.
+Failed jobs retain ciphertext and sanitized errors, never raw mail. For store recipients, the verifier
 independently verifies an aligned Tatra DKIM signature over the complete body,
-signed From/To/Subject and MIME controls. Its signed recipient must match the
+signed From/To/Subject. MIME interpretation uses fully signed controls or the
+separately bounded [ASCII wire-body profile](TATRA_ASCII_WIRE_PROFILE.md), which
+returns only fixed relaxed canonical text bound to the same proof's hashes and
+lengths. Unsigned MIME fields cannot select decoding. Its signed recipient must match the
 store address. Sender-supplied authentication headers, partial-body signatures,
 ambiguous MIME, HTML and missing proof cannot authorize payment. Temporary DNS or
 process errors retry through the existing bounded queue backoff.
 
+The ASCII fallback admits only the observed plain UTF-8/7bit/MIME1.0 and
+relaxed/relaxed combination, with raw/canonical body each at most65,535 bytes and
+wire lines at most998 bytes. Other formats do not enter that fallback. The legacy
+fully signed MIME profile keeps its precedence and behavior.
+
+### Diagnose an acknowledged but unconfirmed bank message
+
+`sepa.bmail_review_required` with `incomplete_credit_evidence` is downstream of
+the sender/origin check: at least one credit was parsed, but no credit satisfies
+all five existing evidence predicates. It returns before provider settings or
+payment reporting. An absent `verifier_reason` is expected on this path and does
+not identify a DKIM error or the particular missing field.
+
+The metadata-only follow-up adds nested `credit_evidence` to this audit only.
+It contains capped eligibility booleans and a fixed first-failing Tatra profile
+stage, never bank values or message content. Profile identity is informational;
+all eligibility and reporting rules remain unchanged. See the
+[diagnostic contract](SEPA_CREDIT_EVIDENCE_DIAGNOSTICS.md).
+Old audit entries cannot acquire these facts retrospectively. Store mail rows
+and successful completed-job original content are not retained in the company
+transaction database. The optional MIME capture only handles its approved
+signature-rejection trigger; it does not capture incomplete credit evidence.
+Use a later normal bank notification to obtain current facts after compatible
+workers are deployed. Do not request another transfer, replay a financial job or
+assume a missing QR reference from this general reason.
+
+After compatible worker deployment, inspect a later normal notification with
+this read-only projection inside the actual queue container. Enter only the
+selected local Store UUID on the server; do not send it to chat. Both the Store
+and incomplete-credit reason are filtered server-side so another merchant's
+latest audit cannot be mistaken for this incident. Existing earlier entries
+still return null diagnostic metadata; no new transfer is required.
+
+```sh
+read -r -p 'Local Store UUID (kept on server): ' bank_diag_store
+docker exec -i -e BANK_DIAGNOSTIC_STORE="$bank_diag_store" -w /var/www satflux_queue_standalone php -d display_errors=0 -d log_errors=0 <<'PHP'
+<?php
+try {
+    require 'vendor/autoload.php';
+    $app = require 'bootstrap/app.php';
+    $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+    $store = getenv('BANK_DIAGNOSTIC_STORE');
+    if (! is_string($store) || ! Illuminate\Support\Str::isUuid($store)
+        || ! App\Models\Store::query()->whereKey($store)->exists()) {
+        echo '{"status":"invalid_store"}', PHP_EOL;
+        exit;
+    }
+    $rows = App\Models\AuditLog::query()
+        ->where('target_type', 'store')->where('target_id', $store)
+        ->where('action', 'sepa.bmail_review_required')
+        ->where('metadata->reason', 'incomplete_credit_evidence')
+        ->orderByDesc('id')->limit(3)->get(['created_at', 'metadata'])
+        ->map(fn ($row) => [
+            'time_utc' => $row->created_at->utc()->format('Y-m-d H:i:s'),
+            'reason' => $row->metadata['reason'] ?? null,
+            'credit_evidence' => $row->metadata['credit_evidence'] ?? null,
+        ]);
+    echo json_encode($rows, JSON_PRETTY_PRINT), PHP_EOL;
+} catch (Throwable) {
+    echo '{"status":"diagnostic_unavailable"}', PHP_EOL;
+}
+PHP
+unset bank_diag_store
+```
+
+Mailgun Delivered/HTTP200 acknowledges intake, not bank proof or settlement. Inspect
+the `webhooks` queue and the audit actions `sepa.bmail_review_required`,
+`sepa.bmail_processed` and `bank_inbound.mime_rejected` in the actual deployment.
+Convert event times to the configured application timezone before correlating
+them. Container health alone does not prove queue consumption.
+
+Store MIME rejection keeps the compatibility reason `unverified_bank_mime` and
+adds an allowlisted `verifier_reason`. This distinguishes unsupported MIME,
+missing/invalid signatures, identity/header problems and pre-verifier invalid
+UTF-8. Unknown or malformed child reasons become a fixed `unknown` value; never
+copy arbitrary verifier output or bank contents into diagnostics. Temporary
+verification failures retain the existing retry path rather than producing a
+permanent-rejection diagnostic. Company policy is unchanged.
+
+Older audit rows contain only the broad reason. A handled rejection does not
+retain the original MIME in the consumed job, and new diagnostics cannot recover
+its lost reason. Preserve any privately available original bank EML; do not
+reconstruct signed content, replay a payment or require another real transfer
+just to diagnose it. An empty queue or audit result cannot establish settlement:
+unsupported transaction layouts can also produce no parsed credit rows.
+
+For a retained unexpired capture, `bank-mail:capture-diagnose` reports safe
+`body_profile` and `transaction_profile` fields. A matched transaction profile
+only confirms the strict frame shape on the verified recheck body. The command
+does not import/report a payment or change the original capture/deadline. Existing
+captures remain readable after this compatible update; expired data is not restored.
+
+### Supported transaction profile
+
 The initial profile is one UTF-8/ASCII text/plain part and the documented classic
 Tatra numeric prefix: greeting, valid date/time and receiving account, positive
-EUR credit, three balances, constrained CCINT/CSO account description, then the
+EUR credit, three balances, constrained CCINT/CSO/Platba account description, then the
 QR/E2E or structured VS reference before free recipient/name text. Required
 fields cannot be skipped or reordered. Duplicate/reserved labels, markup and
 unknown layouts require review. Public historical examples establish this
-bounded profile; the synthetic QR fixture is not proof of actual current Tatra
-rendering. No current original EML is available for interoperability qualification.
-SLSP remains review-only. Generic company bank importing and FIO/NOP are unchanged.
+original CCINT/CSO framing. A later owner-provided private-copy structure identifies
+the exact Platba label, QR reference shape and already-supported tail labels;
+see [the bounded profile](TATRA_PLATBA_PROFILE.md). No raw bank EML or actual
+settlement was supplied to agents, and synthetic fixtures do not prove installed
+host interoperability or bank latency.
+Store SEPA confirmation via SLSP remains review-only. Existing company importing/matching and FIO/NOP policies are unchanged; company
+MIME extraction is a separate transport adapter, not automatic SEPA proof.
+Company extraction is qualified by synthetic UTF-8/ASCII, Windows-1250 and
+ISO-8859-2 examples, with bounded supported legacy root charsets. Nested encoding
+handling follows the locked mailparser behavior; it is not independent bank
+verification or a guarantee that every malformed MIME is rejected. An unusable
+optional envelope sender is ignored so it cannot veto a valid store message;
+company importing then uses MIME From. Usable envelope metadata keeps precedence.
+
+Company compact-date parsing and deduplication remain unchanged. Compact Tatra
+messages with date-only or missing dates retain the processing-time component,
+so retries across processing seconds may create additional rows. This repair does
+not normalize them to midnight, invent a bank event ID or silently merge distinct
+same-day compact credits. Native/MIME retry qualification uses a classic message
+with an explicit bank timestamp. Review compact cases manually; broader event
+identity/reconciliation design is separate from the one-route adapter.
 
 Credit dedup uses a versioned canonical fingerprint of receiving account, bank
 booking minute, amount/currency, all balances and bank transaction description.
@@ -100,6 +238,22 @@ bank-issued unique ID: indistinguishable legitimate credits can collide, so they
 must not be counted twice automatically. Provider dedup remains store/source/
 account scoped; a repeated key cannot prove that a second invoice was paid.
 Review outstanding intent and old confirmation history before rollout.
+
+After compatible deployment, a later normal supported notification may reach
+`sepa.bmail_processed`. Inspect its `reported` count and `outcome` for the selected
+Store; HTTP acknowledgement or a parser match is insufficient. The earlier
+incomplete-evidence-only operator query intentionally excludes successful
+processing: include both `sepa.bmail_processed` and `sepa.bmail_review_required`
+when checking this repair, retaining server-side Store/type filters and bounded
+safe field projection. No old completed notification is automatically replayed.
+
+The description label remains part of the existing v1 tuple; do not equate the
+three labels or rewrite old keys. The qualified provider additionally locks the
+globally keyed reference and rejects a confirmed request before event-key matching;
+recording uses that same reference as payment ID. A label-only redelivery with
+the same authenticated reference therefore cannot record again. Different-bank-
+reference renditions of one economic credit remain an informational bank-reference
+stability assumption, not a demonstrated new vulnerability or an alias guarantee.
 
 Existing authenticated native receiving-MTA adapters may continue submitting the
 optional complete `bank_authentication` object (`dkim_result`, `dkim_domain`,

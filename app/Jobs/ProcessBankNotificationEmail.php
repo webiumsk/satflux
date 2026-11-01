@@ -26,7 +26,7 @@ class ProcessBankNotificationEmail implements ShouldQueue
     }
 
     /**
-     * @param  array{to: string, from: string, subject: string, body: string, headers?: string, _verified_bank_domain?: ?string, _encrypted_bank_mime?: string}  $payload
+     * @param  array{to: string, from: string, subject: string, body: string, headers?: string, _verified_bank_domain?: ?string, _encrypted_bank_mime?: string, _encrypted_bank_envelope_sender?: string}  $payload
      */
     public function __construct(
         public array $payload,
@@ -53,11 +53,13 @@ class ProcessBankNotificationEmail implements ShouldQueue
         try {
             // Keep ciphertext on the job: retries and failed_jobs must never
             // serialize the original bank message or a decrypted payload.
-            $payload = isset($this->payload['_encrypted_bank_mime'])
-                ? $mimeVerifier->verifiedPayload($this->payload)
-                : $this->payload;
-            if ($payload !== null) {
-                $service->handle($payload);
+            if (isset($this->payload['_encrypted_bank_mime'])) {
+                $prepared = $mimeVerifier->preparePayload($this->payload);
+                if ($prepared !== null) {
+                    $service->handle($prepared->payload, $prepared->owner, privateMime: true);
+                }
+            } else {
+                $service->handle($this->payload);
             }
         } catch (\Throwable $e) {
             Log::error('Bank inbound email processing failed', isset($this->payload['_encrypted_bank_mime']) ? [

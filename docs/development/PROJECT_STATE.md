@@ -1,5 +1,132 @@
 # Project state
 
+## Exact Platba bank-description compatibility in progress - 2026-11-01
+
+The owner obtained a bank-direct private copy and supplied the fixed public
+operation label Platba with the existing numeric-description structure and a
+QR reference of 32 hexadecimal characters. The tail has only already-supported
+counterparty/signature/URL/notice labels. Actual accounts, references, amounts,
+dates and personal values are excluded from source, fixtures and reports.
+
+Implement only the exact third description alternative Platba, retaining all
+existing full-frame, numeric, reference, bank-proof and provider guards. Old
+CCINT/CSO output and fingerprint goldens must remain byte-identical; Platba keeps
+its own literal in the unchanged v1 tuple, without aliasing to another type.
+Backend owns the parser and bounded existing unit/native/MIME tests. Independent
+QA/security accept the frozen four-file scope without findings. Author passes
+159 tests/719 assertions and scoped Pint; QA passes 338 bank tests/1904 assertions,
+three private ingress tests/17 assertions and 39 pure profile checks. Qualified
+provider replay checks pass three existing shipped tests and four private cases/
+22 assertions against the actual unchanged DLL. Security passes 81 targeted tests/
+346 assertions and 839 independent checks. Main full PHPStan/API checks, source
+hashes and 20 unchanged boundary hashes pass. Main owns publication and current
+exact-head CI/review remains required; all isolated test databases are stopped.
+
+Provider e8d7fbc read-only evidence resolves the initial label-only replay concern:
+reference is a globally unique immutable invoice/Store key; row lock and confirmed
+request check precede event-key processing; recorder ID is the same reference.
+The same signed reference cannot settle twice merely because the label changes.
+A cross-invoice rendition also needs the bank to authenticate a different valid
+reference for one credit, which is unestablished. Independent security classifies
+that as an informational baseline bank-reference-stability assumption, not a
+verified new vulnerability. Contract-v3/alias-table work is unnecessary and not
+implemented; provider, package and database remain unchanged. See the profile
+contract in the feature worktree. Actual settlement remains a runtime gate.
+
+## Authenticated bank mail reaches incomplete-credit review - 2026-11-01
+
+The owner independently made a new real payment and reports a 20:15:06 UTC audit:
+sepa.bmail_review_required / incomplete_credit_evidence, no verifier_reason. At
+reviewed source 12f83c11 this branch proves parsed credits and the sender/origin
+gate passed, but none satisfies all five existing evidence predicates. It returns
+before API-key/settings lookup or payment reporting. The audit alone does not
+identify the MIME body profile or exact failed condition; deployment SHA remains
+unverified. The owner confirms only Mailgun logs exist for this new message.
+The empty earlier capture and completed job cannot reconstruct the credit frame.
+
+A metadata-only follow-up is in progress on the existing scoped repair branch.
+It adds bounded fixed eligibility booleans and a pure first-failing Tatra profile
+stage, sharing the exact existing parser validation. No bank values, new raw
+retention, eligibility change, capture extension or financial replay is accepted.
+Backend implementation passes 146 PHP tests/526 assertions and scoped Pint.
+Independent QA passes 315 repository tests/1774 assertions, 24 private tests/233
+assertions, 359 baseline checks across 116 cases and the operator-query test/15
+assertions. Security accepts the frozen
+four files with 59 tests/224 assertions and 450 baseline checks across 90 inputs.
+Main full PHPStan, API export/check, 19 preserved-file hashes and diff checks pass.
+No unresolved source finding remains; corrected operator projection selects one
+Store and the incomplete-credit reason. Fresh exact-head CI/review remains a
+publication gate. See the diagnostic contract and review artifact. Do not request another real transfer; new diagnostics cannot backfill
+this historical audit. Graph lacks current parser/capture edges; targeted reads
+were used without a rebuild. Prior published checks remain historical evidence.
+
+## Tatra ASCII wire-body repair independently accepted - 2026-11-01
+
+Owner-run capture facts isolate the current rejection to unsigned MIME controls
+despite passing bank DKIM/core headers/full-body proof. A separate format probe
+reports plain UTF-8/7bit ASCII, no controls and relaxed/relaxed. No private bank
+body/values were received by agents. The new narrow profile binds one fixed
+canonical ASCII body to the same proof's hashes/lengths rather than allowing
+unsigned MIME decoding. Legacy fully signed proof takes precedence unchanged.
+
+Based on 406e1fef, the candidate passes 91 PHP tests/991 assertions and 77 Node
+tests. Independent QA passes 256 PHP tests/1550 assertions, 19 private tests/197
+assertions and 666 projection checks. Security passes 91 PHP tests/991 assertions,
+6011 helper checks and 38 crypto checks. PHPStan/Pint/API checks pass; nine source
+files and 18 preserved-file hashes
+manifests are in the [review artifact](artifacts/tatra-ascii-wire-2026-11-01/README.md).
+Safe pure outer body/frame diagnostics preserve the original v1 capture and TTL;
+they do not import/report/replay a payment. No parser/dedup/provider/history change.
+
+Publish the follow-up on the existing PR #415 branch, then verify fresh exact-head
+CI/CodeRabbit before owner rollout. A compatible read-only recheck can qualify
+the actual retained transaction frame if unexpired. Actual settlement remains
+unverified; no new transfer, merge or production action is performed by this work.
+
+## Approved private bank MIME capture ready for CI - 2026-11-01
+
+Owner-approved proposal ba1177a5 is implemented default-off on the separate
+feat/bank-mime-private-capture branch, based on037a6fa7/PR414. One encrypted
+Redis7 slot is explicitly armed for one local Store and an absolute two-hour
+deadline; only an existing matching unexpired ARMED slot can become CAPTURED.
+Missing/evicted state cannot re-arm, expiry cannot extend and safe operator
+diagnostics cannot import/report/replay a payment. Strict bank proof is unchanged.
+
+Independent QA243/1267 plus private15/285 and Node56 pass; security54/475 plus
+36 private Node assertions accepts the frozen15-file manifest without findings.
+Author128/917, Node56, PHPStan/Pint and main API/hash checks pass. CI includes a
+disposable Redis fixture for real concurrency/expiry checks. See the [review
+evidence](artifacts/bank-mime-capture-implementation-2026-11-01/README.md).
+
+Fresh exact-head CI remains required. No production activation/deployment or
+real bank capture occurred; actual Tatra qualification and the historical
+payment remain unresolved. Existing backup retention applies to encrypted
+residuals. The unrelated primary checkout and prior branch remain preserved.
+
+## PR414 review follow-up: one-route bank-mail compatibility - 2026-11-01
+
+The owner confirms Mailgun Free, permitting one inbound route. PR414 at initial
+`12e00fa4` passed all remote CI, including Node22, but CodeRabbit identified three
+valid follow-ups. The revised receiver ignores unusable optional sender metadata,
+checks the configured Node executable in rollout instructions, and withdraws the
+optional compact-date normalization that could suppress distinct same-day credits.
+Parser/unit/dedupe/importer bytes match merged base `c90caa40`; legacy compact
+processing-time/retry ambiguity remains documented rather than changing policy.
+
+Shared MIME intake keeps server-selected Store strict verification separate from
+Company extraction, encrypted metadata and final owner binding. Author follow-up
+passes 155 PHP / 623 assertions, independent QA 162 / 677 (including 7 private
+controls), and security 50 / 334 (including 10 private controls). Runtime 42 cases
+and 12 probes previously passed at unchanged bytes. Pint, full PHPStan, API/OpenAPI,
+locale parity and hash checks pass. See [final review evidence](artifacts/bank-mail-single-route-review-2026-11-01/README.md).
+
+The isolated `fix/bank-mail-single-route` worktree preserves unrelated primary
+changes. PR414 is temporarily draft pending revised-head publication/CI. No
+provider/package/dependency/plan/billing/UI change, merge or deployment. Deploy
+compatible web/queue workers before switching the one EU route to `.mime`.
+Original EML retrieval returned404 on both endpoints; current bank signing/layout
+and the existing payment remain unverified. No additional real transfer is a test.
+
 ## Wallet drift hotfix reviewed; bank-origin incident open - 2026-11-01
 
 GitHub confirms consumer PR412 merged at `9c329264` and provider PR45 at

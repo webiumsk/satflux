@@ -8,6 +8,7 @@ use App\Models\Store;
 use App\Models\User;
 use App\Services\BtcPay\SepaService;
 use App\Services\Invoicing\BankEmailOriginVerifier;
+use App\Services\Invoicing\BankImport\TatraBankSepaEvidenceParser;
 use App\Support\Invoicing\BankAccountIdentifier;
 use App\Support\Invoicing\ParsedBankTransaction;
 use Illuminate\Support\Facades\Log;
@@ -54,7 +55,14 @@ class SepaEmailConfirmationService
             && BankAccountIdentifier::normalize($row->recipientIban) !== null
             && $this->referenceCandidates($row) !== []);
         if ($eligible === []) {
-            return $this->review($store, 'incomplete_credit_evidence');
+            try {
+                $diagnostics = $this->creditEvidenceDiagnostics($payload, $credits);
+            } catch (\Throwable) {
+                // Diagnostics must never replace the original review outcome or retain exception text.
+                $diagnostics = ['version' => 1, 'status' => 'unavailable'];
+            }
+
+            return $this->review($store, 'incomplete_credit_evidence', $diagnostics);
         }
 
         /** @var User $owner */
@@ -153,16 +161,47 @@ class SepaEmailConfirmationService
         return [];
     }
 
+    /** @param list<ParsedBankTransaction> $credits */
+    protected function creditEvidenceDiagnostics(array $payload, array $credits): array
+    {
+        $eligibility = [];
+        foreach (array_slice($credits, 0, 3) as $row) {
+            $eligibility[] = [
+                'explicit_credit' => $row->isExplicitCredit,
+                'explicit_currency' => $row->hasExplicitCurrency,
+                'unambiguous_reference' => ! $row->isReferenceAmbiguous,
+                'valid_receiving_account' => BankAccountIdentifier::normalize($row->recipientIban) !== null,
+                'trusted_reference' => $this->referenceCandidates($row) !== [],
+                // Presence is informational and never an additional eligibility requirement.
+                'strict_profile_identity' => $row->sepaCreditIdentity !== null,
+            ];
+        }
+        $stage = 'not_evaluated';
+        if (is_string($payload['_verified_bank_domain'] ?? null) && is_string($payload['from'] ?? null)
+            && $this->originVerifier->matchesSender($payload['_verified_bank_domain'], $payload['from'])
+            && $this->originVerifier->matchesSender('tatrabanka.sk', $payload['from'])
+            && is_string($payload['body'] ?? null) && strlen($payload['body']) <= 65535) {
+            $stage = (new TatraBankSepaEvidenceParser)->diagnose($payload['body']);
+        }
+
+        return [
+            'version' => 1, 'credit_count' => min(count($credits), 3), 'truncated' => count($credits) > 3,
+            'eligibility' => $eligibility, 'tatra_profile_stage' => $stage,
+        ];
+    }
+
     /** @return array{store_id: string, reported: int, outcome: string} */
-    private function review(Store $store, string $reason): array
+    private function review(Store $store, string $reason, ?array $creditEvidence = null): array
     {
         Log::notice('SEPA b-mail requires manual verification', [
             'store_id' => $store->id,
             'reason' => $reason,
         ]);
-        AuditLog::log('sepa.bmail_review_required', 'store', $store->id, [
-            'reason' => $reason,
-        ], $store->user_id);
+        $metadata = ['reason' => $reason];
+        if ($reason === 'incomplete_credit_evidence' && $creditEvidence !== null) {
+            $metadata['credit_evidence'] = $creditEvidence;
+        }
+        AuditLog::log('sepa.bmail_review_required', 'store', $store->id, $metadata, $store->user_id);
 
         return ['store_id' => $store->id, 'reported' => 0, 'outcome' => 'review'];
     }

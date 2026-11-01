@@ -35,7 +35,7 @@ class BankInboundEmailService
      * @param  array{to: string, from: string, subject: string, body: string, headers?: string, _verified_bank_domain?: ?string}  $payload
      * @return array{company_id: string, imported: int, auto_matched: int}|array{store_id: string, reported: int, outcome: string|null}
      */
-    public function handle(array $payload): array
+    public function handle(array $payload, Company|Store|null $expectedOwner = null, bool $privateMime = false): array
     {
         if (! config('bank_inbound.enabled', false)) {
             throw ValidationException::withMessages([
@@ -50,6 +50,9 @@ class BankInboundEmailService
         }
 
         $owner = $this->addressService->resolveOwner($payload['to']);
+        if ($expectedOwner !== null && (get_class($owner) !== get_class($expectedOwner) || $owner->getKey() !== $expectedOwner->getKey())) {
+            throw ValidationException::withMessages(['to' => ['Bank inbound recipient ownership changed.']]);
+        }
         $rows = $this->parseBody($payload['from'], $payload['subject'], $payload['body']);
 
         // Store-scoped address: SEPA payment confirmation channel - the
@@ -62,11 +65,12 @@ class BankInboundEmailService
         $company = $owner;
 
         if ($rows === []) {
-            Log::warning('Bank inbound: no transactions parsed', [
+            Log::warning('Bank inbound: no transactions parsed', array_merge([
                 'company_id' => $company->id,
+            ], $privateMime ? [] : [
                 'from' => $payload['from'],
                 'subject' => $payload['subject'],
-            ]);
+            ]));
 
             return ['company_id' => $company->id, 'imported' => 0, 'auto_matched' => 0];
         }

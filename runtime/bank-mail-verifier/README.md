@@ -1,12 +1,14 @@
-# Bank-mail MIME verifier
+# Bank-mail MIME runtime
 
-Repository-local Node22 runtime used by the Laravel bank-mail worker. It verifies
-original Mailgun `body-mime` bytes independently of Mailgun's parsed body or
-untrusted authentication-result headers. It does not parse transaction fields or
-mark invoices paid. The PHP caller owns delivery authentication, private encrypted
-queue persistence, the strict transaction parser, event identity and reporting.
+Repository-local Node22 runtime used by the Laravel bank-mail worker. Store
+verification checks original Mailgun `body-mime` bytes independently of parsed
+bodies or untrusted authentication-result headers. A separate company extractor
+supports the existing importer through the same one-route MIME destination.
+Neither entrypoint parses transaction fields or marks invoices paid. The PHP
+caller owns delivery authentication, encrypted jobs, recipient-owner policy,
+transaction parsing, event identity and reporting.
 
-## Runtime contract
+## Strict Store verification contract
 
 Install the nested lock with `npm ci --omit=dev --ignore-scripts` from this directory.
 There is no global command, HTTP listener, new MTA or root frontend dependency.
@@ -25,7 +27,15 @@ or unauthenticated content requiring review. Retryable means verification or DNS
 was temporarily unavailable; preserve queue retry rather than confirming payment.
 Only verified output contains decoded message data.
 
-Initial profile and coverage constraints:
+PHP retains the stable invalid reason in the Store audit's `verifier_reason`
+metadata through a fixed allowlist, alongside the existing broad
+`reason: unverified_bank_mime`. Unknown or malformed reasons become `unknown`;
+invalid raw UTF-8 is diagnosed as `invalid_utf8` before invoking Node. No decoded
+content, arbitrary child output or exception text is copied to the audit.
+Retryable results still follow queue retry and never authorize payment. This
+diagnostic does not change the supported profile or recover older rejected mail.
+
+Common proof constraints and the legacy fully signed MIME profile:
 
 - Tatra banka domain or a subdomain, a unique From mailbox and unique matching
   To mailbox. Both are signed. The recipient must equal the envelope recipient.
@@ -33,8 +43,8 @@ Initial profile and coverage constraints:
   keys must meet its explicit 1024-bit RFC minimum; Ed25519-SHA256 is also allowed.
   Expired/future constraints fail; missing optional `t=` is not rejected by itself.
 - No body-length-limited `l=` signatures. Full canonical body length must match
-  the length hashed. Present Content-Type, Content-Transfer-Encoding and
-  MIME-Version controls must be signed. Subject is signed as an initial profile
+  the length hashed. In the legacy decoded-MIME profile, present Content-Type,
+  Content-Transfer-Encoding and MIME-Version controls must be signed. Subject is signed as an initial profile
   constraint, not a claim that it independently proves a credit.
 - One explicit `text/plain` part, UTF-8 or US-ASCII, no attachments, HTML,
   multipart alternatives or unqualified charsets. CRLF wire syntax, bounded
@@ -48,12 +58,68 @@ Initial profile and coverage constraints:
   has a two-second deadline, the total DNS budget is ten seconds and the CLI
   exits with a typed timeout after thirteen seconds.
 
+### Fixed ASCII wire-body profile
+
+When no legacy fully signed MIME proof exists, the verifier can admit the
+operator-observed Tatra plain UTF-8/7bit/MIME1.0 profile with unsigned MIME controls.
+It derives one fixed relaxed canonical ASCII body, independently of MIME decoding,
+and binds its SHA256 and exact byte length to both hashes and both body lengths
+of the same passing relaxed/relaxed bank proof. From/To/Subject and all other
+common proof requirements remain mandatory. Header labels may reject admission
+but cannot select a different decoder or output.
+
+Raw and canonical body are each bounded to65,535 bytes, physical wire lines to998
+bytes, and only printable ASCII, SP/HTAB and CRLF are admitted. Whitespace token
+boundaries remain intact. No quoted-printable/base64, HTML, multipart or charset
+conversion occurs in this profile. The existing strict complete-credit parser
+still decides whether authenticated text is usable for SEPA reporting.
+
+Successful fallback output adds only the fixed internal
+`bodyProfile: tatra-ascii-relaxed-v1`; legacy success shape/body remain unchanged.
+Diagnostics keep their version1 schema but mark only From/To/Subject as requiring
+signature binding for this selected profile. The retained original summary is
+not rewritten. The operator's outer `body_profile` identifies the body profile;
+`transaction_profile` is only matched/unsupported/not_evaluated structural
+compatibility, never account ownership, provider acceptance or settlement.
+
+See [the exact contract](../../docs/development/TATRA_ASCII_WIRE_PROFILE.md).
+
 Multiple bounded signatures are allowed when an eligible bank proof passes.
 Forged Authentication-Results and X-Mailgun Pass headers never establish trust.
 DNS absence is invalid; temporary DNS failure is retryable. No debug/raw error is
 returned. The production CLI accepts no resolver, key, test flag or configuration
 from JSON, argv or environment. Process-owner preload capabilities are outside
 that input contract and must remain controlled by the deployment environment.
+
+## Company extraction contract
+
+Invoke `node runtime/bank-mail-verifier/company-cli.mjs` only after PHP resolves
+the envelope recipient to an existing Company. Stdin is one JSON object with
+`rawMimeBase64`, the canonical base64 encoding of the original bytes. This binary
+transport supports legacy company charsets without relaxing Store verification.
+There is no caller-selected mode, bank identity, DNS configuration or routing ID.
+
+Successful output has `status: extracted`, `from`, `subject`, `body`, `headers`
+and `contentSha256`. Headers contain only the existing forwarding-detection facts,
+not private raw header values. PHP must validate types, limits and the digest,
+prefer the optional encrypted usable envelope sender (fall back to MIME From
+when optional metadata is unusable), and recheck owner class/key before
+using the existing company importer. Company results never supply bank-domain
+proof or enter automatic Store confirmation. Existing company matching can mark
+local business documents paid; MIME extraction does not authenticate the bank.
+
+The supported subset includes tested UTF-8/ASCII, Windows-1250 and ISO-8859-2,
+plain or multipart text and bounded HTML-to-text conversion. Raw input is limited
+to 256 KiB, headers to 32 KiB, decoded body to 65,535 UTF-8 bytes, subject to 500
+bytes and From to 255 bytes. Output is capped at 300,000 bytes; CLI/PHP deadlines
+remain 13/15 seconds. Attachments are ignored and never imported or written to
+disk. Larger raw messages with small parsed bodies can exceed these limits.
+
+Root unsupported charsets/transfer encodings are rejected. Nested MIME handling
+retains the locked parser's legacy behavior and is not a comprehensive malformed
+MIME validator. Invalid content returns a bounded reason without decoded data;
+temporary process failures remain retryable. No remote URL is fetched. Keep raw
+mail and envelope metadata encrypted on the job, including retries and failures.
 
 ## Dependencies and tests
 

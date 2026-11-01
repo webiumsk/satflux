@@ -1,5 +1,61 @@
 # Development roadmap
 
+## Current: ship the observed exact Platba description - 2026-11-01
+
+The private-bank-copy structure now identifies Platba as the only new operation
+literal; reference shape and tail labels are already supported. Implement/test
+this bounded parser extension with immutable old identities and all payment
+proofs intact. Independent source QA/security, provider replay checks and main
+API/style/static/hash checks pass. Publish and verify current exact-head CI. Provider read-only evidence protects same-reference label replay;
+no plugin/schema/version change is necessary. New actual settlement remains
+unverified; do not replay bank messages or request another real transfer.
+
+## Current: qualify incomplete bank-credit evidence - 2026-11-01
+
+Owner-reported new credit reaches incomplete_credit_evidence after origin checks,
+before any provider reporting. No current original exists outside Mailgun logs.
+The metadata-only failure projection preserves strict parser evidence and all
+five eligibility predicates. Independent QA/security and API/style/static checks
+pass; publish on the existing PR #415 branch and verify fresh head CI/review. A later normal notification can
+identify the unsupported field/frame; do not require another transfer, restore
+expired content or replay payment. Actual bank template and settlement remain
+unqualified; do not infer a specific missing reference or account.
+
+## Current: publish and verify the qualified ASCII proof profile - 2026-11-01
+
+Independent QA/security accept the frozen narrow fallback for the owner-observed
+plain UTF-8/7bit ASCII and relaxed/relaxed family. Preserve the legacy path and
+all bank/recipient/amount/account/reference/provider/dedup gates. Publish on the
+existing PR #415 branch and require current exact-head CI/CodeRabbit. Then owner
+rollout and read-only retained-message recheck must establish actual frame
+support. No expired-message restoration, financial replay or new transfer follows.
+
+## Next: current CI and owner rollout for approved private capture - 2026-11-01
+
+Independent QA/security accept the default-off feature on top of037a6fa7/PR414.
+Publish the separate branch and verify fresh exact-head CI including Node22 and
+real Redis concurrency. Compatible Redis7 and every webhook worker, keys and
+backup-retention acknowledgement precede explicit operator arming for one Store.
+No automatic activation follows source readiness. Capture the next eligible
+normal bank notification for read-only diagnosis; do not require a real transfer
+or relax bank proof. Current signing/layout/payment qualification remains open.
+
+## Current: publish and verify PR414 review follow-up - 2026-11-01
+
+All three initial CodeRabbit findings are addressed in reviewed source: optional
+sender cannot veto otherwise valid MIME, Node checks use effective configuration,
+and the optional compact-date change is removed to avoid new transaction loss.
+Bank parser/dedupe/history are unchanged. Preserve legacy compact retry limits.
+
+Author 155/623, independent QA 162/677 and security 50/334 pass; unchanged Node 42 and
+12 private probes remain qualified at identical bytes. Publish the revised source,
+verify fresh exact-head CI and resolved review threads, then return draft PR414
+to owner review. Initial CI passed on `12e00fa4` but does not qualify the revised head.
+
+Owner merge and compatible web/worker deployment precede editing the existing EU
+route destination to `.mime`. Old original MIME recovery failed404; bank format/
+signing and the old payment remain open. See [evidence](artifacts/bank-mail-single-route-review-2026-11-01/README.md).
+
 ## Current: publish reviewed wallet false-alarm repair - 2026-11-01
 
 Verify exact-head CI and review for published

@@ -1,5 +1,106 @@
 # Development decision log
 
+## 2026-11-01 - Admit the observed fixed operation label without changing identity
+
+Use only the public literal Platba and anonymized shape from the owner's private
+copy. Preserve the same bounded numeric grammar, whole frame/reference/tail,
+cryptographic provenance and account/amount/provider rules. Keep literal-bearing
+v1 identities; do not invent equivalence to CCINT/CSO or rewrite historical keys.
+
+Independent provider inspection shows a changed event hash with the same signed
+reference still locks the same globally keyed request and returns duplicate for
+confirmed state; recording uses the same stable reference ID. A different invoice
+also needs a different genuinely authenticated bank reference for one credit,
+which is not established. Security therefore revises the initial strong block to
+an informational residual assumption and accepts the narrow design for frozen
+review/testing. Those source and replay checks now pass without findings. Publish
+the narrow fix, verify fresh CI and retain owner rollout as a separate step. Do
+not expand to contract 3/schema work without an actual need.
+No provider writes, package regeneration, migration or payment-state change.
+
+## 2026-11-01 - Diagnose credit eligibility without guessing a bank template
+
+Treat incomplete_credit_evidence as a distinct downstream gate: parsed credits
+and sender/origin matching passed, none is eligible, and provider reporting has
+not started. Missing verifier_reason is expected here, not a verifier crash.
+The current bank frame cannot be inferred from this audit or recovered from an
+empty prior capture. Do not relax matching based on a real test payment.
+
+Add only a bounded fixed diagnostic projection to the existing review audit and
+a pure first-stage projection sharing exact Tatra parser validation. Preserve
+all five predicates, trusted-reference provenance, identity bytes and successful
+report behavior. Profile identity remains informational, never a new gate.
+No parsed values, new raw retention, automatic capture/retry or backfill is part
+of this change. Independent source QA/security accept the frozen four files
+with baseline execution/identity and financial-path parity. Main static/API/hash
+checks pass. Publish to existing PR #415 and verify fresh CI/review; no merge,
+deployment or payment follows from source acceptance.
+
+## 2026-11-01 - Bind the observed Tatra ASCII body independently of MIME labels
+
+The live safe facts show valid core DKIM with unsigned MIME controls, plain
+UTF-8/7bit ASCII and relaxed/relaxed. Do not merely remove MIME signature names
+while retaining MIME-selected decoding: independent probes preserve DKIM PASS
+while changing the latter. Add a separate fixed canonical ASCII profile bound
+to one same eligible bank signature's hashes/lengths. Keep full-MIME precedence
+and every remaining proof, strict evidence and financial guard unchanged.
+
+Independent source QA/security and synthetic normal/report/no-replay regressions
+accept the candidate. Publish as a follow-up to existing PR #415 rather than
+requiring a branch change on the owner's current deployment. Preserve 406e1fef
+as reviewed historical capture evidence; require fresh head CI/review. Pure
+operator frame status is not settlement and cannot replay a consumed payment.
+
+## 2026-11-01 - Deliver the approved one-shot private capture behind an off switch
+
+Implement owner-approved design ba1177a5 as a separate follow-up to037a6fa7/PR414.
+Keep proof acceptance/retry and financial handlers unchanged. Use existing Redis7
+with authenticated whole-envelope binding, server-time absolute expiry and atomic
+existing-state transition. State loss fails closed; no handler can re-arm it.
+Operator commands expose fixed tri-state facts and cannot replay payments.
+
+Independent QA/security accept the frozen manifest after real concurrency,
+deadline, owner, hostile-input, privacy and no-replay regressions. Preserve the
+recorded local results separately from fresh Node22/exact-head CI and from actual
+rollout. Implementation approval/default-off source readiness does not activate
+retention or establish bank-message interoperability/settlement.
+
+## 2026-11-01 - Keep financial deduplication policy outside the route repair
+
+CodeRabbit correctly identified that optional midnight normalization can silently
+merge distinct same-day compact company credits. Independent QA reproduced the
+loss and the legacy retry limitation. Withdraw that optional parser/unit change;
+this supersedes the earlier candidate decision to normalize explicit compact dates.
+Keep parser, dedupe, importer and history byte-identical to merged base. Qualify
+native/MIME retries with a classic bank timestamp and prove compact non-loss;
+leave broader event identity/reconciliation for a separately evidenced design.
+
+Ignore unusable optional sender metadata without blocking strict Store proof;
+usable envelope sender retains legacy Company precedence. Check the executable
+selected by effective Laravel node configuration. Independent follow-up QA and
+security accept the revised source. Initial CI is historical; fresh head CI and
+owner merge/deployment remain separate. See [evidence](artifacts/bank-mail-single-route-review-2026-11-01/README.md).
+
+## 2026-11-01 - Support existing bank-mail behavior through one MIME route
+
+The owner's confirmed Mailgun Free plan permits one inbound route. Correct the
+previous two-route prerequisite within the existing bank-mail repair: one MIME
+receiver chooses strict Store verification or bounded Company extraction using
+server-owned recipient records. Keep strict verifier bytes and settlement guards
+unchanged. Preserve company charset/multipart, envelope sender, forwarded checks,
+local document matching, owner binding and encrypted job privacy. The native-to-MIME
+regression also exposed inherited processing seconds in explicit compact booking
+dates. Normalize that date precision only with `!d.m.Y`; preserve missing-date
+fallback and all proof flags, with no history or dedup-algorithm migration.
+Document legacy replay and indistinguishable same-day collision limits. Company parsing
+never grants bank-origin proof or a SEPA report.
+
+Independent backend/security/QA architecture review precedes implementation. No
+paid-plan upgrade, provider/billing/UI feature or production action is included.
+Document worker-first rollout and coordinated rollback, retaining parsed/native
+compatibility. Failed historical MIME retrieval does not justify bypassing proof.
+See [the contract and ownership](BANK_MAIL_SINGLE_ROUTE.md).
+
 ## 2026-11-01 - Separate SEPA activation from crypto wallet drift
 
 The generic payment-method monitor incorrectly classified the SEPA activation

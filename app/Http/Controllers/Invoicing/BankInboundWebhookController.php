@@ -79,14 +79,23 @@ class BankInboundWebhookController extends Controller
             return response()->json(['message' => 'Bank MIME message is too large.'], 422);
         }
 
-        ProcessBankNotificationEmail::dispatch([
+        $payload = [
             'to' => strtolower(trim($validated['recipient'])),
             'from' => '',
             'subject' => '',
             'body' => '',
             // Raw bank mail must not appear in serialized/failed job payloads.
             '_encrypted_bank_mime' => Crypt::encryptString($validated['body-mime']),
-        ]);
+        ];
+        // Optional delivery metadata must never veto valid original MIME.
+        // Preserve usable envelope priority; otherwise the company decoder
+        // falls back to MIME From. Store identity always comes from its proof.
+        $sender = $request->input('sender');
+        if (is_string($sender) && strlen($sender) <= 255 && mb_check_encoding($sender, 'UTF-8')
+            && ! preg_match('/[\r\n\x00]/', $sender) && trim($sender) !== '') {
+            $payload['_encrypted_bank_envelope_sender'] = Crypt::encryptString(trim($sender));
+        }
+        ProcessBankNotificationEmail::dispatch($payload);
 
         return response()->json(['accepted' => true]);
     }
