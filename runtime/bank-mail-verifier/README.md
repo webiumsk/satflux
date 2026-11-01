@@ -1,12 +1,14 @@
-# Bank-mail MIME verifier
+# Bank-mail MIME runtime
 
-Repository-local Node22 runtime used by the Laravel bank-mail worker. It verifies
-original Mailgun `body-mime` bytes independently of Mailgun's parsed body or
-untrusted authentication-result headers. It does not parse transaction fields or
-mark invoices paid. The PHP caller owns delivery authentication, private encrypted
-queue persistence, the strict transaction parser, event identity and reporting.
+Repository-local Node22 runtime used by the Laravel bank-mail worker. Store
+verification checks original Mailgun `body-mime` bytes independently of parsed
+bodies or untrusted authentication-result headers. A separate company extractor
+supports the existing importer through the same one-route MIME destination.
+Neither entrypoint parses transaction fields or marks invoices paid. The PHP
+caller owns delivery authentication, encrypted jobs, recipient-owner policy,
+transaction parsing, event identity and reporting.
 
-## Runtime contract
+## Strict Store verification contract
 
 Install the nested lock with `npm ci --omit=dev --ignore-scripts` from this directory.
 There is no global command, HTTP listener, new MTA or root frontend dependency.
@@ -54,6 +56,35 @@ DNS absence is invalid; temporary DNS failure is retryable. No debug/raw error i
 returned. The production CLI accepts no resolver, key, test flag or configuration
 from JSON, argv or environment. Process-owner preload capabilities are outside
 that input contract and must remain controlled by the deployment environment.
+
+## Company extraction contract
+
+Invoke `node runtime/bank-mail-verifier/company-cli.mjs` only after PHP resolves
+the envelope recipient to an existing Company. Stdin is one JSON object with
+`rawMimeBase64`, the canonical base64 encoding of the original bytes. This binary
+transport supports legacy company charsets without relaxing Store verification.
+There is no caller-selected mode, bank identity, DNS configuration or routing ID.
+
+Successful output has `status: extracted`, `from`, `subject`, `body`, `headers`
+and `contentSha256`. Headers contain only the existing forwarding-detection facts,
+not private raw header values. PHP must validate types, limits and the digest,
+prefer the optional encrypted envelope sender, and recheck owner class/key before
+using the existing company importer. Company results never supply bank-domain
+proof or enter automatic Store confirmation. Existing company matching can mark
+local business documents paid; MIME extraction does not authenticate the bank.
+
+The supported subset includes tested UTF-8/ASCII, Windows-1250 and ISO-8859-2,
+plain or multipart text and bounded HTML-to-text conversion. Raw input is limited
+to 256 KiB, headers to 32 KiB, decoded body to 65,535 UTF-8 bytes, subject to 500
+bytes and From to 255 bytes. Output is capped at 300,000 bytes; CLI/PHP deadlines
+remain 13/15 seconds. Attachments are ignored and never imported or written to
+disk. Larger raw messages with small parsed bodies can exceed these limits.
+
+Root unsupported charsets/transfer encodings are rejected. Nested MIME handling
+retains the locked parser's legacy behavior and is not a comprehensive malformed
+MIME validator. Invalid content returns a bounded reason without decoded data;
+temporary process failures remain retryable. No remote URL is fetched. Keep raw
+mail and envelope metadata encrypted on the job, including retries and failures.
 
 ## Dependencies and tests
 

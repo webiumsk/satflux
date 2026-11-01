@@ -140,7 +140,9 @@ class TatraBankEmailParser implements BankNotificationParser
 
         $bookedAt = Carbon::now();
         if (preg_match('/(\d{1,2}\.\d{1,2}\.\d{4})/u', $text, $dm)) {
-            $bookedAt = Carbon::createFromFormat('d.m.Y', $dm[1]) ?: $bookedAt;
+            // The compact message supplies a date, not a time. Normalize its
+            // precision so retries cannot inherit a different processing clock.
+            $bookedAt = Carbon::createFromFormat('!d.m.Y', $dm[1]) ?: $bookedAt;
         }
 
         $protistrana = null;

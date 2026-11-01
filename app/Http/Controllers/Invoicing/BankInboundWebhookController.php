@@ -74,19 +74,28 @@ class BankInboundWebhookController extends Controller
         $validated = $request->validate([
             'recipient' => ['required', 'string', 'max:255'],
             'body-mime' => ['required', 'string', 'max:262144'],
+            'sender' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
         if (strlen($validated['body-mime']) > 262144) {
             return response()->json(['message' => 'Bank MIME message is too large.'], 422);
         }
 
-        ProcessBankNotificationEmail::dispatch([
+        $sender = trim($validated['sender'] ?? '');
+        if (strlen($sender) > 255 || ! mb_check_encoding($sender, 'UTF-8') || preg_match('/[\r\n\x00]/', $sender)) {
+            return response()->json(['message' => 'Invalid bank envelope sender.'], 422);
+        }
+        $payload = [
             'to' => strtolower(trim($validated['recipient'])),
             'from' => '',
             'subject' => '',
             'body' => '',
             // Raw bank mail must not appear in serialized/failed job payloads.
             '_encrypted_bank_mime' => Crypt::encryptString($validated['body-mime']),
-        ]);
+        ];
+        if ($sender !== '') {
+            $payload['_encrypted_bank_envelope_sender'] = Crypt::encryptString($sender);
+        }
+        ProcessBankNotificationEmail::dispatch($payload);
 
         return response()->json(['accepted' => true]);
     }

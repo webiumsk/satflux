@@ -1,5 +1,20 @@
 # Development roadmap
 
+## Current: repair one-route bank-mail compatibility - 2026-11-01
+
+Publish the independently accepted single original-MIME ingress for Mailgun Free
+and verify exact-head CI, including the declared Node 22 runtime. Retain strict store bank-origin/account/reference guards and company
+Tatra/SLSP importing through separate server-selected policies. Cover ownership,
+charsets, sender/forwarded semantics, encrypted retries and private diagnostics;
+keep old parsed/native endpoints compatible. See [architecture](BANK_MAIL_SINGLE_ROUTE.md).
+
+Author PHP 144 / 521 and Node 42 pass; independent QA PHP 151 / 583 and Node 42 plus
+security PHP 10 / 61 and 12 private probes pass. Full PHPStan/Pint/API/parity checks pass.
+Keep applicable merge/deployment gates separate from source publication. Only after compatible workers are deployed may
+the owner change the existing EU route destination to `.mime`. The old payment's
+original EML retrieval failed404 on both endpoints; current-bank interoperability
+and recovery remain separate evidence gaps, not successful test outcomes.
+
 ## Current: publish reviewed wallet false-alarm repair - 2026-11-01
 
 Verify exact-head CI and review for published

@@ -1,5 +1,34 @@
 # Project state
 
+## Reviewed source: bank-mail compatibility with one Mailgun route - 2026-11-01
+
+The owner confirms Mailgun Free and only the original EU route remains after a
+second-route creation failure. Its recipient scope covers the receiving domain
+and destination is still parsed `/api/webhooks/bank-inbound`. Free permits one
+inbound route, so the earlier two-route operational recommendation is incompatible
+with this account. The existing bank-mail repair must preserve company imports
+and strict store confirmation with one original-MIME destination.
+
+[The accepted architecture](BANK_MAIL_SINGLE_ROUTE.md) separates server-resolved
+Company extraction from unchanged strict Store verification. Backend, security and
+QA independently reviewed the design before implementation. Work is isolated on
+`fix/bank-mail-single-route` from merged `c90caa40`; the primary dirty checkout is
+preserved. No external repository, plugin, plan, subscription or deployment change
+is included. Author validation passes 144 PHP cases / 521 assertions and 42 Node
+cases. Independent QA passes 151 PHP / 583 assertions including 7 private controls,
+and 42 Node cases with zero skips. Independent security accepts the frozen source
+with 10 private PHP / 61 assertions, 42 Node cases and 12 private probes. Full
+existing-baseline PHPStan, scoped Pint, generated API/OpenAPI, locale parity and
+hash/diff checks pass. See [review evidence](artifacts/bank-mail-single-route-2026-11-01/README.md).
+Source publication and exact-head Node 22 CI remain separate; local MIME tests used
+existing Node 24. No merchant-visible UI/copy changed.
+
+Both original-message retrieval endpoints returned404, and no current Tatra EML
+is available. This repair addresses the shared-route compatibility blocker; actual
+bank signing/layout and the existing payment remain unverified. Keep the current
+Mailgun destination until compatible web and queue workers are deployed through
+an approved rollout. No real transfer or forced payment confirmation is a test.
+
 ## Wallet drift hotfix reviewed; bank-origin incident open - 2026-11-01
 
 GitHub confirms consumer PR412 merged at `9c329264` and provider PR45 at

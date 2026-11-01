@@ -1,5 +1,25 @@
 # Development decision log
 
+## 2026-11-01 - Support existing bank-mail behavior through one MIME route
+
+The owner's confirmed Mailgun Free plan permits one inbound route. Correct the
+previous two-route prerequisite within the existing bank-mail repair: one MIME
+receiver chooses strict Store verification or bounded Company extraction using
+server-owned recipient records. Keep strict verifier bytes and settlement guards
+unchanged. Preserve company charset/multipart, envelope sender, forwarded checks,
+local document matching, owner binding and encrypted job privacy. The native-to-MIME
+regression also exposed inherited processing seconds in explicit compact booking
+dates. Normalize that date precision only with `!d.m.Y`; preserve missing-date
+fallback and all proof flags, with no history or dedup-algorithm migration.
+Document legacy replay and indistinguishable same-day collision limits. Company parsing
+never grants bank-origin proof or a SEPA report.
+
+Independent backend/security/QA architecture review precedes implementation. No
+paid-plan upgrade, provider/billing/UI feature or production action is included.
+Document worker-first rollout and coordinated rollback, retaining parsed/native
+compatibility. Failed historical MIME retrieval does not justify bypassing proof.
+See [the contract and ownership](BANK_MAIL_SINGLE_ROUTE.md).
+
 ## 2026-11-01 - Separate SEPA activation from crypto wallet drift
 
 The generic payment-method monitor incorrectly classified the SEPA activation

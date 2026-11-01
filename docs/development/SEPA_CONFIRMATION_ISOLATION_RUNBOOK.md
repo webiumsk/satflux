@@ -42,41 +42,62 @@ returns false and one that throws. Never reset a real account cursor for testing
 
 ## Trusted bank-mail ingress
 
-Tatra automatic confirmation uses Mailgun original-MIME delivery. After operator
-deployment approval, configure separate, non-overlapping recipient routes:
+Tatra automatic confirmation uses Mailgun original-MIME delivery. The compatible
+consumer can share one MIME destination between store SEPA addresses and company
+bank-import addresses. This supports the one-inbound-route limit on Mailgun Free;
+check the actual account plan and region rather than assuming another route can
+be created.
 
-| Recipient | Destination | Route action |
-| --- | --- | --- |
-| Store SEPA addresses (default prefix `ps`) | `https://<your-app>/api/webhooks/bank-inbound.mime` | Forward original MIME, then `stop()` |
-| Company bank-import addresses (default prefix `pay`) | `https://<your-app>/api/webhooks/bank-inbound` | Keep parsed delivery, then `stop()` |
-
-With the default domain/prefixes, use these distinct Mailgun recipient expressions;
-adapt them to the actual configured domain/prefixes before applying:
+After compatible consumer deployment and worker reload approval, edit the existing
+route in the domain's receiving region. Preserve its intended recipient scope and
+other unrelated routes. With the default domain/prefixes, a single combined rule is:
 
 ```text
-match_recipient("^ps[a-z0-9]{8,16}@payments[.]satflux[.]io$")
-match_recipient("^pay[a-z0-9]{8,16}@payments[.]satflux[.]io$")
+match_recipient("^(?:ps|pay)[a-z0-9]{8,16}@payments[.]satflux[.]io$")
+forward("https://<your-app>/api/webhooks/bank-inbound.mime")
+stop()
 ```
 
-Do not redirect a shared catch-all to the MIME endpoint: it accepts only store
-addresses and rejects companies during processing, which would stop their bank
-imports after intake acknowledgement. Narrow existing catch-alls or put the
-dedicated routes first with `stop()` so no duplicate/different-format delivery
-continues through another route. The `.mime` suffix requests `body-mime`;
-the company route must keep its parsed destination. Parsed delivery does not
-establish bank origin for SEPA. No route or bank setting is changed by source
-preparation.
+Adapt the domain and prefixes to actual configuration. An existing domain-wide
+recipient rule may also keep its scope and use this same MIME destination; unknown
+recipients are rejected by server-owned address resolution. No additional Mailgun
+storage action is required. Do not add a second destination for the same message
+or infer payment from an intake acknowledgement.
+
+The server selects policy using the persisted recipient owner:
+
+| Recipient | Processing policy |
+| --- | --- |
+| Store SEPA address (default `ps`) | Existing strict Tatra bank signature and transaction-evidence verification |
+| Company import address (default `pay`) | Separate bounded legacy MIME extraction into existing Tatra/SLSP importing and local matching; no SEPA bank-origin proof |
+
+The optional Mailgun envelope sender is encrypted and retains precedence for
+company importing; forwarded-message detection remains active. Company MIME can
+contain supported multipart/charset formats. It does not relax the store's UTF-8,
+single plain-text, signature or recipient-binding requirements. Unknown owners,
+owner changes and invalid store proof cannot choose the company policy.
+
+Older consumers reject company MIME. Therefore do not switch a shared route until
+all web and queue workers support this contract. Existing parsed company/native
+receivers remain compatible; two separate routes may still be used on other plans
+but are not required. Roll back route/worker configuration together and account for
+pending encrypted jobs before downgrading. No route, bank setting or deployment is
+changed by preparing this source. See [the design and evidence](BANK_MAIL_SINGLE_ROUTE.md).
 
 Install the isolated locked runtime dependencies with
 `npm ci --prefix runtime/bank-mail-verifier --ignore-scripts` in the deployed
-checkout. Node22 already exists in the PHP image. The PHP queue worker launches
+checkout. The PHP Dockerfile installs Node22; verify the actual worker binary
+with `node --version` after rebuilding/reloading rather than assuming an old image
+is current. The PHP queue worker launches
 the local verifier over argv/stdin; there is no new network service. Configure
 `BANK_MAIL_NODE_BINARY` only when Node is not available on the worker PATH.
 
 Intake verifies the existing Mailgun token/timestamp HMAC and replay cache. It
 preserves original MIME bytes (including CRLFs), limits them to 256KiB and encrypts
-them before queueing. Keep the app encryption key with queue recovery backups.
-Failed jobs retain ciphertext and sanitized errors, never raw mail. The verifier
+them before queueing. The same raw bound applies to companies; decoded text is
+limited to 65,535 bytes, so attachment-heavy or oversized legacy messages may need
+manual import rather than silently exceeding the supported profile. Keep the app encryption key with queue recovery backups.
+Failed jobs retain ciphertext and sanitized errors, never raw mail. For store recipients, the verifier
 independently verifies an aligned Tatra DKIM signature over the complete body,
 signed From/To/Subject and MIME controls. Its signed recipient must match the
 store address. Sender-supplied authentication headers, partial-body signatures,
@@ -91,7 +112,17 @@ fields cannot be skipped or reordered. Duplicate/reserved labels, markup and
 unknown layouts require review. Public historical examples establish this
 bounded profile; the synthetic QR fixture is not proof of actual current Tatra
 rendering. No current original EML is available for interoperability qualification.
-SLSP remains review-only. Generic company bank importing and FIO/NOP are unchanged.
+Store SEPA confirmation via SLSP remains review-only. Existing company importing/matching and FIO/NOP policies are unchanged; company
+MIME extraction is a separate transport adapter, not automatic SEPA proof.
+Company extraction is qualified by synthetic UTF-8/ASCII, Windows-1250 and
+ISO-8859-2 examples, with bounded supported legacy root charsets. Nested encoding
+handling follows the locked mailparser behavior; it is not independent bank
+verification or a guarantee that every malformed MIME is rejected. Date-only
+compact Tatra imports normalize the explicit booking date to midnight for stable
+future dedup. Historical rows retain prior processing times; missing-date messages
+still use processing time, and indistinguishable same-day compact events can
+collide. Review those cases manually rather than assuming universal dedup or a
+historical data migration.
 
 Credit dedup uses a versioned canonical fingerprint of receiving account, bank
 booking minute, amount/currency, all balances and bank transaction description.

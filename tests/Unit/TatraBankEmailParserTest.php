@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Enums\BankTransactionDirection;
 use App\Services\Invoicing\BankImport\TatraBankEmailParser;
+use Carbon\Carbon;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
@@ -241,6 +242,35 @@ class TatraBankEmailParserTest extends TestCase
         $this->assertNull($row->recipientIban);
         $this->assertFalse($row->isExplicitCredit);
         $this->assertFalse($row->hasExplicitCurrency);
+    }
+
+    #[Test]
+    public function an_explicit_compact_date_keeps_date_precision_across_processing_clocks(): void
+    {
+        $parser = new TatraBankEmailParser;
+        $body = 'Suma: 12,50 EUR. VS: 1234567890. 01.06.2026';
+        $this->travelTo(Carbon::parse('2026-11-01 12:00:01'));
+        $first = $parser->parse('notify@tatrabanka.sk', 'Obrat na ucte', $body)[0];
+        $this->travelTo(Carbon::parse('2026-11-02 23:59:59'));
+        $retry = $parser->parse('notify@tatrabanka.sk', 'Obrat na ucte', $body)[0];
+
+        $this->assertSame('2026-06-01 00:00:00', $first->bookedAt->format('Y-m-d H:i:s'));
+        $this->assertEquals($first->toRow(), $retry->toRow());
+        $this->assertFalse($retry->isExplicitCredit);
+        $this->assertFalse($retry->isVariableSymbolExplicit);
+        $this->assertNull($retry->e2eReference);
+        $this->assertNull($retry->sepaCreditIdentity);
+    }
+
+    #[Test]
+    public function compact_messages_without_a_date_keep_the_existing_processing_time_fallback(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-01 12:34:56'));
+        $row = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Obrat na ucte', 'Suma: 12,50 EUR. VS: 1234567890.')[0];
+
+        $this->assertSame('2026-11-01 12:34:56', $row->bookedAt->format('Y-m-d H:i:s'));
+        $this->assertFalse($row->isExplicitCredit);
+        $this->assertNull($row->sepaCreditIdentity);
     }
 
     #[Test]

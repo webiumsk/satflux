@@ -100,6 +100,24 @@ class BankMimeConfirmationTest extends TestCase
         $this->assertSame('unverified_bank_mime', AuditLog::where('action', 'sepa.bmail_review_required')->sole()->metadata['reason']);
     }
 
+    public function test_store_mime_never_falls_back_to_company_extraction_or_envelope_sender_proof(): void
+    {
+        $mock = Mockery::mock(BankMimeVerificationService::class, [
+            app(BankInboundAddressService::class), app(BankEmailOriginVerifier::class),
+        ])->makePartial()->shouldAllowMockingProtectedMethods();
+        $mock->shouldReceive('verify')->once()->andReturn(['status' => 'invalid']);
+        $mock->shouldNotReceive('extractCompany');
+        $this->app->instance(BankMimeVerificationService::class, $mock);
+
+        $this->postJson('/api/webhooks/bank-inbound.mime', array_merge($this->delivery('Unsigned company-compatible body'), [
+            'sender' => 'bank@tatrabanka.sk', 'mode' => 'company', '_verified_bank_domain' => 'tatrabanka.sk',
+        ]))->assertOk();
+
+        $this->assertDatabaseCount('bank_transactions', 0);
+        Http::assertNothingSent();
+        $this->assertSame('unverified_bank_mime', AuditLog::where('action', 'sepa.bmail_review_required')->sole()->metadata['reason']);
+    }
+
     public function test_invalid_utf8_is_review_only_without_starting_the_verifier(): void
     {
         $mock = Mockery::mock(BankMimeVerificationService::class, [
