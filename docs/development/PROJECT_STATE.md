@@ -1,5 +1,38 @@
 # Project state
 
+## Exact Platba bank-description compatibility in progress - 2026-11-01
+
+The owner obtained a bank-direct private copy and supplied the fixed public
+operation label Platba with the existing numeric-description structure and a
+QR reference of 32 hexadecimal characters. The tail has only already-supported
+counterparty/signature/URL/notice labels. Actual accounts, references, amounts,
+dates and personal values are excluded from source, fixtures and reports.
+
+Implement only the exact third description alternative Platba, retaining all
+existing full-frame, numeric, reference, bank-proof and provider guards. Old
+CCINT/CSO output and fingerprint goldens must remain byte-identical; Platba keeps
+its own literal in the unchanged v1 tuple, without aliasing to another type.
+Backend owns the parser and bounded existing unit/native/MIME tests. Independent
+QA/security accept the frozen four-file scope without findings. Author passes
+159 tests/719 assertions and scoped Pint; QA passes 338 bank tests/1904 assertions,
+three private ingress tests/17 assertions and 39 pure profile checks. Qualified
+provider replay checks pass three existing shipped tests and four private cases/
+22 assertions against the actual unchanged DLL. Security passes 81 targeted tests/
+346 assertions and 839 independent checks. Main full PHPStan/API checks, source
+hashes and 20 unchanged boundary hashes pass. Main owns publication and current
+exact-head CI/review remains required; all isolated test databases are stopped.
+
+Provider e8d7fbc read-only evidence resolves the initial label-only replay concern:
+reference is a globally unique immutable invoice/Store key; row lock and confirmed
+request check precede event-key processing; recorder ID is the same reference.
+The same signed reference cannot settle twice merely because the label changes.
+A cross-invoice rendition also needs the bank to authenticate a different valid
+reference for one credit, which is unestablished. Independent security classifies
+that as an informational baseline bank-reference-stability assumption, not a
+verified new vulnerability. Contract-v3/alias-table work is unnecessary and not
+implemented; provider, package and database remain unchanged. See the profile
+contract in the feature worktree. Actual settlement remains a runtime gate.
+
 ## Authenticated bank mail reaches incomplete-credit review - 2026-11-01
 
 The owner independently made a new real payment and reports a 20:15:06 UTC audit:

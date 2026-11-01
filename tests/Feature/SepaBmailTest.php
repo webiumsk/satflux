@@ -19,6 +19,7 @@ use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
+use Tests\Unit\TatraBankSepaEvidenceDiagnosticsTest;
 
 /**
  * Strict authenticated Tatra plaintext runs through the real production parser.
@@ -146,10 +147,13 @@ class SepaBmailTest extends TestCase
     #[TestWith(['QR-ab29e346f1d841c8a95a63d857490818', 'QR-ab29e346f1d841c8a95a63d857490818'])]
     #[TestWith(['QR-AB29E346F1D841C8A95A63D857490818', 'QR-AB29E346F1D841C8A95A63D857490818'])]
     #[TestWith(['/VS1234567890/SS/KS', '1234567890'])]
-    public function authenticated_strict_plaintext_runs_the_real_parser_and_reports_the_observed_credit(string $bankReference, string $expectedReference): void
+    #[TestWith(['QR-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'QR-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', true])]
+    #[TestWith(['/VS1234567890/SS/KS', '1234567890', true])]
+    public function authenticated_strict_plaintext_runs_the_real_parser_and_reports_the_observed_credit(string $bankReference, string $expectedReference, bool $platba = false): void
     {
         $this->fakeCapablePlugin();
-        $payload = $this->nativePayload(['body' => $this->strictCreditBody($bankReference)]);
+        $body = $platba ? TatraBankSepaEvidenceDiagnosticsTest::platbaBody($bankReference) : $this->strictCreditBody($bankReference);
+        $payload = $this->nativePayload(['body' => $body]);
 
         $this->postJson('/api/webhooks/bank-inbound', $payload, [
             'X-Bank-Inbound-Secret' => 'test-inbound-secret',
@@ -162,6 +166,10 @@ class SepaBmailTest extends TestCase
             && $request->data()['creditorIban'] === self::RECIPIENT_IBAN
             && $request->data()['bankOriginVerified'] === true
             && strlen($request->data()['dedupKey']) === 64);
+        if ($platba) {
+            Http::assertSent(fn (Request $request) => $request->method() === 'POST'
+                && $request->data()['dedupKey'] === '592726f4848318a1d34384d1f834da3f320de0086a4a68f5a5ddc9e068f1e3f8');
+        }
         $audit = AuditLog::where('action', 'sepa.bmail_processed')->sole();
         $this->assertSame(['reported' => 1, 'outcome' => 'settled'], $audit->metadata);
     }
@@ -185,7 +193,9 @@ class SepaBmailTest extends TestCase
     }
 
     #[Test]
-    public function one_bank_credit_keeps_the_same_dedup_key_across_candidate_notes_and_formatting(): void
+    #[TestWith([false])]
+    #[TestWith([true])]
+    public function one_bank_credit_keeps_the_same_dedup_key_across_candidate_notes_and_formatting(bool $platba): void
     {
         $reports = [];
         Http::fake(function (Request $request) use (&$reports) {
@@ -196,8 +206,10 @@ class SepaBmailTest extends TestCase
 
             return Http::response(['outcome' => count($reports) === 1 ? 'settled' : 'duplicate']);
         });
-        $first = $this->strictCreditBody();
-        $second = $this->strictCreditBody('QR-00000000000000000000000000000002', 'Another invoice');
+        $first = $platba ? TatraBankSepaEvidenceDiagnosticsTest::platbaBody() : $this->strictCreditBody();
+        $second = $platba
+            ? TatraBankSepaEvidenceDiagnosticsTest::platbaBody('QR-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')
+            : $this->strictCreditBody('QR-00000000000000000000000000000002', 'Another invoice');
         $third = str_replace(['01.06.2026', '1 012,50', "\n"], ['1.6.2026', '1012,50', "\r\n  "], $second);
         $service = app(BankInboundEmailService::class);
         foreach ([$first, $second, $third] as $body) {
@@ -210,6 +222,28 @@ class SepaBmailTest extends TestCase
         $this->assertSame($reports[1]['dedupKey'], $reports[2]['dedupKey']);
         // The companion provider owns atomic dedup reservation. This verifies
         // the real parser/consumer supplies the same event key to that boundary.
+    }
+
+    #[Test]
+    public function same_signed_reference_with_changed_description_label_keeps_reference_but_not_event_hash(): void
+    {
+        $reports = [];
+        Http::fake(function (Request $request) use (&$reports) {
+            if ($request->method() === 'GET') {
+                return Http::response(['confirmationContractVersion' => 2]);
+            }
+            $reports[] = $request->data();
+
+            return Http::response(['outcome' => count($reports) === 1 ? 'settled' : 'duplicate']);
+        });
+        $body = TatraBankSepaEvidenceDiagnosticsTest::platbaBody();
+        foreach (['Platba', 'CCINT', 'CSO'] as $label) {
+            app(BankInboundEmailService::class)->handle([...$this->verifiedPayload(), 'body' => str_replace('Platba', $label, $body)]);
+        }
+        $this->assertCount(3, $reports);
+        $this->assertCount(1, array_unique(array_column($reports, 'reference')));
+        $this->assertCount(3, array_unique(array_column($reports, 'dedupKey')));
+        // The provider owns same-reference confirmation guards; no alias is invented here.
     }
 
     #[Test]
@@ -237,10 +271,11 @@ class SepaBmailTest extends TestCase
     #[TestWith(['non-bank-domain'])]
     #[TestWith(['suffix-impersonation'])]
     #[TestWith(['raw-headers-only'])]
-    public function unverified_native_bank_origin_cannot_report_a_payment(string $case): void
+    #[TestWith(['missing', true])]
+    public function unverified_native_bank_origin_cannot_report_a_payment(string $case, bool $platba = false): void
     {
         Http::fake();
-        $payload = $this->nativePayload(['body' => $this->strictCreditBody()]);
+        $payload = $this->nativePayload(['body' => $platba ? TatraBankSepaEvidenceDiagnosticsTest::platbaBody() : $this->strictCreditBody()]);
         if ($case === 'missing' || $case === 'raw-headers-only') {
             unset($payload['bank_authentication']);
         } elseif ($case === 'dkim-fail') {
@@ -279,7 +314,8 @@ class SepaBmailTest extends TestCase
     #[TestWith(['implicit-direction'])]
     #[TestWith(['implicit-currency'])]
     #[TestWith(['ambiguous-reference'])]
-    public function incomplete_or_ambiguous_transaction_evidence_cannot_report(string $case): void
+    #[TestWith(['invalid-account', true])]
+    public function incomplete_or_ambiguous_transaction_evidence_cannot_report(string $case, bool $platba = false): void
     {
         Http::fake();
         $body = match ($case) {
@@ -289,6 +325,9 @@ class SepaBmailTest extends TestCase
             'implicit-currency' => 'Kredit. Suma: 12,50. VS: 1234567890.',
             'ambiguous-reference' => $this->creditBody(self::E2E_REFERENCE.' QR-00000000000000000000000000000001'),
         };
+        if ($platba) {
+            $body = str_replace(self::RECIPIENT_IBAN, 'SK4811000000002944116481', TatraBankSepaEvidenceDiagnosticsTest::platbaBody());
+        }
 
         $this->postJson('/api/webhooks/bank-inbound', $this->nativePayload(['body' => $body]), [
             'X-Bank-Inbound-Secret' => 'test-inbound-secret',
@@ -300,13 +339,14 @@ class SepaBmailTest extends TestCase
     #[Test]
     #[TestWith([0])]
     #[TestWith([1])]
-    public function old_plugin_without_enforced_confirmation_contract_receives_no_report(int $version): void
+    #[TestWith([1, true])]
+    public function old_plugin_without_enforced_confirmation_contract_receives_no_report(int $version, bool $platba = false): void
     {
         $this->fakeCapablePlugin($version);
 
-        $result = app(SepaEmailConfirmationService::class)->handle(
-            $this->store, $this->verifiedPayload(), [$this->trustedRow()],
-        );
+        $result = $platba
+            ? app(BankInboundEmailService::class)->handle([...$this->verifiedPayload(), 'body' => TatraBankSepaEvidenceDiagnosticsTest::platbaBody()])
+            : app(SepaEmailConfirmationService::class)->handle($this->store, $this->verifiedPayload(), [$this->trustedRow()]);
 
         $this->assertSame('review', $result['outcome']);
         $this->assertSame(0, $result['reported']);

@@ -87,7 +87,7 @@ final class TatraBankSepaEvidenceParser
             $balances[] = $canonicalBalance === '-0,00' ? '0,00' : $canonicalBalance;
         }
         $stage = 'transaction_description';
-        if (preg_match('/\APopis transakcie: (CCINT|CSO) ([0-9]{4})\/([0-9]{1,6})-([0-9]{1,10})\z/D', $lines[5], $description) !== 1) {
+        if (preg_match('/\APopis transakcie: (CCINT|CSO|Platba) ([0-9]{4})\/([0-9]{1,6})-([0-9]{1,10})\z/D', $lines[5], $description) !== 1) {
             return null;
         }
         $stage = 'trusted_reference';

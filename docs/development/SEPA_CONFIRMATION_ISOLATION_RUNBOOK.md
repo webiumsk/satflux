@@ -205,12 +205,15 @@ captures remain readable after this compatible update; expired data is not resto
 
 The initial profile is one UTF-8/ASCII text/plain part and the documented classic
 Tatra numeric prefix: greeting, valid date/time and receiving account, positive
-EUR credit, three balances, constrained CCINT/CSO account description, then the
+EUR credit, three balances, constrained CCINT/CSO/Platba account description, then the
 QR/E2E or structured VS reference before free recipient/name text. Required
 fields cannot be skipped or reordered. Duplicate/reserved labels, markup and
 unknown layouts require review. Public historical examples establish this
-bounded profile; the synthetic QR fixture is not proof of actual current Tatra
-rendering. No current original EML is available for interoperability qualification.
+original CCINT/CSO framing. A later owner-provided private-copy structure identifies
+the exact Platba label, QR reference shape and already-supported tail labels;
+see [the bounded profile](TATRA_PLATBA_PROFILE.md). No raw bank EML or actual
+settlement was supplied to agents, and synthetic fixtures do not prove installed
+host interoperability or bank latency.
 Store SEPA confirmation via SLSP remains review-only. Existing company importing/matching and FIO/NOP policies are unchanged; company
 MIME extraction is a separate transport adapter, not automatic SEPA proof.
 Company extraction is qualified by synthetic UTF-8/ASCII, Windows-1250 and
@@ -235,6 +238,22 @@ bank-issued unique ID: indistinguishable legitimate credits can collide, so they
 must not be counted twice automatically. Provider dedup remains store/source/
 account scoped; a repeated key cannot prove that a second invoice was paid.
 Review outstanding intent and old confirmation history before rollout.
+
+After compatible deployment, a later normal supported notification may reach
+`sepa.bmail_processed`. Inspect its `reported` count and `outcome` for the selected
+Store; HTTP acknowledgement or a parser match is insufficient. The earlier
+incomplete-evidence-only operator query intentionally excludes successful
+processing: include both `sepa.bmail_processed` and `sepa.bmail_review_required`
+when checking this repair, retaining server-side Store/type filters and bounded
+safe field projection. No old completed notification is automatically replayed.
+
+The description label remains part of the existing v1 tuple; do not equate the
+three labels or rewrite old keys. The qualified provider additionally locks the
+globally keyed reference and rejects a confirmed request before event-key matching;
+recording uses that same reference as payment ID. A label-only redelivery with
+the same authenticated reference therefore cannot record again. Different-bank-
+reference renditions of one economic credit remain an informational bank-reference
+stability assumption, not a demonstrated new vulnerability or an alias guarantee.
 
 Existing authenticated native receiving-MTA adapters may continue submitting the
 optional complete `bank_authentication` object (`dkim_result`, `dkim_domain`,

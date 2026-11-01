@@ -1,5 +1,15 @@
 # Development roadmap
 
+## Current: ship the observed exact Platba description - 2026-11-01
+
+The private-bank-copy structure now identifies Platba as the only new operation
+literal; reference shape and tail labels are already supported. Implement/test
+this bounded parser extension with immutable old identities and all payment
+proofs intact. Independent source QA/security, provider replay checks and main
+API/style/static/hash checks pass. Publish and verify current exact-head CI. Provider read-only evidence protects same-reference label replay;
+no plugin/schema/version change is necessary. New actual settlement remains
+unverified; do not replay bank messages or request another real transfer.
+
 ## Current: qualify incomplete bank-credit evidence - 2026-11-01
 
 Owner-reported new credit reaches incomplete_credit_evidence after origin checks,

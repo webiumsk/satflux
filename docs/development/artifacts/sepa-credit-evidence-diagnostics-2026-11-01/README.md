@@ -1,5 +1,10 @@
 # Incomplete credit evidence diagnostics - review evidence
 
+Historical source scope: a29b727a. The later exact Platba description extension
+changes the parser acceptance set and selected fixtures; these manifests continue
+to identify this earlier diagnostic milestone. New source/test evidence is
+recorded separately under the Tatra Platba profile artifact.
+
 Base: 12f83c11. Scope: the existing incomplete-credit review audit and a pure
 first-failing-stage projection through the same strict Tatra parser validation.
 No actual bank original or transaction values were available to agents. The

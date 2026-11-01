@@ -18,6 +18,7 @@ use Mockery;
 use PHPUnit\Framework\Attributes\TestWith;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
+use Tests\Unit\TatraBankSepaEvidenceDiagnosticsTest;
 
 class BankMimeConfirmationTest extends TestCase
 {
@@ -293,7 +294,9 @@ class BankMimeConfirmationTest extends TestCase
 
     #[TestWith([false])]
     #[TestWith([true])]
-    public function test_ascii_wire_and_signed_mime_profiles_report_the_same_credit_identity(bool $whitespaceVariant): void
+    #[TestWith([false, 'QR-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'])]
+    #[TestWith([true, '/VS1234567890/SS/KS'])]
+    public function test_ascii_wire_and_signed_mime_profiles_report_the_same_credit_identity(bool $whitespaceVariant, ?string $platbaReference = null): void
     {
         $reports = [];
         Http::fake([
@@ -301,15 +304,17 @@ class BankMimeConfirmationTest extends TestCase
             '*/plugins/sepa-instant-qr/payment-requests/report' => function ($request) use (&$reports) {
                 $reports[] = $request->data();
 
-                return Http::response(['outcome' => 'settled']);
+                return Http::response(['outcome' => count($reports) === 1 ? 'settled' : 'duplicate']);
             },
         ]);
-        $this->withSignedFixture($this->classicBody(), function (string $rawMime) {
+        $baseBody = $platbaReference === null ? $this->classicBody()
+            : str_replace("\n", "\r\n", TatraBankSepaEvidenceDiagnosticsTest::platbaBody($platbaReference))."\r\n";
+        $this->withSignedFixture($baseBody, function (string $rawMime) {
             $this->postJson('/api/webhooks/bank-inbound.mime', $this->delivery($rawMime))->assertOk();
         });
         $body = $whitespaceVariant
-            ? str_replace("\r\n", " \t\r\n", str_replace(' ', " \t  ", $this->classicBody()))
-            : $this->classicBody();
+            ? str_replace("\r\n", " \t\r\n", str_replace(' ', " \t  ", $baseBody))
+            : $baseBody;
         $this->withSignedFixture($body, function (string $rawMime) {
             $this->postJson('/api/webhooks/bank-inbound.mime', $this->delivery($rawMime))->assertOk();
         }, asciiWire: true);
@@ -320,6 +325,14 @@ class BankMimeConfirmationTest extends TestCase
             $this->assertSame($reports[0][$field], $reports[1][$field]);
         }
         $this->assertTrue($reports[1]['bankOriginVerified']);
+        if ($platbaReference !== null) {
+            $this->assertSame(str_starts_with($platbaReference, 'QR-') ? $platbaReference : '1234567890', $reports[0]['reference']);
+            $this->assertSame('SK4811000000002944116480', $reports[0]['creditorIban']);
+            $this->assertSame(12.5, $reports[0]['amount']);
+            $this->assertSame('EUR', $reports[0]['currency']);
+            $this->assertSame('592726f4848318a1d34384d1f834da3f320de0086a4a68f5a5ddc9e068f1e3f8', $reports[0]['dedupKey']);
+        }
+        $this->assertSame(['settled', 'duplicate'], AuditLog::where('action', 'sepa.bmail_processed')->orderBy('id')->get()->pluck('metadata.outcome')->all());
         $this->assertSame(0, AuditLog::where('action', 'sepa.bmail_review_required')->count());
     }
 

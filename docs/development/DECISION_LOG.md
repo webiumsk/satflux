@@ -1,5 +1,23 @@
 # Development decision log
 
+## 2026-11-01 - Admit the observed fixed operation label without changing identity
+
+Use only the public literal Platba and anonymized shape from the owner's private
+copy. Preserve the same bounded numeric grammar, whole frame/reference/tail,
+cryptographic provenance and account/amount/provider rules. Keep literal-bearing
+v1 identities; do not invent equivalence to CCINT/CSO or rewrite historical keys.
+
+Independent provider inspection shows a changed event hash with the same signed
+reference still locks the same globally keyed request and returns duplicate for
+confirmed state; recording uses the same stable reference ID. A different invoice
+also needs a different genuinely authenticated bank reference for one credit,
+which is not established. Security therefore revises the initial strong block to
+an informational residual assumption and accepts the narrow design for frozen
+review/testing. Those source and replay checks now pass without findings. Publish
+the narrow fix, verify fresh CI and retain owner rollout as a separate step. Do
+not expand to contract 3/schema work without an actual need.
+No provider writes, package regeneration, migration or payment-state change.
+
 ## 2026-11-01 - Diagnose credit eligibility without guessing a bank template
 
 Treat incomplete_credit_evidence as a distinct downstream gate: parsed credits
