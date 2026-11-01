@@ -1,5 +1,28 @@
 # Project state
 
+## Tatra ASCII wire-body repair independently accepted - 2026-11-01
+
+Owner-run capture facts isolate the current rejection to unsigned MIME controls
+despite passing bank DKIM/core headers/full-body proof. A separate format probe
+reports plain UTF-8/7bit ASCII, no controls and relaxed/relaxed. No private bank
+body/values were received by agents. The new narrow profile binds one fixed
+canonical ASCII body to the same proof's hashes/lengths rather than allowing
+unsigned MIME decoding. Legacy fully signed proof takes precedence unchanged.
+
+Based on 406e1fef, the candidate passes 91 PHP tests/991 assertions and 77 Node
+tests. Independent QA passes 256 PHP tests/1550 assertions, 19 private tests/197
+assertions and 666 projection checks. Security passes 91 PHP tests/991 assertions,
+6011 helper checks and 38 crypto checks. PHPStan/Pint/API checks pass; nine source
+files and 18 preserved-file hashes
+manifests are in the [review artifact](artifacts/tatra-ascii-wire-2026-11-01/README.md).
+Safe pure outer body/frame diagnostics preserve the original v1 capture and TTL;
+they do not import/report/replay a payment. No parser/dedup/provider/history change.
+
+Publish the follow-up on the existing PR #415 branch, then verify fresh exact-head
+CI/CodeRabbit before owner rollout. A compatible read-only recheck can qualify
+the actual retained transaction frame if unexpired. Actual settlement remains
+unverified; no new transfer, merge or production action is performed by this work.
+
 ## Approved private bank MIME capture ready for CI - 2026-11-01
 
 Owner-approved proposal ba1177a5 is implemented default-off on the separate

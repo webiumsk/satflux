@@ -35,7 +35,7 @@ content, arbitrary child output or exception text is copied to the audit.
 Retryable results still follow queue retry and never authorize payment. This
 diagnostic does not change the supported profile or recover older rejected mail.
 
-Initial profile and coverage constraints:
+Common proof constraints and the legacy fully signed MIME profile:
 
 - Tatra banka domain or a subdomain, a unique From mailbox and unique matching
   To mailbox. Both are signed. The recipient must equal the envelope recipient.
@@ -43,8 +43,8 @@ Initial profile and coverage constraints:
   keys must meet its explicit 1024-bit RFC minimum; Ed25519-SHA256 is also allowed.
   Expired/future constraints fail; missing optional `t=` is not rejected by itself.
 - No body-length-limited `l=` signatures. Full canonical body length must match
-  the length hashed. Present Content-Type, Content-Transfer-Encoding and
-  MIME-Version controls must be signed. Subject is signed as an initial profile
+  the length hashed. In the legacy decoded-MIME profile, present Content-Type,
+  Content-Transfer-Encoding and MIME-Version controls must be signed. Subject is signed as an initial profile
   constraint, not a claim that it independently proves a credit.
 - One explicit `text/plain` part, UTF-8 or US-ASCII, no attachments, HTML,
   multipart alternatives or unqualified charsets. CRLF wire syntax, bounded
@@ -57,6 +57,32 @@ Initial profile and coverage constraints:
   ARC/BIMI or arbitrary message-supplied network destination is used. Each lookup
   has a two-second deadline, the total DNS budget is ten seconds and the CLI
   exits with a typed timeout after thirteen seconds.
+
+### Fixed ASCII wire-body profile
+
+When no legacy fully signed MIME proof exists, the verifier can admit the
+operator-observed Tatra plain UTF-8/7bit/MIME1.0 profile with unsigned MIME controls.
+It derives one fixed relaxed canonical ASCII body, independently of MIME decoding,
+and binds its SHA256 and exact byte length to both hashes and both body lengths
+of the same passing relaxed/relaxed bank proof. From/To/Subject and all other
+common proof requirements remain mandatory. Header labels may reject admission
+but cannot select a different decoder or output.
+
+Raw and canonical body are each bounded to65,535 bytes, physical wire lines to998
+bytes, and only printable ASCII, SP/HTAB and CRLF are admitted. Whitespace token
+boundaries remain intact. No quoted-printable/base64, HTML, multipart or charset
+conversion occurs in this profile. The existing strict complete-credit parser
+still decides whether authenticated text is usable for SEPA reporting.
+
+Successful fallback output adds only the fixed internal
+`bodyProfile: tatra-ascii-relaxed-v1`; legacy success shape/body remain unchanged.
+Diagnostics keep their version1 schema but mark only From/To/Subject as requiring
+signature binding for this selected profile. The retained original summary is
+not rewritten. The operator's outer `body_profile` identifies the body profile;
+`transaction_profile` is only matched/unsupported/not_evaluated structural
+compatibility, never account ownership, provider acceptance or settlement.
+
+See [the exact contract](../../docs/development/TATRA_ASCII_WIRE_PROFILE.md).
 
 Multiple bounded signatures are allowed when an eligible bank proof passes.
 Forged Authentication-Results and X-Mailgun Pass headers never establish trust.

@@ -21,8 +21,10 @@ Raw MIME remains bounded to256KiB; the serialized encrypted record is capped
 at1MiB. Redis/cache failure never falls back to a file or changes the existing
 verification decision, rejection or retry classification.
 
-The existing verifier policy and `verify()` output remain unchanged. A separate
-private diagnostic entrypoint shares that same evaluation and returns
+Capture does not select or relax bank-proof policy. The separately reviewed
+[ASCII wire-body contract](TATRA_ASCII_WIRE_PROFILE.md) documents the current
+additional profile while preserving the legacy fully signed MIME path. A separate
+private diagnostic entrypoint shares the same verification evaluation and returns
 `{verification, diagnostics, contentSha256}` over stdin/stdout to PHP memory.
 PHP requires the digest to match its exact raw input. Operator commands never
 emit the verification payload or digest, only a validated diagnostic summary:
@@ -44,6 +46,12 @@ emitted. Original and current recheck summaries are labeled separately: key
 rotation, expiration or temporary DNS problems can change a later result. Neither
 summary is payment evidence by itself. The command does not invoke intake,
 transaction import, audit-as-paid, provider reporting or financial replay.
+
+The outer `body_profile` is a fixed recognized profile label. The outer
+`transaction_profile` is matched/unsupported/not_evaluated from a pure strict
+credit-frame check of the bounded verified recheck body. It discards all parsed
+values and cannot establish invoice/account matching or settlement. Existing
+version1 originals, ciphertext and deadlines remain unchanged.
 
 Normal disabled/unarmed verification uses the existing entrypoint. Diagnostic
 transport failure falls back to the existing strict verification path; capture

@@ -3,6 +3,7 @@
 namespace App\Services\Invoicing;
 
 use App\Models\Store;
+use App\Services\Invoicing\BankImport\TatraBankSepaEvidenceParser;
 use App\Support\Invoicing\BankMimeDiagnosticRunner;
 use Illuminate\Redis\Connections\Connection;
 use Illuminate\Redis\Connections\PhpRedisConnection;
@@ -170,13 +171,47 @@ LUA;
                     ? ['version' => 1, 'status' => 'recheck_unavailable', 'original' => $original]
                     : ['version' => 1, 'status' => 'empty'];
             }
+            $bodyProfile = $this->bodyProfile($recheck['verification']);
+            $transactionProfile = $this->transactionProfile($recheck['verification']);
             if (! $this->stillCaptured($read['ciphertext'])) {
                 return ['version' => 1, 'status' => 'empty'];
             }
 
-            return ['version' => 1, 'status' => 'diagnosed', 'original' => $original, 'recheck' => $current];
+            return [
+                'version' => 1, 'status' => 'diagnosed', 'original' => $original, 'recheck' => $current,
+                'body_profile' => $bodyProfile, 'transaction_profile' => $transactionProfile,
+            ];
         } catch (\Throwable) {
             return ['version' => 1, 'status' => 'unavailable'];
+        }
+    }
+
+    private function bodyProfile(array $verification): string
+    {
+        if (($verification['status'] ?? null) !== 'verified') {
+            return 'not_evaluated';
+        }
+
+        return match ($verification['bodyProfile'] ?? null) {
+            null => 'signed-mime-v1',
+            'tatra-ascii-relaxed-v1' => 'tatra-ascii-relaxed-v1',
+            default => 'unknown',
+        };
+    }
+
+    /** Structural compatibility only; never import, report or emit parsed transaction values. */
+    private function transactionProfile(array $verification): string
+    {
+        $body = $verification['body'] ?? null;
+        if (($verification['status'] ?? null) !== 'verified' || ! is_string($body)
+            || strlen($body) > 65535 || ! mb_check_encoding($body, 'UTF-8')
+            || $this->bodyProfile($verification) === 'unknown') {
+            return 'not_evaluated';
+        }
+        try {
+            return (new TatraBankSepaEvidenceParser)->parse($body) === null ? 'unsupported' : 'matched';
+        } catch (\Throwable) {
+            return 'not_evaluated';
         }
     }
 

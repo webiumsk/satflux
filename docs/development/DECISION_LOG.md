@@ -1,5 +1,20 @@
 # Development decision log
 
+## 2026-11-01 - Bind the observed Tatra ASCII body independently of MIME labels
+
+The live safe facts show valid core DKIM with unsigned MIME controls, plain
+UTF-8/7bit ASCII and relaxed/relaxed. Do not merely remove MIME signature names
+while retaining MIME-selected decoding: independent probes preserve DKIM PASS
+while changing the latter. Add a separate fixed canonical ASCII profile bound
+to one same eligible bank signature's hashes/lengths. Keep full-MIME precedence
+and every remaining proof, strict evidence and financial guard unchanged.
+
+Independent source QA/security and synthetic normal/report/no-replay regressions
+accept the candidate. Publish as a follow-up to existing PR #415 rather than
+requiring a branch change on the owner's current deployment. Preserve 406e1fef
+as reviewed historical capture evidence; require fresh head CI/review. Pure
+operator frame status is not settlement and cannot replay a consumed payment.
+
 ## 2026-11-01 - Deliver the approved one-shot private capture behind an off switch
 
 Implement owner-approved design ba1177a5 as a separate follow-up to037a6fa7/PR414.

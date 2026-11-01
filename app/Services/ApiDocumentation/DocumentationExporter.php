@@ -80,6 +80,7 @@ final class DocumentationExporter
             'runtime/bank-mail-verifier/cli.mjs',
             'runtime/bank-mail-verifier/diagnostic-cli.mjs',
             'runtime/bank-mail-verifier/verifier.mjs',
+            'runtime/bank-mail-verifier/ascii-wire-profile.mjs',
             'runtime/bank-mail-verifier/package.json',
             'runtime/bank-mail-verifier/package-lock.json',
             'app/Services/Raffle/RafflePayloadService.php',

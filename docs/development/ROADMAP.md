@@ -1,5 +1,14 @@
 # Development roadmap
 
+## Current: publish and verify the qualified ASCII proof profile - 2026-11-01
+
+Independent QA/security accept the frozen narrow fallback for the owner-observed
+plain UTF-8/7bit ASCII and relaxed/relaxed family. Preserve the legacy path and
+all bank/recipient/amount/account/reference/provider/dedup gates. Publish on the
+existing PR #415 branch and require current exact-head CI/CodeRabbit. Then owner
+rollout and read-only retained-message recheck must establish actual frame
+support. No expired-message restoration, financial replay or new transfer follows.
+
 ## Next: current CI and owner rollout for approved private capture - 2026-11-01
 
 Independent QA/security accept the default-off feature on top of037a6fa7/PR414.

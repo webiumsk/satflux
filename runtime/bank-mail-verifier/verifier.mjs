@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { Resolver } from 'node:dns/promises';
 import { dkimVerify } from 'mailauth/lib/dkim/verify';
 import { simpleParser } from 'mailparser';
+import { ASCII_BODY_PROFILE, asciiRelaxedBodyForProof } from './ascii-wire-profile.mjs';
 
 export const MAX_RAW_BYTES = 262144;
 const MAX_BODY_BYTES = 65535;
@@ -168,16 +169,39 @@ async function evaluate(input, { resolver } = {}, observe) {
       && ['rsa-sha256', 'ed25519-sha256'].includes(result.algo)
       && requiredHeaders.every((name) => signed.includes(name));
   });
-  const verification = !proof
+  // Keep fully signed MIME interpretation first. Unsigned controls may only
+  // disqualify this fixed wire profile, never select a different interpretation.
+  let wireBody;
+  const wireProof = !proof && headers.get('mime-version')?.[0] === '1.0'
+    && /^text\/plain[ \t]*;[ \t]*charset[ \t]*=[ \t]*(?:"utf-8"|utf-8)[ \t]*$/i.test(contentType)
+    && encoding === '7bit'
+    ? authentication.results.find((result) => {
+      const domain = result.signingDomain?.toLowerCase();
+      const signed = typeof result.signingHeaders?.keys === 'string'
+        ? result.signingHeaders.keys.split(':').map((name) => name.trim().toLowerCase()) : [];
+      if (!(result.status?.result === 'pass' && bankDomain(domain)
+        && result.status.aligned && bankDomain(String(result.status.aligned).toLowerCase())
+        && result.signatureTimeValid === true && !result.canonBodyLengthLimited
+        && result.canonBodyLength === result.canonBodyLengthTotal
+        && ['rsa-sha256', 'ed25519-sha256'].includes(result.algo)
+        && ['from', 'to', 'subject'].every((name) => signed.includes(name)))) return false;
+      const body = asciiRelaxedBodyForProof(rawMime.slice(rawMime.indexOf('\r\n\r\n') + 4), result);
+      if (body === null) return false;
+      wireBody = body;
+      return true;
+    }) : undefined;
+  const selectedProof = proof || wireProof;
+  const verification = !selectedProof
     ? (budget.temporaryFailure || authentication.results.some((result) => result.status?.result === 'temperror')
       ? retryable('dns_unavailable') : invalid('invalid_signature'))
     : {
-    status: 'verified', reason: 'verified', bankDomain: proof.signingDomain.toLowerCase(),
-    from, subject: parsed.subject, body: parsed.text,
+    status: 'verified', reason: 'verified', bankDomain: selectedProof.signingDomain.toLowerCase(),
+    from, subject: parsed.subject, body: proof ? parsed.text : wireBody,
     contentSha256: createHash('sha256').update(Buffer.from(rawMime, 'utf8')).digest('hex'),
+    ...(wireProof ? { bodyProfile: ASCII_BODY_PROFILE } : {}),
   };
   // The proof and retry decision are final before optional diagnostic projection.
-  try { observe?.(authentication.results, requiredHeaders); } catch { /* Diagnostics cannot change verification. */ }
+  try { observe?.(authentication.results, wireProof ? ['from', 'to', 'subject'] : requiredHeaders); } catch { /* Diagnostics cannot change verification. */ }
   return verification;
 }
 

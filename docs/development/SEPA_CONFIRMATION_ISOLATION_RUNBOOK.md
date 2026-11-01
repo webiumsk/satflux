@@ -101,10 +101,18 @@ limited to 65,535 bytes, so attachment-heavy or oversized legacy messages may ne
 manual import rather than silently exceeding the supported profile. Keep the app encryption key with queue recovery backups.
 Failed jobs retain ciphertext and sanitized errors, never raw mail. For store recipients, the verifier
 independently verifies an aligned Tatra DKIM signature over the complete body,
-signed From/To/Subject and MIME controls. Its signed recipient must match the
+signed From/To/Subject. MIME interpretation uses fully signed controls or the
+separately bounded [ASCII wire-body profile](TATRA_ASCII_WIRE_PROFILE.md), which
+returns only fixed relaxed canonical text bound to the same proof's hashes and
+lengths. Unsigned MIME fields cannot select decoding. Its signed recipient must match the
 store address. Sender-supplied authentication headers, partial-body signatures,
 ambiguous MIME, HTML and missing proof cannot authorize payment. Temporary DNS or
 process errors retry through the existing bounded queue backoff.
+
+The ASCII fallback admits only the observed plain UTF-8/7bit/MIME1.0 and
+relaxed/relaxed combination, with raw/canonical body each at most65,535 bytes and
+wire lines at most998 bytes. Other formats do not enter that fallback. The legacy
+fully signed MIME profile keeps its precedence and behavior.
 
 ### Diagnose an acknowledged but unconfirmed bank message
 
@@ -128,6 +136,12 @@ its lost reason. Preserve any privately available original bank EML; do not
 reconstruct signed content, replay a payment or require another real transfer
 just to diagnose it. An empty queue or audit result cannot establish settlement:
 unsupported transaction layouts can also produce no parsed credit rows.
+
+For a retained unexpired capture, `bank-mail:capture-diagnose` reports safe
+`body_profile` and `transaction_profile` fields. A matched transaction profile
+only confirms the strict frame shape on the verified recheck body. The command
+does not import/report a payment or change the original capture/deadline. Existing
+captures remain readable after this compatible update; expired data is not restored.
 
 ### Supported transaction profile
 

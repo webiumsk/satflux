@@ -1,5 +1,10 @@
 # Private bank MIME capture evidence - 2026-11-01
 
+Historical capture-only evidence for406e1fef. The subsequent
+[ASCII wire-body repair](../../TATRA_ASCII_WIRE_PROFILE.md) changes the verifier
+and safe outer capture diagnostics under its own review. Those changed files
+are not expected to match this older frozen source manifest on later revisions.
+
 Base: `037a6fa7`, branch `feat/bank-mime-private-capture`. The owner approved
 implementation of the independently reviewed proposal ba1177a5, default-off.
 No production activation, deployment or real-message capture occurred.

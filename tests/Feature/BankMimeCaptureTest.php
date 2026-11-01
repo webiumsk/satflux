@@ -327,8 +327,66 @@ class BankMimeCaptureTest extends TestCase
         $output = Artisan::output();
         $this->assertSame([
             'version' => 1, 'status' => 'diagnosed', 'original' => $this->summary(), 'recheck' => $summary,
+            'body_profile' => 'not_evaluated', 'transaction_profile' => 'not_evaluated',
         ], json_decode(trim($output), true, 16, JSON_THROW_ON_ERROR));
         foreach ([$raw, $this->recipient, $this->store->id, 'synthetic-private-child-output'] as $private) {
+            $this->assertStringNotContainsString($private, $output);
+        }
+        $this->assertSame($ciphertext, $this->ciphertext());
+        $this->assertSame($expiry, $this->expiry());
+        $this->assertDatabaseCount('audit_logs', $auditCount);
+        $this->assertDatabaseCount('bank_transactions', 0);
+        Http::assertNothingSent();
+        Queue::assertNothingPushed();
+    }
+
+    #[TestWith(['ascii', 'tatra-ascii-relaxed-v1', 'matched'])]
+    #[TestWith(['legacy', 'signed-mime-v1', 'matched'])]
+    #[TestWith(['unsupported', 'tatra-ascii-relaxed-v1', 'unsupported'])]
+    #[TestWith(['unverified', 'not_evaluated', 'not_evaluated'])]
+    #[TestWith(['oversized', 'tatra-ascii-relaxed-v1', 'not_evaluated'])]
+    #[TestWith(['invalid_utf8', 'tatra-ascii-relaxed-v1', 'not_evaluated'])]
+    #[TestWith(['unknown_profile', 'unknown', 'not_evaluated'])]
+    public function test_operator_frame_profile_is_pure_bounded_and_never_prints_transaction_values(string $case, string $profile, string $frame): void
+    {
+        $raw = 'synthetic-private-original-bank-body';
+        $this->captureOne($raw);
+        $ciphertext = $this->ciphertext();
+        $expiry = $this->expiry();
+        $auditCount = AuditLog::count();
+        config(['bank_mail_capture.enabled' => false]);
+        $body = "Vazeny klient,\r\n"
+            ."01.06.2026 12:31 bol zostatok Vasho uctu SK4811000000002944116480 zvyseny o 12,50 EUR.\r\n"
+            ."uctovny zostatok: 1 012,50 EUR\r\naktualny zostatok: 1 012,50 EUR\r\n"
+            ."disponibilny zostatok: 1 012,50 EUR\r\nPopis transakcie: CCINT 1100/000000-261426464\r\n"
+            ."Referencia platitela: QR-ab29e346f1d841c8a95a63d857490818\r\n"
+            ."Informacia pre prijemcu: synthetic-private-frame-marker\r\nS pozdravom\r\nTATRA BANKA, a.s.\r\n";
+        $body = match ($case) {
+            'unsupported' => 'synthetic-private-frame-marker',
+            'oversized' => str_repeat('x', 65536),
+            'invalid_utf8' => "\xffsynthetic-private-frame-marker",
+            default => $body,
+        };
+        $verification = [
+            'status' => $case === 'unverified' ? 'invalid' : 'verified', 'body' => $body,
+            'bodyProfile' => $case === 'unknown_profile' ? 'synthetic-private-profile-marker' : 'tatra-ascii-relaxed-v1',
+        ];
+        if ($case === 'legacy') {
+            unset($verification['bodyProfile']);
+        }
+        $summary = array_replace($this->summary(), [
+            'status' => $verification['status'], 'reason' => $case === 'unverified' ? 'invalid_signature' : 'verified',
+        ]);
+        $this->mock(BankMimeDiagnosticRunner::class)->makePartial()->shouldReceive('run')->once()->with($raw, $this->recipient)
+            ->andReturn(['verification' => $verification, 'diagnostics' => $summary, 'contentSha256' => hash('sha256', $raw)]);
+        $this->assertSame(0, Artisan::call('bank-mail:capture-diagnose'));
+        $output = Artisan::output();
+        $result = json_decode(trim($output), true, 16, JSON_THROW_ON_ERROR);
+        $this->assertSame($profile, $result['body_profile']);
+        $this->assertSame($frame, $result['transaction_profile']);
+        $this->assertSame($this->summary(), $result['original']);
+        foreach ([$raw, $this->recipient, $this->store->id, 'SK4811000000002944116480',
+            'QR-ab29e346f1d841c8a95a63d857490818', '12,50', 'synthetic-private-frame-marker', 'synthetic-private-profile-marker'] as $private) {
             $this->assertStringNotContainsString($private, $output);
         }
         $this->assertSame($ciphertext, $this->ciphertext());
@@ -386,7 +444,7 @@ class BankMimeCaptureTest extends TestCase
             ->andReturnUsing(function () {
                 Redis::connection('cache')->del(BankMimeCaptureService::KEY);
 
-                return ['diagnostics' => $this->summary()];
+                return ['verification' => ['status' => 'invalid', 'reason' => 'invalid_signature'], 'diagnostics' => $this->summary()];
             });
         $this->assertSame(['version' => 1, 'status' => 'empty'], app(BankMimeCaptureService::class)->diagnose());
     }
