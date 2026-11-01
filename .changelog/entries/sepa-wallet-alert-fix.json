@@ -1,0 +1,7 @@
+{
+  "id": "sepa-wallet-alert-fix",
+  "source": "https://github.com/webiumsk/satflux/pull/413",
+  "title": "SEPA activation no longer raises a wallet-change alert",
+  "body": "Enabling SEPA Instant no longer appears as a change to a crypto receiving wallet. Existing alerts caused only by SEPA activation can clear after a successful fresh verification. Genuine wallet changes remain monitored, and verification failures preserve existing alerts.",
+  "labels": ["fix"]
+}

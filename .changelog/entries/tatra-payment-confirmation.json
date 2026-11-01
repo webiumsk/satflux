@@ -1,0 +1,7 @@
+{
+  "id": "tatra-payment-confirmation",
+  "source": "https://github.com/webiumsk/satflux/pull/415",
+  "title": "Verified Tatra banka notifications can confirm SEPA payments",
+  "body": "Supported Tatra banka credit notifications can confirm matching SEPA payments automatically after the bank origin and payment details are verified. This includes the qualified Platba notification format while preserving company bank imports. Unsupported, incomplete or ambiguous notifications require review rather than automatically marking a payment as paid.",
+  "labels": ["improvement", "fix"]
+}
