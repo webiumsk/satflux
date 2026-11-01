@@ -17,7 +17,7 @@
         "app/Services/Invoicing/BankMimeCaptureService.php": "2e0e587f5ea4c021961ef62c7f4916d830f4977eb0e04ac855d420319c709be5",
         "app/Support/Invoicing/BankMimeDiagnosticRunner.php": "a132bae601302829d5a332b564af7a20790f774f5f7e2bb39b722a7614388c3d",
         "app/Services/Invoicing/BankInboundEmailService.php": "52ac89427e5a11f84d91948edab2966c8e7a86f71cd4d598ff3f42a447bb9290",
-        "app/Services/Invoicing/BankImport/TatraBankEmailParser.php": "67738444c44b769389a34a5dd4fe9129596e63f27875451b54ce848d87cb65c1",
+        "app/Services/Invoicing/BankImport/TatraBankEmailParser.php": "54a8760e4cf99ab02e61a458c978832fafcb66181dc354d4dfa0101b25e43117",
         "app/Services/Invoicing/BankImport/TatraBankSepaEvidenceParser.php": "1e24a3eaf5ef207bed4c0159515cab7a3350256bd120092d5f383bbc1da66991",
         "app/Services/SepaEmailConfirmationService.php": "ef10404dafdc70866db17f613f2b690b65a888888f7c433641bb81af6d5a77af",
         "app/Support/Invoicing/ParsedBankTransaction.php": "2d961e8893991f6a58017df00ced15e6d7844c63d8d6707038be384e41761843",
