@@ -5,6 +5,7 @@ namespace App\Services\Invoicing;
 use App\Models\AuditLog;
 use App\Models\Company;
 use App\Models\Store;
+use App\Support\Invoicing\BankMimeDiagnosticRunner;
 use App\Support\Invoicing\PreparedBankMimePayload;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Validation\ValidationException;
@@ -119,8 +120,25 @@ class BankMimeVerificationService
             return $this->review($owner, 'unverified_bank_mime', 'invalid_utf8');
         }
 
+        $capture = null;
+        $captureToken = null;
+        $diagnostics = null;
         try {
-            $result = $this->verify($rawMime, $recipient);
+            $result = null;
+            if (config('bank_mail_capture.enabled', false)) {
+                try {
+                    $capture = app(BankMimeCaptureService::class);
+                    $captureToken = $capture->armedFor($owner);
+                    if ($captureToken !== null) {
+                        $envelope = app(BankMimeDiagnosticRunner::class)->run($rawMime, $recipient);
+                        $result = $envelope['verification'];
+                        $diagnostics = $envelope['diagnostics'];
+                    }
+                } catch (\Throwable) {
+                    // Diagnostic transport/schema/cache failure cannot change strict verification.
+                }
+            }
+            $result ??= $this->verify($rawMime, $recipient);
         } catch (\Throwable) {
             // Never include subprocess input, output or exception text in logs.
             throw new RuntimeException('Bank message verification is temporarily unavailable.');
@@ -130,6 +148,14 @@ class BankMimeVerificationService
             throw new RuntimeException('Bank message verification is temporarily unavailable.');
         }
         if ($status !== 'verified') {
+            if (($result['reason'] ?? null) === 'invalid_signature' && $captureToken !== null && $diagnostics !== null) {
+                try {
+                    $capture?->capture($owner, $captureToken, $rawMime, $recipient, $diagnostics);
+                } catch (\Throwable) {
+                    // Optional retention must never alter the review/retry decision.
+                }
+            }
+
             return $this->review($owner, 'unverified_bank_mime', $this->verifierReason($result['reason'] ?? null));
         }
         foreach (['from', 'subject', 'body', 'bankDomain', 'contentSha256'] as $field) {

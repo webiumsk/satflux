@@ -1,5 +1,19 @@
 # Development decision log
 
+## 2026-11-01 - Deliver the approved one-shot private capture behind an off switch
+
+Implement owner-approved design ba1177a5 as a separate follow-up to037a6fa7/PR414.
+Keep proof acceptance/retry and financial handlers unchanged. Use existing Redis7
+with authenticated whole-envelope binding, server-time absolute expiry and atomic
+existing-state transition. State loss fails closed; no handler can re-arm it.
+Operator commands expose fixed tri-state facts and cannot replay payments.
+
+Independent QA/security accept the frozen manifest after real concurrency,
+deadline, owner, hostile-input, privacy and no-replay regressions. Preserve the
+recorded local results separately from fresh Node22/exact-head CI and from actual
+rollout. Implementation approval/default-off source readiness does not activate
+retention or establish bank-message interoperability/settlement.
+
 ## 2026-11-01 - Keep financial deduplication policy outside the route repair
 
 CodeRabbit correctly identified that optional midnight normalization can silently

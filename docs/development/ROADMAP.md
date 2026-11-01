@@ -1,5 +1,15 @@
 # Development roadmap
 
+## Next: current CI and owner rollout for approved private capture - 2026-11-01
+
+Independent QA/security accept the default-off feature on top of037a6fa7/PR414.
+Publish the separate branch and verify fresh exact-head CI including Node22 and
+real Redis concurrency. Compatible Redis7 and every webhook worker, keys and
+backup-retention acknowledgement precede explicit operator arming for one Store.
+No automatic activation follows source readiness. Capture the next eligible
+normal bank notification for read-only diagnosis; do not require a real transfer
+or relax bank proof. Current signing/layout/payment qualification remains open.
+
 ## Current: publish and verify PR414 review follow-up - 2026-11-01
 
 All three initial CodeRabbit findings are addressed in reviewed source: optional

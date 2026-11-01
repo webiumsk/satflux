@@ -99,7 +99,7 @@ function dnsBudget(injectedResolver) {
  * Verify original MIME, never a provider-transformed body or supplied auth header.
  * resolver is a library-only test dependency; CLI input cannot select DNS settings.
  */
-export async function verify(input, { resolver } = {}) {
+async function evaluate(input, { resolver } = {}, observe) {
   if (!input || typeof input !== 'object' || Array.isArray(input)
     || Object.keys(input).some((key) => !['rawMime', 'recipient'].includes(key))
     || typeof input.rawMime !== 'string' || typeof input.recipient !== 'string') return invalid('invalid_input');
@@ -168,13 +168,58 @@ export async function verify(input, { resolver } = {}) {
       && ['rsa-sha256', 'ed25519-sha256'].includes(result.algo)
       && requiredHeaders.every((name) => signed.includes(name));
   });
-  if (!proof) {
-    return budget.temporaryFailure || authentication.results.some((result) => result.status?.result === 'temperror')
-      ? retryable('dns_unavailable') : invalid('invalid_signature');
-  }
-  return {
+  const verification = !proof
+    ? (budget.temporaryFailure || authentication.results.some((result) => result.status?.result === 'temperror')
+      ? retryable('dns_unavailable') : invalid('invalid_signature'))
+    : {
     status: 'verified', reason: 'verified', bankDomain: proof.signingDomain.toLowerCase(),
     from, subject: parsed.subject, body: parsed.text,
     contentSha256: createHash('sha256').update(Buffer.from(rawMime, 'utf8')).digest('hex'),
+  };
+  // The proof and retry decision are final before optional diagnostic projection.
+  try { observe?.(authentication.results, requiredHeaders); } catch { /* Diagnostics cannot change verification. */ }
+  return verification;
+}
+
+const DIAGNOSTIC_HEADERS = ['from', 'to', 'subject', 'mime-version', 'content-type', 'content-transfer-encoding'];
+const DIAGNOSTIC_VERDICTS = new Set(['pass', 'fail', 'neutral', 'policy', 'none', 'permerror', 'temperror', 'unknown']);
+
+function signatureFacts(result, requiredHeaders) {
+  const verdict = result?.status?.result;
+  const signed = typeof result?.signingHeaders?.keys === 'string'
+    ? result.signingHeaders.keys.split(':').map((name) => name.trim().toLowerCase()) : null;
+  const aligned = result?.status?.aligned;
+  return {
+    verdict: typeof verdict === 'string' ? (DIAGNOSTIC_VERDICTS.has(verdict) ? verdict : 'unknown') : null,
+    bank_signer: typeof result?.signingDomain === 'string' ? bankDomain(result.signingDomain.toLowerCase()) : null,
+    bank_aligned: typeof aligned === 'string' ? bankDomain(aligned.toLowerCase()) : (aligned === false ? false : null),
+    algorithm_allowed: typeof result?.algo === 'string' ? ['rsa-sha256', 'ed25519-sha256'].includes(result.algo) : null,
+    time_valid: typeof result?.signatureTimeValid === 'boolean' ? result.signatureTimeValid : null,
+    full_body: typeof result?.canonBodyLengthLimited === 'boolean'
+      && Number.isFinite(result?.canonBodyLength) && Number.isFinite(result?.canonBodyLengthTotal)
+      ? !result.canonBodyLengthLimited && result.canonBodyLength === result.canonBodyLengthTotal : null,
+    headers: Object.fromEntries(DIAGNOSTIC_HEADERS.map((name) => [name, {
+      required: requiredHeaders.includes(name), signed: signed === null ? null : signed.includes(name),
+    }])),
+  };
+}
+
+export async function verify(input, options = {}) {
+  return evaluate(input, options);
+}
+
+/** Private process transport only. Consumers must emit diagnostics, never this envelope. */
+export async function diagnose(input, options = {}) {
+  let signatures = [];
+  const verification = await evaluate(input, options, (results, requiredHeaders) => {
+    signatures = results.slice(0, MAX_SIGNATURES).map((result) => signatureFacts(result, requiredHeaders));
+  });
+  const rawMime = input?.rawMime;
+  const contentSha256 = typeof rawMime === 'string' && Buffer.from(rawMime).toString('utf8') === rawMime
+    ? createHash('sha256').update(Buffer.from(rawMime, 'utf8')).digest('hex') : null;
+  return {
+    verification,
+    diagnostics: { version: 1, status: verification.status, reason: verification.reason, signatures },
+    contentSha256,
   };
 }

@@ -1,5 +1,25 @@
 # Project state
 
+## Approved private bank MIME capture ready for CI - 2026-11-01
+
+Owner-approved proposal ba1177a5 is implemented default-off on the separate
+feat/bank-mime-private-capture branch, based on037a6fa7/PR414. One encrypted
+Redis7 slot is explicitly armed for one local Store and an absolute two-hour
+deadline; only an existing matching unexpired ARMED slot can become CAPTURED.
+Missing/evicted state cannot re-arm, expiry cannot extend and safe operator
+diagnostics cannot import/report/replay a payment. Strict bank proof is unchanged.
+
+Independent QA243/1267 plus private15/285 and Node56 pass; security54/475 plus
+36 private Node assertions accepts the frozen15-file manifest without findings.
+Author128/917, Node56, PHPStan/Pint and main API/hash checks pass. CI includes a
+disposable Redis fixture for real concurrency/expiry checks. See the [review
+evidence](artifacts/bank-mime-capture-implementation-2026-11-01/README.md).
+
+Fresh exact-head CI remains required. No production activation/deployment or
+real bank capture occurred; actual Tatra qualification and the historical
+payment remain unresolved. Existing backup retention applies to encrypted
+residuals. The unrelated primary checkout and prior branch remain preserved.
+
 ## PR414 review follow-up: one-route bank-mail compatibility - 2026-11-01
 
 The owner confirms Mailgun Free, permitting one inbound route. PR414 at initial
