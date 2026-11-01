@@ -1,3 +1,9 @@
+> Historical evidence for initial revision `12e00fa4`, superseded by the
+> [final follow-up](../bank-mail-single-route-review-2026-11-01/README.md).
+> That candidate included optional compact-date normalization, now withdrawn.
+> Its manifests/commands apply only to a disposable archive of `12e00fa4`,
+> not the current source. Initial CI passed, but did not dismiss the review risk.
+
 > Archived review evidence. Private fixture/runner paths below are redacted;
 > they are not committed runnable tests. Use the repository commands in README.md.
 

@@ -33,6 +33,10 @@ final downstream handling so token reassignment cannot cross processing policies
 | Company | Separate bounded MIME extraction into the existing Tatra/SLSP importer | Existing company import/matching behavior; never bank-origin attestation or SEPA provider reporting |
 | Unknown or changed owner | Reject without importing/reporting | No fallback to another owner or policy |
 
+Unusable optional envelope-sender metadata is ignored at intake without blocking
+valid store MIME. Company extraction falls back to MIME From; a usable sender
+retains precedence. Sender metadata cannot attest bank identity.
+
 Company extraction uses the already locked mailparser dependency and a separate
 CLI. Its binary-safe input supports legacy charset decoding without relaxing the
 Store UTF-8 or signature policy. The strict store CLI and verifier stay byte
@@ -69,7 +73,7 @@ and workers; do not downgrade workers while company MIME jobs are pending.
 
 | Agent | Writable ownership | Dependencies and acceptance |
 | --- | --- | --- |
-| `/root/wallet_drift_backend` | BankInboundWebhookController, BankMimeVerificationService, ProcessBankNotificationEmail, BankInboundEmailService; separate company Node CLI/extractor; scoped company/store MIME PHP and Node regressions; TatraBankEmailParser explicit-date normalization and its unit regressions; optional typed internal result DTO | Implement only this contract; preserve strict verifier bytes and existing APIs; run focused suites, Pint, PHPStan |
+| `/root/wallet_drift_backend` | BankInboundWebhookController, BankMimeVerificationService, ProcessBankNotificationEmail, BankInboundEmailService; separate company Node CLI/extractor; scoped company/store MIME PHP and Node regressions; typed internal result DTO | Implement only this contract; preserve strict verifier bytes and existing APIs; run focused suites, Pint, PHPStan |
 | `/root/wallet_bmail_security` | Reports/private synthetic fixtures only | Independent read-only source/security review of exact final hashes and negative cross-policy/privacy cases |
 | `/root/wallet_bmail_qa` | Reports/private synthetic fixtures only | Independent read-only regression/import/owner-race/charset/retry checks in disposable environment |
 | Main | This note, project state, public documentation in five locales, API schema and generated documentation, integration runner and Git | Integrate accepted source, preserve ratchets, publish scoped branch/PR only; no merge or deployment |
@@ -85,21 +89,22 @@ sender and forwarded-header behavior, Tatra/SLSP imports and dedup, multipart/ch
 and malformed/oversize cases, encrypted retries/failed payloads, safe no-row logs,
 old parsed/native routes and all existing strict signature/parser/report regressions.
 
-## Date-only company import regression
+## Company compact-date and review scope
 
-The native-to-MIME compact Tatra duplicate regression exposed an existing date
-parser bug: `createFromFormat('d.m.Y', ...)` inherited processing time. Normalize
-only an explicitly observed compact date with `!d.m.Y`, representing its known
-date precision at midnight. Cross-clock unit/import regressions must retain the
-original failing fixture. Classic timestamps, missing-date fallback and every
-SEPA proof/reference flag remain unchanged. No bank transaction time is inferred.
+A native-to-MIME compact retry test exposed an existing parser limitation: explicit
+compact dates inherit processing time, making retries across processing seconds
+non-idempotent. The initial candidate normalized the date to midnight. CodeRabbit
+correctly identified that this optional change also silently merged distinct
+same-day credits under the existing dedup fields. Independent QA reproduced both
+the collision and the legacy retry limitation using the real importer.
 
-This changes future dedup stability, not historical data. Existing compact rows
-retain their old processing-time component and may require manual reconciliation
-on replay. Distinct compact credits with identical date/amount/currency/direction/
-references and no bank transaction ID can collide under the existing dedup key;
-missing-date messages still use processing time. Do not claim universal or
-cross-historical idempotence, migrate history or change the dedup algorithm.
+The final adapter restores parser and unit bytes exactly to the merged base;
+company deduplication, persistence and history are not changed. Retry qualification
+uses classic notifications with explicit bank timestamps and advances processing
+clocks. A separate regression proves same-day compact notifications remain separate
+under the existing behavior. Compact date-only/undated retry ambiguity remains a
+known limitation requiring reconciliation; this patch does not claim to solve it
+or invent a bank event ID. Broader financial event-identity design is separate.
 
 ## Operational evidence limits
 
@@ -110,10 +115,12 @@ This repair removes the one-route compatibility blocker; it cannot establish the
 current bank's layout/signing interoperability or retrospectively confirm that
 payment. No new real transfer, forced-paid operation or trust bypass is a test step.
 
-Implementation is complete and independently accepted. [Final review evidence](artifacts/bank-mail-single-route-2026-11-01/README.md)
-records author PHP 144 / 521 and Node 42, independent QA PHP 151 / 583 and Node 42,
-independent security PHP 10 / 61 and 12 private probes, scoped Pint, full PHPStan and
-main API/OpenAPI/parity checks. Private controls are labeled separately from
-committed tests. Source publication/exact-head Node 22 CI and operator rollout
-remain distinct gates; local tests used existing Node 24. Architecture review was
-performed independently before main accepted this bounded design.
+Implementation and all three initial review follow-ups are independently
+accepted. [Final follow-up evidence](artifacts/bank-mail-single-route-review-2026-11-01/README.md)
+records author PHP 155/623, independent QA 162/677 and security 50/334, with private
+controls distinguished from committed tests. The initial 42 runtime cases and 12 probes
+passed at unchanged bytes; initial Node22 CI passed but a fresh revised-head run
+is required. The original `12e00fa4` candidate and its superseded date normalization
+remain explicitly historical evidence. No merchant-visible UI/copy or dependency
+changed. Source publication, owner merge/deployment and actual bank qualification
+remain distinct gates.

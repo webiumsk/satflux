@@ -148,7 +148,7 @@ final class DocumentationSchemas
             $mime = $this->obj([
                 'recipient' => ['type' => 'string', 'maxLength' => 255],
                 'body-mime' => ['type' => 'string', 'maxLength' => 262144, 'description' => 'Original MIME form-field bytes, preserving line endings; maximum is enforced in bytes. Store verification requires UTF-8. Company MIME decoding supports bounded legacy charsets without changing the store policy.'],
-                'sender' => ['type' => 'string', 'maxLength' => 255, 'description' => 'Optional Mailgun envelope sender, encrypted before queueing and preferred by legacy company importing. It does not attest bank origin and cannot change store verification policy.'],
+                'sender' => ['type' => 'string', 'description' => 'Optional Mailgun envelope sender. Usable nonempty UTF-8 values up to 255 bytes without CR/LF/NUL are encrypted and preferred by legacy company importing. Unusable optional metadata is ignored without rejecting the MIME delivery; companies then use MIME From. A usable sender retains precedence even when unsupported by a bank parser. Sender does not attest bank origin or change store verification policy.'],
                 'timestamp' => ['type' => 'string', 'pattern' => '^[0-9]+$'],
                 'token' => ['type' => 'string', 'minLength' => 1],
                 'signature' => ['type' => 'string', 'description' => 'Mailgun lowercase hex HMAC-SHA256(timestamp + token).'],

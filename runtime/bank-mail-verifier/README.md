@@ -68,7 +68,8 @@ There is no caller-selected mode, bank identity, DNS configuration or routing ID
 Successful output has `status: extracted`, `from`, `subject`, `body`, `headers`
 and `contentSha256`. Headers contain only the existing forwarding-detection facts,
 not private raw header values. PHP must validate types, limits and the digest,
-prefer the optional encrypted envelope sender, and recheck owner class/key before
+prefer the optional encrypted usable envelope sender (fall back to MIME From
+when optional metadata is unusable), and recheck owner class/key before
 using the existing company importer. Company results never supply bank-domain
 proof or enter automatic Store confirmation. Existing company matching can mark
 local business documents paid; MIME extraction does not authenticate the bank.

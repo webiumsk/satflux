@@ -1,5 +1,21 @@
 # Development decision log
 
+## 2026-11-01 - Keep financial deduplication policy outside the route repair
+
+CodeRabbit correctly identified that optional midnight normalization can silently
+merge distinct same-day compact company credits. Independent QA reproduced the
+loss and the legacy retry limitation. Withdraw that optional parser/unit change;
+this supersedes the earlier candidate decision to normalize explicit compact dates.
+Keep parser, dedupe, importer and history byte-identical to merged base. Qualify
+native/MIME retries with a classic bank timestamp and prove compact non-loss;
+leave broader event identity/reconciliation for a separately evidenced design.
+
+Ignore unusable optional sender metadata without blocking strict Store proof;
+usable envelope sender retains legacy Company precedence. Check the executable
+selected by effective Laravel node configuration. Independent follow-up QA and
+security accept the revised source. Initial CI is historical; fresh head CI and
+owner merge/deployment remain separate. See [evidence](artifacts/bank-mail-single-route-review-2026-11-01/README.md).
+
 ## 2026-11-01 - Support existing bank-mail behavior through one MIME route
 
 The owner's confirmed Mailgun Free plan permits one inbound route. Correct the

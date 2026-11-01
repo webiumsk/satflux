@@ -6,6 +6,7 @@ use App\Enums\BusinessDocumentStatus;
 use App\Enums\CompanyJurisdiction;
 use App\Jobs\ProcessBankNotificationEmail;
 use App\Models\AuditLog;
+use App\Models\BankTransaction;
 use App\Models\BusinessDocument;
 use App\Models\Company;
 use App\Models\User;
@@ -192,6 +193,45 @@ class BankCompanyMimeImportTest extends TestCase
         $this->assertArrayNotHasKey('_verified_bank_domain', $old->payload);
     }
 
+    #[DataProvider('unusableEnvelopeSenders')]
+    public function test_unusable_optional_envelope_sender_is_dropped_and_company_uses_mime_from(mixed $sender): void
+    {
+        Queue::fake();
+        $doc = $this->document();
+        $this->post('/api/webhooks/bank-inbound.mime', array_merge($this->delivery($this->mime()), ['sender' => $sender]), ['Accept' => 'application/json'])
+            ->assertOk()->assertJsonPath('accepted', true);
+
+        Queue::assertPushed(ProcessBankNotificationEmail::class, function ($job) {
+            $this->assertArrayNotHasKey('_encrypted_bank_envelope_sender', $job->payload);
+            app()->call([$job, 'handle']);
+
+            return true;
+        });
+        $this->assertSame(BusinessDocumentStatus::Paid, $doc->fresh()->status);
+        $this->assertDatabaseCount('bank_transactions', 1);
+        Http::assertNothingSent();
+    }
+
+    public static function unusableEnvelopeSenders(): array
+    {
+        return [
+            'array' => [['invalid']], 'integer' => [123], 'boolean' => [true],
+            'bytes' => [str_repeat('x', 256)], 'multibyte bytes' => [str_repeat('é', 128)],
+            'CRLF' => ["private\r\nsender@slsp.sk"], 'NUL' => ["private\0sender@slsp.sk"],
+            'invalid UTF8' => ["private\xE9@slsp.sk"], 'null' => [null], 'empty' => [''],
+        ];
+    }
+
+    public function test_a_usable_unsupported_envelope_sender_keeps_legacy_priority_over_mime_from(): void
+    {
+        $doc = $this->document();
+        $this->post('/api/webhooks/bank-inbound.mime', $this->delivery($this->mime(), 'notify@example.test'), ['Accept' => 'application/json'])->assertOk();
+
+        $this->assertSame(BusinessDocumentStatus::Issued, $doc->fresh()->status);
+        $this->assertDatabaseCount('bank_transactions', 0);
+        Http::assertNothingSent();
+    }
+
     #[TestWith(['X-Forwarded-For: private-forward-marker'])]
     #[TestWith(['Resent-From: private-forward-marker'])]
     #[TestWith(['Fwd: private-forward-marker'])]
@@ -224,10 +264,13 @@ class BankCompanyMimeImportTest extends TestCase
     {
         $this->travelTo(Carbon::parse('2026-11-01 12:00:00'));
         $doc = $this->document();
+        // This transport regression needs a bank-supplied booking time.
+        // Compact messages retain their existing processing-time defaults.
+        $body = "01.06.2026 12:31 bol zostatok Vasho uctu SK3112000000198742637541 zvyseny o 150,50 EUR.\r\nReferencia platitela: /VS20260042/SS/KS";
         $this->postJson('/api/webhooks/bank-inbound', [
-            'to' => $this->recipient, 'from' => 'notify@tatrabanka.sk', 'subject' => 'Payment notification', 'body' => self::BODY,
+            'to' => $this->recipient, 'from' => 'notify@tatrabanka.sk', 'subject' => 'Payment notification', 'body' => $body,
         ], ['X-Bank-Inbound-Secret' => 'synthetic-native-key'])->assertOk();
-        $job = $this->job($this->mime());
+        $job = $this->job($this->mime($body));
         $this->travel(2)->seconds();
         app()->call([$job, 'handle']);
         $this->travel(3)->seconds();
@@ -236,6 +279,21 @@ class BankCompanyMimeImportTest extends TestCase
         $this->assertSame(BusinessDocumentStatus::Paid, $doc->fresh()->status);
         $this->assertDatabaseCount('bank_transactions', 1);
         $this->assertDatabaseCount('bank_transaction_matches', 1);
+        Http::assertNothingSent();
+    }
+
+    public function test_same_day_compact_notifications_keep_separate_legacy_processing_times(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-01 12:00:00'));
+        app()->call([$this->job($this->mime()), 'handle']);
+        $this->travel(2)->seconds();
+        app()->call([$this->job($this->mime()), 'handle']);
+
+        // No bank event ID is available to distinguish a retry from another
+        // identical compact credit. Preserve the existing import policy.
+        $this->assertDatabaseCount('bank_transactions', 2);
+        $bookedAt = BankTransaction::where('company_id', $this->company->id)->pluck('booked_at');
+        $this->assertCount(2, $bookedAt->unique());
         Http::assertNothingSent();
     }
 

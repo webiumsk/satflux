@@ -210,6 +210,24 @@ class BankMimeConfirmationTest extends TestCase
         });
     }
 
+    public function test_unusable_optional_sender_never_blocks_valid_store_bank_proof(): void
+    {
+        $this->withSignedFixture($this->classicBody(), function (string $rawMime) {
+            Http::fake([
+                '*/plugins/sepa-instant-qr/settings' => Http::response(['confirmationContractVersion' => 2]),
+                '*/plugins/sepa-instant-qr/payment-requests/report' => Http::response(['outcome' => 'settled']),
+            ]);
+            $processed = 0;
+            foreach (BankCompanyMimeImportTest::unusableEnvelopeSenders() as [$sender]) {
+                $this->post('/api/webhooks/bank-inbound.mime', array_merge($this->delivery($rawMime), ['sender' => $sender]), ['Accept' => 'application/json'])
+                    ->assertOk()->assertJsonPath('accepted', true);
+                Http::assertSentCount(++$processed * 2);
+            }
+            $this->assertSame($processed, AuditLog::where('action', 'sepa.bmail_processed')->where('target_id', $this->store->id)->count());
+            $this->assertSame(0, AuditLog::where('action', 'sepa.bmail_review_required')->count());
+        });
+    }
+
     public function test_valid_mailgun_delivery_cannot_hide_a_tampered_bank_body(): void
     {
         $this->withSignedFixture($this->classicBody(), function (string $rawMime) {

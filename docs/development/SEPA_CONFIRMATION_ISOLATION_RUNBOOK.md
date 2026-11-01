@@ -86,9 +86,11 @@ changed by preparing this source. See [the design and evidence](BANK_MAIL_SINGLE
 
 Install the isolated locked runtime dependencies with
 `npm ci --prefix runtime/bank-mail-verifier --ignore-scripts` in the deployed
-checkout. The PHP Dockerfile installs Node22; verify the actual worker binary
-with `node --version` after rebuilding/reloading rather than assuming an old image
-is current. The PHP queue worker launches
+checkout. The PHP Dockerfile installs Node22. After rebuilding/reloading, inspect
+the effective Laravel `bank_inbound.node_binary` configuration in each worker,
+including any `BANK_MAIL_NODE_BINARY` override and cached configuration. Run that
+selected executable with `--version`; an unqualified `node --version` can report
+a different binary. The PHP queue worker launches
 the local verifier over argv/stdin; there is no new network service. Configure
 `BANK_MAIL_NODE_BINARY` only when Node is not available on the worker PATH.
 
@@ -117,12 +119,17 @@ MIME extraction is a separate transport adapter, not automatic SEPA proof.
 Company extraction is qualified by synthetic UTF-8/ASCII, Windows-1250 and
 ISO-8859-2 examples, with bounded supported legacy root charsets. Nested encoding
 handling follows the locked mailparser behavior; it is not independent bank
-verification or a guarantee that every malformed MIME is rejected. Date-only
-compact Tatra imports normalize the explicit booking date to midnight for stable
-future dedup. Historical rows retain prior processing times; missing-date messages
-still use processing time, and indistinguishable same-day compact events can
-collide. Review those cases manually rather than assuming universal dedup or a
-historical data migration.
+verification or a guarantee that every malformed MIME is rejected. An unusable
+optional envelope sender is ignored so it cannot veto a valid store message;
+company importing then uses MIME From. Usable envelope metadata keeps precedence.
+
+Company compact-date parsing and deduplication remain unchanged. Compact Tatra
+messages with date-only or missing dates retain the processing-time component,
+so retries across processing seconds may create additional rows. This repair does
+not normalize them to midnight, invent a bank event ID or silently merge distinct
+same-day compact credits. Native/MIME retry qualification uses a classic message
+with an explicit bank timestamp. Review compact cases manually; broader event
+identity/reconciliation design is separate from the one-route adapter.
 
 Credit dedup uses a versioned canonical fingerprint of receiving account, bank
 booking minute, amount/currency, all balances and bank transaction description.

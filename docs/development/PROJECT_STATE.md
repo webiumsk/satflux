@@ -1,33 +1,28 @@
 # Project state
 
-## Reviewed source: bank-mail compatibility with one Mailgun route - 2026-11-01
+## PR414 review follow-up: one-route bank-mail compatibility - 2026-11-01
 
-The owner confirms Mailgun Free and only the original EU route remains after a
-second-route creation failure. Its recipient scope covers the receiving domain
-and destination is still parsed `/api/webhooks/bank-inbound`. Free permits one
-inbound route, so the earlier two-route operational recommendation is incompatible
-with this account. The existing bank-mail repair must preserve company imports
-and strict store confirmation with one original-MIME destination.
+The owner confirms Mailgun Free, permitting one inbound route. PR414 at initial
+`12e00fa4` passed all remote CI, including Node22, but CodeRabbit identified three
+valid follow-ups. The revised receiver ignores unusable optional sender metadata,
+checks the configured Node executable in rollout instructions, and withdraws the
+optional compact-date normalization that could suppress distinct same-day credits.
+Parser/unit/dedupe/importer bytes match merged base `c90caa40`; legacy compact
+processing-time/retry ambiguity remains documented rather than changing policy.
 
-[The accepted architecture](BANK_MAIL_SINGLE_ROUTE.md) separates server-resolved
-Company extraction from unchanged strict Store verification. Backend, security and
-QA independently reviewed the design before implementation. Work is isolated on
-`fix/bank-mail-single-route` from merged `c90caa40`; the primary dirty checkout is
-preserved. No external repository, plugin, plan, subscription or deployment change
-is included. Author validation passes 144 PHP cases / 521 assertions and 42 Node
-cases. Independent QA passes 151 PHP / 583 assertions including 7 private controls,
-and 42 Node cases with zero skips. Independent security accepts the frozen source
-with 10 private PHP / 61 assertions, 42 Node cases and 12 private probes. Full
-existing-baseline PHPStan, scoped Pint, generated API/OpenAPI, locale parity and
-hash/diff checks pass. See [review evidence](artifacts/bank-mail-single-route-2026-11-01/README.md).
-Source publication and exact-head Node 22 CI remain separate; local MIME tests used
-existing Node 24. No merchant-visible UI/copy changed.
+Shared MIME intake keeps server-selected Store strict verification separate from
+Company extraction, encrypted metadata and final owner binding. Author follow-up
+passes 155 PHP / 623 assertions, independent QA 162 / 677 (including 7 private
+controls), and security 50 / 334 (including 10 private controls). Runtime 42 cases
+and 12 probes previously passed at unchanged bytes. Pint, full PHPStan, API/OpenAPI,
+locale parity and hash checks pass. See [final review evidence](artifacts/bank-mail-single-route-review-2026-11-01/README.md).
 
-Both original-message retrieval endpoints returned404, and no current Tatra EML
-is available. This repair addresses the shared-route compatibility blocker; actual
-bank signing/layout and the existing payment remain unverified. Keep the current
-Mailgun destination until compatible web and queue workers are deployed through
-an approved rollout. No real transfer or forced payment confirmation is a test.
+The isolated `fix/bank-mail-single-route` worktree preserves unrelated primary
+changes. PR414 is temporarily draft pending revised-head publication/CI. No
+provider/package/dependency/plan/billing/UI change, merge or deployment. Deploy
+compatible web/queue workers before switching the one EU route to `.mime`.
+Original EML retrieval returned404 on both endpoints; current bank signing/layout
+and the existing payment remain unverified. No additional real transfer is a test.
 
 ## Wallet drift hotfix reviewed; bank-origin incident open - 2026-11-01
 
