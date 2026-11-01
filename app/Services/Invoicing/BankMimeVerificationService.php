@@ -14,6 +14,14 @@ use Symfony\Component\Process\Process;
 /** Routes original MIME to company extraction or strict Store bank verification. */
 class BankMimeVerificationService
 {
+    // Only fixed rejection codes may cross the subprocess audit boundary.
+    private const VERIFIER_REJECTION_REASONS = [
+        'invalid_input', 'message_too_large', 'invalid_headers', 'missing_identity',
+        'unsigned_message', 'too_many_signatures', 'partial_body_signature',
+        'unsupported_mime', 'invalid_mime', 'identity_mismatch', 'unsupported_sender',
+        'unsupported_content', 'invalid_signature', 'input_too_large', 'invalid_json',
+    ];
+
     public function __construct(
         private BankInboundAddressService $addresses,
         private BankEmailOriginVerifier $originVerifier,
@@ -108,7 +116,7 @@ class BankMimeVerificationService
             return $this->review($owner, 'mime_size');
         }
         if (! mb_check_encoding($rawMime, 'UTF-8')) {
-            return $this->review($owner, 'unverified_bank_mime');
+            return $this->review($owner, 'unverified_bank_mime', 'invalid_utf8');
         }
 
         try {
@@ -122,7 +130,7 @@ class BankMimeVerificationService
             throw new RuntimeException('Bank message verification is temporarily unavailable.');
         }
         if ($status !== 'verified') {
-            return $this->review($owner, 'unverified_bank_mime');
+            return $this->review($owner, 'unverified_bank_mime', $this->verifierReason($result['reason'] ?? null));
         }
         foreach (['from', 'subject', 'body', 'bankDomain', 'contentSha256'] as $field) {
             if (! is_string($result[$field] ?? null)) {
@@ -183,9 +191,19 @@ class BankMimeVerificationService
         return $result;
     }
 
-    private function review(Store $store, string $reason): null
+    private function verifierReason(mixed $reason): string
     {
-        AuditLog::log('sepa.bmail_review_required', 'store', $store->id, ['reason' => $reason], $store->user_id);
+        return is_string($reason) && in_array($reason, self::VERIFIER_REJECTION_REASONS, true)
+            ? $reason : 'unknown';
+    }
+
+    private function review(Store $store, string $reason, ?string $verifierReason = null): null
+    {
+        $metadata = ['reason' => $reason];
+        if ($verifierReason !== null) {
+            $metadata['verifier_reason'] = $verifierReason;
+        }
+        AuditLog::log('sepa.bmail_review_required', 'store', $store->id, $metadata, $store->user_id);
 
         return null;
     }

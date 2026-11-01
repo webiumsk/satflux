@@ -27,6 +27,14 @@ or unauthenticated content requiring review. Retryable means verification or DNS
 was temporarily unavailable; preserve queue retry rather than confirming payment.
 Only verified output contains decoded message data.
 
+PHP retains the stable invalid reason in the Store audit's `verifier_reason`
+metadata through a fixed allowlist, alongside the existing broad
+`reason: unverified_bank_mime`. Unknown or malformed reasons become `unknown`;
+invalid raw UTF-8 is diagnosed as `invalid_utf8` before invoking Node. No decoded
+content, arbitrary child output or exception text is copied to the audit.
+Retryable results still follow queue retry and never authorize payment. This
+diagnostic does not change the supported profile or recover older rejected mail.
+
 Initial profile and coverage constraints:
 
 - Tatra banka domain or a subdomain, a unique From mailbox and unique matching

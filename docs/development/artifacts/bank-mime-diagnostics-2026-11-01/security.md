@@ -1,0 +1,47 @@
+# Independent bank MIME rejection diagnostics security review
+
+Reviewer: `/root/bank_mime_diagnostic_security`, independent of implementation author `/root/bank_mime_diagnostic_backend` and main documentation author.
+Date: 2026-11-01. Repository: `webiumsk/satflux`; branch `fix/bank-mail-single-route`; baseline `cc3967abfb35f826af91858dff771fa999087a2c` plus the bounded working-tree diff below. This report is source/security acceptance only; it does not approve publication, deployment, payment settlement or recovery replay.
+
+## Reviewed frozen scope
+
+| File | SHA256 |
+| --- | --- |
+| `app/Services/Invoicing/BankMimeVerificationService.php` | `6c8900b1367ed23072426cd0096ad575c0c04a6db311852f3660fcd38d633087` |
+| `tests/Feature/BankMimeConfirmationTest.php` | `7624d9c8185b92e070985b5eef73c7c42c04a7b6fefd6a334202796def41e9f4` |
+| `docs/development/SEPA_CONFIRMATION_ISOLATION_RUNBOOK.md` | `b267ad1677ba58b0d97afa2a377fcf250bc2625772251dc794bb01ae646f3705` |
+| `runtime/bank-mail-verifier/README.md` | `c6ed0388f9668ae6aa31a82f5537275080cff0e7325b6e12f9c4477037de1bc7` |
+
+Backend confirmed the first two files frozen at these hashes. Main owns documentation and shared state. Read-only review; the reviewer wrote only this report and a synthetic probe under `/tmp`. No repository edits, external requests, merchant data, credentials, production state, real transfers, Git publication or deployment.
+
+Root AGENTS, state, roadmap, decisions, workflow, registry, CLAUDE, SECURITY, security role and `security-review` skill were read. The worktree Graphify graph is absent and no Graphify tool is exposed; main supplied its earlier stale query limitation. No graph rebuild/install was attempted. Primary checkout dirty work was observed and preserved.
+
+## Disposition and verified evidence
+
+No verified blocking or nonblocking security vulnerability introduced by this diff. Accept the bounded source for the security gate, subject to independent QA and main's remaining gates.
+
+1. **Metadata/privacy boundary preserved.** Service lines 17-23 and 194-206 allow exactly 15 fixed permanent verifier codes, require a string with strict membership, and map every unsupported value to literal `unknown`. No trimming/coercion, exception text, raw MIME, recipient, signature, body, domain or extra child fields enter the new metadata. Invalid UTF-8 uses a PHP-owned literal at lines 118-119 before starting verification. Legacy `reason=unverified_bank_mime`, audit action, resolved Store ID and Store user ID remain intact.
+   Attack evaluated: malicious child reason with CRLF, a very large private marker, array/object/scalar types, near-matching strings, or arbitrary extra private output could otherwise inject logs or disclose content. Exact metadata comparisons and synthetic probes confirm fixed safe output only. Mitigation is already implemented; regression cases in the changed feature test cover all 15 codes, wrong types/unknown strings and known/newline/oversized reason with private extra fields.
+2. **Fail-closed proof and retry split preserved.** Service lines 128-143 still allow only exact `verified`/`invalid` statuses. Retryable, missing, malformed and unknown states throw the same sanitized exception before permanent audit. Invalid remains review-only. The verified path still checks field types, limits, SHA256 equality and sender/domain binding before constructing proof. No reason value can create a verified result or turn retry into settlement.
+   Attack evaluated: a permanent-looking reason accompanying retryable/malformed status must not acknowledge successful payment or silently lose retry. Independent probes verify sanitized throw and no audit; feature regressions retain ciphertext and compare the preexisting audit count. Bad content hash remains rejected even with a verified status. Tampered-body and retargeted-recipient feature tests retain actual Node/crypto coverage and assert the new fixed reason.
+3. **Tenant, webhook and queue boundaries are unchanged.** Server recipient resolution and Store/Company branch selection remain at lines 35-42, with explicit Store enforcement at lines 108-113. The unchanged downstream service rechecks expected owner class/key. Audits use resolved owner data, not child-supplied IDs. Signature checking, replay protection, queue ciphertext, sanitized failure exceptions and provider settlement logic are byte-identical to baseline in seven independently compared trust-boundary files. Company extraction remains untouched.
+   Attack evaluated: private diagnostics must not create a Store-to-Company fallback, spoof owner binding, bypass Mailgun authentication or expose decrypted queue data. No such change exists. Regression coverage includes existing encrypted queue, no fallback, sender isolation, crypto tampering and recipient-retargeting tests. This bounded delta does not reassess unrelated application authentication/CSRF, recovery phrases, merchant keys, billing/entitlements or Evolu; none is modified.
+
+## Exact reviewer checks and results
+
+- Actual service methods executed through `/tmp/bank-mime-diagnostic-security-probe.php`: **PASS, 79 independent synthetic assertions**. Real `verifiedPayload`/reason/audit code with synthetic owner, decrypt and audit sinks; no Laravel bootstrap, DB, queue backend, network, real message or real key. Covers all 15 codes; 18 adversarial reasons including object, CRLF and approximately 640KB string; 9 malformed/retry statuses; pre-process invalid UTF-8; valid proof; bad content hash.
+- Runner: existing `satflux-php:latest` with `docker run --rm --network none --read-only --user 1000:1000`, read-only worktree and probe mounts. Initial sandbox Docker socket access was denied; the same bounded command succeeded through normal escalation. No automatic approval rejection occurred. No container installation or service restart.
+- Static Python checks: **PASS**, 15 allowlist codes exactly equal the permanent `invalid` reasons in current strict `verifier.mjs` and `cli.mjs`. **PASS**, seven trust-boundary files byte-identical to baseline: ProcessBankNotificationEmail, strict Node CLI/verifier, inbound controller, address service, inbound email service and SepaEmailConfirmationService. One preliminary check used a nonexistent SEPA service path and failed; corrected actual path passed, with no source changes.
+- `git diff --check`: **PASS** for the complete four-file diff.
+- No application PHPUnit suite was rerun by this reviewer; the independent QA agent owns that validation. Backend reports final author regression **74 tests / 442 assertions**, including 47 MIME and 27 Company cases, plus PHPStan/scoped Pint passing; those are attributed reports, not reviewer-executed results. Independent security probes are separate from QA counts.
+- No cached Laravel configuration exists in the reviewed worktree. The probe does not bootstrap application configuration at all. Existing application test runner was inspected; it uses network isolation and synthetic SQLite memory/array stores, but reviewer did not execute it.
+
+## Safe next diagnosis and unresolved operational evidence
+
+The incident facts supplied by main are Mailgun MIME delivery at 09:00:30 UTC, broad Store rejection at 09:00:32 UTC, enabled intake and queue count zero. The reviewer did not access production or independently verify those facts. Delivered/HTTP200 establishes intake acknowledgement only. A review-only handler returns normally and can consume its queue job; an empty active queue does not establish settlement or recover the original message. Old audit metadata contains no fine-grained verifier reason, and this additive patch cannot backfill it.
+
+Safe next steps within separately authorized operations are to verify the actually deployed web/worker revision and current single EU destination, correlate only minimal timestamp/action/owner metadata, and preserve any existing original bank `.eml` privately and byte-for-byte. If the original remains privately available from an existing mailbox or provider-supported recovery, analyze it without modifying content or dispatching it to the payment-processing route. An ordinary forward, parsed Mailgun fields, screenshots, sender text or reconstructed MIME cannot substitute for original signed bytes. Support-assisted retention/recovery is a possibility, not an asserted recoverable payload; the previously failed historical retrieval must not be repeated blindly.
+
+If no original copy exists, the precise historical signature/MIME/encoding rejection remains unknown. The safe product state is unconfirmed/review-required; no proof relaxation, forced-paid change, replay or new real transfer follows. New diagnostic codes can describe a later already-existing notification after reviewed deployment, but cannot establish why this earlier mail failed. Even successful bank verification still requires the existing strict parser, account/reference/amount, once-only credit and provider settlement checks; unsupported layouts can yield no parsed rows.
+
+Remaining dependencies/blockers: independent QA completion for the frozen diff; main's publication/deployment gates; original current-bank MIME and signature/layout qualification; actual production deployment and event correlation. Missing original evidence blocks a verified historical diagnosis and live-bank interoperability claim, not this bounded diagnostic security acceptance. No unresolved source security finding was found.

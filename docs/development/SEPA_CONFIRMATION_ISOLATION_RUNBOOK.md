@@ -106,6 +106,31 @@ store address. Sender-supplied authentication headers, partial-body signatures,
 ambiguous MIME, HTML and missing proof cannot authorize payment. Temporary DNS or
 process errors retry through the existing bounded queue backoff.
 
+### Diagnose an acknowledged but unconfirmed bank message
+
+Mailgun Delivered/HTTP200 acknowledges intake, not bank proof or settlement. Inspect
+the `webhooks` queue and the audit actions `sepa.bmail_review_required`,
+`sepa.bmail_processed` and `bank_inbound.mime_rejected` in the actual deployment.
+Convert event times to the configured application timezone before correlating
+them. Container health alone does not prove queue consumption.
+
+Store MIME rejection keeps the compatibility reason `unverified_bank_mime` and
+adds an allowlisted `verifier_reason`. This distinguishes unsupported MIME,
+missing/invalid signatures, identity/header problems and pre-verifier invalid
+UTF-8. Unknown or malformed child reasons become a fixed `unknown` value; never
+copy arbitrary verifier output or bank contents into diagnostics. Temporary
+verification failures retain the existing retry path rather than producing a
+permanent-rejection diagnostic. Company policy is unchanged.
+
+Older audit rows contain only the broad reason. A handled rejection does not
+retain the original MIME in the consumed job, and new diagnostics cannot recover
+its lost reason. Preserve any privately available original bank EML; do not
+reconstruct signed content, replay a payment or require another real transfer
+just to diagnose it. An empty queue or audit result cannot establish settlement:
+unsupported transaction layouts can also produce no parsed credit rows.
+
+### Supported transaction profile
+
 The initial profile is one UTF-8/ASCII text/plain part and the documented classic
 Tatra numeric prefix: greeting, valid date/time and receiving account, positive
 EUR credit, three balances, constrained CCINT/CSO account description, then the
