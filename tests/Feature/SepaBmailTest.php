@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\Store;
 use App\Models\User;
 use App\Services\BtcPay\Exceptions\BtcPayException;
+use App\Services\BtcPay\SepaService;
 use App\Services\Invoicing\BankInboundAddressService;
 use App\Services\Invoicing\BankInboundEmailService;
 use App\Services\SepaEmailConfirmationService;
@@ -121,6 +122,35 @@ class SepaBmailTest extends TestCase
     private function verifiedPayload(): array
     {
         return [...$this->nativePayload(), '_verified_bank_domain' => 'tatrabanka.sk'];
+    }
+
+    #[Test]
+    #[TestWith(['slsp.sk'])]
+    #[TestWith(['alerts.slsp.sk'])]
+    public function authenticated_native_slsp_stays_manual_even_with_tatra_shaped_text_and_spoofed_evidence_fields(string $domain): void
+    {
+        // Existing synthetic Tatra structure exercises exclusion, not SLSP format support.
+        $provider = $this->mock(SepaService::class);
+        $provider->shouldNotReceive('getSettings');
+        $provider->shouldNotReceive('reportPayment');
+        $payload = $this->nativePayload([
+            'from' => 'Tatra banka <notify@'.$domain.'>', 'subject' => 'Tatra banka obrat',
+            'body' => $this->strictCreditBody(),
+            'bank_authentication' => ['dkim_result' => 'pass', 'dmarc_result' => 'pass', 'dkim_domain' => $domain],
+            '_verified_bank_domain' => 'tatrabanka.sk', 'bankOriginVerified' => true,
+            'e2eReference' => self::E2E_REFERENCE, 'isVariableSymbolExplicit' => true,
+            'sepaCreditIdentity' => str_repeat('a', 64),
+        ]);
+        $this->postJson('/api/webhooks/bank-inbound', $payload, ['X-Bank-Inbound-Secret' => 'test-inbound-secret'])
+            ->assertOk()->assertJsonPath('accepted', true);
+
+        $metadata = AuditLog::where('action', 'sepa.bmail_review_required')->sole()->metadata;
+        $this->assertSame('incomplete_credit_evidence', $metadata['reason']);
+        $this->assertFalse($metadata['credit_evidence']['eligibility'][0]['trusted_reference']);
+        $this->assertFalse($metadata['credit_evidence']['eligibility'][0]['strict_profile_identity']);
+        $this->assertSame('not_evaluated', $metadata['credit_evidence']['tatra_profile_stage']);
+        $this->assertDatabaseCount('bank_transactions', 0);
+        Http::assertNothingSent();
     }
 
     #[Test]
