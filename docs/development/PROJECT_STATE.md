@@ -1,5 +1,32 @@
 # Project state
 
+## Authenticated bank mail reaches incomplete-credit review - 2026-11-01
+
+The owner independently made a new real payment and reports a 20:15:06 UTC audit:
+sepa.bmail_review_required / incomplete_credit_evidence, no verifier_reason. At
+reviewed source 12f83c11 this branch proves parsed credits and the sender/origin
+gate passed, but none satisfies all five existing evidence predicates. It returns
+before API-key/settings lookup or payment reporting. The audit alone does not
+identify the MIME body profile or exact failed condition; deployment SHA remains
+unverified. The owner confirms only Mailgun logs exist for this new message.
+The empty earlier capture and completed job cannot reconstruct the credit frame.
+
+A metadata-only follow-up is in progress on the existing scoped repair branch.
+It adds bounded fixed eligibility booleans and a pure first-failing Tatra profile
+stage, sharing the exact existing parser validation. No bank values, new raw
+retention, eligibility change, capture extension or financial replay is accepted.
+Backend implementation passes 146 PHP tests/526 assertions and scoped Pint.
+Independent QA passes 315 repository tests/1774 assertions, 24 private tests/233
+assertions, 359 baseline checks across 116 cases and the operator-query test/15
+assertions. Security accepts the frozen
+four files with 59 tests/224 assertions and 450 baseline checks across 90 inputs.
+Main full PHPStan, API export/check, 19 preserved-file hashes and diff checks pass.
+No unresolved source finding remains; corrected operator projection selects one
+Store and the incomplete-credit reason. Fresh exact-head CI/review remains a
+publication gate. See the diagnostic contract and review artifact. Do not request another real transfer; new diagnostics cannot backfill
+this historical audit. Graph lacks current parser/capture edges; targeted reads
+were used without a rebuild. Prior published checks remain historical evidence.
+
 ## Tatra ASCII wire-body repair independently accepted - 2026-11-01
 
 Owner-run capture facts isolate the current rejection to unsigned MIME controls

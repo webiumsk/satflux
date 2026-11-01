@@ -1,5 +1,23 @@
 # Development decision log
 
+## 2026-11-01 - Diagnose credit eligibility without guessing a bank template
+
+Treat incomplete_credit_evidence as a distinct downstream gate: parsed credits
+and sender/origin matching passed, none is eligible, and provider reporting has
+not started. Missing verifier_reason is expected here, not a verifier crash.
+The current bank frame cannot be inferred from this audit or recovered from an
+empty prior capture. Do not relax matching based on a real test payment.
+
+Add only a bounded fixed diagnostic projection to the existing review audit and
+a pure first-stage projection sharing exact Tatra parser validation. Preserve
+all five predicates, trusted-reference provenance, identity bytes and successful
+report behavior. Profile identity remains informational, never a new gate.
+No parsed values, new raw retention, automatic capture/retry or backfill is part
+of this change. Independent source QA/security accept the frozen four files
+with baseline execution/identity and financial-path parity. Main static/API/hash
+checks pass. Publish to existing PR #415 and verify fresh CI/review; no merge,
+deployment or payment follows from source acceptance.
+
 ## 2026-11-01 - Bind the observed Tatra ASCII body independently of MIME labels
 
 The live safe facts show valid core DKIM with unsigned MIME controls, plain

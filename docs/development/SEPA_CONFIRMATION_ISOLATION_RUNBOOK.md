@@ -116,6 +116,64 @@ fully signed MIME profile keeps its precedence and behavior.
 
 ### Diagnose an acknowledged but unconfirmed bank message
 
+`sepa.bmail_review_required` with `incomplete_credit_evidence` is downstream of
+the sender/origin check: at least one credit was parsed, but no credit satisfies
+all five existing evidence predicates. It returns before provider settings or
+payment reporting. An absent `verifier_reason` is expected on this path and does
+not identify a DKIM error or the particular missing field.
+
+The metadata-only follow-up adds nested `credit_evidence` to this audit only.
+It contains capped eligibility booleans and a fixed first-failing Tatra profile
+stage, never bank values or message content. Profile identity is informational;
+all eligibility and reporting rules remain unchanged. See the
+[diagnostic contract](SEPA_CREDIT_EVIDENCE_DIAGNOSTICS.md).
+Old audit entries cannot acquire these facts retrospectively. Store mail rows
+and successful completed-job original content are not retained in the company
+transaction database. The optional MIME capture only handles its approved
+signature-rejection trigger; it does not capture incomplete credit evidence.
+Use a later normal bank notification to obtain current facts after compatible
+workers are deployed. Do not request another transfer, replay a financial job or
+assume a missing QR reference from this general reason.
+
+After compatible worker deployment, inspect a later normal notification with
+this read-only projection inside the actual queue container. Enter only the
+selected local Store UUID on the server; do not send it to chat. Both the Store
+and incomplete-credit reason are filtered server-side so another merchant's
+latest audit cannot be mistaken for this incident. Existing earlier entries
+still return null diagnostic metadata; no new transfer is required.
+
+```sh
+read -r -p 'Local Store UUID (kept on server): ' bank_diag_store
+docker exec -i -e BANK_DIAGNOSTIC_STORE="$bank_diag_store" -w /var/www satflux_queue_standalone php -d display_errors=0 -d log_errors=0 <<'PHP'
+<?php
+try {
+    require 'vendor/autoload.php';
+    $app = require 'bootstrap/app.php';
+    $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+    $store = getenv('BANK_DIAGNOSTIC_STORE');
+    if (! is_string($store) || ! Illuminate\Support\Str::isUuid($store)
+        || ! App\Models\Store::query()->whereKey($store)->exists()) {
+        echo '{"status":"invalid_store"}', PHP_EOL;
+        exit;
+    }
+    $rows = App\Models\AuditLog::query()
+        ->where('target_type', 'store')->where('target_id', $store)
+        ->where('action', 'sepa.bmail_review_required')
+        ->where('metadata->reason', 'incomplete_credit_evidence')
+        ->orderByDesc('id')->limit(3)->get(['created_at', 'metadata'])
+        ->map(fn ($row) => [
+            'time_utc' => $row->created_at->utc()->format('Y-m-d H:i:s'),
+            'reason' => $row->metadata['reason'] ?? null,
+            'credit_evidence' => $row->metadata['credit_evidence'] ?? null,
+        ]);
+    echo json_encode($rows, JSON_PRETTY_PRINT), PHP_EOL;
+} catch (Throwable) {
+    echo '{"status":"diagnostic_unavailable"}', PHP_EOL;
+}
+PHP
+unset bank_diag_store
+```
+
 Mailgun Delivered/HTTP200 acknowledges intake, not bank proof or settlement. Inspect
 the `webhooks` queue and the audit actions `sepa.bmail_review_required`,
 `sepa.bmail_processed` and `bank_inbound.mime_rejected` in the actual deployment.

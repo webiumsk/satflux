@@ -1,5 +1,11 @@
 # Tatra ASCII wire-profile review - 2026-11-01
 
+Historical source scope: commit 12f83c11. The later metadata-only credit-evidence
+diagnostic follow-up changes the strict parser projection and confirmation-service
+audit only; the preserved-file hashes below describe this reviewed source scope,
+not a promise that every listed file remains unchanged forever. New validation
+is recorded separately under the credit-evidence diagnostic artifact.
+
 Base 406e1fef; local branch `fix/tatra-ascii-wire-profile`. This is a reviewed
 follow-up to the capture work in PR #415, not a change to capture retention or a
 financial replay mechanism. The owner supplied only safe signature/format facts;

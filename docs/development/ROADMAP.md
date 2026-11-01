@@ -1,5 +1,16 @@
 # Development roadmap
 
+## Current: qualify incomplete bank-credit evidence - 2026-11-01
+
+Owner-reported new credit reaches incomplete_credit_evidence after origin checks,
+before any provider reporting. No current original exists outside Mailgun logs.
+The metadata-only failure projection preserves strict parser evidence and all
+five eligibility predicates. Independent QA/security and API/style/static checks
+pass; publish on the existing PR #415 branch and verify fresh head CI/review. A later normal notification can
+identify the unsupported field/frame; do not require another transfer, restore
+expired content or replay payment. Actual bank template and settlement remain
+unqualified; do not infer a specific missing reference or account.
+
 ## Current: publish and verify the qualified ASCII proof profile - 2026-11-01
 
 Independent QA/security accept the frozen narrow fallback for the owner-observed
