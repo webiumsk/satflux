@@ -45,7 +45,7 @@
       "hash": "eaffcedefbbbdcf49c571a53673664dacdf0c287ef8384c323ac129f75706cb4",
       "source": "https://github.com/webiumsk/satflux/pull/408",
       "sourceSha": "86e77e81cab9ae838673bd78062b5f386a22e398",
-      "phase": "created",
+      "phase": "publish_pending",
       "entryId": "cl_PckDZHXrwRDzzRymMdhjh"
     },
     "sepa-wallet-alert-fix": {
