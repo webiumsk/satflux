@@ -189,7 +189,7 @@
 
 <script setup lang="ts">
 import { asApiError } from "../../utils/apiError";
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import EfakturaInboxPanel from '../../components/invoicing/EfakturaInboxPanel.vue';
@@ -241,7 +241,7 @@ const page = ref(1);
 const lastPage = ref(1);
 const totalCount = ref(0);
 const activeFilter = ref('all');
-const year = ref(new Date().getFullYear());
+const year = ref(route.query.year === 'all' ? 0 : new Date().getFullYear());
 const selectedIds = ref<Set<string>>(new Set());
 const selectAllMode = ref(false);
 
@@ -255,7 +255,7 @@ const statusFilters = [
 const yearOptions = computed(() => {
   const current = new Date().getFullYear();
 
-  return [current, current - 1, current - 2];
+  return [0, current, current - 1, current - 2];
 });
 
 const selectionCount = computed(() => (selectAllMode.value ? totalCount.value : selectedIds.value.size));
@@ -278,6 +278,7 @@ function onMobileFilterClear() {
 const fileActions = new Set(['export_xlsx', 'attachments_zip']);
 
 function yearLabel(y: number) {
+  if (y === 0) return t('invoicing.expense_year_all');
   if (y === new Date().getFullYear()) {
     return t('invoicing.expense_year_this', { year: y });
   }
@@ -319,10 +320,21 @@ function openImport(kind: 'excel' | 'pdf') {
 }
 
 function onImported() {
-  showImportModal.value = false;
   showAttachImportModal.value = false;
+  year.value = 0;
+  activeFilter.value = 'all';
+  page.value = 1;
+  clearSelection();
   void load();
 }
+
+watch(() => route.query.year, (value) => {
+  if (value === 'all') {
+    year.value = 0;
+    page.value = 1;
+    void load();
+  }
+});
 
 function toggleRow(id: string) {
   selectAllMode.value = false;
@@ -354,7 +366,7 @@ function clearSelection() {
 function listFilterParams() {
   return {
     filter: activeFilter.value === 'all' ? undefined : activeFilter.value,
-    year: year.value,
+    year: year.value || undefined,
   };
 }
 

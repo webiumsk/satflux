@@ -1,9 +1,5 @@
 import * as XLSX from "xlsx";
-import {
-    formatExcelSerialNumber,
-    formatLocalDateParts,
-    isExcelDateSerial,
-} from "./importDateParse";
+import { formatLocalDateParts } from "./importDateParse";
 
 function stripUtf8Bom(text: string): string {
     return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
@@ -14,11 +10,41 @@ export type ParsedSpreadsheet = {
     rows: string[][];
 };
 
-function parseCsvRows(text: string): string[][] {
+export type SpreadsheetLimits = {
+    maxRows?: number;
+    maxColumns?: number;
+    maxFileBytes?: number;
+};
+
+function parseCsvRows(text: string, limits: SpreadsheetLimits): string[][] {
     const rows: string[][] = [];
     let row: string[] = [];
     let cell = "";
     let inQuotes = false;
+    // Detect the separator from the first record, ignoring quoted punctuation.
+    let quoted = false;
+    let commas = 0;
+    let semicolons = 0;
+    for (let i = 0; i < text.length; i += 1) {
+        if (text[i] === '"') {
+            if (quoted && text[i + 1] === '"') i += 1;
+            else quoted = !quoted;
+        } else if (!quoted) {
+            if (text[i] === "\n" || text[i] === "\r") break;
+            if (text[i] === ",") commas += 1;
+            if (text[i] === ";") semicolons += 1;
+        }
+    }
+    const separator = semicolons > commas ? ";" : ",";
+
+    function checkSize() {
+        if (limits.maxRows != null && rows.length > limits.maxRows + 1) {
+            throw new Error("too_many_rows");
+        }
+        if (limits.maxColumns != null && row.length >= limits.maxColumns) {
+            throw new Error("too_many_columns");
+        }
+    }
 
     for (let i = 0; i < text.length; i += 1) {
         const ch = text[i];
@@ -38,13 +64,17 @@ function parseCsvRows(text: string): string[][] {
 
         if (ch === '"') {
             inQuotes = true;
-        } else if (ch === "," || ch === ";") {
+        } else if (ch === separator) {
             row.push(cell);
+            checkSize();
             cell = "";
         } else if (ch === "\n" || (ch === "\r" && next === "\n")) {
             row.push(cell);
             if (row.some((value) => value.trim() !== "")) {
                 rows.push(row);
+                if (limits.maxRows != null && rows.length > limits.maxRows + 1) {
+                    throw new Error("too_many_rows");
+                }
             }
             row = [];
             cell = "";
@@ -54,6 +84,7 @@ function parseCsvRows(text: string): string[][] {
         }
     }
 
+    if (inQuotes) throw new Error("invalid_csv");
     row.push(cell);
     if (row.some((value) => value.trim() !== "")) {
         rows.push(row);
@@ -67,15 +98,19 @@ function readWorksheetCell(sheet: XLSX.WorkSheet, row: number, column: number): 
     const cell = sheet[address];
     if (!cell) return "";
 
+    // Formula text is data. Never treat a cached formula result as an amount/date.
+    if (cell.f) return `=${cell.f}`;
+
     if (cell.t === "d" && cell.v instanceof Date) {
         return formatLocalDateParts(cell.v) ?? "";
     }
 
     if (cell.t === "n" && typeof cell.v === "number") {
-        if (isExcelDateSerial(cell.v)) {
-            return formatExcelSerialNumber(cell.v) ?? "";
+        // Preserve zero-padded identifiers without applying currency/grouping formats.
+        if (typeof cell.z === "string" && /^0+$/.test(cell.z)) {
+            return XLSX.utils.format_cell(cell);
         }
-        return Number.isInteger(cell.v) ? String(cell.v) : String(cell.v);
+        return String(cell.v);
     }
 
     if (typeof cell.w === "string" && cell.w.trim() !== "") {
@@ -88,13 +123,19 @@ function readWorksheetCell(sheet: XLSX.WorkSheet, row: number, column: number): 
     return String(cell.v).trim();
 }
 
-function sheetToMatrix(sheet: XLSX.WorkSheet): string[][] {
+function sheetToMatrix(sheet: XLSX.WorkSheet, limits: SpreadsheetLimits): string[][] {
     const ref = sheet["!ref"];
     if (!ref) {
         throw new Error("no_data_rows");
     }
 
     const range = XLSX.utils.decode_range(ref);
+    if (limits.maxRows != null && range.e.r - range.s.r > limits.maxRows) {
+        throw new Error("too_many_rows");
+    }
+    if (limits.maxColumns != null && range.e.c - range.s.c + 1 > limits.maxColumns) {
+        throw new Error("too_many_columns");
+    }
     const matrix: string[][] = [];
 
     for (let row = range.s.r; row <= range.e.r; row += 1) {
@@ -119,14 +160,26 @@ function rowsFromMatrix(matrix: string[][]): ParsedSpreadsheet {
     return { headers, rows };
 }
 
-export async function parseSpreadsheetFile(file: File): Promise<ParsedSpreadsheet> {
+export async function parseSpreadsheetFile(
+    file: File,
+    limits: SpreadsheetLimits = {},
+): Promise<ParsedSpreadsheet> {
+    if (limits.maxFileBytes != null && file.size > limits.maxFileBytes) {
+        throw new Error("file_too_large");
+    }
     const lower = file.name.toLowerCase();
 
     if (lower.endsWith(".csv")) {
         const text = stripUtf8Bom(await file.text());
-        const allRows = parseCsvRows(text);
+        const allRows = parseCsvRows(text, limits);
         if (allRows.length < 2) throw new Error("no_data_rows");
         const [headerRow, ...dataRows] = allRows;
+        if (limits.maxRows != null && dataRows.length > limits.maxRows) {
+            throw new Error("too_many_rows");
+        }
+        if (limits.maxColumns != null && allRows.some((row) => row.length > limits.maxColumns!)) {
+            throw new Error("too_many_columns");
+        }
         return {
             headers: headerRow.map((h) => h.trim()),
             rows: dataRows,
@@ -135,10 +188,10 @@ export async function parseSpreadsheetFile(file: File): Promise<ParsedSpreadshee
 
     if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) {
         const buffer = await file.arrayBuffer();
-        const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+        const workbook = XLSX.read(buffer, { type: "array", cellDates: true, cellNF: true });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         if (!sheet) throw new Error("no_data_rows");
-        return rowsFromMatrix(sheetToMatrix(sheet));
+        return rowsFromMatrix(sheetToMatrix(sheet, limits));
     }
 
     throw new Error("unsupported_file");

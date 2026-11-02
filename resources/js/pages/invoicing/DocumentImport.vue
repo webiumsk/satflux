@@ -6,6 +6,21 @@
 
     <h1 class="invoicing-title mb-6">{{ t("invoicing.import_title") }}</h1>
 
+    <fieldset class="mb-6" :disabled="importing">
+      <legend class="invoicing-sf-label mb-2">{{ t("invoicing.import_kind") }}</legend>
+      <div class="flex flex-wrap gap-5">
+        <label class="flex items-center gap-2 text-sm">
+          <input v-model="importKind" type="radio" value="invoices" name="import-kind" />
+          {{ t("invoicing.doc_nav_invoice") }}
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input v-model="importKind" type="radio" value="expenses" name="import-kind" />
+          {{ t("invoicing.main_nav_expenses") }}
+        </label>
+      </div>
+    </fieldset>
+
+    <template v-if="importKind === 'invoices'">
     <nav class="flex flex-wrap gap-2 mb-8 text-sm">
       <span
         v-for="(label, idx) in stepLabels"
@@ -346,6 +361,21 @@
         </RouterLink>
       </div>
     </section>
+    </template>
+    <section v-else class="invoicing-card-pad space-y-4 max-w-3xl">
+      <h2 class="text-lg font-semibold text-gray-800">{{ t("invoicing.expense_import_title") }}</h2>
+      <p class="text-sm text-gray-600">{{ t("invoicing.expense_import_intro") }}</p>
+      <p class="text-sm text-gray-600">{{ t("invoicing.expense_import_metadata_hint") }}</p>
+      <button type="button" class="invoicing-btn-primary" @click="showExpenseImport = true">
+        {{ t("invoicing.expense_import_title") }}
+      </button>
+      <ExpenseImportModal
+        :open="showExpenseImport"
+        :company-id="companyId"
+        :local-first="localFirst"
+        @close="showExpenseImport = false"
+      />
+    </section>
   </InvoicingPageShell>
 </template>
 
@@ -355,6 +385,7 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import InvoicingAppHeader from "../../components/invoicing/InvoicingAppHeader.vue";
 import InvoicingPageShell from "../../components/invoicing/InvoicingPageShell.vue";
+import ExpenseImportModal from "../../components/invoicing/ExpenseImportModal.vue";
 import {
   DOCUMENT_IMPORT_FIELD_KEYS,
   DOCUMENT_IMPORT_SOURCES,
@@ -396,6 +427,8 @@ const storesStore = useStoresStore();
 const { companyId, rememberCompany } = useInvoicingLayout();
 
 const step = ref(1);
+const importKind = ref<"invoices" | "expenses">("invoices");
+const showExpenseImport = ref(false);
 const selectedSource = ref<DocumentImportSource | null>("excel");
 const selectedFile = ref<File | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);

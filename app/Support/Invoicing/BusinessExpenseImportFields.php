@@ -67,6 +67,17 @@ final class BusinessExpenseImportFields
             ['key' => 'supplier_street', 'required' => false],
             ['key' => 'supplier_city', 'required' => false],
             ['key' => 'supplier_country', 'required' => false],
+            ['key' => 'payment_method', 'required' => false],
+            ['key' => 'payment_amount', 'required' => false],
+            ['key' => 'payment_currency', 'required' => false],
+            ['key' => 'payment_exchange_rate', 'required' => false],
+            ['key' => 'supplier_bank_account', 'required' => false],
+            ['key' => 'supplier_vat_id', 'required' => false],
+            ['key' => 'supplier_phone', 'required' => false],
+            ['key' => 'supplier_postal_code', 'required' => false],
+            ['key' => 'item_quantity', 'required' => false],
+            ['key' => 'item_units', 'required' => false],
+            ['key' => 'items', 'required' => false],
         ];
     }
 
@@ -82,7 +93,7 @@ final class BusinessExpenseImportFields
             'external_number' => [
                 'cislo dokladu', 'cislo dokl', 'cislo dokladu dodavatela', 'external number', 'invoice number',
             ],
-            'internal_number' => ['interne cislo', 'interne cis', 'internal number'],
+            'internal_number' => ['interne cislo', 'interne cislo dokladu', 'interne cis', 'internal number'],
             'issue_date' => ['datum vystavenia', 'datum vy', 'issue date', 'vystavenie'],
             'due_date' => ['datum splatnosti', 'datum sp', 'due date', 'splatnost'],
             'delivery_date' => ['datum dodania', 'datum do', 'delivery date'],
@@ -99,9 +110,20 @@ final class BusinessExpenseImportFields
             ],
             'supplier_tax_id' => ['dodavatel - dic', 'dodavatel dic', 'dic', 'supplier tax id'],
             'supplier_email' => ['dodavatel - e-mail', 'dodavatel - email', 'dodavatel email', 'supplier email'],
-            'supplier_street' => ['dodavatel - ulica', 'dodavatel ulica', 'supplier street'],
+            'supplier_street' => ['dodavatel - ulica', 'dodavatel ulica', 'dodavatel adresa', 'supplier street'],
             'supplier_city' => ['dodavatel - mesto', 'dodavatel mesto', 'supplier city'],
-            'supplier_country' => ['dodavatel - stat', 'dodavatel stat', 'supplier country'],
+            'supplier_country' => ['dodavatel - stat', 'dodavatel stat', 'dodavatel krajina', 'supplier country'],
+            'payment_method' => ['druh uhrady', 'payment method'],
+            'payment_amount' => ['suma uhrady', 'payment amount'],
+            'payment_currency' => ['mena uhrady', 'payment currency'],
+            'payment_exchange_rate' => ['kurz uhrady', 'payment exchange rate'],
+            'supplier_bank_account' => ['bankovy ucet dodavatela', 'supplier bank account'],
+            'supplier_vat_id' => ['dodavatel ic dph', 'supplier vat id'],
+            'supplier_phone' => ['dodavatel telefon', 'supplier phone'],
+            'supplier_postal_code' => ['dodavatel psc', 'supplier postal code'],
+            'item_quantity' => ['pocet poloziek', 'item quantity'],
+            'item_units' => ['jednotky poloziek', 'item units'],
+            'items' => ['polozky', 'items'],
         ];
 
         $normalized = [];

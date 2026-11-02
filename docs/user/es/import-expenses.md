@@ -1,0 +1,25 @@
+---
+title: Importar gastos de SuperFaktura
+category: invoicing
+order: 12
+updated: 2026-11-02
+---
+
+# Importar gastos de SuperFaktura
+
+En su empresa, abra **Herramientas > Importar**, seleccione **Gastos** y después **Importar gastos**. También puede usar **Gastos > Importar**.
+
+1. Seleccione el archivo XLSX de SuperFaktura o un archivo XLS/CSV.
+2. Revise la asignación de columnas. La fecha de emisión y el total son obligatorios.
+3. Inicie la importación y revise las filas importadas y omitidas, junto con sus motivos.
+4. **Ver gastos** muestra los registros de todos los años.
+
+La exportación actual de 33 columnas se reconoce automáticamente. Se conservan los números originales, fechas, importes y símbolos de pago. Los datos del proveedor, categoría, pagos y partidas se guardan en la nota interna. No se crean contactos de proveedores ni partidas de gastos independientes.
+
+Un pago con fecha e importe suficiente en la moneda del gasto lo marca como pagado. Los pagos parciales y en otra moneda quedan pendientes de revisión, conservando sus datos originales. Los archivos antiguos que solo incluyen la fecha de pago mantienen el comportamiento anterior de pagado.
+
+Los números internos existentes se omiten dentro de la empresa. Sin número interno se genera uno nuevo; volver a importar esas filas crea gastos nuevos.
+
+Límites: **10 MB, 2.000 filas y 256 columnas** por archivo. Las filas no válidas o demasiado largas se omiten sin truncarlas. Las fórmulas se tratan como texto.
+
+En la facturación local, el archivo se procesa en su navegador y se guarda con los datos cifrados existentes. Guarde su frase de recuperación. Los adjuntos PDF se importan por separado.

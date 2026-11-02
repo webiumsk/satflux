@@ -1,5 +1,36 @@
 # Project state
 
+## SuperFaktura expense import implemented and independently reviewed - 2026-11-02
+
+The owner explicitly requested expense import in Satflux. A dedicated
+`feat/superfaktura-expense-import` worktree starts at local origin/master
+`9dfc4166`, preserving the dirty primary checkout and all other retained work.
+Real frontend/backend specialists implemented local/server parity; independent
+security and QA accept the frozen source without blocking findings.
+
+Company Import now offers invoices and expenses. The current 33-column export
+maps automatically, preserving original numbers/dates/totals and extra metadata
+in private notes. Partial/cross-currency payments remain recorded for review.
+The modal prevents overlapping/stale operations, loads current duplicate state
+before writes and keeps results visible. Historical results open all years.
+No schema, auth, billing, entitlement or external repository changes occur.
+
+Coordinator-only private dry run accepts all 52 rows in an in-memory fake; no
+actual expense or private workbook fixture/log was saved. Independent QA passes
+37 synthetic cases; security passes 38 focused cases and 33 extra assertions;
+both pass 15 PHP cases/116 assertions. Coordinator related PHP passes51/294 and
+documentation8/26, scoped Pint/PHPStan, lint/typecheck ratchets, five locales,
+build, API contracts/inventory and whitespace. The final constrained full
+frontend run passes1,132 cases across147 files with two workers; initial
+unconstrained timeout failures resolve without source changes. See the
+feature-branch `EXPENSE_IMPORT_IMPLEMENTATION.md` for verification and limits.
+
+Retain source in `storage/app/private/worktrees/superfaktura-expense-import`.
+No publication, app import, merge or deployment. Explicit-number rerun protection
+is company-scoped; rows without internal numbers create new entries on rerun.
+Next: owner review of the preserved local source; later publication, merge and
+deployment need applicable owner authorization.
+
 ## Exact Platba bank-description compatibility in progress - 2026-11-01
 
 The owner obtained a bank-direct private copy and supplied the fixed public

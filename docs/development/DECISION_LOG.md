@@ -1,5 +1,32 @@
 # Development decision log
 
+## 2026-11-02 - Extend the existing expense importer for current SuperFaktura exports
+
+The owner's explicit request authorizes bounded Satflux implementation.
+Extend existing local/server import and expose Expenses alongside invoices on
+company Import. Preserve the existing expense schema: extra supplier, category,
+payment and item information belongs in the private note. Do not create supplier
+contacts or line-item relationships from summary exports.
+
+Use original internal numbers for company-scoped duplicate protection; reserve
+explicit numbers later in a batch before generating numbers. Without an internal
+number, legitimate identical costs must remain possible, so do not deduplicate
+by a content hash. Reimporting such rows creates new records.
+
+Keep historical paid dates atomically. With a supplied payment amount, only
+sufficient same-currency payment implies fully paid; unresolved FX/partial
+evidence stays in notes with recorded status. Legacy date-only imports retain
+their paid behavior. Never infer exchange-rate direction.
+
+Preserve local-first encryption and fail closed without local context. Load
+duplicate state before writes, guard stale previews/concurrent submits, and
+show results before navigation. Keep original invoice date regression coverage
+while fixing numeric typing, formula handling and CSV delimiter recognition.
+QA/security independently accept. Private workbook inspection stays with the
+coordinator; only structural facts and synthetic fixtures enter source/reports.
+No actual import, external repository write, billing change, publication,
+merge or deployment follows this implementation authorization.
+
 ## 2026-11-01 - Admit the observed fixed operation label without changing identity
 
 Use only the public literal Platba and anonymized shape from the owner's private

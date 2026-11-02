@@ -1,5 +1,19 @@
 # Development roadmap
 
+## Ready: reviewed expense import for owner review - 2026-11-02
+
+Owner-authorized expense import is implemented on
+`feat/superfaktura-expense-import`, base `9dfc4166`, in its retained named
+worktree. Automatic current SuperFaktura 33-column mapping, original dates and
+identifiers, private metadata, conservative payment status, company duplicates
+and accessible import/result UI are independently accepted by QA/security.
+Private52-row dry run, PHP51/294 plus docs8/26, lint/typecheck/locales/build,
+scoped PHPStan/Pint and API contract checks pass. The full frontend suite passes
+1,132 cases across147 files with two workers. Preserve the reviewed local source
+for owner review. No actual data
+import, external repository write, publication, merge or deployment is performed.
+Keep the existing primary edits and other initiatives untouched.
+
 ## Current: ship the observed exact Platba description - 2026-11-01
 
 The private-bank-copy structure now identifies Platba as the only new operation

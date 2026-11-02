@@ -4,21 +4,28 @@
     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
     role="dialog"
     aria-modal="true"
-    @click.self="$emit('close')"
+    aria-labelledby="expense-import-title"
+    @click.self="requestClose"
+    @keydown.esc.prevent="requestClose"
+    @keydown.tab="trapFocus"
   >
     <div
+      ref="dialogPanel"
+      tabindex="-1"
       class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden"
     >
       <div
         class="px-5 py-3 bg-slate-800 text-white flex items-center justify-between shrink-0"
       >
-        <h2 class="text-lg font-semibold">
+        <h2 id="expense-import-title" class="text-lg font-semibold">
           {{ t("invoicing.expense_import_title") }}
         </h2>
         <button
           type="button"
           class="text-white/80 hover:text-white text-2xl leading-none"
-          @click="$emit('close')"
+          :disabled="importing"
+          :aria-label="t('common.close')"
+          @click="requestClose"
         >
           ×
         </button>
@@ -35,6 +42,9 @@
             {{ t("invoicing.expense_import_example_link") }}
           </button>
         </p>
+        <p class="text-sm text-gray-600">
+          {{ t("invoicing.expense_import_metadata_hint") }}
+        </p>
 
         <div
           class="rounded-lg border-2 border-dashed transition-colors min-h-[120px] flex flex-col items-center justify-center p-6 text-center"
@@ -48,7 +58,7 @@
           @dragleave.prevent="onDragLeave"
           @drop.prevent="onDrop"
         >
-          <label class="invoicing-btn-primary cursor-pointer">
+          <label class="invoicing-btn-primary cursor-pointer focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2">
             {{
               loadingPreview
                 ? t("common.loading")
@@ -57,7 +67,7 @@
             <input
               ref="fileInput"
               type="file"
-              class="hidden"
+              class="sr-only"
               accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
               :disabled="importing || loadingPreview"
               @change="onFileChange"
@@ -91,11 +101,11 @@
               :key="field"
               class="grid sm:grid-cols-2 gap-2 items-center text-sm"
             >
-              <span class="text-gray-700">
+              <label :for="`expense-import-${field}`" class="text-gray-700">
                 {{ t(`invoicing.expense_import_field_${field}`) }}
                 <span v-if="isRequired(field)" class="text-red-500">*</span>
-              </span>
-              <select v-model="mapping[field]" class="invoicing-sf-input">
+              </label>
+              <select :id="`expense-import-${field}`" v-model="mapping[field]" class="invoicing-sf-input" :disabled="importing || loadingPreview">
                 <option :value="null">-</option>
                 <option
                   v-for="(header, idx) in headers"
@@ -113,10 +123,11 @@
           </p>
         </div>
 
-        <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+        <p v-if="error" role="alert" class="text-sm text-red-600">{{ error }}</p>
 
         <div
           v-if="result"
+          role="status"
           class="text-sm space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3"
         >
           <p class="text-green-700 font-medium">
@@ -141,6 +152,14 @@
               </li>
             </ul>
           </div>
+          <RouterLink
+            v-if="result.imported > 0"
+            :to="{ name: 'invoicing-expenses', params: { companyId }, query: { year: 'all' } }"
+            class="text-indigo-600 hover:underline"
+            @click="requestClose"
+          >
+            {{ t("invoicing.expense_import_go_expenses") }}
+          </RouterLink>
         </div>
 
         <div class="flex flex-wrap justify-end gap-3 pt-2">
@@ -148,7 +167,7 @@
             type="button"
             class="invoicing-btn-secondary"
             :disabled="importing"
-            @click="$emit('close')"
+            @click="requestClose"
           >
             {{ result ? t("common.close") : t("common.cancel") }}
           </button>
@@ -174,7 +193,7 @@
 
 <script setup lang="ts">
 import { asApiError } from "../../utils/apiError";
-import { computed, reactive, ref, toRef, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, reactive, ref, toRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   EXPENSE_IMPORT_FIELD_KEYS,
@@ -230,6 +249,16 @@ const result = ref<{
   errors: ImportSkippedError[];
 } | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
+const dialogPanel = ref<HTMLElement | null>(null);
+let previewVersion = 0;
+let disposed = false;
+let previousFocus: HTMLElement | null = null;
+
+onBeforeUnmount(() => {
+  disposed = true;
+  previewVersion += 1;
+  previousFocus?.focus();
+});
 
 const mappingReady = computed(() =>
   REQUIRED_EXPENSE_IMPORT_FIELDS.every(
@@ -238,15 +267,24 @@ const mappingReady = computed(() =>
 );
 
 watch(
-  () => props.open,
-  (isOpen) => {
-    if (isOpen) {
-      resetState();
+  () => [props.open, props.companyId, props.localFirst] as const,
+  async () => {
+    if (!importing.value) resetState();
+    if (props.open) {
+      if (!dialogPanel.value?.contains(document.activeElement)) {
+        previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      }
+      await nextTick();
+      dialogPanel.value?.focus();
+    } else {
+      previousFocus?.focus();
     }
   },
+  { immediate: true },
 );
 
 function resetState() {
+  previewVersion += 1;
   selectedFile.value = null;
   headers.value = [];
   for (const field of EXPENSE_IMPORT_FIELD_KEYS) {
@@ -261,22 +299,78 @@ function resetState() {
   if (fileInput.value) fileInput.value.value = "";
 }
 
+function requestClose() {
+  if (importing.value) return;
+  previewVersion += 1;
+  emit("close");
+}
+
+function trapFocus(event: KeyboardEvent) {
+  const panel = dialogPanel.value;
+  if (!panel) return;
+  const focusable = Array.from(panel.querySelectorAll<HTMLElement>(
+    'button:not([disabled]), select:not([disabled]), a[href], input:not([disabled])',
+  ));
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (!first || !last) {
+    event.preventDefault();
+    panel.focus();
+  } else if (event.shiftKey && (document.activeElement === first || document.activeElement === panel)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === panel)) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+function importError(raw: unknown): string {
+  const code = raw instanceof Error ? raw.message : "";
+  const keys: Record<string, string> = {
+    unsupported_file: "expense_import_error_file",
+    file_too_large: "expense_import_error_size",
+    too_many_rows: "expense_import_error_rows",
+    too_many_columns: "expense_import_error_columns",
+    no_data_rows: "expense_import_error_empty",
+    invalid_csv: "expense_import_error_file",
+  };
+  if (keys[code]) return t(`invoicing.${keys[code]}`);
+  const error = asApiError(raw);
+  return error?.response?.data?.message || t("errors.generic");
+}
+
 function isRequired(field: ExpenseImportFieldKey) {
   return REQUIRED_EXPENSE_IMPORT_FIELDS.includes(field);
 }
 
 function formatSkippedError(err: ImportSkippedError) {
+  let message = err.message;
+  if (message.startsWith("duplicate_internal_number:")) {
+    message = t("invoicing.expense_import_error_duplicate");
+  } else if (message === "internal_note_too_long") {
+    message = t("invoicing.expense_import_error_note");
+  } else if (message === "insert_failed") {
+    message = t("invoicing.expense_import_error_insert");
+  } else if (message.startsWith("invalid_")) {
+    const field = message.slice("invalid_".length);
+    if (EXPENSE_IMPORT_FIELD_KEYS.includes(field as ExpenseImportFieldKey)) {
+      message = t("invoicing.expense_import_error_field", {
+        field: t(`invoicing.expense_import_field_${field}`),
+      });
+    }
+  }
   if (err.internal_number) {
     return t("invoicing.expense_import_skipped_row_with_number", {
       number: err.internal_number,
       row: err.row,
-      message: err.message,
+      message,
     });
   }
 
   return t("invoicing.expense_import_skipped_row", {
     row: err.row,
-    message: err.message,
+    message,
   });
 }
 
@@ -285,7 +379,11 @@ function onDragLeave() {
 }
 
 function pickFile(file: File | undefined) {
-  if (!file) return;
+  if (!file || importing.value || !props.open) return;
+  previewVersion += 1;
+  headers.value = [];
+  rowCount.value = 0;
+  for (const field of EXPENSE_IMPORT_FIELD_KEYS) mapping[field] = null;
   selectedFile.value = file;
   error.value = "";
   result.value = null;
@@ -311,11 +409,18 @@ function buildFormData(includeMapping: boolean) {
 
 async function loadPreview() {
   if (!selectedFile.value) return;
+  const file = selectedFile.value;
+  const version = ++previewVersion;
+  const targetCompany = props.companyId;
+  const useLocal = props.localFirst;
+  const current = () => !disposed && props.open && version === previewVersion
+    && targetCompany === props.companyId && useLocal === props.localFirst;
   loadingPreview.value = true;
   error.value = "";
   try {
-    if (props.localFirst) {
-      const preview = await previewLocalExpenseImport(selectedFile.value);
+    if (useLocal) {
+      const preview = await previewLocalExpenseImport(file);
+      if (!current()) return;
       headers.value = preview.headers;
       rowCount.value = preview.row_count;
       for (const field of EXPENSE_IMPORT_FIELD_KEYS) {
@@ -327,7 +432,8 @@ async function loadPreview() {
       headers?: string[];
       row_count?: number;
       suggested_mapping?: Record<string, number | null>;
-    }>(props.companyId, buildFormData(false));
+    }>(targetCompany, buildFormData(false));
+    if (!current()) return;
     headers.value = data.headers ?? [];
     rowCount.value = data.row_count ?? 0;
     const suggested = data.suggested_mapping ?? {};
@@ -335,12 +441,12 @@ async function loadPreview() {
       mapping[field] = suggested[field] ?? null;
     }
   } catch (rawError) {
-    const e = asApiError(rawError);
-    error.value = e?.response?.data?.message || t("errors.generic");
+    if (!current()) return;
+    error.value = importError(rawError);
     headers.value = [];
     rowCount.value = 0;
   } finally {
-    loadingPreview.value = false;
+    if (current()) loadingPreview.value = false;
   }
 }
 
@@ -363,35 +469,44 @@ async function downloadExample() {
 }
 
 async function submitImport() {
-  if (!selectedFile.value || !mappingReady.value) return;
+  if (!props.open || !selectedFile.value || !mappingReady.value || importing.value || loadingPreview.value) return;
+  const file = selectedFile.value;
+  const targetCompany = props.companyId;
+  const useLocal = props.localFirst;
+  const selectedMapping = { ...mapping };
   importing.value = true;
   error.value = "";
   try {
-    if (props.localFirst && evolu && invoicingExpenses) {
+    if (useLocal) {
+      if (!evolu || !invoicingExpenses) throw new Error("local_context_unavailable");
+      // Load current rows before writing, including when opened from company Import.
+      await invoicingExpenses.refresh();
+      if (disposed || targetCompany !== props.companyId || useLocal !== props.localFirst) return;
       const importResult = await importLocalExpensesFromFile(
         evolu,
-        props.companyId as CompanyId,
-        selectedFile.value,
-        mapping,
+        targetCompany as CompanyId,
+        file,
+        selectedMapping,
         invoicingExpenses.expenseRows.value,
       );
+      if (disposed || targetCompany !== props.companyId || useLocal !== props.localFirst) return;
       result.value = importResult;
       if (importResult.imported > 0) {
-        await invoicingExpenses.refresh();
         emit("imported");
       }
       return;
     }
-    const data = await invoicingApi.expenses.import.run<NonNullable<typeof result.value>>(props.companyId, buildFormData(true));
+    const data = await invoicingApi.expenses.import.run<NonNullable<typeof result.value>>(targetCompany, buildFormData(true));
+    if (disposed || targetCompany !== props.companyId || useLocal !== props.localFirst) return;
     result.value = data;
     if ((data.imported ?? 0) > 0) {
       emit("imported");
     }
   } catch (rawError) {
-    const e = asApiError(rawError);
-    error.value = e?.response?.data?.message || t("errors.generic");
+    if (!disposed && targetCompany === props.companyId) error.value = importError(rawError);
   } finally {
     importing.value = false;
+    if (!props.open || targetCompany !== props.companyId || useLocal !== props.localFirst) resetState();
   }
 }
 </script>

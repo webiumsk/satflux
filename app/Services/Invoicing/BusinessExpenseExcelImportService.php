@@ -7,9 +7,11 @@ use App\Models\AuditLog;
 use App\Models\BusinessExpense;
 use App\Models\Company;
 use App\Support\Invoicing\BusinessExpenseImportFields;
+use App\Support\Invoicing\ImportDateParser;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -29,7 +31,7 @@ class BusinessExpenseExcelImportService
     public function preview(Company $company, UploadedFile $file, ?array $mapping = null): array
     {
         $parsed = $this->parseSpreadsheet($file);
-        $mapping = $this->normalizeMapping($mapping ?? $this->suggestMapping($parsed['headers']));
+        $mapping = $this->normalizeMapping($mapping ?? $this->suggestMapping($parsed['headers']), count($parsed['headers']));
 
         $preview = [];
         foreach (array_slice($parsed['rows'], 0, 10) as $index => $row) {
@@ -58,7 +60,14 @@ class BusinessExpenseExcelImportService
     public function import(Company $company, UploadedFile $file, array $mapping): array
     {
         $parsed = $this->parseSpreadsheet($file);
-        $mapping = $this->normalizeMapping($mapping);
+        $mapping = $this->normalizeMapping($mapping, count($parsed['headers']));
+        $reservedInternalNumbers = [];
+        foreach ($parsed['rows'] as $row) {
+            $number = $this->internalNumberFromRow($row, $mapping);
+            if ($number !== null) {
+                $reservedInternalNumbers[$number] = true;
+            }
+        }
 
         $imported = 0;
         $skipped = 0;
@@ -82,8 +91,8 @@ class BusinessExpenseExcelImportService
             }
 
             try {
-                DB::transaction(function () use ($company, $row, $mapping) {
-                    $this->importRow($company, $row, $mapping);
+                DB::transaction(function () use ($company, $row, $mapping, $reservedInternalNumbers) {
+                    $this->importRow($company, $row, $mapping, $reservedInternalNumbers);
                 });
                 $imported++;
             } catch (\InvalidArgumentException $e) {
@@ -182,7 +191,28 @@ class BusinessExpenseExcelImportService
         }
 
         $spreadsheet = IOFactory::load($path);
-        $rows = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
+        $sheet = $spreadsheet->getActiveSheet();
+        if ($sheet->getHighestDataRow() > self::MAX_ROWS + 1) {
+            throw new \InvalidArgumentException('Row limit exceeded.');
+        }
+        if (Coordinate::columnIndexFromString($sheet->getHighestDataColumn()) > 256) {
+            throw new \InvalidArgumentException('Column limit exceeded.');
+        }
+        // Read numbers independently of currency/thousands display formats and
+        // never calculate uploaded formulas. Plain zero masks still preserve
+        // leading zeros in numeric identifiers.
+        $rows = $sheet->rangeToArray('A1:'.$sheet->getHighestDataColumn().$sheet->getHighestDataRow(), null, false, false, false);
+        foreach ($rows as $rowIndex => $row) {
+            foreach ($row as $columnIndex => $value) {
+                if (! is_int($value) && ! is_float($value)) {
+                    continue;
+                }
+                $cell = $sheet->getCell([$columnIndex + 1, $rowIndex + 1]);
+                if (preg_match('/^0{2,}$/', $cell->getStyle()->getNumberFormat()->getFormatCode())) {
+                    $rows[$rowIndex][$columnIndex] = $cell->getFormattedValue();
+                }
+            }
+        }
 
         if (count($rows) < 2) {
             throw new \InvalidArgumentException('The spreadsheet has no data rows.');
@@ -225,10 +255,10 @@ class BusinessExpenseExcelImportService
     }
 
     /**
-     * @param  array<string, int|string|null>  $mapping
+     * @param  array<string, mixed>  $mapping
      * @return array<string, int|null>
      */
-    protected function normalizeMapping(array $mapping): array
+    protected function normalizeMapping(array $mapping, int $columnCount): array
     {
         $normalized = [];
         foreach (BusinessExpenseImportFields::definitions() as $def) {
@@ -237,6 +267,13 @@ class BusinessExpenseExcelImportService
                 $normalized[$def['key']] = null;
 
                 continue;
+            }
+            if (
+                (! is_int($value) && (! is_string($value) || ! preg_match('/^\d+$/', $value)))
+                || (int) $value < 0
+                || (int) $value >= $columnCount
+            ) {
+                throw new \InvalidArgumentException('Invalid column mapping: '.$def['key']);
             }
             $normalized[$def['key']] = (int) $value;
         }
@@ -253,9 +290,10 @@ class BusinessExpenseExcelImportService
     /**
      * @param  list<mixed>  $row
      * @param  array<string, int|null>  $mapping
+     * @param  array<string|int, true>  $reservedInternalNumbers
      * @return array<string, mixed>
      */
-    protected function rowToExpenseData(Company $company, array $row, array $mapping, bool $validateOnly = false): array
+    protected function rowToExpenseData(Company $company, array $row, array $mapping, bool $validateOnly = false, array $reservedInternalNumbers = []): array
     {
         $issueDate = $this->parseDate($this->cell($row, $mapping['issue_date']));
         $total = $this->parseAmount($this->cell($row, $mapping['total']));
@@ -267,12 +305,37 @@ class BusinessExpenseExcelImportService
             throw new \InvalidArgumentException('Total amount is invalid or missing.');
         }
 
+        $dueDate = $this->optionalDate($row, $mapping, 'due_date');
+        $deliveryDate = $this->optionalDate($row, $mapping, 'delivery_date') ?? $issueDate;
+        $paidAt = $this->optionalDate($row, $mapping, 'paid_at');
+        $currency = strtoupper($this->cell($row, $mapping['currency']) ?? $company->default_currency ?? 'EUR');
+        if (! preg_match('/^[A-Z]{3}$/', $currency)) {
+            throw new \InvalidArgumentException('Currency is invalid.');
+        }
+
+        $paymentAmountRaw = $this->cell($row, $mapping['payment_amount']);
+        $paymentAmount = $this->parseAmount($paymentAmountRaw);
+        if ($paymentAmountRaw !== null && $paymentAmount === null) {
+            throw new \InvalidArgumentException('Payment amount is invalid.');
+        }
+        $paymentCurrency = strtoupper($this->cell($row, $mapping['payment_currency']) ?? $currency);
+        $paid = $paidAt !== null && (
+            $paymentAmountRaw === null
+            || ($paymentAmount >= $total && $paymentCurrency === $currency)
+        );
+
         $internalNumber = $this->cell($row, $mapping['internal_number']);
         if ($internalNumber === null || $internalNumber === '') {
             if ($validateOnly) {
                 $internalNumber = '(auto)';
             } else {
-                $internalNumber = $this->sequenceService->nextNumber($company, 'expense');
+                $attempts = 0;
+                do {
+                    if ($attempts++ > self::MAX_ROWS) {
+                        throw new \InvalidArgumentException('No free internal number is available.');
+                    }
+                    $internalNumber = $this->sequenceService->nextNumber($company, 'expense');
+                } while (isset($reservedInternalNumbers[$internalNumber]));
             }
         }
 
@@ -286,10 +349,9 @@ class BusinessExpenseExcelImportService
             throw new \InvalidArgumentException('Internal number already exists: '.$internalNumber);
         }
 
-        $paidAt = $this->parseDate($this->cell($row, $mapping['paid_at']));
         $title = $this->resolveTitle($row, $mapping);
-
-        return [
+        $note = $this->buildInternalNote($row, $mapping, $paid ? null : $paidAt);
+        $data = [
             'internal_number' => $internalNumber,
             'external_number' => $this->cell($row, $mapping['external_number']),
             'title' => $title,
@@ -298,14 +360,22 @@ class BusinessExpenseExcelImportService
             'constant_symbol' => $this->cell($row, $mapping['constant_symbol']),
             'specific_symbol' => $this->cell($row, $mapping['specific_symbol']),
             'issue_date' => $issueDate,
-            'delivery_date' => $this->parseDate($this->cell($row, $mapping['delivery_date'])) ?? $issueDate,
-            'due_date' => $this->parseDate($this->cell($row, $mapping['due_date'])),
+            'delivery_date' => $deliveryDate,
+            'due_date' => $dueDate,
             'total' => $total,
-            'currency' => strtoupper($this->cell($row, $mapping['currency']) ?? $company->default_currency ?? 'EUR'),
-            'internal_note' => $this->buildInternalNote($row, $mapping),
-            'paid' => $paidAt !== null,
+            'currency' => $currency,
+            'internal_note' => $note,
+            'paid' => $paid,
             'paid_at' => $paidAt,
         ];
+
+        foreach (['internal_number' => 64, 'external_number' => 64, 'title' => 255, 'variable_symbol' => 32, 'constant_symbol' => 16, 'specific_symbol' => 16, 'internal_note' => 4000] as $field => $limit) {
+            if (mb_strlen((string) $data[$field]) > $limit) {
+                throw new \InvalidArgumentException('Field exceeds maximum length: '.$field);
+            }
+        }
+
+        return $data;
     }
 
     /**
@@ -332,10 +402,11 @@ class BusinessExpenseExcelImportService
     /**
      * @param  list<mixed>  $row
      * @param  array<string, int|null>  $mapping
+     * @param  array<string|int, true>  $reservedInternalNumbers
      */
-    protected function importRow(Company $company, array $row, array $mapping): void
+    protected function importRow(Company $company, array $row, array $mapping, array $reservedInternalNumbers = []): void
     {
-        $data = $this->rowToExpenseData($company, $row, $mapping);
+        $data = $this->rowToExpenseData($company, $row, $mapping, reservedInternalNumbers: $reservedInternalNumbers);
 
         BusinessExpense::create([
             'company_id' => $company->id,
@@ -381,48 +452,49 @@ class BusinessExpenseExcelImportService
      * @param  list<mixed>  $row
      * @param  array<string, int|null>  $mapping
      */
-    protected function buildInternalNote(array $row, array $mapping): ?string
+    protected function buildInternalNote(array $row, array $mapping, ?Carbon $unsettledPaymentDate = null): ?string
     {
         $parts = [];
-
         $userNote = $this->cell($row, $mapping['internal_note']);
-        if ($userNote) {
+        if ($userNote !== null) {
             $parts[] = $userNote;
         }
 
-        $tags = $this->cell($row, $mapping['tags']);
-        if ($tags) {
-            $parts[] = 'Tags: '.$tags;
+        $labels = [
+            'tags' => 'Tags',
+            'supplier_name' => 'Supplier',
+            'category' => 'Category',
+            'supplier_registration_number' => 'Supplier registration number',
+            'supplier_tax_id' => 'Supplier tax ID',
+            'supplier_vat_id' => 'Supplier VAT ID',
+            'supplier_phone' => 'Supplier phone',
+            'supplier_email' => 'Supplier email',
+            'supplier_street' => 'Supplier street',
+            'supplier_postal_code' => 'Supplier postal code',
+            'supplier_city' => 'Supplier city',
+            'supplier_country' => 'Supplier country',
+            'supplier_bank_account' => 'Supplier bank account',
+            'payment_method' => 'Payment method',
+            'payment_amount' => 'Payment amount',
+            'payment_currency' => 'Payment currency',
+            'payment_exchange_rate' => 'Payment exchange rate',
+            'item_quantity' => 'Item quantity',
+            'item_units' => 'Item units',
+            'items' => 'Items',
+        ];
+        foreach ($labels as $field => $label) {
+            $value = $this->cell($row, $mapping[$field]);
+            if ($value !== null) {
+                $parts[] = $label.': '.$value;
+            }
         }
-
-        $supplier = $this->cell($row, $mapping['supplier_name']);
-        $category = $this->cell($row, $mapping['category']);
-        if ($supplier && ! $this->cell($row, $mapping['title'])) {
-            $parts[] = 'Supplier: '.$supplier;
-        }
-        if ($category && ! $this->cell($row, $mapping['title'])) {
-            $parts[] = 'Category: '.$category;
-        }
-
-        $supplierLines = array_filter([
-            $this->cell($row, $mapping['supplier_registration_number']) ? 'IČO: '.$this->cell($row, $mapping['supplier_registration_number']) : null,
-            $this->cell($row, $mapping['supplier_tax_id']) ? 'DIČ: '.$this->cell($row, $mapping['supplier_tax_id']) : null,
-            $this->cell($row, $mapping['supplier_email']),
-            trim(implode(', ', array_filter([
-                $this->cell($row, $mapping['supplier_street']),
-                $this->cell($row, $mapping['supplier_city']),
-                $this->cell($row, $mapping['supplier_country']),
-            ]))),
-        ]);
-
-        if ($supplierLines !== []) {
-            $parts[] = implode("\n", $supplierLines);
+        if ($unsettledPaymentDate !== null) {
+            $parts[] = 'Payment date: '.$unsettledPaymentDate->toDateString();
         }
 
         $parts[] = 'import';
-        $note = trim(implode("\n\n", array_filter($parts)));
 
-        return $note !== '' ? $note : null;
+        return implode("\n\n", $parts);
     }
 
     /**
@@ -475,19 +547,22 @@ class BusinessExpenseExcelImportService
 
     protected function parseDate(?string $value): ?Carbon
     {
-        if ($value === null || $value === '') {
-            return null;
+        return (new ImportDateParser('dmy_dot'))->parse($value);
+    }
+
+    /**
+     * @param  list<mixed>  $row
+     * @param  array<string, int|null>  $mapping
+     */
+    protected function optionalDate(array $row, array $mapping, string $field): ?Carbon
+    {
+        $value = $this->cell($row, $mapping[$field]);
+        $date = $this->parseDate($value);
+        if ($value !== null && $date === null) {
+            throw new \InvalidArgumentException('Date is invalid: '.$field);
         }
 
-        try {
-            if (preg_match('/^\d+(\.\d+)?$/', $value)) {
-                return Carbon::createFromTimestampUTC(((int) $value - 25569) * 86400)->startOfDay();
-            }
-
-            return Carbon::parse($value)->startOfDay();
-        } catch (\Throwable) {
-            return null;
-        }
+        return $date;
     }
 
     protected function parseAmount(?string $value): ?float
@@ -496,15 +571,18 @@ class BusinessExpenseExcelImportService
             return null;
         }
 
-        $normalized = str_replace([' ', "\xc2\xa0"], '', $value);
+        $normalized = preg_replace('/\s+/u', '', $value) ?? '';
         $normalized = str_replace(',', '.', $normalized);
-        $normalized = preg_replace('/[^0-9.\-]/', '', $normalized) ?? '';
-
-        if ($normalized === '' || ! is_numeric($normalized)) {
+        if (! preg_match('/^[+-]?\d+(?:\.\d+)?$/', $normalized)) {
             return null;
         }
 
-        return round((float) $normalized, 2);
+        $amount = (float) $normalized;
+        if (! is_finite($amount) || $amount < 0 || $amount > 999999999999.99) {
+            return null;
+        }
+
+        return round($amount, 2);
     }
 
     /**
