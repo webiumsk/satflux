@@ -47,6 +47,12 @@
       "sourceSha": "86e77e81cab9ae838673bd78062b5f386a22e398",
       "phase": "created",
       "entryId": "cl_PckDZHXrwRDzzRymMdhjh"
+    },
+    "sepa-wallet-alert-fix": {
+      "hash": "1feebbd12b77b38ba74a271ea203445ec4183bd1b2a5edc23723a5dea89257a7",
+      "source": "https://github.com/webiumsk/satflux/pull/413",
+      "sourceSha": "86e77e81cab9ae838673bd78062b5f386a22e398",
+      "phase": "create_pending"
     }
   }
 }
