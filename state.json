@@ -31,7 +31,8 @@
       "hash": "83b1a63360505efc0bf91180bf02434470c2f5adb6f7f5a522e6c74da439ec61",
       "source": "https://github.com/webiumsk/satflux/pull/407",
       "sourceSha": "86e77e81cab9ae838673bd78062b5f386a22e398",
-      "phase": "create_pending"
+      "phase": "created",
+      "entryId": "cl_774mhZ183kTM3bwaijwlW"
     }
   }
 }
