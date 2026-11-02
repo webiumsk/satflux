@@ -1,5 +1,13 @@
 # Development roadmap
 
+## Current: verify expense-import CI after removing one stale PHPStan ignore - 2026-11-02
+
+All2555 PHP tests and Pint pass on a64f0bed; full PHPStan alone rejects an obsolete
+arrayFilter.same baseline entry. A one-entry removal preserves the analysis
+ratchet and all runtime source. Independent QA accepts the exact delta; full
+local analysis reproduces before/fixes after. Publish this bounded repair and
+verify the fresh exact-head CI result. PR merge and deployment remain separate.
+
 ## Current: verify expense import PR after documentation reconciliation - 2026-11-02
 
 Owner-authorized conflict repair brings master `86e77e81` into the feature

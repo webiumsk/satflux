@@ -1,5 +1,18 @@
 # Project state
 
+## Expense import CI baseline mismatch corrected - 2026-11-02
+
+CI41539349631 on a64f0bed passes all2555 PHP tests/12812 assertions and Pint;
+the PHP job fails later on PHPStan's single unmatched arrayFilter.same ignore
+for BusinessExpenseExcelImportService. Earlier scoped analysis did not catch
+this full-project baseline mismatch. Remove exactly that obsolete one-count
+entry; independent QA verifies all remaining bytes/counts and1615 source/test/
+frontend/config/dependency files unchanged. Baseline decreases625->624entries,
+825->824 ignored counts. Level5 and unmatched-ignore enforcement remain intact.
+The exact full PHPStan command reproduces the failure before and passes after
+the removal in the verified disposable target. Push and fresh exact-head CI are
+next; no app behavior, new payment, real import, PR merge or deployment changes.
+
 ## Expense import PR conflict resolution - 2026-11-02
 
 The owner requested repair of PR #426's three documentation conflicts after

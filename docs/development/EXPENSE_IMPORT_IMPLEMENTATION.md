@@ -67,6 +67,24 @@ ExpenseImportModal.vue               731667a640216a39232c82d6fbd03a90fc402bec726
 
 ## Coordinator verification
 
+### CI baseline correction - 2026-11-02
+
+CI `41539349631` on synchronized head `a64f0bed` passes all 2,555 PHP tests /
+12,812 assertions and Pint. Its PHP job fails later during full-project PHPStan:
+the old `arrayFilter.same` ignore for `BusinessExpenseExcelImportService` no
+longer matches any error after the import note builder was corrected.
+The earlier focused PHPStan checks did not catch this global baseline mismatch.
+
+Remove only that obsolete one-count entry from `phpstan-baseline.neon`.
+Independent QA verifies exact bytes for every retained entry, a decrease from
+625 to 624 entries / 825 to 824 ignored counts, unchanged level-5 configuration
+and 1,615 unchanged application/test/frontend/config/dependency files.
+The coordinator reproduces the single `ignore.unmatched` failure before the
+removal and passes the exact full-project command afterward:
+`vendor/bin/phpstan analyse --memory-limit=1G --no-progress`.
+No application behavior, tests, CI rules or static-analysis thresholds change.
+Fresh exact-head CI after push remains a separate required verification.
+
 - The private export dry run accepts all 52 rows and all 33 mappings in an
   in-memory fake, checking original numbers, dates and totals. There are no app
   writes, original-value logs or committed workbook fixtures.

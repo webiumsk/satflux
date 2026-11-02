@@ -1,5 +1,16 @@
 # Development decision log
 
+## 2026-11-02 - Shrink the PHPStan baseline after expense import cleanup
+
+Treat the failed PHP job precisely: tests and Pint pass, while full analysis
+rejects one no-longer-matching arrayFilter.same ignore for the expense importer.
+Remove only that stale one-count baseline entry. Preserve every other entry,
+level5, unmatched-ignore checks, CI commands and application/test source.
+Use full-project analysis rather than relying on scoped results, reproduce the
+old failure and verify the corrected result before publication. Independent QA
+checks the exact ratchet decrease; fresh CI must verify the published head.
+No new feature scope, PR merge, release or deployment follows this repair.
+
 ## 2026-11-02 - Preserve both histories when resolving expense-import documentation
 
 The owner's instruction authorizes repairing and pushing PR #426's conflicts.
