@@ -1,5 +1,16 @@
 # Development roadmap
 
+## Current: restore stalled Chorala changelog synchronization - 2026-11-02
+
+Independent QA/security accept the comparison-only CRLF fix, preserving stored
+content, historical hashes and no-republish guards; all 71 offline cases pass.
+The eight-fragment inventory includes missing merged #411/#413/#415 notes. Publish
+the reviewed repair and verify exact-head CI. After owner-approved merge, master
+CI prepares missing drafts; publication separately requires the exact confirmed
+deployed SHA. New fragments cannot publish for an older deployed commit that
+lacks them. No production retry, publication or deployment is performed during
+preparation. See [recovery evidence](CHORALA_CHANGELOG_RECOVERY.md).
+
 ## Current: ship the observed exact Platba description - 2026-11-01
 
 The private-bank-copy structure now identifies Platba as the only new operation

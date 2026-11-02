@@ -1,5 +1,22 @@
 # Development decision log
 
+## 2026-11-02 - Compare changelog CRLF without rewriting immutable state
+
+Public read-only evidence isolates the stalled automation to CRLF body line
+endings in the first two managed, already-published notes. Treat only CRLF/LF as
+equivalent during source/content comparison. Preserve raw source/journal hashes,
+remote bodies, metadata and all uncertainty guards; do not repair by resetting
+the journal, overwriting editor content or republishing existing notes.
+
+Prepare missing user-facing fragments for merged #411/#413/#415, consolidating
+the included bank-mail foundation into the final #415 note. Draft creation,
+confirmed exact-deployment publication and notification delivery remain distinct.
+Require independent reviews before handoff and applicable owner merge/publication
+approval; no deployed revision is inferred from source or image CI.
+Independent QA/security now accept the frozen implementation and three notes;
+71 maintained cases, baseline/fixed recovery and 92 security cases/310 assertions
+pass. Preserve the separate exact-head CI and owner merge/publication gates.
+
 ## 2026-11-01 - Admit the observed fixed operation label without changing identity
 
 Use only the public literal Platba and anonymized shape from the owner's private

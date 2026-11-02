@@ -6,6 +6,10 @@ import { GitLedger, REPOSITORY, readJson } from './git-ledger.mjs';
 const idPattern = /^[a-z0-9][a-z0-9-]{0,79}$/;
 const sourcePattern = /^https:\/\/github\.com\/webiumsk\/satflux\/pull\/[1-9][0-9]*$/;
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const bodyWithLf = value => value.replace(/\r\n/g, '\n');
+// Provider/editor line endings are equivalent; immutable source/journal hashes stay raw.
+const comparisonHash = value => hash({ title: value.title, body: bodyWithLf(value.body), labels: value.labels,
+    linkedPostIds: value.linkedPostIds, segmentId: value.segmentId });
 const stringList = value => Array.isArray(value) && value.length <= 100
     && value.every(item => typeof item === 'string' && item.length > 0 && item.length <= 200);
 
@@ -130,8 +134,7 @@ function assertEntry(row, item) {
         || typeof row.title !== 'string' || typeof row.body !== 'string'
         || !stringList(row.labels) || !stringList(row.linkedPostIds)
         || !(row.segmentId === null || (typeof row.segmentId === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(row.segmentId)))
-        || hash({ title: row.title, body: row.body, labels: row.labels,
-            linkedPostIds: row.linkedPostIds, segmentId: row.segmentId }) !== item.hash) {
+        || comparisonHash(row) !== comparisonHash(item.payload)) {
         throw new Error('Changelog content or audience changed; manual reconciliation required');
     }
     return row;
@@ -149,7 +152,7 @@ export async function synchronize({ mode, sha, entries, ledger, client }) {
         }
         const rows = validateCollection(await client.list());
         const matching = rows.filter(row => typeof row?.body === 'string'
-            && row.body.endsWith(`\n\n[Details](${item.source})`));
+            && bodyWithLf(row.body).endsWith(`\n\n[Details](${item.source})`));
         if (matching.length > 1) throw new Error('Duplicate remote sources require manual reconciliation');
         let row;
         if (!record) {
