@@ -27,11 +27,9 @@ class TatraBankEmailParser implements BankNotificationParser
     public function parse(string $from, string $subject, string $body): array
     {
         $text = $this->normalizeBody($body);
-        // Select the Tatra profile using sender identity, never a body label.
+        // Select strict evidence using sender identity, never a body label.
         // Origin is independently authenticated before SEPA reporting.
-        $evidence = (new BankEmailOriginVerifier)->matchesSender('tatrabanka.sk', $from)
-            ? (new TatraBankSepaEvidenceParser)->parse($body)
-            : null;
+        $evidence = $this->strictSepaEvidence($from, $body);
         $classic = $this->parseClassic($text, $subject, $evidence);
 
         if ($classic !== null) {
@@ -41,6 +39,20 @@ class TatraBankEmailParser implements BankNotificationParser
         $compact = $this->parseCompact($text, $subject);
 
         return $compact !== null ? [$compact] : [];
+    }
+
+    /** @return array{e2e: ?string, vs: ?string, identity: string}|null */
+    private function strictSepaEvidence(string $from, string $body): ?array
+    {
+        $originVerifier = new BankEmailOriginVerifier;
+        if ($originVerifier->matchesSender('tatrabanka.sk', $from)) {
+            return (new TatraBankSepaEvidenceParser)->parse($body);
+        }
+        if ($originVerifier->matchesSender('slsp.sk', $from)) {
+            return (new SlspBankSepaEvidenceParser)->parse($body);
+        }
+
+        return null;
     }
 
     protected function normalizeBody(string $body): string
