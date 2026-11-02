@@ -1,5 +1,14 @@
 # Development decision log
 
+## 2026-11-02 - Preserve both histories when resolving expense-import documentation
+
+The owner's instruction authorizes repairing and pushing PR #426's conflicts.
+Bring current master `86e77e81` into the existing feature branch without rewriting
+published history. Keep all expense-import and upstream milestone records;
+resolve only the three conflicting project documents. Existing implementation
+reviews continue to apply to unchanged expense source. Distinguish the feature
+branch synchronization from merging the PR into master or deploying the feature.
+
 ## 2026-11-02 - Extend the existing expense importer for current SuperFaktura exports
 
 The owner's explicit request authorizes bounded Satflux implementation.
@@ -26,6 +35,23 @@ QA/security independently accept. Private workbook inspection stays with the
 coordinator; only structural facts and synthetic fixtures enter source/reports.
 No actual import, external repository write, billing change, publication,
 merge or deployment follows this implementation authorization.
+
+## 2026-11-02 - Compare changelog CRLF without rewriting immutable state
+
+Public read-only evidence isolates the stalled automation to CRLF body line
+endings in the first two managed, already-published notes. Treat only CRLF/LF as
+equivalent during source/content comparison. Preserve raw source/journal hashes,
+remote bodies, metadata and all uncertainty guards; do not repair by resetting
+the journal, overwriting editor content or republishing existing notes.
+
+Prepare missing user-facing fragments for merged #411/#413/#415, consolidating
+the included bank-mail foundation into the final #415 note. Draft creation,
+confirmed exact-deployment publication and notification delivery remain distinct.
+Require independent reviews before handoff and applicable owner merge/publication
+approval; no deployed revision is inferred from source or image CI.
+Independent QA/security now accept the frozen implementation and three notes;
+71 maintained cases, baseline/fixed recovery and 92 security cases/310 assertions
+pass. Preserve the separate exact-head CI and owner merge/publication gates.
 
 ## 2026-11-01 - Admit the observed fixed operation label without changing identity
 

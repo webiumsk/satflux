@@ -1,5 +1,16 @@
 # Project state
 
+## Expense import PR conflict resolution - 2026-11-02
+
+The owner requested repair of PR #426's three documentation conflicts after
+master advanced to `86e77e81` with merged #424/#425. Synchronize master into
+`feat/superfaktura-expense-import`, retaining both sets of project records.
+The manual resolution touches only PROJECT_STATE, ROADMAP and DECISION_LOG;
+expense source, tests, locales and user guides stay byte-identical to reviewed
+`be19843d`. Upstream code enters unchanged through its existing master history.
+No product behavior, private data, real import or deployment is changed.
+The PR remains for owner review; conflict repair does not merge it into master.
+
 ## SuperFaktura expense import implemented and independently reviewed - 2026-11-02
 
 The owner explicitly requested expense import in Satflux. A dedicated
@@ -30,6 +41,25 @@ No publication, app import, merge or deployment. Explicit-number rerun protectio
 is company-scoped; rows without internal numbers create new entries on rerun.
 Next: owner review of the preserved local source; later publication, merge and
 deployment need applicable owner authorization.
+
+## Chorala changelog CRLF recovery independently accepted - 2026-11-02
+
+Public GETs confirm that the configured feed stops at PR #406. The next eight
+Satflux changelog synchronizations failed because the two managed published
+bodies contain CRLF while their immutable source/journal hashes use LF. Other
+fields and source hashes agree. The journal still records two created drafts,
+with no deploymentSha; successful Chorala image CI is a separate pipeline.
+
+The comparison-only CRLF/LF repair preserves raw bodies, hashes, IDs and
+publication guards. Missing notes for merged PRs #411, #413 and combined #415
+bring the inventory to eight. Author and independent QA pass all 71 offline
+cases; QA reproduces baseline failure and fixed two acknowledgements/six drafts,
+zero publication PATCH, plus 11 adverse scenarios. Independent security accepts
+92 cases/310 assertions, including both historical hash goldens. Source syntax,
+fragment schema/source uniqueness and whitespace checks pass. New-head CI remains
+separate. See [incident and recovery evidence](CHORALA_CHANGELOG_RECOVERY.md).
+Original primary edits and retained worktrees are preserved. No production
+mutation, workflow retry, merge, deployment or notification was performed.
 
 ## Exact Platba bank-description compatibility in progress - 2026-11-01
 

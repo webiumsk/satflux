@@ -1,5 +1,13 @@
 # Development roadmap
 
+## Current: verify expense import PR after documentation reconciliation - 2026-11-02
+
+Owner-authorized conflict repair brings master `86e77e81` into the feature
+branch while preserving the expense-import and upstream project records.
+Verify the three-file documentation resolution, push without force and confirm
+PR #426 is mergeable. Retain original source review/test evidence separately
+from fresh CI on the synchronized head. No PR merge or deployment is authorized.
+
 ## Ready: reviewed expense import for owner review - 2026-11-02
 
 Owner-authorized expense import is implemented on
@@ -13,6 +21,17 @@ scoped PHPStan/Pint and API contract checks pass. The full frontend suite passes
 for owner review. No actual data
 import, external repository write, publication, merge or deployment is performed.
 Keep the existing primary edits and other initiatives untouched.
+
+## Current: restore stalled Chorala changelog synchronization - 2026-11-02
+
+Independent QA/security accept the comparison-only CRLF fix, preserving stored
+content, historical hashes and no-republish guards; all 71 offline cases pass.
+The eight-fragment inventory includes missing merged #411/#413/#415 notes. Publish
+the reviewed repair and verify exact-head CI. After owner-approved merge, master
+CI prepares missing drafts; publication separately requires the exact confirmed
+deployed SHA. New fragments cannot publish for an older deployed commit that
+lacks them. No production retry, publication or deployment is performed during
+preparation. See [recovery evidence](CHORALA_CHANGELOG_RECOVERY.md).
 
 ## Current: ship the observed exact Platba description - 2026-11-01
 
