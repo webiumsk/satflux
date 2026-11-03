@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\CompanyJurisdiction;
+use App\Models\AuditLog;
 use App\Models\Company;
 use App\Models\ExpenseIsdocCreditBalance;
 use App\Models\ExpenseIsdocPackPurchase;
@@ -10,7 +11,9 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\Invoicing\BusinessExpenseIsdocPackService;
+use App\Services\Invoicing\BusinessExpenseIsdocQuotaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -80,6 +83,29 @@ class BusinessExpenseIsdocPackTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.purchased_credits', 10);
         $response->assertJsonPath('data.can_extract', true);
+    }
+
+    #[Test]
+    public function a_failed_usage_audit_rolls_back_the_existing_purchased_credit_debit(): void
+    {
+        config(['invoicing.expense_isdoc_extract_free_limit' => 0]);
+        ExpenseIsdocCreditBalance::create(['user_id' => $this->user->id, 'balance' => 2]);
+        $depth = DB::transactionLevel();
+        AuditLog::creating(function (AuditLog $audit) {
+            if ($audit->action === BusinessExpenseIsdocQuotaService::EXTRACT_ACTION) {
+                throw new \RuntimeException('Synthetic audit failure.');
+            }
+        });
+
+        try {
+            app(BusinessExpenseIsdocQuotaService::class)->recordExtraction($this->user, null, $this->company->id);
+            $this->fail('The synthetic audit failure must propagate.');
+        } catch (\RuntimeException $error) {
+            $this->assertSame('Synthetic audit failure.', $error->getMessage());
+        }
+        $this->assertSame($depth, DB::transactionLevel());
+        $this->assertSame(2, (int) ExpenseIsdocCreditBalance::where('user_id', $this->user->id)->value('balance'));
+        $this->assertSame(0, AuditLog::where('action', BusinessExpenseIsdocQuotaService::EXTRACT_ACTION)->count());
     }
 
     #[Test]

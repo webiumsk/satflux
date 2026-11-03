@@ -122,3 +122,69 @@ Coordinator full frontend validation on the final source passes 1,205 cases in
 151 files, zero failures, with two workers. The structured JSON report and process
 exit verify the count; an earlier run with startup-only output is not counted as
 evidence. The final production manifest remains identical after all checks.
+
+## Follow-up review on published `2567fed4`
+
+CI41687668367 passes all four jobs: 2,609 PHP cases / 13,300 assertions with the
+expected PostgreSQL-only skip, full PHPStan/API export, 1,205 frontend cases in
+151 files and 20 E2E scenarios. Subsequent CodeRabbit review identifies six
+bounded issues; confirmed fixes proceed without changing pricing or quota policy.
+
+- Serialize last-free-unit settlement across all extraction callers. Parse and
+  reject exhausted quota early, then lock the authenticated user and recheck
+  quota in one transaction with audit/credit accounting on the same actual
+  connection. Owned PostgreSQL transactions use scoped Read Committed; nested
+  Read Committed uses a savepoint, while stale snapshot contexts fail closed.
+  No global connection switch or automatic filesystem callback retry.
+- Legacy server import persistence joins this quota critical section before
+  creating expense/file/audit rows. Ordinary callback failure cleans only a fresh
+  verified attempt-owned directory before commit; preexisting/unrelated files
+  remain. Uncertain commit acknowledgement and a later outer caller rollback
+  retain caller recovery responsibilities; no universal filesystem atomicity is
+  claimed. Lock order remains user then credit. SQLite BUSY rolls back safely.
+- Verify retained local retry targets with an ID-specific unfiltered Evolu query
+  including tombstones, using the existing timed loader. Reject missing, deleted
+  or foreign rows, retain the retry state and never recreate a removed expense.
+  Check again before each attachment insertion after encoding.
+- Show attachment save failures and an attachment-only retry that preserves
+  completed progress and never repeats extraction or charges quota.
+- Guard every modal dismissal and skip path while extraction is running, so
+  confirmed processing can return and apply its draft exactly once.
+- Clear old detail state on route changes and guard load, preview, neighbor and
+  action continuations against stale contexts. Old success/error/finally paths
+  cannot display or act on a different expense. Clarify form Save versus immediate
+  detail attachment persistence in all five guides.
+
+Main, independent security and QA accept this design before quota implementation.
+Backend owns the quota service, the legacy import block and four bounded tests;
+frontend owns the three attachment UI modules, attachment hook, one local query
+helper and its two test files. Main owns locales/guides/state/infrastructure
+and publication. Deterministic PostgreSQL 16 contention tests use a fresh internal
+network, tmpfs database and synthetic users; no production environment is involved.
+
+### Frozen follow-up validation
+
+All six findings are fixed in the reviewed source. Author PG16.11 tests pass
+13 cases / 129 assertions with two independent workers: last free/purchased unit,
+free-before-purchased priority, unlimited/separate users, rollback, nested RC,
+stale-isolation/connection rejection and callback-once behavior. The actual old
+2567fed4 service, overlaid read-only for the free-record dataset, allows two
+successes against one remaining unit; the corrected service allows one.
+SQLite passes 52 cases / 360 assertions, including scoped cleanup and unrelated /
+preexisting file preservation. Scoped PHPStan and six-file Pint pass.
+
+Independent security accepts all 16 production files and separately passes
+55 frontend cases and 43 PHP cases / 306 assertions. Independent QA accepts the
+same source and independently passes 55 frontend cases, the actual PG13/129
+corpus and SQLite52/360. The sorted relative-path SHA-256 manifest is
+`1c2d4e95069405f54cb61dbb785db48fa2ecf65d3c43b0cd53bbf756d07b287a`.
+
+Main full frontend passes 1,228 cases across 151 files. Lint retains48 existing
+warnings under the same52 limit; typecheck retains112 known diagnostics with no
+new fingerprints. Build, locales, all nine changelog fragments and whitespace
+pass. Fresh full PHPStan reports only the known missing local Scramble class;
+locked-dependency CI must verify full static/API gates. Normal CI uses SQLite
+and skips the guarded opt-in PG corpus; the real PG runs above are local evidence.
+After QA releases fixtures, main removes only the dedicated test container/tmpfs
+and internal network. Source and recovery backups remain intact; no production
+or unrelated application services are touched.

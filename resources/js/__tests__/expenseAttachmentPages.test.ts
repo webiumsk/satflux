@@ -8,12 +8,12 @@ import { toAppRows } from "@/evolu/queryLoad";
 import type { EvoluExpenseAttachmentRow } from "@/evolu/expenseAttachmentCrud";
 
 const mocks = vi.hoisted(() => ({
-    local: true, evolu: {} as object | null, displayForeign: false,
+    local: true, evolu: {} as object | null, displayForeign: false, filteredLagId: null as string | null,
     push: vi.fn(), remember: vi.fn(), refresh: vi.fn(),
-    insertExpense: vi.fn(), updateExpense: vi.fn(), insertAttachment: vi.fn(), read: vi.fn(),
+    insertExpense: vi.fn(), updateExpense: vi.fn(), insertAttachment: vi.fn(), read: vi.fn(), lookup: vi.fn(),
     detect: vi.fn(), extract: vi.fn(), quota: vi.fn(), purchase: vi.fn(), upload: vi.fn(),
     localDetect: vi.fn(), localExtract: vi.fn(), localQuota: vi.fn(),
-    get: vi.fn(), update: vi.fn(), create: vi.fn(), history: vi.fn(), list: vi.fn(), company: vi.fn(), blob: vi.fn(),
+    get: vi.fn(), update: vi.fn(), create: vi.fn(), history: vi.fn(), list: vi.fn(), company: vi.fn(), blob: vi.fn(), action: vi.fn(),
 }));
 const localCompany = "abcdefghijklmnopqrstuv";
 const serverCompany = "00000000-0000-4000-8000-000000000001";
@@ -28,18 +28,20 @@ function fixture(id = "expense-a", owner = localCompany) {
         delivery_date: "2026-01-01", due_date: null, paid_at: null,
         total: "1.00", currency: "EUR", variable_symbol: null, constant_symbol: null,
         specific_symbol: null, internal_note: null, attachment_path: null, original_filename: null,
-        attachments: [] as Attachment[],
+        attachments: [] as Attachment[], isDeleted: null as number | null,
     };
 }
 const models = ref<ReturnType<typeof fixture>[]>([]);
-const expenseRows = computed(() => models.value.map((expense) => ({
+function rawRow(expense: ReturnType<typeof fixture>) { return {
     id: expense.id, companyId: expense.companyId, internalNumber: expense.internal_number,
     externalNumber: expense.external_number, title: expense.title, status: expense.status,
     issueDate: expense.issue_date, deliveryDate: expense.delivery_date, dueDate: expense.due_date,
     paidAt: expense.paid_at, cancelledAt: null, total: expense.total, currency: expense.currency,
     variableSymbol: expense.variable_symbol, constantSymbol: expense.constant_symbol,
-    specificSymbol: expense.specific_symbol, internalNote: expense.internal_note,
-})));
+    specificSymbol: expense.specific_symbol, internalNote: expense.internal_note, isDeleted: expense.isDeleted,
+}; }
+const expenseRows = computed(() => models.value
+    .filter((expense) => expense.isDeleted !== 1 && expense.id !== mocks.filteredLagId).map(rawRow));
 const attachmentRows = computed(() => models.value.flatMap((expense) => expense.attachments.map((attachment) => ({
     id: attachment.id, expenseId: expense.id, originalFilename: attachment.original_filename,
     mimeType: attachment.mime, sizeBytes: "18", contentBase64: "c3ludGhldGlj",
@@ -55,7 +57,10 @@ const currentExpense = computed(() => {
 vi.mock("vue-router", () => ({ useRoute: () => route, useRouter: () => ({ push: mocks.push }) }));
 vi.mock("@/composables/useEffectiveAccess", () => ({ useEffectiveAccess: () => ({ purchases: ref({ isdoc_packs: true }) }) }));
 vi.mock("@/evolu/flags", () => ({ isInvoicingLocalFirst: () => mocks.local }));
-vi.mock("@/evolu/client", () => ({ useInvoicingEvolu: () => mocks.evolu }));
+vi.mock("@/evolu/client", () => ({
+    useInvoicingEvolu: () => mocks.evolu,
+    expenseByIdIncludingDeletedQuery: (id: string) => ({ expenseId: id }),
+}));
 vi.mock("@/composables/useInvoicingLayout", () => ({ useInvoicingLayout: () => ({ companyId: company, rememberCompany: mocks.remember }) }));
 vi.mock("@/composables/useInvoicingCompanySummary", () => ({ useInvoicingCompanySummary: () => ({ defaultCurrency: ref("EUR") }) }));
 vi.mock("@/composables/useInvoicingSaveFeedback", () => ({ useInvoicingSaveFeedback: () => ({ notifySaved: vi.fn() }) }));
@@ -75,7 +80,7 @@ vi.mock("@/evolu/expenseAttachmentCrud", async (importOriginal) => ({
 vi.mock("@/services/api", () => ({ getWebBlob: mocks.blob, invoicingApi: {
     companies: { get: mocks.company },
     expenses: {
-        get: mocks.get, update: mocks.update, create: mocks.create, history: mocks.history, list: mocks.list,
+        get: mocks.get, update: mocks.update, create: mocks.create, history: mocks.history, list: mocks.list, action: mocks.action,
         detectIsdoc: mocks.detect, extract: mocks.extract, isdocQuota: mocks.quota,
         purchaseIsdocPack: mocks.purchase, uploadAttachment: mocks.upload,
         ephemeral: { detectIsdoc: mocks.localDetect, extract: mocks.localExtract, isdocQuota: mocks.localQuota },
@@ -83,10 +88,12 @@ vi.mock("@/services/api", () => ({ getWebBlob: mocks.blob, invoicingApi: {
 } }));
 vi.mock("@/components/invoicing/InvoicingPageShell.vue", () => ({ default: { template: '<main><slot name="header" /><slot name="toolbar" /><slot /></main>' } }));
 vi.mock("@/components/invoicing/InvoicingAppHeader.vue", () => ({ default: { template: "<header />" } }));
-vi.mock("@/components/invoicing/ExpenseShowSidebar.vue", () => ({ default: { template: "<aside />" } }));
+vi.mock("@/components/invoicing/ExpenseShowSidebar.vue", () => ({ default: {
+    name: "ExpenseShowSidebar", emits: ["mark-paid"], template: "<aside />",
+} }));
 vi.mock("@/components/invoicing/ExpenseAttachmentPanel.vue", () => ({ default: {
     name: "ExpenseAttachmentPanel",
-    props: ["fileName", "hasPending", "detectError", "detecting"],
+    props: ["fileName", "hasPending", "detectError", "detecting", "previewUrl", "previewKind"],
     emits: ["file-selected", "files-selected", "clear", "select-pending", "remove-pending"],
     template: '<section data-test="attachment-panel"><span>{{ fileName }}</span><p>{{ detectError }}</p></section>',
 } }));
@@ -107,8 +114,9 @@ const draft = { title: "Synthetic extracted title", total: 7.5, issue_date: "202
 const pdf = (name = "synthetic.pdf") => new File(["%PDF synthetic only"], name, { type: "application/pdf" });
 function deferred<T>() {
     let resolve!: (value: T) => void;
-    const promise = new Promise<T>((done) => { resolve = done; });
-    return { promise, resolve };
+    let reject!: (error: unknown) => void;
+    const promise = new Promise<T>((done, fail) => { resolve = done; reject = fail; });
+    return { promise, resolve, reject };
 }
 let wrapper: VueWrapper | undefined;
 function render(kind: "new" | "show" = "new", local = true) {
@@ -133,11 +141,13 @@ beforeEach(() => {
     vi.resetAllMocks();
     mocks.local = true;
     mocks.displayForeign = false;
-    mocks.evolu = {};
+    mocks.filteredLagId = null;
+    mocks.evolu = { loadQuery: mocks.lookup };
     route.params = {};
     route.name = "invoicing-expense-new";
     company.value = localCompany;
     models.value = [fixture()];
+    mocks.lookup.mockImplementation(async (query: { expenseId: string }) => models.value.filter((expense) => expense.id === query.expenseId).map(rawRow));
     vi.spyOn(window, "confirm").mockReturnValue(false);
     vi.spyOn(window, "alert").mockImplementation(() => undefined);
     vi.stubGlobal("URL", class extends URL {
@@ -247,6 +257,61 @@ describe("expense attachment page integration", () => {
         expectNoLegacyExpenseWrites();
     });
 
+    it.each(["missing", "deleted", "foreign"])("does not retry attachments into a %s retained new expense", async (state) => {
+        mocks.insertAttachment.mockReturnValueOnce({ ok: false, error: "synthetic insert rejection" });
+        render();
+        await flushPromises();
+        await select();
+        await wrapper!.find("form").trigger("submit");
+        await flushPromises();
+        const created = models.value.find((row) => row.id === newExpenseId)!;
+        if (state === "missing") models.value = models.value.filter((row) => row.id !== newExpenseId);
+        if (state === "deleted") created.isDeleted = 1;
+        if (state === "foreign") created.companyId = "other-company";
+        await wrapper!.find("form").trigger("submit");
+        await flushPromises();
+        expect(mocks.insertExpense).toHaveBeenCalledOnce();
+        expect(mocks.updateExpense).not.toHaveBeenCalled();
+        expect(mocks.insertAttachment).toHaveBeenCalledOnce();
+        expect(mocks.push).not.toHaveBeenCalled();
+        expect(wrapper!.text()).toContain(en.invoicing.expense_unavailable);
+        expect(wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).props("fileName")).toBe("synthetic.pdf");
+    });
+
+    it("allows an active retained expense despite a lagging filtered list", async () => {
+        mocks.insertAttachment.mockReturnValueOnce({ ok: false, error: "synthetic insert rejection" });
+        render();
+        await flushPromises();
+        await select();
+        await wrapper!.find("form").trigger("submit");
+        await flushPromises();
+        mocks.filteredLagId = newExpenseId;
+        expect(expenseRows.value.some((row) => row.id === newExpenseId)).toBe(false);
+        await wrapper!.find("form").trigger("submit");
+        await flushPromises();
+        expect(mocks.insertExpense).toHaveBeenCalledOnce();
+        expect(mocks.updateExpense).toHaveBeenCalledOnce();
+        expect(mocks.insertAttachment).toHaveBeenCalledTimes(2);
+        expect(mocks.push).toHaveBeenCalledOnce();
+    });
+
+    it("rejects deletion of a newly created expense while attachment encoding is pending", async () => {
+        const encoding = deferred<string>();
+        mocks.read.mockReturnValue(encoding.promise);
+        render();
+        await flushPromises();
+        await select();
+        await wrapper!.find("form").trigger("submit");
+        await flushPromises();
+        models.value.find((row) => row.id === newExpenseId)!.isDeleted = 1;
+        encoding.resolve("c3ludGhldGlj");
+        await flushPromises();
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        expect(mocks.push).not.toHaveBeenCalled();
+        expect(wrapper!.text()).toContain(en.invoicing.expense_unavailable);
+        expectNoLegacyExpenseWrites();
+    });
+
     it("fails a new local save closed when Evolu is missing", async () => {
         mocks.evolu = null;
         render();
@@ -317,6 +382,117 @@ describe("expense attachment page integration", () => {
         expectNoLegacyExpenseWrites();
     });
 
+    it("keeps every dismissal path closed while extraction is pending", async () => {
+        vi.mocked(window.confirm).mockReturnValue(true);
+        mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
+        const extraction = deferred<{ data: typeof draft; quota: typeof quota }>();
+        mocks.localExtract.mockReturnValue(extraction.promise);
+        render("show");
+        await flushPromises();
+        await select();
+        const modal = wrapper!.findComponent(ExpenseIsdocExtractModal);
+        modal.vm.$emit("confirm");
+        await flushPromises();
+        await modal.find("button[aria-label]").trigger("click");
+        await modal.find('[role="dialog"]').trigger("click");
+        await modal.find('[role="dialog"]').trigger("keydown", { key: "Escape" });
+        modal.vm.$emit("skip");
+        await flushPromises();
+        expect(modal.emitted("close")).toBeUndefined();
+        expect(modal.props("open")).toBe(true);
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        expect(mocks.localExtract).toHaveBeenCalledOnce();
+        extraction.resolve({ data: draft, quota });
+        await flushPromises();
+        expect(mocks.updateExpense).toHaveBeenCalledOnce();
+        expect(mocks.insertAttachment).toHaveBeenCalledOnce();
+        expect(modal.props("open")).toBe(false);
+    });
+
+    it("allows attachment-only saving after a confirmed extraction is rejected for quota", async () => {
+        vi.mocked(window.confirm).mockReturnValue(true);
+        mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
+        mocks.localExtract.mockRejectedValue({ response: { data: { errors: { quota: ["Synthetic quota exhausted"] } } } });
+        render("show");
+        await flushPromises();
+        await select();
+        const modal = wrapper!.findComponent(ExpenseIsdocExtractModal);
+        modal.vm.$emit("confirm");
+        await flushPromises();
+        expect(window.alert).toHaveBeenCalledWith("Synthetic quota exhausted");
+        expect(modal.props("open")).toBe(true);
+        expect(modal.props("extracting")).toBe(false);
+        const skip = modal.findAll("button").find((button) => button.text() === en.invoicing.expense_isdoc_extract_skip)!;
+        await skip.trigger("click");
+        await flushPromises();
+        expect(mocks.localExtract).toHaveBeenCalledOnce();
+        expect(mocks.updateExpense).not.toHaveBeenCalled();
+        expect(mocks.insertAttachment).toHaveBeenCalledOnce();
+        expect(modal.props("open")).toBe(false);
+        expectNoLegacyExpenseWrites();
+    });
+
+    it("keeps new file selection blocked through the extracted draft's local refresh", async () => {
+        vi.mocked(window.confirm).mockReturnValue(true);
+        mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
+        render("show");
+        await flushPromises();
+        await select();
+        const refreshed = deferred<void>();
+        mocks.refresh.mockReturnValueOnce(refreshed.promise);
+        wrapper!.findComponent(ExpenseIsdocExtractModal).vm.$emit("confirm");
+        await flushPromises();
+        const panel = wrapper!.findComponent({ name: "ExpenseAttachmentPanel" });
+        expect(panel.props("detecting")).toBe(true);
+        panel.vm.$emit("file-selected", pdf("late-during-apply.pdf"));
+        panel.vm.$emit("files-selected", [pdf("late-multiple-during-apply.pdf")]);
+        await flushPromises();
+        expect(window.confirm).toHaveBeenCalledOnce();
+        expect(mocks.localDetect).toHaveBeenCalledOnce();
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        refreshed.resolve();
+        await flushPromises();
+        expect(mocks.insertAttachment).toHaveBeenCalledOnce();
+        expect(mocks.insertAttachment.mock.calls[0][2]).toMatchObject({ filename: "synthetic.pdf" });
+    });
+
+    it("shows a local upload failure and retries only remaining files without extracting again", async () => {
+        mocks.insertAttachment.mockImplementationOnce(appendAttachment).mockReturnValueOnce({ ok: false, error: "synthetic insert rejection" });
+        render("show");
+        await flushPromises();
+        wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).vm.$emit("files-selected", [pdf("first.pdf"), pdf("second.pdf")]);
+        await flushPromises();
+        expect(wrapper!.text()).toContain(en.invoicing.expense_attachment_upload_failed);
+        expect(models.value[0].attachments).toHaveLength(1);
+        expect(wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).props("fileName")).toBe("second.pdf");
+        const retry = wrapper!.findAll("button").find((button) => button.text() === en.invoicing.expense_attachment_retry)!;
+        await retry.trigger("click");
+        await flushPromises();
+        expect(models.value[0].attachments).toHaveLength(2);
+        expect(mocks.insertAttachment).toHaveBeenCalledTimes(3);
+        expect(mocks.localDetect).not.toHaveBeenCalled();
+        expect(mocks.localExtract).not.toHaveBeenCalled();
+        expect(wrapper!.text()).not.toContain(en.invoicing.expense_attachment_upload_failed);
+        expectNoLegacyExpenseWrites();
+    });
+
+    it("shows server upload failure without raw diagnostics and retries the attachment without re-extraction", async () => {
+        models.value = [fixture("expense-a", serverCompany)];
+        mocks.upload.mockRejectedValueOnce({ response: { data: { message: "synthetic private server diagnostic" } } });
+        render("show", false);
+        await flushPromises();
+        await select();
+        expect(wrapper!.text()).toContain(en.invoicing.expense_attachment_upload_failed);
+        expect(wrapper!.text()).not.toContain("synthetic private server diagnostic");
+        const retry = wrapper!.findAll("button").find((button) => button.text() === en.invoicing.expense_attachment_retry)!;
+        await retry.trigger("click");
+        await flushPromises();
+        expect(mocks.upload).toHaveBeenCalledTimes(2);
+        expect(mocks.detect).toHaveBeenCalledOnce();
+        expect(mocks.extract).not.toHaveBeenCalled();
+        expect(wrapper!.text()).not.toContain(en.invoicing.expense_attachment_upload_failed);
+    });
+
     it("does not apply a late extraction to another expense", async () => {
         vi.mocked(window.confirm).mockReturnValue(true);
         mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
@@ -383,5 +559,118 @@ describe("expense attachment page integration", () => {
         expect(mocks.push).not.toHaveBeenCalled();
         expect(mocks.insertAttachment).not.toHaveBeenCalled();
         expect(wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).props("fileName")).toBe("new-company.pdf");
+    });
+
+    it.each([false, true])("ignores an obsolete load success/error and finally while the next expense is loading (error: %s)", async (rejectOld) => {
+        const oldRequest = deferred<ReturnType<typeof fixture>>();
+        const newRequest = deferred<ReturnType<typeof fixture>>();
+        const newer = { ...fixture("expense-b", serverCompany), title: "New current expense" };
+        mocks.get.mockImplementation(async (_company: string, id: string) => id === "expense-a" ? oldRequest.promise : newRequest.promise);
+        render("show", false);
+        await flushPromises();
+        route.params.expenseId = "expense-b";
+        await flushPromises();
+        if (rejectOld) oldRequest.reject(new Error("synthetic obsolete load error"));
+        else oldRequest.resolve(fixture("expense-a", serverCompany));
+        await flushPromises();
+        expect(wrapper!.text()).toContain(en.common.loading);
+        expect(wrapper!.text()).not.toContain("Synthetic existing expense");
+        expect(wrapper!.findAll('[role="alert"]')).toHaveLength(0);
+        newRequest.resolve(newer);
+        await flushPromises();
+        expect(wrapper!.text()).toContain("New current expense");
+        expect(wrapper!.text()).not.toContain("Synthetic existing expense");
+    });
+
+    it("clears the displayed expense and note immediately when a new route starts loading", async () => {
+        const newRequest = deferred<ReturnType<typeof fixture>>();
+        const old = fixture("expense-a", serverCompany);
+        old.attachments = [{ id: "old-attachment", original_filename: "old.pdf", mime: "application/pdf" }];
+        mocks.blob.mockResolvedValue(new Blob(["synthetic PDF"], { type: "application/pdf" }));
+        mocks.get.mockImplementation(async (_company: string, id: string) => id === "expense-a" ? old : newRequest.promise);
+        render("show", false);
+        await flushPromises();
+        expect(wrapper!.text()).toContain("Synthetic existing expense");
+        route.params.expenseId = "expense-b";
+        await flushPromises();
+        expect(wrapper!.text()).not.toContain("Synthetic existing expense");
+        expect(wrapper!.find("textarea").exists()).toBe(false);
+        expect(wrapper!.text()).toContain(en.common.loading);
+        expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:synthetic-pdf");
+        newRequest.resolve({ ...fixture("expense-b", serverCompany), title: "New current expense" });
+        await flushPromises();
+        expect(wrapper!.text()).toContain("New current expense");
+    });
+
+    it.each([false, true])("does not replace a new preview when an old PDF download settles (error: %s)", async (rejectOld) => {
+        const oldBlob = deferred<Blob>();
+        const newerBlob = new Blob(["synthetic newer PDF"], { type: "application/pdf" });
+        const old = fixture("expense-a", serverCompany);
+        old.attachments = [{ id: "old-attachment", original_filename: "old.pdf", mime: "application/pdf" }];
+        const newer = { ...fixture("expense-b", serverCompany), title: "New current expense" };
+        newer.attachments = [{ id: "new-attachment", original_filename: "new.pdf", mime: "application/pdf" }];
+        mocks.get.mockImplementation(async (_company: string, id: string) => id === "expense-a" ? old : newer);
+        mocks.blob.mockImplementation(async (url: string) => url.includes("/expense-a/") ? oldBlob.promise : newerBlob);
+        vi.mocked(URL.createObjectURL).mockImplementation((blob) => blob === newerBlob ? "blob:newer" : "blob:obsolete");
+        render("show", false);
+        await flushPromises();
+        route.params.expenseId = "expense-b";
+        await flushPromises();
+        expect(wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).props("previewUrl")).toBe("blob:newer");
+        if (rejectOld) oldBlob.reject(new Error("synthetic obsolete preview error"));
+        else oldBlob.resolve(new Blob(["synthetic obsolete PDF"], { type: "application/pdf" }));
+        await flushPromises();
+        expect(wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).props("previewUrl")).toBe("blob:newer");
+        expect(URL.createObjectURL).toHaveBeenCalledOnce();
+    });
+
+    it.each([false, true])("does not replace current neighbor IDs when an old request settles (error: %s)", async (rejectOld) => {
+        const oldNeighbors = deferred<{ id: string }[]>();
+        mocks.get.mockImplementation(async (_company: string, id: string) => fixture(id, serverCompany));
+        mocks.list.mockReturnValueOnce(oldNeighbors.promise).mockResolvedValueOnce([{ id: "expense-b" }, { id: "expense-c" }]);
+        render("show", false);
+        await flushPromises();
+        route.params.expenseId = "expense-b";
+        await flushPromises();
+        expect(wrapper!.find(".expense-show-toolbar__pager-count").text()).toBe("1 / 2");
+        if (rejectOld) oldNeighbors.reject(new Error("synthetic obsolete neighbors error"));
+        else oldNeighbors.resolve([{ id: "expense-a" }, { id: "obsolete-b" }, { id: "obsolete-c" }]);
+        await flushPromises();
+        expect(wrapper!.find(".expense-show-toolbar__pager-count").text()).toBe("1 / 2");
+    });
+
+    it("does not restore an old expense when its note-save response arrives after navigation", async () => {
+        const noteSave = deferred<ReturnType<typeof fixture>>();
+        mocks.update.mockReturnValue(noteSave.promise);
+        mocks.get.mockImplementation(async (_company: string, id: string) => ({ ...fixture(id, serverCompany), title: id === "expense-a" ? "Old current expense" : "New current expense" }));
+        render("show", false);
+        await flushPromises();
+        await wrapper!.find("textarea").setValue("Synthetic old note");
+        await wrapper!.find("textarea").trigger("blur");
+        await flushPromises();
+        route.params.expenseId = "expense-b";
+        await flushPromises();
+        noteSave.resolve({ ...fixture("expense-a", serverCompany), title: "Obsolete saved expense" });
+        await flushPromises();
+        expect(wrapper!.text()).toContain("New current expense");
+        expect(wrapper!.text()).not.toContain("Obsolete saved expense");
+        expect((wrapper!.find("textarea").element as HTMLTextAreaElement).value).toBe("");
+    });
+
+    it("does not restore an old expense when a mark-paid response arrives after navigation", async () => {
+        const markPaid = deferred<ReturnType<typeof fixture>>();
+        mocks.action.mockReturnValue(markPaid.promise);
+        mocks.get.mockImplementation(async (_company: string, id: string) => ({ ...fixture(id, serverCompany), title: id === "expense-a" ? "Old current expense" : "New current expense" }));
+        render("show", false);
+        await flushPromises();
+        wrapper!.findComponent({ name: "ExpenseShowSidebar" }).vm.$emit("mark-paid");
+        await flushPromises();
+        route.params.expenseId = "expense-b";
+        await flushPromises();
+        markPaid.resolve({ ...fixture("expense-a", serverCompany), title: "Obsolete paid expense", status: "paid" });
+        await flushPromises();
+        expect(wrapper!.text()).toContain("New current expense");
+        expect(wrapper!.text()).not.toContain("Obsolete paid expense");
+        expect(mocks.history).toHaveBeenCalledTimes(2);
     });
 });

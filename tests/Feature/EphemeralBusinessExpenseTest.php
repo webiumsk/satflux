@@ -124,6 +124,23 @@ class EphemeralBusinessExpenseTest extends TestCase
     }
 
     #[Test]
+    public function a_free_unit_used_during_parsing_is_rechecked_before_the_draft_is_returned(): void
+    {
+        config(['invoicing.expense_isdoc_extract_free_limit' => 1]);
+        $this->mock(BusinessExpenseIsdocImportService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('extractFromUpload')->once()->andReturnUsing(function () {
+                AuditLog::log(BusinessExpenseIsdocQuotaService::EXTRACT_ACTION, 'business_expense', null, ['billing' => 'free'], $this->user->id);
+
+                return ['source' => 'isdoc', 'issue_date' => '2026-06-01', 'total' => 12.5, 'currency' => 'EUR'];
+            });
+        });
+        $this->actingAs($this->user)->postJson(self::ROOT.'extract', ['file' => $this->pdf()])
+            ->assertUnprocessable()->assertJsonValidationErrors('quota');
+        $this->assertSame(1, AuditLog::where('user_id', $this->user->id)->where('action', BusinessExpenseIsdocQuotaService::EXTRACT_ACTION)->count());
+        $this->assertNothingStored();
+    }
+
+    #[Test]
     public function exhausted_quota_blocks_extraction_before_parsing_but_detection_remains_available(): void
     {
         config(['invoicing.expense_isdoc_extract_free_limit' => 0]);

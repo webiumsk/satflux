@@ -32,6 +32,6 @@ El importe de los gastos no pagados suma los importes completos de los documento
 
 ## Adjuntos PDF en un gasto individual
 
-Abra un gasto y añada su PDF. En la facturación local, los adjuntos y los campos extraídos se guardan con sus datos locales cifrados. Cada adjunto local puede ocupar como máximo **384 KiB**; guarde el gasto para conservar los adjuntos pendientes.
+Abra un gasto y añada su PDF. En la facturación local, los adjuntos y los campos extraídos se guardan con sus datos locales cifrados. Cada adjunto local puede ocupar como máximo **384 KiB**. En el formulario de creación o edición, pulse **Guardar** para guardar los adjuntos pendientes. En la página de detalle del gasto se guardan inmediatamente al terminar u omitir el procesamiento ISDOC opcional.
 
 Puede permitir el procesamiento temporal en el servidor para detectar datos ISDOC incrustados. Cancelar mantiene el adjunto en local. Si se encuentra ISDOC, confirme por separado la extracción o conserve solo el adjunto. La extracción usa su límite y créditos existentes; no es OCR. Si se agota el límite, puede adjuntar el archivo e introducir los datos manualmente.

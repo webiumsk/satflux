@@ -1,5 +1,24 @@
 # Project state
 
+## PDF recovery and quota follow-up independently accepted - 2026-11-03
+
+After2567fed4 passes CI41687668367, six review findings are fixed: quota
+contention, Save/detail guidance, deleted-target retry, visible attachment-only
+retry, active extraction dismissal and stale detail continuations. No price,
+purchase policy, bulk, schema or encryption change occurs. Quota locks one actual
+accounting connection before legacy persistence; ordinary callback failure owns
+only fresh-directory cleanup, with uncertain commit/outer rollback left to caller.
+
+Both reviewers accept the same16-source manifest
+`1c2d4e95069405f54cb61dbb785db48fa2ecf65d3c43b0cd53bbf756d07b287a`.
+Author and independent QA pass PG13/129, SQLite52/360 and focused55frontend;
+security passes55frontend/43PHP306. Main full1228frontend/151files, build,
+lint/typecheck/locales/changelog/whitespace pass with unchanged ratchets. Local
+fullPHPStan has only missing optional Scramble; fresh locked CI remains required.
+Test DB/tmpfs/network removed after QA release. Publish on PR426 and verify new
+exact-head CI. See [evidence](EXPENSE_PDF_UPLOAD_FIX.md). Preserve primary work
+and immutable recovery evidence; no actual import, merge or deployment occurs.
+
 ## Individual local expense PDF upload repair independently accepted - 2026-11-03
 
 The owner confirms an individual expense-form attachment triggers a PostgreSQL

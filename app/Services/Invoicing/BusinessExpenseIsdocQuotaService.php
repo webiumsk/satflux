@@ -3,8 +3,12 @@
 namespace App\Services\Invoicing;
 
 use App\Models\AuditLog;
+use App\Models\ExpenseIsdocCreditBalance;
 use App\Models\User;
 use App\Services\PurchaseAvailabilityPolicy;
+use Closure;
+use Illuminate\Database\Connection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class BusinessExpenseIsdocQuotaService
@@ -59,25 +63,75 @@ class BusinessExpenseIsdocQuotaService
 
     public function recordExtraction(User $user, ?string $expenseId, ?string $companyId): void
     {
-        $snapshot = $this->snapshot($user);
-        $metadata = $companyId === null ? [] : ['company_id' => $companyId];
+        $this->withExtractionQuotaLock($user, function (User $lockedUser) use ($expenseId, $companyId) {
+            $snapshot = $this->snapshot($lockedUser);
+            $metadata = $companyId === null ? [] : ['company_id' => $companyId];
 
-        if ($snapshot['unlimited']) {
-            AuditLog::log(self::EXTRACT_ACTION, 'business_expense', $expenseId, $metadata, $user->id);
+            if ($snapshot['unlimited']) {
+                AuditLog::log(self::EXTRACT_ACTION, 'business_expense', $expenseId, $metadata, $lockedUser->id);
 
-            return;
+                return;
+            }
+
+            if ($snapshot['free_remaining'] > 0) {
+                $metadata['billing'] = 'free';
+                AuditLog::log(self::EXTRACT_ACTION, 'business_expense', $expenseId, $metadata, $lockedUser->id);
+
+                return;
+            }
+
+            $this->packService->consumePurchasedCredit($lockedUser);
+            $metadata['billing'] = 'purchased';
+            AuditLog::log(self::EXTRACT_ACTION, 'business_expense', $expenseId, $metadata, $lockedUser->id);
+        });
+    }
+
+    /**
+     * Recheck quota after parsing, before persistence, while serializing this
+     * user's usage and credit accounting. Side-effect callbacks run once.
+     *
+     * @template T
+     *
+     * @param  Closure(User): T  $callback
+     * @return T
+     */
+    public function withExtractionQuotaLock(User $user, Closure $callback): mixed
+    {
+        $userQuery = $user->newQuery();
+        $connection = $userQuery->getQuery()->getConnection();
+        if (! $connection instanceof Connection
+            || $connection !== DB::connection()
+            || $connection !== AuditLog::query()->getQuery()->getConnection()
+            || $connection !== ExpenseIsdocCreditBalance::query()->getQuery()->getConnection()) {
+            throw new \LogicException('Expense extraction quota accounting requires one database connection.');
         }
 
-        if ($snapshot['free_remaining'] > 0) {
-            $metadata['billing'] = 'free';
-            AuditLog::log(self::EXTRACT_ACTION, 'business_expense', $expenseId, $metadata, $user->id);
-
-            return;
+        $driver = $connection->getDriverName();
+        $ownsTransaction = $connection->transactionLevel() === 0;
+        if ($driver === 'pgsql' && ! $ownsTransaction) {
+            $isolation = $connection->selectOne('SHOW transaction_isolation', [], false);
+            if ($isolation?->transaction_isolation !== 'read committed') {
+                throw new \LogicException('Expense extraction quota requires a Read Committed outer transaction.');
+            }
+        } elseif ($driver !== 'pgsql' && $driver !== 'sqlite') {
+            throw new \LogicException('Expense extraction quota is unsupported for this database driver.');
         }
 
-        $this->packService->consumePurchasedCredit($user);
-        $metadata['billing'] = 'purchased';
-        AuditLog::log(self::EXTRACT_ACTION, 'business_expense', $expenseId, $metadata, $user->id);
+        return $connection->transaction(function () use ($connection, $driver, $ownsTransaction, $userQuery, $user, $callback) {
+            if ($driver === 'pgsql' && $ownsTransaction) {
+                $connection->statement('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
+            } elseif ($driver === 'sqlite') {
+                $settings = $connection->selectOne('PRAGMA read_uncommitted', [], false);
+                if ((int) ($settings->read_uncommitted ?? 1) !== 0) {
+                    throw new \LogicException('Expense extraction quota requires SQLite committed-read isolation.');
+                }
+            }
+
+            $lockedUser = $userQuery->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+            $this->assertCanExtract($lockedUser);
+
+            return $callback($lockedUser);
+        }, 1);
     }
 
     protected function freeUsedCount(User $user): int

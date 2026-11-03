@@ -1,5 +1,15 @@
 # Development roadmap
 
+## Current: publish accepted PDF recovery and quota follow-up - 2026-11-03
+
+Six findings after green2567fed4 CI are fixed with user-locked quota accounting,
+owned pre-commit cleanup, tombstone-aware retry, visible errors, protected
+extraction and stale-state guards. Independent QA/security accept the same16-file
+source; actual PG13/129, SQLite52/360, focused55 and full1228frontend pass.
+Publish on PR426, resolve confirmed threads and verify fresh exact-head CI.
+Keep prices, purchases, bulk, recovery and unrelated work unchanged. Merge and
+actual deployment retain their separate owner gates.
+
 ## Current: publish the reviewed individual expense PDF upload repair - 2026-11-03
 
 Fix local company IDs reaching legacy UUID routes with an authenticated company-

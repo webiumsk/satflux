@@ -187,23 +187,40 @@ class BusinessExpenseController extends Controller
 
         $draft = $this->isdocImportService->extractFromUpload($request->file('file'));
 
-        $expense = $this->expenseService->create(
-            $company,
-            $draft,
-            $request->boolean('mark_paid'),
-        );
+        $expense = $this->isdocQuotaService->withExtractionQuotaLock($user, function ($lockedUser) use ($company, $draft, $request) {
+            $ownedDirectory = null;
+            try {
+                $expense = $this->expenseService->create(
+                    $company,
+                    $draft,
+                    $request->boolean('mark_paid'),
+                );
+                $directory = "companies/{$company->id}/expenses/{$expense->id}";
+                if (Storage::disk('local')->exists($directory)) {
+                    throw new \LogicException('The new expense attachment directory already exists.');
+                }
+                $ownedDirectory = $directory;
+                $expense = $this->expenseService->storeAttachment($expense, $request->file('file'));
+                $this->isdocQuotaService->recordExtraction($lockedUser, $expense->id, $company->id);
 
-        $expense = $this->expenseService->storeAttachment($expense, $request->file('file'));
+                AuditLog::log('business_expense.imported', 'business_expense', $expense->id, [
+                    'company_id' => $company->id,
+                    'source' => 'isdoc',
+                    'internal_number' => $expense->internal_number,
+                ]);
+                $expense->load('attachments');
 
-        $this->isdocQuotaService->recordExtraction($user, $expense->id, $company->id);
+                return $expense;
+            } catch (\Throwable $error) {
+                // Only a failed callback owns this cleanup. An uncertain commit
+                // or a later caller-owned rollback needs caller recovery.
+                if ($ownedDirectory !== null) {
+                    Storage::disk('local')->deleteDirectory($ownedDirectory);
+                }
 
-        AuditLog::log('business_expense.imported', 'business_expense', $expense->id, [
-            'company_id' => $company->id,
-            'source' => 'isdoc',
-            'internal_number' => $expense->internal_number,
-        ]);
-
-        $expense->load('attachments');
+                throw $error;
+            }
+        });
 
         return response()->json([
             'data' => $expense,

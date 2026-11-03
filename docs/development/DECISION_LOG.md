@@ -1,5 +1,21 @@
 # Development decision log
 
+## 2026-11-03 - Preserve quota and document state across PDF retries
+
+Serialize final quota accounting on one actual connection after parsing and
+before legacy persistence. Preserve free/purchased/unlimited priorities and
+prices. Use owned PG Read Committed, supported nested savepoints and fail-closed
+connection/isolation checks. Clean only a verified fresh directory on ordinary
+callback failure before commit; no automatic file-callback retries or uncertain-
+commit cleanup. Outer callers retain their recovery responsibilities.
+
+Query local targets including tombstones, expose attachment-only retry, block
+active extraction dismissal and suppress stale detail state. Clarify five guides.
+Architecture/security/QA accept the bounded design and final16-source manifest;
+real-PG contention and synthetic UI/file recovery checks pass. Publish reviewed
+changes and require fresh exact-head CI. No policy expansion, real import,
+PR merge or deployment follows.
+
 ## 2026-11-03 - Keep local expense PDFs out of server company UUID lookups
 
 The owner confirms the individual attachment form, so leave bulk PDF/ZIP import

@@ -135,6 +135,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import { sqliteTrue } from '@evolu/common';
 import ExpenseAttachmentPanel from '../../components/invoicing/ExpenseAttachmentPanel.vue';
 import ExpenseIsdocExtractModal from '../../components/invoicing/ExpenseIsdocExtractModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
@@ -147,9 +148,10 @@ import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompan
 import { useInvoicingExpense } from '../../composables/useInvoicingExpenses';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import { insertLocalExpense, updateLocalExpense } from '../../evolu/expenseCrud';
+import { expenseByIdIncludingDeletedQuery } from '../../evolu/client';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
 import type { EvoluExpenseRow } from '../../evolu/expenseMap';
-import { toAppRows } from '../../evolu/queryLoad';
+import { loadEvoluQueryWithTimeout, toAppRows } from '../../evolu/queryLoad';
 import type { CompanyId, ExpenseId } from '../../evolu/schema';
 import { invoicingApi } from '../../services/api';
 
@@ -374,8 +376,12 @@ async function save() {
         createdLocalExpenseId.value = savedId;
       } else {
         const targetId = requestedNew ? createdLocalExpenseId.value! : requestedExpense!;
-        const current = expenseRows.value.find((row) => row.id === targetId && row.companyId === requestedCompany);
-        if (!current && !createdLocalExpenseId.value) throw new Error(t('errors.generic'));
+        const targets = await loadEvoluQueryWithTimeout(expenseResource.evolu, expenseByIdIncludingDeletedQuery(targetId as ExpenseId));
+        if (!stillCurrent()) return;
+        const current = toAppRows<EvoluExpenseRow & { isDeleted: number | null }>(targets).find((row) => row.id === targetId);
+        if (!current || current.companyId !== requestedCompany || current.isDeleted === sqliteTrue) {
+          throw new Error('expense_unavailable');
+        }
         const result = updateLocalExpense(
           expenseResource.evolu,
           targetId as ExpenseId,
@@ -407,7 +413,9 @@ async function save() {
   } catch (e: unknown) {
     if (!stillCurrent()) return;
     const err = e as { response?: { data?: { message?: string } } };
-    error.value = err?.response?.data?.message || t('errors.generic');
+    error.value = e instanceof Error && e.message === 'expense_unavailable'
+      ? t('invoicing.expense_unavailable')
+      : err?.response?.data?.message || t('errors.generic');
   } finally {
     if (stillCurrent()) saving.value = false;
   }

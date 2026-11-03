@@ -2,7 +2,7 @@
   <InvoicingPageShell content-class="pt-4 pb-10">
     <ExpenseIsdocExtractModal
       :open="showExtractModal"
-      :extracting="extracting"
+      :extracting="extracting || processingExtraction"
       :purchasing="purchasing"
       :quota="quota"
       :allow-purchases="!localFirst"
@@ -94,9 +94,20 @@
       </div>
     </template>
 
+    <div v-if="uploadError" class="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
+      <p>{{ uploadError }}</p>
+      <button
+        v-if="pendingFiles.length > 0"
+        type="button"
+        class="invoicing-btn-secondary mt-2"
+        :disabled="uploading || detecting || extracting || processingExtraction"
+        @click="retryAttachmentUpload"
+      >{{ t('invoicing.expense_attachment_retry') }}</button>
+    </div>
     <div v-if="loading" class="invoicing-muted py-8">
       {{ t("common.loading") }}
     </div>
+    <p v-else-if="loadError" class="py-8 text-sm text-red-700" role="alert">{{ loadError }}</p>
 
     <div v-else-if="expense" class="flex flex-col lg:flex-row gap-6 mt-2">
       <div class="flex-1 min-w-0 space-y-4">
@@ -238,7 +249,7 @@
                 :selected-attachment-id="selectedAttachmentId"
                 :preview-url="panelPreviewUrl"
                 :preview-kind="panelPreviewKind"
-                :detecting="detecting"
+                :detecting="detecting || uploading || extracting || processingExtraction"
                 :detect-error="detectErrorMessage"
                 :has-isdoc="lastDetectHasIsdoc"
                 @file-selected="onFileSelected"
@@ -396,11 +407,30 @@ const loading = ref(true);
 const acting = ref(false);
 const duplicating = ref(false);
 const uploading = ref(false);
+const processingExtraction = ref(false);
 const noteDraft = ref("");
 const noteSaving = ref(false);
 const savedPreviewUrl = ref<string | null>(null);
 const savedPreviewKind = ref<"pdf" | "image" | "other" | null>(null);
 const selectedAttachmentId = ref<string | null>(null);
+const uploadError = ref('');
+const loadError = ref('');
+let contextGeneration = 0;
+let loadRequest = 0;
+let previewRequest = 0;
+let neighborRequest = 0;
+
+function captureContext() {
+  return { generation: contextGeneration, company: companyId.value, expense: expenseId.value };
+}
+
+function isCurrentContext(context: ReturnType<typeof captureContext>) {
+  return context.generation === contextGeneration && context.company === companyId.value && context.expense === expenseId.value;
+}
+
+function hasLoadedExpense(context: ReturnType<typeof captureContext>) {
+  return isCurrentContext(context) && !loading.value && expense.value?.id === context.expense;
+}
 
 const {
   quota,
@@ -561,21 +591,26 @@ function historyLabel(action: string) {
 }
 
 async function loadNeighbors() {
-  if (localFirst) {
-    const rows = filterLocalExpenses(
-      expenseRows.value.filter(
-        (row) => row.companyId === companyId.value,
-      ),
-      { year: new Date().getFullYear() },
-    );
-    neighborIds.value = rows.map((row) => row.id);
-    return;
+  const context = captureContext();
+  const request = ++neighborRequest;
+  const current = () => isCurrentContext(context) && request === neighborRequest;
+  try {
+    if (localFirst) {
+      const rows = filterLocalExpenses(
+        expenseRows.value.filter((row) => row.companyId === context.company),
+        { year: new Date().getFullYear() },
+      );
+      if (current()) neighborIds.value = rows.map((row) => row.id);
+      return;
+    }
+    const list = await invoicingApi.expenses.list<{ id: string }>(context.company, {
+      per_page: 200,
+      year: new Date().getFullYear(),
+    });
+    if (current()) neighborIds.value = list.map((e) => e.id);
+  } catch {
+    if (current()) neighborIds.value = [];
   }
-  const list = await invoicingApi.expenses.list<{ id: string }>(companyId.value, {
-    per_page: 200,
-    year: new Date().getFullYear(),
-  });
-  neighborIds.value = list.map((e) => e.id);
 }
 
 function goNeighbor(delta: number) {
@@ -588,31 +623,47 @@ function goNeighbor(delta: number) {
 }
 
 async function load() {
+  const context = captureContext();
+  const request = ++loadRequest;
+  const current = () => isCurrentContext(context) && request === loadRequest;
   loading.value = true;
+  loadError.value = '';
   try {
     if (localFirst) {
       await expenseResource.refresh();
-      expense.value = expenseResource.expense.value as Expense | null;
+      if (!current()) return;
+      const loaded = expenseResource.expense.value as Expense | null;
+      if (loaded && loaded.id !== context.expense) throw new Error('expense_unavailable');
+      expense.value = loaded;
       noteDraft.value = expense.value?.internal_note ?? "";
       history.value = [];
       selectedAttachmentId.value = expense.value?.attachments?.[0]?.id ?? null;
-      await loadSavedPreview();
+      await Promise.all([loadSavedPreview(), loadNeighbors()]);
       return;
     }
     const [expRes, histRes] = await Promise.all([
-      invoicingApi.expenses.get<NonNullable<typeof expense.value>>(companyId.value, expenseId.value!),
-      invoicingApi.expenses.history<HistoryRow>(companyId.value, expenseId.value!),
+      invoicingApi.expenses.get<NonNullable<typeof expense.value>>(context.company, context.expense),
+      invoicingApi.expenses.history<HistoryRow>(context.company, context.expense),
     ]);
+    if (!current()) return;
+    if (expRes.id !== context.expense) throw new Error('expense_unavailable');
     expense.value = expRes;
     history.value = histRes;
     selectedAttachmentId.value = expense.value?.attachments?.[0]?.id ?? null;
-    await loadSavedPreview();
+    await Promise.all([loadSavedPreview(), loadNeighbors()]);
+  } catch {
+    if (current()) {
+      expense.value = null;
+      history.value = [];
+      loadError.value = t('errors.generic');
+    }
   } finally {
-    loading.value = false;
+    if (current()) loading.value = false;
   }
 }
 
 function revokeSavedPreview() {
+  previewRequest++;
   if (savedPreviewUrl.value) {
     URL.revokeObjectURL(savedPreviewUrl.value);
     savedPreviewUrl.value = null;
@@ -620,12 +671,12 @@ function revokeSavedPreview() {
   savedPreviewKind.value = null;
 }
 
-function attachmentPreviewUrl(attachmentId?: string | null) {
+function attachmentPreviewUrl(attachmentId?: string | null, company = companyId.value, id = expenseId.value) {
   if (attachmentId) {
-    return `/api/invoicing/companies/${companyId.value}/expenses/${expenseId.value}/attachments/${attachmentId}`;
+    return `/api/invoicing/companies/${company}/expenses/${id}/attachments/${attachmentId}`;
   }
 
-  return `/api/invoicing/companies/${companyId.value}/expenses/${expenseId.value}/attachment`;
+  return `/api/invoicing/companies/${company}/expenses/${id}/attachment`;
 }
 
 function localAttachmentRow(
@@ -641,6 +692,11 @@ function localAttachmentRow(
 
 async function loadSavedPreview() {
   revokeSavedPreview();
+  const context = captureContext();
+  const request = previewRequest;
+  const selected = selectedAttachmentId.value;
+  const current = () => isCurrentContext(context) && request === previewRequest
+    && selected === selectedAttachmentId.value && !pendingAttachmentName.value;
   if (pendingAttachmentName.value) return;
 
   const att = selectedAttachment.value;
@@ -672,7 +728,8 @@ async function loadSavedPreview() {
       return;
     }
 
-    const blob = await getWebBlob(attachmentPreviewUrl(att?.id));
+    const blob = await getWebBlob(attachmentPreviewUrl(att?.id, context.company, context.expense));
+    if (!current()) return;
     const name =
       att?.original_filename || expense.value?.original_filename || "";
     if (
@@ -692,7 +749,7 @@ async function loadSavedPreview() {
       savedPreviewUrl.value = URL.createObjectURL(blob);
     }
   } catch {
-    savedPreviewKind.value = "other";
+    if (current()) savedPreviewKind.value = "other";
   }
 }
 
@@ -718,14 +775,18 @@ function onSelectAttachment(id: string) {
 }
 
 async function onRemoveSavedAttachment(id: string) {
-  if (!confirm(t("invoicing.expense_attachment_remove_confirm"))) return;
+  const context = captureContext();
+  if (!hasLoadedExpense(context)) return;
+  if (!confirm(t("invoicing.expense_attachment_remove_confirm")) || !isCurrentContext(context)) return;
   try {
-    if (localFirst && expenseResource.evolu) {
+    if (localFirst) {
+      if (!expenseResource.evolu) throw new Error('local_context_unavailable');
       deleteLocalExpenseAttachment(
         expenseResource.evolu,
         id as ExpenseAttachmentId,
       );
       await expenseResource.refresh();
+      if (!isCurrentContext(context)) return;
       expense.value = expenseResource.expense.value as Expense | null;
       if (selectedAttachmentId.value === id) {
         selectedAttachmentId.value =
@@ -734,59 +795,75 @@ async function onRemoveSavedAttachment(id: string) {
       await loadSavedPreview();
       return;
     }
-    expense.value = await invoicingApi.expenses.deleteAttachment<NonNullable<typeof expense.value>>(companyId.value, expenseId.value!, id);
+    const updated = await invoicingApi.expenses.deleteAttachment<NonNullable<typeof expense.value>>(context.company, context.expense, id);
+    if (!isCurrentContext(context)) return;
+    expense.value = updated;
     if (selectedAttachmentId.value === id) {
       selectedAttachmentId.value = expense.value?.attachments?.[0]?.id ?? null;
     }
     await loadSavedPreview();
   } catch {
-    window.alert(t("invoicing.expense_attachment_remove_failed"));
+    if (isCurrentContext(context)) window.alert(t("invoicing.expense_attachment_remove_failed"));
   }
 }
 
 async function saveNote() {
   if (!expense.value || noteDraft.value === (expense.value.internal_note ?? ""))
     return;
+  const context = captureContext();
+  if (!hasLoadedExpense(context)) return;
+  const currentExpense = expense.value;
+  const note = noteDraft.value;
   noteSaving.value = true;
   try {
-    if (localFirst && expenseResource.evolu && expense.value) {
+    if (localFirst) {
+      if (!expenseResource.evolu) throw new Error('local_context_unavailable');
       await updateLocalExpense(
         expenseResource.evolu,
-        expenseId.value as ExpenseId,
+        context.expense as ExpenseId,
         {
-          issue_date: expense.value.issue_date,
-          total: expense.value.total,
-          internal_note: noteDraft.value,
-          title: expense.value.title,
-          external_number: expense.value.external_number,
-          variable_symbol: expense.value.variable_symbol,
-          constant_symbol: expense.value.constant_symbol,
-          specific_symbol: expense.value.specific_symbol,
-          delivery_date: expense.value.delivery_date,
-          due_date: expense.value.due_date,
-          currency: expense.value.currency,
+          issue_date: currentExpense.issue_date,
+          total: currentExpense.total,
+          internal_note: note,
+          title: currentExpense.title,
+          external_number: currentExpense.external_number,
+          variable_symbol: currentExpense.variable_symbol,
+          constant_symbol: currentExpense.constant_symbol,
+          specific_symbol: currentExpense.specific_symbol,
+          delivery_date: currentExpense.delivery_date,
+          due_date: currentExpense.due_date,
+          currency: currentExpense.currency,
         },
       );
+      if (!isCurrentContext(context)) return;
       await expenseResource.refresh();
+      if (!isCurrentContext(context)) return;
       expense.value = expenseResource.expense.value as Expense | null;
       notifySaved('invoicing.changes_saved');
       return;
     }
-    expense.value = await invoicingApi.expenses.update<NonNullable<typeof expense.value>>(companyId.value, expenseId.value!, {
-      internal_note: noteDraft.value,
+    const updated = await invoicingApi.expenses.update<NonNullable<typeof expense.value>>(context.company, context.expense, {
+      internal_note: note,
     });
+    if (!isCurrentContext(context)) return;
+    expense.value = updated;
     notifySaved('invoicing.changes_saved');
+  } catch {
+    if (isCurrentContext(context)) window.alert(t('errors.generic'));
   } finally {
-    noteSaving.value = false;
+    if (isCurrentContext(context)) noteSaving.value = false;
   }
 }
 
 async function duplicate() {
+  const context = captureContext();
+  if (!hasLoadedExpense(context)) return;
   duplicating.value = true;
   try {
-    if (localFirst && expenseResource.evolu) {
+    if (localFirst) {
+      if (!expenseResource.evolu) throw new Error('local_context_unavailable');
       const source = expenseRows.value.find(
-        (row) => row.id === expenseId.value,
+        (row) => row.id === context.expense && row.companyId === context.company,
       );
       if (!source) return;
       const result = duplicateLocalExpense(
@@ -797,65 +874,88 @@ async function duplicate() {
       if (!result.ok) return;
       await router.push({
         name: "invoicing-expense-edit",
-        params: { companyId: companyId.value, expenseId: result.value.id },
+        params: { companyId: context.company, expenseId: result.value.id },
       });
       return;
     }
-    const res = await invoicingApi.expenses.action<{ id: string }>(companyId.value, expenseId.value!, 'duplicate');
+    const res = await invoicingApi.expenses.action<{ id: string }>(context.company, context.expense, 'duplicate');
+    if (!isCurrentContext(context)) return;
     await router.push({
       name: "invoicing-expense-edit",
-      params: { companyId: companyId.value, expenseId: res.id },
+      params: { companyId: context.company, expenseId: res.id },
     });
+  } catch {
+    if (isCurrentContext(context)) window.alert(t('errors.generic'));
   } finally {
-    duplicating.value = false;
+    if (isCurrentContext(context)) duplicating.value = false;
   }
 }
 
 async function markPaid() {
+  const context = captureContext();
+  if (!hasLoadedExpense(context)) return;
   acting.value = true;
   try {
-    if (localFirst && expenseResource.evolu) {
-      markLocalExpensePaid(expenseResource.evolu, expenseId.value as ExpenseId);
+    if (localFirst) {
+      if (!expenseResource.evolu) throw new Error('local_context_unavailable');
+      markLocalExpensePaid(expenseResource.evolu, context.expense as ExpenseId);
       await load();
       return;
     }
-    expense.value = await invoicingApi.expenses.action<NonNullable<typeof expense.value>>(companyId.value, expenseId.value!, 'mark-paid');
-    history.value = await invoicingApi.expenses.history<HistoryRow>(companyId.value, expenseId.value!);
+    const updated = await invoicingApi.expenses.action<NonNullable<typeof expense.value>>(context.company, context.expense, 'mark-paid');
+    if (!isCurrentContext(context)) return;
+    expense.value = updated;
+    const updatedHistory = await invoicingApi.expenses.history<HistoryRow>(context.company, context.expense);
+    if (isCurrentContext(context)) history.value = updatedHistory;
+  } catch {
+    if (isCurrentContext(context)) window.alert(t('errors.generic'));
   } finally {
-    acting.value = false;
+    if (isCurrentContext(context)) acting.value = false;
   }
 }
 
 async function unmarkPaid() {
+  const context = captureContext();
+  if (!hasLoadedExpense(context)) return;
   acting.value = true;
   try {
-    if (localFirst && expenseResource.evolu) {
+    if (localFirst) {
+      if (!expenseResource.evolu) throw new Error('local_context_unavailable');
       unmarkLocalExpensePaid(
         expenseResource.evolu,
-        expenseId.value as ExpenseId,
+        context.expense as ExpenseId,
       );
       await load();
       return;
     }
-    expense.value = await invoicingApi.expenses.action<NonNullable<typeof expense.value>>(companyId.value, expenseId.value!, 'unmark-paid');
+    const updated = await invoicingApi.expenses.action<NonNullable<typeof expense.value>>(context.company, context.expense, 'unmark-paid');
+    if (isCurrentContext(context)) expense.value = updated;
+  } catch {
+    if (isCurrentContext(context)) window.alert(t('errors.generic'));
   } finally {
-    acting.value = false;
+    if (isCurrentContext(context)) acting.value = false;
   }
 }
 
 async function cancelExpense() {
-  if (!confirm(t("invoicing.expense_cancel_confirm"))) return;
+  const context = captureContext();
+  if (!hasLoadedExpense(context)) return;
+  if (!confirm(t("invoicing.expense_cancel_confirm")) || !isCurrentContext(context)) return;
   acting.value = true;
   try {
-    if (localFirst && expenseResource.evolu) {
-      cancelLocalExpense(expenseResource.evolu, expenseId.value as ExpenseId);
+    if (localFirst) {
+      if (!expenseResource.evolu) throw new Error('local_context_unavailable');
+      cancelLocalExpense(expenseResource.evolu, context.expense as ExpenseId);
       await router.push(expenseListTo());
       return;
     }
-    await invoicingApi.expenses.delete(companyId.value, expenseId.value!);
+    await invoicingApi.expenses.delete(context.company, context.expense);
+    if (!isCurrentContext(context)) return;
     await router.push(expenseListTo());
+  } catch {
+    if (isCurrentContext(context)) window.alert(t('errors.generic'));
   } finally {
-    acting.value = false;
+    if (isCurrentContext(context)) acting.value = false;
   }
 }
 
@@ -878,39 +978,54 @@ function draftToPayload(draft: ExpenseImportDraft, current: Expense) {
 
 async function uploadAttachmentOnly() {
   if (pendingFiles.value.length === 0) return;
-  const requestedCompany = companyId.value;
-  const requestedExpense = expenseId.value;
-  const capturedGeneration = contextGeneration;
-  const stillCurrent = () => capturedGeneration === contextGeneration && requestedCompany === companyId.value && requestedExpense === expenseId.value;
-  if (localFirst && (!expenseResource.evolu || expense.value?.id !== requestedExpense
-    || !expenseRows.value.some((row) => row.id === requestedExpense && row.companyId === requestedCompany))) {
-    throw new Error(t('errors.generic'));
-  }
+  const context = captureContext();
+  uploadError.value = '';
   uploading.value = true;
   try {
-    await uploadAllPendingAttachments(requestedExpense);
-    if (!stillCurrent()) return;
-    if (localFirst) {
-      await expenseResource.refresh();
-      if (!stillCurrent()) return;
-      expense.value = expenseResource.expense.value as Expense | null;
-    } else {
-      const loaded = await invoicingApi.expenses.get<NonNullable<typeof expense.value>>(requestedCompany, requestedExpense);
-      if (!stillCurrent()) return;
-      expense.value = loaded;
+    if (localFirst && (!expenseResource.evolu || expense.value?.id !== context.expense
+      || !expenseRows.value.some((row) => row.id === context.expense && row.companyId === context.company))) {
+      throw new Error('expense_unavailable');
     }
-    selectedAttachmentId.value =
-      expense.value?.attachments?.at(-1)?.id ??
-      expense.value?.attachments?.[0]?.id ??
-      null;
-    await loadSavedPreview();
+    await uploadAllPendingAttachments(context.expense);
+    if (isCurrentContext(context)) await refreshAttachmentState(context);
+  } catch (error: unknown) {
+    if (!isCurrentContext(context)) return;
+    uploadError.value = error instanceof Error && error.message === 'expense_unavailable'
+      ? t('invoicing.expense_unavailable')
+      : t('invoicing.expense_attachment_upload_failed');
+    // Successful files have already left the pending queue. Refresh their
+    // progress once, while retaining the failed files for an explicit retry.
+    try { await refreshAttachmentState(context); } catch { /* Keep the original visible error. */ }
   } finally {
-    if (stillCurrent()) uploading.value = false;
+    if (isCurrentContext(context)) uploading.value = false;
   }
 }
 
+async function refreshAttachmentState(context: ReturnType<typeof captureContext>) {
+  if (localFirst) {
+    await expenseResource.refresh();
+    if (!isCurrentContext(context)) return;
+    const loaded = expenseResource.expense.value as Expense | null;
+    if (loaded && loaded.id !== context.expense) throw new Error('expense_unavailable');
+    expense.value = loaded;
+  } else {
+    const loaded = await invoicingApi.expenses.get<NonNullable<typeof expense.value>>(context.company, context.expense);
+    if (!isCurrentContext(context)) return;
+    if (loaded.id !== context.expense) throw new Error('expense_unavailable');
+    expense.value = loaded;
+  }
+  selectedAttachmentId.value = expense.value?.attachments?.at(-1)?.id ?? expense.value?.attachments?.[0]?.id ?? null;
+  await loadSavedPreview();
+}
+
+async function retryAttachmentUpload() {
+  if (uploading.value || detecting.value || extracting.value || processingExtraction.value || pendingFiles.value.length === 0) return;
+  await uploadAttachmentOnly();
+}
+
 async function onFileSelected(file: File) {
-  if (detecting.value || uploading.value || extracting.value) return;
+  if (detecting.value || uploading.value || extracting.value || processingExtraction.value) return;
+  uploadError.value = '';
   const capturedGeneration = contextGeneration;
   const requestedCompany = companyId.value;
   const requestedExpense = expenseId.value;
@@ -921,12 +1036,13 @@ async function onFileSelected(file: File) {
       await uploadAttachmentOnly();
     }
   } catch {
-    /* detectError shown in panel */
+    if (capturedGeneration === contextGeneration) uploadError.value = t('invoicing.expense_attachment_upload_failed');
   }
 }
 
 async function onFilesSelected(files: File[]) {
-  if (detecting.value || uploading.value || extracting.value) return;
+  if (detecting.value || uploading.value || extracting.value || processingExtraction.value) return;
+  uploadError.value = '';
   const capturedGeneration = contextGeneration;
   const requestedCompany = companyId.value;
   const requestedExpense = expenseId.value;
@@ -937,11 +1053,12 @@ async function onFilesSelected(files: File[]) {
       await uploadAttachmentOnly();
     }
   } catch {
-    /* detectError shown in panel */
+    if (capturedGeneration === contextGeneration) uploadError.value = t('invoicing.expense_attachment_upload_failed');
   }
 }
 
 function onPanelClear() {
+  uploadError.value = '';
   if (pendingFiles.value.length > 0) {
     clearPendingAttachment();
 
@@ -951,10 +1068,12 @@ function onPanelClear() {
 }
 
 async function onConfirmExtract() {
+  if (extracting.value || processingExtraction.value) return;
   const requestedCompany = companyId.value;
   const requestedExpense = expenseId.value;
   const capturedGeneration = contextGeneration;
   const stillCurrent = () => capturedGeneration === contextGeneration && requestedCompany === companyId.value && requestedExpense === expenseId.value;
+  processingExtraction.value = true;
   try {
     const draft = await confirmExtract();
     if (!stillCurrent()) return;
@@ -987,19 +1106,34 @@ async function onConfirmExtract() {
         err?.response?.data?.message ||
         t("invoicing.expense_extract_failed"),
     );
-    skipExtract();
+  } finally {
+    if (stillCurrent()) processingExtraction.value = false;
   }
 }
 
 async function onSkipExtract() {
+  if (!showExtractModal.value || extracting.value || uploading.value || processingExtraction.value) return;
   skipExtract();
   await uploadAttachmentOnly();
 }
 
-let contextGeneration = 0;
 watch([companyId, expenseId], () => {
   contextGeneration++;
+  loadRequest++;
+  neighborRequest++;
+  expense.value = null;
+  history.value = [];
+  neighborIds.value = [];
+  selectedAttachmentId.value = null;
+  noteDraft.value = '';
+  loadError.value = '';
+  uploadError.value = '';
+  revokeSavedPreview();
   uploading.value = false;
+  processingExtraction.value = false;
+  acting.value = false;
+  duplicating.value = false;
+  noteSaving.value = false;
   void load();
 }, { flush: 'sync' });
 
@@ -1008,8 +1142,7 @@ onMounted(() => {
   if (!localFirst) {
     loadQuota();
   }
-  load();
-  loadNeighbors();
+  void load();
 });
 
 onUnmounted(() => {

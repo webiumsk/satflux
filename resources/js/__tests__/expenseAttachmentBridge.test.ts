@@ -9,11 +9,14 @@ const mocks = vi.hoisted(() => ({
     evolu: {} as object | null,
     detect: vi.fn(), extract: vi.fn(), quota: vi.fn(), purchase: vi.fn(), upload: vi.fn(),
     localDetect: vi.fn(), localExtract: vi.fn(), localQuota: vi.fn(),
-    read: vi.fn(), insert: vi.fn(),
+    read: vi.fn(), insert: vi.fn(), lookup: vi.fn(),
 }));
 vi.mock("@/composables/useEffectiveAccess", () => ({ useEffectiveAccess: () => ({ purchases: ref({ isdoc_packs: true }) }) }));
 vi.mock("@/evolu/flags", () => ({ isInvoicingLocalFirst: () => mocks.local }));
-vi.mock("@/evolu/client", () => ({ useInvoicingEvolu: () => mocks.evolu }));
+vi.mock("@/evolu/client", () => ({
+    useInvoicingEvolu: () => mocks.evolu,
+    expenseByIdIncludingDeletedQuery: (id: string) => ({ expenseId: id }),
+}));
 vi.mock("@/evolu/expenseAttachmentCrud", () => ({
     LOCAL_EXPENSE_ATTACHMENT_MAX_BYTES: 384 * 1024,
     readFileAsAttachmentBase64: mocks.read,
@@ -56,7 +59,8 @@ function expectNoCompanyApi() {
 }
 beforeEach(() => {
     vi.resetAllMocks();
-    mocks.evolu = {};
+    mocks.evolu = { loadQuery: mocks.lookup };
+    mocks.lookup.mockImplementation(async (query: { expenseId: string }) => [{ id: query.expenseId, companyId: localId, isDeleted: null }]);
     confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     vi.spyOn(window, "open").mockImplementation(() => null);
     vi.stubGlobal("URL", class extends URL {
@@ -239,6 +243,35 @@ describe("expense attachment bridge", () => {
         expect(mocks.localExtract).toHaveBeenCalledOnce();
         pending.resolve({ data: draft, quota });
         expect(await first).toEqual(draft);
+    });
+
+    it("does not skip or close a modal while confirmed extraction is pending", async () => {
+        const pending = deferred<{ data: typeof draft; quota: typeof quota }>();
+        mocks.localExtract.mockReturnValue(pending.promise);
+        render();
+        await resource.onDocumentSelected(pdf());
+        const extraction = resource.confirmExtract();
+        resource.skipExtract();
+        expect(resource.showExtractModal.value).toBe(true);
+        expect(resource.pendingFiles.value).toHaveLength(1);
+        expect(mocks.insert).not.toHaveBeenCalled();
+        pending.resolve({ data: draft, quota });
+        expect(await extraction).toEqual(draft);
+        expect(resource.showExtractModal.value).toBe(false);
+    });
+
+    it.each(["missing", "deleted", "foreign"])("rejects a %s attachment target after encoding", async (state) => {
+        confirm.mockReturnValue(false);
+        render();
+        await resource.onDocumentSelected(pdf());
+        mocks.lookup.mockResolvedValue(state === "missing" ? [] : [{
+            id: "expense-a", companyId: state === "foreign" ? "other-company" : localId,
+            isDeleted: state === "deleted" ? 1 : null,
+        }]);
+        await expect(resource.uploadAllPendingAttachments("expense-a")).rejects.toThrow("expense_unavailable");
+        expect(resource.pendingFiles.value).toHaveLength(1);
+        expect(mocks.insert).not.toHaveBeenCalled();
+        expectNoCompanyApi();
     });
 
     it("keeps the file and never falls back to a company route on an older backend", async () => {

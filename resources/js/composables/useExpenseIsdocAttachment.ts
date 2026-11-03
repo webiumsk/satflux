@@ -1,10 +1,12 @@
 import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
 import { computed, onUnmounted, ref, watch, type Ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { sqliteTrue } from '@evolu/common';
 import { invoicingApi } from '../services/api';
 import type { IsdocExtractQuota } from '../components/invoicing/ExpenseIsdocExtractModal.vue';
 import { isInvoicingLocalFirst } from '../evolu/flags';
-import { useInvoicingEvolu } from '../evolu/client';
+import { expenseByIdIncludingDeletedQuery, useInvoicingEvolu } from '../evolu/client';
+import { loadEvoluQueryWithTimeout } from '../evolu/queryLoad';
 import {
   insertLocalExpenseAttachmentFromBase64,
   LOCAL_EXPENSE_ATTACHMENT_MAX_BYTES,
@@ -270,6 +272,7 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
   }
 
   function skipExtract() {
+    if (extracting.value) return;
     showExtractModal.value = false;
     isdocModalFileId.value = null;
   }
@@ -315,6 +318,12 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
         if (!entry) continue;
         const contentBase64 = await readFileAsAttachmentBase64(entry.file);
         if (!isCurrent(captured, id)) throw new Error(t('errors.generic'));
+        const targets = await loadEvoluQueryWithTimeout(evolu, expenseByIdIncludingDeletedQuery(expenseId as ExpenseId));
+        if (!isCurrent(captured, id)) throw new Error(t('errors.generic'));
+        const target = targets.find((row) => row.id === expenseId);
+        if (!target || target.companyId !== captured.company || target.isDeleted === sqliteTrue) {
+          throw new Error('expense_unavailable');
+        }
         const result = insertLocalExpenseAttachmentFromBase64(
           evolu,
           expenseId as ExpenseId,
