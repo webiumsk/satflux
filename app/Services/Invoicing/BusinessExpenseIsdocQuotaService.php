@@ -57,10 +57,10 @@ class BusinessExpenseIsdocQuotaService
         throw ValidationException::withMessages(['quota' => [$message]]);
     }
 
-    public function recordExtraction(User $user, ?string $expenseId, string $companyId): void
+    public function recordExtraction(User $user, ?string $expenseId, ?string $companyId): void
     {
         $snapshot = $this->snapshot($user);
-        $metadata = ['company_id' => $companyId];
+        $metadata = $companyId === null ? [] : ['company_id' => $companyId];
 
         if ($snapshot['unlimited']) {
             AuditLog::log(self::EXTRACT_ACTION, 'business_expense', $expenseId, $metadata, $user->id);

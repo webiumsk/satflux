@@ -1,5 +1,37 @@
 # Project state
 
+## Individual local expense PDF upload repair independently accepted - 2026-11-03
+
+The owner confirms an individual expense-form attachment triggers a PostgreSQL
+UUID error. Published base is79da6582; actual deployment revision is not inspected.
+The local Evolu company ID was passed to legacy company-bound ISDOC endpoints,
+and local detail refresh/update and new-form attachment persistence had related
+server/local mismatches. Implement the accepted company-free parser/quota bridge,
+early UUID syntax guard and Evolu-only attachment/draft save/refresh.
+
+Preserve server company ownership, all pricing/quota policy and bulk import.
+Local plaintext processing requires confirmation; declining still permits local
+attachment storage. Keep the existing384KiB cap, explicit extraction confirmation
+and captured company/expense/file generation guards. No shadow company or durable
+server file/expense is created. See [contract and evidence](EXPENSE_PDF_UPLOAD_FIX.md).
+
+Author checks pass47PHP/323assertions, scopedPint/PHPStan and32focusedfrontend
+cases. Independent security accepts the14-file production manifest after fixing
+SEC-PDF-1 with actual Evolu-row ownership and real-adapter regression fixtures;
+its separate32frontend and38PHP/269assertions pass. Main lint/typecheck/locales/
+build and nine changelog fragments pass with unchanged ratchets. Full-suite
+evidence and fresh exact-head CI remain required before completion.
+Final QA accepts the same 14-source manifest:
+`70fd0a1ee0e34b06694dc2f6ac8dd736eac9166b88fbc94461e7b811d2d45a6b`.
+Its 32 frontend cases, 13 independent real-API-builder probes and 47 PHP cases /
+323 assertions pass. Security renews acceptance after the final busy-form
+guard. Source is frozen; publish reviewed code on PR426 and verify fresh CI.
+Main full frontend now passes 1,205 cases across 151 files with no failures.
+Fresh full PHPStan reports only the known missing local Scramble class in the
+unchanged documentation exporter; no other diagnostic or baseline mismatch.
+Retain the immutable handoff snapshot and unrelated primary work; no real import,
+PR merge, external repository change or deployment is performed.
+
 ## Expense snapshot runtime CI passes; fixture URL guard follow-up - 2026-11-03
 
 Published `6b07e900` passes all four jobs in CI41664475067: PHP2576/13013assertions

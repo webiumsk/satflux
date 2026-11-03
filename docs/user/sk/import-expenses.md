@@ -29,3 +29,9 @@ Pri lokálnej fakturácii sa súbor spracuje vo vašom prehliadači a uloží me
 Sumár pod zoznamom **Nákladov** zahŕňa všetky doklady zodpovedajúce aktuálnym filtrom na všetkých stránkach. Zobrazuje počet, celkovú sumu a sumu neuhradených nákladov. Výber položiek súčet nemení. Každá mena má vlastné súčty.
 
 Suma neuhradených nákladov zahŕňa celé sumy dokladov, ktoré nie sú označené ako uhradené. Čiastočné úhrady uložené v poznámkach z importu sa automaticky neodpočítavajú. Pred použitím súčtu ako zostávajúceho dlhu tieto doklady skontrolujte.
+
+## PDF príloha k jednotlivému nákladu
+
+Otvorte konkrétny náklad a pridajte jeho PDF. V lokálnom účtovníctve sa prílohy aj vyťažené údaje ukladajú medzi vaše šifrované lokálne dáta. Jedna lokálna príloha môže mať najviac **384 KiB**. Náklad uložte, aby sa uložili aj jeho pripravené prílohy.
+
+Môžete povoliť dočasné spracovanie súboru na serveri na detekciu vložených údajov ISDOC. Zrušením zostane príloha iba lokálne. Ak sa ISDOC nájde, samostatne potvrďte vyťaženie údajov alebo ponechajte iba prílohu. Vyťaženie využíva váš existujúci limit a kredity; nejde o OCR. Po vyčerpaní limitu môžete súbor stále priložiť a údaje zadať ručne.

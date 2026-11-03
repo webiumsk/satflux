@@ -585,6 +585,8 @@
     "expense_no_isdoc_in_file": "File attached. No ISDOC found in this PDF – you can fill in the fields manually.",
     "expense_preview_file_attached": "File ready. Preview is not available for this format.",
     "expense_attachment_detect_failed": "Could not process the file.",
+    "expense_attachment_server_processing_confirm": "Temporarily send this file to the server to detect embedded ISDOC data? Cancel keeps the attachment local.",
+    "expense_isdoc_quota_exceeded_local": "No extractions remain. You can still attach the file without extracting its fields.",
     "expense_attachment_too_large": "File is too large for local storage (max ~384 KB per attachment).",
     "expense_isdoc_detected_title": "ISDOC found",
     "expense_isdoc_detected_body": "This document contains ISDOC. Extract data into the form? ({remaining} of {limit} free extractions left.)",

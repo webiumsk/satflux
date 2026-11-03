@@ -1,5 +1,15 @@
 # Development roadmap
 
+## Current: publish the reviewed individual expense PDF upload repair - 2026-11-03
+
+Fix local company IDs reaching legacy UUID routes with an authenticated company-
+free ISDOC bridge, early UUID validation and local form/detail persistence.
+Keep encryption, consent, quota policy,384KiB attachment cap and server ownership;
+leave bulk import and purchases unchanged. Independent security and QA accept the
+same frozen source after32frontend,13extra probes and47PHP/323assertions.
+Full frontend passes 1,205 cases across 151 files. Publish on PR #426 and verify fresh
+exact-head CI. Preserve all recovery/unrelated work; merge/deployment stay separate.
+
 ## Current: close expense snapshot fixture URL routing bypass - 2026-11-03
 
 Snapshot/year repair `6b07e900` has four green CI jobs and six resolved threads.

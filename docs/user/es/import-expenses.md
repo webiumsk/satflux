@@ -29,3 +29,9 @@ En la facturación local, el archivo se procesa en su navegador y se guarda con 
 El resumen bajo **Gastos** incluye todos los documentos que coinciden con los filtros actuales, en todas las páginas. Muestra el número, el total y el importe de los gastos no pagados. Seleccionar filas no modifica el resumen. Cada moneda tiene sus propios totales.
 
 El importe de los gastos no pagados suma los importes completos de los documentos no marcados como pagados. Los pagos parciales guardados en las notas de importación no se deducen automáticamente; revise esos documentos antes de usar esta cifra como saldo pendiente.
+
+## Adjuntos PDF en un gasto individual
+
+Abra un gasto y añada su PDF. En la facturación local, los adjuntos y los campos extraídos se guardan con sus datos locales cifrados. Cada adjunto local puede ocupar como máximo **384 KiB**; guarde el gasto para conservar los adjuntos pendientes.
+
+Puede permitir el procesamiento temporal en el servidor para detectar datos ISDOC incrustados. Cancelar mantiene el adjunto en local. Si se encuentra ISDOC, confirme por separado la extracción o conserve solo el adjunto. La extracción usa su límite y créditos existentes; no es OCR. Si se agota el límite, puede adjuntar el archivo e introducir los datos manualmente.

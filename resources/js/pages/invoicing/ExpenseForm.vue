@@ -14,6 +14,7 @@
       :extracting="extracting"
       :purchasing="purchasing"
       :quota="quota"
+      :allow-purchases="!localFirst"
       @close="skipExtract"
       @skip="onSkipExtract"
       @confirm="onConfirmExtract"
@@ -115,7 +116,7 @@
         :selected-pending-id="selectedPendingId"
         :preview-url="previewUrl"
         :preview-kind="previewKind"
-        :detecting="detecting"
+        :detecting="detecting || saving || extracting"
         :detect-error="detectErrorMessage"
         :has-isdoc="lastDetectHasIsdoc"
         @file-selected="onFileSelected"
@@ -131,7 +132,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import ExpenseAttachmentPanel from '../../components/invoicing/ExpenseAttachmentPanel.vue';
@@ -186,7 +187,7 @@ const {
   confirmExtract,
   skipExtract,
   uploadAllPendingAttachments,
-} = useExpenseIsdocAttachment(companyId);
+} = useExpenseIsdocAttachment(companyId, expenseId);
 
 const detectErrorMessage = computed(() => {
   if (!detectError.value) return '';
@@ -218,6 +219,15 @@ const expenseLabel = ref('');
 const saving = ref(false);
 const error = ref('');
 const importNotice = ref('');
+const createdLocalExpenseId = ref<string | null>(null);
+let contextGeneration = 0;
+watch([companyId, expenseId], () => {
+  contextGeneration++;
+  createdLocalExpenseId.value = null;
+  saving.value = false;
+  error.value = '';
+}, { flush: 'sync' });
+onUnmounted(() => { contextGeneration++; });
 
 function applyImportDraft(draft: ExpenseImportDraft) {
   if (draft.title) form.value.title = draft.title;
@@ -234,21 +244,28 @@ function applyImportDraft(draft: ExpenseImportDraft) {
 }
 
 async function onFileSelected(file: File) {
+  if (saving.value || extracting.value || detecting.value) return;
   error.value = '';
   await onDocumentSelected(file);
 }
 
 async function onFilesSelected(files: File[]) {
+  if (saving.value || extracting.value || detecting.value) return;
   error.value = '';
   await onDocumentsSelected(files);
 }
 
 async function onConfirmExtract() {
+  const capturedGeneration = contextGeneration;
+  const requestedCompany = companyId.value;
+  const requestedExpense = expenseId.value;
   error.value = '';
   try {
     const draft = await confirmExtract();
+    if (capturedGeneration !== contextGeneration || requestedCompany !== companyId.value || requestedExpense !== expenseId.value) return;
     if (draft) applyImportDraft(draft);
   } catch (e: unknown) {
+    if (capturedGeneration !== contextGeneration) return;
     const err = e as { response?: { data?: { errors?: { quota?: string[] }; message?: string } } };
     const quotaMsg = err?.response?.data?.errors?.quota?.[0];
     error.value = quotaMsg || err?.response?.data?.message || t('invoicing.expense_extract_failed');
@@ -312,6 +329,12 @@ async function loadExpense() {
 }
 
 async function save() {
+  if (saving.value || extracting.value || detecting.value) return;
+  const requestedCompany = companyId.value;
+  const requestedExpense = expenseId.value;
+  const requestedNew = isNew.value;
+  const capturedGeneration = contextGeneration;
+  const stillCurrent = () => capturedGeneration === contextGeneration && requestedCompany === companyId.value && requestedExpense === expenseId.value && requestedNew === isNew.value;
   error.value = '';
   if (!form.value.issue_date) {
     error.value = t('validation.required');
@@ -334,11 +357,12 @@ async function save() {
       mark_paid: isNew.value ? form.value.mark_paid : undefined,
     };
     let savedId: string;
-    if (localFirst && expenseResource.evolu) {
-      if (isNew.value) {
+    if (localFirst) {
+      if (!expenseResource.evolu) throw new Error(t('errors.generic'));
+      if (requestedNew && !createdLocalExpenseId.value) {
         const result = insertLocalExpense(
           expenseResource.evolu,
-          companyId.value as CompanyId,
+          requestedCompany as CompanyId,
           payload,
           expenseRows.value,
         );
@@ -347,11 +371,14 @@ async function save() {
           return;
         }
         savedId = result.value.id;
+        createdLocalExpenseId.value = savedId;
       } else {
-        const current = expenseRows.value.find((row) => row.id === expenseId.value);
+        const targetId = requestedNew ? createdLocalExpenseId.value! : requestedExpense!;
+        const current = expenseRows.value.find((row) => row.id === targetId && row.companyId === requestedCompany);
+        if (!current && !createdLocalExpenseId.value) throw new Error(t('errors.generic'));
         const result = updateLocalExpense(
           expenseResource.evolu,
-          expenseId.value! as ExpenseId,
+          targetId as ExpenseId,
           payload,
           current ?? null,
         );
@@ -359,25 +386,30 @@ async function save() {
           error.value = t('errors.generic');
           return;
         }
-        savedId = expenseId.value!;
+        savedId = targetId;
       }
+      await uploadAllPendingAttachments(savedId);
+      if (!stillCurrent()) return;
       await router.push(expenseShowTo(savedId));
       return;
     }
-    if (isNew.value) {
-      const created = await invoicingApi.expenses.create<{ id: string }>(companyId.value, payload);
+    if (requestedNew) {
+      const created = await invoicingApi.expenses.create<{ id: string }>(requestedCompany, payload);
       savedId = created.id;
     } else {
-      await invoicingApi.expenses.update(companyId.value, expenseId.value!, payload);
-      savedId = expenseId.value!;
+      await invoicingApi.expenses.update(requestedCompany, requestedExpense!, payload);
+      savedId = requestedExpense!;
     }
+    if (!stillCurrent()) return;
     await uploadAllPendingAttachments(savedId);
+    if (!stillCurrent()) return;
     await router.push(expenseShowTo(savedId));
   } catch (e: unknown) {
+    if (!stillCurrent()) return;
     const err = e as { response?: { data?: { message?: string } } };
     error.value = err?.response?.data?.message || t('errors.generic');
   } finally {
-    saving.value = false;
+    if (stillCurrent()) saving.value = false;
   }
 }
 

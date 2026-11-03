@@ -585,6 +585,8 @@
     "expense_no_isdoc_in_file": "Datei angehängt. In diesem PDF wurde kein ISDOC gefunden – Sie können die Felder manuell ausfüllen.",
     "expense_preview_file_attached": "Datei ist bereit. Für dieses Format ist keine Vorschau verfügbar.",
     "expense_attachment_detect_failed": "Die Datei konnte nicht verarbeitet werden.",
+    "expense_attachment_server_processing_confirm": "Diese Datei vorübergehend an den Server senden, um eingebettete ISDOC-Daten zu erkennen? Beim Abbrechen bleibt der Anhang lokal.",
+    "expense_isdoc_quota_exceeded_local": "Es sind keine Extraktionen mehr verfügbar. Sie können die Datei auch ohne Datenextraktion anhängen.",
     "expense_attachment_too_large": "Die Datei ist für die lokale Speicherung zu groß (max. ~384 KB pro Anhang).",
     "expense_isdoc_detected_title": "ISDOC gefunden",
     "expense_isdoc_detected_body": "Dieses Dokument enthält ISDOC. Daten in das Formular extrahieren? (Noch {remaining} von {limit} kostenlosen Extraktionen übrig.)",

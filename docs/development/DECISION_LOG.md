@@ -1,5 +1,27 @@
 # Development decision log
 
+## 2026-11-03 - Keep local expense PDFs out of server company UUID lookups
+
+The owner confirms the individual attachment form, so leave bulk PDF/ZIP import
+unchanged. Add only company-free, session-authenticated ISDOC detection/extraction/
+quota routes with existing plan gates, parser limits and user quota. Omit local
+document identity from audit metadata; do not create a shadow server company.
+Retain company ownership on legacy routes and reject malformed UUIDs before SQL.
+
+Require consent before temporary plaintext processing and preserve attachment-
+only use on decline. Store files and extracted edits through Evolu, including new
+form save and detail refresh. Validate the existing size cap before transfer,
+guard stale contexts and preserve retry progress. Verify ownership from actual
+Evolu rows rather than inventing a field in the API-shaped adapter. Hide only the
+unsupported local company-bound pack action; no billing/purchase policy changes.
+Architecture/security/QA accept the bounded design before implementation; require
+independent final source reviews, existing ratchets and exact-head CI before
+reporting publication as verified. Merge and deployment remain separate gates.
+
+Both reviewers accept the final14-file source manifest after the corrected
+real-adapter ownership test and deferred-save busy guard. Main publishes only
+that reviewed scope; no raw merchant identifiers or PDF fixtures enter source.
+
 ## 2026-11-03 - Verify fixture targets after removing inherited routing
 
 The snapshot/year runtime repair passes complete CI, but its new fixture copies

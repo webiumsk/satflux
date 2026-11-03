@@ -585,6 +585,8 @@
     "expense_no_isdoc_in_file": "Súbor je nahraný. ISDOC v tomto PDF sme nenašli – môžete vyplniť polia ručne.",
     "expense_preview_file_attached": "Súbor je pripravený. Náhľad nie je dostupný pre tento formát.",
     "expense_attachment_detect_failed": "Súbor sa nepodarilo spracovať.",
+    "expense_attachment_server_processing_confirm": "Dočasne odoslať tento súbor na server na detekciu vložených údajov ISDOC? Zrušením zostane príloha iba lokálne.",
+    "expense_isdoc_quota_exceeded_local": "Nemáte zostávajúce vyťaženia. Súbor môžete priložiť aj bez vyťaženia údajov.",
     "expense_attachment_too_large": "Súbor je príliš veľký pre lokálne uloženie (max ~384 KB na prílohu).",
     "expense_isdoc_detected_title": "Nájdené ISDOC",
     "expense_isdoc_detected_body": "Doklad obsahuje ISDOC. Chcete vyťažiť údaje do formulára? (Zostáva {remaining} z {limit} bezplatných vyťažení.)",

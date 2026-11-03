@@ -29,3 +29,9 @@ Bei lokaler Rechnungsstellung wird die Datei im Browser verarbeitet und mit den 
 Die Übersicht unter **Ausgaben** umfasst alle Dokumente, die den aktuellen Filtern entsprechen, auf sämtlichen Seiten. Sie zeigt Anzahl, Gesamtsumme und Summe unbezahlter Ausgaben. Die Auswahl von Zeilen verändert die Übersicht nicht. Jede Währung hat eigene Summen.
 
 Die Summe unbezahlter Ausgaben enthält die vollen Beträge der nicht als bezahlt markierten Dokumente. Teilzahlungen in importierten Notizen werden nicht automatisch abgezogen. Prüfen Sie diese Dokumente, bevor Sie den Wert als offenen Restbetrag verwenden.
+
+## PDF-Anhänge einer einzelnen Ausgabe
+
+Öffnen Sie eine Ausgabe und fügen Sie ihre PDF-Datei hinzu. Bei lokaler Rechnungsverwaltung werden Anhänge und extrahierte Felder mit Ihren verschlüsselten lokalen Daten gespeichert. Ein lokaler Anhang darf höchstens **384 KiB** groß sein. Speichern Sie die Ausgabe, um vorgemerkte Anhänge zu behalten.
+
+Sie können der vorübergehenden Serververarbeitung zur Erkennung eingebetteter ISDOC-Daten zustimmen. Beim Abbrechen bleibt der Anhang lokal. Wird ISDOC gefunden, bestätigen Sie die Feldextraktion separat oder behalten nur den Anhang. Die Extraktion nutzt Ihr bestehendes Kontingent und Guthaben; sie ist keine OCR. Ist das Kontingent aufgebraucht, können Sie die Datei weiterhin anhängen und die Daten manuell eingeben.

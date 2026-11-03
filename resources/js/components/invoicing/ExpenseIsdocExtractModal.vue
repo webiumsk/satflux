@@ -112,6 +112,7 @@ const props = defineProps<{
   extracting?: boolean;
   purchasing?: boolean;
   quota: IsdocExtractQuota | null;
+  allowPurchases?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -132,7 +133,7 @@ const showPacks = ref(false);
 
 const canExtract = computed(() => props.quota?.can_extract ?? true);
 
-const packs = computed(() => purchases.value.isdoc_packs ? props.quota?.packs ?? [] : []);
+const packs = computed(() => props.allowPurchases !== false && purchases.value.isdoc_packs ? props.quota?.packs ?? [] : []);
 
 const showTopupLink = computed(
   () => !props.quota?.unlimited && packs.value.length > 0 && canExtract.value,
@@ -160,7 +161,9 @@ const bodyText = computed(() => {
     return t('invoicing.expense_isdoc_detected_body_unlimited');
   }
   if (!canExtract.value) {
-    return t('invoicing.expense_isdoc_quota_exceeded');
+    return t(props.allowPurchases === false
+      ? 'invoicing.expense_isdoc_quota_exceeded_local'
+      : 'invoicing.expense_isdoc_quota_exceeded');
   }
   const freeRemaining = props.quota?.free_remaining ?? props.quota?.remaining ?? 0;
   const freeLimit = props.quota?.free_limit ?? props.quota?.limit ?? 20;

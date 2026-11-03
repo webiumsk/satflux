@@ -29,3 +29,9 @@ In local-first invoicing, the spreadsheet is processed in your browser and saved
 The summary below **Expenses** covers every document matching the current filters, across all pages. It shows the count, total and unpaid expense total. Selecting rows does not change it. Each currency has its own totals.
 
 The unpaid expense total adds the full amounts of documents not marked paid. Partial payments retained in import notes are not automatically deducted; review those documents before treating this figure as an outstanding balance.
+
+## PDF attachments on an individual expense
+
+Open an individual expense and add its PDF. In local-first invoicing, attachments and extracted expense fields are saved with your encrypted local data. Each local attachment may be at most **384 KiB**; save the expense to keep its pending attachments.
+
+You can allow temporary server processing to detect embedded ISDOC data. Cancel keeps the attachment local. If ISDOC is found, confirm field extraction separately or keep only the attachment. Extraction uses your existing allowance and credits; it is not OCR. When the allowance is exhausted, you can still attach the file and enter its fields manually.

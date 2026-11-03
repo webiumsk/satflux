@@ -29,3 +29,9 @@ Při lokální fakturaci se soubor zpracuje v prohlížeči a uloží mezi stáv
 Souhrn pod seznamem **Nákladů** zahrnuje všechny doklady odpovídající aktuálním filtrům na všech stránkách. Zobrazuje počet, celkovou částku a součet neuhrazených nákladů. Výběr položek součet nemění. Každá měna má vlastní součty.
 
 Součet neuhrazených nákladů zahrnuje celé částky dokladů, které nejsou označené jako uhrazené. Částečné úhrady uložené v poznámkách z importu se automaticky neodečítají. Než součet použijete jako zbývající dluh, tyto doklady zkontrolujte.
+
+## PDF příloha k jednotlivému nákladu
+
+Otevřete konkrétní náklad a přidejte jeho PDF. V lokálním účetnictví se přílohy i vytěžené údaje ukládají mezi vaše šifrovaná lokální data. Jedna lokální příloha může mít nejvýše **384 KiB**. Náklad uložte, aby se uložily i jeho připravené přílohy.
+
+Můžete povolit dočasné zpracování souboru na serveru pro detekci vložených údajů ISDOC. Zrušením zůstane příloha pouze lokálně. Pokud se ISDOC najde, samostatně potvrďte extrakci údajů nebo ponechte pouze přílohu. Extrakce využívá váš stávající limit a kredity; nejde o OCR. Po vyčerpání limitu můžete soubor stále přiložit a údaje zadat ručně.

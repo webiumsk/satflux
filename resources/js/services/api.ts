@@ -919,6 +919,20 @@ export const invoicingApi = {
         },
     },
     expenses: {
+        ephemeral: {
+            async detectIsdoc<T = unknown>(formData: FormData): Promise<T> {
+                const { data } = await api.post<ApiEnvelope<T>>("/invoicing/ephemeral/expenses/detect-isdoc", formData);
+                return data.data;
+            },
+            async extract<T = unknown>(formData: FormData): Promise<{ data: T; quota?: unknown }> {
+                const { data } = await api.post<{ data: T; quota?: unknown }>("/invoicing/ephemeral/expenses/extract", formData);
+                return data;
+            },
+            async isdocQuota<T = unknown>(): Promise<T> {
+                const { data } = await api.get<ApiEnvelope<T>>("/invoicing/ephemeral/expenses/isdoc-extract-quota");
+                return data.data;
+            },
+        },
         async list<T = unknown>(companyId: string, params: Record<string, unknown> = {}): Promise<T[]> {
             const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/expenses`, { params });
             return data.data ?? [];

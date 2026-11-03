@@ -5,6 +5,7 @@
       :extracting="extracting"
       :purchasing="purchasing"
       :quota="quota"
+      :allow-purchases="!localFirst"
       @close="onSkipExtract"
       @skip="onSkipExtract"
       @confirm="onConfirmExtract"
@@ -421,7 +422,7 @@ const {
   skipExtract,
   clearPendingAttachment,
   uploadAllPendingAttachments,
-} = useExpenseIsdocAttachment(companyId);
+} = useExpenseIsdocAttachment(companyId, expenseId);
 
 const rowMeta = computed(() =>
   expense.value
@@ -858,42 +859,64 @@ async function cancelExpense() {
   }
 }
 
-function draftToPayload(draft: ExpenseImportDraft) {
+function draftToPayload(draft: ExpenseImportDraft, current: Expense) {
   return {
-    title: draft.title ?? expense.value?.title,
-    external_number: draft.external_number ?? expense.value?.external_number,
-    variable_symbol: draft.variable_symbol ?? expense.value?.variable_symbol,
-    constant_symbol: draft.constant_symbol ?? expense.value?.constant_symbol,
-    specific_symbol: draft.specific_symbol ?? expense.value?.specific_symbol,
-    issue_date: draft.issue_date?.slice(0, 10) ?? expense.value?.issue_date,
+    title: draft.title ?? current.title,
+    external_number: draft.external_number ?? current.external_number,
+    variable_symbol: draft.variable_symbol ?? current.variable_symbol,
+    constant_symbol: draft.constant_symbol ?? current.constant_symbol,
+    specific_symbol: draft.specific_symbol ?? current.specific_symbol,
+    issue_date: draft.issue_date?.slice(0, 10) ?? current.issue_date,
     delivery_date:
-      draft.delivery_date?.slice(0, 10) ?? expense.value?.delivery_date,
-    due_date: draft.due_date?.slice(0, 10) ?? expense.value?.due_date,
-    total: draft.total ?? expense.value?.total,
-    currency: draft.currency ?? expense.value?.currency,
-    internal_note: expense.value?.internal_note,
+      draft.delivery_date?.slice(0, 10) ?? current.delivery_date,
+    due_date: draft.due_date?.slice(0, 10) ?? current.due_date,
+    total: draft.total ?? current.total,
+    currency: draft.currency ?? current.currency,
+    internal_note: current.internal_note,
   };
 }
 
 async function uploadAttachmentOnly() {
   if (pendingFiles.value.length === 0) return;
+  const requestedCompany = companyId.value;
+  const requestedExpense = expenseId.value;
+  const capturedGeneration = contextGeneration;
+  const stillCurrent = () => capturedGeneration === contextGeneration && requestedCompany === companyId.value && requestedExpense === expenseId.value;
+  if (localFirst && (!expenseResource.evolu || expense.value?.id !== requestedExpense
+    || !expenseRows.value.some((row) => row.id === requestedExpense && row.companyId === requestedCompany))) {
+    throw new Error(t('errors.generic'));
+  }
   uploading.value = true;
   try {
-    await uploadAllPendingAttachments(expenseId.value);
-    expense.value = await invoicingApi.expenses.get<NonNullable<typeof expense.value>>(companyId.value, expenseId.value!);
+    await uploadAllPendingAttachments(requestedExpense);
+    if (!stillCurrent()) return;
+    if (localFirst) {
+      await expenseResource.refresh();
+      if (!stillCurrent()) return;
+      expense.value = expenseResource.expense.value as Expense | null;
+    } else {
+      const loaded = await invoicingApi.expenses.get<NonNullable<typeof expense.value>>(requestedCompany, requestedExpense);
+      if (!stillCurrent()) return;
+      expense.value = loaded;
+    }
     selectedAttachmentId.value =
       expense.value?.attachments?.at(-1)?.id ??
       expense.value?.attachments?.[0]?.id ??
       null;
     await loadSavedPreview();
   } finally {
-    uploading.value = false;
+    if (stillCurrent()) uploading.value = false;
   }
 }
 
 async function onFileSelected(file: File) {
+  if (detecting.value || uploading.value || extracting.value) return;
+  const capturedGeneration = contextGeneration;
+  const requestedCompany = companyId.value;
+  const requestedExpense = expenseId.value;
   try {
     await onDocumentSelected(file);
+    if (capturedGeneration !== contextGeneration || requestedCompany !== companyId.value || requestedExpense !== expenseId.value) return;
     if (!showExtractModal.value) {
       await uploadAttachmentOnly();
     }
@@ -903,8 +926,13 @@ async function onFileSelected(file: File) {
 }
 
 async function onFilesSelected(files: File[]) {
+  if (detecting.value || uploading.value || extracting.value) return;
+  const capturedGeneration = contextGeneration;
+  const requestedCompany = companyId.value;
+  const requestedExpense = expenseId.value;
   try {
     await onDocumentsSelected(files);
+    if (capturedGeneration !== contextGeneration || requestedCompany !== companyId.value || requestedExpense !== expenseId.value) return;
     if (!showExtractModal.value) {
       await uploadAttachmentOnly();
     }
@@ -923,13 +951,34 @@ function onPanelClear() {
 }
 
 async function onConfirmExtract() {
+  const requestedCompany = companyId.value;
+  const requestedExpense = expenseId.value;
+  const capturedGeneration = contextGeneration;
+  const stillCurrent = () => capturedGeneration === contextGeneration && requestedCompany === companyId.value && requestedExpense === expenseId.value;
   try {
     const draft = await confirmExtract();
+    if (!stillCurrent()) return;
+    if (!draft) return;
     if (draft) {
-      expense.value = await invoicingApi.expenses.update<NonNullable<typeof expense.value>>(companyId.value, expenseId.value!, draftToPayload(draft));
+      if (localFirst) {
+        if (!expenseResource.evolu || expense.value?.id !== requestedExpense) throw new Error(t('errors.generic'));
+        const current = expenseRows.value.find((row) => row.id === requestedExpense && row.companyId === requestedCompany);
+        if (!current) throw new Error(t('errors.generic'));
+        const result = updateLocalExpense(expenseResource.evolu, requestedExpense as ExpenseId, draftToPayload(draft, expense.value), current);
+        if (!result.ok) throw new Error(t('errors.generic'));
+        await expenseResource.refresh();
+        if (!stillCurrent()) return;
+        expense.value = expenseResource.expense.value as Expense | null;
+      } else {
+        if (!expense.value) throw new Error(t('errors.generic'));
+        const updated = await invoicingApi.expenses.update<NonNullable<typeof expense.value>>(requestedCompany, requestedExpense, draftToPayload(draft, expense.value));
+        if (!stillCurrent()) return;
+        expense.value = updated;
+      }
     }
     await uploadAttachmentOnly();
   } catch (e: unknown) {
+    if (!stillCurrent()) return;
     const err = e as {
       response?: { data?: { errors?: { quota?: string[] }; message?: string } };
     };
@@ -947,9 +996,12 @@ async function onSkipExtract() {
   await uploadAttachmentOnly();
 }
 
-watch(expenseId, () => {
-  load();
-});
+let contextGeneration = 0;
+watch([companyId, expenseId], () => {
+  contextGeneration++;
+  uploading.value = false;
+  void load();
+}, { flush: 'sync' });
 
 onMounted(() => {
   rememberCompany(companyId.value);
@@ -961,6 +1013,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  contextGeneration++;
   revokeSavedPreview();
 });
 </script>
