@@ -762,7 +762,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import InvoicingPageShell from "../../components/invoicing/InvoicingPageShell.vue";
@@ -824,6 +824,8 @@ const inboundMaxLength = ref(0);
 const inboundCopied = ref(false);
 const inboundBridgeChecked = ref(false);
 const inboundBridgeCompanyId = ref<string | null>(null);
+let inboundRequest = 0;
+onBeforeUnmount(() => { inboundRequest += 1; });
 const inboundBridgeMissing = computed(
   () =>
     bank.localFirst &&
@@ -975,14 +977,19 @@ async function loadBatches() {
   await bank.loadBatches();
 }
 
-async function resolveInboundCompanyId(): Promise<string | null> {
+function isCurrentInboundRequest(request: number, localCompanyId: string): boolean {
+  return request === inboundRequest && companyId.value === localCompanyId;
+}
+
+async function resolveInboundCompanyId(localCompanyId: string, request: number): Promise<string | null> {
   if (!bank.localFirst) {
-    return companyId.value || null;
+    return localCompanyId || null;
   }
   // Per-company bridge resolved by THIS company's legal identity (created on
   // demand) - never a first-row fallback, which handed every local company
   // the same bridge and therefore the same inbound address.
-  const result = await ensureBridgeCompanyIdForLocalCompany(companyId.value);
+  const result = await ensureBridgeCompanyIdForLocalCompany(localCompanyId);
+  if (!isCurrentInboundRequest(request, localCompanyId)) return null;
   if (!result.ok) {
     // Transient failure - do not claim the bridge is missing; leaving the
     // check unfinished lets the next loadInbound() run retry.
@@ -995,14 +1002,18 @@ async function resolveInboundCompanyId(): Promise<string | null> {
 }
 
 async function loadInbound() {
+  const request = ++inboundRequest;
+  const localCompanyId = companyId.value;
+  inboundEmail.value = "";
+  inboundEnabled.value = false;
+  inboundLength.value = 0;
+  inboundMaxLength.value = 0;
+  inboundCopied.value = false;
+  inboundBridgeCompanyId.value = null;
+  inboundBridgeChecked.value = false;
   if (!hasBankAccount.value) return;
-  const cid = await resolveInboundCompanyId();
-  if (!cid) {
-    inboundEmail.value = "";
-    inboundLength.value = 0;
-    inboundMaxLength.value = 0;
-    return;
-  }
+  const cid = await resolveInboundCompanyId(localCompanyId, request);
+  if (!cid || !isCurrentInboundRequest(request, localCompanyId)) return;
   try {
     const inbound = await invoicingApi.bankTransactions.inboundEmail<{
       address?: string;
@@ -1010,12 +1021,14 @@ async function loadInbound() {
       length?: number;
       max_length?: number;
     }>(cid);
+    if (!isCurrentInboundRequest(request, localCompanyId)) return;
     inboundEmail.value = inbound?.address || "";
     inboundEnabled.value = !!inbound?.enabled;
     inboundLength.value = inbound?.length ?? inboundEmail.value.length;
     inboundMaxLength.value = inbound?.max_length ?? 50;
     inboundCopied.value = false;
   } catch {
+    if (!isCurrentInboundRequest(request, localCompanyId)) return;
     inboundEmail.value = "";
     inboundLength.value = 0;
     inboundMaxLength.value = 0;

@@ -66,9 +66,11 @@ class BankInboundAddressService
         $to = strtolower(trim($to));
         $domain = preg_quote($this->domain(), '/');
         $prefix = preg_quote($this->prefix(), '/');
-        $tokenLength = $this->tokenLength();
 
-        if (! preg_match('/^'.$prefix.'([a-z0-9]{'.$tokenLength.'})@'.$domain.'$/', $to, $matches)) {
+        // Persisted tokens survive changes to the calculated generation length.
+        // Accept the supported persisted range; the exact DB lookup remains
+        // authoritative, as it is for Store recipients below.
+        if (! preg_match('/^'.$prefix.'([a-z0-9]{8,16})@'.$domain.'$/', $to, $matches)) {
             throw ValidationException::withMessages([
                 'to' => ['Unknown inbound bank address.'],
             ]);

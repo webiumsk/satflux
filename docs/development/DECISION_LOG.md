@@ -1,5 +1,48 @@
 # Development decision log
 
+## 2026-11-03 - Publish the reviewed expense/bank repair branch
+
+The owner's explicit push instruction authorizes committing and publishing the
+reviewed candidate to `webiumsk/satflux`, branch
+`fix/expense-defaults-bank-import`. Stage exactly36allowlisted source/test/guide/
+review/state/API-inventory paths from the retained worktree. Reconcile runtime11
+manifest07d8edd3...198b29 and source/test21manifest2b843d64...aab4ab before staging
+and after commit; independent QA checks publication scope. Main verifies the exact
+remote commit after push. Do not include unrelated primary changes or treat push
+as PR creation, merge, deployment, a new test pass or current CI success.
+
+## 2026-11-03 - Link expense defaults and reconcile exact bank-email debits
+
+Owner explicitly requests supplier-number/VS and received/delivery defaults, then
+clarifies existing-expense automatic payment from today's delivered bank email.
+Treat this as bounded Satflux bookkeeping implementation authorization. Preserve
+manual/ISDOC overrides and existing expense values. Align address and import on
+the selected company's identity; never use a first-company fallback or stale
+response. Keep existing recipient tokens with exact domain/prefix/DB lookup.
+
+Approve conservative email-only expense matching after independent QA/security
+design review: one same-company recorded/unpaid/uncancelled/unlinked candidate,
+exact positive fixed-point amount/currency and VS precedence, exact full reference
+fallback only without bank VS, recorded debit distinct from inferred display,
+valid booking date, atomic link/status/audit and same-instance serialization.
+Do not broaden to partial sums, CSV/Wise expense matching, arbitrary reference
+substrings, schema/provenance migration or Store/SEPA fulfillment. Qualify future
+debits before parser defaults or compact fallback; legacy explicit batch matching
+remains deliberate normalized-ledger bookkeeping with its provenance limitation.
+
+Final accepted runtime manifest07d8edd3...198b29 and source/test2b843d64...aab4ab
+supersede earlier hashes after raw DB comparisons and one precise impure PHPDoc
+annotation. No static baseline, lint/typecheck ratchet, authentication or pricing
+policy is weakened. Validate functionally with SQLite225/740, independentPG225/730
+and true2connection contention1/16, full1335frontend and independent reviewers;
+keep unavailable optional Scramble/full generator separate from passed checks.
+
+Delivered means webhook accepted. Owner reports enabled intake,2email rows today
+and healthy emptyqueue; this is insufficient to prove the selected-company fix
+is deployed or missing history recovered. Keep all production data and failed
+jobs unchanged. Source remains local/uncommitted on its new branch; no new PR,
+publication, merge or deployment is authorized/performed by this milestone.
+
 ## 2026-11-03 - Preserve quota and document state across PDF retries
 
 Serialize final quota accounting on one actual connection after parsing and

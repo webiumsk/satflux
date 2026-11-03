@@ -24,6 +24,10 @@ Límites: **10 MB, 2.000 filas y 256 columnas** por archivo. Las filas no válid
 
 En la facturación local, el archivo se procesa en su navegador y se guarda con los datos cifrados existentes. Guarde su frase de recuperación. Los adjuntos PDF se importan por separado.
 
+## Valores iniciales de un gasto nuevo
+
+El símbolo variable sigue los dígitos del número del documento, incluidos los ceros iniciales. La fecha de entrega sigue la fecha de recepción. Al editar manualmente uno de estos valores, se detiene su vínculo. Se conservan los valores explícitos extraídos de un adjunto; los gastos existentes mantienen sus valores guardados.
+
 ## Resumen de gastos
 
 El resumen bajo **Gastos** incluye todos los documentos que coinciden con los filtros actuales, en todas las páginas. Muestra el número, el total y el importe de los gastos no pagados. Seleccionar filas no modifica el resumen. Cada moneda tiene sus propios totales.

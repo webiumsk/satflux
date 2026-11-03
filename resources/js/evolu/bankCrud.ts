@@ -16,6 +16,7 @@ import {
     hasBankPaymentMatchHints,
 } from "./bankPaymentDocumentMatcher";
 import { bankTransactionDedupeHash } from "./bankDedupe";
+import { bankPaymentCurrency, tryAutoMatchBankEmailExpense } from "./bankExpensePaymentMatcher";
 import {
     documentAmountDue,
     evoluBankBatchToApi,
@@ -40,6 +41,27 @@ import type {
 } from "./schema";
 
 const AMOUNT_TOLERANCE = 0.01;
+
+const emailReconciliations = new WeakMap<Evolu<InvoicingLocalSchema>, Promise<unknown>>();
+
+function serializeEmailReconciliation<T>(
+    evolu: Evolu<InvoicingLocalSchema>,
+    reconcile: () => Promise<T>,
+): Promise<T> {
+    const previous = emailReconciliations.get(evolu) ?? Promise.resolve();
+    const pending = previous.catch(() => undefined).then(async () => {
+        const result = await reconcile();
+        // Finish queued writes before another entry point loads its context.
+        await Promise.all([evolu.loadQuery(allBankTransactionsQuery), evolu.loadQuery(allExpensesQuery)]);
+        return result;
+    });
+    emailReconciliations.set(evolu, pending);
+    const release = () => {
+        if (emailReconciliations.get(evolu) === pending) emailReconciliations.delete(evolu);
+    };
+    void pending.then(release, release);
+    return pending;
+}
 
 export type BankPaymentContext = {
     batches: EvoluBankImportBatchRow[];
@@ -182,6 +204,7 @@ export function tryAutoMatchTransaction(
     transaction: EvoluBankTransactionRow,
     ctx: BankPaymentContext,
 ): boolean {
+    if (transaction.direction === "debit") return tryAutoMatchBankEmailExpense(evolu, transaction, ctx);
     if (transaction.matchStatus === "matched") return true;
     if (resolvedBankDirection(transaction) !== "credit") return false;
     if (!hasBankPaymentMatchHints(transaction.variableSymbol, transaction.reference)) return false;
@@ -414,6 +437,7 @@ export type ServerBankTransactionRow = {
     amount: string;
     currency: string;
     direction: string;
+    recorded_direction?: string;
     variable_symbol?: string | null;
     constant_symbol?: string | null;
     specific_symbol?: string | null;
@@ -426,6 +450,14 @@ export type ServerBankTransactionRow = {
 
 /** Import b-mail transactions fetched from the server bridge company into Evolu. */
 export async function importInboundServerTransactionsAsync(
+    evolu: Evolu<InvoicingLocalSchema>,
+    companyId: CompanyId,
+    rows: ServerBankTransactionRow[],
+): Promise<{ imported: number; auto_matched: number }> {
+    return serializeEmailReconciliation(evolu, () => importInboundServerTransactions(evolu, companyId, rows));
+}
+
+async function importInboundServerTransactions(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
     rows: ServerBankTransactionRow[],
@@ -460,13 +492,22 @@ export async function importInboundServerTransactionsAsync(
             ? row.booked_at
             : `${row.booked_at}T12:00:00`;
         const amount = Math.abs(parseFloat(row.amount || "0"));
-        const currency = (row.currency || "EUR").toUpperCase();
-        const direction = row.direction === "debit" ? "debit" : "credit";
+        const recordedDirection = row.recorded_direction === "debit" || row.recorded_direction === "credit"
+            ? row.recorded_direction : null;
+        const direction = recordedDirection ?? (row.direction === "debit" ? "debit" : "credit");
+        const currency = direction === "debit"
+            ? bankPaymentCurrency(row.currency)
+            : (row.currency || "EUR").toUpperCase();
+        // Preserve debit evidence for later explicit reconciliation instead of
+        // manufacturing a positive amount or default currency from invalid data.
+        const amountText = direction === "debit"
+            ? (typeof row.amount === "string" && row.amount.length <= 32 ? row.amount.trim() : null)
+            : amount.toFixed(2);
         const dedupeHash = row.dedupe_hash?.trim()
             || await bankTransactionDedupeHash(companyId, {
                 bookedAt,
                 amount,
-                currency,
+                currency: currency ?? "",
                 direction,
                 variableSymbol: row.variable_symbol,
                 reference: row.reference,
@@ -485,7 +526,7 @@ export async function importInboundServerTransactionsAsync(
             companyId,
             bankImportBatchId: batchId,
             bookedAt,
-            amount: amount.toFixed(2),
+            amount: amountText,
             currency,
             direction,
             matchStatus: "unmatched",
@@ -511,7 +552,7 @@ export async function importInboundServerTransactionsAsync(
             companyId,
             bankImportBatchId: batchId,
             bookedAt,
-            amount: amount.toFixed(2),
+            amount: amountText,
             currency,
             direction,
             matchStatus: "unmatched",
@@ -527,7 +568,9 @@ export async function importInboundServerTransactionsAsync(
             source: "inbound_email",
         };
         ctx.transactions.push(createdRow);
-        created.push(createdRow);
+        // Older servers expose only an inferred display direction. Preserve
+        // their import compatibility without automatically paying an expense.
+        if (direction !== "debit" || recordedDirection === "debit") created.push(createdRow);
         imported++;
     }
 
@@ -552,6 +595,13 @@ export async function importInboundServerTransactionsAsync(
 }
 
 export async function autoMatchLocalBatchAsync(
+    evolu: Evolu<InvoicingLocalSchema>,
+    batchId: BankImportBatchId,
+): Promise<{ auto_matched: number }> {
+    return serializeEmailReconciliation(evolu, () => autoMatchLocalBatch(evolu, batchId));
+}
+
+async function autoMatchLocalBatch(
     evolu: Evolu<InvoicingLocalSchema>,
     batchId: BankImportBatchId,
 ): Promise<{ auto_matched: number }> {

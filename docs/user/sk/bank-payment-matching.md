@@ -20,9 +20,15 @@ Vo firme otvorte **Platby** a importujte bankový výpis. Satflux rozumie bežn�
 
 Duplicitné transakcie sú rozpoznané a preskočené, takže opätovný import prekrývajúceho sa výpisu je bezpečný.
 
+## Bankové notifikačné e-maily
+
+Použite adresu zobrazenú v **Platby > Import** pre vybranú firmu. Pri lokálnej fakturácii otvorenie alebo obnovenie Platieb prenesie e-maily, ktoré už spracoval serverový mostík tej istej firmy, do šifrovaných dát v zariadení. Chýbajúcu históriu notifikácií z banky tým spätne nezíska.
+
 ## Automatické párovanie
 
 Ako transakcie prichádzajú, Satflux ich páruje s faktúrami podľa **variabilného symbolu**, sumy a ďalších referencií. Spárované faktúry sú označené ako zaplatené; nejednoznačné nechá na vaše potvrdenie alebo ručné spárovanie.
+
+Nový odchádzajúci pohyb z bankového e-mailu môže označiť existujúci náklad ako uhradený, ak sa v tej istej firme nájde práve jeden neuhradený náklad so zhodnou celou kladnou sumou, menou a variabilným symbolom. Ak náklad nemá VS, použijú sa číslice z čísla dokladu. Bez bankového VS sa referencia platby musí rovnať celému číslu dokladu. Ako dátum úhrady sa použije dátum bankového pohybu. Nejednoznačné, čiastočné a preplatené úhrady zostanú nespárované. Táto automatika pre náklady platí pre bankové e-maily; CSV a Wise si ponechávajú doterajšie správanie. Historické duplicitné riadky sa pri obnovení znovu nepárujú; na ich výslovnú kontrolu použite automatické párovanie príslušnej importnej dávky.
 
 ## Náklady
 

@@ -297,6 +297,7 @@ class BankTransactionController extends Controller
     protected function transactionPayload(BankTransaction $tx): array
     {
         $payload = $tx->toArray();
+        $payload['recorded_direction'] = $tx->getRawOriginal('direction');
         $payload['direction'] = $tx->resolvedDirection()->value;
         if ($tx->relationLoaded('match') && $tx->match) {
             $payload['match'] = [

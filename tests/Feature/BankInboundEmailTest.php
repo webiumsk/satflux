@@ -130,7 +130,7 @@ class BankInboundEmailTest extends TestCase
         $this->expectException(ValidationException::class);
 
         $service->handle([
-            'to' => 'payunknown0000@payments.satflux.io',
+            'to' => 'payunknown@payments.satflux.io',
             'from' => 'notify@tatrabanka.sk',
             'subject' => 'Obrat',
             'body' => 'VS: 123',

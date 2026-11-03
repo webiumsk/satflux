@@ -32,7 +32,7 @@ import {
 } from "@/evolu/bankCrud";
 import type { BankBatchApiRow, BankSummary, BankTxApiRow } from "@/evolu/bankMap";
 import { isInvoicingLocalFirst } from "@/evolu/flags";
-import { resolveEphemeralBridgeCompanyId } from "@/evolu/ephemeralBridge";
+import { ensureBridgeCompanyIdForLocalCompany } from "@/evolu/bridgeCompanyEnsure";
 import type { ExpenseSavePayload } from "@/evolu/expenseCrud";
 import type {
     BankImportBatchId,
@@ -362,7 +362,10 @@ function useLocalInvoicingBankPayments(
     );
 
     async function resolveBridgeCompanyId(): Promise<string | null> {
-        const bridgeId = await resolveEphemeralBridgeCompanyId();
+        const localCompanyId = companyId.value;
+        const result = await ensureBridgeCompanyIdForLocalCompany(localCompanyId);
+        if (companyId.value !== localCompanyId) return null;
+        const bridgeId = result.ok ? result.bridgeCompanyId : null;
         bridgeCompanyId.value = bridgeId;
         return bridgeId;
     }
@@ -380,17 +383,32 @@ function useLocalInvoicingBankPayments(
         return rows;
     }
 
+    const inboundSyncs = new Map<string, Promise<void>>();
+
     async function syncInboundFromBridge() {
+        const localCompanyId = companyId.value;
+        const active = inboundSyncs.get(localCompanyId);
+        if (active) return active;
+        const pending = syncInboundCompany(localCompanyId);
+        inboundSyncs.set(localCompanyId, pending);
+        try {
+            await pending;
+        } finally {
+            if (inboundSyncs.get(localCompanyId) === pending) inboundSyncs.delete(localCompanyId);
+        }
+    }
+
+    async function syncInboundCompany(localCompanyId: string) {
         const bridgeId = await resolveBridgeCompanyId();
         if (!bridgeId) {
             return;
         }
         try {
             const rows = await fetchInboundServerRows(bridgeId);
-            if (rows.length > 0) {
+            if (companyId.value === localCompanyId && rows.length > 0) {
                 await importInboundServerTransactionsAsync(
                     evolu,
-                    companyId.value as CompanyId,
+                    localCompanyId as CompanyId,
                     rows,
                 );
             }
@@ -424,16 +442,19 @@ function useLocalInvoicingBankPayments(
     }
 
     async function fetchWiseStatus() {
+        const localCompanyId = companyId.value;
         const bridgeId = await resolveBridgeCompanyId();
+        if (companyId.value !== localCompanyId) return;
         wiseBridgeChecked.value = true;
         if (!bridgeId) {
             wiseStatus.value = null;
             return;
         }
         try {
-            wiseStatus.value = await invoicingApi.wise.status<WiseStatus>(bridgeId);
+            const status = await invoicingApi.wise.status<WiseStatus>(bridgeId);
+            if (companyId.value === localCompanyId) wiseStatus.value = status;
         } catch {
-            wiseStatus.value = null;
+            if (companyId.value === localCompanyId) wiseStatus.value = null;
         }
     }
 
@@ -445,6 +466,7 @@ function useLocalInvoicingBankPayments(
     }
 
     async function syncWise() {
+        const localCompanyId = companyId.value;
         const bridgeId = await resolveBridgeCompanyId();
         if (!bridgeId) {
             return { imported: 0, auto_matched: 0, skipped_duplicates: 0 };
@@ -455,12 +477,15 @@ function useLocalInvoicingBankPayments(
         }>(bridgeId, {
             local_first: true,
         });
+        if (companyId.value !== localCompanyId) {
+            return { imported: 0, auto_matched: 0, skipped_duplicates: 0 };
+        }
         const rows = syncResult?.rows || [];
         let autoMatched = 0;
         if (rows.length > 0) {
             const result = await importLocalBankRows(
                 evolu,
-                companyId.value as CompanyId,
+                localCompanyId as CompanyId,
                 rows,
                 "wise",
                 "wise-sync.json",
@@ -553,6 +578,9 @@ function useLocalInvoicingBankPayments(
     }
 
     watch(companyId, () => {
+        bridgeCompanyId.value = null;
+        wiseStatus.value = null;
+        wiseBridgeChecked.value = false;
         void load();
         void loadBatches();
     });

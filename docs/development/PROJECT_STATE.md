@@ -1,5 +1,62 @@
 # Project state
 
+## Owner authorized expense/bank repair publication - 2026-11-03
+
+The owner explicitly requests GitHub push of `fix/expense-defaults-bank-import`
+to the owned Satflux origin. Publication includes only the36scoped paths from the
+retained expense worktree, based on mergedPR426/686c9304. The reviewed runtime11
+manifest07d8edd3...198b29 and source/test21manifest2b843d64...aab4ab remain exact.
+Independent QA checks the publication artifact; earlier functional evidence is
+retained rather than reported as a new test run. Main owns commit/push and must
+verify the remote SHA separately. The local-only entry below records the earlier
+milestone; this authorization supersedes its publication gate. No PR creation,
+merge, deployment, production replay or unrelated primary-source publication.
+
+## Expense defaults and bank-email reconciliation reviewed locally - 2026-11-03
+
+Owner requested linked defaults and investigation of missing bank movements, then
+clarified that today's delivered Tatra notification should pay an existing expense.
+PR426 is actually merged as686c9304; older open-PR entries below are historical.
+A new `fix/expense-defaults-bank-import` branch retains the bounded candidate in
+`storage/app/private/worktrees/superfaktura-expense-import`. Source is local and
+uncommitted; no new PR, Git publication, merge, deployment or replay occurred.
+
+New expenses link supplier-number digits to VS and received date to delivery date
+until manual/explicit-attachment override. Bank settings and synchronization now
+resolve the same selected company with stale-response and overlap guards. Existing
+8-16-character recipient tokens survive generation-length drift. New email debits
+can pay exactly one eligible same-company expense by exact amount/currency/hints,
+with recorded direction distinct from display inference, booking-date paid_at,
+atomic linkage/audit and fail-closed debit parsing. Explicit legacy batch matching
+uses normalized ledger fields; it does not prove original mail or trigger Store
+fulfillment. Cross-device CRDT uniqueness remains outside this guarantee.
+
+Independent QA/security accept the frozen source. Runtime11-file manifest is
+07d8edd3af8810cbe369899dfe23c413c2b25761e1438746ef33364543198b29;
+source/test21-file manifest is
+2b843d64a6cfc2ad7c63294360cd99a38657a1bff5f2586ab7570f1d73aab4ab.
+Main full1335frontend/157files, lint48/typecheck112 known ratchets, five locales,
+10guide files, build and3OpenAPI validations pass. Author SQLite225/740assertions
+and Pint9files pass; independent actualPG225/730 (5expectedSQLite-only skips) and
+forced two-connection contention1/16 pass. Final PHPDoc-only impure annotation
+preserves the fresh DB recheck and all method bodies/test bytes. Full PHPStan
+completes with zero new findings; the sole remaining error is the missing local
+optional Scramble class in unchanged DocumentationExporter.php:18. The full
+generator has the same dependency limitation; no install or ignore was added. All453API inventory routes and every
+other selected source hash remain unchanged; only the parser hash is updated.
+
+Owner-provided production metadata: standalone queue healthy, webhooks0 pending/
+delayed/reserved, inbound enabled, today2email rows/latest17:14:08; supplied failed
+jobs list contains June/July records. This proves some current server ingestion,
+not the selected company's UI or deployed-fix verification. Source history shows
+per-company addresses introducedJuly13 while sync retainedJune17 first-company
+fallback, supporting the observed mismatch without proving deployment chronology.
+Do not retry historical jobs or infer all missing mail is recoverable. Existing
+merchant expense/payment state is untouched. Preserve unrelated primary edits,
+recovery copies and worktrees. Next: owner source review/publication decision and
+separate merge/deployment approval. See feature-branch review note
+`docs/development/EXPENSE_DEFAULTS_BANK_IMPORT_REVIEW.md` for contracts and limits.
+
 ## PDF recovery and quota follow-up independently accepted - 2026-11-03
 
 After2567fed4 passes CI41687668367, six review findings are fixed: quota

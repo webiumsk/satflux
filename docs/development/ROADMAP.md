@@ -1,5 +1,30 @@
 # Development roadmap
 
+## Approved: publish the reviewed expense/bank repair branch - 2026-11-03
+
+Owner requests push to owned Satflux GitHub. Publish only the36reviewed/scoped
+paths on `fix/expense-defaults-bank-import`, retaining accepted source/test bytes,
+and verify the remote SHA. Local tests/reviews remain attributed to those bytes;
+no remote CI result is inferred. PR creation, its linked changelog note, merge
+and deployment remain subsequent actions. Preserve the dirty primary checkout.
+
+## Ready locally: expense defaults and bank-email expense matching - 2026-11-03
+
+Continue owner review of `fix/expense-defaults-bank-import`, based on merged
+PR426/686c9304 in the retained expense worktree. VS/date defaults, selected-company
+bridge synchronization, recipient compatibility and exact email-debit matching
+are implemented. Independent QA/security accept11runtime/21source-test manifests;
+main1335frontend, SQLite225/740 and independentPG225/730 plus forcedcontention1/16
+pass, with unchanged lint/typecheck ratchets, locales/build/API/guide checks.
+Full PHPStan local dependency limitation is recorded separately, not a CI pass.
+
+Production metadata confirms2email rows today, enabled intake and healthy empty
+webhooks queue; selected-company correlation and actual UI recovery remain
+unverified. Source is uncommitted/local, no new publication or deployment. Next:
+owner review, then authorized PR/publication with its linked changelog note;
+merge/deployment remain separate gates. Preserve all previous work and never
+replay bank mail or broadly retry failed jobs as diagnosis.
+
 ## Current: publish accepted PDF recovery and quota follow-up - 2026-11-03
 
 Six findings after green2567fed4 CI are fixed with user-locked quota accounting,

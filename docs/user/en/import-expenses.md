@@ -24,6 +24,10 @@ Limits: **10 MB, 2,000 rows, 256 columns** per file. Invalid or overlong rows ar
 
 In local-first invoicing, the spreadsheet is processed in your browser and saved with the existing encrypted invoicing data. Keep your recovery phrase backed up. PDF attachments are separate from spreadsheet import.
 
+## Defaults for a new expense
+
+The variable symbol follows the digits in the document number, including leading zeros. The delivery date follows the received date. Editing either default manually stops that link. Explicit values extracted from an attachment are preserved; existing expenses keep their saved values.
+
 ## Expense list summary
 
 The summary below **Expenses** covers every document matching the current filters, across all pages. It shows the count, total and unpaid expense total. Selecting rows does not change it. Each currency has its own totals.
