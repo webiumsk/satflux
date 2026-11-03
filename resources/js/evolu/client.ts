@@ -3,7 +3,7 @@ import { createUseEvolu } from "@evolu/vue";
 import { evoluTransports } from "./config";
 import { withCompanyOwnerScoping } from "./ownerScope";
 import { createEvoluWebDepsWithReloadGuard } from "./reloadGuard";
-import { EVOLU_APP_NAME, InvoicingLocalSchema } from "./schema";
+import { EVOLU_APP_NAME, InvoicingLocalSchema, type ExpenseId } from "./schema";
 
 const rawEvolu = createEvolu(createEvoluWebDepsWithReloadGuard())(InvoicingLocalSchema, {
     name: SimpleName.orThrow(EVOLU_APP_NAME),
@@ -282,6 +282,14 @@ export const allExpensesQuery = evolu.createQuery((db) =>
         .$narrowType<{ internalNumber: kysely.NotNull }>()
         .orderBy("createdAt"),
 );
+
+/** Check an exact write target, including tombstones hidden by the list query. */
+export function expenseByIdIncludingDeletedQuery(id: ExpenseId) {
+    return evolu.createQuery((db) => db
+        .selectFrom("expense")
+        .select([...expenseColumns, "isDeleted"])
+        .where("id", "=", id));
+}
 
 const expenseAttachmentColumns = [
     "id",

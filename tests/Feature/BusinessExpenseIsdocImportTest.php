@@ -17,8 +17,12 @@ use App\Services\Invoicing\BusinessDocumentIsdocService;
 use App\Services\Invoicing\BusinessDocumentPdfService;
 use App\Services\Invoicing\BusinessExpenseIsdocImportService;
 use App\Services\Invoicing\BusinessExpenseIsdocQuotaService;
+use App\Services\Invoicing\BusinessExpenseService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -292,5 +296,89 @@ class BusinessExpenseIsdocImportTest extends TestCase
         $response->assertJsonPath('data.external_number', 'FV20261234');
         $this->assertNotEmpty($response->json('data.attachment_path'));
         $this->assertNotEmpty($response->json('data.internal_number'));
+    }
+
+    #[Test]
+    public function legacy_import_rechecks_quota_before_persisting_an_expense_or_file(): void
+    {
+        Storage::fake('local');
+        config(['invoicing.expense_isdoc_extract_free_limit' => 1]);
+        $this->mock(BusinessExpenseIsdocImportService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('extractFromUpload')->once()->andReturnUsing(function () {
+                AuditLog::log(BusinessExpenseIsdocQuotaService::EXTRACT_ACTION, 'business_expense', null, ['billing' => 'free'], $this->user->id);
+
+                return ['issue_date' => '2026-06-01', 'total' => 12.5, 'currency' => 'EUR'];
+            });
+        });
+        $this->actingAs($this->user)->postJson("/api/invoicing/companies/{$this->company->id}/expenses/import", [
+            'file' => UploadedFile::fake()->createWithContent('synthetic.pdf', "%PDF-1.4\n%%EOF\n"),
+        ])->assertUnprocessable()->assertJsonValidationErrors('quota');
+        $this->assertDatabaseCount('business_expenses', 0);
+        $this->assertDatabaseCount('business_expense_attachments', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+    }
+
+    #[Test]
+    public function legacy_import_failure_removes_only_its_new_directory_and_rolls_back_rows_and_usage(): void
+    {
+        Storage::fake('local');
+        $sentinel = "companies/{$this->company->id}/expenses/".Str::uuid().'/sentinel.txt';
+        Storage::disk('local')->put($sentinel, 'preserve');
+        $this->mock(BusinessExpenseIsdocImportService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('extractFromUpload')->once()->andReturn(['issue_date' => '2026-06-01', 'total' => 12.5, 'currency' => 'EUR']);
+        });
+        AuditLog::creating(function (AuditLog $audit) {
+            if ($audit->action === BusinessExpenseIsdocQuotaService::EXTRACT_ACTION) {
+                throw new \RuntimeException('Synthetic audit failure.');
+            }
+        });
+        $this->withoutExceptionHandling();
+        try {
+            $this->actingAs($this->user)->postJson("/api/invoicing/companies/{$this->company->id}/expenses/import", [
+                'file' => UploadedFile::fake()->createWithContent('synthetic.pdf', "%PDF-1.4\n%%EOF\n"),
+            ]);
+            $this->fail('The synthetic persistence failure must propagate.');
+        } catch (\RuntimeException $error) {
+            $this->assertSame('Synthetic audit failure.', $error->getMessage());
+        }
+        $this->assertDatabaseCount('business_expenses', 0);
+        $this->assertDatabaseCount('business_expense_attachments', 0);
+        $this->assertSame(0, AuditLog::where('action', BusinessExpenseIsdocQuotaService::EXTRACT_ACTION)->count());
+        $this->assertSame([$sentinel], Storage::disk('local')->allFiles());
+        $this->assertSame('preserve', Storage::disk('local')->get($sentinel));
+    }
+
+    #[Test]
+    public function legacy_import_never_claims_or_deletes_an_existing_candidate_directory(): void
+    {
+        Storage::fake('local');
+        $candidate = null;
+        $service = app(BusinessExpenseService::class);
+        $this->mock(BusinessExpenseIsdocImportService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('extractFromUpload')->once()->andReturn(['issue_date' => '2026-06-01', 'total' => 12.5, 'currency' => 'EUR']);
+        });
+        $this->mock(BusinessExpenseService::class, function (MockInterface $mock) use ($service, &$candidate) {
+            $mock->shouldReceive('create')->once()->andReturnUsing(function (...$arguments) use ($service, &$candidate) {
+                $expense = $service->create(...$arguments);
+                $candidate = "companies/{$this->company->id}/expenses/{$expense->id}/preexisting.txt";
+                Storage::disk('local')->put($candidate, 'preserve');
+
+                return $expense;
+            });
+            $mock->shouldNotReceive('storeAttachment');
+        });
+        $this->withoutExceptionHandling();
+        try {
+            $this->actingAs($this->user)->postJson("/api/invoicing/companies/{$this->company->id}/expenses/import", [
+                'file' => UploadedFile::fake()->createWithContent('synthetic.pdf', "%PDF-1.4\n%%EOF\n"),
+            ]);
+            $this->fail('An existing candidate directory must be rejected.');
+        } catch (\LogicException $error) {
+            $this->assertSame('The new expense attachment directory already exists.', $error->getMessage());
+        }
+        $this->assertDatabaseCount('business_expenses', 0);
+        $this->assertDatabaseCount('business_expense_attachments', 0);
+        $this->assertSame('preserve', Storage::disk('local')->get($candidate));
+        $this->assertSame(0, AuditLog::where('action', BusinessExpenseIsdocQuotaService::EXTRACT_ACTION)->count());
     }
 }

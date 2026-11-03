@@ -14,6 +14,7 @@ use App\Services\Invoicing\BusinessExpenseIsdocImportService;
 use App\Services\Invoicing\BusinessExpenseIsdocPackService;
 use App\Services\Invoicing\BusinessExpenseIsdocQuotaService;
 use App\Services\Invoicing\BusinessExpenseService;
+use App\Support\Invoicing\BusinessExpenseListSummary;
 use App\Support\Invoicing\ExpenseAttachmentMime;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,29 +36,34 @@ class BusinessExpenseController extends Controller
 
     public function index(Request $request, Company $company): JsonResponse
     {
-        $expenses = $this->expenseService->filteredQuery($company, $request)
-            ->select([
-                'id',
-                'company_id',
-                'status',
-                'internal_number',
-                'external_number',
-                'title',
-                'variable_symbol',
-                'issue_date',
-                'delivery_date',
-                'due_date',
-                'paid_at',
-                'total',
-                'currency',
-                'internal_note',
-                'attachment_path',
-            ])
-            ->orderByDesc('issue_date')
-            ->orderByDesc('created_at')
-            ->paginate($request->integer('per_page', 25));
+        $query = $this->expenseService->filteredQuery($company, $request);
 
-        return response()->json($expenses);
+        return BusinessExpenseListSummary::withinSnapshot($query, function () use ($query, $request) {
+            $summary = BusinessExpenseListSummary::fromQuery($query);
+            $expenses = $query
+                ->select([
+                    'id',
+                    'company_id',
+                    'status',
+                    'internal_number',
+                    'external_number',
+                    'title',
+                    'variable_symbol',
+                    'issue_date',
+                    'delivery_date',
+                    'due_date',
+                    'paid_at',
+                    'total',
+                    'currency',
+                    'internal_note',
+                    'attachment_path',
+                ])
+                ->orderByDesc('issue_date')
+                ->orderByDesc('created_at')
+                ->paginate($request->integer('per_page', 25));
+
+            return response()->json(array_merge($expenses->toArray(), ['summary' => $summary]));
+        });
     }
 
     public function bulk(BulkBusinessExpenseRequest $request, Company $company): JsonResponse|Response
@@ -181,23 +187,40 @@ class BusinessExpenseController extends Controller
 
         $draft = $this->isdocImportService->extractFromUpload($request->file('file'));
 
-        $expense = $this->expenseService->create(
-            $company,
-            $draft,
-            $request->boolean('mark_paid'),
-        );
+        $expense = $this->isdocQuotaService->withExtractionQuotaLock($user, function ($lockedUser) use ($company, $draft, $request) {
+            $ownedDirectory = null;
+            try {
+                $expense = $this->expenseService->create(
+                    $company,
+                    $draft,
+                    $request->boolean('mark_paid'),
+                );
+                $directory = "companies/{$company->id}/expenses/{$expense->id}";
+                if (Storage::disk('local')->exists($directory)) {
+                    throw new \LogicException('The new expense attachment directory already exists.');
+                }
+                $ownedDirectory = $directory;
+                $expense = $this->expenseService->storeAttachment($expense, $request->file('file'));
+                $this->isdocQuotaService->recordExtraction($lockedUser, $expense->id, $company->id);
 
-        $expense = $this->expenseService->storeAttachment($expense, $request->file('file'));
+                AuditLog::log('business_expense.imported', 'business_expense', $expense->id, [
+                    'company_id' => $company->id,
+                    'source' => 'isdoc',
+                    'internal_number' => $expense->internal_number,
+                ]);
+                $expense->load('attachments');
 
-        $this->isdocQuotaService->recordExtraction($user, $expense->id, $company->id);
+                return $expense;
+            } catch (\Throwable $error) {
+                // Only a failed callback owns this cleanup. An uncertain commit
+                // or a later caller-owned rollback needs caller recovery.
+                if ($ownedDirectory !== null) {
+                    Storage::disk('local')->deleteDirectory($ownedDirectory);
+                }
 
-        AuditLog::log('business_expense.imported', 'business_expense', $expense->id, [
-            'company_id' => $company->id,
-            'source' => 'isdoc',
-            'internal_number' => $expense->internal_number,
-        ]);
-
-        $expense->load('attachments');
+                throw $error;
+            }
+        });
 
         return response()->json([
             'data' => $expense,

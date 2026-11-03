@@ -1,5 +1,91 @@
 # Development roadmap
 
+## Current: publish accepted PDF recovery and quota follow-up - 2026-11-03
+
+Six findings after green2567fed4 CI are fixed with user-locked quota accounting,
+owned pre-commit cleanup, tombstone-aware retry, visible errors, protected
+extraction and stale-state guards. Independent QA/security accept the same16-file
+source; actual PG13/129, SQLite52/360, focused55 and full1228frontend pass.
+Publish on PR426, resolve confirmed threads and verify fresh exact-head CI.
+Keep prices, purchases, bulk, recovery and unrelated work unchanged. Merge and
+actual deployment retain their separate owner gates.
+
+## Current: publish the reviewed individual expense PDF upload repair - 2026-11-03
+
+Fix local company IDs reaching legacy UUID routes with an authenticated company-
+free ISDOC bridge, early UUID validation and local form/detail persistence.
+Keep encryption, consent, quota policy,384KiB attachment cap and server ownership;
+leave bulk import and purchases unchanged. Independent security and QA accept the
+same frozen source after32frontend,13extra probes and47PHP/323assertions.
+Full frontend passes 1,205 cases across 151 files. Publish on PR #426 and verify fresh
+exact-head CI. Preserve all recovery/unrelated work; merge/deployment stay separate.
+
+## Current: close expense snapshot fixture URL routing bypass - 2026-11-03
+
+Snapshot/year repair `6b07e900` has four green CI jobs and six resolved threads.
+Fix the newly confirmed test-only URL/routing target override with allowlisted
+configuration, effective/actual identity proof before DDL and ownership-gated
+cleanup. Add configuration-only poison-target regressions; preserve runtime
+source. Independently review, publish to PR #426 and verify the new head's CI.
+No actual expense import, PR merge or deployment is included.
+
+Final independent QA/security accept the exact three-test-file guard. Pure
+unit 9 / 59, SQLite 11 / 124 and PostgreSQL 11 / 155 pass, with driver skips;
+production source is unchanged and dedicated test infrastructure is removed.
+Next is reviewed branch publication and fresh exact-head CI.
+
+## Current: publish the reviewed expense snapshot and year repairs - 2026-11-03
+
+The prior summary head `a1b1c32b` has four green CI jobs. Address the two newer
+CodeRabbit findings on the same PR #426: reset page/selection for either year
+control, and keep summary/count/page serialization in one stable database read.
+Use the accepted PostgreSQL/SQLite design and independent concurrency/recovery
+reviews. Publish the bounded repair and verify fresh exact-head CI, including
+full PHPStan with locked dependencies. Local PostgreSQL evidence remains
+separate from normal SQLite CI. Preserve original backup and unrelated work;
+PR merge and deployment require their existing owner gate.
+
+## Current: publish reviewed cross-session expense summary follow-up - 2026-11-03
+
+The owner-provided27-file candidate is adopted after manifest reconciliation,
+new type-boundary/currency fallback fixes and independent security/QA acceptance.
+The footer sums the entire current company/filter result across pages, keeps
+currencies separate and reports whole unpaid documents as selected by the owner.
+Receiving checks pass1171frontend cases,39focusedPHP/259assertions, fullPHPStan,
+Pint, typecheck with unchanged baseline, lint/locales/build/API and four browser
+scenarios. Publish to existing PR426, resolve verified review findings and verify
+fresh exact-head CI. Keep immutable backup/primary work; no PR merge/deployment.
+
+## Current: verify expense-import CI after removing one stale PHPStan ignore - 2026-11-02
+
+All2555 PHP tests and Pint pass on a64f0bed; full PHPStan alone rejects an obsolete
+arrayFilter.same baseline entry. A one-entry removal preserves the analysis
+ratchet and all runtime source. Independent QA accepts the exact delta; full
+local analysis reproduces before/fixes after. Publish this bounded repair and
+verify the fresh exact-head CI result. PR merge and deployment remain separate.
+
+## Current: verify expense import PR after documentation reconciliation - 2026-11-02
+
+Owner-authorized conflict repair brings master `86e77e81` into the feature
+branch while preserving the expense-import and upstream project records.
+Verify the three-file documentation resolution, push without force and confirm
+PR #426 is mergeable. Retain original source review/test evidence separately
+from fresh CI on the synchronized head. No PR merge or deployment is authorized.
+
+## Ready: reviewed expense import for owner review - 2026-11-02
+
+Owner-authorized expense import is implemented on
+`feat/superfaktura-expense-import`, base `9dfc4166`, in its retained named
+worktree. Automatic current SuperFaktura 33-column mapping, original dates and
+identifiers, private metadata, conservative payment status, company duplicates
+and accessible import/result UI are independently accepted by QA/security.
+Private52-row dry run, PHP51/294 plus docs8/26, lint/typecheck/locales/build,
+scoped PHPStan/Pint and API contract checks pass. The full frontend suite passes
+1,132 cases across147 files with two workers. Preserve the reviewed local source
+for owner review. No actual data
+import, external repository write, publication, merge or deployment is performed.
+Keep the existing primary edits and other initiatives untouched.
+
 ## Current: restore stalled Chorala changelog synchronization - 2026-11-02
 
 Independent QA/security accept the comparison-only CRLF fix, preserving stored

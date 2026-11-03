@@ -14,6 +14,7 @@
       :extracting="extracting"
       :purchasing="purchasing"
       :quota="quota"
+      :allow-purchases="!localFirst"
       @close="skipExtract"
       @skip="onSkipExtract"
       @confirm="onConfirmExtract"
@@ -115,7 +116,7 @@
         :selected-pending-id="selectedPendingId"
         :preview-url="previewUrl"
         :preview-kind="previewKind"
-        :detecting="detecting"
+        :detecting="detecting || saving || extracting"
         :detect-error="detectErrorMessage"
         :has-isdoc="lastDetectHasIsdoc"
         @file-selected="onFileSelected"
@@ -131,9 +132,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import { sqliteTrue } from '@evolu/common';
 import ExpenseAttachmentPanel from '../../components/invoicing/ExpenseAttachmentPanel.vue';
 import ExpenseIsdocExtractModal from '../../components/invoicing/ExpenseIsdocExtractModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
@@ -146,7 +148,10 @@ import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompan
 import { useInvoicingExpense } from '../../composables/useInvoicingExpenses';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import { insertLocalExpense, updateLocalExpense } from '../../evolu/expenseCrud';
+import { expenseByIdIncludingDeletedQuery } from '../../evolu/client';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
+import type { EvoluExpenseRow } from '../../evolu/expenseMap';
+import { loadEvoluQueryWithTimeout, toAppRows } from '../../evolu/queryLoad';
 import type { CompanyId, ExpenseId } from '../../evolu/schema';
 import { invoicingApi } from '../../services/api';
 
@@ -158,6 +163,7 @@ const expenseId = computed(() => route.params.expenseId as string | undefined);
 const isNew = computed(() => route.name === 'invoicing-expense-new');
 const localFirst = isInvoicingLocalFirst();
 const expenseResource = useInvoicingExpense(companyId, expenseId);
+const expenseRows = computed(() => toAppRows<EvoluExpenseRow>(expenseResource.expenseRows.value));
 const { defaultCurrency } = useInvoicingCompanySummary();
 
 const {
@@ -183,7 +189,7 @@ const {
   confirmExtract,
   skipExtract,
   uploadAllPendingAttachments,
-} = useExpenseIsdocAttachment(companyId);
+} = useExpenseIsdocAttachment(companyId, expenseId);
 
 const detectErrorMessage = computed(() => {
   if (!detectError.value) return '';
@@ -215,6 +221,15 @@ const expenseLabel = ref('');
 const saving = ref(false);
 const error = ref('');
 const importNotice = ref('');
+const createdLocalExpenseId = ref<string | null>(null);
+let contextGeneration = 0;
+watch([companyId, expenseId], () => {
+  contextGeneration++;
+  createdLocalExpenseId.value = null;
+  saving.value = false;
+  error.value = '';
+}, { flush: 'sync' });
+onUnmounted(() => { contextGeneration++; });
 
 function applyImportDraft(draft: ExpenseImportDraft) {
   if (draft.title) form.value.title = draft.title;
@@ -231,21 +246,28 @@ function applyImportDraft(draft: ExpenseImportDraft) {
 }
 
 async function onFileSelected(file: File) {
+  if (saving.value || extracting.value || detecting.value) return;
   error.value = '';
   await onDocumentSelected(file);
 }
 
 async function onFilesSelected(files: File[]) {
+  if (saving.value || extracting.value || detecting.value) return;
   error.value = '';
   await onDocumentsSelected(files);
 }
 
 async function onConfirmExtract() {
+  const capturedGeneration = contextGeneration;
+  const requestedCompany = companyId.value;
+  const requestedExpense = expenseId.value;
   error.value = '';
   try {
     const draft = await confirmExtract();
+    if (capturedGeneration !== contextGeneration || requestedCompany !== companyId.value || requestedExpense !== expenseId.value) return;
     if (draft) applyImportDraft(draft);
   } catch (e: unknown) {
+    if (capturedGeneration !== contextGeneration) return;
     const err = e as { response?: { data?: { errors?: { quota?: string[] }; message?: string } } };
     const quotaMsg = err?.response?.data?.errors?.quota?.[0];
     error.value = quotaMsg || err?.response?.data?.message || t('invoicing.expense_extract_failed');
@@ -309,6 +331,12 @@ async function loadExpense() {
 }
 
 async function save() {
+  if (saving.value || extracting.value || detecting.value) return;
+  const requestedCompany = companyId.value;
+  const requestedExpense = expenseId.value;
+  const requestedNew = isNew.value;
+  const capturedGeneration = contextGeneration;
+  const stillCurrent = () => capturedGeneration === contextGeneration && requestedCompany === companyId.value && requestedExpense === expenseId.value && requestedNew === isNew.value;
   error.value = '';
   if (!form.value.issue_date) {
     error.value = t('validation.required');
@@ -331,24 +359,32 @@ async function save() {
       mark_paid: isNew.value ? form.value.mark_paid : undefined,
     };
     let savedId: string;
-    if (localFirst && expenseResource.evolu) {
-      if (isNew.value) {
+    if (localFirst) {
+      if (!expenseResource.evolu) throw new Error(t('errors.generic'));
+      if (requestedNew && !createdLocalExpenseId.value) {
         const result = insertLocalExpense(
           expenseResource.evolu,
-          companyId.value as CompanyId,
+          requestedCompany as CompanyId,
           payload,
-          expenseResource.expenseRows.value,
+          expenseRows.value,
         );
         if (!result.ok) {
           error.value = t('errors.generic');
           return;
         }
         savedId = result.value.id;
+        createdLocalExpenseId.value = savedId;
       } else {
-        const current = expenseResource.expenseRows.value.find((row) => row.id === expenseId.value);
+        const targetId = requestedNew ? createdLocalExpenseId.value! : requestedExpense!;
+        const targets = await loadEvoluQueryWithTimeout(expenseResource.evolu, expenseByIdIncludingDeletedQuery(targetId as ExpenseId));
+        if (!stillCurrent()) return;
+        const current = toAppRows<EvoluExpenseRow & { isDeleted: number | null }>(targets).find((row) => row.id === targetId);
+        if (!current || current.companyId !== requestedCompany || current.isDeleted === sqliteTrue) {
+          throw new Error('expense_unavailable');
+        }
         const result = updateLocalExpense(
           expenseResource.evolu,
-          expenseId.value! as ExpenseId,
+          targetId as ExpenseId,
           payload,
           current ?? null,
         );
@@ -356,25 +392,32 @@ async function save() {
           error.value = t('errors.generic');
           return;
         }
-        savedId = expenseId.value!;
+        savedId = targetId;
       }
+      await uploadAllPendingAttachments(savedId);
+      if (!stillCurrent()) return;
       await router.push(expenseShowTo(savedId));
       return;
     }
-    if (isNew.value) {
-      const created = await invoicingApi.expenses.create<{ id: string }>(companyId.value, payload);
+    if (requestedNew) {
+      const created = await invoicingApi.expenses.create<{ id: string }>(requestedCompany, payload);
       savedId = created.id;
     } else {
-      await invoicingApi.expenses.update(companyId.value, expenseId.value!, payload);
-      savedId = expenseId.value!;
+      await invoicingApi.expenses.update(requestedCompany, requestedExpense!, payload);
+      savedId = requestedExpense!;
     }
+    if (!stillCurrent()) return;
     await uploadAllPendingAttachments(savedId);
+    if (!stillCurrent()) return;
     await router.push(expenseShowTo(savedId));
   } catch (e: unknown) {
+    if (!stillCurrent()) return;
     const err = e as { response?: { data?: { message?: string } } };
-    error.value = err?.response?.data?.message || t('errors.generic');
+    error.value = e instanceof Error && e.message === 'expense_unavailable'
+      ? t('invoicing.expense_unavailable')
+      : err?.response?.data?.message || t('errors.generic');
   } finally {
-    saving.value = false;
+    if (stillCurrent()) saving.value = false;
   }
 }
 

@@ -1,5 +1,139 @@
 # Development decision log
 
+## 2026-11-03 - Preserve quota and document state across PDF retries
+
+Serialize final quota accounting on one actual connection after parsing and
+before legacy persistence. Preserve free/purchased/unlimited priorities and
+prices. Use owned PG Read Committed, supported nested savepoints and fail-closed
+connection/isolation checks. Clean only a verified fresh directory on ordinary
+callback failure before commit; no automatic file-callback retries or uncertain-
+commit cleanup. Outer callers retain their recovery responsibilities.
+
+Query local targets including tombstones, expose attachment-only retry, block
+active extraction dismissal and suppress stale detail state. Clarify five guides.
+Architecture/security/QA accept the bounded design and final16-source manifest;
+real-PG contention and synthetic UI/file recovery checks pass. Publish reviewed
+changes and require fresh exact-head CI. No policy expansion, real import,
+PR merge or deployment follows.
+
+## 2026-11-03 - Keep local expense PDFs out of server company UUID lookups
+
+The owner confirms the individual attachment form, so leave bulk PDF/ZIP import
+unchanged. Add only company-free, session-authenticated ISDOC detection/extraction/
+quota routes with existing plan gates, parser limits and user quota. Omit local
+document identity from audit metadata; do not create a shadow server company.
+Retain company ownership on legacy routes and reject malformed UUIDs before SQL.
+
+Require consent before temporary plaintext processing and preserve attachment-
+only use on decline. Store files and extracted edits through Evolu, including new
+form save and detail refresh. Validate the existing size cap before transfer,
+guard stale contexts and preserve retry progress. Verify ownership from actual
+Evolu rows rather than inventing a field in the API-shaped adapter. Hide only the
+unsupported local company-bound pack action; no billing/purchase policy changes.
+Architecture/security/QA accept the bounded design before implementation; require
+independent final source reviews, existing ratchets and exact-head CI before
+reporting publication as verified. Merge and deployment remain separate gates.
+
+Both reviewers accept the final14-file source manifest after the corrected
+real-adapter ownership test and deferred-save busy guard. Main publishes only
+that reviewed scope; no raw merchant identifiers or PDF fixtures enter source.
+
+## 2026-11-03 - Verify fixture targets after removing inherited routing
+
+The snapshot/year runtime repair passes complete CI, but its new fixture copies
+raw connection URLs that Laravel parses after the database-name guard. Treat the
+confirmed CodeRabbit finding as test safety, not a reason to change production
+snapshot code. Construct allowlisted settings without URL/read/write routing;
+verify effective and actual driver/database before DDL. Cleanup requires owned,
+verified fixture state even when setup fails. Prove poison configurations without
+opening their targets. Existing isolated runs and fresh-head CI remain distinct;
+require independent security/QA review before publishing the test-only follow-up.
+
+Both reviewers accept the same three-file manifest after pure configuration and
+isolated PostgreSQL checks. Retain all accepted runtime code and analysis gates;
+remove the dedicated test infrastructure only after the independent run finishes.
+
+## 2026-11-03 - Keep each expense list response within one stable read
+
+Confirm the two new CodeRabbit findings after the prior summary head passes CI.
+Reset page and selection before changing the year for desktop and mobile.
+Bind summary, count, page rows and response serialization to the query's actual
+connection. A plain PostgreSQL Read Committed transaction is insufficient.
+
+Architecture, independent security and QA accept transaction-scoped PostgreSQL
+Repeatable Read / Read Only for owned reads and managed savepoints for existing
+stable transactions. Reject weaker outer isolation before expense queries;
+do not upgrade caller transactions or alter session defaults. Preserve normal
+SQLite deferred transactions and reject uncommitted-read mode. Ordinary SQL
+errors roll back the owned level; PostgreSQL serialization/deadlock failures
+retain the caller's Laravel rollback/retry requirements. No schema, tenant,
+auth, payment or dependency change follows. Require deterministic concurrent
+writer and later-response regressions on disposable SQLite/PostgreSQL, followed
+by independent reviews and fresh exact-head CI. No merge or deployment follows.
+
+## 2026-11-03 - Adopt the verified expense-summary handoff without rollback
+
+The owner hands off27uncommitted paths and verified recovery evidence. Compare
+all live and backup hashes before adoption, preserve the immutable snapshot and
+review current code rather than restoring files over shared work. Existing
+publication authorization continues on PR426 after final receiving reviews.
+
+Retain the owner's whole-unpaid-document total, company/filter scope, all-page
+aggregation and separate currencies. Exact BCMath/integer cents avoid mixed or
+rounded totals. Invalid legacy currency identifiers receive exact decimal/literal
+display without rewriting stored data. Repair existing typed boundaries using
+established app-row adapters; do not regenerate the baseline, alter encryption
+or broaden query selection. Independent security/QA accept the frozen source.
+Publish reviewed code and a combined PR426 changelog fragment; fresh exact-head
+CI remains required. PR merge, real expense import and deployment stay separate.
+
+## 2026-11-02 - Shrink the PHPStan baseline after expense import cleanup
+
+Treat the failed PHP job precisely: tests and Pint pass, while full analysis
+rejects one no-longer-matching arrayFilter.same ignore for the expense importer.
+Remove only that stale one-count baseline entry. Preserve every other entry,
+level5, unmatched-ignore checks, CI commands and application/test source.
+Use full-project analysis rather than relying on scoped results, reproduce the
+old failure and verify the corrected result before publication. Independent QA
+checks the exact ratchet decrease; fresh CI must verify the published head.
+No new feature scope, PR merge, release or deployment follows this repair.
+
+## 2026-11-02 - Preserve both histories when resolving expense-import documentation
+
+The owner's instruction authorizes repairing and pushing PR #426's conflicts.
+Bring current master `86e77e81` into the existing feature branch without rewriting
+published history. Keep all expense-import and upstream milestone records;
+resolve only the three conflicting project documents. Existing implementation
+reviews continue to apply to unchanged expense source. Distinguish the feature
+branch synchronization from merging the PR into master or deploying the feature.
+
+## 2026-11-02 - Extend the existing expense importer for current SuperFaktura exports
+
+The owner's explicit request authorizes bounded Satflux implementation.
+Extend existing local/server import and expose Expenses alongside invoices on
+company Import. Preserve the existing expense schema: extra supplier, category,
+payment and item information belongs in the private note. Do not create supplier
+contacts or line-item relationships from summary exports.
+
+Use original internal numbers for company-scoped duplicate protection; reserve
+explicit numbers later in a batch before generating numbers. Without an internal
+number, legitimate identical costs must remain possible, so do not deduplicate
+by a content hash. Reimporting such rows creates new records.
+
+Keep historical paid dates atomically. With a supplied payment amount, only
+sufficient same-currency payment implies fully paid; unresolved FX/partial
+evidence stays in notes with recorded status. Legacy date-only imports retain
+their paid behavior. Never infer exchange-rate direction.
+
+Preserve local-first encryption and fail closed without local context. Load
+duplicate state before writes, guard stale previews/concurrent submits, and
+show results before navigation. Keep original invoice date regression coverage
+while fixing numeric typing, formula handling and CSV delimiter recognition.
+QA/security independently accept. Private workbook inspection stays with the
+coordinator; only structural facts and synthetic fixtures enter source/reports.
+No actual import, external repository write, billing change, publication,
+merge or deployment follows this implementation authorization.
+
 ## 2026-11-02 - Compare changelog CRLF without rewriting immutable state
 
 Public read-only evidence isolates the stalled automation to CRLF body line

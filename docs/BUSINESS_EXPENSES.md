@@ -39,7 +39,31 @@ Workflow: duplicate recurring expense, fill total and external number, upload at
 
 **Delete:** UI cancel sets `status = cancelled` and `cancelled_at`. The expense disappears from the list; attachments stay until the retention job hard-deletes the row and files (see [DATA_RETENTION.md](DATA_RETENTION.md), `DATA_RETENTION_CANCELLED_EXPENSES_DAYS`, default 90 days).
 
-## ISDOC import (0.2, SuperFaktúra-style)
+## Spreadsheet import
+
+Company **Tools > Import** now offers invoices and expenses. Expenses also retain
+their list import action. XLSX, XLS and CSV use automatic mapping for the current
+33-column SuperFaktura export, including internal document numbers, Excel serial
+dates, supplier/payment metadata and item descriptions. Extra fields are retained
+as labeled text in the private note; supplier contacts and item relations are not
+created. See [the user guide](user/en/import-expenses.md) and
+[implementation/review evidence](development/EXPENSE_IMPORT_IMPLEMENTATION.md).
+
+Local-first import parses and stores data entirely in the browser; the existing
+server importer keeps company ownership and authentication checks. Both preserve
+historical payment dates, reject invalid/overlong rows, and skip existing explicit
+internal numbers within the company. Generated numbers reserve explicit numbers
+later in the same file. Reimporting rows without internal numbers creates new
+expenses. Successful imports retain their result summary and offer an all-years
+list, so historical expenses are visible.
+
+When payment amount is supplied, only sufficient same-currency payment implies
+paid status. Partial/cross-currency evidence remains in notes with recorded status;
+exchange direction is not guessed. Legacy payment-date-only files retain their
+paid behavior. Limits are 10 MB, 2,000 rows and 256 columns. Formula text is never
+calculated or accepted as a core amount/date.
+
+## ISDOC extraction
 
 **Dependency:** embedded ISDOC in PDF requires `smalot/pdfparser` (declared in root `composer.json`). After deploy run `composer install` so PDF detection works; without it uploads succeed but `has_isdoc` is always false.
 

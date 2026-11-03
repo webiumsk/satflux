@@ -43,6 +43,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 
 class AppServiceProvider extends ServiceProvider
@@ -213,7 +214,11 @@ class AppServiceProvider extends ServiceProvider
     {
         // Root bindings (UUID lookup; ownership enforced by middleware)
         Route::bind('store', fn ($value) => Store::where('id', $value)->firstOrFail());
-        Route::bind('company', fn ($value) => Company::where('id', $value)->firstOrFail());
+        Route::bind('company', function ($value) {
+            abort_unless(is_string($value) && Str::isUuid($value), 404);
+
+            return Company::where('id', $value)->firstOrFail();
+        });
         Route::bind('connection', fn ($value) => WalletConnection::where('id', $value)->firstOrFail());
 
         // Children scoped to {company}

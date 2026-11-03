@@ -8,14 +8,15 @@
     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
     role="dialog"
     aria-modal="true"
-    @click.self="$emit('close')"
+    @click.self="requestClose"
   >
     <div class="bg-white rounded-lg shadow-xl w-full max-w-xl p-6 relative max-h-[90vh] overflow-y-auto">
       <button
         type="button"
         class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-2xl leading-none"
         :aria-label="t('common.close')"
-        @click="$emit('close')"
+        :disabled="extracting"
+        @click="requestClose"
       >
         ×
       </button>
@@ -69,7 +70,7 @@
       </div>
 
       <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-end">
-        <button type="button" class="invoicing-btn-secondary" :disabled="extracting" @click="$emit('skip')">
+        <button type="button" class="invoicing-btn-secondary" :disabled="extracting" @click="requestSkip">
           {{ t('invoicing.expense_isdoc_extract_skip') }}
         </button>
         <button
@@ -112,6 +113,7 @@ const props = defineProps<{
   extracting?: boolean;
   purchasing?: boolean;
   quota: IsdocExtractQuota | null;
+  allowPurchases?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -123,7 +125,15 @@ const emit = defineEmits<{
 
 const dialogRoot = ref<HTMLElement | null>(null);
 const dialogTitleId = useId();
-const { onDialogKeydown } = useDialogFocus(dialogRoot, () => props.open, () => emit('close'));
+const { onDialogKeydown } = useDialogFocus(dialogRoot, () => props.open, requestClose);
+
+function requestClose() {
+  if (!props.extracting) emit('close');
+}
+
+function requestSkip() {
+  if (!props.extracting) emit('skip');
+}
 
 const { t } = useI18n();
 const { purchases } = useEffectiveAccess();
@@ -132,7 +142,7 @@ const showPacks = ref(false);
 
 const canExtract = computed(() => props.quota?.can_extract ?? true);
 
-const packs = computed(() => purchases.value.isdoc_packs ? props.quota?.packs ?? [] : []);
+const packs = computed(() => props.allowPurchases !== false && purchases.value.isdoc_packs ? props.quota?.packs ?? [] : []);
 
 const showTopupLink = computed(
   () => !props.quota?.unlimited && packs.value.length > 0 && canExtract.value,
@@ -160,7 +170,9 @@ const bodyText = computed(() => {
     return t('invoicing.expense_isdoc_detected_body_unlimited');
   }
   if (!canExtract.value) {
-    return t('invoicing.expense_isdoc_quota_exceeded');
+    return t(props.allowPurchases === false
+      ? 'invoicing.expense_isdoc_quota_exceeded_local'
+      : 'invoicing.expense_isdoc_quota_exceeded');
   }
   const freeRemaining = props.quota?.free_remaining ?? props.quota?.remaining ?? 0;
   const freeLimit = props.quota?.free_limit ?? props.quota?.limit ?? 20;

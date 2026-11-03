@@ -4,8 +4,7 @@ import {
     allDocumentsQuery,
     allRecurringProfilesQuery,
 } from "./client";
-import type { CompanyId, DocumentId, InvoicingLocalSchema, RecurringProfileId } from "./schema";
-import type { EvoluCompanyRow } from "./companyMap";
+import type { InvoicingLocalSchema } from "./schema";
 
 export { isKnownStoreId } from "./storeIdUtils";
 
@@ -23,9 +22,9 @@ export async function sanitizeLocalStoreReferences(
     validStoreIds: ReadonlySet<string>,
 ): Promise<SanitizeStoreReferencesResult> {
     const [companies, documents, recurringProfiles] = await Promise.all([
-        evolu.loadQuery(allCompaniesQuery) as Promise<EvoluCompanyRow[]>,
-        evolu.loadQuery(allDocumentsQuery) as Promise<Array<{ id: DocumentId; storeId: string | null }>>,
-        evolu.loadQuery(allRecurringProfilesQuery) as Promise<Array<{ id: RecurringProfileId; storeId: string | null }>>,
+        evolu.loadQuery(allCompaniesQuery),
+        evolu.loadQuery(allDocumentsQuery),
+        evolu.loadQuery(allRecurringProfilesQuery),
     ]);
 
     let clearedCompanyLinks = 0;
@@ -33,10 +32,13 @@ export async function sanitizeLocalStoreReferences(
     let clearedRecurringStores = 0;
 
     for (const company of companies) {
-        const linked = company.linkedStoreId?.trim();
+        // Lightweight company rows may omit this optional detail column.
+        const linked = "linkedStoreId" in company && typeof company.linkedStoreId === "string"
+            ? company.linkedStoreId.trim()
+            : undefined;
         if (linked && !validStoreIds.has(linked)) {
             evolu.update("company", {
-                id: company.id as CompanyId,
+                id: company.id,
                 linkedStoreId: null,
             });
             clearedCompanyLinks += 1;

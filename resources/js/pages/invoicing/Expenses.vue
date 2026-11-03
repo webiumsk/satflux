@@ -24,7 +24,7 @@
             <select
               v-model="year"
               class="invoicing-sf-input w-full"
-              @change="load"
+              @change="onYearChange"
             >
               <option v-for="y in yearOptions" :key="y" :value="y">{{ yearLabel(y) }}</option>
             </select>
@@ -68,7 +68,7 @@
               <select
                 v-model="year"
                 class="invoicing-filter invoicing-filter--idle appearance-none pr-7 cursor-pointer"
-                @change="load"
+                @change="onYearChange"
               >
                 <option v-for="y in yearOptions" :key="y" :value="y">{{ yearLabel(y) }}</option>
               </select>
@@ -110,7 +110,12 @@
     <EfakturaInboxPanel v-if="localFirst" :company-id="companyId" @imported="load" />
 
     <p v-if="success" class="text-sm text-green-700 mb-4">{{ success }}</p>
-    <p v-if="error" class="text-sm text-red-700 mb-4">{{ error }}</p>
+    <div v-if="error" role="alert" class="mb-4 text-sm text-red-700">
+      <p>{{ error }}</p>
+      <button type="button" class="invoicing-btn-secondary mt-2" @click="load">
+        {{ t('common.retry') }}
+      </button>
+    </div>
 
     <InvoicingMobileBulkBar
       :open="selectionCount > 0"
@@ -127,12 +132,12 @@
 
     <div v-if="loading" class="invoicing-muted py-8">{{ t('common.loading') }}</div>
 
-    <div v-else-if="expenses.length === 0" class="invoicing-card-pad text-center text-gray-600 my-8">
+    <div v-else-if="!error && expenses.length === 0" class="invoicing-card-pad text-center text-gray-600 my-8">
       <p>{{ t('invoicing.expenses_empty') }}</p>
       <p class="text-sm text-gray-500 mt-2">{{ t('invoicing.expenses_empty_hint') }}</p>
     </div>
 
-    <div v-else class="invoicing-card overflow-hidden my-8">
+    <div v-else-if="!error" class="invoicing-card overflow-hidden my-8">
       <ExpensesTable
         :rows="expenses"
         :company-id="companyId"
@@ -171,6 +176,12 @@
       </div>
     </div>
 
+    <ExpenseListSummary
+      v-if="!loading && !error && expenses.length > 0 && summary"
+      class="mb-8"
+      :summary="summary"
+    />
+
     <ExpenseImportModal
       :open="showImportModal"
       :company-id="companyId"
@@ -189,12 +200,13 @@
 
 <script setup lang="ts">
 import { asApiError } from "../../utils/apiError";
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import EfakturaInboxPanel from '../../components/invoicing/EfakturaInboxPanel.vue';
 import ExpenseAttachmentImportModal from '../../components/invoicing/ExpenseAttachmentImportModal.vue';
 import ExpenseImportModal from '../../components/invoicing/ExpenseImportModal.vue';
+import ExpenseListSummary from '../../components/invoicing/ExpenseListSummary.vue';
 import ExpensesTable from '../../components/invoicing/ExpensesTable.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
@@ -218,6 +230,7 @@ import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompan
 import { useInvoicingExpenses } from '../../composables/useInvoicingExpenses';
 import { INVOICING_CONTAINER_CLASS, useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import { invoicingApi } from '../../services/api';
+import { summarizeExpenses, type ExpenseSummary } from '../../utils/expenseSummary';
 
 const { t } = useI18n();
 const localFirst = isInvoicingLocalFirst();
@@ -240,8 +253,10 @@ const expenses = ref<ExpenseListRow[]>([]);
 const page = ref(1);
 const lastPage = ref(1);
 const totalCount = ref(0);
+const summary = ref<ExpenseSummary | null>(null);
+let loadEpoch = 0;
 const activeFilter = ref('all');
-const year = ref(new Date().getFullYear());
+const year = ref(route.query.year === 'all' ? 0 : new Date().getFullYear());
 const selectedIds = ref<Set<string>>(new Set());
 const selectAllMode = ref(false);
 
@@ -255,7 +270,7 @@ const statusFilters = [
 const yearOptions = computed(() => {
   const current = new Date().getFullYear();
 
-  return [current, current - 1, current - 2];
+  return [0, current, current - 1, current - 2];
 });
 
 const selectionCount = computed(() => (selectAllMode.value ? totalCount.value : selectedIds.value.size));
@@ -278,6 +293,7 @@ function onMobileFilterClear() {
 const fileActions = new Set(['export_xlsx', 'attachments_zip']);
 
 function yearLabel(y: number) {
+  if (y === 0) return t('invoicing.expense_year_all');
   if (y === new Date().getFullYear()) {
     return t('invoicing.expense_year_this', { year: y });
   }
@@ -300,6 +316,12 @@ function setFilter(id: string) {
   load();
 }
 
+function onYearChange() {
+  page.value = 1;
+  clearSelection();
+  void load();
+}
+
 function changePage(p: number) {
   page.value = p;
   load();
@@ -319,10 +341,38 @@ function openImport(kind: 'excel' | 'pdf') {
 }
 
 function onImported() {
-  showImportModal.value = false;
   showAttachImportModal.value = false;
+  year.value = 0;
+  activeFilter.value = 'all';
+  page.value = 1;
+  clearSelection();
   void load();
 }
+
+watch(() => route.query.year, (value) => {
+  if (value === 'all') {
+    year.value = 0;
+    page.value = 1;
+    void load();
+  }
+});
+
+watch(companyId, (id) => {
+  expenses.value = [];
+  summary.value = null;
+  totalCount.value = 0;
+  lastPage.value = 1;
+  page.value = 1;
+  error.value = '';
+  success.value = '';
+  actionId.value = null;
+  showImportModal.value = false;
+  showAttachImportModal.value = false;
+  showHeaderMenu.value = false;
+  clearSelection();
+  if (id) rememberCompany(id);
+  void load();
+}, { flush: 'sync' });
 
 function toggleRow(id: string) {
   selectAllMode.value = false;
@@ -354,7 +404,7 @@ function clearSelection() {
 function listFilterParams() {
   return {
     filter: activeFilter.value === 'all' ? undefined : activeFilter.value,
-    year: year.value,
+    year: year.value || undefined,
   };
 }
 
@@ -374,6 +424,8 @@ function bulkPayload(action: string) {
 
 async function runBulk(action: string) {
   if (selectionCount.value === 0) return;
+  const actionCompany = companyId.value;
+  const actionEpoch = loadEpoch;
   showHeaderMenu.value = false;
 
   if (action === 'cancel' && !window.confirm(t('invoicing.expense_bulk_delete_confirm'))) return;
@@ -415,6 +467,7 @@ async function runBulk(action: string) {
           skipped: result.skipped,
         });
         await load();
+        if (actionCompany !== companyId.value) return;
         clearSelection();
       }
       return;
@@ -424,6 +477,7 @@ async function runBulk(action: string) {
     const res = isFile
       ? await invoicingApi.expenses.bulkExport(companyId.value, bulkPayload(action))
       : await invoicingApi.expenses.bulk(companyId.value, bulkPayload(action));
+    if (actionCompany !== companyId.value) return;
 
     if (isFile) {
       const names: Record<string, string> = {
@@ -444,12 +498,15 @@ async function runBulk(action: string) {
         skipped: data.skipped ?? 0,
       });
       await load();
+      if (actionCompany !== companyId.value) return;
       clearSelection();
     }
   } catch (rawError) {
+    if (actionCompany !== companyId.value) return;
     const e = asApiError(rawError);
     if (e?.response?.data instanceof Blob) {
       const text = await e.response.data.text();
+      if (actionCompany !== companyId.value) return;
       try {
         const json = JSON.parse(text);
         error.value = json.message || t('common.error');
@@ -460,11 +517,12 @@ async function runBulk(action: string) {
       error.value = e?.response?.data?.message || t('common.error');
     }
   } finally {
-    loading.value = false;
+    if (actionCompany === companyId.value && actionEpoch === loadEpoch) loading.value = false;
   }
 }
 
 async function markPaidRow(expenseId: string) {
+  const actionCompany = companyId.value;
   actionId.value = expenseId;
   error.value = '';
   try {
@@ -474,16 +532,19 @@ async function markPaidRow(expenseId: string) {
       return;
     }
     await invoicingApi.expenses.action(companyId.value, expenseId, 'mark-paid');
+    if (actionCompany !== companyId.value) return;
     await load();
   } catch (rawError) {
+    if (actionCompany !== companyId.value) return;
     const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t('common.error');
   } finally {
-    actionId.value = null;
+    if (actionCompany === companyId.value) actionId.value = null;
   }
 }
 
 async function duplicateRow(expenseId: string) {
+  const actionCompany = companyId.value;
   actionId.value = expenseId;
   error.value = '';
   try {
@@ -503,11 +564,13 @@ async function duplicateRow(expenseId: string) {
       return;
     }
     const res = await invoicingApi.expenses.action<{ id: string }>(companyId.value, expenseId, 'duplicate');
+    if (actionCompany !== companyId.value) return;
     await router.push({
       name: 'invoicing-expense-edit',
       params: { companyId: companyId.value, expenseId: res.id },
     });
   } catch (rawError) {
+    if (actionCompany !== companyId.value) return;
     const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t('common.error');
     actionId.value = null;
@@ -516,6 +579,7 @@ async function duplicateRow(expenseId: string) {
 
 async function cancelRow(expenseId: string) {
   if (!window.confirm(t('invoicing.expense_cancel_confirm'))) return;
+  const actionCompany = companyId.value;
   actionId.value = expenseId;
   error.value = '';
   try {
@@ -525,12 +589,14 @@ async function cancelRow(expenseId: string) {
       return;
     }
     await invoicingApi.expenses.delete(companyId.value, expenseId);
+    if (actionCompany !== companyId.value) return;
     await load();
   } catch (rawError) {
+    if (actionCompany !== companyId.value) return;
     const e = asApiError(rawError);
     error.value = e?.response?.data?.message || t('common.error');
   } finally {
-    actionId.value = null;
+    if (actionCompany === companyId.value) actionId.value = null;
   }
 }
 
@@ -548,24 +614,44 @@ function onDocumentClick() {
 }
 
 async function load() {
+  const requestEpoch = ++loadEpoch;
+  const requestedCompany = companyId.value;
+  const requestedFilters = listFilterParams();
+  const requestedPage = page.value;
+  const isCurrent = () => requestEpoch === loadEpoch
+    && requestedCompany === companyId.value
+    && requestedFilters.filter === listFilterParams().filter
+    && requestedFilters.year === listFilterParams().year
+    && requestedPage === page.value;
   loading.value = true;
   error.value = '';
+  summary.value = null;
+  expenses.value = [];
   try {
+    if (!requestedCompany) {
+      totalCount.value = 0;
+      lastPage.value = 1;
+      return;
+    }
     if (localFirst) {
-      await invoicingExpenses.refresh(listFilterParams());
+      await invoicingExpenses.refresh(requestedFilters);
+      if (!isCurrent()) return;
       const all = [...invoicingExpenses.expenses.value];
+      const nextSummary = summarizeExpenses(all);
       totalCount.value = all.length;
       lastPage.value = Math.max(1, Math.ceil(all.length / 25));
       if (page.value > lastPage.value) page.value = lastPage.value;
       const start = (page.value - 1) * 25;
       expenses.value = all.slice(start, start + 25);
+      summary.value = nextSummary;
       return;
     }
 
-    const listRes = await invoicingApi.expenses.listPaged<ExpenseListRow & { attachment_path?: string | null; attachments_count?: number }>(companyId.value, {
-      ...listFilterParams(),
-      page: page.value,
+    const listRes = await invoicingApi.expenses.listPaged<ExpenseListRow & { attachment_path?: string | null; attachments_count?: number }>(requestedCompany, {
+      ...requestedFilters,
+      page: requestedPage,
     });
+    if (!isCurrent()) return;
     const today = new Date().toISOString().slice(0, 10);
     const rows = listRes.data ?? [];
     expenses.value = rows.map((e: ExpenseListRow & { attachment_path?: string | null; attachments_count?: number }) => ({
@@ -580,8 +666,16 @@ async function load() {
     lastPage.value = listRes.last_page ?? 1;
     page.value = listRes.current_page ?? 1;
     totalCount.value = listRes.total ?? expenses.value.length;
+    summary.value = listRes.summary ?? null;
+  } catch {
+    if (!isCurrent()) return;
+    expenses.value = [];
+    summary.value = null;
+    totalCount.value = 0;
+    lastPage.value = 1;
+    error.value = t('invoicing.expenses_load_error');
   } finally {
-    loading.value = false;
+    if (requestEpoch === loadEpoch) loading.value = false;
   }
 }
 
@@ -592,6 +686,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  loadEpoch += 1;
   document.removeEventListener('click', onDocumentClick);
 });
 </script>

@@ -24,6 +24,7 @@ export type ExpenseSavePayload = {
     currency?: string;
     internal_note?: string | null;
     mark_paid?: boolean;
+    paid_at?: string | null;
 };
 
 function parseOpt<R>(value: string | null | undefined, type: { from: (value: string) => R }): R | { ok: true; value: null } {
@@ -42,16 +43,17 @@ export function nextLocalExpenseInternalNumber(
 ): string {
     const year = new Date().getFullYear();
     const prefix = `EXP${year}`;
-    let max = 0;
+    let max = 0n;
 
     for (const row of rows) {
         if (row.companyId !== companyId || !row.internalNumber.startsWith(prefix)) continue;
         const suffix = row.internalNumber.slice(prefix.length);
-        const n = parseInt(suffix, 10);
-        if (!Number.isNaN(n)) max = Math.max(max, n);
+        if (!/^\d+$/.test(suffix)) continue;
+        const n = BigInt(suffix);
+        if (n > max) max = n;
     }
 
-    return `${prefix}${String(max + 1).padStart(4, "0")}`;
+    return `${prefix}${String(max + 1n).padStart(4, "0")}`;
 }
 
 function mapPayloadFields(payload: ExpenseSavePayload) {
@@ -116,7 +118,7 @@ export function insertLocalExpense(
         status: markPaid ? "paid" : "recorded",
         internalNumber: internalNumber.value,
         ...mapped.value,
-        paidAt: markPaid ? now.slice(0, 10) : null,
+        paidAt: markPaid ? (payload.paid_at || now.slice(0, 10)) : null,
         cancelledAt: null,
     };
 

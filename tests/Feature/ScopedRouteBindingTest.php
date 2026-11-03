@@ -11,8 +11,11 @@ use App\Models\Store;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -114,5 +117,50 @@ class ScopedRouteBindingTest extends TestCase
         $this->actingAs($this->user)
             ->getJson("/api/invoicing/companies/{$company->id}/expenses/{$expense->id}")
             ->assertOk();
+    }
+
+    /** @return array<string, array{string}> */
+    public static function malformedCompanyIds(): array
+    {
+        return [
+            'local Evolu ID' => ['abcdefghijklmnopqrstuv'],
+            'arbitrary text' => ['not-a-uuid'],
+            'invalid UUID component' => ['11111111-1111-4111-8111-not-a-uuid'],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('malformedCompanyIds')]
+    public function malformed_company_ids_are_rejected_before_issuing_a_company_query(string $id): void
+    {
+        $queries = [];
+        DB::listen(function (QueryExecuted $event) use (&$queries) {
+            if (preg_match('/\bfrom\s+["`]?companies["`]?\b/i', $event->sql)) {
+                $queries[] = $event->sql;
+            }
+        });
+        $this->actingAs($this->user)->postJson("/api/invoicing/companies/{$id}/expenses/detect-isdoc")
+            ->assertNotFound();
+        $this->assertSame([], $queries);
+    }
+
+    #[Test]
+    public function a_missing_but_valid_company_uuid_still_returns_not_found(): void
+    {
+        $id = (string) Str::uuid();
+        $this->actingAs($this->user)->getJson("/api/invoicing/companies/{$id}/expenses")->assertNotFound();
+    }
+
+    #[Test]
+    public function a_valid_uuid_does_not_grant_access_to_another_users_company(): void
+    {
+        $company = Company::create([
+            'user_id' => User::factory()->create()->id,
+            'legal_name' => 'Synthetic Other Company',
+            'jurisdiction' => CompanyJurisdiction::EuSk,
+            'default_currency' => 'EUR',
+        ]);
+        $this->actingAs($this->user)->postJson("/api/invoicing/companies/{$company->id}/expenses/detect-isdoc")
+            ->assertForbidden();
     }
 }

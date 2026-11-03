@@ -10,6 +10,10 @@ export const EXPENSE_IMPORT_FIELD_KEYS = [
   'total',
   'currency',
   'paid_at',
+  'payment_method',
+  'payment_amount',
+  'payment_currency',
+  'payment_exchange_rate',
   'variable_symbol',
   'constant_symbol',
   'specific_symbol',
@@ -17,10 +21,17 @@ export const EXPENSE_IMPORT_FIELD_KEYS = [
   'internal_note',
   'supplier_registration_number',
   'supplier_tax_id',
+  'supplier_vat_id',
+  'supplier_phone',
+  'supplier_bank_account',
   'supplier_email',
   'supplier_street',
+  'supplier_postal_code',
   'supplier_city',
   'supplier_country',
+  'item_quantity',
+  'item_units',
+  'items',
 ] as const;
 
 export type ExpenseImportFieldKey = (typeof EXPENSE_IMPORT_FIELD_KEYS)[number];

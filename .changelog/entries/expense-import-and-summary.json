@@ -1,0 +1,7 @@
+{
+  "id": "expense-import-and-summary",
+  "source": "https://github.com/webiumsk/satflux/pull/426",
+  "title": "Expense imports and filtered totals",
+  "body": "Import current SuperFaktura expense exports with suggested column mapping while preserving original document numbers, dates and amounts. The expense list shows the count, total and unpaid expense total for all matching documents across pages, with separate totals for each currency. Imported partial-payment details remain available for review in expense notes. PDF attachments on individual local expenses now save correctly, with optional temporary ISDOC processing and encrypted local storage.",
+  "labels": ["improvement"]
+}

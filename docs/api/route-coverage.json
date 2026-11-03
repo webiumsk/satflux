@@ -1851,6 +1851,20 @@
             "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."
         },
         {
+            "route": "GET api/invoicing/ephemeral/expenses/isdoc-extract-quota",
+            "action": "App\\Http\\Controllers\\Invoicing\\EphemeralBusinessExpenseController@quota",
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "App\\Http\\Middleware\\RequireVerifiedEmail",
+                "throttle:api-user",
+                "App\\Http\\Middleware\\EnsurePlanAllowsBusinessInvoicing",
+                "throttle:30,1"
+            ],
+            "status": "excluded",
+            "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."
+        },
+        {
             "route": "GET api/invoicing/integration-inbox/deeplink",
             "action": "App\\Http\\Controllers\\Invoicing\\IntegrationDocumentInboxController@resolveDeepLink",
             "middleware": [
@@ -4634,6 +4648,34 @@
                 "App\\Http\\Middleware\\RequireVerifiedEmail",
                 "throttle:api-user",
                 "App\\Http\\Middleware\\EnsurePlanAllowsBusinessInvoicing"
+            ],
+            "status": "excluded",
+            "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."
+        },
+        {
+            "route": "POST api/invoicing/ephemeral/expenses/detect-isdoc",
+            "action": "App\\Http\\Controllers\\Invoicing\\EphemeralBusinessExpenseController@detectIsdoc",
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "App\\Http\\Middleware\\RequireVerifiedEmail",
+                "throttle:api-user",
+                "App\\Http\\Middleware\\EnsurePlanAllowsBusinessInvoicing",
+                "throttle:10,1"
+            ],
+            "status": "excluded",
+            "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."
+        },
+        {
+            "route": "POST api/invoicing/ephemeral/expenses/extract",
+            "action": "App\\Http\\Controllers\\Invoicing\\EphemeralBusinessExpenseController@extract",
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "App\\Http\\Middleware\\RequireVerifiedEmail",
+                "throttle:api-user",
+                "App\\Http\\Middleware\\EnsurePlanAllowsBusinessInvoicing",
+                "throttle:10,1"
             ],
             "status": "excluded",
             "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."

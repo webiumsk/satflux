@@ -1,5 +1,188 @@
 # Project state
 
+## PDF recovery and quota follow-up independently accepted - 2026-11-03
+
+After2567fed4 passes CI41687668367, six review findings are fixed: quota
+contention, Save/detail guidance, deleted-target retry, visible attachment-only
+retry, active extraction dismissal and stale detail continuations. No price,
+purchase policy, bulk, schema or encryption change occurs. Quota locks one actual
+accounting connection before legacy persistence; ordinary callback failure owns
+only fresh-directory cleanup, with uncertain commit/outer rollback left to caller.
+
+Both reviewers accept the same16-source manifest
+`1c2d4e95069405f54cb61dbb785db48fa2ecf65d3c43b0cd53bbf756d07b287a`.
+Author and independent QA pass PG13/129, SQLite52/360 and focused55frontend;
+security passes55frontend/43PHP306. Main full1228frontend/151files, build,
+lint/typecheck/locales/changelog/whitespace pass with unchanged ratchets. Local
+fullPHPStan has only missing optional Scramble; fresh locked CI remains required.
+Test DB/tmpfs/network removed after QA release. Publish on PR426 and verify new
+exact-head CI. See [evidence](EXPENSE_PDF_UPLOAD_FIX.md). Preserve primary work
+and immutable recovery evidence; no actual import, merge or deployment occurs.
+
+## Individual local expense PDF upload repair independently accepted - 2026-11-03
+
+The owner confirms an individual expense-form attachment triggers a PostgreSQL
+UUID error. Published base is79da6582; actual deployment revision is not inspected.
+The local Evolu company ID was passed to legacy company-bound ISDOC endpoints,
+and local detail refresh/update and new-form attachment persistence had related
+server/local mismatches. Implement the accepted company-free parser/quota bridge,
+early UUID syntax guard and Evolu-only attachment/draft save/refresh.
+
+Preserve server company ownership, all pricing/quota policy and bulk import.
+Local plaintext processing requires confirmation; declining still permits local
+attachment storage. Keep the existing384KiB cap, explicit extraction confirmation
+and captured company/expense/file generation guards. No shadow company or durable
+server file/expense is created. See [contract and evidence](EXPENSE_PDF_UPLOAD_FIX.md).
+
+Author checks pass47PHP/323assertions, scopedPint/PHPStan and32focusedfrontend
+cases. Independent security accepts the14-file production manifest after fixing
+SEC-PDF-1 with actual Evolu-row ownership and real-adapter regression fixtures;
+its separate32frontend and38PHP/269assertions pass. Main lint/typecheck/locales/
+build and nine changelog fragments pass with unchanged ratchets. Full-suite
+evidence and fresh exact-head CI remain required before completion.
+Final QA accepts the same 14-source manifest:
+`70fd0a1ee0e34b06694dc2f6ac8dd736eac9166b88fbc94461e7b811d2d45a6b`.
+Its 32 frontend cases, 13 independent real-API-builder probes and 47 PHP cases /
+323 assertions pass. Security renews acceptance after the final busy-form
+guard. Source is frozen; publish reviewed code on PR426 and verify fresh CI.
+Main full frontend now passes 1,205 cases across 151 files with no failures.
+Fresh full PHPStan reports only the known missing local Scramble class in the
+unchanged documentation exporter; no other diagnostic or baseline mismatch.
+Retain the immutable handoff snapshot and unrelated primary work; no real import,
+PR merge, external repository change or deployment is performed.
+
+## Expense snapshot runtime CI passes; fixture URL guard follow-up - 2026-11-03
+
+Published `6b07e900` passes all four jobs in CI41664475067: PHP2576/13013assertions
+with one PostgreSQL-only skip, full PHPStan, frontend1173 and E2E20. Independent
+QA/security accepted the snapshot/year repair; all six prior threads are resolved.
+The new CodeRabbit test-safety finding4456901528 is confirmed: copied URL or
+read/write routing can supersede a raw fixture database-name guard.
+
+Keep production source unchanged. Harden only fixture configuration, effective
+and actual target verification, setup/cleanup ownership, and pure synthetic
+configuration regressions. Prior runs used preflighted disposable targets.
+Require independent final review and fresh exact-head CI after this bounded
+test-only follow-up. See [review evidence](EXPENSE_SUMMARY_REVIEW.md).
+
+The final three-test-file guard is independently accepted by QA/security.
+Both independently pass nine no-boot unit cases / 59 assertions; QA also passes
+PostgreSQL 11 / 155 with the expected SQLite skip. Author SQLite 11 / 124 and
+three-file Pint pass. The coordinator verifies the same manifest and unchanged
+production/config/dependency bytes, then removes only the disposable test DB
+container/tmpfs/network after QA releases it. Publish the reviewed guard and
+verify the new commit's complete CI; preserve the immutable recovery snapshot.
+
+## Expense list CodeRabbit snapshot and year repairs - 2026-11-03
+
+Published `a1b1c32b` passes all four jobs in CI41602302146, including
+2,566 PHP cases / 12,889 assertions, full PHPStan, 1,171 frontend cases and
+20 E2E scenarios. Its four earlier import review threads are resolved.
+Two subsequent findings are confirmed: changing year retains an out-of-range
+page, and PostgreSQL Read Committed permits summary/page disagreement.
+
+Both year controls now reset page and selection before loading. The backend
+uses the actual filtered query connection for summary, paginator and serialized
+response within one stable snapshot. Architecture, security and QA accepted
+the design before implementation. Owned PostgreSQL transactions use scoped
+Repeatable Read / Read Only; supported nested transactions retain caller
+ownership through savepoints. SQLite uses deferred committed reads. No auth,
+tenant filter, schema, dependency, payment or configuration changes occur.
+
+Author snapshot checks pass on SQLite (11 cases / 124 assertions) and isolated
+PostgreSQL 16 (11 / 155), each with one other-driver skip. The old-controller
+overlay reproduces all three concurrent-write failures. Related PHP39/259,
+frontend80, Pint, lint and unchanged typecheck gates pass. Local full PHPStan
+is limited by the available vendor tree's missing optional Scramble dependency;
+locked-dependency CI must verify the new head. See the
+[snapshot contract and evidence](EXPENSE_SUMMARY_REVIEW.md).
+Independent security accepts the frozen five-file source/test delta and passes
+SQLite11/124 plus frontend17; independent QA accepts the identical manifest and
+passes PostgreSQL11/155 plus three year/stale-response probes. PostgreSQL evidence
+is local and opt-in; ordinary CI remains SQLite. No blocking review findings
+remain before publication; fresh exact-head CI is still required.
+Preserve the primary checkout and immutable recovery snapshot. PR merge,
+real expense import and deployment remain outside this follow-up.
+
+## Cross-session expense summary candidate reviewed and adopted - 2026-11-03
+
+The owner supplied a verified 27-file handoff on c9eb45a3. All live/backup hashes,
+changed paths and the recovery patch matched before adoption; the immutable
+backup remains intact. Adopt the all-filtered-pages expense footer, per-currency
+exact totals/counts and owner-selected whole-recorded-document unpaid total.
+CSV text/identifier preservation, integer-only masks and dashed aliases address
+the four existing CodeRabbit findings. No partial-payment ledger is inferred.
+
+Receiving-session fixes close malformed legacy-currency rendering and five
+changed fingerprints at existing Evolu type boundaries, preserving query
+selection and the typecheck baseline. Full typecheck now passes112 existing
+diagnostics, with no new fingerprints. The company-list query's omitted link
+remains a documented pre-existing no-op; no broader sanitizer redesign occurs.
+
+Independent security and QA accept the same18-file production manifest
+8ef82904ed314a56bd610b92a2ad23b78eb6e2598e7021fdeeb087050333f120.
+Fresh author PHP39/259assertions, scoped Pint/fullPHPStan; main frontend1171/
+149files, lint/locales/build/API; QA33frontend/35PHP/247assertions/four browser
+scenarios; security79frontend/26PHP/193assertions/23extra assertions pass.
+See [contract and evidence](EXPENSE_SUMMARY_REVIEW.md). Publish on existing PR426
+and verify fresh exact-head CI. Primary edits, backup and other worktrees remain
+preserved; no real data import, PR merge, billing change or deployment occurred.
+
+## Expense import CI baseline mismatch corrected - 2026-11-02
+
+CI41539349631 on a64f0bed passes all2555 PHP tests/12812 assertions and Pint;
+the PHP job fails later on PHPStan's single unmatched arrayFilter.same ignore
+for BusinessExpenseExcelImportService. Earlier scoped analysis did not catch
+this full-project baseline mismatch. Remove exactly that obsolete one-count
+entry; independent QA verifies all remaining bytes/counts and1615 source/test/
+frontend/config/dependency files unchanged. Baseline decreases625->624entries,
+825->824 ignored counts. Level5 and unmatched-ignore enforcement remain intact.
+The exact full PHPStan command reproduces the failure before and passes after
+the removal in the verified disposable target. Push and fresh exact-head CI are
+next; no app behavior, new payment, real import, PR merge or deployment changes.
+
+## Expense import PR conflict resolution - 2026-11-02
+
+The owner requested repair of PR #426's three documentation conflicts after
+master advanced to `86e77e81` with merged #424/#425. Synchronize master into
+`feat/superfaktura-expense-import`, retaining both sets of project records.
+The manual resolution touches only PROJECT_STATE, ROADMAP and DECISION_LOG;
+expense source, tests, locales and user guides stay byte-identical to reviewed
+`be19843d`. Upstream code enters unchanged through its existing master history.
+No product behavior, private data, real import or deployment is changed.
+The PR remains for owner review; conflict repair does not merge it into master.
+
+## SuperFaktura expense import implemented and independently reviewed - 2026-11-02
+
+The owner explicitly requested expense import in Satflux. A dedicated
+`feat/superfaktura-expense-import` worktree starts at local origin/master
+`9dfc4166`, preserving the dirty primary checkout and all other retained work.
+Real frontend/backend specialists implemented local/server parity; independent
+security and QA accept the frozen source without blocking findings.
+
+Company Import now offers invoices and expenses. The current 33-column export
+maps automatically, preserving original numbers/dates/totals and extra metadata
+in private notes. Partial/cross-currency payments remain recorded for review.
+The modal prevents overlapping/stale operations, loads current duplicate state
+before writes and keeps results visible. Historical results open all years.
+No schema, auth, billing, entitlement or external repository changes occur.
+
+Coordinator-only private dry run accepts all 52 rows in an in-memory fake; no
+actual expense or private workbook fixture/log was saved. Independent QA passes
+37 synthetic cases; security passes 38 focused cases and 33 extra assertions;
+both pass 15 PHP cases/116 assertions. Coordinator related PHP passes51/294 and
+documentation8/26, scoped Pint/PHPStan, lint/typecheck ratchets, five locales,
+build, API contracts/inventory and whitespace. The final constrained full
+frontend run passes1,132 cases across147 files with two workers; initial
+unconstrained timeout failures resolve without source changes. See the
+feature-branch `EXPENSE_IMPORT_IMPLEMENTATION.md` for verification and limits.
+
+Retain source in `storage/app/private/worktrees/superfaktura-expense-import`.
+No publication, app import, merge or deployment. Explicit-number rerun protection
+is company-scoped; rows without internal numbers create new entries on rerun.
+Next: owner review of the preserved local source; later publication, merge and
+deployment need applicable owner authorization.
+
 ## Chorala changelog CRLF recovery independently accepted - 2026-11-02
 
 Public GETs confirm that the configured feed stops at PR #406. The next eight

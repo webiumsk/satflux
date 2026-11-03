@@ -56,6 +56,7 @@ use App\Http\Controllers\Invoicing\CompanyWarehouseController;
 use App\Http\Controllers\Invoicing\EfakturaController;
 use App\Http\Controllers\Invoicing\EfakturaInboundInboxController;
 use App\Http\Controllers\Invoicing\EphemeralBusinessDocumentController;
+use App\Http\Controllers\Invoicing\EphemeralBusinessExpenseController;
 use App\Http\Controllers\Invoicing\IntegrationDocumentInboxController;
 use App\Http\Controllers\Invoicing\InvoicingMigrationController;
 use App\Http\Controllers\Invoicing\StoreDocumentSequenceController;
@@ -433,6 +434,12 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::post('/ephemeral/bulk/pdf-zip', [EphemeralBusinessDocumentController::class, 'bulkPdfZipWithoutCompany']);
             Route::post('/ephemeral/bulk/pdf-merge', [EphemeralBusinessDocumentController::class, 'bulkPdfMergeWithoutCompany']);
             Route::post('/ephemeral/accountant-export', [AccountantExportController::class, 'ephemeralWithoutCompany']);
+            Route::post('/ephemeral/expenses/detect-isdoc', [EphemeralBusinessExpenseController::class, 'detectIsdoc'])
+                ->middleware('throttle:10,1');
+            Route::post('/ephemeral/expenses/extract', [EphemeralBusinessExpenseController::class, 'extract'])
+                ->middleware('throttle:10,1');
+            Route::get('/ephemeral/expenses/isdoc-extract-quota', [EphemeralBusinessExpenseController::class, 'quota'])
+                ->middleware('throttle:30,1');
             Route::post('/companies', [CompanyController::class, 'store'])
                 ->middleware(EnsureCompanyLimit::class);
             // User-level slot purchase - deliberately no company ownership/limit middleware

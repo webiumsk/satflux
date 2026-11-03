@@ -2360,12 +2360,6 @@ parameters:
 			path: app/Services/Invoicing/BusinessExpenseBulkService.php
 
 		-
-			message: '#^Parameter \#1 \$array \(list\{0\: non\-falsy\-string, 1\?\: non\-falsy\-string, 2\?\: non\-falsy\-string, 3\?\: non\-falsy\-string, 4\?\: non\-falsy\-string, 5\?\: ''import''\}\) to function array_filter does not contain falsy values, the array will always stay the same\.$#'
-			identifier: arrayFilter.same
-			count: 1
-			path: app/Services/Invoicing/BusinessExpenseExcelImportService.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$disk\.$#'
 			identifier: property.notFound
 			count: 1
