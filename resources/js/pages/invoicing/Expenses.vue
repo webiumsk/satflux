@@ -24,7 +24,7 @@
             <select
               v-model="year"
               class="invoicing-sf-input w-full"
-              @change="load"
+              @change="onYearChange"
             >
               <option v-for="y in yearOptions" :key="y" :value="y">{{ yearLabel(y) }}</option>
             </select>
@@ -68,7 +68,7 @@
               <select
                 v-model="year"
                 class="invoicing-filter invoicing-filter--idle appearance-none pr-7 cursor-pointer"
-                @change="load"
+                @change="onYearChange"
               >
                 <option v-for="y in yearOptions" :key="y" :value="y">{{ yearLabel(y) }}</option>
               </select>
@@ -314,6 +314,12 @@ function setFilter(id: string) {
   page.value = 1;
   clearSelection();
   load();
+}
+
+function onYearChange() {
+  page.value = 1;
+  clearSelection();
+  void load();
 }
 
 function changePage(p: number) {

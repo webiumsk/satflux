@@ -1,5 +1,23 @@
 # Development decision log
 
+## 2026-11-03 - Keep each expense list response within one stable read
+
+Confirm the two new CodeRabbit findings after the prior summary head passes CI.
+Reset page and selection before changing the year for desktop and mobile.
+Bind summary, count, page rows and response serialization to the query's actual
+connection. A plain PostgreSQL Read Committed transaction is insufficient.
+
+Architecture, independent security and QA accept transaction-scoped PostgreSQL
+Repeatable Read / Read Only for owned reads and managed savepoints for existing
+stable transactions. Reject weaker outer isolation before expense queries;
+do not upgrade caller transactions or alter session defaults. Preserve normal
+SQLite deferred transactions and reject uncommitted-read mode. Ordinary SQL
+errors roll back the owned level; PostgreSQL serialization/deadlock failures
+retain the caller's Laravel rollback/retry requirements. No schema, tenant,
+auth, payment or dependency change follows. Require deterministic concurrent
+writer and later-response regressions on disposable SQLite/PostgreSQL, followed
+by independent reviews and fresh exact-head CI. No merge or deployment follows.
+
 ## 2026-11-03 - Adopt the verified expense-summary handoff without rollback
 
 The owner hands off27uncommitted paths and verified recovery evidence. Compare

@@ -37,30 +37,33 @@ class BusinessExpenseController extends Controller
     public function index(Request $request, Company $company): JsonResponse
     {
         $query = $this->expenseService->filteredQuery($company, $request);
-        $summary = BusinessExpenseListSummary::fromQuery($query);
-        $expenses = $query
-            ->select([
-                'id',
-                'company_id',
-                'status',
-                'internal_number',
-                'external_number',
-                'title',
-                'variable_symbol',
-                'issue_date',
-                'delivery_date',
-                'due_date',
-                'paid_at',
-                'total',
-                'currency',
-                'internal_note',
-                'attachment_path',
-            ])
-            ->orderByDesc('issue_date')
-            ->orderByDesc('created_at')
-            ->paginate($request->integer('per_page', 25));
 
-        return response()->json(array_merge($expenses->toArray(), ['summary' => $summary]));
+        return BusinessExpenseListSummary::withinSnapshot($query, function () use ($query, $request) {
+            $summary = BusinessExpenseListSummary::fromQuery($query);
+            $expenses = $query
+                ->select([
+                    'id',
+                    'company_id',
+                    'status',
+                    'internal_number',
+                    'external_number',
+                    'title',
+                    'variable_symbol',
+                    'issue_date',
+                    'delivery_date',
+                    'due_date',
+                    'paid_at',
+                    'total',
+                    'currency',
+                    'internal_note',
+                    'attachment_path',
+                ])
+                ->orderByDesc('issue_date')
+                ->orderByDesc('created_at')
+                ->paginate($request->integer('per_page', 25));
+
+            return response()->json(array_merge($expenses->toArray(), ['summary' => $summary]));
+        });
     }
 
     public function bulk(BulkBusinessExpenseRequest $request, Company $company): JsonResponse|Response

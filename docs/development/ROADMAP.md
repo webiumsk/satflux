@@ -1,5 +1,16 @@
 # Development roadmap
 
+## Current: publish the reviewed expense snapshot and year repairs - 2026-11-03
+
+The prior summary head `a1b1c32b` has four green CI jobs. Address the two newer
+CodeRabbit findings on the same PR #426: reset page/selection for either year
+control, and keep summary/count/page serialization in one stable database read.
+Use the accepted PostgreSQL/SQLite design and independent concurrency/recovery
+reviews. Publish the bounded repair and verify fresh exact-head CI, including
+full PHPStan with locked dependencies. Local PostgreSQL evidence remains
+separate from normal SQLite CI. Preserve original backup and unrelated work;
+PR merge and deployment require their existing owner gate.
+
 ## Current: publish reviewed cross-session expense summary follow-up - 2026-11-03
 
 The owner-provided27-file candidate is adopted after manifest reconciliation,

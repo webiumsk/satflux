@@ -1,5 +1,36 @@
 # Project state
 
+## Expense list CodeRabbit snapshot and year repairs - 2026-11-03
+
+Published `a1b1c32b` passes all four jobs in CI41602302146, including
+2,566 PHP cases / 12,889 assertions, full PHPStan, 1,171 frontend cases and
+20 E2E scenarios. Its four earlier import review threads are resolved.
+Two subsequent findings are confirmed: changing year retains an out-of-range
+page, and PostgreSQL Read Committed permits summary/page disagreement.
+
+Both year controls now reset page and selection before loading. The backend
+uses the actual filtered query connection for summary, paginator and serialized
+response within one stable snapshot. Architecture, security and QA accepted
+the design before implementation. Owned PostgreSQL transactions use scoped
+Repeatable Read / Read Only; supported nested transactions retain caller
+ownership through savepoints. SQLite uses deferred committed reads. No auth,
+tenant filter, schema, dependency, payment or configuration changes occur.
+
+Author snapshot checks pass on SQLite (11 cases / 124 assertions) and isolated
+PostgreSQL 16 (11 / 155), each with one other-driver skip. The old-controller
+overlay reproduces all three concurrent-write failures. Related PHP39/259,
+frontend80, Pint, lint and unchanged typecheck gates pass. Local full PHPStan
+is limited by the available vendor tree's missing optional Scramble dependency;
+locked-dependency CI must verify the new head. See the
+[snapshot contract and evidence](EXPENSE_SUMMARY_REVIEW.md).
+Independent security accepts the frozen five-file source/test delta and passes
+SQLite11/124 plus frontend17; independent QA accepts the identical manifest and
+passes PostgreSQL11/155 plus three year/stale-response probes. PostgreSQL evidence
+is local and opt-in; ordinary CI remains SQLite. No blocking review findings
+remain before publication; fresh exact-head CI is still required.
+Preserve the primary checkout and immutable recovery snapshot. PR merge,
+real expense import and deployment remain outside this follow-up.
+
 ## Cross-session expense summary candidate reviewed and adopted - 2026-11-03
 
 The owner supplied a verified 27-file handoff on c9eb45a3. All live/backup hashes,

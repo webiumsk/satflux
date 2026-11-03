@@ -144,6 +144,41 @@ describe("expense page filtered summary", () => {
         expect(summaryText()).toContain("€3.00");
     });
 
+    it.each([
+        { control: "mobile", selectorIndex: 0 },
+        { control: "desktop", selectorIndex: 1 },
+    ])("resets server pagination and selection when the $control year selector changes", async ({ selectorIndex }) => {
+        const targetYear = new Date().getFullYear() - 1;
+        const full = Array.from({ length: 26 }, (_, index) => row(`Expense ${index}`, "2.00"));
+        const smallerYear = [row("Smaller year expense", "7.50", "EUR", "recorded", targetYear)];
+        mocks.listPaged.mockImplementation(async (_company: string, options: { page: number; year?: number }) => {
+            const filtered = options.year === targetYear ? smallerYear : full;
+            const start = (options.page - 1) * 25;
+            return response(filtered.slice(start, start + 25), summarizeExpenses(filtered), options.page);
+        });
+        render();
+        await flushPromises();
+        const next = wrapper!.findAll("button").find((node) => node.text() === "›")!;
+        await next.trigger("click");
+        await flushPromises();
+        expect(wrapper!.text()).toContain("2 / 2");
+        expect(wrapper!.findAll('[data-test="expenses-table"] p')).toHaveLength(1);
+        wrapper!.findComponent({ name: "ExpensesTable" }).vm.$emit("select-page");
+        await flushPromises();
+        expect(wrapper!.find('[data-test="selection"]').text()).toBe("1");
+
+        const selectors = wrapper!.findAll("select");
+        expect(selectors).toHaveLength(2);
+        await selectors[selectorIndex].setValue(String(targetYear));
+        await flushPromises();
+
+        expect(mocks.listPaged).toHaveBeenLastCalledWith("company-a", expect.objectContaining({ year: targetYear, page: 1 }));
+        expect(wrapper!.find('[data-test="expenses-table"]').text()).toContain("Smaller year expense");
+        expect(wrapper!.find('[data-test="selection"]').text()).toBe("0");
+        expect(summaryText()).toContain("Expenses: 1");
+        expect(summaryText()).toContain("€7.50");
+    });
+
     it("hides totals on an older server response instead of presenting page totals", async () => {
         mocks.listPaged.mockResolvedValue({ data: [row("Legacy")], total: 100, current_page: 1, last_page: 4 });
         render();
