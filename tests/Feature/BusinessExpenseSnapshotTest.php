@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Support\ExpenseSnapshotTestDatabase;
 use Tests\TestCase;
 
 class BusinessExpenseSnapshotTest extends TestCase
@@ -38,6 +39,8 @@ class BusinessExpenseSnapshotTest extends TestCase
 
     private string $driver;
 
+    private bool $ownsFixtureSchema = false;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -49,20 +52,17 @@ class BusinessExpenseSnapshotTest extends TestCase
         }
         if ($postgres) {
             $settings = config('database.connections.pgsql');
-            if (! is_array($settings) || ($settings['database'] ?? null) !== 'satflux_expense_snapshot_test') {
+            if (! is_array($settings)) {
                 throw new \LogicException('Expense snapshot PostgreSQL tests require their dedicated disposable database.');
             }
+            $settings = ExpenseSnapshotTestDatabase::configuration($settings);
         } else {
             $path = tempnam(sys_get_temp_dir(), 'satflux-expense-snapshot-');
             if ($path === false) {
                 throw new \RuntimeException('Could not create the disposable SQLite database.');
             }
             $this->sqlitePath = $path;
-            $settings = array_merge(config('database.connections.sqlite'), [
-                'database' => $this->sqlitePath,
-                'foreign_key_constraints' => true,
-                'busy_timeout' => 500,
-            ]);
+            $settings = ExpenseSnapshotTestDatabase::configuration([], $this->sqlitePath);
         }
 
         config([
@@ -73,6 +73,8 @@ class BusinessExpenseSnapshotTest extends TestCase
         $this->reader = DB::connection(self::READER);
         $this->writer = DB::connection(self::WRITER);
         $this->driver = $this->reader->getDriverName();
+        ExpenseSnapshotTestDatabase::assertTarget($this->reader->getPdo(), $settings);
+        ExpenseSnapshotTestDatabase::assertTarget($this->writer->getPdo(), $settings);
         $this->assertNotSame($this->reader->getPdo(), $this->writer->getPdo());
         if ($this->driver === 'sqlite') {
             $this->assertSame('wal', $this->reader->selectOne('PRAGMA journal_mode = WAL')->journal_mode);
@@ -81,6 +83,7 @@ class BusinessExpenseSnapshotTest extends TestCase
         }
 
         $schema = Schema::connection(self::READER);
+        $this->ownsFixtureSchema = true;
         $schema->dropIfExists('business_expense_attachments');
         $schema->dropIfExists('business_expenses');
         $schema->create('business_expenses', function (Blueprint $table) {
@@ -118,7 +121,7 @@ class BusinessExpenseSnapshotTest extends TestCase
                     $connection->rollBack(0);
                 }
             }
-            if ($this->reader !== null) {
+            if ($this->ownsFixtureSchema) {
                 Schema::connection(self::READER)->dropIfExists('business_expense_attachments');
                 Schema::connection(self::READER)->dropIfExists('business_expenses');
             }

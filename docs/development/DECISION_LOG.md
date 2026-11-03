@@ -1,5 +1,20 @@
 # Development decision log
 
+## 2026-11-03 - Verify fixture targets after removing inherited routing
+
+The snapshot/year runtime repair passes complete CI, but its new fixture copies
+raw connection URLs that Laravel parses after the database-name guard. Treat the
+confirmed CodeRabbit finding as test safety, not a reason to change production
+snapshot code. Construct allowlisted settings without URL/read/write routing;
+verify effective and actual driver/database before DDL. Cleanup requires owned,
+verified fixture state even when setup fails. Prove poison configurations without
+opening their targets. Existing isolated runs and fresh-head CI remain distinct;
+require independent security/QA review before publishing the test-only follow-up.
+
+Both reviewers accept the same three-file manifest after pure configuration and
+isolated PostgreSQL checks. Retain all accepted runtime code and analysis gates;
+remove the dedicated test infrastructure only after the independent run finishes.
+
 ## 2026-11-03 - Keep each expense list response within one stable read
 
 Confirm the two new CodeRabbit findings after the prior summary head passes CI.

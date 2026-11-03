@@ -1,5 +1,19 @@
 # Development roadmap
 
+## Current: close expense snapshot fixture URL routing bypass - 2026-11-03
+
+Snapshot/year repair `6b07e900` has four green CI jobs and six resolved threads.
+Fix the newly confirmed test-only URL/routing target override with allowlisted
+configuration, effective/actual identity proof before DDL and ownership-gated
+cleanup. Add configuration-only poison-target regressions; preserve runtime
+source. Independently review, publish to PR #426 and verify the new head's CI.
+No actual expense import, PR merge or deployment is included.
+
+Final independent QA/security accept the exact three-test-file guard. Pure
+unit 9 / 59, SQLite 11 / 124 and PostgreSQL 11 / 155 pass, with driver skips;
+production source is unchanged and dedicated test infrastructure is removed.
+Next is reviewed branch publication and fresh exact-head CI.
+
 ## Current: publish the reviewed expense snapshot and year repairs - 2026-11-03
 
 The prior summary head `a1b1c32b` has four green CI jobs. Address the two newer

@@ -1,5 +1,27 @@
 # Project state
 
+## Expense snapshot runtime CI passes; fixture URL guard follow-up - 2026-11-03
+
+Published `6b07e900` passes all four jobs in CI41664475067: PHP2576/13013assertions
+with one PostgreSQL-only skip, full PHPStan, frontend1173 and E2E20. Independent
+QA/security accepted the snapshot/year repair; all six prior threads are resolved.
+The new CodeRabbit test-safety finding4456901528 is confirmed: copied URL or
+read/write routing can supersede a raw fixture database-name guard.
+
+Keep production source unchanged. Harden only fixture configuration, effective
+and actual target verification, setup/cleanup ownership, and pure synthetic
+configuration regressions. Prior runs used preflighted disposable targets.
+Require independent final review and fresh exact-head CI after this bounded
+test-only follow-up. See [review evidence](EXPENSE_SUMMARY_REVIEW.md).
+
+The final three-test-file guard is independently accepted by QA/security.
+Both independently pass nine no-boot unit cases / 59 assertions; QA also passes
+PostgreSQL 11 / 155 with the expected SQLite skip. Author SQLite 11 / 124 and
+three-file Pint pass. The coordinator verifies the same manifest and unchanged
+production/config/dependency bytes, then removes only the disposable test DB
+container/tmpfs/network after QA releases it. Publish the reviewed guard and
+verify the new commit's complete CI; preserve the immutable recovery snapshot.
+
 ## Expense list CodeRabbit snapshot and year repairs - 2026-11-03
 
 Published `a1b1c32b` passes all four jobs in CI41602302146, including

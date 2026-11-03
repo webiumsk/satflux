@@ -248,3 +248,51 @@ PHPUnit corpus supplies the independent PostgreSQL execution evidence.
 The five reviewed implementation/test files remain unchanged after acceptance.
 Publish on the existing branch, verify fresh exact-head CI and close only the
 two confirmed threads. No PR merge, real expense import or deployment is implied.
+
+## Follow-up fixture URL isolation review - 2026-11-03
+
+Published snapshot/year repair `6b07e900` passes all four jobs in CI41664475067:
+2,576 PHP cases / 13,013 assertions with one PostgreSQL-only skip, full PHPStan,
+1,173 frontend cases and 20 E2E scenarios. All six existing review threads are
+resolved. The next review confirms test-safety finding `4456901528`: copied raw
+connection settings retain `url`, whose parsed values override the guarded
+PostgreSQL database or SQLite temporary path. Nested read/write routing can
+likewise override the target. This is a fixture configuration defect; completed
+local runs used separately verified disposable targets without inherited URLs.
+
+The bounded mitigation builds allowlisted fixture settings, verifies the effective
+driver/database before resolving connections and proves the actual database
+identity with read-only queries before any fixture DDL. Cleanup must require
+verified target/schema ownership, including when setup fails. Pure synthetic
+URL/read/write configuration regressions must not boot an application or open a
+connection to their poison targets. Independent security and QA review the final
+test-only delta; runtime controller, helper and Vue files remain frozen.
+
+The implementation is limited to the snapshot feature fixture, a test-support
+helper and a pure PHPUnit unit class. PostgreSQL accepts only explicit endpoint
+fields plus a fixed driver/database/public schema; SQLite uses a fresh literal
+temporary-file configuration. Inherited URL, read/write routing, prefix and PDO
+options cannot reach either target. Both actual PDO identities are checked
+before WAL or DDL; teardown DDL requires verified schema ownership.
+
+Author validation passes nine pure cases / 59 assertions, SQLite 11 / 124 and
+PostgreSQL 11 / 155, with the expected other-driver skips; three-file Pint and
+whitespace checks pass. The pure tests use the actual Laravel parser as the old
+negative control and parse hardened configurations for PostgreSQL/SQLite URLs,
+driver overrides and nested routing. Mocked identity checks open no database.
+
+Independent final QA accepts the frozen three-test-file scope and separately
+passes the pure nine-case / 59-assertion corpus and PostgreSQL 11 / 155 with the
+SQLite-only skip. Its manifest matches the coordinator's recheck:
+`6155882f7217b2b93350428187cfe10d1aff8c3eaf779325cbd298cecf606964`.
+Production, configuration, dependencies, frontend and analysis baselines remain
+byte-identical to `6b07e900`. After QA releases the fixtures, the coordinator
+removes only the dedicated disposable PostgreSQL container/tmpfs and internal
+network. Existing application services, worktrees and recovery snapshots remain.
+
+Independent security accepts the same three-file manifest with no blocking
+findings and independently passes nine pure cases / 59 assertions. Effective
+configuration, both physical targets, pre-DDL ordering and owned cleanup are
+reviewed. No arbitrary-target connection or production mutation is performed.
+The Major finding is resolved in the reviewed source; publish the bounded patch
+and verify fresh exact-head CI before reporting final GitHub validation.
