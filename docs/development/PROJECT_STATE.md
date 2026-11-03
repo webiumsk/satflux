@@ -1,5 +1,29 @@
 # Project state
 
+## Cross-session expense summary candidate reviewed and adopted - 2026-11-03
+
+The owner supplied a verified 27-file handoff on c9eb45a3. All live/backup hashes,
+changed paths and the recovery patch matched before adoption; the immutable
+backup remains intact. Adopt the all-filtered-pages expense footer, per-currency
+exact totals/counts and owner-selected whole-recorded-document unpaid total.
+CSV text/identifier preservation, integer-only masks and dashed aliases address
+the four existing CodeRabbit findings. No partial-payment ledger is inferred.
+
+Receiving-session fixes close malformed legacy-currency rendering and five
+changed fingerprints at existing Evolu type boundaries, preserving query
+selection and the typecheck baseline. Full typecheck now passes112 existing
+diagnostics, with no new fingerprints. The company-list query's omitted link
+remains a documented pre-existing no-op; no broader sanitizer redesign occurs.
+
+Independent security and QA accept the same18-file production manifest
+8ef82904ed314a56bd610b92a2ad23b78eb6e2598e7021fdeeb087050333f120.
+Fresh author PHP39/259assertions, scoped Pint/fullPHPStan; main frontend1171/
+149files, lint/locales/build/API; QA33frontend/35PHP/247assertions/four browser
+scenarios; security79frontend/26PHP/193assertions/23extra assertions pass.
+See [contract and evidence](EXPENSE_SUMMARY_REVIEW.md). Publish on existing PR426
+and verify fresh exact-head CI. Primary edits, backup and other worktrees remain
+preserved; no real data import, PR merge, billing change or deployment occurred.
+
 ## Expense import CI baseline mismatch corrected - 2026-11-02
 
 CI41539349631 on a64f0bed passes all2555 PHP tests/12812 assertions and Pint;

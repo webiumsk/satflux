@@ -12,7 +12,9 @@ use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\StringValueBinder;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\Csv;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -190,7 +192,13 @@ class BusinessExpenseExcelImportService
             throw new \InvalidArgumentException('Could not read uploaded file.');
         }
 
-        $spreadsheet = IOFactory::load($path);
+        $reader = IOFactory::createReaderForFile($path);
+        if ($reader instanceof Csv) {
+            // CSV identifiers and formula-looking values are text, without
+            // changing the application's global binder or Excel cell types.
+            $reader->setValueBinder(new StringValueBinder);
+        }
+        $spreadsheet = $reader->load($path);
         $sheet = $spreadsheet->getActiveSheet();
         if ($sheet->getHighestDataRow() > self::MAX_ROWS + 1) {
             throw new \InvalidArgumentException('Row limit exceeded.');
@@ -200,7 +208,7 @@ class BusinessExpenseExcelImportService
         }
         // Read numbers independently of currency/thousands display formats and
         // never calculate uploaded formulas. Plain zero masks still preserve
-        // leading zeros in numeric identifiers.
+        // leading zeros in whole-number identifiers without rounding amounts.
         $rows = $sheet->rangeToArray('A1:'.$sheet->getHighestDataColumn().$sheet->getHighestDataRow(), null, false, false, false);
         foreach ($rows as $rowIndex => $row) {
             foreach ($row as $columnIndex => $value) {
@@ -208,7 +216,9 @@ class BusinessExpenseExcelImportService
                     continue;
                 }
                 $cell = $sheet->getCell([$columnIndex + 1, $rowIndex + 1]);
-                if (preg_match('/^0{2,}$/', $cell->getStyle()->getNumberFormat()->getFormatCode())) {
+                if (is_finite((float) $value)
+                    && floor((float) $value) === (float) $value
+                    && preg_match('/^0{2,}$/', $cell->getStyle()->getNumberFormat()->getFormatCode())) {
                     $rows[$rowIndex][$columnIndex] = $cell->getFormattedValue();
                 }
             }

@@ -1,5 +1,16 @@
 # Development roadmap
 
+## Current: publish reviewed cross-session expense summary follow-up - 2026-11-03
+
+The owner-provided27-file candidate is adopted after manifest reconciliation,
+new type-boundary/currency fallback fixes and independent security/QA acceptance.
+The footer sums the entire current company/filter result across pages, keeps
+currencies separate and reports whole unpaid documents as selected by the owner.
+Receiving checks pass1171frontend cases,39focusedPHP/259assertions, fullPHPStan,
+Pint, typecheck with unchanged baseline, lint/locales/build/API and four browser
+scenarios. Publish to existing PR426, resolve verified review findings and verify
+fresh exact-head CI. Keep immutable backup/primary work; no PR merge/deployment.
+
 ## Current: verify expense-import CI after removing one stale PHPStan ignore - 2026-11-02
 
 All2555 PHP tests and Pint pass on a64f0bed; full PHPStan alone rejects an obsolete

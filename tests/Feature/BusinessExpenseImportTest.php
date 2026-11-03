@@ -13,8 +13,10 @@ use App\Services\Invoicing\BusinessExpenseAttachmentBulkService;
 use App\Services\Invoicing\BusinessExpenseExcelImportService;
 use App\Services\Invoicing\BusinessExpenseService;
 use App\Support\Invoicing\BusinessExpenseImportFields;
+use App\Support\Spreadsheet\NoFormulaValueBinder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -347,6 +349,80 @@ class BusinessExpenseImportTest extends TestCase
     }
 
     #[Test]
+    public function csv_import_preserves_text_identifiers_without_calculating_formulas(): void
+    {
+        $file = $this->makeCsvUpload([
+            ['Title', 'Internal number', 'Invoice number', 'Issue date', 'Total', 'Supplier phone', 'Supplier bank account'],
+            ['=1+1', 'CSV-TEXT', '+12345', '2025-01-01', '12.50', '+421900000000', '123456789012345678901234567890'],
+            ['Formula amount', 'CSV-FORMULA', '+54321', '2025-01-01', '=2+2', '+421900000001', '001234567890123456789012345678'],
+        ]);
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses/import/excel";
+        $preview = $this->actingAs($this->proUser)->post($url.'/preview', ['file' => $file]);
+        $preview->assertOk()
+            ->assertJsonPath('data.preview.0.external_number', '+12345')
+            ->assertJsonPath('data.preview.0.title', '=1+1')
+            ->assertJsonPath('data.preview.0.total', '12.50')
+            ->assertJsonPath('data.preview.1.error', 'Total amount is invalid or missing.');
+        $mapping = $preview->json('data.suggested_mapping');
+
+        $this->post($url, ['file' => $file, 'mapping' => json_encode($mapping)])
+            ->assertOk()->assertJsonPath('data.imported', 1)->assertJsonPath('data.skipped', 1);
+
+        $expense = BusinessExpense::firstOrFail();
+        $this->assertSame('+12345', $expense->external_number);
+        $this->assertSame('=1+1', $expense->title);
+        $this->assertSame('12.50', $expense->total);
+        $this->assertStringContainsString('Supplier phone: +421900000000', $expense->internal_note);
+        $this->assertStringContainsString('Supplier bank account: 123456789012345678901234567890', $expense->internal_note);
+        $this->assertInstanceOf(NoFormulaValueBinder::class, Cell::getValueBinder());
+    }
+
+    #[Test]
+    public function fractional_totals_are_not_rounded_by_plain_or_padded_integer_formats(): void
+    {
+        $file = $this->makeSpreadsheetUpload([
+            ['Internal number', 'Issue date', 'Total'],
+            [1, '2025-01-01', 1234.56],
+            [2, '2025-01-02', 12.5],
+        ], ['A2' => '000000', 'A3' => '000000', 'C2' => '0', 'C3' => '00']);
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses/import/excel";
+        $preview = $this->actingAs($this->proUser)->post($url.'/preview', ['file' => $file]);
+        $preview->assertOk()
+            ->assertJsonPath('data.preview.0.internal_number', '000001')
+            ->assertJsonPath('data.preview.0.total', '1234.56')
+            ->assertJsonPath('data.preview.1.internal_number', '000002')
+            ->assertJsonPath('data.preview.1.total', '12.50');
+
+        $this->post($url, ['file' => $file, 'mapping' => json_encode($preview->json('data.suggested_mapping'))])
+            ->assertOk()->assertJsonPath('data.imported', 2);
+        $this->assertSame('1234.56', BusinessExpense::where('internal_number', '000001')->firstOrFail()->total);
+        $this->assertSame('12.50', BusinessExpense::where('internal_number', '000002')->firstOrFail()->total);
+    }
+
+    #[Test]
+    public function dashed_supplier_vat_phone_and_postal_headers_map_in_preview_and_import(): void
+    {
+        $headers = self::SUPERFAKTURA_HEADERS;
+        $headers[20] = 'Dodávateľ - IČ DPH';
+        $headers[21] = 'Dodávateľ - telefón';
+        $headers[24] = 'Dodávateľ - PSČ';
+        $file = $this->makeSpreadsheetUpload([$headers, $this->superfakturaRow()]);
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses/import/excel";
+        $preview = $this->actingAs($this->proUser)->post($url.'/preview', ['file' => $file]);
+        $preview->assertOk()
+            ->assertJsonPath('data.suggested_mapping.supplier_vat_id', 20)
+            ->assertJsonPath('data.suggested_mapping.supplier_phone', 21)
+            ->assertJsonPath('data.suggested_mapping.supplier_postal_code', 24);
+
+        $this->post($url, ['file' => $file, 'mapping' => json_encode($preview->json('data.suggested_mapping'))])
+            ->assertOk()->assertJsonPath('data.imported', 1);
+        $note = BusinessExpense::firstOrFail()->internal_note;
+        $this->assertStringContainsString('Supplier VAT ID: SK0011223344', $note);
+        $this->assertStringContainsString('Supplier phone: +421900000000', $note);
+        $this->assertStringContainsString('Supplier postal code: 01234', $note);
+    }
+
+    #[Test]
     public function generated_numbers_do_not_take_explicit_numbers_from_later_rows(): void
     {
         $prefix = 'EXP'.now()->year;
@@ -539,5 +615,23 @@ class BusinessExpenseImportTest extends TestCase
         (new Xlsx($spreadsheet))->save($path);
 
         return new UploadedFile($path, 'expenses.xlsx', null, null, true);
+    }
+
+    /**
+     * @param  list<list<string>>  $rows
+     */
+    private function makeCsvUpload(array $rows): UploadedFile
+    {
+        $path = tempnam(sys_get_temp_dir(), 'expense-import-').'.csv';
+        $stream = fopen($path, 'w');
+        if ($stream === false) {
+            throw new \RuntimeException('Could not create synthetic CSV.');
+        }
+        foreach ($rows as $row) {
+            fputcsv($stream, $row, ',', '"', '');
+        }
+        fclose($stream);
+
+        return new UploadedFile($path, 'expenses.csv', 'text/csv', null, true);
     }
 }

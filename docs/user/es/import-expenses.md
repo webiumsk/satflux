@@ -2,7 +2,7 @@
 title: Importar gastos de SuperFaktura
 category: invoicing
 order: 12
-updated: 2026-11-02
+updated: 2026-11-03
 ---
 
 # Importar gastos de SuperFaktura
@@ -23,3 +23,9 @@ Los números internos existentes se omiten dentro de la empresa. Sin número int
 Límites: **10 MB, 2.000 filas y 256 columnas** por archivo. Las filas no válidas o demasiado largas se omiten sin truncarlas. Las fórmulas se tratan como texto.
 
 En la facturación local, el archivo se procesa en su navegador y se guarda con los datos cifrados existentes. Guarde su frase de recuperación. Los adjuntos PDF se importan por separado.
+
+## Resumen de gastos
+
+El resumen bajo **Gastos** incluye todos los documentos que coinciden con los filtros actuales, en todas las páginas. Muestra el número, el total y el importe de los gastos no pagados. Seleccionar filas no modifica el resumen. Cada moneda tiene sus propios totales.
+
+El importe de los gastos no pagados suma los importes completos de los documentos no marcados como pagados. Los pagos parciales guardados en las notas de importación no se deducen automáticamente; revise esos documentos antes de usar esta cifra como saldo pendiente.

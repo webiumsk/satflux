@@ -3,6 +3,7 @@ import { classifyApiErrorForFlash, GLOBAL_API_ERROR_MESSAGE_KEYS, isPurchasePaus
 import type { EmailChallengeSummary } from '../store/auth';
 import type { BlinkMigrationAlert, Store } from '../store/stores';
 import type { BtcPayApp, StoreDashboardStats, StoreSettings, UpdateStoreSettingsPayload } from '../types/btcpay';
+import type { ExpenseSummary } from '../types/expenses';
 
 declare module 'axios' {
     export interface AxiosRequestConfig {
@@ -922,9 +923,9 @@ export const invoicingApi = {
             const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/expenses`, { params });
             return data.data ?? [];
         },
-        /** Paginated variant: Laravel paginator fields live next to data. */
-        async listPaged<T = unknown>(companyId: string, params: Record<string, unknown> = {}): Promise<PagedList<T>> {
-            const { data } = await api.get<PagedList<T>>(`/invoicing/companies/${companyId}/expenses`, { params });
+        /** Summary covers the complete filtered set alongside the paginated rows. */
+        async listPaged<T = unknown>(companyId: string, params: Record<string, unknown> = {}): Promise<PagedList<T> & { summary?: ExpenseSummary }> {
+            const { data } = await api.get<PagedList<T> & { summary?: ExpenseSummary }>(`/invoicing/companies/${companyId}/expenses`, { params });
             return data;
         },
         async get<T = unknown>(companyId: string, expenseId: string): Promise<T> {

@@ -1,5 +1,21 @@
 # Development decision log
 
+## 2026-11-03 - Adopt the verified expense-summary handoff without rollback
+
+The owner hands off27uncommitted paths and verified recovery evidence. Compare
+all live and backup hashes before adoption, preserve the immutable snapshot and
+review current code rather than restoring files over shared work. Existing
+publication authorization continues on PR426 after final receiving reviews.
+
+Retain the owner's whole-unpaid-document total, company/filter scope, all-page
+aggregation and separate currencies. Exact BCMath/integer cents avoid mixed or
+rounded totals. Invalid legacy currency identifiers receive exact decimal/literal
+display without rewriting stored data. Repair existing typed boundaries using
+established app-row adapters; do not regenerate the baseline, alter encryption
+or broaden query selection. Independent security/QA accept the frozen source.
+Publish reviewed code and a combined PR426 changelog fragment; fresh exact-head
+CI remains required. PR merge, real expense import and deployment stay separate.
+
 ## 2026-11-02 - Shrink the PHPStan baseline after expense import cleanup
 
 Treat the failed PHP job precisely: tests and Pint pass, while full analysis

@@ -2,7 +2,7 @@
 title: Ausgaben aus SuperFaktura importieren
 category: invoicing
 order: 12
-updated: 2026-11-02
+updated: 2026-11-03
 ---
 
 # Ausgaben aus SuperFaktura importieren
@@ -23,3 +23,9 @@ Vorhandene interne Nummern werden innerhalb des Unternehmens übersprungen. Ohne
 Grenzen: **10 MB, 2.000 Zeilen und 256 Spalten** je Datei. Ungültige oder zu lange Zeilen werden ohne Kürzung übersprungen. Formeln werden als Text behandelt.
 
 Bei lokaler Rechnungsstellung wird die Datei im Browser verarbeitet und mit den bestehenden verschlüsselten Daten gespeichert. Sichern Sie Ihre Wiederherstellungsphrase. PDF-Anhänge werden separat importiert.
+
+## Ausgabenübersicht
+
+Die Übersicht unter **Ausgaben** umfasst alle Dokumente, die den aktuellen Filtern entsprechen, auf sämtlichen Seiten. Sie zeigt Anzahl, Gesamtsumme und Summe unbezahlter Ausgaben. Die Auswahl von Zeilen verändert die Übersicht nicht. Jede Währung hat eigene Summen.
+
+Die Summe unbezahlter Ausgaben enthält die vollen Beträge der nicht als bezahlt markierten Dokumente. Teilzahlungen in importierten Notizen werden nicht automatisch abgezogen. Prüfen Sie diese Dokumente, bevor Sie den Wert als offenen Restbetrag verwenden.

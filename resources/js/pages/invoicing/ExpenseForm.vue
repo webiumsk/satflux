@@ -147,6 +147,8 @@ import { useInvoicingExpense } from '../../composables/useInvoicingExpenses';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import { insertLocalExpense, updateLocalExpense } from '../../evolu/expenseCrud';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
+import type { EvoluExpenseRow } from '../../evolu/expenseMap';
+import { toAppRows } from '../../evolu/queryLoad';
 import type { CompanyId, ExpenseId } from '../../evolu/schema';
 import { invoicingApi } from '../../services/api';
 
@@ -158,6 +160,7 @@ const expenseId = computed(() => route.params.expenseId as string | undefined);
 const isNew = computed(() => route.name === 'invoicing-expense-new');
 const localFirst = isInvoicingLocalFirst();
 const expenseResource = useInvoicingExpense(companyId, expenseId);
+const expenseRows = computed(() => toAppRows<EvoluExpenseRow>(expenseResource.expenseRows.value));
 const { defaultCurrency } = useInvoicingCompanySummary();
 
 const {
@@ -337,7 +340,7 @@ async function save() {
           expenseResource.evolu,
           companyId.value as CompanyId,
           payload,
-          expenseResource.expenseRows.value,
+          expenseRows.value,
         );
         if (!result.ok) {
           error.value = t('errors.generic');
@@ -345,7 +348,7 @@ async function save() {
         }
         savedId = result.value.id;
       } else {
-        const current = expenseResource.expenseRows.value.find((row) => row.id === expenseId.value);
+        const current = expenseRows.value.find((row) => row.id === expenseId.value);
         const result = updateLocalExpense(
           expenseResource.evolu,
           expenseId.value! as ExpenseId,

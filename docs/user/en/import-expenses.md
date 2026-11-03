@@ -2,7 +2,7 @@
 title: Import expenses from SuperFaktura
 category: invoicing
 order: 12
-updated: 2026-11-02
+updated: 2026-11-03
 ---
 
 # Import expenses from SuperFaktura
@@ -23,3 +23,9 @@ Existing internal numbers are skipped within the selected company. Rows without 
 Limits: **10 MB, 2,000 rows, 256 columns** per file. Invalid or overlong rows are skipped without truncation. Spreadsheet formulas are treated as text.
 
 In local-first invoicing, the spreadsheet is processed in your browser and saved with the existing encrypted invoicing data. Keep your recovery phrase backed up. PDF attachments are separate from spreadsheet import.
+
+## Expense list summary
+
+The summary below **Expenses** covers every document matching the current filters, across all pages. It shows the count, total and unpaid expense total. Selecting rows does not change it. Each currency has its own totals.
+
+The unpaid expense total adds the full amounts of documents not marked paid. Partial payments retained in import notes are not automatically deducted; review those documents before treating this figure as an outstanding balance.

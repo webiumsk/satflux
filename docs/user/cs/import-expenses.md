@@ -2,7 +2,7 @@
 title: Import nákladů ze SuperFaktury
 category: invoicing
 order: 12
-updated: 2026-11-02
+updated: 2026-11-03
 ---
 
 # Import nákladů ze SuperFaktury
@@ -23,3 +23,9 @@ Existující interní čísla se v dané firmě přeskočí. Bez interního čí
 Limity: **10 MB, 2 000 řádků a 256 sloupců** na soubor. Neplatné nebo příliš dlouhé řádky se přeskočí bez zkrácení. Vzorce se zpracují jako text.
 
 Při lokální fakturaci se soubor zpracuje v prohlížeči a uloží mezi stávající šifrované údaje. Zálohujte si obnovovací frázi. Přílohy PDF se importují samostatně.
+
+## Souhrn nákladů
+
+Souhrn pod seznamem **Nákladů** zahrnuje všechny doklady odpovídající aktuálním filtrům na všech stránkách. Zobrazuje počet, celkovou částku a součet neuhrazených nákladů. Výběr položek součet nemění. Každá měna má vlastní součty.
+
+Součet neuhrazených nákladů zahrnuje celé částky dokladů, které nejsou označené jako uhrazené. Částečné úhrady uložené v poznámkách z importu se automaticky neodečítají. Než součet použijete jako zbývající dluh, tyto doklady zkontrolujte.

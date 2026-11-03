@@ -330,7 +330,8 @@ import {
   unmarkLocalExpensePaid,
   updateLocalExpense,
 } from "../../evolu/expenseCrud";
-import { filterLocalExpenses } from "../../evolu/expenseMap";
+import { filterLocalExpenses, type EvoluExpenseRow } from "../../evolu/expenseMap";
+import { toAppRows } from "../../evolu/queryLoad";
 import {
   attachmentBlobUrl,
   attachmentContentBlob,
@@ -385,6 +386,7 @@ const { companyId, rememberCompany } = useInvoicingLayout();
 const expenseId = computed(() => route.params.expenseId as string);
 const localFirst = isInvoicingLocalFirst();
 const expenseResource = useInvoicingExpense(companyId, expenseId);
+const expenseRows = computed(() => toAppRows<EvoluExpenseRow>(expenseResource.expenseRows.value));
 
 const expense = ref<Expense | null>(null);
 const history = ref<HistoryRow[]>([]);
@@ -560,7 +562,7 @@ function historyLabel(action: string) {
 async function loadNeighbors() {
   if (localFirst) {
     const rows = filterLocalExpenses(
-      expenseResource.expenseRows.value.filter(
+      expenseRows.value.filter(
         (row) => row.companyId === companyId.value,
       ),
       { year: new Date().getFullYear() },
@@ -782,14 +784,14 @@ async function duplicate() {
   duplicating.value = true;
   try {
     if (localFirst && expenseResource.evolu) {
-      const source = expenseResource.expenseRows.value.find(
+      const source = expenseRows.value.find(
         (row) => row.id === expenseId.value,
       );
       if (!source) return;
       const result = duplicateLocalExpense(
         expenseResource.evolu,
         source,
-        expenseResource.expenseRows.value,
+        expenseRows.value,
       );
       if (!result.ok) return;
       await router.push({

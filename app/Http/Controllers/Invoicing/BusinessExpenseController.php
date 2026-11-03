@@ -14,6 +14,7 @@ use App\Services\Invoicing\BusinessExpenseIsdocImportService;
 use App\Services\Invoicing\BusinessExpenseIsdocPackService;
 use App\Services\Invoicing\BusinessExpenseIsdocQuotaService;
 use App\Services\Invoicing\BusinessExpenseService;
+use App\Support\Invoicing\BusinessExpenseListSummary;
 use App\Support\Invoicing\ExpenseAttachmentMime;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,7 +36,9 @@ class BusinessExpenseController extends Controller
 
     public function index(Request $request, Company $company): JsonResponse
     {
-        $expenses = $this->expenseService->filteredQuery($company, $request)
+        $query = $this->expenseService->filteredQuery($company, $request);
+        $summary = BusinessExpenseListSummary::fromQuery($query);
+        $expenses = $query
             ->select([
                 'id',
                 'company_id',
@@ -57,7 +60,7 @@ class BusinessExpenseController extends Controller
             ->orderByDesc('created_at')
             ->paginate($request->integer('per_page', 25));
 
-        return response()->json($expenses);
+        return response()->json(array_merge($expenses->toArray(), ['summary' => $summary]));
     }
 
     public function bulk(BulkBusinessExpenseRequest $request, Company $company): JsonResponse|Response

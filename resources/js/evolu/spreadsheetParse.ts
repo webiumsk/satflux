@@ -107,7 +107,7 @@ function readWorksheetCell(sheet: XLSX.WorkSheet, row: number, column: number): 
 
     if (cell.t === "n" && typeof cell.v === "number") {
         // Preserve zero-padded identifiers without applying currency/grouping formats.
-        if (typeof cell.z === "string" && /^0+$/.test(cell.z)) {
+        if (Number.isInteger(cell.v) && typeof cell.z === "string" && /^0{2,}$/.test(cell.z)) {
             return XLSX.utils.format_cell(cell);
         }
         return String(cell.v);

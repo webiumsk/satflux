@@ -44,6 +44,33 @@ describe("shared spreadsheet import parsing", () => {
         expect(parsed.rows[0]).toEqual(["45000", "2025-01-15", "000123"]);
     });
 
+    it.each([
+        [1234.56, "0"],
+        [12.5, "00"],
+        [-12.5, "000"],
+        [1000.01, "000000"],
+    ])("does not round amount %s using its %s display mask", async (amount, mask) => {
+        const sheet = XLSX.utils.aoa_to_sheet([["Spolu"], [amount]]);
+        sheet.A2.z = mask;
+        expect((await parseSpreadsheetFile(workbookFile(sheet))).rows).toEqual([[String(amount)]]);
+    });
+
+    it("preserves integer identifier padding while leaving a plain integer format unchanged", async () => {
+        const sheet = XLSX.utils.aoa_to_sheet([
+            ["Nulové číslo", "Interné číslo", "Celé číslo"],
+            [0, 123, 42],
+        ]);
+        sheet.A2.z = "00";
+        sheet.B2.z = "000000";
+        sheet.C2.z = "0";
+        expect((await parseSpreadsheetFile(workbookFile(sheet))).rows).toEqual([["00", "000123", "42"]]);
+    });
+
+    it("keeps CSV identifiers as text", async () => {
+        const parsed = await parseSpreadsheetFile(csvFile("Phone;Account;Total\n+421900000000;123456789012345678901234567890;12.50"));
+        expect(parsed.rows).toEqual([["+421900000000", "123456789012345678901234567890", "12.50"]]);
+    });
+
     it("returns formula text instead of a cached numeric result", async () => {
         const sheet = XLSX.utils.aoa_to_sheet([["Spolu"], [2]]);
         sheet.A2.f = "1+1";
