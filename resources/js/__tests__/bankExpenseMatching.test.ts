@@ -53,10 +53,12 @@ function fakeEvolu(ctx: BankPaymentContext) {
     const evolu = {
         loadQuery: vi.fn(async (query: string) => state[query.replace("fresh:", "") as keyof typeof state].map((row) => ({ ...row }))), update,
         subscribeError: () => () => {}, getError: () => null,
-        insert: vi.fn((table: string, props: Record<string, unknown>, options?: { onComplete?: () => void }) => {
+        insert: vi.fn((table: string, props: Record<string, unknown>, options?: { onlyValidate?: boolean; onComplete?: () => void }) => {
             const id = `insert-${++counter}`;
-            tables[table]!.push({ ...props, id });
-            queueMicrotask(() => options?.onComplete?.());
+            if (!options?.onlyValidate) {
+                tables[table]!.push({ ...props, id });
+                queueMicrotask(() => options?.onComplete?.());
+            }
             return { ok: true, value: { id } };
         }),
     } as unknown as Evolu<InvoicingLocalSchema>;

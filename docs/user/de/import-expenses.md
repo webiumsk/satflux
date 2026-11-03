@@ -28,6 +28,8 @@ Bei lokaler Rechnungsstellung wird die Datei im Browser verarbeitet und mit den 
 
 Das variable Symbol folgt den Ziffern der Belegnummer einschließlich führender Nullen. Das Lieferdatum folgt dem Eingangsdatum. Eine manuelle Änderung des jeweiligen Vorgabewerts beendet diese Verknüpfung. Aus einem Anhang ausdrücklich extrahierte Werte bleiben erhalten; bestehende Ausgaben behalten ihre gespeicherten Werte. Ein manuell gelöschtes Lieferdatum bleibt auch nach dem Speichern und erneuten Öffnen leer.
 
+Enthält die Belegnummer mehr als 32 Ziffern, bleibt das automatisch abgeleitete variable Symbol leer und die Belegnummer erhalten. Nach dem Kürzen der Nummer wird der Standardwert wieder übernommen, sofern Sie das Symbol nicht manuell bearbeiten.
+
 ## Ausgabenübersicht
 
 Die Übersicht unter **Ausgaben** umfasst alle Dokumente, die den aktuellen Filtern entsprechen, auf sämtlichen Seiten. Sie zeigt Anzahl, Gesamtsumme und Summe unbezahlter Ausgaben. Die Auswahl von Zeilen verändert die Übersicht nicht. Jede Währung hat eigene Summen.

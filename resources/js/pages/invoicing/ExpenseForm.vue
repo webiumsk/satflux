@@ -236,7 +236,8 @@ onUnmounted(() => { contextGeneration++; });
 
 function syncVariableSymbolDefault() {
   if (isNew.value && variableSymbolFollowsNumber.value) {
-    form.value.variable_symbol = normalizeVariableSymbol(form.value.external_number) || '';
+    const symbol = normalizeVariableSymbol(form.value.external_number) || '';
+    form.value.variable_symbol = symbol.length <= 32 ? symbol : '';
   }
 }
 

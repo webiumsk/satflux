@@ -28,6 +28,8 @@ In local-first invoicing, the spreadsheet is processed in your browser and saved
 
 The variable symbol follows the digits in the document number, including leading zeros. The delivery date follows the received date. Editing either default manually stops that link. Explicit values extracted from an attachment are preserved; existing expenses keep their saved values. A manually cleared delivery date stays blank after saving and reopening.
 
+If the document number contains more than 32 digits, the automatic variable symbol stays blank and the document number is kept. Shortening the number restores the default until the symbol is edited manually.
+
 ## Expense list summary
 
 The summary below **Expenses** covers every document matching the current filters, across all pages. It shows the count, total and unpaid expense total. Selecting rows does not change it. Each currency has its own totals.

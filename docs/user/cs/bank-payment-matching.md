@@ -32,6 +32,8 @@ Nový odchozí pohyb z bankovního e-mailu může označit existující náklad 
 
 Nové e-mailové importy bez uloženého původního směru platby nemohou automaticky uhradit náklad ani při opakovaném párování dávky. Starší uložené pohyby si zachovávají dosavadní výslovné párování dávky.
 
+Pokud stále probíhá jiné párování, před dalším pokusem počkejte na jeho dokončení. Pokud se výsledek nepodařilo potvrdit, před dalším pokusem znovu načtěte kartu.
+
 ## Náklady
 
 Odchozí platby můžete převést na **náklady** pro úplný export účetnímu.

@@ -32,6 +32,8 @@ A newly imported outgoing bank email can also mark an existing expense paid when
 
 Newly imported emails whose recorded payment direction is unavailable cannot automatically pay an expense, including when their batch is matched again. Older saved movements retain their existing explicit batch-matching behavior.
 
+If another matching operation is still running, wait until it finishes before trying again. If the result could not be confirmed, reload the tab before another attempt.
+
 ## Expenses
 
 Outgoing payments can be turned into **expenses** so your books stay complete for the accountant export.

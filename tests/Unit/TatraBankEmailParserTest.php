@@ -168,6 +168,32 @@ class TatraBankEmailParserTest extends TestCase
         $row = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Prijata platba', $body)[0];
 
         $this->assertFalse($row->isExplicitCredit);
+        $this->assertSame(1.0, $row->amount);
+        $this->assertSame('EUR', $row->currency);
+    }
+
+    #[Test]
+    #[TestWith(['Informacia pre prijemcu'])]
+    #[TestWith(['Informácia pre príjemcu'])]
+    #[TestWith(['Referencia platitela'])]
+    #[TestWith(['Protistrana'])]
+    #[TestWith(['Popis transakcie'])]
+    public function remittance_cannot_supply_a_missing_compact_credit_amount(string $field): void
+    {
+        $body = 'Kredit. 03.11.2026. VS: 001234. '.$field.': Suma: 123,45 EUR';
+
+        $this->assertSame([], (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Kredit', $body));
+    }
+
+    #[Test]
+    public function remittance_cannot_supply_a_compact_credit_currency(): void
+    {
+        $body = 'Kredit. Suma: 12,50. 03.11.2026. Informacia pre prijemcu: Suma: 100,00 USD';
+        $row = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Kredit', $body)[0];
+
+        $this->assertSame(12.50, $row->amount);
+        $this->assertSame('EUR', $row->currency);
+        $this->assertFalse($row->hasExplicitCurrency);
     }
 
     #[Test]

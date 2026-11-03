@@ -73,4 +73,43 @@ class TatraBankDebitImportTest extends TestCase
     {
         $this->assertSame([], (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Debet', $body));
     }
+
+    #[Test]
+    #[TestWith(['03.11.2026X'])]
+    #[TestWith(['03.11.2026ž'])]
+    #[TestWith(['03.11.2026_'])]
+    #[TestWith(['03.11.20260'])]
+    #[TestWith(['03.11.2026T14:35X'])]
+    #[TestWith(['03.11.2026 14:35X'])]
+    #[TestWith(['03.11.2026 14:350'])]
+    #[TestWith(['03.11.2026 14:3'])]
+    #[TestWith(['03.11.2026 123:35'])]
+    #[TestWith(['03.11.2026 14:35:1'])]
+    #[TestWith(['03.11.2026 14:35:10X'])]
+    #[TestWith(['03.11.2026 14:35:61'])]
+    #[TestWith(['03.11.2026X. 04.11.2026'])]
+    public function malformed_compact_date_tokens_do_not_fall_back_to_a_partial_date(string $date): void
+    {
+        foreach (['', 'VS: 001234. '] as $symbol) {
+            $body = 'Debet. Suma: 123,45 EUR. '.$symbol.$date;
+            $this->assertSame([], (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Debet', $body));
+        }
+    }
+
+    #[Test]
+    #[TestWith(['03.11.2026', '00:00:00'])]
+    #[TestWith(['03.11.2026.', '00:00:00'])]
+    #[TestWith(['03.11.2026 14:35', '14:35:00'])]
+    #[TestWith(['03.11.2026T14:35', '14:35:00'])]
+    #[TestWith(['03.11.2026 14:35:10', '14:35:10'])]
+    #[TestWith(['03.11.2026T14:35:10', '14:35:10'])]
+    public function complete_compact_dates_preserve_the_optional_bank_time(string $date, string $time): void
+    {
+        foreach (['', 'VS: 001234. '] as $symbol) {
+            $body = 'Debet. Suma: 123,45 EUR. '.$symbol.$date;
+            $rows = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Debet', $body);
+            $this->assertCount(1, $rows);
+            $this->assertSame('2026-11-03 '.$time, $rows[0]->bookedAt->format('Y-m-d H:i:s'));
+        }
+    }
 }

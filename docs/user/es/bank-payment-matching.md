@@ -30,7 +30,9 @@ Satflux relaciona las transacciones recibidas con las facturas mediante el **sí
 
 Un movimiento saliente recién importado por correo bancario puede marcar un gasto existente como pagado si hay exactamente un gasto no pagado de la misma empresa que coincida en importe positivo completo, moneda y símbolo variable. Si el gasto no tiene símbolo variable, se usan los dígitos de su número de documento. Sin símbolo variable bancario, la referencia debe ser igual al número de documento completo. La fecha contable del banco será la fecha de pago. Los casos ambiguos, pagos parciales y pagos superiores quedan sin conciliar. Esta automatización de gastos se aplica a correos bancarios; CSV y Wise mantienen su comportamiento actual. Las filas históricas duplicadas no se vuelven a conciliar al actualizar; use la acción de conciliación automática del lote para revisarlas explícitamente.
 
-Los correos recién importados sin una dirección de pago original guardada no pueden marcar automáticamente un gasto como pagado, tampoco al repetir la conciliación del lote. Los movimientos antiguos guardados mantienen el comportamiento anterior de conciliación explícita por lotes.
+Los correos recién importados sin el sentido del movimiento (cargo o abono) registrado no pueden marcar automáticamente un gasto como pagado, tampoco al repetir la conciliación del lote. Los movimientos antiguos guardados mantienen el comportamiento anterior de conciliación explícita por lotes.
+
+Si hay otra conciliación en curso, espere a que termine antes de volver a intentarlo. Si no se pudo confirmar el resultado, recargue la pestaña antes de realizar otro intento.
 
 ## Gastos
 

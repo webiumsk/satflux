@@ -39,10 +39,12 @@ function fixture(existing = false) {
             getError: () => workerError,
             loadQuery: vi.fn(async (key: string) => key.startsWith("fresh:")
                 ? state[key.slice(6)].map((row) => ({ ...row })) : ui.get(key) ?? []),
-            insert: vi.fn((table: string, props: DataRow, options?: { onComplete?: () => void }) => {
+            insert: vi.fn((table: string, props: DataRow, options?: { onlyValidate?: boolean; onComplete?: () => void }) => {
                 const id = `insert-${++sequence}`;
-                tables[table].push({ ...props, id });
-                complete(table, options?.onComplete);
+                if (!options?.onlyValidate) {
+                    tables[table].push({ ...props, id });
+                    complete(table, options?.onComplete);
+                }
                 return { ok: true, value: { id } };
             }),
             update: vi.fn((table: string, patch: DataRow, options?: { onlyValidate?: boolean; onComplete?: () => void }) => {
@@ -65,7 +67,7 @@ beforeEach(() => { installBankLocks(); });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 it("serializes two client objects across one origin despite stale subscribed UI snapshots", async () => {
-    const { client, row, state, expense } = fixture();
+    const locks = installBankLocks(); const { client, row, state, expense } = fixture();
     const first = client(); const second = client();
     await Promise.all([
         importInboundServerTransactionsAsync(first.evolu as never, "company-a" as never, [{ ...row, dedupe_hash: "hash-a" }]),
@@ -78,6 +80,11 @@ it("serializes two client objects across one origin despite stale subscribed UI 
     const fresh = new Set([...first.evolu.loadQuery.mock.calls, ...second.evolu.loadQuery.mock.calls]
         .map(([key]) => key).filter((key) => key.startsWith("fresh:")));
     expect(fresh.size).toBe(5);
+    expect(locks.request).toHaveBeenCalledTimes(2);
+    for (const [name, options] of locks.request.mock.calls) {
+        expect(name).toBe("satflux-bank-email-reconciliation-v1");
+        expect(options).toMatchObject({ mode: "exclusive", signal: expect.any(AbortSignal) });
+    }
 });
 
 it("does not admit another tab until the expense receipt and post-handler reads finish", async () => {

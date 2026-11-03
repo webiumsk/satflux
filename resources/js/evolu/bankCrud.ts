@@ -465,7 +465,9 @@ async function importInboundServerTransactions(
     let imported = 0;
     let skipped = 0;
     let autoMatched = 0;
-    const created: BankTransactionId[] = [];
+    const hashes = new Set(ctx.transactions.filter((transaction) => transaction.companyId === companyId)
+        .map((transaction) => transaction.dedupeHash));
+    const prepared: Array<{ payload: Parameters<typeof evolu.insert<"bankTransaction">>[1]; dedupeHash: string }> = [];
 
     for (const row of rows) {
         const bookedAt = row.booked_at?.includes("T") ? row.booked_at : `${row.booked_at}T12:00:00`;
@@ -482,37 +484,52 @@ async function importInboundServerTransactions(
             bookedAt, amount, currency: currency ?? "", direction,
             variableSymbol: row.variable_symbol, reference: row.reference, bankTransactionId: row.bank_transaction_id,
         });
-        if (ctx.transactions.some((existing) => existing.companyId === companyId && existing.dedupeHash === dedupeHash)) {
+        if (hashes.has(dedupeHash)) {
             skipped++;
             continue;
         }
-        const inserted: { id?: BankTransactionId } = {};
-        const completed = await awaitBankMutation(evolu, (onComplete) => {
-            const result = evolu.insert("bankTransaction", {
-                companyId, bankImportBatchId: batchId, bookedAt, amount: amountText, currency, direction,
-                recordedDirectionEvidence: recordedDirection ?? "unverified",
-                matchStatus: "unmatched", businessExpenseId: null,
-                variableSymbol: row.variable_symbol ?? null, constantSymbol: row.constant_symbol ?? null,
-                specificSymbol: row.specific_symbol ?? null, counterpartyName: row.counterparty_name ?? null,
-                counterpartyIban: row.counterparty_iban ?? null, reference: row.reference ?? null,
-                bankTransactionId: row.bank_transaction_id ?? null, dedupeHash, source: "inbound_email",
-            }, { onComplete });
-            if (result.ok) inserted.id = result.value.id;
-            return result;
-        });
-        if (!completed || !inserted.id) {
+        const payload: Parameters<typeof evolu.insert<"bankTransaction">>[1] = {
+            companyId, bankImportBatchId: batchId, bookedAt, amount: amountText, currency, direction,
+            recordedDirectionEvidence: recordedDirection ?? "unverified",
+            matchStatus: "unmatched", businessExpenseId: null,
+            variableSymbol: row.variable_symbol ?? null, constantSymbol: row.constant_symbol ?? null,
+            specificSymbol: row.specific_symbol ?? null, counterpartyName: row.counterparty_name ?? null,
+            counterpartyIban: row.counterparty_iban ?? null, reference: row.reference ?? null,
+            bankTransactionId: row.bank_transaction_id ?? null, dedupeHash, source: "inbound_email",
+        };
+        if (!evolu.insert("bankTransaction", payload, { onlyValidate: true }).ok) {
             skipped++;
             continue;
         }
-        ctx = await readBankReconciliationContext(evolu);
-        const committed = ctx.transactions.find((transaction) => transaction.id === inserted.id
-            && transaction.companyId === companyId && transaction.dedupeHash === dedupeHash);
-        if (!committed) throw new Error("bank_import_row_missing");
-        created.push(committed.id);
-        imported++;
+        hashes.add(dedupeHash);
+        prepared.push({ payload, dedupeHash });
     }
-    for (const id of created) {
-        const transaction = ctx.transactions.find((row) => row.id === id);
+    const created: Array<{ id: BankTransactionId; dedupeHash: string }> = [];
+    if (prepared.length > 0) {
+        const completed = await awaitBankMutation(evolu, (onComplete) => {
+            // Validation of any actual insert aborts Evolu's whole synchronous
+            // batch. Never report earlier rows as imported after that abort.
+            for (const [index, { payload, dedupeHash }] of prepared.entries()) {
+                const result = evolu.insert("bankTransaction", payload,
+                    index === prepared.length - 1 ? { onComplete } : undefined);
+                if (!result.ok) return result;
+                created.push({ id: result.value.id, dedupeHash });
+            }
+            return { ok: true };
+        });
+        if (!completed) throw new Error("bank_import_row_batch_rejected");
+        ctx = await readBankReconciliationContext(evolu);
+    }
+    const transactionsById = new Map(ctx.transactions.map((transaction) => [transaction.id, transaction]));
+    for (const inserted of created) {
+        const transaction = transactionsById.get(inserted.id);
+        if (!transaction || transaction.companyId !== companyId || transaction.dedupeHash !== inserted.dedupeHash) {
+            throw new Error("bank_import_row_missing");
+        }
+    }
+    imported = created.length;
+    for (const { id } of created) {
+        const transaction = transactionsById.get(id);
         if (transaction && (transaction.direction !== "debit" || allowExpenseMatching)
             && await tryAutoMatchTransaction(evolu, transaction, ctx)) autoMatched++;
     }

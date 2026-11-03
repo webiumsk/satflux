@@ -1,16 +1,23 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createEvolu, createId, SimpleName } from "@evolu/common";
 import { deserializeQuery } from "@evolu/common/local-first";
-import { InvoicingLocalSchema } from "@/evolu/schema";
+import { CompanyId, InvoicingLocalSchema } from "@/evolu/schema";
 import { clearRowOwnerIndex, withCompanyOwnerScoping } from "@/evolu/ownerScope";
 import { clearCompanyShares, setCompanyShare } from "@/evolu/companyShareRegistry";
 import type { OwnerId } from "@evolu/common/local-first";
 import { tryAutoMatchBankEmailExpense } from "@/evolu/bankExpensePaymentMatcher";
 import { BankReconciliationUnknownError } from "@/evolu/bankReconciliation";
+import { importInboundServerTransactionsAsync } from "@/evolu/bankCrud";
+import { installBankLocks } from "./bankReconciliationTestSupport";
 
 vi.mock("@/evolu/client", async () => {
     const { createQuery } = await import("@evolu/common/local-first");
     return {
+        allBankImportBatchesQuery: createQuery((db) => db.selectFrom("bankImportBatch").selectAll()),
+        allBankTransactionsQuery: createQuery((db) => db.selectFrom("bankTransaction").selectAll()),
+        allBankTransactionMatchesQuery: createQuery((db) => db.selectFrom("bankTransactionMatch").selectAll()),
+        allDocumentsQuery: createQuery((db) => db.selectFrom("document").selectAll()),
+        allExpensesQuery: createQuery((db) => db.selectFrom("expense").selectAll()),
         bankReconciliationBatchesQuery: createQuery((db) => db.selectFrom("bankImportBatch").selectAll().where("id", "is not", null)),
         bankReconciliationTransactionsQuery: createQuery((db) => db.selectFrom("bankTransaction").selectAll().where("id", "is not", null)),
         bankReconciliationMatchesQuery: createQuery((db) => db.selectFrom("bankTransactionMatch").selectAll().where("id", "is not", null)),
@@ -18,6 +25,7 @@ vi.mock("@/evolu/client", async () => {
         bankReconciliationExpensesQuery: createQuery((db) => db.selectFrom("expense").selectAll().where("id", "is not", null)),
     };
 });
+vi.mock("@/evolu/documentCrud", () => ({ markLocalDocumentPaidWithAmount: vi.fn(), unmarkLocalDocumentPaid: vi.fn() }));
 
 type DataRow = Record<string, unknown>;
 type Message = { type: string; tabId?: string; onCompleteIds?: unknown[]; queries?: string[];
@@ -59,7 +67,7 @@ function createProbe(shared = false, automatic = true) {
     };
     const raw = createEvolu(deps as never)(InvoicingLocalSchema, { name: SimpleName.orThrow(`bankBatch${++sequence}`) });
     const evolu = withCompanyOwnerScoping(raw);
-    const companyId = createId(deps as never);
+    const companyId = CompanyId.orThrow(createId(deps as never));
     const ownerId = createId(deps as never) as OwnerId;
     if (shared) setCompanyShare({ companyId, ownerId, role: "owner", status: "active", bridgeCompanyId: null });
     const expenseId = createId(deps as never);
@@ -75,7 +83,7 @@ function createProbe(shared = false, automatic = true) {
     return { evolu, messages, state, ownerId, bank, expense, transaction, candidate, ctx, reply,
         error: () => receive({ type: "onError", error: { type: "SqliteError", error: { type: "CommitError" } } }) };
 }
-afterEach(() => { clearRowOwnerIndex(); clearCompanyShares(); });
+afterEach(() => { clearRowOwnerIndex(); clearCompanyShares(); vi.unstubAllGlobals(); });
 
 describe("real Evolu mutation queue and worker-response boundary", () => {
     it.each([false, true])("actual matcher waits for one atomic mutation and post-handler fresh query (shared=%s)", async (shared) => {
@@ -146,5 +154,86 @@ describe("real Evolu mutation queue and worker-response boundary", () => {
         probe.error(); await rejected;
         expect(probe.ctx).toEqual(before);
         expect(probe.state.expense[0].status).toBe("recorded");
+    });
+    it.each([false, true])("batches validated rows with duplicates and invalid rows in three context reads (shared=%s)", async (shared) => {
+        installBankLocks();
+        const { evolu, state, messages, transaction } = createProbe(shared);
+        state.expense.length = 0;
+        state.bankTransaction[0].dedupeHash = "existing";
+        const row = { booked_at: "2026-11-03", amount: "19.00", currency: "EUR", direction: "debit", recorded_direction: "debit" };
+        expect(await importInboundServerTransactionsAsync(evolu, transaction.companyId, [
+            { ...row, dedupe_hash: "new-a" }, { ...row, dedupe_hash: "new-a" },
+            { ...row, dedupe_hash: "new-b", variable_symbol: "x".repeat(33) },
+            { ...row, dedupe_hash: "new-b" }, { ...row, dedupe_hash: "existing" },
+        ])).toEqual({ imported: 2, auto_matched: 0 });
+        expect(state.bankTransaction.map((item) => item.dedupeHash)).toEqual(["existing", "new-a", "new-b"]);
+        expect(state.bankImportBatch[0]).toMatchObject({ rowCount: "5", importedCount: "2", skippedDuplicates: "3", autoMatchedCount: "0" });
+        const mutations = messages.filter((message) => message.type === "mutate");
+        expect(mutations.map((message) => message.changes?.map((change) => change.table)))
+            .toEqual([["bankImportBatch"], ["bankTransaction", "bankTransaction"], ["bankImportBatch"]]);
+        expect(mutations[1].onCompleteIds).toHaveLength(1);
+        const queries = messages.filter((message) => message.type === "query");
+        expect(queries).toHaveLength(3);
+        expect(queries.flatMap((message) => message.queries ?? [])).toHaveLength(15);
+        expect(new Set(queries.flatMap((message) => message.queries ?? [])).size).toBe(5);
+        expect(mutations.every((message) => message.subscribedQueries?.length === 0)).toBe(true);
+    });
+    it("skips the row-batch receipt when every row is rejected in prevalidation", async () => {
+        installBankLocks();
+        const { evolu, state, messages, transaction } = createProbe();
+        expect(await importInboundServerTransactionsAsync(evolu, transaction.companyId, [{
+            booked_at: "2026-11-03", amount: "19.00", currency: "EUR", direction: "debit", recorded_direction: "debit",
+            variable_symbol: "x".repeat(33), dedupe_hash: "invalid",
+        }])).toEqual({ imported: 0, auto_matched: 0 });
+        expect(state.bankTransaction).toHaveLength(1);
+        expect(state.bankImportBatch[0]).toMatchObject({ importedCount: "0", skippedDuplicates: "1" });
+        expect(messages.filter((message) => message.type === "mutate")).toHaveLength(2);
+        expect(messages.filter((message) => message.type === "query")).toHaveLength(2);
+    });
+    it.each([false, true])("aborts all rows when the second actual insert fails real Evolu validation (shared=%s)", async (shared) => {
+        installBankLocks();
+        const { evolu: scoped, state, messages, transaction } = createProbe(shared);
+        let actualInserts = 0;
+        const evolu = {
+            subscribeError: scoped.subscribeError, getError: scoped.getError, loadQuery: scoped.loadQuery, update: scoped.update,
+            insert: (table: string, props: DataRow, options?: { onlyValidate?: boolean; onComplete?: () => void }) => {
+                const fail = table === "bankTransaction" && !options?.onlyValidate && ++actualInserts === 2;
+                return scoped.insert(table as never, (fail ? { ...props, variableSymbol: "x".repeat(33) } : props) as never, options);
+            },
+        } as unknown as typeof scoped;
+        const before = structuredClone(state.bankTransaction);
+        const row = { booked_at: "2026-11-03", amount: "19.00", currency: "EUR", direction: "debit", recorded_direction: "debit" };
+        await expect(importInboundServerTransactionsAsync(evolu, transaction.companyId, [
+            { ...row, dedupe_hash: "new-a" }, { ...row, dedupe_hash: "new-b" },
+        ])).rejects.toThrow("bank_import_row_batch_rejected");
+        await Promise.resolve();
+        expect(state.bankTransaction).toEqual(before);
+        expect(state.expense[0].status).toBe("recorded");
+        expect(state.bankImportBatch[0]).toMatchObject({ importedCount: "0", autoMatchedCount: "0" });
+        expect(messages.filter((message) => message.type === "mutate")).toHaveLength(1);
+        expect(messages.filter((message) => message.type === "query")).toHaveLength(1);
+    });
+    it.each(["id", "companyId", "dedupeHash"])("verifies every row's %s in fresh state before matching or reporting counts", async (field) => {
+        installBankLocks();
+        const probe = createProbe(false, false);
+        const row = { booked_at: "2026-11-03", amount: "19.00", currency: "EUR", direction: "debit", recorded_direction: "debit", variable_symbol: "00019" };
+        const pending = importInboundServerTransactionsAsync(probe.evolu, probe.transaction.companyId, [
+            { ...row, dedupe_hash: "new-a" }, { ...row, dedupe_hash: "new-b" },
+        ]);
+        const rejected = expect(pending).rejects.toThrow("bank_import_row_missing");
+        const messagesOfType = (type: string) => probe.messages.filter((message) => message.type === type);
+        await vi.waitFor(() => expect(messagesOfType("mutate")).toHaveLength(1));
+        probe.reply(messagesOfType("mutate")[0]);
+        await vi.waitFor(() => expect(messagesOfType("query")).toHaveLength(1));
+        probe.reply(messagesOfType("query")[0]);
+        await vi.waitFor(() => expect(messagesOfType("mutate")).toHaveLength(2));
+        probe.reply(messagesOfType("mutate")[1]);
+        probe.state.bankTransaction.find((transaction) => transaction.dedupeHash === "new-b")![field] = "different";
+        await vi.waitFor(() => expect(messagesOfType("query")).toHaveLength(2));
+        probe.reply(messagesOfType("query")[1]);
+        await rejected;
+        expect(probe.state.expense[0].status).toBe("recorded");
+        expect(probe.state.bankImportBatch[0]).toMatchObject({ importedCount: "0", autoMatchedCount: "0" });
+        expect(messagesOfType("mutate")).toHaveLength(2);
     });
 });

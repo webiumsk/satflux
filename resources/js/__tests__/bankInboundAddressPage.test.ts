@@ -2,9 +2,12 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { reactive, ref, nextTick } from 'vue';
 
-const mocks = vi.hoisted(() => ({ ensure: vi.fn(), inbound: vi.fn(), local: true }));
+const mocks = vi.hoisted(() => ({ ensure: vi.fn(), inbound: vi.fn(), local: true,
+  autoMatchBatch: vi.fn(), importFile: vi.fn(), load: vi.fn(), flashError: vi.fn(),
+}));
 const route = reactive({ params: { companyId: 'local-a' } });
 const hasBankAccount = ref(true);
+const batches = ref<{ id: string; imported_count: number; row_count: number }[]>([]);
 vi.mock('vue-router', () => ({ useRoute: () => route }));
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key, locale: ref('en') }) }));
 vi.mock('@/components/invoicing/InvoicingPageShell.vue', () => ({ default: { template: '<div><slot name="header"/><slot/></div>' } }));
@@ -17,13 +20,13 @@ vi.mock('@/composables/useInvoicingCompanySummary', () => ({ useInvoicingCompany
   hasBankAccount, summaryLoaded: ref(true), bankAccountLabel: ref('Synthetic bank'), defaultCurrency: ref('EUR'),
 }) }));
 vi.mock('@/composables/useInvoicingBankPayments', () => ({ useInvoicingBankPayments: () => ({
-  localFirst: mocks.local, loading: ref(false), transactions: ref([]), batches: ref([]),
+  localFirst: mocks.local, loading: ref(false), transactions: ref([]), batches,
   summary: ref({ credit_count: 0, credit_total: '0', debit_count: 0, debit_total: '0', balance: '0', currency: 'EUR', by_currency: [] }),
   wiseStatus: ref(null), wiseBridgeMissing: ref(false),
-  load: vi.fn().mockResolvedValue(undefined), loadBatches: vi.fn().mockResolvedValue(undefined),
+  load: mocks.load, loadBatches: vi.fn().mockResolvedValue(undefined), autoMatchBatch: mocks.autoMatchBatch, importFile: mocks.importFile,
   fetchWiseStatus: vi.fn().mockResolvedValue(undefined),
 }) }));
-vi.mock('@/store/flash', () => ({ useFlashStore: () => ({ error: vi.fn(), success: vi.fn() }) }));
+vi.mock('@/store/flash', () => ({ useFlashStore: () => ({ error: mocks.flashError, success: vi.fn() }) }));
 vi.mock('@/services/api', () => ({ invoicingApi: { bankTransactions: { inboundEmail: mocks.inbound } } }));
 vi.mock('@/evolu/bridgeCompanyEnsure', () => ({ ensureBridgeCompanyIdForLocalCompany: mocks.ensure }));
 
@@ -49,10 +52,64 @@ beforeEach(() => {
   route.params.companyId = 'local-a';
   hasBankAccount.value = true;
   mocks.local = true;
+  batches.value = [];
+  mocks.load.mockResolvedValue(undefined);
+  mocks.autoMatchBatch.mockResolvedValue(undefined);
   mocks.ensure.mockImplementation(async (company: string) => ({ ok: true, bridgeCompanyId: `bridge-${company}` }));
   mocks.inbound.mockImplementation(async (company: string) => response(company === 'bridge-local-a' ? addressA : addressB));
 });
 afterEach(() => { wrapper?.unmount(); wrapper = undefined; });
+
+describe('batch matching errors', () => {
+  it.each([
+    ['bank_reconciliation_wait_timed_out', 'invoicing.bank_matching_busy'],
+    ['bank_reconciliation_outcome_unknown', 'invoicing.bank_matching_unknown'],
+    ['synthetic unexpected failure', 'invoicing.bank_auto_match_failed'],
+  ])('shows a localized error after %s without refreshing or retrying', async (message, key) => {
+    batches.value = [{ id: 'synthetic-batch', imported_count: 1, row_count: 1 }];
+    mocks.autoMatchBatch.mockRejectedValueOnce(new Error(message));
+    await render();
+    mocks.load.mockClear();
+    await wrapper!.findAll('button').find((button) => button.text() === 'invoicing.bank_auto_match_batch')!.trigger('click');
+    await flushPromises();
+    expect(mocks.flashError).toHaveBeenCalledExactlyOnceWith(key);
+    expect(mocks.autoMatchBatch).toHaveBeenCalledExactlyOnceWith('synthetic-batch');
+    expect(mocks.load).not.toHaveBeenCalled();
+  });
+
+  it('refreshes after successful batch matching', async () => {
+    batches.value = [{ id: 'synthetic-batch', imported_count: 1, row_count: 1 }];
+    await render();
+    mocks.load.mockClear();
+    await wrapper!.findAll('button').find((button) => button.text() === 'invoicing.bank_auto_match_batch')!.trigger('click');
+    await flushPromises();
+    expect(mocks.load).toHaveBeenCalledOnce();
+    expect(mocks.flashError).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['bank_import_row_batch_rejected', 'invoicing.bank_import_failed'],
+    ['bank_reconciliation_outcome_unknown', 'invoicing.bank_matching_unknown'],
+  ])('localizes the import error %s without reporting success or retrying', async (message, key) => {
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    try {
+      mocks.importFile.mockRejectedValueOnce(new Error(message));
+      await render();
+      mocks.load.mockClear();
+      const input = wrapper!.get('input[type="file"]');
+      Object.defineProperty(input.element, 'files', { value: [new File(['synthetic'], 'bank.csv', { type: 'text/csv' })] });
+      await input.trigger('change');
+      await wrapper!.get('form').trigger('submit');
+      await flushPromises();
+      expect(alert).toHaveBeenCalledExactlyOnceWith(key);
+      expect(mocks.importFile).toHaveBeenCalledOnce();
+      expect(mocks.load).not.toHaveBeenCalled();
+      expect(wrapper!.text()).not.toContain('invoicing.bank_import_result');
+    } finally {
+      alert.mockRestore();
+    }
+  });
+});
 
 describe('independent bank address context probes', () => {
   it('keeps B address when a deferred A bridge resolves after B', async () => {

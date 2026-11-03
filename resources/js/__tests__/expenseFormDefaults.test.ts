@@ -109,14 +109,39 @@ describe('new expense field defaults', () => {
     expect(field('variable_symbol').element.value).toBe('');
   });
 
+  it.each([true, false])('leaves an overlong derived VS blank and resumes when the number is shortened (local=%s)', async (local) => {
+    await render(local);
+    for (const digits of [31, 32]) {
+      const symbol = '0'.repeat(digits - 1) + '1';
+      await field('expense_col_external').setValue(`DOC-${symbol}`);
+      expect(field('variable_symbol').element.value).toBe(symbol);
+    }
+    await field('expense_col_external').setValue('1'.repeat(33));
+    expect(field('variable_symbol').element.value).toBe('');
+    await field('expense_col_external').setValue('DOC-0007');
+    expect(field('variable_symbol').element.value).toBe('0007');
+  });
+
+  it.each([true, false])('saves a long document number with a null derived VS (local=%s)', async (local) => {
+    await render(local);
+    const number = '1'.repeat(33);
+    await field('expense_col_external').setValue(number);
+    await wrapper!.find('form').trigger('submit');
+    await flushPromises();
+    const write = local ? mocks.insert : mocks.create;
+    expect(write).toHaveBeenCalledOnce();
+    expect(write.mock.calls[0]?.[local ? 2 : 1]).toMatchObject({ external_number: number, variable_symbol: null });
+    expect(mocks.push).toHaveBeenCalledOnce();
+  });
+
   it('preserves a manually entered or cleared VS on later number changes', async () => {
     await render();
     await field('expense_col_external').setValue('DOC-001');
     await field('variable_symbol').setValue('0099');
-    await field('expense_col_external').setValue('DOC-002');
+    await field('expense_col_external').setValue('2'.repeat(33));
     expect(field('variable_symbol').element.value).toBe('0099');
     await field('variable_symbol').setValue('');
-    await field('expense_col_external').setValue('DOC-003');
+    await field('expense_col_external').setValue('3'.repeat(33));
     expect(field('variable_symbol').element.value).toBe('');
   });
 

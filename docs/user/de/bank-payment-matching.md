@@ -32,6 +32,8 @@ Eine neu importierte ausgehende Bank-E-Mail kann eine bestehende Ausgabe als bez
 
 Neu importierte E-Mails ohne gespeicherte ursprüngliche Zahlungsrichtung können eine Ausgabe auch beim erneuten Stapelabgleich nicht automatisch bezahlen. Ältere gespeicherte Bewegungen behalten ihr bisheriges Verhalten beim ausdrücklich gestarteten Stapelabgleich.
 
+Läuft noch ein anderer Abgleich, warten Sie vor einem weiteren Versuch auf dessen Abschluss. Konnte das Ergebnis nicht bestätigt werden, laden Sie den Tab vor einem weiteren Versuch neu.
+
 ## Ausgaben
 
 Ausgehende Zahlungen können Sie in **Ausgaben** umwandeln, damit der Export für die Buchhaltung vollständig bleibt.

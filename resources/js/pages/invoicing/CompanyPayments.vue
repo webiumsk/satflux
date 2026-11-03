@@ -1129,15 +1129,30 @@ async function upload() {
       response?: { data?: { message?: string } };
       message?: string;
     };
-    alert(err?.response?.data?.message || err?.message || t("common.error"));
+    const importErrorKey = reconciliationErrorKey(e);
+    alert(importErrorKey ? t(importErrorKey) : err?.response?.data?.message || err?.message || t("common.error"));
   } finally {
     importing.value = false;
   }
 }
 
 async function autoMatchBatch(batchId: string) {
-  await bank.autoMatchBatch(batchId);
-  await load();
+  try {
+    await bank.autoMatchBatch(batchId);
+    await load();
+  } catch (err: unknown) {
+    flashStore.error(t(reconciliationErrorKey(err) || "invoicing.bank_auto_match_failed"));
+  }
+}
+
+function reconciliationErrorKey(error: unknown): string | null {
+  if (!(error instanceof Error)) return null;
+  switch (error.message) {
+    case "bank_reconciliation_wait_timed_out": return "invoicing.bank_matching_busy";
+    case "bank_reconciliation_outcome_unknown": return "invoicing.bank_matching_unknown";
+    case "bank_import_row_batch_rejected": return "invoicing.bank_import_failed";
+    default: return null;
+  }
 }
 
 async function openMatch(tx: BankTx) {

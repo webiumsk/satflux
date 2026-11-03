@@ -166,12 +166,12 @@ class TatraBankEmailParser implements BankNotificationParser
     /** @param array{amount: float, currency: string, date: Carbon, vs: ?string}|null $debit */
     protected function parseCompact(string $text, string $subject, ?array $debit = null): ?ParsedBankTransaction
     {
-        $amount = $debit['amount'] ?? $this->matchAmount($text);
+        $bankPrefix = $this->bankAuthoredPrefix($text);
+        $amount = $debit['amount'] ?? $this->matchAmount($bankPrefix);
         if ($amount === null) {
             return null;
         }
 
-        $bankPrefix = $this->bankAuthoredPrefix($text);
         $direction = $debit !== null ? BankTransactionDirection::Debit : app(BankTransactionDirectionGuesser::class)->fromAmountAndHints(
             $this->matchAmount($bankPrefix) ?? 0,
             $subject,
@@ -215,7 +215,7 @@ class TatraBankEmailParser implements BankNotificationParser
 
         $reference = $this->resolveReference($informacia, $popis, $referencia, $subject, $text);
 
-        $currency = $debit['currency'] ?? $this->matchCurrency($text);
+        $currency = $debit['currency'] ?? $this->matchCurrency($bankPrefix);
 
         return new ParsedBankTransaction(
             bookedAt: $bookedAt,
@@ -506,8 +506,11 @@ class TatraBankEmailParser implements BankNotificationParser
             $amount = $this->debitAmount($fields[6]);
             $currency = strtoupper($fields[7]);
         } else {
+            // Count date-like tokens before validating them: a malformed date
+            // must not disappear when another valid date is present.
             if (preg_match_all('/\b(?:suma|amount|obrat)[:\s]*(-?[0-9][0-9 ,.]*?)\s+([A-Z]{3})(?=[\s.]|$)/iu', $bankPrefix, $amountFields, PREG_SET_ORDER) !== 1
-                || preg_match_all('/(?<![\d.])(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?(?!\d)/u', $bankPrefix, $dates, PREG_SET_ORDER) !== 1) {
+                || preg_match_all('/(?<![\d.])\d{1,2}\.\s*\d{1,2}\.\s*\d{4}/u', $bankPrefix) !== 1
+                || preg_match_all('/(?<![\d.\p{L}])(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?(?=\z|[\s.,;])(?![ T]+\d)/u', $bankPrefix, $dates, PREG_SET_ORDER) !== 1) {
                 return null;
             }
             $date = $this->debitDate($dates[0][1], $dates[0][2], $dates[0][3], $dates[0][4] ?? '0', $dates[0][5] ?? '0', $dates[0][6] ?? '0');

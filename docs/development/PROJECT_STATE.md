@@ -1,5 +1,33 @@
 # Project state
 
+## PR427 second review fixes verified locally - 2026-11-03
+
+The completed CodeRabbit review of06c837b3 adds four inline findings and three
+follow-ups. The same owned branch now fixes compact malformed dates/times,
+remittance-only credit amounts, oversized derived VS, Spanish direction wording,
+localized matching failures, batched import reads and the literal lock assertion.
+Each validated row reserves its hash; all prepared rows insert synchronously,
+then every actual id/company/hash is verified in one private context read.
+Unexpected actual validation failure aborts the row batch explicitly; unknown
+worker outcomes keep the existing quarantine. Fixed queries and matching authority
+are unchanged. No additional server schema, infrastructure or policy change.
+
+Full-PR runtime22 manifest:
+`4b236b10f2ff2bd403a8287599f0594707a573ff495ab6cfd4e678357c2a7eb1`;
+source/test36 manifest:
+`b33ad44a7e63e15235aded39654cdeb025d9c0533d3701febfdc898f35b19975`.
+Main full frontend1382/158, mounted UI39, scoped bank92, disposable PHP262/1018,
+Pint8, lint48known/typecheck112existing-no-new, build, five locales, API documents
+and fragment pass. Local PHPStan retains only known optional missing Scramble in
+the unchanged exporter. Ten guides and the PR427 fragment match final behavior.
+Independent QA/security accept both identical manifests without unresolved findings:
+QA frontend131, PHP305/1160 and actual-worker15; security frontend131, PHP177/539
+and actual-worker15 pass independently with overlapping scopes. Native adapters
+are synthetic, not browser E2E. No new PostgreSQL target is needed or created.
+Publish only the reviewed32-path delta; CI41729050967 verifies06c837b3 only.
+Then verify the new exact-head CI and resolve the four addressed threads. No production replay, merge or deployment.
+See `EXPENSE_DEFAULTS_BANK_IMPORT_REVIEW.md` for the second-round contract.
+
 ## PR427 CodeRabbit remediation reviewed - 2026-11-03
 
 The owner reports review findings on published `c79deafd`, PR427. Seven inline

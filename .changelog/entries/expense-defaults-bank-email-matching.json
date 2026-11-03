@@ -2,7 +2,7 @@
   "id": "expense-defaults-bank-email-matching",
   "source": "https://github.com/webiumsk/satflux/pull/427",
   "title": "Expense defaults and bank email matching",
-  "body": "New expenses fill the variable symbol from the document number and the delivery date from the received date. Manual changes, cleared delivery dates and values extracted from attachments are preserved. Bank email synchronization follows the selected company. Supported outgoing bank emails can mark exactly matching expenses paid, while incomplete or ambiguous notifications remain for review.",
+  "body": "New expenses fill the variable symbol from the document number and the delivery date from the received date. Manual changes, cleared delivery dates and values extracted from attachments are preserved. Bank email synchronization follows the selected company. Supported outgoing bank emails can mark exactly matching expenses paid, while incomplete or ambiguous notifications remain for review. Oversized derived variable symbols stay blank, and bank matching errors show recovery guidance.",
   "labels": [
     "fix",
     "improvement"

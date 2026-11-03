@@ -28,6 +28,8 @@ Při lokální fakturaci se soubor zpracuje v prohlížeči a uloží mezi stáv
 
 Variabilní symbol se průběžně nastavuje podle číslic v čísle dokladu včetně úvodních nul. Datum dodání se nastavuje podle data přijetí. Ruční úpravou předvyplněné hodnoty se její propojení vypne. Výslovné hodnoty vytěžené z přílohy se zachovají; existující náklady si ponechají uložené hodnoty. Ručně vymazané datum dodání zůstane prázdné i po uložení a opětovném otevření.
 
+Pokud číslo dokladu obsahuje více než 32 číslic, automatický variabilní symbol zůstane prázdný a číslo dokladu se zachová. Po zkrácení čísla se předvyplnění obnoví, dokud symbol neupravíte ručně.
+
 ## Souhrn nákladů
 
 Souhrn pod seznamem **Nákladů** zahrnuje všechny doklady odpovídající aktuálním filtrům na všech stránkách. Zobrazuje počet, celkovou částku a součet neuhrazených nákladů. Výběr položek součet nemění. Každá měna má vlastní součty.

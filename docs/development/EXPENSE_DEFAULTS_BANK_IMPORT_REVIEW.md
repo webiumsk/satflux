@@ -304,3 +304,83 @@ The QA-owned network-isolated temporary PostgreSQL container and tmpfs were
 removed after review. Existing primary edits and all recovery artifacts remain.
 Main publication is limited to this reviewed branch. No merge, deployment,
 merchant-data change, historical job retry or bank-message replay is performed.
+
+
+## PR427 second review remediation - 2026-11-03
+
+The owner asks for additional CodeRabbit findings. The completed incremental
+review of `06c837b3` adds four inline findings and three follow-ups. That commit's
+CI41729050967 passed all four jobs; it does not validate the changes below.
+Graphify remains unavailable because the local graph is absent and no graph tool
+is exposed; no graph rebuild or tool installation is performed.
+
+### Scoped contract and disposition
+
+| Finding | Owner / bounded files | Required behavior |
+| --- | --- | --- |
+| 4461201972, compact date suffix | backend / parser and two parser test files | Complete compact debit date token with/without VS; malformed time cannot fall back to a date; malformed plus valid date remains ambiguous and rejects |
+| Follow-up18bcf517, compact credit amount | backend / same parser/tests | Amount and currency come from bank-authored prefix; remittance-only amounts cannot qualify a credit |
+| 4461201992, long derived VS | coordinator / ExpenseForm and mounted form tests, five import guides | At most32 derived digits including leading zeros; overlong automatic value is blank, number retained, shortened number resumes default, manual overrides stay intact |
+| 4461202003, Spanish direction wording | coordinator / Spanish bank guide | Say recorded movement direction (cargo/abono), avoiding the payment-address ambiguity |
+| 4461202025, batch error visibility | coordinator / CompanyPayments, mounted page tests, five locales/guides | Catch rejected batch matching; localized busy/unknown/generic errors, no silent failure or automatic retry; keep success refresh |
+| Follow-up170a9eee, import reads | frontend / bankCrud and bank regression tests | Prevalidate/dedupe prepared rows, one synchronous row batch and one post-handler private-context read, verify each actual id/company/hash before counts/matching |
+| Follow-up82f95bd4, lock regression | frontend / concurrency test | Assert the fixed literal lock name and exclusive options so a changed name cannot pass the test |
+| Independent acceptance | read-only QA and security | Verify exact frozen bytes, rejection/unknown invariants, real worker boundaries and UI/parser behavior using only synthetic disposable probes |
+
+Only validated rows reserve hashes in the current-import set. Invalid rows remain
+skipped individually; a later valid row with the same hash is eligible. An empty
+prepared group never waits for a nonexistent row receipt. Every actual insert is
+queued synchronously without an await; a real Result-false cancels that entire
+Evolu microtask batch, aborts the import explicitly and publishes no row counts or
+expense matches. Initial import metadata can remain with zero counts. There is
+no automatic retry. Thrown/unknown worker outcomes retain the existing permanent
+quarantine. The final legitimate metadata receipt and private fresh read remain.
+
+The five fixed private query identities, origin lock, owner scoping, direction
+qualifier, financial matching rules and previous mixed-client/device limitations
+are unchanged. A Map verifies stored row identities without a quadratic scan.
+The actual-Evolu mixed five-input fixture imports two rows and skips three with
+three context reads (15 query loads, five keys), including initial/final metadata
+barriers. This measures query work; no production backlog timing is inferred.
+
+UI messages distinguish a busy operation, an unknown result requiring tab reload,
+a known rejected import and a generic matching failure. All five locales and
+matching guides carry the final behavior. Known internal reconciliation codes are
+mapped to localized messages; no new payment payload or raw worker error is shown.
+Final manifests, independent reports and completed gates follow after review.
+
+
+### Second-round frozen artifact and independent acceptance
+
+Both independent reviewers verify every listed file and accept runtime22 manifest
+`4b236b10f2ff2bd403a8287599f0594707a573ff495ab6cfd4e678357c2a7eb1`
+and source/test36 manifest
+`b33ad44a7e63e15235aded39654cdeb025d9c0533d3701febfdc898f35b19975`.
+The manifest format is unchanged. No unresolved QA/security finding remains.
+Only four previous runtime paths and five locale files change this round; the
+prior browser schema, lock/query module and SQL matcher remain byte-identical.
+The previous Compose delta is unchanged and outside this follow-up.
+
+- Main full frontend:1,382 cases /158 files pass on frozen bytes. Scoped author
+  bank92 and coordinator mounted UI39 pass; full typecheck retains112 existing
+  findings with no new fingerprint, full lint has48 existing warnings/no errors.
+- Backend author disposable SQLite262 /1,018 and Pint8 pass. Independent QA
+  SQLite305 /1,160 and security177 /539 pass with one inherited deprecation.
+  These corpora overlap. No PostgreSQL target is created for this round.
+- Independent QA frontend131 /5 files and security bank92 plus UI39 pass.
+- Each reviewer passes15 actual Evolu/native SQLite probes, including three new
+  multirow/known-abort cases. The installed worker/transaction code is real;
+  asynchronous realm, broadcast and lock adapters remain synthetic. No browser,
+  OPFS or cross-device uniqueness claim is inferred.
+- Production build, five-locale parity, all three OpenAPI documents, validator
+  test and updated PR427 fragment pass. Structural inventory comparison proves
+  the parser hash is its only change; all453 route records remain unchanged.
+- Full local PHPStan has only the inherited optional missing Scramble class in
+  unchanged DocumentationExporter.php:18. No dependency, ignore, baseline,
+  warning budget or permission setting changes. New locked-dependency CI must
+  verify the new published head; earlier06c837b3 success remains historical.
+
+Main publishes only the32 reviewed follow-up paths, verifies committed manifests
+and remote SHA, updates PR evidence and resolves the four addressed threads.
+The primary checkout and previous recovery artifacts remain preserved. No real
+bank message, production data, job retry, merge or deployment is used/performed.

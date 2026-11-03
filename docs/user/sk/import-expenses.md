@@ -28,6 +28,8 @@ Pri lokálnej fakturácii sa súbor spracuje vo vašom prehliadači a uloží me
 
 Variabilný symbol sa priebežne nastavuje podľa číslic v čísle dokladu vrátane úvodných núl. Dátum dodania sa nastavuje podľa dátumu prijatia. Ručnou úpravou predvyplnenej hodnoty sa jej prepojenie vypne. Výslovné hodnoty vyťažené z prílohy sa zachovajú; existujúce náklady si ponechajú uložené hodnoty. Ručne vymazaný dátum dodania zostane prázdny aj po uložení a opätovnom otvorení.
 
+Ak číslo dokladu obsahuje viac ako 32 číslic, automatický variabilný symbol zostane prázdny a číslo dokladu sa zachová. Po skrátení čísla sa predvyplnenie obnoví, pokiaľ symbol neupravíte ručne.
+
 ## Sumár nákladov
 
 Sumár pod zoznamom **Nákladov** zahŕňa všetky doklady zodpovedajúce aktuálnym filtrom na všetkých stránkach. Zobrazuje počet, celkovú sumu a sumu neuhradených nákladov. Výber položiek súčet nemení. Každá mena má vlastné súčty.

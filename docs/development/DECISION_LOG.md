@@ -1,5 +1,28 @@
 # Development decision log
 
+## 2026-11-03 - Bound bank row batches and expose matching failures
+
+The owner's additional-CodeRabbit request continues repair/publication scope on
+PR427. Compact debit dates must be complete tokens, including optional times;
+malformed candidates cannot disappear beside a valid date. Compact credit amount
+and currency must come from the bank-authored prefix. Automatically derived VS
+longer than32digits stays blank without truncating the document number; later
+shortening resumes the default unless the user overrides it.
+
+Prevalidate import rows individually, then reserve their hashes and queue actual
+inserts in one synchronous microtask batch. Known invalid rows remain skipped;
+an unexpected actual validation false aborts the whole row group explicitly with
+zero reported row count or matches. Empty groups skip the nonexistent row receipt.
+Require one genuine private worker snapshot to verify every actual id/company/
+hash, and retain final metadata verification. Unknown outcomes never auto-retry
+or release quarantine. Fixed five queries, origin lock and owner boundaries stay.
+
+Localize busy, unknown-result, known rejected-import and generic matching errors
+in all five languages; preserve successful refresh and expose no raw worker data.
+Document32digit/recovery behavior and correct Spanish movement-direction wording.
+Independent QA/security must accept final bytes before main-owned publication;
+new exact-head CI remains required. No payment authority, schema or pricing change.
+
 ## 2026-11-03 - Close PR427 review findings with durable browser qualification
 
 The owner's CodeRabbit follow-up authorizes bounded remediation on the existing

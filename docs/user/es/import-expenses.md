@@ -28,6 +28,8 @@ En la facturación local, el archivo se procesa en su navegador y se guarda con 
 
 El símbolo variable sigue los dígitos del número del documento, incluidos los ceros iniciales. La fecha de entrega sigue la fecha de recepción. Al editar manualmente uno de estos valores, se detiene su vínculo. Se conservan los valores explícitos extraídos de un adjunto; los gastos existentes mantienen sus valores guardados. Una fecha de entrega borrada manualmente permanece vacía después de guardar y volver a abrir.
 
+Si el número de documento contiene más de 32 dígitos, el símbolo variable automático queda vacío y se conserva el número de documento. Al acortar el número, vuelve a aplicarse el valor predeterminado mientras no se edite el símbolo manualmente.
+
 ## Resumen de gastos
 
 El resumen bajo **Gastos** incluye todos los documentos que coinciden con los filtros actuales, en todas las páginas. Muestra el número, el total y el importe de los gastos no pagados. Seleccionar filas no modifica el resumen. Cada moneda tiene sus propios totales.

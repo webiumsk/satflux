@@ -1,5 +1,18 @@
 # Development roadmap
 
+## Current: finish PR427 second-round review fixes - 2026-11-03
+
+Four new inline findings and three follow-ups are implemented on the same branch:
+strict bank date/amount fields, VS32 default, localized visible errors, Spanish
+wording and batched row insertion with full post-handler identity proof. Main
+frontend1382, backend262/1018, scoped bank92 and mounted UI39 pass; static/build/
+locale/API gates preserve existing ratchets and the local Scramble limitation.
+Independent QA/security accept runtime22 4b236b10...a7eb1 and source/test36
+b33ad44a...19975 with no unresolved findings; QA131frontend/305PHP1160 and both
+reviewers' actual-worker15 pass. Publish the reviewed32-path delta, resolve the
+four threads and verify new CI. Retain the fixed-query/quarantine/legacy-device limits.
+No production access, replay, merge or deployment is included.
+
 ## Current: publish PR427 review remediation - 2026-11-03
 
 Seven CodeRabbit inline findings and five follow-ups are repaired and covered by
