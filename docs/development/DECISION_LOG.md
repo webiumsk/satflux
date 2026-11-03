@@ -1,5 +1,30 @@
 # Development decision log
 
+## 2026-11-03 - Close PR427 review findings with durable browser qualification
+
+The owner's CodeRabbit follow-up authorizes bounded remediation on the existing
+owned PR427 branch. Add one nullable Evolu direction-evidence field; new rows
+always distinguish recorded credit/debit from unverified inference, while legacy
+null rows keep explicit normalized-ledger batch behavior. This additive browser
+field supersedes the earlier no-schema-change note for this specific qualifier;
+there is no server migration or expansion of Store/SEPA fulfillment authority.
+
+Use one origin Web Lock and five fixed private, unsubscribed queries. Installed
+Evolu callbacks occur before COMMIT, so require subsequent worker reads after
+legitimate batch mutations and verify financial state before reporting success.
+Unknown worker results quarantine the entered gate until tab reload/close; late
+callbacks cannot unlock it and canceled queued requests cannot mutate later.
+Without an origin lock, preserve import but disable automatic expense payment.
+The guarantee covers updated cooperating same-browser clients, not other devices.
+
+Preserve explicit null delivery dates separately from omitted defaults; guard Wise
+and shared bridge cache responses by request/company generations. Narrow SQL
+candidate locks by exact amount/currency while retaining strict rechecks and
+uniqueness. Restrict parser qualification to bank-authored fields and reject
+numeric symbol continuations. Keep auth, tenant isolation, pricing and previous
+payment history intact. Independent QA/security verify final byte manifests;
+main owns scoped publication and fresh CI. No merge/deployment or mail replay.
+
 ## 2026-11-03 - Publish the reviewed expense/bank repair branch
 
 The owner's explicit push instruction authorizes committing and publishing the

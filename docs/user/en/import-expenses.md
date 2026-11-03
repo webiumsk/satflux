@@ -26,7 +26,7 @@ In local-first invoicing, the spreadsheet is processed in your browser and saved
 
 ## Defaults for a new expense
 
-The variable symbol follows the digits in the document number, including leading zeros. The delivery date follows the received date. Editing either default manually stops that link. Explicit values extracted from an attachment are preserved; existing expenses keep their saved values.
+The variable symbol follows the digits in the document number, including leading zeros. The delivery date follows the received date. Editing either default manually stops that link. Explicit values extracted from an attachment are preserved; existing expenses keep their saved values. A manually cleared delivery date stays blank after saving and reopening.
 
 ## Expense list summary
 

@@ -27,12 +27,24 @@ class TatraBankEmailParser implements BankNotificationParser
     public function parse(string $from, string $subject, string $body): array
     {
         $text = $this->normalizeBody($body);
-        $classicHeader = preg_match('/bol zostatok Vasho uctu/iu', $text) === 1;
-        $classicCredit = $classicHeader && preg_match('/bol zostatok Vasho uctu[^\n]*\bzvyseny\b/iu', $text);
-        $isDebit = ($classicHeader && preg_match('/bol zostatok Vasho uctu[^\n]*\bznizeny\b/iu', $text))
-            || (! $classicCredit && app(BankTransactionDirectionGuesser::class)->fromAmountAndHints(
-                $this->matchAmount($text) ?? 0, $subject, $text,
-            ) === BankTransactionDirection::Debit);
+        $bankPrefix = $this->bankAuthoredPrefix($text);
+        $greeting = '(?:V[aá][zž]en[yý]\s+klient,\s*)?';
+        $classicHeader = preg_match('/\A'.$greeting.'[^\n]*\bbol zostatok Vasho uctu\b/iu', $bankPrefix) === 1;
+        if (! $classicHeader && preg_match('/bol zostatok Vasho uctu/iu', $bankPrefix)) {
+            return [];
+        }
+        $classicDirection = null;
+        if ($classicHeader) {
+            if (! preg_match('/\A'.$greeting.'\d{1,2}\.?\s*\d{1,2}\.?\s*\d{4}\s+\d{1,2}:\d{2}\s+bol zostatok Vasho uctu\s+\S+\s+(zvyseny|znizeny)\b/iu', $bankPrefix, $opening)) {
+                // An incomplete classic opening cannot be a compact notification.
+                return [];
+            }
+            $classicDirection = strtolower($opening[1]);
+        }
+        $isDebit = $classicHeader ? $classicDirection === 'znizeny'
+            : app(BankTransactionDirectionGuesser::class)->fromAmountAndHints(
+                $this->matchAmount($bankPrefix) ?? 0, $subject, $bankPrefix,
+            ) === BankTransactionDirection::Debit;
         $debit = $isDebit ? $this->qualifiedDebit($text, $classicHeader) : null;
         if ($isDebit && $debit === null) {
             // An incomplete classic debit must not escape into compact parsing.
@@ -41,12 +53,12 @@ class TatraBankEmailParser implements BankNotificationParser
         // Select strict evidence using sender identity, never a body label.
         // Origin is independently authenticated before SEPA reporting.
         $evidence = $this->strictSepaEvidence($from, $body);
-        $classic = $this->parseClassic($text, $subject, $evidence, $debit);
+        $classic = $classicHeader ? $this->parseClassic($text, $subject, $evidence, $debit) : null;
 
         if ($classic !== null) {
             return [$classic];
         }
-        if ($classicHeader && $debit !== null) {
+        if ($classicHeader) {
             return [];
         }
 
@@ -159,10 +171,11 @@ class TatraBankEmailParser implements BankNotificationParser
             return null;
         }
 
+        $bankPrefix = $this->bankAuthoredPrefix($text);
         $direction = $debit !== null ? BankTransactionDirection::Debit : app(BankTransactionDirectionGuesser::class)->fromAmountAndHints(
-            $amount,
+            $this->matchAmount($bankPrefix) ?? 0,
             $subject,
-            $text,
+            $bankPrefix,
         );
 
         $vs = null;
@@ -484,16 +497,17 @@ class TatraBankEmailParser implements BankNotificationParser
     /** @return array{amount: float, currency: string, date: Carbon, vs: ?string}|null */
     private function qualifiedDebit(string $text, bool $classic): ?array
     {
+        $bankPrefix = $this->bankAuthoredPrefix($text);
         if ($classic) {
-            if (! preg_match('/\A(?:V[aá][zž]en[yý]\s+klient,\s*)?(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})[ \t]+(\d{1,2}):(\d{2})\s+bol zostatok Vasho uctu\s+\S+\s+znizeny\s+o\s+([0-9][0-9 ,.]*?)\s+([A-Z]{3})\.?[ \t]*(?:\n|$)/iu', $text, $fields)) {
+            if (! preg_match('/\A(?:V[aá][zž]en[yý]\s+klient,\s*)?(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})[ \t]+(\d{1,2}):(\d{2})\s+bol zostatok Vasho uctu\s+\S+\s+znizeny\s+o\s+([0-9][0-9 ,.]*?)\s+([A-Z]{3})\.?[ \t]*(?:\n|$)/iu', $bankPrefix, $fields)) {
                 return null;
             }
             $date = $this->debitDate($fields[1], $fields[2], $fields[3], $fields[4], $fields[5]);
             $amount = $this->debitAmount($fields[6]);
             $currency = strtoupper($fields[7]);
         } else {
-            if (preg_match_all('/\b(?:suma|amount|obrat)[:\s]*(-?[0-9][0-9 ,.]*?)\s+([A-Z]{3})(?=[\s.]|$)/iu', $text, $amountFields, PREG_SET_ORDER) !== 1
-                || preg_match_all('/(?<![\d.])(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?(?!\d)/u', $text, $dates, PREG_SET_ORDER) !== 1) {
+            if (preg_match_all('/\b(?:suma|amount|obrat)[:\s]*(-?[0-9][0-9 ,.]*?)\s+([A-Z]{3})(?=[\s.]|$)/iu', $bankPrefix, $amountFields, PREG_SET_ORDER) !== 1
+                || preg_match_all('/(?<![\d.])(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?(?!\d)/u', $bankPrefix, $dates, PREG_SET_ORDER) !== 1) {
                 return null;
             }
             $date = $this->debitDate($dates[0][1], $dates[0][2], $dates[0][3], $dates[0][4] ?? '0', $dates[0][5] ?? '0', $dates[0][6] ?? '0');
@@ -506,6 +520,15 @@ class TatraBankEmailParser implements BankNotificationParser
         }
 
         return ['amount' => $amount, 'currency' => $currency, 'date' => $date, 'vs' => $symbol['value']];
+    }
+
+    private function bankAuthoredPrefix(string $text): string
+    {
+        if (preg_match('/\b(?:Inform[aá]cia\s+pre\s+pr[ií]jemcu|Referencia\s+platite[lľ]a|Protistrana|Popis\s+transakcie|[UÚuú][cč]et\s+protistrany)\s*:/iu', $text, $field, PREG_OFFSET_CAPTURE)) {
+            return substr($text, 0, $field[0][1]);
+        }
+
+        return $text;
     }
 
     private function debitDate(string $day, string $month, string $year, string $hour, string $minute, string $second = '0'): ?Carbon
@@ -533,11 +556,18 @@ class TatraBankEmailParser implements BankNotificationParser
     private function debitSymbol(string $text): array
     {
         preg_match_all('/\/VS([^\/\r\n]*)/iu', $text, $structured);
-        preg_match_all('/(?<![\w\/])(?:VS|variabiln[ýy]\s*symbol)(?:[ \t]*:[ \t]*|[ \t]+)([^\s;]*)/iu', $text, $labelled);
-        $rawSymbols = array_merge($structured[1], array_map(
-            fn (string $value): string => str_ends_with($value, '.') ? substr($value, 0, -1) : $value,
-            $labelled[1],
-        ));
+        preg_match_all('/(?<![\w\/])(?:VS|variabiln[ýy]\s*symbol)(?:[ \t]*:[ \t]*|[ \t]+)([^\s;]*)/iu', $text, $labelled, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+        $rawSymbols = $structured[1];
+        foreach ($labelled as $field) {
+            $value = $field[1][0];
+            $tail = substr($text, $field[1][1] + strlen($value));
+            $endsBeforeDate = str_ends_with($value, '.')
+                && preg_match('/\A\h+\d{1,2}\.\h*\d{1,2}\.\h*\d{4}(?:[ T]+\d{1,2}:\d{2}(?::\d{2})?)?(?=\z|[\s.,;])/u', $tail);
+            if (preg_match('/\A\h+\d/u', $tail) && ! $endsBeforeDate) {
+                return ['valid' => false, 'value' => null];
+            }
+            $rawSymbols[] = str_ends_with($value, '.') ? substr($value, 0, -1) : $value;
+        }
         $reference = $this->matchField($text, 'Referencia platitela');
         if ($reference !== null && preg_match('/\A\d{1,10}\z/', $reference)) {
             $rawSymbols[] = $reference;

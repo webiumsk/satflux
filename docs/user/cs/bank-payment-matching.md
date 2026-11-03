@@ -30,6 +30,8 @@ Satflux páruje příchozí transakce s fakturami podle **variabilního symbolu*
 
 Nový odchozí pohyb z bankovního e-mailu může označit existující náklad jako uhrazený, pokud se v téže firmě najde právě jeden neuhrazený náklad se shodnou celou kladnou částkou, měnou a variabilním symbolem. Pokud náklad nemá VS, použijí se číslice z čísla dokladu. Bez bankovního VS se reference platby musí rovnat celému číslu dokladu. Datem úhrady bude datum bankovního pohybu. Nejednoznačné, částečné a přeplacené úhrady zůstanou nespárované. Tato automatika pro náklady platí pro bankovní e-maily; CSV a Wise si ponechávají dosavadní chování. Historické duplicitní řádky se při obnovení znovu nepárují; k jejich výslovné kontrole použijte automatické párování příslušné importní dávky.
 
+Nové e-mailové importy bez uloženého původního směru platby nemohou automaticky uhradit náklad ani při opakovaném párování dávky. Starší uložené pohyby si zachovávají dosavadní výslovné párování dávky.
+
 ## Náklady
 
 Odchozí platby můžete převést na **náklady** pro úplný export účetnímu.

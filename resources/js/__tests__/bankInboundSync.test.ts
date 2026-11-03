@@ -50,8 +50,9 @@ function bankFor(id = "local-b") {
 
 function deferred<T>() {
     let resolve!: (value: T) => void;
-    const promise = new Promise<T>((done) => { resolve = done; });
-    return { promise, resolve };
+    let reject!: (reason: Error) => void;
+    const promise = new Promise<T>((done, fail) => { resolve = done; reject = fail; });
+    return { promise, resolve, reject };
 }
 
 const row = { id: "server-tx-b", booked_at: "2026-08-01", amount: "19.00", currency: "EUR" };
@@ -182,6 +183,85 @@ describe("bank movement bridge synchronization", () => {
         await bank.load();
         expect(mocks.list).toHaveBeenCalledWith("server-company-uuid", { per_page: 50 });
         expect(mocks.ensure).not.toHaveBeenCalled();
+        expect(mocks.importInbound).not.toHaveBeenCalled();
+    });
+
+    it.each([true, false])("keeps the latest same-company Wise status (local=%s)", async (local) => {
+        mocks.localFirst = local;
+        const first = deferred<{ connected: boolean; profile_id: number }>();
+        mocks.wiseStatus.mockReturnValueOnce(first.promise).mockResolvedValueOnce({ connected: true, profile_id: 2 });
+        const { bank } = bankFor();
+        const stale = bank.fetchWiseStatus();
+        await vi.waitFor(() => expect(mocks.wiseStatus).toHaveBeenCalledTimes(1));
+        await bank.fetchWiseStatus();
+        first.resolve({ connected: false, profile_id: 1 });
+        await stale;
+        expect(bank.wiseStatus.value).toEqual({ connected: true, profile_id: 2 });
+    });
+
+    it.each([true, false])("clears and invalidates Wise status across A-B-A (local=%s)", async (local) => {
+        mocks.localFirst = local;
+        const first = deferred<{ connected: boolean; profile_id: number }>();
+        mocks.wiseStatus.mockReturnValueOnce(first.promise)
+            .mockResolvedValueOnce({ connected: true, profile_id: 2 })
+            .mockResolvedValueOnce({ connected: true, profile_id: 3 });
+        const { bank, company } = bankFor("company-a");
+        const stale = bank.fetchWiseStatus();
+        await vi.waitFor(() => expect(mocks.wiseStatus).toHaveBeenCalledTimes(1));
+        company.value = "company-b";
+        expect(bank.wiseStatus.value).toBeNull();
+        expect(bank.wiseBridgeChecked.value).toBe(false);
+        await nextTick();
+        await bank.fetchWiseStatus();
+        expect(bank.wiseStatus.value?.profile_id).toBe(2);
+        company.value = "company-a";
+        expect(bank.wiseStatus.value).toBeNull();
+        expect(bank.wiseBridgeChecked.value).toBe(false);
+        await nextTick();
+        await bank.fetchWiseStatus();
+        first.resolve({ connected: false, profile_id: 1 });
+        await stale;
+        expect(bank.wiseStatus.value?.profile_id).toBe(3);
+    });
+
+    it.each([true, false])("does not clear a newer Wise status when an older request fails (local=%s)", async (local) => {
+        mocks.localFirst = local;
+        const first = deferred<{ connected: boolean }>();
+        mocks.wiseStatus.mockReturnValueOnce(first.promise).mockResolvedValueOnce({ connected: true });
+        const { bank } = bankFor();
+        const stale = bank.fetchWiseStatus();
+        await vi.waitFor(() => expect(mocks.wiseStatus).toHaveBeenCalledTimes(1));
+        await bank.fetchWiseStatus();
+        first.reject(new Error("synthetic stale request failure"));
+        await stale;
+        expect(bank.wiseStatus.value).toEqual({ connected: true });
+    });
+
+    it("ignores an old missing-bridge result before it can overwrite current Wise availability", async () => {
+        const first = deferred<{ ok: true; bridgeCompanyId: null }>();
+        mocks.ensure.mockReturnValueOnce(first.promise);
+        const { bank } = bankFor();
+        const stale = bank.fetchWiseStatus();
+        await bank.fetchWiseStatus();
+        first.resolve({ ok: true, bridgeCompanyId: null });
+        await stale;
+        expect(mocks.wiseStatus).toHaveBeenCalledTimes(1);
+        expect(bank.wiseStatus.value).toEqual({ connected: true });
+        expect(bank.wiseBridgeMissing.value).toBe(false);
+        expect(bank.inboundEmailAvailable.value).toBe(true);
+    });
+
+    it("keeps current Wise availability when an older bank refresh resolves without a bridge", async () => {
+        const first = deferred<{ ok: false }>();
+        mocks.ensure.mockReturnValueOnce(first.promise);
+        const { bank } = bankFor();
+        const stale = bank.load();
+        await bank.fetchWiseStatus();
+        first.resolve({ ok: false });
+        await stale;
+        expect(bank.wiseStatus.value).toEqual({ connected: true });
+        expect(bank.wiseBridgeMissing.value).toBe(false);
+        expect(bank.inboundEmailAvailable.value).toBe(true);
         expect(mocks.importInbound).not.toHaveBeenCalled();
     });
 });

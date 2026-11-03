@@ -309,4 +309,50 @@ class BusinessExpenseTest extends TestCase
             "/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}",
         )->assertForbidden();
     }
+
+    #[Test]
+    public function explicit_null_delivery_date_stays_null_on_create_and_show(): void
+    {
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses";
+        $created = $this->actingAs($this->user)->postJson($url, [
+            'issue_date' => '2026-11-03',
+            'delivery_date' => null,
+            'total' => 10,
+        ])->assertCreated()->assertJsonPath('data.delivery_date', null)->json('data');
+
+        $this->assertNull(BusinessExpense::findOrFail($created['id'])->delivery_date);
+        $this->getJson($url.'/'.$created['id'])->assertOk()->assertJsonPath('data.delivery_date', null);
+    }
+
+    #[Test]
+    public function omitted_delivery_date_defaults_on_create_and_preserves_on_update(): void
+    {
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses";
+        $created = $this->actingAs($this->user)->postJson($url, [
+            'issue_date' => '2026-11-03',
+            'total' => 10,
+        ])->assertCreated()->json('data');
+
+        $this->assertSame('2026-11-03', BusinessExpense::findOrFail($created['id'])->delivery_date->toDateString());
+        $this->patchJson($url.'/'.$created['id'], ['issue_date' => '2026-11-04'])->assertOk();
+        $this->assertSame('2026-11-03', BusinessExpense::findOrFail($created['id'])->delivery_date->toDateString());
+    }
+
+    #[Test]
+    public function delivery_date_can_be_changed_then_cleared_and_reopened(): void
+    {
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses";
+        $created = $this->actingAs($this->user)->postJson($url, [
+            'issue_date' => '2026-11-03',
+            'delivery_date' => '2026-11-01',
+            'total' => 10,
+        ])->assertCreated()->json('data');
+
+        $this->patchJson($url.'/'.$created['id'], ['delivery_date' => '2026-11-02'])->assertOk();
+        $this->assertSame('2026-11-02', BusinessExpense::findOrFail($created['id'])->delivery_date->toDateString());
+        $this->patchJson($url.'/'.$created['id'], ['delivery_date' => null])->assertOk()->assertJsonPath('data.delivery_date', null);
+        $this->getJson($url.'/'.$created['id'])->assertOk()->assertJsonPath('data.delivery_date', null);
+        $this->patchJson($url.'/'.$created['id'], ['issue_date' => '2026-11-04'])->assertOk();
+        $this->assertNull(BusinessExpense::findOrFail($created['id'])->delivery_date);
+    }
 }

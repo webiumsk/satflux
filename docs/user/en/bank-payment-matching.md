@@ -30,6 +30,8 @@ As transactions come in, Satflux matches them to invoices using the **variable s
 
 A newly imported outgoing bank email can also mark an existing expense paid when exactly one unpaid expense in the same company matches the full positive amount, currency and variable symbol. If the expense has no variable symbol, its document-number digits are used. Without a bank variable symbol, the payment reference must equal the complete document number. The bank booking date becomes the paid date. Ambiguous, partial and overpayments remain unmatched. This automatic expense matching applies to bank emails; CSV and Wise keep their existing behavior. Historical duplicate rows are not rematched on refresh; use the import batch’s automatic matching action to check them explicitly.
 
+Newly imported emails whose recorded payment direction is unavailable cannot automatically pay an expense, including when their batch is matched again. Older saved movements retain their existing explicit batch-matching behavior.
+
 ## Expenses
 
 Outgoing payments can be turned into **expenses** so your books stay complete for the accountant export.

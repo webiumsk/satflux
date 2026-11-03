@@ -17,6 +17,7 @@ import {
 } from "./bankPaymentDocumentMatcher";
 import { bankTransactionDedupeHash } from "./bankDedupe";
 import { bankPaymentCurrency, tryAutoMatchBankEmailExpense } from "./bankExpensePaymentMatcher";
+import { awaitBankMutation, readBankReconciliationContext, serializeBankEmailReconciliation } from "./bankReconciliation";
 import {
     documentAmountDue,
     evoluBankBatchToApi,
@@ -41,27 +42,6 @@ import type {
 } from "./schema";
 
 const AMOUNT_TOLERANCE = 0.01;
-
-const emailReconciliations = new WeakMap<Evolu<InvoicingLocalSchema>, Promise<unknown>>();
-
-function serializeEmailReconciliation<T>(
-    evolu: Evolu<InvoicingLocalSchema>,
-    reconcile: () => Promise<T>,
-): Promise<T> {
-    const previous = emailReconciliations.get(evolu) ?? Promise.resolve();
-    const pending = previous.catch(() => undefined).then(async () => {
-        const result = await reconcile();
-        // Finish queued writes before another entry point loads its context.
-        await Promise.all([evolu.loadQuery(allBankTransactionsQuery), evolu.loadQuery(allExpensesQuery)]);
-        return result;
-    });
-    emailReconciliations.set(evolu, pending);
-    const release = () => {
-        if (emailReconciliations.get(evolu) === pending) emailReconciliations.delete(evolu);
-    };
-    void pending.then(release, release);
-    return pending;
-}
 
 export type BankPaymentContext = {
     batches: EvoluBankImportBatchRow[];
@@ -199,11 +179,11 @@ function applyMatch(
     if (tx) tx.matchStatus = "matched";
 }
 
-export function tryAutoMatchTransaction(
+export async function tryAutoMatchTransaction(
     evolu: Evolu<InvoicingLocalSchema>,
     transaction: EvoluBankTransactionRow,
     ctx: BankPaymentContext,
-): boolean {
+): Promise<boolean> {
     if (transaction.direction === "debit") return tryAutoMatchBankEmailExpense(evolu, transaction, ctx);
     if (transaction.matchStatus === "matched") return true;
     if (resolvedBankDirection(transaction) !== "credit") return false;
@@ -413,7 +393,7 @@ export async function importLocalBankRows(
     }
 
     for (const transaction of created) {
-        if (tryAutoMatchTransaction(evolu, transaction, ctx)) {
+        if (await tryAutoMatchTransaction(evolu, transaction, ctx)) {
             autoMatched++;
         }
     }
@@ -454,143 +434,97 @@ export async function importInboundServerTransactionsAsync(
     companyId: CompanyId,
     rows: ServerBankTransactionRow[],
 ): Promise<{ imported: number; auto_matched: number }> {
-    return serializeEmailReconciliation(evolu, () => importInboundServerTransactions(evolu, companyId, rows));
+    return serializeBankEmailReconciliation(evolu, (allowExpenseMatching) =>
+        importInboundServerTransactions(evolu, companyId, rows, allowExpenseMatching));
 }
 
 async function importInboundServerTransactions(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
     rows: ServerBankTransactionRow[],
+    allowExpenseMatching: boolean,
 ): Promise<{ imported: number; auto_matched: number }> {
-    if (rows.length === 0) {
-        return { imported: 0, auto_matched: 0 };
-    }
-
-    const ctx = await loadBankPaymentContext(evolu);
-    const batchResult = evolu.insert("bankImportBatch", {
-        companyId,
-        source: "inbound_email",
-        filename: "b-mail-sync",
-        rowCount: String(rows.length),
-        importedCount: "0",
-        skippedDuplicates: "0",
-        autoMatchedCount: "0",
+    if (rows.length === 0) return { imported: 0, auto_matched: 0 };
+    const createdBatch: { id?: BankImportBatchId } = {};
+    const started = await awaitBankMutation(evolu, (onComplete) => {
+        const result = evolu.insert("bankImportBatch", {
+            companyId, source: "inbound_email", filename: "b-mail-sync",
+            rowCount: String(rows.length), importedCount: "0", skippedDuplicates: "0", autoMatchedCount: "0",
+        }, { onComplete });
+        if (result.ok) createdBatch.id = result.value.id;
+        return result;
     });
-
-    if (!batchResult.ok) {
-        return { imported: 0, auto_matched: 0 };
+    const batchId = createdBatch.id;
+    if (!started || !batchId) return { imported: 0, auto_matched: 0 };
+    // A legitimate batch mutation invalidates the private, unsubscribed keys.
+    // Their fresh worker responses run after the preceding handler's COMMIT.
+    let ctx = await readBankReconciliationContext(evolu);
+    if (!ctx.batches.some((batch) => batch.id === batchId && batch.companyId === companyId)) {
+        throw new Error("bank_import_batch_missing");
     }
-
-    const batchId = batchResult.value.id as BankImportBatchId;
     let imported = 0;
     let skipped = 0;
     let autoMatched = 0;
-    const created: EvoluBankTransactionRow[] = [];
+    const created: BankTransactionId[] = [];
 
     for (const row of rows) {
-        const bookedAt = row.booked_at?.includes("T")
-            ? row.booked_at
-            : `${row.booked_at}T12:00:00`;
+        const bookedAt = row.booked_at?.includes("T") ? row.booked_at : `${row.booked_at}T12:00:00`;
         const amount = Math.abs(parseFloat(row.amount || "0"));
         const recordedDirection = row.recorded_direction === "debit" || row.recorded_direction === "credit"
             ? row.recorded_direction : null;
         const direction = recordedDirection ?? (row.direction === "debit" ? "debit" : "credit");
-        const currency = direction === "debit"
-            ? bankPaymentCurrency(row.currency)
-            : (row.currency || "EUR").toUpperCase();
-        // Preserve debit evidence for later explicit reconciliation instead of
-        // manufacturing a positive amount or default currency from invalid data.
+        const currency = direction === "debit" ? bankPaymentCurrency(row.currency) : (row.currency || "EUR").toUpperCase();
+        // Preserve malformed debit evidence for later explicit reconciliation.
         const amountText = direction === "debit"
             ? (typeof row.amount === "string" && row.amount.length <= 32 ? row.amount.trim() : null)
             : amount.toFixed(2);
-        const dedupeHash = row.dedupe_hash?.trim()
-            || await bankTransactionDedupeHash(companyId, {
-                bookedAt,
-                amount,
-                currency: currency ?? "",
-                direction,
-                variableSymbol: row.variable_symbol,
-                reference: row.reference,
-                bankTransactionId: row.bank_transaction_id,
-            });
-
-        const duplicate = ctx.transactions.some(
-            (existing) => existing.companyId === companyId && existing.dedupeHash === dedupeHash,
-        );
-        if (duplicate) {
-            skipped++;
-            continue;
-        }
-
-        const insertResult = evolu.insert("bankTransaction", {
-            companyId,
-            bankImportBatchId: batchId,
-            bookedAt,
-            amount: amountText,
-            currency,
-            direction,
-            matchStatus: "unmatched",
-            businessExpenseId: null,
-            variableSymbol: row.variable_symbol ?? null,
-            constantSymbol: row.constant_symbol ?? null,
-            specificSymbol: row.specific_symbol ?? null,
-            counterpartyName: row.counterparty_name ?? null,
-            counterpartyIban: row.counterparty_iban ?? null,
-            reference: row.reference ?? null,
-            bankTransactionId: row.bank_transaction_id ?? null,
-            dedupeHash,
-            source: "inbound_email",
+        const dedupeHash = row.dedupe_hash?.trim() || await bankTransactionDedupeHash(companyId, {
+            bookedAt, amount, currency: currency ?? "", direction,
+            variableSymbol: row.variable_symbol, reference: row.reference, bankTransactionId: row.bank_transaction_id,
         });
-
-        if (!insertResult.ok) {
+        if (ctx.transactions.some((existing) => existing.companyId === companyId && existing.dedupeHash === dedupeHash)) {
             skipped++;
             continue;
         }
-
-        const createdRow: EvoluBankTransactionRow = {
-            id: insertResult.value.id,
-            companyId,
-            bankImportBatchId: batchId,
-            bookedAt,
-            amount: amountText,
-            currency,
-            direction,
-            matchStatus: "unmatched",
-            businessExpenseId: null,
-            variableSymbol: row.variable_symbol ?? null,
-            constantSymbol: row.constant_symbol ?? null,
-            specificSymbol: row.specific_symbol ?? null,
-            counterpartyName: row.counterparty_name ?? null,
-            counterpartyIban: row.counterparty_iban ?? null,
-            reference: row.reference ?? null,
-            bankTransactionId: row.bank_transaction_id ?? null,
-            dedupeHash,
-            source: "inbound_email",
-        };
-        ctx.transactions.push(createdRow);
-        // Older servers expose only an inferred display direction. Preserve
-        // their import compatibility without automatically paying an expense.
-        if (direction !== "debit" || recordedDirection === "debit") created.push(createdRow);
+        const inserted: { id?: BankTransactionId } = {};
+        const completed = await awaitBankMutation(evolu, (onComplete) => {
+            const result = evolu.insert("bankTransaction", {
+                companyId, bankImportBatchId: batchId, bookedAt, amount: amountText, currency, direction,
+                recordedDirectionEvidence: recordedDirection ?? "unverified",
+                matchStatus: "unmatched", businessExpenseId: null,
+                variableSymbol: row.variable_symbol ?? null, constantSymbol: row.constant_symbol ?? null,
+                specificSymbol: row.specific_symbol ?? null, counterpartyName: row.counterparty_name ?? null,
+                counterpartyIban: row.counterparty_iban ?? null, reference: row.reference ?? null,
+                bankTransactionId: row.bank_transaction_id ?? null, dedupeHash, source: "inbound_email",
+            }, { onComplete });
+            if (result.ok) inserted.id = result.value.id;
+            return result;
+        });
+        if (!completed || !inserted.id) {
+            skipped++;
+            continue;
+        }
+        ctx = await readBankReconciliationContext(evolu);
+        const committed = ctx.transactions.find((transaction) => transaction.id === inserted.id
+            && transaction.companyId === companyId && transaction.dedupeHash === dedupeHash);
+        if (!committed) throw new Error("bank_import_row_missing");
+        created.push(committed.id);
         imported++;
     }
-
-    for (const transaction of created) {
-        if (tryAutoMatchTransaction(evolu, transaction, ctx)) {
-            autoMatched++;
-        }
+    for (const id of created) {
+        const transaction = ctx.transactions.find((row) => row.id === id);
+        if (transaction && (transaction.direction !== "debit" || allowExpenseMatching)
+            && await tryAutoMatchTransaction(evolu, transaction, ctx)) autoMatched++;
     }
-
-    if (autoMatched > 0) {
-        await evolu.loadQuery(allDocumentsQuery);
-    }
-
-    evolu.update("bankImportBatch", {
-        id: batchId,
-        importedCount: String(imported),
-        skippedDuplicates: String(skipped),
+    const counted = await awaitBankMutation(evolu, (onComplete) => evolu.update("bankImportBatch", {
+        id: batchId, companyId, importedCount: String(imported), skippedDuplicates: String(skipped),
         autoMatchedCount: String(autoMatched),
-    });
-
+    }, { onComplete }));
+    if (!counted) throw new Error("bank_import_batch_update_rejected");
+    const final = await readBankReconciliationContext(evolu);
+    const batch = final.batches.find((row) => row.id === batchId && row.companyId === companyId);
+    if (!batch || batch.importedCount !== String(imported) || batch.autoMatchedCount !== String(autoMatched)
+        || batch.skippedDuplicates !== String(skipped)) throw new Error("bank_import_batch_state_changed");
     return { imported, auto_matched: autoMatched };
 }
 
@@ -598,38 +532,45 @@ export async function autoMatchLocalBatchAsync(
     evolu: Evolu<InvoicingLocalSchema>,
     batchId: BankImportBatchId,
 ): Promise<{ auto_matched: number }> {
-    return serializeEmailReconciliation(evolu, () => autoMatchLocalBatch(evolu, batchId));
+    return serializeBankEmailReconciliation(evolu, (allowExpenseMatching) =>
+        autoMatchLocalBatch(evolu, batchId, allowExpenseMatching));
 }
 
 async function autoMatchLocalBatch(
     evolu: Evolu<InvoicingLocalSchema>,
     batchId: BankImportBatchId,
+    allowExpenseMatching: boolean,
 ): Promise<{ auto_matched: number }> {
-    const ctx = await loadBankPaymentContext(evolu);
-    const transactions = ctx.transactions.filter(
-        (row) => row.bankImportBatchId === batchId && row.matchStatus === "unmatched",
-    );
-
+    const knownBatches = await evolu.loadQuery(allBankImportBatchesQuery);
+    const known = knownBatches.find((row) => row.id === batchId);
+    const companyId = known?.companyId;
+    if (!companyId) return { auto_matched: 0 };
+    // Only metadata of a known batch can act as this legitimate action's barrier.
+    // Do not create a phantom batch or touch a financial row to refresh queries.
+    const refreshed = await awaitBankMutation(evolu, (onComplete) => evolu.update("bankImportBatch", {
+        id: batchId, companyId,
+    }, { onComplete }));
+    if (!refreshed) return { auto_matched: 0 };
+    const ctx = await readBankReconciliationContext(evolu);
+    const batch = ctx.batches.find((row) => row.id === batchId && row.companyId === companyId);
+    if (!batch) return { auto_matched: 0 };
+    const transactions = ctx.transactions.filter((row) => row.bankImportBatchId === batchId
+        && row.companyId === batch.companyId && row.matchStatus === "unmatched");
     let autoMatched = 0;
     for (const transaction of transactions) {
-        if (tryAutoMatchTransaction(evolu, transaction, ctx)) {
-            autoMatched++;
-        }
+        if ((transaction.direction !== "debit" || allowExpenseMatching)
+            && await tryAutoMatchTransaction(evolu, transaction, ctx)) autoMatched++;
     }
-
-    const batch = ctx.batches.find((row) => row.id === batchId);
-    if (batch) {
-        const prev = parseInt(batch.autoMatchedCount || "0", 10) || 0;
-        evolu.update("bankImportBatch", {
-            id: batchId,
-            autoMatchedCount: String(prev + autoMatched),
-        });
+    const previous = parseInt(batch.autoMatchedCount || "0", 10) || 0;
+    const counted = await awaitBankMutation(evolu, (onComplete) => evolu.update("bankImportBatch", {
+        id: batchId, companyId: batch.companyId, autoMatchedCount: String(previous + autoMatched),
+    }, { onComplete }));
+    if (!counted) throw new Error("bank_import_batch_update_rejected");
+    const final = await readBankReconciliationContext(evolu);
+    const committed = final.batches.find((row) => row.id === batchId && row.companyId === batch.companyId);
+    if (!committed || committed.autoMatchedCount !== String(previous + autoMatched)) {
+        throw new Error("bank_import_batch_state_changed");
     }
-
-    if (autoMatched > 0) {
-        await evolu.loadQuery(allDocumentsQuery);
-    }
-
     return { auto_matched: autoMatched };
 }
 

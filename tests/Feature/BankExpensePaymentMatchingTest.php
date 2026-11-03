@@ -237,6 +237,29 @@ class BankExpensePaymentMatchingTest extends TestCase
     }
 
     #[Test]
+    public function candidate_queries_exclude_unrelated_amounts_and_currencies_before_locking(): void
+    {
+        $exact = $this->expense(['currency' => 'eur']);
+        $this->expense(['total' => '123.46']);
+        $this->expense(['currency' => 'USD']);
+        $this->expense(['company_id' => $this->company()->id]);
+        $transaction = $this->movement();
+        $retrieved = [];
+        $event = 'eloquent.retrieved: '.BusinessExpense::class;
+        app('events')->listen($event, function (BusinessExpense $expense) use (&$retrieved) {
+            $retrieved[] = $expense->id;
+        });
+        try {
+            $this->assertTrue($this->match($transaction));
+        } finally {
+            app('events')->forget($event);
+        }
+
+        $this->assertSame([$exact->id], array_values(array_unique($retrieved)));
+        $this->assertSame($exact->id, $transaction->fresh()->business_expense_id);
+    }
+
+    #[Test]
     public function api_preserves_recorded_credit_when_text_suggests_a_debit(): void
     {
         $plan = SubscriptionPlan::create([
@@ -323,6 +346,8 @@ class BankExpensePaymentMatchingTest extends TestCase
     #[TestWith(['Debet. Suma: 123,45 EUR. VS: 001234. 31.02.2026'])]
     #[TestWith(['Debet. Suma: 123,45 EUR. VS: invalid. 03.11.2026'])]
     #[TestWith(['Debet. Suma: 123,45 EUR. VS: 12.34. 03.11.2026'])]
+    #[TestWith(['Debet. Suma: 123,45 EUR. VS: 123 456. 03.11.2026'])]
+    #[TestWith(['Debet. Suma: 123,45 EUR. VS: 001234. Informacia pre prijemcu: 03.11.2026'])]
     #[TestWith(["31.02.2026 14:35 bol zostatok Vasho uctu SK4811000000002944116480 znizeny o 123,45 EUR.\nSuma: 123,45 EUR. 03.11.2026. VS: 001234"])]
     public function parser_rejects_unqualified_debits_before_persistence_and_payment(string $body): void
     {

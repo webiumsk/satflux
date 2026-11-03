@@ -198,6 +198,30 @@ class TatraBankEmailParserTest extends TestCase
     }
 
     #[Test]
+    public function quoted_debit_headers_in_remittance_do_not_override_the_actual_classic_credit(): void
+    {
+        $body = $this->strictBody(note: 'Quoted: 03.11.2026 14:35 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN.' znizeny o 123,45 EUR.');
+        $rows = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Obrat', $body);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(BankTransactionDirection::Credit, $rows[0]->direction);
+        $this->assertSame(12.50, $rows[0]->amount);
+        $this->assertSame(self::RECIPIENT_IBAN, $rows[0]->recipientIban);
+        $this->assertNull($rows[0]->e2eReference);
+        $this->assertNull($rows[0]->sepaCreditIdentity);
+    }
+
+    #[Test]
+    public function compact_credit_direction_does_not_come_from_payer_remittance(): void
+    {
+        $body = "Kredit. Suma: 123,45 EUR. 03.11.2026\nInformacia pre prijemcu: Debet na ucte";
+        $rows = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Kredit', $body);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(BankTransactionDirection::Credit, $rows[0]->direction);
+    }
+
+    #[Test]
     public function classic_credit_carries_observed_amount_and_recipient_but_no_trusted_reference(): void
     {
         $body = '01.06.2026 12:31 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN." zvyseny o 12,50 EUR.\n"

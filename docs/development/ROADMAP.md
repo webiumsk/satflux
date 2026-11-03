@@ -1,5 +1,20 @@
 # Development roadmap
 
+## Current: publish PR427 review remediation - 2026-11-03
+
+Seven CodeRabbit inline findings and five follow-ups are repaired and covered by
+parser, delivery-null, Wise, SQL-lock and real Evolu failure regressions. Final
+runtime17/source-test31 manifests are 78afb3fd...04eb0 / d52b3e00...0e686.
+Independent QA accepts PostgreSQL251/805, contention3/42 and actual-worker12;
+main full frontend1363, final Wise19, SQLite237/958 and static/build/locale/API
+gates pass with existing ratchets and the known local Scramble dependency limit.
+Independent security accepts the same frozen manifests with no unresolved findings.
+Publish only scoped changes on PR427, resolve addressed threads and verify the new
+commit's complete CI.
+Same-browser matching requires updated cooperating clients; old tabs should be
+reloaded at rollout. Keep other-device/legacy provenance limitations explicit.
+No production replay, merge or deployment is included.
+
 ## Approved: publish the reviewed expense/bank repair branch - 2026-11-03
 
 Owner requests push to owned Satflux GitHub. Publish only the36reviewed/scoped

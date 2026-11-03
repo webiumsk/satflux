@@ -5,6 +5,7 @@ import { normalizeVariableSymbol } from "./bankSymbolNormalizer";
 import type { EvoluExpenseRow } from "./expenseMap";
 import type { InvoicingLocalSchema } from "./schema";
 import { resolveMutationOwner } from "./ownerScope";
+import { awaitBankMutation, readBankReconciliationContext } from "./bankReconciliation";
 
 /** Canonical cents without floating-point coercion or amount tolerance. */
 export function positiveBankAmount(value: string | null | undefined): string | null {
@@ -47,6 +48,7 @@ export function findBankEmailExpenseMatch(
     ctx: BankPaymentContext,
 ): { expense: EvoluExpenseRow; paidAt: string } | null {
     if (transaction.source !== "inbound_email" || transaction.direction !== "debit"
+        || (transaction.recordedDirectionEvidence != null && transaction.recordedDirectionEvidence !== "debit")
         || transaction.matchStatus !== "unmatched" || transaction.businessExpenseId
         || !isMovementTransaction(transaction)
         || ctx.matches.some((match) => match.bankTransactionId === transaction.id)) return null;
@@ -64,11 +66,11 @@ export function findBankEmailExpenseMatch(
 }
 
 /** These bookkeeping updates share Evolu's single synchronous mutation queue. */
-export function tryAutoMatchBankEmailExpense(
+export async function tryAutoMatchBankEmailExpense(
     evolu: Evolu<InvoicingLocalSchema>,
     transaction: EvoluBankTransactionRow,
     ctx: BankPaymentContext,
-): boolean {
+): Promise<boolean> {
     const match = findBankEmailExpenseMatch(transaction, ctx);
     if (!match) return false;
     const transactionPatch = {
@@ -85,9 +87,19 @@ export function tryAutoMatchBankEmailExpense(
         || !evolu.update("expense", expensePatch, { onlyValidate: true }).ok) return false;
     // No await between writes: Evolu aborts the entire microtask batch if either
     // mutation fails validation. Do not publish optimistic context on failure.
-    const linked = evolu.update("bankTransaction", transactionPatch);
-    const paid = evolu.update("expense", expensePatch);
-    if (!linked.ok || !paid.ok) return false;
+    const completed = await awaitBankMutation(evolu, (onComplete) => {
+        const linked = evolu.update("bankTransaction", transactionPatch);
+        const paid = evolu.update("expense", expensePatch, { onComplete });
+        return { ok: linked.ok && paid.ok };
+    });
+    if (!completed) return false;
+    const committed = await readBankReconciliationContext(evolu);
+    const linked = committed.transactions.find((row) => row.id === transaction.id && row.companyId === transaction.companyId);
+    const paid = committed.expenses.find((row) => row.id === match.expense.id && row.companyId === transaction.companyId);
+    if (linked?.businessExpenseId !== match.expense.id || linked.matchStatus !== "matched"
+        || paid?.status !== "paid" || paid.paidAt !== match.paidAt) {
+        throw new Error("bank_reconciliation_state_changed");
+    }
     transaction.businessExpenseId = match.expense.id;
     transaction.matchStatus = "matched";
     match.expense.status = "paid";

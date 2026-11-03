@@ -1,5 +1,39 @@
 # Project state
 
+## PR427 CodeRabbit remediation reviewed - 2026-11-03
+
+The owner reports review findings on published `c79deafd`, PR427. Seven inline
+threads and five follow-ups are addressed on `fix/expense-defaults-bank-import`.
+Parser fields are bounded to the bank prefix and complete symbols; SQL amount/
+currency filters precede candidate locks. Browser reconciliation uses an origin
+Web Lock, five fixed unsubscribed queries after legitimate mutation receipts,
+post-handler state verification and permanent quarantine for unknown outcomes.
+New persisted direction evidence excludes unverified rows even after reload or
+explicit batch matching. Explicit delivery null survives both modes; Wise and
+shared bridge status apply only current responses. Existing legacy rows, other
+devices and old clients retain the documented limits; reload older tabs on rollout.
+
+Final full-PR runtime17 manifest:
+`78afb3fdf73ad9f6b30f537684f711ef2914ece59c46f21845096a4aa0e04eb0`.
+Source/test31 manifest:
+`d52b3e003a8466d669a64ed092af03a8a616843f36dbec024a1bc8972610e686`.
+Independent QA accepts these bytes: PostgreSQL251/805 (5 expected skips), true
+contention/narrow-lock3/42, focused126 plus final bridge19, actual Evolu/native
+SQLite12. Native realm/lock/broadcast adapters are synthetic, not full browser
+E2E. The isolated database container is removed. Independent security accepts the identical manifests with no unresolved findings;
+its overlapping frontend/backend/actual-worker probes confirm the failure paths.
+Publication evidence is recorded separately from local verification.
+
+Main frontend1363/158files, final Wise19, SQLite237/958, Pint8, lint48 known,
+typecheck112 existing/no new, five locales, final build and three OpenAPI documents
+pass. Local full PHPStan retains only the known missing optional Scramble class
+in unchanged DocumentationExporter.php:18; baseline/ratchets are unchanged.
+The API inventory changes only the parser hash. Ten guides and one PR427 fragment
+reflect final behavior. Prior CI41719918340 validates c79deafd only; verify fresh
+CI on the new published commit. No production access, replay, merge or deployment.
+Preserve unrelated primary work; the current reviewed artifact is in the retained
+expense worktree. See `EXPENSE_DEFAULTS_BANK_IMPORT_REVIEW.md`.
+
 ## Owner authorized expense/bank repair publication - 2026-11-03
 
 The owner explicitly requests GitHub push of `fix/expense-defaults-bank-import`

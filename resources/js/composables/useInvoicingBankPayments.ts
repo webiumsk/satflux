@@ -220,19 +220,28 @@ function useServerInvoicingBankPayments(
     const wiseStatus = ref<WiseStatus | null>(null);
     const wiseBridgeChecked = ref(false);
     const wiseBridgeMissing = computed(() => false);
+    let wiseStatusRequestSeq = 0;
+
+    watch(companyId, () => {
+        wiseStatusRequestSeq++;
+        wiseStatus.value = null;
+        wiseBridgeChecked.value = false;
+    }, { flush: "sync" });
 
     async function fetchWiseStatus() {
+        const requestSeq = ++wiseStatusRequestSeq;
         const cid = requireCompanyId();
         if (!cid) {
             wiseStatus.value = null;
             return;
         }
         try {
-            wiseStatus.value = await invoicingApi.wise.status<WiseStatus>(cid);
+            const status = await invoicingApi.wise.status<WiseStatus>(cid);
+            if (companyId.value === cid && requestSeq === wiseStatusRequestSeq) wiseStatus.value = status;
         } catch {
-            wiseStatus.value = null;
+            if (companyId.value === cid && requestSeq === wiseStatusRequestSeq) wiseStatus.value = null;
         }
-        wiseBridgeChecked.value = true;
+        if (companyId.value === cid && requestSeq === wiseStatusRequestSeq) wiseBridgeChecked.value = true;
     }
 
     async function connectWise(token: string) {
@@ -360,13 +369,23 @@ function useLocalInvoicingBankPayments(
     const wiseBridgeMissing = computed(
         () => wiseBridgeChecked.value && bridgeCompanyId.value === null,
     );
+    let wiseStatusRequestSeq = 0;
+    let bridgeLookupRequestSeq = 0;
 
-    async function resolveBridgeCompanyId(): Promise<string | null> {
+    watch(companyId, () => {
+        wiseStatusRequestSeq++;
+        bridgeLookupRequestSeq++;
+        wiseStatus.value = null;
+        wiseBridgeChecked.value = false;
+    }, { flush: "sync" });
+
+    async function resolveBridgeCompanyId(stillCurrent?: () => boolean): Promise<string | null> {
+        const requestSeq = ++bridgeLookupRequestSeq;
         const localCompanyId = companyId.value;
         const result = await ensureBridgeCompanyIdForLocalCompany(localCompanyId);
-        if (companyId.value !== localCompanyId) return null;
+        if (companyId.value !== localCompanyId || (stillCurrent && !stillCurrent())) return null;
         const bridgeId = result.ok ? result.bridgeCompanyId : null;
-        bridgeCompanyId.value = bridgeId;
+        if (requestSeq === bridgeLookupRequestSeq) bridgeCompanyId.value = bridgeId;
         return bridgeId;
     }
 
@@ -442,9 +461,10 @@ function useLocalInvoicingBankPayments(
     }
 
     async function fetchWiseStatus() {
+        const requestSeq = ++wiseStatusRequestSeq;
         const localCompanyId = companyId.value;
-        const bridgeId = await resolveBridgeCompanyId();
-        if (companyId.value !== localCompanyId) return;
+        const bridgeId = await resolveBridgeCompanyId(() => requestSeq === wiseStatusRequestSeq);
+        if (companyId.value !== localCompanyId || requestSeq !== wiseStatusRequestSeq) return;
         wiseBridgeChecked.value = true;
         if (!bridgeId) {
             wiseStatus.value = null;
@@ -452,9 +472,9 @@ function useLocalInvoicingBankPayments(
         }
         try {
             const status = await invoicingApi.wise.status<WiseStatus>(bridgeId);
-            if (companyId.value === localCompanyId) wiseStatus.value = status;
+            if (companyId.value === localCompanyId && requestSeq === wiseStatusRequestSeq) wiseStatus.value = status;
         } catch {
-            if (companyId.value === localCompanyId) wiseStatus.value = null;
+            if (companyId.value === localCompanyId && requestSeq === wiseStatusRequestSeq) wiseStatus.value = null;
         }
     }
 
@@ -579,8 +599,6 @@ function useLocalInvoicingBankPayments(
 
     watch(companyId, () => {
         bridgeCompanyId.value = null;
-        wiseStatus.value = null;
-        wiseBridgeChecked.value = false;
         void load();
         void loadBatches();
     });

@@ -69,7 +69,7 @@ function mapPayloadFields(payload: ExpenseSavePayload) {
     if (!ss.ok) return ss;
     const issueDate = parseOpt(payload.issue_date, Opt32);
     if (!issueDate.ok || !issueDate.value) return { ok: false as const, error: "issue_date" };
-    const deliveryDate = parseOpt(payload.delivery_date ?? payload.issue_date, Opt32);
+    const deliveryDate = parseOpt(payload.delivery_date === undefined ? payload.issue_date : payload.delivery_date, Opt32);
     if (!deliveryDate.ok) return deliveryDate;
     const dueDate = parseOpt(payload.due_date ?? null, Opt32);
     if (!dueDate.ok) return dueDate;
@@ -145,9 +145,12 @@ export function updateLocalExpense(
     const mapped = mapPayloadFields(payload);
     if (!mapped.ok) return mapped;
 
+    const { deliveryDate, ...fields } = mapped.value;
+
     return evolu.update("expense", {
         id: expenseId,
-        ...mapped.value,
+        ...fields,
+        ...(payload.delivery_date === undefined ? {} : { deliveryDate }),
     });
 }
 

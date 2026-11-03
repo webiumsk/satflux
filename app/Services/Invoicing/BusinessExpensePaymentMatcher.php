@@ -36,11 +36,13 @@ class BusinessExpensePaymentMatcher
             if ($amount === null || $currency === null || $paidAt === null) {
                 return null;
             }
+            $paddedAmount = str_pad($amount, 3, '0', STR_PAD_LEFT);
+            $decimalAmount = substr($paddedAmount, 0, -2).'.'.substr($paddedAmount, -2);
 
             // A consistent order serializes competing email matchers. Refresh
             // candidate state after waiting for the locks before deciding uniqueness.
-            $this->candidateQuery($locked, $connectionName)->lockForUpdate()->get();
-            $candidates = $this->candidateQuery($locked, $connectionName)->lockForUpdate()->get()
+            $this->candidateQuery($locked, $connectionName, $decimalAmount, $currency)->lockForUpdate()->get();
+            $candidates = $this->candidateQuery($locked, $connectionName, $decimalAmount, $currency)->lockForUpdate()->get()
                 ->filter(fn (BusinessExpense $expense): bool => $this->positiveCents($expense->getRawOriginal('total')) === $amount
                     && $this->currency($expense->getRawOriginal('currency')) === $currency
                     && $this->matchesHints($locked, $expense)
@@ -99,12 +101,14 @@ class BusinessExpensePaymentMatcher
     }
 
     /** @return Builder<BusinessExpense> */
-    private function candidateQuery(BankTransaction $transaction, string $connectionName): Builder
+    private function candidateQuery(BankTransaction $transaction, string $connectionName, string $amount, string $currency): Builder
     {
         return BusinessExpense::on($connectionName)
             ->where('company_id', $transaction->company_id)
             ->where('status', BusinessExpenseStatus::Recorded)
             ->whereNull('paid_at')->whereNull('cancelled_at')
+            ->where('total', $amount)
+            ->whereRaw('UPPER(TRIM(currency)) = ?', [$currency])
             ->orderBy('id');
     }
 

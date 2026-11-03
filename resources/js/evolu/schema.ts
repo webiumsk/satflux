@@ -488,6 +488,9 @@ export const InvoicingLocalSchema = {
         amount: OptionalString32,
         currency: nullOr(CurrencyCode),
         direction: BankTransactionDirection,
+        // Null is reserved for legacy rows; every new email import records
+        // whether its direction came from the server's persisted ledger.
+        recordedDirectionEvidence: nullOr(union("credit", "debit", "unverified")),
         matchStatus: BankTransactionMatchStatus,
         businessExpenseId: nullOr(ExpenseId),
         variableSymbol: OptionalString32,

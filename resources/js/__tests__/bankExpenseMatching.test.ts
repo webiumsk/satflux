@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Evolu } from "@evolu/common/local-first";
 import type { BankPaymentContext } from "@/evolu/bankCrud";
 import type { EvoluBankTransactionRow } from "@/evolu/bankMap";
@@ -7,17 +7,20 @@ import type { InvoicingLocalSchema } from "@/evolu/schema";
 import { bankPaymentBookingDate, findBankEmailExpenseMatch, tryAutoMatchBankEmailExpense } from "@/evolu/bankExpensePaymentMatcher";
 import { clearRowOwnerIndex } from "@/evolu/ownerScope";
 import { clearCompanyShares } from "@/evolu/companyShareRegistry";
+import { installBankLocks } from "./bankReconciliationTestSupport";
 
 vi.mock("@/evolu/client", () => ({
     allBankImportBatchesQuery: "batches", allBankTransactionsQuery: "transactions",
     allBankTransactionMatchesQuery: "matches", allDocumentsQuery: "documents", allExpensesQuery: "expenses",
+    bankReconciliationBatchesQuery: "fresh:batches", bankReconciliationTransactionsQuery: "fresh:transactions",
+    bankReconciliationMatchesQuery: "fresh:matches", bankReconciliationDocumentsQuery: "fresh:documents", bankReconciliationExpensesQuery: "fresh:expenses",
 }));
 vi.mock("@/evolu/documentCrud", () => ({ markLocalDocumentPaidWithAmount: vi.fn(), unmarkLocalDocumentPaid: vi.fn() }));
 import { autoMatchLocalBatchAsync, importInboundServerTransactionsAsync, tryAutoMatchTransaction, unmatchLocalBankTransaction } from "@/evolu/bankCrud";
 
 function context(tx: Partial<EvoluBankTransactionRow> = {}, expense: Partial<EvoluExpenseRow> = {}): BankPaymentContext {
     return {
-        batches: [], matches: [], documents: [],
+        batches: [{ id: "batch-a", companyId: "company-a", source: "inbound_email", filename: "legacy", rowCount: "1", importedCount: "1", skippedDuplicates: "0", autoMatchedCount: "0" } as BankPaymentContext["batches"][number]], matches: [], documents: [],
         transactions: [{ id: "tx-a", companyId: "company-a", bankImportBatchId: "batch-a",
             bookedAt: "2026-11-03T11:12:13Z", amount: "19.00", currency: "EUR", direction: "debit",
             matchStatus: "unmatched", businessExpenseId: null, variableSymbol: "00123", constantSymbol: null,
@@ -34,36 +37,42 @@ function context(tx: Partial<EvoluBankTransactionRow> = {}, expense: Partial<Evo
 function fakeEvolu(ctx: BankPaymentContext) {
     let counter = 0;
     const state = {
-        batches: [...ctx.batches], transactions: [...ctx.transactions], matches: [...ctx.matches],
-        documents: [...ctx.documents], expenses: [...ctx.expenses],
+        batches: ctx.batches.map((row) => ({ ...row })), transactions: ctx.transactions.map((row) => ({ ...row })), matches: ctx.matches.map((row) => ({ ...row })),
+        documents: ctx.documents.map((row) => ({ ...row })), expenses: ctx.expenses.map((row) => ({ ...row })),
     };
     const tables: Record<string, Array<Record<string, unknown>>> = {
         bankImportBatch: state.batches, bankTransaction: state.transactions, expense: state.expenses,
     } as unknown as Record<string, Array<Record<string, unknown>>>;
-    const update = vi.fn((table: string, patch: Record<string, unknown>, options?: { onlyValidate?: boolean }) => {
-        if (!options?.onlyValidate) Object.assign(tables[table]?.find((row) => row.id === patch.id) ?? {}, patch);
+    const update = vi.fn((table: string, patch: Record<string, unknown>, options?: { onlyValidate?: boolean; onComplete?: () => void }) => {
+        if (!options?.onlyValidate) {
+            Object.assign(tables[table]?.find((row) => row.id === patch.id) ?? {}, patch);
+            queueMicrotask(() => options?.onComplete?.());
+        }
         return { ok: true, value: { id: patch.id } };
     });
     const evolu = {
-        loadQuery: vi.fn(async (query: keyof typeof state) => state[query].map((row) => ({ ...row }))), update,
-        insert: vi.fn((table: string, props: Record<string, unknown>) => {
+        loadQuery: vi.fn(async (query: string) => state[query.replace("fresh:", "") as keyof typeof state].map((row) => ({ ...row }))), update,
+        subscribeError: () => () => {}, getError: () => null,
+        insert: vi.fn((table: string, props: Record<string, unknown>, options?: { onComplete?: () => void }) => {
             const id = `insert-${++counter}`;
             tables[table]!.push({ ...props, id });
+            queueMicrotask(() => options?.onComplete?.());
             return { ok: true, value: { id } };
         }),
     } as unknown as Evolu<InvoicingLocalSchema>;
     return { evolu, update, state };
 }
-afterEach(() => { clearRowOwnerIndex(); clearCompanyShares(); });
+beforeEach(() => { installBankLocks(); });
+afterEach(() => { clearRowOwnerIndex(); clearCompanyShares(); vi.unstubAllGlobals(); });
 
 describe("exact existing-expense bank email reconciliation", () => {
-    it("links one exact debit to the expense with the bank booking date", () => {
+    it("links one exact debit to the expense with the bank booking date", async () => {
         const ctx = context(); const { evolu, update } = fakeEvolu(ctx);
-        expect(tryAutoMatchTransaction(evolu, ctx.transactions[0]!, ctx)).toBe(true);
+        expect(await tryAutoMatchTransaction(evolu, ctx.transactions[0]!, ctx)).toBe(true);
         expect(ctx.expenses[0]).toMatchObject({ status: "paid", paidAt: "2026-11-03" });
         expect(ctx.transactions[0]).toMatchObject({ matchStatus: "matched", businessExpenseId: "expense-a" });
         expect(update.mock.calls.filter((call) => !call[2]?.onlyValidate)).toHaveLength(2);
-        expect(tryAutoMatchTransaction(evolu, ctx.transactions[0]!, ctx)).toBe(false);
+        expect(await tryAutoMatchTransaction(evolu, ctx.transactions[0]!, ctx)).toBe(false);
     });
     it.each([
         [{}, { variableSymbol: null }],
@@ -76,6 +85,7 @@ describe("exact existing-expense bank email reconciliation", () => {
     it.each([
         { direction: "credit" }, { direction: "unknown" }, { source: "wise" }, { source: "csv" },
         { matchStatus: "ignored" }, { matchStatus: "matched" }, { businessExpenseId: "other" },
+        { recordedDirectionEvidence: "unverified" }, { recordedDirectionEvidence: "credit" },
         { variableSymbol: "123" }, { variableSymbol: "999", reference: "INV-00123" },
         { variableSymbol: "letters", reference: "INV-00123" },
         { variableSymbol: null, reference: "Payment INV-00123" },
@@ -84,10 +94,10 @@ describe("exact existing-expense bank email reconciliation", () => {
         { currency: null }, { currency: "US" }, { currency: "USD" },
         { bookedAt: null }, { bookedAt: "2026-02-30" }, { bookedAt: "2026-11-03T24:00:00Z" },
         { reference: "Stav na účte" },
-    ])("does not pay an expense for ineligible transaction %j", (patch) => {
+    ])("does not pay an expense for ineligible transaction %j", async (patch) => {
         const ctx = context(patch as Partial<EvoluBankTransactionRow>);
         const { evolu, update } = fakeEvolu(ctx);
-        expect(tryAutoMatchBankEmailExpense(evolu, ctx.transactions[0]!, ctx)).toBe(false);
+        expect(await tryAutoMatchBankEmailExpense(evolu, ctx.transactions[0]!, ctx)).toBe(false);
         expect(update).not.toHaveBeenCalled();
     });
     it.each([
@@ -110,19 +120,19 @@ describe("exact existing-expense bank email reconciliation", () => {
         ctx.matches.push({ bankTransactionId: ctx.transactions[0]!.id } as BankPaymentContext["matches"][number]);
         expect(findBankEmailExpenseMatch(ctx.transactions[0]!, ctx)).toBeNull();
     });
-    it.each([0, 1, 2, 3])("does not change context or report success if update %s fails", (failedCall) => {
+    it.each([0, 1, 2, 3])("does not change context or report success if update %s fails", async (failedCall) => {
         const ctx = context(); const before = structuredClone(ctx);
         let call = 0;
-        const evolu = { update: vi.fn(() => ({ ok: call++ !== failedCall })) } as unknown as Evolu<InvoicingLocalSchema>;
-        expect(tryAutoMatchBankEmailExpense(evolu, ctx.transactions[0]!, ctx)).toBe(false);
+        const evolu = { update: vi.fn(() => ({ ok: call++ !== failedCall })), subscribeError: () => () => {}, getError: () => null } as unknown as Evolu<InvoicingLocalSchema>;
+        expect(await tryAutoMatchBankEmailExpense(evolu, ctx.transactions[0]!, ctx)).toBe(false);
         expect(ctx).toEqual(before);
     });
-    it("links a second debit only once and preserves paid state when unlinked", () => {
+    it("links a second debit only once and preserves paid state when unlinked", async () => {
         const ctx = context(); const { evolu } = fakeEvolu(ctx);
-        expect(tryAutoMatchBankEmailExpense(evolu, ctx.transactions[0]!, ctx)).toBe(true);
+        expect(await tryAutoMatchBankEmailExpense(evolu, ctx.transactions[0]!, ctx)).toBe(true);
         const second = { ...ctx.transactions[0]!, id: "tx-b", matchStatus: "unmatched", businessExpenseId: null } as EvoluBankTransactionRow;
         ctx.transactions.push(second);
-        expect(tryAutoMatchBankEmailExpense(evolu, second, ctx)).toBe(false);
+        expect(await tryAutoMatchBankEmailExpense(evolu, second, ctx)).toBe(false);
         unmatchLocalBankTransaction(evolu, ctx.transactions[0]!.id, ctx);
         expect(ctx.expenses[0]!.status).toBe("paid");
         expect(ctx.transactions[0]!.businessExpenseId).toBeNull();
@@ -165,6 +175,9 @@ describe("email ingestion retains evidence for automatic expense matching", () =
         const { recorded_direction: _, ...legacyInput } = input;
         const row = recordedDirection === undefined ? legacyInput : { ...legacyInput, recorded_direction: recordedDirection };
         expect(await importInboundServerTransactionsAsync(evolu, ctx.expenses[0]!.companyId, [row])).toEqual({ imported: 1, auto_matched: 0 });
+        expect(state.expenses[0]!.status).toBe("recorded");
+        expect(state.transactions[0]!.recordedDirectionEvidence).toBe(recordedDirection === "credit" ? "credit" : "unverified");
+        expect(await autoMatchLocalBatchAsync(evolu, state.transactions[0]!.bankImportBatchId!)).toEqual({ auto_matched: 0 });
         expect(state.expenses[0]!.status).toBe("recorded");
     });
 });

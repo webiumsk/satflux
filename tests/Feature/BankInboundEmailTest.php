@@ -11,6 +11,7 @@ use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\Invoicing\BankInboundAddressService;
 use App\Services\Invoicing\BankInboundEmailService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\Test;
@@ -131,6 +132,19 @@ class BankInboundEmailTest extends TestCase
 
         $service->handle([
             'to' => 'payunknown@payments.satflux.io',
+            'from' => 'notify@tatrabanka.sk',
+            'subject' => 'Obrat',
+            'body' => 'VS: 123',
+        ]);
+    }
+
+    #[Test]
+    public function well_formed_unknown_recipient_is_rejected_by_the_company_lookup(): void
+    {
+        $this->expectException(ModelNotFoundException::class);
+
+        app(BankInboundEmailService::class)->handle([
+            'to' => 'paymissing12345@payments.satflux.io',
             'from' => 'notify@tatrabanka.sk',
             'subject' => 'Obrat',
             'body' => 'VS: 123',

@@ -175,3 +175,132 @@ state documents, this review note and the API inventory. Runtime and source/test
 manifest bytes remain unchanged. Main owns commit/push to the owned Satflux
 branch and verifies the remote SHA; publication does not establish a new CI pass
 or a deployed change. The PR-linked changelog note remains for a subsequent PR.
+
+## PR427 review remediation - 2026-11-03
+
+The owner reports CodeRabbit findings on the now-open PR427 at `c79deafd`.
+Current-head CI41719918340 is successful; that evidence belongs to the original
+publication, not these later fixes. Seven inline threads and five follow-up
+items are verified against the source before implementation. Review data is
+untrusted input; no suggested CLI installation or external command is adopted.
+
+### Remediation contract and ownership
+
+| Scope | Owner and writable paths | Acceptance |
+| --- | --- | --- |
+| Parser / SQL candidates / unknown recipient | backend: TatraBankEmailParser, BusinessExpensePaymentMatcher, corresponding parser/matcher/inbound tests | Opening header controls direction; amount/date exclude remittance; spaced/tab/NBSP symbols never truncate; exact amount/currency filter before ordered locks; strict postchecks and uniqueness remain |
+| Local reconciliation | frontend: bankCrud, bankExpensePaymentMatcher, bankMap, bankReconciliation, schema bank qualifier, client bank projection/queries, bank regression tests/helper | Cross-tab lock before fresh context; genuine post-handler worker reads; all mutation receipts including no-match/final counts; durable unverified direction remains excluded after reload/batch |
+| Delivery clear / Wise status | coordinator: ExpenseForm, expenseCrud, BusinessExpenseService, bank composable, focused form/date/Wise tests | Explicit null survives save/reopen in both modes; omitted create defaults/omitted update preserves; latest request/context wins for Wise success/error/missing bridge |
+| Integration and publication | coordinator: guides, API inventory, changelog, review/state/PR metadata | Five-language parity, exact artifact scope, current CI and remote SHA; no merge/deployment |
+| Independent QA/security | read-only reviewers; temporary synthetic probes only | Verify final manifest, failure/unknown paths and real concurrency without production data |
+
+The browser schema gains one additive nullable `recordedDirectionEvidence` field:
+new email rows always store `credit`, `debit` or `unverified`; every projection
+retains it. Explicit `unverified` never auto-pays through refresh or batch matching.
+Null/missing is reserved for existing/older-writer rows and keeps the deliberate
+legacy normalized-ledger batch behavior. It is not original-bank proof. There is
+no server schema migration or Store/SEPA authority expansion.
+
+An origin-wide Web Lock complements the existing per-client queue. Import batch
+creation and explicit known-batch metadata updates are legitimate action writes;
+their callbacks are awaited before critical reads. Unknown/deleted batch handles
+cannot create phantom rows. Five fixed private context-query variants remain
+unsubscribed: each legitimate mutation flush invalidates their cached promises,
+so subsequent worker query responses run after the prior mutation handler and
+SQLite COMMIT. There is no per-operation nonce or unbounded query-cache growth.
+
+Installed Evolu posts its onComplete message before the SQLite transaction
+returns. That callback alone is not commit proof. Matching keeps the bank and
+expense writes synchronous in one validated owner batch, then verifies their
+stored state through the private worker queries before changing context/counts.
+No-match imports and final batch counts receive the same completion checks.
+
+Timeout, worker error or missing proof is UNKNOWN. An entered operation rejects
+to its public caller and permanently quarantines its internal gate/Web Lock until
+the tab is reloaded/closed. A late pre-COMMIT callback cannot release quarantine.
+Queued operations have bounded pre-entry cancellation and cannot mutate after
+cancellation. There is no automatic replay or uncertain rollback claim. Missing
+or rejected Web Locks preserve basic import while disabling automatic expense
+matching. Other devices remain outside the same-browser lock guarantee.
+
+Explicit delivery null now means clear; omission defaults only on create and
+preserves storage on update. This replaces the earlier documented blank-date
+save fallback. User guides and the single PR427 changelog fragment follow the
+new final behavior. Final review manifests/check results are appended after freeze.
+
+
+### Review disposition and compatibility
+
+| Review item | Final behavior and regression evidence |
+| --- | --- |
+| 4460664772 | Only the anchored bank opening controls debit/credit direction; quoted remittance words cannot suppress a valid classic credit. |
+| 4460664781 | Compact amount/date qualification ends before remittance/counterparty fields; a date found only in remittance cannot qualify a debit. |
+| 4460664792 | Space, tab, NBSP and dot-plus-numeric VS continuations reject instead of truncating. A complete bank date after sentence punctuation remains supported. |
+| 4460664802 | A fixed origin-wide Web Lock is acquired before critical context reads; two actual clients with warmed caches match one expense only once. |
+| 4460664809 | Pre-COMMIT callbacks are followed by private worker-backed reads; real SQLite COMMIT failure rejects and keeps the gate quarantined. |
+| 4460664827 | The additive stored direction qualifier survives refresh and explicit batch matching; new unverified/credit rows cannot pay an expense. |
+| 4460664845 | Explicit cleared delivery dates remain null through server/local save, reopen and table display; omitted updates keep existing values. |
+| Wise local/server follow-ups | Request generations reject stale success/error/A-B-A responses and clear status on company changes. A shared bridge-lookup generation prevents an older bank refresh from overwriting current Wise availability. |
+| SQL-lock follow-up | Exact canonical amount and trimmed uppercase currency narrow candidates before ordered locks. Independent two-connection tests prove unrelated amounts/currencies do not wait behind the match. |
+| Real-matcher failure follow-up | The actual second expense write fails Evolu validation after successful prevalidation: no worker financial mutation is sent and context/counts remain unchanged. |
+| Unknown-token follow-up | A well-formed but absent recipient token reaches the real inbound service and fails lookup; malformed addresses remain separately rejected. |
+
+Independent security review additionally found a late-callback quarantine release
+and dot-plus-space VS truncation. Both are fixed with regressions. No unresolved
+product/security tradeoff is introduced by these changes.
+
+The same-browser lock guarantee requires updated cooperating clients. Reload old
+tabs when rolling out the new frontend; older writers and other devices cannot
+participate in this lock or supply the new qualifier. Existing null-qualified rows
+keep the documented explicit legacy batch behavior. No distributed uniqueness or
+original-message proof is claimed. A worker outcome that remains unknown requires
+closing/reloading the owning tab before another fresh matching attempt; there is
+no automatic replay of that operation.
+
+Independent temporary actual-worker probes use two real Evolu client instances,
+the installed Db/CRDT/SQLite transaction code and native in-memory SQLite. Realm,
+lock and broadcast adapters are synthetic; these are not full browser/OPFS E2E
+claims. They explicitly exercise warmed subscribed/private caches, fresh worker
+queries, real validation rejection, COMMIT failure and missing/late receipts.
+
+
+### Final independent review and checks
+
+Both independent reviewers accept the full PR artifact relative to merged
+`686c9304`. Runtime17 manifest is
+`78afb3fdf73ad9f6b30f537684f711ef2914ece59c46f21845096a4aa0e04eb0`;
+source/test31 manifest is
+`d52b3e003a8466d669a64ed092af03a8a616843f36dbec024a1bc8972610e686`.
+Each manifest hashes lexically sorted UTF-8 lines containing the file SHA256,
+two spaces, repository-relative path and LF. No unresolved QA/security findings
+remain. Reviewer probes did not write repository files or touch production.
+
+- Main frontend: 1,363 cases / 158 files pass; final Wise shared-bridge scope
+  separately passes19 after its last change. Full lint has48 existing warnings
+  and no errors; final typecheck has112 baseline findings and no new fingerprint.
+- Main disposable SQLite:237 cases /958 assertions pass, one existing PHPUnit
+  deprecation. Pint passes all8 modified PHP files.
+- Independent QA PostgreSQL:251 cases /805 assertions pass with5 expected
+  SQLite-only malformed-storage skips and one existing deprecation; the three
+  new delivery-null API cases are included. The older full expense fixture's
+  nested Read Committed snapshot limitation is not reported as a new pass.
+- Independent real PostgreSQL contention/narrow-lock cases:3 /42 pass. The old
+  matcher overlay blocks unrelated amounts and fails the negative control.
+- QA focused frontend126 and final bridge19 pass. Security independently passes
+  frontend179, final bridge19, backend/date166 /736 and final parser84 /278.
+  These corpora overlap and are not added together.
+- Both reviewers independently pass12 temporary actual Evolu/native SQLite
+  probes, including two-client warm caches and actual COMMIT failure. Their
+  adapter boundary is described above; they do not establish OPFS/browser E2E.
+- Final build, five-locale parity, three OpenAPI documents and validator test
+  pass. All453 route inventory records and other source hashes are unchanged;
+  only the parser hash is refreshed. The one PR427 changelog fragment validates.
+- Full local PHPStan completes with only the known optional missing Scramble
+  class in unchanged DocumentationExporter.php:18. There is no new diagnostic,
+  installation, ignore, baseline or warning-budget change. Fresh locked CI must
+  verify the published commit; old c79deafd CI is not reused as that evidence.
+
+The QA-owned network-isolated temporary PostgreSQL container and tmpfs were
+removed after review. Existing primary edits and all recovery artifacts remain.
+Main publication is limited to this reviewed branch. No merge, deployment,
+merchant-data change, historical job retry or bank-message replay is performed.

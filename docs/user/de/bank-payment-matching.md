@@ -30,6 +30,8 @@ Satflux ordnet eingehende Transaktionen anhand des **variablen Symbols**, des Be
 
 Eine neu importierte ausgehende Bank-E-Mail kann eine bestehende Ausgabe als bezahlt markieren, wenn genau eine unbezahlte Ausgabe desselben Unternehmens mit dem vollständigen positiven Betrag, der Währung und dem variablen Symbol übereinstimmt. Fehlt das variable Symbol der Ausgabe, werden die Ziffern ihrer Belegnummer verwendet. Ohne variables Banksymbol muss die Zahlungsreferenz der vollständigen Belegnummer entsprechen. Das Buchungsdatum wird zum Zahlungsdatum. Mehrdeutige Zahlungen, Teilzahlungen und Überzahlungen bleiben ohne Zuordnung. Diese Automatik für Ausgaben gilt für Bank-E-Mails; CSV und Wise behalten ihr bisheriges Verhalten. Historische doppelte Zeilen werden beim Aktualisieren nicht erneut abgeglichen; prüfen Sie sie ausdrücklich über den automatischen Abgleich des Importstapels.
 
+Neu importierte E-Mails ohne gespeicherte ursprüngliche Zahlungsrichtung können eine Ausgabe auch beim erneuten Stapelabgleich nicht automatisch bezahlen. Ältere gespeicherte Bewegungen behalten ihr bisheriges Verhalten beim ausdrücklich gestarteten Stapelabgleich.
+
 ## Ausgaben
 
 Ausgehende Zahlungen können Sie in **Ausgaben** umwandeln, damit der Export für die Buchhaltung vollständig bleibt.

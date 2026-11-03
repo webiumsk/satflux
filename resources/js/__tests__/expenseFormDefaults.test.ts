@@ -15,7 +15,7 @@ const route = reactive({ name: 'invoicing-expense-new', params: {} as { expenseI
 const existingExpense = {
   id: 'synthetic-expense', internal_number: 'EXP20260001', title: 'Synthetic expense',
   external_number: 'DOC-0012', variable_symbol: '0099',
-  issue_date: '2026-01-10', delivery_date: '2026-01-07', due_date: null,
+  issue_date: '2026-01-10', delivery_date: '2026-01-07' as string | null, due_date: null,
   total: '12.00', currency: 'EUR', constant_symbol: null, specific_symbol: null,
   internal_note: null,
 };
@@ -76,6 +76,7 @@ async function extract(draft: Record<string, unknown>) {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.local = true;
+  existingExpense.delivery_date = '2026-01-07';
   companyId.value = 'abcdefghijklmnopqrstuv';
   route.name = 'invoicing-expense-new';
   route.params = {};
@@ -134,6 +135,25 @@ describe('new expense field defaults', () => {
     await field('expense_col_issue').setValue('2026-07-17');
     expect(field('expense_col_delivery').element.value).toBe('2026-07-15');
     await field('expense_col_delivery').setValue('');
+    await field('expense_col_issue').setValue('2026-07-18');
+    expect(field('expense_col_delivery').element.value).toBe('');
+  });
+
+  it.each([true, false])('saves a manually cleared delivery date as null (local=%s)', async (local) => {
+    await render(local);
+    await field('expense_col_delivery').setValue('');
+    await field('expense_col_issue').setValue('2026-07-18');
+    await wrapper!.find('form').trigger('submit');
+    await flushPromises();
+    const write = local ? mocks.insert : mocks.create;
+    expect(write).toHaveBeenCalledOnce();
+    expect(write.mock.calls[0]?.[local ? 2 : 1]).toMatchObject({ delivery_date: null });
+  });
+
+  it.each([true, false])('reopens a saved null delivery date as blank (local=%s)', async (local) => {
+    existingExpense.delivery_date = null;
+    await render(local, true);
+    expect(field('expense_col_delivery').element.value).toBe('');
     await field('expense_col_issue').setValue('2026-07-18');
     expect(field('expense_col_delivery').element.value).toBe('');
   });

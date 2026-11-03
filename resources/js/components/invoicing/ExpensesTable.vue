@@ -205,7 +205,7 @@
             @click="$emit('open', row.id)"
           >
             <div>{{ formatDate(row.issue_date) }}</div>
-            <div>{{ formatDate(row.delivery_date || row.issue_date) }}</div>
+            <div>{{ formatDate(row.delivery_date) }}</div>
             <div
               :class="
                 row.status === 'paid'
