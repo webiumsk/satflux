@@ -61,6 +61,12 @@
       "sourceSha": "86e77e81cab9ae838673bd78062b5f386a22e398",
       "phase": "created",
       "entryId": "cl_ccIUITGEk82YOOeTCdR8o"
+    },
+    "expense-import-and-summary": {
+      "hash": "12be2e85b58b98835b66a80bd3b24cd6bf326dacb9a147a622f5fd7977051acc",
+      "source": "https://github.com/webiumsk/satflux/pull/426",
+      "sourceSha": "686c930447cd3acab87b831ff2f52d04f76484b9",
+      "phase": "create_pending"
     }
   },
   "deploymentSha": "9dfc4166a6fd52575b831bf1fd0d31fabbb4a9a5"
