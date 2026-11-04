@@ -28,6 +28,7 @@ export type DocumentEventId = typeof DocumentEventId.Type;
 
 export const ExpenseId = id("Expense");
 export type ExpenseId = typeof ExpenseId.Type;
+export const ExpenseReconciliationId = id("ExpenseReconciliation");
 
 export const ExpenseAttachmentId = id("ExpenseAttachment");
 export type ExpenseAttachmentId = typeof ExpenseAttachmentId.Type;
@@ -173,6 +174,8 @@ export type BankMatchType = typeof BankMatchType.Type;
 
 /** Local-first invoicing schema. Data lives in browser SQLite, synced E2EE via relay. */
 export const InvoicingLocalSchema = {
+    // Underscore tables stay on this device and never enter the CRDT relay.
+    _expenseReconciliation: { id: ExpenseReconciliationId, pulse: nullOr(SqliteBoolean) },
     company: {
         id: CompanyId,
         legalName: LegalName,

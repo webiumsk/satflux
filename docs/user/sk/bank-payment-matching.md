@@ -34,6 +34,8 @@ Nové e-mailové importy bez uloženého pôvodného smeru platby nemôžu autom
 
 Ak stále prebieha iné párovanie, pred ďalším pokusom počkajte na jeho dokončenie. Ak sa výsledok nepodarilo potvrdiť, pred ďalším pokusom znovu načítajte kartu.
 
+Ak párovanie uspeje, ale zoznam sa nepodarí obnoviť, uložené výsledky zobrazíte opätovným načítaním karty. V lokálnom režime zostáva párovanie dávky dostupné pre uložené nespárované pohyby aj vtedy, keď prerušený import stále zobrazuje nulový počet importovaných riadkov. Po nepotvrdenom výsledku pred použitím tejto výslovnej akcie kartu znovu načítajte.
+
 ## Náklady
 
 Odchádzajúce platby viete premeniť na **náklady**, aby vaše účtovníctvo bolo kompletné pre export účtovníkovi.

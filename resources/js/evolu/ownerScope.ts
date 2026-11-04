@@ -34,7 +34,7 @@ const PARENT_KEYS: Record<string, string> = {
     bankTransactionMatch: "bankTransactionId",
 };
 
-const APP_OWNER_ONLY_TABLES = new Set<string>(["companyShare"]);
+const APP_OWNER_ONLY_TABLES = new Set<string>(["companyShare", "_expenseReconciliation"]);
 
 const rowOwner = new Map<string, OwnerId>();
 

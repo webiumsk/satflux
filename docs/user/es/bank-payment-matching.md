@@ -34,6 +34,8 @@ Los correos recién importados sin el sentido del movimiento (cargo o abono) reg
 
 Si hay otra conciliación en curso, espere a que termine antes de volver a intentarlo. Si no se pudo confirmar el resultado, recargue la pestaña antes de realizar otro intento.
 
+Si la conciliación tiene éxito pero no se puede actualizar la lista, recargue la pestaña para ver los resultados guardados. En el modo local, la conciliación por lotes sigue disponible para los movimientos guardados sin conciliar aunque una importación interrumpida siga mostrando cero filas importadas. Tras un resultado sin confirmar, recargue la pestaña antes de utilizar esa acción explícita.
+
 ## Gastos
 
 Puede convertir los pagos salientes en **gastos** para completar la exportación contable.

@@ -1,6 +1,8 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { createExpenseWriterTestAdapter } from "./expenseReconciliationTestSupport";
+import { installBankLocks } from "./bankReconciliationTestSupport";
 
-vi.mock("@/evolu/client", () => {
+vi.mock("@/evolu/client", async () => {
     const tokens = [
         "allBankImportBatchesQuery",
         "allBankTransactionMatchesQuery",
@@ -21,7 +23,8 @@ vi.mock("@/evolu/client", () => {
         "allRecurringProfileLinesQuery",
         "allRecurringProfilesQuery",
     ];
-    return Object.fromEntries(tokens.map((token) => [token, token]));
+    return { ...Object.fromEntries(tokens.map((token) => [token, token])),
+        ...(await import("./expenseReconciliationTestSupport")).expenseTestQueryExports() };
 });
 
 import {
@@ -49,7 +52,9 @@ async function validBackupText(ownerId = "owner-1"): Promise<string> {
 
 beforeEach(() => {
     localStorage.clear();
+    installBankLocks();
 });
+afterEach(() => { vi.unstubAllGlobals(); });
 
 describe("parseAndValidateBackup", () => {
     it("accepts a valid backup and reports counts and owner pairing", async () => {
@@ -109,15 +114,15 @@ describe("restoreInvoicingBackup", () => {
         // Older backup without newer tables must not crash the restore.
         delete (validated.value.envelope.data as Record<string, unknown>).documentSnapshot;
 
-        const upsert = vi.fn((_table: string, _row: unknown, options?: { onComplete?: () => void }) => {
-            options?.onComplete?.();
-            return { ok: true, value: { id: "x" } };
-        });
-        const evolu = { upsert } as never;
+        const { evolu, state } = createExpenseWriterTestAdapter([], "co-1");
+        state.company = [];
 
-        const report = await restoreInvoicingBackup(evolu, validated.value);
+        const report = await restoreInvoicingBackup(evolu as never, validated.value);
         expect(report.upserted).toBe(2);
         expect(report.failed).toEqual([]);
+        expect(state.company).toMatchObject([{ id: "co-1", legalName: "ACME s.r.o." }]);
+        expect(state.document).toMatchObject([{ id: "d-1", companyId: "co-1", title: "Invoice" }]);
+        expect(validated.value.envelope.data).not.toHaveProperty("_expenseReconciliation");
     });
 });
 

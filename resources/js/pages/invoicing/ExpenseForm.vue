@@ -148,6 +148,7 @@ import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompan
 import { useInvoicingExpense } from '../../composables/useInvoicingExpenses';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import { insertLocalExpense, updateLocalExpense } from '../../evolu/expenseCrud';
+import { expenseMutationErrorKey } from '../../utils/expenseError';
 import { normalizeVariableSymbol } from '../../evolu/bankSymbolNormalizer';
 import { expenseByIdIncludingDeletedQuery } from '../../evolu/client';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
@@ -390,12 +391,13 @@ async function save() {
     if (localFirst) {
       if (!expenseResource.evolu) throw new Error(t('errors.generic'));
       if (requestedNew && !createdLocalExpenseId.value) {
-        const result = insertLocalExpense(
+        const result = await insertLocalExpense(
           expenseResource.evolu,
           requestedCompany as CompanyId,
           payload,
           expenseRows.value,
         );
+        if (!stillCurrent()) return;
         if (!result.ok) {
           error.value = t('errors.generic');
           return;
@@ -410,12 +412,13 @@ async function save() {
         if (!current || current.companyId !== requestedCompany || current.isDeleted === sqliteTrue) {
           throw new Error('expense_unavailable');
         }
-        const result = updateLocalExpense(
+        const result = await updateLocalExpense(
           expenseResource.evolu,
           targetId as ExpenseId,
           payload,
           current ?? null,
         );
+        if (!stillCurrent()) return;
         if (!result.ok) {
           error.value = t('errors.generic');
           return;
@@ -441,7 +444,8 @@ async function save() {
   } catch (e: unknown) {
     if (!stillCurrent()) return;
     const err = e as { response?: { data?: { message?: string } } };
-    error.value = e instanceof Error && e.message === 'expense_unavailable'
+    const mutationErrorKey = expenseMutationErrorKey(e);
+    error.value = mutationErrorKey ? t(mutationErrorKey) : e instanceof Error && e.message === 'expense_unavailable'
       ? t('invoicing.expense_unavailable')
       : err?.response?.data?.message || t('errors.generic');
   } finally {

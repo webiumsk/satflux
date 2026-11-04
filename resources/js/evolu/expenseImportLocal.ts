@@ -16,6 +16,8 @@ import { parseSpreadsheetFile } from "./spreadsheetParse";
 import type { CompanyId, InvoicingLocalSchema } from "./schema";
 import { parseImportDate, toIsoDate } from "./importDateParse";
 import { IMPORT_YIELD_EVERY_ROWS, yieldToEventLoop } from "./importYield";
+import { withExpenseReconciliation } from "./expenseReconciliation";
+import { BankReconciliationUnknownError } from "./bankReconciliation";
 
 export { downloadCsvBlob };
 
@@ -356,6 +358,9 @@ export async function importLocalExpensesFromFile(
 ): Promise<ExpenseImportResult> {
     const parsed = await parseSpreadsheetFile(file, SPREADSHEET_LIMITS);
     const mapping = normalizeMapping(mappingInput, parsed.headers.length);
+    return withExpenseReconciliation(evolu, async (scope) => {
+    evolu = scope.evolu;
+    existingRows = scope.context.expenses;
     const existingNumbers = new Set(
         existingRows.filter((row) => row.companyId === companyId).map((row) => row.internalNumber),
     );
@@ -389,7 +394,7 @@ export async function importLocalExpensesFromFile(
                 }
             }
 
-            const result = insertLocalExpense(evolu, companyId, draft, workingRows, { internalNumber });
+            const result = await insertLocalExpense(evolu, companyId, draft, workingRows, { internalNumber });
             if (!result.ok) throw new Error("insert_failed");
 
             // Reserve successful inserts immediately. A later query failure must
@@ -416,6 +421,7 @@ export async function importLocalExpensesFromFile(
             });
             imported += 1;
         } catch (e: unknown) {
+            if (e instanceof BankReconciliationUnknownError) throw e;
             skipped += 1;
             const message = e instanceof Error ? e.message : "import_failed";
             errors.push({
@@ -427,4 +433,5 @@ export async function importLocalExpensesFromFile(
     }
 
     return { imported, skipped, errors };
+    });
 }

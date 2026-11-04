@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { BANK_RECONCILIATION_TIMEOUT_MS, BankReconciliationUnknownError } from "@/evolu/bankReconciliation";
-import { installBankLocks } from "./bankReconciliationTestSupport";
+import { installBankLocks, bankTestQueryTable } from "./bankReconciliationTestSupport";
 vi.mock("@/evolu/client", () => ({
     allBankImportBatchesQuery: "batches", allBankTransactionsQuery: "transactions",
     allBankTransactionMatchesQuery: "matches", allDocumentsQuery: "documents", allExpensesQuery: "expenses",
@@ -21,7 +21,9 @@ function fixture(existing = false) {
             bookedAt: "2026-11-03", amount: "19.00", currency: "EUR", direction: "debit", matchStatus: "unmatched",
             businessExpenseId: null, variableSymbol: "0019", reference: null, counterpartyName: null, dedupeHash: "oldhash", source: "inbound_email" });
     }
-    const tables: Record<string, DataRow[]> = { bankImportBatch: state.batches, bankTransaction: state.transactions, expense: state.expenses };
+    const tables: Record<string, DataRow[]> = { bankImportBatch: state.batches, bankTransaction: state.transactions, expense: state.expenses,
+        company: [{ id: "company-a", legalName: "Synthetic company", ownerId: "app-owner" }] };
+    for (const rows of Object.values(tables)) for (const row of rows) row.ownerId = "app-owner";
     let sequence = 0;
     function client() {
         // Every client starts with its own stale, subscribed UI query snapshots.
@@ -35,14 +37,19 @@ function fixture(existing = false) {
             else queueMicrotask(() => onComplete?.());
         };
         const evolu = {
+            appOwner: Promise.resolve({ id: "app-owner" }),
+            upsert: vi.fn((_table: string, props: DataRow, options?: { onComplete?: () => void }) => {
+                queueMicrotask(() => options?.onComplete?.()); return { ok: true, value: { id: props.id } };
+            }),
             subscribeError: (listener: () => void) => { errorListeners.add(listener); return () => { errorListeners.delete(listener); }; },
             getError: () => workerError,
             loadQuery: vi.fn(async (key: string) => key.startsWith("fresh:")
-                ? state[key.slice(6)].map((row) => ({ ...row })) : ui.get(key) ?? []),
+                ? state[key.slice(6)].map((row) => ({ ...row }))
+                : (tables[bankTestQueryTable(key) ?? ""]?.map((row) => ({ ...row })) ?? ui.get(key) ?? [])),
             insert: vi.fn((table: string, props: DataRow, options?: { onlyValidate?: boolean; onComplete?: () => void }) => {
                 const id = `insert-${++sequence}`;
                 if (!options?.onlyValidate) {
-                    tables[table].push({ ...props, id });
+                    tables[table].push({ ...props, id, ownerId: "app-owner" });
                     complete(table, options?.onComplete);
                 }
                 return { ok: true, value: { id } };

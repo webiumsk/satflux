@@ -384,3 +384,139 @@ Main publishes only the32 reviewed follow-up paths, verifies committed manifests
 and remote SHA, updates PR evidence and resolves the four addressed threads.
 The primary checkout and previous recovery artifacts remain preserved. No real
 bank message, production data, job retry, merge or deployment is used/performed.
+
+
+## PR427 third review remediation - 2026-11-04
+
+A later completed CodeRabbit review of3f47a24b reports three inline findings and
+one outside-diff follow-up. The initial rate-limited check and green
+CI41733930901 are historical observations; they are not new-source validation.
+Graphify graph/tool remain unavailable; no installation or rebuild occurs.
+
+### Accepted architecture and ownership
+
+| Finding | Owner / scope | Acceptance contract |
+| --- | --- | --- |
+| 4461780133 | backend / Tatra parser and two parser test files | Preserve layout whitespace in HTML-only bodies without splitting inline numeric tokens or relaxing date/symbol/remittance qualification |
+| 4461780146 | frontend / expense CRUD/import/bulk, bank compound creation/matcher, company delete/merge, snapshot and sharing maintenance | Same origin lock spans fresh preconditions, actual critical writes and post-handler proof; every production matching-critical expense writer cooperates |
+| 4461780158 | coordinator / CompanyPayments, local bank composable and page tests | Match failure and refresh failure have separate scopes/messages; a saved successful match is not reported failed because refresh rejects |
+| Outside-diff218c8a3e | coordinator / batch map, projection and UI/tests | Local batch action availability derives from actual same-company persisted unmatched rows, including verified counter0 after an interrupted import; never move counters before identity proof |
+| Review and publication | read-only QA/security, coordinator shared docs/metadata/Git | Verify exact artifacts, real worker ordering/unknown behavior and current CI; preserve primary work; no merge/deployment |
+
+The expense writer inventory includes stable-ID inbox upserts, spreadsheet and
+bulk actions, bank expense creation, company delete/merge, snapshot restoration,
+share migration/rekey/recovery and ordinary form/detail edits. Note saving uses
+only its intended note field. Public writer results become awaited; callers retain
+context-generation checks before navigation, attachments or success feedback.
+
+Installed Evolu exposes no public forced refresh for warmed query keys. A small
+inert `_expenseReconciliation` local-only coordination table with one fixed opaque
+row supplies a genuine entry marker mutation before private worker reads. It has
+no company/merchant/financial fields, stays AppOwner-only and is excluded from
+explicit backup/share/relay data allowlists. Installed Evolu excludes underscore
+local-only changes from CRDT sync. This is a deliberate additive browser-schema
+exception needed for fresh writer preconditions, with no server migration or
+payment authority expansion.
+
+The five existing private financial query identities remain unchanged. Bounded
+additional private, unsubscribed variants support only the needed maintenance/
+share/tombstone decisions, without nonce keys or unbounded cache growth. Ordinary
+writes must not load unrelated attachment/snapshot/stock datasets. Owner/share,
+number allocation, stable-ID existence and target liveness decisions use fresh
+state inside the gate. Terminal receipts and worker reads prove the completed
+handler before return/release. TypeScript brands alone are insufficient: opaque
+already-locked capabilities require private runtime validity and revocation.
+Compound create/link and bulk groups preserve synchronous mutation batching;
+known validation rejection remains distinct from Unknown and no nonexistent
+callback is awaited. Unknown retains permanent quarantine and never auto-retries.
+
+Expense writers require an origin lock and fail before any marker/financial
+mutation if it is unavailable. The existing basic bank-import fallback remains,
+with automatic expense payment disabled. Updated cooperating clients in the same
+browser are the guarantee boundary; old tabs and other devices remain outside it.
+Reload older tabs at rollout. The additive local-only marker needs no backup,
+relay or server migration; the existing encrypted expense data remains intact.
+
+Ordering is intentional: an edit to20 committed before a debit19 prevents that
+match. A valid debit19 committed first may be followed by an explicit authorized
+edit to20 that keeps the existing paid status. Preserve that editable-paid policy
+and original bank evidence; do not invent unpayment, unlinking, compensation or
+paid-expense immutability. Matching postproof additionally checks the original
+critical amount/currency/hint snapshot as defense.
+
+Five locales/guides describe visible busy/unsupported/unknown recovery and saved
+match refresh failure. Server batch behavior remains unchanged; the derived local
+flag is presentation/recovery information, not payment authority. Final source
+manifests, independent acceptance and completed checks follow after freeze.
+
+
+The inherited unlocked basic-import fallback retains its previous owner-registry
+routing; the new fresh-owner proof applies to the locked cooperating scopes only.
+The fallback cannot auto-pay an expense and does not acquire a new privacy/owner
+guarantee in this change. No silent change to that previous fallback is claimed.
+
+Independent review required bank Ignore/manual-match/unmatch eligibility writers
+to use the same gate and fresh state. Their callers await completion and separate
+saved-action refresh failures from mutation errors. Existing unlink-without-unpay
+semantics remain. Fresh parent ownership also routes new bank-match/attachment
+children, avoiding a stale-registry AppOwner fork. Missing/unready/ambiguous owner
+state fails before a financial mutation, without installing keys or registering
+new owners. A known missing-company bank-import preflight occurs outside the
+mutation receipt catcher, so a proven no-financial-write refusal is not incorrectly
+classified as Unknown.
+
+Review-discovered fixes include private runtime lease revocation, bounded owner
+initialization, cancelled-note rejection, pre-gate rejection of non-email debit
+matching, selective auxiliary reads, owner/parent routing, and correct known-abort
+classification. Expected in-memory patches from an aborted synchronous group are
+discarded; previously committed groups remain. Existing known bank row rejection
+keeps its localized error, and a rejected expense pair leaves the imported bank row
+unmatched instead of undoing earlier valid matches. There is no financial rollback.
+
+One unchanged drawer binding exposed a fragile existing TypeScript fingerprint
+after the schema expansion: an object class was passed to an icon's string class
+prop. The equivalent conditional string preserves the exact CSS behavior and
+removes that diagnostic; no baseline, warning budget or type assertion is changed.
+Current full typecheck tolerates111 existing findings with no new fingerprint.
+
+
+### Third-round artifact and independent evidence
+
+Final runtime41 manifest is
+`a9478719b0e67ac46526bbd8e3db03657c935b656944ac2a37401aac02d76ee7`;
+source/test65 manifest is
+`5f74ae7b795c4c3786cf4f3123855e64aa186a9a9e725a8535d8da244dd471c1`.
+The manifest format remains lexically sorted repository-relative SHA256 lines.
+
+Main full frontend passes1,415 cases /160 files after fixing three test-adapter
+mismatches without weakening financial assertions. The final additional pure
+cross-owner merge preflight is separately verified by3 cases and the affected35
+cases, with zero merchant prefix mutations for invalid groups and a same-owner
+positive. Current full typecheck has111 existing findings/no new fingerprint;
+full lint48known and final scoped lint0 preserve budgets/baselines. The build,
+five locales, all3 OpenAPI documents, validator and existing PR fragment pass.
+The API inventory changes only the parser hash, keeping all453 route records.
+Author HTML/parser SQLite280/1145 and Pint8 pass. Local full PHPStan retains only
+the known optional missing Scramble class in the unchanged exporter.
+
+Independent QA passes311 repository cases /21 files, native40 /5 and isolated
+SQLite323 /1287 (one inherited PHPUnit deprecation). Independent security passes
+104 repository cases, SQLite180 /641 and50 distinct native/security cases, with
+the repaired classification case rerun and10 boundary cases rechecked. These
+corpora overlap. Both reviewers verified the earlier40 runtime files; the final
+company-merge preflight and renewed manifests receive separate bounded review.
+No PostgreSQL target or infrastructure is created this round.
+
+Native tests use two installed Evolu clients and actual DbWorker/CRDT/SQLite code,
+including a genuine worker-thread COMMIT pause with both clients responsive.
+Realm/tab/lock adapters and storage remain synthetic; this does not establish
+browser/OPFS or cross-device uniqueness. Cases prove edit-v-match order, stale
+caches, owner routing, revocation, known abort recovery, unknown quarantine,
+stable IDs/numbering, Ignore, compound bank creation, deletion and restoration.
+Known failures retain earlier valid matches and permit explicit later recovery.
+
+The final company-merge delta validates EVERY resolved duplicate group before
+any mutation. No-expense and invalid-later groups cannot leave document/contact
+prefix changes. Main publishes only the reviewed allowlist after both renewed
+acceptances, verifies committed blobs/remote SHA and requires new locked CI;
+CI41733930901 belongs to3f47a24b. No merge, deployment or real bank-message replay.

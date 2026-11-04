@@ -30,6 +30,8 @@ Das variable Symbol folgt den Ziffern der Belegnummer einschließlich führender
 
 Enthält die Belegnummer mehr als 32 Ziffern, bleibt das automatisch abgeleitete variable Symbol leer und die Belegnummer erhalten. Nach dem Kürzen der Nummer wird der Standardwert wieder übernommen, sofern Sie das Symbol nicht manuell bearbeiten.
 
+Lokale Ausgabenänderungen warten vor dem Speichern auf einen laufenden Zahlungsabgleich. Kann der Browser Änderungen nicht koordinieren, laden Sie den Tab neu oder verwenden Sie einen aktuellen Browser. Bei einem unbestätigten Ergebnis laden Sie den Tab neu und prüfen Sie den gespeicherten Datensatz vor einem weiteren Versuch. Spätere bewusste Änderungen an einer bezahlten Ausgabe behalten deren bestehenden Zahlungsstatus bei.
+
 ## Ausgabenübersicht
 
 Die Übersicht unter **Ausgaben** umfasst alle Dokumente, die den aktuellen Filtern entsprechen, auf sämtlichen Seiten. Sie zeigt Anzahl, Gesamtsumme und Summe unbezahlter Ausgaben. Die Auswahl von Zeilen verändert die Übersicht nicht. Jede Währung hat eigene Summen.

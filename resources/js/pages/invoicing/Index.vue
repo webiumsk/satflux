@@ -213,6 +213,7 @@
 </template>
 
 <script setup lang="ts">
+import { expenseMutationErrorKey } from "../../utils/expenseError";
 import { useEffectiveAccess, canCreateLocalCompany } from "@/composables/useEffectiveAccess";
 import { computed, onMounted, ref, unref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -587,8 +588,8 @@ async function runMergeDuplicates(): Promise<void> {
       );
     }
     await refresh();
-  } catch {
-    flashStore.error(t('invoicing.duplicate_companies_merge_failed'));
+  } catch (error: unknown) {
+    flashStore.error(t(expenseMutationErrorKey(error) || 'invoicing.duplicate_companies_merge_failed'));
   } finally {
     mergeRunning.value = false;
   }

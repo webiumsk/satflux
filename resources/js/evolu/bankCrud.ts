@@ -1,4 +1,5 @@
 import { sqliteTrue } from "@evolu/common";
+import { ExpenseId } from "./schema";
 import type { Evolu } from "@evolu/common/local-first";
 import {
     allBankImportBatchesQuery,
@@ -29,7 +30,8 @@ import {
 import type { EvoluDocumentRow } from "./documentMap";
 import { markLocalDocumentPaidWithAmount, unmarkLocalDocumentPaid } from "./documentCrud";
 import type { EvoluExpenseRow } from "./expenseMap";
-import { insertLocalExpense, nextLocalExpenseInternalNumber, type ExpenseSavePayload } from "./expenseCrud";
+import { insertLocalExpenseInReconciliation, nextLocalExpenseInternalNumber, type ExpenseSavePayload } from "./expenseCrud";
+import { withExpenseReconciliation, assertExpenseCompanyOwner, expenseReconciliationScope, type ExpenseReconciliationScope } from "./expenseReconciliation";
 import { toAppRows } from "./queryLoad";
 import type {
     BankImportBatchId,
@@ -434,8 +436,12 @@ export async function importInboundServerTransactionsAsync(
     companyId: CompanyId,
     rows: ServerBankTransactionRow[],
 ): Promise<{ imported: number; auto_matched: number }> {
-    return serializeBankEmailReconciliation(evolu, (allowExpenseMatching) =>
-        importInboundServerTransactions(evolu, companyId, rows, allowExpenseMatching));
+    return serializeBankEmailReconciliation(evolu, (allowExpenseMatching, lease) => allowExpenseMatching
+        ? withExpenseReconciliation(evolu, (scope) => {
+            assertExpenseCompanyOwner(scope, companyId);
+            return importInboundServerTransactions(scope.evolu, companyId, rows, true);
+        }, lease)
+        : importInboundServerTransactions(evolu, companyId, rows, false));
 }
 
 async function importInboundServerTransactions(
@@ -549,8 +555,9 @@ export async function autoMatchLocalBatchAsync(
     evolu: Evolu<InvoicingLocalSchema>,
     batchId: BankImportBatchId,
 ): Promise<{ auto_matched: number }> {
-    return serializeBankEmailReconciliation(evolu, (allowExpenseMatching) =>
-        autoMatchLocalBatch(evolu, batchId, allowExpenseMatching));
+    return serializeBankEmailReconciliation(evolu, (allowExpenseMatching, lease) => allowExpenseMatching
+        ? withExpenseReconciliation(evolu, (scope) => autoMatchLocalBatch(scope.evolu, batchId, true), lease)
+        : autoMatchLocalBatch(evolu, batchId, false));
 }
 
 async function autoMatchLocalBatch(
@@ -562,6 +569,7 @@ async function autoMatchLocalBatch(
     const known = knownBatches.find((row) => row.id === batchId);
     const companyId = known?.companyId;
     if (!companyId) return { auto_matched: 0 };
+    if (allowExpenseMatching) assertExpenseCompanyOwner(expenseReconciliationScope(evolu), companyId);
     // Only metadata of a known batch can act as this legitimate action's barrier.
     // Do not create a phantom batch or touch a financial row to refresh queries.
     const refreshed = await awaitBankMutation(evolu, (onComplete) => evolu.update("bankImportBatch", {
@@ -591,12 +599,23 @@ async function autoMatchLocalBatch(
     return { auto_matched: autoMatched };
 }
 
-export function manualMatchLocalTransaction(
+export async function manualMatchLocalTransaction(
     evolu: Evolu<InvoicingLocalSchema>,
     transactionId: BankTransactionId,
     documentId: DocumentId,
     ctx: BankPaymentContext,
     matchedAmount?: number,
+): Promise<void> {
+    const scope = await withExpenseReconciliation(evolu, (scope) => {
+        manualMatchLocalTransactionCore(scope.evolu, transactionId, documentId, scope.context, matchedAmount);
+        return scope;
+    });
+    Object.assign(ctx, scope.context);
+}
+
+function manualMatchLocalTransactionCore(
+    evolu: Evolu<InvoicingLocalSchema>, transactionId: BankTransactionId, documentId: DocumentId,
+    ctx: BankPaymentContext, matchedAmount?: number,
 ): void {
     const transaction = ctx.transactions.find((row) => row.id === transactionId);
     const document = ctx.documents.find((row) => row.id === documentId);
@@ -620,23 +639,38 @@ export function manualMatchLocalTransaction(
     );
 }
 
-export function ignoreLocalBankTransaction(
+export async function ignoreLocalBankTransaction(
     evolu: Evolu<InvoicingLocalSchema>,
     transactionId: BankTransactionId,
     ctx: BankPaymentContext,
-): void {
-    evolu.update("bankTransaction", {
+): Promise<void> {
+    const scope = await withExpenseReconciliation(evolu, (scope) => {
+    const tx = scope.context.transactions.find((row) => row.id === transactionId);
+    if (!tx || tx.matchStatus !== "unmatched" || tx.businessExpenseId) return scope;
+    const result = scope.evolu.update("bankTransaction", {
         id: transactionId,
         matchStatus: "ignored",
     });
-    const tx = ctx.transactions.find((row) => row.id === transactionId);
-    if (tx) tx.matchStatus = "ignored";
+    if (!result.ok) throw new Error("expense_mutation_batch_rejected");
+    return scope;
+    });
+    Object.assign(ctx, scope.context);
 }
 
-export function unmatchLocalBankTransaction(
+export async function unmatchLocalBankTransaction(
     evolu: Evolu<InvoicingLocalSchema>,
     transactionId: BankTransactionId,
     ctx: BankPaymentContext,
+): Promise<void> {
+    const scope = await withExpenseReconciliation(evolu, (scope) => {
+        unmatchLocalBankTransactionCore(scope.evolu, transactionId, scope.context);
+        return scope;
+    });
+    Object.assign(ctx, scope.context);
+}
+
+function unmatchLocalBankTransactionCore(
+    evolu: Evolu<InvoicingLocalSchema>, transactionId: BankTransactionId, ctx: BankPaymentContext,
 ): void {
     const transaction = ctx.transactions.find((row) => row.id === transactionId);
     if (!transaction) return;
@@ -666,12 +700,25 @@ export function unmatchLocalBankTransaction(
     transaction.matchStatus = "unmatched";
 }
 
-export function createLocalExpenseFromBankTransaction(
+export async function createLocalExpenseFromBankTransaction(
     evolu: Evolu<InvoicingLocalSchema>,
     transactionId: BankTransactionId,
     payload: ExpenseSavePayload & { supplier?: string; category?: string },
     ctx: BankPaymentContext,
+): Promise<EvoluExpenseRow> {
+    const expense = await withExpenseReconciliation(evolu, (scope) => createExpenseFromBankTransactionInReconciliation(scope, transactionId, payload));
+    ctx.expenses.push(expense);
+    const transaction = ctx.transactions.find((row) => row.id === transactionId);
+    if (transaction) { transaction.businessExpenseId = expense.id; transaction.matchStatus = "matched"; }
+    return expense;
+}
+
+function createExpenseFromBankTransactionInReconciliation(
+    scope: ExpenseReconciliationScope, transactionId: BankTransactionId,
+    payload: ExpenseSavePayload & { supplier?: string; category?: string },
 ): EvoluExpenseRow {
+    const evolu = scope.evolu;
+    const ctx = scope.context;
     const transaction = ctx.transactions.find((row) => row.id === transactionId);
     if (!transaction) throw new Error("Transaction not found.");
     if (resolvedBankDirection(transaction) !== "debit") {
@@ -706,21 +753,25 @@ export function createLocalExpenseFromBankTransaction(
 
     const internalNumber = nextLocalExpenseInternalNumber(transaction.companyId, ctx.expenses);
 
-    const result = insertLocalExpense(
-        evolu,
+    // Validate the link before queueing the expense insert. Generated Evolu IDs
+    // have the same validated representation regardless of their table brand.
+    if (!evolu.update("bankTransaction", { id: transaction.id, businessExpenseId: ExpenseId.orThrow(transaction.id),
+        matchStatus: "matched" }, { onlyValidate: true }).ok) throw new Error("Could not link expense.");
+    const result = insertLocalExpenseInReconciliation(
+        scope,
         transaction.companyId,
         expensePayload,
-        ctx.expenses,
     );
     if (!result.ok) {
         throw new Error("Could not create expense.");
     }
 
-    evolu.update("bankTransaction", {
+    const linked = evolu.update("bankTransaction", {
         id: transactionId,
         businessExpenseId: result.value.id,
         matchStatus: "matched",
     });
+    if (!linked.ok) throw new Error("expense_mutation_batch_rejected");
 
     const paidAt = expensePayload.mark_paid ? new Date().toISOString().slice(0, 10) : null;
     const expenseRow: EvoluExpenseRow = {
@@ -745,10 +796,6 @@ export function createLocalExpenseFromBankTransaction(
         internalNote: expensePayload.internal_note ?? null,
     };
 
-    ctx.expenses.push(expenseRow);
-    transaction.businessExpenseId = result.value.id;
-    transaction.matchStatus = "matched";
-
     return expenseRow;
 }
 
@@ -771,12 +818,16 @@ export function mapLocalBankTransactionsToApi(
 export function mapLocalBankBatchesToApi(
     batches: EvoluBankImportBatchRow[],
     companyId: CompanyId,
+    transactions: EvoluBankTransactionRow[],
 ) {
+    const unmatchedBatches = new Set(transactions
+        .filter((row) => row.companyId === companyId && row.matchStatus === "unmatched")
+        .map((row) => row.bankImportBatchId));
     return batches
         .filter((row) => row.companyId === companyId)
         .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
         .slice(0, 20)
-        .map(evoluBankBatchToApi);
+        .map((row) => ({ ...evoluBankBatchToApi(row), can_auto_match: unmatchedBatches.has(row.id) }));
 }
 
 export { filterLocalBankTransactions, buildBankSummary } from "./bankMap";

@@ -34,6 +34,8 @@ Neu importierte E-Mails ohne gespeicherte ursprüngliche Zahlungsrichtung könne
 
 Läuft noch ein anderer Abgleich, warten Sie vor einem weiteren Versuch auf dessen Abschluss. Konnte das Ergebnis nicht bestätigt werden, laden Sie den Tab vor einem weiteren Versuch neu.
 
+Ist der Abgleich erfolgreich, aber die Liste lässt sich nicht aktualisieren, laden Sie den Tab neu, um die gespeicherten Ergebnisse zu sehen. Im lokalen Modus bleibt der Stapelabgleich für gespeicherte, noch nicht abgeglichene Bewegungen verfügbar, auch wenn ein unterbrochener Import weiterhin null importierte Zeilen anzeigt. Laden Sie den Tab nach einem unbestätigten Ergebnis neu, bevor Sie diese ausdrückliche Aktion ausführen.
+
 ## Ausgaben
 
 Ausgehende Zahlungen können Sie in **Ausgaben** umwandeln, damit der Export für die Buchhaltung vollständig bleibt.

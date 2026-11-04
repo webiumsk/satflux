@@ -83,7 +83,11 @@ class TatraBankEmailParser implements BankNotificationParser
 
     protected function normalizeBody(string $body): string
     {
-        $text = strip_tags(html_entity_decode($body));
+        $text = html_entity_decode($body);
+        // Keep layout boundaries without splitting inline numeric tokens.
+        // strip_tags still parses complete tags, including quoted attributes.
+        $text = preg_replace('/(?=<\/?(?:br|hr|p|div|li|dt|dd|tr|td|th|h[1-6]|table|thead|tbody|tfoot|ul|ol|dl|blockquote|pre|section|article|header|footer)(?=[\s\/>]))/iu', ' ', $text) ?? $text;
+        $text = strip_tags($text);
         $text = str_replace(["\r\n", "\r"], "\n", $text);
         $text = preg_replace('/[ \t]+/u', ' ', $text) ?? $text;
         $text = preg_replace('/\n{3,}/u', "\n\n", $text) ?? $text;

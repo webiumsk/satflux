@@ -30,6 +30,8 @@ Variabilný symbol sa priebežne nastavuje podľa číslic v čísle dokladu vr�
 
 Ak číslo dokladu obsahuje viac ako 32 číslic, automatický variabilný symbol zostane prázdny a číslo dokladu sa zachová. Po skrátení čísla sa predvyplnenie obnoví, pokiaľ symbol neupravíte ručne.
 
+Lokálne zmeny nákladov pred uložením počkajú na prebiehajúce párovanie platieb. Ak prehliadač nedokáže koordinovať zmeny, znovu načítajte kartu alebo použite aktuálny prehliadač. Ak výsledok nemožno potvrdiť, pred ďalším pokusom kartu znovu načítajte a skontrolujte uložený záznam. Neskoršia vedomá úprava uhradeného nákladu zachová jeho existujúci stav úhrady.
+
 ## Sumár nákladov
 
 Sumár pod zoznamom **Nákladov** zahŕňa všetky doklady zodpovedajúce aktuálnym filtrom na všetkých stránkach. Zobrazuje počet, celkovú sumu a sumu neuhradených nákladov. Výber položiek súčet nemení. Každá mena má vlastné súčty.

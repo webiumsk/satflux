@@ -1,5 +1,18 @@
 # Development roadmap
 
+## Current: publish PR427 third-round repair - 2026-11-04
+
+HTML-only notification layout, refresh-error classification and interrupted-import
+batch recovery are fixed. All inventoried critical expense writers, maintenance
+and bank actions share one origin gate with fresh owner-aware preconditions and
+worker completion proof. Final runtime41/source-test65 manifests are
+a9478719...76ee7 /5f74ae7b...471c1. Main full1415 plus final merge3/affected35 and
+independent native40/security50 pass; typecheck111existing/no-new, lint48known and
+build/locales/API/Pint retain previous ratchets and documented limits.
+Both reviewers accept all final hashes; publish the exact scoped branch, resolve
+three new inline threads and verify new exact-head CI. No production replay,
+server migration, new key authority, merge or deployment is included.
+
 ## Current: finish PR427 second-round review fixes - 2026-11-03
 
 Four new inline findings and three follow-ups are implemented on the same branch:

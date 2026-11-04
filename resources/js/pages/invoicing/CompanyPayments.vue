@@ -322,7 +322,7 @@
               }}</span
             >
             <button
-              v-if="b.imported_count > 0"
+              v-if="b.can_auto_match ?? b.imported_count > 0"
               type="button"
               class="text-indigo-600 hover:underline"
               @click="autoMatchBatch(b.id)"
@@ -777,6 +777,7 @@ import { useInvoicingCompanySummary } from "../../composables/useInvoicingCompan
 import { useInvoicingBankPayments } from "../../composables/useInvoicingBankPayments";
 import { invoicingDocumentRoutesForType } from "../../composables/useInvoicingDocumentRoutes";
 import { useFlashStore } from "../../store/flash";
+import { expenseMutationErrorKey } from "../../utils/expenseError";
 import { invoicingApi } from "../../services/api";
 import { ensureBridgeCompanyIdForLocalCompany } from "../../evolu/bridgeCompanyEnsure";
 
@@ -1139,9 +1140,14 @@ async function upload() {
 async function autoMatchBatch(batchId: string) {
   try {
     await bank.autoMatchBatch(batchId);
-    await load();
   } catch (err: unknown) {
-    flashStore.error(t(reconciliationErrorKey(err) || "invoicing.bank_auto_match_failed"));
+    flashStore.error(t(reconciliationErrorKey(err) || expenseMutationErrorKey(err) || "invoicing.bank_auto_match_failed"));
+    return;
+  }
+  try {
+    await load();
+  } catch {
+    flashStore.error(t("invoicing.bank_matching_refresh_failed"));
   }
 }
 
@@ -1168,19 +1174,38 @@ async function openMatch(tx: BankTx) {
 
 async function confirmMatch(documentId: string) {
   if (!matchModal.value) return;
-  await bank.matchTransaction(matchModal.value.id, documentId);
+  const transactionId = matchModal.value.id;
+  if (!await runBankAction(() => bank.matchTransaction(transactionId, documentId))) return;
+  if (matchModal.value?.id !== transactionId) return;
   matchModal.value = null;
-  await load();
+  await refreshBankAction();
 }
 
 async function ignoreTx(tx: BankTx) {
-  await bank.ignoreTransaction(tx.id);
-  await load();
+  if (await runBankAction(() => bank.ignoreTransaction(tx.id))) await refreshBankAction();
 }
 
 async function unmatchTx(tx: BankTx) {
-  await bank.unmatchTransaction(tx.id);
-  await load();
+  if (await runBankAction(() => bank.unmatchTransaction(tx.id))) await refreshBankAction();
+}
+
+async function runBankAction(action: () => Promise<void>): Promise<boolean> {
+  const requestedCompany = companyId.value;
+  try {
+    await action();
+    return companyId.value === requestedCompany;
+  } catch (error: unknown) {
+    if (companyId.value === requestedCompany) flashStore.error(t(expenseMutationErrorKey(error) || "common.error"));
+    return false;
+  }
+}
+
+async function refreshBankAction() {
+  try {
+    await load();
+  } catch {
+    flashStore.error(t("invoicing.bank_action_refresh_failed"));
+  }
 }
 
 function openCreateExpense(tx: BankTx) {
@@ -1219,7 +1244,8 @@ async function submitCreateExpense(draft: BankExpenseDraft) {
       response?: { data?: { message?: string } };
       message?: string;
     };
-    expenseError.value =
+    const mutationErrorKey = expenseMutationErrorKey(e);
+    expenseError.value = mutationErrorKey ? t(mutationErrorKey) :
       err?.response?.data?.message || err?.message || t("common.error");
   } finally {
     creatingExpense.value = false;

@@ -358,6 +358,7 @@ function useLocalInvoicingBankPayments(
         mapLocalBankBatchesToApi(
             toAppRows<BankPaymentContext["batches"][number]>(batchRows.value),
             companyId.value as CompanyId,
+            ctx.value.transactions,
         ),
     );
 
@@ -535,7 +536,6 @@ function useLocalInvoicingBankPayments(
 
     async function autoMatchBatch(batchId: string) {
         await autoMatchLocalBatchAsync(evolu, batchId as BankImportBatchId);
-        await load(matchFilter.value);
     }
 
     async function fetchSuggestions(transactionId: string): Promise<BankMatchSuggestion[]> {
@@ -555,28 +555,26 @@ function useLocalInvoicingBankPayments(
 
     async function matchTransaction(transactionId: string, documentId: string) {
         const paymentCtx = await loadBankPaymentContext(evolu);
-        manualMatchLocalTransaction(
+        await manualMatchLocalTransaction(
             evolu,
             transactionId as BankTransactionId,
             documentId as DocumentId,
             paymentCtx,
         );
-        await load(matchFilter.value);
     }
 
     async function ignoreTransaction(transactionId: string) {
         const paymentCtx = await loadBankPaymentContext(evolu);
-        ignoreLocalBankTransaction(evolu, transactionId as BankTransactionId, paymentCtx);
-        await load(matchFilter.value);
+        await ignoreLocalBankTransaction(evolu, transactionId as BankTransactionId, paymentCtx);
     }
 
     async function unmatchTransaction(transactionId: string) {
         const paymentCtx = await loadBankPaymentContext(evolu);
-        unmatchLocalBankTransaction(evolu, transactionId as BankTransactionId, paymentCtx);
-        await load(matchFilter.value);
+        await unmatchLocalBankTransaction(evolu, transactionId as BankTransactionId, paymentCtx);
     }
 
     async function createExpenseFromTransaction(transactionId: string, draft: BankExpenseDraft) {
+        const localCompanyId = companyId.value;
         const paymentCtx = await loadBankPaymentContext(evolu);
         const payload: ExpenseSavePayload & { supplier?: string; category?: string } = {
             title: draft.title,
@@ -588,12 +586,13 @@ function useLocalInvoicingBankPayments(
             internal_note: draft.internal_note || undefined,
             mark_paid: true,
         };
-        createLocalExpenseFromBankTransaction(
+        await createLocalExpenseFromBankTransaction(
             evolu,
             transactionId as BankTransactionId,
             payload,
             paymentCtx,
         );
+        if (companyId.value !== localCompanyId) return;
         await load(matchFilter.value);
     }
 

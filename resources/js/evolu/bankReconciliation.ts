@@ -12,6 +12,12 @@ export const BANK_RECONCILIATION_LOCK = "satflux-bank-email-reconciliation-v1";
 export const BANK_RECONCILIATION_TIMEOUT_MS = 30_000;
 const reconciliations = new WeakMap<Evolu<InvoicingLocalSchema>, Promise<unknown>>();
 const quarantined = new WeakSet<Evolu<InvoicingLocalSchema>>();
+declare const leaseBrand: unique symbol;
+export type BankReconciliationLease = { readonly [leaseBrand]: true };
+const leases = new WeakMap<object, Evolu<InvoicingLocalSchema>>();
+export function assertBankReconciliationLease(evolu: Evolu<InvoicingLocalSchema>, lease: BankReconciliationLease): void {
+    if (leases.get(lease) !== evolu) throw new Error("expense_reconciliation_lease_expired");
+}
 
 /** A worker error or missing receipt is not evidence of rollback. */
 export class BankReconciliationUnknownError extends Error {
@@ -21,7 +27,7 @@ export class BankReconciliationUnknownError extends Error {
     }
 }
 
-function awaitWorkerOutcome<T>(
+export function awaitWorkerOutcome<T>(
     evolu: Evolu<InvoicingLocalSchema>,
     start: (complete: (value: T) => void, unknown: () => void) => void,
 ): Promise<T> {
@@ -96,7 +102,8 @@ export function readBankReconciliationContext(evolu: Evolu<InvoicingLocalSchema>
  */
 export function serializeBankEmailReconciliation<T>(
     evolu: Evolu<InvoicingLocalSchema>,
-    reconcile: (allowExpenseMatching: boolean) => Promise<T>,
+    reconcile: (allowExpenseMatching: boolean, lease?: BankReconciliationLease) => Promise<T>,
+    requireLock = false,
 ): Promise<T> {
     if (quarantined.has(evolu)) return Promise.reject(new BankReconciliationUnknownError());
     let resolvePublic!: (result: T) => void;
@@ -113,10 +120,13 @@ export function serializeBankEmailReconciliation<T>(
     const run = async (allowExpenseMatching: boolean): Promise<T> => {
         if (canceled) throw waitError();
         clearTimeout(waitTimer);
+        const lease = {} as BankReconciliationLease;
+        if (allowExpenseMatching) leases.set(lease, evolu);
         try {
-            return await reconcile(allowExpenseMatching);
+            return await reconcile(allowExpenseMatching, allowExpenseMatching ? lease : undefined);
         } catch (error) {
             if (error instanceof BankReconciliationUnknownError) {
+                leases.delete(lease);
                 quarantined.add(evolu);
                 rejectPublic(error);
                 // Keep both the per-client chain and the origin lock held.
@@ -124,22 +134,29 @@ export function serializeBankEmailReconciliation<T>(
                 await new Promise<never>(() => {});
             }
             throw error;
+        } finally {
+            leases.delete(lease);
         }
     };
     const previous = reconciliations.get(evolu) ?? Promise.resolve();
     const pending = previous.catch(() => undefined).then(async () => {
         if (canceled) throw waitError();
         const locks = typeof navigator === "undefined" ? undefined : navigator.locks;
-        if (!locks?.request) return run(false);
+        if (!locks?.request) {
+            if (requireLock) throw new Error("expense_reconciliation_lock_unavailable");
+            return run(false);
+        }
         let entered = false;
         try {
             return await locks.request(BANK_RECONCILIATION_LOCK, { mode: "exclusive", signal: controller.signal }, (lock) => {
                 if (canceled) throw waitError();
                 entered = true;
+                if (requireLock && lock === null) throw new Error("expense_reconciliation_lock_unavailable");
                 return run(lock !== null);
             });
         } catch (error) {
             if (entered || canceled) throw error;
+            if (requireLock) throw new Error("expense_reconciliation_lock_unavailable");
             // Import remains available, but an unlocked debit never pays an expense.
             return run(false);
         }

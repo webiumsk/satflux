@@ -34,6 +34,8 @@ Newly imported emails whose recorded payment direction is unavailable cannot aut
 
 If another matching operation is still running, wait until it finishes before trying again. If the result could not be confirmed, reload the tab before another attempt.
 
+If matching succeeds but refreshing the list fails, reload the tab to see the saved results. In local-first mode, batch matching stays available for saved unmatched movements even if an interrupted import still shows a zero imported count. Reload after an unconfirmed outcome before using that explicit action.
+
 ## Expenses
 
 Outgoing payments can be turned into **expenses** so your books stay complete for the accountant export.

@@ -1,5 +1,35 @@
 # Development decision log
 
+## 2026-11-04 - Serialize every critical local expense writer with reconciliation
+
+The owner requests repair of the third CodeRabbit review on PR427. A fresh-read
+alone cannot close the expense-edit/write gap; every production matching-critical
+writer must share the origin gate, including restore/share/merge/delete and bank
+Ignore/manual-match/unmatch actions. Public writes become awaited, compound groups
+keep synchronous mutations and live opaque capabilities cannot be forged/revived.
+
+Installed public query APIs cannot force an uncached worker read. Approve one inert
+local-only `_expenseReconciliation` row, AppOwner-only and free of company/financial
+fields, outside explicit backup/share/relay allowlists. Its actual entry/terminal
+mutations precede private worker reads. Keep the five financial query identities;
+add only bounded private auxiliary keys needed by writer preconditions. Ordinary
+expense changes avoid eager attachment/snapshot/stock scans. Required-lock failure
+precedes every expense mutation; inherited unlocked basic bank import remains and
+cannot auto-pay expenses. Preserve other-device/old-client and fallback limits.
+
+Use explicit fresh target/parent/company ownership without registering keys or
+falling back to AppOwner on lag. Preflight ALL duplicate-company groups before any
+reassignment/deletion, including groups with no expenses. Known validation aborts
+restore only in-memory expectations and preserve earlier committed groups; keep
+specific bank failure contracts/localization. Unknown retains quarantine without
+compensation or replay. A valid match followed by an intentional edit keeps the
+existing paid-edit policy. Do not add automatic unpay, unlink or immutability.
+
+Independent review accepts runtime41 a9478719...76ee7 and source/test65
+5f74ae7b...471c1 after final bounded delta reconciliation. Main owns exact scoped
+Git publication/new CI, with current behavior and test evidence in the review note.
+No server schema, auth/CSRF, encryption, Store evidence, entitlement or price change.
+
 ## 2026-11-03 - Bound bank row batches and expose matching failures
 
 The owner's additional-CodeRabbit request continues repair/publication scope on

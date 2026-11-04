@@ -1,13 +1,15 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { reactive, ref, nextTick } from 'vue';
+import type { BankTxApiRow } from '@/evolu/bankMap';
 
 const mocks = vi.hoisted(() => ({ ensure: vi.fn(), inbound: vi.fn(), local: true,
-  autoMatchBatch: vi.fn(), importFile: vi.fn(), load: vi.fn(), flashError: vi.fn(),
+  autoMatchBatch: vi.fn(), importFile: vi.fn(), ignore: vi.fn(), unmatch: vi.fn(), load: vi.fn(), flashError: vi.fn(),
 }));
 const route = reactive({ params: { companyId: 'local-a' } });
 const hasBankAccount = ref(true);
-const batches = ref<{ id: string; imported_count: number; row_count: number }[]>([]);
+const batches = ref<{ id: string; imported_count: number; row_count: number; can_auto_match?: boolean }[]>([]);
+const transactions = ref<BankTxApiRow[]>([]);
 vi.mock('vue-router', () => ({ useRoute: () => route }));
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key, locale: ref('en') }) }));
 vi.mock('@/components/invoicing/InvoicingPageShell.vue', () => ({ default: { template: '<div><slot name="header"/><slot/></div>' } }));
@@ -20,10 +22,11 @@ vi.mock('@/composables/useInvoicingCompanySummary', () => ({ useInvoicingCompany
   hasBankAccount, summaryLoaded: ref(true), bankAccountLabel: ref('Synthetic bank'), defaultCurrency: ref('EUR'),
 }) }));
 vi.mock('@/composables/useInvoicingBankPayments', () => ({ useInvoicingBankPayments: () => ({
-  localFirst: mocks.local, loading: ref(false), transactions: ref([]), batches,
+  localFirst: mocks.local, loading: ref(false), transactions, batches,
   summary: ref({ credit_count: 0, credit_total: '0', debit_count: 0, debit_total: '0', balance: '0', currency: 'EUR', by_currency: [] }),
   wiseStatus: ref(null), wiseBridgeMissing: ref(false),
   load: mocks.load, loadBatches: vi.fn().mockResolvedValue(undefined), autoMatchBatch: mocks.autoMatchBatch, importFile: mocks.importFile,
+  ignoreTransaction: mocks.ignore, unmatchTransaction: mocks.unmatch,
   fetchWiseStatus: vi.fn().mockResolvedValue(undefined),
 }) }));
 vi.mock('@/store/flash', () => ({ useFlashStore: () => ({ error: mocks.flashError, success: vi.fn() }) }));
@@ -53,14 +56,45 @@ beforeEach(() => {
   hasBankAccount.value = true;
   mocks.local = true;
   batches.value = [];
+  transactions.value = [];
   mocks.load.mockResolvedValue(undefined);
   mocks.autoMatchBatch.mockResolvedValue(undefined);
+  mocks.ignore.mockResolvedValue(undefined);
+  mocks.unmatch.mockResolvedValue(undefined);
   mocks.ensure.mockImplementation(async (company: string) => ({ ok: true, bridgeCompanyId: `bridge-${company}` }));
   mocks.inbound.mockImplementation(async (company: string) => response(company === 'bridge-local-a' ? addressA : addressB));
 });
 afterEach(() => { wrapper?.unmount(); wrapper = undefined; });
 
 describe('batch matching errors', () => {
+  it.each(['ignore', 'unmatch'] as const)('shows a localized rejected %s action without refreshing or retrying', async (action) => {
+    transactions.value = [{ id: 'synthetic-tx', booked_at: '2026-11-04', amount: '19.00', currency: 'EUR',
+      direction: 'debit', match_status: action === 'ignore' ? 'unmatched' : 'matched' }];
+    mocks[action].mockRejectedValueOnce(new Error('bank_reconciliation_outcome_unknown'));
+    await render();
+    await wrapper!.findAll('button').find((button) => button.text() === 'invoicing.bank_tab_transactions')!.trigger('click');
+    mocks.load.mockClear();
+    const label = action === 'ignore' ? 'invoicing.bank_ignore' : 'invoicing.bank_unmatch';
+    await wrapper!.findAll('button').find((button) => button.text() === label)!.trigger('click');
+    await flushPromises();
+    expect(mocks[action]).toHaveBeenCalledExactlyOnceWith('synthetic-tx');
+    expect(mocks.load).not.toHaveBeenCalled();
+    expect(mocks.flashError).toHaveBeenCalledExactlyOnceWith('invoicing.expense_changes_unknown');
+  });
+
+  it('reports refresh failure separately after a saved Ignore action', async () => {
+    transactions.value = [{ id: 'synthetic-tx', booked_at: '2026-11-04', amount: '19.00', currency: 'EUR', direction: 'debit', match_status: 'unmatched' }];
+    await render();
+    await wrapper!.findAll('button').find((button) => button.text() === 'invoicing.bank_tab_transactions')!.trigger('click');
+    mocks.load.mockClear();
+    mocks.load.mockRejectedValueOnce(new Error('synthetic refresh failure'));
+    await wrapper!.findAll('button').find((button) => button.text() === 'invoicing.bank_ignore')!.trigger('click');
+    await flushPromises();
+    expect(mocks.ignore).toHaveBeenCalledExactlyOnceWith('synthetic-tx');
+    expect(mocks.load).toHaveBeenCalledOnce();
+    expect(mocks.flashError).toHaveBeenCalledExactlyOnceWith('invoicing.bank_action_refresh_failed');
+  });
+
   it.each([
     ['bank_reconciliation_wait_timed_out', 'invoicing.bank_matching_busy'],
     ['bank_reconciliation_outcome_unknown', 'invoicing.bank_matching_unknown'],
@@ -85,6 +119,34 @@ describe('batch matching errors', () => {
     await flushPromises();
     expect(mocks.load).toHaveBeenCalledOnce();
     expect(mocks.flashError).not.toHaveBeenCalled();
+  });
+
+  it('reports a refresh failure separately after matching succeeds without retrying the match', async () => {
+    batches.value = [{ id: 'synthetic-batch', imported_count: 1, row_count: 1 }];
+    await render();
+    mocks.load.mockClear();
+    mocks.load.mockRejectedValueOnce(new Error('synthetic refresh failure'));
+    await wrapper!.findAll('button').find((button) => button.text() === 'invoicing.bank_auto_match_batch')!.trigger('click');
+    await flushPromises();
+    expect(mocks.autoMatchBatch).toHaveBeenCalledExactlyOnceWith('synthetic-batch');
+    expect(mocks.load).toHaveBeenCalledOnce();
+    expect(mocks.flashError).toHaveBeenCalledExactlyOnceWith('invoicing.bank_matching_refresh_failed');
+  });
+
+  it('keeps recovery matching available for persisted rows even when the verified count is zero', async () => {
+    batches.value = [{ id: 'synthetic-batch', imported_count: 0, row_count: 1, can_auto_match: true }];
+    await render();
+    const button = wrapper!.findAll('button').find((button) => button.text() === 'invoicing.bank_auto_match_batch');
+    expect(button).toBeDefined();
+    await button!.trigger('click');
+    await flushPromises();
+    expect(mocks.autoMatchBatch).toHaveBeenCalledExactlyOnceWith('synthetic-batch');
+  });
+
+  it('hides local batches with no persisted unmatched rows despite an old positive count', async () => {
+    batches.value = [{ id: 'synthetic-batch', imported_count: 1, row_count: 1, can_auto_match: false }];
+    await render();
+    expect(wrapper!.findAll('button').some((button) => button.text() === 'invoicing.bank_auto_match_batch')).toBe(false);
   });
 
   it.each([

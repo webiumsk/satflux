@@ -1,4 +1,5 @@
 import { sqliteTrue } from "@evolu/common";
+import { withExpenseMaintenance } from "./expenseReconciliation";
 import type { Evolu } from "@evolu/common/local-first";
 import {
     allBankImportBatchesQuery,
@@ -40,10 +41,14 @@ import type {
 } from "./schema";
 
 /** Soft-delete company and all related local-first rows (syncs via Evolu relay). */
-export function deleteLocalCompany(
+export async function deleteLocalCompany(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
-): void {
+): Promise<void> {
+    return withExpenseMaintenance(evolu, (scope) => deleteLocalCompanyCore(scope.evolu, companyId));
+}
+
+function deleteLocalCompanyCore(evolu: Evolu<InvoicingLocalSchema>, companyId: CompanyId): void {
     const documents = evolu.getQueryRows(allDocumentsQuery);
     const companyDocIds = new Set(
         documents.filter((doc) => doc.companyId === companyId).map((doc) => doc.id),

@@ -96,6 +96,48 @@ afterEach(() => {
 });
 
 describe('new expense field defaults', () => {
+  it('waits for the local expense write before navigating or saving attachments', async () => {
+    let complete!: (value: { ok: true; value: { id: string } }) => void;
+    mocks.insert.mockReturnValueOnce(new Promise((resolve) => { complete = resolve; }));
+    await render();
+    await wrapper!.find('form').trigger('submit');
+    await flushPromises();
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(mocks.upload).not.toHaveBeenCalled();
+    complete({ ok: true, value: { id: 'synthetic-created' } });
+    await flushPromises();
+    expect(mocks.upload).toHaveBeenCalledExactlyOnceWith('synthetic-created');
+    expect(mocks.push).toHaveBeenCalledOnce();
+  });
+
+  it('does not upload attachments or navigate after the company changes during a local write', async () => {
+    let complete!: (value: { ok: true; value: { id: string } }) => void;
+    mocks.insert.mockReturnValueOnce(new Promise((resolve) => { complete = resolve; }));
+    await render();
+    await wrapper!.find('form').trigger('submit');
+    await flushPromises();
+    companyId.value = 'bcdefghijklmnopqrstuvw';
+    await flushPromises();
+    complete({ ok: true, value: { id: 'synthetic-old-company' } });
+    await flushPromises();
+    expect(mocks.upload).not.toHaveBeenCalled();
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['expense_reconciliation_lock_unavailable', en.invoicing.expense_changes_unavailable],
+    ['bank_reconciliation_outcome_unknown', en.invoicing.expense_changes_unknown],
+  ])('shows localized recovery for %s without retrying or navigating', async (message, expected) => {
+    mocks.insert.mockRejectedValueOnce(new Error(message));
+    await render();
+    await wrapper!.find('form').trigger('submit');
+    await flushPromises();
+    expect(wrapper!.text()).toContain(expected);
+    expect(mocks.insert).toHaveBeenCalledOnce();
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(mocks.upload).not.toHaveBeenCalled();
+  });
+
   it.each([true, false])('updates VS as document number changes (local=%s)', async (local) => {
     await render(local);
     await field('expense_col_external').setValue('FA-00012/2026');

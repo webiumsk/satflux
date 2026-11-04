@@ -1,3 +1,4 @@
+import { commitExpenseMutation, withExpenseMaintenance } from "./expenseReconciliation";
 import { sqliteTrue } from "@evolu/common";
 import type { Evolu, OwnerId } from "@evolu/common/local-first";
 import { allCompanySharesQuery } from "./client";
@@ -59,14 +60,12 @@ type ShareRow = {
     secretB64: string; role: string; status: string; bridgeCompanyId: string | null; migratingDeviceId: string | null;
 };
 
-function mutate(run: (onComplete: () => void) => { ok: boolean; error?: unknown }): Promise<{ ok: boolean; error?: unknown }> {
-    return new Promise((resolve) => {
-        const result = run(() => resolve({ ok: true }));
-        if (!result.ok) resolve({ ok: false, error: result.error });
-    });
+function mutate(evolu: Loader, run: (onComplete: () => void) => { ok: boolean; error?: unknown }): Promise<{ ok: boolean; error?: unknown }> {
+    return commitExpenseMutation(evolu, run);
 }
 
 async function refreshSourceRows(
+    evolu: Loader,
     target: Loader,
     set: ReturnType<typeof collectCompanyRows>,
     sourceOwnerId: string,
@@ -75,7 +74,7 @@ async function refreshSourceRows(
     for (const table of MIGRATION_ORDER) {
         for (const row of set[table]) {
             if (row.ownerId !== sourceOwnerId) continue;
-            const result = await mutate((onComplete) => target.upsert(table, rowForSharedUpsert(row) as never, { onComplete }));
+            const result = await mutate(evolu, (onComplete) => target.upsert(table, rowForSharedUpsert(row) as never, { onComplete }));
             if (!result.ok) {
                 return { ok: false, detail: { table, id: row.id, error: result.error } };
             }
@@ -86,6 +85,7 @@ async function refreshSourceRows(
 }
 
 async function copyMissingSourceRows(
+    evolu: Loader,
     target: Loader,
     set: ReturnType<typeof collectCompanyRows>,
     sourceOwnerId: string,
@@ -95,7 +95,7 @@ async function copyMissingSourceRows(
     let copied = 0;
     for (const table of MIGRATION_ORDER) {
         for (const row of pending[table]) {
-            const result = await mutate((onComplete) => target.upsert(table, rowForSharedUpsert(row) as never, { onComplete }));
+            const result = await mutate(evolu, (onComplete) => target.upsert(table, rowForSharedUpsert(row) as never, { onComplete }));
             if (!result.ok) {
                 return { ok: false, detail: { table, id: row.id, error: result.error } };
             }
@@ -106,12 +106,13 @@ async function copyMissingSourceRows(
 }
 
 async function mirrorSourceRows(
+    evolu: Loader,
     target: Loader,
     set: ReturnType<typeof collectCompanyRows>,
     sourceOwnerId: string,
     targetOwnerId: string,
 ): Promise<{ ok: true; copied: number; deleted: number } | { ok: false; detail: { table: string; id: string; error?: unknown } }> {
-    const refreshed = await refreshSourceRows(target, set, sourceOwnerId);
+    const refreshed = await refreshSourceRows(evolu, target, set, sourceOwnerId);
     if (!refreshed.ok) {
         return refreshed;
     }
@@ -121,7 +122,7 @@ async function mirrorSourceRows(
         const sourceIds = new Set(set[table].filter((row) => row.ownerId === sourceOwnerId).map((row) => row.id));
         for (const row of set[table]) {
             if (row.ownerId !== targetOwnerId || sourceIds.has(row.id)) continue;
-            const result = await mutate((onComplete) =>
+            const result = await mutate(evolu, (onComplete) =>
                 target.update(table, { id: row.id, isDeleted: sqliteTrue } as never, { onComplete }),
             );
             if (!result.ok) {
@@ -198,6 +199,7 @@ async function finishSupersededActiveShares(
     let copied = 0;
     for (const superseded of activeShares.slice(0, -1)) {
         const refreshed = await copyMissingSourceRows(
+            evolu,
             target,
             collectCompanyRows(await loadAllMigrationRows(evolu), companyId),
             superseded.sharedOwnerId,
@@ -215,7 +217,7 @@ async function finishSupersededActiveShares(
 
     const supersededOwners: string[] = [];
     for (const superseded of activeShares.slice(0, -1)) {
-        const revoked = await mutate((onComplete) =>
+        const revoked = await mutate(evolu, (onComplete) =>
             evolu.update("companyShare", { id: superseded.id as never, status: "revoked" } as never, { onComplete }),
         );
         if (!revoked.ok) {
@@ -224,7 +226,7 @@ async function finishSupersededActiveShares(
         supersededOwners.push(superseded.sharedOwnerId);
     }
 
-    const softDeleted = await purgeRevokedShareResidue(evolu, companyId).catch(() => 0);
+    const softDeleted = await purgeRevokedShareResidue(evolu, companyId);
     for (const ownerId of supersededOwners) {
         unregisterSharedOwner(evolu, ownerId as never);
     }
@@ -251,6 +253,10 @@ export type RekeyOptions = {
  * adopted and resumed; a device that did not start it refuses unless `force`.
  */
 export async function rekeyCompanyShare(evolu: Loader, companyId: string, options: RekeyOptions = {}): Promise<RekeyResult> {
+    return withExpenseMaintenance(evolu, (scope) => rekeyCompanyShareLocked(scope.evolu, companyId, options));
+}
+
+async function rekeyCompanyShareLocked(evolu: Loader, companyId: string, options: RekeyOptions): Promise<RekeyResult> {
     const report = (progress: RekeyProgress) => options.onProgress?.(progress);
     report({ phase: "prepare", done: 0, total: 0 });
 
@@ -295,7 +301,7 @@ export async function rekeyCompanyShare(evolu: Loader, companyId: string, option
         const secret = createCompanyShareSecret();
         newSecretEncoded = encodeOwnerSecret(secret);
         const owner = sharedOwnerFromSecret(secret);
-        const inserted = await mutate((onComplete) =>
+        const inserted = await mutate(evolu, (onComplete) =>
             evolu.insert("companyShare", {
                 companyId: companyId as CompanyId,
                 sharedOwnerId: owner.id,
@@ -334,7 +340,7 @@ export async function rekeyCompanyShare(evolu: Loader, companyId: string, option
     for (const table of MIGRATION_ORDER) {
         for (const row of pending[table]) {
             report({ phase: "copy", done, total });
-            const result = await mutate((onComplete) => target.upsert(table, rowForSharedUpsert(row) as never, { onComplete }));
+            const result = await mutate(evolu, (onComplete) => target.upsert(table, rowForSharedUpsert(row) as never, { onComplete }));
             if (!result.ok) {
                 return { ok: false, error: "copy_failed", detail: { table, id: row.id, error: result.error } };
             }
@@ -355,7 +361,7 @@ export async function rekeyCompanyShare(evolu: Loader, companyId: string, option
         const retry = pendingCopies(set, oldOwnerId, newOwner.id);
         for (const table of MIGRATION_ORDER) {
             for (const row of retry[table]) {
-                const result = await mutate((onComplete) => target.upsert(table, rowForSharedUpsert(row) as never, { onComplete }));
+                const result = await mutate(evolu, (onComplete) => target.upsert(table, rowForSharedUpsert(row) as never, { onComplete }));
                 if (!result.ok) {
                     return { ok: false, error: "copy_failed", detail: { table, id: row.id, error: result.error } };
                 }
@@ -375,6 +381,7 @@ export async function rekeyCompanyShare(evolu: Loader, companyId: string, option
     report({ phase: "cleanup", done, total });
     await waitForInvoicingDataSettled(evolu, { minWaitMs: SETTLE_MS, timeoutMs: 20_000 }).catch(() => undefined);
     const refreshed = await mirrorSourceRows(
+        evolu,
         target,
         collectCompanyRows(await loadAllMigrationRows(evolu), companyId),
         oldOwnerId,
@@ -388,18 +395,18 @@ export async function rekeyCompanyShare(evolu: Loader, companyId: string, option
         return { ok: false, error: "verify_failed", detail: refreshedVerification.missing };
     }
 
-    const activated = await mutate((onComplete) => evolu.update("companyShare", { id: newShareRowId, status: "active" } as never, { onComplete }));
+    const activated = await mutate(evolu, (onComplete) => evolu.update("companyShare", { id: newShareRowId, status: "active" } as never, { onComplete }));
     if (!activated.ok) {
         return { ok: false, error: "activation_failed", detail: activated.error };
     }
     setCompanyShare({ companyId, ownerId: newOwner.id, role: "owner", status: "active", bridgeCompanyId: bridgeCompanyId ?? null });
 
     // Retire the old share; unregister its owner only once it is revoked.
-    const revoked = await mutate((onComplete) => evolu.update("companyShare", { id: active.id as never, status: "revoked" } as never, { onComplete }));
+    const revoked = await mutate(evolu, (onComplete) => evolu.update("companyShare", { id: active.id as never, status: "revoked" } as never, { onComplete }));
     if (!revoked.ok) {
         return { ok: false, error: "activation_failed", detail: revoked.error };
     }
-    const softDeleted = await purgeRevokedShareResidue(evolu, companyId).catch(() => 0);
+    const softDeleted = await purgeRevokedShareResidue(evolu, companyId);
     unregisterSharedOwner(evolu, oldOwnerId as never);
 
     report({ phase: "done", done, total });
@@ -408,6 +415,10 @@ export async function rekeyCompanyShare(evolu: Loader, companyId: string, option
 
 /** Boot hook: finish a rekey a reload interrupted (own device only). */
 export async function resumePendingCompanyShareRekeys(evolu: Loader): Promise<void> {
+    return withExpenseMaintenance(evolu, (scope) => resumePendingCompanyShareRekeysLocked(scope.evolu));
+}
+
+async function resumePendingCompanyShareRekeysLocked(evolu: Loader): Promise<void> {
     const appOwnerId = (await evolu.appOwner).id;
     const rows = (await evolu.loadQuery(allCompanySharesQuery)) as unknown as readonly ShareRow[];
     const device = localDeviceId();

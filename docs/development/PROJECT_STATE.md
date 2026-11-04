@@ -1,5 +1,37 @@
 # Project state
 
+## PR427 third-round repair independently reviewed - 2026-11-04
+
+A completed review of3f47a24b adds three inline findings and one recovery item.
+The retained branch now fixes HTML-only boundaries, action/refresh errors and
+persisted unmatched-batch availability. Shared origin locking covers inventoried
+expense writers, bank eligibility actions and company/snapshot/share maintenance.
+An inert local-only marker enables fresh preconditions and post-handler proofs;
+opaque revoked capabilities, explicit fresh owner/parent routing and known/Unknown
+separation preserve existing authority, encryption and editable-paid policy.
+
+Final runtime41 manifest:
+`a9478719b0e67ac46526bbd8e3db03657c935b656944ac2a37401aac02d76ee7`;
+source/test65 manifest:
+`5f74ae7b795c4c3786cf4f3123855e64aa186a9a9e725a8535d8da244dd471c1`.
+Main full1415/160files passes before the final pure merge preflight; the final
+3-case merge regression and35-case affected scope pass after that change.
+Full lint48known, current typecheck111existing/no-new, build, locales, API/Pint/
+fragment pass with unchanged baselines. Local PHPStan has only inherited optional
+missing Scramble in unchanged DocumentationExporter.php. Independent QA311cases,
+native40 and PHP323/1287 pass; security104cases, PHP180/641 and native/security50
+pass on the accepted scope. Both security and QA renew acceptance of the sole final merge preflight and all
+final hashes. QA independently passes48 affected cases /4 files for that delta.
+
+Known limits remain: updated cooperating same-browser clients, inherited unlocked
+basic-import owner routing, no browser/OPFS or cross-device uniqueness claim.
+The local marker contains no merchant data and is excluded from backup/share/sync.
+No server migration, key registration, Store/billing authority or pricing change.
+Publish only reviewed paths with both final acceptances, verify committed manifests
+and exact remote SHA, then fresh CI. CI41733930901 validates3f47a24b only.
+No production access/replay, merge or deployment. Preserve primary unrelated work.
+See `EXPENSE_DEFAULTS_BANK_IMPORT_REVIEW.md` for final contracts/evidence.
+
 ## PR427 second review fixes verified locally - 2026-11-03
 
 The completed CodeRabbit review of06c837b3 adds four inline findings and three

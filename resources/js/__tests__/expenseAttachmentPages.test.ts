@@ -10,7 +10,7 @@ import type { EvoluExpenseAttachmentRow } from "@/evolu/expenseAttachmentCrud";
 const mocks = vi.hoisted(() => ({
     local: true, evolu: {} as object | null, displayForeign: false, filteredLagId: null as string | null,
     push: vi.fn(), remember: vi.fn(), refresh: vi.fn(),
-    insertExpense: vi.fn(), updateExpense: vi.fn(), insertAttachment: vi.fn(), read: vi.fn(), lookup: vi.fn(),
+    insertExpense: vi.fn(), updateExpense: vi.fn(), updateNote: vi.fn(), insertAttachment: vi.fn(), read: vi.fn(), lookup: vi.fn(),
     detect: vi.fn(), extract: vi.fn(), quota: vi.fn(), purchase: vi.fn(), upload: vi.fn(),
     localDetect: vi.fn(), localExtract: vi.fn(), localQuota: vi.fn(),
     get: vi.fn(), update: vi.fn(), create: vi.fn(), history: vi.fn(), list: vi.fn(), company: vi.fn(), blob: vi.fn(), action: vi.fn(),
@@ -68,7 +68,7 @@ vi.mock("@/composables/useInvoicingExpenses", () => ({ useInvoicingExpense: () =
     evolu: mocks.evolu, expense: currentExpense, expenseRows, attachmentRows, refresh: mocks.refresh,
 }) }));
 vi.mock("@/evolu/expenseCrud", () => ({
-    insertLocalExpense: mocks.insertExpense, updateLocalExpense: mocks.updateExpense,
+    insertLocalExpense: mocks.insertExpense, updateLocalExpense: mocks.updateExpense, updateLocalExpenseNote: mocks.updateNote,
     cancelLocalExpense: vi.fn(), duplicateLocalExpense: vi.fn(), markLocalExpensePaid: vi.fn(), unmarkLocalExpensePaid: vi.fn(),
 }));
 vi.mock("@/evolu/expenseAttachmentCrud", async (importOriginal) => ({
@@ -156,6 +156,7 @@ beforeEach(() => {
     });
     mocks.push.mockResolvedValue(undefined);
     mocks.refresh.mockResolvedValue(undefined);
+    mocks.updateNote.mockResolvedValue({ ok: true });
     mocks.read.mockResolvedValue("c3ludGhldGlj");
     mocks.insertExpense.mockImplementation((_evolu, owner: string, payload: Record<string, unknown>) => {
         models.value.push({ ...fixture(newExpenseId, owner), ...payload, total: String(payload.total ?? "0.00") });
@@ -185,6 +186,24 @@ afterEach(() => {
 });
 
 describe("expense attachment page integration", () => {
+    it("saves only the intended note and waits for its committed result before refreshing", async () => {
+        const write = deferred<{ ok: true }>();
+        mocks.updateNote.mockReturnValueOnce(write.promise);
+        render("show");
+        await flushPromises();
+        mocks.refresh.mockClear();
+        await wrapper!.get("textarea").setValue("Synthetic note");
+        await wrapper!.get("textarea").trigger("blur");
+        await flushPromises();
+        expect(mocks.updateNote).toHaveBeenCalledExactlyOnceWith(mocks.evolu, "expense-a", "Synthetic note", localCompany);
+        expect(mocks.updateExpense).not.toHaveBeenCalled();
+        expect(mocks.refresh).not.toHaveBeenCalled();
+        write.resolve({ ok: true });
+        await flushPromises();
+        expect(mocks.refresh).toHaveBeenCalledOnce();
+        expectNoLegacyExpenseWrites();
+    });
+
     it("persists a new local expense's pending attachment before navigating", async () => {
         const encoding = deferred<string>();
         mocks.read.mockReturnValue(encoding.promise);

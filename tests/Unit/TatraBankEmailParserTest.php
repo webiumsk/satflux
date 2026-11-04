@@ -248,6 +248,22 @@ class TatraBankEmailParserTest extends TestCase
     }
 
     #[Test]
+    public function html_block_fields_preserve_classic_credit_without_promoting_settlement_proof(): void
+    {
+        $body = '<p>03.11.2026 14:35 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN.' zvyseny o 12,50 EUR.</p>'
+            .'<p>Referencia platitela: /VS001234/SS/KS</p><p>Informacia pre prijemcu: Invoice 001234</p>';
+        $rows = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Obrat', $body);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(BankTransactionDirection::Credit, $rows[0]->direction);
+        $this->assertSame(12.50, $rows[0]->amount);
+        $this->assertSame('001234', $rows[0]->variableSymbol);
+        $this->assertSame('Invoice 001234', $rows[0]->reference);
+        $this->assertSame(self::RECIPIENT_IBAN, $rows[0]->recipientIban);
+        $this->assertNull($rows[0]->sepaCreditIdentity);
+    }
+
+    #[Test]
     public function classic_credit_carries_observed_amount_and_recipient_but_no_trusted_reference(): void
     {
         $body = '01.06.2026 12:31 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN." zvyseny o 12,50 EUR.\n"

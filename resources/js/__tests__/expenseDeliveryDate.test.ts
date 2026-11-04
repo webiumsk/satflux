@@ -1,48 +1,43 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Evolu } from "@evolu/common/local-first";
 import { insertLocalExpense, updateLocalExpense, type ExpenseSavePayload } from "@/evolu/expenseCrud";
 import { evoluExpenseToApi, type EvoluExpenseRow } from "@/evolu/expenseMap";
 import type { CompanyId, ExpenseId, InvoicingLocalSchema } from "@/evolu/schema";
+import { installBankLocks } from "./bankReconciliationTestSupport";
+import { createExpenseWriterTestAdapter } from "./expenseReconciliationTestSupport";
+vi.mock("@/evolu/client", async () => (await import("./expenseReconciliationTestSupport")).expenseTestQueryExports());
 
 function adapter() {
-    let saved: Record<string, unknown> = {};
-    const raw = {
-        insert: vi.fn((_table: string, data: Record<string, unknown>) => {
-            saved = { ...data, id: "expense-a" };
-            return { ok: true, value: { id: "expense-a" } };
-        }),
-        update: vi.fn((_table: string, data: Record<string, unknown>) => {
-            Object.assign(saved, data);
-            return { ok: true, value: { id: "expense-a" } };
-        }),
-    };
-    return { evolu: raw as unknown as Evolu<InvoicingLocalSchema>, saved: () => saved };
+    const { evolu, state } = createExpenseWriterTestAdapter();
+    return { evolu: evolu as unknown as Evolu<InvoicingLocalSchema>, saved: () => state.expense[0] };
 }
 const companyId = "company-a" as CompanyId;
-const expenseId = "expense-a" as ExpenseId;
+const expenseId = "expense-1" as ExpenseId;
 const base: ExpenseSavePayload = { issue_date: "2026-11-03", total: "10.00" };
+beforeEach(() => { installBankLocks(); });
+afterEach(() => { vi.unstubAllGlobals(); });
 
 describe("local expense delivery date persistence", () => {
-    it.each([null, "2026-11-01"])("persists and reopens an explicit delivery value %s", (delivery) => {
+    it.each([null, "2026-11-01"])("persists and reopens an explicit delivery value %s", async (delivery) => {
         const { evolu, saved } = adapter();
-        expect(insertLocalExpense(evolu, companyId, { ...base, delivery_date: delivery }, []).ok).toBe(true);
+        expect((await insertLocalExpense(evolu, companyId, { ...base, delivery_date: delivery }, [])).ok).toBe(true);
         expect(evoluExpenseToApi(saved() as EvoluExpenseRow).delivery_date).toBe(delivery);
     });
-    it("defaults an omitted delivery date only during creation", () => {
+    it("defaults an omitted delivery date only during creation", async () => {
         const { evolu, saved } = adapter();
-        expect(insertLocalExpense(evolu, companyId, base, []).ok).toBe(true);
+        expect((await insertLocalExpense(evolu, companyId, base, [])).ok).toBe(true);
         expect(saved().deliveryDate).toBe("2026-11-03");
-        expect(updateLocalExpense(evolu, expenseId, { ...base, issue_date: "2026-11-04" }).ok).toBe(true);
+        expect((await updateLocalExpense(evolu, expenseId, { ...base, issue_date: "2026-11-04" })).ok).toBe(true);
         expect(saved().deliveryDate).toBe("2026-11-03");
     });
-    it("retains a cleared delivery date when a subsequent update omits it", () => {
+    it("retains a cleared delivery date when a subsequent update omits it", async () => {
         const { evolu, saved } = adapter();
-        insertLocalExpense(evolu, companyId, base, []);
-        expect(updateLocalExpense(evolu, expenseId, { ...base, delivery_date: null }).ok).toBe(true);
+        await insertLocalExpense(evolu, companyId, base, []);
+        expect((await updateLocalExpense(evolu, expenseId, { ...base, delivery_date: null })).ok).toBe(true);
         expect(evoluExpenseToApi(saved() as EvoluExpenseRow).delivery_date).toBeNull();
-        updateLocalExpense(evolu, expenseId, { ...base, issue_date: "2026-11-04" });
+        await updateLocalExpense(evolu, expenseId, { ...base, issue_date: "2026-11-04" });
         expect(evoluExpenseToApi(saved() as EvoluExpenseRow).delivery_date).toBeNull();
-        updateLocalExpense(evolu, expenseId, { ...base, delivery_date: "2026-11-02" });
+        await updateLocalExpense(evolu, expenseId, { ...base, delivery_date: "2026-11-02" });
         expect(evoluExpenseToApi(saved() as EvoluExpenseRow).delivery_date).toBe("2026-11-02");
     });
 });

@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
     wiseSync: vi.fn(),
     importInbound: vi.fn(),
     importWise: vi.fn(),
+    autoMatch: vi.fn(),
     loadQuery: vi.fn(),
 }));
 
@@ -35,6 +36,7 @@ vi.mock("@/services/api", () => ({
 vi.mock("@/evolu/bankCrud", () => ({
     importInboundServerTransactionsAsync: mocks.importInbound,
     importLocalBankRows: mocks.importWise,
+    autoMatchLocalBatchAsync: mocks.autoMatch,
 }));
 
 import { useInvoicingBankPayments } from "@/composables/useInvoicingBankPayments";
@@ -66,6 +68,7 @@ beforeEach(() => {
     mocks.list.mockResolvedValue({ data: [row], meta: { last_page: 1 } });
     mocks.importInbound.mockResolvedValue({ imported: 1, auto_matched: 0 });
     mocks.importWise.mockResolvedValue({ imported: 1, auto_matched: 0 });
+    mocks.autoMatch.mockResolvedValue({ auto_matched: 1 });
     mocks.wiseStatus.mockResolvedValue({ connected: true });
     mocks.wiseSync.mockResolvedValue({ rows: [row] });
 });
@@ -75,6 +78,15 @@ afterEach(() => {
 });
 
 describe("bank movement bridge synchronization", () => {
+    it("leaves refresh to the page after local batch matching succeeds", async () => {
+        const { bank } = bankFor();
+        mocks.loadQuery.mockClear();
+        mocks.loadQuery.mockRejectedValue(new Error("synthetic refresh failure"));
+        await expect(bank.autoMatchBatch("batch-a")).resolves.toBeUndefined();
+        expect(mocks.autoMatch).toHaveBeenCalledExactlyOnceWith(expect.anything(), "batch-a");
+        expect(mocks.list).not.toHaveBeenCalled();
+        expect(mocks.loadQuery).not.toHaveBeenCalled();
+    });
     it("reads the selected company's bridge and imports every email page into that local company", async () => {
         const { bank } = bankFor();
         mocks.list.mockResolvedValueOnce({ data: [row], meta: { last_page: 2 } })

@@ -97,6 +97,7 @@ export type BankBatchApiRow = {
     imported_count: number;
     skipped_duplicates: number;
     auto_matched_count: number;
+    can_auto_match?: boolean;
 };
 
 export type BankSummarySection = {

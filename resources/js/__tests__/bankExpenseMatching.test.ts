@@ -7,7 +7,7 @@ import type { InvoicingLocalSchema } from "@/evolu/schema";
 import { bankPaymentBookingDate, findBankEmailExpenseMatch, tryAutoMatchBankEmailExpense } from "@/evolu/bankExpensePaymentMatcher";
 import { clearRowOwnerIndex } from "@/evolu/ownerScope";
 import { clearCompanyShares } from "@/evolu/companyShareRegistry";
-import { installBankLocks } from "./bankReconciliationTestSupport";
+import { installBankLocks, bankTestQueryTable } from "./bankReconciliationTestSupport";
 
 vi.mock("@/evolu/client", () => ({
     allBankImportBatchesQuery: "batches", allBankTransactionsQuery: "transactions",
@@ -42,7 +42,9 @@ function fakeEvolu(ctx: BankPaymentContext) {
     };
     const tables: Record<string, Array<Record<string, unknown>>> = {
         bankImportBatch: state.batches, bankTransaction: state.transactions, expense: state.expenses,
+        company: [{ id: "company-a", legalName: "Synthetic company", ownerId: "app-owner" }],
     } as unknown as Record<string, Array<Record<string, unknown>>>;
+    for (const rows of Object.values(tables)) for (const row of rows) row.ownerId = "app-owner";
     const update = vi.fn((table: string, patch: Record<string, unknown>, options?: { onlyValidate?: boolean; onComplete?: () => void }) => {
         if (!options?.onlyValidate) {
             Object.assign(tables[table]?.find((row) => row.id === patch.id) ?? {}, patch);
@@ -51,12 +53,19 @@ function fakeEvolu(ctx: BankPaymentContext) {
         return { ok: true, value: { id: patch.id } };
     });
     const evolu = {
-        loadQuery: vi.fn(async (query: string) => state[query.replace("fresh:", "") as keyof typeof state].map((row) => ({ ...row }))), update,
+        appOwner: Promise.resolve({ id: "app-owner" }),
+        upsert: vi.fn((_table: string, props: Record<string, unknown>, options?: { onComplete?: () => void }) => {
+            queueMicrotask(() => options?.onComplete?.()); return { ok: true, value: { id: props.id } };
+        }),
+        loadQuery: vi.fn(async (query: string) => {
+            const rows = state[query.replace("fresh:", "") as keyof typeof state] ?? tables[bankTestQueryTable(query) ?? ""] ?? [];
+            return rows.map((row) => ({ ...row }));
+        }), update,
         subscribeError: () => () => {}, getError: () => null,
         insert: vi.fn((table: string, props: Record<string, unknown>, options?: { onlyValidate?: boolean; onComplete?: () => void }) => {
             const id = `insert-${++counter}`;
             if (!options?.onlyValidate) {
-                tables[table]!.push({ ...props, id });
+                tables[table]!.push({ ...props, id, ownerId: "app-owner" });
                 queueMicrotask(() => options?.onComplete?.());
             }
             return { ok: true, value: { id } };
@@ -125,7 +134,9 @@ describe("exact existing-expense bank email reconciliation", () => {
     it.each([0, 1, 2, 3])("does not change context or report success if update %s fails", async (failedCall) => {
         const ctx = context(); const before = structuredClone(ctx);
         let call = 0;
-        const evolu = { update: vi.fn(() => ({ ok: call++ !== failedCall })), subscribeError: () => () => {}, getError: () => null } as unknown as Evolu<InvoicingLocalSchema>;
+        const { evolu, update } = fakeEvolu(ctx);
+        const original = update.getMockImplementation()!;
+        update.mockImplementation((...args) => call++ === failedCall ? { ok: false, value: { id: args[1].id } } : original(...args));
         expect(await tryAutoMatchBankEmailExpense(evolu, ctx.transactions[0]!, ctx)).toBe(false);
         expect(ctx).toEqual(before);
     });
@@ -135,7 +146,7 @@ describe("exact existing-expense bank email reconciliation", () => {
         const second = { ...ctx.transactions[0]!, id: "tx-b", matchStatus: "unmatched", businessExpenseId: null } as EvoluBankTransactionRow;
         ctx.transactions.push(second);
         expect(await tryAutoMatchBankEmailExpense(evolu, second, ctx)).toBe(false);
-        unmatchLocalBankTransaction(evolu, ctx.transactions[0]!.id, ctx);
+        await unmatchLocalBankTransaction(evolu, ctx.transactions[0]!.id, ctx);
         expect(ctx.expenses[0]!.status).toBe("paid");
         expect(ctx.transactions[0]!.businessExpenseId).toBeNull();
     });

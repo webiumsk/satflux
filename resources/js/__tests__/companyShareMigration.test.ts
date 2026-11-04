@@ -1,4 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { deserializeQuery } from "@evolu/common/local-first";
+import { installBankLocks } from "./bankReconciliationTestSupport";
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Query tokens: the migration only uses them as lookup keys on the fake instance.
 const Q = vi.hoisted(() => {
@@ -24,6 +26,12 @@ const Q = vi.hoisted(() => {
         allBankTransactionsQuery: token('bankTransaction'),
         allBankTransactionMatchesQuery: token('bankTransactionMatch'),
         allCompanySharesQuery: token('companyShare'),
+        allCompaniesQuery: token('company'),
+        bankReconciliationBatchesQuery: token('bankImportBatch'),
+        bankReconciliationTransactionsQuery: token('bankTransaction'),
+        bankReconciliationMatchesQuery: token('bankTransactionMatch'),
+        bankReconciliationDocumentsQuery: token('document'),
+        bankReconciliationExpensesQuery: token('expense'),
     };
 });
 vi.mock('@/evolu/client', () => Q);
@@ -48,6 +56,8 @@ import {
 import { clearCompanyShares, companyShareInfo } from '@/evolu/companyShareRegistry';
 import { clearRowOwnerIndex } from '@/evolu/ownerScope';
 import type { InvoicingLocalSchema } from '@/evolu/schema';
+import type { InvoicingDataSnapshot } from '@/evolu/invoicingSnapshot';
+import { recoverCompanyToPrivate } from '@/evolu/companyShareRecovery';
 
 const APP = 'app-owner';
 type Row = Record<string, unknown> & { id: string; ownerId?: string | null; isDeleted?: unknown };
@@ -73,9 +83,13 @@ function fakeEvolu(seed: Record<MigrationTable, Row[]>) {
     const evolu = {
         appOwner: Promise.resolve({ id: APP }),
         useOwner: vi.fn(() => vi.fn()),
-        loadQuery: vi.fn(async (query: { name: string }) => {
-            if (query.name === 'companyShare') return shares.filter((r) => r.isDeleted !== 1);
-            return [...(tables.get(query.name)?.values() ?? [])];
+        subscribeError: () => () => {}, getError: () => null,
+        loadQuery: vi.fn(async (query: { name: string } | string) => {
+            const sql = typeof query === 'string' ? deserializeQuery(query as never).sql : '';
+            const table = typeof query === 'string' ? /\bfrom\s+"([^"]+)"/iu.exec(sql)?.[1] : query.name;
+            const rows = table === 'companyShare' ? shares : [...(tables.get(table ?? '')?.values() ?? [])];
+            return table === 'companyShare' || sql.includes('"isDeleted" is not')
+                ? rows.filter((row) => row.isDeleted !== 1) : rows;
         }),
         insert: vi.fn((table: string, props: Row, options?: { onComplete?: () => void }) => {
             const row = { ...props, id: `share-${++idSeq}`, ownerId: APP };
@@ -107,7 +121,10 @@ function fakeEvolu(seed: Record<MigrationTable, Row[]>) {
     return { evolu: evolu as unknown as Evolu<InvoicingLocalSchema>, tables, shares, mocks: evolu, seedShare, seedRow };
 }
 
+beforeEach(() => { installBankLocks(); });
+
 afterEach(() => {
+    vi.unstubAllGlobals();
     clearCompanyShares();
     clearRowOwnerIndex();
     bridge.ensure.mockClear();
@@ -166,6 +183,29 @@ describe('company share migration - pure helpers', () => {
 });
 
 describe('convertCompanyToShared', () => {
+    it('recovers expense copies to the private partition under one maintenance gate', async () => {
+        const seed = emptyAll();
+        seed.company = [
+            { id: 'c1', ownerId: APP, legalName: 'Acme', isDeleted: 1 },
+            { id: 'c1', ownerId: 'shared-owner', legalName: 'Acme' },
+        ];
+        seed.expense = [
+            { id: 'e1', ownerId: APP, companyId: 'c1', total: '19.00', currency: 'EUR', isDeleted: 1 },
+            { id: 'e1', ownerId: 'shared-owner', companyId: 'c1', total: '19.00', currency: 'EUR' },
+        ];
+        const h = fakeEvolu(seed);
+        h.seedShare({ companyId: 'c1', sharedOwnerId: 'shared-owner', status: 'active', role: 'owner' });
+        const backup = emptyAll();
+        backup.company = [{ id: 'c1', ownerId: APP, legalName: 'Acme' }];
+        backup.expense = [{ id: 'e1', ownerId: APP, companyId: 'c1', total: '19.00', currency: 'EUR' }];
+        const report = await recoverCompanyToPrivate(h.evolu, 'c1', backup as unknown as InvoicingDataSnapshot);
+        expect(report).toMatchObject({ sharesRevoked: 1, sharedSoftDeleted: 2, appUndeleted: 2 });
+        expect(h.tables.get('expense')?.get(`${APP}|e1`)).toMatchObject({ total: '19.00', isDeleted: 0 });
+        expect(h.tables.get('expense')?.get('shared-owner|e1')?.isDeleted).toBe(1);
+        expect(h.shares[0].status).toBe('revoked');
+        expect(h.tables.get('_expenseReconciliation')?.size).toBe(1);
+    });
+
     function seededCompany() {
         const seed = emptyAll();
         seed.company = [{ id: 'c1', ownerId: APP, legalName: 'Acme' }];
@@ -204,7 +244,7 @@ describe('convertCompanyToShared', () => {
         expect(upsertCall?.[2]).toMatchObject({ ownerId: shared });
 
         // Order: parents before children.
-        const order = mocks.upsert.mock.calls.map((c) => c[0]);
+        const order = mocks.upsert.mock.calls.filter((call) => call[0] !== '_expenseReconciliation').map((call) => call[0]);
         expect(order.indexOf('document')).toBeLessThan(order.indexOf('documentLine'));
         expect(order.indexOf('company')).toBe(0);
     });
@@ -225,7 +265,7 @@ describe('convertCompanyToShared', () => {
         expect(second.ownerId).toBe(first.ownerId);
         expect(shares).toHaveLength(1);
         expect(shares[0].status).toBe('active');
-        expect(mocks.upsert).not.toHaveBeenCalled();
+        expect(mocks.upsert.mock.calls.filter((call) => call[0] !== '_expenseReconciliation')).toHaveLength(0);
     });
 
     it('purges dead copies left by a revoked share and no longer blocks conversion', async () => {
@@ -250,7 +290,7 @@ describe('convertCompanyToShared', () => {
         seedShare({ companyId: 'c1', sharedOwnerId: 'ghost-owner', secretB64: 's', role: 'owner', status: 'revoked' });
         // Company row already soft-deleted, but a child row still lingers live.
         seedRow('company', { id: 'c1', ownerId: 'ghost-owner', legalName: 'Acme', isDeleted: 1 });
-        seedRow('contact', { id: 'k9', companyId: 'c1', ownerId: 'ghost-owner' });
+        seedRow('contact', { id: 'k9', companyId: 'c1', ownerId: 'ghost-owner', name: 'Residual contact' });
 
         const purged = await purgeRevokedShareResidue(evolu, 'c1');
         expect(purged).toBe(1);

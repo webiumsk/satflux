@@ -112,4 +112,53 @@ class TatraBankDebitImportTest extends TestCase
             $this->assertSame('2026-11-03 '.$time, $rows[0]->bookedAt->format('Y-m-d H:i:s'));
         }
     }
+
+    #[Test]
+    public function html_only_compact_debit_keeps_its_date_without_a_variable_symbol(): void
+    {
+        $body = '<p>Debet. Suma: 123,45 EUR.</p><p>03.11.2026</p>';
+        $rows = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Debet', $body);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(BankTransactionDirection::Debit, $rows[0]->direction);
+        $this->assertSame(123.45, $rows[0]->amount);
+        $this->assertSame('2026-11-03', $rows[0]->bookedAt->format('Y-m-d'));
+        $this->assertNull($rows[0]->variableSymbol);
+    }
+
+    #[Test]
+    #[TestWith(['<p>Debet. Suma: 123,45 EUR.</p><p>03.11.2026</p><p>VS: 001234</p>', '00:00:00'])]
+    #[TestWith(['<div>Debet. Suma: 123,45 EUR.</div><div>03.11.2026</div><div>VS: 001234</div>', '00:00:00'])]
+    #[TestWith(['<p>Debet. Suma: 123,45 EUR.<br>03.11.2026<br>VS: 001234</p>', '00:00:00'])]
+    #[TestWith(['<P class="notice">Debet. Suma: 123,45 EUR.<BR />03.11.2026<BR data-layout="mail">VS: 001234</P>', '00:00:00'])]
+    #[TestWith(['<table><tr><td>Debet. Suma: 123,45 EUR.</td><td>03.11.2026</td></tr><tr><th>VS:</th><td>001234</td></tr></table>', '00:00:00'])]
+    #[TestWith(['<p>Debet. Suma: <span>123</span>,<strong>45</strong> EUR. <span>03.</span><b>11.</b><span>2026</span> VS: <span>00</span><strong>1234</strong></p>', '00:00:00'])]
+    #[TestWith(['<p title="ignored > 04.11.2026">Debet. Suma: 123,45 EUR.</p><p>03.11.2026</p><p>VS: <p-inline>00</p-inline><span>1234</span></p>', '00:00:00'])]
+    #[TestWith(['<p>Debet. Suma: 123,45 EUR.</p><p>03.11.2026</p><p>VS: 001234.</p><p>Informacia <span>pre</span> prijemcu: Suma: 999,00 USD. Invoice 04.11.2026</p>', '00:00:00'])]
+    #[TestWith(['<p>03.11.2026 14:35 bol zostatok Vasho uctu SK4811000000002944116480 znizeny o 123,45 EUR.</p><p>Referencia platitela: /VS001234/SS/KS</p>', '14:35:00'])]
+    public function html_layout_separates_complete_bank_fields_without_splitting_inline_tokens(string $body, string $time): void
+    {
+        foreach ([new TatraBankEmailParser, new SlspBankEmailParser] as $parser) {
+            $rows = $parser->parse('notify@tatrabanka.sk', 'Debet', $body);
+            $this->assertCount(1, $rows);
+            $this->assertSame(BankTransactionDirection::Debit, $rows[0]->direction);
+            $this->assertSame(123.45, $rows[0]->amount);
+            $this->assertSame('EUR', $rows[0]->currency);
+            $this->assertSame('001234', $rows[0]->variableSymbol);
+            $this->assertSame('2026-11-03 '.$time, $rows[0]->bookedAt->format('Y-m-d H:i:s'));
+        }
+    }
+
+    #[Test]
+    #[TestWith(['<p>Debet. Suma: 123,45 EUR.</p><p>03.11.2026</p><p>VS: 123</p><p>456</p>'])]
+    #[TestWith(['<p>Debet. Suma: 123,45 EUR.</p><p>03.11.2026</p><p>VS: <span>123</span><b>X</b></p>'])]
+    #[TestWith(['<p>Debet. Suma: 123,45 EUR.</p><p><span>03.11.2026</span><b>X</b></p>'])]
+    #[TestWith(['<p>Debet. Suma: 123,45 EUR.</p><p>03.11.2026</p><p>04.11.2026</p>'])]
+    #[TestWith(['<p>Debet. Suma: 123,45 EUR.</p><p>VS: 001234.</p><p>Informacia pre prijemcu: 03.11.2026</p>'])]
+    #[TestWith(['<p>Debet. 03.11.2026.</p><p>VS: 001234.</p><p>Informacia pre prijemcu: Suma: 123,45 EUR</p>'])]
+    #[TestWith(['<p title="ignored > 03.11.2026">Debet. Suma: 123,45 EUR.</p><p>VS: 001234.</p>'])]
+    public function html_layout_does_not_qualify_ambiguous_tokens_or_remittance_fields(string $body): void
+    {
+        $this->assertSame([], (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Debet', $body));
+    }
 }
