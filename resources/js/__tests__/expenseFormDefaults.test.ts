@@ -58,6 +58,10 @@ function field(key: FieldKey) {
   if (!label) throw new Error(`Missing form field: ${key}`);
   return new DOMWrapper(label.element.nextElementSibling as HTMLInputElement);
 }
+/**
+ * Mount ExpenseForm in the selected persistence/route mode with an optional initial copy marker.
+ * Await mount-time hydration before assertions or user input.
+ */
 async function render(local = true, editing = false, duplicate?: string | string[] | null) {
   mocks.local = local;
   route.name = editing ? 'invoicing-expense-edit' : 'invoicing-expense-new';
