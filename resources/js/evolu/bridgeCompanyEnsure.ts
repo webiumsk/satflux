@@ -1,4 +1,4 @@
-import { resolveOrCreateBridgeCompanyId } from "./numberAllocatorBridge";
+import { resolveOrCreateBridgeCompanyId, type BridgeCompanyRequestOptions } from "./numberAllocatorBridge";
 
 export type EnsureBridgeCompanyResult =
     /** Resolved (or created); null id means the local company has no usable identity. */
@@ -14,13 +14,15 @@ export type EnsureBridgeCompanyResult =
  * local company's jurisdiction/country/currency as creation hints - the same
  * machinery the number allocator uses, so features like the bank inbound
  * e-mail work for every company, including ones that never had a server row.
- * The Evolu client is imported lazily.
+ * The Evolu client is imported lazily. Optional transport controls are recomputed
+ * before each server request; omitted controls preserve ordinary caller behavior.
  *
  * Failures are reported distinctly from "this company has no identity" so
  * callers do not present a transient error as a permanently missing bridge.
  */
 export async function ensureBridgeCompanyIdForLocalCompany(
     localCompanyId: string,
+    requestOptions?: BridgeCompanyRequestOptions,
 ): Promise<EnsureBridgeCompanyResult> {
     if (!localCompanyId) {
         return { ok: true, bridgeCompanyId: null };
@@ -32,13 +34,16 @@ export async function ensureBridgeCompanyIdForLocalCompany(
         if (!row?.legalName) {
             return { ok: true, bridgeCompanyId: null };
         }
-        const bridgeCompanyId = await resolveOrCreateBridgeCompanyId({
+        const identity = {
             legal_name: row.legalName,
             registration_number: row.registrationNumber ?? null,
             jurisdiction: row.jurisdiction ?? null,
             country: row.country ?? null,
             default_currency: row.defaultCurrency ?? null,
-        });
+        };
+        const bridgeCompanyId = requestOptions
+            ? await resolveOrCreateBridgeCompanyId(identity, requestOptions)
+            : await resolveOrCreateBridgeCompanyId(identity);
         return { ok: true, bridgeCompanyId };
     } catch (error) {
         console.error(

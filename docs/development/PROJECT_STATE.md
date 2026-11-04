@@ -1,5 +1,34 @@
 # Project state
 
+## PR427 sixth review fixes independently accepted - 2026-11-04
+
+The completed7cd2b9ec manual review reports one stale-identity inline finding,
+one whole-fetch bound follow-up and one missing deleted-query regression.
+All five pre-merge checks pass, including87.27% docstrings; these actionable
+items keep the owner's all-green loop active. Published7cd CI41758379808 is green.
+
+The working-tree repair adds normalized identity/generation freshness checks and
+one20-second budget for metadata readiness, scoped bridge HTTP and pagination.
+Caller-only request options recompute remaining time/cancellation while ordinary
+allocator/Wise callers retain existing payloads/defaults. Timer cleanup precedes
+financial import; partial/late data is discarded. Unknown metadata POST outcomes
+are never compensated. A production-query deleted/live receipt test is added.
+
+Both independent reviewers accept runtime4
+`927a9d92058991f54782d535d855572bd77075ebec363227def28ac8eb2427a1`
+and source/test7
+`a63822f8354ac43c888f31a12252d789b88c0a78b0fca526ea35cb7def9f2406`.
+Author78/6, QA94/10 plus13probes/2, security62 plus final2 recheck/13probes pass,
+with overlapping scopes and synthetic adapters. Type111existing/no-new, scoped
+lint0/API/default-caller checks pass. Main final fullfrontend1504/167, final production build and full lint48known/zero
+errors pass on the frozen bytes; five-language parity remains unchanged. The earlier1503/167 main run began before the last
+narrow error-path/test refinement; do not attribute it to the final frozen bytes.
+
+No company CRUD lock or commit-wide identity atomicity is introduced: the guard
+checks immediately before import, preserving the documented queued-edit boundary.
+Publish only reviewed11 paths, verify new CI/capacity, and repeat the authorized
+manual command until actual review green. No merge/deployment/production replay.
+
 ## PR427 fifth review fixes independently accepted - 2026-11-04
 
 The five actionable findings from the completed manual review of3dce0b4f are

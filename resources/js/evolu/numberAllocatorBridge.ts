@@ -33,6 +33,13 @@ export type AllocatorIdentity = {
     bridge_company_id?: string | null;
 };
 
+/** Recomputed before each bridge request so one caller can enforce a shared deadline. */
+export type BridgeCompanyRequestOptions = () => {
+    signal?: AbortSignal;
+    timeout?: number;
+    skipErrorFlash?: boolean;
+};
+
 export type AllocatorReservation = {
     number: string;
     counter: number;
@@ -92,30 +99,41 @@ function canonicalIdentityMatch(
  * The server has no atomic resolve-or-create, so two concurrent first
  * issues can both create a row; the post-create re-list converges both
  * clients on the canonical (oldest) match, keeping all reservations in one
- * sequence. A losing duplicate stays behind empty and harmless.
+ * sequence. A losing duplicate stays behind empty and harmless. Optional caller
+ * controls bound only bridge HTTP; number issuance keeps its existing defaults.
  */
-export async function resolveOrCreateBridgeCompanyId(identity: AllocatorIdentity): Promise<string | null> {
+export async function resolveOrCreateBridgeCompanyId(
+    identity: AllocatorIdentity,
+    requestOptions?: BridgeCompanyRequestOptions,
+): Promise<string | null> {
     if (identity.bridge_company_id) {
         return identity.bridge_company_id;
     }
     if (!identity.legal_name) {
         return null;
     }
-    const rows = await invoicingApi.companies.list<BridgeCompanyRow>();
+    /** Re-read the remaining caller budget for the initial list and post-create convergence. */
+    const list = () => requestOptions
+        ? invoicingApi.companies.list<BridgeCompanyRow>(requestOptions())
+        : invoicingApi.companies.list<BridgeCompanyRow>();
+    const rows = await list();
     const found = canonicalIdentityMatch(rows, identity);
     if (found) {
         return found.id;
     }
-    const created = await invoicingApi.companies.create<BridgeCompanyRow>({
+    const payload = {
         legal_name: identity.legal_name,
         registration_number: identity.registration_number ?? null,
         // Server-side validation requires a jurisdiction on create.
         jurisdiction: identity.jurisdiction || "eu_other",
         ...(identity.country ? { country: identity.country } : {}),
         ...(identity.default_currency ? { default_currency: identity.default_currency } : {}),
-    });
+    };
+    const created = requestOptions
+        ? await invoicingApi.companies.create<BridgeCompanyRow>(payload, requestOptions())
+        : await invoicingApi.companies.create<BridgeCompanyRow>(payload);
     const converged = canonicalIdentityMatch(
-        await invoicingApi.companies.list<BridgeCompanyRow>(),
+        await list(),
         identity,
     );
     return converged?.id ?? created?.id ?? null;

@@ -8,6 +8,7 @@ import {
     allBankImportBatchesQuery,
     allBankTransactionMatchesQuery,
     allBankTransactionsQuery,
+    allCompaniesDetailQuery,
     allDocumentsQuery,
     allExpensesQuery,
     useInvoicingEvolu,
@@ -34,6 +35,8 @@ import {
 import type { BankBatchApiRow, BankSummary, BankTxApiRow } from "@/evolu/bankMap";
 import { isInvoicingLocalFirst } from "@/evolu/flags";
 import { ensureBridgeCompanyIdForLocalCompany } from "@/evolu/bridgeCompanyEnsure";
+import { normalizeCompanyIdentityKey } from "@/evolu/duplicateCompanies";
+import type { BridgeCompanyRequestOptions } from "@/evolu/numberAllocatorBridge";
 import type { ExpenseSavePayload } from "@/evolu/expenseCrud";
 import type {
     BankImportBatchId,
@@ -376,6 +379,14 @@ function useLocalInvoicingBankPayments(
 
     // Per-query promises: useQuery's `promise` option is typed per query,
     // so hand each one its own (Promise.all only gates the loading flag).
+    const companyPromise = evolu.loadQuery(allCompaniesDetailQuery);
+    const companyRows = useQuery(allCompaniesDetailQuery, { promise: companyPromise.catch(() => []) });
+    const bridgeIdentityKey = computed(() => {
+        const company = companyRows.value.find((row) => row.id === companyId.value);
+        return company?.legalName?.trim()
+            ? normalizeCompanyIdentityKey(company.legalName, company.registrationNumber)
+            : null;
+    });
     const bankTxPromise = evolu.loadQuery(allBankTransactionsQuery);
     const bankMatchPromise = evolu.loadQuery(allBankTransactionMatchesQuery);
     const documentsPromise = evolu.loadQuery(allDocumentsQuery);
@@ -446,47 +457,70 @@ function useLocalInvoicingBankPayments(
     let wiseStatusRequestSeq = 0;
     let bridgeLookupRequestSeq = 0;
 
-    watch(companyId, () => {
-        wiseStatusRequestSeq++;
+    let bridgeIdentityGeneration = 0;
+    let companySelectionGeneration = 0;
+    watch([companyId, bridgeIdentityKey], ([currentCompany], [previousCompany, previousIdentity]) => {
+        bridgeIdentityGeneration++;
         bridgeLookupRequestSeq++;
-        wiseStatus.value = null;
-        wiseBridgeChecked.value = false;
+        bridgeCompanyId.value = null;
+        // Initial metadata readiness has no prior eligible lookup to invalidate.
+        if (currentCompany !== previousCompany) companySelectionGeneration++;
+        if (currentCompany !== previousCompany || previousIdentity !== null) {
+            wiseStatusRequestSeq++;
+            wiseStatus.value = null;
+            wiseBridgeChecked.value = false;
+        }
+        // CompanyPayments owns the awaited refresh and its visible error path.
     }, { flush: "sync" });
 
     /**
-     * Resolve the selected local company's server bridge without a first-company fallback.
-     * Update the cache only for the latest lookup and honor caller freshness guards.
+     * Resolve only the captured normalized legal identity, including A-B-A edits.
+     * Concurrent same-identity lookups may return, but only the latest updates the cache.
      */
-    async function resolveBridgeCompanyId(stillCurrent?: () => boolean): Promise<string | null> {
-        const requestSeq = ++bridgeLookupRequestSeq;
+    async function resolveBridgeCompanyId(
+        stillCurrent?: () => boolean,
+        requestOptions?: BridgeCompanyRequestOptions,
+    ): Promise<string | null> {
         const localCompanyId = companyId.value;
-        const result = await ensureBridgeCompanyIdForLocalCompany(localCompanyId);
+        if (bridgeIdentityKey.value === null) await companyPromise.catch(() => []);
         if (companyId.value !== localCompanyId || (stillCurrent && !stillCurrent())) return null;
+        const identity = bridgeIdentityKey.value;
+        const generation = bridgeIdentityGeneration;
+        if (identity === null) return null;
+        const requestSeq = ++bridgeLookupRequestSeq;
+        const result = requestOptions
+            ? await ensureBridgeCompanyIdForLocalCompany(localCompanyId, requestOptions)
+            : await ensureBridgeCompanyIdForLocalCompany(localCompanyId);
+        if (companyId.value !== localCompanyId || bridgeIdentityKey.value !== identity
+            || bridgeIdentityGeneration !== generation || (stillCurrent && !stillCurrent())) return null;
         const bridgeId = result.ok ? result.bridgeCompanyId : null;
         if (requestSeq === bridgeLookupRequestSeq) bridgeCompanyId.value = bridgeId;
         return bridgeId;
     }
 
-    /** Fetch every email page with a per-request deadline; a failed page discards the partial set. */
-    async function fetchInboundServerRows(bridgeId: string): Promise<ServerBankTransactionRow[]> {
+    /** Fetch complete pages within the caller's budget, yielding so immediate pages cannot starve its timer. */
+    async function fetchInboundServerRows(
+        bridgeId: string,
+        requestOptions: BridgeCompanyRequestOptions,
+    ): Promise<ServerBankTransactionRow[]> {
         const rows: ServerBankTransactionRow[] = [];
         let page = 1;
         let lastPage = 1;
         do {
-            const res = await invoicingApi.bankTransactions.list<ServerBankTransactionRow>(bridgeId, { source: "email", per_page: 100, page }, { timeout: 10_000, skipErrorFlash: true });
+            const res = await invoicingApi.bankTransactions.list<ServerBankTransactionRow>(bridgeId,
+                { source: "email", per_page: 100, page }, requestOptions());
+            requestOptions(); // Reject late responses even when a transport ignores abort.
             rows.push(...res.data);
             lastPage = res.meta?.last_page ?? 1;
             page += 1;
+            if (page <= lastPage) await new Promise<void>((resolve) => setTimeout(resolve, 0));
         } while (page <= lastPage);
         return rows;
     }
 
     const inboundSyncs = new Map<string, Promise<void>>();
 
-    /**
-     * Share one in-flight inbound synchronization per local company.
-     * Remove only the completed promise so newer work cannot be evicted.
-     */
+    /** Share one inbound attempt per company; release it after fetch failure or completed local import. */
     async function syncInboundFromBridge() {
         const localCompanyId = companyId.value;
         const active = inboundSyncs.get(localCompanyId);
@@ -501,27 +535,56 @@ function useLocalInvoicingBankPayments(
     }
 
     /**
-     * Fetch bridge email rows and import them only while that local company remains selected.
-     * Only HTTP fetch failures are best-effort; local import failures and Unknown escape unchanged.
+     * Bound metadata, bridge HTTP and pagination together to twenty seconds before any financial import.
+     * Discard failed/stale partial reads; local import errors and Unknown remain observable and are never raced.
      */
     async function syncInboundCompany(localCompanyId: string) {
-        const bridgeId = await resolveBridgeCompanyId();
-        if (!bridgeId) {
-            return;
-        }
+        const controller = new AbortController();
+        const deadline = performance.now() + 20_000;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const selectionGeneration = companySelectionGeneration;
+        let current = () => companyId.value === localCompanyId
+            && companySelectionGeneration === selectionGeneration;
+        const requestOptions: BridgeCompanyRequestOptions = () => {
+            const remaining = Math.floor(deadline - performance.now());
+            if (remaining <= 0 || controller.signal.aborted || !current()) {
+                throw new Error("bank_inbound_fetch_expired");
+            }
+            return { timeout: Math.min(10_000, remaining), skipErrorFlash: true, signal: controller.signal };
+        };
         let rows: ServerBankTransactionRow[];
         try {
-            rows = await fetchInboundServerRows(bridgeId);
+            const expired = new Promise<never>((_resolve, reject) => {
+                timer = setTimeout(() => {
+                    controller.abort();
+                    reject(new Error("bank_inbound_fetch_expired"));
+                }, Math.max(0, deadline - performance.now()));
+            });
+            rows = await Promise.race([(async () => {
+                // Capture identity only after initial metadata is available, not from an empty pending query.
+                await companyPromise;
+                requestOptions();
+                const identity = bridgeIdentityKey.value;
+                const generation = bridgeIdentityGeneration;
+                current = () => companyId.value === localCompanyId
+                    && companySelectionGeneration === selectionGeneration
+                    && bridgeIdentityKey.value === identity && bridgeIdentityGeneration === generation;
+                const bridgeId = await resolveBridgeCompanyId(
+                    () => current() && !controller.signal.aborted && performance.now() < deadline,
+                    requestOptions,
+                );
+                requestOptions();
+                return bridgeId ? await fetchInboundServerRows(bridgeId, requestOptions) : [];
+            })(), expired]);
         } catch {
-            // Bridge sync is best-effort; local data remains usable.
+            // Read-only bridge sync is best-effort; local data remains usable.
             return;
+        } finally {
+            clearTimeout(timer);
+            controller.abort();
         }
-        if (companyId.value === localCompanyId && rows.length > 0) {
-            await importInboundServerTransactionsAsync(
-                evolu,
-                localCompanyId as CompanyId,
-                rows,
-            );
+        if (current() && rows.length > 0) {
+            await importInboundServerTransactionsAsync(evolu, localCompanyId as CompanyId, rows);
         }
     }
 
@@ -695,11 +758,6 @@ function useLocalInvoicingBankPayments(
         if (companyId.value !== localCompanyId) return;
         await load(matchFilter.value);
     }
-
-    watch(companyId, () => {
-        bridgeCompanyId.value = null;
-        // CompanyPayments owns the awaited refresh and its visible error path.
-    });
 
     return {
         localFirst: true,

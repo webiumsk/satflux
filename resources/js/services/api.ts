@@ -692,16 +692,18 @@ export interface ContactListParams {
  */
 export const invoicingApi = {
     companies: {
-        async list<T = unknown>(): Promise<T[]> {
-            const { data } = await api.get<ApiEnvelope<T[]>>('/invoicing/companies');
+        /** Allow bounded bridge lookups to supply transport controls without changing ordinary callers. */
+        async list<T = unknown>(options?: { signal?: AbortSignal; timeout?: number; skipErrorFlash?: boolean }): Promise<T[]> {
+            const { data } = await api.get<ApiEnvelope<T[]>>('/invoicing/companies', options);
             return data.data ?? [];
         },
         async get<T = unknown>(companyId: string): Promise<T> {
             const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}`);
             return data.data;
         },
-        async create<T = unknown>(payload: Record<string, unknown>): Promise<T> {
-            const { data } = await api.post<ApiEnvelope<T>>('/invoicing/companies', payload);
+        /** A timed-out bridge create may have succeeded; callers recover through the canonical re-list. */
+        async create<T = unknown>(payload: Record<string, unknown>, options?: { signal?: AbortSignal; timeout?: number; skipErrorFlash?: boolean }): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>('/invoicing/companies', payload, options);
             return data.data;
         },
         async update<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {

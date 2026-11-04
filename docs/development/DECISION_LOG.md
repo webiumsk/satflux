@@ -1,5 +1,22 @@
 # Development decision log
 
+## 2026-11-04 - Bound bank bridge selection without changing issuance policy
+
+The sixth review requires stale legal identity rejection, total pagination bounds
+and a meaningful deleted-inbox query test. Reuse existing normalized identity;
+await initial metadata and track semantic generations, including A-B-A.
+One20-second read-stage budget also fixes the concretely unbounded bridge lookup
+before pagination. Forward optional caller-scoped options through list/create/
+re-list only for bank synchronization; preserve ordinary number/Wise defaults.
+Dispose the deadline before financial import. A timed-out metadata POST may have
+created a server row; only explicit canonical lookup recovery is permitted.
+
+Separate QA/security accept the final4/7 manifests. Do not claim queued/commit-wide
+legal identity serialization, change company CRUD gates, or race financial writes.
+Main final1504frontend/167files, build/lint/typecheck/locales pass on the accepted
+bytes. Publish11 reviewed paths and repeat CI/manual review until green. No server migration, billing/key/owner-policy change,
+merge, deployment or production replay is introduced.
+
 ## 2026-11-04 - Accept the fifth request-lifecycle repair for publication
 
 Both independent reviewers accept the exact4/9 manifests for scoped cancellation,

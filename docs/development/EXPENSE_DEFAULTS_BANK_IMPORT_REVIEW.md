@@ -1,5 +1,56 @@
 # Expense defaults and bank-mail reconciliation
 
+## Sixth review contract and independent evidence - 2026-11-04
+
+The completed manual review of7cd2b9ec at03:19UTC adds one inline finding, one
+pagination follow-up and a deleted-query test nit. Its five pre-merge checks pass,
+including87.27% documentation coverage at the unchanged80% threshold. CI41758379808
+passes on that published head; it does not verify the new working-tree repair.
+
+The bridge selector uses the existing normalized company identity and semantic
+change generation. Initial company metadata is awaited before capture, avoiding
+a false empty-to-loaded invalidation. Lookup/cache results and the final fetch
+are rejected after legal-name/registration changes or A-B-A edits; outer whitespace
+and case follow existing identity matching. Concurrent same-identity Wise lookups
+do not invalidate a valid bank result. This is selection metadata, not a new
+authorization principal or a company-CRUD/queued-import atomicity guarantee.
+
+One20-second read-stage budget covers company metadata, bridge lookup/create/
+canonical re-list and all bank pages. Every HTTP request recomputes its remaining
+time, capped at10seconds, and uses the same cancellation signal. Monotonic elapsed
+checks reject late results even when transport ignores cancellation; the deadline
+and page yields prevent an immediately resolving endless page stream starving the
+clock. Any failure discards the entire collected set, releases shared synchronization
+and leaves local queries usable for an explicit retry. Cleanup completes before
+financial import; the budget never races worker completion or establishes rollback.
+
+Optional bridge-request options preserve ordinary allocator/Wise arguments,
+credentials, payloads and default timeouts. A metadata POST may succeed after
+client cancellation; no record is deleted, compensated or automatically recreated.
+Explicit retry re-lists and converges through the existing canonical identity path.
+The temporary narrow metadata-read catch preserves prior ordinary-Wise failure
+behavior without swallowing local import/Unknown outcomes.
+
+The new reconcile test imports the real client/query module without a client mock.
+Only its unused browser dependency factory is inert. A separate real Evolu API
+probe receives the production serialized expense query through SQL-aware synthetic
+storage. A deleted stable receipt remains pending/no ACK, while a different live
+control is acknowledged exactly once, with zero financial mutations. This is not
+a native SQLite or browser-storage claim.
+
+QA/security accept identical final runtime4 manifest
+`927a9d92058991f54782d535d855572bd77075ebec363227def28ac8eb2427a1`
+and source/tests7 manifest
+`a63822f8354ac43c888f31a12252d789b88c0a78b0fca526ea35cb7def9f2406`.
+Author78cases/6files pass; QA independently passes94cases/10suites and13 actual
+Axios/helper probes/2suites; security passes62 repository cases, the final2-case
+metadata/endless-page recheck and13probes. Scopes overlap. Typecheck111existing/
+no-new, scoped lint0, diff checks and default issuer regressions pass. Main final fullfrontend1504/167, production build and full lint48known/zero errors
+pass on these frozen bytes; the earlier1503/167 run began before the final narrow
+catch/test change. Five-language parity and baseline budgets remain unchanged.
+Publish only11 reviewed paths, verify committed bytes/remote SHA, complete new CI
+and the next actual manual review. No production access/replay, merge or deployment.
+
 ## Fifth review contract - 2026-11-04
 
 The authorized manual review completed on published `3dce0b4f` at 01:49 UTC.

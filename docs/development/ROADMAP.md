@@ -1,5 +1,16 @@
 # Development roadmap
 
+## Current: finish final R6 checks, publish and repeat review - 2026-11-04
+
+One inline and two supplemental review items are repaired. Both reviewers accept
+final runtime4 927a9d92...27a1/source-test7 a63822f8...2406 with identity, total-fetch,
+metadata ambiguity/default allocator and real deleted-query regression evidence.
+Main final fullfrontend1504/167, production build and lint48known/zero errors pass
+on these exact bytes. Publish only11 reviewed paths, verify committed blobs/remote
+SHA and complete exact-head CI. Request the next actual manual review after capacity. Preserve the before-
+import identity boundary, unknown outcomes, all thresholds and deployment gates.
+No merge/deployment, production replay or unrelated primary publication.
+
 ## Current: publish PR427 fifth repair and repeat review - 2026-11-04
 
 The five findings are repaired and both independent reviewers accept final
