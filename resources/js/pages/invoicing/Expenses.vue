@@ -569,6 +569,7 @@ async function duplicateRow(expenseId: string) {
       await router.push({
         name: 'invoicing-expense-edit',
         params: { companyId: companyId.value, expenseId: result.value.id },
+        query: { duplicate: result.value.id },
       });
       return;
     }
@@ -577,6 +578,7 @@ async function duplicateRow(expenseId: string) {
     await router.push({
       name: 'invoicing-expense-edit',
       params: { companyId: companyId.value, expenseId: res.id },
+      query: { duplicate: res.id },
     });
   } catch (rawError) {
     if (actionCompany !== companyId.value) return;

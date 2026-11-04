@@ -1,5 +1,37 @@
 # Project state
 
+## Duplicate expense defaults repair independently accepted - 2026-11-04
+
+Owner clarified that new expenses work and duplicated expenses fail. GitHub verifies
+PR427 merged as80139525 at16:56:28UTC; Live deployment is owner-reported. On this
+master baseline, QA reproduces four duplicated-edit failures while new-form and
+ordinary edit controls pass. All four duplicate actions persisted a copy then
+opened ordinary edit, where isNew-only guards suppressed VS/delivery defaults.
+
+The repair propagates a clone-ID presentation marker through list/detail actions
+in both modes, captures it only on the matching initial edit context and permanently
+revokes it after company/expense/route changes. Copied values are not rewritten on
+hydration; source input follows until manual/cleared/imported target overrides.
+Copies still update their existing ID, with no create/mark-paid/status or authority
+change. Successful copy save awaits attachments and replaces the edit history entry;
+normal saves keep push. Failures preserve recovery. No backend/schema/financial
+writers or general source watchers changed.
+
+Both independent reviewers accept runtime3 manifest
+`9125a87c8ed6c188ee0890ba07c554cfb164ddba9a9421ce8eea1cf8c8641e10`
+and source/tests6 manifest
+`f7768cfffcecc03b1df8c2845cb89fa35b81a4829a28bf2de5c03a60dea1a679`.
+Author and each reviewer pass101 repository cases/three suites; QA and security
+also each pass28 actual mounted DOM probes. Scopes overlap, not aggregate counts.
+Main full frontend1700/173 passes; lint0errors/48knownwarnings, unchanged typecheck
+baseline/no-new, EN/SK/ES/DE/CS parity and production build93seconds pass.
+
+Publish only the six accepted source/test paths and three state documents from
+fix/expense-form-default-events; verify staged/remote tree and current head, then
+complete fresh CI and actual CodeRabbit review. Main checkout/unrelated work remain
+preserved. Graphify unavailable, not installed/rebuilt. No new merge/deployment or
+production replay is authorized by this follow-up.
+
 ## PR427 final two test-coverage nits repaired - 2026-11-04
 
 Actual review 5766899006 completed 10:27:45 UTC on green 23b6f927. There are no

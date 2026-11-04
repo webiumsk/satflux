@@ -867,6 +867,7 @@ async function duplicate() {
       await router.push({
         name: "invoicing-expense-edit",
         params: { companyId: context.company, expenseId: result.value.id },
+        query: { duplicate: result.value.id },
       });
       return;
     }
@@ -875,6 +876,7 @@ async function duplicate() {
     await router.push({
       name: "invoicing-expense-edit",
       params: { companyId: context.company, expenseId: res.id },
+      query: { duplicate: res.id },
     });
   } catch (error: unknown) {
     if (isCurrentContext(context)) window.alert(t(expenseMutationErrorKey(error) || 'errors.generic'));

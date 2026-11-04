@@ -9,7 +9,7 @@ import type { EvoluExpenseAttachmentRow } from "@/evolu/expenseAttachmentCrud";
 
 const mocks = vi.hoisted(() => ({
     local: true, evolu: {} as object | null, displayForeign: false, filteredLagId: null as string | null,
-    push: vi.fn(), remember: vi.fn(), refresh: vi.fn(),
+    push: vi.fn(), remember: vi.fn(), refresh: vi.fn(), duplicate: vi.fn(),
     insertExpense: vi.fn(), updateExpense: vi.fn(), updateNote: vi.fn(), insertAttachment: vi.fn(), read: vi.fn(), lookup: vi.fn(),
     detect: vi.fn(), extract: vi.fn(), quota: vi.fn(), purchase: vi.fn(), upload: vi.fn(),
     localDetect: vi.fn(), localExtract: vi.fn(), localQuota: vi.fn(),
@@ -69,7 +69,7 @@ vi.mock("@/composables/useInvoicingExpenses", () => ({ useInvoicingExpense: () =
 }) }));
 vi.mock("@/evolu/expenseCrud", () => ({
     insertLocalExpense: mocks.insertExpense, updateLocalExpense: mocks.updateExpense, updateLocalExpenseNote: mocks.updateNote,
-    cancelLocalExpense: vi.fn(), duplicateLocalExpense: vi.fn(), markLocalExpensePaid: vi.fn(), unmarkLocalExpensePaid: vi.fn(),
+    cancelLocalExpense: vi.fn(), duplicateLocalExpense: mocks.duplicate, markLocalExpensePaid: vi.fn(), unmarkLocalExpensePaid: vi.fn(),
 }));
 vi.mock("@/evolu/expenseAttachmentCrud", async (importOriginal) => ({
     ...await importOriginal<typeof import("@/evolu/expenseAttachmentCrud")>(),
@@ -89,7 +89,7 @@ vi.mock("@/services/api", () => ({ getWebBlob: mocks.blob, invoicingApi: {
 vi.mock("@/components/invoicing/InvoicingPageShell.vue", () => ({ default: { template: '<main><slot name="header" /><slot name="toolbar" /><slot /></main>' } }));
 vi.mock("@/components/invoicing/InvoicingAppHeader.vue", () => ({ default: { template: "<header />" } }));
 vi.mock("@/components/invoicing/ExpenseShowSidebar.vue", () => ({ default: {
-    name: "ExpenseShowSidebar", emits: ["mark-paid"], template: "<aside />",
+    name: "ExpenseShowSidebar", emits: ["mark-paid", "duplicate"], template: "<aside />",
 } }));
 vi.mock("@/components/invoicing/ExpenseAttachmentPanel.vue", () => ({ default: {
     name: "ExpenseAttachmentPanel",
@@ -186,6 +186,20 @@ afterEach(() => {
 });
 
 describe("expense attachment page integration", () => {
+    it.each([true, false])("opens a copied expense with its exact duplicate marker from detail (local=%s)", async (local) => {
+        mocks.duplicate.mockResolvedValueOnce({ ok: true, value: { id: "copied-expense" } });
+        mocks.action.mockResolvedValueOnce({ id: "copied-expense" });
+        render("show", local);
+        await flushPromises();
+        wrapper!.findComponent({ name: "ExpenseShowSidebar" }).vm.$emit("duplicate");
+        await flushPromises();
+        expect(mocks.push).toHaveBeenCalledExactlyOnceWith({ name: "invoicing-expense-edit",
+            params: { companyId: local ? localCompany : serverCompany, expenseId: "copied-expense" },
+            query: { duplicate: "copied-expense" } });
+        expect(local ? mocks.duplicate : mocks.action).toHaveBeenCalledOnce();
+        expect(local ? mocks.action : mocks.duplicate).not.toHaveBeenCalled();
+    });
+
     it("saves only the intended note and waits for its committed result before refreshing", async () => {
         const write = deferred<{ ok: true }>();
         mocks.updateNote.mockReturnValueOnce(write.promise);

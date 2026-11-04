@@ -1,5 +1,15 @@
 # Development roadmap
 
+## Current: publish reviewed duplicate-expense defaults repair - 2026-11-04
+
+On merged master80139525, four duplicated-edit failures are reproduced and fixed.
+Both reviewers accept runtime3 9125a87c...41e10/source6 f7768cff...1a679; author and
+reviewer101/3 plus28 independent DOM probes pass. Main1700/173, lint/type/locales
+and build pass. Publish exactly nine scoped paths on fix/expense-form-default-events,
+verify exact bytes/remote head, then wait for all current CI and actual CodeRabbit.
+Keep normal edits/manual overrides, hydration, UPDATE-only copy saves and all
+ownership/payment boundaries. No merge/deployment or production changes.
+
 ## Current: publish final test coverage and repeat the review gate - 2026-11-04
 
 Actual review 5766899006 leaves two test-only nits; both are repaired and QA accepts

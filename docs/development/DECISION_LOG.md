@@ -1,5 +1,22 @@
 # Development decision log
 
+## 2026-11-04 - Follow defaults in the initial duplicated expense edit
+
+A persisted duplicate is logically a new document for the user but opens the edit
+route. Carry an explicit scalar clone-ID presentation marker from all four duplicate
+actions, capture it only for the matching edit context, and revoke it monotonically
+on context exit. Permit VS/date default helpers in that captured context without
+changing isNew, hydration, create/update, payment or authorization decisions.
+
+Preserve copied values until source input, manual/cleared/imported targets, digit
+limits and null serialization. After guarded successful UPDATE and attachments,
+replace the duplicated edit history entry with show; normal forms retain push.
+Keep the marker during initial edit/reload and failures, preventing loss of copy
+intent before save. No additional storage, backend fields or general watchers.
+Both reviewers accept runtime3 9125a87c...41e10/source6 f7768cff...1a679; full1700/173
+and relevant static/build gates pass. Publish only nine accepted paths and require
+fresh CI/review. Merge and deployment remain separate owner decisions.
+
 ## 2026-11-04 - Close the final two review nits with behavior assertions only
 
 Add PostgreSQL assertions that consume real head-derived next_cursor values until

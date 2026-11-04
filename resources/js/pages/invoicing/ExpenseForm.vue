@@ -163,6 +163,12 @@ const router = useRouter();
 const { companyId, rememberCompany } = useInvoicingLayout();
 const expenseId = computed(() => route.params.expenseId as string | undefined);
 const isNew = computed(() => route.name === 'invoicing-expense-new');
+// A persisted copy keeps edit semantics while its initial edit context can follow defaults.
+const duplicateEditActive = ref(route.name === 'invoicing-expense-edit'
+  && typeof route.query.duplicate === 'string' && route.query.duplicate === expenseId.value);
+watch([companyId, expenseId, () => route.name], () => {
+  duplicateEditActive.value = false;
+}, { flush: 'sync' });
 const localFirst = isInvoicingLocalFirst();
 const expenseResource = useInvoicingExpense(companyId, expenseId);
 const expenseRows = computed(() => toAppRows<EvoluExpenseRow>(expenseResource.expenseRows.value));
@@ -233,17 +239,20 @@ watch([companyId, expenseId], () => {
   saving.value = false;
   error.value = '';
 }, { flush: 'sync' });
-onUnmounted(() => { contextGeneration++; });
+onUnmounted(() => {
+  contextGeneration++;
+  duplicateEditActive.value = false;
+});
 
 function syncVariableSymbolDefault() {
-  if (isNew.value && variableSymbolFollowsNumber.value) {
+  if ((isNew.value || duplicateEditActive.value) && variableSymbolFollowsNumber.value) {
     const symbol = normalizeVariableSymbol(form.value.external_number) || '';
     form.value.variable_symbol = symbol.length <= 32 ? symbol : '';
   }
 }
 
 function syncDeliveryDateDefault() {
-  if (isNew.value && deliveryDateFollowsIssueDate.value) {
+  if ((isNew.value || duplicateEditActive.value) && deliveryDateFollowsIssueDate.value) {
     form.value.delivery_date = form.value.issue_date;
   }
 }
@@ -364,8 +373,10 @@ async function save() {
   const requestedCompany = companyId.value;
   const requestedExpense = expenseId.value;
   const requestedNew = isNew.value;
+  const requestedDuplicate = duplicateEditActive.value;
   const capturedGeneration = contextGeneration;
-  const stillCurrent = () => capturedGeneration === contextGeneration && requestedCompany === companyId.value && requestedExpense === expenseId.value && requestedNew === isNew.value;
+  const stillCurrent = () => capturedGeneration === contextGeneration && requestedCompany === companyId.value && requestedExpense === expenseId.value && requestedNew === isNew.value
+    && (!requestedDuplicate || duplicateEditActive.value);
   error.value = '';
   if (!form.value.issue_date) {
     error.value = t('validation.required');
@@ -427,7 +438,7 @@ async function save() {
       }
       await uploadAllPendingAttachments(savedId);
       if (!stillCurrent()) return;
-      await router.push(expenseShowTo(savedId));
+      await (requestedDuplicate ? router.replace(expenseShowTo(savedId)) : router.push(expenseShowTo(savedId)));
       return;
     }
     if (requestedNew) {
@@ -440,7 +451,7 @@ async function save() {
     if (!stillCurrent()) return;
     await uploadAllPendingAttachments(savedId);
     if (!stillCurrent()) return;
-    await router.push(expenseShowTo(savedId));
+    await (requestedDuplicate ? router.replace(expenseShowTo(savedId)) : router.push(expenseShowTo(savedId)));
   } catch (e: unknown) {
     if (!stillCurrent()) return;
     const err = e as { response?: { data?: { message?: string } } };
