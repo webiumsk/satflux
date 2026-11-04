@@ -16,6 +16,10 @@ use Illuminate\Database\Eloquent\Builder;
 /** Company bank-email bookkeeping; never a Store payment-origin attestation. */
 class BusinessExpensePaymentMatcher
 {
+    /**
+     * Atomically link one exact eligible expense to a recorded bank-email debit.
+     * Locked rechecks preserve uniqueness; the expense, movement and audit share one transaction.
+     */
     public function tryAutoMatch(BankTransaction $transaction, ?int $userId = null): bool
     {
         $connection = $transaction->getConnection();
@@ -112,6 +116,7 @@ class BusinessExpensePaymentMatcher
             ->orderBy('id');
     }
 
+    /** Prefer a valid bank VS; without one, require the full supplier document reference to match. */
     private function matchesHints(BankTransaction $transaction, BusinessExpense $expense): bool
     {
         $bankVs = trim((string) $transaction->variable_symbol);
@@ -131,6 +136,7 @@ class BusinessExpensePaymentMatcher
         return $reference !== '' && $reference === trim((string) $expense->external_number);
     }
 
+    /** Return canonical positive cent digits only when the raw database amount needs no rounding. */
     private function positiveCents(mixed $value): ?string
     {
         if (is_float($value)) {
@@ -156,6 +162,7 @@ class BusinessExpensePaymentMatcher
         return $cents !== '' ? $cents : null;
     }
 
+    /** Normalize a stored currency to three ASCII letters, rejecting malformed or absent codes. */
     private function currency(mixed $value): ?string
     {
         $currency = strtoupper(trim((string) $value));
@@ -163,6 +170,7 @@ class BusinessExpensePaymentMatcher
         return preg_match('/\A[A-Z]{3}\z/', $currency) ? $currency : null;
     }
 
+    /** Validate a stored date or timestamp and retain its original bank calendar date without timezone conversion. */
     private function bookingDate(mixed $value): ?string
     {
         if (! is_string($value) || ! preg_match(

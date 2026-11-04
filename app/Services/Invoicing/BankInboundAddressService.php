@@ -61,6 +61,7 @@ class BankInboundAddressService
         return $address;
     }
 
+    /** Resolve the exact company token after validating recipient syntax, preserving previously issued lengths. */
     public function resolveCompany(string $to): Company
     {
         $to = strtolower(trim($to));

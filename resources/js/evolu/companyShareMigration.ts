@@ -262,6 +262,10 @@ export async function purgeRevokedShareResidue(evolu: Loader, companyId?: string
     return withExpenseMaintenance(evolu, (scope) => purgeRevokedShareResidueLocked(scope.evolu, companyId));
 }
 
+/**
+ * Purge live partitions named by revoked AppOwner share rows under the maintenance lease.
+ * Await each write before counting deletions or allowing owner cleanup to continue.
+ */
 async function purgeRevokedShareResidueLocked(evolu: Loader, companyId?: string): Promise<number> {
     const appOwnerId = (await evolu.appOwner).id;
     const shares = (await evolu.loadQuery(allCompanySharesQuery)) as unknown as readonly {
@@ -317,6 +321,11 @@ export async function convertCompanyToShared(
     return withExpenseMaintenance(evolu, (scope) => convertCompanyToSharedLocked(scope.evolu, companyId, options));
 }
 
+/**
+ * Create or resume sharing while the maintenance lease excludes cooperating writers.
+ * Copy and verify rows before deleting AppOwner originals and activating the shared owner.
+ * Failures leave resumable migration state rather than attempting a compensating rollback.
+ */
 async function convertCompanyToSharedLocked(
     evolu: Loader,
     companyId: string,
@@ -508,6 +517,10 @@ export async function resumePendingCompanyShareMigrations(evolu: Loader): Promis
     return withExpenseMaintenance(evolu, (scope) => resumePendingCompanyShareMigrationsLocked(scope.evolu));
 }
 
+/**
+ * Resume this AppOwner's pending conversions only when their device marker permits it.
+ * Leave active shares and work owned by another device untouched.
+ */
 async function resumePendingCompanyShareMigrationsLocked(evolu: Loader): Promise<void> {
     const appOwnerId = (await evolu.appOwner).id;
     const shares = (await evolu.loadQuery(allCompanySharesQuery)) as unknown as readonly { ownerId: string | null; companyId: string; status: string; migratingDeviceId: string | null }[];

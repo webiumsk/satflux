@@ -64,6 +64,10 @@ function mutate(evolu: Loader, run: (onComplete: () => void) => { ok: boolean; e
     return commitExpenseMutation(evolu, run);
 }
 
+/**
+ * Rewrite source-owner rows into the explicit target partition and await each committed result.
+ * Stop at the first known copy rejection and retain its table and row identity for recovery.
+ */
 async function refreshSourceRows(
     evolu: Loader,
     target: Loader,
@@ -84,6 +88,10 @@ async function refreshSourceRows(
     return { ok: true, copied };
 }
 
+/**
+ * Copy only source IDs absent from the target owner so interrupted cleanup can resume.
+ * Preserve existing target copies, including newer values from a completed cutover.
+ */
 async function copyMissingSourceRows(
     evolu: Loader,
     target: Loader,
@@ -105,6 +113,10 @@ async function copyMissingSourceRows(
     return { ok: true, copied };
 }
 
+/**
+ * Refresh source copies, then delete target-only IDs absent from the captured source set.
+ * The caller must verify the mirrored owners before completing cutover.
+ */
 async function mirrorSourceRows(
     evolu: Loader,
     target: Loader,
@@ -161,6 +173,10 @@ async function loadShares(evolu: Loader, appOwnerId: string, companyId: string):
     return rows.filter((r) => r.companyId === companyId && r.ownerId === appOwnerId);
 }
 
+/**
+ * Finish interrupted rekey cleanup using the newest active share as the cutover target.
+ * Verify copied rows before revoking, purging and unregistering superseded owners.
+ */
 async function finishSupersededActiveShares(
     evolu: Loader,
     companyId: string,
@@ -256,6 +272,10 @@ export async function rekeyCompanyShare(evolu: Loader, companyId: string, option
     return withExpenseMaintenance(evolu, (scope) => rekeyCompanyShareLocked(scope.evolu, companyId, options));
 }
 
+/**
+ * Resume or perform owner rotation under the maintenance lease.
+ * Keep source refresh, target verification, activation and old-owner cleanup ordered; failures remain resumable.
+ */
 async function rekeyCompanyShareLocked(evolu: Loader, companyId: string, options: RekeyOptions): Promise<RekeyResult> {
     const report = (progress: RekeyProgress) => options.onProgress?.(progress);
     report({ phase: "prepare", done: 0, total: 0 });
@@ -418,6 +438,10 @@ export async function resumePendingCompanyShareRekeys(evolu: Loader): Promise<vo
     return withExpenseMaintenance(evolu, (scope) => resumePendingCompanyShareRekeysLocked(scope.evolu));
 }
 
+/**
+ * Finish superseded active-share cleanup and resume eligible rekeys for this AppOwner/device.
+ * Do not take over another device's marked operation.
+ */
 async function resumePendingCompanyShareRekeysLocked(evolu: Loader): Promise<void> {
     const appOwnerId = (await evolu.appOwner).id;
     const rows = (await evolu.loadQuery(allCompanySharesQuery)) as unknown as readonly ShareRow[];

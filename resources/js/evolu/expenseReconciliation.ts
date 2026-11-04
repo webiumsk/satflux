@@ -65,10 +65,16 @@ const financialBindings = [
     ["allExpensesQuery", "expenses", "expense"],
 ] as const;
 
+/**
+ * Read only an exported query binding; missing bindings receive no scope-cache override.
+ */
 function queryExport(name: string): unknown {
     return Object.prototype.hasOwnProperty.call(clientQueries, name) ? Reflect.get(clientQueries, name) : undefined;
 }
 
+/**
+ * Return this client's active registered facade, rejecting raw, foreign or revoked clients.
+ */
 export function expenseReconciliationScope(evolu: Client): ExpenseReconciliationScope {
     const facade = Reflect.get(evolu, scopeKey) as ExpenseReconciliationScope | undefined;
     const scope = facade && scopes.get(facade);
@@ -76,6 +82,10 @@ export function expenseReconciliationScope(evolu: Client): ExpenseReconciliation
     return facade;
 }
 
+/**
+ * Prefer a live expense copy, but retain a tombstone when no live copy exists.
+ * This lets guarded callers reject deletion instead of recreating a stale target.
+ */
 export function currentExpenseTarget(scope: ExpenseReconciliationScope, id: string): (EvoluExpenseRow & { isDeleted?: unknown }) | undefined {
     const internal = scopes.get(scope);
     if (!internal?.active) throw new Error("expense_reconciliation_lease_expired");
@@ -84,6 +94,10 @@ export function currentExpenseTarget(scope: ExpenseReconciliationScope, id: stri
         (EvoluExpenseRow & { isDeleted?: unknown }) | undefined;
 }
 
+/**
+ * Reload financial queries and the enabled finite auxiliary pool for fresh owner and target decisions.
+ * Must follow a write that invalidates these private, unsubscribed query keys.
+ */
 async function refresh(scope: Scope): Promise<void> {
     const indices = [...scope.activeAux];
     const [context, loaded] = await Promise.all([
@@ -115,6 +129,10 @@ async function refresh(scope: Scope): Promise<void> {
     });
 }
 
+/**
+ * Use an explicit maintenance owner or the exact fresh company and target partition.
+ * Reject unavailable partitions, ambiguous or pending shares and cross-owner moves instead of falling back to stale registry state.
+ */
 function financialOwner(scope: Scope, table: string, patch: Row, explicit?: string): string {
     if (explicit) return explicit;
     const source = table === "expense" ? scope.targets : table === "bankTransaction"
@@ -173,6 +191,10 @@ export async function checkpointExpenseMutations(evolu: Client): Promise<void> {
     await marker(scope);
 }
 
+/**
+ * Compare expected financial patches with post-handler rows in their exact owner partition.
+ * Unacknowledged batch aborts fail; a missing row satisfies only an expected tombstone.
+ */
 function verify(scope: Scope): void {
     if (scope.abortedGroups.size > 0) throw new Error("expense_mutation_batch_rejected");
     for (const expected of scope.expected.values()) {
@@ -210,6 +232,10 @@ export async function withExpenseReconciliation<T>(
         verify(internal);
         return result;
     }
+    /**
+     * Establish the marker barrier, run one admitted writer and verify its final financial state.
+     * Expose only a revocable facade; worker uncertainty skips compensation and propagates to origin quarantine.
+     */
     const execute = async (): Promise<T> => {
         const activeAux = new Set([0, auxiliary.length - 1]);
         auxiliary.forEach(([, names], index) => { if (names.some((name) => auxiliaryNames.includes(name))) activeAux.add(index); });
@@ -220,6 +246,10 @@ export async function withExpenseReconciliation<T>(
         scopes.set(scope.facade, scope);
         let group: { valid: number; invalid: boolean; before: Scope["expected"] } | undefined;
         scope.evolu = new Proxy(evolu, {
+            /**
+             * Serve refreshed query snapshots and route mutations through fresh owner checks.
+             * Track synchronous batch expectations so known aborts restore only in-memory proof state.
+             */
             get(target, property, receiver) {
                 if (property === scopeKey) return scope.facade;
                 const value = Reflect.get(target, property, receiver) as unknown;

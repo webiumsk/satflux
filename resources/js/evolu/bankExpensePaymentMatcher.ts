@@ -16,11 +16,18 @@ export function positiveBankAmount(value: string | null | undefined): string | n
     return cents || null;
 }
 
+/**
+ * Return an uppercase three-letter currency code, or null without inventing a debit default.
+ */
 export function bankPaymentCurrency(value: string | null | undefined): string | null {
     const code = value?.trim().toUpperCase() ?? "";
     return /^[A-Z]{3}$/.test(code) ? code : null;
 }
 
+/**
+ * Validate the calendar date and timestamp fields, then return the ledger's literal booking day.
+ * Do not shift the payment date through a timezone conversion.
+ */
 export function bankPaymentBookingDate(value: string | null): string | null {
     if (!value || !/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})?)?$/.test(value)) return null;
     const date = value.slice(0, 10);
@@ -31,6 +38,10 @@ export function bankPaymentBookingDate(value: string | null): string | null {
     return Number.isFinite(Date.parse(value)) ? date : null;
 }
 
+/**
+ * Require valid normalized symbols when supplied and give the bank symbol precedence.
+ * Only a missing bank symbol permits an exact full external-number reference match.
+ */
 function matchesExpenseHints(transaction: EvoluBankTransactionRow, expense: EvoluExpenseRow): boolean {
     const bankVs = transaction.variableSymbol?.trim() ?? "";
     const expenseVs = expense.variableSymbol?.trim() ?? "";
@@ -44,6 +55,10 @@ function matchesExpenseHints(transaction: EvoluBankTransactionRow, expense: Evol
     return Boolean(reference && expense.externalNumber?.trim() === reference);
 }
 
+/**
+ * Select exactly one same-company recorded, unpaid expense by exact cents, currency and hints.
+ * Decline balances, existing links and unverified new email debits; legacy null evidence remains eligible.
+ */
 export function findBankEmailExpenseMatch(
     transaction: EvoluBankTransactionRow,
     ctx: BankPaymentContext,
@@ -90,6 +105,11 @@ export async function tryAutoMatchBankEmailExpense(
     return result.matched;
 }
 
+/**
+ * Within a live lease, validate one owner partition and queue both bookkeeping writes synchronously.
+ * Return false for a known batch rejection; require fresh financial-state proof before publishing context.
+ * Uncertain worker outcomes propagate to the enclosing quarantine without compensation.
+ */
 async function matchBankEmailExpenseInReconciliation(
     evolu: Evolu<InvoicingLocalSchema>, transaction: EvoluBankTransactionRow, ctx: BankPaymentContext,
 ): Promise<boolean> {

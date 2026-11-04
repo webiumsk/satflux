@@ -74,6 +74,7 @@ class TatraBankDebitImportTest extends TestCase
         $this->assertSame([], (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Debet', $body));
     }
 
+    /** Invalid date/time suffixes must reject with or without VS rather than fall back to a partial date. */
     #[Test]
     #[TestWith(['03.11.2026X'])]
     #[TestWith(['03.11.2026ž'])]
@@ -96,6 +97,7 @@ class TatraBankDebitImportTest extends TestCase
         }
     }
 
+    /** Complete date tokens preserve optional bank time independently of whether the movement includes a VS. */
     #[Test]
     #[TestWith(['03.11.2026', '00:00:00'])]
     #[TestWith(['03.11.2026.', '00:00:00'])]
@@ -126,6 +128,7 @@ class TatraBankDebitImportTest extends TestCase
         $this->assertNull($rows[0]->variableSymbol);
     }
 
+    /** Both delegated parsers preserve layout-separated fields and inline numeric content without using remittance values. */
     #[Test]
     #[TestWith(['<p>Debet. Suma: 123,45 EUR.</p><p>03.11.2026</p><p>VS: 001234</p>', '00:00:00'])]
     #[TestWith(['<div>Debet. Suma: 123,45 EUR.</div><div>03.11.2026</div><div>VS: 001234</div>', '00:00:00'])]

@@ -1134,6 +1134,7 @@ export const invoicingApi = {
         },
     },
     bankTransactions: {
+        /** Lists company movements; suppress global errors only when the caller handles them in its current context. */
         async list<T = unknown>(companyId: string, params: Record<string, unknown> = {}, options: { skipErrorFlash?: boolean } = {}): Promise<{ data: T[]; meta?: { summary?: unknown; last_page?: number } }> {
             const { data } = await api.get<{ data?: T[]; meta?: { summary?: unknown; last_page?: number } }>(`/invoicing/companies/${companyId}/bank-transactions`, { ...options, params });
             return { data: data.data ?? [], meta: data.meta };
@@ -1212,12 +1213,14 @@ export const invoicingApi = {
             const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/efaktura/inbox`);
             return data.data ?? [];
         },
+        /** Fetches the parked document with a bounded wait so a stalled bridge cannot retain the local write lock. */
         async inboxDetail<T = unknown>(companyId: string, receiptId: string): Promise<T> {
             const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}`, {
                 timeout: EFAKTURA_INBOX_REQUEST_TIMEOUT_MS,
             });
             return data.data;
         },
+        /** Acknowledges an existing local copy; timeout does not establish whether the server accepted the acknowledgment. */
         async inboxImported(companyId: string, receiptId: string): Promise<void> {
             await api.post(`/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}/imported`, undefined, {
                 timeout: EFAKTURA_INBOX_REQUEST_TIMEOUT_MS,

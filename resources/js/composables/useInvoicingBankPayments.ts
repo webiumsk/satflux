@@ -120,6 +120,10 @@ function useServerInvoicingBankPayments(
         return companyId.value || null;
     }
 
+    /**
+     * Load server rows for the captured company and request generation.
+     * Discard superseded responses and let callers opt out of global error flashes.
+     */
     async function load(matchFilter = lastFilter, options: { skipErrorFlash?: boolean } = {}) {
         const request = ++loadRequest;
         const cid = requireCompanyId();
@@ -181,6 +185,10 @@ function useServerInvoicingBankPayments(
         };
     }
 
+    /**
+     * Run the server batch action for the selected company.
+     * The page owns error reporting and any subsequent refresh.
+     */
     async function autoMatchBatch(batchId: string) {
         const cid = requireCompanyId();
         if (!cid) return;
@@ -193,18 +201,28 @@ function useServerInvoicingBankPayments(
         return invoicingApi.bankTransactions.suggestions<BankMatchSuggestion>(cid, transactionId);
     }
 
+    /**
+     * Submit a manual server match without performing an implicit reload.
+     * Suppress the global flash so the calling page can scope action errors.
+     */
     async function matchTransaction(transactionId: string, documentId: string) {
         const cid = requireCompanyId();
         if (!cid) return;
         await invoicingApi.bankTransactions.match(cid, transactionId, documentId, { skipErrorFlash: true });
     }
 
+    /**
+     * Ignore the selected server movement; the caller handles errors and refresh.
+     */
     async function ignoreTransaction(transactionId: string) {
         const cid = requireCompanyId();
         if (!cid) return;
         await invoicingApi.bankTransactions.ignore(cid, transactionId, { skipErrorFlash: true });
     }
 
+    /**
+     * Remove a server match; keep action failure separate from refresh failure.
+     */
     async function unmatchTransaction(transactionId: string) {
         const cid = requireCompanyId();
         if (!cid) return;
@@ -238,6 +256,10 @@ function useServerInvoicingBankPayments(
         wiseBridgeChecked.value = false;
     }, { flush: "sync" });
 
+    /**
+     * Apply Wise status only to the captured company and latest status request.
+     * A stale failure must not clear the newly selected company's status.
+     */
     async function fetchWiseStatus() {
         const requestSeq = ++wiseStatusRequestSeq;
         const cid = requireCompanyId();
@@ -390,6 +412,10 @@ function useLocalInvoicingBankPayments(
         wiseBridgeChecked.value = false;
     }, { flush: "sync" });
 
+    /**
+     * Resolve the selected local company's server bridge without a first-company fallback.
+     * Update the cache only for the latest lookup and honor caller freshness guards.
+     */
     async function resolveBridgeCompanyId(stillCurrent?: () => boolean): Promise<string | null> {
         const requestSeq = ++bridgeLookupRequestSeq;
         const localCompanyId = companyId.value;
@@ -415,6 +441,10 @@ function useLocalInvoicingBankPayments(
 
     const inboundSyncs = new Map<string, Promise<void>>();
 
+    /**
+     * Share one in-flight inbound synchronization per local company.
+     * Remove only the completed promise so newer work cannot be evicted.
+     */
     async function syncInboundFromBridge() {
         const localCompanyId = companyId.value;
         const active = inboundSyncs.get(localCompanyId);
@@ -428,6 +458,10 @@ function useLocalInvoicingBankPayments(
         }
     }
 
+    /**
+     * Fetch bridge email rows and import them only while that local company remains selected.
+     * Bridge failures are best-effort and do not remove existing local movements.
+     */
     async function syncInboundCompany(localCompanyId: string) {
         const bridgeId = await resolveBridgeCompanyId();
         if (!bridgeId) {
@@ -471,6 +505,10 @@ function useLocalInvoicingBankPayments(
         await resolveBridgeCompanyId();
     }
 
+    /**
+     * Resolve and query Wise for the captured local company and latest generation.
+     * Ignore both successful and failed responses after a company or request change.
+     */
     async function fetchWiseStatus() {
         const requestSeq = ++wiseStatusRequestSeq;
         const localCompanyId = companyId.value;
@@ -496,6 +534,10 @@ function useLocalInvoicingBankPayments(
         await fetchWiseStatus();
     }
 
+    /**
+     * Fetch Wise rows through the selected company's bridge and import them locally.
+     * Discard a late result after a company switch; preserve the existing Wise matching policy.
+     */
     async function syncWise() {
         const localCompanyId = companyId.value;
         const bridgeId = await resolveBridgeCompanyId();
@@ -583,6 +625,10 @@ function useLocalInvoicingBankPayments(
         await unmatchLocalBankTransaction(evolu, transactionId as BankTransactionId, paymentCtx);
     }
 
+    /**
+     * Await guarded local expense creation before refreshing the selected company.
+     * Do not publish the refresh into a company selected while the write was pending.
+     */
     async function createExpenseFromTransaction(transactionId: string, draft: BankExpenseDraft) {
         const localCompanyId = companyId.value;
         const paymentCtx = await loadBankPaymentContext(evolu);

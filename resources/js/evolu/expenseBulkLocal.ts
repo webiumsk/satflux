@@ -25,6 +25,10 @@ export function resolveBulkExpenseTargets(
     return filtered.filter((row) => idSet.has(row.id));
 }
 
+/**
+ * Recheck selected company targets under the shared writer gate before marking them paid.
+ * Skip missing, paid or cancelled rows; return counters only after the batch is verified.
+ */
 export async function bulkMarkPaidLocalExpenses(
     evolu: Evolu<InvoicingLocalSchema>,
     targets: EvoluExpenseRow[],
@@ -49,6 +53,10 @@ export async function bulkMarkPaidLocalExpenses(
     });
 }
 
+/**
+ * Cancel fresh selected-company targets in one guarded batch, skipping missing or already cancelled rows.
+ * A rejected write fails the operation instead of reporting optimistic processed counts.
+ */
 export async function bulkCancelLocalExpenses(
     evolu: Evolu<InvoicingLocalSchema>,
     targets: EvoluExpenseRow[],

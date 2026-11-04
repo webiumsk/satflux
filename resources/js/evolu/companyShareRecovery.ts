@@ -43,6 +43,10 @@ export async function recoverCompanyToPrivate(
     return withExpenseMaintenance(evolu, (scope) => recoverCompanyToPrivateLocked(scope.evolu, companyId, backup));
 }
 
+/**
+ * Use the backup ID set to restore private rows after revoking and deleting shared copies.
+ * Prove local mutations before unregistering owners; bounded relay waiting is not remote delivery proof.
+ */
 async function recoverCompanyToPrivateLocked(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: string,

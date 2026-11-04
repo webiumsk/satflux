@@ -15,6 +15,9 @@ const quarantined = new WeakSet<Evolu<InvoicingLocalSchema>>();
 declare const leaseBrand: unique symbol;
 export type BankReconciliationLease = { readonly [leaseBrand]: true };
 const leases = new WeakMap<object, Evolu<InvoicingLocalSchema>>();
+/**
+ * Reject forged, expired or foreign-client leases before reusing an acquired origin lock.
+ */
 export function assertBankReconciliationLease(evolu: Evolu<InvoicingLocalSchema>, lease: BankReconciliationLease): void {
     if (leases.get(lease) !== evolu) throw new Error("expense_reconciliation_lease_expired");
 }
@@ -27,6 +30,10 @@ export class BankReconciliationUnknownError extends Error {
     }
 }
 
+/**
+ * Observe one known completion with an error subscription and bounded deadline.
+ * Throws, worker errors or missing completion become Unknown, which does not establish rollback.
+ */
 export function awaitWorkerOutcome<T>(
     evolu: Evolu<InvoicingLocalSchema>,
     start: (complete: (value: T) => void, unknown: () => void) => void,
@@ -37,17 +44,26 @@ export function awaitWorkerOutcome<T>(
     let settled = false;
     let unsubscribe: (() => void) | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    /**
+     * Dispose the deadline and error observer when a terminal outcome wins the race.
+     */
     const cleanup = () => {
         if (timer !== undefined) clearTimeout(timer);
         unsubscribe?.();
         unsubscribe = undefined;
     };
+    /**
+     * Reject once as uncertain; a later completion cannot turn this outcome into success.
+     */
     const unknown = () => {
         if (settled) return;
         settled = true;
         cleanup();
         rejectOutcome(new BankReconciliationUnknownError());
     };
+    /**
+     * Resolve the first known outcome and ignore completion after an Unknown rejection.
+     */
     const complete = (value: T) => {
         cleanup();
         if (!settled) {
@@ -117,6 +133,10 @@ export function serializeBankEmailReconciliation<T>(
         rejectPublic(waitError());
         controller.abort();
     }, BANK_RECONCILIATION_TIMEOUT_MS);
+    /**
+     * Execute only admitted work and issue a lease only when expense matching is locked.
+     * Unknown rejects the public call while keeping the client queue and any acquired origin lock held.
+     */
     const run = async (allowExpenseMatching: boolean): Promise<T> => {
         if (canceled) throw waitError();
         clearTimeout(waitTimer);
@@ -162,6 +182,9 @@ export function serializeBankEmailReconciliation<T>(
         }
     });
     reconciliations.set(evolu, pending);
+    /**
+     * Clear the finished waiter and remove its queue entry only if it is still the tail.
+     */
     const release = () => {
         clearTimeout(waitTimer);
         if (reconciliations.get(evolu) === pending) reconciliations.delete(evolu);

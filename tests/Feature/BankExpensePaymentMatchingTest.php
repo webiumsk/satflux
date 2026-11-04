@@ -113,6 +113,7 @@ class BankExpensePaymentMatchingTest extends TestCase
         $this->assertSame(1, AuditLog::where('action', 'bank_transaction.expense_matched')->count());
     }
 
+    /** Verify VS precedence and full-reference fallback without accepting partial document-number matches. */
     #[Test]
     #[TestWith(['001234', 'INV-001234', '001234', null, true])]
     #[TestWith([null, 'INV-001234', '001234', null, true])]
@@ -293,6 +294,7 @@ class BankExpensePaymentMatchingTest extends TestCase
         $this->assertSame(BusinessExpenseStatus::Recorded, $expense->fresh()->status);
     }
 
+    /** A failed audit insert must roll back both financial links and retain the unpaid expense. */
     #[Test]
     public function audit_failure_rolls_back_both_bookkeeping_updates(): void
     {
@@ -373,6 +375,7 @@ class BankExpensePaymentMatchingTest extends TestCase
         $this->assertSame(BusinessExpenseStatus::Paid, $expense->fresh()->status);
     }
 
+    /** Reject malformed raw storage before ORM casts can normalize it; PostgreSQL rejects these fixtures itself. */
     #[Test]
     #[TestWith(['booked_at', '2026-02-30 12:00:00'])]
     #[TestWith(['booked_at', '2026-11-03 24:01:00'])]

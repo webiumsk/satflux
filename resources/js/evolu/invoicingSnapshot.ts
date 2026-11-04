@@ -215,6 +215,10 @@ export async function restoreInvoicingSnapshotDetailed(
     return restoreInvoicingSnapshotDetailedAsync(evolu, snapshot);
 }
 
+/**
+ * Restore allowlisted rows in dependency order under the maintenance gate, awaiting each committed result.
+ * Report known row rejections; share-secret rows and the local coordination marker are outside the restore allowlist.
+ */
 export async function restoreInvoicingSnapshotDetailedAsync(
     evolu: Evolu<InvoicingLocalSchema>,
     snapshot: InvoicingDataSnapshot,

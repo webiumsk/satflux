@@ -349,6 +349,10 @@ export function downloadExpenseImportExampleCsv(): void {
     downloadCsvBlob(csv, "expense_import_example.csv");
 }
 
+/**
+ * Parse the file before acquiring the writer gate, then allocate numbers from fresh company rows.
+ * Report known row errors, but propagate uncertain worker outcomes without continuing the import.
+ */
 export async function importLocalExpensesFromFile(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,

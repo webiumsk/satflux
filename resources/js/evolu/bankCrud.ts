@@ -125,6 +125,10 @@ function findExactMatchDocument(
     return exact.length === 1 ? exact[0] : null;
 }
 
+/**
+ * Queue a match row and the existing bank/document bookkeeping synchronously.
+ * Return false on match-row validation rejection; gated callers still prove persistence.
+ */
 function applyMatch(
     evolu: Evolu<InvoicingLocalSchema>,
     transaction: EvoluBankTransactionRow,
@@ -182,6 +186,10 @@ function applyMatch(
     return true;
 }
 
+/**
+ * Dispatch eligible email debits to expense reconciliation and credits to exact document matching.
+ * Return the actual insertion result so rejected matches cannot inflate automatic counts.
+ */
 export async function tryAutoMatchTransaction(
     evolu: Evolu<InvoicingLocalSchema>,
     transaction: EvoluBankTransactionRow,
@@ -294,6 +302,10 @@ function wiseRowsToParsed(rows: WiseBankRowInput[]): ParsedBankRow[] {
     }));
 }
 
+/**
+ * Import normalized file or Wise rows with company-local deduplication and batch counters.
+ * This basic-import path retains its existing unlocked behavior and does not grant debit expense-matching authority.
+ */
 export async function importLocalBankRows(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
@@ -444,6 +456,11 @@ export async function importInboundServerTransactionsAsync(
         : importInboundServerTransactions(evolu, companyId, rows, false));
 }
 
+/**
+ * Persist email direction evidence, deduplicate rows and verify every inserted identity before counting.
+ * The caller supplies the locking decision; unlocked imports skip automatic expense payment.
+ * Known row-batch rejection is explicit, while uncertain worker outcomes propagate without retry.
+ */
 async function importInboundServerTransactions(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
@@ -512,6 +529,10 @@ async function importInboundServerTransactions(
     }
     const created: Array<{ id: BankTransactionId; dedupeHash: string }> = [];
     if (prepared.length > 0) {
+        /**
+         * Queue every prepared row in one synchronous batch with the receipt on the final insert.
+         * Captured IDs remain provisional until the post-handler identity check succeeds.
+         */
         const insertPrepared = (onComplete: () => void) => {
             // Validation of any actual insert aborts Evolu's whole synchronous
             // batch. Never report earlier rows as imported after that abort.
@@ -554,6 +575,10 @@ async function importInboundServerTransactions(
     return { imported, auto_matched: autoMatched };
 }
 
+/**
+ * Serialize explicit batch reconciliation across cooperating clients.
+ * Automatic expense payment still requires an acquired origin lock; uncertain outcomes are not retried.
+ */
 export async function autoMatchLocalBatchAsync(
     evolu: Evolu<InvoicingLocalSchema>,
     batchId: BankImportBatchId,
@@ -563,6 +588,10 @@ export async function autoMatchLocalBatchAsync(
         : autoMatchLocalBatch(evolu, batchId, false));
 }
 
+/**
+ * Refresh a known, live batch before explicit matching and prove the final counter update.
+ * Honor the caller's locking decision when deciding whether expenses may be paid.
+ */
 async function autoMatchLocalBatch(
     evolu: Evolu<InvoicingLocalSchema>,
     batchId: BankImportBatchId,
@@ -616,6 +645,10 @@ export async function manualMatchLocalTransaction(
     Object.assign(ctx, scope.context);
 }
 
+/**
+ * Apply a manual match using the writer gate's fresh context.
+ * Reject missing, cross-company or already matched targets and surface match-row rejection.
+ */
 function manualMatchLocalTransactionCore(
     evolu: Evolu<InvoicingLocalSchema>, transactionId: BankTransactionId, documentId: DocumentId,
     ctx: BankPaymentContext, matchedAmount?: number,
@@ -643,6 +676,10 @@ function manualMatchLocalTransactionCore(
     if (!matched) throw new Error("expense_mutation_batch_rejected");
 }
 
+/**
+ * Ignore only a fresh, unmatched movement under the required writer gate.
+ * Matched, linked or missing targets are left alone; caller context changes only after persistence proof.
+ */
 export async function ignoreLocalBankTransaction(
     evolu: Evolu<InvoicingLocalSchema>,
     transactionId: BankTransactionId,
@@ -673,6 +710,10 @@ export async function unmatchLocalBankTransaction(
     Object.assign(ctx, scope.context);
 }
 
+/**
+ * Remove the bank link and reverse invoice payment bookkeeping when applicable.
+ * Unlinking an expense deliberately leaves its paid status unchanged.
+ */
 function unmatchLocalBankTransactionCore(
     evolu: Evolu<InvoicingLocalSchema>, transactionId: BankTransactionId, ctx: BankPaymentContext,
 ): void {
@@ -704,6 +745,10 @@ function unmatchLocalBankTransactionCore(
     transaction.matchStatus = "unmatched";
 }
 
+/**
+ * Create and link an expense under the shared writer gate.
+ * Publish the resulting expense and linkage into caller context only after persistence is verified.
+ */
 export async function createLocalExpenseFromBankTransaction(
     evolu: Evolu<InvoicingLocalSchema>,
     transactionId: BankTransactionId,
@@ -717,6 +762,10 @@ export async function createLocalExpenseFromBankTransaction(
     return expense;
 }
 
+/**
+ * Build an expense from a fresh outgoing movement and explicit user overrides.
+ * A live lease is required; expense creation and bank linkage stay in one synchronous mutation batch.
+ */
 function createExpenseFromBankTransactionInReconciliation(
     scope: ExpenseReconciliationScope, transactionId: BankTransactionId,
     payload: ExpenseSavePayload & { supplier?: string; category?: string },
@@ -819,6 +868,10 @@ export function mapLocalBankTransactionsToApi(
     });
 }
 
+/**
+ * Project the selected company's recent batches and derive recovery availability from persisted unmatched movements.
+ * Original import counters alone do not determine whether another match attempt is available.
+ */
 export function mapLocalBankBatchesToApi(
     batches: EvoluBankImportBatchRow[],
     companyId: CompanyId,

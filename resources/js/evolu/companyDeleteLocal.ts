@@ -48,6 +48,10 @@ export async function deleteLocalCompany(
     return withExpenseMaintenance(evolu, (scope) => deleteLocalCompanyCore(scope.evolu, companyId));
 }
 
+/**
+ * Queue deletion of the company and its dependencies from the gate's refreshed rows.
+ * The enclosing maintenance operation proves completion before reporting success.
+ */
 function deleteLocalCompanyCore(evolu: Evolu<InvoicingLocalSchema>, companyId: CompanyId): void {
     const documents = evolu.getQueryRows(allDocumentsQuery);
     const companyDocIds = new Set(

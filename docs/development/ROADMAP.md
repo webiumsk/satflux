@@ -1,5 +1,17 @@
 # Development roadmap
 
+## Current: complete PR427 documentation and manual review loop - 2026-11-04
+
+All CI jobs pass on6ba7e908. Add genuine missing function contracts to address the
+bot's retained docstring warning; preserve executable tokens, annotations, all
+thresholds and ordinary error behavior. Independent QA accepts comment/metadata20
+manifest75cab067...06b7 with exact TS/PHP executable identity. Publish only the
+reviewed24 paths and wait for full fresh CI.
+After the approximately01:30UTC reset, post the owner's exact requested
+`@coderabbitai review` comment. Repair valid findings and repeat verification until
+CI and actual review are green; a rate-limited neutral check is insufficient.
+No merge/deployment or production access is authorized by this instruction.
+
 ## Current: publish PR427 fourth review fixes - 2026-11-04
 
 All three new review items and two defects exposed by independent regression

@@ -59,6 +59,10 @@ export function nextLocalExpenseInternalNumber(
     return `${prefix}${String(max + 1n).padStart(4, "0")}`;
 }
 
+/**
+ * Validate API-shaped fields and map them to Evolu column names.
+ * An omitted delivery value maps to the issue date; update callers decide whether omission should be written.
+ */
 function mapPayloadFields(payload: ExpenseSavePayload) {
     const title = parseOpt(payload.title ?? null, Opt255);
     if (!title.ok) return title;
@@ -99,6 +103,10 @@ function mapPayloadFields(payload: ExpenseSavePayload) {
     };
 }
 
+/**
+ * Build the expense using the caller's already-fresh numbering context.
+ * Stable IDs use upsert; the guarded caller must first exclude existing or deleted targets.
+ */
 function insertLocalExpenseCore(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
@@ -135,6 +143,10 @@ function insertLocalExpenseCore(
     return evolu.insert("expense", row);
 }
 
+/**
+ * Reject cancelled targets or invalid fields before writing the supplied expense values.
+ * Omitted delivery dates are not written, preserving saved overrides and explicit nulls.
+ */
 function updateLocalExpenseCore(
     evolu: Evolu<InvoicingLocalSchema>,
     expenseId: ExpenseId,
@@ -192,6 +204,10 @@ function cancelLocalExpenseCore(
     });
 }
 
+/**
+ * Create a recorded, unpaid copy with a new local number and today's issue/delivery dates.
+ * Retain the source reference, amounts, currency and other copied fields.
+ */
 function duplicateLocalExpenseCore(
     evolu: Evolu<InvoicingLocalSchema>,
     source: EvoluExpenseRow,
@@ -247,6 +263,10 @@ export async function insertLocalExpense(
     return withExpenseReconciliation(evolu, (scope) => insertLocalExpenseInReconciliation(scope, companyId, payload, options));
 }
 
+/**
+ * Update a fresh live expense under the required origin gate, retaining the caller's expected company binding.
+ * Reject missing/deleted/cancelled targets or a provided company mismatch, then prove persistence before returning the Result.
+ */
 export async function updateLocalExpense(
     evolu: Evolu<InvoicingLocalSchema>, expenseId: ExpenseId, payload: ExpenseSavePayload, current?: EvoluExpenseRow | null,
 ) {
@@ -259,6 +279,10 @@ export async function updateLocalExpense(
     });
 }
 
+/**
+ * Save note-only intent after fresh live, company and cancellation checks.
+ * Never replay cached financial fields while a concurrent bank reconciliation may have changed them.
+ */
 export async function updateLocalExpenseNote(
     evolu: Evolu<InvoicingLocalSchema>, expenseId: ExpenseId, note: string | null, expectedCompanyId?: string,
 ) {
@@ -273,6 +297,10 @@ export async function updateLocalExpenseNote(
     });
 }
 
+/**
+ * Mark a fresh live, noncancelled expense paid using today's date.
+ * Await the origin gate and persistence proof before returning the mutation Result.
+ */
 export async function markLocalExpensePaid(evolu: Evolu<InvoicingLocalSchema>, expenseId: ExpenseId) {
     return withExpenseReconciliation(evolu, (scope) => {
         const fresh = currentExpenseTarget(scope, expenseId);
@@ -281,6 +309,10 @@ export async function markLocalExpensePaid(evolu: Evolu<InvoicingLocalSchema>, e
     });
 }
 
+/**
+ * Explicitly return a fresh live, noncancelled expense to recorded status and clear its paid date.
+ * The returned Result follows the shared writer gate's completion proof.
+ */
 export async function unmarkLocalExpensePaid(evolu: Evolu<InvoicingLocalSchema>, expenseId: ExpenseId) {
     return withExpenseReconciliation(evolu, (scope) => {
         const fresh = currentExpenseTarget(scope, expenseId);
@@ -289,6 +321,10 @@ export async function unmarkLocalExpensePaid(evolu: Evolu<InvoicingLocalSchema>,
     });
 }
 
+/**
+ * Cancel a fresh live expense under the shared writer gate, rejecting missing or deleted targets.
+ * Return only after the worker-backed financial-state check completes.
+ */
 export async function cancelLocalExpense(evolu: Evolu<InvoicingLocalSchema>, expenseId: ExpenseId) {
     return withExpenseReconciliation(evolu, (scope) => {
         const fresh = currentExpenseTarget(scope, expenseId);
@@ -297,6 +333,10 @@ export async function cancelLocalExpense(evolu: Evolu<InvoicingLocalSchema>, exp
     });
 }
 
+/**
+ * Re-read the source and allocate the copy's number from fresh company rows inside the writer gate.
+ * Caller snapshots supply identity, not authoritative field values or numbering state.
+ */
 export async function duplicateLocalExpense(
     evolu: Evolu<InvoicingLocalSchema>, source: EvoluExpenseRow, _existingRows: EvoluExpenseRow[],
 ) {

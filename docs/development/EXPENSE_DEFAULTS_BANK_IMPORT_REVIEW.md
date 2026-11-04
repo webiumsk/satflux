@@ -1,5 +1,35 @@
 # Expense defaults and bank-mail reconciliation
 
+## Documentation coverage follow-up - 2026-11-04
+
+All four jobs in CI41751685173 pass on published `6ba7e908`, including full PHPStan
+and Composer audit. The owner explicitly requests waiting for all checks, then a
+manual `@coderabbitai review` comment after the review-capacity reset, with further
+repair/check iterations until green. The bot reports the next included review in
+24 minutes at 01:06 UTC; use approximately 01:31 UTC to allow a reset margin.
+
+The retained pre-merge warning reports docstring coverage of 27.27% against an
+80% threshold. A bounded AST audit identifies meaningful missing contracts in
+already changed functions. Add 70 JSDoc blocks in 13 Evolu/composable files,
+three API method contracts and 17 plain PHPDoc blocks in five PHP files. Document
+locking/completion, owner routing, exact match qualification and failure/recovery;
+add no annotation tags, executable changes, new tests or configuration exceptions.
+The local audit metric is explicit and does not reproduce the bot's denominator.
+
+The 20-path comment/metadata manifest is
+`75cab06764fe739578eb1df9521988741eb8aa89dc50aa64fdcebafc01ae06b7`.
+It covers 14 TypeScript and five PHP source/test files plus the parser fingerprint
+in API coverage. The 453 route objects remain unchanged. PHP author proof compares
+all 12 PR-changed PHP paths with `6ba7e908` after excluding comment/doc/whitespace
+tokens; syntax parsing and Pint5 pass. Independent QA accepts every byte in the final20 manifest and verifies exact
+parser-aware TypeScript tokens (including types), comment-free emitted JavaScript
+and PHP TOKEN_PARSE tokens against independently extracted6ba Git inputs. No
+annotation, directive or suppression changes occur. Full lint retains48 known
+warnings/zero errors; typecheck111existing/no-new, Pint5 and API validators pass.
+Prior runtime QA/security evidence carries through this proven equivalence. Main
+must publish exact reviewed bytes, wait for the new complete CI and issue only
+the authorized review command after capacity returns. A neutral/rate-limited check is not a completed review.
+
 ## Fourth review contract - 2026-11-04
 
 The owner's further CodeRabbit request covers the review of published `f0849584`:

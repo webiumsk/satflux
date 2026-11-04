@@ -1,5 +1,22 @@
 # Project state
 
+## PR427 documentation warning and manual review loop - 2026-11-04
+
+Owner explicitly asks to wait for every test, issue `@coderabbitai review` after
+capacity returns, repair findings and repeat until green. CI41751685173 passes
+all four jobs on published6ba7e908; CodeRabbit skipped review due to capacity,
+next available approximately01:30UTC. Its retained docstring warning is addressed
+with genuine contracts only: frontend70, API3 and PHP17 prose docblocks.
+No executable, annotation, test logic, threshold or configuration change.
+
+Comment/metadata20 manifest: 75cab067...06b7. PHP tokens across all12 PR PHP paths
+remain identical to6ba; Pint5/syntax pass, API453 routes stay unchanged and parser
+fingerprint is refreshed. Independent QA accepts every final20 byte:14TS parser-derived tokens and emitted
+JS plus5PHP executable tokens match6ba exactly. Lint48known/type111existing-no-new,
+Pint5/API pass. Main-owned scoped publication and fresh CI precede manual review. Then post the exact authorized
+command after reset and examine actual review output, including pre-merge checks.
+No merge, deployment, production replay or unrelated primary work is included.
+
 ## PR427 fourth review accepted locally - 2026-11-04
 
 The owner's further CodeRabbit request covers one new inline finding and two

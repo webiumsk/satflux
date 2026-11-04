@@ -24,6 +24,10 @@ class TatraBankEmailParser implements BankNotificationParser
             || str_contains(strtolower($subject), 'obrat');
     }
 
+    /**
+     * Return the supported movement, or no rows when debit evidence is incomplete.
+     * Bank-controlled fields qualify debits before either format can apply defaults.
+     */
     public function parse(string $from, string $subject, string $body): array
     {
         $text = $this->normalizeBody($body);
@@ -81,6 +85,7 @@ class TatraBankEmailParser implements BankNotificationParser
         return null;
     }
 
+    /** Preserve layout boundaries and inline numeric tokens while removing markup. */
     protected function normalizeBody(string $body): string
     {
         $text = html_entity_decode($body);
@@ -529,6 +534,7 @@ class TatraBankEmailParser implements BankNotificationParser
         return ['amount' => $amount, 'currency' => $currency, 'date' => $date, 'vs' => $symbol['value']];
     }
 
+    /** Exclude payer reference, remittance and counterparty fields from bank value qualification. */
     private function bankAuthoredPrefix(string $text): string
     {
         if (preg_match('/\b(?:Inform[aá]cia\s+pre\s+pr[ií]jemcu|Referencia\s+platite[lľ]a|Protistrana|Popis\s+transakcie|[UÚuú][cč]et\s+protistrany)\s*:/iu', $text, $field, PREG_OFFSET_CAPTURE)) {
@@ -538,6 +544,7 @@ class TatraBankEmailParser implements BankNotificationParser
         return $text;
     }
 
+    /** Construct a valid bank timestamp without rolling over invalid calendar or time components. */
     private function debitDate(string $day, string $month, string $year, string $hour, string $minute, string $second = '0'): ?Carbon
     {
         if (! checkdate((int) $month, (int) $day, (int) $year)
@@ -548,6 +555,7 @@ class TatraBankEmailParser implements BankNotificationParser
         return Carbon::create((int) $year, (int) $month, (int) $day, (int) $hour, (int) $minute, (int) $second);
     }
 
+    /** Validate grouping, precision and range before normalizing a debit amount to its positive value. */
     private function debitAmount(string $raw): ?float
     {
         if (! preg_match('/\A-?(?:\d+|\d{1,3}(?: \d{3})+)(?:[,.]\d{1,2})?\z/', trim($raw))) {

@@ -1,5 +1,18 @@
 # Development decision log
 
+## 2026-11-04 - Complete the CodeRabbit loop without weakening checks
+
+The owner authorizes the exact manual review command after capacity resets and
+requires all tests and review to finish green. CI41751685173 already passes on
+6ba7e908. Address the existing80% documentation check by documenting actual changed
+contracts, preserving executable behavior and the configured threshold.
+Use independent source equivalence rather than redundant local runtime tests for
+plain comment additions; independent QA accepts all20 frozen bytes and exact
+TS/PHP token/emission equivalence. Remote CI still runs completely on the new commit.
+No annotation tags, test logic, dependency, auth/owner/payment or server changes.
+Main alone publishes and sends the authorized bot command after CI and reset;
+review evidence, not a neutral capacity status, determines completion.
+
 ## 2026-11-04 - Bound bridge waits and preserve bank action context
 
 Continue the owner's PR427 review-repair/publication scope. Bound inbox detail
