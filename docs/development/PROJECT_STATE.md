@@ -1,5 +1,34 @@
 # Project state
 
+## PR427 progressive history repair independently accepted - 2026-11-04
+
+The repair addresses all three inline and one supplemental finding from actual
+review5764391436 on b78d09b8. Optional authenticated encrypted cursors alternate
+bounded head overlap and cyclic nullable-created-at/UUID keyset backfill. Strict
+page coverage and fresh expected-owner admission precede advancement; unproven
+fallback writes nothing. At most two bounded read chunks precede unraced financial
+work and transaction-complete ciphertext-only IndexedDB CAS. Ordinary listing,
+authorization and legacy import contracts remain. Unknown never advances its chunk;
+admitted incomplete scheduling may overlap covered rows without re-auto-matching.
+
+Both independent reviewers accept runtime13 manifest
+`d4b6bcc44553b8ca43511519bc1a62ca327aca10aaea018d7517f7df228ab51a`
+and source/tests21 manifest
+`6c628d695391f39cd72a4bbf4ed4b6cb1674e919d14b55f5d718860bf2c232bf`.
+Main full frontend1666/173, build70seconds, lint48known/zeroerrors, type111existing/
+no-new and five-language parity pass. Backend31HTTP/SQLite tests/153assertions and
+Pint pass; no new PHPStan finding beyond the unchanged local optional Scramble gap.
+Security222repository/6suites +20Vue +9Evolu/SQLite +2owner probes pass; QA337repository/13suites +20progress +33Evolu/SQLite
+(9new/24retained) +14credential-order probes pass. Scopes overlap, not aggregate totals.
+Native IndexedDB four-case Playwright source is reviewed/listed, not locally run;
+fresh CI execution is mandatory because sandbox browser syscalls are unavailable.
+
+Publish only25 accepted paths and verify committed bytes/remote SHA, then require
+all fresh CI and another actual clean manual CodeRabbit review. Backend must deploy
+before or with this client; old clients retain ordinary endpoint behavior. No
+universal history-arrival/latency guarantee, production replay, merge/deployment,
+migration or owner/key/billing change. Graphify graph remains unavailable.
+
 ## PR427 credential-order repair independently accepted - 2026-11-04
 
 889e1e69 CI41781754322 is green and all26 prior threads resolved. Independent

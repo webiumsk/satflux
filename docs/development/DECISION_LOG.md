@@ -1,5 +1,28 @@
 # Development decision log
 
+## 2026-11-04 - Advance history only after admitted page coverage
+
+Replace the full-walk/discard-all budget tradeoff with at most two bounded read
+chunks, each cleaned up before strict financial import and checkpoint CAS. Optional
+server ciphertext frames schedule overlapping head/cyclic keyset backfill; no new
+arrival-order, authorization or database-schema guarantee. Ordinary clients remain
+compatible. A retry frame changes lane only and cannot advance uncovered rows.
+
+Require fresh actual owner equals captured expected owner before any page mutation,
+including empty-page admission. Strict unproven fallback returns zero/no ACK without
+writing; legacy APIs remain unchanged. Keep exact terminal proof, unverified-evidence
+payment rules, known partial failures and Unknown boundaries. Prior successful
+chunks stay committed; no compensation/replay policy is added. Dedicated bounded
+checkpoint metadata after bank proof is safe even if its commit status is uncertain.
+Store only opaque server cursors and hashed bindings via transaction-complete CAS.
+
+Revise prior lookup-failure controls to retry-only until a successful check; forward
+the address controller signal to its GET. Native checkpoint semantics are tested in
+root-owned CI Playwright cases, with local sandbox execution unavailable. Both independent reviewers accept runtime13 d4b6bcc4...ab51a/source-tests21
+6c628d69...c232bf; main1666/173, build/static/locales and backend31/153 pass.
+Require full fresh CI including four native IDB cases, then actual clean manual review.
+No production, merge/deployment, owner/key/billing or credential protocol change.
+
 ## 2026-11-04 - Order same-bridge credential dispatch without changing entered outcomes
 
 Independent actual page/service fixtures confirm Medium SEC-WISE-CONNECT-ORDER:

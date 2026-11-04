@@ -1,5 +1,101 @@
 # Expense defaults and bank-mail reconciliation
 
+## Progressive history repair contract - 2026-11-04
+
+Actual manual review5764391436 completed on `b78d09b8` with three inline and one
+supplemental finding despite green CI and five passing pre-merge checks88.10%.
+The all-history20s walk discards completed pages when a later read expires, starving
+large histories. Revise that earlier discard-all choice to bounded acknowledged
+progress; also unify failed connection-check UI, cancel the address GET and retain
+loading ownership with the latest invocation, including initial-query completion.
+
+The opt-in same-route API uses `sync=1`, `source=email`, a64-hex `sync_context`,
+optional opaque `sync_cursor` and page size at most100. Ordinary pagination,
+filters, ordering, summary, payload formatting and authorization stay unchanged.
+Cursor frames are authenticated Laravel ciphertext bound to version, authenticated
+user, route company, email source, context, page size and ordering. They carry no
+short expiry and grant no authorization; current route access is always enforced.
+Unsupported sync filters and invalid frames use only
+`errors.sync_cursor=["bank_sync_cursor_invalid"]` with422.
+
+The frame alternates a bounded latest-head overlap with descending older backfill
+using explicit NULL-created-at ordering and UUID ties. Head reads cannot jump an
+existing backfill frontier. Completed backfill cycles restart, eventually revisiting
+gaps/new-head overflow, same-timestamp lower IDs and late/backdated/NULL records.
+Nullable timestamps and UUIDs do not prove monotone arrivals, immediate coverage
+or latency under arbitrary write rates. A candidate frame advances its page only
+after ACK; a retry frame changes scheduling alone and retains the exact frontier.
+
+Each refresh performs at most two read chunks, with20s per read and10s per HTTP
+request. Read cleanup precedes the financial page import. No overall timer races
+financial work. Strict page ACK requires fresh admitted expected-owner equality,
+every input's owner/company/hash durability or proven duplicate, and terminal
+verification. `scope_verified=false` returns zero without writes or checkpoint
+changes; the strict new path also refuses unproven fallback admission. Existing
+legacy import/fallback/CSV/Wise contracts stay unchanged. Empty pages also require
+admitted owner proof. Valid direction-evidence `unverified` rows can count as
+covered but remain ineligible for automatic expense payment. Existing hashes are
+not re-auto-matched; first-time historical imports retain existing eligibility.
+
+Known invalid/uncovered inputs remain visibly incomplete; valid subsets may be
+processed under existing rules. An admitted incomplete page can save only the
+retry scheduling frame and service the other lane before reporting the error.
+Unknown/error never advances that chunk; earlier proven committed chunks remain.
+No automatic retry of Unknown/failed financial operations or compensation is
+introduced. Admitted incomplete lane scheduling may overlap already-covered rows
+without re-auto-matching them.
+
+IndexedDB stores only server ciphertext and SHA-256 binding identifiers in one
+owner/company slot. This protects server-known cursor metadata, without claiming
+Evolu client-only encryption or adding keys/schema. Compare-and-set uses one
+transaction and resolves on transaction completion; conflict stops the losing
+attempt. Current context is checked before put. Dedicated checkpoint metadata may
+have its own20s abort/deadline after bank proof: uncertain persistence can only
+replay proven rows, never skip uncommitted financial work or imply rollback.
+Only the exact cursor-invalid422 resets the captured slot by CAS once per attempt;
+authorization/network failures never reset it. Missing protocol, incomplete pages
+and unavailable checkpoint storage have five-language recovery messages.
+
+Four root-owned native IndexedDB Playwright tests exercise concurrent CAS, reopen
+persistence, provisional request success followed by transaction abort, stale/abort
+zero-put and transaction-completion ordering. Listing/bundling passes locally;
+native execution is a required CI gate because local sandbox syscalls block Chrome.
+Independent QA/security accept the frozen source; fresh full CI remains required.
+Deploy compatibility is backend first or together: old clients keep ordinary
+pagination, while the new client reports unavailable protocol against an old backend.
+No production replay, merge/deployment, server migration, owner/key/billing policy
+or credential queue change is part of this repair.
+
+## Progressive history repair verified evidence - 2026-11-04
+
+Both independent reviewers accept canonical runtime13 SHA-256
+`d4b6bcc44553b8ca43511519bc1a62ca327aca10aaea018d7517f7df228ab51a`
+and source/tests21 SHA-256
+`6c628d695391f39cd72a4bbf4ed4b6cb1674e919d14b55f5d718860bf2c232bf`.
+Exactly25 paths form publication scope:13 runtime,8 test/support and4 documents.
+Main full frontend1666cases/173files, production build70seconds and lint zeroerrors/
+48knownwarnings pass. Typecheck111existing/no-new and EN/SK/ES/DE/CS parity pass;
+warning/type/docstring thresholds are unchanged.
+
+Author client176cases/8suites, root page/cancellation79/2 and backend31 HTTP/SQLite
+cases/153assertions/Pint pass. PHPStan has no new findings; unchanged local optional
+Scramble dependency prevents a clean local full result, so fresh CI is authoritative.
+Independent security222repository/6suites +20actualVue progress +9actualEvolu/SQLite
++2ownerboundary regressions pass and independently repeats31PHP/153assertions.
+Independent QA337repository/13suites +20progress +33actualEvolu/SQLite
+(9new/24retained) +14retainedcredential-order probes pass. These scopes
+overlap and are not summed. Four real-browser IndexedDB tests are source-reviewed,
+bundled and listed only locally; fresh CI execution is required before all-green.
+SQL evidence proves LIMIT/noCOUNT-or-SUM, not universal rows-examined or latency.
+
+Confirmed draft SEC-R11-OWNER is fixed before bank writes by comparing fresh
+financial owner with the captured expected owner inside admitted scope. Strict
+unproven fallback cannot write or change lane/checkpoint; empty pages need admission.
+Legacy CSV/Wise/fallback contracts remain. No API artifact change is needed because
+the controller is outside the curated exporter; fresh CI still checks API artifacts.
+Verify exact committed blobs/remote SHA, full fresh CI and actual manual review.
+No production, merge or deployment action is included.
+
 ## Credential-order repair verified evidence - 2026-11-04
 
 The runtime correction shares normalized server-bridge completion gates across

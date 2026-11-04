@@ -150,10 +150,10 @@ describe('recorded bridge address context', () => {
     mocks.inbound.mockReturnValueOnce(first.promise).mockResolvedValueOnce(response(addressB));
     await render();
     expect(mocks.ensure).toHaveBeenCalledWith('local-a', expect.any(Function), { preferRecordedBridgeId: true });
-    expect(mocks.inbound).toHaveBeenCalledWith('shared-a');
+    expect(mocks.inbound).toHaveBeenCalledWith('shared-a', expect.objectContaining({ signal: expect.any(AbortSignal) }));
     selectedRouting.value = 'shared-b';
     await flushPromises();
-    expect(mocks.inbound).toHaveBeenLastCalledWith('shared-b');
+    expect(mocks.inbound).toHaveBeenLastCalledWith('shared-b', expect.objectContaining({ signal: expect.any(AbortSignal) }));
     expect(wrapper!.text()).toContain(addressB);
     first.resolve(response(addressA));
     await flushPromises();
@@ -188,7 +188,7 @@ describe('recorded bridge address context', () => {
     await flushPromises();
     first.resolve({ ok: true, bridgeCompanyId: 'shared-old' });
     await flushPromises();
-    expect(mocks.inbound).toHaveBeenCalledExactlyOnceWith('shared-new');
+    expect(mocks.inbound).toHaveBeenCalledExactlyOnceWith('shared-new', expect.objectContaining({ signal: expect.any(AbortSignal) }));
   });
 });
 
@@ -254,15 +254,20 @@ describe('Wise sync result scope', () => {
 });
 
 describe('Wise connection lookup recovery', () => {
-  it.each([null, { connected: true }])('shows a status retry without guessing connection state: %s', async (lastStatus) => {
+  it.each([
+    ['status', null], ['status', { connected: true }],
+    ['bridge', null], ['bridge', { connected: true }],
+  ] as const)('shows only a %s retry without guessing connection state: %s', async (failure, lastStatus) => {
     wiseStatus.value = lastStatus;
-    wiseStatusFailed.value = true;
+    wiseStatusFailed.value = failure === 'status';
+    bridgeLookupFailed.value = failure === 'bridge';
     await render();
     expect(wrapper!.text()).toContain('invoicing.bank_wise_connection_check_failed');
     expect(wrapper!.findAll('button').some((button) => button.text() === 'common.retry')).toBe(true);
     expect(wrapper!.find('#wise-api-token').exists()).toBe(false);
     expect(wrapper!.text()).not.toContain('invoicing.bank_wise_connected');
     expect(wrapper!.text()).not.toContain('invoicing.bank_wise_sync');
+    expect(wrapper!.text()).not.toContain('invoicing.bank_wise_reconnect');
     expect(wrapper!.text()).not.toContain('invoicing.bank_wise_bridge_missing');
   });
 
@@ -288,17 +293,23 @@ describe('Wise connection lookup recovery', () => {
   });
 
   it('keeps the token and reports failure when no current bridge was connected', async () => {
-    bridgeLookupFailed.value = true;
-    mocks.connectWise.mockRejectedValueOnce(new Error('bank_bridge_lookup_failed'));
+    mocks.connectWise.mockImplementationOnce(async () => {
+      bridgeLookupFailed.value = true;
+      throw new Error('bank_bridge_lookup_failed');
+    });
     await render();
     const input = wrapper!.find('#wise-api-token');
     await input.setValue('synthetic-wise-token');
     input.element.closest('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await flushPromises();
-    expect((input.element as HTMLInputElement).value).toBe('synthetic-wise-token');
+    expect(wrapper!.find('#wise-api-token').exists()).toBe(false);
     expect(mocks.flashError).toHaveBeenCalledExactlyOnceWith('invoicing.bank_wise_connect_failed');
     expect(mocks.flashSuccess).not.toHaveBeenCalled();
     expect(mocks.connectWise).toHaveBeenCalledExactlyOnceWith('synthetic-wise-token');
+    mocks.fetchWiseStatus.mockImplementationOnce(async () => { bridgeLookupFailed.value = false; });
+    await wrapper!.findAll('button').find((button) => button.text() === 'common.retry')!.trigger('click');
+    await flushPromises();
+    expect((wrapper!.find('#wise-api-token').element as HTMLInputElement).value).toBe('synthetic-wise-token');
   });
 
   it.each(['success', 'failure'] as const)('ignores an old connection %s while a new context is connecting', async (outcome) => {
@@ -356,12 +367,12 @@ describe('Wise connection lookup recovery', () => {
     expect(mocks.flashSuccess).not.toHaveBeenCalled();
   });
 
-  it('keeps connect controls visible after a failed lookup and explicitly retries status', async () => {
+  it('shows only retry after a failed lookup and restores confirmed controls on success', async () => {
     bridgeLookupFailed.value = true;
     await render();
     expect(wrapper!.text()).toContain('invoicing.bank_wise_connection_check_failed');
     expect(wrapper!.text()).not.toContain('invoicing.bank_wise_bridge_missing');
-    expect(wrapper!.find('#wise-api-token').exists()).toBe(true);
+    expect(wrapper!.find('#wise-api-token').exists()).toBe(false);
 
     const pending = deferred<void>();
     mocks.fetchWiseStatus.mockReturnValueOnce(pending.promise);
@@ -432,6 +443,9 @@ describe('Wise connection lookup recovery', () => {
 describe('batch matching errors', () => {
   it.each([
     ['bank_import_row_batch_rejected', 'invoicing.bank_import_failed'],
+    ['bank_sync_page_incomplete', 'invoicing.bank_sync_incomplete'],
+    ['bank_sync_checkpoint_unavailable', 'invoicing.bank_sync_checkpoint_unavailable'],
+    ['bank_sync_protocol_unavailable', 'invoicing.bank_sync_protocol_unavailable'],
     ['bank_reconciliation_outcome_unknown', 'invoicing.bank_matching_unknown'],
     ['bank_reconciliation_wait_timed_out', 'invoicing.bank_matching_busy'],
     ['expense_reconciliation_owner_unavailable', 'invoicing.expense_owner_unavailable'],
@@ -658,7 +672,7 @@ describe('independent bank address context probes', () => {
     pending.resolve({ ok: true, bridgeCompanyId: 'bridge-local-a' });
     await flushPromises();
     expect(wrapper!.get('code').text()).toBe(addressB);
-    expect(mocks.inbound).not.toHaveBeenCalledWith('bridge-local-a');
+    expect(mocks.inbound).not.toHaveBeenCalledWith('bridge-local-a', expect.anything());
   });
   it('keeps B address when a deferred A HTTP response resolves after B', async () => {
     const pending = deferred<ReturnType<typeof response>>();
@@ -740,7 +754,7 @@ describe('independent bank address context probes', () => {
     mocks.inbound.mockResolvedValue(response(addressA));
     await render();
     expect(mocks.ensure).not.toHaveBeenCalled();
-    expect(mocks.inbound).toHaveBeenCalledWith('server-company-uuid');
+    expect(mocks.inbound).toHaveBeenCalledWith('server-company-uuid', expect.objectContaining({ signal: expect.any(AbortSignal) }));
     expect(wrapper!.get('code').text()).toBe(addressA);
   });
 });

@@ -1,3 +1,7 @@
+import { getActivePinia } from "pinia";
+import { sha256Hex } from "@/utils/sha256";
+import { readBankSyncCheckpoint, compareAndSetBankSyncCheckpoint, type BankSyncCheckpoint } from "@/services/bankSyncCheckpointStore";
+import type { BankEmailSyncMeta } from "@/services/api";
 import { toAppRows } from "@/evolu/queryLoad";
 import type { Evolu } from "@evolu/common/local-first";
 import { computed, onScopeDispose, ref, watch, type ComputedRef, type Ref } from "vue";
@@ -20,7 +24,7 @@ import {
     createLocalExpenseFromBankTransaction,
     filterLocalBankTransactions,
     ignoreLocalBankTransaction,
-    importInboundServerTransactionsAsync,
+    importInboundServerTransactionsPageAsync,
     importLocalBankFileAsync,
     importLocalBankRows,
     type WiseBankRowInput,
@@ -404,6 +408,7 @@ function useLocalInvoicingBankPayments(
 ): UseInvoicingBankPaymentsResult {
     const evolu = useInvoicingEvolu();
     const loading = ref(true);
+    let loadRequest = 0;
     const matchFilter = ref("all");
 
     // Per-query promises: useQuery's `promise` option is typed per query,
@@ -437,7 +442,7 @@ function useLocalInvoicingBankPayments(
         batchesPromise,
     ]);
     void loadPromise.finally(() => {
-        loading.value = false;
+        if (loadRequest === 0) loading.value = false;
     });
 
     const bankTxRows = useQuery(allBankTransactionsQuery, { promise: bankTxPromise });
@@ -502,6 +507,8 @@ function useLocalInvoicingBankPayments(
     const activeBankReads = new Set<() => void>();
     onScopeDispose(() => {
         disposed = true;
+        loadRequest++;
+        loading.value = false;
         bridgeIdentityGeneration++;
         companySelectionGeneration++;
         bridgeResolutionRequestSeq++;
@@ -584,24 +591,29 @@ function useLocalInvoicingBankPayments(
         }
     }
 
-    /** Fetch complete pages within the caller's budget, yielding so immediate pages cannot starve its timer. */
-    async function fetchInboundServerRows(
-        bridgeId: string,
-        requestOptions: BridgeCompanyRequestOptions,
-    ): Promise<ServerBankTransactionRow[]> {
-        const rows: ServerBankTransactionRow[] = [];
-        let page = 1;
-        let lastPage = 1;
-        do {
-            const res = await invoicingApi.bankTransactions.list<ServerBankTransactionRow>(bridgeId,
-                { source: "email", per_page: 100, page }, requestOptions());
-            requestOptions(); // Reject late responses even when a transport ignores abort.
-            rows.push(...res.data);
-            lastPage = res.meta?.last_page ?? 1;
-            page += 1;
-            if (page <= lastPage) await new Promise<void>((resolve) => setTimeout(resolve, 0));
-        } while (page <= lastPage);
-        return rows;
+    /** Recognize only the protocol's exact invalid-cursor response, never auth or arbitrary validation errors. */
+    function invalidSyncCursor(error: unknown): boolean {
+        if (typeof error !== "object" || error === null || !("response" in error)) return false;
+        const response = error.response;
+        if (typeof response !== "object" || response === null || !("status" in response) || response.status !== 422
+            || !("data" in response) || typeof response.data !== "object" || response.data === null || !("errors" in response.data)) return false;
+        const errors = response.data.errors;
+        return typeof errors === "object" && errors !== null && Object.keys(errors).length === 1 && "sync_cursor" in errors
+            && Array.isArray(errors.sync_cursor) && errors.sync_cursor.length === 1 && errors.sync_cursor[0] === "bank_sync_cursor_invalid";
+    }
+
+    /** Cursor frames are opaque: validate only their transport contract, never infer positions from ciphertext. */
+    function syncMeta(value: BankEmailSyncMeta | undefined): BankEmailSyncMeta {
+        if (!value || value.protocol !== 1 || !["head", "backfill"].includes(value.lane)
+            || typeof value.next_cursor !== "string" || !value.next_cursor || typeof value.retry_cursor !== "string"
+            || !value.retry_cursor || typeof value.cycle_complete !== "boolean") throw new Error("bank_sync_protocol_unavailable");
+        return value;
+    }
+
+    /** Account identity participates only in opaque local checkpoint scoping, never in authorization. */
+    function currentAuthId(): string | null {
+        const user = getActivePinia()?.state.value.auth?.user;
+        return user && (typeof user.id === "string" || typeof user.id === "number") ? String(user.id) : null;
     }
 
     const inboundSyncs = new Map<string, Promise<void>>();
@@ -623,42 +635,130 @@ function useLocalInvoicingBankPayments(
     }
 
     /**
-     * Bound metadata, bridge HTTP and pagination together to twenty seconds before any financial import.
-     * Disposal cancels only this read stage; started financial imports and Unknown are never raced or canceled.
+     * Import at most two completed chunks, releasing read deadlines before any financial work.
+     * Persist opaque progress only after durable coverage; Unknown never advances that chunk.
      */
     async function syncInboundCompany(localCompanyId: string) {
         if (disposed) return;
-        const selectionGeneration = companySelectionGeneration;
-        let current = () => !disposed && companyId.value === localCompanyId
-            && companySelectionGeneration === selectionGeneration;
-        let rows: ServerBankTransactionRow[];
-        try {
-            rows = await withBankReadBudget(async (controls, signal) => {
-                await companyPromise.catch(() => []);
-                await waitCompanyShareRegistryReady(signal);
-                controls();
-                const generation = bridgeIdentityGeneration;
-                const routing = bridgeRoutingKey.value;
-                current = () => !disposed && companyId.value === localCompanyId
-                    && companySelectionGeneration === selectionGeneration && bridgeRoutingKey.value === routing
-                    && bridgeIdentityGeneration === generation;
-                const bridge = await resolveBridgeCompanyId(current, controls);
-                controls();
-                return bridge?.ok && bridge.bridgeCompanyId && bridge.isCurrent()
-                    ? await fetchInboundServerRows(bridge.bridgeCompanyId, controls) : [];
-            }, { isCurrent: () => current(), registerCancel: registerBankRead });
-        } catch {
-            // Read-only bridge sync is best-effort; local data remains usable.
-            return;
+        const selection = companySelectionGeneration;
+        let current = () => !disposed && companyId.value === localCompanyId && companySelectionGeneration === selection;
+        const session: { state: { slot: string; context: string; ownerId: string; bridgeId: string; checkpoint: BankSyncCheckpoint | null } | null } = { state: null };
+        let invalidReset = false;
+        let incomplete = false;
+        const fail = (code: string): never => { throw new Error(code); };
+        /** Abort a pending metadata transaction when its captured routing scope is revoked. */
+        const registerMetadata = (cancel: () => void) => {
+            const remove = registerBankRead(cancel);
+            const stop = watch(() => current(), (valid) => { if (!valid) cancel(); }, { flush: "sync" });
+            return () => { stop(); remove(); };
+        };
+        /** Checkpoint completion is metadata-only and cannot race or undo the preceding financial import. */
+        const save = async (next: BankSyncCheckpoint | null) => {
+            if (!session.state) return "stale" as const;
+            const captured = session.state;
+            try {
+                return await withBankReadBudget((_controls, signal) => compareAndSetBankSyncCheckpoint(
+                    captured.slot, captured.checkpoint, next, { signal, isCurrent: () => current() },
+                ), { isCurrent: () => current(), registerCancel: registerMetadata });
+            } catch {
+                if (!current()) return "stale" as const;
+                return fail("bank_sync_checkpoint_unavailable");
+            }
+        };
+        for (let chunk = 0; chunk < 2; chunk++) {
+            let stage = "read";
+            let page: { rows: ServerBankTransactionRow[]; meta: BankEmailSyncMeta } | null;
+            try {
+                page = await withBankReadBudget(async (controls, signal) => {
+                    if (!session.state) {
+                        await companyPromise.catch(() => []);
+                        await waitCompanyShareRegistryReady(signal);
+                        controls();
+                        const generation = bridgeIdentityGeneration;
+                        const routing = bridgeRoutingKey.value;
+                        const account = currentAuthId();
+                        current = () => !disposed && companyId.value === localCompanyId && companySelectionGeneration === selection
+                            && bridgeIdentityGeneration === generation && bridgeRoutingKey.value === routing && currentAuthId() === account;
+                        const bridge = await resolveBridgeCompanyId(current, controls);
+                        controls();
+                        if (!bridge?.ok || !bridge.bridgeCompanyId || !bridge.isCurrent()) return null;
+                        const selected = selectedCompanyRows.value;
+                        const row = selected[0];
+                        if (selected.length !== 1 || !("ownerId" in row) || typeof row.ownerId !== "string") return null;
+                        const ownerId = row.ownerId;
+                        const appOwner = await evolu.appOwner;
+                        controls();
+                        stage = "checkpoint";
+                        const slot = await sha256Hex(JSON.stringify([appOwner.id, localCompanyId, "email", 1]));
+                        const context = await sha256Hex(JSON.stringify([appOwner.id, ownerId, localCompanyId, bridge.bridgeCompanyId, routing, account, "email", 1]));
+                        controls();
+                        if (!slot || !context) return fail("bank_sync_checkpoint_unavailable");
+                        let checkpoint = await readBankSyncCheckpoint(slot, signal);
+                        controls();
+                        if (checkpoint && checkpoint.context !== context) {
+                            const reset = await compareAndSetBankSyncCheckpoint(slot, checkpoint, null, { signal, isCurrent: () => current() });
+                            controls();
+                            if (reset !== "saved") return null;
+                            checkpoint = null;
+                        }
+                        session.state = { slot, context, ownerId, bridgeId: bridge.bridgeCompanyId, checkpoint };
+                    }
+                    const captured = session.state;
+                    const request = () => invoicingApi.bankTransactions.list<ServerBankTransactionRow>(captured.bridgeId,
+                        { sync: 1, source: "email", sync_context: captured.context, per_page: 100, sync_cursor: captured.checkpoint?.cursor ?? null }, controls());
+                    stage = "read";
+                    let response;
+                    try { response = await request(); }
+                    catch (error) {
+                        controls();
+                        if (!invalidSyncCursor(error)) throw error;
+                        if (invalidReset) return fail("bank_sync_protocol_unavailable");
+                        invalidReset = true;
+                        stage = "checkpoint";
+                        const reset = await compareAndSetBankSyncCheckpoint(captured.slot, captured.checkpoint, null,
+                            { signal, isCurrent: () => current() });
+                        controls();
+                        if (reset !== "saved") return null;
+                        captured.checkpoint = null;
+                        stage = "read";
+                        try { response = await request(); }
+                        catch (retryError) { if (invalidSyncCursor(retryError)) return fail("bank_sync_protocol_unavailable"); throw retryError; }
+                    }
+                    controls();
+                    if (!Array.isArray(response.data) || response.data.length > 100) return fail("bank_sync_protocol_unavailable");
+                    return { rows: response.data, meta: syncMeta(response.meta?.sync) };
+                }, { isCurrent: () => current(), registerCancel: registerMetadata });
+            } catch (error) {
+                if (!current()) return;
+                if (stage === "checkpoint") return fail("bank_sync_checkpoint_unavailable");
+                if (error instanceof Error && ["bank_sync_protocol_unavailable", "bank_sync_checkpoint_unavailable"].includes(error.message)) throw error;
+                if (incomplete) return fail("bank_sync_page_incomplete");
+                return; // Bridge/network/read deadlines remain best-effort; previously committed progress stays.
+            }
+            if (!page || !session.state || !current()) break;
+            const captured = session.state;
+            const result = await importInboundServerTransactionsPageAsync(evolu, localCompanyId as CompanyId, page.rows, captured.ownerId);
+            if (!current()) return;
+            if (!result || result.scope_verified !== true || typeof result.complete !== "boolean"
+                || !Number.isSafeInteger(result.imported) || result.imported < 0 || result.imported > page.rows.length
+                || !Number.isSafeInteger(result.auto_matched) || result.auto_matched < 0 || result.auto_matched > result.imported) {
+                fail("bank_sync_page_incomplete");
+            }
+            const next = { context: captured.context, cursor: result.complete ? page.meta.next_cursor : page.meta.retry_cursor };
+            if (!result.complete) incomplete = true;
+            const saved = await save(next);
+            if (!current()) return;
+            if (saved !== "saved") break;
+            captured.checkpoint = next;
+            if (result.complete && page.meta.cycle_complete) break;
         }
-        if (current() && rows.length > 0) {
-            await importInboundServerTransactionsAsync(evolu, localCompanyId as CompanyId, rows);
-        }
+        if (incomplete && current()) fail("bank_sync_page_incomplete");
     }
 
     /** Await inbound completion and refresh rows only while this hook remains mounted. */
     async function load(filter = matchFilter.value) {
         if (disposed) return;
+        const request = ++loadRequest;
         matchFilter.value = filter;
         loading.value = true;
         try {
@@ -671,7 +771,7 @@ function useLocalInvoicingBankPayments(
                 evolu.loadQuery(allExpensesQuery),
             ]);
         } finally {
-            loading.value = false;
+            if (request === loadRequest && !disposed) loading.value = false;
         }
     }
 

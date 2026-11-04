@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
     importWise: vi.fn(),
     autoMatch: vi.fn(),
     loadQuery: vi.fn(),
+    checkpoints: new Map<string, { context: string; cursor: string }>(),
+    checkpointRead: vi.fn(), checkpointSave: vi.fn(),
 }));
 
 vi.mock("@evolu/vue", async () => {
@@ -42,8 +44,13 @@ vi.mock("@/evolu/client", () => ({
     allCompaniesDetailQuery: "companies",
     bankReconciliationBatchesQuery: "fresh:batches", bankReconciliationTransactionsQuery: "fresh:transactions",
     bankReconciliationMatchesQuery: "fresh:matches", bankReconciliationDocumentsQuery: "fresh:documents", bankReconciliationExpensesQuery: "fresh:expenses",
-    useInvoicingEvolu: () => ({ loadQuery: mocks.loadQuery }),
+    useInvoicingEvolu: () => ({ loadQuery: mocks.loadQuery, appOwner: Promise.resolve({ id: "synthetic-app" }) }),
 }));
+vi.mock("@/services/bankSyncCheckpointStore", () => ({ readBankSyncCheckpoint: mocks.checkpointRead, compareAndSetBankSyncCheckpoint: mocks.checkpointSave }));
+vi.mock("@/utils/sha256", async () => {
+    const { createHash } = await import("node:crypto");
+    return { sha256Hex: async (text: string) => createHash("sha256").update(text).digest("hex") };
+});
 vi.mock("@/evolu/flags", () => ({ isInvoicingLocalFirst: () => mocks.localFirst }));
 vi.mock("@/evolu/bridgeCompanyEnsure", () => ({ ensureBridgeCompanyIdForLocalCompany: mocks.ensure }));
 vi.mock("@/evolu/ephemeralBridge", () => ({ resolveEphemeralBridgeCompanyId: mocks.fallback }));
@@ -54,7 +61,7 @@ vi.mock("@/services/api", () => ({
     },
 }));
 vi.mock("@/evolu/bankCrud", () => ({
-    importInboundServerTransactionsAsync: mocks.importInbound,
+    importInboundServerTransactionsPageAsync: mocks.importInbound,
     importLocalBankRows: mocks.importWise,
     autoMatchLocalBatchAsync: mocks.autoMatch,
 }));
@@ -80,20 +87,35 @@ function deferred<T>() {
 
 const row = { id: "server-tx-b", booked_at: "2026-08-01", amount: "19.00", currency: "EUR" };
 
+function syncResponse<T>(data: T[], cycle_complete = true, lane: "head" | "backfill" = "head", next_cursor = "opaque-next") {
+    return { data, meta: { sync: { protocol: 1 as const, lane, next_cursor, retry_cursor: "opaque-retry", cycle_complete } } };
+}
+
 beforeEach(() => {
     vi.resetAllMocks();
     clearCompanyShares(); markCompanyShareRegistryReady();
     mocks.localFirst = true;
     mocks.companyRows.value = ["local-a", "local-b", "company-a", "company-b"].map((id) => ({
-        id, legalName: `Company ${id}`, registrationNumber: "123",
+        id, legalName: `Company ${id}`, registrationNumber: "123", ownerId: "synthetic-app",
     }));
     mocks.loadQuery.mockResolvedValue([]);
+    mocks.checkpoints.clear();
+    mocks.checkpointRead.mockImplementation(async (slot) => {
+        const value = mocks.checkpoints.get(slot); return value ? { ...value } : null;
+    });
+    mocks.checkpointSave.mockImplementation(async (slot, expected, next, options) => {
+        if (options.signal.aborted || !options.isCurrent()) return "stale";
+        const previous = mocks.checkpoints.get(slot) ?? null;
+        if (previous?.context !== expected?.context || previous?.cursor !== expected?.cursor) return "conflict";
+        if (next) mocks.checkpoints.set(slot, { ...next }); else mocks.checkpoints.delete(slot);
+        return "saved";
+    });
     mocks.ensure.mockImplementation(async (id: string) => ({ ok: true,
         bridgeCompanyId: mocks.companyRows.value.find((company) => company.id === id)?.legalName.trim() ? `bridge-${id}` : null,
     }));
     mocks.fallback.mockResolvedValue("wrong-first-company");
-    mocks.list.mockResolvedValue({ data: [row], meta: { last_page: 1 } });
-    mocks.importInbound.mockResolvedValue({ imported: 1, auto_matched: 0 });
+    mocks.list.mockResolvedValue(syncResponse([row], true, "head"));
+    mocks.importInbound.mockImplementation(async (_evolu, _company, rows) => ({ imported: rows.length, auto_matched: 0, complete: true, scope_verified: true }));
     mocks.importWise.mockResolvedValue({ imported: 1, auto_matched: 0 });
     mocks.autoMatch.mockResolvedValue({ auto_matched: 1 });
     mocks.wiseStatus.mockResolvedValue({ connected: true });
@@ -117,16 +139,137 @@ describe("bank movement bridge synchronization", () => {
         expect(mocks.list).not.toHaveBeenCalled();
         expect(mocks.loadQuery).not.toHaveBeenCalled();
     });
-    it("reads the selected company's bridge and imports every email page into that local company", async () => {
+    it("reads two progressive chunks for the selected company and acknowledges them separately", async () => {
         const { bank } = bankFor();
-        mocks.list.mockResolvedValueOnce({ data: [row], meta: { last_page: 2 } })
-            .mockResolvedValueOnce({ data: [{ ...row, id: "server-tx-b2" }], meta: { last_page: 2 } });
+        const older = { ...row, id: "server-tx-b2" };
+        mocks.list.mockResolvedValueOnce(syncResponse([row], false, "head", "opaque-backfill"))
+            .mockResolvedValueOnce(syncResponse([older], true, "backfill", "opaque-cycle-end"));
         await bank.load();
         expect(mocks.ensure).toHaveBeenCalledWith("local-b", expect.any(Function), { preferRecordedBridgeId: true });
         expect(mocks.fallback).not.toHaveBeenCalled();
-        expect(mocks.list).toHaveBeenNthCalledWith(1, "bridge-local-b", { source: "email", per_page: 100, page: 1 }, { timeout: 10_000, skipErrorFlash: true, signal: expect.any(AbortSignal) });
-        expect(mocks.list).toHaveBeenNthCalledWith(2, "bridge-local-b", { source: "email", per_page: 100, page: 2 }, { timeout: 10_000, skipErrorFlash: true, signal: expect.any(AbortSignal) });
-        expect(mocks.importInbound).toHaveBeenCalledWith(expect.anything(), "local-b", [row, { ...row, id: "server-tx-b2" }]);
+        expect(mocks.list).toHaveBeenNthCalledWith(1, "bridge-local-b", { sync: 1, source: "email", per_page: 100,
+            sync_context: expect.stringMatching(/^[a-f0-9]{64}$/), sync_cursor: null }, expect.objectContaining({ timeout: 10_000, signal: expect.any(AbortSignal) }));
+        expect(mocks.list.mock.calls[1][1]).toMatchObject({ sync_cursor: "opaque-backfill", sync_context: mocks.list.mock.calls[0][1].sync_context });
+        expect(mocks.importInbound).toHaveBeenNthCalledWith(1, expect.anything(), "local-b", [row], "synthetic-app");
+        expect(mocks.importInbound).toHaveBeenNthCalledWith(2, expect.anything(), "local-b", [older], "synthetic-app");
+        expect([...mocks.checkpoints.values()][0].cursor).toBe("opaque-cycle-end");
+    });
+
+    it("resumes durable opaque frames after remount and never exceeds two chunks in one load", async () => {
+        mocks.list.mockResolvedValueOnce(syncResponse([row], false, "head", "frame-1"))
+            .mockResolvedValueOnce(syncResponse([{ ...row, id: "old-1" }], false, "backfill", "frame-2"))
+            .mockResolvedValueOnce(syncResponse([{ ...row, id: "new-head" }], false, "head", "frame-3"))
+            .mockResolvedValueOnce(syncResponse([{ ...row, id: "old-2" }], false, "backfill", "frame-4"));
+        const first = bankFor(); await first.bank.load();
+        expect(mocks.list).toHaveBeenCalledTimes(2); first.scope.stop();
+        const second = bankFor(); await second.bank.load();
+        expect(mocks.list).toHaveBeenCalledTimes(4);
+        expect(mocks.list.mock.calls.map(([, params]) => params.sync_cursor)).toEqual([null, "frame-1", "frame-2", "frame-3"]);
+        expect(mocks.checkpoints.size).toBe(1);
+        expect([...mocks.checkpoints.values()][0].cursor).toBe("frame-4");
+    });
+
+    it("replays a committed page after checkpoint failure without rolling back or duplicating its rows", async () => {
+        const durable = new Set<string>();
+        mocks.importInbound.mockImplementation(async (_evolu, _company, rows) => {
+            let imported = 0;
+            for (const item of rows) if (!durable.has(item.id)) { durable.add(item.id); imported++; }
+            return { imported, auto_matched: 0, complete: true, scope_verified: true };
+        });
+        mocks.checkpointSave.mockRejectedValueOnce(new Error("synthetic commit failure"));
+        const { bank } = bankFor();
+        await expect(bank.load()).rejects.toThrow("bank_sync_checkpoint_unavailable");
+        expect(durable.size).toBe(1); expect(mocks.checkpoints.size).toBe(0);
+        await bank.load();
+        expect(mocks.list.mock.calls.map(([, params]) => params.sync_cursor)).toEqual([null, null]);
+        expect(mocks.importInbound).toHaveBeenCalledTimes(2); expect(durable.size).toBe(1);
+        expect(mocks.checkpoints.size).toBe(1);
+    });
+
+    it("stops on a checkpoint CAS conflict and lets a new load resume the winner", async () => {
+        mocks.list.mockResolvedValueOnce(syncResponse([row], false, "head", "loser"));
+        mocks.checkpointSave.mockImplementationOnce(async (slot, _expected, next) => {
+            mocks.checkpoints.set(slot, { context: next.context, cursor: "other-tab-winner" }); return "conflict";
+        });
+        const { bank } = bankFor(); await bank.load();
+        expect(mocks.list).toHaveBeenCalledTimes(1); expect(mocks.importInbound).toHaveBeenCalledTimes(1);
+        await bank.load();
+        expect(mocks.list.mock.lastCall?.[1].sync_cursor).toBe("other-tab-winner");
+    });
+
+    it.each(["success", "http-failure"] as const)("yields only a retry frame for incomplete coverage, services the other lane and reports incomplete (%s)", async (next) => {
+        mocks.list.mockResolvedValueOnce(syncResponse([row], false, "backfill", "must-not-advance"));
+        if (next === "http-failure") mocks.list.mockRejectedValueOnce(new Error("synthetic later network failure"));
+        else mocks.list.mockResolvedValueOnce(syncResponse([{ ...row, id: "fresh-head" }], true, "head", "head-ack"));
+        mocks.importInbound.mockResolvedValueOnce({ imported: 0, auto_matched: 0, complete: false, scope_verified: true });
+        const { bank } = bankFor();
+        await expect(bank.load()).rejects.toThrow("bank_sync_page_incomplete");
+        expect(mocks.list).toHaveBeenCalledTimes(2);
+        expect(mocks.list.mock.calls[1][1].sync_cursor).toBe("opaque-retry");
+        expect([...mocks.checkpoints.values()][0].cursor).toBe(next === "success" ? "head-ack" : "opaque-retry");
+        expect(mocks.checkpointSave.mock.calls.every(([, , value]) => value?.cursor !== "must-not-advance")).toBe(true);
+    });
+
+    it.each([
+        { imported: 0, auto_matched: 0, complete: false, scope_verified: false },
+        { imported: 0, auto_matched: 0, complete: true, scope_verified: false },
+        { imported: 1, auto_matched: 0, complete: true },
+    ])("never advances cursor or phase for an unadmitted/malformed acknowledgement: %j", async (ack) => {
+        mocks.importInbound.mockResolvedValueOnce(ack);
+        const { bank } = bankFor();
+        await expect(bank.load()).rejects.toThrow("bank_sync_page_incomplete");
+        expect(mocks.checkpointSave).not.toHaveBeenCalled(); expect(mocks.list).toHaveBeenCalledTimes(1);
+    });
+
+    it("propagates financial Unknown unchanged without advancing that page or requesting another lane", async () => {
+        mocks.list.mockResolvedValueOnce(syncResponse([row], false, "head", "unproven"));
+        const unknown = new BankReconciliationUnknownError(); mocks.importInbound.mockRejectedValueOnce(unknown);
+        const { bank } = bankFor();
+        await expect(bank.load()).rejects.toBe(unknown);
+        expect(mocks.checkpointSave).not.toHaveBeenCalled(); expect(mocks.checkpoints.size).toBe(0);
+        expect(mocks.list).toHaveBeenCalledTimes(1);
+    });
+
+    it("requires the progressive protocol and does not fall back to offset history", async () => {
+        mocks.list.mockResolvedValueOnce({ data: [row], meta: { last_page: 100 } });
+        const { bank } = bankFor();
+        await expect(bank.load()).rejects.toThrow("bank_sync_protocol_unavailable");
+        expect(mocks.importInbound).not.toHaveBeenCalled(); expect(mocks.checkpointSave).not.toHaveBeenCalled();
+    });
+
+    it("resets only an exact invalid cursor once and bootstraps inside the same chunk", async () => {
+        const { bank } = bankFor(); await bank.load();
+        const invalid = { response: { status: 422, data: { errors: { sync_cursor: ["bank_sync_cursor_invalid"] } } } };
+        mocks.list.mockRejectedValueOnce(invalid).mockResolvedValueOnce(syncResponse([row], true, "head", "recovered"));
+        await bank.load();
+        expect(mocks.list.mock.calls.slice(1).map(([, params]) => params.sync_cursor)).toEqual(["opaque-next", null]);
+        expect([...mocks.checkpoints.values()][0].cursor).toBe("recovered");
+        mocks.list.mockRejectedValueOnce(invalid).mockRejectedValueOnce(invalid);
+        await expect(bank.load()).rejects.toThrow("bank_sync_protocol_unavailable");
+        expect(mocks.list).toHaveBeenCalledTimes(5);
+    });
+
+    it.each([
+        { response: { status: 403, data: { errors: { sync_cursor: ["bank_sync_cursor_invalid"] } } } },
+        { response: { status: 422, data: { errors: { sync_cursor: ["bank_sync_cursor_invalid"], source: ["invalid"] } } } },
+        { response: { status: 422, data: { errors: { sync_cursor: ["other"] } } } },
+    ])("never resets checkpoints on auth or unrelated validation failures: %j", async (failure) => {
+        const { bank } = bankFor(); await bank.load();
+        mocks.checkpointSave.mockClear(); mocks.list.mockRejectedValueOnce(failure);
+        await bank.load();
+        expect(mocks.checkpointSave).not.toHaveBeenCalled();
+        expect([...mocks.checkpoints.values()][0].cursor).toBe("opaque-next");
+    });
+
+    it("does not advance a frame after routing changes during an entered page import", async () => {
+        const importing = deferred<{ imported: number; auto_matched: number; complete: boolean; scope_verified: boolean }>();
+        mocks.importInbound.mockReturnValueOnce(importing.promise);
+        const { bank, company } = bankFor(); const pending = bank.load();
+        await vi.waitFor(() => expect(mocks.importInbound).toHaveBeenCalledTimes(1));
+        company.value = "local-a"; company.value = "local-b";
+        importing.resolve({ imported: 1, auto_matched: 0, complete: true, scope_verified: true });
+        await pending;
+        expect(mocks.checkpointSave).not.toHaveBeenCalled(); expect(mocks.list).toHaveBeenCalledTimes(1);
     });
 
     it.each([{ ok: true, bridgeCompanyId: null }, { ok: false }])("never falls back to another company when resolution returns %j", async (result) => {
@@ -149,15 +292,15 @@ describe("bank movement bridge synchronization", () => {
     });
 
     it("does not import a previous company's response after switching companies", async () => {
-        const response = deferred<{ data: typeof row[]; meta: { last_page: number } }>();
+        const response = deferred<{ data: typeof row[] }>();
         mocks.list.mockImplementation((id: string) => id === "bridge-local-a"
-            ? response.promise : Promise.resolve({ data: [], meta: { last_page: 1 } }));
+            ? response.promise : Promise.resolve(syncResponse([], true, "head")));
         const { bank, company } = bankFor("local-a");
         const pending = bank.load();
         await vi.waitFor(() => expect(mocks.list).toHaveBeenCalledWith("bridge-local-a", expect.anything(), { timeout: 10_000, skipErrorFlash: true, signal: expect.any(AbortSignal) }));
         company.value = "local-b";
         await nextTick();
-        response.resolve({ data: [row], meta: { last_page: 1 } });
+        response.resolve(syncResponse([row], true, "head"));
         await pending;
         expect(mocks.importInbound).not.toHaveBeenCalled();
     });
@@ -176,6 +319,56 @@ describe("bank movement bridge synchronization", () => {
         expect(bank.inboundEmailAvailable.value).toBe(false);
     });
 
+    it("does not let initial query completion clear a newer active load", async () => {
+        const initial = deferred<never[]>();
+        mocks.loadQuery.mockImplementation((query) => query === "companies" ? Promise.resolve([]) : initial.promise);
+        const response = deferred<{ data: typeof row[] }>();
+        mocks.list.mockReturnValueOnce(response.promise);
+        const { bank } = bankFor();
+        const pending = bank.load();
+        await vi.waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(1));
+        initial.resolve([]);
+        await Promise.resolve(); await Promise.resolve();
+        expect(bank.loading.value).toBe(true);
+        response.resolve(syncResponse([row], true, "head"));
+        await pending;
+        expect(bank.loading.value).toBe(false);
+    });
+
+    it.each(["success", "failure"] as const)("keeps the newer company's load active after an older load ends with %s", async (outcome) => {
+        const first = deferred<{ data: typeof row[] }>(); const second = deferred<{ data: typeof row[] }>();
+        mocks.list.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+        const { bank, company } = bankFor("local-a");
+        const older = bank.load();
+        await vi.waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(1));
+        company.value = "local-b";
+        const current = bank.load();
+        await vi.waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(2));
+        if (outcome === "failure") first.reject(new Error("synthetic old fetch failure"));
+        else first.resolve(syncResponse([row], true, "head"));
+        await older;
+        expect(bank.loading.value).toBe(true);
+        expect(mocks.importInbound).not.toHaveBeenCalled();
+        second.resolve(syncResponse([row], true, "head")); await current;
+        expect(bank.loading.value).toBe(false);
+    });
+
+    it("clears loading on disposal and keeps late constructor/load completions inert", async () => {
+        const initial = deferred<never[]>();
+        mocks.loadQuery.mockImplementation((query) => query === "companies" ? Promise.resolve([]) : initial.promise);
+        const response = deferred<{ data: typeof row[] }>(); mocks.list.mockReturnValueOnce(response.promise);
+        const { bank, scope } = bankFor();
+        const pending = bank.load();
+        await vi.waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(1));
+        expect(bank.loading.value).toBe(true);
+        scope.stop(); await pending;
+        expect(bank.loading.value).toBe(false);
+        initial.resolve([]); response.resolve(syncResponse([row], true, "head"));
+        await Promise.resolve(); await Promise.resolve();
+        expect(bank.loading.value).toBe(false);
+        expect(mocks.importInbound).not.toHaveBeenCalled();
+    });
+
     it("shares an overlapping refresh so the same email rows are imported once", async () => {
         const response = deferred<{ data: typeof row[] }>();
         mocks.list.mockReturnValue(response.promise);
@@ -183,7 +376,7 @@ describe("bank movement bridge synchronization", () => {
         const first = bank.load();
         const second = bank.load();
         await vi.waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(1));
-        response.resolve({ data: [row] });
+        response.resolve(syncResponse([row], true, "head"));
         await Promise.all([first, second]);
         expect(mocks.importInbound).toHaveBeenCalledTimes(1);
     });
@@ -195,24 +388,25 @@ describe("bank movement bridge synchronization", () => {
         let aRequests = 0;
         mocks.list.mockImplementation((bridge) => bridge === "bridge-local-a"
             ? ++aRequests === 1 ? oldA.promise : freshA.promise
-            : Promise.resolve({ data: [] }));
+            : Promise.resolve(syncResponse([], true, "head")));
         const { bank, company } = bankFor("local-a");
         const obsolete = bank.load();
         await vi.waitFor(() => expect(aRequests).toBe(1));
         company.value = "local-b";
         await bank.load();
+        mocks.importInbound.mockClear(); // The empty B page has its own scope-only acknowledgement.
         company.value = "local-a";
         const current = bank.load();
         await vi.waitFor(() => expect(aRequests).toBe(2));
-        oldA.resolve({ data: [row] });
+        oldA.resolve(syncResponse([row], true, "head"));
         await obsolete;
         expect(mocks.importInbound).not.toHaveBeenCalled();
         const overlapping = bank.load();
         await Promise.resolve(); await Promise.resolve();
         expect(aRequests).toBe(2);
-        freshA.resolve({ data: [freshRow] });
+        freshA.resolve(syncResponse([freshRow], true, "head"));
         await Promise.all([current, overlapping]);
-        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-a", [freshRow]);
+        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-a", [freshRow], "synthetic-app");
     });
 
     it("starts fresh work after an identity edit and preserves its promise when obsolete work settles", async () => {
@@ -225,16 +419,16 @@ describe("bank movement bridge synchronization", () => {
         mocks.companyRows.value.find((row) => row.id === "local-b")!.legalName = "New legal identity";
         const current = bank.load();
         await vi.waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(2));
-        oldRead.resolve({ data: [row] });
+        oldRead.resolve(syncResponse([row], true, "head"));
         await old;
         expect(mocks.importInbound).not.toHaveBeenCalled();
         const overlapping = bank.load();
         await Promise.resolve(); await Promise.resolve();
         expect(mocks.list).toHaveBeenCalledTimes(2);
         const fresh = { ...row, id: "fresh-identity" };
-        newRead.resolve({ data: [fresh] });
+        newRead.resolve(syncResponse([fresh], true, "head"));
         await Promise.all([current, overlapping]);
-        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [fresh]);
+        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [fresh], "synthetic-app");
     });
 
     it("retains local access after a failed email fetch and permits a later retry", async () => {
@@ -246,9 +440,9 @@ describe("bank movement bridge synchronization", () => {
         expect(mocks.importInbound).toHaveBeenCalledTimes(1);
     });
 
-    it("times out a later email page without partial import, releases overlapping work and retries only on a new refresh", async () => {
+    it("retains a completed chunk after a later page times out and resumes from its persisted frame", async () => {
         vi.useFakeTimers();
-        mocks.list.mockResolvedValueOnce({ data: [row], meta: { last_page: 2 } })
+        mocks.list.mockResolvedValueOnce(syncResponse([row], false, "head"))
             .mockImplementationOnce((_id, _params, options) => new Promise((_resolve, reject) => {
                 if (options.timeout) setTimeout(() => reject(new AxiosError("synthetic page timeout", "ECONNABORTED")), options.timeout);
             }));
@@ -258,19 +452,19 @@ describe("bank movement bridge synchronization", () => {
         void Promise.all([first, overlapping]).then(() => { settled = true; });
         await vi.advanceTimersByTimeAsync(1);
         expect(mocks.list).toHaveBeenCalledTimes(2);
-        expect(mocks.list).toHaveBeenLastCalledWith("bridge-local-b", { source: "email", per_page: 100, page: 2 },
-            { timeout: 10_000, skipErrorFlash: true, signal: expect.any(AbortSignal) });
+        expect(mocks.list.mock.lastCall?.[1]).toMatchObject({ sync: 1, sync_cursor: "opaque-next" });
         await vi.advanceTimersByTimeAsync(9_998);
-        expect(mocks.importInbound).not.toHaveBeenCalled();
+        expect(mocks.importInbound).toHaveBeenCalledTimes(1);
         expect(settled).toBe(false);
         await vi.advanceTimersByTimeAsync(1); await Promise.all([first, overlapping]);
         expect(bank.loading.value).toBe(false);
-        expect(mocks.importInbound).not.toHaveBeenCalled();
+        expect(mocks.importInbound).toHaveBeenCalledTimes(1);
         expect(new Set(mocks.loadQuery.mock.calls.map(([query]) => query))).toEqual(new Set(["transactions", "matches", "documents", "expenses"]));
         expect(mocks.list).toHaveBeenCalledTimes(2);
         await bank.load();
         expect(mocks.list).toHaveBeenCalledTimes(3);
-        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [row]);
+        expect(mocks.importInbound).toHaveBeenCalledTimes(2);
+        expect(mocks.importInbound).toHaveBeenLastCalledWith(expect.anything(), "local-b", [row], "synthetic-app");
     });
 
     it("leaves company-change refresh ownership with the page so import failures remain observable", async () => {
@@ -307,10 +501,10 @@ describe("bank movement bridge synchronization", () => {
         const pending = bank.load();
         await Promise.resolve();
         expect(mocks.ensure).not.toHaveBeenCalled();
-        mocks.companyRows.value = [{ id: "local-b", legalName: "First company", registrationNumber: "123" }];
+        mocks.companyRows.value = [{ id: "local-b", legalName: "First company", registrationNumber: "123", ownerId: "synthetic-app" }];
         metadata.resolve([]);
         await pending;
-        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [row]);
+        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [row], "synthetic-app");
     });
 
     it("keeps metadata read failure best-effort for inbound and existing Wise status callers", async () => {
@@ -326,9 +520,9 @@ describe("bank movement bridge synchronization", () => {
         expect(bank.wiseStatus.value).toBeNull();
         expect(bank.wiseBridgeMissing.value).toBe(true);
         // The rejected startup promise must not poison later subscribed metadata.
-        mocks.companyRows.value = [{ id: "local-b", legalName: "Recovered company", registrationNumber: "123" }];
+        mocks.companyRows.value = [{ id: "local-b", legalName: "Recovered company", registrationNumber: "123", ownerId: "synthetic-app" }];
         await bank.load();
-        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [row]);
+        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [row], "synthetic-app");
         expect(mocks.ensure).toHaveBeenCalledTimes(4);
     });
 
@@ -348,19 +542,19 @@ describe("bank movement bridge synchronization", () => {
         expect(mocks.importInbound).toHaveBeenCalledTimes(1);
     });
 
-    it.each(["legalName", "registrationNumber"] as const)("discards all fetched pages after %s changes during pagination", async (field) => {
+    it.each(["legalName", "registrationNumber"] as const)("retains completed coverage but discards a stale pending page after %s changes during pagination", async (field) => {
         const page = deferred<{ data: typeof row[] }>();
-        mocks.list.mockResolvedValueOnce({ data: [row], meta: { last_page: 2 } }).mockReturnValueOnce(page.promise);
+        mocks.list.mockResolvedValueOnce(syncResponse([row], false, "head")).mockReturnValueOnce(page.promise);
         const { bank } = bankFor();
         const pending = bank.load();
         await vi.waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(2));
         mocks.companyRows.value.find((company) => company.id === "local-b")![field] = "Changed identity";
-        page.resolve({ data: [{ ...row, id: "page-two" }] });
+        page.resolve(syncResponse([{ ...row, id: "page-two" }], true, "head"));
         await pending;
-        expect(mocks.importInbound).not.toHaveBeenCalled();
+        expect(mocks.importInbound).toHaveBeenCalledTimes(1);
         expect(bank.inboundEmailAvailable.value).toBe(false);
         await bank.load();
-        expect(mocks.importInbound).toHaveBeenCalledTimes(1);
+        expect(mocks.importInbound).toHaveBeenCalledTimes(2);
     });
 
     it("invalidates a lookup across an identity A-B-A edit", async () => {
@@ -388,9 +582,9 @@ describe("bank movement bridge synchronization", () => {
         const company = mocks.companyRows.value.find((company) => company.id === "local-b")!;
         company.legalName = `  ${company.legalName.toUpperCase()}  `;
         company.registrationNumber = `  ${company.registrationNumber}  `;
-        page.resolve({ data: [row] });
+        page.resolve(syncResponse([row], true, "head"));
         await pending;
-        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [row]);
+        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [row], "synthetic-app");
         expect(bank.inboundEmailAvailable.value).toBe(true);
     });
 
@@ -428,61 +622,42 @@ describe("bank movement bridge synchronization", () => {
         expect(mocks.ensure).not.toHaveBeenCalled();
         expect(mocks.importInbound).not.toHaveBeenCalled();
         expect(vi.getTimerCount()).toBe(0);
-        mocks.companyRows.value = [{ id: "local-b", legalName: "Ready later", registrationNumber: "123" }];
+        mocks.companyRows.value = [{ id: "local-b", legalName: "Ready later", registrationNumber: "123", ownerId: "synthetic-app" }];
         metadata.resolve([]);
         await bank.load();
         expect(mocks.importInbound).toHaveBeenCalledTimes(1);
     });
 
-    it("bounds many individually fast pages together, aborts all partial data and retries explicitly", async () => {
+    it("limits a large history to two complete chunks per refresh and preserves durable progress", async () => {
         vi.useFakeTimers();
         const signals: AbortSignal[] = [];
-        const timeouts: number[] = [];
         mocks.list.mockImplementation((_bridge, _params, options) => {
-            signals.push(options.signal); timeouts.push(options.timeout);
-            // Deliberately ignore abort: the overall deadline must still settle the caller.
-            return new Promise((resolve) => setTimeout(() => resolve({ data: [row], meta: { last_page: 100 } }), 7_000));
+            signals.push(options.signal);
+            return new Promise((resolve) => setTimeout(() => resolve(syncResponse([row], false, "head")), 7_000));
         });
         const { bank } = bankFor();
-        mocks.loadQuery.mockClear();
-        const pending = bank.load();
-        const overlapping = bank.load();
-        await vi.advanceTimersByTimeAsync(20_000);
-        await Promise.all([pending, overlapping]);
-        expect(timeouts).toHaveLength(3);
-        expect(timeouts.slice(0, 2)).toEqual([10_000, 10_000]);
-        expect(timeouts[2]).toBeGreaterThan(5_900);
-        expect(timeouts[2]).toBeLessThanOrEqual(6_000);
-        expect(new Set(signals).size).toBe(1);
+        const pending = bank.load(); const overlapping = bank.load();
+        await vi.advanceTimersByTimeAsync(20_000); await Promise.all([pending, overlapping]);
+        expect(mocks.list).toHaveBeenCalledTimes(2);
+        expect(mocks.importInbound).toHaveBeenCalledTimes(2);
+        expect(new Set(signals).size).toBe(2);
         expect(signals.every((signal) => signal.aborted)).toBe(true);
-        expect(mocks.importInbound).not.toHaveBeenCalled();
-        expect(new Set(mocks.loadQuery.mock.calls.map(([query]) => query))).toEqual(new Set(["transactions", "matches", "documents", "expenses"]));
-        await vi.advanceTimersByTimeAsync(2_000);
-        expect(mocks.list).toHaveBeenCalledTimes(3);
-        expect(mocks.importInbound).not.toHaveBeenCalled();
+        expect([...mocks.checkpoints.values()][0].cursor).toBe("opaque-next");
         expect(vi.getTimerCount()).toBe(0);
-        mocks.list.mockResolvedValueOnce({ data: [row] });
+        mocks.list.mockResolvedValueOnce(syncResponse([row], true, "head"));
         await bank.load();
-        expect(mocks.importInbound).toHaveBeenCalledTimes(1);
-        expect(vi.getTimerCount()).toBe(0);
+        expect(mocks.list.mock.lastCall?.[1].sync_cursor).toBe("opaque-next");
+        expect(mocks.importInbound).toHaveBeenCalledTimes(3);
     });
 
-    it("yields between immediately resolved endless pages and checks the elapsed budget", async () => {
+    it("caps immediately resolved endless responses at two chunks without a timer race", async () => {
         vi.useFakeTimers();
-        let clock = 0;
-        const now = vi.spyOn(performance, "now").mockImplementation(() => clock);
-        mocks.list.mockImplementation(async () => {
-            clock += 3_000;
-            return { data: [row], meta: { last_page: Number.MAX_SAFE_INTEGER } };
-        });
+        mocks.list.mockResolvedValue(syncResponse([row], false, "head"));
         const { bank } = bankFor();
-        const pending = bank.load();
-        await vi.advanceTimersByTimeAsync(20);
-        await pending;
-        expect(mocks.list).toHaveBeenCalledTimes(7);
-        expect(mocks.importInbound).not.toHaveBeenCalled();
+        await bank.load();
+        expect(mocks.list).toHaveBeenCalledTimes(2);
+        expect(mocks.importInbound).toHaveBeenCalledTimes(2);
         expect(vi.getTimerCount()).toBe(0);
-        now.mockRestore();
     });
 
     it("checks elapsed time even when the total timer has not fired and the adapter returns a late success", async () => {
@@ -491,7 +666,7 @@ describe("bank movement bridge synchronization", () => {
         const now = vi.spyOn(performance, "now").mockImplementation(() => clock);
         mocks.list.mockImplementationOnce(async () => {
             clock = 20_001;
-            return { data: [row] };
+            return syncResponse([row], true, "head");
         });
         const { bank } = bankFor();
         await bank.load();
@@ -506,12 +681,12 @@ describe("bank movement bridge synchronization", () => {
         mocks.list.mockImplementationOnce(async (_bridge, _params, options) => {
             signal = options.signal;
             if (fails) throw new Error("offline");
-            return { data: [row] };
+            return syncResponse([row], true, "head");
         });
         mocks.importInbound.mockImplementationOnce(async () => {
             expect(signal?.aborted).toBe(true);
             expect(vi.getTimerCount()).toBe(0);
-            return { imported: 1, auto_matched: 0 };
+            return { imported: 1, auto_matched: 0, complete: true, scope_verified: true };
         });
         const { bank } = bankFor();
         await bank.load();
@@ -549,7 +724,7 @@ describe("bank movement bridge synchronization", () => {
         expect(mocks.importInbound).not.toHaveBeenCalled();
         expect(bank.inboundEmailAvailable.value).toBe(false);
         lookup.resolve({ ok: true, bridgeCompanyId: "old-identity-bridge" });
-        page.resolve({ data: [row] });
+        page.resolve(syncResponse([row], true, "head"));
         await vi.advanceTimersByTimeAsync(20_001);
         expect(mocks.importInbound).not.toHaveBeenCalled();
         expect(bank.inboundEmailAvailable.value).toBe(false);
@@ -665,7 +840,7 @@ describe("bank movement bridge synchronization", () => {
         await vi.waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(1));
         expect(mocks.importWise).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-a", [row], "wise", "wise-sync.json");
         company.value = "local-b";
-        email.resolve({ data: [row] });
+        email.resolve(syncResponse([row], true, "head"));
         await expect(pending).resolves.toEqual({ imported: 1, auto_matched: 0, skipped_duplicates: 0 });
         expect(mocks.list).toHaveBeenCalledExactlyOnceWith("bridge-local-a", expect.anything(), expect.anything());
         expect(mocks.importInbound).not.toHaveBeenCalled();
@@ -680,7 +855,7 @@ describe("bank movement bridge synchronization", () => {
         expect(mocks.ensure).not.toHaveBeenCalled();
         markCompanyShareRegistryReady();
         await pending;
-        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [row]);
+        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [row], "synthetic-app");
         expect(vi.getTimerCount()).toBe(0);
     });
 
@@ -721,7 +896,7 @@ describe("bank movement bridge synchronization", () => {
         const { bank, company } = bankFor("local-a");
         const obsolete = bank.connectWise("synthetic-old-intent").catch((error) => error);
         company.value = "local-b"; company.value = "local-a";
-        mocks.companyRows.value = [{ id: "local-a", legalName: "Loaded company", registrationNumber: "123" }];
+        mocks.companyRows.value = [{ id: "local-a", legalName: "Loaded company", registrationNumber: "123", ownerId: "synthetic-app" }];
         metadata.resolve([]);
         expect(await obsolete).toMatchObject({ message: "bank_bridge_lookup_failed" });
         expect(mocks.wiseConnect).not.toHaveBeenCalled();
@@ -788,7 +963,7 @@ describe("bank movement bridge synchronization", () => {
         expect(mocks.wiseConnect).not.toHaveBeenCalled();
         expect(mocks.wiseSync).not.toHaveBeenCalled();
         expect(vi.getTimerCount()).toBe(0);
-        mocks.companyRows.value = [{ id: "local-b", legalName: "Ready later", registrationNumber: "123" }];
+        mocks.companyRows.value = [{ id: "local-b", legalName: "Ready later", registrationNumber: "123", ownerId: "synthetic-app" }];
         metadata.resolve([]);
         await vi.advanceTimersByTimeAsync(0);
         expect(mocks.ensure).not.toHaveBeenCalled();
@@ -1024,7 +1199,7 @@ describe("bank movement bridge synchronization", () => {
         setCompanyShare(share);
         expect(bank.bridgeRoutingKey.value).toBe(routing);
         lookup.resolve({ ok: true, bridgeCompanyId: pin });
-        response.resolve({ data: [row], rows: [row] });
+        response.resolve({ ...syncResponse([row], true, "head"), rows: [row] });
         await pending;
         expect(mocks.importInbound).not.toHaveBeenCalled();
         expect(mocks.importWise).not.toHaveBeenCalled();
@@ -1041,9 +1216,9 @@ describe("bank movement bridge synchronization", () => {
         await vi.waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(1));
         setCompanyShare({ companyId: "unrelated", ownerId: "other-owner" as OwnerId, role: "member", status: "active", bridgeCompanyId: "0192a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b" });
         expect(bank.bridgeRoutingKey.value).toBe(routing);
-        response.resolve({ data: [row] });
+        response.resolve(syncResponse([row], true, "head"));
         await pending;
-        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [row]);
+        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [row], "synthetic-app");
     });
 
     it.each(["lookup", "page", "wise"] as const)("discards a pending %s result when selected company ownership or uniqueness changes", async (phase) => {
@@ -1060,7 +1235,7 @@ describe("bank movement bridge synchronization", () => {
         else mocks.companyRows.value.find((row) => row.id === "local-b")!.ownerId = "unbound-shared";
         expect(bank.bridgeRoutingKey.value).not.toBe(initial);
         lookup.resolve({ ok: true, bridgeCompanyId: "old-owner-bridge" });
-        response.resolve({ data: [row], rows: [row] });
+        response.resolve({ ...syncResponse([row], true, "head"), rows: [row] });
         await pending;
         expect(mocks.importInbound).not.toHaveBeenCalled();
         expect(mocks.importWise).not.toHaveBeenCalled();

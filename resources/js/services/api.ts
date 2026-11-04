@@ -18,6 +18,21 @@ export interface ApiEnvelope<T> {
     message?: string;
 }
 
+/** Authenticated opaque bank-sync bookmarks; positions advance only after client import acknowledgement. */
+export interface BankEmailSyncMeta {
+    protocol: 1;
+    lane: 'head' | 'backfill';
+    next_cursor: string;
+    retry_cursor: string;
+    cycle_complete: boolean;
+}
+
+export interface BankTransactionListMeta {
+    summary?: unknown;
+    last_page?: number;
+    sync?: BankEmailSyncMeta;
+}
+
 /** Laravel paginator body: rows in data, pagination fields alongside. */
 export interface PagedList<T> {
     data?: T[];
@@ -1137,8 +1152,8 @@ export const invoicingApi = {
     },
     bankTransactions: {
         /** Lists movements with optional request cancellation/deadline and caller-owned error reporting. */
-        async list<T = unknown>(companyId: string, params: Record<string, unknown> = {}, options: { skipErrorFlash?: boolean; signal?: AbortSignal; timeout?: number } = {}): Promise<{ data: T[]; meta?: { summary?: unknown; last_page?: number } }> {
-            const { data } = await api.get<{ data?: T[]; meta?: { summary?: unknown; last_page?: number } }>(`/invoicing/companies/${companyId}/bank-transactions`, { ...options, params });
+        async list<T = unknown>(companyId: string, params: Record<string, unknown> = {}, options: { skipErrorFlash?: boolean; signal?: AbortSignal; timeout?: number } = {}): Promise<{ data: T[]; meta?: BankTransactionListMeta }> {
+            const { data } = await api.get<{ data?: T[]; meta?: BankTransactionListMeta }>(`/invoicing/companies/${companyId}/bank-transactions`, { ...options, params });
             return { data: data.data ?? [], meta: data.meta };
         },
         /** Lists batches without changing default flashes unless the caller handles its own context. */
@@ -1146,8 +1161,9 @@ export const invoicingApi = {
             const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/bank-transactions/batches`, options);
             return data.data ?? [];
         },
-        async inboundEmail<T = unknown>(companyId: string): Promise<T> {
-            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/bank-transactions/inbound-email`);
+        /** Cancel superseded address reads while preserving ordinary request defaults. */
+        async inboundEmail<T = unknown>(companyId: string, options?: { signal?: AbortSignal }): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/bank-transactions/inbound-email`, options);
             return data.data;
         },
         async import<T = unknown>(companyId: string, formData: FormData): Promise<T> {

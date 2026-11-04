@@ -1,6 +1,6 @@
 import { sqliteTrue } from "@evolu/common";
 import { ExpenseId } from "./schema";
-import type { Evolu } from "@evolu/common/local-first";
+import type { Evolu, OwnerId } from "@evolu/common/local-first";
 import {
     allBankImportBatchesQuery,
     allBankTransactionMatchesQuery,
@@ -448,12 +448,35 @@ export async function importInboundServerTransactionsAsync(
     companyId: CompanyId,
     rows: ServerBankTransactionRow[],
 ): Promise<{ imported: number; auto_matched: number }> {
+    return runInboundServerImport(evolu, companyId, rows);
+}
+
+/** Scope admission is separate from row coverage: only admitted incomplete pages may yield their retry-frame turn. */
+export type BankInboundPageResult = { imported: number; auto_matched: number; complete: boolean; scope_verified: boolean };
+
+/** Cursor pages acknowledge coverage only after terminal proof in the captured financial owner partition. */
+export async function importInboundServerTransactionsPageAsync(
+    evolu: Evolu<InvoicingLocalSchema>,
+    companyId: CompanyId,
+    rows: ServerBankTransactionRow[],
+    expectedOwnerId: string,
+): Promise<BankInboundPageResult> {
+    const result = await runInboundServerImport(evolu, companyId, rows, expectedOwnerId);
+    return { imported: result.imported, auto_matched: result.auto_matched, complete: result.complete === true,
+        scope_verified: result.scope_verified === true };
+}
+
+/** Preserve legacy result semantics while sharing the same reconciliation and worker proof boundaries. */
+async function runInboundServerImport(
+    evolu: Evolu<InvoicingLocalSchema>, companyId: CompanyId, rows: ServerBankTransactionRow[], pageOwnerId?: string,
+): Promise<{ imported: number; auto_matched: number; complete?: boolean; scope_verified?: boolean }> {
     return serializeBankEmailReconciliation(evolu, (allowExpenseMatching, lease) => allowExpenseMatching
         ? withExpenseReconciliation(evolu, (scope) => {
-            assertExpenseCompanyOwner(scope, companyId);
-            return importInboundServerTransactions(scope.evolu, companyId, rows, true);
+            assertExpenseCompanyOwner(scope, companyId, pageOwnerId);
+            return importInboundServerTransactions(scope.evolu, companyId, rows, true, pageOwnerId);
         }, lease)
-        : importInboundServerTransactions(evolu, companyId, rows, false));
+        : pageOwnerId === undefined ? importInboundServerTransactions(evolu, companyId, rows, false)
+            : Promise.resolve({ imported: 0, auto_matched: 0, complete: false, scope_verified: false }));
 }
 
 /**
@@ -466,30 +489,37 @@ async function importInboundServerTransactions(
     companyId: CompanyId,
     rows: ServerBankTransactionRow[],
     allowExpenseMatching: boolean,
-): Promise<{ imported: number; auto_matched: number }> {
-    if (rows.length === 0) return { imported: 0, auto_matched: 0 };
+    pageOwnerId?: string,
+): Promise<{ imported: number; auto_matched: number; complete?: boolean; scope_verified?: boolean }> {
+    const result = (imported: number, auto_matched: number, complete: boolean) => pageOwnerId === undefined
+        ? { imported, auto_matched } : { imported, auto_matched, complete, scope_verified: true };
+    const inOwner = (row: object) => pageOwnerId === undefined || ("ownerId" in row && row.ownerId === pageOwnerId);
+    const ownerOptions = pageOwnerId === undefined ? {} : { ownerId: pageOwnerId as OwnerId };
+    if (rows.length === 0) return result(0, 0, true);
     const createdBatch: { id?: BankImportBatchId } = {};
     const started = await awaitBankMutation(evolu, (onComplete) => {
         const result = evolu.insert("bankImportBatch", {
             companyId, source: "inbound_email", filename: "b-mail-sync",
             rowCount: String(rows.length), importedCount: "0", skippedDuplicates: "0", autoMatchedCount: "0",
-        }, { onComplete });
+        }, { ...ownerOptions, onComplete });
         if (result.ok) createdBatch.id = result.value.id;
         return result;
     });
     const batchId = createdBatch.id;
-    if (!started || !batchId) return { imported: 0, auto_matched: 0 };
+    if (!started || !batchId) return result(0, 0, false);
     // A legitimate batch mutation invalidates the private, unsubscribed keys.
     // Their fresh worker responses run after the preceding handler's COMMIT.
     let ctx = await readBankReconciliationContext(evolu);
-    if (!ctx.batches.some((batch) => batch.id === batchId && batch.companyId === companyId)) {
+    if (!ctx.batches.some((batch) => batch.id === batchId && batch.companyId === companyId && inOwner(batch))) {
+        if (pageOwnerId !== undefined) return result(0, 0, false);
         throw new Error("bank_import_batch_missing");
     }
     let imported = 0;
     let skipped = 0;
     let autoMatched = 0;
-    const hashes = new Set(ctx.transactions.filter((transaction) => transaction.companyId === companyId)
+    const hashes = new Set(ctx.transactions.filter((transaction) => transaction.companyId === companyId && inOwner(transaction))
         .map((transaction) => transaction.dedupeHash));
+    const coverageHashes = new Set<string>();
     const prepared: Array<{ payload: Parameters<typeof evolu.insert<"bankTransaction">>[1]; dedupeHash: string }> = [];
 
     for (const row of rows) {
@@ -507,6 +537,7 @@ async function importInboundServerTransactions(
             bookedAt, amount, currency: currency ?? "", direction,
             variableSymbol: row.variable_symbol, reference: row.reference, bankTransactionId: row.bank_transaction_id,
         });
+        coverageHashes.add(dedupeHash);
         if (hashes.has(dedupeHash)) {
             skipped++;
             continue;
@@ -520,7 +551,7 @@ async function importInboundServerTransactions(
             counterpartyIban: row.counterparty_iban ?? null, reference: row.reference ?? null,
             bankTransactionId: row.bank_transaction_id ?? null, dedupeHash, source: "inbound_email",
         };
-        if (!evolu.insert("bankTransaction", payload, { onlyValidate: true }).ok) {
+        if (!evolu.insert("bankTransaction", payload, { ...ownerOptions, onlyValidate: true }).ok) {
             skipped++;
             continue;
         }
@@ -538,7 +569,7 @@ async function importInboundServerTransactions(
             // batch. Never report earlier rows as imported after that abort.
             for (const [index, { payload, dedupeHash }] of prepared.entries()) {
                 const result = evolu.insert("bankTransaction", payload,
-                    index === prepared.length - 1 ? { onComplete } : undefined);
+                    index === prepared.length - 1 ? { ...ownerOptions, onComplete } : ownerOptions);
                 if (!result.ok) return result;
                 created.push({ id: result.value.id, dedupeHash });
             }
@@ -553,7 +584,7 @@ async function importInboundServerTransactions(
     const transactionsById = new Map(ctx.transactions.map((transaction) => [transaction.id, transaction]));
     for (const inserted of created) {
         const transaction = transactionsById.get(inserted.id);
-        if (!transaction || transaction.companyId !== companyId || transaction.dedupeHash !== inserted.dedupeHash) {
+        if (!transaction || transaction.companyId !== companyId || transaction.dedupeHash !== inserted.dedupeHash || !inOwner(transaction)) {
             throw new Error("bank_import_row_missing");
         }
     }
@@ -566,13 +597,14 @@ async function importInboundServerTransactions(
     const counted = await awaitBankMutation(evolu, (onComplete) => evolu.update("bankImportBatch", {
         id: batchId, companyId, importedCount: String(imported), skippedDuplicates: String(skipped),
         autoMatchedCount: String(autoMatched),
-    }, { onComplete }));
+    }, { ...ownerOptions, onComplete }));
     if (!counted) throw new Error("bank_import_batch_update_rejected");
     const final = await readBankReconciliationContext(evolu);
-    const batch = final.batches.find((row) => row.id === batchId && row.companyId === companyId);
+    const batch = final.batches.find((row) => row.id === batchId && row.companyId === companyId && inOwner(row));
     if (!batch || batch.importedCount !== String(imported) || batch.autoMatchedCount !== String(autoMatched)
         || batch.skippedDuplicates !== String(skipped)) throw new Error("bank_import_batch_state_changed");
-    return { imported, auto_matched: autoMatched };
+    const covered = new Set(final.transactions.filter((row) => row.companyId === companyId && inOwner(row)).map((row) => row.dedupeHash));
+    return result(imported, autoMatched, [...coverageHashes].every((hash) => covered.has(hash)));
 }
 
 /**

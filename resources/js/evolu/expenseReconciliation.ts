@@ -156,11 +156,12 @@ function financialOwner(scope: Scope, table: string, patch: Row, explicit?: stri
     return ownerId;
 }
 
-/** Pure preflight before starting a bank mutation receipt or queueing rows. */
-export function assertExpenseCompanyOwner(scope: ExpenseReconciliationScope, companyId: string): void {
+/** Pure preflight before bank writes; a captured page owner must still equal this freshly admitted company owner. */
+export function assertExpenseCompanyOwner(scope: ExpenseReconciliationScope, companyId: string, expectedOwnerId?: string): void {
     const internal = scopes.get(scope);
     if (!internal?.active) throw new Error("expense_reconciliation_lease_expired");
-    financialOwner(internal, "expense", { companyId });
+    const ownerId = financialOwner(internal, "expense", { companyId });
+    if (expectedOwnerId !== undefined && ownerId !== expectedOwnerId) throw new Error("expense_reconciliation_owner_unavailable");
 }
 
 /** A real local-only write invalidates private caches before the worker read. */

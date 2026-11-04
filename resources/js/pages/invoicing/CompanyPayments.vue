@@ -217,7 +217,7 @@
             {{ t("invoicing.bank_wise_bridge_missing") }}
           </p>
           <template v-else>
-            <div v-if="bridgeLookupFailed || wiseStatusFailed" class="space-y-2" role="status">
+            <div v-if="wiseConnectionCheckFailed" class="space-y-2" role="status">
               <p class="text-amber-700 text-xs">
                 {{ t("invoicing.bank_wise_connection_check_failed") }}
               </p>
@@ -230,7 +230,7 @@
                 {{ wiseStatusRefreshing ? t("common.loading") : t("common.retry") }}
               </button>
             </div>
-            <p v-if="wiseStatus?.connected && !wiseStatusFailed" class="text-green-700 text-xs">
+            <p v-if="wiseStatus?.connected && !wiseConnectionCheckFailed" class="text-green-700 text-xs">
               {{ t("invoicing.bank_wise_connected") }}
               <span v-if="wiseStatus?.last_sync_at">
                 ·
@@ -242,7 +242,7 @@
               </span>
             </p>
             <form
-              v-if="!wiseStatus?.connected && !wiseStatusFailed"
+              v-if="!wiseStatus?.connected && !wiseConnectionCheckFailed"
               class="space-y-2"
               @submit.prevent="connectWise"
             >
@@ -272,7 +272,7 @@
                 }}
               </button>
             </form>
-            <div v-else-if="!wiseStatusFailed" class="flex flex-wrap gap-2">
+            <div v-else-if="!wiseConnectionCheckFailed" class="flex flex-wrap gap-2">
               <button
                 type="button"
                 class="invoicing-btn-primary text-xs"
@@ -295,7 +295,7 @@
               </button>
             </div>
             <form
-              v-if="showWiseReconnect && !wiseStatusFailed"
+              v-if="showWiseReconnect && !wiseConnectionCheckFailed"
               class="space-y-2 border-t pt-3"
               @submit.prevent="connectWise"
             >
@@ -318,7 +318,7 @@
                 }}
               </button>
             </form>
-            <p v-if="wiseSyncResult && !wiseStatusFailed" class="text-green-700 text-xs">
+            <p v-if="wiseSyncResult && !wiseConnectionCheckFailed" class="text-green-700 text-xs">
               {{ t("invoicing.bank_import_result", wiseSyncResult) }}
             </p>
           </template>
@@ -819,6 +819,7 @@ const wiseStatus = computed(() => bank.wiseStatus.value);
 const wiseBridgeMissing = computed(() => bank.wiseBridgeMissing.value);
 const bridgeLookupFailed = computed(() => bank.bridgeLookupFailed.value);
 const wiseStatusFailed = computed(() => bank.wiseStatusFailed.value);
+const wiseConnectionCheckFailed = computed(() => bridgeLookupFailed.value || wiseStatusFailed.value);
 const activeTab = ref<"transactions" | "import">("transactions");
 const importFile = ref<File | null>(null);
 const importFormat = ref("");
@@ -1087,7 +1088,7 @@ async function loadInbound() {
       enabled?: boolean;
       length?: number;
       max_length?: number;
-    }>(cid);
+    }>(cid, { signal: controller.signal });
     if (!isCurrentInboundRequest(request, localCompanyId, routingKey)) return;
     inboundEmail.value = inbound?.address || "";
     inboundEnabled.value = !!inbound?.enabled;
@@ -1186,7 +1187,9 @@ async function syncWise() {
     await loadBatches();
   } catch (err: unknown) {
     if (!isCurrent()) return;
+    const recoveryKey = reconciliationErrorKey(err) || expenseMutationErrorKey(err);
     const message =
+      (recoveryKey ? t(recoveryKey) : undefined) ||
       (err as { response?: { data?: { message?: string } } })?.response?.data
         ?.message || t("invoicing.bank_wise_sync_failed");
     flashStore.error(message);
@@ -1260,6 +1263,9 @@ function reconciliationErrorKey(error: unknown): string | null {
     case "bank_reconciliation_wait_timed_out": return "invoicing.bank_matching_busy";
     case "bank_reconciliation_outcome_unknown": return "invoicing.bank_matching_unknown";
     case "bank_import_row_batch_rejected": return "invoicing.bank_import_failed";
+    case "bank_sync_page_incomplete": return "invoicing.bank_sync_incomplete";
+    case "bank_sync_checkpoint_unavailable": return "invoicing.bank_sync_checkpoint_unavailable";
+    case "bank_sync_protocol_unavailable": return "invoicing.bank_sync_protocol_unavailable";
     default: return null;
   }
 }

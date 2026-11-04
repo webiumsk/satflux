@@ -95,3 +95,27 @@ it("forwards a finite best-effort page deadline without changing global Axios de
     expect(await outcome).toMatchObject({ code: "ECONNABORTED" });
     expect(flash.errorKey).not.toHaveBeenCalled();
 });
+
+it("preserves ordinary inbound-address defaults when no cancellation options are supplied", async () => {
+    const pending = invoicingApi.bankTransactions.inboundEmail<{ address: string }>("company-a");
+    await vi.waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0].config.signal).toBeUndefined();
+    expect(requests[0].config.timeout).toBe(0);
+    expect(requests[0].config.withCredentials).toBe(true);
+    requests[0].resolve({ config: requests[0].config, status: 200, statusText: "Synthetic", headers: {}, data: { data: { address: "synthetic@example.test" } } });
+    await expect(pending).resolves.toEqual({ address: "synthetic@example.test" });
+});
+
+it.each([false, true])("cancels an inbound-address read without a global flash (adapter ignores abort=%s)", async (ignoreAbort) => {
+    if (ignoreAbort) api.defaults.adapter = (config) => new Promise((resolve, reject) => { requests.push({ config, resolve, reject }); });
+    const controller = new AbortController();
+    const pending = invoicingApi.bankTransactions.inboundEmail("company-a", { signal: controller.signal });
+    const rejected = expect(pending).rejects.toMatchObject({ code: "ERR_CANCELED" });
+    await vi.waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0].config.signal).toBe(controller.signal);
+    expect(requests[0].config.withCredentials).toBe(true);
+    controller.abort();
+    if (ignoreAbort) requests[0].reject(new AxiosError("synthetic late network failure", "ERR_NETWORK", requests[0].config));
+    await rejected;
+    expect(flash.errorKey).not.toHaveBeenCalled();
+});

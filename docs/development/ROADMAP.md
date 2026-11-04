@@ -1,5 +1,16 @@
 # Development roadmap
 
+## Current: publish accepted progressive-history repair and complete review - 2026-11-04
+
+Runtime13 d4b6bcc4...ab51a/source-tests21 6c628d69...c232bf are independently
+accepted. Main1666/173, build/static/locales and backend31/153 pass. Publish exactly
+25 reviewed paths, verify committed bytes/remote SHA, then complete all fresh CI,
+including four native IndexedDB cases unavailable locally. After full CI, request
+actual manual CodeRabbit review and address valid findings until all green. Keep
+strict coverage/owner admission, exact Unknown outcomes, ciphertext CAS and ordinary
+client compatibility; backend deploys first or together. No merge/deployment or
+production actions.
+
 ## Current: publish the independently accepted credential-order repair - 2026-11-04
 
 Both reviewers accept runtime2 4304ae73...244a9/source-test5 3734a970...11f44 and main
