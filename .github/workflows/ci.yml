@@ -130,6 +130,91 @@ jobs:
       - name: Security audit (composer)
         run: composer audit
 
+  bank-sync-postgres:
+    name: PostgreSQL (bank sync plans)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    services:
+      bank-sync-test-postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: satflux_bank_sync_testing
+          POSTGRES_USER: satflux_test
+          POSTGRES_PASSWORD: satflux_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U satflux_test -d satflux_bank_sync_testing"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      APP_ENV: testing
+      BANK_SYNC_POSTGRES_TEST: "1"
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
+      DB_DATABASE: satflux_bank_sync_testing
+      DB_USERNAME: satflux_test
+      DB_PASSWORD: satflux_ci_only
+      DB_URL: ""
+      DATABASE_URL: ""
+      CACHE_DRIVER: array
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+      SESSION_DRIVER: array
+      MAIL_MAILER: array
+      LOG_CHANNEL: "null"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: "8.3"
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, pdo_pgsql, simplexml
+          coverage: none
+
+      - name: Prepare isolated application configuration
+        run: |
+          mkdir -p bootstrap/cache storage/logs
+          cp .env.example .env
+          php -r "file_put_contents('.env', preg_replace('/^APP_KEY=.*/m', 'APP_KEY=base64:'.base64_encode(random_bytes(32)), file_get_contents('.env')));"
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Test actual PostgreSQL feed plans and concurrent migration
+        run: php artisan test tests/Feature/Invoicing/BankEmailSyncPostgresPlanTest.php --log-junit=storage/logs/bank-sync-postgres.xml
+
+      - name: Require executed PostgreSQL tests without skips
+        run: |
+          php <<'PHP'
+          <?php
+          $report = simplexml_load_file('storage/logs/bank-sync-postgres.xml');
+          if ($report === false || count($report->xpath('//testcase')) !== 2
+              || $report->xpath('//testcase/skipped') !== []
+              || $report->xpath('//testcase/error') !== []
+              || $report->xpath('//testcase/failure') !== []) {
+              throw new RuntimeException('Both isolated PostgreSQL tests must execute and pass without skips.');
+          }
+          echo "Verified two executed PostgreSQL tests without skips.", PHP_EOL;
+          PHP
+
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest

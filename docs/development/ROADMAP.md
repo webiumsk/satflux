@@ -1,5 +1,15 @@
 # Development roadmap
 
+## Current: publish accepted bounded-candidate/PG CI repair - 2026-11-04
+
+Both reviewers accept runtime4 2c1fb965...936bc / source6 e8ebc2c9...39ffa.
+Backend and related SQLite tests, two independently repeated actual PG cases,
+style/static/workflow/zero-skip gates pass. Publish exactly ten reviewed paths,
+verify committed bytes and remote SHA, then wait for all five CI jobs and actual
+manual CodeRabbit review after allowance. Preserve raw-scan/coverage distinction,
+SQL snapshot semantics and all owner/Unknown/financial boundaries. Continue valid
+repairs until all green. No merge/deployment or production action.
+
 ## Current: publish accepted scan-progress/index repair and repeat review - 2026-11-04
 
 Both independent reviewers accept runtime4 0090c754...32557 / source6

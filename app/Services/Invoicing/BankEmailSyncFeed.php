@@ -56,16 +56,20 @@ final class BankEmailSyncFeed
         $query = BankTransaction::query()
             ->where('company_id', $company->getKey())
             ->where('source', 'email')
-            ->excludingBalanceSnapshots()
+            ->withBankSyncMovementFlag()
             ->with([
                 'match.document:id,number,status,total,currency,type',
                 'expense:id,internal_number,title,status,total,currency',
             ]);
         $found = $this->readOrderedPage($query, $pageSize + 1, $lane === 'backfill' ? $before : null);
         $hasMore = $found->count() > $pageSize;
-        $rows = $found->take($pageSize)->values();
-        $last = $rows->last();
+        $rawPage = $found->take($pageSize)->values();
+        $last = $rawPage->last();
         $lastPosition = $last === null ? null : $this->position($last);
+        $rows = $rawPage->filter(fn (BankTransaction $row): bool => (int) $row->getRawOriginal(BankTransaction::BANK_SYNC_MOVEMENT_FLAG) === 1)->values();
+        foreach ($rows as $row) {
+            $row->offsetUnset(BankTransaction::BANK_SYNC_MOVEMENT_FLAG);
+        }
 
         if ($lane === 'head') {
             // A successful head read can seed a new cycle, but cannot jump an
@@ -148,7 +152,8 @@ final class BankEmailSyncFeed
 
     /**
      * Read index-ordered non-NULL timestamps before filling from the NULL bucket.
-     * Tuple bounds avoid an OR seek or CASE sort; excluded snapshots may still require extra index visits.
+     * Tuple bounds avoid an OR seek or CASE sort. Snapshot classification is projected,
+     * so excluded runs cannot expand the raw page through a residual snapshot filter.
      *
      * @param  Builder<BankTransaction>  $query
      * @param  array{created_at: ?string, id: string}|null  $before

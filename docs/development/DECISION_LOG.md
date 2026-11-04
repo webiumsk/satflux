@@ -1,5 +1,27 @@
 # Development decision log
 
+## 2026-11-04 - Bound raw candidates before snapshot exclusion
+
+Index ordering removes the sort but does not bound a long excluded-snapshot run.
+Keep the existing exact SQL classification, project it on a bounded raw candidate
+window, filter only payload and derive cursor progress from that raw window.
+Snapshot-only chunks retain ordinary exclusion while existing strict empty-page
+owner admission permits progress. No protocol, payment eligibility, financial
+ACK, unresolved-cycle, key or local storage change is needed. Independent security
+accepts the exact shared fixed-column SQL/bindings design.
+
+Use PostgreSQL concurrent index DDL outside migration transactions with SQLite
+fallback, and fail visibly rather than masking a leftover invalid index. Add a
+fifth CI job with explicit disposable DB opt-in, temporary schema, actual service
+SQL capture, deterministic fixtures/ANALYZE and no planner-disable switches. Test
+migration validity/rollback and all four query partitions. No production DDL or
+full application migration under PG is part of development verification. Require
+independent exact-byte acceptance, fresh CI and actual clean CodeRabbit review.
+Both reviewers now accept runtime4 2c1fb965...936bc / source6 e8ebc2c9...39ffa.
+Author and independent security each execute actual PG two/100, with 43/312
+SQLite cases and related regression/style/static evidence. Publish only ten paths;
+all five new CI jobs and another actual manual review remain gates.
+
 ## 2026-11-04 - Separate scan progress from coverage behind incomplete pages
 
 The R11 retry frontier preserves uncovered rows but can indefinitely revisit the

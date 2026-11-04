@@ -15,6 +15,8 @@ class BankTransaction extends Model
 {
     use HasUuids;
 
+    public const BANK_SYNC_MOVEMENT_FLAG = 'bank_sync_is_movement';
+
     private ?BankTransactionDirection $resolvedDirectionCache = null;
 
     protected $fillable = [
@@ -120,19 +122,43 @@ class BankTransaction extends Model
         return false;
     }
 
+    /** Retain the existing driver-specific movement predicate for ordinary lists and summaries. */
     public function scopeExcludingBalanceSnapshots(Builder $query): Builder
     {
-        return $query->where(function (Builder $q) {
-            foreach (['counterparty_name', 'reference'] as $column) {
-                $q->where(function (Builder $inner) use ($column) {
-                    $inner->whereNull($column)
-                        ->orWhere(function (Builder $c) use ($column) {
-                            $c->whereRaw("LOWER({$column}) NOT LIKE ?", ['%stav na ucte%'])
-                                ->whereRaw("LOWER({$column}) NOT LIKE ?", ['%stav na účte%']);
-                        });
-                });
-            }
-        });
+        $predicate = $this->bankMovementPredicate($query);
+
+        return $query->whereRaw($predicate['sql'], $predicate['bindings']);
+    }
+
+    /** Classify raw scan candidates with the exact ordinary-list SQL predicate without excluding rows from the scan. */
+    public function scopeWithBankSyncMovementFlag(Builder $query): Builder
+    {
+        $predicate = $this->bankMovementPredicate($query);
+        if ($query->getQuery()->columns === null) {
+            $query->select('*');
+        }
+        $alias = $query->getQuery()->getGrammar()->wrap(self::BANK_SYNC_MOVEMENT_FLAG);
+
+        return $query->selectRaw('CASE WHEN '.$predicate['sql'].' THEN 1 ELSE 0 END AS '.$alias, $predicate['bindings']);
+    }
+
+    /**
+     * Share NULL/LOWER/LIKE semantics between exclusion and projection without approximating database collation in PHP.
+     *
+     * @return array{sql: string, bindings: list<string>}
+     */
+    private function bankMovementPredicate(Builder $query): array
+    {
+        $clauses = [];
+        $bindings = [];
+        foreach (['counterparty_name', 'reference'] as $column) {
+            $wrapped = $query->getQuery()->getGrammar()->wrap($column);
+            $clauses[] = '('.$wrapped.' IS NULL OR (LOWER('.$wrapped.') NOT LIKE ? AND LOWER('.$wrapped.') NOT LIKE ?))';
+            $bindings[] = '%stav na ucte%';
+            $bindings[] = '%stav na účte%';
+        }
+
+        return ['sql' => '('.implode(' AND ', $clauses).')', 'bindings' => $bindings];
     }
 
     public function scopeBalanceSnapshotsOnly(Builder $query): Builder

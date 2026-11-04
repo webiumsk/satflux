@@ -1,5 +1,81 @@
 # Expense defaults and bank-mail reconciliation
 
+## Bounded-candidate and PostgreSQL verification evidence - 2026-11-04
+
+Frozen runtime-four manifest:
+`2c1fb965a9f9c2dc2c052c17ffdbe8137467fa1dd3675436e96058b1d29936bc`.
+Frozen source/tests-six manifest:
+`e8ebc2c99dac7c009f3af483e913f90b65e3729f08c979240ce8f1464e739ffa`.
+Publication is restricted to those six paths and four development documents.
+All JavaScript, protocol 2 client code, importer, owner checks, checkpoint store,
+credential queue, authorization and payment eligibility are unchanged from 21ba9dce.
+
+Backend author validation: 43 focused HTTP/SQLite tests / 312 assertions and
+110 related bank-filter/listing tests / 528 assertions passed, with overlapping
+scope and one inherited deprecation. Pint passed on four changed backend files.
+Full PHPStan has no new finding beyond the unchanged local optional Scramble gap.
+
+The dedicated PostgreSQL test executed locally on PHP 8.3.31/PostgreSQL 16.11:
+two tests / 100 assertions passed. It captures actual service SQL with 60,000
+synthetic rows and verifies named-index/no-sort plans for all four range shapes
+(five executions), at most 101 raw candidates and zero snapshot-filter removals.
+Real Laravel Migrator concurrent create/down/re-up, catalog valid/ready status,
+intentional failed concurrent unique-index creation, visible INVALID leftovers and
+explicit owned-index removal/rebuild passed. All fixture rows are retained; owned
+schemas/container/tmpfs were removed. Pint passed on the new test. Existing CI
+jobs/top-level settings are structurally unchanged; the added fifth job requires
+both PostgreSQL cases to execute without skips. Its JUnit gate accepts the real
+passing report and rejects a synthetic skipped case. Fresh GitHub execution remains
+required, including ordinary SQLite/PHP, frontend and native IndexedDB E2E jobs.
+
+Concurrent failure recovery must inspect the exact schema/table/index ownership,
+pg_index.indisvalid/indisready, migration state and underlying failure first.
+An operator may then explicitly remove a confirmed failed owned index CONCURRENTLY
+outside transactions before retry. The migration never masks leftover state with
+IF NOT EXISTS and never automatically drops a healthy or unknown index. No such
+production recovery or migration execution is performed during this task.
+
+Both independent reviewers accept the exact runtime-four/source-six manifests.
+QA executed 11 strict-coverage cases, 31 retained Vue progress probes, four actual
+Evolu/native SQLite empty-page cases and native SQL budget/parity/traversal checks,
+including 144 legacy predicate pairs across SQLite variants. It reviewed the real
+PG JUnit evidence without executing PG. Independent security executed 43 PHP tests /
+312 SQLite assertions and both actual PG16 tests / 100 assertions on frozen source,
+including concurrent migration/catalog/INVALID recovery/plans and owned cleanup.
+All six hashes match before and after reviews; scopes overlap and are not summed.
+Fresh five-job CI and actual clean CodeRabbit review remain gates; a success check
+with findings is insufficient.
+
+## Bounded candidates and concurrent-index verification contract - 2026-11-04
+
+Actual review 5766156195 on 21ba9dce reports one concurrent-index inline finding,
+one snapshot-residual follow-up and one missing PostgreSQL CI nitpick despite
+green CI and five passing pre-merge checks. Repair all three within bank sync.
+
+The raw company/email candidate window is capped before snapshot classification.
+Shared fixed-column SQL and bound patterns preserve the ordinary scope's exact
+NULL/LOWER/NOT-LIKE semantics; do not substitute the PHP snapshot classifier,
+whose case behavior differs from SQLite. A numeric CASE projection is internal
+and removed before payload formatting. Raw slice, lookahead and last position
+drive hasMore and scan cursors, while payload excludes snapshots exactly as before.
+A fully excluded page can therefore return no movements yet progress after strict
+admitted empty-page ACK. Bound tests cover long snapshot runs, ties, null crossing,
+later movements and predicate parity. Protocol 2, owner/financial/Unknown and
+sticky unresolved-cycle contracts remain unchanged; no stored flag or backfill.
+
+PostgreSQL index creation/removal uses CONCURRENTLY outside framework migration
+transactions; SQLite keeps its schema fallback. A failed concurrent build may leave
+an invalid index: migration must fail rather than silently skip it. Deployment
+recovery must inspect the named index and explicitly remove/rebuild invalid owned
+state before retry; this task performs no production DDL. A fifth CI job runs a
+strictly opted-in dedicated PG16 test in a disposable database/temporary schema,
+with no full app migration, outer test transaction or planner-disable switches.
+Capture actual service SQL and bindings, validate real migration/catalog state,
+seed deterministic data and ANALYZE, assert named-index/no-sort plans for all four
+paths, preserve rows through down/re-up and clean temporary schema on failure.
+Require final independent QA/security, all fresh CI and another actual clean manual
+review before completion. No merge or deployment is performed.
+
 ## Scan-progress and indexed-feed verification - 2026-11-04
 
 The frozen runtime-four manifest is

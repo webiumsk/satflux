@@ -3,11 +3,13 @@
 namespace Tests\Feature\Invoicing;
 
 use App\Enums\CompanyJurisdiction;
+use App\Models\BankTransaction;
 use App\Models\Company;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\Invoicing\BankEmailSyncFeed;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
@@ -127,7 +129,9 @@ class BankEmailSyncFeedTest extends TestCase
         $response = $this->feed();
         $response->assertOk()->assertJsonPath('meta.sync.protocol', 2)->assertJsonPath('meta.sync.lane', 'head');
         $response->assertJsonPath('meta.sync.unresolved', false)->assertJsonPath('meta.sync.unresolved_after_success', false);
-        $this->assertSame([$newest, $second], array_column($response->json('data'), 'id'));
+        $this->assertSame([$newest], array_column($response->json('data'), 'id'));
+        $this->assertSame($newest, $this->frame($response->json('meta.sync.next_cursor'))['backfill_before']['id']);
+        $this->assertArrayNotHasKey(BankTransaction::BANK_SYNC_MOVEMENT_FLAG, $response->json('data.0'));
         $this->assertSame(['sync'], array_keys($response->json('meta')));
         $response->assertJsonPath('data.0.recorded_direction', 'debit')->assertJsonPath('data.0.amount', '19.00');
         $this->assertNotEmpty($queries);
@@ -483,6 +487,9 @@ class BankEmailSyncFeedTest extends TestCase
     #[Test]
     public function sync_order_index_has_the_exact_columns_and_its_rollback_preserves_rows(): void
     {
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            $this->markTestSkipped('Concurrent PostgreSQL index lifecycle is verified outside a transaction by the dedicated plan suite.');
+        }
         $id = $this->movement(1, null);
         $index = collect(Schema::getIndexes('bank_transactions'))->firstWhere('name', 'bank_transactions_sync_order_idx');
         $this->assertNotNull($index);
@@ -530,7 +537,83 @@ class BankEmailSyncFeedTest extends TestCase
             $details = implode(' | ', array_map(fn (object $row): string => $row->detail, DB::select('EXPLAIN QUERY PLAN '.$sql, $bindings)));
             $this->assertStringContainsString('bank_transactions_sync_order_idx', $details);
             $this->assertStringNotContainsString('TEMP B-TREE', $details);
-            $this->assertStringNotContainsString('CASE WHEN', strtoupper($sql));
+            $this->assertStringNotContainsString('ORDER BY CASE', strtoupper($sql));
+            $this->assertStringContainsString('CASE WHEN', strtoupper($sql));
+        }
+    }
+
+    /** Long runs of excluded candidates still advance raw positions through empty pages and NULL/timestamp ties. */
+    #[Test]
+    public function snapshot_only_raw_chunks_progress_to_later_movements_without_overreading_or_leaking_the_flag(): void
+    {
+        foreach (range(1, 12) as $id) {
+            $this->movement($id, $id <= 4 ? null : '2026-11-03 12:00:00', [
+                'reference' => in_array($id, [8, 4, 1], true) ? null : 'Stav na ucte',
+            ]);
+        }
+        $head = $this->feed()->assertOk()->assertJsonCount(0, 'data')->assertJsonPath('meta.sync.cycle_complete', false);
+        $this->assertSame($this->uuid(11), $this->frame($head->json('meta.sync.next_cursor'))['backfill_before']['id']);
+        $backfill = $this->feed($head->json('meta.sync.next_cursor'))->assertOk()->assertJsonCount(0, 'data');
+        $this->assertSame($this->uuid(9), $this->frame($backfill->json('meta.sync.next_cursor'))['backfill_before']['id']);
+        $cursor = $backfill->json('meta.sync.next_cursor');
+        $seen = [];
+        $complete = false;
+        for ($step = 0; $step < 12; $step++) {
+            $page = $this->feed($cursor)->assertOk();
+            $this->assertLessThanOrEqual(2, count($page->json('data')));
+            foreach ($page->json('data') as $row) {
+                $this->assertArrayNotHasKey(BankTransaction::BANK_SYNC_MOVEMENT_FLAG, $row);
+                $seen[$row['id']] = true;
+            }
+            $cursor = $page->json('meta.sync.next_cursor');
+            if ($page->json('meta.sync.cycle_complete')) {
+                $complete = true;
+                break;
+            }
+        }
+        $this->assertTrue($complete);
+        $this->assertEqualsCanonicalizing(array_map(fn (int $id): string => $this->uuid($id), [8, 4, 1]), array_keys($seen));
+        $this->assertFalse($this->frame($cursor)['unresolved']);
+    }
+
+    /** Projection and filtering retain the original SQL NULL/LOWER/LIKE behavior, including each driver's Unicode case behavior. */
+    #[Test]
+    public function projected_movement_flags_match_the_legacy_exclusion_predicate_exactly(): void
+    {
+        $values = [
+            [null, null], ['', ''], ['Normal supplier', 'Invoice'],
+            ['Stav na ucte', null], [null, 'stav na účte'], ['STAV NA UCTE', 'Invoice'],
+            ['memo', ' prefix stav na ucte suffix '], ['stav  na ucte', 'normal'],
+            ['STAV NA ÚČTE', null], ['stav na uctex', 'Invoice'],
+            [null, 'STAV NA ÚČTE'], ['Stav na účte', 'normal'],
+        ];
+        foreach ($values as $offset => [$name, $reference]) {
+            $this->movement($offset + 1, '2026-11-03 12:00:00', ['counterparty_name' => $name, 'reference' => $reference]);
+        }
+        // Preserve an independent copy of the former SQL scope as the compatibility oracle.
+        $legacy = BankTransaction::query()->where('company_id', $this->company->id)
+            ->where(function (Builder $outer): void {
+                foreach (['counterparty_name', 'reference'] as $column) {
+                    $outer->where(function (Builder $inner) use ($column): void {
+                        $inner->whereNull($column)->orWhere(function (Builder $value) use ($column): void {
+                            $value->whereRaw("LOWER({$column}) NOT LIKE ?", ['%stav na ucte%'])
+                                ->whereRaw("LOWER({$column}) NOT LIKE ?", ['%stav na účte%']);
+                        });
+                    });
+                }
+            })->orderBy('id')->pluck('id')->all();
+        $filtered = BankTransaction::query()->where('company_id', $this->company->id)
+            ->excludingBalanceSnapshots()->orderBy('id')->pluck('id')->all();
+        $projected = BankTransaction::query()->where('company_id', $this->company->id)
+            ->select('id')->withBankSyncMovementFlag()->orderBy('id')->get();
+        $projectedIds = $projected->filter(fn (BankTransaction $row): bool => (int) $row->getRawOriginal(BankTransaction::BANK_SYNC_MOVEMENT_FLAG) === 1)
+            ->pluck('id')->all();
+        $this->assertSame($legacy, $filtered);
+        $this->assertSame($legacy, $projectedIds);
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            // SQLite's built-in LOWER deliberately does not perform PHP/ICU Unicode folding.
+            $this->assertContains($this->uuid(9), $legacy);
+            $this->assertContains($this->uuid(11), $legacy);
         }
     }
 }

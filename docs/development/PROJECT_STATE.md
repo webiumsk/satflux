@@ -1,5 +1,32 @@
 # Project state
 
+## PR427 bounded-candidate and PostgreSQL CI repair accepted - 2026-11-04
+
+Both independent reviewers accept runtime-four manifest
+`2c1fb965a9f9c2dc2c052c17ffdbe8137467fa1dd3675436e96058b1d29936bc`
+and source/tests-six manifest
+`e8ebc2c99dac7c009f3af483e913f90b65e3729f08c979240ce8f1464e739ffa`.
+Exactly ten paths are publication scope. Actual review 5766156195's inline,
+follow-up and test nitpick are repaired: bounded raw candidates with exact SQL
+snapshot projection, concurrent PG index migration and a fifth PG CI job.
+
+Backend author 43 HTTP/SQLite tests / 312 assertions and 110 related / 528 passed
+(overlap), Pint on four files passed and PHPStan has no new finding beyond the
+inherited local Scramble gap. Devops executed actual PG16.11/PHP8.3.31 tests:
+two / 100 assertions passed, including real Migrator concurrent lifecycle,
+INVALID leftovers/catalog recovery, plans and cleanup; new-test Pint, YAML and
+positive/negative JUnit gates pass. Security independently executed 43 / 312 in
+SQLite and both actual PG cases / 100 assertions on the exact frozen bytes;
+owned disposable schemas/container/tmpfs were removed. QA passed 11 coverage,
+31 retained Vue progress, four actual Evolu/SQLite empty-page probes and native
+SQL budget/parity/traversal checks; it reviewed PG evidence without executing PG.
+All JavaScript and financial/owner/checkpoint/credential code remains unchanged.
+
+Verify committed bytes/remote SHA and complete all five fresh CI jobs, including
+PostgreSQL (bank sync plans), then request actual manual CodeRabbit after allowance
+(last request 09:12:09 UTC; conservative next 10:13 UTC). Inspect all findings and
+continue until green. No production DDL, replay, merge/deployment or unrelated work.
+
 ## PR427 scan-progress and index repair independently accepted - 2026-11-04
 
 Both reviewers accept runtime-four manifest
