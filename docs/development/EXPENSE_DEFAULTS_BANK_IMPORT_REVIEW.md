@@ -1,5 +1,90 @@
 # Expense defaults and bank-mail reconciliation
 
+## Eighth repair verified evidence - 2026-11-04
+
+The five review items are repaired. Known unresolved Wise connection routes now
+reject before any credential POST, preserving the pasted token and localized
+failure. Started POSTs and financial imports remain awaited with their actual
+outcome. Both composable follow-up reads and page result/token/error publication
+stay in the captured routing context, including A-B-A and disposal; old completion
+cannot start a fresh email import in a newly selected company or clear its busy UI.
+
+Both independent reviewers accept runtime10 manifest
+`b1f3de86ce6bb3b18f82ce0096f90a52309f18316f886801652573f4daeea26c`
+and source/tests15 manifest
+`e08706b281d030260d4e2072130eaa9743e71e71df19aa1363d2176045d29052`.
+All15 bytes match after final checks. Exactly19 paths are the publication scope:
+10 runtime/locale files, five test files and four development documents.
+
+Main final full frontend1579cases/169files and production build73seconds pass.
+Full lint48known/zeroerrors plus final changed-file lint0 pass; final typecheck
+111existing/no-new and five-language parity pass. Author128cases/7files pass.
+QA175repository/7suites and25mounted actual-Vue probes pass. Security independently
+passes168repository/7suites on unchanged authority/migration/rekey modules, then
+76final inbound cases and25mounted probes on the final delta. Scopes overlap.
+The earlier1576/169 main run predates the two post-financial guards and is not
+the final source evidence. Retained probes demonstrate the old failures before
+repair. Storage, HTTP and financial entry-point adapters are synthetic; no real
+financial writes, production access or replay occurred in these probes.
+
+Publish only this reviewed scope, verify all committed blobs and remote SHA,
+finish complete fresh CI and request another actual manual review after provider
+capacity. All existing thresholds, owner policy and financial Unknown semantics
+remain. Current review findings are repaired, but current-head CI/manual approval
+must still be obtained; no merge or deployment is included.
+
+## Eighth review acceptance contract - 2026-11-04
+
+All four CI41771525497 jobs pass on publishedc0921567, independently verified by
+QA. Authorized manual comment6622425495 was accepted6622426859 at04:18UTC;
+actual review5763268988 completed04:34UTC. Its three inline findings and two
+supplemental items remain repair work despite a success check and five passing
+pre-merge checks (87.72% documentation, unchanged80% requirement).
+
+Acceptance for the narrow follow-up:
+
+- Initial metadata rejection must remain best-effort, then allow an explicit
+  bank refresh after subscribed company rows recover. No identity means no import.
+- Pending inbound attempts may share only a current company/selection/identity
+  generation. Local A-B-A and identity edits must start a new explicit attempt;
+  an older attempt's cleanup must not erase the newer attempt.
+- Wise HTTP rows must still belong to the legal identity and generation captured
+  with the resolved bridge before import, including identity and selection A-B-A.
+  Imports already entered retain their exact completion or Unknown outcome.
+- Failed lookup stays distinct from confirmed missing identity/bridge. Keep
+  connection controls and an explicit localized retry available; stale failures
+  cannot publish into another company or a disposed page.
+- Bank reads and displayed inbound settings must prefer an authoritative recorded
+  shared-company bridge over duplicate legal identities. Follow existing trusted
+  registry/owner rules, invalidate changed mappings and preserve ordinary allocator
+  defaults. Do not infer authorization from a client bridge ID.
+
+The recorded route comes only from the existing AppOwner-filtered, secret-verified
+registry bootstrap. The raw share query lacks an owner predicate despite its
+comment and is not routing authority. A pinned route still requires one selected
+company row under the recorded SharedOwner; a private fallback requires one row
+under the actual AppOwner. Missing, malformed, unavailable or mismatched binding
+metadata fails retryably without creating/guessing a duplicate identity bridge.
+Observable routing context contains only selected nonsecret metadata and readiness,
+including exact selected-company row uniqueness/owner so same-ID partition changes
+invalidate pending reads even when legal name and recorded binding stay unchanged.
+
+Initial bootstrap does not block page mounting. The bank read-stage budget must
+therefore include the first trusted registry readiness wait, canceled by the same
+abort/disposal path; no automatic financial watcher/retry is introduced. Install
+the existing share subscription after initial validated application and before
+marking readiness or running unchanged migration/rekey recovery. A maintenance
+failure must not leave a ready registry without live invalidation. Keep existing
+owner-scope policy and default helper behavior unchanged.
+
+Frontend owns the composable and its two affected test files; main owns page,
+locales, documentation and Git. Read-only mapping exploration and independent
+QA/security acceptance precede scoped publication, fresh complete CI and another
+actual manual review under provider capacity. Preserve existing read budgets,
+disposal cleanup, owner isolation, financial quarantine, before-import-only identity
+boundary and all warning/type/docstring thresholds. No production access/replay,
+merge, deployment, billing/key policy change or unrelated primary publication.
+
 ## Disposed-view lifecycle follow-up - 2026-11-04
 
 A pre-review source audit identified a remaining before-import identity gap on

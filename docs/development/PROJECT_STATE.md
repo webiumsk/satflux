@@ -1,5 +1,35 @@
 # Project state
 
+## PR427 eighth review repair independently accepted - 2026-11-04
+
+Publishedc0921567 has complete green CI41771525497, independently verified by QA.
+Manual command6622425495 was accepted6622426859; actual review5763268988 at04:34UTC
+reports three inline and two supplemental findings. Pre-merge checks pass87.72%,
+but metadata recovery, generation dedup, Wise identity freshness, lookup recovery
+presentation and recorded shared bridge routing require this follow-up.
+
+Frontend owns the bounded composable/helper/registry/bootstrap and related tests;
+main owns page/locales/docs/Git. Initial real-Vue probes reproduce six baseline
+failures; targeted draft repairs pass with already-started financial controls.
+The page uses the same bank-only recorded-route option and a semantic context
+guard for displayed addresses. Default issuance helpers and owner policy stay.
+
+Verified mapping authority is the existing AppOwner/secret-checked registry, not
+the raw unfiltered companyShare query. Pinned routes require exact local owner
+metadata, private fallback requires AppOwner. Readiness must include an installed
+subscription before maintenance; the initial wait belongs to the existing bank
+read budget. Both independent reviewers now accept runtime10 b1f3de86...a26c
+and source/test15 e08706b2...9052. Main final1579frontend/169files, build73seconds,
+lint48known/zeroerrors, changed-filelint0/type111existing-no-new/locales pass.
+Author128/7, QA175/7+25actualVue and security168/7unchangedauthority plus76final
+inbound+25probes pass with overlapping scopes and synthetic adapters. All15bytes
+match. Known unresolved Wise connect rejects beforePOST; entered remote/financial
+outcomes remain awaited. Captured context guards both page publication and new
+post-financial reads, preventing old work importing another company's email rows.
+Publish only19 reviewed paths, verify blobs/remote SHA, complete fresh CI and
+actual manual review until green. Earlier1576 main run predates the final guards.
+No merge/deployment, production replay or unrelated primary work is included.
+
 ## PR427 lifecycle regression independently accepted - 2026-11-04
 
 Before requesting the next review, source audit plus an actual mounted Vue probe

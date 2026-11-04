@@ -217,6 +217,19 @@
             {{ t("invoicing.bank_wise_bridge_missing") }}
           </p>
           <template v-else>
+            <div v-if="bridgeLookupFailed" class="space-y-2" role="status">
+              <p class="text-amber-700 text-xs">
+                {{ t("invoicing.bank_wise_connection_check_failed") }}
+              </p>
+              <button
+                type="button"
+                class="invoicing-btn-secondary text-xs"
+                :disabled="wiseStatusRefreshing"
+                @click="refreshWiseStatus"
+              >
+                {{ wiseStatusRefreshing ? t("common.loading") : t("common.retry") }}
+              </button>
+            </div>
             <p v-if="wiseStatus?.connected" class="text-green-700 text-xs">
               {{ t("invoicing.bank_wise_connected") }}
               <span v-if="wiseStatus?.last_sync_at">
@@ -804,6 +817,7 @@ const batches = bank.batches;
 const matchFilter = ref("all");
 const wiseStatus = computed(() => bank.wiseStatus.value);
 const wiseBridgeMissing = computed(() => bank.wiseBridgeMissing.value);
+const bridgeLookupFailed = computed(() => bank.bridgeLookupFailed.value);
 const activeTab = ref<"transactions" | "import">("transactions");
 const importFile = ref<File | null>(null);
 const importFormat = ref("");
@@ -814,6 +828,7 @@ const importResult = ref<{ imported: number; auto_matched: number } | null>(
 const wiseToken = ref("");
 const wiseConnecting = ref(false);
 const wiseSyncing = ref(false);
+const wiseStatusRefreshing = ref(false);
 const showWiseReconnect = ref(false);
 const wiseSyncResult = ref<{ imported: number; auto_matched: number } | null>(
   null,
@@ -828,7 +843,9 @@ const inboundBridgeCompanyId = ref<string | null>(null);
 let inboundRequest = 0;
 let bankLoadRequest = 0;
 let bankBatchesRequest = 0;
-onBeforeUnmount(() => { inboundRequest += 1; bankLoadRequest += 1; bankBatchesRequest += 1; });
+let wiseStatusRequest = 0;
+let bridgeContextGeneration = 0;
+onBeforeUnmount(() => { inboundRequest += 1; bankLoadRequest += 1; bankBatchesRequest += 1; wiseStatusRequest += 1; bridgeContextGeneration += 1; });
 const inboundBridgeMissing = computed(
   () =>
     bank.localFirst &&
@@ -906,15 +923,23 @@ const legendItems = computed(() => [
 
 onMounted(async () => {
   rememberCompany(companyId.value);
-  await Promise.all([load(), loadBatches(), loadInbound(), bank.fetchWiseStatus()]);
+  await Promise.all([load(), loadBatches(), loadInbound(), refreshWiseStatus()]);
 });
 
-watch(companyId, () => {
-  load();
-  loadBatches();
+let selectedCompany = companyId.value;
+watch(bank.bridgeRoutingKey, () => {
+  bridgeContextGeneration += 1;
+  wiseConnecting.value = false;
+  wiseSyncing.value = false;
+  wiseSyncResult.value = null;
+  if (companyId.value !== selectedCompany) {
+    selectedCompany = companyId.value;
+    void load();
+    void loadBatches();
+  }
   loadInbound();
-  void bank.fetchWiseStatus();
-});
+  void refreshWiseStatus();
+}, { flush: "sync" });
 
 watch(activeTab, (tab) => {
   if (tab === "transactions") load();
@@ -1001,19 +1026,18 @@ async function loadBatches() {
   }
 }
 
-function isCurrentInboundRequest(request: number, localCompanyId: string): boolean {
-  return request === inboundRequest && companyId.value === localCompanyId;
+function isCurrentInboundRequest(request: number, localCompanyId: string, routingKey: string): boolean {
+  return request === inboundRequest && companyId.value === localCompanyId
+    && bank.bridgeRoutingKey.value === routingKey;
 }
 
-async function resolveInboundCompanyId(localCompanyId: string, request: number): Promise<string | null> {
+async function resolveInboundCompanyId(localCompanyId: string, request: number, routingKey: string): Promise<string | null> {
   if (!bank.localFirst) {
     return localCompanyId || null;
   }
-  // Per-company bridge resolved by THIS company's legal identity (created on
-  // demand) - never a first-row fallback, which handed every local company
-  // the same bridge and therefore the same inbound address.
-  const result = await ensureBridgeCompanyIdForLocalCompany(localCompanyId);
-  if (!isCurrentInboundRequest(request, localCompanyId)) return null;
+  // Use the same trusted shared binding or private legal identity as bank sync.
+  const result = await ensureBridgeCompanyIdForLocalCompany(localCompanyId, undefined, { preferRecordedBridgeId: true });
+  if (!isCurrentInboundRequest(request, localCompanyId, routingKey)) return null;
   if (!result.ok) {
     // Transient failure - do not claim the bridge is missing; leaving the
     // check unfinished lets the next loadInbound() run retry.
@@ -1028,6 +1052,7 @@ async function resolveInboundCompanyId(localCompanyId: string, request: number):
 async function loadInbound() {
   const request = ++inboundRequest;
   const localCompanyId = companyId.value;
+  const routingKey = bank.bridgeRoutingKey.value;
   inboundEmail.value = "";
   inboundEnabled.value = false;
   inboundLength.value = 0;
@@ -1036,8 +1061,8 @@ async function loadInbound() {
   inboundBridgeCompanyId.value = null;
   inboundBridgeChecked.value = false;
   if (!hasBankAccount.value) return;
-  const cid = await resolveInboundCompanyId(localCompanyId, request);
-  if (!cid || !isCurrentInboundRequest(request, localCompanyId)) return;
+  const cid = await resolveInboundCompanyId(localCompanyId, request, routingKey);
+  if (!cid || !isCurrentInboundRequest(request, localCompanyId, routingKey)) return;
   try {
     const inbound = await invoicingApi.bankTransactions.inboundEmail<{
       address?: string;
@@ -1045,14 +1070,14 @@ async function loadInbound() {
       length?: number;
       max_length?: number;
     }>(cid);
-    if (!isCurrentInboundRequest(request, localCompanyId)) return;
+    if (!isCurrentInboundRequest(request, localCompanyId, routingKey)) return;
     inboundEmail.value = inbound?.address || "";
     inboundEnabled.value = !!inbound?.enabled;
     inboundLength.value = inbound?.length ?? inboundEmail.value.length;
     inboundMaxLength.value = inbound?.max_length ?? 50;
     inboundCopied.value = false;
   } catch {
-    if (!isCurrentInboundRequest(request, localCompanyId)) return;
+    if (!isCurrentInboundRequest(request, localCompanyId, routingKey)) return;
     inboundEmail.value = "";
     inboundLength.value = 0;
     inboundMaxLength.value = 0;
@@ -1081,43 +1106,74 @@ function formatWiseSyncAt(iso: string): string {
   }
 }
 
+/** Keep explicit status retries and their errors in the latest mounted company scope. */
+async function refreshWiseStatus() {
+  const request = ++wiseStatusRequest;
+  const cid = companyId.value;
+  wiseStatusRefreshing.value = true;
+  try {
+    await bank.fetchWiseStatus();
+  } catch {
+    if (request === wiseStatusRequest && companyId.value === cid) {
+      flashStore.error(t("invoicing.bank_wise_connection_check_failed"));
+    }
+  } finally {
+    if (request === wiseStatusRequest) wiseStatusRefreshing.value = false;
+  }
+}
+
+/** Preserve the pasted token on failure and publish connection results only in their original context. */
 async function connectWise() {
+  if (wiseConnecting.value) return;
   const token = wiseToken.value.trim();
   if (!token) return;
+  const context = bridgeContextGeneration;
+  const cid = companyId.value;
+  const isCurrent = () => context === bridgeContextGeneration && companyId.value === cid;
   wiseConnecting.value = true;
   try {
     await bank.connectWise(token);
+    if (!isCurrent()) return;
     wiseToken.value = "";
     showWiseReconnect.value = false;
     flashStore.success(t("invoicing.bank_wise_connect_success"));
   } catch (err: unknown) {
+    if (!isCurrent()) return;
     const message =
       (err as { response?: { data?: { message?: string } } })?.response?.data
         ?.message || t("invoicing.bank_wise_connect_failed");
     flashStore.error(message);
   } finally {
-    wiseConnecting.value = false;
+    if (isCurrent()) wiseConnecting.value = false;
   }
 }
 
+/** Await financial completion while keeping its UI result and refresh in the initiating context. */
 async function syncWise() {
+  if (wiseSyncing.value) return;
+  const context = bridgeContextGeneration;
+  const cid = companyId.value;
+  const isCurrent = () => context === bridgeContextGeneration && companyId.value === cid;
   wiseSyncing.value = true;
   wiseSyncResult.value = null;
   try {
     const result = await bank.syncWise();
+    if (!isCurrent()) return;
     wiseSyncResult.value = {
       imported: result.imported,
       auto_matched: result.auto_matched,
     };
     await load();
+    if (!isCurrent()) return;
     await loadBatches();
   } catch (err: unknown) {
+    if (!isCurrent()) return;
     const message =
       (err as { response?: { data?: { message?: string } } })?.response?.data
         ?.message || t("invoicing.bank_wise_sync_failed");
     flashStore.error(message);
   } finally {
-    wiseSyncing.value = false;
+    if (isCurrent()) wiseSyncing.value = false;
   }
 }
 
@@ -1131,7 +1187,7 @@ watch(hasBankAccount, (value) => {
     load();
     loadBatches();
     loadInbound();
-    void bank.fetchWiseStatus();
+    void refreshWiseStatus();
   }
 });
 

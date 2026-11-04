@@ -1,5 +1,19 @@
 # Development roadmap
 
+## Current: publish the independently accepted eighth repair - 2026-11-04
+
+Verify five findings from actualc0921567 review5763268988, including supplemental
+recorded-route and retry-presentation items. Preserve current bridge read budget,
+financial completion/Unknown and default issuance semantics. Prefer trusted pinned
+routes consistently for bank sync and displayed settings; fail closed for absent
+shared owner evidence and await initial readiness within the read-stage budget.
+Both reviewers accept runtime10 b1f3de86...a26c/source-test15 e08706b2...9052;
+main final1579/169, build/static/locales, QA175/7+25actualVue and security authority/
+final-delta probes pass. Post-financial follow-up cannot import another company's
+email rows; invalid connect cannot falsely report success. Publish only19 reviewed
+paths and verify committed bytes/remote SHA, complete fresh CI, then request actual
+manual review after capacity. No merge/deployment or production actions.
+
 ## Current: publish the bank-view lifecycle completion guard - 2026-11-04
 
 Independent mounted Vue reproduction confirms the disposed-view stale identity

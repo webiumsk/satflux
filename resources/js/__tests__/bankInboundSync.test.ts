@@ -1,15 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { effectScope, nextTick, ref, type EffectScope } from "vue";
 import { AxiosError } from "axios";
+import type { OwnerId } from "@evolu/common/local-first";
+import { clearCompanyShares, markCompanyShareRegistryReady, setCompanyShare } from "@/evolu/companyShareRegistry";
 
 const mocks = vi.hoisted(() => ({
     localFirst: true,
-    companyRows: { value: [] as { id: string; legalName: string; registrationNumber: string | null }[] },
+    companyRows: { value: [] as { id: string; legalName: string; registrationNumber: string | null; ownerId?: string }[] },
     ensure: vi.fn(),
     fallback: vi.fn(),
     list: vi.fn(),
     inbound: vi.fn(),
     wiseStatus: vi.fn(),
+    wiseConnect: vi.fn(),
     wiseSync: vi.fn(),
     importInbound: vi.fn(),
     importWise: vi.fn(),
@@ -47,7 +50,7 @@ vi.mock("@/evolu/ephemeralBridge", () => ({ resolveEphemeralBridgeCompanyId: moc
 vi.mock("@/services/api", () => ({
     invoicingApi: {
         bankTransactions: { list: mocks.list, inboundEmail: mocks.inbound },
-        wise: { status: mocks.wiseStatus, sync: mocks.wiseSync },
+        wise: { status: mocks.wiseStatus, connect: mocks.wiseConnect, sync: mocks.wiseSync },
     },
 }));
 vi.mock("@/evolu/bankCrud", () => ({
@@ -79,23 +82,28 @@ const row = { id: "server-tx-b", booked_at: "2026-08-01", amount: "19.00", curre
 
 beforeEach(() => {
     vi.resetAllMocks();
+    clearCompanyShares(); markCompanyShareRegistryReady();
     mocks.localFirst = true;
     mocks.companyRows.value = ["local-a", "local-b", "company-a", "company-b"].map((id) => ({
         id, legalName: `Company ${id}`, registrationNumber: "123",
     }));
     mocks.loadQuery.mockResolvedValue([]);
-    mocks.ensure.mockImplementation(async (id: string) => ({ ok: true, bridgeCompanyId: `bridge-${id}` }));
+    mocks.ensure.mockImplementation(async (id: string) => ({ ok: true,
+        bridgeCompanyId: mocks.companyRows.value.find((company) => company.id === id)?.legalName.trim() ? `bridge-${id}` : null,
+    }));
     mocks.fallback.mockResolvedValue("wrong-first-company");
     mocks.list.mockResolvedValue({ data: [row], meta: { last_page: 1 } });
     mocks.importInbound.mockResolvedValue({ imported: 1, auto_matched: 0 });
     mocks.importWise.mockResolvedValue({ imported: 1, auto_matched: 0 });
     mocks.autoMatch.mockResolvedValue({ auto_matched: 1 });
     mocks.wiseStatus.mockResolvedValue({ connected: true });
+    mocks.wiseConnect.mockResolvedValue(undefined);
     mocks.wiseSync.mockResolvedValue({ rows: [row] });
 });
 
 afterEach(() => {
     scopes.splice(0).forEach((scope) => scope.stop());
+    clearCompanyShares();
     vi.useRealTimers();
 });
 
@@ -114,7 +122,7 @@ describe("bank movement bridge synchronization", () => {
         mocks.list.mockResolvedValueOnce({ data: [row], meta: { last_page: 2 } })
             .mockResolvedValueOnce({ data: [{ ...row, id: "server-tx-b2" }], meta: { last_page: 2 } });
         await bank.load();
-        expect(mocks.ensure).toHaveBeenCalledWith("local-b", expect.any(Function));
+        expect(mocks.ensure).toHaveBeenCalledWith("local-b", expect.any(Function), { preferRecordedBridgeId: true });
         expect(mocks.fallback).not.toHaveBeenCalled();
         expect(mocks.list).toHaveBeenNthCalledWith(1, "bridge-local-b", { source: "email", per_page: 100, page: 1 }, { timeout: 10_000, skipErrorFlash: true, signal: expect.any(AbortSignal) });
         expect(mocks.list).toHaveBeenNthCalledWith(2, "bridge-local-b", { source: "email", per_page: 100, page: 2 }, { timeout: 10_000, skipErrorFlash: true, signal: expect.any(AbortSignal) });
@@ -178,6 +186,55 @@ describe("bank movement bridge synchronization", () => {
         response.resolve({ data: [row] });
         await Promise.all([first, second]);
         expect(mocks.importInbound).toHaveBeenCalledTimes(1);
+    });
+
+    it("starts fresh work on A-B-A selection and keeps that work shared after the obsolete A settles", async () => {
+        const oldA = deferred<{ data: typeof row[] }>();
+        const freshA = deferred<{ data: typeof row[] }>();
+        const freshRow = { ...row, id: "current-a" };
+        let aRequests = 0;
+        mocks.list.mockImplementation((bridge) => bridge === "bridge-local-a"
+            ? ++aRequests === 1 ? oldA.promise : freshA.promise
+            : Promise.resolve({ data: [] }));
+        const { bank, company } = bankFor("local-a");
+        const obsolete = bank.load();
+        await vi.waitFor(() => expect(aRequests).toBe(1));
+        company.value = "local-b";
+        await bank.load();
+        company.value = "local-a";
+        const current = bank.load();
+        await vi.waitFor(() => expect(aRequests).toBe(2));
+        oldA.resolve({ data: [row] });
+        await obsolete;
+        expect(mocks.importInbound).not.toHaveBeenCalled();
+        const overlapping = bank.load();
+        await Promise.resolve(); await Promise.resolve();
+        expect(aRequests).toBe(2);
+        freshA.resolve({ data: [freshRow] });
+        await Promise.all([current, overlapping]);
+        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-a", [freshRow]);
+    });
+
+    it("starts fresh work after an identity edit and preserves its promise when obsolete work settles", async () => {
+        const oldRead = deferred<{ data: typeof row[] }>();
+        const newRead = deferred<{ data: typeof row[] }>();
+        mocks.list.mockReturnValueOnce(oldRead.promise).mockReturnValueOnce(newRead.promise);
+        const { bank } = bankFor();
+        const old = bank.load();
+        await vi.waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(1));
+        mocks.companyRows.value.find((row) => row.id === "local-b")!.legalName = "New legal identity";
+        const current = bank.load();
+        await vi.waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(2));
+        oldRead.resolve({ data: [row] });
+        await old;
+        expect(mocks.importInbound).not.toHaveBeenCalled();
+        const overlapping = bank.load();
+        await Promise.resolve(); await Promise.resolve();
+        expect(mocks.list).toHaveBeenCalledTimes(2);
+        const fresh = { ...row, id: "fresh-identity" };
+        newRead.resolve({ data: [fresh] });
+        await Promise.all([current, overlapping]);
+        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [fresh]);
     });
 
     it("retains local access after a failed email fetch and permits a later retry", async () => {
@@ -264,10 +321,15 @@ describe("bank movement bridge synchronization", () => {
         await expect(bank.load()).resolves.toBeUndefined();
         await expect(bank.fetchWiseStatus()).resolves.toBeUndefined();
         await expect(bank.loadInbound()).resolves.toBeUndefined();
-        expect(mocks.ensure).not.toHaveBeenCalled();
+        expect(mocks.ensure).toHaveBeenCalledTimes(3);
         expect(mocks.importInbound).not.toHaveBeenCalled();
         expect(bank.wiseStatus.value).toBeNull();
         expect(bank.wiseBridgeMissing.value).toBe(true);
+        // The rejected startup promise must not poison later subscribed metadata.
+        mocks.companyRows.value = [{ id: "local-b", legalName: "Recovered company", registrationNumber: "123" }];
+        await bank.load();
+        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [row]);
+        expect(mocks.ensure).toHaveBeenCalledTimes(4);
     });
 
     it.each(["legalName", "registrationNumber"] as const)("discards an old bridge lookup after %s changes, then allows explicit retry", async (field) => {
@@ -575,13 +637,268 @@ describe("bank movement bridge synchronization", () => {
         expect(mocks.loadQuery).not.toHaveBeenCalled();
     });
 
+    it.each(["selection", "identity"] as const)("preserves completed Wise import counts without starting new reads after a %s change", async (change) => {
+        const importing = deferred<{ imported: number; auto_matched: number }>();
+        mocks.importWise.mockReturnValueOnce(importing.promise);
+        mocks.wiseSync.mockResolvedValueOnce({ rows: [row], skipped_duplicates: 2 });
+        const { bank, company } = bankFor("local-a");
+        const pending = bank.syncWise();
+        await vi.waitFor(() => expect(mocks.importWise).toHaveBeenCalledTimes(1));
+        mocks.loadQuery.mockClear();
+        if (change === "selection") company.value = "local-b";
+        else mocks.companyRows.value.find((row) => row.id === "local-a")!.legalName = "Edited after import entry";
+        importing.resolve({ imported: 1, auto_matched: 1 });
+        await expect(pending).resolves.toEqual({ imported: 1, auto_matched: 1, skipped_duplicates: 2 });
+        expect(mocks.importWise).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-a", [row], "wise", "wise-sync.json");
+        expect(mocks.ensure).toHaveBeenCalledTimes(1);
+        expect(mocks.list).not.toHaveBeenCalled();
+        expect(mocks.importInbound).not.toHaveBeenCalled();
+        expect(mocks.loadQuery).not.toHaveBeenCalled();
+    });
+
+    it("skips the batch stage if context changes during the post-Wise inbound read", async () => {
+        const email = deferred<{ data: typeof row[] }>();
+        mocks.list.mockReturnValueOnce(email.promise);
+        const { bank, company } = bankFor("local-a");
+        mocks.loadQuery.mockClear();
+        const pending = bank.syncWise();
+        await vi.waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(1));
+        expect(mocks.importWise).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-a", [row], "wise", "wise-sync.json");
+        company.value = "local-b";
+        email.resolve({ data: [row] });
+        await expect(pending).resolves.toEqual({ imported: 1, auto_matched: 0, skipped_duplicates: 0 });
+        expect(mocks.list).toHaveBeenCalledExactlyOnceWith("bridge-local-a", expect.anything(), expect.anything());
+        expect(mocks.importInbound).not.toHaveBeenCalled();
+        expect(mocks.loadQuery.mock.calls.filter(([query]) => query === "batches")).toHaveLength(0);
+    });
+
+    it("waits for initial trusted share readiness within the existing read budget", async () => {
+        vi.useFakeTimers(); clearCompanyShares();
+        const { bank } = bankFor();
+        const pending = bank.load();
+        await vi.advanceTimersByTimeAsync(5_000);
+        expect(mocks.ensure).not.toHaveBeenCalled();
+        markCompanyShareRegistryReady();
+        await pending;
+        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [row]);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("bounds a never-ready share registry and imports only after an explicit ready retry", async () => {
+        vi.useFakeTimers(); clearCompanyShares();
+        const { bank } = bankFor();
+        const pending = bank.load();
+        await vi.advanceTimersByTimeAsync(20_000);
+        await pending;
+        expect(mocks.importInbound).not.toHaveBeenCalled();
+        expect(mocks.ensure).not.toHaveBeenCalled();
+        expect(vi.getTimerCount()).toBe(0);
+        markCompanyShareRegistryReady();
+        await Promise.resolve(); await Promise.resolve();
+        expect(mocks.importInbound).not.toHaveBeenCalled();
+        await bank.load();
+        expect(mocks.importInbound).toHaveBeenCalledTimes(1);
+    });
+
+    it("cleans a readiness wait immediately on disposal without a late import when bootstrap finishes", async () => {
+        vi.useFakeTimers(); clearCompanyShares();
+        const { bank, scope } = bankFor();
+        const pending = bank.load();
+        await vi.advanceTimersByTimeAsync(0);
+        scope.stop();
+        await pending;
+        expect(vi.getTimerCount()).toBe(0);
+        markCompanyShareRegistryReady();
+        await Promise.resolve(); await Promise.resolve();
+        expect(mocks.ensure).not.toHaveBeenCalled();
+        expect(mocks.importInbound).not.toHaveBeenCalled();
+    });
+
     it("uses that same company bridge for Wise status and imported rows", async () => {
         const { bank } = bankFor();
         await bank.fetchWiseStatus();
+        mocks.loadQuery.mockClear();
         await bank.syncWise();
+        expect(mocks.list).toHaveBeenCalledTimes(1);
+        expect(mocks.importInbound).toHaveBeenCalledTimes(1);
+        expect(mocks.loadQuery.mock.calls.filter(([query]) => query === "batches")).toHaveLength(1);
         expect(mocks.wiseStatus).toHaveBeenCalledWith("bridge-local-b");
         expect(mocks.wiseSync).toHaveBeenCalledWith("bridge-local-b", { local_first: true });
         expect(mocks.importWise).toHaveBeenCalledWith(expect.anything(), "local-b", [row], "wise", "wise-sync.json");
+    });
+
+    it.each(["legalName", "registrationNumber", "identity-aba", "selection-aba"] as const)("discards a Wise response after %s changes", async (change) => {
+        const wise = deferred<{ rows: typeof row[] }>();
+        mocks.wiseSync.mockReturnValueOnce(wise.promise);
+        const { bank, company } = bankFor();
+        const pending = bank.syncWise();
+        await vi.waitFor(() => expect(mocks.wiseSync).toHaveBeenCalledTimes(1));
+        const metadata = mocks.companyRows.value.find((row) => row.id === "local-b")!;
+        if (change === "selection-aba") {
+            company.value = "local-a"; company.value = "local-b";
+        } else if (change === "identity-aba") {
+            const oldName = metadata.legalName;
+            metadata.legalName = "Other"; metadata.legalName = oldName;
+        } else metadata[change] = "Other identity";
+        wise.resolve({ rows: [row] });
+        await expect(pending).resolves.toEqual({ imported: 0, auto_matched: 0, skipped_duplicates: 0 });
+        expect(mocks.importWise).not.toHaveBeenCalled();
+        expect(mocks.importInbound).not.toHaveBeenCalled();
+        expect(mocks.list).not.toHaveBeenCalled();
+    });
+
+    it("keeps Wise normalized-identity formatting edits and already-started import outcomes", async () => {
+        const wise = deferred<{ rows: typeof row[] }>();
+        const importing = deferred<{ imported: number; auto_matched: number }>();
+        mocks.wiseSync.mockReturnValueOnce(wise.promise);
+        mocks.importWise.mockReturnValueOnce(importing.promise);
+        const { bank } = bankFor();
+        const pending = bank.syncWise();
+        await vi.waitFor(() => expect(mocks.wiseSync).toHaveBeenCalledTimes(1));
+        const metadata = mocks.companyRows.value.find((row) => row.id === "local-b")!;
+        metadata.legalName = `  ${metadata.legalName.toUpperCase()}  `;
+        wise.resolve({ rows: [row] });
+        await vi.waitFor(() => expect(mocks.importWise).toHaveBeenCalledTimes(1));
+        metadata.legalName = "Edited after financial entry";
+        importing.resolve({ imported: 1, auto_matched: 0 });
+        await expect(pending).resolves.toMatchObject({ imported: 1 });
+        expect(mocks.importWise).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([false, true])("exposes a retryable bridge failure without claiming the bridge is missing (helper throws=%s)", async (throws) => {
+        if (throws) mocks.ensure.mockRejectedValueOnce(new Error("synthetic lookup failure"));
+        else mocks.ensure.mockResolvedValueOnce({ ok: false });
+        const { bank } = bankFor();
+        await bank.fetchWiseStatus();
+        expect(bank.bridgeLookupFailed.value).toBe(true);
+        expect(bank.wiseBridgeMissing.value).toBe(false);
+        expect(bank.wiseBridgeChecked.value).toBe(false);
+        expect(mocks.wiseStatus).not.toHaveBeenCalled();
+        await bank.fetchWiseStatus();
+        expect(bank.bridgeLookupFailed.value).toBe(false);
+        expect(bank.wiseBridgeMissing.value).toBe(false);
+        expect(bank.wiseBridgeChecked.value).toBe(true);
+        expect(bank.wiseStatus.value).toEqual({ connected: true });
+    });
+
+    it("keeps confirmed missing bridge distinct from a transient lookup failure", async () => {
+        const { bank } = bankFor();
+        mocks.ensure.mockResolvedValueOnce({ ok: false });
+        await bank.fetchWiseStatus();
+        mocks.ensure.mockResolvedValueOnce({ ok: true, bridgeCompanyId: null });
+        await bank.fetchWiseStatus();
+        expect(bank.bridgeLookupFailed.value).toBe(false);
+        expect(bank.wiseBridgeMissing.value).toBe(true);
+        expect(bank.wiseBridgeChecked.value).toBe(true);
+    });
+
+    it("does not let an obsolete lookup clear the current failure state", async () => {
+        const oldLookup = deferred<{ ok: true; bridgeCompanyId: string }>();
+        mocks.ensure.mockReturnValueOnce(oldLookup.promise).mockResolvedValueOnce({ ok: false });
+        const { bank } = bankFor();
+        const old = bank.fetchWiseStatus();
+        await bank.fetchWiseStatus();
+        expect(bank.bridgeLookupFailed.value).toBe(true);
+        oldLookup.resolve({ ok: true, bridgeCompanyId: "obsolete" });
+        await old;
+        expect(bank.bridgeLookupFailed.value).toBe(true);
+        expect(bank.inboundEmailAvailable.value).toBe(false);
+    });
+
+    it.each(["lookup", "page", "wise"] as const)("discards an obsolete %s route after recorded pin A-B-A changes", async (phase) => {
+        const pin = "0192a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b";
+        const share = { companyId: "local-b", ownerId: "synthetic-shared" as OwnerId, role: "member" as const, status: "active" as const, bridgeCompanyId: pin };
+        setCompanyShare(share);
+        const lookup = deferred<{ ok: true; bridgeCompanyId: string }>();
+        const response = deferred<{ data: typeof row[]; rows: typeof row[] }>();
+        if (phase === "lookup") mocks.ensure.mockReturnValueOnce(lookup.promise);
+        else mocks.ensure.mockResolvedValue({ ok: true, bridgeCompanyId: pin });
+        if (phase === "page") mocks.list.mockReturnValueOnce(response.promise);
+        if (phase === "wise") mocks.wiseSync.mockReturnValueOnce(response.promise);
+        const { bank } = bankFor();
+        const routing = bank.bridgeRoutingKey.value;
+        const pending = phase === "wise" ? bank.syncWise() : bank.load();
+        await vi.waitFor(() => expect(phase === "lookup" ? mocks.ensure : phase === "page" ? mocks.list : mocks.wiseSync).toHaveBeenCalledTimes(1));
+        setCompanyShare({ ...share, bridgeCompanyId: "0192a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6c" });
+        setCompanyShare(share);
+        expect(bank.bridgeRoutingKey.value).toBe(routing);
+        lookup.resolve({ ok: true, bridgeCompanyId: pin });
+        response.resolve({ data: [row], rows: [row] });
+        await pending;
+        expect(mocks.importInbound).not.toHaveBeenCalled();
+        expect(mocks.importWise).not.toHaveBeenCalled();
+        expect(bank.inboundEmailAvailable.value).toBe(false);
+        expect(bank.bridgeLookupFailed.value).toBe(false);
+    });
+
+    it("keeps selected routing and imports valid data when another company's share changes", async () => {
+        const response = deferred<{ data: typeof row[] }>();
+        mocks.list.mockReturnValueOnce(response.promise);
+        const { bank } = bankFor();
+        const routing = bank.bridgeRoutingKey.value;
+        const pending = bank.load();
+        await vi.waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(1));
+        setCompanyShare({ companyId: "unrelated", ownerId: "other-owner" as OwnerId, role: "member", status: "active", bridgeCompanyId: "0192a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b" });
+        expect(bank.bridgeRoutingKey.value).toBe(routing);
+        response.resolve({ data: [row] });
+        await pending;
+        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [row]);
+    });
+
+    it.each(["lookup", "page", "wise"] as const)("discards a pending %s result when selected company ownership or uniqueness changes", async (phase) => {
+        const lookup = deferred<{ ok: true; bridgeCompanyId: string }>();
+        const response = deferred<{ data: typeof row[]; rows: typeof row[] }>();
+        if (phase === "lookup") mocks.ensure.mockReturnValueOnce(lookup.promise);
+        if (phase === "page") mocks.list.mockReturnValueOnce(response.promise);
+        if (phase === "wise") mocks.wiseSync.mockReturnValueOnce(response.promise);
+        const { bank } = bankFor();
+        const initial = bank.bridgeRoutingKey.value;
+        const pending = phase === "wise" ? bank.syncWise() : bank.load();
+        await vi.waitFor(() => expect(phase === "lookup" ? mocks.ensure : phase === "page" ? mocks.list : mocks.wiseSync).toHaveBeenCalledTimes(1));
+        if (phase === "page") mocks.companyRows.value.push({ ...mocks.companyRows.value.find((row) => row.id === "local-b")!, ownerId: "duplicate-shared" });
+        else mocks.companyRows.value.find((row) => row.id === "local-b")!.ownerId = "unbound-shared";
+        expect(bank.bridgeRoutingKey.value).not.toBe(initial);
+        lookup.resolve({ ok: true, bridgeCompanyId: "old-owner-bridge" });
+        response.resolve({ data: [row], rows: [row] });
+        await pending;
+        expect(mocks.importInbound).not.toHaveBeenCalled();
+        expect(mocks.importWise).not.toHaveBeenCalled();
+        expect(bank.inboundEmailAvailable.value).toBe(false);
+    });
+
+    it.each(["failed", "missing", "throws"] as const)("rejects a %s bridge before connecting Wise without a request or retry", async (outcome) => {
+        if (outcome === "throws") mocks.ensure.mockRejectedValueOnce(new Error("synthetic lookup failure"));
+        else mocks.ensure.mockResolvedValueOnce(outcome === "failed" ? { ok: false } : { ok: true, bridgeCompanyId: null });
+        const { bank } = bankFor();
+        await expect(bank.connectWise("synthetic-token-fixture")).rejects.toThrow("bank_bridge_lookup_failed");
+        expect(mocks.wiseConnect).not.toHaveBeenCalled();
+        expect(mocks.wiseStatus).not.toHaveBeenCalled();
+        expect(mocks.ensure).toHaveBeenCalledTimes(1);
+    });
+
+    it("connects Wise once through a verified route and refreshes its status", async () => {
+        const { bank } = bankFor();
+        await bank.connectWise("synthetic-token-fixture");
+        expect(mocks.wiseConnect).toHaveBeenCalledExactlyOnceWith("bridge-local-b", "synthetic-token-fixture");
+        expect(mocks.wiseStatus).toHaveBeenCalledExactlyOnceWith("bridge-local-b");
+        expect(mocks.ensure).toHaveBeenCalledTimes(2);
+    });
+
+    it.each(["success", "failure"] as const)("preserves an entered Wise connect %s across context changes without starting a new lookup", async (outcome) => {
+        const posting = deferred<void>();
+        mocks.wiseConnect.mockReturnValueOnce(posting.promise);
+        const { bank } = bankFor();
+        const pending = bank.connectWise("synthetic-token-fixture");
+        const observed = pending.then(() => ({ ok: true }), (error) => ({ error }));
+        await vi.waitFor(() => expect(mocks.wiseConnect).toHaveBeenCalledTimes(1));
+        mocks.companyRows.value.find((company) => company.id === "local-b")!.legalName = "Changed after POST";
+        const failure = new Error("synthetic connect outcome");
+        if (outcome === "failure") posting.reject(failure);
+        else posting.resolve();
+        expect(await observed).toEqual(outcome === "failure" ? { error: failure } : { ok: true });
+        expect(mocks.ensure).toHaveBeenCalledTimes(1);
+        expect(mocks.wiseStatus).not.toHaveBeenCalled();
+        expect(mocks.wiseConnect).toHaveBeenCalledTimes(1);
     });
 
     it("does not import a stale Wise response into the newly selected company", async () => {

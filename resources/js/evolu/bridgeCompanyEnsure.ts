@@ -1,3 +1,5 @@
+import { companyShareInfo, companyShareRoutingKey, isCompanyShareRegistryReady } from "./companyShareRegistry";
+import { isServerUuid } from "@/utils/serverIds";
 import { resolveOrCreateBridgeCompanyId, type BridgeCompanyRequestOptions } from "./numberAllocatorBridge";
 
 export type EnsureBridgeCompanyResult =
@@ -19,18 +21,38 @@ export type EnsureBridgeCompanyResult =
  *
  * Failures are reported distinctly from "this company has no identity" so
  * callers do not present a transient error as a permanently missing bridge.
+ * Bank callers can prefer the validated shared-company pin; unresolved shared
+ * routing fails closed, while default numbering/other callers retain identity matching.
  */
 export async function ensureBridgeCompanyIdForLocalCompany(
     localCompanyId: string,
     requestOptions?: BridgeCompanyRequestOptions,
+    options: { preferRecordedBridgeId?: boolean } = {},
 ): Promise<EnsureBridgeCompanyResult> {
     if (!localCompanyId) {
         return { ok: true, bridgeCompanyId: null };
     }
     try {
+        if (options.preferRecordedBridgeId && !isCompanyShareRegistryReady()) return { ok: false };
+        const routingKey = options.preferRecordedBridgeId ? companyShareRoutingKey(localCompanyId) : null;
         const { evolu, allCompaniesDetailQuery } = await import("./client");
         const rows = await evolu.loadQuery(allCompaniesDetailQuery);
-        const row = rows.find((company) => company.id === localCompanyId);
+        const matchingRows = rows.filter((company) => company.id === localCompanyId);
+        const row = matchingRows[0];
+        if (options.preferRecordedBridgeId) {
+            if (companyShareRoutingKey(localCompanyId) !== routingKey
+                || matchingRows.length !== 1 || !("ownerId" in row)) return { ok: false };
+            const share = companyShareInfo(localCompanyId);
+            if (share) {
+                if ((share.status !== "active" && share.status !== "migrating")
+                    || row.ownerId !== share.ownerId || !isServerUuid(share.bridgeCompanyId)) {
+                    return { ok: false };
+                }
+                return { ok: true, bridgeCompanyId: share.bridgeCompanyId.trim() };
+            }
+            const appOwner = await evolu.appOwner;
+            if (row.ownerId !== appOwner.id || companyShareRoutingKey(localCompanyId) !== routingKey) return { ok: false };
+        }
         if (!row?.legalName) {
             return { ok: true, bridgeCompanyId: null };
         }
@@ -44,6 +66,7 @@ export async function ensureBridgeCompanyIdForLocalCompany(
         const bridgeCompanyId = requestOptions
             ? await resolveOrCreateBridgeCompanyId(identity, requestOptions)
             : await resolveOrCreateBridgeCompanyId(identity);
+        if (options.preferRecordedBridgeId && companyShareRoutingKey(localCompanyId) !== routingKey) return { ok: false };
         return { ok: true, bridgeCompanyId };
     } catch (error) {
         console.error(

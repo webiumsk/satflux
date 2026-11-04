@@ -1,5 +1,26 @@
 # Development decision log
 
+## 2026-11-04 - Repair verified lifecycle findings and pin bank-only shared routing
+
+Actualc0921567 review5763268988 has three inline and two supplemental findings
+despite green CI and five passing pre-merge checks87.72%. Verify then repair all
+valid items; a success check alone does not complete the owner's all-green loop.
+
+Bank-only helper opt-in prefers the existing trusted recorded shared bridge and
+requires exact selected-company owner evidence. Keep ordinary helper/issuance
+defaults. A selected semantic routing context invalidates stale lookup, Wise and
+address results without importing automatically on metadata edits. Initial bank
+reads await trusted registry readiness within their current20-second budget.
+Install the existing subscription before marking readiness/unchanged maintenance
+so maintenance failure cannot leave a ready unsubscribed routing snapshot.
+Both independent reviewers accept final runtime10 b1f3de86...a26c/source-test15
+e08706b2...9052 after verified final1579frontend/169files/build/static/locales.
+Reject unresolved Wise connect beforePOST without token loss or false success;
+preserve entered outcomes and guard only subsequent reads/UI by captured context.
+Publish exactly19 reviewed paths, then verify blobs/remote SHA, full fresh CI and
+another actual manual review. No owner/billing/key policy, production,
+merge or deployment action is included.
+
 ## 2026-11-04 - Cancel disposed view reads before financial entry
 
 Actual Vue/Evolu query lifecycle proof confirms that retained shallow snapshots

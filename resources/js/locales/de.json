@@ -1368,6 +1368,7 @@
     "bank_wise_help": "Synchronisieren Sie eingehende Wise-Überweisungen oder importieren Sie einen Wise-CSV-Export. Geben Sie die Rechnungsnummer im Verwendungszweck an, damit der automatische Abgleich funktioniert.",
     "bank_wise_local_first_hint": "Die Wise-API-Zugangsdaten werden auf Ihrem Server-Bridge-Unternehmen gespeichert. Die Synchronisierung lädt Umsätze auf dieses Gerät.",
     "bank_wise_bridge_missing": "Die Wise-Synchronisierung benötigt ein mit diesem Evolu-Arbeitsbereich verknüpftes Server-Unternehmen. Öffnen Sie Profil → Server-Unternehmen und behalten Sie mindestens ein Legacy-Unternehmen.",
+    "bank_wise_connection_check_failed": "Die Verbindung konnte nicht geprüft werden. Versuchen Sie es erneut.",
     "bank_wise_token_label": "Persönlicher Wise-API-Token",
     "bank_wise_token_placeholder": "Token aus Wise → Integrations and tools → API tokens einfügen",
     "bank_wise_token_hint": "Persönliche API-Tokens funktionieren für Kontostände in US, CA, AU, NZ, SG und MY. EU/UK-Wise-Konten müssen ausschließlich den CSV-Import verwenden.",

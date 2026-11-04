@@ -1368,6 +1368,7 @@
     "bank_wise_help": "Synchronizujte příchozí platby z Wise nebo importujte CSV export z Wise. Do pole Reference uveďte číslo faktury, aby fungovalo automatické párování.",
     "bank_wise_local_first_hint": "Přístupové údaje k Wise API jsou uloženy na serverové bridge firmě. Sync stáhne pohyby do tohoto zařízení.",
     "bank_wise_bridge_missing": "Wise sync vyžaduje serverovou firmu propojenou s tímto Evolu workspace. Otevřete Profil → Serverové firmy a zachovejte alespoň jednu legacy firmu.",
+    "bank_wise_connection_check_failed": "Propojení se nepodařilo ověřit. Zkuste to znovu.",
     "bank_wise_token_label": "Wise personal API token",
     "bank_wise_token_placeholder": "Vložte token z Wise → Integrations and tools → API tokens",
     "bank_wise_token_hint": "Personal API token funguje pro zůstatky US, CA, AU, NZ, SG a MY. Účty Wise EU/UK musí používat pouze CSV import.",

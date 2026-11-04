@@ -1368,6 +1368,7 @@
     "bank_wise_help": "Sync incoming Wise transfers or import a Wise CSV export. Put the invoice number in the payment Reference so auto-matching works.",
     "bank_wise_local_first_hint": "Wise API credentials are stored on your server bridge company. Sync pulls transactions into this device.",
     "bank_wise_bridge_missing": "Wise sync needs a server company linked to this Evolu workspace. Open Profile → Server companies and keep at least one legacy company.",
+    "bank_wise_connection_check_failed": "The connection could not be checked. Try again.",
     "bank_wise_token_label": "Wise personal API token",
     "bank_wise_token_placeholder": "Paste token from Wise → Integrations and tools → API tokens",
     "bank_wise_token_hint": "Personal API tokens work for US, CA, AU, NZ, SG, and MY balances. EU/UK Wise accounts must use CSV import only.",

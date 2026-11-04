@@ -1,22 +1,23 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { AxiosError, type AxiosAdapter, type InternalAxiosRequestConfig } from "axios";
 import api from "@/services/api";
+import { clearCompanyShares, markCompanyShareRegistryReady } from "@/evolu/companyShareRegistry";
 import { ensureBridgeCompanyIdForLocalCompany } from "@/evolu/bridgeCompanyEnsure";
 
 const localCompany = {
-    id: "synthetic-local", legalName: "Synthetic company", registrationNumber: "123",
+    id: "synthetic-local", ownerId: "synthetic-app", legalName: "Synthetic company", registrationNumber: "123",
     jurisdiction: "eu_sk", country: "SK", defaultCurrency: "EUR",
 };
 vi.mock("@/evolu/client", () => ({
     allCompaniesDetailQuery: "companies",
-    evolu: { loadQuery: vi.fn(async () => [localCompany]) },
+    evolu: { loadQuery: vi.fn(async () => [localCompany]), appOwner: Promise.resolve({ id: "synthetic-app" }) },
 }));
 const flash = vi.hoisted(() => ({ errorKey: vi.fn() }));
 vi.mock("@/store/flash", () => ({ useFlashStore: () => flash }));
 const originalAdapter = api.defaults.adapter;
 
-beforeEach(() => { flash.errorKey.mockClear(); });
-afterEach(() => { api.defaults.adapter = originalAdapter; vi.restoreAllMocks(); vi.useRealTimers(); });
+beforeEach(() => { flash.errorKey.mockClear(); clearCompanyShares(); markCompanyShareRegistryReady(); });
+afterEach(() => { clearCompanyShares(); api.defaults.adapter = originalAdapter; vi.restoreAllMocks(); vi.useRealTimers(); });
 
 it("propagates caller signal and refreshed remaining timeout through lookup, create and canonical re-list", async () => {
     const requests: InternalAxiosRequestConfig[] = [];
@@ -31,7 +32,7 @@ it("propagates caller signal and refreshed remaining timeout through lookup, cre
     const controller = new AbortController();
     const remaining = [10_000, 8_000, 3_000];
     const controls = vi.fn(() => ({ signal: controller.signal, timeout: remaining.shift()!, skipErrorFlash: true }));
-    await expect(ensureBridgeCompanyIdForLocalCompany("synthetic-local", controls))
+    await expect(ensureBridgeCompanyIdForLocalCompany("synthetic-local", controls, { preferRecordedBridgeId: true }))
         .resolves.toEqual({ ok: true, bridgeCompanyId: "bridge-older" });
     expect(controls).toHaveBeenCalledTimes(3);
     expect(requests.map(({ method, timeout }) => [method, timeout])).toEqual([["get", 10_000], ["post", 8_000], ["get", 3_000]]);
@@ -69,12 +70,12 @@ it("keeps an ambiguously created bridge after POST timeout and converges only on
         return { config, data: { data: created ? [{ id: "created-before-timeout", legal_name: localCompany.legalName, registration_number: "123" }] : [] }, status: 200, statusText: "Synthetic", headers: {} };
     };
     const controls = () => ({ timeout: 10_000, skipErrorFlash: true, signal: new AbortController().signal });
-    const first = ensureBridgeCompanyIdForLocalCompany("synthetic-local", controls);
+    const first = ensureBridgeCompanyIdForLocalCompany("synthetic-local", controls, { preferRecordedBridgeId: true });
     await vi.advanceTimersByTimeAsync(10_000);
     await expect(first).resolves.toEqual({ ok: false });
     expect(requests.map(({ method }) => method)).toEqual(["get", "post"]);
     expect(flash.errorKey).not.toHaveBeenCalled();
-    await expect(ensureBridgeCompanyIdForLocalCompany("synthetic-local", controls))
+    await expect(ensureBridgeCompanyIdForLocalCompany("synthetic-local", controls, { preferRecordedBridgeId: true }))
         .resolves.toEqual({ ok: true, bridgeCompanyId: "created-before-timeout" });
     expect(requests.map(({ method }) => method)).toEqual(["get", "post", "get"]);
     expect(created).toBe(true);

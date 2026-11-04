@@ -34,7 +34,8 @@ import {
 } from "@/evolu/bankCrud";
 import type { BankBatchApiRow, BankSummary, BankTxApiRow } from "@/evolu/bankMap";
 import { isInvoicingLocalFirst } from "@/evolu/flags";
-import { ensureBridgeCompanyIdForLocalCompany } from "@/evolu/bridgeCompanyEnsure";
+import { ensureBridgeCompanyIdForLocalCompany, type EnsureBridgeCompanyResult } from "@/evolu/bridgeCompanyEnsure";
+import { companyShareRoutingKey, waitCompanyShareRegistryReady } from "@/evolu/companyShareRegistry";
 import { normalizeCompanyIdentityKey } from "@/evolu/duplicateCompanies";
 import type { BridgeCompanyRequestOptions } from "@/evolu/numberAllocatorBridge";
 import type { ExpenseSavePayload } from "@/evolu/expenseCrud";
@@ -69,6 +70,8 @@ export interface UseInvoicingBankPaymentsResult {
     summary: Ref<BankSummary> | ComputedRef<BankSummary>;
     batches: Ref<BankBatchApiRow[]> | ComputedRef<BankBatchApiRow[]>;
     inboundEmailAvailable: ComputedRef<boolean>;
+    bridgeLookupFailed: Ref<boolean>;
+    bridgeRoutingKey: ComputedRef<string>;
     load: (matchFilter?: string, options?: { skipErrorFlash?: boolean }) => Promise<void>;
     loadBatches: (options?: { skipErrorFlash?: boolean }) => Promise<void>;
     loadInbound: () => Promise<void>;
@@ -135,6 +138,8 @@ function useServerInvoicingBankPayments(
     });
 
     const inboundEmailAvailable = computed(() => companyId.value.trim().length > 0);
+    const bridgeLookupFailed = ref(false);
+    const bridgeRoutingKey = computed(() => companyId.value);
 
     function requireCompanyId(): string | null {
         return companyId.value || null;
@@ -350,6 +355,8 @@ function useServerInvoicingBankPayments(
         summary,
         batches,
         inboundEmailAvailable,
+        bridgeLookupFailed,
+        bridgeRoutingKey,
         load,
         loadBatches,
         loadInbound,
@@ -381,12 +388,20 @@ function useLocalInvoicingBankPayments(
     // so hand each one its own (Promise.all only gates the loading flag).
     const companyPromise = evolu.loadQuery(allCompaniesDetailQuery);
     const companyRows = useQuery(allCompaniesDetailQuery, { promise: companyPromise.catch(() => []) });
+    const selectedCompanyRows = computed(() => companyRows.value.filter((row) => row.id === companyId.value));
+    const selectedMetadataKey = computed(() => {
+        const rows = selectedCompanyRows.value;
+        const row = rows[0];
+        return JSON.stringify([rows.length, rows.length === 1 && "ownerId" in row ? row.ownerId : null]);
+    });
     const bridgeIdentityKey = computed(() => {
-        const company = companyRows.value.find((row) => row.id === companyId.value);
+        const company = selectedCompanyRows.value[0];
         return company?.legalName?.trim()
             ? normalizeCompanyIdentityKey(company.legalName, company.registrationNumber)
             : null;
     });
+    const selectedShareRoutingKey = computed(() => companyShareRoutingKey(companyId.value));
+    const bridgeRoutingKey = computed(() => JSON.stringify([companyId.value, bridgeIdentityKey.value, selectedMetadataKey.value, selectedShareRoutingKey.value]));
     const bankTxPromise = evolu.loadQuery(allBankTransactionsQuery);
     const bankMatchPromise = evolu.loadQuery(allBankTransactionMatchesQuery);
     const documentsPromise = evolu.loadQuery(allDocumentsQuery);
@@ -447,12 +462,13 @@ function useLocalInvoicingBankPayments(
     );
 
     const bridgeCompanyId = ref<string | null>(null);
+    const bridgeLookupFailed = ref(false);
     const inboundEmailAvailable = computed(() => bridgeCompanyId.value !== null);
 
     const wiseStatus = ref<WiseStatus | null>(null);
     const wiseBridgeChecked = ref(false);
     const wiseBridgeMissing = computed(
-        () => wiseBridgeChecked.value && bridgeCompanyId.value === null,
+        () => wiseBridgeChecked.value && !bridgeLookupFailed.value && bridgeCompanyId.value === null,
     );
     let wiseStatusRequestSeq = 0;
     let bridgeLookupRequestSeq = 0;
@@ -468,18 +484,22 @@ function useLocalInvoicingBankPayments(
         bridgeLookupRequestSeq++;
         wiseStatusRequestSeq++;
         bridgeCompanyId.value = null;
+        bridgeLookupFailed.value = false;
         wiseStatus.value = null;
         wiseBridgeChecked.value = false;
         for (const cancelFetch of activeInboundFetches) cancelFetch();
         activeInboundFetches.clear();
     });
-    watch([companyId, bridgeIdentityKey], ([currentCompany], [previousCompany, previousIdentity]) => {
+    watch([companyId, bridgeIdentityKey, selectedMetadataKey, selectedShareRoutingKey],
+        ([currentCompany, , currentMetadata, currentRouting], [previousCompany, previousIdentity, previousMetadata, previousRouting]) => {
         bridgeIdentityGeneration++;
         bridgeLookupRequestSeq++;
         bridgeCompanyId.value = null;
+        bridgeLookupFailed.value = false;
         // Initial metadata readiness has no prior eligible lookup to invalidate.
         if (currentCompany !== previousCompany) companySelectionGeneration++;
-        if (currentCompany !== previousCompany || previousIdentity !== null) {
+        if (currentCompany !== previousCompany || previousIdentity !== null || currentRouting !== previousRouting
+            || (previousMetadata !== "[0,null]" && currentMetadata !== previousMetadata)) {
             wiseStatusRequestSeq++;
             wiseStatus.value = null;
             wiseBridgeChecked.value = false;
@@ -487,30 +507,39 @@ function useLocalInvoicingBankPayments(
         // CompanyPayments owns the awaited refresh and its visible error path.
     }, { flush: "sync" });
 
+    type BridgeResolution = EnsureBridgeCompanyResult & { isCurrent: () => boolean };
     /**
      * Resolve only the captured normalized legal identity, including A-B-A edits.
-     * Concurrent same-identity lookups may return, but only the latest updates the cache.
+     * Missing identity and retryable lookup failure stay distinct; stale lookups change no state.
      */
     async function resolveBridgeCompanyId(
         stillCurrent?: () => boolean,
         requestOptions?: BridgeCompanyRequestOptions,
-    ): Promise<string | null> {
+    ): Promise<BridgeResolution | null> {
         if (disposed) return null;
         const localCompanyId = companyId.value;
         if (bridgeIdentityKey.value === null) await companyPromise.catch(() => []);
         if (disposed || companyId.value !== localCompanyId || (stillCurrent && !stillCurrent())) return null;
         const identity = bridgeIdentityKey.value;
+        const routing = bridgeRoutingKey.value;
         const generation = bridgeIdentityGeneration;
-        if (identity === null) return null;
+        const isCurrent = () => !disposed && companyId.value === localCompanyId
+            && bridgeIdentityKey.value === identity && bridgeRoutingKey.value === routing
+            && bridgeIdentityGeneration === generation
+            && (!stillCurrent || stillCurrent());
         const requestSeq = ++bridgeLookupRequestSeq;
-        const result = requestOptions
-            ? await ensureBridgeCompanyIdForLocalCompany(localCompanyId, requestOptions)
-            : await ensureBridgeCompanyIdForLocalCompany(localCompanyId);
-        if (disposed || companyId.value !== localCompanyId || bridgeIdentityKey.value !== identity
-            || bridgeIdentityGeneration !== generation || (stillCurrent && !stillCurrent())) return null;
-        const bridgeId = result.ok ? result.bridgeCompanyId : null;
-        if (requestSeq === bridgeLookupRequestSeq) bridgeCompanyId.value = bridgeId;
-        return bridgeId;
+        let result: EnsureBridgeCompanyResult;
+        try {
+            result = await ensureBridgeCompanyIdForLocalCompany(localCompanyId, requestOptions, { preferRecordedBridgeId: true });
+        } catch {
+            result = { ok: false };
+        }
+        if (!isCurrent()) return null;
+        if (requestSeq === bridgeLookupRequestSeq) {
+            bridgeLookupFailed.value = !result.ok;
+            bridgeCompanyId.value = result.ok ? result.bridgeCompanyId : null;
+        }
+        return { ...result, isCurrent };
     }
 
     /** Fetch complete pages within the caller's budget, yielding so immediate pages cannot starve its timer. */
@@ -535,18 +564,19 @@ function useLocalInvoicingBankPayments(
 
     const inboundSyncs = new Map<string, Promise<void>>();
 
-    /** Share one inbound attempt per company; release it after fetch failure or completed local import. */
+    /** Share one attempt per selection and identity generation; obsolete completion cannot evict newer work. */
     async function syncInboundFromBridge() {
         if (disposed) return;
         const localCompanyId = companyId.value;
-        const active = inboundSyncs.get(localCompanyId);
+        const syncKey = JSON.stringify([localCompanyId, companySelectionGeneration, bridgeIdentityGeneration]);
+        const active = inboundSyncs.get(syncKey);
         if (active) return active;
         const pending = syncInboundCompany(localCompanyId);
-        inboundSyncs.set(localCompanyId, pending);
+        inboundSyncs.set(syncKey, pending);
         try {
             await pending;
         } finally {
-            if (inboundSyncs.get(localCompanyId) === pending) inboundSyncs.delete(localCompanyId);
+            if (inboundSyncs.get(syncKey) === pending) inboundSyncs.delete(syncKey);
         }
     }
 
@@ -588,19 +618,21 @@ function useLocalInvoicingBankPayments(
             });
             rows = await Promise.race([(async () => {
                 // Capture identity only after initial metadata is available, not from an empty pending query.
-                await companyPromise;
+                await companyPromise.catch(() => []);
+                await waitCompanyShareRegistryReady(controller.signal);
                 requestOptions();
                 const identity = bridgeIdentityKey.value;
                 const generation = bridgeIdentityGeneration;
                 current = () => !disposed && companyId.value === localCompanyId
                     && companySelectionGeneration === selectionGeneration
                     && bridgeIdentityKey.value === identity && bridgeIdentityGeneration === generation;
-                const bridgeId = await resolveBridgeCompanyId(
+                const bridge = await resolveBridgeCompanyId(
                     () => current() && !controller.signal.aborted && performance.now() < deadline,
                     requestOptions,
                 );
                 requestOptions();
-                return bridgeId ? await fetchInboundServerRows(bridgeId, requestOptions) : [];
+                return bridge?.ok && bridge.bridgeCompanyId && bridge.isCurrent()
+                    ? await fetchInboundServerRows(bridge.bridgeCompanyId, requestOptions) : [];
             })(), expired]);
         } catch {
             // Read-only bridge sync is best-effort; local data remains usable.
@@ -651,45 +683,46 @@ function useLocalInvoicingBankPayments(
     async function fetchWiseStatus() {
         const requestSeq = ++wiseStatusRequestSeq;
         const localCompanyId = companyId.value;
-        const bridgeId = await resolveBridgeCompanyId(() => requestSeq === wiseStatusRequestSeq);
-        if (disposed || companyId.value !== localCompanyId || requestSeq !== wiseStatusRequestSeq) return;
-        wiseBridgeChecked.value = true;
-        if (!bridgeId) {
+        const bridge = await resolveBridgeCompanyId(() => requestSeq === wiseStatusRequestSeq);
+        if (disposed || companyId.value !== localCompanyId || requestSeq !== wiseStatusRequestSeq || !bridge || !bridge.isCurrent()) return;
+        wiseBridgeChecked.value = bridge.ok;
+        if (!bridge.ok || !bridge.bridgeCompanyId) {
             wiseStatus.value = null;
             return;
         }
         try {
-            const status = await invoicingApi.wise.status<WiseStatus>(bridgeId);
+            const status = await invoicingApi.wise.status<WiseStatus>(bridge.bridgeCompanyId);
             if (!disposed && companyId.value === localCompanyId && requestSeq === wiseStatusRequestSeq) wiseStatus.value = status;
         } catch {
             if (!disposed && companyId.value === localCompanyId && requestSeq === wiseStatusRequestSeq) wiseStatus.value = null;
         }
     }
 
+    /** Reject unavailable routes before dispatch; preserve entered POST outcomes and refresh only their captured context. */
     async function connectWise(token: string) {
-        const bridgeId = await resolveBridgeCompanyId();
-        if (!bridgeId) return;
-        await invoicingApi.wise.connect(bridgeId, token);
-        await fetchWiseStatus();
+        const bridge = await resolveBridgeCompanyId();
+        if (!bridge?.ok || !bridge.bridgeCompanyId || !bridge.isCurrent()) throw new Error("bank_bridge_lookup_failed");
+        await invoicingApi.wise.connect(bridge.bridgeCompanyId, token);
+        if (bridge.isCurrent()) await fetchWiseStatus();
     }
 
     /**
      * Fetch Wise rows through the selected company's bridge and import them locally.
-     * Discard a late result after a company switch; preserve the existing Wise matching policy.
+     * Discard stale responses, await started imports, and refresh only their captured routing context.
      */
     async function syncWise() {
         const localCompanyId = companyId.value;
-        const bridgeId = await resolveBridgeCompanyId();
-        if (!bridgeId) {
+        const bridge = await resolveBridgeCompanyId();
+        if (!bridge?.ok || !bridge.bridgeCompanyId || !bridge.isCurrent()) {
             return { imported: 0, auto_matched: 0, skipped_duplicates: 0 };
         }
         const syncResult = await invoicingApi.wise.sync<{
             rows?: WiseBankRowInput[];
             skipped_duplicates?: number;
-        }>(bridgeId, {
+        }>(bridge.bridgeCompanyId, {
             local_first: true,
         });
-        if (disposed || companyId.value !== localCompanyId) {
+        if (disposed || companyId.value !== localCompanyId || !bridge.isCurrent()) {
             return { imported: 0, auto_matched: 0, skipped_duplicates: 0 };
         }
         const rows = syncResult?.rows || [];
@@ -704,8 +737,10 @@ function useLocalInvoicingBankPayments(
             );
             autoMatched = result.auto_matched;
         }
-        await load(matchFilter.value);
-        await loadBatches();
+        if (bridge.isCurrent()) {
+            await load(matchFilter.value);
+            if (bridge.isCurrent()) await loadBatches();
+        }
         return {
             imported: rows.length,
             auto_matched: autoMatched,
@@ -799,6 +834,8 @@ function useLocalInvoicingBankPayments(
         summary,
         batches,
         inboundEmailAvailable,
+        bridgeLookupFailed,
+        bridgeRoutingKey,
         load,
         loadBatches,
         loadInbound,
