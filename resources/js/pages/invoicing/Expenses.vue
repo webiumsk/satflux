@@ -551,6 +551,7 @@ async function markPaidRow(expenseId: string) {
   }
 }
 
+/** Persist a copy in either mode, then open its marked edit only while the original company remains selected. */
 async function duplicateRow(expenseId: string) {
   const actionCompany = companyId.value;
   actionId.value = expenseId;

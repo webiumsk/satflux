@@ -333,6 +333,8 @@ describe('new expense field defaults', () => {
 
 describe('duplicated expense field defaults', () => {
   it.each([true, false])('preserves untouched copy hydration and saves only an update before replacing its edit entry (local=%s)', async (local) => {
+    let finishUpload!: () => void;
+    mocks.upload.mockReturnValueOnce(new Promise<void>((resolve) => { finishUpload = resolve; }));
     await render(local, true, existingExpense.id);
     expect(field('expense_col_external').element.value).toBe('DOC-0012');
     expect(field('variable_symbol').element.value).toBe('0099');
@@ -351,6 +353,10 @@ describe('duplicated expense field defaults', () => {
     expect(mocks.insert).not.toHaveBeenCalled();
     expect(mocks.create).not.toHaveBeenCalled();
     expect(mocks.upload).toHaveBeenCalledExactlyOnceWith(existingExpense.id);
+    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(mocks.push).not.toHaveBeenCalled();
+    finishUpload();
+    await flushPromises();
     expect(mocks.replace).toHaveBeenCalledExactlyOnceWith({ name: 'invoicing-expense-show',
       params: { companyId: companyId.value, expenseId: existingExpense.id } });
     expect(mocks.upload.mock.invocationCallOrder[0]).toBeLessThan(mocks.replace.mock.invocationCallOrder[0]);

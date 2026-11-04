@@ -1,5 +1,34 @@
 # Development decision log
 
+## PR428 initial CI green; reviewed test and documentation follow-up ready - 2026-11-04
+
+All five required checks completed successfully for `cf064146` in CI run
+`41877739679`, attempt 1. The final verification at 17:53 UTC reconciles the
+workflow and each exact-head check, including PostgreSQL's 2 tests / 108 assertions
+and zero-skip gate. Earlier API snapshots reported inconsistent job states; they
+are not evidence of actual queue duration or a failed test. No rerun or cancellation.
+
+CodeRabbit review `5772913881` on that commit completed at 17:36:07 UTC with no
+functional or inline finding, one held-upload test nit (`56789731b8f39c6664dd3162`),
+and a docstring coverage warning of 0% against the unchanged 80% threshold.
+Five meaningful JSDoc contracts and deferred-upload assertions in the existing
+local/server test address both. Independent QA and security confirm that production
+Vue tokens, normalized ASTs, emitted JavaScript, templates and styles are unchanged.
+
+Both reviewers accept the four-file follow-up manifest
+`afaafe54bc00b86cde400c4d34e940cbf2776b148fa4d962b5f41d22e5ad724d`.
+The complete fix has runtime manifest
+`2842ec51ffb268f5e6e7b0fddc9add01ae07ae23e72e20cb088f332ce6351411`
+and six-file source/test manifest
+`1e691c39af27e57e2ae3d3f5d7cdc70ef25f2e75bb2d793d631c5d23889ec244`.
+Author validation passes 101 tests in three files, lint and the existing typecheck
+ratchet. QA verifies both held-upload cases pass and an isolated mutant removing
+only the upload awaits fails both. Publish these four files and three state documents,
+then require fresh CI and actual CodeRabbit coverage of the resulting head. Invoke
+`@coderabbitai review` after the allowance resets if automatic review is limited.
+No threshold, authorization, financial, backend or CI configuration change. No merge,
+deployment or production access is authorized by this milestone.
+
 ## 2026-11-04 - Follow defaults in the initial duplicated expense edit
 
 A persisted duplicate is logically a new document for the user but opens the edit

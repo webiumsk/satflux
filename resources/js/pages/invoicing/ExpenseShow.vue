@@ -846,6 +846,7 @@ async function saveNote() {
   }
 }
 
+/** Copy the loaded expense in either mode and open its marked edit only if the captured detail context remains current. */
 async function duplicate() {
   const context = captureContext();
   if (!hasLoadedExpense(context)) return;

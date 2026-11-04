@@ -244,6 +244,7 @@ onUnmounted(() => {
   duplicateEditActive.value = false;
 });
 
+/** Follow document-number input for new or initial copy edits until a manual/imported VS overrides it. */
 function syncVariableSymbolDefault() {
   if ((isNew.value || duplicateEditActive.value) && variableSymbolFollowsNumber.value) {
     const symbol = normalizeVariableSymbol(form.value.external_number) || '';
@@ -251,6 +252,7 @@ function syncVariableSymbolDefault() {
   }
 }
 
+/** Follow issue-date input for new or initial copy edits until the delivery date is explicitly overridden. */
 function syncDeliveryDateDefault() {
   if ((isNew.value || duplicateEditActive.value) && deliveryDateFollowsIssueDate.value) {
     form.value.delivery_date = form.value.issue_date;
@@ -368,6 +370,10 @@ async function loadExpense() {
   };
 }
 
+/**
+ * Create new expenses or update persisted edits/copies, then await all pending attachments.
+ * Navigate only within the captured context, replacing the initial copy edit and pushing ordinary saves.
+ */
 async function save() {
   if (saving.value || extracting.value || detecting.value) return;
   const requestedCompany = companyId.value;
