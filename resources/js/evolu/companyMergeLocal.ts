@@ -1,4 +1,5 @@
 import { sqliteTrue } from "@evolu/common";
+import { withExpenseMaintenance, commitExpenseMutation, assertExpenseCompanyOwner } from "./expenseReconciliation";
 import type { Evolu } from "@evolu/common/local-first";
 import {
     allBankImportBatchesQuery,
@@ -44,32 +45,12 @@ export type CompanyMergeListRow = {
 
 /** update() resolves onComplete when the worker APPLIED the mutation - a
  * timeout means it was accepted but never materialized. */
-function deleteCompanyAwait(
+async function deleteCompanyAwait(
     evolu: Evolu<InvoicingLocalSchema>,
     id: CompanyId,
 ): Promise<"applied" | "rejected" | "timeout"> {
-    return new Promise((resolve) => {
-        const timer = setTimeout(() => resolve("timeout"), 8_000);
-        const result = evolu.update(
-            "company",
-            { id, isDeleted: sqliteTrue },
-            {
-                onComplete: () => {
-                    clearTimeout(timer);
-                    resolve("applied");
-                },
-            },
-        );
-        if (!result.ok) {
-            clearTimeout(timer);
-            console.error(
-                "[invoicing] duplicate company delete rejected:",
-                id,
-                JSON.stringify(result.error).slice(0, 300),
-            );
-            resolve("rejected");
-        }
-    });
+    const result = await commitExpenseMutation(evolu, (onComplete) => evolu.update("company", { id, isDeleted: sqliteTrue }, { onComplete }));
+    return result.ok ? "applied" : "rejected";
 }
 
 export type MergeDuplicateCompaniesResult = {
@@ -209,6 +190,13 @@ export async function mergeDuplicateCompaniesLocal(
     evolu: Evolu<InvoicingLocalSchema>,
     companies: readonly CompanyMergeListRow[],
 ): Promise<MergeDuplicateCompaniesResult> {
+    return withExpenseMaintenance(evolu, async (scope) => {
+    evolu = scope.evolu;
+    const live = evolu.getQueryRows(allCompaniesQuery);
+    companies = companies.filter((company) => live.some((row) => row.id === company.id)).map((company) => {
+        const row = live.find((row) => row.id === company.id)!;
+        return { ...company, legal_name: row.legalName, registration_number: row.registrationNumber };
+    });
     await Promise.all([
         evolu.loadQuery(allDocumentsQuery),
         evolu.loadQuery(allContactsQuery),
@@ -225,6 +213,16 @@ export async function mergeDuplicateCompaniesLocal(
 
     const documents = evolu.getQueryRows(allDocumentsQuery);
     const groups = findDuplicateCompanyGroups(companies);
+    // Check every group before any reassignment: a late expense-only check
+    // would leave earlier documents/contacts moved across owner partitions.
+    for (const group of groups) {
+        const owners = new Set(group.map((company) => {
+            assertExpenseCompanyOwner(scope, company.id);
+            const row = live.find((row) => row.id === company.id);
+            return row && Reflect.get(row, "ownerId");
+        }));
+        if (owners.size !== 1 || owners.has(undefined)) throw new Error("expense_reconciliation_owner_unavailable");
+    }
     let removedCompanies = 0;
     let failedRemovals = 0;
 
@@ -274,4 +272,5 @@ export async function mergeDuplicateCompaniesLocal(
         removedCompanies,
         failedRemovals,
     };
+    });
 }

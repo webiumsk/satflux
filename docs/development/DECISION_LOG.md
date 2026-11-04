@@ -1,5 +1,342 @@
 # Development decision log
 
+## 2026-11-04 - Close the final two review nits with behavior assertions only
+
+Add PostgreSQL assertions that consume real head-derived next_cursor values until
+a genuine movement is returned; retain all existing plan/migration checks and two
+PG test methods. Add client orchestration coverage for an empty nonterminal page:
+strict owner admission precedes checkpoint persistence and the next movement read.
+These protect observable behavior rather than mirroring the implementation.
+
+Both files are frozen in tests-two manifest 31757baa...1bb7e7; QA independently
+passes the 122-case hook suite and reviews actual PG two/108 evidence. R13 runtime,
+CI and migration bytes remain unchanged, so its security acceptance continues to
+apply. Publish only the two tests/four documents, require all five current CI jobs
+and another actual clean CodeRabbit review. No application policy or deployment.
+
+## 2026-11-04 - Bound raw candidates before snapshot exclusion
+
+Index ordering removes the sort but does not bound a long excluded-snapshot run.
+Keep the existing exact SQL classification, project it on a bounded raw candidate
+window, filter only payload and derive cursor progress from that raw window.
+Snapshot-only chunks retain ordinary exclusion while existing strict empty-page
+owner admission permits progress. No protocol, payment eligibility, financial
+ACK, unresolved-cycle, key or local storage change is needed. Independent security
+accepts the exact shared fixed-column SQL/bindings design.
+
+Use PostgreSQL concurrent index DDL outside migration transactions with SQLite
+fallback, and fail visibly rather than masking a leftover invalid index. Add a
+fifth CI job with explicit disposable DB opt-in, temporary schema, actual service
+SQL capture, deterministic fixtures/ANALYZE and no planner-disable switches. Test
+migration validity/rollback and all four query partitions. No production DDL or
+full application migration under PG is part of development verification. Require
+independent exact-byte acceptance, fresh CI and actual clean CodeRabbit review.
+Both reviewers now accept runtime4 2c1fb965...936bc / source6 e8ebc2c9...39ffa.
+Author and independent security each execute actual PG two/100, with 43/312
+SQLite cases and related regression/style/static evidence. Publish only ten paths;
+all five new CI jobs and another actual manual review remain gates.
+
+## 2026-11-04 - Separate scan progress from coverage behind incomplete pages
+
+The R11 retry frontier preserves uncovered rows but can indefinitely revisit the
+same poisoned initial page. Revise that tradeoff with protocol 2: encrypted scan
+positions may progress after an admitted known incomplete result, while durable
+unresolved and current-cycle-incomplete flags retain the retry obligation. Full
+cyclic rescans revisit surviving rows without unbounded lists or raw local data.
+Only a fully clean acknowledged cycle can clear the unresolved flag. This is not
+a complete-coverage ACK; strict importer, owner and Unknown boundaries stay exact.
+
+Return both pre-page unresolved and unresolved-after-success booleans. Latch known
+pre-state before import; replace status only after successful selected-cursor CAS.
+This covers a remount whose first page would cleanly wrap but loses its CAS race.
+An error before any metadata response retains existing best-effort behavior and
+makes no fresh coverage claim. Protocol 2 prevents v1 clients silently interpreting
+new semantics; ordinary production pagination remains compatible.
+
+Accept a scoped reversible composite index and portable partitioned range reads
+for the reviewed performance defect. Verify actual plans without claiming constant
+rows examined when the existing balance-snapshot filter rejects candidates. Require
+independent frozen-byte QA/security, full fresh CI and actual clean review. Both reviewers accept runtime4 0090c754...32557 / source6 d075ba2e...9c589.
+Main 1,675/173, build/static and backend 41/264 pass; publish only ten reviewed
+paths and verify exact bytes before fresh CI and actual manual review. No
+production migration, replay, merge/deployment or financial-policy change.
+
+## 2026-11-04 - Advance history only after admitted page coverage
+
+Replace the full-walk/discard-all budget tradeoff with at most two bounded read
+chunks, each cleaned up before strict financial import and checkpoint CAS. Optional
+server ciphertext frames schedule overlapping head/cyclic keyset backfill; no new
+arrival-order, authorization or database-schema guarantee. Ordinary clients remain
+compatible. A retry frame changes lane only and cannot advance uncovered rows.
+
+Require fresh actual owner equals captured expected owner before any page mutation,
+including empty-page admission. Strict unproven fallback returns zero/no ACK without
+writing; legacy APIs remain unchanged. Keep exact terminal proof, unverified-evidence
+payment rules, known partial failures and Unknown boundaries. Prior successful
+chunks stay committed; no compensation/replay policy is added. Dedicated bounded
+checkpoint metadata after bank proof is safe even if its commit status is uncertain.
+Store only opaque server cursors and hashed bindings via transaction-complete CAS.
+
+Revise prior lookup-failure controls to retry-only until a successful check; forward
+the address controller signal to its GET. Native checkpoint semantics are tested in
+root-owned CI Playwright cases, with local sandbox execution unavailable. Both independent reviewers accept runtime13 d4b6bcc4...ab51a/source-tests21
+6c628d69...c232bf; main1666/173, build/static/locales and backend31/153 pass.
+Require full fresh CI including four native IDB cases, then actual clean manual review.
+No production, merge/deployment, owner/key/billing or credential protocol change.
+
+## 2026-11-04 - Order same-bridge credential dispatch without changing entered outcomes
+
+Independent actual page/service fixtures confirm Medium SEC-WISE-CONNECT-ORDER:
+older entered requests overwrite newer credentials under the common busy reset.
+Repair before actual all-green review despite889e1e69 CI success. Use only shared
+runtime completion gates per normalized bridge across hook instances and both modes.
+Revalidate queued context before dispatch, preserve entered result/identical error,
+release on settlement and keep other bridges/status reads independent. No timeout,
+cancellation, compensation, automatic retry or backend revision/quarantine policy.
+Client promise ordering does not prove global remote completion under transport
+ambiguity/cross-client requests. Both reviewers accept runtime2 4304ae73...244a9/
+source-test5 3734a970...11f44 after final1623/171/build/static/locales. Publish exactly
+nine reviewed paths and verify committed bytes/remote SHA. Full fresh CI and actual
+manual review remain gates. No merge/deployment/production.
+
+## 2026-11-04 - Repair ninth review and bound Wise read-only recovery
+
+Treat six reports from actual3ac059d1 review5763674984 as data to verify, then fix
+valid defects within bank recovery scope. Capture credential intent before any
+metadata await and retain explicit retry for unknown/stale initial context. Reuse
+a single20-second read budget for metadata/bridge/status GET with10-second HTTP
+caps and parent remaining-time controls. Default nonbank callers are unchanged;
+never race entered credential/sync POSTs or local financial/Unknown outcomes.
+
+Revise the earlier address/status-only page refresh choice: every semantic selected
+routing context refreshes current transactions once, and company changes also
+refresh batches. Existing page wrappers own errors and generation guards; no hidden
+composable import watcher or replay is added. Report importer counts and known
+lookup/status failures accurately. Both independent reviewers accept runtime5
+9d0e0c91...68b7e/source-test10 67dabf48...1d9d0b after final1609/170/build/static/locales.
+Publish only14 reviewed paths and verify blobs/remote SHA; full new CI and another
+actual clean manual review remain gates. No owner/key/billing,
+production, merge or deployment action is included.
+
+## 2026-11-04 - Repair verified lifecycle findings and pin bank-only shared routing
+
+Actualc0921567 review5763268988 has three inline and two supplemental findings
+despite green CI and five passing pre-merge checks87.72%. Verify then repair all
+valid items; a success check alone does not complete the owner's all-green loop.
+
+Bank-only helper opt-in prefers the existing trusted recorded shared bridge and
+requires exact selected-company owner evidence. Keep ordinary helper/issuance
+defaults. A selected semantic routing context invalidates stale lookup, Wise and
+address results without importing automatically on metadata edits. Initial bank
+reads await trusted registry readiness within their current20-second budget.
+Install the existing subscription before marking readiness/unchanged maintenance
+so maintenance failure cannot leave a ready unsubscribed routing snapshot.
+Both independent reviewers accept final runtime10 b1f3de86...a26c/source-test15
+e08706b2...9052 after verified final1579frontend/169files/build/static/locales.
+Reject unresolved Wise connect beforePOST without token loss or false success;
+preserve entered outcomes and guard only subsequent reads/UI by captured context.
+Publish exactly19 reviewed paths, then verify blobs/remote SHA, full fresh CI and
+another actual manual review. No owner/billing/key policy, production,
+merge or deployment action is included.
+
+## 2026-11-04 - Cancel disposed view reads before financial entry
+
+Actual Vue/Evolu query lifecycle proof confirms that retained shallow snapshots
+stop updating after view disposal. Invalidate the local scope and settle/cancel
+pending reads so old identity cannot reach import. Explicit disposed guards stop
+retained continuations from starting new work. Remove read cancellation before
+the separate import await; never cancel committed/in-flight financial operations
+or transform Unknown outcomes. This fixes the before-import guard, not company
+CRUD/queued-edit atomicity. No API, owner, key or billing policy changes.
+
+QA/security accept exact1/2 manifests. Main209 affected cases, build/static and
+independent real-Vue probes pass. Publish6 scoped paths and require fresh complete
+CI and another actual review under the standing owner instruction. No merge,
+deployment or production writes are authorized by this lifecycle repair.
+
+## 2026-11-04 - Bound bank bridge selection without changing issuance policy
+
+The sixth review requires stale legal identity rejection, total pagination bounds
+and a meaningful deleted-inbox query test. Reuse existing normalized identity;
+await initial metadata and track semantic generations, including A-B-A.
+One20-second read-stage budget also fixes the concretely unbounded bridge lookup
+before pagination. Forward optional caller-scoped options through list/create/
+re-list only for bank synchronization; preserve ordinary number/Wise defaults.
+Dispose the deadline before financial import. A timed-out metadata POST may have
+created a server row; only explicit canonical lookup recovery is permitted.
+
+Separate QA/security accept the final4/7 manifests. Do not claim queued/commit-wide
+legal identity serialization, change company CRUD gates, or race financial writes.
+Main final1504frontend/167files, build/lint/typecheck/locales pass on the accepted
+bytes. Publish11 reviewed paths and repeat CI/manual review until green. No server migration, billing/key/owner-policy change,
+merge, deployment or production replay is introduced.
+
+## 2026-11-04 - Accept the fifth request-lifecycle repair for publication
+
+Both independent reviewers accept the exact4/9 manifests for scoped cancellation,
+batch freshness, bounded best-effort HTTP, visible local import failure and narrow
+ACK recovery. The page owns refresh/error reporting; remove only its redundant
+private watcher loads. Generic/auth/unknown ACK failures retain their contracts.
+Main1485frontend plus focused/native/backend-contract/static checks pass with
+unchanged warning/type/docstring thresholds. Main publishes only13 reviewed paths,
+verifies new CI and actual capacity, and repeats the authorized review command.
+No merge, deployment, production replay or other repository change is approved.
+
+## 2026-11-04 - Complete the CodeRabbit loop without weakening checks
+
+The owner authorizes the exact manual review command after capacity resets and
+requires all tests and review to finish green. CI41751685173 already passes on
+6ba7e908. Address the existing80% documentation check by documenting actual changed
+contracts, preserving executable behavior and the configured threshold.
+Use independent source equivalence rather than redundant local runtime tests for
+plain comment additions; independent QA accepts all20 frozen bytes and exact
+TS/PHP token/emission equivalence. Remote CI still runs completely on the new commit.
+No annotation tags, test logic, dependency, auth/owner/payment or server changes.
+Main alone publishes and sends the authorized bot command after CI and reset;
+review evidence, not a neutral capacity status, determines completion.
+
+## 2026-11-04 - Bound bridge waits and preserve bank action context
+
+Continue the owner's PR427 review-repair/publication scope. Bound inbox detail
+and acknowledgment requests to 10 seconds on the same authenticated API instance.
+A lost ACK can have succeeded remotely; preserve the committed stable-ID expense
+and never compensate or retry automatically. Rejected match inserts return false
+to automatic matching and a known visible rejection to manual actions; genuine
+unknown outcomes retain quarantine.
+
+Regression tests expose a stale parent-owner snapshot for new inbound credits.
+Use existing scoped row-batch commit/read completion to refresh metadata before
+the unchanged every-ID/company/hash proof and automatic matching. Keep child
+ownership strict and unlocked fallback unchanged. Add no per-row query or marker.
+
+Guard server transaction results/loading by company and request generation. Only
+fully handled bank mutations and post-action refreshes opt out of global error
+flashes; ordinary callers retain defaults and current-company errors stay visible.
+Independent QA/security accept the final runtime4/source-test10 manifests with no
+unresolved finding. Main owns scoped publication, remote verification and new CI.
+No server migration, auth, key, Store, billing or payment policy expansion occurs.
+
+## 2026-11-04 - Serialize every critical local expense writer with reconciliation
+
+The owner requests repair of the third CodeRabbit review on PR427. A fresh-read
+alone cannot close the expense-edit/write gap; every production matching-critical
+writer must share the origin gate, including restore/share/merge/delete and bank
+Ignore/manual-match/unmatch actions. Public writes become awaited, compound groups
+keep synchronous mutations and live opaque capabilities cannot be forged/revived.
+
+Installed public query APIs cannot force an uncached worker read. Approve one inert
+local-only `_expenseReconciliation` row, AppOwner-only and free of company/financial
+fields, outside explicit backup/share/relay allowlists. Its actual entry/terminal
+mutations precede private worker reads. Keep the five financial query identities;
+add only bounded private auxiliary keys needed by writer preconditions. Ordinary
+expense changes avoid eager attachment/snapshot/stock scans. Required-lock failure
+precedes every expense mutation; inherited unlocked basic bank import remains and
+cannot auto-pay expenses. Preserve other-device/old-client and fallback limits.
+
+Use explicit fresh target/parent/company ownership without registering keys or
+falling back to AppOwner on lag. Preflight ALL duplicate-company groups before any
+reassignment/deletion, including groups with no expenses. Known validation aborts
+restore only in-memory expectations and preserve earlier committed groups; keep
+specific bank failure contracts/localization. Unknown retains quarantine without
+compensation or replay. A valid match followed by an intentional edit keeps the
+existing paid-edit policy. Do not add automatic unpay, unlink or immutability.
+
+Independent review accepts runtime41 a9478719...76ee7 and source/test65
+5f74ae7b...471c1 after final bounded delta reconciliation. Main owns exact scoped
+Git publication/new CI, with current behavior and test evidence in the review note.
+No server schema, auth/CSRF, encryption, Store evidence, entitlement or price change.
+
+## 2026-11-03 - Bound bank row batches and expose matching failures
+
+The owner's additional-CodeRabbit request continues repair/publication scope on
+PR427. Compact debit dates must be complete tokens, including optional times;
+malformed candidates cannot disappear beside a valid date. Compact credit amount
+and currency must come from the bank-authored prefix. Automatically derived VS
+longer than32digits stays blank without truncating the document number; later
+shortening resumes the default unless the user overrides it.
+
+Prevalidate import rows individually, then reserve their hashes and queue actual
+inserts in one synchronous microtask batch. Known invalid rows remain skipped;
+an unexpected actual validation false aborts the whole row group explicitly with
+zero reported row count or matches. Empty groups skip the nonexistent row receipt.
+Require one genuine private worker snapshot to verify every actual id/company/
+hash, and retain final metadata verification. Unknown outcomes never auto-retry
+or release quarantine. Fixed five queries, origin lock and owner boundaries stay.
+
+Localize busy, unknown-result, known rejected-import and generic matching errors
+in all five languages; preserve successful refresh and expose no raw worker data.
+Document32digit/recovery behavior and correct Spanish movement-direction wording.
+Independent QA/security must accept final bytes before main-owned publication;
+new exact-head CI remains required. No payment authority, schema or pricing change.
+
+## 2026-11-03 - Close PR427 review findings with durable browser qualification
+
+The owner's CodeRabbit follow-up authorizes bounded remediation on the existing
+owned PR427 branch. Add one nullable Evolu direction-evidence field; new rows
+always distinguish recorded credit/debit from unverified inference, while legacy
+null rows keep explicit normalized-ledger batch behavior. This additive browser
+field supersedes the earlier no-schema-change note for this specific qualifier;
+there is no server migration or expansion of Store/SEPA fulfillment authority.
+
+Use one origin Web Lock and five fixed private, unsubscribed queries. Installed
+Evolu callbacks occur before COMMIT, so require subsequent worker reads after
+legitimate batch mutations and verify financial state before reporting success.
+Unknown worker results quarantine the entered gate until tab reload/close; late
+callbacks cannot unlock it and canceled queued requests cannot mutate later.
+Without an origin lock, preserve import but disable automatic expense payment.
+The guarantee covers updated cooperating same-browser clients, not other devices.
+
+Preserve explicit null delivery dates separately from omitted defaults; guard Wise
+and shared bridge cache responses by request/company generations. Narrow SQL
+candidate locks by exact amount/currency while retaining strict rechecks and
+uniqueness. Restrict parser qualification to bank-authored fields and reject
+numeric symbol continuations. Keep auth, tenant isolation, pricing and previous
+payment history intact. Independent QA/security verify final byte manifests;
+main owns scoped publication and fresh CI. No merge/deployment or mail replay.
+
+## 2026-11-03 - Publish the reviewed expense/bank repair branch
+
+The owner's explicit push instruction authorizes committing and publishing the
+reviewed candidate to `webiumsk/satflux`, branch
+`fix/expense-defaults-bank-import`. Stage exactly36allowlisted source/test/guide/
+review/state/API-inventory paths from the retained worktree. Reconcile runtime11
+manifest07d8edd3...198b29 and source/test21manifest2b843d64...aab4ab before staging
+and after commit; independent QA checks publication scope. Main verifies the exact
+remote commit after push. Do not include unrelated primary changes or treat push
+as PR creation, merge, deployment, a new test pass or current CI success.
+
+## 2026-11-03 - Link expense defaults and reconcile exact bank-email debits
+
+Owner explicitly requests supplier-number/VS and received/delivery defaults, then
+clarifies existing-expense automatic payment from today's delivered bank email.
+Treat this as bounded Satflux bookkeeping implementation authorization. Preserve
+manual/ISDOC overrides and existing expense values. Align address and import on
+the selected company's identity; never use a first-company fallback or stale
+response. Keep existing recipient tokens with exact domain/prefix/DB lookup.
+
+Approve conservative email-only expense matching after independent QA/security
+design review: one same-company recorded/unpaid/uncancelled/unlinked candidate,
+exact positive fixed-point amount/currency and VS precedence, exact full reference
+fallback only without bank VS, recorded debit distinct from inferred display,
+valid booking date, atomic link/status/audit and same-instance serialization.
+Do not broaden to partial sums, CSV/Wise expense matching, arbitrary reference
+substrings, schema/provenance migration or Store/SEPA fulfillment. Qualify future
+debits before parser defaults or compact fallback; legacy explicit batch matching
+remains deliberate normalized-ledger bookkeeping with its provenance limitation.
+
+Final accepted runtime manifest07d8edd3...198b29 and source/test2b843d64...aab4ab
+supersede earlier hashes after raw DB comparisons and one precise impure PHPDoc
+annotation. No static baseline, lint/typecheck ratchet, authentication or pricing
+policy is weakened. Validate functionally with SQLite225/740, independentPG225/730
+and true2connection contention1/16, full1335frontend and independent reviewers;
+keep unavailable optional Scramble/full generator separate from passed checks.
+
+Delivered means webhook accepted. Owner reports enabled intake,2email rows today
+and healthy emptyqueue; this is insufficient to prove the selected-company fix
+is deployed or missing history recovered. Keep all production data and failed
+jobs unchanged. Source remains local/uncommitted on its new branch; no new PR,
+publication, merge or deployment is authorized/performed by this milestone.
+
 ## 2026-11-03 - Preserve quota and document state across PDF retries
 
 Serialize final quota accounting on one actual connection after parsing and

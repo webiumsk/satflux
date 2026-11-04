@@ -24,6 +24,14 @@ Limity: **10 MB, 2 000 řádků a 256 sloupců** na soubor. Neplatné nebo pří
 
 Při lokální fakturaci se soubor zpracuje v prohlížeči a uloží mezi stávající šifrované údaje. Zálohujte si obnovovací frázi. Přílohy PDF se importují samostatně.
 
+## Předvyplnění nového nákladu
+
+Variabilní symbol se průběžně nastavuje podle číslic v čísle dokladu včetně úvodních nul. Datum dodání se nastavuje podle data přijetí. Ruční úpravou předvyplněné hodnoty se její propojení vypne. Výslovné hodnoty vytěžené z přílohy se zachovají; existující náklady si ponechají uložené hodnoty. Ručně vymazané datum dodání zůstane prázdné i po uložení a opětovném otevření.
+
+Pokud číslo dokladu obsahuje více než 32 číslic, automatický variabilní symbol zůstane prázdný a číslo dokladu se zachová. Po zkrácení čísla se předvyplnění obnoví, dokud symbol neupravíte ručně.
+
+Lokální změny nákladů před uložením počkají na probíhající párování plateb. Pokud prohlížeč nedokáže koordinovat změny, znovu načtěte kartu nebo použijte aktuální prohlížeč. Pokud výsledek nelze potvrdit, před dalším pokusem kartu znovu načtěte a zkontrolujte uložený záznam. Pozdější vědomá úprava uhrazeného nákladu zachová jeho existující stav úhrady.
+
 ## Souhrn nákladů
 
 Souhrn pod seznamem **Nákladů** zahrnuje všechny doklady odpovídající aktuálním filtrům na všech stránkách. Zobrazuje počet, celkovou částku a součet neuhrazených nákladů. Výběr položek součet nemění. Každá měna má vlastní součty.

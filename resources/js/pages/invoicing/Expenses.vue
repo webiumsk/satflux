@@ -200,6 +200,7 @@
 
 <script setup lang="ts">
 import { asApiError } from "../../utils/apiError";
+import { expenseMutationErrorKey } from "../../utils/expenseError";
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -456,10 +457,11 @@ async function runBulk(action: string) {
 
       const result =
         action === 'mark_paid'
-          ? bulkMarkPaidLocalExpenses(invoicingExpenses.evolu, targets)
+          ? await bulkMarkPaidLocalExpenses(invoicingExpenses.evolu, targets)
           : action === 'cancel'
-            ? bulkCancelLocalExpenses(invoicingExpenses.evolu, targets)
+            ? await bulkCancelLocalExpenses(invoicingExpenses.evolu, targets)
             : null;
+      if (actionCompany !== companyId.value) return;
 
       if (result) {
         success.value = t('invoicing.bulk_result', {
@@ -504,7 +506,10 @@ async function runBulk(action: string) {
   } catch (rawError) {
     if (actionCompany !== companyId.value) return;
     const e = asApiError(rawError);
-    if (e?.response?.data instanceof Blob) {
+    const mutationErrorKey = expenseMutationErrorKey(rawError);
+    if (mutationErrorKey) {
+      error.value = t(mutationErrorKey);
+    } else if (e?.response?.data instanceof Blob) {
       const text = await e.response.data.text();
       if (actionCompany !== companyId.value) return;
       try {
@@ -527,7 +532,9 @@ async function markPaidRow(expenseId: string) {
   error.value = '';
   try {
     if (localFirst && invoicingExpenses.evolu) {
-      markLocalExpensePaid(invoicingExpenses.evolu, expenseId as ExpenseId);
+      const result = await markLocalExpensePaid(invoicingExpenses.evolu, expenseId as ExpenseId);
+      if (actionCompany !== companyId.value) return;
+      if (!result.ok) throw new Error(t('common.error'));
       await load();
       return;
     }
@@ -537,7 +544,8 @@ async function markPaidRow(expenseId: string) {
   } catch (rawError) {
     if (actionCompany !== companyId.value) return;
     const e = asApiError(rawError);
-    error.value = e?.response?.data?.message || t('common.error');
+    const mutationErrorKey = expenseMutationErrorKey(rawError);
+    error.value = mutationErrorKey ? t(mutationErrorKey) : e?.response?.data?.message || t('common.error');
   } finally {
     if (actionCompany === companyId.value) actionId.value = null;
   }
@@ -551,11 +559,12 @@ async function duplicateRow(expenseId: string) {
     if (localFirst && invoicingExpenses.evolu) {
       const source = invoicingExpenses.expenseRows.value.find((row) => row.id === expenseId);
       if (!source) return;
-      const result = duplicateLocalExpense(
+      const result = await duplicateLocalExpense(
         invoicingExpenses.evolu,
         source,
         invoicingExpenses.expenseRows.value,
       );
+      if (actionCompany !== companyId.value) return;
       if (!result.ok) return;
       await router.push({
         name: 'invoicing-expense-edit',
@@ -572,7 +581,8 @@ async function duplicateRow(expenseId: string) {
   } catch (rawError) {
     if (actionCompany !== companyId.value) return;
     const e = asApiError(rawError);
-    error.value = e?.response?.data?.message || t('common.error');
+    const mutationErrorKey = expenseMutationErrorKey(rawError);
+    error.value = mutationErrorKey ? t(mutationErrorKey) : e?.response?.data?.message || t('common.error');
     actionId.value = null;
   }
 }
@@ -584,7 +594,9 @@ async function cancelRow(expenseId: string) {
   error.value = '';
   try {
     if (localFirst && invoicingExpenses.evolu) {
-      cancelLocalExpense(invoicingExpenses.evolu, expenseId as ExpenseId);
+      const result = await cancelLocalExpense(invoicingExpenses.evolu, expenseId as ExpenseId);
+      if (actionCompany !== companyId.value) return;
+      if (!result.ok) throw new Error(t('common.error'));
       await load();
       return;
     }
@@ -594,7 +606,8 @@ async function cancelRow(expenseId: string) {
   } catch (rawError) {
     if (actionCompany !== companyId.value) return;
     const e = asApiError(rawError);
-    error.value = e?.response?.data?.message || t('common.error');
+    const mutationErrorKey = expenseMutationErrorKey(rawError);
+    error.value = mutationErrorKey ? t(mutationErrorKey) : e?.response?.data?.message || t('common.error');
   } finally {
     if (actionCompany === companyId.value) actionId.value = null;
   }

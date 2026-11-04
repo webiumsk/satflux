@@ -1,3 +1,4 @@
+import { checkpointExpenseMutations, commitExpenseMutation, withExpenseMaintenance } from "./expenseReconciliation";
 import { sqliteTrue } from "@evolu/common";
 import type { Evolu } from "@evolu/common/local-first";
 import type { OwnerId } from "@evolu/common/local-first";
@@ -216,6 +217,8 @@ export const MIGRATION_TABLE_QUERIES: Record<MigrationTable, unknown> = {
 };
 
 export async function loadAllMigrationRows(evolu: Loader): Promise<Record<MigrationTable, readonly Row[]>> {
+    // Relay settle waits can deliver new source rows while the gate is held.
+    await checkpointExpenseMutations(evolu);
     const [
         company, contact, numberSeries, invoiceTemplate, companyWarehouse, companyStockItem, companyStockBalance,
         companyStockMovement, document, documentLine, documentEvent, documentSnapshot, expense, expenseAttachment,
@@ -256,6 +259,14 @@ export async function loadAllMigrationRows(evolu: Loader): Promise<Record<Migrat
  * Cheap no-op when there is nothing to purge.
  */
 export async function purgeRevokedShareResidue(evolu: Loader, companyId?: string): Promise<number> {
+    return withExpenseMaintenance(evolu, (scope) => purgeRevokedShareResidueLocked(scope.evolu, companyId));
+}
+
+/**
+ * Purge live partitions named by revoked AppOwner share rows under the maintenance lease.
+ * Await each write before counting deletions or allowing owner cleanup to continue.
+ */
+async function purgeRevokedShareResidueLocked(evolu: Loader, companyId?: string): Promise<number> {
     const appOwnerId = (await evolu.appOwner).id;
     const shares = (await evolu.loadQuery(allCompanySharesQuery)) as unknown as readonly {
         ownerId: string | null; companyId: string; sharedOwnerId: string; status: string;
@@ -277,7 +288,8 @@ export async function purgeRevokedShareResidue(evolu: Loader, companyId?: string
         const rows = (await evolu.loadQuery(MIGRATION_TABLE_QUERIES[table] as never)) as unknown as readonly Row[];
         for (const row of rows) {
             if (row.ownerId != null && revokedOwners.has(row.ownerId) && row.isDeleted !== 1) {
-                const result = scopedEvolu(evolu, row.ownerId as never).update(table, { id: row.id, isDeleted: sqliteTrue } as never);
+                const result = await commitExpenseMutation(evolu, (onComplete) =>
+                    scopedEvolu(evolu, row.ownerId as never).update(table, { id: row.id, isDeleted: sqliteTrue } as never, { onComplete }));
                 if (result.ok) purged++;
             }
         }
@@ -285,11 +297,8 @@ export async function purgeRevokedShareResidue(evolu: Loader, companyId?: string
     return purged;
 }
 
-function mutateAwait(run: (onComplete: () => void) => { ok: boolean; error?: unknown }): Promise<{ ok: boolean; error?: unknown }> {
-    return new Promise((resolve) => {
-        const result = run(() => resolve({ ok: true }));
-        if (!result.ok) resolve({ ok: false, error: result.error });
-    });
+function mutateAwait(evolu: Loader, run: (onComplete: () => void) => { ok: boolean; error?: unknown }): Promise<{ ok: boolean; error?: unknown }> {
+    return commitExpenseMutation(evolu, run);
 }
 
 export type ConvertOptions = {
@@ -308,6 +317,19 @@ export async function convertCompanyToShared(
     evolu: Loader,
     companyId: string,
     options: ConvertOptions = {},
+): Promise<ShareMigrationResult> {
+    return withExpenseMaintenance(evolu, (scope) => convertCompanyToSharedLocked(scope.evolu, companyId, options));
+}
+
+/**
+ * Create or resume sharing while the maintenance lease excludes cooperating writers.
+ * Copy and verify rows before deleting AppOwner originals and activating the shared owner.
+ * Failures leave resumable migration state rather than attempting a compensating rollback.
+ */
+async function convertCompanyToSharedLocked(
+    evolu: Loader,
+    companyId: string,
+    options: ConvertOptions,
 ): Promise<ShareMigrationResult> {
     const report = (progress: ShareMigrationProgress) => options.onProgress?.(progress);
     report({ phase: "prepare", done: 0, total: 0 });
@@ -384,7 +406,7 @@ export async function convertCompanyToShared(
     } else {
         ownerSecret = createCompanyShareSecret();
         const owner = sharedOwnerFromSecret(ownerSecret);
-        const inserted = await mutateAwait((onComplete) =>
+        const inserted = await mutateAwait(evolu, (onComplete) =>
             evolu.insert(
                 "companyShare",
                 {
@@ -430,7 +452,7 @@ export async function convertCompanyToShared(
     for (const table of MIGRATION_ORDER) {
         for (const row of pending[table]) {
             report({ phase: "copy", table, done, total });
-            const result = await mutateAwait((onComplete) => shared.upsert(table, rowForSharedUpsert(row) as never, { onComplete }));
+            const result = await mutateAwait(evolu, (onComplete) => shared.upsert(table, rowForSharedUpsert(row) as never, { onComplete }));
             if (!result.ok) {
                 return { ok: false, error: "copy_failed", detail: { table, id: row.id, error: result.error } };
             }
@@ -454,7 +476,7 @@ export async function convertCompanyToShared(
         const retry = pendingCopies(set, appOwnerId, owner.id);
         for (const table of MIGRATION_ORDER) {
             for (const row of retry[table]) {
-                const result = await mutateAwait((onComplete) => shared.upsert(table, rowForSharedUpsert(row) as never, { onComplete }));
+                const result = await mutateAwait(evolu, (onComplete) => shared.upsert(table, rowForSharedUpsert(row) as never, { onComplete }));
                 if (!result.ok) {
                     return { ok: false, error: "copy_failed", detail: { table, id: row.id, error: result.error } };
                 }
@@ -472,7 +494,7 @@ export async function convertCompanyToShared(
     for (const table of MIGRATION_ORDER) {
         for (const row of set[table]) {
             if (row.ownerId !== appOwnerId) continue;
-            const result = await mutateAwait((onComplete) =>
+            const result = await mutateAwait(evolu, (onComplete) =>
                 appScoped.update(table, { id: row.id, isDeleted: sqliteTrue } as never, { onComplete }),
             );
             if (result.ok) softDeleted++;
@@ -482,7 +504,8 @@ export async function convertCompanyToShared(
     // Let the copied rows drain towards the relay before the share is
     // announced as active (members joining meanwhile would see a partial set).
     await waitForInvoicingDataSettled(evolu, { minWaitMs: SHARE_ROW_SETTLE_MS, timeoutMs: 20_000 }).catch(() => undefined);
-    await mutateAwait((onComplete) => evolu.update("companyShare", { id: shareRowId, status: "active" } as never, { onComplete }));
+    const activated = await mutateAwait(evolu, (onComplete) => evolu.update("companyShare", { id: shareRowId, status: "active" } as never, { onComplete }));
+    if (!activated.ok) return { ok: false, error: "share_row_failed", detail: activated.error };
     setCompanyShare({ companyId, ownerId: owner.id, role: "owner", status: "active", bridgeCompanyId });
     report({ phase: "done", done, total });
 
@@ -491,6 +514,14 @@ export async function convertCompanyToShared(
 
 /** Boot hook: finish conversions a reload interrupted. */
 export async function resumePendingCompanyShareMigrations(evolu: Loader): Promise<void> {
+    return withExpenseMaintenance(evolu, (scope) => resumePendingCompanyShareMigrationsLocked(scope.evolu));
+}
+
+/**
+ * Resume this AppOwner's pending conversions only when their device marker permits it.
+ * Leave active shares and work owned by another device untouched.
+ */
+async function resumePendingCompanyShareMigrationsLocked(evolu: Loader): Promise<void> {
     const appOwnerId = (await evolu.appOwner).id;
     const shares = (await evolu.loadQuery(allCompanySharesQuery)) as unknown as readonly { ownerId: string | null; companyId: string; status: string; migratingDeviceId: string | null }[];
     const device = localDeviceId();

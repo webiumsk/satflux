@@ -446,6 +446,7 @@
 
 <script setup lang="ts">
 import { asApiError } from "../../utils/apiError";
+import { expenseMutationErrorKey } from "../../utils/expenseError";
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
@@ -1280,20 +1281,24 @@ async function loadLocalCompanyDeleteQueries(): Promise<void> {
 }
 
 async function deleteCompanyProfile() {
+  const requestedCompany = props.companyId;
   deleting.value = true;
   deleteError.value = '';
   try {
     if (localFirst.value && evolu) {
       await loadLocalCompanyDeleteQueries();
-      deleteLocalCompany(evolu, asCompanyId(props.companyId));
+      if (props.companyId !== requestedCompany) return;
+      await deleteLocalCompany(evolu, asCompanyId(requestedCompany));
     } else {
-      await invoicingApi.companies.delete(props.companyId);
+      await invoicingApi.companies.delete(requestedCompany);
     }
+    if (props.companyId !== requestedCompany) return;
     showDeleteModal.value = false;
     await router.push({ name: 'invoicing' });
   } catch (rawError) {
     const e = asApiError(rawError);
-    deleteError.value = e?.response?.data?.message || t('errors.generic');
+    const mutationErrorKey = expenseMutationErrorKey(rawError);
+    deleteError.value = mutationErrorKey ? t(mutationErrorKey) : e?.response?.data?.message || t('errors.generic');
   } finally {
     deleting.value = false;
   }

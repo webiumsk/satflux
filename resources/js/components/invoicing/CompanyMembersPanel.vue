@@ -64,6 +64,7 @@ import { useI18n } from 'vue-i18n';
 import { invoicingApi, type CompanyMemberSummary } from '@/services/api';
 import { useInvoicingEvolu } from '@/evolu/client';
 import { rekeyCompanyShare } from '@/evolu/companyShareRekey';
+import { expenseMutationErrorKey } from '@/utils/expenseError';
 
 /**
  * Owner-only member list + revoke for a shared company (docs/COMPANY_SHARING.md,
@@ -131,7 +132,8 @@ async function rekey(): Promise<void> {
     }
   } catch (error) {
     rekeyError.value = true;
-    rekeyMessage.value = error instanceof Error ? error.message : t('common.error');
+    const mutationErrorKey = expenseMutationErrorKey(error);
+    rekeyMessage.value = mutationErrorKey ? t(mutationErrorKey) : error instanceof Error ? error.message : t('common.error');
   } finally {
     rekeying.value = false;
   }

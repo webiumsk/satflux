@@ -1,4 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { deserializeQuery } from "@evolu/common/local-first";
+import { installBankLocks } from "./bankReconciliationTestSupport";
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const Q = vi.hoisted(() => {
     const token = (name: string) => ({ name });
@@ -23,6 +25,12 @@ const Q = vi.hoisted(() => {
         allBankTransactionsQuery: token('bankTransaction'),
         allBankTransactionMatchesQuery: token('bankTransactionMatch'),
         allCompanySharesQuery: token('companyShare'),
+        allCompaniesQuery: token('company'),
+        bankReconciliationBatchesQuery: token('bankImportBatch'),
+        bankReconciliationTransactionsQuery: token('bankTransaction'),
+        bankReconciliationMatchesQuery: token('bankTransactionMatch'),
+        bankReconciliationDocumentsQuery: token('document'),
+        bankReconciliationExpensesQuery: token('expense'),
     };
 });
 vi.mock('@/evolu/client', () => Q);
@@ -62,9 +70,13 @@ function fakeEvolu(seed: Record<MigrationTable, Row[]>, options: FakeEvoluOption
     const evolu = {
         appOwner: Promise.resolve({ id: APP }),
         useOwner: vi.fn(() => vi.fn()),
-        loadQuery: vi.fn(async (query: { name: string }) => {
-            if (query.name === 'companyShare') return shares.filter((r) => r.isDeleted !== 1);
-            return [...(tables.get(query.name)?.values() ?? [])];
+        subscribeError: () => () => {}, getError: () => null,
+        loadQuery: vi.fn(async (query: { name: string } | string) => {
+            const sql = typeof query === 'string' ? deserializeQuery(query as never).sql : '';
+            const table = typeof query === 'string' ? /\bfrom\s+"([^"]+)"/iu.exec(sql)?.[1] : query.name;
+            const rows = table === 'companyShare' ? shares : [...(tables.get(table ?? '')?.values() ?? [])];
+            return table === 'companyShare' || sql.includes('"isDeleted" is not')
+                ? rows.filter((row) => row.isDeleted !== 1) : rows;
         }),
         insert: vi.fn((table: string, props: Row, options?: { onComplete?: () => void }) => {
             const row = { ...props, id: `share-${++idSeq}`, ownerId: APP };
@@ -98,7 +110,10 @@ function fakeEvolu(seed: Record<MigrationTable, Row[]>, options: FakeEvoluOption
     return { evolu: evolu as unknown as Evolu<InvoicingLocalSchema>, tables, shares, seedShare, seedRow };
 }
 
+beforeEach(() => { installBankLocks(); });
+
 afterEach(() => {
+    vi.unstubAllGlobals();
     clearCompanyShares();
     clearRowOwnerIndex();
     waitForInvoicingDataSettledMock.mockReset();

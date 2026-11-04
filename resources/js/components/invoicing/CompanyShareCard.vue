@@ -62,6 +62,7 @@ import { useI18n } from 'vue-i18n';
 import { useQuery } from '@evolu/vue';
 import { allCompanySharesQuery, useInvoicingEvolu } from '@/evolu/client';
 import { convertCompanyToShared, type ShareMigrationProgress } from '@/evolu/companyShareMigration';
+import { expenseMutationErrorKey } from '@/utils/expenseError';
 import { exportInvoicingBackup } from '@/evolu/invoicingBackup';
 import { toAppRows } from '@/evolu/queryLoad';
 import CompanyInvitesPanel from './CompanyInvitesPanel.vue';
@@ -141,7 +142,8 @@ async function convert(): Promise<void> {
     }
   } catch (error) {
     resultError.value = true;
-    resultMessage.value = error instanceof Error ? error.message : t('common.error_generic');
+    const mutationErrorKey = expenseMutationErrorKey(error);
+    resultMessage.value = mutationErrorKey ? t(mutationErrorKey) : error instanceof Error ? error.message : t('common.error_generic');
   } finally {
     running.value = false;
   }

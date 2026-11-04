@@ -1,5 +1,457 @@
 # Project state
 
+## PR427 final two test-coverage nits repaired - 2026-11-04
+
+Actual review 5766899006 completed 10:27:45 UTC on green 23b6f927. There are no
+open inline threads (all 32 resolved); five pre-merge checks pass with 89.81%
+docstring coverage. Two test nitpicks remain for the next reviewed publication:
+PostgreSQL must return a genuine movement after the snapshot prefix, and the
+client must continue after an empty nonterminal page.
+
+Both test-only repairs are frozen in manifest
+`31757baa76148de3a8c6b9ba85111c861c08264d08e3495ffbbaedfb5d1bb7e7`.
+The PG test follows real encrypted next_cursor values from its original head to
+movement 42992 and checks identity/reference/company/source/amount/currency/no
+internal flag, preserving the two test methods and all existing plan assertions.
+The client test pauses strict empty-page ACK, proves no save or next read before
+admission, then checks cursor forwarding, movement import and final persistence.
+Author and independent QA each pass all 122 affected client cases; scoped lint
+passes. Independent security accepts the exact two-test +47-line diff with no
+weakened guards; its R13 runtime acceptance remains applicable. Author actual PG16.11/PHP8.3.31 tests pass two / 108 assertions, with Pint
+and owned-schema/container cleanup. QA reviews the PG artifact without executing
+PG. Production runtime, migration, CI and financial source remain unchanged from
+the independently accepted R13 runtime manifest. Root publication scope is exactly
+two tests plus four development documents; no new application behavior.
+
+Publish through existing GitHub connector with verified staged-tree equality,
+complete all five fresh CI jobs and actual manual review after allowance (last
+10:13:59 UTC; conservative next 11:15 UTC). No merge/deployment/production action.
+
+## PR427 bounded-candidate and PostgreSQL CI repair accepted - 2026-11-04
+
+Both independent reviewers accept runtime-four manifest
+`2c1fb965a9f9c2dc2c052c17ffdbe8137467fa1dd3675436e96058b1d29936bc`
+and source/tests-six manifest
+`e8ebc2c99dac7c009f3af483e913f90b65e3729f08c979240ce8f1464e739ffa`.
+Exactly ten paths are publication scope. Actual review 5766156195's inline,
+follow-up and test nitpick are repaired: bounded raw candidates with exact SQL
+snapshot projection, concurrent PG index migration and a fifth PG CI job.
+
+Backend author 43 HTTP/SQLite tests / 312 assertions and 110 related / 528 passed
+(overlap), Pint on four files passed and PHPStan has no new finding beyond the
+inherited local Scramble gap. Devops executed actual PG16.11/PHP8.3.31 tests:
+two / 100 assertions passed, including real Migrator concurrent lifecycle,
+INVALID leftovers/catalog recovery, plans and cleanup; new-test Pint, YAML and
+positive/negative JUnit gates pass. Security independently executed 43 / 312 in
+SQLite and both actual PG cases / 100 assertions on the exact frozen bytes;
+owned disposable schemas/container/tmpfs were removed. QA passed 11 coverage,
+31 retained Vue progress, four actual Evolu/SQLite empty-page probes and native
+SQL budget/parity/traversal checks; it reviewed PG evidence without executing PG.
+All JavaScript and financial/owner/checkpoint/credential code remains unchanged.
+
+Verify committed bytes/remote SHA and complete all five fresh CI jobs, including
+PostgreSQL (bank sync plans), then request actual manual CodeRabbit after allowance
+(last request 09:12:09 UTC; conservative next 10:13 UTC). Inspect all findings and
+continue until green. No production DDL, replay, merge/deployment or unrelated work.
+
+## PR427 scan-progress and index repair independently accepted - 2026-11-04
+
+Both reviewers accept runtime-four manifest
+`0090c75404f8564b373b10dc30f5b7b475b1e5ff7fc69c619988202c73032557`
+and source/tests-six manifest
+`d075ba2ee6bcff1b82cc4cd1f84bf61a63fe4e57b8a3226fa27a5a6bfa89c589`.
+The two findings from actual review 5765381601 are repaired: protocol 2 advances
+scan positions while retaining unresolved coverage, and partitioned reads use a
+reversible composite index. Unknown, unverified owner admission, strict coverage,
+IndexedDB storage and credential ordering retain their existing boundaries.
+
+Main full frontend: 1,675 tests / 173 files, build 69 seconds, lint zero errors /
+48 known warnings passed. Author 147 / six focused suites and typecheck 111
+existing / none new passed. Backend 41 HTTP/SQLite tests / 264 assertions and
+Pint passed; local PHPStan has no new findings beyond the inherited Scramble gap.
+Independent QA passed 262 repository cases / nine suites, 31 progress probes,
+nine retained Evolu/SQLite and 14 credential-order probes. Security passed 221 /
+six suites, 31 progress probes and 41 PHP tests / 264 assertions. Scopes overlap.
+Both reviewed the author's 60k-row SQLite/PostgreSQL 16.11 index plans; QA also
+executed equivalent SQLite ordering/rollback probes. No independent PostgreSQL
+execution is claimed. Standard index construction requires deployment planning.
+
+Publish exactly ten accepted paths, verify committed blobs and remote SHA, then
+complete all fresh CI and another actual manual CodeRabbit review after quota.
+Last accepted request was 08:10:15 UTC; do not duplicate an active review. Backend
+must deploy first or with the protocol 2 client; ordinary pagination remains
+compatible. No production DDL, replay, merge/deployment or unrelated publication.
+
+## PR427 progressive history repair independently accepted - 2026-11-04
+
+The repair addresses all three inline and one supplemental finding from actual
+review5764391436 on b78d09b8. Optional authenticated encrypted cursors alternate
+bounded head overlap and cyclic nullable-created-at/UUID keyset backfill. Strict
+page coverage and fresh expected-owner admission precede advancement; unproven
+fallback writes nothing. At most two bounded read chunks precede unraced financial
+work and transaction-complete ciphertext-only IndexedDB CAS. Ordinary listing,
+authorization and legacy import contracts remain. Unknown never advances its chunk;
+admitted incomplete scheduling may overlap covered rows without re-auto-matching.
+
+Both independent reviewers accept runtime13 manifest
+`d4b6bcc44553b8ca43511519bc1a62ca327aca10aaea018d7517f7df228ab51a`
+and source/tests21 manifest
+`6c628d695391f39cd72a4bbf4ed4b6cb1674e919d14b55f5d718860bf2c232bf`.
+Main full frontend1666/173, build70seconds, lint48known/zeroerrors, type111existing/
+no-new and five-language parity pass. Backend31HTTP/SQLite tests/153assertions and
+Pint pass; no new PHPStan finding beyond the unchanged local optional Scramble gap.
+Security222repository/6suites +20Vue +9Evolu/SQLite +2owner probes pass; QA337repository/13suites +20progress +33Evolu/SQLite
+(9new/24retained) +14credential-order probes pass. Scopes overlap, not aggregate totals.
+Native IndexedDB four-case Playwright source is reviewed/listed, not locally run;
+fresh CI execution is mandatory because sandbox browser syscalls are unavailable.
+
+Publish only25 accepted paths and verify committed bytes/remote SHA, then require
+all fresh CI and another actual clean manual CodeRabbit review. Backend must deploy
+before or with this client; old clients retain ordinary endpoint behavior. No
+universal history-arrival/latency guarantee, production replay, merge/deployment,
+migration or owner/key/billing change. Graphify graph remains unavailable.
+
+## PR427 credential-order repair independently accepted - 2026-11-04
+
+889e1e69 CI41781754322 is green and all26 prior threads resolved. Independent
+security then confirms Medium SEC-WISE-CONNECT-ORDER: already-entered old A POST
+can overwrite newer A credentials after A-B-A resets page busy state. Actual page
+and actual encrypted SQLite/fake-HTTP service fixtures reproduce it, without real
+credentials or production writes. Earlier accepted entered-outcome guarantees did
+not cover ordering; the busy reset was introduced3ac059d1.
+
+Main accepts only a shared runtime per-server-bridge POST gate across hook instances
+and both connection modes. Queued intent revalidates immediately before dispatch;
+entered outcomes remain awaited with exact errors, no cancellation/race/retry or
+compensation. Independent bridges remain concurrent and status reads stay outside
+the queue. Ambiguous transport/cross-client global order is not proven or changed.
+Frontend owns composable/new queue/inbound/server/queue tests; main owns docs/Git.
+Both reviewers accept runtime2 4304ae73...244a9/source-test5 3734a970...11f44. Main
+final1623/171, build75seconds, lint48known/zeroerrors/type111existing-no-new/locales
+pass. Author151/7, QA219/9+14new+47retained and security119/3+14+7 pass with overlapping
+synthetic scopes. All five blobs match; exactly nine paths form publication scope.
+Verify committed bytes/remote SHA, fresh full CI and actual manual review before
+all-green completion. No merge/deployment or production action.
+
+## PR427 ninth repair independently accepted - 2026-11-04
+
+Published3ac059d1 has green CI41777047822. Actual manual review5763674984 reports
+two inline and four supplemental findings despite five passing pre-merge checks
+and88.52% documentation. Open threads PRRT_kwDOQ75Xa86zdbx8/PRRT_kwDOQ75Xa86zdbyJ
+cover initial-metadata A-B-A credential dispatch and same-company routing refresh.
+Supplemental items cover Wise importer counts, status retry state, bounded reads
+and failed-sync error reporting. Independent baseline probes reproduce the issues.
+
+Frontend owns bounded read helper/composable/only optional Wise-status API controls
+and tests; main owns page/test/docs. Current-page refresh now runs once on every
+semantic routing change, with batches only on company change, revising the prior
+address/status-only routine choice. Read deadlines cover metadata/bridge/status
+GET only, preserving entered credential/sync POST and financial outcomes. Default
+nonbank callers, trusted registry and owner/Unknown policies remain. Both reviewers
+accept runtime5 9d0e0c91...68b7e/source-test10 67dabf48...1d9d0b. Main final1609/170,
+build76seconds, lint48known/zeroerrors/type111existing-no-new/locales pass. Author151/8,
+QA205/8+22new+25retained and security179/5+22+25 pass with overlapping synthetic
+scopes. All10bytes match; exactly14 paths are publication scope. Verify committed
+blobs/remote SHA, full fresh CI and actual manual review after capacity. No
+production replay, merge or deployment is included.
+
+## PR427 eighth review repair independently accepted - 2026-11-04
+
+Publishedc0921567 has complete green CI41771525497, independently verified by QA.
+Manual command6622425495 was accepted6622426859; actual review5763268988 at04:34UTC
+reports three inline and two supplemental findings. Pre-merge checks pass87.72%,
+but metadata recovery, generation dedup, Wise identity freshness, lookup recovery
+presentation and recorded shared bridge routing require this follow-up.
+
+Frontend owns the bounded composable/helper/registry/bootstrap and related tests;
+main owns page/locales/docs/Git. Initial real-Vue probes reproduce six baseline
+failures; targeted draft repairs pass with already-started financial controls.
+The page uses the same bank-only recorded-route option and a semantic context
+guard for displayed addresses. Default issuance helpers and owner policy stay.
+
+Verified mapping authority is the existing AppOwner/secret-checked registry, not
+the raw unfiltered companyShare query. Pinned routes require exact local owner
+metadata, private fallback requires AppOwner. Readiness must include an installed
+subscription before maintenance; the initial wait belongs to the existing bank
+read budget. Both independent reviewers now accept runtime10 b1f3de86...a26c
+and source/test15 e08706b2...9052. Main final1579frontend/169files, build73seconds,
+lint48known/zeroerrors, changed-filelint0/type111existing-no-new/locales pass.
+Author128/7, QA175/7+25actualVue and security168/7unchangedauthority plus76final
+inbound+25probes pass with overlapping scopes and synthetic adapters. All15bytes
+match. Known unresolved Wise connect rejects beforePOST; entered remote/financial
+outcomes remain awaited. Captured context guards both page publication and new
+post-financial reads, preventing old work importing another company's email rows.
+Publish only19 reviewed paths, verify blobs/remote SHA, complete fresh CI and
+actual manual review until green. Earlier1576 main run predates the final guards.
+No merge/deployment, production replay or unrelated primary work is included.
+
+## PR427 lifecycle regression independently accepted - 2026-11-04
+
+Before requesting the next review, source audit plus an actual mounted Vue probe
+confirmed a remaining before-import gap on7e9af5f1: disposing the bank view freezes
+its query snapshot. A later Settings edit of the same UUID and late lookup/page
+response could enter import with stale identity. The baseline reproduction fails;
+this is distinct from the documented edits after an import already queues.
+
+The two-path fix adds disposed/generation checks and cancels only active read
+stages, including metadata/transport promises ignoring abort. Registrations and
+timers are removed before financial entry; already-started import success and
+identical Unknown still propagate. API/allocator/financial/backend files unchanged.
+
+Both reviewers accept runtime1
+`29becc3a71d698c9e04e90b8ca8e62b80390d48404b875014615e83d3c70cce6`
+and source/test2
+`d579efc011de5360d1aa3fdbc69e78f03c0afa6278ac7f1fa9b8fbf55e5dbc43`.
+Main209cases/10bank suites, final build/lint48known/type111existing-no-new pass.
+Author71/4, independent QA46repository+7actualVue and security46+7 pass with
+synthetic storage/transport/import entry points; no financial writes in probes.
+Parent7e9 had full1504frontend/167 and complete green CI41769392442. The new head
+will run the entire CI; do not attribute parent full results to these new bytes.
+Publish only6 reviewed paths, verify hashes/remote SHA and all fresh CI, then the
+next authorized actual review. No merge/deployment/production replay.
+
+## PR427 sixth review fixes independently accepted - 2026-11-04
+
+The completed7cd2b9ec manual review reports one stale-identity inline finding,
+one whole-fetch bound follow-up and one missing deleted-query regression.
+All five pre-merge checks pass, including87.27% docstrings; these actionable
+items keep the owner's all-green loop active. Published7cd CI41758379808 is green.
+
+The working-tree repair adds normalized identity/generation freshness checks and
+one20-second budget for metadata readiness, scoped bridge HTTP and pagination.
+Caller-only request options recompute remaining time/cancellation while ordinary
+allocator/Wise callers retain existing payloads/defaults. Timer cleanup precedes
+financial import; partial/late data is discarded. Unknown metadata POST outcomes
+are never compensated. A production-query deleted/live receipt test is added.
+
+Both independent reviewers accept runtime4
+`927a9d92058991f54782d535d855572bd77075ebec363227def28ac8eb2427a1`
+and source/test7
+`a63822f8354ac43c888f31a12252d789b88c0a78b0fca526ea35cb7def9f2406`.
+Author78/6, QA94/10 plus13probes/2, security62 plus final2 recheck/13probes pass,
+with overlapping scopes and synthetic adapters. Type111existing/no-new, scoped
+lint0/API/default-caller checks pass. Main final fullfrontend1504/167, final production build and full lint48known/zero
+errors pass on the frozen bytes; five-language parity remains unchanged. The earlier1503/167 main run began before the last
+narrow error-path/test refinement; do not attribute it to the final frozen bytes.
+
+No company CRUD lock or commit-wide identity atomicity is introduced: the guard
+checks immediately before import, preserving the documented queued-edit boundary.
+Publish only reviewed11 paths, verify new CI/capacity, and repeat the authorized
+manual command until actual review green. No merge/deployment/production replay.
+
+## PR427 fifth review fixes independently accepted - 2026-11-04
+
+The five actionable findings from the completed manual review of3dce0b4f are
+repaired on the same branch: stale/superseded server requests, bounded bridge
+pages, visible local import errors and precise fresh-local ACK recovery.
+No server, auth/CSRF, owner, key, financial authority or configuration change.
+
+Both independent reviewers accept runtime4
+`b7887cd1c5469280eda1ed1f6c5906ace1cfb770cff231d21bc584dd9417983f`
+and source/test9
+`b33cfdeb57808d06f013e4ffa552a55b99934bd1fe7dac4ea2af2999c19de663`.
+Main fullfrontend1485/165 passes, focused55 and author46 pass. Full lint48known,
+type111existing/no-new, build/locales pass with unchanged ratchets. QA112repository
+and14temporary pass; security101repository/14temporary and unchanged backend
+ACK contract6PHP/64assertions pass. Scopes overlap and transport/native adapters
+remain synthetic. No unresolved reviewer finding remains on these exact bytes.
+
+Publish only the reviewed13-path delta, verify committed manifests and remote SHA,
+resolve the five addressed threads and wait for complete exact-head CI. Read the
+actual capacity-reset notice before the next authorized manual review command.
+The previous review's docstring86.92% passes but does not establish the new result.
+No merge, deployment, production replay or unrelated primary work is included.
+
+## PR427 documentation warning and manual review loop - 2026-11-04
+
+Owner explicitly asks to wait for every test, issue `@coderabbitai review` after
+capacity returns, repair findings and repeat until green. CI41751685173 passes
+all four jobs on published6ba7e908; CodeRabbit skipped review due to capacity,
+next available approximately01:30UTC. Its retained docstring warning is addressed
+with genuine contracts only: frontend70, API3 and PHP17 prose docblocks.
+No executable, annotation, test logic, threshold or configuration change.
+
+Comment/metadata20 manifest: 75cab067...06b7. PHP tokens across all12 PR PHP paths
+remain identical to6ba; Pint5/syntax pass, API453 routes stay unchanged and parser
+fingerprint is refreshed. Independent QA accepts every final20 byte:14TS parser-derived tokens and emitted
+JS plus5PHP executable tokens match6ba exactly. Lint48known/type111existing-no-new,
+Pint5/API pass. Main-owned scoped publication and fresh CI precede manual review. Then post the exact authorized
+command after reset and examine actual review output, including pre-merge checks.
+No merge, deployment, production replay or unrelated primary work is included.
+
+## PR427 fourth review accepted locally - 2026-11-04
+
+The owner's further CodeRabbit request covers one new inline finding and two
+follow-ups on published `f0849584`. The bounded repair adds 10-second inbox
+request deadlines, visible failed manual matches, accurate automatic-match counts,
+fresh scoped parent ownership for new credit rows, and company/request guards for
+server refreshes. Fully handled bank actions opt out of the global error flash;
+ordinary API defaults, auth/CSRF and strict ownership remain unchanged.
+
+Independent QA/security accept runtime4 manifest
+`8f71c874b0e81eb1fde3291405d668a13d7b08b53319440d491ec8ff831bf1f0`
+and source/test10 manifest
+`8c24ef15357f2a4268a049c6ff29ea230a3a97c1bb24b52e81658dd7587d6918`.
+QA passes 164 repository and 12 temporary cases; security passes 66 repository and
+seven native cases with overlapping scopes. Main full1443/164, focused51, author32, lint48known,
+typecheck111existing/no-new, build and locales pass with unchanged baselines.
+Synthetic adapters do not establish browser/OPFS E2E. Preserve inherited unlocked
+import limits and Unknown quarantine. See the review note for exact evidence.
+Publish only the reviewed14-path delta, verify the remote SHA and new exact-head
+CI; previous CI41747417307 applies only to f0849584. No production access, replay,
+merge or deployment. Preserve unrelated primary work.
+
+## PR427 third-round repair independently reviewed - 2026-11-04
+
+A completed review of3f47a24b adds three inline findings and one recovery item.
+The retained branch now fixes HTML-only boundaries, action/refresh errors and
+persisted unmatched-batch availability. Shared origin locking covers inventoried
+expense writers, bank eligibility actions and company/snapshot/share maintenance.
+An inert local-only marker enables fresh preconditions and post-handler proofs;
+opaque revoked capabilities, explicit fresh owner/parent routing and known/Unknown
+separation preserve existing authority, encryption and editable-paid policy.
+
+Final runtime41 manifest:
+`a9478719b0e67ac46526bbd8e3db03657c935b656944ac2a37401aac02d76ee7`;
+source/test65 manifest:
+`5f74ae7b795c4c3786cf4f3123855e64aa186a9a9e725a8535d8da244dd471c1`.
+Main full1415/160files passes before the final pure merge preflight; the final
+3-case merge regression and35-case affected scope pass after that change.
+Full lint48known, current typecheck111existing/no-new, build, locales, API/Pint/
+fragment pass with unchanged baselines. Local PHPStan has only inherited optional
+missing Scramble in unchanged DocumentationExporter.php. Independent QA311cases,
+native40 and PHP323/1287 pass; security104cases, PHP180/641 and native/security50
+pass on the accepted scope. Both security and QA renew acceptance of the sole final merge preflight and all
+final hashes. QA independently passes48 affected cases /4 files for that delta.
+
+Known limits remain: updated cooperating same-browser clients, inherited unlocked
+basic-import owner routing, no browser/OPFS or cross-device uniqueness claim.
+The local marker contains no merchant data and is excluded from backup/share/sync.
+No server migration, key registration, Store/billing authority or pricing change.
+Publish only reviewed paths with both final acceptances, verify committed manifests
+and exact remote SHA, then fresh CI. CI41733930901 validates3f47a24b only.
+No production access/replay, merge or deployment. Preserve primary unrelated work.
+See `EXPENSE_DEFAULTS_BANK_IMPORT_REVIEW.md` for final contracts/evidence.
+
+## PR427 second review fixes verified locally - 2026-11-03
+
+The completed CodeRabbit review of06c837b3 adds four inline findings and three
+follow-ups. The same owned branch now fixes compact malformed dates/times,
+remittance-only credit amounts, oversized derived VS, Spanish direction wording,
+localized matching failures, batched import reads and the literal lock assertion.
+Each validated row reserves its hash; all prepared rows insert synchronously,
+then every actual id/company/hash is verified in one private context read.
+Unexpected actual validation failure aborts the row batch explicitly; unknown
+worker outcomes keep the existing quarantine. Fixed queries and matching authority
+are unchanged. No additional server schema, infrastructure or policy change.
+
+Full-PR runtime22 manifest:
+`4b236b10f2ff2bd403a8287599f0594707a573ff495ab6cfd4e678357c2a7eb1`;
+source/test36 manifest:
+`b33ad44a7e63e15235aded39654cdeb025d9c0533d3701febfdc898f35b19975`.
+Main full frontend1382/158, mounted UI39, scoped bank92, disposable PHP262/1018,
+Pint8, lint48known/typecheck112existing-no-new, build, five locales, API documents
+and fragment pass. Local PHPStan retains only known optional missing Scramble in
+the unchanged exporter. Ten guides and the PR427 fragment match final behavior.
+Independent QA/security accept both identical manifests without unresolved findings:
+QA frontend131, PHP305/1160 and actual-worker15; security frontend131, PHP177/539
+and actual-worker15 pass independently with overlapping scopes. Native adapters
+are synthetic, not browser E2E. No new PostgreSQL target is needed or created.
+Publish only the reviewed32-path delta; CI41729050967 verifies06c837b3 only.
+Then verify the new exact-head CI and resolve the four addressed threads. No production replay, merge or deployment.
+See `EXPENSE_DEFAULTS_BANK_IMPORT_REVIEW.md` for the second-round contract.
+
+## PR427 CodeRabbit remediation reviewed - 2026-11-03
+
+The owner reports review findings on published `c79deafd`, PR427. Seven inline
+threads and five follow-ups are addressed on `fix/expense-defaults-bank-import`.
+Parser fields are bounded to the bank prefix and complete symbols; SQL amount/
+currency filters precede candidate locks. Browser reconciliation uses an origin
+Web Lock, five fixed unsubscribed queries after legitimate mutation receipts,
+post-handler state verification and permanent quarantine for unknown outcomes.
+New persisted direction evidence excludes unverified rows even after reload or
+explicit batch matching. Explicit delivery null survives both modes; Wise and
+shared bridge status apply only current responses. Existing legacy rows, other
+devices and old clients retain the documented limits; reload older tabs on rollout.
+
+Final full-PR runtime17 manifest:
+`78afb3fdf73ad9f6b30f537684f711ef2914ece59c46f21845096a4aa0e04eb0`.
+Source/test31 manifest:
+`d52b3e003a8466d669a64ed092af03a8a616843f36dbec024a1bc8972610e686`.
+Independent QA accepts these bytes: PostgreSQL251/805 (5 expected skips), true
+contention/narrow-lock3/42, focused126 plus final bridge19, actual Evolu/native
+SQLite12. Native realm/lock/broadcast adapters are synthetic, not full browser
+E2E. The isolated database container is removed. Independent security accepts the identical manifests with no unresolved findings;
+its overlapping frontend/backend/actual-worker probes confirm the failure paths.
+Publication evidence is recorded separately from local verification.
+
+Main frontend1363/158files, final Wise19, SQLite237/958, Pint8, lint48 known,
+typecheck112 existing/no new, five locales, final build and three OpenAPI documents
+pass. Local full PHPStan retains only the known missing optional Scramble class
+in unchanged DocumentationExporter.php:18; baseline/ratchets are unchanged.
+The API inventory changes only the parser hash. Ten guides and one PR427 fragment
+reflect final behavior. Prior CI41719918340 validates c79deafd only; verify fresh
+CI on the new published commit. No production access, replay, merge or deployment.
+Preserve unrelated primary work; the current reviewed artifact is in the retained
+expense worktree. See `EXPENSE_DEFAULTS_BANK_IMPORT_REVIEW.md`.
+
+## Owner authorized expense/bank repair publication - 2026-11-03
+
+The owner explicitly requests GitHub push of `fix/expense-defaults-bank-import`
+to the owned Satflux origin. Publication includes only the36scoped paths from the
+retained expense worktree, based on mergedPR426/686c9304. The reviewed runtime11
+manifest07d8edd3...198b29 and source/test21manifest2b843d64...aab4ab remain exact.
+Independent QA checks the publication artifact; earlier functional evidence is
+retained rather than reported as a new test run. Main owns commit/push and must
+verify the remote SHA separately. The local-only entry below records the earlier
+milestone; this authorization supersedes its publication gate. No PR creation,
+merge, deployment, production replay or unrelated primary-source publication.
+
+## Expense defaults and bank-email reconciliation reviewed locally - 2026-11-03
+
+Owner requested linked defaults and investigation of missing bank movements, then
+clarified that today's delivered Tatra notification should pay an existing expense.
+PR426 is actually merged as686c9304; older open-PR entries below are historical.
+A new `fix/expense-defaults-bank-import` branch retains the bounded candidate in
+`storage/app/private/worktrees/superfaktura-expense-import`. Source is local and
+uncommitted; no new PR, Git publication, merge, deployment or replay occurred.
+
+New expenses link supplier-number digits to VS and received date to delivery date
+until manual/explicit-attachment override. Bank settings and synchronization now
+resolve the same selected company with stale-response and overlap guards. Existing
+8-16-character recipient tokens survive generation-length drift. New email debits
+can pay exactly one eligible same-company expense by exact amount/currency/hints,
+with recorded direction distinct from display inference, booking-date paid_at,
+atomic linkage/audit and fail-closed debit parsing. Explicit legacy batch matching
+uses normalized ledger fields; it does not prove original mail or trigger Store
+fulfillment. Cross-device CRDT uniqueness remains outside this guarantee.
+
+Independent QA/security accept the frozen source. Runtime11-file manifest is
+07d8edd3af8810cbe369899dfe23c413c2b25761e1438746ef33364543198b29;
+source/test21-file manifest is
+2b843d64a6cfc2ad7c63294360cd99a38657a1bff5f2586ab7570f1d73aab4ab.
+Main full1335frontend/157files, lint48/typecheck112 known ratchets, five locales,
+10guide files, build and3OpenAPI validations pass. Author SQLite225/740assertions
+and Pint9files pass; independent actualPG225/730 (5expectedSQLite-only skips) and
+forced two-connection contention1/16 pass. Final PHPDoc-only impure annotation
+preserves the fresh DB recheck and all method bodies/test bytes. Full PHPStan
+completes with zero new findings; the sole remaining error is the missing local
+optional Scramble class in unchanged DocumentationExporter.php:18. The full
+generator has the same dependency limitation; no install or ignore was added. All453API inventory routes and every
+other selected source hash remain unchanged; only the parser hash is updated.
+
+Owner-provided production metadata: standalone queue healthy, webhooks0 pending/
+delayed/reserved, inbound enabled, today2email rows/latest17:14:08; supplied failed
+jobs list contains June/July records. This proves some current server ingestion,
+not the selected company's UI or deployed-fix verification. Source history shows
+per-company addresses introducedJuly13 while sync retainedJune17 first-company
+fallback, supporting the observed mismatch without proving deployment chronology.
+Do not retry historical jobs or infer all missing mail is recoverable. Existing
+merchant expense/payment state is untouched. Preserve unrelated primary edits,
+recovery copies and worktrees. Next: owner source review/publication decision and
+separate merge/deployment approval. See feature-branch review note
+`docs/development/EXPENSE_DEFAULTS_BANK_IMPORT_REVIEW.md` for contracts and limits.
+
 ## PDF recovery and quota follow-up independently accepted - 2026-11-03
 
 After2567fed4 passes CI41687668367, six review findings are fixed: quota

@@ -168,6 +168,32 @@ class TatraBankEmailParserTest extends TestCase
         $row = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Prijata platba', $body)[0];
 
         $this->assertFalse($row->isExplicitCredit);
+        $this->assertSame(1.0, $row->amount);
+        $this->assertSame('EUR', $row->currency);
+    }
+
+    #[Test]
+    #[TestWith(['Informacia pre prijemcu'])]
+    #[TestWith(['Informácia pre príjemcu'])]
+    #[TestWith(['Referencia platitela'])]
+    #[TestWith(['Protistrana'])]
+    #[TestWith(['Popis transakcie'])]
+    public function remittance_cannot_supply_a_missing_compact_credit_amount(string $field): void
+    {
+        $body = 'Kredit. 03.11.2026. VS: 001234. '.$field.': Suma: 123,45 EUR';
+
+        $this->assertSame([], (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Kredit', $body));
+    }
+
+    #[Test]
+    public function remittance_cannot_supply_a_compact_credit_currency(): void
+    {
+        $body = 'Kredit. Suma: 12,50. 03.11.2026. Informacia pre prijemcu: Suma: 100,00 USD';
+        $row = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Kredit', $body)[0];
+
+        $this->assertSame(12.50, $row->amount);
+        $this->assertSame('EUR', $row->currency);
+        $this->assertFalse($row->hasExplicitCurrency);
     }
 
     #[Test]
@@ -195,6 +221,46 @@ class TatraBankEmailParserTest extends TestCase
         $this->assertSame(1.0, $row->amount);
         $this->assertSame('EUR', $row->currency);
         $this->assertSame(self::RECIPIENT_IBAN, $row->recipientIban);
+    }
+
+    #[Test]
+    public function quoted_debit_headers_in_remittance_do_not_override_the_actual_classic_credit(): void
+    {
+        $body = $this->strictBody(note: 'Quoted: 03.11.2026 14:35 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN.' znizeny o 123,45 EUR.');
+        $rows = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Obrat', $body);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(BankTransactionDirection::Credit, $rows[0]->direction);
+        $this->assertSame(12.50, $rows[0]->amount);
+        $this->assertSame(self::RECIPIENT_IBAN, $rows[0]->recipientIban);
+        $this->assertNull($rows[0]->e2eReference);
+        $this->assertNull($rows[0]->sepaCreditIdentity);
+    }
+
+    #[Test]
+    public function compact_credit_direction_does_not_come_from_payer_remittance(): void
+    {
+        $body = "Kredit. Suma: 123,45 EUR. 03.11.2026\nInformacia pre prijemcu: Debet na ucte";
+        $rows = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Kredit', $body);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(BankTransactionDirection::Credit, $rows[0]->direction);
+    }
+
+    #[Test]
+    public function html_block_fields_preserve_classic_credit_without_promoting_settlement_proof(): void
+    {
+        $body = '<p>03.11.2026 14:35 bol zostatok Vasho uctu '.self::RECIPIENT_IBAN.' zvyseny o 12,50 EUR.</p>'
+            .'<p>Referencia platitela: /VS001234/SS/KS</p><p>Informacia pre prijemcu: Invoice 001234</p>';
+        $rows = (new TatraBankEmailParser)->parse('notify@tatrabanka.sk', 'Obrat', $body);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(BankTransactionDirection::Credit, $rows[0]->direction);
+        $this->assertSame(12.50, $rows[0]->amount);
+        $this->assertSame('001234', $rows[0]->variableSymbol);
+        $this->assertSame('Invoice 001234', $rows[0]->reference);
+        $this->assertSame(self::RECIPIENT_IBAN, $rows[0]->recipientIban);
+        $this->assertNull($rows[0]->sepaCreditIdentity);
     }
 
     #[Test]

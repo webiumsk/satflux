@@ -351,7 +351,9 @@ import {
   type EvoluExpenseAttachmentRow,
 } from "../../evolu/expenseAttachmentCrud";
 import { isInvoicingLocalFirst } from "../../evolu/flags";
-import type { ExpenseAttachmentId, ExpenseId } from "../../evolu/schema";
+import type { CompanyId, ExpenseAttachmentId, ExpenseId } from "../../evolu/schema";
+import { updateLocalExpenseNote } from "../../evolu/expenseCrud";
+import { expenseMutationErrorKey } from "../../utils/expenseError";
 import { getWebBlob, invoicingApi } from "../../services/api";
 import { useInvoicingSaveFeedback } from "../../composables/useInvoicingSaveFeedback";
 
@@ -812,29 +814,18 @@ async function saveNote() {
     return;
   const context = captureContext();
   if (!hasLoadedExpense(context)) return;
-  const currentExpense = expense.value;
   const note = noteDraft.value;
   noteSaving.value = true;
   try {
     if (localFirst) {
       if (!expenseResource.evolu) throw new Error('local_context_unavailable');
-      await updateLocalExpense(
+      const result = await updateLocalExpenseNote(
         expenseResource.evolu,
         context.expense as ExpenseId,
-        {
-          issue_date: currentExpense.issue_date,
-          total: currentExpense.total,
-          internal_note: note,
-          title: currentExpense.title,
-          external_number: currentExpense.external_number,
-          variable_symbol: currentExpense.variable_symbol,
-          constant_symbol: currentExpense.constant_symbol,
-          specific_symbol: currentExpense.specific_symbol,
-          delivery_date: currentExpense.delivery_date,
-          due_date: currentExpense.due_date,
-          currency: currentExpense.currency,
-        },
+        note,
+        context.company as CompanyId,
       );
+      if (!result.ok) throw new Error(t('errors.generic'));
       if (!isCurrentContext(context)) return;
       await expenseResource.refresh();
       if (!isCurrentContext(context)) return;
@@ -848,8 +839,8 @@ async function saveNote() {
     if (!isCurrentContext(context)) return;
     expense.value = updated;
     notifySaved('invoicing.changes_saved');
-  } catch {
-    if (isCurrentContext(context)) window.alert(t('errors.generic'));
+  } catch (error: unknown) {
+    if (isCurrentContext(context)) window.alert(t(expenseMutationErrorKey(error) || 'errors.generic'));
   } finally {
     if (isCurrentContext(context)) noteSaving.value = false;
   }
@@ -866,11 +857,12 @@ async function duplicate() {
         (row) => row.id === context.expense && row.companyId === context.company,
       );
       if (!source) return;
-      const result = duplicateLocalExpense(
+      const result = await duplicateLocalExpense(
         expenseResource.evolu,
         source,
         expenseRows.value,
       );
+      if (!isCurrentContext(context)) return;
       if (!result.ok) return;
       await router.push({
         name: "invoicing-expense-edit",
@@ -884,8 +876,8 @@ async function duplicate() {
       name: "invoicing-expense-edit",
       params: { companyId: context.company, expenseId: res.id },
     });
-  } catch {
-    if (isCurrentContext(context)) window.alert(t('errors.generic'));
+  } catch (error: unknown) {
+    if (isCurrentContext(context)) window.alert(t(expenseMutationErrorKey(error) || 'errors.generic'));
   } finally {
     if (isCurrentContext(context)) duplicating.value = false;
   }
@@ -898,7 +890,9 @@ async function markPaid() {
   try {
     if (localFirst) {
       if (!expenseResource.evolu) throw new Error('local_context_unavailable');
-      markLocalExpensePaid(expenseResource.evolu, context.expense as ExpenseId);
+      const result = await markLocalExpensePaid(expenseResource.evolu, context.expense as ExpenseId);
+      if (!isCurrentContext(context)) return;
+      if (!result.ok) throw new Error(t('errors.generic'));
       await load();
       return;
     }
@@ -907,8 +901,8 @@ async function markPaid() {
     expense.value = updated;
     const updatedHistory = await invoicingApi.expenses.history<HistoryRow>(context.company, context.expense);
     if (isCurrentContext(context)) history.value = updatedHistory;
-  } catch {
-    if (isCurrentContext(context)) window.alert(t('errors.generic'));
+  } catch (error: unknown) {
+    if (isCurrentContext(context)) window.alert(t(expenseMutationErrorKey(error) || 'errors.generic'));
   } finally {
     if (isCurrentContext(context)) acting.value = false;
   }
@@ -921,17 +915,19 @@ async function unmarkPaid() {
   try {
     if (localFirst) {
       if (!expenseResource.evolu) throw new Error('local_context_unavailable');
-      unmarkLocalExpensePaid(
+      const result = await unmarkLocalExpensePaid(
         expenseResource.evolu,
         context.expense as ExpenseId,
       );
+      if (!isCurrentContext(context)) return;
+      if (!result.ok) throw new Error(t('errors.generic'));
       await load();
       return;
     }
     const updated = await invoicingApi.expenses.action<NonNullable<typeof expense.value>>(context.company, context.expense, 'unmark-paid');
     if (isCurrentContext(context)) expense.value = updated;
-  } catch {
-    if (isCurrentContext(context)) window.alert(t('errors.generic'));
+  } catch (error: unknown) {
+    if (isCurrentContext(context)) window.alert(t(expenseMutationErrorKey(error) || 'errors.generic'));
   } finally {
     if (isCurrentContext(context)) acting.value = false;
   }
@@ -945,15 +941,17 @@ async function cancelExpense() {
   try {
     if (localFirst) {
       if (!expenseResource.evolu) throw new Error('local_context_unavailable');
-      cancelLocalExpense(expenseResource.evolu, context.expense as ExpenseId);
+      const result = await cancelLocalExpense(expenseResource.evolu, context.expense as ExpenseId);
+      if (!isCurrentContext(context)) return;
+      if (!result.ok) throw new Error(t('errors.generic'));
       await router.push(expenseListTo());
       return;
     }
     await invoicingApi.expenses.delete(context.company, context.expense);
     if (!isCurrentContext(context)) return;
     await router.push(expenseListTo());
-  } catch {
-    if (isCurrentContext(context)) window.alert(t('errors.generic'));
+  } catch (error: unknown) {
+    if (isCurrentContext(context)) window.alert(t(expenseMutationErrorKey(error) || 'errors.generic'));
   } finally {
     if (isCurrentContext(context)) acting.value = false;
   }
@@ -1083,7 +1081,7 @@ async function onConfirmExtract() {
         if (!expenseResource.evolu || expense.value?.id !== requestedExpense) throw new Error(t('errors.generic'));
         const current = expenseRows.value.find((row) => row.id === requestedExpense && row.companyId === requestedCompany);
         if (!current) throw new Error(t('errors.generic'));
-        const result = updateLocalExpense(expenseResource.evolu, requestedExpense as ExpenseId, draftToPayload(draft, expense.value), current);
+        const result = await updateLocalExpense(expenseResource.evolu, requestedExpense as ExpenseId, draftToPayload(draft, expense.value), current);
         if (!result.ok) throw new Error(t('errors.generic'));
         await expenseResource.refresh();
         if (!stillCurrent()) return;
@@ -1101,8 +1099,9 @@ async function onConfirmExtract() {
     const err = e as {
       response?: { data?: { errors?: { quota?: string[] }; message?: string } };
     };
+    const mutationErrorKey = expenseMutationErrorKey(e);
     window.alert(
-      err?.response?.data?.errors?.quota?.[0] ||
+      mutationErrorKey ? t(mutationErrorKey) : err?.response?.data?.errors?.quota?.[0] ||
         err?.response?.data?.message ||
         t("invoicing.expense_extract_failed"),
     );

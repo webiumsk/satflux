@@ -34,6 +34,7 @@ export type EvoluBankTransactionRow = {
     amount: string | null;
     currency: string | null;
     direction: BankTransactionDirection;
+    recordedDirectionEvidence?: "credit" | "debit" | "unverified" | null;
     matchStatus: BankTransactionMatchStatus;
     businessExpenseId: ExpenseId | null;
     variableSymbol: string | null;
@@ -96,6 +97,7 @@ export type BankBatchApiRow = {
     imported_count: number;
     skipped_duplicates: number;
     auto_matched_count: number;
+    can_auto_match?: boolean;
 };
 
 export type BankSummarySection = {

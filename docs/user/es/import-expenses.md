@@ -24,6 +24,14 @@ Límites: **10 MB, 2.000 filas y 256 columnas** por archivo. Las filas no válid
 
 En la facturación local, el archivo se procesa en su navegador y se guarda con los datos cifrados existentes. Guarde su frase de recuperación. Los adjuntos PDF se importan por separado.
 
+## Valores iniciales de un gasto nuevo
+
+El símbolo variable sigue los dígitos del número del documento, incluidos los ceros iniciales. La fecha de entrega sigue la fecha de recepción. Al editar manualmente uno de estos valores, se detiene su vínculo. Se conservan los valores explícitos extraídos de un adjunto; los gastos existentes mantienen sus valores guardados. Una fecha de entrega borrada manualmente permanece vacía después de guardar y volver a abrir.
+
+Si el número de documento contiene más de 32 dígitos, el símbolo variable automático queda vacío y se conserva el número de documento. Al acortar el número, vuelve a aplicarse el valor predeterminado mientras no se edite el símbolo manualmente.
+
+Los cambios locales de gastos esperan a que termine la conciliación bancaria en curso antes de guardarse. Si el navegador no puede coordinar los cambios, recargue la pestaña o utilice un navegador actualizado. Si no se puede confirmar un resultado, recargue y compruebe el registro guardado antes de realizar otro intento. Las modificaciones deliberadas posteriores de un gasto pagado conservan su estado de pago existente.
+
 ## Resumen de gastos
 
 El resumen bajo **Gastos** incluye todos los documentos que coinciden con los filtros actuales, en todas las páginas. Muestra el número, el total y el importe de los gastos no pagados. Seleccionar filas no modifica el resumen. Cada moneda tiene sus propios totales.

@@ -27,7 +27,7 @@
             v-if="hasNestedItems(item.id)"
             name="chevron-right"
             class="h-4 w-4 opacity-50 transition-transform"
-            :class="{ 'rotate-90': expandedSection === item.id }"
+            :class="expandedSection === item.id ? 'rotate-90' : ''"
           />
         </button>
 

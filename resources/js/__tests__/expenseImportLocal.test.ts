@@ -1,7 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as XLSX from "xlsx";
+import { createExpenseWriterTestAdapter } from "./expenseReconciliationTestSupport";
+import { installBankLocks } from "./bankReconciliationTestSupport";
 
-vi.mock("@/evolu/client", () => {
+vi.mock("@/evolu/client", async () => {
     const tokens = [
         "allBankImportBatchesQuery", "allBankTransactionMatchesQuery", "allBankTransactionsQuery",
         "allCompaniesDetailQuery", "allCompaniesQuery", "allCompanyStockBalancesQuery",
@@ -10,7 +12,8 @@ vi.mock("@/evolu/client", () => {
         "allDocumentsQuery", "allExpensesQuery", "allExpenseAttachmentsQuery", "allNumberSeriesQuery",
         "allRecurringProfileLinesQuery", "allRecurringProfilesQuery",
     ];
-    return Object.fromEntries(tokens.map((token) => [token, token]));
+    return { ...Object.fromEntries(tokens.map((token) => [token, token])),
+        ...(await import("./expenseReconciliationTestSupport")).expenseTestQueryExports() };
 });
 
 import {
@@ -46,10 +49,8 @@ function xlsxFile(rows: unknown[][]): File {
     return { name: "expenses.xlsx", size: buffer.byteLength, arrayBuffer: async () => buffer } as File;
 }
 
-function fakeEvolu() {
-    const insert = vi.fn().mockImplementation(() => ({ ok: true, value: { id: `expense-${insert.mock.calls.length}` } }));
-    const loadQuery = vi.fn().mockRejectedValue(new Error("query_unavailable"));
-    return { insert, loadQuery };
+function fakeEvolu(rows: EvoluExpenseRow[] = []) {
+    return createExpenseWriterTestAdapter(rows as unknown as Record<string, unknown>[]).evolu;
 }
 
 function existing(internalNumber: string, company = companyId): EvoluExpenseRow {
@@ -60,10 +61,12 @@ const MINIMAL_HEADERS = ["Interné číslo", "Dátum vystavenia", "Spolu", "Dát
 const minimalMapping: ExpenseImportMapping = { internal_number: 0, issue_date: 1, total: 2, paid_at: 3 };
 
 async function importMinimal(rows: unknown[][], existingRows: EvoluExpenseRow[] = []) {
-    const evolu = fakeEvolu();
+    const evolu = fakeEvolu(existingRows);
     const result = await importLocalExpensesFromFile(evolu as never, companyId, csvFile([MINIMAL_HEADERS, ...rows]), minimalMapping, existingRows);
     return { evolu, result };
 }
+beforeEach(() => { installBankLocks(); });
+afterEach(() => { vi.unstubAllGlobals(); });
 
 describe("SuperFaktura local expense import", () => {
     it("automatically maps every column in the current 33-column export", () => {
@@ -105,7 +108,7 @@ describe("SuperFaktura local expense import", () => {
             "Supplier bank account: EXAMPLE-ACCOUNT", "Payment method: Bank transfer", "Payment amount: 45000",
             "Payment currency: EUR", "Payment exchange rate: 1", "Item quantity: 2", "Item units: pcs", "Items: Paper; ink",
         ]) expect(saved.internalNote).toContain(note);
-        expect(evolu.loadQuery).not.toHaveBeenCalled();
+        expect(evolu.loadQuery).toHaveBeenCalled();
     });
 
     it("preserves an original payment date for the legacy template without payment metadata", async () => {

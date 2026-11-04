@@ -8,6 +8,7 @@ use App\Models\BankImportBatch;
 use App\Models\BankTransaction;
 use App\Models\BusinessDocument;
 use App\Models\Company;
+use App\Services\Invoicing\BankEmailSyncFeed;
 use App\Services\Invoicing\BankInboundAddressService;
 use App\Services\Invoicing\BankStatementImportService;
 use App\Services\Invoicing\BankTransactionExpenseService;
@@ -27,8 +28,20 @@ class BankTransactionController extends Controller
         protected BankTransactionExpenseService $expenseFromTransactionService,
     ) {}
 
+    /** Preserve ordinary listing semantics while opt-in email synchronization uses bounded resumable lanes. */
     public function index(Request $request, Company $company): JsonResponse
     {
+        if ($request->query('sync') === '1') {
+            $page = app(BankEmailSyncFeed::class)->page(
+                $company, (string) $request->user()->getAuthIdentifier(), $request->query(),
+            );
+
+            return response()->json([
+                'data' => $page['rows']->map(fn (BankTransaction $tx) => $this->transactionPayload($tx)),
+                'meta' => ['sync' => $page['sync']],
+            ]);
+        }
+
         $validated = $request->validate([
             'match_status' => ['sometimes', 'string', Rule::in(['unmatched', 'matched', 'ignored'])],
             'from' => ['sometimes', 'date'],
@@ -297,6 +310,7 @@ class BankTransactionController extends Controller
     protected function transactionPayload(BankTransaction $tx): array
     {
         $payload = $tx->toArray();
+        $payload['recorded_direction'] = $tx->getRawOriginal('direction');
         $payload['direction'] = $tx->resolvedDirection()->value;
         if ($tx->relationLoaded('match') && $tx->match) {
             $payload['match'] = [

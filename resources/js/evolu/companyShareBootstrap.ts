@@ -106,10 +106,16 @@ export function applyCompanyShareRows(
     }
 }
 
+/** Subscribe before publishing readiness so later patches remain validated even if resumable maintenance fails. */
 export async function loadCompanyShareRegistry(evolu: Evolu<InvoicingLocalSchema>): Promise<void> {
     const appOwnerId = (await evolu.appOwner).id;
     const rows = toAppRows<CompanyShareRow>(await evolu.loadQuery(allCompanySharesQuery));
     applyCompanyShareRows(evolu, rows, appOwnerId);
+    if (!unsubscribe) {
+        unsubscribe = evolu.subscribeQuery(allCompanySharesQuery)(() => {
+            applyCompanyShareRows(evolu, toAppRows<CompanyShareRow>(evolu.getQueryRows(allCompanySharesQuery)), appOwnerId);
+        });
+    }
     markCompanyShareRegistryReady();
     // A conversion interrupted by a reload continues where it stopped, and
     // dead copies from revoked shares get reconciled.
@@ -122,11 +128,6 @@ export async function loadCompanyShareRegistry(evolu: Evolu<InvoicingLocalSchema
     if (hasPendingRekey || hasSupersededActiveShareRows(rows, appOwnerId)) {
         const { resumePendingCompanyShareRekeys } = await import("./companyShareRekey");
         await resumePendingCompanyShareRekeys(evolu);
-    }
-    if (!unsubscribe) {
-        unsubscribe = evolu.subscribeQuery(allCompanySharesQuery)(() => {
-            applyCompanyShareRows(evolu, toAppRows<CompanyShareRow>(evolu.getQueryRows(allCompanySharesQuery)), appOwnerId);
-        });
     }
 }
 

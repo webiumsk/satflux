@@ -1,5 +1,203 @@
 # Development roadmap
 
+## Current: publish final test coverage and repeat the review gate - 2026-11-04
+
+Actual review 5766899006 leaves two test-only nits; both are repaired and QA accepts
+manifest 31757baa...1bb7e7. Client 122/122 and actual PG two/108, lint/Pint pass.
+Runtime, migration and five-job CI configuration are unchanged. Publish exactly
+six reviewed paths, verify tree/blobs/remote head, complete fresh CI and request
+actual manual CodeRabbit review after allowance. Continue until all green; preserve
+all production boundaries. No merge/deployment or production replay.
+
+## Current: publish accepted bounded-candidate/PG CI repair - 2026-11-04
+
+Both reviewers accept runtime4 2c1fb965...936bc / source6 e8ebc2c9...39ffa.
+Backend and related SQLite tests, two independently repeated actual PG cases,
+style/static/workflow/zero-skip gates pass. Publish exactly ten reviewed paths,
+verify committed bytes and remote SHA, then wait for all five CI jobs and actual
+manual CodeRabbit review after allowance. Preserve raw-scan/coverage distinction,
+SQL snapshot semantics and all owner/Unknown/financial boundaries. Continue valid
+repairs until all green. No merge/deployment or production action.
+
+## Current: publish accepted scan-progress/index repair and repeat review - 2026-11-04
+
+Both independent reviewers accept runtime4 0090c754...32557 / source6
+d075ba2e...9c589. Main 1,675/173, build/static and backend 41/264 passed; query
+plans and rollback are verified on disposable data. Publish exactly ten reviewed
+paths, verify committed bytes/remote SHA, complete fresh CI including native E2E,
+then request actual manual CodeRabbit review after quota. Preserve unresolved
+obligations, strict owner/coverage/Unknown boundaries and ordinary compatibility.
+Continue valid repairs until all green. No merge/deployment or production action.
+
+## Current: publish accepted progressive-history repair and complete review - 2026-11-04
+
+Runtime13 d4b6bcc4...ab51a/source-tests21 6c628d69...c232bf are independently
+accepted. Main1666/173, build/static/locales and backend31/153 pass. Publish exactly
+25 reviewed paths, verify committed bytes/remote SHA, then complete all fresh CI,
+including four native IndexedDB cases unavailable locally. After full CI, request
+actual manual CodeRabbit review and address valid findings until all green. Keep
+strict coverage/owner admission, exact Unknown outcomes, ciphertext CAS and ordinary
+client compatibility; backend deploys first or together. No merge/deployment or
+production actions.
+
+## Current: publish the independently accepted credential-order repair - 2026-11-04
+
+Both reviewers accept runtime2 4304ae73...244a9/source-test5 3734a970...11f44 and main
+1623/171/build/static/locales. The bounded runtime queue repairs confirmed
+SEC-WISE-CONNECT-ORDER on green889e1e69. Preserve entered outcomes, revalidate queued
+intent, share both modes/instances and keep independent bridges/status reads live.
+Publish only nine reviewed paths, verify source/remote SHA, complete fresh CI and request
+the next actual manual review after capacity. No backend/financial policy, production,
+merge or deployment action is included.
+
+## Current: publish the independently accepted ninth repair - 2026-11-04
+
+Verify pre-metadata credential context, same-company transaction refresh, true
+Wise import counts, separate status retry, bounded read-only resolution/status
+and visible sync lookup failure. Parent3ac059d1 CI and pre-merge88.52% are green,
+but actual review5763674984 has findings. Preserve entered remote/financial work,
+default helper/API callers and trusted owner policy. Both reviewers accept final
+runtime5 9d0e0c91...68b7e/source-test10 67dabf48...1d9d0b; main1609/170/build/static/
+locales and independent QA/security pass. Publish only14 reviewed paths, verify
+committed bytes/remote SHA, finish fresh CI and repeat actual manual review after
+capacity until all green. No merge/deployment or production actions.
+
+## Current: publish the independently accepted eighth repair - 2026-11-04
+
+Verify five findings from actualc0921567 review5763268988, including supplemental
+recorded-route and retry-presentation items. Preserve current bridge read budget,
+financial completion/Unknown and default issuance semantics. Prefer trusted pinned
+routes consistently for bank sync and displayed settings; fail closed for absent
+shared owner evidence and await initial readiness within the read-stage budget.
+Both reviewers accept runtime10 b1f3de86...a26c/source-test15 e08706b2...9052;
+main final1579/169, build/static/locales, QA175/7+25actualVue and security authority/
+final-delta probes pass. Post-financial follow-up cannot import another company's
+email rows; invalid connect cannot falsely report success. Publish only19 reviewed
+paths and verify committed bytes/remote SHA, complete fresh CI, then request actual
+manual review after capacity. No merge/deployment or production actions.
+
+## Current: publish the bank-view lifecycle completion guard - 2026-11-04
+
+Independent mounted Vue reproduction confirms the disposed-view stale identity
+entry gap before import. Both reviewers accept final runtime1 29becc3a...cce6 and
+source-test2 d579efc0...bc43. Main209/10 affected tests, author71/4, independent46+7,
+build/lint/typecheck pass. Publish exactly6 reviewed paths, verify raw bytes/remote
+SHA, then wait for full current CI before manual review. Parent7e9 CI is green;
+a paused check or old review does not complete the owner's all-green loop.
+No financial write cancellation, new API/default changes or release action.
+
+## Current: finish final R6 checks, publish and repeat review - 2026-11-04
+
+One inline and two supplemental review items are repaired. Both reviewers accept
+final runtime4 927a9d92...27a1/source-test7 a63822f8...2406 with identity, total-fetch,
+metadata ambiguity/default allocator and real deleted-query regression evidence.
+Main final fullfrontend1504/167, production build and lint48known/zero errors pass
+on these exact bytes. Publish only11 reviewed paths, verify committed blobs/remote
+SHA and complete exact-head CI. Request the next actual manual review after capacity. Preserve the before-
+import identity boundary, unknown outcomes, all thresholds and deployment gates.
+No merge/deployment, production replay or unrelated primary publication.
+
+## Current: publish PR427 fifth repair and repeat review - 2026-11-04
+
+The five findings are repaired and both independent reviewers accept final
+runtime4 b7887cd1...7983f/source-test9 b33cfdeb...de663. Main1485frontend/165files,
+QA112+14temporary, security101+14temporary/6PHP64 and all static/build/locales
+pass with unchanged thresholds. Publish exactly13 reviewed paths, verify their
+committed bytes/remote SHA and resolve the five threads. Then wait for full new CI
+and actual review capacity before requesting another completed manual review.
+Continue until findings/checks are green, preserving quarantine and all recorded
+browser/device/transport limits. No merge/deployment or production replay.
+
+## Current: complete PR427 documentation and manual review loop - 2026-11-04
+
+All CI jobs pass on6ba7e908. Add genuine missing function contracts to address the
+bot's retained docstring warning; preserve executable tokens, annotations, all
+thresholds and ordinary error behavior. Independent QA accepts comment/metadata20
+manifest75cab067...06b7 with exact TS/PHP executable identity. Publish only the
+reviewed24 paths and wait for full fresh CI.
+After the approximately01:30UTC reset, post the owner's exact requested
+`@coderabbitai review` comment. Repair valid findings and repeat verification until
+CI and actual review are green; a rate-limited neutral check is insufficient.
+No merge/deployment or production access is authorized by this instruction.
+
+## Current: publish PR427 fourth review fixes - 2026-11-04
+
+All three new review items and two defects exposed by independent regression
+checks are repaired on the existing owned branch. Both reviewers accept the same
+runtime4/source-test10 manifests (8f71c874...bf1f0 / 8c24ef15...d6918).
+Main full frontend1443/164, final build/lint/typecheck/locales pass with unchanged ratchets.
+Publish only the reviewed14 paths, verify their committed bytes and remote SHA,
+resolve the one new inline thread, and require exact-head CI. Preserve known
+browser/device/import limits, current-company feedback and unknown-outcome
+quarantine. No server, key, Store or billing authority change; no merge/deployment
+or production replay is included. Prior CI validates f0849584 only.
+
+## Current: publish PR427 third-round repair - 2026-11-04
+
+HTML-only notification layout, refresh-error classification and interrupted-import
+batch recovery are fixed. All inventoried critical expense writers, maintenance
+and bank actions share one origin gate with fresh owner-aware preconditions and
+worker completion proof. Final runtime41/source-test65 manifests are
+a9478719...76ee7 /5f74ae7b...471c1. Main full1415 plus final merge3/affected35 and
+independent native40/security50 pass; typecheck111existing/no-new, lint48known and
+build/locales/API/Pint retain previous ratchets and documented limits.
+Both reviewers accept all final hashes; publish the exact scoped branch, resolve
+three new inline threads and verify new exact-head CI. No production replay,
+server migration, new key authority, merge or deployment is included.
+
+## Current: finish PR427 second-round review fixes - 2026-11-03
+
+Four new inline findings and three follow-ups are implemented on the same branch:
+strict bank date/amount fields, VS32 default, localized visible errors, Spanish
+wording and batched row insertion with full post-handler identity proof. Main
+frontend1382, backend262/1018, scoped bank92 and mounted UI39 pass; static/build/
+locale/API gates preserve existing ratchets and the local Scramble limitation.
+Independent QA/security accept runtime22 4b236b10...a7eb1 and source/test36
+b33ad44a...19975 with no unresolved findings; QA131frontend/305PHP1160 and both
+reviewers' actual-worker15 pass. Publish the reviewed32-path delta, resolve the
+four threads and verify new CI. Retain the fixed-query/quarantine/legacy-device limits.
+No production access, replay, merge or deployment is included.
+
+## Current: publish PR427 review remediation - 2026-11-03
+
+Seven CodeRabbit inline findings and five follow-ups are repaired and covered by
+parser, delivery-null, Wise, SQL-lock and real Evolu failure regressions. Final
+runtime17/source-test31 manifests are 78afb3fd...04eb0 / d52b3e00...0e686.
+Independent QA accepts PostgreSQL251/805, contention3/42 and actual-worker12;
+main full frontend1363, final Wise19, SQLite237/958 and static/build/locale/API
+gates pass with existing ratchets and the known local Scramble dependency limit.
+Independent security accepts the same frozen manifests with no unresolved findings.
+Publish only scoped changes on PR427, resolve addressed threads and verify the new
+commit's complete CI.
+Same-browser matching requires updated cooperating clients; old tabs should be
+reloaded at rollout. Keep other-device/legacy provenance limitations explicit.
+No production replay, merge or deployment is included.
+
+## Approved: publish the reviewed expense/bank repair branch - 2026-11-03
+
+Owner requests push to owned Satflux GitHub. Publish only the36reviewed/scoped
+paths on `fix/expense-defaults-bank-import`, retaining accepted source/test bytes,
+and verify the remote SHA. Local tests/reviews remain attributed to those bytes;
+no remote CI result is inferred. PR creation, its linked changelog note, merge
+and deployment remain subsequent actions. Preserve the dirty primary checkout.
+
+## Ready locally: expense defaults and bank-email expense matching - 2026-11-03
+
+Continue owner review of `fix/expense-defaults-bank-import`, based on merged
+PR426/686c9304 in the retained expense worktree. VS/date defaults, selected-company
+bridge synchronization, recipient compatibility and exact email-debit matching
+are implemented. Independent QA/security accept11runtime/21source-test manifests;
+main1335frontend, SQLite225/740 and independentPG225/730 plus forcedcontention1/16
+pass, with unchanged lint/typecheck ratchets, locales/build/API/guide checks.
+Full PHPStan local dependency limitation is recorded separately, not a CI pass.
+
+Production metadata confirms2email rows today, enabled intake and healthy empty
+webhooks queue; selected-company correlation and actual UI recovery remain
+unverified. Source is uncommitted/local, no new publication or deployment. Next:
+owner review, then authorized PR/publication with its linked changelog note;
+merge/deployment remain separate gates. Preserve all previous work and never
+replay bank mail or broadly retry failed jobs as diagnosis.
+
 ## Current: publish accepted PDF recovery and quota follow-up - 2026-11-03
 
 Six findings after green2567fed4 CI are fixed with user-locked quota accounting,

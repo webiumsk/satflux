@@ -1,3 +1,4 @@
+import { checkpointExpenseMutations, commitExpenseMutation, withExpenseMaintenance } from "./expenseReconciliation";
 import { sqliteFalse, sqliteTrue } from "@evolu/common";
 import type { Evolu } from "@evolu/common/local-first";
 import { allCompanySharesQuery } from "./client";
@@ -39,6 +40,18 @@ export async function recoverCompanyToPrivate(
     companyId: string,
     backup: InvoicingDataSnapshot,
 ): Promise<RecoveryReport> {
+    return withExpenseMaintenance(evolu, (scope) => recoverCompanyToPrivateLocked(scope.evolu, companyId, backup));
+}
+
+/**
+ * Use the backup ID set to restore private rows after revoking and deleting shared copies.
+ * Prove local mutations before unregistering owners; bounded relay waiting is not remote delivery proof.
+ */
+async function recoverCompanyToPrivateLocked(
+    evolu: Evolu<InvoicingLocalSchema>,
+    companyId: string,
+    backup: InvoicingDataSnapshot,
+): Promise<RecoveryReport> {
     const appOwnerId = (await evolu.appOwner).id;
 
     // 1. Revoke every non-revoked share row of the company (kept in the app partition).
@@ -50,7 +63,8 @@ export async function recoverCompanyToPrivate(
     for (const row of shares) {
         if (row.companyId !== companyId || row.status === "revoked") continue;
         sharedOwners.add(row.sharedOwnerId);
-        const result = evolu.update("companyShare", { id: row.id as never, status: "revoked" } as never);
+        const result = await commitExpenseMutation(evolu, (onComplete) =>
+            evolu.update("companyShare", { id: row.id as never, status: "revoked" } as never, { onComplete }));
         if (result.ok) sharesRevoked++;
     }
 
@@ -64,14 +78,10 @@ export async function recoverCompanyToPrivate(
         const rows = toAppRows<Row>(await evolu.loadQuery(MIGRATION_TABLE_QUERIES[table] as never));
         for (const row of rows) {
             if (row.ownerId && sharedOwners.has(row.ownerId) && row.isDeleted !== 1) {
-                const result = await new Promise<{ ok: boolean }>((resolve) => {
-                    const res = scopedEvolu(evolu, row.ownerId as never).update(
-                        table,
-                        { id: row.id, isDeleted: sqliteTrue } as never,
-                        { onComplete: () => resolve({ ok: true }) },
-                    );
-                    if (!res.ok) resolve({ ok: false });
-                });
+                const result = await commitExpenseMutation(evolu, (onComplete) =>
+                    scopedEvolu(evolu, row.ownerId as never).update(
+                        table, { id: row.id, isDeleted: sqliteTrue } as never, { onComplete },
+                    ));
                 if (result.ok) sharedSoftDeleted++;
             }
         }
@@ -85,10 +95,13 @@ export async function recoverCompanyToPrivate(
     let appUndeleted = 0;
     for (const table of MIGRATION_ORDER) {
         for (const row of set[table]) {
-            const result = appScoped.update(table, { id: row.id, isDeleted: sqliteFalse } as never);
+            const result = await commitExpenseMutation(evolu, (onComplete) =>
+                appScoped.update(table, { id: row.id, isDeleted: sqliteFalse } as never, { onComplete }));
             if (result.ok) appUndeleted++;
         }
     }
+
+    await checkpointExpenseMutations(evolu);
 
     // 4. Stop syncing / scoping to the removed owners.
     for (const owner of sharedOwners) {

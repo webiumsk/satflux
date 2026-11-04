@@ -1,6 +1,6 @@
 import type { Evolu } from "@evolu/common/local-first";
 import type { BulkResult } from "./documentBulkLocal";
-import { cancelLocalExpense, markLocalExpensePaid } from "./expenseCrud";
+import { withExpenseReconciliation } from "./expenseReconciliation";
 import type { EvoluExpenseRow } from "./expenseMap";
 import { filterLocalExpenses, type ExpenseListFilterOptions } from "./expenseMap";
 import type { CompanyId, ExpenseId, InvoicingLocalSchema } from "./schema";
@@ -25,40 +25,58 @@ export function resolveBulkExpenseTargets(
     return filtered.filter((row) => idSet.has(row.id));
 }
 
-export function bulkMarkPaidLocalExpenses(
+/**
+ * Recheck selected company targets under the shared writer gate before marking them paid.
+ * Skip missing, paid or cancelled rows; return counters only after the batch is verified.
+ */
+export async function bulkMarkPaidLocalExpenses(
     evolu: Evolu<InvoicingLocalSchema>,
     targets: EvoluExpenseRow[],
-): BulkResult {
+): Promise<BulkResult> {
+    return withExpenseReconciliation(evolu, (scope) => {
     let processed = 0;
     let skipped = 0;
 
-    for (const row of targets) {
-        if (row.status === "paid" || row.status === "cancelled") {
+    for (const target of targets) {
+        const row = scope.context.expenses.find((candidate) => candidate.id === target.id && candidate.companyId === target.companyId);
+        if (!row || row.status === "paid" || row.status === "cancelled") {
             skipped++;
             continue;
         }
-        markLocalExpensePaid(evolu, row.id as ExpenseId);
+        const result = scope.evolu.update("expense", { id: row.id as ExpenseId, companyId: row.companyId,
+            status: "paid", paidAt: new Date().toISOString().slice(0, 10) });
+        if (!result.ok) throw new Error("expense_mutation_batch_rejected");
         processed++;
     }
 
     return { processed, skipped };
+    });
 }
 
-export function bulkCancelLocalExpenses(
+/**
+ * Cancel fresh selected-company targets in one guarded batch, skipping missing or already cancelled rows.
+ * A rejected write fails the operation instead of reporting optimistic processed counts.
+ */
+export async function bulkCancelLocalExpenses(
     evolu: Evolu<InvoicingLocalSchema>,
     targets: EvoluExpenseRow[],
-): BulkResult {
+): Promise<BulkResult> {
+    return withExpenseReconciliation(evolu, (scope) => {
     let processed = 0;
     let skipped = 0;
 
-    for (const row of targets) {
-        if (row.status === "cancelled") {
+    for (const target of targets) {
+        const row = scope.context.expenses.find((candidate) => candidate.id === target.id && candidate.companyId === target.companyId);
+        if (!row || row.status === "cancelled") {
             skipped++;
             continue;
         }
-        cancelLocalExpense(evolu, row.id as ExpenseId);
+        const result = scope.evolu.update("expense", { id: row.id as ExpenseId, companyId: row.companyId,
+            status: "cancelled", cancelledAt: new Date().toISOString().slice(0, 10) });
+        if (!result.ok) throw new Error("expense_mutation_batch_rejected");
         processed++;
     }
 
     return { processed, skipped };
+    });
 }

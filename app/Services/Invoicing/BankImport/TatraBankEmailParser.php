@@ -24,19 +24,49 @@ class TatraBankEmailParser implements BankNotificationParser
             || str_contains(strtolower($subject), 'obrat');
     }
 
+    /**
+     * Return the supported movement, or no rows when debit evidence is incomplete.
+     * Bank-controlled fields qualify debits before either format can apply defaults.
+     */
     public function parse(string $from, string $subject, string $body): array
     {
         $text = $this->normalizeBody($body);
+        $bankPrefix = $this->bankAuthoredPrefix($text);
+        $greeting = '(?:V[aá][zž]en[yý]\s+klient,\s*)?';
+        $classicHeader = preg_match('/\A'.$greeting.'[^\n]*\bbol zostatok Vasho uctu\b/iu', $bankPrefix) === 1;
+        if (! $classicHeader && preg_match('/bol zostatok Vasho uctu/iu', $bankPrefix)) {
+            return [];
+        }
+        $classicDirection = null;
+        if ($classicHeader) {
+            if (! preg_match('/\A'.$greeting.'\d{1,2}\.?\s*\d{1,2}\.?\s*\d{4}\s+\d{1,2}:\d{2}\s+bol zostatok Vasho uctu\s+\S+\s+(zvyseny|znizeny)\b/iu', $bankPrefix, $opening)) {
+                // An incomplete classic opening cannot be a compact notification.
+                return [];
+            }
+            $classicDirection = strtolower($opening[1]);
+        }
+        $isDebit = $classicHeader ? $classicDirection === 'znizeny'
+            : app(BankTransactionDirectionGuesser::class)->fromAmountAndHints(
+                $this->matchAmount($bankPrefix) ?? 0, $subject, $bankPrefix,
+            ) === BankTransactionDirection::Debit;
+        $debit = $isDebit ? $this->qualifiedDebit($text, $classicHeader) : null;
+        if ($isDebit && $debit === null) {
+            // An incomplete classic debit must not escape into compact parsing.
+            return [];
+        }
         // Select strict evidence using sender identity, never a body label.
         // Origin is independently authenticated before SEPA reporting.
         $evidence = $this->strictSepaEvidence($from, $body);
-        $classic = $this->parseClassic($text, $subject, $evidence);
+        $classic = $classicHeader ? $this->parseClassic($text, $subject, $evidence, $debit) : null;
 
         if ($classic !== null) {
             return [$classic];
         }
+        if ($classicHeader) {
+            return [];
+        }
 
-        $compact = $this->parseCompact($text, $subject);
+        $compact = $this->parseCompact($text, $subject, $debit);
 
         return $compact !== null ? [$compact] : [];
     }
@@ -55,9 +85,14 @@ class TatraBankEmailParser implements BankNotificationParser
         return null;
     }
 
+    /** Preserve layout boundaries and inline numeric tokens while removing markup. */
     protected function normalizeBody(string $body): string
     {
-        $text = strip_tags(html_entity_decode($body));
+        $text = html_entity_decode($body);
+        // Keep layout boundaries without splitting inline numeric tokens.
+        // strip_tags still parses complete tags, including quoted attributes.
+        $text = preg_replace('/(?=<\/?(?:br|hr|p|div|li|dt|dd|tr|td|th|h[1-6]|table|thead|tbody|tfoot|ul|ol|dl|blockquote|pre|section|article|header|footer)(?=[\s\/>]))/iu', ' ', $text) ?? $text;
+        $text = strip_tags($text);
         $text = str_replace(["\r\n", "\r"], "\n", $text);
         $text = preg_replace('/[ \t]+/u', ' ', $text) ?? $text;
         $text = preg_replace('/\n{3,}/u', "\n\n", $text) ?? $text;
@@ -65,8 +100,11 @@ class TatraBankEmailParser implements BankNotificationParser
         return trim($text);
     }
 
-    /** @param array{e2e: ?string, vs: ?string, identity: string}|null $evidence */
-    protected function parseClassic(string $text, string $subject, ?array $evidence = null): ?ParsedBankTransaction
+    /**
+     * @param  array{e2e: ?string, vs: ?string, identity: string}|null  $evidence
+     * @param  array{amount: float, currency: string, date: Carbon, vs: ?string}|null  $debit
+     */
+    protected function parseClassic(string $text, string $subject, ?array $evidence = null, ?array $debit = null): ?ParsedBankTransaction
     {
         if (! preg_match(
             '/(\d{1,2}\.?\s*\d{1,2}\.?\s*\d{4}\s+\d{1,2}:\d{2})\s+bol zostatok Vasho uctu\s+(\S+)\s+(zvyseny|znizeny)\s+o\s+([\d\s,]+)\s+([A-Z]{3})/iu',
@@ -76,13 +114,13 @@ class TatraBankEmailParser implements BankNotificationParser
             return null;
         }
 
-        $amount = (float) str_replace([' ', ','], ['', '.'], trim($main[4]));
-        $currency = strtoupper($main[5]);
+        $amount = $debit['amount'] ?? (float) str_replace([' ', ','], ['', '.'], trim($main[4]));
+        $currency = $debit['currency'] ?? strtoupper($main[5]);
         $direction = strtolower($main[3]) === 'znizeny'
             ? BankTransactionDirection::Debit
             : BankTransactionDirection::Credit;
 
-        $bookedAt = $this->parseClassicDateTime($main[1]) ?? Carbon::now();
+        $bookedAt = $debit['date'] ?? $this->parseClassicDateTime($main[1]) ?? Carbon::now();
 
         $popis = $this->matchField($text, 'Popis transakcie');
         $referencia = $this->matchField($text, 'Referencia platitela');
@@ -91,7 +129,9 @@ class TatraBankEmailParser implements BankNotificationParser
 
         [$variableSymbol, $constantSymbol, $specificSymbol, $referenciaName] = $this->parseReferenciaPlatitela($referencia);
 
-        if ($variableSymbol === null) {
+        if ($debit !== null) {
+            $variableSymbol = $debit['vs'];
+        } elseif ($variableSymbol === null) {
             $variableSymbol = $this->inferVariableSymbol($text, $informacia, $referencia);
         }
 
@@ -132,17 +172,19 @@ class TatraBankEmailParser implements BankNotificationParser
         );
     }
 
-    protected function parseCompact(string $text, string $subject): ?ParsedBankTransaction
+    /** @param array{amount: float, currency: string, date: Carbon, vs: ?string}|null $debit */
+    protected function parseCompact(string $text, string $subject, ?array $debit = null): ?ParsedBankTransaction
     {
-        $amount = $this->matchAmount($text);
+        $bankPrefix = $this->bankAuthoredPrefix($text);
+        $amount = $debit['amount'] ?? $this->matchAmount($bankPrefix);
         if ($amount === null) {
             return null;
         }
 
-        $direction = app(BankTransactionDirectionGuesser::class)->fromAmountAndHints(
-            $amount,
+        $direction = $debit !== null ? BankTransactionDirection::Debit : app(BankTransactionDirectionGuesser::class)->fromAmountAndHints(
+            $this->matchAmount($bankPrefix) ?? 0,
             $subject,
-            $text,
+            $bankPrefix,
         );
 
         $vs = null;
@@ -150,8 +192,8 @@ class TatraBankEmailParser implements BankNotificationParser
             $vs = BankSymbolNormalizer::variableSymbol($m[1]);
         }
 
-        $bookedAt = Carbon::now();
-        if (preg_match('/(\d{1,2}\.\d{1,2}\.\d{4})/u', $text, $dm)) {
+        $bookedAt = $debit['date'] ?? Carbon::now();
+        if ($debit === null && preg_match('/(\d{1,2}\.\d{1,2}\.\d{4})/u', $text, $dm)) {
             $bookedAt = Carbon::createFromFormat('d.m.Y', $dm[1]) ?: $bookedAt;
         }
 
@@ -165,7 +207,11 @@ class TatraBankEmailParser implements BankNotificationParser
         $informacia = $this->matchField($text, 'Informacia pre prijemcu');
 
         [$variableSymbol, $constantSymbol, $specificSymbol, $referenciaName] = $this->parseReferenciaPlatitela($referencia);
-        $variableSymbol ??= $vs ?? $this->inferVariableSymbol($text, $informacia, $referencia);
+        if ($debit !== null) {
+            $variableSymbol = $debit['vs'];
+        } else {
+            $variableSymbol ??= $vs ?? $this->inferVariableSymbol($text, $informacia, $referencia);
+        }
 
         $counterparty = $this->resolveCounterpartyName(
             $protistrana,
@@ -178,7 +224,7 @@ class TatraBankEmailParser implements BankNotificationParser
 
         $reference = $this->resolveReference($informacia, $popis, $referencia, $subject, $text);
 
-        $currency = $this->matchCurrency($text);
+        $currency = $debit['currency'] ?? $this->matchCurrency($bankPrefix);
 
         return new ParsedBankTransaction(
             bookedAt: $bookedAt,
@@ -455,5 +501,105 @@ class TatraBankEmailParser implements BankNotificationParser
         }
 
         return null;
+    }
+
+    /** @return array{amount: float, currency: string, date: Carbon, vs: ?string}|null */
+    private function qualifiedDebit(string $text, bool $classic): ?array
+    {
+        $bankPrefix = $this->bankAuthoredPrefix($text);
+        if ($classic) {
+            if (! preg_match('/\A(?:V[aá][zž]en[yý]\s+klient,\s*)?(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})[ \t]+(\d{1,2}):(\d{2})\s+bol zostatok Vasho uctu\s+\S+\s+znizeny\s+o\s+([0-9][0-9 ,.]*?)\s+([A-Z]{3})\.?[ \t]*(?:\n|$)/iu', $bankPrefix, $fields)) {
+                return null;
+            }
+            $date = $this->debitDate($fields[1], $fields[2], $fields[3], $fields[4], $fields[5]);
+            $amount = $this->debitAmount($fields[6]);
+            $currency = strtoupper($fields[7]);
+        } else {
+            // Count date-like tokens before validating them: a malformed date
+            // must not disappear when another valid date is present.
+            if (preg_match_all('/\b(?:suma|amount|obrat)[:\s]*(-?[0-9][0-9 ,.]*?)\s+([A-Z]{3})(?=[\s.]|$)/iu', $bankPrefix, $amountFields, PREG_SET_ORDER) !== 1
+                || preg_match_all('/(?<![\d.])\d{1,2}\.\s*\d{1,2}\.\s*\d{4}/u', $bankPrefix) !== 1
+                || preg_match_all('/(?<![\d.\p{L}])(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?(?=\z|[\s.,;])(?![ T]+\d)/u', $bankPrefix, $dates, PREG_SET_ORDER) !== 1) {
+                return null;
+            }
+            $date = $this->debitDate($dates[0][1], $dates[0][2], $dates[0][3], $dates[0][4] ?? '0', $dates[0][5] ?? '0', $dates[0][6] ?? '0');
+            $amount = $this->debitAmount($amountFields[0][1]);
+            $currency = strtoupper($amountFields[0][2]);
+        }
+        $symbol = $this->debitSymbol($text);
+        if ($date === null || $amount === null || ! $symbol['valid']) {
+            return null;
+        }
+
+        return ['amount' => $amount, 'currency' => $currency, 'date' => $date, 'vs' => $symbol['value']];
+    }
+
+    /** Exclude payer reference, remittance and counterparty fields from bank value qualification. */
+    private function bankAuthoredPrefix(string $text): string
+    {
+        if (preg_match('/\b(?:Inform[aá]cia\s+pre\s+pr[ií]jemcu|Referencia\s+platite[lľ]a|Protistrana|Popis\s+transakcie|[UÚuú][cč]et\s+protistrany)\s*:/iu', $text, $field, PREG_OFFSET_CAPTURE)) {
+            return substr($text, 0, $field[0][1]);
+        }
+
+        return $text;
+    }
+
+    /** Construct a valid bank timestamp without rolling over invalid calendar or time components. */
+    private function debitDate(string $day, string $month, string $year, string $hour, string $minute, string $second = '0'): ?Carbon
+    {
+        if (! checkdate((int) $month, (int) $day, (int) $year)
+            || (int) $hour > 23 || (int) $minute > 59 || (int) $second > 59) {
+            return null;
+        }
+
+        return Carbon::create((int) $year, (int) $month, (int) $day, (int) $hour, (int) $minute, (int) $second);
+    }
+
+    /** Validate grouping, precision and range before normalizing a debit amount to its positive value. */
+    private function debitAmount(string $raw): ?float
+    {
+        if (! preg_match('/\A-?(?:\d+|\d{1,3}(?: \d{3})+)(?:[,.]\d{1,2})?\z/', trim($raw))) {
+            return null;
+        }
+        $canonical = str_replace([' ', ','], ['', '.'], trim($raw));
+        $amount = (float) $canonical;
+
+        return is_finite($amount) && abs($amount) > 0 && abs($amount) <= 999999999999.99 ? $amount : null;
+    }
+
+    /** @return array{valid: bool, value: ?string} */
+    private function debitSymbol(string $text): array
+    {
+        preg_match_all('/\/VS([^\/\r\n]*)/iu', $text, $structured);
+        preg_match_all('/(?<![\w\/])(?:VS|variabiln[ýy]\s*symbol)(?:[ \t]*:[ \t]*|[ \t]+)([^\s;]*)/iu', $text, $labelled, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+        $rawSymbols = $structured[1];
+        foreach ($labelled as $field) {
+            $value = $field[1][0];
+            $tail = substr($text, $field[1][1] + strlen($value));
+            $endsBeforeDate = str_ends_with($value, '.')
+                && preg_match('/\A\h+\d{1,2}\.\h*\d{1,2}\.\h*\d{4}(?:[ T]+\d{1,2}:\d{2}(?::\d{2})?)?(?=\z|[\s.,;])/u', $tail);
+            if (preg_match('/\A\h+\d/u', $tail) && ! $endsBeforeDate) {
+                return ['valid' => false, 'value' => null];
+            }
+            $rawSymbols[] = str_ends_with($value, '.') ? substr($value, 0, -1) : $value;
+        }
+        $reference = $this->matchField($text, 'Referencia platitela');
+        if ($reference !== null && preg_match('/\A\d{1,10}\z/', $reference)) {
+            $rawSymbols[] = $reference;
+        }
+        $symbols = [];
+        foreach ($rawSymbols as $raw) {
+            if (trim($raw) === '') {
+                continue;
+            }
+            $symbol = trim($raw);
+            if (! preg_match('/\A\d{1,10}\z/', $symbol)) {
+                return ['valid' => false, 'value' => null];
+            }
+            $symbols[] = $symbol;
+        }
+        $symbols = array_values(array_unique($symbols));
+
+        return ['valid' => count($symbols) <= 1, 'value' => $symbols[0] ?? null];
     }
 }

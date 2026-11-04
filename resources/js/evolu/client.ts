@@ -504,6 +504,7 @@ const bankTransactionColumns = [
     "amount",
     "currency",
     "direction",
+    "recordedDirectionEvidence",
     "matchStatus",
     "businessExpenseId",
     "variableSymbol",
@@ -549,6 +550,27 @@ export const allBankTransactionMatchesQuery = evolu.createQuery((db) =>
         .where("isDeleted", "is not", sqliteTrue)
         .orderBy("createdAt"),
 );
+
+// Reconciliation-only queries MUST stay unsubscribed. Each legitimate metadata
+// mutation invalidates these five bounded cache keys. The following load then
+// reaches the worker after that mutation handler has finished its transaction.
+export const bankReconciliationBatchesQuery = evolu.createQuery((db) => db
+    .selectFrom("bankImportBatch").select(bankImportBatchColumns)
+    .where("isDeleted", "is not", sqliteTrue).where("id", "is not", null).orderBy("createdAt", "desc"));
+export const bankReconciliationTransactionsQuery = evolu.createQuery((db) => db
+    .selectFrom("bankTransaction").select(bankTransactionColumns)
+    .where("isDeleted", "is not", sqliteTrue).where("id", "is not", null).orderBy("createdAt"));
+export const bankReconciliationMatchesQuery = evolu.createQuery((db) => db
+    .selectFrom("bankTransactionMatch").select(bankTransactionMatchColumns)
+    .where("isDeleted", "is not", sqliteTrue).where("id", "is not", null).orderBy("createdAt"));
+export const bankReconciliationDocumentsQuery = evolu.createQuery((db) => db
+    .selectFrom("document").select(documentColumns)
+    .where("isDeleted", "is not", sqliteTrue).where("id", "is not", null).orderBy("createdAt"));
+export const bankReconciliationExpensesQuery = evolu.createQuery((db) => db
+    .selectFrom("expense").select(expenseColumns)
+    .where("isDeleted", "is not", sqliteTrue).where("internalNumber", "is not", null)
+    .$narrowType<{ internalNumber: kysely.NotNull }>()
+    .where("id", "is not", null).orderBy("createdAt"));
 
 export { EVOLU_RELAY_URL } from "./config";
 

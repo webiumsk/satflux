@@ -46,7 +46,7 @@
         <div class="grid sm:grid-cols-2 gap-4">
           <div>
             <label class="invoicing-sf-label">{{ t('invoicing.expense_col_external') }}</label>
-            <input v-model="form.external_number" type="text" class="invoicing-sf-input w-full" />
+            <input v-model="form.external_number" type="text" class="invoicing-sf-input w-full" @input="syncVariableSymbolDefault" />
           </div>
           <div v-if="!isNew">
             <label class="invoicing-sf-label">{{ t('invoicing.expense_col_internal') }}</label>
@@ -56,7 +56,7 @@
         <div class="grid sm:grid-cols-3 gap-4">
           <div>
             <label class="invoicing-sf-label">{{ t('invoicing.variable_symbol') }}</label>
-            <input v-model="form.variable_symbol" type="text" class="invoicing-sf-input w-full" />
+            <input v-model="form.variable_symbol" type="text" class="invoicing-sf-input w-full" @input="variableSymbolFollowsNumber = false" />
           </div>
           <div>
             <label class="invoicing-sf-label">{{ t('invoicing.expense_col_ks') }}</label>
@@ -70,11 +70,11 @@
         <div class="grid sm:grid-cols-3 gap-4">
           <div>
             <label class="invoicing-sf-label">{{ t('invoicing.expense_col_issue') }} *</label>
-            <input v-model="form.issue_date" type="date" class="invoicing-sf-input w-full" required />
+            <input v-model="form.issue_date" type="date" class="invoicing-sf-input w-full" required @input="syncDeliveryDateDefault" />
           </div>
           <div>
             <label class="invoicing-sf-label">{{ t('invoicing.expense_col_delivery') }}</label>
-            <input v-model="form.delivery_date" type="date" class="invoicing-sf-input w-full" />
+            <input v-model="form.delivery_date" type="date" class="invoicing-sf-input w-full" @input="deliveryDateFollowsIssueDate = false" />
           </div>
           <div>
             <label class="invoicing-sf-label">{{ t('invoicing.expense_col_due') }}</label>
@@ -148,6 +148,8 @@ import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompan
 import { useInvoicingExpense } from '../../composables/useInvoicingExpenses';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import { insertLocalExpense, updateLocalExpense } from '../../evolu/expenseCrud';
+import { expenseMutationErrorKey } from '../../utils/expenseError';
+import { normalizeVariableSymbol } from '../../evolu/bankSymbolNormalizer';
 import { expenseByIdIncludingDeletedQuery } from '../../evolu/client';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
 import type { EvoluExpenseRow } from '../../evolu/expenseMap';
@@ -222,6 +224,8 @@ const saving = ref(false);
 const error = ref('');
 const importNotice = ref('');
 const createdLocalExpenseId = ref<string | null>(null);
+const variableSymbolFollowsNumber = ref(true);
+const deliveryDateFollowsIssueDate = ref(true);
 let contextGeneration = 0;
 watch([companyId, expenseId], () => {
   contextGeneration++;
@@ -231,14 +235,39 @@ watch([companyId, expenseId], () => {
 }, { flush: 'sync' });
 onUnmounted(() => { contextGeneration++; });
 
+function syncVariableSymbolDefault() {
+  if (isNew.value && variableSymbolFollowsNumber.value) {
+    const symbol = normalizeVariableSymbol(form.value.external_number) || '';
+    form.value.variable_symbol = symbol.length <= 32 ? symbol : '';
+  }
+}
+
+function syncDeliveryDateDefault() {
+  if (isNew.value && deliveryDateFollowsIssueDate.value) {
+    form.value.delivery_date = form.value.issue_date;
+  }
+}
+
 function applyImportDraft(draft: ExpenseImportDraft) {
   if (draft.title) form.value.title = draft.title;
-  if (draft.external_number) form.value.external_number = draft.external_number;
-  if (draft.variable_symbol) form.value.variable_symbol = draft.variable_symbol;
+  if (draft.external_number) {
+    form.value.external_number = draft.external_number;
+    syncVariableSymbolDefault();
+  }
+  if (draft.variable_symbol) {
+    form.value.variable_symbol = draft.variable_symbol;
+    variableSymbolFollowsNumber.value = false;
+  }
   if (draft.constant_symbol) form.value.constant_symbol = draft.constant_symbol;
   if (draft.specific_symbol) form.value.specific_symbol = draft.specific_symbol;
-  if (draft.issue_date) form.value.issue_date = draft.issue_date.slice(0, 10);
-  if (draft.delivery_date) form.value.delivery_date = draft.delivery_date.slice(0, 10);
+  if (draft.issue_date) {
+    form.value.issue_date = draft.issue_date.slice(0, 10);
+    syncDeliveryDateDefault();
+  }
+  if (draft.delivery_date) {
+    form.value.delivery_date = draft.delivery_date.slice(0, 10);
+    deliveryDateFollowsIssueDate.value = false;
+  }
   if (draft.due_date) form.value.due_date = draft.due_date.slice(0, 10);
   if (draft.total != null) form.value.total = Number(draft.total);
   if (draft.currency) form.value.currency = draft.currency;
@@ -302,7 +331,7 @@ async function loadExpense() {
       constant_symbol: e.constant_symbol || '',
       specific_symbol: e.specific_symbol || '',
       issue_date: (e.issue_date || '').slice(0, 10),
-      delivery_date: (e.delivery_date || e.issue_date || '').slice(0, 10),
+      delivery_date: (e.delivery_date || '').slice(0, 10),
       due_date: e.due_date ? e.due_date.slice(0, 10) : '',
       total: parseFloat(e.total) || 0,
       currency: e.currency || 'EUR',
@@ -321,7 +350,7 @@ async function loadExpense() {
     constant_symbol: e.constant_symbol || '',
     specific_symbol: e.specific_symbol || '',
     issue_date: (e.issue_date || '').slice(0, 10),
-    delivery_date: (e.delivery_date || e.issue_date || '').slice(0, 10),
+    delivery_date: (e.delivery_date || '').slice(0, 10),
     due_date: e.due_date ? e.due_date.slice(0, 10) : '',
     total: parseFloat(e.total) || 0,
     currency: e.currency || 'EUR',
@@ -351,7 +380,7 @@ async function save() {
       constant_symbol: form.value.constant_symbol || null,
       specific_symbol: form.value.specific_symbol || null,
       issue_date: form.value.issue_date,
-      delivery_date: form.value.delivery_date || form.value.issue_date,
+      delivery_date: form.value.delivery_date || null,
       due_date: form.value.due_date || null,
       total: form.value.total,
       currency: form.value.currency,
@@ -362,12 +391,13 @@ async function save() {
     if (localFirst) {
       if (!expenseResource.evolu) throw new Error(t('errors.generic'));
       if (requestedNew && !createdLocalExpenseId.value) {
-        const result = insertLocalExpense(
+        const result = await insertLocalExpense(
           expenseResource.evolu,
           requestedCompany as CompanyId,
           payload,
           expenseRows.value,
         );
+        if (!stillCurrent()) return;
         if (!result.ok) {
           error.value = t('errors.generic');
           return;
@@ -382,12 +412,13 @@ async function save() {
         if (!current || current.companyId !== requestedCompany || current.isDeleted === sqliteTrue) {
           throw new Error('expense_unavailable');
         }
-        const result = updateLocalExpense(
+        const result = await updateLocalExpense(
           expenseResource.evolu,
           targetId as ExpenseId,
           payload,
           current ?? null,
         );
+        if (!stillCurrent()) return;
         if (!result.ok) {
           error.value = t('errors.generic');
           return;
@@ -413,7 +444,8 @@ async function save() {
   } catch (e: unknown) {
     if (!stillCurrent()) return;
     const err = e as { response?: { data?: { message?: string } } };
-    error.value = e instanceof Error && e.message === 'expense_unavailable'
+    const mutationErrorKey = expenseMutationErrorKey(e);
+    error.value = mutationErrorKey ? t(mutationErrorKey) : e instanceof Error && e.message === 'expense_unavailable'
       ? t('invoicing.expense_unavailable')
       : err?.response?.data?.message || t('errors.generic');
   } finally {

@@ -18,6 +18,23 @@ export interface ApiEnvelope<T> {
     message?: string;
 }
 
+/** Authenticated scan frames keep unresolved coverage explicit until a fully clean acknowledged cycle. */
+export interface BankEmailSyncMeta {
+    protocol: 2;
+    lane: 'head' | 'backfill';
+    next_cursor: string;
+    retry_cursor: string;
+    cycle_complete: boolean;
+    unresolved: boolean;
+    unresolved_after_success: boolean;
+}
+
+export interface BankTransactionListMeta {
+    summary?: unknown;
+    last_page?: number;
+    sync?: BankEmailSyncMeta;
+}
+
 /** Laravel paginator body: rows in data, pagination fields alongside. */
 export interface PagedList<T> {
     data?: T[];
@@ -34,6 +51,8 @@ const api = axios.create({
     },
     withCredentials: true,
 });
+// These bridge requests can run while the browser reconciliation lock is held.
+const EFAKTURA_INBOX_REQUEST_TIMEOUT_MS = 10_000;
 
 // Helper: get CSRF token from cookie (shared for api and postWeb)
 function getCsrfToken(): string | null {
@@ -690,16 +709,18 @@ export interface ContactListParams {
  */
 export const invoicingApi = {
     companies: {
-        async list<T = unknown>(): Promise<T[]> {
-            const { data } = await api.get<ApiEnvelope<T[]>>('/invoicing/companies');
+        /** Allow bounded bridge lookups to supply transport controls without changing ordinary callers. */
+        async list<T = unknown>(options?: { signal?: AbortSignal; timeout?: number; skipErrorFlash?: boolean }): Promise<T[]> {
+            const { data } = await api.get<ApiEnvelope<T[]>>('/invoicing/companies', options);
             return data.data ?? [];
         },
         async get<T = unknown>(companyId: string): Promise<T> {
             const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}`);
             return data.data;
         },
-        async create<T = unknown>(payload: Record<string, unknown>): Promise<T> {
-            const { data } = await api.post<ApiEnvelope<T>>('/invoicing/companies', payload);
+        /** A timed-out bridge create may have succeeded; callers recover through the canonical re-list. */
+        async create<T = unknown>(payload: Record<string, unknown>, options?: { signal?: AbortSignal; timeout?: number; skipErrorFlash?: boolean }): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>('/invoicing/companies', payload, options);
             return data.data;
         },
         async update<T = unknown>(companyId: string, payload: Record<string, unknown>): Promise<T> {
@@ -1132,16 +1153,19 @@ export const invoicingApi = {
         },
     },
     bankTransactions: {
-        async list<T = unknown>(companyId: string, params: Record<string, unknown> = {}): Promise<{ data: T[]; meta?: { summary?: unknown; last_page?: number } }> {
-            const { data } = await api.get<{ data?: T[]; meta?: { summary?: unknown; last_page?: number } }>(`/invoicing/companies/${companyId}/bank-transactions`, { params });
+        /** Lists movements with optional request cancellation/deadline and caller-owned error reporting. */
+        async list<T = unknown>(companyId: string, params: Record<string, unknown> = {}, options: { skipErrorFlash?: boolean; signal?: AbortSignal; timeout?: number } = {}): Promise<{ data: T[]; meta?: BankTransactionListMeta }> {
+            const { data } = await api.get<{ data?: T[]; meta?: BankTransactionListMeta }>(`/invoicing/companies/${companyId}/bank-transactions`, { ...options, params });
             return { data: data.data ?? [], meta: data.meta };
         },
-        async batches<T = unknown>(companyId: string): Promise<T[]> {
-            const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/bank-transactions/batches`);
+        /** Lists batches without changing default flashes unless the caller handles its own context. */
+        async batches<T = unknown>(companyId: string, options: { skipErrorFlash?: boolean; signal?: AbortSignal } = {}): Promise<T[]> {
+            const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/bank-transactions/batches`, options);
             return data.data ?? [];
         },
-        async inboundEmail<T = unknown>(companyId: string): Promise<T> {
-            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/bank-transactions/inbound-email`);
+        /** Cancel superseded address reads while preserving ordinary request defaults. */
+        async inboundEmail<T = unknown>(companyId: string, options?: { signal?: AbortSignal }): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/bank-transactions/inbound-email`, options);
             return data.data;
         },
         async import<T = unknown>(companyId: string, formData: FormData): Promise<T> {
@@ -1150,29 +1174,30 @@ export const invoicingApi = {
             });
             return data.data;
         },
-        async autoMatchBatch(companyId: string, batchId: string): Promise<void> {
-            await api.post(`/invoicing/companies/${companyId}/bank-transactions/batches/${batchId}/auto-match`);
+        async autoMatchBatch(companyId: string, batchId: string, options: { skipErrorFlash?: boolean } = {}): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/bank-transactions/batches/${batchId}/auto-match`, undefined, options);
         },
         async suggestions<T = unknown>(companyId: string, transactionId: string): Promise<T[]> {
             const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/suggestions`);
             return data.data ?? [];
         },
-        async match(companyId: string, transactionId: string, businessDocumentId: string): Promise<void> {
-            await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/match`, { business_document_id: businessDocumentId });
+        async match(companyId: string, transactionId: string, businessDocumentId: string, options: { skipErrorFlash?: boolean } = {}): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/match`, { business_document_id: businessDocumentId }, options);
         },
-        async ignore(companyId: string, transactionId: string): Promise<void> {
-            await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/ignore`);
+        async ignore(companyId: string, transactionId: string, options: { skipErrorFlash?: boolean } = {}): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/ignore`, undefined, options);
         },
-        async unmatch(companyId: string, transactionId: string): Promise<void> {
-            await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/unmatch`);
+        async unmatch(companyId: string, transactionId: string, options: { skipErrorFlash?: boolean } = {}): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/unmatch`, undefined, options);
         },
         async createExpense(companyId: string, transactionId: string, payload: Record<string, unknown>): Promise<void> {
             await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/create-expense`, payload);
         },
     },
     wise: {
-        async status<T = unknown>(companyId: string): Promise<T> {
-            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/wise/status`);
+        /** Bank callers can bound a status read without changing ordinary request defaults. */
+        async status<T = unknown>(companyId: string, options?: { signal?: AbortSignal; timeout?: number; skipErrorFlash?: boolean }): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/wise/status`, options);
             return data.data;
         },
         async connect(companyId: string, wiseApiToken: string): Promise<void> {
@@ -1210,12 +1235,18 @@ export const invoicingApi = {
             const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/efaktura/inbox`);
             return data.data ?? [];
         },
+        /** Fetches the parked document with a bounded wait so a stalled bridge cannot retain the local write lock. */
         async inboxDetail<T = unknown>(companyId: string, receiptId: string): Promise<T> {
-            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}`);
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}`, {
+                timeout: EFAKTURA_INBOX_REQUEST_TIMEOUT_MS,
+            });
             return data.data;
         },
+        /** Acknowledges an existing local copy; timeout does not establish whether the server accepted the acknowledgment. */
         async inboxImported(companyId: string, receiptId: string): Promise<void> {
-            await api.post(`/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}/imported`);
+            await api.post(`/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}/imported`, undefined, {
+                timeout: EFAKTURA_INBOX_REQUEST_TIMEOUT_MS,
+            });
         },
         async inboxDismiss(companyId: string, receiptId: string): Promise<void> {
             await api.post(`/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}/dismiss`);

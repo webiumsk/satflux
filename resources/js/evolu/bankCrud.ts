@@ -1,5 +1,6 @@
 import { sqliteTrue } from "@evolu/common";
-import type { Evolu } from "@evolu/common/local-first";
+import { ExpenseId } from "./schema";
+import type { Evolu, OwnerId } from "@evolu/common/local-first";
 import {
     allBankImportBatchesQuery,
     allBankTransactionMatchesQuery,
@@ -16,6 +17,8 @@ import {
     hasBankPaymentMatchHints,
 } from "./bankPaymentDocumentMatcher";
 import { bankTransactionDedupeHash } from "./bankDedupe";
+import { bankPaymentCurrency, tryAutoMatchBankEmailExpense } from "./bankExpensePaymentMatcher";
+import { awaitBankMutation, readBankReconciliationContext, serializeBankEmailReconciliation } from "./bankReconciliation";
 import {
     documentAmountDue,
     evoluBankBatchToApi,
@@ -27,7 +30,8 @@ import {
 import type { EvoluDocumentRow } from "./documentMap";
 import { markLocalDocumentPaidWithAmount, unmarkLocalDocumentPaid } from "./documentCrud";
 import type { EvoluExpenseRow } from "./expenseMap";
-import { insertLocalExpense, nextLocalExpenseInternalNumber, type ExpenseSavePayload } from "./expenseCrud";
+import { insertLocalExpenseInReconciliation, nextLocalExpenseInternalNumber, type ExpenseSavePayload } from "./expenseCrud";
+import { withExpenseReconciliation, assertExpenseCompanyOwner, expenseReconciliationScope, commitExpenseMutation, type ExpenseReconciliationScope } from "./expenseReconciliation";
 import { toAppRows } from "./queryLoad";
 import type {
     BankImportBatchId,
@@ -121,6 +125,10 @@ function findExactMatchDocument(
     return exact.length === 1 ? exact[0] : null;
 }
 
+/**
+ * Queue a match row and the existing bank/document bookkeeping synchronously.
+ * Return false on match-row validation rejection; gated callers still prove persistence.
+ */
 function applyMatch(
     evolu: Evolu<InvoicingLocalSchema>,
     transaction: EvoluBankTransactionRow,
@@ -128,7 +136,7 @@ function applyMatch(
     matchedAmount: number,
     matchType: BankMatchType,
     ctx: BankPaymentContext,
-): void {
+): boolean {
     const match = evolu.insert("bankTransactionMatch", {
         bankTransactionId: transaction.id,
         businessDocumentId: document.id,
@@ -137,7 +145,7 @@ function applyMatch(
         matchedAt: new Date().toISOString(),
     });
     if (!match.ok) {
-        return;
+        return false;
     }
 
     evolu.update("bankTransaction", {
@@ -175,13 +183,19 @@ function applyMatch(
 
     const tx = ctx.transactions.find((row) => row.id === transaction.id);
     if (tx) tx.matchStatus = "matched";
+    return true;
 }
 
-export function tryAutoMatchTransaction(
+/**
+ * Dispatch eligible email debits to expense reconciliation and credits to exact document matching.
+ * Return the actual insertion result so rejected matches cannot inflate automatic counts.
+ */
+export async function tryAutoMatchTransaction(
     evolu: Evolu<InvoicingLocalSchema>,
     transaction: EvoluBankTransactionRow,
     ctx: BankPaymentContext,
-): boolean {
+): Promise<boolean> {
+    if (transaction.direction === "debit") return tryAutoMatchBankEmailExpense(evolu, transaction, ctx);
     if (transaction.matchStatus === "matched") return true;
     if (resolvedBankDirection(transaction) !== "credit") return false;
     if (!hasBankPaymentMatchHints(transaction.variableSymbol, transaction.reference)) return false;
@@ -189,7 +203,7 @@ export function tryAutoMatchTransaction(
     const document = findExactMatchDocument(transaction.companyId, transaction, ctx.documents);
     if (!document) return false;
 
-    applyMatch(
+    return applyMatch(
         evolu,
         transaction,
         document,
@@ -197,7 +211,6 @@ export function tryAutoMatchTransaction(
         "auto",
         ctx,
     );
-    return true;
 }
 
 export function bankMatchSuggestions(
@@ -289,6 +302,10 @@ function wiseRowsToParsed(rows: WiseBankRowInput[]): ParsedBankRow[] {
     }));
 }
 
+/**
+ * Import normalized file or Wise rows with company-local deduplication and batch counters.
+ * This basic-import path retains its existing unlocked behavior and does not grant debit expense-matching authority.
+ */
 export async function importLocalBankRows(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
@@ -390,7 +407,7 @@ export async function importLocalBankRows(
     }
 
     for (const transaction of created) {
-        if (tryAutoMatchTransaction(evolu, transaction, ctx)) {
+        if (await tryAutoMatchTransaction(evolu, transaction, ctx)) {
             autoMatched++;
         }
     }
@@ -414,6 +431,7 @@ export type ServerBankTransactionRow = {
     amount: string;
     currency: string;
     direction: string;
+    recorded_direction?: string;
     variable_symbol?: string | null;
     constant_symbol?: string | null;
     specific_symbol?: string | null;
@@ -430,165 +448,242 @@ export async function importInboundServerTransactionsAsync(
     companyId: CompanyId,
     rows: ServerBankTransactionRow[],
 ): Promise<{ imported: number; auto_matched: number }> {
-    if (rows.length === 0) {
-        return { imported: 0, auto_matched: 0 };
-    }
+    return runInboundServerImport(evolu, companyId, rows);
+}
 
-    const ctx = await loadBankPaymentContext(evolu);
-    const batchResult = evolu.insert("bankImportBatch", {
-        companyId,
-        source: "inbound_email",
-        filename: "b-mail-sync",
-        rowCount: String(rows.length),
-        importedCount: "0",
-        skippedDuplicates: "0",
-        autoMatchedCount: "0",
+/** Scope admission is separate from row coverage: only admitted incomplete pages may yield their retry-frame turn. */
+export type BankInboundPageResult = { imported: number; auto_matched: number; complete: boolean; scope_verified: boolean };
+
+/** Cursor pages acknowledge coverage only after terminal proof in the captured financial owner partition. */
+export async function importInboundServerTransactionsPageAsync(
+    evolu: Evolu<InvoicingLocalSchema>,
+    companyId: CompanyId,
+    rows: ServerBankTransactionRow[],
+    expectedOwnerId: string,
+): Promise<BankInboundPageResult> {
+    const result = await runInboundServerImport(evolu, companyId, rows, expectedOwnerId);
+    return { imported: result.imported, auto_matched: result.auto_matched, complete: result.complete === true,
+        scope_verified: result.scope_verified === true };
+}
+
+/** Preserve legacy result semantics while sharing the same reconciliation and worker proof boundaries. */
+async function runInboundServerImport(
+    evolu: Evolu<InvoicingLocalSchema>, companyId: CompanyId, rows: ServerBankTransactionRow[], pageOwnerId?: string,
+): Promise<{ imported: number; auto_matched: number; complete?: boolean; scope_verified?: boolean }> {
+    return serializeBankEmailReconciliation(evolu, (allowExpenseMatching, lease) => allowExpenseMatching
+        ? withExpenseReconciliation(evolu, (scope) => {
+            assertExpenseCompanyOwner(scope, companyId, pageOwnerId);
+            return importInboundServerTransactions(scope.evolu, companyId, rows, true, pageOwnerId);
+        }, lease)
+        : pageOwnerId === undefined ? importInboundServerTransactions(evolu, companyId, rows, false)
+            : Promise.resolve({ imported: 0, auto_matched: 0, complete: false, scope_verified: false }));
+}
+
+/**
+ * Persist email direction evidence, deduplicate rows and verify every inserted identity before counting.
+ * The caller supplies the locking decision; unlocked imports skip automatic expense payment.
+ * Known row-batch rejection is explicit, while uncertain worker outcomes propagate without retry.
+ */
+async function importInboundServerTransactions(
+    evolu: Evolu<InvoicingLocalSchema>,
+    companyId: CompanyId,
+    rows: ServerBankTransactionRow[],
+    allowExpenseMatching: boolean,
+    pageOwnerId?: string,
+): Promise<{ imported: number; auto_matched: number; complete?: boolean; scope_verified?: boolean }> {
+    const result = (imported: number, auto_matched: number, complete: boolean) => pageOwnerId === undefined
+        ? { imported, auto_matched } : { imported, auto_matched, complete, scope_verified: true };
+    const inOwner = (row: object) => pageOwnerId === undefined || ("ownerId" in row && row.ownerId === pageOwnerId);
+    const ownerOptions = pageOwnerId === undefined ? {} : { ownerId: pageOwnerId as OwnerId };
+    if (rows.length === 0) return result(0, 0, true);
+    const createdBatch: { id?: BankImportBatchId } = {};
+    const started = await awaitBankMutation(evolu, (onComplete) => {
+        const result = evolu.insert("bankImportBatch", {
+            companyId, source: "inbound_email", filename: "b-mail-sync",
+            rowCount: String(rows.length), importedCount: "0", skippedDuplicates: "0", autoMatchedCount: "0",
+        }, { ...ownerOptions, onComplete });
+        if (result.ok) createdBatch.id = result.value.id;
+        return result;
     });
-
-    if (!batchResult.ok) {
-        return { imported: 0, auto_matched: 0 };
+    const batchId = createdBatch.id;
+    if (!started || !batchId) return result(0, 0, false);
+    // A legitimate batch mutation invalidates the private, unsubscribed keys.
+    // Their fresh worker responses run after the preceding handler's COMMIT.
+    let ctx = await readBankReconciliationContext(evolu);
+    if (!ctx.batches.some((batch) => batch.id === batchId && batch.companyId === companyId && inOwner(batch))) {
+        if (pageOwnerId !== undefined) return result(0, 0, false);
+        throw new Error("bank_import_batch_missing");
     }
-
-    const batchId = batchResult.value.id as BankImportBatchId;
     let imported = 0;
     let skipped = 0;
     let autoMatched = 0;
-    const created: EvoluBankTransactionRow[] = [];
+    const hashes = new Set(ctx.transactions.filter((transaction) => transaction.companyId === companyId && inOwner(transaction))
+        .map((transaction) => transaction.dedupeHash));
+    const coverageHashes = new Set<string>();
+    const prepared: Array<{ payload: Parameters<typeof evolu.insert<"bankTransaction">>[1]; dedupeHash: string }> = [];
 
     for (const row of rows) {
-        const bookedAt = row.booked_at?.includes("T")
-            ? row.booked_at
-            : `${row.booked_at}T12:00:00`;
+        const bookedAt = row.booked_at?.includes("T") ? row.booked_at : `${row.booked_at}T12:00:00`;
         const amount = Math.abs(parseFloat(row.amount || "0"));
-        const currency = (row.currency || "EUR").toUpperCase();
-        const direction = row.direction === "debit" ? "debit" : "credit";
-        const dedupeHash = row.dedupe_hash?.trim()
-            || await bankTransactionDedupeHash(companyId, {
-                bookedAt,
-                amount,
-                currency,
-                direction,
-                variableSymbol: row.variable_symbol,
-                reference: row.reference,
-                bankTransactionId: row.bank_transaction_id,
-            });
-
-        const duplicate = ctx.transactions.some(
-            (existing) => existing.companyId === companyId && existing.dedupeHash === dedupeHash,
-        );
-        if (duplicate) {
-            skipped++;
-            continue;
-        }
-
-        const insertResult = evolu.insert("bankTransaction", {
-            companyId,
-            bankImportBatchId: batchId,
-            bookedAt,
-            amount: amount.toFixed(2),
-            currency,
-            direction,
-            matchStatus: "unmatched",
-            businessExpenseId: null,
-            variableSymbol: row.variable_symbol ?? null,
-            constantSymbol: row.constant_symbol ?? null,
-            specificSymbol: row.specific_symbol ?? null,
-            counterpartyName: row.counterparty_name ?? null,
-            counterpartyIban: row.counterparty_iban ?? null,
-            reference: row.reference ?? null,
-            bankTransactionId: row.bank_transaction_id ?? null,
-            dedupeHash,
-            source: "inbound_email",
+        const recordedDirection = row.recorded_direction === "debit" || row.recorded_direction === "credit"
+            ? row.recorded_direction : null;
+        const direction = recordedDirection ?? (row.direction === "debit" ? "debit" : "credit");
+        const currency = direction === "debit" ? bankPaymentCurrency(row.currency) : (row.currency || "EUR").toUpperCase();
+        // Preserve malformed debit evidence for later explicit reconciliation.
+        const amountText = direction === "debit"
+            ? (typeof row.amount === "string" && row.amount.length <= 32 ? row.amount.trim() : null)
+            : amount.toFixed(2);
+        const dedupeHash = row.dedupe_hash?.trim() || await bankTransactionDedupeHash(companyId, {
+            bookedAt, amount, currency: currency ?? "", direction,
+            variableSymbol: row.variable_symbol, reference: row.reference, bankTransactionId: row.bank_transaction_id,
         });
-
-        if (!insertResult.ok) {
+        coverageHashes.add(dedupeHash);
+        if (hashes.has(dedupeHash)) {
             skipped++;
             continue;
         }
-
-        const createdRow: EvoluBankTransactionRow = {
-            id: insertResult.value.id,
-            companyId,
-            bankImportBatchId: batchId,
-            bookedAt,
-            amount: amount.toFixed(2),
-            currency,
-            direction,
-            matchStatus: "unmatched",
-            businessExpenseId: null,
-            variableSymbol: row.variable_symbol ?? null,
-            constantSymbol: row.constant_symbol ?? null,
-            specificSymbol: row.specific_symbol ?? null,
-            counterpartyName: row.counterparty_name ?? null,
-            counterpartyIban: row.counterparty_iban ?? null,
-            reference: row.reference ?? null,
-            bankTransactionId: row.bank_transaction_id ?? null,
-            dedupeHash,
-            source: "inbound_email",
+        const payload: Parameters<typeof evolu.insert<"bankTransaction">>[1] = {
+            companyId, bankImportBatchId: batchId, bookedAt, amount: amountText, currency, direction,
+            recordedDirectionEvidence: recordedDirection ?? "unverified",
+            matchStatus: "unmatched", businessExpenseId: null,
+            variableSymbol: row.variable_symbol ?? null, constantSymbol: row.constant_symbol ?? null,
+            specificSymbol: row.specific_symbol ?? null, counterpartyName: row.counterparty_name ?? null,
+            counterpartyIban: row.counterparty_iban ?? null, reference: row.reference ?? null,
+            bankTransactionId: row.bank_transaction_id ?? null, dedupeHash, source: "inbound_email",
         };
-        ctx.transactions.push(createdRow);
-        created.push(createdRow);
-        imported++;
+        if (!evolu.insert("bankTransaction", payload, { ...ownerOptions, onlyValidate: true }).ok) {
+            skipped++;
+            continue;
+        }
+        hashes.add(dedupeHash);
+        prepared.push({ payload, dedupeHash });
     }
-
-    for (const transaction of created) {
-        if (tryAutoMatchTransaction(evolu, transaction, ctx)) {
-            autoMatched++;
+    const created: Array<{ id: BankTransactionId; dedupeHash: string }> = [];
+    if (prepared.length > 0) {
+        /**
+         * Queue every prepared row in one synchronous batch with the receipt on the final insert.
+         * Captured IDs remain provisional until the post-handler identity check succeeds.
+         */
+        const insertPrepared = (onComplete: () => void) => {
+            // Validation of any actual insert aborts Evolu's whole synchronous
+            // batch. Never report earlier rows as imported after that abort.
+            for (const [index, { payload, dedupeHash }] of prepared.entries()) {
+                const result = evolu.insert("bankTransaction", payload,
+                    index === prepared.length - 1 ? { ...ownerOptions, onComplete } : ownerOptions);
+                if (!result.ok) return result;
+                created.push({ id: result.value.id, dedupeHash });
+            }
+            return { ok: true };
+        };
+        const completed = allowExpenseMatching
+            ? (await commitExpenseMutation(evolu, insertPrepared)).ok
+            : await awaitBankMutation(evolu, insertPrepared);
+        if (!completed) throw new Error("bank_import_row_batch_rejected");
+        ctx = allowExpenseMatching ? expenseReconciliationScope(evolu).context : await readBankReconciliationContext(evolu);
+    }
+    const transactionsById = new Map(ctx.transactions.map((transaction) => [transaction.id, transaction]));
+    for (const inserted of created) {
+        const transaction = transactionsById.get(inserted.id);
+        if (!transaction || transaction.companyId !== companyId || transaction.dedupeHash !== inserted.dedupeHash || !inOwner(transaction)) {
+            throw new Error("bank_import_row_missing");
         }
     }
-
-    if (autoMatched > 0) {
-        await evolu.loadQuery(allDocumentsQuery);
+    imported = created.length;
+    for (const { id } of created) {
+        const transaction = transactionsById.get(id);
+        if (transaction && (transaction.direction !== "debit" || allowExpenseMatching)
+            && await tryAutoMatchTransaction(evolu, transaction, ctx)) autoMatched++;
     }
-
-    evolu.update("bankImportBatch", {
-        id: batchId,
-        importedCount: String(imported),
-        skippedDuplicates: String(skipped),
+    const counted = await awaitBankMutation(evolu, (onComplete) => evolu.update("bankImportBatch", {
+        id: batchId, companyId, importedCount: String(imported), skippedDuplicates: String(skipped),
         autoMatchedCount: String(autoMatched),
-    });
-
-    return { imported, auto_matched: autoMatched };
+    }, { ...ownerOptions, onComplete }));
+    if (!counted) throw new Error("bank_import_batch_update_rejected");
+    const final = await readBankReconciliationContext(evolu);
+    const batch = final.batches.find((row) => row.id === batchId && row.companyId === companyId && inOwner(row));
+    if (!batch || batch.importedCount !== String(imported) || batch.autoMatchedCount !== String(autoMatched)
+        || batch.skippedDuplicates !== String(skipped)) throw new Error("bank_import_batch_state_changed");
+    const covered = new Set(final.transactions.filter((row) => row.companyId === companyId && inOwner(row)).map((row) => row.dedupeHash));
+    return result(imported, autoMatched, [...coverageHashes].every((hash) => covered.has(hash)));
 }
 
+/**
+ * Serialize explicit batch reconciliation across cooperating clients.
+ * Automatic expense payment still requires an acquired origin lock; uncertain outcomes are not retried.
+ */
 export async function autoMatchLocalBatchAsync(
     evolu: Evolu<InvoicingLocalSchema>,
     batchId: BankImportBatchId,
 ): Promise<{ auto_matched: number }> {
-    const ctx = await loadBankPaymentContext(evolu);
-    const transactions = ctx.transactions.filter(
-        (row) => row.bankImportBatchId === batchId && row.matchStatus === "unmatched",
-    );
+    return serializeBankEmailReconciliation(evolu, (allowExpenseMatching, lease) => allowExpenseMatching
+        ? withExpenseReconciliation(evolu, (scope) => autoMatchLocalBatch(scope.evolu, batchId, true), lease)
+        : autoMatchLocalBatch(evolu, batchId, false));
+}
 
+/**
+ * Refresh a known, live batch before explicit matching and prove the final counter update.
+ * Honor the caller's locking decision when deciding whether expenses may be paid.
+ */
+async function autoMatchLocalBatch(
+    evolu: Evolu<InvoicingLocalSchema>,
+    batchId: BankImportBatchId,
+    allowExpenseMatching: boolean,
+): Promise<{ auto_matched: number }> {
+    const knownBatches = await evolu.loadQuery(allBankImportBatchesQuery);
+    const known = knownBatches.find((row) => row.id === batchId);
+    const companyId = known?.companyId;
+    if (!companyId) return { auto_matched: 0 };
+    if (allowExpenseMatching) assertExpenseCompanyOwner(expenseReconciliationScope(evolu), companyId);
+    // Only metadata of a known batch can act as this legitimate action's barrier.
+    // Do not create a phantom batch or touch a financial row to refresh queries.
+    const refreshed = await awaitBankMutation(evolu, (onComplete) => evolu.update("bankImportBatch", {
+        id: batchId, companyId,
+    }, { onComplete }));
+    if (!refreshed) return { auto_matched: 0 };
+    const ctx = await readBankReconciliationContext(evolu);
+    const batch = ctx.batches.find((row) => row.id === batchId && row.companyId === companyId);
+    if (!batch) return { auto_matched: 0 };
+    const transactions = ctx.transactions.filter((row) => row.bankImportBatchId === batchId
+        && row.companyId === batch.companyId && row.matchStatus === "unmatched");
     let autoMatched = 0;
     for (const transaction of transactions) {
-        if (tryAutoMatchTransaction(evolu, transaction, ctx)) {
-            autoMatched++;
-        }
+        if ((transaction.direction !== "debit" || allowExpenseMatching)
+            && await tryAutoMatchTransaction(evolu, transaction, ctx)) autoMatched++;
     }
-
-    const batch = ctx.batches.find((row) => row.id === batchId);
-    if (batch) {
-        const prev = parseInt(batch.autoMatchedCount || "0", 10) || 0;
-        evolu.update("bankImportBatch", {
-            id: batchId,
-            autoMatchedCount: String(prev + autoMatched),
-        });
+    const previous = parseInt(batch.autoMatchedCount || "0", 10) || 0;
+    const counted = await awaitBankMutation(evolu, (onComplete) => evolu.update("bankImportBatch", {
+        id: batchId, companyId: batch.companyId, autoMatchedCount: String(previous + autoMatched),
+    }, { onComplete }));
+    if (!counted) throw new Error("bank_import_batch_update_rejected");
+    const final = await readBankReconciliationContext(evolu);
+    const committed = final.batches.find((row) => row.id === batchId && row.companyId === batch.companyId);
+    if (!committed || committed.autoMatchedCount !== String(previous + autoMatched)) {
+        throw new Error("bank_import_batch_state_changed");
     }
-
-    if (autoMatched > 0) {
-        await evolu.loadQuery(allDocumentsQuery);
-    }
-
     return { auto_matched: autoMatched };
 }
 
-export function manualMatchLocalTransaction(
+export async function manualMatchLocalTransaction(
     evolu: Evolu<InvoicingLocalSchema>,
     transactionId: BankTransactionId,
     documentId: DocumentId,
     ctx: BankPaymentContext,
     matchedAmount?: number,
+): Promise<void> {
+    const scope = await withExpenseReconciliation(evolu, (scope) => {
+        manualMatchLocalTransactionCore(scope.evolu, transactionId, documentId, scope.context, matchedAmount);
+        return scope;
+    });
+    Object.assign(ctx, scope.context);
+}
+
+/**
+ * Apply a manual match using the writer gate's fresh context.
+ * Reject missing, cross-company or already matched targets and surface match-row rejection.
+ */
+function manualMatchLocalTransactionCore(
+    evolu: Evolu<InvoicingLocalSchema>, transactionId: BankTransactionId, documentId: DocumentId,
+    ctx: BankPaymentContext, matchedAmount?: number,
 ): void {
     const transaction = ctx.transactions.find((row) => row.id === transactionId);
     const document = ctx.documents.find((row) => row.id === documentId);
@@ -602,7 +697,7 @@ export function manualMatchLocalTransaction(
         throw new Error("Transaction and document belong to different companies.");
     }
 
-    applyMatch(
+    const matched = applyMatch(
         evolu,
         transaction,
         document,
@@ -610,25 +705,49 @@ export function manualMatchLocalTransaction(
         "manual",
         ctx,
     );
+    if (!matched) throw new Error("expense_mutation_batch_rejected");
 }
 
-export function ignoreLocalBankTransaction(
+/**
+ * Ignore only a fresh, unmatched movement under the required writer gate.
+ * Matched, linked or missing targets are left alone; caller context changes only after persistence proof.
+ */
+export async function ignoreLocalBankTransaction(
     evolu: Evolu<InvoicingLocalSchema>,
     transactionId: BankTransactionId,
     ctx: BankPaymentContext,
-): void {
-    evolu.update("bankTransaction", {
+): Promise<void> {
+    const scope = await withExpenseReconciliation(evolu, (scope) => {
+    const tx = scope.context.transactions.find((row) => row.id === transactionId);
+    if (!tx || tx.matchStatus !== "unmatched" || tx.businessExpenseId) return scope;
+    const result = scope.evolu.update("bankTransaction", {
         id: transactionId,
         matchStatus: "ignored",
     });
-    const tx = ctx.transactions.find((row) => row.id === transactionId);
-    if (tx) tx.matchStatus = "ignored";
+    if (!result.ok) throw new Error("expense_mutation_batch_rejected");
+    return scope;
+    });
+    Object.assign(ctx, scope.context);
 }
 
-export function unmatchLocalBankTransaction(
+export async function unmatchLocalBankTransaction(
     evolu: Evolu<InvoicingLocalSchema>,
     transactionId: BankTransactionId,
     ctx: BankPaymentContext,
+): Promise<void> {
+    const scope = await withExpenseReconciliation(evolu, (scope) => {
+        unmatchLocalBankTransactionCore(scope.evolu, transactionId, scope.context);
+        return scope;
+    });
+    Object.assign(ctx, scope.context);
+}
+
+/**
+ * Remove the bank link and reverse invoice payment bookkeeping when applicable.
+ * Unlinking an expense deliberately leaves its paid status unchanged.
+ */
+function unmatchLocalBankTransactionCore(
+    evolu: Evolu<InvoicingLocalSchema>, transactionId: BankTransactionId, ctx: BankPaymentContext,
 ): void {
     const transaction = ctx.transactions.find((row) => row.id === transactionId);
     if (!transaction) return;
@@ -658,12 +777,33 @@ export function unmatchLocalBankTransaction(
     transaction.matchStatus = "unmatched";
 }
 
-export function createLocalExpenseFromBankTransaction(
+/**
+ * Create and link an expense under the shared writer gate.
+ * Publish the resulting expense and linkage into caller context only after persistence is verified.
+ */
+export async function createLocalExpenseFromBankTransaction(
     evolu: Evolu<InvoicingLocalSchema>,
     transactionId: BankTransactionId,
     payload: ExpenseSavePayload & { supplier?: string; category?: string },
     ctx: BankPaymentContext,
+): Promise<EvoluExpenseRow> {
+    const expense = await withExpenseReconciliation(evolu, (scope) => createExpenseFromBankTransactionInReconciliation(scope, transactionId, payload));
+    ctx.expenses.push(expense);
+    const transaction = ctx.transactions.find((row) => row.id === transactionId);
+    if (transaction) { transaction.businessExpenseId = expense.id; transaction.matchStatus = "matched"; }
+    return expense;
+}
+
+/**
+ * Build an expense from a fresh outgoing movement and explicit user overrides.
+ * A live lease is required; expense creation and bank linkage stay in one synchronous mutation batch.
+ */
+function createExpenseFromBankTransactionInReconciliation(
+    scope: ExpenseReconciliationScope, transactionId: BankTransactionId,
+    payload: ExpenseSavePayload & { supplier?: string; category?: string },
 ): EvoluExpenseRow {
+    const evolu = scope.evolu;
+    const ctx = scope.context;
     const transaction = ctx.transactions.find((row) => row.id === transactionId);
     if (!transaction) throw new Error("Transaction not found.");
     if (resolvedBankDirection(transaction) !== "debit") {
@@ -698,21 +838,25 @@ export function createLocalExpenseFromBankTransaction(
 
     const internalNumber = nextLocalExpenseInternalNumber(transaction.companyId, ctx.expenses);
 
-    const result = insertLocalExpense(
-        evolu,
+    // Validate the link before queueing the expense insert. Generated Evolu IDs
+    // have the same validated representation regardless of their table brand.
+    if (!evolu.update("bankTransaction", { id: transaction.id, businessExpenseId: ExpenseId.orThrow(transaction.id),
+        matchStatus: "matched" }, { onlyValidate: true }).ok) throw new Error("Could not link expense.");
+    const result = insertLocalExpenseInReconciliation(
+        scope,
         transaction.companyId,
         expensePayload,
-        ctx.expenses,
     );
     if (!result.ok) {
         throw new Error("Could not create expense.");
     }
 
-    evolu.update("bankTransaction", {
+    const linked = evolu.update("bankTransaction", {
         id: transactionId,
         businessExpenseId: result.value.id,
         matchStatus: "matched",
     });
+    if (!linked.ok) throw new Error("expense_mutation_batch_rejected");
 
     const paidAt = expensePayload.mark_paid ? new Date().toISOString().slice(0, 10) : null;
     const expenseRow: EvoluExpenseRow = {
@@ -737,10 +881,6 @@ export function createLocalExpenseFromBankTransaction(
         internalNote: expensePayload.internal_note ?? null,
     };
 
-    ctx.expenses.push(expenseRow);
-    transaction.businessExpenseId = result.value.id;
-    transaction.matchStatus = "matched";
-
     return expenseRow;
 }
 
@@ -760,15 +900,23 @@ export function mapLocalBankTransactionsToApi(
     });
 }
 
+/**
+ * Project the selected company's recent batches and derive recovery availability from persisted unmatched movements.
+ * Original import counters alone do not determine whether another match attempt is available.
+ */
 export function mapLocalBankBatchesToApi(
     batches: EvoluBankImportBatchRow[],
     companyId: CompanyId,
+    transactions: EvoluBankTransactionRow[],
 ) {
+    const unmatchedBatches = new Set(transactions
+        .filter((row) => row.companyId === companyId && row.matchStatus === "unmatched")
+        .map((row) => row.bankImportBatchId));
     return batches
         .filter((row) => row.companyId === companyId)
         .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
         .slice(0, 20)
-        .map(evoluBankBatchToApi);
+        .map((row) => ({ ...evoluBankBatchToApi(row), can_auto_match: unmatchedBatches.has(row.id) }));
 }
 
 export { filterLocalBankTransactions, buildBankSummary } from "./bankMap";

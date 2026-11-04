@@ -19,6 +19,7 @@ class BusinessDocumentPaymentMatcher
 {
     public function __construct(
         protected BusinessDocumentMarkPaidService $markPaidService,
+        protected ?BusinessExpensePaymentMatcher $expenseMatcher = null,
     ) {}
 
     /**
@@ -26,6 +27,13 @@ class BusinessDocumentPaymentMatcher
      */
     public function tryAutoMatch(BankTransaction $transaction, ?int $userId = null): array
     {
+        if ($transaction->getRawOriginal('direction') === BankTransactionDirection::Debit->value) {
+            return [
+                'matched' => ($this->expenseMatcher ?? app(BusinessExpensePaymentMatcher::class))->tryAutoMatch($transaction, $userId),
+                'match' => null,
+            ];
+        }
+
         if ($transaction->match_status === BankTransactionMatchStatus::Matched) {
             return ['matched' => true, 'match' => $transaction->match];
         }

@@ -21,10 +21,11 @@ import {
     allRecurringProfilesQuery,
 } from "./client";
 import type { InvoicingLocalSchema } from "./schema";
+import { withExpenseMaintenance, commitExpenseMutation } from "./expenseReconciliation";
 
 // `companyShare` holds SharedOwner secrets and is deliberately outside the
 // snapshot / backup / restore cycle (docs/COMPANY_SHARING.md).
-type InvoicingTable = Exclude<keyof InvoicingLocalSchema, "companyShare">;
+type InvoicingTable = Exclude<keyof InvoicingLocalSchema, "companyShare" | "_expenseReconciliation">;
 
 const UPSERT_STRIP_KEYS = new Set(["createdAt", "updatedAt"]);
 
@@ -170,11 +171,11 @@ export async function snapshotInvoicingData(
     };
 }
 
-export function restoreInvoicingSnapshot(
+export async function restoreInvoicingSnapshot(
     evolu: Evolu<InvoicingLocalSchema>,
     snapshot: InvoicingDataSnapshot,
-): number {
-    return restoreInvoicingSnapshotDetailed(evolu, snapshot).upserted;
+): Promise<number> {
+    return (await restoreInvoicingSnapshotDetailedAsync(evolu, snapshot)).upserted;
 }
 
 export async function restoreInvoicingSnapshotAsync(
@@ -202,41 +203,28 @@ function upsertRowAwait(
 ): Promise<{ ok: true } | { ok: false; error: unknown }> {
     const payload = rowForUpsert(row) as never;
 
-    return new Promise((resolve) => {
-        const result = evolu.upsert(table, payload, {
-            onComplete: () => resolve({ ok: true }),
-        });
-        if (!result.ok) {
-            resolve({ ok: false, error: result.error });
-        }
-    });
+    return commitExpenseMutation(evolu, (onComplete) => evolu.upsert(table, payload, { onComplete }))
+        .then((result) => result.ok ? { ok: true as const } : { ok: false as const, error: result.error });
 }
 
 /** @deprecated Prefer restoreInvoicingSnapshotDetailedAsync - sync batch aborts on any invalid row. */
-export function restoreInvoicingSnapshotDetailed(
+export async function restoreInvoicingSnapshotDetailed(
     evolu: Evolu<InvoicingLocalSchema>,
     snapshot: InvoicingDataSnapshot,
-): SnapshotRestoreReport {
-    let upserted = 0;
-    const failed: SnapshotRestoreFailure[] = [];
-    for (const table of UPSERT_ORDER) {
-        const rows = snapshot[table] ?? [];
-        for (const row of rows) {
-            const result = evolu.upsert(table, rowForUpsert(row) as never);
-            if (result.ok) {
-                upserted += 1;
-            } else {
-                failed.push({ table, id: row.id ?? null, error: result.error });
-            }
-        }
-    }
-    return { upserted, failed };
+): Promise<SnapshotRestoreReport> {
+    return restoreInvoicingSnapshotDetailedAsync(evolu, snapshot);
 }
 
+/**
+ * Restore allowlisted rows in dependency order under the maintenance gate, awaiting each committed result.
+ * Report known row rejections; share-secret rows and the local coordination marker are outside the restore allowlist.
+ */
 export async function restoreInvoicingSnapshotDetailedAsync(
     evolu: Evolu<InvoicingLocalSchema>,
     snapshot: InvoicingDataSnapshot,
 ): Promise<SnapshotRestoreReport> {
+    return withExpenseMaintenance(evolu, async (scope) => {
+    evolu = scope.evolu;
     let upserted = 0;
     const failed: SnapshotRestoreFailure[] = [];
     for (const table of UPSERT_ORDER) {
@@ -250,6 +238,7 @@ export async function restoreInvoicingSnapshotDetailedAsync(
         }
     }
     return { upserted, failed };
+    });
 }
 
 export function snapshotHasInvoicingData(snapshot: InvoicingDataSnapshot): boolean {
