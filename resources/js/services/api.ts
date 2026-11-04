@@ -1177,8 +1177,9 @@ export const invoicingApi = {
         },
     },
     wise: {
-        async status<T = unknown>(companyId: string): Promise<T> {
-            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/wise/status`);
+        /** Bank callers can bound a status read without changing ordinary request defaults. */
+        async status<T = unknown>(companyId: string, options?: { signal?: AbortSignal; timeout?: number; skipErrorFlash?: boolean }): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/wise/status`, options);
             return data.data;
         },
         async connect(companyId: string, wiseApiToken: string): Promise<void> {

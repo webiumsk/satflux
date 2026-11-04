@@ -16,6 +16,7 @@ const transactions = ref<BankTxApiRow[]>([]);
 const bridgeLookupFailed = ref(false);
 const wiseBridgeMissing = ref(false);
 const wiseStatus = ref<{ connected: boolean } | null>(null);
+const wiseStatusFailed = ref(false);
 const selectedRouting = ref('private');
 const bridgeRoutingKey = computed(() => JSON.stringify([route.params.companyId, selectedRouting.value]));
 vi.mock('vue-router', () => ({ useRoute: () => route }));
@@ -32,7 +33,7 @@ vi.mock('@/composables/useInvoicingCompanySummary', () => ({ useInvoicingCompany
 vi.mock('@/composables/useInvoicingBankPayments', () => ({ useInvoicingBankPayments: () => ({
   localFirst: mocks.local, loading: ref(false), transactions, batches,
   summary: ref({ credit_count: 0, credit_total: '0', debit_count: 0, debit_total: '0', balance: '0', currency: 'EUR', by_currency: [] }),
-  wiseStatus, wiseBridgeMissing, bridgeLookupFailed, bridgeRoutingKey,
+  wiseStatus, wiseStatusFailed, wiseBridgeMissing, bridgeLookupFailed, bridgeRoutingKey,
   load: mocks.load, loadBatches: mocks.loadBatches, autoMatchBatch: mocks.autoMatchBatch, importFile: mocks.importFile,
   ignoreTransaction: mocks.ignore, unmatchTransaction: mocks.unmatch,
   fetchWiseStatus: mocks.fetchWiseStatus,
@@ -70,6 +71,7 @@ beforeEach(() => {
   bridgeLookupFailed.value = false;
   wiseBridgeMissing.value = false;
   wiseStatus.value = null;
+  wiseStatusFailed.value = false;
   selectedRouting.value = 'private';
   mocks.fetchWiseStatus.mockResolvedValue(undefined);
   mocks.connectWise.mockResolvedValue(undefined);
@@ -85,13 +87,69 @@ beforeEach(() => {
 afterEach(() => { wrapper?.unmount(); wrapper = undefined; });
 
 describe('recorded bridge address context', () => {
-  it('uses the recorded route and discards a previous mapping response without importing again', async () => {
+  it.each(['switch', 'aba', 'unmount'] as const)('cancels stale address-helper reads after %s', async (change) => {
+    const pending = deferred<{ ok: true; bridgeCompanyId: string }>();
+    mocks.ensure.mockReturnValueOnce(pending.promise);
+    await render();
+    const options = mocks.ensure.mock.calls[0][1] as () => { signal: AbortSignal };
+    const signal = options().signal;
+    expect(signal.aborted).toBe(false);
+    if (change === 'unmount') {
+      wrapper!.unmount();
+      wrapper = undefined;
+    } else {
+      route.params.companyId = 'local-b';
+      if (change === 'aba') route.params.companyId = 'local-a';
+    }
+    await flushPromises();
+    expect(signal.aborted).toBe(true);
+    expect(options).toThrow('bank_inbound_address_stale');
+    const currentReads = mocks.inbound.mock.calls.length;
+    pending.resolve({ ok: true, bridgeCompanyId: 'stale-bridge' });
+    await flushPromises();
+    expect(mocks.inbound).toHaveBeenCalledTimes(currentReads);
+    expect(mocks.flashError).not.toHaveBeenCalled();
+  });
+
+  it('reloads transactions once for a company change and preserves the batch refresh', async () => {
+    await render();
+    route.params.companyId = 'local-b';
+    await flushPromises();
+    expect(mocks.load).toHaveBeenCalledTimes(2);
+    expect(mocks.loadBatches).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports a current same-company routing refresh failure without retrying', async () => {
+    await render();
+    mocks.load.mockRejectedValueOnce(new Error('bank_reconciliation_outcome_unknown'));
+    selectedRouting.value = 'shared-new';
+    await flushPromises();
+    expect(mocks.load).toHaveBeenCalledTimes(2);
+    expect(mocks.loadBatches).toHaveBeenCalledTimes(1);
+    expect(mocks.flashError).toHaveBeenCalledExactlyOnceWith('invoicing.bank_matching_unknown');
+  });
+
+  it('discards a failed superseded routing refresh while the current refresh succeeds', async () => {
+    await render();
+    const old = deferred<void>();
+    mocks.load.mockReturnValueOnce(old.promise);
+    selectedRouting.value = 'shared-old';
+    await flushPromises();
+    selectedRouting.value = 'shared-new';
+    await flushPromises();
+    old.reject(new Error('bank_reconciliation_outcome_unknown'));
+    await flushPromises();
+    expect(mocks.load).toHaveBeenCalledTimes(3);
+    expect(mocks.flashError).not.toHaveBeenCalled();
+  });
+
+  it('loads the new recorded route and discards the previous mapping response', async () => {
     selectedRouting.value = 'shared-a';
     mocks.ensure.mockImplementation(async () => ({ ok: true, bridgeCompanyId: selectedRouting.value }));
     const first = deferred<ReturnType<typeof response>>();
     mocks.inbound.mockReturnValueOnce(first.promise).mockResolvedValueOnce(response(addressB));
     await render();
-    expect(mocks.ensure).toHaveBeenCalledWith('local-a', undefined, { preferRecordedBridgeId: true });
+    expect(mocks.ensure).toHaveBeenCalledWith('local-a', expect.any(Function), { preferRecordedBridgeId: true });
     expect(mocks.inbound).toHaveBeenCalledWith('shared-a');
     selectedRouting.value = 'shared-b';
     await flushPromises();
@@ -101,7 +159,7 @@ describe('recorded bridge address context', () => {
     await flushPromises();
     expect(wrapper!.text()).toContain(addressB);
     expect(wrapper!.text()).not.toContain(addressA);
-    expect(mocks.load).toHaveBeenCalledTimes(1);
+    expect(mocks.load).toHaveBeenCalledTimes(2);
     expect(mocks.loadBatches).toHaveBeenCalledTimes(1);
   });
 
@@ -119,7 +177,7 @@ describe('recorded bridge address context', () => {
     await flushPromises();
     expect(wrapper!.text()).toContain(addressB);
     expect(wrapper!.text()).not.toContain(addressA);
-    expect(mocks.load).toHaveBeenCalledTimes(1);
+    expect(mocks.load).toHaveBeenCalledTimes(3);
   });
 
   it('discards a stale lookup before requesting its address after routing changes', async () => {
@@ -161,10 +219,11 @@ describe('Wise sync result scope', () => {
     selectedRouting.value = 'other';
     selectedRouting.value = 'private';
     await flushPromises();
+    const loads = mocks.load.mock.calls.length;
     pending.resolve({ imported: 4, auto_matched: 1, skipped_duplicates: 0 });
     await flushPromises();
     expect(wrapper!.text()).not.toContain('invoicing.bank_import_result');
-    expect(mocks.load).toHaveBeenCalledTimes(1);
+    expect(mocks.load).toHaveBeenCalledTimes(loads);
   });
 
   it('discards a disposed sync failure without an error flash', async () => {
@@ -195,6 +254,39 @@ describe('Wise sync result scope', () => {
 });
 
 describe('Wise connection lookup recovery', () => {
+  it.each([null, { connected: true }])('shows a status retry without guessing connection state: %s', async (lastStatus) => {
+    wiseStatus.value = lastStatus;
+    wiseStatusFailed.value = true;
+    await render();
+    expect(wrapper!.text()).toContain('invoicing.bank_wise_connection_check_failed');
+    expect(wrapper!.findAll('button').some((button) => button.text() === 'common.retry')).toBe(true);
+    expect(wrapper!.find('#wise-api-token').exists()).toBe(false);
+    expect(wrapper!.text()).not.toContain('invoicing.bank_wise_connected');
+    expect(wrapper!.text()).not.toContain('invoicing.bank_wise_sync');
+    expect(wrapper!.text()).not.toContain('invoicing.bank_wise_bridge_missing');
+  });
+
+  it.each([true, false])('keeps the failed-status retry visible while pending, then shows confirmed connected=%s', async (connected) => {
+    wiseStatusFailed.value = true;
+    await render();
+    const pending = deferred<void>();
+    mocks.fetchWiseStatus.mockReturnValueOnce(pending.promise);
+    const retry = wrapper!.findAll('button').find((button) => button.text() === 'common.retry')!;
+    await retry.trigger('click');
+    expect(retry.attributes('disabled')).toBeDefined();
+    expect(wrapper!.find('#wise-api-token').exists()).toBe(false);
+    wiseStatusFailed.value = false;
+    wiseStatus.value = { connected };
+    pending.resolve();
+    await flushPromises();
+    expect(wrapper!.text()).not.toContain('invoicing.bank_wise_connection_check_failed');
+    expect(wrapper!.find('#wise-api-token').exists()).toBe(!connected);
+    expect(wrapper!.text().includes('invoicing.bank_wise_connected')).toBe(connected);
+    expect(mocks.fetchWiseStatus).toHaveBeenCalledTimes(2);
+    expect(mocks.load).toHaveBeenCalledTimes(1);
+    expect(mocks.flashSuccess).not.toHaveBeenCalled();
+  });
+
   it('keeps the token and reports failure when no current bridge was connected', async () => {
     bridgeLookupFailed.value = true;
     mocks.connectWise.mockRejectedValueOnce(new Error('bank_bridge_lookup_failed'));
@@ -625,7 +717,7 @@ describe('independent bank address context probes', () => {
   it('shows a missing-identity message without looking up another company', async () => {
     mocks.ensure.mockResolvedValue({ ok: true, bridgeCompanyId: null });
     await render();
-    expect(mocks.ensure).toHaveBeenCalledWith('local-a', undefined, { preferRecordedBridgeId: true });
+    expect(mocks.ensure).toHaveBeenCalledWith('local-a', expect.any(Function), { preferRecordedBridgeId: true });
     expect(mocks.inbound).not.toHaveBeenCalled();
     expect(wrapper!.find('code').exists()).toBe(false);
     expect(wrapper!.text()).toContain('invoicing.bank_inbound_bridge_missing');

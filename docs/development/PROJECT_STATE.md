@@ -1,5 +1,27 @@
 # Project state
 
+## PR427 ninth repair independently accepted - 2026-11-04
+
+Published3ac059d1 has green CI41777047822. Actual manual review5763674984 reports
+two inline and four supplemental findings despite five passing pre-merge checks
+and88.52% documentation. Open threads PRRT_kwDOQ75Xa86zdbx8/PRRT_kwDOQ75Xa86zdbyJ
+cover initial-metadata A-B-A credential dispatch and same-company routing refresh.
+Supplemental items cover Wise importer counts, status retry state, bounded reads
+and failed-sync error reporting. Independent baseline probes reproduce the issues.
+
+Frontend owns bounded read helper/composable/only optional Wise-status API controls
+and tests; main owns page/test/docs. Current-page refresh now runs once on every
+semantic routing change, with batches only on company change, revising the prior
+address/status-only routine choice. Read deadlines cover metadata/bridge/status
+GET only, preserving entered credential/sync POST and financial outcomes. Default
+nonbank callers, trusted registry and owner/Unknown policies remain. Both reviewers
+accept runtime5 9d0e0c91...68b7e/source-test10 67dabf48...1d9d0b. Main final1609/170,
+build76seconds, lint48known/zeroerrors/type111existing-no-new/locales pass. Author151/8,
+QA205/8+22new+25retained and security179/5+22+25 pass with overlapping synthetic
+scopes. All10bytes match; exactly14 paths are publication scope. Verify committed
+blobs/remote SHA, full fresh CI and actual manual review after capacity. No
+production replay, merge or deployment is included.
+
 ## PR427 eighth review repair independently accepted - 2026-11-04
 
 Publishedc0921567 has complete green CI41771525497, independently verified by QA.

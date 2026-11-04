@@ -1,5 +1,96 @@
 # Expense defaults and bank-mail reconciliation
 
+## Ninth repair verified evidence - 2026-11-04
+
+All six reports are addressed. Initial credential intent is captured before any
+metadata await; stale intent cannot dispatch after A-B-A. Local bank resolution
+and status GET share a20-second read budget with positive HTTP caps up to10seconds,
+parent cancellation and post-await checks. Context-only guards survive read cleanup;
+entered credential/sync POSTs and financial imports remain awaited with identical
+errors/Unknown. Missing/stale sync contexts keep zero counts, while known current
+lookup failure rejects. Imported/skipped counts come from the actual importer.
+
+The current page owns one transaction refresh per semantic routing change, with
+batch refresh only for company changes. Status failure retains a retry while
+hiding guessed connection controls. Address-helper controls prevent pre-dispatch
+continuations after scope changes. Registry/bootstrap, owner/financial modules,
+allocator behavior and nonbank caller defaults remain unchanged. Legacy server
+status transport and existing address GET defaults remain outside the new local
+read bound; canonical metadata POST ambiguity remains explicitly recoverable.
+
+Both independent reviewers accept runtime5 manifest
+`9d0e0c913ab865b36a2c7868a100bdf407320bcc7822a0d477c57a652d668b7e`
+and source/tests10 manifest
+`67dabf4870601512a9afa11c0f8d035c18bc9aab33f5776b9a5d9cf3ec1d9d0b`.
+All10 source/test blobs match after final checks. Exactly14 paths form the commit
+scope: five runtime files, five tests and four development documents.
+
+Main final frontend1609cases/170files, production build76seconds, full lint48known/
+zeroerrors, typecheck111existing/no-new and five-language parity pass. Author151/8
+focused cases pass. Independent QA205repository/8suites,22new Vue/helper/Axios
+probes and25retained Vue probes pass. Security179repository/5suites plus22new and
+25retained probes pass; earlier52/6 authority/default/migration checks use unchanged
+protocol modules. Scopes overlap, so counts are not aggregated. Adapters are
+synthetic; no new production/native-database proof or financial writes are claimed.
+
+Publish only this accepted scope, verify committed blobs and remote SHA, finish
+complete fresh CI and obtain another actual clean manual review after capacity.
+Prior3ac059d1 CI/pre-merge success does not validate the unpublished repair. No
+threshold, owner/key/billing policy, production replay, merge or deployment action.
+
+## Ninth review acceptance contract - 2026-11-04
+
+Published `3ac059d1` passed all four jobs in CI41777047822. The authorized manual
+command6623273752 was accepted6623274923; actual review5763674984 completed at
+05:30UTC with two inline and four supplemental findings. Five pre-merge checks
+pass, including88.52% documentation at the unchanged80% threshold. The success
+check does not clear the findings.
+
+The next repair must verify and address all six reports:
+
+- Capture Wise credential intent before the initial metadata await, so local
+  company A-B-A cannot dispatch an old token after a newer connection. Unknown
+  initial intent may fail conservatively with the token retained for explicit retry.
+- The current page refreshes transactions once per semantic routing-context
+  change, including same-company bridge changes. Batch metadata refresh stays
+  limited to company changes. This revises the earlier address/status-only choice;
+  otherwise new-bridge email rows remain missing until a separate page action.
+- Wise synchronization reports the importer's actual added count and local skips,
+  combined with independent upstream skip counts, rather than received row count.
+  The inherited unlocked-import/worker-count boundary does not change.
+- A separate latest-current status-failure state shows the existing localized
+  retry and hides guessed connection controls/status until a successful check.
+  Keep the failure visible during retry; stale errors cannot replace newer results.
+- One bounded local-bank read stage covers metadata, bridge resolution and Wise status
+  GET, up to20seconds overall and10seconds per HTTP request. Nested helper reads
+  must share remaining controls, settle on timeout/disposal and check controls
+  before and after fresh metadata/AppOwner awaits. Bank-opt-in page lookups are
+  bounded even without caller controls; default nonbank helper/API behavior stays.
+  Legacy server-mode status requests retain their existing one-argument API defaults.
+- Known current sync lookup failures reach the localized error path through
+  `bank_bridge_lookup_failed`. Confirmed missing or stale contexts keep their
+  zero-count behavior; no false green result is published for a failed lookup.
+
+Read cleanup must leave a separate context-only guard valid for subsequent
+credential and financial work. Only read-only phases are raced/aborted; entered
+credential/sync POSTs and local financial imports retain their exact outcomes,
+including Unknown. No automatic replay, compensation, owner/key policy or default
+issuance change is included. The page owns current-context refresh errors; no
+hidden composable import watcher is introduced. Frontend owns the bounded helper,
+composable, optional Wise-status API controls and related tests; main owns page,
+locales/docs and publication. Independent frozen-byte QA/security, scoped commit,
+complete fresh CI and another actual clean manual review remain required.
+
+The page also supplies a request/CID/routing-key checked cancellation factory to
+its address helper. New context, a superseding lookup or unmount aborts that read
+before late metadata can dispatch more bridge HTTP. Canonical bridge metadata
+creation retains the existing ambiguity under a read-stage timeout/abort: the
+server may already have created the row, and explicit retry uses canonical lookup
+without deletion or compensation. Credential and sync POSTs are separate operations
+outside this cancellation path.
+The existing inbound-address GET retains its earlier API defaults and stale-response
+guard; this repair does not claim to cancel or suppress every inherited HTTP request.
+
 ## Eighth repair verified evidence - 2026-11-04
 
 The five review items are repaired. Known unresolved Wise connection routes now

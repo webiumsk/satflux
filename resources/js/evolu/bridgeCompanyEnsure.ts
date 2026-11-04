@@ -1,4 +1,5 @@
 import { companyShareInfo, companyShareRoutingKey, isCompanyShareRegistryReady } from "./companyShareRegistry";
+import { withBankReadBudget } from "./bankReadBudget";
 import { isServerUuid } from "@/utils/serverIds";
 import { resolveOrCreateBridgeCompanyId, type BridgeCompanyRequestOptions } from "./numberAllocatorBridge";
 
@@ -32,11 +33,16 @@ export async function ensureBridgeCompanyIdForLocalCompany(
     if (!localCompanyId) {
         return { ok: true, bridgeCompanyId: null };
     }
-    try {
+    /** Resolve metadata and bridge HTTP inside the caller's read stage; no credential or financial write is included. */
+    const resolve = async (controls = requestOptions): Promise<EnsureBridgeCompanyResult> => {
+        const assertRead = () => { if (options.preferRecordedBridgeId) controls?.(); };
         if (options.preferRecordedBridgeId && !isCompanyShareRegistryReady()) return { ok: false };
         const routingKey = options.preferRecordedBridgeId ? companyShareRoutingKey(localCompanyId) : null;
+        assertRead();
         const { evolu, allCompaniesDetailQuery } = await import("./client");
+        assertRead();
         const rows = await evolu.loadQuery(allCompaniesDetailQuery);
+        assertRead();
         const matchingRows = rows.filter((company) => company.id === localCompanyId);
         const row = matchingRows[0];
         if (options.preferRecordedBridgeId) {
@@ -51,6 +57,7 @@ export async function ensureBridgeCompanyIdForLocalCompany(
                 return { ok: true, bridgeCompanyId: share.bridgeCompanyId.trim() };
             }
             const appOwner = await evolu.appOwner;
+            assertRead();
             if (row.ownerId !== appOwner.id || companyShareRoutingKey(localCompanyId) !== routingKey) return { ok: false };
         }
         if (!row?.legalName) {
@@ -63,11 +70,17 @@ export async function ensureBridgeCompanyIdForLocalCompany(
             country: row.country ?? null,
             default_currency: row.defaultCurrency ?? null,
         };
-        const bridgeCompanyId = requestOptions
-            ? await resolveOrCreateBridgeCompanyId(identity, requestOptions)
+        const bridgeCompanyId = controls
+            ? await resolveOrCreateBridgeCompanyId(identity, controls)
             : await resolveOrCreateBridgeCompanyId(identity);
+        assertRead();
         if (options.preferRecordedBridgeId && companyShareRoutingKey(localCompanyId) !== routingKey) return { ok: false };
         return { ok: true, bridgeCompanyId };
+    };
+    try {
+        return options.preferRecordedBridgeId
+            ? await withBankReadBudget((controls) => resolve(controls), { parentOptions: requestOptions })
+            : await resolve();
     } catch (error) {
         console.error(
             "[invoicing] bridge company resolution failed for local company",

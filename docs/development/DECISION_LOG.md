@@ -1,5 +1,24 @@
 # Development decision log
 
+## 2026-11-04 - Repair ninth review and bound Wise read-only recovery
+
+Treat six reports from actual3ac059d1 review5763674984 as data to verify, then fix
+valid defects within bank recovery scope. Capture credential intent before any
+metadata await and retain explicit retry for unknown/stale initial context. Reuse
+a single20-second read budget for metadata/bridge/status GET with10-second HTTP
+caps and parent remaining-time controls. Default nonbank callers are unchanged;
+never race entered credential/sync POSTs or local financial/Unknown outcomes.
+
+Revise the earlier address/status-only page refresh choice: every semantic selected
+routing context refreshes current transactions once, and company changes also
+refresh batches. Existing page wrappers own errors and generation guards; no hidden
+composable import watcher or replay is added. Report importer counts and known
+lookup/status failures accurately. Both independent reviewers accept runtime5
+9d0e0c91...68b7e/source-test10 67dabf48...1d9d0b after final1609/170/build/static/locales.
+Publish only14 reviewed paths and verify blobs/remote SHA; full new CI and another
+actual clean manual review remain gates. No owner/key/billing,
+production, merge or deployment action is included.
+
 ## 2026-11-04 - Repair verified lifecycle findings and pin bank-only shared routing
 
 Actualc0921567 review5763268988 has three inline and two supplemental findings

@@ -217,7 +217,7 @@
             {{ t("invoicing.bank_wise_bridge_missing") }}
           </p>
           <template v-else>
-            <div v-if="bridgeLookupFailed" class="space-y-2" role="status">
+            <div v-if="bridgeLookupFailed || wiseStatusFailed" class="space-y-2" role="status">
               <p class="text-amber-700 text-xs">
                 {{ t("invoicing.bank_wise_connection_check_failed") }}
               </p>
@@ -230,7 +230,7 @@
                 {{ wiseStatusRefreshing ? t("common.loading") : t("common.retry") }}
               </button>
             </div>
-            <p v-if="wiseStatus?.connected" class="text-green-700 text-xs">
+            <p v-if="wiseStatus?.connected && !wiseStatusFailed" class="text-green-700 text-xs">
               {{ t("invoicing.bank_wise_connected") }}
               <span v-if="wiseStatus?.last_sync_at">
                 ·
@@ -242,7 +242,7 @@
               </span>
             </p>
             <form
-              v-if="!wiseStatus?.connected"
+              v-if="!wiseStatus?.connected && !wiseStatusFailed"
               class="space-y-2"
               @submit.prevent="connectWise"
             >
@@ -272,7 +272,7 @@
                 }}
               </button>
             </form>
-            <div v-else class="flex flex-wrap gap-2">
+            <div v-else-if="!wiseStatusFailed" class="flex flex-wrap gap-2">
               <button
                 type="button"
                 class="invoicing-btn-primary text-xs"
@@ -295,7 +295,7 @@
               </button>
             </div>
             <form
-              v-if="showWiseReconnect"
+              v-if="showWiseReconnect && !wiseStatusFailed"
               class="space-y-2 border-t pt-3"
               @submit.prevent="connectWise"
             >
@@ -318,7 +318,7 @@
                 }}
               </button>
             </form>
-            <p v-if="wiseSyncResult" class="text-green-700 text-xs">
+            <p v-if="wiseSyncResult && !wiseStatusFailed" class="text-green-700 text-xs">
               {{ t("invoicing.bank_import_result", wiseSyncResult) }}
             </p>
           </template>
@@ -818,6 +818,7 @@ const matchFilter = ref("all");
 const wiseStatus = computed(() => bank.wiseStatus.value);
 const wiseBridgeMissing = computed(() => bank.wiseBridgeMissing.value);
 const bridgeLookupFailed = computed(() => bank.bridgeLookupFailed.value);
+const wiseStatusFailed = computed(() => bank.wiseStatusFailed.value);
 const activeTab = ref<"transactions" | "import">("transactions");
 const importFile = ref<File | null>(null);
 const importFormat = ref("");
@@ -841,11 +842,19 @@ const inboundCopied = ref(false);
 const inboundBridgeChecked = ref(false);
 const inboundBridgeCompanyId = ref<string | null>(null);
 let inboundRequest = 0;
+let inboundController: AbortController | null = null;
 let bankLoadRequest = 0;
 let bankBatchesRequest = 0;
 let wiseStatusRequest = 0;
 let bridgeContextGeneration = 0;
-onBeforeUnmount(() => { inboundRequest += 1; bankLoadRequest += 1; bankBatchesRequest += 1; wiseStatusRequest += 1; bridgeContextGeneration += 1; });
+onBeforeUnmount(() => {
+  inboundRequest += 1;
+  bankLoadRequest += 1;
+  bankBatchesRequest += 1;
+  wiseStatusRequest += 1;
+  bridgeContextGeneration += 1;
+  inboundController?.abort();
+});
 const inboundBridgeMissing = computed(
   () =>
     bank.localFirst &&
@@ -934,9 +943,9 @@ watch(bank.bridgeRoutingKey, () => {
   wiseSyncResult.value = null;
   if (companyId.value !== selectedCompany) {
     selectedCompany = companyId.value;
-    void load();
     void loadBatches();
   }
+  void load();
   loadInbound();
   void refreshWiseStatus();
 }, { flush: "sync" });
@@ -1031,12 +1040,18 @@ function isCurrentInboundRequest(request: number, localCompanyId: string, routin
     && bank.bridgeRoutingKey.value === routingKey;
 }
 
-async function resolveInboundCompanyId(localCompanyId: string, request: number, routingKey: string): Promise<string | null> {
+async function resolveInboundCompanyId(localCompanyId: string, request: number, routingKey: string, signal: AbortSignal): Promise<string | null> {
   if (!bank.localFirst) {
     return localCompanyId || null;
   }
   // Use the same trusted shared binding or private legal identity as bank sync.
-  const result = await ensureBridgeCompanyIdForLocalCompany(localCompanyId, undefined, { preferRecordedBridgeId: true });
+  const requestOptions = () => {
+    if (signal.aborted || !isCurrentInboundRequest(request, localCompanyId, routingKey)) {
+      throw new Error("bank_inbound_address_stale");
+    }
+    return { signal, timeout: 10_000, skipErrorFlash: true };
+  };
+  const result = await ensureBridgeCompanyIdForLocalCompany(localCompanyId, requestOptions, { preferRecordedBridgeId: true });
   if (!isCurrentInboundRequest(request, localCompanyId, routingKey)) return null;
   if (!result.ok) {
     // Transient failure - do not claim the bridge is missing; leaving the
@@ -1051,6 +1066,9 @@ async function resolveInboundCompanyId(localCompanyId: string, request: number, 
 
 async function loadInbound() {
   const request = ++inboundRequest;
+  inboundController?.abort();
+  const controller = new AbortController();
+  inboundController = controller;
   const localCompanyId = companyId.value;
   const routingKey = bank.bridgeRoutingKey.value;
   inboundEmail.value = "";
@@ -1061,7 +1079,7 @@ async function loadInbound() {
   inboundBridgeCompanyId.value = null;
   inboundBridgeChecked.value = false;
   if (!hasBankAccount.value) return;
-  const cid = await resolveInboundCompanyId(localCompanyId, request, routingKey);
+  const cid = await resolveInboundCompanyId(localCompanyId, request, routingKey, controller.signal);
   if (!cid || !isCurrentInboundRequest(request, localCompanyId, routingKey)) return;
   try {
     const inbound = await invoicingApi.bankTransactions.inboundEmail<{

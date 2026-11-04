@@ -2,13 +2,14 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { effectScope, watch } from "vue";
 import type { OwnerId } from "@evolu/common/local-first";
 import api from "@/services/api";
+import { withBankReadBudget } from "@/evolu/bankReadBudget";
 import { ensureBridgeCompanyIdForLocalCompany } from "@/evolu/bridgeCompanyEnsure";
 import { clearCompanyShares, companyShareRoutingKey, markCompanyShareRegistryReady, removeCompanyShare, setCompanyShare, type CompanyShareInfo } from "@/evolu/companyShareRegistry";
 
-const fixtures = vi.hoisted(() => ({ rows: [] as { id: string; ownerId?: string; legalName: string; registrationNumber: string }[], load: vi.fn() }));
+const fixtures = vi.hoisted(() => ({ rows: [] as { id: string; ownerId?: string; legalName: string; registrationNumber: string }[], load: vi.fn(), appOwner: Promise.resolve({ id: "synthetic-app" }) }));
 vi.mock("@/evolu/client", () => ({
     allCompaniesDetailQuery: "companies",
-    evolu: { loadQuery: fixtures.load, appOwner: Promise.resolve({ id: "synthetic-app" }) },
+    evolu: { loadQuery: fixtures.load, get appOwner() { return fixtures.appOwner; } },
 }));
 const originalAdapter = api.defaults.adapter;
 const pin = "0192a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b";
@@ -20,8 +21,9 @@ beforeEach(() => {
     clearCompanyShares(); markCompanyShareRegistryReady(); fixtures.load.mockReset();
     fixtures.rows = [{ id: "local-a", ownerId: "synthetic-app", legalName: "Synthetic company", registrationNumber: "123" }];
     fixtures.load.mockImplementation(async () => fixtures.rows);
+    fixtures.appOwner = Promise.resolve({ id: "synthetic-app" });
 });
-afterEach(() => { clearCompanyShares(); api.defaults.adapter = originalAdapter; vi.restoreAllMocks(); });
+afterEach(() => { clearCompanyShares(); api.defaults.adapter = originalAdapter; vi.restoreAllMocks(); vi.useRealTimers(); });
 
 it.each(["active", "migrating"] as const)("uses an eligible %s pin before legal identity, without consulting a duplicate server company", async (status) => {
     setCompanyShare(share({ status, bridgeCompanyId: ` ${pin} ` }));
@@ -104,4 +106,65 @@ it("declines a recorded mapping changed while company metadata was being loaded"
     setCompanyShare(share({ bridgeCompanyId: otherPin }));
     release(fixtures.rows);
     await expect(pending).resolves.toEqual({ ok: false });
+});
+
+
+it.each(["metadata", "app-owner"] as const)("bounds a bank helper's fresh %s wait, ignores late continuation and retries explicitly", async (phase) => {
+    vi.useFakeTimers(); vi.spyOn(console, "error").mockImplementation(() => {});
+    let release!: () => void;
+    if (phase === "metadata") fixtures.load.mockReturnValueOnce(new Promise((resolve) => { release = () => resolve(fixtures.rows); }));
+    else fixtures.appOwner = new Promise((resolve) => { release = () => resolve({ id: "synthetic-app" }); });
+    const transport = vi.fn(async (config) => ({ config, status: 200, statusText: "Synthetic", headers: {},
+        data: { data: [{ id: "private-canonical", legal_name: "Synthetic company", registration_number: "123" }] } }));
+    api.defaults.adapter = transport;
+    const pending = ensureBridgeCompanyIdForLocalCompany("local-a", undefined, bankMode);
+    await vi.advanceTimersByTimeAsync(20_000);
+    await expect(pending).resolves.toEqual({ ok: false });
+    expect(transport).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+    release(); await vi.advanceTimersByTimeAsync(0);
+    expect(transport).not.toHaveBeenCalled();
+    await expect(ensureBridgeCompanyIdForLocalCompany("local-a", undefined, bankMode))
+        .resolves.toEqual({ ok: true, bridgeCompanyId: "private-canonical" });
+    expect(transport).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+});
+
+it("keeps nested helper metadata inside the parent's remaining read budget", async () => {
+    vi.useFakeTimers(); vi.spyOn(console, "error").mockImplementation(() => {});
+    fixtures.load.mockReturnValueOnce(new Promise(() => {}));
+    const transport = vi.fn(async () => { throw new Error("metadata has not completed"); });
+    api.defaults.adapter = transport;
+    const pending = withBankReadBudget(async (controls) => {
+        await new Promise((resolve) => setTimeout(resolve, 15_000));
+        return ensureBridgeCompanyIdForLocalCompany("local-a", controls, bankMode);
+    }).catch((error) => error);
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(transport).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await pending).toMatchObject({ message: "bank_read_expired" });
+    expect(vi.getTimerCount()).toBe(0);
+    expect(transport).not.toHaveBeenCalled();
+});
+
+it("preserves the default non-bank helper's metadata wait and request defaults", async () => {
+    vi.useFakeTimers();
+    let release!: (rows: typeof fixtures.rows) => void;
+    fixtures.load.mockReturnValueOnce(new Promise((resolve) => { release = resolve; }));
+    const requests: { timeout?: number; signal?: unknown }[] = [];
+    api.defaults.adapter = async (config) => {
+        requests.push(config);
+        return { config, status: 200, statusText: "Synthetic", headers: {}, data: { data: [{ id: "default-route", legal_name: "Synthetic company", registration_number: "123" }] } };
+    };
+    const pending = ensureBridgeCompanyIdForLocalCompany("local-a");
+    let settled = false; void pending.then(() => { settled = true; });
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(settled).toBe(false);
+    expect(requests).toHaveLength(0);
+    expect(vi.getTimerCount()).toBe(0);
+    release(fixtures.rows);
+    await expect(pending).resolves.toEqual({ ok: true, bridgeCompanyId: "default-route" });
+    expect(requests).toHaveLength(1);
+    expect(requests[0].timeout).toBe(0);
+    expect(requests[0].signal).toBeUndefined();
 });

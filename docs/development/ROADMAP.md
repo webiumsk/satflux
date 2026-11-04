@@ -1,5 +1,17 @@
 # Development roadmap
 
+## Current: publish the independently accepted ninth repair - 2026-11-04
+
+Verify pre-metadata credential context, same-company transaction refresh, true
+Wise import counts, separate status retry, bounded read-only resolution/status
+and visible sync lookup failure. Parent3ac059d1 CI and pre-merge88.52% are green,
+but actual review5763674984 has findings. Preserve entered remote/financial work,
+default helper/API callers and trusted owner policy. Both reviewers accept final
+runtime5 9d0e0c91...68b7e/source-test10 67dabf48...1d9d0b; main1609/170/build/static/
+locales and independent QA/security pass. Publish only14 reviewed paths, verify
+committed bytes/remote SHA, finish fresh CI and repeat actual manual review after
+capacity until all green. No merge/deployment or production actions.
+
 ## Current: publish the independently accepted eighth repair - 2026-11-04
 
 Verify five findings from actualc0921567 review5763268988, including supplemental
