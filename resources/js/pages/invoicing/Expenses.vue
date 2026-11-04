@@ -551,6 +551,7 @@ async function markPaidRow(expenseId: string) {
   }
 }
 
+/** Persist a copy in either mode, then open its marked edit only while the original company remains selected. */
 async function duplicateRow(expenseId: string) {
   const actionCompany = companyId.value;
   actionId.value = expenseId;
@@ -569,6 +570,7 @@ async function duplicateRow(expenseId: string) {
       await router.push({
         name: 'invoicing-expense-edit',
         params: { companyId: companyId.value, expenseId: result.value.id },
+        query: { duplicate: result.value.id },
       });
       return;
     }
@@ -577,6 +579,7 @@ async function duplicateRow(expenseId: string) {
     await router.push({
       name: 'invoicing-expense-edit',
       params: { companyId: companyId.value, expenseId: res.id },
+      query: { duplicate: res.id },
     });
   } catch (rawError) {
     if (actionCompany !== companyId.value) return;

@@ -846,6 +846,7 @@ async function saveNote() {
   }
 }
 
+/** Copy the loaded expense in either mode and open its marked edit only if the captured detail context remains current. */
 async function duplicate() {
   const context = captureContext();
   if (!hasLoadedExpense(context)) return;
@@ -867,6 +868,7 @@ async function duplicate() {
       await router.push({
         name: "invoicing-expense-edit",
         params: { companyId: context.company, expenseId: result.value.id },
+        query: { duplicate: result.value.id },
       });
       return;
     }
@@ -875,6 +877,7 @@ async function duplicate() {
     await router.push({
       name: "invoicing-expense-edit",
       params: { companyId: context.company, expenseId: res.id },
+      query: { duplicate: res.id },
     });
   } catch (error: unknown) {
     if (isCurrentContext(context)) window.alert(t(expenseMutationErrorKey(error) || 'errors.generic'));

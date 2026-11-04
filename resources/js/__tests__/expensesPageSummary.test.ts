@@ -15,14 +15,16 @@ const mocks = vi.hoisted(() => ({
     refresh: vi.fn(),
     rememberCompany: vi.fn(),
     push: vi.fn(),
+    duplicateLocal: vi.fn(),
 }));
 const localExpenses = ref<ExpenseListRow[]>([]);
+const localExpenseRows = ref<{ id: string }[]>([]);
 let localSource: ExpenseListRow[] = [];
 
 vi.mock("vue-router", () => ({ useRoute: () => mocks.route, useRouter: () => ({ push: mocks.push }) }));
 vi.mock("@/evolu/flags", () => ({ isInvoicingLocalFirst: () => mocks.localFirst }));
 vi.mock("@/composables/useInvoicingExpenses", () => ({
-    useInvoicingExpenses: () => ({ expenses: localExpenses, refresh: mocks.refresh, expenseRows: ref([]), evolu: {} }),
+    useInvoicingExpenses: () => ({ expenses: localExpenses, refresh: mocks.refresh, expenseRows: localExpenseRows, evolu: {} }),
 }));
 vi.mock("@/composables/useInvoicingCompanySummary", () => ({
     useInvoicingCompanySummary: () => ({ companyName: ref("Synthetic company") }),
@@ -31,7 +33,7 @@ vi.mock("@/composables/useInvoicingLayout", () => ({
     INVOICING_CONTAINER_CLASS: "container",
     useInvoicingLayout: () => ({ rememberCompany: mocks.rememberCompany }),
 }));
-vi.mock("@/evolu/expenseCrud", () => ({ markLocalExpensePaid: vi.fn(), duplicateLocalExpense: vi.fn(), cancelLocalExpense: vi.fn() }));
+vi.mock("@/evolu/expenseCrud", () => ({ markLocalExpensePaid: vi.fn(), duplicateLocalExpense: mocks.duplicateLocal, cancelLocalExpense: vi.fn() }));
 vi.mock("@/evolu/expenseBulkLocal", () => ({ bulkCancelLocalExpenses: vi.fn(), bulkMarkPaidLocalExpenses: vi.fn(), resolveBulkExpenseTargets: vi.fn() }));
 vi.mock("@/services/api", () => ({ invoicingApi: { expenses: { listPaged: mocks.listPaged, action: mocks.action, delete: mocks.delete } } }));
 vi.mock("@/components/invoicing/InvoicingPageShell.vue", () => ({ default: { template: '<main><slot name="header" /><slot name="subheader" /><slot /></main>' } }));
@@ -85,6 +87,7 @@ beforeEach(() => {
     mocks.delete.mockResolvedValue(undefined);
     localSource = [];
     localExpenses.value = [];
+    localExpenseRows.value = [];
     mocks.refresh.mockImplementation(async (filters: { filter?: string; year?: number } = {}) => {
         localExpenses.value = localSource.filter((item) => item.status !== "cancelled"
             && (!filters.year || item.issue_date.startsWith(String(filters.year)))
@@ -298,6 +301,21 @@ describe("expense page filtered summary", () => {
         expect(summaryText()).toContain("€2.00");
         expect(wrapper!.find('[role="alert"]').exists()).toBe(false);
         expect(wrapper!.text()).not.toContain("Company A");
+    });
+
+    it.each([true, false])("opens the copied expense with its exact duplicate marker from the list (local=%s)", async (local) => {
+        localSource = [row("Initial expense")];
+        localExpenseRows.value = [{ id: "Initial expense" }];
+        if (local) mocks.duplicateLocal.mockResolvedValueOnce({ ok: true, value: { id: "copied-expense" } });
+        else mocks.action.mockResolvedValueOnce({ id: "copied-expense" });
+        render(local);
+        await flushPromises();
+        wrapper!.findComponent({ name: "ExpensesTable" }).vm.$emit("duplicate", "Initial expense");
+        await flushPromises();
+        expect(mocks.push).toHaveBeenCalledExactlyOnceWith({ name: "invoicing-expense-edit",
+            params: { companyId: "company-a", expenseId: "copied-expense" }, query: { duplicate: "copied-expense" } });
+        expect(local ? mocks.duplicateLocal : mocks.action).toHaveBeenCalledOnce();
+        expect(local ? mocks.action : mocks.duplicateLocal).not.toHaveBeenCalled();
     });
 
     it("does not navigate to a duplicated expense from a previous company", async () => {

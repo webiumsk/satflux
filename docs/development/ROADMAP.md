@@ -1,5 +1,76 @@
 # Development roadmap
 
+## PR428 semantic review clean; supported test-helper documentation repair - 2026-11-04
+
+The owner-authorized `@coderabbitai review` comment `6638746873` was posted after
+the allowance reset at 18:30:30 UTC. Bot reply `6638749080` confirms acceptance;
+check `126777122714` completes successfully at 18:33:23 UTC on `1e68623a`.
+The actual walkthrough reports no actionable comments, exact-head reviewed coverage
+and zero review threads. The earlier held-upload test finding is addressed.
+
+One pre-merge warning remains: 0% documentation at the unchanged 80% threshold.
+The first five Vue JSDoc additions did not cover the measured supported helper.
+Author and independent QA inventories agree that `render()` in
+`resources/js/__tests__/expenseFormDefaults.test.ts` is the only changed named
+function in the three supported TypeScript test files. That matches the reported
+one analyzed function; CodeRabbit does not explicitly identify its symbol, so the
+attribution is a diff-based inference. A four-line JSDoc describes persistence/route
+mode, the optional initial-copy marker and awaited hydration. No executable changes.
+Independent QA accepts exact test hash
+`8fba8d02cb3143faf9a3e39e49d6a74fed254a590ab54c47d0d2f7ae72548bf7`:
+JSDoc attaches to `render()`, executable tokens, normalized AST, stripped TypeScript
+and emitted JavaScript are identical to `1e68623a`. Scoped lint and whitespace pass.
+The six-file source/test manifest is
+`88d4515e64d9f9022a85d5bb8603c3e8e62bd23ebe62db77aed5ccb882b0f3ab`;
+the three production files retain accepted manifest
+`2842ec51ffb268f5e6e7b0fddc9add01ae07ae23e72e20cb088f332ce6351411`.
+Publish this comment and three state documents, then verify fresh exact-head CI and
+pre-merge results. Official CodeRabbit docs support the separate command
+`@coderabbitai run pre-merge checks` to refresh configured checks in the existing
+walkthrough: https://docs.coderabbit.ai/pr-reviews/pre-merge-checks#run-all-checks .
+Its hourly allowance cost and cache guarantees are not documented; do not assume
+either or hide the warning. All five prior CI checks remain green. No merge,
+deployment, production access or configuration change.
+
+## PR428 initial CI green; reviewed test and documentation follow-up ready - 2026-11-04
+
+All five required checks completed successfully for `cf064146` in CI run
+`41877739679`, attempt 1. The final verification at 17:53 UTC reconciles the
+workflow and each exact-head check, including PostgreSQL's 2 tests / 108 assertions
+and zero-skip gate. Earlier API snapshots reported inconsistent job states; they
+are not evidence of actual queue duration or a failed test. No rerun or cancellation.
+
+CodeRabbit review `5772913881` on that commit completed at 17:36:07 UTC with no
+functional or inline finding, one held-upload test nit (`56789731b8f39c6664dd3162`),
+and a docstring coverage warning of 0% against the unchanged 80% threshold.
+Five meaningful JSDoc contracts and deferred-upload assertions in the existing
+local/server test address both. Independent QA and security confirm that production
+Vue tokens, normalized ASTs, emitted JavaScript, templates and styles are unchanged.
+
+Both reviewers accept the four-file follow-up manifest
+`afaafe54bc00b86cde400c4d34e940cbf2776b148fa4d962b5f41d22e5ad724d`.
+The complete fix has runtime manifest
+`2842ec51ffb268f5e6e7b0fddc9add01ae07ae23e72e20cb088f332ce6351411`
+and six-file source/test manifest
+`1e691c39af27e57e2ae3d3f5d7cdc70ef25f2e75bb2d793d631c5d23889ec244`.
+Author validation passes 101 tests in three files, lint and the existing typecheck
+ratchet. QA verifies both held-upload cases pass and an isolated mutant removing
+only the upload awaits fails both. Publish these four files and three state documents,
+then require fresh CI and actual CodeRabbit coverage of the resulting head. Invoke
+`@coderabbitai review` after the allowance resets if automatic review is limited.
+No threshold, authorization, financial, backend or CI configuration change. No merge,
+deployment or production access is authorized by this milestone.
+
+## Current: publish reviewed duplicate-expense defaults repair - 2026-11-04
+
+On merged master80139525, four duplicated-edit failures are reproduced and fixed.
+Both reviewers accept runtime3 9125a87c...41e10/source6 f7768cff...1a679; author and
+reviewer101/3 plus28 independent DOM probes pass. Main1700/173, lint/type/locales
+and build pass. Publish exactly nine scoped paths on fix/expense-form-default-events,
+verify exact bytes/remote head, then wait for all current CI and actual CodeRabbit.
+Keep normal edits/manual overrides, hydration, UPDATE-only copy saves and all
+ownership/payment boundaries. No merge/deployment or production changes.
+
 ## Current: publish final test coverage and repeat the review gate - 2026-11-04
 
 Actual review 5766899006 leaves two test-only nits; both are repaired and QA accepts

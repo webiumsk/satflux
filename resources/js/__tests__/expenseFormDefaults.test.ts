@@ -6,12 +6,13 @@ import en from '@/locales/en.json';
 
 const mocks = vi.hoisted(() => ({
   local: true,
-  push: vi.fn(), refresh: vi.fn(), get: vi.fn(), company: vi.fn(),
+  push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), get: vi.fn(), company: vi.fn(), lookup: vi.fn(),
   create: vi.fn(), update: vi.fn(), insert: vi.fn(), updateLocal: vi.fn(),
   confirmExtract: vi.fn(), upload: vi.fn(), loadQuota: vi.fn(), skipExtract: vi.fn(),
 }));
 const companyId = ref('abcdefghijklmnopqrstuv');
-const route = reactive({ name: 'invoicing-expense-new', params: {} as { expenseId?: string } });
+const route = reactive({ name: 'invoicing-expense-new', params: {} as { expenseId?: string },
+  query: {} as { duplicate?: string | string[] | null } });
 const existingExpense = {
   id: 'synthetic-expense', internal_number: 'EXP20260001', title: 'Synthetic expense',
   external_number: 'DOC-0012', variable_symbol: '0099',
@@ -20,13 +21,13 @@ const existingExpense = {
   internal_note: null,
 };
 
-vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push: mocks.push }) }));
+vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push: mocks.push, replace: mocks.replace }) }));
 vi.mock('@/evolu/flags', () => ({ isInvoicingLocalFirst: () => mocks.local }));
 vi.mock('@/evolu/client', () => ({ expenseByIdIncludingDeletedQuery: vi.fn() }));
 vi.mock('@/composables/useInvoicingLayout', () => ({ useInvoicingLayout: () => ({ companyId, rememberCompany: vi.fn() }) }));
 vi.mock('@/composables/useInvoicingCompanySummary', () => ({ useInvoicingCompanySummary: () => ({ defaultCurrency: ref('EUR') }) }));
 vi.mock('@/composables/useInvoicingExpenses', () => ({ useInvoicingExpense: () => ({
-  evolu: {}, expense: ref(existingExpense), expenseRows: ref([]), refresh: mocks.refresh,
+  evolu: { loadQuery: mocks.lookup }, expense: ref(existingExpense), expenseRows: ref([]), refresh: mocks.refresh,
 }) }));
 vi.mock('@/evolu/expenseCrud', () => ({ insertLocalExpense: mocks.insert, updateLocalExpense: mocks.updateLocal }));
 vi.mock('@/services/api', () => ({ invoicingApi: {
@@ -57,10 +58,15 @@ function field(key: FieldKey) {
   if (!label) throw new Error(`Missing form field: ${key}`);
   return new DOMWrapper(label.element.nextElementSibling as HTMLInputElement);
 }
-async function render(local = true, editing = false) {
+/**
+ * Mount ExpenseForm in the selected persistence/route mode with an optional initial copy marker.
+ * Await mount-time hydration before assertions or user input.
+ */
+async function render(local = true, editing = false, duplicate?: string | string[] | null) {
   mocks.local = local;
   route.name = editing ? 'invoicing-expense-edit' : 'invoicing-expense-new';
   route.params = editing ? { expenseId: existingExpense.id } : {};
+  route.query = duplicate === undefined ? {} : { duplicate };
   wrapper = mount(ExpenseForm, { global: {
     plugins: [createI18n({ legacy: false, locale: 'en', messages: { en } })],
     stubs: { RouterLink: { template: '<a><slot /></a>' } },
@@ -80,12 +86,17 @@ beforeEach(() => {
   companyId.value = 'abcdefghijklmnopqrstuv';
   route.name = 'invoicing-expense-new';
   route.params = {};
+  route.query = {};
   mocks.push.mockResolvedValue(undefined);
+  mocks.replace.mockResolvedValue(undefined);
+  mocks.lookup.mockResolvedValue([{ id: existingExpense.id, companyId: companyId.value, isDeleted: null }]);
   mocks.refresh.mockResolvedValue(undefined);
   mocks.get.mockResolvedValue(existingExpense);
   mocks.company.mockResolvedValue({ default_currency: 'EUR' });
   mocks.create.mockResolvedValue({ id: 'synthetic-created' });
   mocks.insert.mockReturnValue({ ok: true, value: { id: 'synthetic-created' } });
+  mocks.update.mockResolvedValue(undefined);
+  mocks.updateLocal.mockResolvedValue({ ok: true });
   mocks.upload.mockResolvedValue(undefined);
   mocks.loadQuota.mockResolvedValue(undefined);
   mocks.confirmExtract.mockResolvedValue(null);
@@ -321,5 +332,152 @@ describe('new expense field defaults', () => {
     await field('expense_col_issue').setValue('2026-03-05');
     expect(field('variable_symbol').element.value).toBe('0013');
     expect(field('expense_col_delivery').element.value).toBe('2026-03-05');
+  });
+});
+
+describe('duplicated expense field defaults', () => {
+  it.each([true, false])('preserves untouched copy hydration and saves only an update before replacing its edit entry (local=%s)', async (local) => {
+    let finishUpload!: () => void;
+    mocks.upload.mockReturnValueOnce(new Promise<void>((resolve) => { finishUpload = resolve; }));
+    await render(local, true, existingExpense.id);
+    expect(field('expense_col_external').element.value).toBe('DOC-0012');
+    expect(field('variable_symbol').element.value).toBe('0099');
+    expect(field('expense_col_delivery').element.value).toBe('2026-01-07');
+    expect(wrapper!.find('input[type="checkbox"]').exists()).toBe(false);
+    expect(route.query.duplicate).toBe(existingExpense.id);
+    await wrapper!.find('form').trigger('submit');
+    await flushPromises();
+    const write = local ? mocks.updateLocal : mocks.update;
+    expect(write).toHaveBeenCalledOnce();
+    expect(write.mock.calls[0][1]).toBe(existingExpense.id);
+    expect(write.mock.calls[0][2]).toMatchObject({
+      external_number: 'DOC-0012', variable_symbol: '0099',
+      issue_date: '2026-01-10', delivery_date: '2026-01-07', mark_paid: undefined,
+    });
+    expect(mocks.insert).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.upload).toHaveBeenCalledExactlyOnceWith(existingExpense.id);
+    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(mocks.push).not.toHaveBeenCalled();
+    finishUpload();
+    await flushPromises();
+    expect(mocks.replace).toHaveBeenCalledExactlyOnceWith({ name: 'invoicing-expense-show',
+      params: { companyId: companyId.value, expenseId: existingExpense.id } });
+    expect(mocks.upload.mock.invocationCallOrder[0]).toBeLessThan(mocks.replace.mock.invocationCallOrder[0]);
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])('follows copy source inputs with leading zeros, the VS limit and null overflow payload (local=%s)', async (local) => {
+    await render(local, true, existingExpense.id);
+    await field('expense_col_external').setValue('COPY-00088');
+    await field('expense_col_issue').setValue('2026-07-18');
+    expect(field('variable_symbol').element.value).toBe('00088');
+    expect(field('expense_col_delivery').element.value).toBe('2026-07-18');
+    await field('expense_col_external').setValue('DOC-' + '0'.repeat(31) + '1');
+    expect(field('variable_symbol').element.value).toBe('0'.repeat(31) + '1');
+    await field('expense_col_external').setValue('DOC-' + '1'.repeat(33));
+    expect(field('variable_symbol').element.value).toBe('');
+    await wrapper!.find('form').trigger('submit');
+    await flushPromises();
+    expect((local ? mocks.updateLocal : mocks.update).mock.calls[0][2]).toMatchObject({
+      variable_symbol: null, delivery_date: '2026-07-18',
+    });
+  });
+
+  it.each([true, false])('preserves equal-value manual copy targets and later clears (local=%s)', async (local) => {
+    await render(local, true, existingExpense.id);
+    await field('variable_symbol').setValue('0099');
+    await field('expense_col_delivery').setValue('2026-01-07');
+    await field('expense_col_external').setValue('COPY-00088');
+    await field('expense_col_issue').setValue('2026-07-18');
+    expect(field('variable_symbol').element.value).toBe('0099');
+    expect(field('expense_col_delivery').element.value).toBe('2026-01-07');
+    await field('variable_symbol').setValue('');
+    await field('expense_col_delivery').setValue('');
+    await field('expense_col_external').setValue('COPY-00089');
+    await field('expense_col_issue').setValue('2026-07-19');
+    expect(field('variable_symbol').element.value).toBe('');
+    expect(field('expense_col_delivery').element.value).toBe('');
+    await wrapper!.find('form').trigger('submit');
+    await flushPromises();
+    expect((local ? mocks.updateLocal : mocks.update).mock.calls[0][2]).toMatchObject({ variable_symbol: null, delivery_date: null });
+  });
+
+  it.each([true, false])('derives missing copy import targets and preserves explicit equal-value import overrides (local=%s)', async (local) => {
+    await render(local, true, existingExpense.id);
+    await extract({ external_number: 'COPY-00088', issue_date: '2026-07-18' });
+    expect(field('variable_symbol').element.value).toBe('00088');
+    expect(field('expense_col_delivery').element.value).toBe('2026-07-18');
+    await extract({ external_number: 'COPY-00088', variable_symbol: '00088',
+      issue_date: '2026-07-18', delivery_date: '2026-07-18' });
+    await field('expense_col_external').setValue('COPY-00089');
+    await field('expense_col_issue').setValue('2026-07-19');
+    expect(field('variable_symbol').element.value).toBe('00088');
+    expect(field('expense_col_delivery').element.value).toBe('2026-07-18');
+  });
+
+  it.each([undefined, 'another-expense', ['synthetic-expense'], null])('keeps ordinary edit semantics for marker %j', async (marker) => {
+    await render(true, true, marker);
+    await field('expense_col_external').setValue('COPY-00088');
+    await field('expense_col_issue').setValue('2026-07-18');
+    expect(field('variable_symbol').element.value).toBe('0099');
+    expect(field('expense_col_delivery').element.value).toBe('2026-01-07');
+    await wrapper!.find('form').trigger('submit');
+    await flushPromises();
+    expect(mocks.push).toHaveBeenCalledOnce();
+    expect(mocks.replace).not.toHaveBeenCalled();
+  });
+
+  it('does not enable copy defaults when a matching marker arrives after mounting', async () => {
+    await render(true, true);
+    route.query.duplicate = existingExpense.id;
+    await field('expense_col_external').setValue('COPY-00088');
+    await field('expense_col_issue').setValue('2026-07-18');
+    expect(field('variable_symbol').element.value).toBe('0099');
+    expect(field('expense_col_delivery').element.value).toBe('2026-01-07');
+  });
+
+  it.each(['company', 'expense', 'route'] as const)('revokes copy defaults permanently after %s context ABA', async (context) => {
+    await render(true, true, existingExpense.id);
+    if (context === 'company') { companyId.value = 'another-company'; companyId.value = 'abcdefghijklmnopqrstuv'; }
+    if (context === 'expense') { route.params.expenseId = 'another-expense'; route.params.expenseId = existingExpense.id; }
+    if (context === 'route') { route.name = 'invoicing-expense-show'; route.name = 'invoicing-expense-edit'; }
+    await field('expense_col_external').setValue('COPY-00088');
+    await field('expense_col_issue').setValue('2026-07-18');
+    expect(field('variable_symbol').element.value).toBe('0099');
+    expect(field('expense_col_delivery').element.value).toBe('2026-01-07');
+  });
+
+  it.each([true, false])('does not navigate or upload after the copy context exits during its update (local=%s)', async (local) => {
+    let complete!: (value: { ok: true }) => void;
+    (local ? mocks.updateLocal : mocks.update).mockReturnValueOnce(new Promise((resolve) => { complete = resolve; }));
+    await render(local, true, existingExpense.id);
+    await wrapper!.find('form').trigger('submit');
+    await flushPromises();
+    companyId.value = 'another-company'; companyId.value = 'abcdefghijklmnopqrstuv';
+    complete({ ok: true });
+    await flushPromises();
+    expect(mocks.upload).not.toHaveBeenCalled();
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(mocks.replace).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])('retains the copy marker and update recovery after a failed save (local=%s)', async (local) => {
+    (local ? mocks.updateLocal : mocks.update).mockRejectedValueOnce(new Error('synthetic save failure'));
+    await render(local, true, existingExpense.id);
+    await wrapper!.find('form').trigger('submit');
+    await flushPromises();
+    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(route.query.duplicate).toBe(existingExpense.id);
+    await field('expense_col_external').setValue('COPY-00088');
+    await field('expense_col_issue').setValue('2026-07-18');
+    expect(field('variable_symbol').element.value).toBe('00088');
+    expect(field('expense_col_delivery').element.value).toBe('2026-07-18');
+    await wrapper!.find('form').trigger('submit');
+    await flushPromises();
+    expect(local ? mocks.updateLocal : mocks.update).toHaveBeenCalledTimes(2);
+    expect(mocks.replace).toHaveBeenCalledOnce();
+    expect(mocks.insert).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 });
