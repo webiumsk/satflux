@@ -87,8 +87,10 @@ function deferred<T>() {
 
 const row = { id: "server-tx-b", booked_at: "2026-08-01", amount: "19.00", currency: "EUR" };
 
-function syncResponse<T>(data: T[], cycle_complete = true, lane: "head" | "backfill" = "head", next_cursor = "opaque-next") {
-    return { data, meta: { sync: { protocol: 1 as const, lane, next_cursor, retry_cursor: "opaque-retry", cycle_complete } } };
+function syncResponse<T>(data: T[], cycle_complete = true, lane: "head" | "backfill" = "head", next_cursor = "opaque-next",
+    unresolved_after_success = false, unresolved = unresolved_after_success) {
+    return { data, meta: { sync: { protocol: 2 as const, lane, next_cursor, retry_cursor: "opaque-retry", cycle_complete,
+        unresolved, unresolved_after_success } } };
 }
 
 beforeEach(() => {
@@ -197,10 +199,10 @@ describe("bank movement bridge synchronization", () => {
         expect(mocks.list.mock.lastCall?.[1].sync_cursor).toBe("other-tab-winner");
     });
 
-    it.each(["success", "http-failure"] as const)("yields only a retry frame for incomplete coverage, services the other lane and reports incomplete (%s)", async (next) => {
+    it.each(["success", "http-failure"] as const)("persists an unresolved scan frame for incomplete coverage, services the other lane and reports incomplete (%s)", async (next) => {
         mocks.list.mockResolvedValueOnce(syncResponse([row], false, "backfill", "must-not-advance"));
         if (next === "http-failure") mocks.list.mockRejectedValueOnce(new Error("synthetic later network failure"));
-        else mocks.list.mockResolvedValueOnce(syncResponse([{ ...row, id: "fresh-head" }], true, "head", "head-ack"));
+        else mocks.list.mockResolvedValueOnce(syncResponse([{ ...row, id: "fresh-head" }], true, "head", "head-ack", true));
         mocks.importInbound.mockResolvedValueOnce({ imported: 0, auto_matched: 0, complete: false, scope_verified: true });
         const { bank } = bankFor();
         await expect(bank.load()).rejects.toThrow("bank_sync_page_incomplete");
@@ -270,6 +272,98 @@ describe("bank movement bridge synchronization", () => {
         importing.resolve({ imported: 1, auto_matched: 0, complete: true, scope_verified: true });
         await pending;
         expect(mocks.checkpointSave).not.toHaveBeenCalled(); expect(mocks.list).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(["head", "backfill"] as const)("continues older history past an unresolved %s page across remounts and clears only a later clean cycle", async (poisonLane) => {
+        const source = Array.from({ length: 205 }, (_, index) => ({ ...row, id: `history-${index}` }));
+        let poison: number | null = poisonLane === "head" ? 0 : 120;
+        type Frame = { lane: "head" | "backfill"; before: number | null; unresolved: boolean; dirty: boolean };
+        const frames = new Map<string, Frame>(); let serial = 0;
+        const seal = (frame: Frame) => { const token = `synthetic-server-cipher-v2-${++serial}`; frames.set(token, { ...frame }); return token; };
+        mocks.list.mockImplementation(async (_bridge, params) => {
+            const frame = params.sync_cursor ? frames.get(params.sync_cursor)! : { lane: "head" as const, before: null, unresolved: false, dirty: false };
+            const start = frame.lane === "head" ? 0 : (frame.before ?? -1) + 1;
+            const rows = source.slice(start, start + 100);
+            const hasMore = start + rows.length < source.length;
+            const wrap = frame.lane === "backfill" && !hasMore;
+            const before = wrap ? null : frame.lane === "head" ? frame.before ?? start + rows.length - 1 : start + rows.length - 1;
+            const candidate = (acknowledged: boolean): Frame => ({
+                lane: frame.lane === "head" ? "backfill" : "head", before,
+                unresolved: wrap ? frame.dirty || !acknowledged : frame.unresolved || !acknowledged,
+                dirty: wrap ? false : frame.dirty || !acknowledged,
+            });
+            const success = candidate(true);
+            return { data: rows, meta: { sync: { protocol: 2, lane: frame.lane, cycle_complete: wrap,
+                unresolved: frame.unresolved, unresolved_after_success: success.unresolved,
+                next_cursor: seal(success), retry_cursor: seal(candidate(false)) } } };
+        });
+        const represented = new Set<string>(); let importedTotal = 0;
+        mocks.importInbound.mockImplementation(async (_evolu, _company, rows) => {
+            let imported = 0; let complete = true;
+            for (const item of rows) {
+                if (poison !== null && item.id === source[poison].id) { complete = false; continue; }
+                if (!represented.has(item.id)) { represented.add(item.id); imported++; }
+            }
+            importedTotal += imported;
+            return { imported, auto_matched: 0, complete, scope_verified: true };
+        });
+        const first = bankFor();
+        await expect(first.bank.load()).rejects.toThrow("bank_sync_page_incomplete");
+        expect(mocks.list).toHaveBeenCalledTimes(2);
+        first.scope.stop();
+        const remounted = bankFor();
+        await expect(remounted.bank.load()).rejects.toThrow("bank_sync_page_incomplete");
+        expect(represented.has(source[204].id)).toBe(true);
+        expect(represented.has(source[poison!].id)).toBe(false);
+        expect(represented.size).toBe(204);
+        const dirtyFrame = frames.get([...mocks.checkpoints.values()][0].cursor)!;
+        expect(dirtyFrame).toMatchObject({ before: null, unresolved: true, dirty: false });
+        poison = null;
+        await expect(remounted.bank.load()).rejects.toThrow("bank_sync_page_incomplete");
+        expect(represented.size).toBe(205);
+        await expect(remounted.bank.load()).resolves.toBeUndefined();
+        expect(importedTotal).toBe(205); // Revisited hashes stay represented; no repeated row creation/matching.
+        expect(frames.get([...mocks.checkpoints.values()][0].cursor)).toMatchObject({ before: null, unresolved: false, dirty: false });
+    });
+
+    it.each(["conflict", "failure"] as const)("retains a remounted unresolved frame when a clean-wrap candidate has a CAS %s", async (outcome) => {
+        const first = bankFor();
+        mocks.list.mockResolvedValueOnce(syncResponse([row], true, "backfill", "dirty-wrap", true));
+        await expect(first.bank.load()).rejects.toThrow("bank_sync_page_incomplete");
+        const before = { ...[...mocks.checkpoints.values()][0] };
+        first.scope.stop();
+        const { bank } = bankFor();
+        mocks.list.mockResolvedValueOnce(syncResponse([row], true, "backfill", "clean-wrap", false, true));
+        if (outcome === "conflict") mocks.checkpointSave.mockResolvedValueOnce("conflict");
+        else mocks.checkpointSave.mockRejectedValueOnce(new Error("synthetic checkpoint failure"));
+        await expect(bank.load()).rejects.toThrow(outcome === "conflict" ? "bank_sync_page_incomplete" : "bank_sync_checkpoint_unavailable");
+        expect([...mocks.checkpoints.values()][0]).toEqual(before);
+        expect(mocks.list).toHaveBeenCalledTimes(2);
+    });
+
+    it.each(["unknown", "unadmitted"] as const)("never saves a scan candidate after an %s outcome on an unresolved frame", async (outcome) => {
+        const { bank } = bankFor();
+        mocks.list.mockResolvedValueOnce(syncResponse([row], true, "backfill", "dirty-wrap", true));
+        await expect(bank.load()).rejects.toThrow("bank_sync_page_incomplete");
+        mocks.checkpointSave.mockClear();
+        mocks.list.mockResolvedValueOnce(syncResponse([row], true, "backfill", "unsafe-clean", false, true));
+        const unknown = new BankReconciliationUnknownError();
+        if (outcome === "unknown") mocks.importInbound.mockRejectedValueOnce(unknown);
+        else mocks.importInbound.mockResolvedValueOnce({ imported: 0, auto_matched: 0, complete: false, scope_verified: false });
+        if (outcome === "unknown") await expect(bank.load()).rejects.toBe(unknown);
+        else await expect(bank.load()).rejects.toThrow("bank_sync_page_incomplete");
+        expect(mocks.checkpointSave).not.toHaveBeenCalled();
+        expect([...mocks.checkpoints.values()][0].cursor).toBe("dirty-wrap");
+    });
+
+    it.each(["protocol", "prestate", "candidate"] as const)("rejects incompatible or missing protocol-2 %s metadata without importing", async (field) => {
+        const response = syncResponse([row]);
+        if (field === "protocol") Reflect.set(response.meta.sync, "protocol", 1);
+        else Reflect.deleteProperty(response.meta.sync, field === "prestate" ? "unresolved" : "unresolved_after_success");
+        mocks.list.mockResolvedValueOnce(response);
+        const { bank } = bankFor();
+        await expect(bank.load()).rejects.toThrow("bank_sync_protocol_unavailable");
+        expect(mocks.importInbound).not.toHaveBeenCalled(); expect(mocks.checkpointSave).not.toHaveBeenCalled();
     });
 
     it.each([{ ok: true, bridgeCompanyId: null }, { ok: false }])("never falls back to another company when resolution returns %j", async (result) => {

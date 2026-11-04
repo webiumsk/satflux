@@ -12,6 +12,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestWith;
@@ -124,7 +125,8 @@ class BankEmailSyncFeedTest extends TestCase
         });
 
         $response = $this->feed();
-        $response->assertOk()->assertJsonPath('meta.sync.protocol', 1)->assertJsonPath('meta.sync.lane', 'head');
+        $response->assertOk()->assertJsonPath('meta.sync.protocol', 2)->assertJsonPath('meta.sync.lane', 'head');
+        $response->assertJsonPath('meta.sync.unresolved', false)->assertJsonPath('meta.sync.unresolved_after_success', false);
         $this->assertSame([$newest, $second], array_column($response->json('data'), 'id'));
         $this->assertSame(['sync'], array_keys($response->json('meta')));
         $response->assertJsonPath('data.0.recorded_direction', 'debit')->assertJsonPath('data.0.amount', '19.00');
@@ -161,9 +163,9 @@ class BankEmailSyncFeedTest extends TestCase
         $this->assertNull($this->frame($last->json('meta.sync.next_cursor'))['backfill_before']);
     }
 
-    /** Retry yields to the other lane while preserving the exact unacknowledged history frontier. */
+    /** Admitted incomplete pages advance only the scan bookmark and retain unresolved evidence. */
     #[Test]
-    public function retry_frames_flip_only_the_lane_and_never_advance_an_unacknowledged_frontier(): void
+    public function incomplete_frames_flip_lanes_and_advance_scan_without_claiming_coverage(): void
     {
         foreach (range(1, 5) as $id) {
             $this->movement($id, '2026-11-03 12:00:00');
@@ -172,19 +174,22 @@ class BankEmailSyncFeedTest extends TestCase
         $head->assertOk();
         $headRetry = $this->frame($head->json('meta.sync.retry_cursor'));
         $this->assertSame('backfill', $headRetry['next_lane']);
-        $this->assertNull($headRetry['backfill_before']);
-        $this->assertNotNull($this->frame($head->json('meta.sync.next_cursor'))['backfill_before']);
+        $this->assertSame($this->frame($head->json('meta.sync.next_cursor'))['backfill_before'], $headRetry['backfill_before']);
+        $this->assertTrue($headRetry['cycle_incomplete']);
+        $this->assertTrue($headRetry['unresolved']);
 
         $backfill = $this->feed($head->json('meta.sync.next_cursor'));
         $backfill->assertOk();
-        $expected = $this->frame($head->json('meta.sync.next_cursor'));
-        $expected['next_lane'] = 'head';
+        $expected = $this->frame($backfill->json('meta.sync.next_cursor'));
+        $expected['cycle_incomplete'] = true;
+        $expected['unresolved'] = true;
         $this->assertSame($expected, $this->frame($backfill->json('meta.sync.retry_cursor')));
         $afterRetry = $this->feed($backfill->json('meta.sync.retry_cursor'));
         $afterRetry->assertOk()->assertJsonPath('meta.sync.lane', 'head');
         $retriedPage = $this->feed($afterRetry->json('meta.sync.next_cursor'));
         $retriedPage->assertOk()->assertJsonPath('meta.sync.lane', 'backfill');
-        $this->assertSame(array_column($backfill->json('data'), 'id'), array_column($retriedPage->json('data'), 'id'));
+        $this->assertSame([$this->uuid(1)], array_column($retriedPage->json('data'), 'id'));
+        $retriedPage->assertJsonPath('meta.sync.cycle_complete', false)->assertJsonPath('meta.sync.unresolved_after_success', true);
     }
 
     /** Repeated full cycles cover rows that no timestamp/UUID high-water claim could safely discover. */
@@ -299,12 +304,25 @@ class BankEmailSyncFeedTest extends TestCase
     #[TestWith(['bad_date'])]
     #[TestWith(['bad_time'])]
     #[TestWith(['tuple_extra'])]
+    #[TestWith(['cycle_incomplete'])]
+    #[TestWith(['unresolved'])]
+    #[TestWith(['missing_flag'])]
+    #[TestWith(['inconsistent_flags'])]
+    #[TestWith(['legacy_v1'])]
     public function authenticated_but_invalid_frame_schemas_and_bindings_have_one_generic_error(string $field): void
     {
         $this->movement(1, '2026-11-03 12:00:00');
         $frame = $this->frame($this->feed()->assertOk()->json('meta.sync.next_cursor'));
         $position = ['created_at' => '2026-11-03 12:00:00', 'id' => $this->uuid(1)];
-        if ($field === 'missing') {
+        if ($field === 'legacy_v1') {
+            $frame['protocol'] = 1;
+            unset($frame['cycle_incomplete'], $frame['unresolved']);
+        } elseif ($field === 'missing_flag') {
+            unset($frame['cycle_incomplete']);
+        } elseif ($field === 'inconsistent_flags') {
+            $frame['cycle_incomplete'] = true;
+            $frame['unresolved'] = false;
+        } elseif ($field === 'missing') {
             unset($frame['backfill_before']);
         } elseif ($field === 'extra') {
             $frame['extra'] = true;
@@ -317,9 +335,10 @@ class BankEmailSyncFeedTest extends TestCase
             };
         } else {
             $frame[$field] = match ($field) {
-                'protocol' => 2, 'page_size' => 3, 'source' => 'wise',
+                'protocol' => 1, 'page_size' => 3, 'source' => 'wise',
                 'context' => str_repeat('b', 64), 'order' => 'id:desc', 'next_lane' => 'other',
-                'backfill_before' => [], default => 'different-actor-or-company',
+                'backfill_before' => [], 'cycle_incomplete' => 'false', 'unresolved' => 1,
+                default => 'different-actor-or-company',
             };
         }
         $this->invalid($this->feed(Crypt::encryptString(json_encode($frame, JSON_THROW_ON_ERROR))));
@@ -375,5 +394,143 @@ class BankEmailSyncFeedTest extends TestCase
             'sync' => 1, 'source' => 'email', 'sync_context' => str_repeat('a', 64),
             'per_page' => 2, 'sync_cursor' => $page['sync']['next_cursor'],
         ]))->assertUnauthorized();
+    }
+
+    /** A repeatedly incomplete head must not prevent older scan pages, and only a later clean cycle clears its evidence. */
+    #[Test]
+    public function incomplete_head_pages_allow_backfill_and_remain_unresolved_until_a_clean_cycle(): void
+    {
+        foreach (range(1, 7) as $id) {
+            $this->movement($id, '2026-11-03 12:00:00');
+        }
+        $head = $this->feed()->assertOk();
+        $cursor = $head->json('meta.sync.retry_cursor');
+        $older = [];
+        for ($step = 0; $step < 10; $step++) {
+            $input = $this->frame($cursor);
+            $page = $this->feed($cursor)->assertOk()->assertJsonPath('meta.sync.unresolved', true);
+            if ($page->json('meta.sync.lane') === 'head') {
+                $cursor = $page->json('meta.sync.retry_cursor');
+                $this->assertSame($input['backfill_before'], $this->frame($cursor)['backfill_before']);
+            } else {
+                array_push($older, ...array_column($page->json('data'), 'id'));
+                $cursor = $page->json('meta.sync.next_cursor');
+                if ($this->frame($cursor)['backfill_before'] === null) {
+                    $page->assertJsonPath('meta.sync.cycle_complete', false)->assertJsonPath('meta.sync.unresolved_after_success', true);
+                    break;
+                }
+            }
+        }
+        $this->assertSame(array_map(fn (int $id): string => $this->uuid($id), [5, 4, 3, 2, 1]), $older);
+        $this->assertFalse($this->frame($cursor)['cycle_incomplete']);
+        $this->assertTrue($this->frame($cursor)['unresolved']);
+
+        // The caller now ACKs the corrected page and every other page of a new cycle.
+        $clean = false;
+        for ($step = 0; $step < 10; $step++) {
+            $page = $this->feed($cursor)->assertOk()->assertJsonPath('meta.sync.unresolved', true);
+            $cursor = $page->json('meta.sync.next_cursor');
+            if ($page->json('meta.sync.cycle_complete')) {
+                $page->assertJsonPath('meta.sync.unresolved_after_success', false);
+                $this->assertFalse($this->frame($cursor)['unresolved']);
+                $clean = true;
+                break;
+            }
+            $page->assertJsonPath('meta.sync.unresolved_after_success', true);
+        }
+        $this->assertTrue($clean);
+        $this->feed($cursor)->assertOk()->assertJsonPath('meta.sync.unresolved', false);
+    }
+
+    /** Incompleteness on a physical wrap belongs to the closed cycle; the next scan starts clean but still unresolved. */
+    #[Test]
+    public function incomplete_wrap_resets_the_cycle_accumulator_but_retains_sticky_unresolved_state(): void
+    {
+        foreach (range(1, 3) as $id) {
+            $this->movement($id, '2026-11-03 12:00:00');
+        }
+        $head = $this->feed()->assertOk();
+        $wrap = $this->feed($head->json('meta.sync.next_cursor'))->assertOk();
+        $wrap->assertJsonPath('meta.sync.cycle_complete', true)->assertJsonPath('meta.sync.unresolved_after_success', false);
+        $retry = $this->frame($wrap->json('meta.sync.retry_cursor'));
+        $this->assertNull($retry['backfill_before']);
+        $this->assertFalse($retry['cycle_incomplete']);
+        $this->assertTrue($retry['unresolved']);
+        $nextHead = $this->feed($wrap->json('meta.sync.retry_cursor'))->assertOk();
+        $nextHead->assertJsonPath('meta.sync.unresolved', true)->assertJsonPath('meta.sync.unresolved_after_success', true);
+        $cleanWrap = $this->feed($nextHead->json('meta.sync.next_cursor'))->assertOk();
+        $cleanWrap->assertJsonPath('meta.sync.cycle_complete', true)
+            ->assertJsonPath('meta.sync.unresolved', true)->assertJsonPath('meta.sync.unresolved_after_success', false);
+        $this->assertFalse($this->frame($cleanWrap->json('meta.sync.next_cursor'))['unresolved']);
+    }
+
+    /** A short head's incomplete outcome also retains evidence instead of claiming that its physical wrap covered the rows. */
+    #[Test]
+    public function short_head_incompleteness_yields_to_backfill_without_a_clean_coverage_claim(): void
+    {
+        $this->movement(1, null);
+        $head = $this->feed()->assertOk()->assertJsonPath('meta.sync.cycle_complete', true);
+        $retry = $this->frame($head->json('meta.sync.retry_cursor'));
+        $this->assertSame('backfill', $retry['next_lane']);
+        $this->assertNull($retry['backfill_before']);
+        $this->assertFalse($retry['cycle_incomplete']);
+        $this->assertTrue($retry['unresolved']);
+        $this->feed($head->json('meta.sync.retry_cursor'))->assertOk()
+            ->assertJsonPath('meta.sync.lane', 'backfill')->assertJsonPath('meta.sync.unresolved', true);
+    }
+
+    /** The new access path is reversible without changing transaction data or the existing indexes. */
+    #[Test]
+    public function sync_order_index_has_the_exact_columns_and_its_rollback_preserves_rows(): void
+    {
+        $id = $this->movement(1, null);
+        $index = collect(Schema::getIndexes('bank_transactions'))->firstWhere('name', 'bank_transactions_sync_order_idx');
+        $this->assertNotNull($index);
+        $this->assertSame(['company_id', 'source', 'created_at', 'id'], $index['columns']);
+        $this->assertFalse($index['unique']);
+        $migration = require database_path('migrations/2026_11_04_080000_add_bank_email_sync_order_index.php');
+        $migration->down();
+        $this->assertNull(collect(Schema::getIndexes('bank_transactions'))->firstWhere('name', 'bank_transactions_sync_order_idx'));
+        $this->assertTrue(DB::table('bank_transactions')->where('id', $id)->exists());
+        $migration->up();
+        $this->assertNotNull(collect(Schema::getIndexes('bank_transactions'))->firstWhere('name', 'bank_transactions_sync_order_idx'));
+        $this->assertTrue(DB::table('bank_transactions')->where('id', $id)->exists());
+    }
+
+    /** Actual SQLite plans must use the composite access path for head, non-NULL seek and NULL seek without a temporary sort. */
+    #[Test]
+    public function sqlite_partition_plans_use_the_sync_index_without_case_or_temporary_sorting(): void
+    {
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            $this->markTestSkipped('SQLite EXPLAIN syntax; PostgreSQL plans are verified separately in a disposable target.');
+        }
+        foreach (range(1, 25) as $id) {
+            $this->movement($id, '2026-11-03 12:00:00');
+        }
+        foreach (range(101, 105) as $id) {
+            $this->movement($id, null);
+        }
+        $queries = [];
+        $record = true;
+        DB::listen(function (QueryExecuted $query) use (&$queries, &$record): void {
+            if ($record && str_starts_with(strtolower($query->sql), 'select ') && str_contains($query->sql, 'from "bank_transactions"')) {
+                $queries[] = [$query->sql, $query->bindings];
+            }
+        });
+        $head = $this->feed()->assertOk();
+        $this->feed($head->json('meta.sync.next_cursor'))->assertOk();
+        $frame = $this->frame($head->json('meta.sync.next_cursor'));
+        $frame['next_lane'] = 'backfill';
+        $frame['backfill_before'] = ['created_at' => null, 'id' => $this->uuid(105)];
+        $this->feed(Crypt::encryptString(json_encode($frame, JSON_THROW_ON_ERROR)))->assertOk();
+        $this->feed(null, ['per_page' => 100])->assertOk();
+        $record = false;
+        $this->assertCount(5, $queries);
+        foreach ($queries as [$sql, $bindings]) {
+            $details = implode(' | ', array_map(fn (object $row): string => $row->detail, DB::select('EXPLAIN QUERY PLAN '.$sql, $bindings)));
+            $this->assertStringContainsString('bank_transactions_sync_order_idx', $details);
+            $this->assertStringNotContainsString('TEMP B-TREE', $details);
+            $this->assertStringNotContainsString('CASE WHEN', strtoupper($sql));
+        }
     }
 }

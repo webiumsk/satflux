@@ -13,17 +13,18 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use JsonException;
 
-/** Bounded overlapping head reads alternate with a durable, stateless history frontier. */
+/** Alternating head/history scans retain admitted incomplete-page state in authenticated bookmarks. */
 final class BankEmailSyncFeed
 {
     private const ORDER = 'created_at:null-last:desc,id:desc';
 
     /**
      * Fetch one bounded lane without counting or summarizing the company's history.
-     * A candidate cursor advances only after the client has durably acknowledged its rows.
+     * Candidate frames propose scan progress after ACK or admitted-incomplete outcomes.
+     * Only a clean full scan cycle clears sticky unresolved state; cursors do not prove global coverage.
      *
      * @param  array<string, mixed>  $input
-     * @return array{rows: Collection<int, BankTransaction>, sync: array{protocol: int, lane: string, next_cursor: string, retry_cursor: string, cycle_complete: bool}}
+     * @return array{rows: Collection<int, BankTransaction>, sync: array{protocol: int, lane: string, next_cursor: string, retry_cursor: string, cycle_complete: bool, unresolved: bool, unresolved_after_success: bool}}
      */
     public function page(Company $company, string $userId, array $input): array
     {
@@ -40,7 +41,7 @@ final class BankEmailSyncFeed
         $validated = $validator->validated();
         $pageSize = (int) ($validated['per_page'] ?? 100);
         $binding = [
-            'protocol' => 1,
+            'protocol' => 2,
             'user_id' => $userId,
             'company_id' => (string) $company->getKey(),
             'source' => 'email',
@@ -60,15 +61,7 @@ final class BankEmailSyncFeed
                 'match.document:id,number,status,total,currency,type',
                 'expense:id,internal_number,title,status,total,currency',
             ]);
-        if ($lane === 'backfill' && $before !== null) {
-            $this->seekBefore($query, $before);
-        }
-        $found = $query
-            ->orderByRaw('CASE WHEN created_at IS NULL THEN 1 ELSE 0 END ASC')
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->limit($pageSize + 1)
-            ->get();
+        $found = $this->readOrderedPage($query, $pageSize + 1, $lane === 'backfill' ? $before : null);
         $hasMore = $found->count() > $pageSize;
         $rows = $found->take($pageSize)->values();
         $last = $rows->last();
@@ -77,25 +70,29 @@ final class BankEmailSyncFeed
         if ($lane === 'head') {
             // A successful head read can seed a new cycle, but cannot jump an
             // existing history frontier when newer rows arrive above it.
-            $complete = $before === null && ! $hasMore;
-            $nextBefore = $complete ? null : ($before ?? $lastPosition);
-            $nextLane = $complete ? 'head' : 'backfill';
+            $wraps = $before === null && ! $hasMore;
+            $nextBefore = $wraps ? null : ($before ?? $lastPosition);
+            $nextLane = $wraps ? 'head' : 'backfill';
         } else {
-            $complete = ! $hasMore;
-            $nextBefore = $complete ? null : $lastPosition;
+            $wraps = ! $hasMore;
+            $nextBefore = $wraps ? null : $lastPosition;
             $nextLane = 'head';
         }
+        $nextIncomplete = $wraps ? false : $frame['cycle_incomplete'];
+        $nextUnresolved = $wraps ? $frame['cycle_incomplete'] : $frame['unresolved'];
 
         return [
             'rows' => $rows,
             'sync' => [
-                'protocol' => 1,
+                'protocol' => 2,
                 'lane' => $lane,
-                'next_cursor' => $this->seal($binding, $nextLane, $nextBefore),
-                // A known incomplete page yields its turn without declaring
-                // any uncovered position processed. Unknown outcomes use neither.
-                'retry_cursor' => $this->seal($binding, $lane === 'head' ? 'backfill' : 'head', $before),
-                'cycle_complete' => $complete,
+                'next_cursor' => $this->seal($binding, $nextLane, $nextBefore, $nextIncomplete, $nextUnresolved),
+                // An admitted incomplete page advances its scan position while
+                // retaining unresolved evidence. Unknown/unadmitted outcomes use neither frame.
+                'retry_cursor' => $this->seal($binding, $lane === 'head' ? 'backfill' : 'head', $nextBefore, ! $wraps, true),
+                'cycle_complete' => $wraps && ! $frame['cycle_incomplete'],
+                'unresolved' => $frame['unresolved'],
+                'unresolved_after_success' => $nextUnresolved,
             ],
         ];
     }
@@ -105,19 +102,19 @@ final class BankEmailSyncFeed
      * Cursors carry no expiry or authorization; the route still enforces the current company owner.
      *
      * @param  array<string, int|string>  $binding
-     * @return array{next_lane: string, backfill_before: array{created_at: ?string, id: string}|null}
+     * @return array{next_lane: string, backfill_before: array{created_at: ?string, id: string}|null, cycle_incomplete: bool, unresolved: bool}
      */
     private function readFrame(?string $cursor, array $binding): array
     {
         if ($cursor === null) {
-            return ['next_lane' => 'head', 'backfill_before' => null];
+            return ['next_lane' => 'head', 'backfill_before' => null, 'cycle_incomplete' => false, 'unresolved' => false];
         }
         try {
             $frame = json_decode(Crypt::decryptString($cursor), true, 16, JSON_THROW_ON_ERROR);
         } catch (DecryptException|JsonException) {
             $this->invalidCursor();
         }
-        $expectedKeys = [...array_keys($binding), 'next_lane', 'backfill_before'];
+        $expectedKeys = [...array_keys($binding), 'next_lane', 'backfill_before', 'cycle_incomplete', 'unresolved'];
         if (! is_array($frame) || count($frame) !== count($expectedKeys)
             || array_diff(array_keys($frame), $expectedKeys) !== []) {
             $this->invalidCursor();
@@ -128,7 +125,9 @@ final class BankEmailSyncFeed
             }
         }
         if (! in_array($frame['next_lane'] ?? null, ['head', 'backfill'], true)
-            || ! array_key_exists('backfill_before', $frame)) {
+            || ! array_key_exists('backfill_before', $frame)
+            || ! is_bool($frame['cycle_incomplete'] ?? null) || ! is_bool($frame['unresolved'] ?? null)
+            || ($frame['cycle_incomplete'] && ! $frame['unresolved'])) {
             $this->invalidCursor();
         }
         $before = $frame['backfill_before'];
@@ -141,29 +140,39 @@ final class BankEmailSyncFeed
             }
         }
 
-        return ['next_lane' => $frame['next_lane'], 'backfill_before' => $before];
+        return [
+            'next_lane' => $frame['next_lane'], 'backfill_before' => $before,
+            'cycle_incomplete' => $frame['cycle_incomplete'], 'unresolved' => $frame['unresolved'],
+        ];
     }
 
     /**
-     * Keep NULL timestamps last and include every lower UUID within a timestamp tie.
+     * Read index-ordered non-NULL timestamps before filling from the NULL bucket.
+     * Tuple bounds avoid an OR seek or CASE sort; excluded snapshots may still require extra index visits.
      *
      * @param  Builder<BankTransaction>  $query
-     * @param  array{created_at: ?string, id: string}  $before
+     * @param  array{created_at: ?string, id: string}|null  $before
+     * @return Collection<int, BankTransaction>
      */
-    private function seekBefore(Builder $query, array $before): void
+    private function readOrderedPage(Builder $query, int $limit, ?array $before): Collection
     {
-        if ($before['created_at'] === null) {
-            $query->whereNull('created_at')->where('id', '<', $before['id']);
-
-            return;
+        if ($before !== null && $before['created_at'] === null) {
+            return (clone $query)->whereNull('created_at')->where('id', '<', $before['id'])
+                ->orderByDesc('created_at')->orderByDesc('id')->limit($limit)->get();
         }
-        $query->where(function (Builder $older) use ($before): void {
-            $older->whereNull('created_at')
-                ->orWhere('created_at', '<', $before['created_at'])
-                ->orWhere(function (Builder $tied) use ($before): void {
-                    $tied->where('created_at', $before['created_at'])->where('id', '<', $before['id']);
-                });
-        });
+        $dated = (clone $query)->whereNotNull('created_at');
+        if ($before !== null) {
+            $dated->whereRowValues(['created_at', 'id'], '<', [$before['created_at'], $before['id']]);
+        }
+        $rows = $dated->orderByDesc('created_at')->orderByDesc('id')->limit($limit)->get();
+        $remaining = $limit - $rows->count();
+        if ($remaining > 0) {
+            $undated = (clone $query)->whereNull('created_at')
+                ->orderByDesc('created_at')->orderByDesc('id')->limit($remaining)->get();
+            $rows = $rows->concat($undated);
+        }
+
+        return $rows->values();
     }
 
     /**
@@ -193,10 +202,11 @@ final class BankEmailSyncFeed
      * @param  array<string, int|string>  $binding
      * @param  array{created_at: ?string, id: string}|null  $before
      */
-    private function seal(array $binding, string $nextLane, ?array $before): string
+    private function seal(array $binding, string $nextLane, ?array $before, bool $cycleIncomplete, bool $unresolved): string
     {
         return Crypt::encryptString(json_encode([
             ...$binding, 'next_lane' => $nextLane, 'backfill_before' => $before,
+            'cycle_incomplete' => $cycleIncomplete, 'unresolved' => $unresolved,
         ], JSON_THROW_ON_ERROR));
     }
 

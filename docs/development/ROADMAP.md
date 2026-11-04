@@ -1,5 +1,15 @@
 # Development roadmap
 
+## Current: publish accepted scan-progress/index repair and repeat review - 2026-11-04
+
+Both independent reviewers accept runtime4 0090c754...32557 / source6
+d075ba2e...9c589. Main 1,675/173, build/static and backend 41/264 passed; query
+plans and rollback are verified on disposable data. Publish exactly ten reviewed
+paths, verify committed bytes/remote SHA, complete fresh CI including native E2E,
+then request actual manual CodeRabbit review after quota. Preserve unresolved
+obligations, strict owner/coverage/Unknown boundaries and ordinary compatibility.
+Continue valid repairs until all green. No merge/deployment or production action.
+
 ## Current: publish accepted progressive-history repair and complete review - 2026-11-04
 
 Runtime13 d4b6bcc4...ab51a/source-tests21 6c628d69...c232bf are independently

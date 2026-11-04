@@ -1,5 +1,33 @@
 # Project state
 
+## PR427 scan-progress and index repair independently accepted - 2026-11-04
+
+Both reviewers accept runtime-four manifest
+`0090c75404f8564b373b10dc30f5b7b475b1e5ff7fc69c619988202c73032557`
+and source/tests-six manifest
+`d075ba2ee6bcff1b82cc4cd1f84bf61a63fe4e57b8a3226fa27a5a6bfa89c589`.
+The two findings from actual review 5765381601 are repaired: protocol 2 advances
+scan positions while retaining unresolved coverage, and partitioned reads use a
+reversible composite index. Unknown, unverified owner admission, strict coverage,
+IndexedDB storage and credential ordering retain their existing boundaries.
+
+Main full frontend: 1,675 tests / 173 files, build 69 seconds, lint zero errors /
+48 known warnings passed. Author 147 / six focused suites and typecheck 111
+existing / none new passed. Backend 41 HTTP/SQLite tests / 264 assertions and
+Pint passed; local PHPStan has no new findings beyond the inherited Scramble gap.
+Independent QA passed 262 repository cases / nine suites, 31 progress probes,
+nine retained Evolu/SQLite and 14 credential-order probes. Security passed 221 /
+six suites, 31 progress probes and 41 PHP tests / 264 assertions. Scopes overlap.
+Both reviewed the author's 60k-row SQLite/PostgreSQL 16.11 index plans; QA also
+executed equivalent SQLite ordering/rollback probes. No independent PostgreSQL
+execution is claimed. Standard index construction requires deployment planning.
+
+Publish exactly ten accepted paths, verify committed blobs and remote SHA, then
+complete all fresh CI and another actual manual CodeRabbit review after quota.
+Last accepted request was 08:10:15 UTC; do not duplicate an active review. Backend
+must deploy first or with the protocol 2 client; ordinary pagination remains
+compatible. No production DDL, replay, merge/deployment or unrelated publication.
+
 ## PR427 progressive history repair independently accepted - 2026-11-04
 
 The repair addresses all three inline and one supplemental finding from actual

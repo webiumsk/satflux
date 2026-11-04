@@ -18,13 +18,15 @@ export interface ApiEnvelope<T> {
     message?: string;
 }
 
-/** Authenticated opaque bank-sync bookmarks; positions advance only after client import acknowledgement. */
+/** Authenticated scan frames keep unresolved coverage explicit until a fully clean acknowledged cycle. */
 export interface BankEmailSyncMeta {
-    protocol: 1;
+    protocol: 2;
     lane: 'head' | 'backfill';
     next_cursor: string;
     retry_cursor: string;
     cycle_complete: boolean;
+    unresolved: boolean;
+    unresolved_after_success: boolean;
 }
 
 export interface BankTransactionListMeta {

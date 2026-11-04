@@ -1,5 +1,30 @@
 # Development decision log
 
+## 2026-11-04 - Separate scan progress from coverage behind incomplete pages
+
+The R11 retry frontier preserves uncovered rows but can indefinitely revisit the
+same poisoned initial page. Revise that tradeoff with protocol 2: encrypted scan
+positions may progress after an admitted known incomplete result, while durable
+unresolved and current-cycle-incomplete flags retain the retry obligation. Full
+cyclic rescans revisit surviving rows without unbounded lists or raw local data.
+Only a fully clean acknowledged cycle can clear the unresolved flag. This is not
+a complete-coverage ACK; strict importer, owner and Unknown boundaries stay exact.
+
+Return both pre-page unresolved and unresolved-after-success booleans. Latch known
+pre-state before import; replace status only after successful selected-cursor CAS.
+This covers a remount whose first page would cleanly wrap but loses its CAS race.
+An error before any metadata response retains existing best-effort behavior and
+makes no fresh coverage claim. Protocol 2 prevents v1 clients silently interpreting
+new semantics; ordinary production pagination remains compatible.
+
+Accept a scoped reversible composite index and portable partitioned range reads
+for the reviewed performance defect. Verify actual plans without claiming constant
+rows examined when the existing balance-snapshot filter rejects candidates. Require
+independent frozen-byte QA/security, full fresh CI and actual clean review. Both reviewers accept runtime4 0090c754...32557 / source6 d075ba2e...9c589.
+Main 1,675/173, build/static and backend 41/264 pass; publish only ten reviewed
+paths and verify exact bytes before fresh CI and actual manual review. No
+production migration, replay, merge/deployment or financial-policy change.
+
 ## 2026-11-04 - Advance history only after admitted page coverage
 
 Replace the full-walk/discard-all budget tradeoff with at most two bounded read

@@ -1,5 +1,81 @@
 # Expense defaults and bank-mail reconciliation
 
+## Scan-progress and indexed-feed verification - 2026-11-04
+
+The frozen runtime-four manifest is
+`0090c75404f8564b373b10dc30f5b7b475b1e5ff7fc69c619988202c73032557`;
+the source/tests-six manifest is
+`d075ba2ee6bcff1b82cc4cd1f84bf61a63fe4e57b8a3226fa27a5a6bfa89c589`.
+Publication is limited to those six paths and four development documents.
+Importer, expected-owner verification, IndexedDB store and credential queue have
+no changes from a0cc390e.
+
+Main full frontend: 1,675 tests / 173 files passed; production build passed in
+69 seconds. Lint has zero errors / 48 existing warnings. Author focused tests:
+147 cases / six suites passed, scoped lint is clean and typecheck has 111 existing
+findings / none new. Locale keys are unchanged; all existing ratchets remain.
+Backend: 41 real HTTP/SQLite tests / 264 assertions and Pint on three files passed.
+Full local PHPStan has no new finding beyond the inherited optional Scramble gap;
+fresh installed-dependency CI remains authoritative.
+
+Prepared query-plan probes use 60,000 synthetic rows in SQLite 3.51.2 and
+PostgreSQL 16.11. All four head/tuple-seek/null-fill/null-seek queries use the named
+composite index without sort nodes. The old CASE still sorts after adding only
+the index. PostgreSQL probes include residual snapshot-filter visits (18 or 16
+rejections for 101 returned rows); this does not prove constant rows examined.
+SQLite migration up/down/re-up and PostgreSQL index removal retain fixture rows.
+The standard Laravel CREATE INDEX is not CONCURRENTLY; production build timing and
+migration execution belong to a separately approved deployment. No production DDL
+or data was touched; the owned temporary PostgreSQL environment was removed.
+
+Both independent reviewers accept the exact runtime-four/source-six manifests.
+QA independently passed 262 repository cases / nine suites, 31 Vue progress probes,
+nine retained Evolu/native SQLite probes and 14 credential-order probes. Equivalent
+SQLite plan/order/rollback probes returned 400 ordered rows without omissions or
+duplicates and retained all 403 fixture rows after index removal. Security passed
+221 repository cases / six suites, 31 Vue progress probes and 41 PHP tests / 264
+assertions in isolated SQLite memory, with one inherited deprecation. Both reviewed
+the supplied PostgreSQL plan artifacts without independently executing PostgreSQL.
+Scopes overlap and are not summed. All six hashes match before and after review.
+Fresh full CI and actual manual CodeRabbit review remain required before all-green.
+
+## Scan-progress and indexed-feed repair contract - 2026-11-04
+
+Actual review 5765381601 on a0cc390e found a missing feed-ordering index and a
+known-incomplete-page retry loop. All four CI jobs and five pre-merge checks passed,
+but these valid findings require a new repair and fresh verification.
+
+Protocol 2 distinguishes scan progress from financial coverage. For an admitted
+known incomplete page, the retry cursor advances only the scan schedule, records
+unresolved=true and marks the current cycle incomplete. Dirty wraps retain the
+unresolved obligation while starting a fresh cycle accumulator. Every full cycle
+revisits surviving rows; only a complete acknowledged clean cycle can clear status.
+No exact-range coverage claim, invalid-row dropping, re-auto-matching or financial
+compensation is introduced. Unknown and unverified admission never save a candidate.
+Strict page ACK, expected-owner proof and existing payment eligibility remain exact.
+
+Authenticated cursor frames carry both flags with existing user/company/source/
+context/page-size/order bindings. Metadata includes required protocol 2 booleans
+unresolved (before the page) and unresolved_after_success (the successful next
+candidate). The client latches true before import and replaces the error state
+only after selected-candidate CAS succeeds. Known incomplete selects retry/true;
+conflict, failed storage, stale scope or Unknown cannot establish a clean cycle.
+A read failure before server metadata remains best-effort without a fresh coverage
+claim. IDB still stores only opaque ciphertext and hashed context; no new plaintext
+status, schema, keys or unbounded retry list. Each refresh still reads at most two
+bounded chunks and never races entered financial work.
+
+The feed gains a reversible (company_id, source, created_at, id) index and separate
+non-null and null range reads, preserving timestamp-descending/UUID-descending,
+null-last order and a combined page-size-plus-one result bound. Query-plan evidence
+must cover head, timestamp ties and null backfill; existing balance-snapshot filters
+can still require examining rejected candidates. Ordinary listing and authorization
+stay unchanged. No SQL injection exists in the previous constant CASE expression;
+the valid issue is its ordering plan. New client/backend must agree on protocol 2;
+ordinary pagination remains compatible. Require independent exact-byte QA/security,
+all fresh CI and actual manual review. No production replay, migration execution,
+merge or deployment is performed.
+
 ## Progressive history repair contract - 2026-11-04
 
 Actual manual review5764391436 completed on `b78d09b8` with three inline and one

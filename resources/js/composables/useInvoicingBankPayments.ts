@@ -604,9 +604,10 @@ function useLocalInvoicingBankPayments(
 
     /** Cursor frames are opaque: validate only their transport contract, never infer positions from ciphertext. */
     function syncMeta(value: BankEmailSyncMeta | undefined): BankEmailSyncMeta {
-        if (!value || value.protocol !== 1 || !["head", "backfill"].includes(value.lane)
+        if (!value || value.protocol !== 2 || !["head", "backfill"].includes(value.lane)
             || typeof value.next_cursor !== "string" || !value.next_cursor || typeof value.retry_cursor !== "string"
-            || !value.retry_cursor || typeof value.cycle_complete !== "boolean") throw new Error("bank_sync_protocol_unavailable");
+            || !value.retry_cursor || typeof value.cycle_complete !== "boolean"
+            || typeof value.unresolved !== "boolean" || typeof value.unresolved_after_success !== "boolean") throw new Error("bank_sync_protocol_unavailable");
         return value;
     }
 
@@ -636,7 +637,7 @@ function useLocalInvoicingBankPayments(
 
     /**
      * Import at most two completed chunks, releasing read deadlines before any financial work.
-     * Persist opaque progress only after durable coverage; Unknown never advances that chunk.
+     * Persist covered progress or an admitted unresolved scan frame; Unknown never advances that chunk.
      */
     async function syncInboundCompany(localCompanyId: string) {
         if (disposed) return;
@@ -689,8 +690,8 @@ function useLocalInvoicingBankPayments(
                         const appOwner = await evolu.appOwner;
                         controls();
                         stage = "checkpoint";
-                        const slot = await sha256Hex(JSON.stringify([appOwner.id, localCompanyId, "email", 1]));
-                        const context = await sha256Hex(JSON.stringify([appOwner.id, ownerId, localCompanyId, bridge.bridgeCompanyId, routing, account, "email", 1]));
+                        const slot = await sha256Hex(JSON.stringify([appOwner.id, localCompanyId, "email", 2]));
+                        const context = await sha256Hex(JSON.stringify([appOwner.id, ownerId, localCompanyId, bridge.bridgeCompanyId, routing, account, "email", 2]));
                         controls();
                         if (!slot || !context) return fail("bank_sync_checkpoint_unavailable");
                         let checkpoint = await readBankSyncCheckpoint(slot, signal);
@@ -737,6 +738,7 @@ function useLocalInvoicingBankPayments(
             }
             if (!page || !session.state || !current()) break;
             const captured = session.state;
+            if (page.meta.unresolved) incomplete = true;
             const result = await importInboundServerTransactionsPageAsync(evolu, localCompanyId as CompanyId, page.rows, captured.ownerId);
             if (!current()) return;
             if (!result || result.scope_verified !== true || typeof result.complete !== "boolean"
@@ -750,6 +752,7 @@ function useLocalInvoicingBankPayments(
             if (!current()) return;
             if (saved !== "saved") break;
             captured.checkpoint = next;
+            incomplete = result.complete ? page.meta.unresolved_after_success : true;
             if (result.complete && page.meta.cycle_complete) break;
         }
         if (incomplete && current()) fail("bank_sync_page_incomplete");
