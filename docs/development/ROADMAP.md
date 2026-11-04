@@ -1,5 +1,17 @@
 # Development roadmap
 
+## Current: publish PR427 fourth review fixes - 2026-11-04
+
+All three new review items and two defects exposed by independent regression
+checks are repaired on the existing owned branch. Both reviewers accept the same
+runtime4/source-test10 manifests (8f71c874...bf1f0 / 8c24ef15...d6918).
+Main full frontend1443/164, final build/lint/typecheck/locales pass with unchanged ratchets.
+Publish only the reviewed14 paths, verify their committed bytes and remote SHA,
+resolve the one new inline thread, and require exact-head CI. Preserve known
+browser/device/import limits, current-company feedback and unknown-outcome
+quarantine. No server, key, Store or billing authority change; no merge/deployment
+or production replay is included. Prior CI validates f0849584 only.
+
 ## Current: publish PR427 third-round repair - 2026-11-04
 
 HTML-only notification layout, refresh-error classification and interrupted-import

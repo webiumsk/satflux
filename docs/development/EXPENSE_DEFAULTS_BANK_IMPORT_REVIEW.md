@@ -1,5 +1,70 @@
 # Expense defaults and bank-mail reconciliation
 
+## Fourth review contract - 2026-11-04
+
+The owner's further CodeRabbit request covers the review of published `f0849584`:
+one inline availability finding and two follow-ups. Bound only the inbox detail
+and imported-acknowledgment HTTP calls below the 30-second reconciliation wait
+deadline. Retain the authenticated API instance, stable IDs and worker completion
+proof. A detail failure creates no expense; an acknowledgment timeout preserves
+the committed expense and attachment. The remote acknowledgment may already have
+succeeded, so there is no rollback, compensation or automatic retry claim.
+
+A rejected match insert must return false to automatic matching and reject the
+manual action visibly. Known validation rejection must drain normally; actual
+unknown worker outcomes retain quarantine. Do not change credit eligibility,
+payment authority, owner routing or existing unlink/paid-edit policies.
+
+Real Evolu regression testing exposed a missing scope refresh before newly
+imported credits create match children. Use the existing scoped commit helper
+for the synchronous inbound row batch, then verify every actual ID/company/hash
+against that fresh worker-backed context before matching or counters. The child
+owner guard remains strict; unlocked import retains its previous completion path.
+This adds only the three bounded auxiliary reads needed to refresh scope metadata,
+with no additional worker response packet, marker or per-row read.
+
+Capture the selected company for batch actions, suppress errors after a company
+change and refresh only the company that initiated the action. Independently
+guard server transaction/summary/loading responses by company and request
+generation, including A-B-A. Fully handled bank mutations and post-action list
+refreshes opt out of the unscoped global error flash; ordinary API callers keep
+their existing default. Page handlers retain visible current-company errors.
+Independently review the four bounded source changes and their timeout,
+failed-write and deferred-company regressions before main-owned PR427 publication.
+Graphify remains unavailable because its local graph is absent. No production
+access, dependency installation, merge or deployment is included.
+
+## Fourth review evidence - 2026-11-04
+
+Independent QA and security accept the same final four runtime files and ten
+source/test files with no mismatches or unresolved findings. Canonical SHA256
+manifests contain sorted repository-relative paths, two spaces after each hash
+and LF line endings:
+
+- Runtime4: `8f71c874b0e81eb1fde3291405d668a13d7b08b53319440d491ec8ff831bf1f0`.
+- Source/tests10: `8c24ef15357f2a4268a049c6ff29ea230a3a97c1bb24b52e81658dd7587d6918`.
+
+QA independently passes 164 repository cases across nine suites and 12 temporary
+cases across three suites. These include real Evolu/native SQLite with the actual
+document payment helper for private/shared owners, timeout and lost-ACK recovery,
+known validation rejection versus unknown quarantine, and Axios/server-composable
+context/error handling. Security independently passes 66 repository cases across
+five suites and seven native cases across two suites. Scopes overlap; these counts
+must not be added as distinct coverage. HTTP, locking and worker adapters remain
+synthetic, with no browser/OPFS or real-network E2E claim.
+
+Main full frontend passes 1,443 cases across 164 files on the frozen source/test
+bytes; 51 focused page/composable cases also pass. Author passes 32 focused cases,
+including the atomic row-batch regression: 34 query calls, five worker response
+packets, eight fixed query keys, with no per-row reads. Full lint retains 48 known
+warnings and zero errors; typecheck retains 111 existing findings and none new.
+Production build and five-language locale parity pass with unchanged ratchets.
+Local PHP is not rerun for this browser-only delta. Earlier exact-head CI
+`41747417307` validates `f0849584`, not the new working tree. Main must commit only
+reviewed paths, verify committed manifest bytes and remote SHA, resolve the single
+new inline thread and verify new exact-head CI. No merge, deployment or production
+replay is performed.
+
 ## Authorized scope and observed evidence
 
 On 2026-11-03 the owner requested linked defaults for new expenses and diagnosis

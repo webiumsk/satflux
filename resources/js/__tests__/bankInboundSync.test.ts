@@ -193,7 +193,7 @@ describe("bank movement bridge synchronization", () => {
         mocks.localFirst = false;
         const { bank } = bankFor("server-company-uuid");
         await bank.load();
-        expect(mocks.list).toHaveBeenCalledWith("server-company-uuid", { per_page: 50 });
+        expect(mocks.list).toHaveBeenCalledWith("server-company-uuid", { per_page: 50 }, {});
         expect(mocks.ensure).not.toHaveBeenCalled();
         expect(mocks.importInbound).not.toHaveBeenCalled();
     });

@@ -973,6 +973,11 @@ async function load() {
   await bank.load(matchFilter.value);
 }
 
+async function loadAfterBankAction() {
+  if (!hasBankAccount.value) return;
+  await bank.load(matchFilter.value, { skipErrorFlash: true });
+}
+
 async function loadBatches() {
   if (!hasBankAccount.value) return;
   await bank.loadBatches();
@@ -1138,16 +1143,20 @@ async function upload() {
 }
 
 async function autoMatchBatch(batchId: string) {
+  const requestedCompany = companyId.value;
   try {
     await bank.autoMatchBatch(batchId);
   } catch (err: unknown) {
-    flashStore.error(t(reconciliationErrorKey(err) || expenseMutationErrorKey(err) || "invoicing.bank_auto_match_failed"));
+    if (companyId.value === requestedCompany) {
+      flashStore.error(t(reconciliationErrorKey(err) || expenseMutationErrorKey(err) || "invoicing.bank_auto_match_failed"));
+    }
     return;
   }
+  if (companyId.value !== requestedCompany) return;
   try {
-    await load();
+    await loadAfterBankAction();
   } catch {
-    flashStore.error(t("invoicing.bank_matching_refresh_failed"));
+    if (companyId.value === requestedCompany) flashStore.error(t("invoicing.bank_matching_refresh_failed"));
   }
 }
 
@@ -1201,10 +1210,11 @@ async function runBankAction(action: () => Promise<void>): Promise<boolean> {
 }
 
 async function refreshBankAction() {
+  const requestedCompany = companyId.value;
   try {
-    await load();
+    await loadAfterBankAction();
   } catch {
-    flashStore.error(t("invoicing.bank_action_refresh_failed"));
+    if (companyId.value === requestedCompany) flashStore.error(t("invoicing.bank_action_refresh_failed"));
   }
 }
 

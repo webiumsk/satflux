@@ -34,6 +34,8 @@ const api = axios.create({
     },
     withCredentials: true,
 });
+// These bridge requests can run while the browser reconciliation lock is held.
+const EFAKTURA_INBOX_REQUEST_TIMEOUT_MS = 10_000;
 
 // Helper: get CSRF token from cookie (shared for api and postWeb)
 function getCsrfToken(): string | null {
@@ -1132,8 +1134,8 @@ export const invoicingApi = {
         },
     },
     bankTransactions: {
-        async list<T = unknown>(companyId: string, params: Record<string, unknown> = {}): Promise<{ data: T[]; meta?: { summary?: unknown; last_page?: number } }> {
-            const { data } = await api.get<{ data?: T[]; meta?: { summary?: unknown; last_page?: number } }>(`/invoicing/companies/${companyId}/bank-transactions`, { params });
+        async list<T = unknown>(companyId: string, params: Record<string, unknown> = {}, options: { skipErrorFlash?: boolean } = {}): Promise<{ data: T[]; meta?: { summary?: unknown; last_page?: number } }> {
+            const { data } = await api.get<{ data?: T[]; meta?: { summary?: unknown; last_page?: number } }>(`/invoicing/companies/${companyId}/bank-transactions`, { ...options, params });
             return { data: data.data ?? [], meta: data.meta };
         },
         async batches<T = unknown>(companyId: string): Promise<T[]> {
@@ -1150,21 +1152,21 @@ export const invoicingApi = {
             });
             return data.data;
         },
-        async autoMatchBatch(companyId: string, batchId: string): Promise<void> {
-            await api.post(`/invoicing/companies/${companyId}/bank-transactions/batches/${batchId}/auto-match`);
+        async autoMatchBatch(companyId: string, batchId: string, options: { skipErrorFlash?: boolean } = {}): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/bank-transactions/batches/${batchId}/auto-match`, undefined, options);
         },
         async suggestions<T = unknown>(companyId: string, transactionId: string): Promise<T[]> {
             const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/suggestions`);
             return data.data ?? [];
         },
-        async match(companyId: string, transactionId: string, businessDocumentId: string): Promise<void> {
-            await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/match`, { business_document_id: businessDocumentId });
+        async match(companyId: string, transactionId: string, businessDocumentId: string, options: { skipErrorFlash?: boolean } = {}): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/match`, { business_document_id: businessDocumentId }, options);
         },
-        async ignore(companyId: string, transactionId: string): Promise<void> {
-            await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/ignore`);
+        async ignore(companyId: string, transactionId: string, options: { skipErrorFlash?: boolean } = {}): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/ignore`, undefined, options);
         },
-        async unmatch(companyId: string, transactionId: string): Promise<void> {
-            await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/unmatch`);
+        async unmatch(companyId: string, transactionId: string, options: { skipErrorFlash?: boolean } = {}): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/unmatch`, undefined, options);
         },
         async createExpense(companyId: string, transactionId: string, payload: Record<string, unknown>): Promise<void> {
             await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/create-expense`, payload);
@@ -1211,11 +1213,15 @@ export const invoicingApi = {
             return data.data ?? [];
         },
         async inboxDetail<T = unknown>(companyId: string, receiptId: string): Promise<T> {
-            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}`);
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}`, {
+                timeout: EFAKTURA_INBOX_REQUEST_TIMEOUT_MS,
+            });
             return data.data;
         },
         async inboxImported(companyId: string, receiptId: string): Promise<void> {
-            await api.post(`/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}/imported`);
+            await api.post(`/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}/imported`, undefined, {
+                timeout: EFAKTURA_INBOX_REQUEST_TIMEOUT_MS,
+            });
         },
         async inboxDismiss(companyId: string, receiptId: string): Promise<void> {
             await api.post(`/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}/dismiss`);

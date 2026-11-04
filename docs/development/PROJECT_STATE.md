@@ -1,5 +1,27 @@
 # Project state
 
+## PR427 fourth review accepted locally - 2026-11-04
+
+The owner's further CodeRabbit request covers one new inline finding and two
+follow-ups on published `f0849584`. The bounded repair adds 10-second inbox
+request deadlines, visible failed manual matches, accurate automatic-match counts,
+fresh scoped parent ownership for new credit rows, and company/request guards for
+server refreshes. Fully handled bank actions opt out of the global error flash;
+ordinary API defaults, auth/CSRF and strict ownership remain unchanged.
+
+Independent QA/security accept runtime4 manifest
+`8f71c874b0e81eb1fde3291405d668a13d7b08b53319440d491ec8ff831bf1f0`
+and source/test10 manifest
+`8c24ef15357f2a4268a049c6ff29ea230a3a97c1bb24b52e81658dd7587d6918`.
+QA passes 164 repository and 12 temporary cases; security passes 66 repository and
+seven native cases with overlapping scopes. Main full1443/164, focused51, author32, lint48known,
+typecheck111existing/no-new, build and locales pass with unchanged baselines.
+Synthetic adapters do not establish browser/OPFS E2E. Preserve inherited unlocked
+import limits and Unknown quarantine. See the review note for exact evidence.
+Publish only the reviewed14-path delta, verify the remote SHA and new exact-head
+CI; previous CI41747417307 applies only to f0849584. No production access, replay,
+merge or deployment. Preserve unrelated primary work.
+
 ## PR427 third-round repair independently reviewed - 2026-11-04
 
 A completed review of3f47a24b adds three inline findings and one recovery item.

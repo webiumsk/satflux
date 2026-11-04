@@ -95,6 +95,24 @@ describe('batch matching errors', () => {
     expect(mocks.flashError).toHaveBeenCalledExactlyOnceWith('invoicing.bank_action_refresh_failed');
   });
 
+  it('discards a failed saved-action refresh after switching companies', async () => {
+    transactions.value = [{ id: 'synthetic-tx', booked_at: '2026-11-04', amount: '19.00', currency: 'EUR', direction: 'debit', match_status: 'unmatched' }];
+    await render();
+    await wrapper!.findAll('button').find((button) => button.text() === 'invoicing.bank_tab_transactions')!.trigger('click');
+    const pending = deferred<void>();
+    mocks.load.mockClear();
+    mocks.load.mockReturnValueOnce(pending.promise);
+    await wrapper!.findAll('button').find((button) => button.text() === 'invoicing.bank_ignore')!.trigger('click');
+    await flushPromises();
+    expect(mocks.load).toHaveBeenCalledOnce();
+    route.params.companyId = 'local-b';
+    await flushPromises();
+    pending.reject(new Error('synthetic refresh failure'));
+    await flushPromises();
+    expect(mocks.ignore).toHaveBeenCalledExactlyOnceWith('synthetic-tx');
+    expect(mocks.flashError).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['bank_reconciliation_wait_timed_out', 'invoicing.bank_matching_busy'],
     ['bank_reconciliation_outcome_unknown', 'invoicing.bank_matching_unknown'],
@@ -119,6 +137,7 @@ describe('batch matching errors', () => {
     await flushPromises();
     expect(mocks.load).toHaveBeenCalledOnce();
     expect(mocks.flashError).not.toHaveBeenCalled();
+    expect(mocks.load).toHaveBeenCalledWith('all', { skipErrorFlash: true });
   });
 
   it('reports a refresh failure separately after matching succeeds without retrying the match', async () => {
@@ -131,6 +150,40 @@ describe('batch matching errors', () => {
     expect(mocks.autoMatchBatch).toHaveBeenCalledExactlyOnceWith('synthetic-batch');
     expect(mocks.load).toHaveBeenCalledOnce();
     expect(mocks.flashError).toHaveBeenCalledExactlyOnceWith('invoicing.bank_matching_refresh_failed');
+  });
+
+  it.each(['resolve', 'reject'] as const)('discards a pending batch %s after switching companies', async (outcome) => {
+    batches.value = [{ id: 'synthetic-batch', imported_count: 1, row_count: 1 }];
+    const pending = deferred<void>();
+    mocks.autoMatchBatch.mockReturnValueOnce(pending.promise);
+    await render();
+    await wrapper!.findAll('button').find((button) => button.text() === 'invoicing.bank_auto_match_batch')!.trigger('click');
+    route.params.companyId = 'local-b';
+    await flushPromises();
+    mocks.load.mockClear();
+    if (outcome === 'resolve') pending.resolve();
+    else pending.reject(new Error('bank_reconciliation_outcome_unknown'));
+    await flushPromises();
+    expect(mocks.autoMatchBatch).toHaveBeenCalledExactlyOnceWith('synthetic-batch');
+    expect(mocks.load).not.toHaveBeenCalled();
+    expect(mocks.flashError).not.toHaveBeenCalled();
+  });
+
+  it('discards a failed post-match refresh after switching companies', async () => {
+    batches.value = [{ id: 'synthetic-batch', imported_count: 1, row_count: 1 }];
+    await render();
+    const pending = deferred<void>();
+    mocks.load.mockClear();
+    mocks.load.mockReturnValueOnce(pending.promise);
+    await wrapper!.findAll('button').find((button) => button.text() === 'invoicing.bank_auto_match_batch')!.trigger('click');
+    await flushPromises();
+    expect(mocks.load).toHaveBeenCalledOnce();
+    route.params.companyId = 'local-b';
+    await flushPromises();
+    pending.reject(new Error('synthetic refresh failure'));
+    await flushPromises();
+    expect(mocks.autoMatchBatch).toHaveBeenCalledExactlyOnceWith('synthetic-batch');
+    expect(mocks.flashError).not.toHaveBeenCalled();
   });
 
   it('keeps recovery matching available for persisted rows even when the verified count is zero', async () => {

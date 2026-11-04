@@ -31,7 +31,7 @@ import type { EvoluDocumentRow } from "./documentMap";
 import { markLocalDocumentPaidWithAmount, unmarkLocalDocumentPaid } from "./documentCrud";
 import type { EvoluExpenseRow } from "./expenseMap";
 import { insertLocalExpenseInReconciliation, nextLocalExpenseInternalNumber, type ExpenseSavePayload } from "./expenseCrud";
-import { withExpenseReconciliation, assertExpenseCompanyOwner, expenseReconciliationScope, type ExpenseReconciliationScope } from "./expenseReconciliation";
+import { withExpenseReconciliation, assertExpenseCompanyOwner, expenseReconciliationScope, commitExpenseMutation, type ExpenseReconciliationScope } from "./expenseReconciliation";
 import { toAppRows } from "./queryLoad";
 import type {
     BankImportBatchId,
@@ -132,7 +132,7 @@ function applyMatch(
     matchedAmount: number,
     matchType: BankMatchType,
     ctx: BankPaymentContext,
-): void {
+): boolean {
     const match = evolu.insert("bankTransactionMatch", {
         bankTransactionId: transaction.id,
         businessDocumentId: document.id,
@@ -141,7 +141,7 @@ function applyMatch(
         matchedAt: new Date().toISOString(),
     });
     if (!match.ok) {
-        return;
+        return false;
     }
 
     evolu.update("bankTransaction", {
@@ -179,6 +179,7 @@ function applyMatch(
 
     const tx = ctx.transactions.find((row) => row.id === transaction.id);
     if (tx) tx.matchStatus = "matched";
+    return true;
 }
 
 export async function tryAutoMatchTransaction(
@@ -194,7 +195,7 @@ export async function tryAutoMatchTransaction(
     const document = findExactMatchDocument(transaction.companyId, transaction, ctx.documents);
     if (!document) return false;
 
-    applyMatch(
+    return applyMatch(
         evolu,
         transaction,
         document,
@@ -202,7 +203,6 @@ export async function tryAutoMatchTransaction(
         "auto",
         ctx,
     );
-    return true;
 }
 
 export function bankMatchSuggestions(
@@ -512,7 +512,7 @@ async function importInboundServerTransactions(
     }
     const created: Array<{ id: BankTransactionId; dedupeHash: string }> = [];
     if (prepared.length > 0) {
-        const completed = await awaitBankMutation(evolu, (onComplete) => {
+        const insertPrepared = (onComplete: () => void) => {
             // Validation of any actual insert aborts Evolu's whole synchronous
             // batch. Never report earlier rows as imported after that abort.
             for (const [index, { payload, dedupeHash }] of prepared.entries()) {
@@ -522,9 +522,12 @@ async function importInboundServerTransactions(
                 created.push({ id: result.value.id, dedupeHash });
             }
             return { ok: true };
-        });
+        };
+        const completed = allowExpenseMatching
+            ? (await commitExpenseMutation(evolu, insertPrepared)).ok
+            : await awaitBankMutation(evolu, insertPrepared);
         if (!completed) throw new Error("bank_import_row_batch_rejected");
-        ctx = await readBankReconciliationContext(evolu);
+        ctx = allowExpenseMatching ? expenseReconciliationScope(evolu).context : await readBankReconciliationContext(evolu);
     }
     const transactionsById = new Map(ctx.transactions.map((transaction) => [transaction.id, transaction]));
     for (const inserted of created) {
@@ -629,7 +632,7 @@ function manualMatchLocalTransactionCore(
         throw new Error("Transaction and document belong to different companies.");
     }
 
-    applyMatch(
+    const matched = applyMatch(
         evolu,
         transaction,
         document,
@@ -637,6 +640,7 @@ function manualMatchLocalTransactionCore(
         "manual",
         ctx,
     );
+    if (!matched) throw new Error("expense_mutation_batch_rejected");
 }
 
 export async function ignoreLocalBankTransaction(

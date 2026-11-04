@@ -120,7 +120,8 @@ describe("real Evolu mutation queue and worker-response boundary", () => {
         expect(mutations[1].onCompleteIds).toHaveLength(1);
         const queries = messages.filter((message) => message.type === "query");
         expect(queries).toHaveLength(5);
-        expect(queries.flatMap((message) => message.queries ?? [])).toHaveLength(31);
+        // The single post-row proof also refreshes the three owner/target keys.
+        expect(queries.flatMap((message) => message.queries ?? [])).toHaveLength(34);
         expect(new Set(queries.flatMap((message) => message.queries ?? [])).size).toBe(8);
         expect(mutations.every((message) => message.subscribedQueries?.length === 0)).toBe(true);
     });

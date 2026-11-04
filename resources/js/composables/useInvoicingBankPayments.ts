@@ -65,7 +65,7 @@ export interface UseInvoicingBankPaymentsResult {
     summary: Ref<BankSummary> | ComputedRef<BankSummary>;
     batches: Ref<BankBatchApiRow[]> | ComputedRef<BankBatchApiRow[]>;
     inboundEmailAvailable: ComputedRef<boolean>;
-    load: (matchFilter?: string) => Promise<void>;
+    load: (matchFilter?: string, options?: { skipErrorFlash?: boolean }) => Promise<void>;
     loadBatches: () => Promise<void>;
     loadInbound: () => Promise<void>;
     importFile: (file: File, format?: string) => Promise<{ imported: number; auto_matched: number }>;
@@ -105,6 +105,14 @@ function useServerInvoicingBankPayments(
     const batches = ref<BankBatchApiRow[]>([]);
     const inboundEmail = ref("");
     let lastFilter = "all";
+    let loadRequest = 0;
+
+    watch(companyId, () => {
+        loadRequest++;
+        transactions.value = [];
+        summary.value = emptySummary(defaultCurrency.value);
+        loading.value = false;
+    }, { flush: "sync" });
 
     const inboundEmailAvailable = computed(() => companyId.value.trim().length > 0);
 
@@ -112,7 +120,8 @@ function useServerInvoicingBankPayments(
         return companyId.value || null;
     }
 
-    async function load(matchFilter = lastFilter) {
+    async function load(matchFilter = lastFilter, options: { skipErrorFlash?: boolean } = {}) {
+        const request = ++loadRequest;
         const cid = requireCompanyId();
         if (!cid) {
             transactions.value = [];
@@ -125,11 +134,12 @@ function useServerInvoicingBankPayments(
         try {
             const params: Record<string, string | number> = { per_page: 50 };
             if (matchFilter !== "all") params.match_status = matchFilter;
-            const res = await invoicingApi.bankTransactions.list<BankTxApiRow>(cid, params);
+            const res = await invoicingApi.bankTransactions.list<BankTxApiRow>(cid, params, options);
+            if (companyId.value !== cid || request !== loadRequest) return;
             transactions.value = res.data;
             summary.value = (res.meta?.summary as typeof summary.value) || emptySummary(defaultCurrency.value);
         } finally {
-            loading.value = false;
+            if (companyId.value === cid && request === loadRequest) loading.value = false;
         }
     }
 
@@ -174,7 +184,7 @@ function useServerInvoicingBankPayments(
     async function autoMatchBatch(batchId: string) {
         const cid = requireCompanyId();
         if (!cid) return;
-        await invoicingApi.bankTransactions.autoMatchBatch(cid, batchId);
+        await invoicingApi.bankTransactions.autoMatchBatch(cid, batchId, { skipErrorFlash: true });
     }
 
     async function fetchSuggestions(transactionId: string): Promise<BankMatchSuggestion[]> {
@@ -186,19 +196,19 @@ function useServerInvoicingBankPayments(
     async function matchTransaction(transactionId: string, documentId: string) {
         const cid = requireCompanyId();
         if (!cid) return;
-        await invoicingApi.bankTransactions.match(cid, transactionId, documentId);
+        await invoicingApi.bankTransactions.match(cid, transactionId, documentId, { skipErrorFlash: true });
     }
 
     async function ignoreTransaction(transactionId: string) {
         const cid = requireCompanyId();
         if (!cid) return;
-        await invoicingApi.bankTransactions.ignore(cid, transactionId);
+        await invoicingApi.bankTransactions.ignore(cid, transactionId, { skipErrorFlash: true });
     }
 
     async function unmatchTransaction(transactionId: string) {
         const cid = requireCompanyId();
         if (!cid) return;
-        await invoicingApi.bankTransactions.unmatch(cid, transactionId);
+        await invoicingApi.bankTransactions.unmatch(cid, transactionId, { skipErrorFlash: true });
     }
 
     async function createExpenseFromTransaction(transactionId: string, draft: BankExpenseDraft) {

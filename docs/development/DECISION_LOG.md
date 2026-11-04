@@ -1,5 +1,26 @@
 # Development decision log
 
+## 2026-11-04 - Bound bridge waits and preserve bank action context
+
+Continue the owner's PR427 review-repair/publication scope. Bound inbox detail
+and acknowledgment requests to 10 seconds on the same authenticated API instance.
+A lost ACK can have succeeded remotely; preserve the committed stable-ID expense
+and never compensate or retry automatically. Rejected match inserts return false
+to automatic matching and a known visible rejection to manual actions; genuine
+unknown outcomes retain quarantine.
+
+Regression tests expose a stale parent-owner snapshot for new inbound credits.
+Use existing scoped row-batch commit/read completion to refresh metadata before
+the unchanged every-ID/company/hash proof and automatic matching. Keep child
+ownership strict and unlocked fallback unchanged. Add no per-row query or marker.
+
+Guard server transaction results/loading by company and request generation. Only
+fully handled bank mutations and post-action refreshes opt out of global error
+flashes; ordinary callers retain defaults and current-company errors stay visible.
+Independent QA/security accept the final runtime4/source-test10 manifests with no
+unresolved finding. Main owns scoped publication, remote verification and new CI.
+No server migration, auth, key, Store, billing or payment policy expansion occurs.
+
 ## 2026-11-04 - Serialize every critical local expense writer with reconciliation
 
 The owner requests repair of the third CodeRabbit review on PR427. A fresh-read
