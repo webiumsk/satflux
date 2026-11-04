@@ -1,5 +1,20 @@
 # Development decision log
 
+## 2026-11-04 - Cancel disposed view reads before financial entry
+
+Actual Vue/Evolu query lifecycle proof confirms that retained shallow snapshots
+stop updating after view disposal. Invalidate the local scope and settle/cancel
+pending reads so old identity cannot reach import. Explicit disposed guards stop
+retained continuations from starting new work. Remove read cancellation before
+the separate import await; never cancel committed/in-flight financial operations
+or transform Unknown outcomes. This fixes the before-import guard, not company
+CRUD/queued-edit atomicity. No API, owner, key or billing policy changes.
+
+QA/security accept exact1/2 manifests. Main209 affected cases, build/static and
+independent real-Vue probes pass. Publish6 scoped paths and require fresh complete
+CI and another actual review under the standing owner instruction. No merge,
+deployment or production writes are authorized by this lifecycle repair.
+
 ## 2026-11-04 - Bound bank bridge selection without changing issuance policy
 
 The sixth review requires stale legal identity rejection, total pagination bounds

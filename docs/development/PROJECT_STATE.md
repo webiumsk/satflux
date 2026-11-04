@@ -1,5 +1,30 @@
 # Project state
 
+## PR427 lifecycle regression independently accepted - 2026-11-04
+
+Before requesting the next review, source audit plus an actual mounted Vue probe
+confirmed a remaining before-import gap on7e9af5f1: disposing the bank view freezes
+its query snapshot. A later Settings edit of the same UUID and late lookup/page
+response could enter import with stale identity. The baseline reproduction fails;
+this is distinct from the documented edits after an import already queues.
+
+The two-path fix adds disposed/generation checks and cancels only active read
+stages, including metadata/transport promises ignoring abort. Registrations and
+timers are removed before financial entry; already-started import success and
+identical Unknown still propagate. API/allocator/financial/backend files unchanged.
+
+Both reviewers accept runtime1
+`29becc3a71d698c9e04e90b8ca8e62b80390d48404b875014615e83d3c70cce6`
+and source/test2
+`d579efc011de5360d1aa3fdbc69e78f03c0afa6278ac7f1fa9b8fbf55e5dbc43`.
+Main209cases/10bank suites, final build/lint48known/type111existing-no-new pass.
+Author71/4, independent QA46repository+7actualVue and security46+7 pass with
+synthetic storage/transport/import entry points; no financial writes in probes.
+Parent7e9 had full1504frontend/167 and complete green CI41769392442. The new head
+will run the entire CI; do not attribute parent full results to these new bytes.
+Publish only6 reviewed paths, verify hashes/remote SHA and all fresh CI, then the
+next authorized actual review. No merge/deployment/production replay.
+
 ## PR427 sixth review fixes independently accepted - 2026-11-04
 
 The completed7cd2b9ec manual review reports one stale-identity inline finding,

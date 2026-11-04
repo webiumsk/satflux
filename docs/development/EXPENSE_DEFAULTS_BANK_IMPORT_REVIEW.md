@@ -1,5 +1,44 @@
 # Expense defaults and bank-mail reconciliation
 
+## Disposed-view lifecycle follow-up - 2026-11-04
+
+A pre-review source audit identified a remaining before-import identity gap on
+published7e9af5f1. Independent QA reproduced it using actual mounted `@evolu/vue`
+subscriptions: bank view disposal unsubscribes its per-hook shallow reference,
+Settings sees an immutable replacement identity, but the old bank snapshot stays
+unchanged. A late old-bridge response entered the importer. No financial mutation
+was executed in the reproduction. The baseline failure is retained as evidence.
+
+The local bank scope now has an explicit disposed state and generation invalidation.
+Disposal cancels active fetch-stage callbacks, aborts HTTP and settles the read race
+immediately even if metadata/transport ignores cancellation. Resolver/public reads
+and late Wise continuations cannot restart work on a disposed instance. Read timers
+and registrations are removed before financial import begins. Imports already
+entered remain awaited through disposal and preserve exact success/Unknown outcomes;
+no cancellation, compensation, replay or rollback inference touches financial work.
+
+This closes a before-import guard failure. The separately recorded limit about
+later company edits while a valid import waits for the origin lock still applies.
+No company CRUD lock, API/allocator/default transport, owner/key or backend change
+is included. Only the composable and its targeted regression file change.
+
+Both independent reviewers accept runtime1 manifest
+`29becc3a71d698c9e04e90b8ca8e62b80390d48404b875014615e83d3c70cce6`
+and source/tests2 manifest
+`d579efc011de5360d1aa3fdbc69e78f03c0afa6278ac7f1fa9b8fbf55e5dbc43`.
+Main209 cases/10 affected bank suites pass; production build, full lint48known/zero
+errors and typecheck111existing/no-new pass. Author71cases/4files pass. Independent
+QA and security each pass46 repository cases and7 mounted real-Vue probes, with
+synthetic cache/transport/import-entry adapters and no actual financial writes.
+Pending lookup/page disposal after immutable identity replacement, ignored-abort
+metadata/HTTP, zero timers/restarts, and entered-import success/Unknown are covered.
+
+Parent7e9af5f1 has full1504frontend/167files and green CI41769392442. These parent
+results are historical; the new commit must pass complete exact-head CI before
+the next authorized manual review. Publish only6 reviewed paths, verify both
+committed source/test blobs and remote SHA, and continue until actual review/checks
+are green. No merge, deployment, production replay or unrelated primary changes.
+
 ## Sixth review contract and independent evidence - 2026-11-04
 
 The completed manual review of7cd2b9ec at03:19UTC adds one inline finding, one

@@ -1,5 +1,15 @@
 # Development roadmap
 
+## Current: publish the bank-view lifecycle completion guard - 2026-11-04
+
+Independent mounted Vue reproduction confirms the disposed-view stale identity
+entry gap before import. Both reviewers accept final runtime1 29becc3a...cce6 and
+source-test2 d579efc0...bc43. Main209/10 affected tests, author71/4, independent46+7,
+build/lint/typecheck pass. Publish exactly6 reviewed paths, verify raw bytes/remote
+SHA, then wait for full current CI before manual review. Parent7e9 CI is green;
+a paused check or old review does not complete the owner's all-green loop.
+No financial write cancellation, new API/default changes or release action.
+
 ## Current: finish final R6 checks, publish and repeat review - 2026-11-04
 
 One inline and two supplemental review items are repaired. Both reviewers accept
