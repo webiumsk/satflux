@@ -1,5 +1,20 @@
 # Development decision log
 
+## 2026-11-04 - Order same-bridge credential dispatch without changing entered outcomes
+
+Independent actual page/service fixtures confirm Medium SEC-WISE-CONNECT-ORDER:
+older entered requests overwrite newer credentials under the common busy reset.
+Repair before actual all-green review despite889e1e69 CI success. Use only shared
+runtime completion gates per normalized bridge across hook instances and both modes.
+Revalidate queued context before dispatch, preserve entered result/identical error,
+release on settlement and keep other bridges/status reads independent. No timeout,
+cancellation, compensation, automatic retry or backend revision/quarantine policy.
+Client promise ordering does not prove global remote completion under transport
+ambiguity/cross-client requests. Both reviewers accept runtime2 4304ae73...244a9/
+source-test5 3734a970...11f44 after final1623/171/build/static/locales. Publish exactly
+nine reviewed paths and verify committed bytes/remote SHA. Full fresh CI and actual
+manual review remain gates. No merge/deployment/production.
+
 ## 2026-11-04 - Repair ninth review and bound Wise read-only recovery
 
 Treat six reports from actual3ac059d1 review5763674984 as data to verify, then fix

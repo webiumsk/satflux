@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { effectScope, ref, type EffectScope } from "vue";
 import { AxiosError, CanceledError } from "axios";
 
-const mocks = vi.hoisted(() => ({ list: vi.fn(), batches: vi.fn(), autoMatch: vi.fn(), match: vi.fn(), ignore: vi.fn(), unmatch: vi.fn() }));
+const mocks = vi.hoisted(() => ({ list: vi.fn(), batches: vi.fn(), autoMatch: vi.fn(), match: vi.fn(), ignore: vi.fn(), unmatch: vi.fn(), wiseConnect: vi.fn(), wiseStatus: vi.fn() }));
 vi.mock("@/evolu/flags", () => ({ isInvoicingLocalFirst: () => false }));
 vi.mock("@evolu/vue", () => ({ useQuery: vi.fn() }));
 vi.mock("@/evolu/client", () => ({
@@ -12,16 +12,18 @@ vi.mock("@/evolu/client", () => ({
 vi.mock("@/evolu/bankCrud", () => ({}));
 vi.mock("@/services/api", () => ({ invoicingApi: { bankTransactions: {
     list: mocks.list, batches: mocks.batches, autoMatchBatch: mocks.autoMatch, match: mocks.match, ignore: mocks.ignore, unmatch: mocks.unmatch,
-} } }));
+}, wise: { connect: mocks.wiseConnect, status: mocks.wiseStatus } } }));
 
 import { useInvoicingBankPayments } from "@/composables/useInvoicingBankPayments";
 
 let scope: EffectScope;
-function bankFor() {
-    const company = ref("company-a");
+const scopes: EffectScope[] = [];
+function bankFor(id = "company-a") {
+    const company = ref(id);
     scope = effectScope();
+    scopes.push(scope);
     const bank = scope.run(() => useInvoicingBankPayments(company, ref("EUR")))!;
-    return { bank, company };
+    return { bank, company, scope };
 }
 function deferred<T>() {
     let resolve!: (value: T) => void;
@@ -31,8 +33,8 @@ function deferred<T>() {
 }
 const response = (id: string) => ({ data: [{ id }], meta: { summary: { balance: id } } });
 
-beforeEach(() => { vi.resetAllMocks(); });
-afterEach(() => { scope?.stop(); });
+beforeEach(() => { vi.resetAllMocks(); mocks.wiseConnect.mockResolvedValue(undefined); mocks.wiseStatus.mockResolvedValue({ connected: true }); });
+afterEach(() => { scopes.splice(0).forEach((active) => active.stop()); vi.useRealTimers(); });
 
 it("keeps the selected company's rows and summary after an older post-match refresh resolves", async () => {
     const pending = deferred<ReturnType<typeof response>>();
@@ -180,4 +182,66 @@ it("aborts active list and batch requests when the owning scope is disposed", as
     scope.stop(); expect(listSignal.aborted).toBe(true); expect(batchSignal.aborted).toBe(true);
     first.resolve(response("disposed")); batch.resolve([{ id: "disposed" }]); await Promise.all([rows, batches]);
     expect(bank.transactions.value).toEqual([]); expect(bank.batches.value).toEqual([]);
+});
+
+
+it("orders entered server connects across A-B-A so the newer explicit credential wins", async () => {
+    const entered = deferred<void>(); let stored = "";
+    mocks.wiseConnect.mockImplementationOnce(async () => { await entered.promise; stored = "synthetic-old"; })
+        .mockImplementationOnce(async () => { stored = "synthetic-new"; });
+    const { bank, company } = bankFor();
+    const old = bank.connectWise("synthetic-old");
+    expect(mocks.wiseConnect).toHaveBeenCalledTimes(1);
+    company.value = "company-b"; company.value = "company-a";
+    const fresh = bank.connectWise("synthetic-new");
+    expect(mocks.wiseConnect).toHaveBeenCalledTimes(1);
+    entered.resolve(); await Promise.all([old, fresh]);
+    expect(stored).toBe("synthetic-new");
+    expect(mocks.wiseConnect.mock.calls).toEqual([["company-a", "synthetic-old"], ["company-a", "synthetic-new"]]);
+    expect(mocks.wiseStatus).toHaveBeenCalledExactlyOnceWith("company-a");
+});
+
+it.each(["selection", "disposal"] as const)("skips a queued server intent made stale by %s without blocking its fresh successor", async (change) => {
+    const entered = deferred<void>();
+    mocks.wiseConnect.mockReturnValueOnce(entered.promise);
+    const current = bankFor();
+    const first = current.bank.connectWise("synthetic-entered");
+    const stale = current.bank.connectWise("synthetic-obsolete").catch((error) => error);
+    if (change === "disposal") current.scope.stop();
+    else { current.company.value = "company-b"; current.company.value = "company-a"; }
+    const fresh = (change === "disposal" ? bankFor().bank : current.bank).connectWise("synthetic-fresh");
+    expect(mocks.wiseConnect).toHaveBeenCalledTimes(1);
+    entered.resolve(); await first;
+    expect(await stale).toMatchObject({ message: "bank_bridge_lookup_failed" });
+    await fresh;
+    expect(mocks.wiseConnect.mock.calls).toEqual([["company-a", "synthetic-entered"], ["company-a", "synthetic-fresh"]]);
+});
+
+it.each(["success", "failure"] as const)("shares an entered server gate across disposed and fresh hooks while preserving its %s", async (outcome) => {
+    const entered = deferred<void>(); const failure = new Error("synthetic exact entered outcome");
+    mocks.wiseConnect.mockReturnValueOnce(entered.promise);
+    const first = bankFor();
+    const old = first.bank.connectWise("synthetic-old").catch((error) => error);
+    first.scope.stop();
+    const next = bankFor();
+    const fresh = next.bank.connectWise("synthetic-new");
+    expect(mocks.wiseConnect).toHaveBeenCalledTimes(1);
+    if (outcome === "failure") entered.reject(failure); else entered.resolve();
+    expect(await old).toBe(outcome === "failure" ? failure : undefined);
+    await fresh;
+    expect(mocks.wiseConnect).toHaveBeenCalledTimes(2);
+    expect(mocks.wiseStatus).toHaveBeenCalledExactlyOnceWith("company-a");
+});
+
+it("releases the server credential gate before an independent status GET completes", async () => {
+    const status = deferred<{ connected: boolean }>();
+    mocks.wiseStatus.mockReturnValueOnce(status.promise);
+    const { bank } = bankFor();
+    const first = bank.connectWise("synthetic-first");
+    await vi.waitFor(() => expect(mocks.wiseStatus).toHaveBeenCalledTimes(1));
+    const second = bank.connectWise("synthetic-second");
+    await second;
+    expect(mocks.wiseConnect).toHaveBeenCalledTimes(2);
+    status.resolve({ connected: false }); await first;
+    expect(bank.wiseStatus.value).toEqual({ connected: true });
 });

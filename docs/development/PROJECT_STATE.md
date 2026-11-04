@@ -1,5 +1,27 @@
 # Project state
 
+## PR427 credential-order repair independently accepted - 2026-11-04
+
+889e1e69 CI41781754322 is green and all26 prior threads resolved. Independent
+security then confirms Medium SEC-WISE-CONNECT-ORDER: already-entered old A POST
+can overwrite newer A credentials after A-B-A resets page busy state. Actual page
+and actual encrypted SQLite/fake-HTTP service fixtures reproduce it, without real
+credentials or production writes. Earlier accepted entered-outcome guarantees did
+not cover ordering; the busy reset was introduced3ac059d1.
+
+Main accepts only a shared runtime per-server-bridge POST gate across hook instances
+and both connection modes. Queued intent revalidates immediately before dispatch;
+entered outcomes remain awaited with exact errors, no cancellation/race/retry or
+compensation. Independent bridges remain concurrent and status reads stay outside
+the queue. Ambiguous transport/cross-client global order is not proven or changed.
+Frontend owns composable/new queue/inbound/server/queue tests; main owns docs/Git.
+Both reviewers accept runtime2 4304ae73...244a9/source-test5 3734a970...11f44. Main
+final1623/171, build75seconds, lint48known/zeroerrors/type111existing-no-new/locales
+pass. Author151/7, QA219/9+14new+47retained and security119/3+14+7 pass with overlapping
+synthetic scopes. All five blobs match; exactly nine paths form publication scope.
+Verify committed bytes/remote SHA, fresh full CI and actual manual review before
+all-green completion. No merge/deployment or production action.
+
 ## PR427 ninth repair independently accepted - 2026-11-04
 
 Published3ac059d1 has green CI41777047822. Actual manual review5763674984 reports

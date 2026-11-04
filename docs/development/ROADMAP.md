@@ -1,5 +1,15 @@
 # Development roadmap
 
+## Current: publish the independently accepted credential-order repair - 2026-11-04
+
+Both reviewers accept runtime2 4304ae73...244a9/source-test5 3734a970...11f44 and main
+1623/171/build/static/locales. The bounded runtime queue repairs confirmed
+SEC-WISE-CONNECT-ORDER on green889e1e69. Preserve entered outcomes, revalidate queued
+intent, share both modes/instances and keep independent bridges/status reads live.
+Publish only nine reviewed paths, verify source/remote SHA, complete fresh CI and request
+the next actual manual review after capacity. No backend/financial policy, production,
+merge or deployment action is included.
+
 ## Current: publish the independently accepted ninth repair - 2026-11-04
 
 Verify pre-metadata credential context, same-company transaction refresh, true

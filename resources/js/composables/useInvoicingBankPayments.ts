@@ -37,6 +37,7 @@ import { isInvoicingLocalFirst } from "@/evolu/flags";
 import { ensureBridgeCompanyIdForLocalCompany, type EnsureBridgeCompanyResult } from "@/evolu/bridgeCompanyEnsure";
 import { companyShareRoutingKey, waitCompanyShareRegistryReady } from "@/evolu/companyShareRegistry";
 import { normalizeCompanyIdentityKey } from "@/evolu/duplicateCompanies";
+import { enqueueBankWiseConnect } from "@/evolu/bankWiseConnectQueue";
 import { withBankReadBudget } from "@/evolu/bankReadBudget";
 import type { BridgeCompanyRequestOptions } from "@/evolu/numberAllocatorBridge";
 import type { ExpenseSavePayload } from "@/evolu/expenseCrud";
@@ -119,8 +120,10 @@ function useServerInvoicingBankPayments(
     let loadController: AbortController | null = null;
     let batchController: AbortController | null = null;
     let disposed = false;
+    let companyGeneration = 0;
 
     watch(companyId, () => {
+        companyGeneration++;
         loadRequest++;
         batchRequest++;
         loadController?.abort();
@@ -135,6 +138,7 @@ function useServerInvoicingBankPayments(
 
     onScopeDispose(() => {
         disposed = true;
+        companyGeneration++;
         wiseStatusRequestSeq++;
         wiseStatusFailed.value = false;
         loadRequest++;
@@ -335,11 +339,18 @@ function useServerInvoicingBankPayments(
         if (current()) wiseBridgeChecked.value = true;
     }
 
+    /** Queue only credential POSTs, rechecking the captured selection before dispatch and status refresh. */
     async function connectWise(token: string) {
         const cid = requireCompanyId();
         if (!cid) return;
-        await invoicingApi.wise.connect(cid, token);
-        await fetchWiseStatus();
+        const generation = companyGeneration;
+        const current = () => !disposed && companyId.value === cid && companyGeneration === generation;
+        if (!current()) throw new Error("bank_bridge_lookup_failed");
+        await enqueueBankWiseConnect(cid, async () => {
+            if (!current()) throw new Error("bank_bridge_lookup_failed");
+            await invoicingApi.wise.connect(cid, token);
+        });
+        if (current()) await fetchWiseStatus();
     }
 
     async function syncWise() {
@@ -709,13 +720,17 @@ function useLocalInvoicingBankPayments(
         }
     }
 
-    /** Reject unavailable routes before dispatch; preserve entered POST outcomes and refresh only their captured context. */
+    /** Serialize credential POSTs per bridge; stale queued intents never dispatch and entered outcomes stay awaited. */
     async function connectWise(token: string) {
         const generation = bridgeIdentityGeneration;
         const routing = bridgeRoutingKey.value;
         const bridge = await resolveBridgeCompanyId(() => bridgeIdentityGeneration === generation && bridgeRoutingKey.value === routing);
         if (!bridge?.ok || !bridge.bridgeCompanyId || !bridge.isCurrent()) throw new Error("bank_bridge_lookup_failed");
-        await invoicingApi.wise.connect(bridge.bridgeCompanyId, token);
+        const bridgeId = bridge.bridgeCompanyId;
+        await enqueueBankWiseConnect(bridgeId, async () => {
+            if (!bridge.isCurrent()) throw new Error("bank_bridge_lookup_failed");
+            await invoicingApi.wise.connect(bridgeId, token);
+        });
         if (bridge.isCurrent()) await fetchWiseStatus();
     }
 

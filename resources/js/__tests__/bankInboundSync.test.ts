@@ -857,6 +857,63 @@ describe("bank movement bridge synchronization", () => {
         expect(vi.getTimerCount()).toBe(0);
     });
 
+    it("orders entered local connects across A-B-A so a newer explicit credential cannot be overwritten", async () => {
+        const entered = deferred<void>(); let stored = "";
+        mocks.wiseConnect.mockImplementationOnce(async () => { await entered.promise; stored = "synthetic-old"; })
+            .mockImplementationOnce(async () => { stored = "synthetic-new"; });
+        const { bank, company } = bankFor("local-a");
+        const old = bank.connectWise("synthetic-old");
+        await vi.waitFor(() => expect(mocks.wiseConnect).toHaveBeenCalledTimes(1));
+        company.value = "local-b"; company.value = "local-a";
+        const fresh = bank.connectWise("synthetic-new");
+        await vi.waitFor(() => expect(mocks.ensure).toHaveBeenCalledTimes(2));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(mocks.wiseConnect).toHaveBeenCalledTimes(1);
+        entered.resolve(); await Promise.all([old, fresh]);
+        expect(stored).toBe("synthetic-new");
+        expect(mocks.wiseConnect.mock.calls).toEqual([["bridge-local-a", "synthetic-old"], ["bridge-local-a", "synthetic-new"]]);
+        expect(mocks.wiseStatus).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not dispatch a queued local intent made stale by A-B-A or block its fresh successor", async () => {
+        const entered = deferred<void>();
+        mocks.wiseConnect.mockReturnValueOnce(entered.promise);
+        const { bank, company } = bankFor();
+        const first = bank.connectWise("synthetic-entered");
+        await vi.waitFor(() => expect(mocks.wiseConnect).toHaveBeenCalledTimes(1));
+        const stale = bank.connectWise("synthetic-stale").catch((error) => error);
+        await vi.waitFor(() => expect(mocks.ensure).toHaveBeenCalledTimes(2));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        company.value = "local-a"; company.value = "local-b";
+        const fresh = bank.connectWise("synthetic-fresh");
+        await vi.waitFor(() => expect(mocks.ensure).toHaveBeenCalledTimes(3));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(mocks.wiseConnect).toHaveBeenCalledTimes(1);
+        entered.resolve(); await first;
+        expect(await stale).toMatchObject({ message: "bank_bridge_lookup_failed" });
+        await fresh;
+        expect(mocks.wiseConnect.mock.calls).toEqual([["bridge-local-b", "synthetic-entered"], ["bridge-local-b", "synthetic-fresh"]]);
+    });
+
+    it("shares a bridge gate with a fresh server hook after the original local view is disposed", async () => {
+        const bridgeId = "0192a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b";
+        mocks.ensure.mockResolvedValue({ ok: true, bridgeCompanyId: bridgeId });
+        const entered = deferred<void>();
+        mocks.wiseConnect.mockReturnValueOnce(entered.promise);
+        const first = bankFor("local-a");
+        const old = first.bank.connectWise("synthetic-local");
+        await vi.waitFor(() => expect(mocks.wiseConnect).toHaveBeenCalledTimes(1));
+        first.scope.stop();
+        mocks.localFirst = false;
+        const next = bankFor(bridgeId);
+        const fresh = next.bank.connectWise("synthetic-server");
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(mocks.wiseConnect).toHaveBeenCalledTimes(1);
+        entered.resolve(); await Promise.all([old, fresh]);
+        expect(mocks.wiseConnect.mock.calls).toEqual([[bridgeId, "synthetic-local"], [bridgeId, "synthetic-server"]]);
+        expect(mocks.wiseStatus).toHaveBeenCalledExactlyOnceWith(bridgeId);
+    });
+
     it("uses that same company bridge for Wise status and imported rows", async () => {
         const { bank } = bankFor();
         await bank.fetchWiseStatus();

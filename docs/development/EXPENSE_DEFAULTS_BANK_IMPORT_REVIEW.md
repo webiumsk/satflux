@@ -1,5 +1,74 @@
 # Expense defaults and bank-mail reconciliation
 
+## Credential-order repair verified evidence - 2026-11-04
+
+The runtime correction shares normalized server-bridge completion gates across
+hook instances and both modes. Gates contain no credentials, are registered before
+waiting, always settle in finally and prune only their own current tail. Stale queued
+context rejects before HTTP; entered POST success/identical error stays awaited.
+Failed predecessors cannot poison later explicit intent. Independent bridges remain
+concurrent, and status reads occur outside the credential gate.
+
+Both independent reviewers accept runtime2 manifest
+`4304ae7321e8494e92004eea02067d2d7d16b6e296e5a758efbe814f750244a9`
+and source/tests5 manifest
+`3734a9700bb2e06f7ec5e6bf058fd4c89780b96899283c9088ce1956f7e11f44`.
+All five source/test blobs match after checks. Exactly nine paths form the commit
+scope: two runtime files, three tests and four development documents.
+
+Main final frontend1623cases/171files, production build75seconds, lint48known/
+zeroerrors, typecheck111existing/no-new and five-language parity pass. Author151/7
+affected cases pass. Independent QA219repository/9suites,14new Vue/real-Axios probes
+and47retained regressions pass. Security119repository/3suites,14 Vue/Axios and7
+additional Vue runtime probes pass. Scopes overlap and are not aggregated.
+Canonical889 baseline reproduces three overlap failures; actual encrypted SQLite
+service and mounted page fixtures establish the original last-finishing-write
+scenario. Synthetic clients cover serialized local/server/cross-mode instances,
+bridge aliases, queued A-B-A/disposal, identical errors, independent bridges,
+held status outside the gate and entered/queued requests beyond60seconds without
+new deadlines, retries or POST signals. No real credentials/financial writes.
+
+Backend/API/page, registry, owner routing, read budgets, allocator and financial
+protocol remain unchanged. Ordering is limited to dispatch after entering this
+loaded client's bridge queue. Ambiguous transport/global remote completion and
+other runtimes remain outside its proof. Publish only the nine reviewed paths,
+verify committed blobs/remote SHA, finish fresh full CI and actual clean manual
+review before all-green completion. No merge/deployment or production action.
+
+## Confirmed credential-order repair contract - 2026-11-04
+
+During the manual review allowance wait, independent security confirmed Medium
+SEC-WISE-CONNECT-ORDER on published `889e1e69` despite complete green CI. The page's
+busy reset permits a second A connection after A-B-A while an older A credential
+POST has already entered. Backend profile/balance reads precede settings update;
+an older completion can overwrite newer credentials after newer UI success.
+This differs from the repaired pre-metadata stale-dispatch case.
+
+An actual mounted page probe and actual WiseBankSyncService with encrypted settings,
+SQLite memory and fake HTTP reproduce the overwrite. No real credentials, production
+or financial writes are involved. Existing owner-only authorization remains.
+
+Acceptance for the narrow runtime correction:
+
+- Share one credential-POST completion gate per normalized server bridge across
+  local/server modes and hook instances; independent bridges remain concurrent.
+- Store only completion promises in the runtime map, prune settled gates by identity,
+  and ensure a rejected predecessor does not poison a later separate explicit intent.
+- Revalidate captured queued intent immediately before dispatch, including A-B-A
+  and disposal. A stale queued intent never sends a credential POST.
+- Await an entered POST's actual success or identical rejection. No deadline,
+  cancellation, automatic retry, compensation or rollback inference touches it.
+- Keep follow-up status outside the credential queue and in its captured context;
+  inherited legacy status latency must not hold the POST gate.
+
+This controls dispatch within one loaded client runtime. It does not establish
+global remote completion after ambiguous transport failure or across clients.
+No backend credential revision/quarantine policy, global financial lock or owner/
+key/billing change is introduced. Frontend owns composable, new queue and focused
+inbound/server/queue tests; main owns documentation and Git. Independent frozen-byte
+QA/security, relevant full checks, scoped publication, complete fresh CI and an
+actual clean manual review remain gates. No merge/deployment or production replay.
+
 ## Ninth repair verified evidence - 2026-11-04
 
 All six reports are addressed. Initial credential intent is captured before any
