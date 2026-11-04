@@ -1,5 +1,32 @@
 # Project state
 
+## PR427 final two test-coverage nits repaired - 2026-11-04
+
+Actual review 5766899006 completed 10:27:45 UTC on green 23b6f927. There are no
+open inline threads (all 32 resolved); five pre-merge checks pass with 89.81%
+docstring coverage. Two test nitpicks remain for the next reviewed publication:
+PostgreSQL must return a genuine movement after the snapshot prefix, and the
+client must continue after an empty nonterminal page.
+
+Both test-only repairs are frozen in manifest
+`31757baa76148de3a8c6b9ba85111c861c08264d08e3495ffbbaedfb5d1bb7e7`.
+The PG test follows real encrypted next_cursor values from its original head to
+movement 42992 and checks identity/reference/company/source/amount/currency/no
+internal flag, preserving the two test methods and all existing plan assertions.
+The client test pauses strict empty-page ACK, proves no save or next read before
+admission, then checks cursor forwarding, movement import and final persistence.
+Author and independent QA each pass all 122 affected client cases; scoped lint
+passes. Independent security accepts the exact two-test +47-line diff with no
+weakened guards; its R13 runtime acceptance remains applicable. Author actual PG16.11/PHP8.3.31 tests pass two / 108 assertions, with Pint
+and owned-schema/container cleanup. QA reviews the PG artifact without executing
+PG. Production runtime, migration, CI and financial source remain unchanged from
+the independently accepted R13 runtime manifest. Root publication scope is exactly
+two tests plus four development documents; no new application behavior.
+
+Publish through existing GitHub connector with verified staged-tree equality,
+complete all five fresh CI jobs and actual manual review after allowance (last
+10:13:59 UTC; conservative next 11:15 UTC). No merge/deployment/production action.
+
 ## PR427 bounded-candidate and PostgreSQL CI repair accepted - 2026-11-04
 
 Both independent reviewers accept runtime-four manifest

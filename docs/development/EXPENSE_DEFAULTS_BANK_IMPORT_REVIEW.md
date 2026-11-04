@@ -1,5 +1,32 @@
 # Expense defaults and bank-mail reconciliation
 
+## Final test-coverage nits and verification - 2026-11-04
+
+Actual review 5766899006 on 23b6f927 reports only two test nitpicks; all 32 inline
+threads are resolved and five pre-merge checks pass (89.81% docstrings).
+Canonical two-test manifest:
+`31757baa76148de3a8c6b9ba85111c861c08264d08e3495ffbbaedfb5d1bb7e7`.
+Publication includes those tests and four development documents. All application,
+financial, migration and CI workflow bytes remain identical to accepted R13.
+
+The client regression blocks strict empty-page admission, verifies no premature
+checkpoint or second HTTP request, then observes saved cursor forwarding, genuine
+movement import and final persisted cursor. The empty page is not cycle-complete.
+Author and independent QA each pass the full 122-case affected suite; scoped lint
+and whitespace checks pass. Independent security accepts the exact +47-line,
+two-test diff and confirms runtime, PG guards and existing assertions are intact;
+it reviewed the two/108 JUnit artifact without rerunning tests.
+
+The PostgreSQL test follows only real returned cursors from the original empty
+head, with a bounded loop, until genuine movement 42992 appears. It asserts the
+identity, reference, company, email source, amount, currency and absent internal
+flag. Existing five captured query executions/four shapes, concurrency/catalog/
+INVALID checks, two methods and zero-skip gate are preserved. Actual disposable
+PG16.11/PHP8.3.31 execution passes two tests / 108 assertions and Pint; owned
+resources are removed. QA reviews the JUnit artifact rather than claiming PG
+execution. No financial or migration code is changed. Require fresh five-job CI
+and another actual clean manual CodeRabbit review before all-green completion.
+
 ## Bounded-candidate and PostgreSQL verification evidence - 2026-11-04
 
 Frozen runtime-four manifest:

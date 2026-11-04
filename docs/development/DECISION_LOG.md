@@ -1,5 +1,19 @@
 # Development decision log
 
+## 2026-11-04 - Close the final two review nits with behavior assertions only
+
+Add PostgreSQL assertions that consume real head-derived next_cursor values until
+a genuine movement is returned; retain all existing plan/migration checks and two
+PG test methods. Add client orchestration coverage for an empty nonterminal page:
+strict owner admission precedes checkpoint persistence and the next movement read.
+These protect observable behavior rather than mirroring the implementation.
+
+Both files are frozen in tests-two manifest 31757baa...1bb7e7; QA independently
+passes the 122-case hook suite and reviews actual PG two/108 evidence. R13 runtime,
+CI and migration bytes remain unchanged, so its security acceptance continues to
+apply. Publish only the two tests/four documents, require all five current CI jobs
+and another actual clean CodeRabbit review. No application policy or deployment.
+
 ## 2026-11-04 - Bound raw candidates before snapshot exclusion
 
 Index ordering removes the sort but does not bound a long excluded-snapshot run.

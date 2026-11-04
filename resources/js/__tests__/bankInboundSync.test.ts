@@ -157,6 +157,35 @@ describe("bank movement bridge synchronization", () => {
         expect([...mocks.checkpoints.values()][0].cursor).toBe("opaque-cycle-end");
     });
 
+    it("acknowledges an empty non-terminal page before importing the next movement", async () => {
+        const { bank } = bankFor();
+        const emptyAdmission = deferred<{ imported: number; auto_matched: number; complete: boolean; scope_verified: boolean }>();
+        mocks.list.mockResolvedValueOnce(syncResponse([], false, "head", "empty-page-next"))
+            .mockResolvedValueOnce(syncResponse([row], true, "backfill", "movement-next"));
+        mocks.importInbound.mockReturnValueOnce(emptyAdmission.promise);
+
+        const loading = bank.load();
+        await vi.waitFor(() => expect(mocks.importInbound).toHaveBeenNthCalledWith(
+            1, expect.anything(), "local-b", [], "synthetic-app",
+        ));
+        expect(mocks.list).toHaveBeenCalledTimes(1);
+        expect(mocks.checkpointSave).not.toHaveBeenCalled();
+        emptyAdmission.resolve({ imported: 0, auto_matched: 0, complete: true, scope_verified: true });
+        await loading;
+
+        const context = mocks.list.mock.calls[0][1].sync_context;
+        expect(mocks.checkpointSave).toHaveBeenNthCalledWith(1, expect.any(String), null,
+            { context, cursor: "empty-page-next" }, expect.objectContaining({ isCurrent: expect.any(Function) }));
+        expect(mocks.list).toHaveBeenCalledTimes(2);
+        expect(mocks.list.mock.calls[1][1]).toMatchObject({ sync_context: context, sync_cursor: "empty-page-next" });
+        expect(mocks.importInbound).toHaveBeenNthCalledWith(2, expect.anything(), "local-b", [row], "synthetic-app");
+        expect(mocks.importInbound).toHaveBeenCalledTimes(2);
+        expect(mocks.checkpointSave).toHaveBeenCalledTimes(2);
+        expect(mocks.checkpointSave.mock.invocationCallOrder[0]).toBeLessThan(mocks.list.mock.invocationCallOrder[1]);
+        expect(mocks.importInbound.mock.invocationCallOrder[1]).toBeLessThan(mocks.checkpointSave.mock.invocationCallOrder[1]);
+        expect([...mocks.checkpoints.values()]).toEqual([{ context, cursor: "movement-next" }]);
+    });
+
     it("resumes durable opaque frames after remount and never exceeds two chunks in one load", async () => {
         mocks.list.mockResolvedValueOnce(syncResponse([row], false, "head", "frame-1"))
             .mockResolvedValueOnce(syncResponse([{ ...row, id: "old-1" }], false, "backfill", "frame-2"))

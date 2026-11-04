@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Invoicing;
 
+use App\Models\BankTransaction;
 use App\Models\Company;
 use App\Services\Invoicing\BankEmailSyncFeed;
 use Illuminate\Database\Events\QueryExecuted;
@@ -230,6 +231,23 @@ class BankEmailSyncPostgresPlanTest extends TestCase
                 }
             }
         }
+
+        // Follow real candidate cursors from the empty head instead of bypassing the snapshot prefix.
+        $expectedId = $this->uuid(42992);
+        $page = $head;
+        $movement = null;
+        for ($pageNumber = 0; $pageNumber < 32 && $movement === null; $pageNumber++) {
+            $page = $this->feed($page['sync']['next_cursor']);
+            $movement = $page['rows']->firstWhere('id', $expectedId);
+        }
+        $this->assertNotNull($movement, 'A genuine movement must remain reachable through the snapshot-only prefix within 32 next-cursor reads.');
+        $this->assertSame($expectedId, $movement->id);
+        $this->assertSame('Synthetic payment', $movement->reference);
+        $this->assertSame(self::COMPANY, $movement->company_id);
+        $this->assertSame('email', $movement->source);
+        $this->assertSame('19.00', $movement->amount);
+        $this->assertSame('EUR', $movement->currency);
+        $this->assertArrayNotHasKey(BankTransaction::BANK_SYNC_MOVEMENT_FLAG, $movement->getAttributes());
     }
 
     /** A failed concurrent build remains visible; explicit drop/rebuild and framework rollback preserve all fixture rows. */

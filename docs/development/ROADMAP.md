@@ -1,5 +1,14 @@
 # Development roadmap
 
+## Current: publish final test coverage and repeat the review gate - 2026-11-04
+
+Actual review 5766899006 leaves two test-only nits; both are repaired and QA accepts
+manifest 31757baa...1bb7e7. Client 122/122 and actual PG two/108, lint/Pint pass.
+Runtime, migration and five-job CI configuration are unchanged. Publish exactly
+six reviewed paths, verify tree/blobs/remote head, complete fresh CI and request
+actual manual CodeRabbit review after allowance. Continue until all green; preserve
+all production boundaries. No merge/deployment or production replay.
+
 ## Current: publish accepted bounded-candidate/PG CI repair - 2026-11-04
 
 Both reviewers accept runtime4 2c1fb965...936bc / source6 e8ebc2c9...39ffa.
