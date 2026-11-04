@@ -1,5 +1,16 @@
 # Development roadmap
 
+## Current: publish PR427 fifth repair and repeat review - 2026-11-04
+
+The five findings are repaired and both independent reviewers accept final
+runtime4 b7887cd1...7983f/source-test9 b33cfdeb...de663. Main1485frontend/165files,
+QA112+14temporary, security101+14temporary/6PHP64 and all static/build/locales
+pass with unchanged thresholds. Publish exactly13 reviewed paths, verify their
+committed bytes/remote SHA and resolve the five threads. Then wait for full new CI
+and actual review capacity before requesting another completed manual review.
+Continue until findings/checks are green, preserving quarantine and all recorded
+browser/device/transport limits. No merge/deployment or production replay.
+
 ## Current: complete PR427 documentation and manual review loop - 2026-11-04
 
 All CI jobs pass on6ba7e908. Add genuine missing function contracts to address the

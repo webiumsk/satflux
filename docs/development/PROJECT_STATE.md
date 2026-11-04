@@ -1,5 +1,28 @@
 # Project state
 
+## PR427 fifth review fixes independently accepted - 2026-11-04
+
+The five actionable findings from the completed manual review of3dce0b4f are
+repaired on the same branch: stale/superseded server requests, bounded bridge
+pages, visible local import errors and precise fresh-local ACK recovery.
+No server, auth/CSRF, owner, key, financial authority or configuration change.
+
+Both independent reviewers accept runtime4
+`b7887cd1c5469280eda1ed1f6c5906ace1cfb770cff231d21bc584dd9417983f`
+and source/test9
+`b33cfdeb57808d06f013e4ffa552a55b99934bd1fe7dac4ea2af2999c19de663`.
+Main fullfrontend1485/165 passes, focused55 and author46 pass. Full lint48known,
+type111existing/no-new, build/locales pass with unchanged ratchets. QA112repository
+and14temporary pass; security101repository/14temporary and unchanged backend
+ACK contract6PHP/64assertions pass. Scopes overlap and transport/native adapters
+remain synthetic. No unresolved reviewer finding remains on these exact bytes.
+
+Publish only the reviewed13-path delta, verify committed manifests and remote SHA,
+resolve the five addressed threads and wait for complete exact-head CI. Read the
+actual capacity-reset notice before the next authorized manual review command.
+The previous review's docstring86.92% passes but does not establish the new result.
+No merge, deployment, production replay or unrelated primary work is included.
+
 ## PR427 documentation warning and manual review loop - 2026-11-04
 
 Owner explicitly asks to wait for every test, issue `@coderabbitai review` after

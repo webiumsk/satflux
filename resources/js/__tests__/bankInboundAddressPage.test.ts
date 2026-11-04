@@ -4,7 +4,7 @@ import { reactive, ref, nextTick } from 'vue';
 import type { BankTxApiRow } from '@/evolu/bankMap';
 
 const mocks = vi.hoisted(() => ({ ensure: vi.fn(), inbound: vi.fn(), local: true,
-  autoMatchBatch: vi.fn(), importFile: vi.fn(), ignore: vi.fn(), unmatch: vi.fn(), load: vi.fn(), flashError: vi.fn(),
+  autoMatchBatch: vi.fn(), importFile: vi.fn(), ignore: vi.fn(), unmatch: vi.fn(), load: vi.fn(), loadBatches: vi.fn(), flashError: vi.fn(),
 }));
 const route = reactive({ params: { companyId: 'local-a' } });
 const hasBankAccount = ref(true);
@@ -25,7 +25,7 @@ vi.mock('@/composables/useInvoicingBankPayments', () => ({ useInvoicingBankPayme
   localFirst: mocks.local, loading: ref(false), transactions, batches,
   summary: ref({ credit_count: 0, credit_total: '0', debit_count: 0, debit_total: '0', balance: '0', currency: 'EUR', by_currency: [] }),
   wiseStatus: ref(null), wiseBridgeMissing: ref(false),
-  load: mocks.load, loadBatches: vi.fn().mockResolvedValue(undefined), autoMatchBatch: mocks.autoMatchBatch, importFile: mocks.importFile,
+  load: mocks.load, loadBatches: mocks.loadBatches, autoMatchBatch: mocks.autoMatchBatch, importFile: mocks.importFile,
   ignoreTransaction: mocks.ignore, unmatchTransaction: mocks.unmatch,
   fetchWiseStatus: vi.fn().mockResolvedValue(undefined),
 }) }));
@@ -58,6 +58,7 @@ beforeEach(() => {
   batches.value = [];
   transactions.value = [];
   mocks.load.mockResolvedValue(undefined);
+  mocks.loadBatches.mockResolvedValue(undefined);
   mocks.autoMatchBatch.mockResolvedValue(undefined);
   mocks.ignore.mockResolvedValue(undefined);
   mocks.unmatch.mockResolvedValue(undefined);
@@ -67,6 +68,52 @@ beforeEach(() => {
 afterEach(() => { wrapper?.unmount(); wrapper = undefined; });
 
 describe('batch matching errors', () => {
+  it.each([
+    ['bank_import_row_batch_rejected', 'invoicing.bank_import_failed'],
+    ['bank_reconciliation_outcome_unknown', 'invoicing.bank_matching_unknown'],
+    ['bank_reconciliation_wait_timed_out', 'invoicing.bank_matching_busy'],
+    ['expense_reconciliation_owner_unavailable', 'invoicing.expense_owner_unavailable'],
+    ['synthetic failure', 'common.error'],
+  ])('reports a mounted page load failure %s without retrying or rejecting the lifecycle', async (message, key) => {
+    mocks.load.mockRejectedValueOnce(new Error(message));
+    await render();
+    expect(mocks.flashError).toHaveBeenCalledExactlyOnceWith(key);
+    expect(mocks.load).toHaveBeenCalledExactlyOnceWith('all', { skipErrorFlash: true });
+  });
+
+  it.each(['load', 'loadBatches'] as const)('discards a stale %s failure after switching companies', async (action) => {
+    const pending = deferred<void>();
+    mocks[action].mockReturnValueOnce(pending.promise);
+    await render();
+    route.params.companyId = 'local-b';
+    await flushPromises();
+    pending.reject(new Error('bank_reconciliation_outcome_unknown'));
+    await flushPromises();
+    expect(mocks[action]).toHaveBeenCalledTimes(2);
+    expect(mocks.flashError).not.toHaveBeenCalled();
+  });
+
+  it('reports a current batch-list failure through the page without a global error flash', async () => {
+    mocks.loadBatches.mockRejectedValueOnce(new Error('synthetic batch failure'));
+    await render();
+    expect(mocks.loadBatches).toHaveBeenCalledExactlyOnceWith({ skipErrorFlash: true });
+    expect(mocks.flashError).toHaveBeenCalledExactlyOnceWith('common.error');
+  });
+
+  it.each(['load', 'loadBatches'] as const)('discards a superseded %s failure across A-B-A', async (action) => {
+    const pending = deferred<void>();
+    mocks[action].mockReturnValueOnce(pending.promise);
+    await render();
+    route.params.companyId = 'local-b';
+    await flushPromises();
+    route.params.companyId = 'local-a';
+    await flushPromises();
+    pending.reject(new Error('bank_reconciliation_outcome_unknown'));
+    await flushPromises();
+    expect(mocks[action]).toHaveBeenCalledTimes(3);
+    expect(mocks.flashError).not.toHaveBeenCalled();
+  });
+
   it.each(['ignore', 'unmatch'] as const)('shows a localized rejected %s action without refreshing or retrying', async (action) => {
     transactions.value = [{ id: 'synthetic-tx', booked_at: '2026-11-04', amount: '19.00', currency: 'EUR',
       direction: 'debit', match_status: action === 'ignore' ? 'unmatched' : 'matched' }];
@@ -150,6 +197,18 @@ describe('batch matching errors', () => {
     expect(mocks.autoMatchBatch).toHaveBeenCalledExactlyOnceWith('synthetic-batch');
     expect(mocks.load).toHaveBeenCalledOnce();
     expect(mocks.flashError).toHaveBeenCalledExactlyOnceWith('invoicing.bank_matching_refresh_failed');
+  });
+
+  it('reports an unknown inbound import during post-match refresh with recovery guidance', async () => {
+    batches.value = [{ id: 'synthetic-batch', imported_count: 1, row_count: 1 }];
+    await render();
+    mocks.load.mockClear();
+    mocks.load.mockRejectedValueOnce(new Error('bank_reconciliation_outcome_unknown'));
+    await wrapper!.findAll('button').find((button) => button.text() === 'invoicing.bank_auto_match_batch')!.trigger('click');
+    await flushPromises();
+    expect(mocks.autoMatchBatch).toHaveBeenCalledExactlyOnceWith('synthetic-batch');
+    expect(mocks.load).toHaveBeenCalledOnce();
+    expect(mocks.flashError).toHaveBeenCalledExactlyOnceWith('invoicing.bank_matching_unknown');
   });
 
   it.each(['resolve', 'reject'] as const)('discards a pending batch %s after switching companies', async (outcome) => {

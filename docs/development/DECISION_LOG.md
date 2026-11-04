@@ -1,5 +1,16 @@
 # Development decision log
 
+## 2026-11-04 - Accept the fifth request-lifecycle repair for publication
+
+Both independent reviewers accept the exact4/9 manifests for scoped cancellation,
+batch freshness, bounded best-effort HTTP, visible local import failure and narrow
+ACK recovery. The page owns refresh/error reporting; remove only its redundant
+private watcher loads. Generic/auth/unknown ACK failures retain their contracts.
+Main1485frontend plus focused/native/backend-contract/static checks pass with
+unchanged warning/type/docstring thresholds. Main publishes only13 reviewed paths,
+verifies new CI and actual capacity, and repeats the authorized review command.
+No merge, deployment, production replay or other repository change is approved.
+
 ## 2026-11-04 - Complete the CodeRabbit loop without weakening checks
 
 The owner authorizes the exact manual review command after capacity resets and

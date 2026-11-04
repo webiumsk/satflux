@@ -20,7 +20,8 @@ const entry: EfakturaInboxEntry = {
     summary: { supplier_name: "Synthetic supplier", external_number: "INV-19", total: "19.00", currency: "EUR" },
 };
 
-function bridgeTransport(hang: "detail" | "ack", retryStatus = 200) {
+function bridgeTransport(hang: "detail" | "ack" | "none", retryStatus = 200,
+    errorData: unknown = { errors: { inbox: ["Inbox item is not pending."] } }) {
     const requests: InternalAxiosRequestConfig[] = [];
     let acknowledgements = 0;
     const adapter: AxiosAdapter = (config) => {
@@ -36,8 +37,8 @@ function bridgeTransport(hang: "detail" | "ack", retryStatus = 200) {
             });
         }
         const response = { config, status: isAck ? retryStatus : 200, statusText: "Synthetic", headers: {},
-            data: { data: config.url?.endsWith("/inbox") ? [] : { ...entry, ubl: "" } } };
-        if (isAck && retryStatus === 422) return Promise.reject(new AxiosError("synthetic_already_processed", "ERR_BAD_REQUEST", config, undefined, response));
+            data: isAck && retryStatus >= 400 ? errorData : { data: config.url?.endsWith("/inbox") ? [] : { ...entry, ubl: "" } } };
+        if (isAck && retryStatus >= 400) return Promise.reject(new AxiosError("synthetic_ack_failure", "ERR_BAD_REQUEST", config, undefined, response));
         return Promise.resolve(response);
     };
     api.defaults.adapter = adapter;
@@ -84,13 +85,57 @@ it.each([200, 422])("preserves one committed stable expense after an ACK timeout
     expect(state.expense).toEqual([saved]);
     expect(requests).toHaveLength(2); // Retrying requires a new user action.
     const retry = importEfakturaInboxEntry(evolu as never, "company-a", "synthetic-bridge", entry);
-    if (retryStatus === 200) expect(await retry).toMatchObject({ ok: true, alreadyImported: true });
-    else await expect(retry).rejects.toMatchObject({ response: { status: 422 } });
+    expect(await retry).toMatchObject({ ok: true, alreadyImported: true });
     expect(state.expense).toEqual([saved]);
     expect(evolu.upsert.mock.calls.filter(([table]) => table === "expense")).toHaveLength(1);
     expect(requests.filter((request) => request.method === "get")).toHaveLength(1);
     expect(await invoicingApi.efaktura.inboxList("synthetic-bridge")).toEqual([]);
     expect(await withExpenseReconciliation(evolu as never, () => true)).toBe(true);
+});
+
+it.each([
+    [422, { errors: { inbox: ["Different validation error."] } }],
+    [422, { errors: { inbox: ["Inbox item is not pending."], company: ["Invalid company."] } }],
+    [422, { message: "Inbox item is not pending." }],
+    [401, {}], [403, {}], [404, {}], [419, {}], [500, {}],
+])("preserves an existing expense and propagates an unrelated ACK failure %s", async (status, errorData) => {
+    const requests = bridgeTransport("none", status as number, errorData);
+    const stableId = stableExpenseIdFromInboxUuid(entry.evolu_expense_id)!;
+    const { evolu, state } = createExpenseWriterTestAdapter([{ id: stableId, companyId: "company-a", total: "19.00", status: "paid" }]);
+    const saved = structuredClone(state.expense);
+    await expect(importEfakturaInboxEntry(evolu as never, "company-a", "synthetic-bridge", entry))
+        .rejects.toMatchObject({ response: { status } });
+    expect(state.expense).toEqual(saved);
+    expect(requests).toHaveLength(1);
+    expect(requests[0].method).toBe("post");
+    expect(evolu.upsert.mock.calls.some(([table]) => table === "expense")).toBe(false);
+});
+
+it("propagates a terminal ACK on a new import, then recovers only after a fresh local copy exists", async () => {
+    const requests = bridgeTransport("none", 422);
+    const { evolu, state } = createExpenseWriterTestAdapter();
+    await expect(importEfakturaInboxEntry(evolu as never, "company-a", "synthetic-bridge", entry))
+        .rejects.toMatchObject({ response: { status: 422 } });
+    expect(state.expense).toHaveLength(1);
+    const saved = structuredClone(state.expense);
+    await expect(importEfakturaInboxEntry(evolu as never, "company-a", "synthetic-bridge", entry))
+        .resolves.toMatchObject({ ok: true, alreadyImported: true });
+    expect(state.expense).toEqual(saved);
+    expect(requests.filter((request) => request.method === "get")).toHaveLength(1);
+    expect(evolu.upsert.mock.calls.filter(([table]) => table === "expense")).toHaveLength(1);
+});
+
+it.each([
+    { companyId: "company-b", isDeleted: 0 },
+    { companyId: "company-a", isDeleted: 1 },
+])("rejects a foreign or deleted stable target before acknowledging it: %j", async (target) => {
+    const requests = bridgeTransport("none", 422);
+    const { evolu, state } = createExpenseWriterTestAdapter([{ id: stableExpenseIdFromInboxUuid(entry.evolu_expense_id), ...target, total: "19.00" }]);
+    const saved = structuredClone(state.expense);
+    await expect(importEfakturaInboxEntry(evolu as never, "company-a", "synthetic-bridge", entry))
+        .resolves.toEqual({ ok: false, error: "expense_insert_failed" });
+    expect(requests).toHaveLength(0);
+    expect(state.expense).toEqual(saved);
 });
 
 const scopedBankRequests = [

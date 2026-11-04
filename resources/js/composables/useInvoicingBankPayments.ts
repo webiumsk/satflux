@@ -1,6 +1,7 @@
 import { toAppRows } from "@/evolu/queryLoad";
 import type { Evolu } from "@evolu/common/local-first";
-import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
+import { computed, onScopeDispose, ref, watch, type ComputedRef, type Ref } from "vue";
+import { isCancel } from "axios";
 import { useQuery } from "@evolu/vue";
 import { invoicingApi } from "@/services/api";
 import {
@@ -66,7 +67,7 @@ export interface UseInvoicingBankPaymentsResult {
     batches: Ref<BankBatchApiRow[]> | ComputedRef<BankBatchApiRow[]>;
     inboundEmailAvailable: ComputedRef<boolean>;
     load: (matchFilter?: string, options?: { skipErrorFlash?: boolean }) => Promise<void>;
-    loadBatches: () => Promise<void>;
+    loadBatches: (options?: { skipErrorFlash?: boolean }) => Promise<void>;
     loadInbound: () => Promise<void>;
     importFile: (file: File, format?: string) => Promise<{ imported: number; auto_matched: number }>;
     autoMatchBatch: (batchId: string) => Promise<void>;
@@ -106,13 +107,29 @@ function useServerInvoicingBankPayments(
     const inboundEmail = ref("");
     let lastFilter = "all";
     let loadRequest = 0;
+    let batchRequest = 0;
+    let loadController: AbortController | null = null;
+    let batchController: AbortController | null = null;
 
     watch(companyId, () => {
         loadRequest++;
+        batchRequest++;
+        loadController?.abort();
+        batchController?.abort();
+        loadController = null;
+        batchController = null;
         transactions.value = [];
+        batches.value = [];
         summary.value = emptySummary(defaultCurrency.value);
         loading.value = false;
     }, { flush: "sync" });
+
+    onScopeDispose(() => {
+        loadRequest++;
+        batchRequest++;
+        loadController?.abort();
+        batchController?.abort();
+    });
 
     const inboundEmailAvailable = computed(() => companyId.value.trim().length > 0);
 
@@ -122,15 +139,20 @@ function useServerInvoicingBankPayments(
 
     /**
      * Load server rows for the captured company and request generation.
-     * Discard superseded responses and let callers opt out of global error flashes.
+     * Abort superseded transport requests but retain guards for adapters that ignore cancellation.
+     * Only Axios cancellation is consumed; ordinary failures retain caller/global error handling.
      */
     async function load(matchFilter = lastFilter, options: { skipErrorFlash?: boolean } = {}) {
         const request = ++loadRequest;
+        loadController?.abort();
+        const controller = new AbortController();
+        loadController = controller;
         const cid = requireCompanyId();
         if (!cid) {
             transactions.value = [];
             summary.value = emptySummary(defaultCurrency.value);
             loading.value = false;
+            loadController = null;
             return;
         }
         lastFilter = matchFilter;
@@ -138,22 +160,41 @@ function useServerInvoicingBankPayments(
         try {
             const params: Record<string, string | number> = { per_page: 50 };
             if (matchFilter !== "all") params.match_status = matchFilter;
-            const res = await invoicingApi.bankTransactions.list<BankTxApiRow>(cid, params, options);
+            const res = await invoicingApi.bankTransactions.list<BankTxApiRow>(cid, params, { ...options, signal: controller.signal });
             if (companyId.value !== cid || request !== loadRequest) return;
             transactions.value = res.data;
             summary.value = (res.meta?.summary as typeof summary.value) || emptySummary(defaultCurrency.value);
+        } catch (error) {
+            if (!isCancel(error)) throw error;
         } finally {
             if (companyId.value === cid && request === loadRequest) loading.value = false;
+            if (loadController === controller) loadController = null;
         }
     }
 
-    async function loadBatches() {
+    /**
+     * Load only the latest selected-company batches and abort replaced requests.
+     * Keep generation checks even when transport cancellation is ignored.
+     */
+    async function loadBatches(options: { skipErrorFlash?: boolean } = {}) {
+        const request = ++batchRequest;
+        batchController?.abort();
+        const controller = new AbortController();
+        batchController = controller;
         const cid = requireCompanyId();
         if (!cid) {
             batches.value = [];
+            batchController = null;
             return;
         }
-        batches.value = await invoicingApi.bankTransactions.batches(cid);
+        try {
+            const rows = await invoicingApi.bankTransactions.batches<BankBatchApiRow>(cid, { ...options, signal: controller.signal });
+            if (companyId.value === cid && request === batchRequest) batches.value = rows;
+        } catch (error) {
+            if (!isCancel(error)) throw error;
+        } finally {
+            if (batchController === controller) batchController = null;
+        }
     }
 
     async function loadInbound() {
@@ -426,12 +467,13 @@ function useLocalInvoicingBankPayments(
         return bridgeId;
     }
 
+    /** Fetch every email page with a per-request deadline; a failed page discards the partial set. */
     async function fetchInboundServerRows(bridgeId: string): Promise<ServerBankTransactionRow[]> {
         const rows: ServerBankTransactionRow[] = [];
         let page = 1;
         let lastPage = 1;
         do {
-            const res = await invoicingApi.bankTransactions.list<ServerBankTransactionRow>(bridgeId, { source: "email", per_page: 100, page });
+            const res = await invoicingApi.bankTransactions.list<ServerBankTransactionRow>(bridgeId, { source: "email", per_page: 100, page }, { timeout: 10_000, skipErrorFlash: true });
             rows.push(...res.data);
             lastPage = res.meta?.last_page ?? 1;
             page += 1;
@@ -460,24 +502,26 @@ function useLocalInvoicingBankPayments(
 
     /**
      * Fetch bridge email rows and import them only while that local company remains selected.
-     * Bridge failures are best-effort and do not remove existing local movements.
+     * Only HTTP fetch failures are best-effort; local import failures and Unknown escape unchanged.
      */
     async function syncInboundCompany(localCompanyId: string) {
         const bridgeId = await resolveBridgeCompanyId();
         if (!bridgeId) {
             return;
         }
+        let rows: ServerBankTransactionRow[];
         try {
-            const rows = await fetchInboundServerRows(bridgeId);
-            if (companyId.value === localCompanyId && rows.length > 0) {
-                await importInboundServerTransactionsAsync(
-                    evolu,
-                    localCompanyId as CompanyId,
-                    rows,
-                );
-            }
+            rows = await fetchInboundServerRows(bridgeId);
         } catch {
             // Bridge sync is best-effort; local data remains usable.
+            return;
+        }
+        if (companyId.value === localCompanyId && rows.length > 0) {
+            await importInboundServerTransactionsAsync(
+                evolu,
+                localCompanyId as CompanyId,
+                rows,
+            );
         }
     }
 
@@ -654,8 +698,7 @@ function useLocalInvoicingBankPayments(
 
     watch(companyId, () => {
         bridgeCompanyId.value = null;
-        void load();
-        void loadBatches();
+        // CompanyPayments owns the awaited refresh and its visible error path.
     });
 
     return {

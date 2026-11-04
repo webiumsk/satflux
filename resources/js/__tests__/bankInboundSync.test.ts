@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { effectScope, nextTick, ref, type EffectScope } from "vue";
+import { AxiosError } from "axios";
 
 const mocks = vi.hoisted(() => ({
     localFirst: true,
@@ -22,6 +23,8 @@ vi.mock("@/evolu/client", () => ({
     allBankTransactionsQuery: "transactions",
     allDocumentsQuery: "documents",
     allExpensesQuery: "expenses",
+    bankReconciliationBatchesQuery: "fresh:batches", bankReconciliationTransactionsQuery: "fresh:transactions",
+    bankReconciliationMatchesQuery: "fresh:matches", bankReconciliationDocumentsQuery: "fresh:documents", bankReconciliationExpensesQuery: "fresh:expenses",
     useInvoicingEvolu: () => ({ loadQuery: mocks.loadQuery }),
 }));
 vi.mock("@/evolu/flags", () => ({ isInvoicingLocalFirst: () => mocks.localFirst }));
@@ -40,6 +43,7 @@ vi.mock("@/evolu/bankCrud", () => ({
 }));
 
 import { useInvoicingBankPayments } from "@/composables/useInvoicingBankPayments";
+import { BankReconciliationUnknownError } from "@/evolu/bankReconciliation";
 
 const scopes: EffectScope[] = [];
 function bankFor(id = "local-b") {
@@ -75,6 +79,7 @@ beforeEach(() => {
 
 afterEach(() => {
     scopes.splice(0).forEach((scope) => scope.stop());
+    vi.useRealTimers();
 });
 
 describe("bank movement bridge synchronization", () => {
@@ -94,8 +99,8 @@ describe("bank movement bridge synchronization", () => {
         await bank.load();
         expect(mocks.ensure).toHaveBeenCalledWith("local-b");
         expect(mocks.fallback).not.toHaveBeenCalled();
-        expect(mocks.list).toHaveBeenNthCalledWith(1, "bridge-local-b", { source: "email", per_page: 100, page: 1 });
-        expect(mocks.list).toHaveBeenNthCalledWith(2, "bridge-local-b", { source: "email", per_page: 100, page: 2 });
+        expect(mocks.list).toHaveBeenNthCalledWith(1, "bridge-local-b", { source: "email", per_page: 100, page: 1 }, { timeout: 10_000, skipErrorFlash: true });
+        expect(mocks.list).toHaveBeenNthCalledWith(2, "bridge-local-b", { source: "email", per_page: 100, page: 2 }, { timeout: 10_000, skipErrorFlash: true });
         expect(mocks.importInbound).toHaveBeenCalledWith(expect.anything(), "local-b", [row, { ...row, id: "server-tx-b2" }]);
     });
 
@@ -124,7 +129,7 @@ describe("bank movement bridge synchronization", () => {
             ? response.promise : Promise.resolve({ data: [], meta: { last_page: 1 } }));
         const { bank, company } = bankFor("local-a");
         const pending = bank.load();
-        await vi.waitFor(() => expect(mocks.list).toHaveBeenCalledWith("bridge-local-a", expect.anything()));
+        await vi.waitFor(() => expect(mocks.list).toHaveBeenCalledWith("bridge-local-a", expect.anything(), { timeout: 10_000, skipErrorFlash: true }));
         company.value = "local-b";
         await nextTick();
         response.resolve({ data: [row], meta: { last_page: 1 } });
@@ -167,6 +172,59 @@ describe("bank movement bridge synchronization", () => {
         expect(mocks.importInbound).toHaveBeenCalledTimes(1);
     });
 
+    it("times out a later email page without partial import, releases overlapping work and retries only on a new refresh", async () => {
+        vi.useFakeTimers();
+        mocks.list.mockResolvedValueOnce({ data: [row], meta: { last_page: 2 } })
+            .mockImplementationOnce((_id, _params, options) => new Promise((_resolve, reject) => {
+                if (options.timeout) setTimeout(() => reject(new AxiosError("synthetic page timeout", "ECONNABORTED")), options.timeout);
+            }));
+        const { bank } = bankFor(); mocks.loadQuery.mockClear();
+        const first = bank.load(); const overlapping = bank.load();
+        let settled = false;
+        void Promise.all([first, overlapping]).then(() => { settled = true; });
+        await vi.advanceTimersByTimeAsync(0);
+        expect(mocks.list).toHaveBeenCalledTimes(2);
+        expect(mocks.list).toHaveBeenLastCalledWith("bridge-local-b", { source: "email", per_page: 100, page: 2 },
+            { timeout: 10_000, skipErrorFlash: true });
+        await vi.advanceTimersByTimeAsync(9_999);
+        expect(mocks.importInbound).not.toHaveBeenCalled();
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(1); await Promise.all([first, overlapping]);
+        expect(bank.loading.value).toBe(false);
+        expect(mocks.importInbound).not.toHaveBeenCalled();
+        expect(new Set(mocks.loadQuery.mock.calls.map(([query]) => query))).toEqual(new Set(["transactions", "matches", "documents", "expenses"]));
+        expect(mocks.list).toHaveBeenCalledTimes(2);
+        await bank.load();
+        expect(mocks.list).toHaveBeenCalledTimes(3);
+        expect(mocks.importInbound).toHaveBeenCalledExactlyOnceWith(expect.anything(), "local-b", [row]);
+    });
+
+    it("leaves company-change refresh ownership with the page so import failures remain observable", async () => {
+        const { bank, company } = bankFor("local-a");
+        await Promise.resolve(); mocks.loadQuery.mockClear();
+        company.value = "local-b"; await nextTick();
+        expect(mocks.list).not.toHaveBeenCalled();
+        expect(mocks.importInbound).not.toHaveBeenCalled();
+        expect(mocks.loadQuery).not.toHaveBeenCalled();
+        const failure = new BankReconciliationUnknownError();
+        mocks.importInbound.mockRejectedValueOnce(failure);
+        await expect(bank.load()).rejects.toBe(failure);
+        expect(mocks.importInbound).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([new Error("expense_mutation_batch_rejected"), new BankReconciliationUnknownError()])("propagates local import failure unchanged and does not retry it automatically: %s", async (failure) => {
+            mocks.importInbound.mockRejectedValue(failure);
+            const { bank } = bankFor();
+            const first = bank.load(); const overlapping = bank.load();
+            const outcomes = await Promise.allSettled([first, overlapping]);
+            expect(outcomes).toEqual([{ status: "rejected", reason: failure }, { status: "rejected", reason: failure }]);
+            expect(bank.loading.value).toBe(false);
+            expect(mocks.list).toHaveBeenCalledTimes(1);
+            expect(mocks.importInbound).toHaveBeenCalledTimes(1);
+            await Promise.resolve();
+            expect(mocks.importInbound).toHaveBeenCalledTimes(1);
+        });
+
     it("uses that same company bridge for Wise status and imported rows", async () => {
         const { bank } = bankFor();
         await bank.fetchWiseStatus();
@@ -193,7 +251,7 @@ describe("bank movement bridge synchronization", () => {
         mocks.localFirst = false;
         const { bank } = bankFor("server-company-uuid");
         await bank.load();
-        expect(mocks.list).toHaveBeenCalledWith("server-company-uuid", { per_page: 50 }, {});
+        expect(mocks.list).toHaveBeenCalledWith("server-company-uuid", { per_page: 50 }, { signal: expect.any(AbortSignal) });
         expect(mocks.ensure).not.toHaveBeenCalled();
         expect(mocks.importInbound).not.toHaveBeenCalled();
     });

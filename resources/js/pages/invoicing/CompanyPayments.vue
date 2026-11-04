@@ -826,7 +826,9 @@ const inboundCopied = ref(false);
 const inboundBridgeChecked = ref(false);
 const inboundBridgeCompanyId = ref<string | null>(null);
 let inboundRequest = 0;
-onBeforeUnmount(() => { inboundRequest += 1; });
+let bankLoadRequest = 0;
+let bankBatchesRequest = 0;
+onBeforeUnmount(() => { inboundRequest += 1; bankLoadRequest += 1; bankBatchesRequest += 1; });
 const inboundBridgeMissing = computed(
   () =>
     bank.localFirst &&
@@ -968,9 +970,18 @@ function counterpartySubtext(tx: BankTx): string {
   return reference;
 }
 
+/** Report refresh failures only in the company that initiated this page load. */
 async function load() {
+  const request = ++bankLoadRequest;
   if (!hasBankAccount.value) return;
-  await bank.load(matchFilter.value);
+  const requestedCompany = companyId.value;
+  try {
+    await bank.load(matchFilter.value, { skipErrorFlash: true });
+  } catch (error: unknown) {
+    if (companyId.value === requestedCompany && request === bankLoadRequest) {
+      flashStore.error(t(reconciliationErrorKey(error) || expenseMutationErrorKey(error) || "common.error"));
+    }
+  }
 }
 
 async function loadAfterBankAction() {
@@ -978,9 +989,16 @@ async function loadAfterBankAction() {
   await bank.load(matchFilter.value, { skipErrorFlash: true });
 }
 
+/** Keep batch refresh errors local to the current page instead of an unscoped API flash. */
 async function loadBatches() {
+  const request = ++bankBatchesRequest;
   if (!hasBankAccount.value) return;
-  await bank.loadBatches();
+  const requestedCompany = companyId.value;
+  try {
+    await bank.loadBatches({ skipErrorFlash: true });
+  } catch (error: unknown) {
+    if (companyId.value === requestedCompany && request === bankBatchesRequest) flashStore.error(t("common.error"));
+  }
 }
 
 function isCurrentInboundRequest(request: number, localCompanyId: string): boolean {
@@ -1155,8 +1173,10 @@ async function autoMatchBatch(batchId: string) {
   if (companyId.value !== requestedCompany) return;
   try {
     await loadAfterBankAction();
-  } catch {
-    if (companyId.value === requestedCompany) flashStore.error(t("invoicing.bank_matching_refresh_failed"));
+  } catch (error: unknown) {
+    if (companyId.value === requestedCompany) {
+      flashStore.error(t(reconciliationErrorKey(error) || expenseMutationErrorKey(error) || "invoicing.bank_matching_refresh_failed"));
+    }
   }
 }
 
@@ -1213,8 +1233,10 @@ async function refreshBankAction() {
   const requestedCompany = companyId.value;
   try {
     await loadAfterBankAction();
-  } catch {
-    if (companyId.value === requestedCompany) flashStore.error(t("invoicing.bank_action_refresh_failed"));
+  } catch (error: unknown) {
+    if (companyId.value === requestedCompany) {
+      flashStore.error(t(reconciliationErrorKey(error) || expenseMutationErrorKey(error) || "invoicing.bank_action_refresh_failed"));
+    }
   }
 }
 

@@ -1,5 +1,67 @@
 # Expense defaults and bank-mail reconciliation
 
+## Fifth review contract - 2026-11-04
+
+The authorized manual review completed on published `3dce0b4f` at 01:49 UTC.
+All CI jobs pass on that revision and all five pre-merge checks pass, including
+86.92% docstring coverage against the unchanged80% threshold. The completed review
+adds five actionable findings, so the owner's repair/check loop remains active.
+
+- Server transaction and batch reads must abort superseded requests, discard
+  stale company/generation results, and clear previous-company batches. Catch
+  actual cancellation inside each loader; active non-cancellation errors still
+  propagate. Preserve credentials, CSRF, scoped routes and ordinary API defaults.
+- Each bridge bank-list page has a finite10-second wait and opts out of global
+  error flashes because fetch failures remain best-effort. The shared sync clears
+  on timeout, local movements remain readable and an explicit retry can fetch
+  again. Do not import partially fetched page sets after a failed fetch.
+- Local import rejection, including Unknown, must reach a current-company page
+  handler with existing localized recovery. Do not automatically replay, retry,
+  compensate or release worker quarantine. Remove redundant background loads from
+  the local company watcher only after verifying the page is the sole production
+  consumer and already owns mount/company refreshes.
+- A fresh same-company nondeleted stable expense permits an ACK conflict to
+  complete as local already-imported success only for Axios422 with the exact
+  sole `errors.inbox = ["Inbox item is not pending."]` signature. Backend source
+  confirms this means a terminal inbox, not proof of remote imported status.
+  Generic422, authorization/session/not-found/network failures, new imports and
+  foreign/deleted targets retain their failure behavior. No server change.
+
+Main owns page error handling, stable-inbox recovery/tests and shared state;
+frontend owns composable/API request lifecycle and matching regressions. Separate
+QA/security reviews must verify timeout/retry, cancellation without unhandled
+rejection/global flash, stale batch contexts, visible local failure and narrow
+ACK recovery before scoped publication. Then wait for full exact-head CI and
+available review capacity before the next authorized manual review command.
+No merge, deployment, production access or payment authority expansion is included.
+
+## Fifth review evidence - 2026-11-04
+
+Independent QA and security accept the same frozen runtime4 manifest
+`b7887cd1c5469280eda1ed1f6c5906ace1cfb770cff231d21bc584dd9417983f`
+and source/tests9 manifest
+`b33cfdeb57808d06f013e4ffa552a55b99934bd1fe7dac4ea2af2999c19de663`.
+Every source/test byte matches. Main full frontend passes1,485 cases/165files;
+root55 and author46 focused cases pass. Full lint retains48 known warnings/zero
+errors; typecheck111existing/no-new, build and five-language parity pass with
+unchanged ratchets. Backend source and API route fingerprints are unchanged.
+
+Independent QA passes112 repository cases/seven suites and14 temporary cases/two
+suites. Security independently passes101 repository/five suites,14 temporary/two
+suites and the unchanged backend ACK contract6PHP/64assertions in verified memory
+SQLite with network disabled (one inherited deprecation). Scopes overlap.
+The actual Axios and native SQLite/Evolu probes cover cancellation without global
+flash/unhandled rejection, stale batches/A-B-A, failed second-page timeout with no
+partial import and reusable shared sync, visible known/Unknown import outcomes,
+no hidden watcher attempt, exact existing-local422 recovery and generic/auth/new/
+foreign/deleted negative cases. Adapters remain synthetic, not browser/network E2E.
+
+Both reviewers report no unresolved finding. Publish only13 reviewed paths after
+verifying committed manifests, then exact remote SHA, complete fresh CI and the
+actual next review-capacity notice. Resolve only the five published addressed
+threads. The owner's repair/check loop continues until an actual review and all
+checks are green. No production access/replay, merge or deployment is included.
+
 ## Documentation coverage follow-up - 2026-11-04
 
 All four jobs in CI41751685173 pass on published `6ba7e908`, including full PHPStan

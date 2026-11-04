@@ -1,4 +1,5 @@
 import { createIdFromString } from "@evolu/common";
+import { isAxiosError } from "axios";
 import type { Evolu } from "@evolu/common/local-first";
 import { invoicingApi } from "@/services/api";
 import { allExpensesQuery } from "./client";
@@ -140,6 +141,15 @@ export function findLocalExpenseForInboxEntry(
     return rows.find((row) => row.id === stableId && String(row.companyId) === companyId) ?? null;
 }
 
+/** Recognize only the server's terminal-inbox conflict; it does not attest an imported remote state. */
+function isResolvedInboxConflict(error: unknown): boolean {
+    if (!isAxiosError<{ errors?: { inbox?: unknown } }>(error) || error.response?.status !== 422) return false;
+    const errors = error.response.data?.errors;
+    if (!errors || !Array.isArray(errors.inbox)) return false;
+    return errors.inbox.length === 1
+        && errors.inbox[0] === "Inbox item is not pending." && Object.keys(errors).length === 1;
+}
+
 /**
  * Import one inbox item: expense under its stable id (upsert - idempotent),
  * the UBL as an XML attachment when it fits the local cap, then clear the
@@ -161,7 +171,13 @@ export async function importEfakturaInboxEntry(
     if (target && (target.isDeleted === 1 || target.companyId !== companyId)) return { ok: false as const, error: "expense_insert_failed" };
     const rows = scope.context.expenses;
     if (findLocalExpenseForInboxEntry(rows, companyId, entry)) {
-        await markEfakturaInboxImported(bridgeCompanyId, entry.inbox_id);
+        try {
+            await markEfakturaInboxImported(bridgeCompanyId, entry.inbox_id);
+        } catch (error) {
+            // A prior ACK may have succeeded, or another client may have resolved the inbox.
+            // The fresh local stable-ID copy already establishes this client's successful import.
+            if (!isResolvedInboxConflict(error)) throw error;
+        }
         return { ok: true, expenseId: stableId, attachmentSkipped: false, alreadyImported: true };
     }
 

@@ -1134,13 +1134,14 @@ export const invoicingApi = {
         },
     },
     bankTransactions: {
-        /** Lists company movements; suppress global errors only when the caller handles them in its current context. */
-        async list<T = unknown>(companyId: string, params: Record<string, unknown> = {}, options: { skipErrorFlash?: boolean } = {}): Promise<{ data: T[]; meta?: { summary?: unknown; last_page?: number } }> {
+        /** Lists movements with optional request cancellation/deadline and caller-owned error reporting. */
+        async list<T = unknown>(companyId: string, params: Record<string, unknown> = {}, options: { skipErrorFlash?: boolean; signal?: AbortSignal; timeout?: number } = {}): Promise<{ data: T[]; meta?: { summary?: unknown; last_page?: number } }> {
             const { data } = await api.get<{ data?: T[]; meta?: { summary?: unknown; last_page?: number } }>(`/invoicing/companies/${companyId}/bank-transactions`, { ...options, params });
             return { data: data.data ?? [], meta: data.meta };
         },
-        async batches<T = unknown>(companyId: string): Promise<T[]> {
-            const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/bank-transactions/batches`);
+        /** Lists batches without changing default flashes unless the caller handles its own context. */
+        async batches<T = unknown>(companyId: string, options: { skipErrorFlash?: boolean; signal?: AbortSignal } = {}): Promise<T[]> {
+            const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/bank-transactions/batches`, options);
             return data.data ?? [];
         },
         async inboundEmail<T = unknown>(companyId: string): Promise<T> {
