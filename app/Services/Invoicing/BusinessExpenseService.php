@@ -227,23 +227,47 @@ class BusinessExpenseService
         return $expense->fresh();
     }
 
+    /** Clear independent payment state only after its bank relationship has been removed. */
     public function unmarkPaid(BusinessExpense $expense): BusinessExpense
     {
-        $expense->update([
-            'status' => BusinessExpenseStatus::Recorded,
-            'paid_at' => null,
-        ]);
+        return $expense->getConnection()->transaction(function () use ($expense): BusinessExpense {
+            $locked = $this->lockUnlinkedExpense($expense);
+            $locked->update([
+                'status' => BusinessExpenseStatus::Recorded,
+                'paid_at' => null,
+            ]);
 
-        return $expense->fresh();
+            return $locked->fresh();
+        });
     }
 
+    /** Cancel an expense only after its bank relationship has been removed. */
     public function cancel(BusinessExpense $expense): BusinessExpense
     {
-        $expense->status = BusinessExpenseStatus::Cancelled;
-        $expense->cancelled_at = now();
-        $expense->save();
+        return $expense->getConnection()->transaction(function () use ($expense): BusinessExpense {
+            $locked = $this->lockUnlinkedExpense($expense);
+            $locked->status = BusinessExpenseStatus::Cancelled;
+            $locked->cancelled_at = now();
+            $locked->save();
 
-        return $expense->fresh();
+            return $locked->fresh();
+        });
+    }
+
+    /** Lock company and expense state before reading bank links without acquiring a movement lock. */
+    private function lockUnlinkedExpense(BusinessExpense $expense): BusinessExpense
+    {
+        $connectionName = $expense->getConnection()->getName();
+        Company::on($connectionName)->whereKey($expense->company_id)->lockForUpdate()->firstOrFail();
+        $locked = BusinessExpense::on($connectionName)->whereKey($expense->id)
+            ->where('company_id', $expense->company_id)->lockForUpdate()->firstOrFail();
+        if (BankTransaction::on($connectionName)->where('business_expense_id', $locked->id)->exists()) {
+            throw ValidationException::withMessages([
+                'status' => ['expense_linked_payment'],
+            ]);
+        }
+
+        return $locked;
     }
 
     public function permanentlyDelete(BusinessExpense $expense): void

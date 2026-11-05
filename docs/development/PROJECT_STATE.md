@@ -1,5 +1,33 @@
 # Project state
 
+## PR429 second review fixes accepted locally - 2026-11-05
+
+All five CI jobs pass on published `714e078b`; CodeRabbit exact-head review has
+92.41% docstring coverage. Its three new inline and one outside-diff findings are
+now fixed from that baseline. Payment mapping and expense/accountant projection
+use scoped snapshot indexes with duplicate/wildcard safety and status filtering
+before the fifty-row bound. Node engines are `^22.13.0 || >=24.0.0` with unchanged
+dependencies. Server unmark/cancel lock fresh Company → Expense state and require
+explicit unlinking; bulk cancellation skips only the exact linked-payment code
+and returns truthful counters. Other failures propagate. Existing localization
+now consumes the actual HTTP rejection envelope.
+
+Independent QA/security accept runtime45
+`2fcb0006f3c4cd7dd9da2909e1a668c9b55534c64a16583243790bd925c73a4e`
+and source/tests/CI72
+`dbbcab19e27396f7ce1f72ca3f51a289072fab6d23ad16b2ec354286863b81c7`.
+Main full frontend: 1,854 tests / 185 files; typecheck111, lint48/52, production
+build and scoped helper lint pass. Backend: 170 focused / 867 assertions,
+Pint/PHPStan pass; independent status/bulk15 / 126, helper13 and index/canonical31
+pass (overlapping selections). QA separately verifies actual HTTP-to-UI guidance,
+linear access budgets, scope/parity and both bulk ordering/repeat paths. The
+PostgreSQL four-case gate is unchanged; no new PostgreSQL execution is claimed.
+AST-only Graphify update completes. No unresolved QA/security blocker remains.
+
+Next authorized step: main commits/pushes only the bounded second-review fixes to
+the same branch, then verifies fresh actual CI/review. Prior green evidence stays
+pinned to `714e078b`. Preserve dirty primary work; no merge/deployment is authorized.
+
 ## PR429 review remediation accepted locally - 2026-11-05
 
 The owner requests correction of PR429's failed PHP job and CodeRabbit findings.

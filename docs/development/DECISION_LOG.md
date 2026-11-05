@@ -1,5 +1,28 @@
 # Development decision log
 
+## 2026-11-05 - Bound projection work and preserve linked-status bulk semantics
+
+Keep the canonical bank-claim validator and build immutable snapshot indexes once,
+using actual owner/company/ID keys and duplicate buckets. Invoice wildcards and
+stale-index fallback remain conservative. Preselect raw bank statuses only when
+safe; evaluate effective conflict-aware status before the fifty-row limit. Raw
+writers/backups remain unchanged. Deterministic getter/iteration budgets verify
+linear growth rather than wall-clock assumptions.
+
+Server unmark/cancel reuse fresh Company → Expense locking and plain link reads.
+The new guard initially revealed a mixed bulk selection could partially cancel
+then return 422. Preserve the existing processed/skipped contract instead: skip
+only exact `['status' => ['expense_linked_payment']]`, report truthful success,
+and propagate unrelated/mixed validation and runtime failures. Keep the existing
+successful bulk intent audit; no controller/audit redesign. UI translates this
+known HTTP code using existing five-locale guidance.
+
+Exclude the unsupported Node23 branch with `^22.13.0 || >=24.0.0`; the dependency
+graph is unchanged. Independent acceptance covers runtime45 `2fcb0006...25c73a4e`
+and source72 `dbbcab19...863b81c7`. Main owns the next scoped corrective push and
+actual new-head verification; `714e078b` remains the prior fully green baseline.
+No merge/deployment authority follows from local review or source publication.
+
 ## 2026-11-05 - Repair PR429 audit and convergent expense associations
 
 The owner authorizes remediation of the current PR and the prior source-push

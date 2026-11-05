@@ -485,8 +485,8 @@ function useLocalInvoicingBankPayments(
         toAppRows<BankPaymentContext["transactions"][number]>(bankTxRows.value), companyId.value as CompanyId,
     ));
 
-    const transactions = computed(() => mapLocalBankTransactionsToApi(filteredRows.value, ctx.value)
-        .filter((row) => matchFilter.value === "all" || row.match_status === matchFilter.value).slice(0, 50));
+    const transactions = computed(() => mapLocalBankTransactionsToApi(filteredRows.value, ctx.value,
+        { matchStatus: matchFilter.value, limit: 50 }));
 
     const summary = computed(() =>
         buildBankSummary(

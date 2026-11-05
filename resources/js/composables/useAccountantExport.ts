@@ -1,4 +1,4 @@
-import { effectiveExpensePayment } from "@/evolu/bankExpenseClaims";
+import { projectExpensePayments } from "@/evolu/bankExpenseClaims";
 import type { EvoluBankTransactionRow, EvoluBankTransactionMatchRow } from "@/evolu/bankMap";
 import { computed, ref, type Ref } from "vue";
 import { useQuery } from "@evolu/vue";
@@ -103,8 +103,8 @@ export function useAccountantExport(companyId: Ref<string>, companyName: Ref<str
     void load();
 
     const documents = computed(() => toAppRows<EvoluDocumentRow>(documentRows.value));
-    const expenses = computed(() => toAppRows<EvoluExpenseRow>(expenseRows.value).map((row) => effectiveExpensePayment(row,
-        toAppRows<EvoluBankTransactionRow>(transactionRows.value), toAppRows<EvoluBankTransactionMatchRow>(matchRows.value))));
+    const expenses = computed(() => projectExpensePayments(toAppRows<EvoluExpenseRow>(expenseRows.value),
+        toAppRows<EvoluBankTransactionRow>(transactionRows.value), toAppRows<EvoluBankTransactionMatchRow>(matchRows.value)));
     const attachments = computed(() => toAppRows<EvoluExpenseAttachmentRow>(attachmentRows.value));
 
     /** Local-first only - server mode has no cheap preview (rows live on the server). */

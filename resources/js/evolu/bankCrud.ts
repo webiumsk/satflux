@@ -1,4 +1,4 @@
-import { activeBankExpenseClaim, createBankExpenseClaim, releasedBankExpenseReceipt } from "./bankExpenseClaims";
+import { activeBankExpenseClaim, bankExpenseScopeKey, createBankExpenseClaim, createBankExpensePaymentIndex, releasedBankExpenseReceipt } from "./bankExpenseClaims";
 import { sqliteTrue, createId, createRandomBytes } from "@evolu/common";
 import { ExpenseId } from "./schema";
 import type { Evolu, OwnerId } from "@evolu/common/local-first";
@@ -24,6 +24,7 @@ import {
     documentAmountDue,
     evoluBankBatchToApi,
     evoluBankTxToApi,
+    type BankTxApiRow,
     type EvoluBankImportBatchRow,
     type EvoluBankTransactionMatchRow,
     type EvoluBankTransactionRow,
@@ -927,22 +928,49 @@ function createExpenseFromBankTransactionInReconciliation(
     return expenseRow;
 }
 
-/** Resolve owner-scoped related records and project canonical bank links into payment-list rows. */
+/** Index related rows once, reserving duplicate keys as ambiguous instead of choosing an arbitrary record. */
+function indexBankApiRows<T extends object>(rows: readonly T[], key: (row: T) => string): Map<string, T | null> {
+    const index = new Map<string, T | null>();
+    for (const row of rows) {
+        if (Reflect.get(row, "isDeleted") === 1) continue;
+        const rowKey = key(row);
+        index.set(rowKey, index.has(rowKey) ? null : row);
+    }
+    return index;
+}
+
+/** Resolve scoped relations once and project only candidates needed by the effective-status filter and limit. */
 export function mapLocalBankTransactionsToApi(
-    rows: EvoluBankTransactionRow[],
+    rows: readonly EvoluBankTransactionRow[],
     ctx: BankPaymentContext,
+    options: { matchStatus?: string; limit?: number } = {},
 ) {
-    return rows.map((row) => {
+    const result: BankTxApiRow[] = [];
+    const limit = Math.max(0, options.limit ?? Infinity);
+    if (rows.length === 0 || limit === 0) return result;
+    const requested = options.matchStatus;
+    const selective = requested && requested !== "all";
+    const matches = indexBankApiRows(ctx.matches, (row) => bankExpenseScopeKey(Reflect.get(row, "ownerId"), "", row.bankTransactionId));
+    const documents = indexBankApiRows(ctx.documents, (row) => bankExpenseScopeKey(Reflect.get(row, "ownerId"), row.companyId, row.id));
+    const expenses = indexBankApiRows(ctx.expenses, (row) => bankExpenseScopeKey(Reflect.get(row, "ownerId"), row.companyId, row.id));
+    const evidence = { transactions: ctx.transactions, matches: ctx.matches, index: createBankExpensePaymentIndex(ctx.transactions, ctx.matches) };
+    for (const row of rows) {
+        // Claims can turn any raw status into a conflict/unmatched row, but cannot promote it to another status.
+        if (selective && requested !== "unmatched" && row.matchStatus !== requested) continue;
         const owner = Reflect.get(row, "ownerId");
-        const match = ctx.matches.find((m) => m.bankTransactionId === row.id && Reflect.get(m, "ownerId") === owner) ?? null;
-        const document = match
-            ? ctx.documents.find((d) => d.id === match.businessDocumentId && d.companyId === row.companyId && Reflect.get(d, "ownerId") === owner) ?? null
-            : null;
         const expense = row.businessExpenseId
-            ? ctx.expenses.find((e) => e.id === row.businessExpenseId && e.companyId === row.companyId && Reflect.get(e, "ownerId") === owner) ?? null
-            : null;
-        return evoluBankTxToApi(row, match, document, expense);
-    });
+            ? expenses.get(bankExpenseScopeKey(owner, row.companyId, row.businessExpenseId)) ?? null : null;
+        if (selective && requested === "unmatched" && row.matchStatus !== requested
+            && row.bankPaymentClaimJson == null && expense?.bankPaymentClaimJson == null) continue;
+        const match = matches.get(bankExpenseScopeKey(owner, "", row.id)) ?? null;
+        const document = match
+            ? documents.get(bankExpenseScopeKey(owner, row.companyId, match.businessDocumentId)) ?? null : null;
+        const projected = evoluBankTxToApi(row, match, document, expense, evidence);
+        if (selective && projected.match_status !== requested) continue;
+        result.push(projected);
+        if (result.length >= limit) break;
+    }
+    return result;
 }
 
 /**

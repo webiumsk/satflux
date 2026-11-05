@@ -74,6 +74,8 @@ class BusinessExpenseBulkService
     }
 
     /**
+     * Cancel independent expenses and count only known linked-payment rejections as skipped.
+     *
      * @return array{processed: int, skipped: int}
      */
     public function cancel(Collection $expenses): array
@@ -88,7 +90,16 @@ class BusinessExpenseBulkService
                 continue;
             }
 
-            $this->expenseService->cancel($expense);
+            try {
+                $this->expenseService->cancel($expense);
+            } catch (ValidationException $error) {
+                if ($error->errors() !== ['status' => ['expense_linked_payment']]) {
+                    throw $error;
+                }
+                $skipped++;
+
+                continue;
+            }
             $processed++;
         }
 

@@ -450,6 +450,82 @@ class ExpenseReconciliationTest extends TestCase
         $this->assertNull($transaction->fresh()->business_expense_id);
     }
 
+    /** Reject linked status changes without modifying either record or its existing audit history. */
+    #[Test]
+    #[TestWith(['unmark'])]
+    #[TestWith(['cancel'])]
+    public function linked_expenses_cannot_be_unmarked_or_cancelled(string $action): void
+    {
+        $expense = $this->expense();
+        $transaction = $this->movement();
+        $this->postJson($this->bankUrl($transaction, 'match-expense'), ['expense_id' => $expense->id])->assertOk();
+        $beforeExpense = $expense->fresh()->getAttributes();
+        $beforeTransaction = $transaction->fresh()->getAttributes();
+        $beforeAudit = AuditLog::query()->orderBy('id')->get()->toArray();
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}";
+
+        $response = $action === 'unmark' ? $this->postJson($url.'/unmark-paid') : $this->deleteJson($url);
+
+        $response->assertUnprocessable()->assertJsonValidationErrors('status')
+            ->assertJsonPath('errors.status', ['expense_linked_payment']);
+        $this->assertSame($beforeExpense, $expense->fresh()->getAttributes());
+        $this->assertSame($beforeTransaction, $transaction->fresh()->getAttributes());
+        $this->assertSame($beforeAudit, AuditLog::query()->orderBy('id')->get()->toArray());
+    }
+
+    /** Allow repeated independent status actions after the user explicitly removes the bank relationship. */
+    #[Test]
+    #[TestWith(['unmark', 'recorded'])]
+    #[TestWith(['cancel', 'cancelled'])]
+    public function removing_the_bank_link_allows_independent_status_changes(string $action, string $status): void
+    {
+        $expense = $this->expense();
+        $transaction = $this->movement();
+        $this->postJson($this->bankUrl($transaction, 'match-expense'), ['expense_id' => $expense->id])->assertOk();
+        $paidAt = $expense->fresh()->getRawOriginal('paid_at');
+        $this->postJson($this->bankUrl($transaction, 'unmatch'))->assertOk();
+        $beforeTransaction = $transaction->fresh()->getAttributes();
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}";
+
+        for ($attempt = 0; $attempt < 2; $attempt++) {
+            $response = $action === 'unmark' ? $this->postJson($url.'/unmark-paid') : $this->deleteJson($url);
+            $response->assertOk()->assertJsonPath('data.status', $status);
+        }
+
+        $this->assertSame($beforeTransaction, $transaction->fresh()->getAttributes());
+        $this->assertSame($action === 'unmark' ? null : $paidAt, $expense->fresh()->getRawOriginal('paid_at'));
+        if ($action === 'cancel') {
+            $this->assertNotNull($expense->fresh()->getRawOriginal('cancelled_at'));
+        }
+        $auditAction = $action === 'unmark' ? 'business_expense.unmarked_paid' : 'business_expense.cancelled';
+        $this->assertSame(2, AuditLog::where('action', $auditAction)->where('target_id', $expense->id)->count());
+    }
+
+    /** Reload current bank-link state before accepting status changes from a stale expense instance. */
+    #[Test]
+    #[TestWith(['unmarkPaid'])]
+    #[TestWith(['cancel'])]
+    public function stale_expense_objects_cannot_bypass_linked_status_guards(string $method): void
+    {
+        $stale = $this->expense();
+        $transaction = $this->movement();
+        $this->postJson($this->bankUrl($transaction, 'match-expense'), ['expense_id' => $stale->id])->assertOk();
+        $beforeExpense = $stale->fresh()->getAttributes();
+        $beforeTransaction = $transaction->fresh()->getAttributes();
+        $beforeAudit = AuditLog::query()->orderBy('id')->get()->toArray();
+
+        try {
+            app(BusinessExpenseService::class)->{$method}($stale);
+            $this->fail('Stale expense objects must not bypass the current bank relationship.');
+        } catch (ValidationException $error) {
+            $this->assertSame(['status' => ['expense_linked_payment']], $error->errors());
+        }
+
+        $this->assertSame($beforeExpense, $stale->fresh()->getAttributes());
+        $this->assertSame($beforeTransaction, $transaction->fresh()->getAttributes());
+        $this->assertSame($beforeAudit, AuditLog::query()->orderBy('id')->get()->toArray());
+    }
+
     /** Reload financial state before allowing edits from a stale expense instance. */
     #[Test]
     public function stale_expense_objects_cannot_bypass_the_current_bank_link(): void

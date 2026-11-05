@@ -1,5 +1,16 @@
 # Development roadmap
 
+## Publish accepted PR429 second-review fixes - 2026-11-05
+
+The new performance, Node-range and server linked-status findings are repaired
+and independently accepted. Runtime45 `2fcb0006...25c73a4e`, source/test/CI72
+`dbbcab19...863b81c7`; source is frozen. Full frontend1,854/185 and typecheck,
+lint/build pass; backend170/867 and independent semantic/security controls pass.
+Keep exact linked-error skipping and truthful bulk counters; no blanket exception
+swallowing or independent payment-history changes. Commit/push the scoped delta
+from `714e078b`, then verify actual new-head CI and CodeRabbit state. Existing
+historical/old-client limits and the owner merge/deployment gate remain.
+
 ## Deliver reviewed PR429 remediation - 2026-11-05
 
 Implement and independently review the owner-requested PHP audit/CodeRabbit fixes

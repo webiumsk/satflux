@@ -184,3 +184,74 @@ four-case PostgreSQL JUnit report contains no skipped/failure/error nodes.
 Source publication must verify these exact bytes and the remote branch tip, then
 read actual CI and CodeRabbit state for the resulting commit. No merge/deployment
 is authorized by the corrective source push.
+
+
+## Published 714e078b: verified CI and second review
+
+Commit `714e078b48e8a8cdccd54577d3ebb9d59951c6ea` is remote-verified in PR429,
+with tree `f8bfdc6f1bebbc3544ece70f88d56e5a1af6a30c`. Actual CI run
+`42015185144` completes all five jobs successfully. PHP reports 2,882 passed,
+20 skipped / 14,509 assertions; Composer reports no security advisories. Node
+passes all frontend checks, E2E and changelog pass, and PostgreSQL reports both
+bank-plan cases plus all four expense contention cases / 74 assertions with the
+no-skips gate. CodeRabbit explicitly reviews this commit and reports docstring
+coverage **92.41%**, above the unchanged 80% threshold. All nine original inline
+threads are resolved, seven automatically by CodeRabbit and two verified outdated
+threads by main; no bot-triggering comments are posted.
+
+The new review adds three inline comments and one outside-diff finding. Continue
+the same owner-authorized remediation scope; the successful published baseline is
+not evidence for the new working changes.
+
+| Finding | Accepted contract |
+| --- | --- |
+| 4479679830, Node 23 | Declare `^22.13.0 || >=24.0.0` consistently in package metadata/README. Official Node history removes the SQLite flag at 22.13 and 23.4; exclude the unsupported 23 branch. Only root engine metadata changes; the dependency graph stays unchanged. |
+| 4479679843, bank-page mapping | Preselect only where raw status is safe, index related rows once, and apply effective conflict-aware status/limit in one pass. A claimed raw matched movement can become unmatched after sync and must remain discoverable. |
+| 4479679852, expense projection | Build an exact owner/company/transaction lookup once per reactive snapshot for the expense list and accountant export. Preserve duplicate-bucket ambiguity and invoice reservation semantics, using the same canonical validator. |
+| Outside diff, server unmark/cancel | Lock fresh Company then Expense, read the bank-link check without inverse transaction locks, and reject linked status changes before expense/transaction/audit mutation. Explicit unlink restores existing independent actions; stale callers cannot bypass it. |
+
+Require deterministic access/iteration budgets rather than wall-clock assertions,
+indexed/unindexed policy parity, owner/company collisions, ambiguous evidence,
+selective status filters and the fifty-row display bound. Keep raw backup/history
+and every previously reviewed claim invariant. Backend adds six cases and passes
+161 focused tests / 784 assertions, Pint and PHPStan; the PostgreSQL four-case gate
+is unchanged. Independently review the new source before the next scoped push.
+
+
+### Second-review final acceptance
+
+The single-record guard also revealed a mixed bulk cancellation could commit an
+unlinked row then reject a later linked row. Preserve existing successful bulk
+semantics: skip **only** exact `['status' => ['expense_linked_payment']]`, report
+accurate processed/skipped counters, and propagate every unrelated/mixed validation
+or runtime failure. Both ordering paths, repeat boundaries, unchanged linked data
+and processing after unlink are tested. Existing successful bulk-action intent
+logging is preserved. Actual PHP rejection envelopes are translated using existing
+localized unlink guidance; unknown/mixed errors retain generic handling.
+
+Independent QA/security verify every entry after testing and accept:
+
+- Runtime45: `2fcb0006f3c4cd7dd9da2909e1a668c9b55534c64a16583243790bd925c73a4e`.
+- Source/tests/CI72: `dbbcab19e27396f7ce1f72ca3f51a289072fab6d23ad16b2ec354286863b81c7`.
+
+Main's final full frontend passes **1,854 tests / 185 files**, typecheck remains111
+with no new errors, production build passes and lint remains48/52 (new helper has
+zero scoped warnings). Backend author passes170 / 867 assertions, scoped Pint and
+PHPStan. Independent security passes15 PHP / 126 assertions, helper13 and index/
+canonical31; QA passes13 frontend/native, nine PHP / 76 assertions and two actual
+HTTP-to-UI cases. Selections overlap and are not additive. Node boundaries/package
+parity pass with no dependency changes. The AST-only Graphify update completes.
+The unchanged four-case PostgreSQL gate is retained; no new local PostgreSQL run
+is claimed for this delta.
+
+The copied `714e078b` performance control grows 3.695x (expense) and3.474x (mapper)
+when size doubles. New256→512 controls grow exactly2x; combined actual consumers
+remain below2x. Status filtering finds matching/conflicting rows beyond the first
+fifty raw movements and stops mapping at the visible bound. Related duplicate,
+owner/company, unowned invoice and stale-index semantics retain canonical parity.
+Immutable query snapshots are the cache precondition; core writes and raw
+maintenance do not use presentation indexes.
+
+The next corrective source commit must match these manifests, preserve unrelated
+primary work, and receive actual new-head CI/review verification. No release,
+merge, deployment or bot-triggering conversation comment is authorized here.

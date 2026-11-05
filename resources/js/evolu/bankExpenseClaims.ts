@@ -32,6 +32,52 @@ export type BankExpenseClaim = {
 const required = ["token", "transactionId", "expenseId", "total", "expenseCurrency", "source"] as const;
 const optional = ["paidAt", "bookedAt", "amount", "currency", "bankVs", "reference", "counterpartyName", "expenseVs", "expenseNumber", "directionEvidence"] as const;
 
+export type BankExpensePaymentIndex = {
+    readonly transactions: readonly EvoluBankTransactionRow[];
+    readonly matches: readonly EvoluBankTransactionMatchRow[];
+    readonly transactionsByScope: ReadonlyMap<string, readonly EvoluBankTransactionRow[]>;
+    readonly invoiceOwnersByTransaction: ReadonlyMap<string, ReadonlySet<unknown>>;
+};
+
+/** Encode actual row scope without allowing equal IDs in different owners or companies to collide. */
+export function bankExpenseScopeKey(ownerId: unknown, companyId: string, id: string): string {
+    return JSON.stringify([typeof ownerId, ownerId, companyId, id]);
+}
+
+/** Index one immutable query snapshot, retaining duplicate transaction buckets and unowned invoice reservations. */
+export function createBankExpensePaymentIndex(
+    transactions: readonly EvoluBankTransactionRow[], matches: readonly EvoluBankTransactionMatchRow[] = [],
+): BankExpensePaymentIndex {
+    const transactionsByScope = new Map<string, EvoluBankTransactionRow[]>();
+    for (const row of transactions) {
+        const key = bankExpenseScopeKey(Reflect.get(row, "ownerId"), row.companyId, row.id);
+        const bucket = transactionsByScope.get(key);
+        if (bucket) bucket.push(row);
+        else transactionsByScope.set(key, [row]);
+    }
+    const invoiceOwnersByTransaction = new Map<string, Set<unknown>>();
+    for (const row of matches) {
+        if (Reflect.get(row, "isDeleted") === 1) continue;
+        const owners = invoiceOwnersByTransaction.get(row.bankTransactionId) ?? new Set<unknown>();
+        owners.add(Reflect.get(row, "ownerId"));
+        invoiceOwnersByTransaction.set(row.bankTransactionId, owners);
+    }
+    return { transactions, matches, transactionsByScope, invoiceOwnersByTransaction };
+}
+
+/** A live invoice reservation blocks the same owner, while legacy unowned reservations block every owner. */
+function hasInvoiceReservation(
+    transaction: EvoluBankTransactionRow, matches: readonly EvoluBankTransactionMatchRow[], index?: BankExpensePaymentIndex,
+): boolean {
+    const ownerId = Reflect.get(transaction, "ownerId");
+    if (index?.matches === matches) {
+        const owners = index.invoiceOwnersByTransaction.get(transaction.id);
+        return Boolean(owners && (owners.has(null) || owners.has(undefined) || owners.has(ownerId)));
+    }
+    return matches.some((row) => row.bankTransactionId === transaction.id && Reflect.get(row, "isDeleted") !== 1
+        && (Reflect.get(row, "ownerId") == null || Reflect.get(row, "ownerId") === ownerId));
+}
+
 /** Unknown, malformed and partial cells are conflicts, never legacy associations. */
 export function parseBankExpenseClaim(value: string | null | undefined): BankExpenseClaim | null {
     if (!value || value.length > 32768) return null;
@@ -109,11 +155,11 @@ export function createBankExpenseClaim(
 /** Canonical association is reciprocal and current; raw status/date remain independent payment history. */
 export function activeBankExpenseClaim(
     transaction: EvoluBankTransactionRow, expense: EvoluExpenseRow, matches: readonly EvoluBankTransactionMatchRow[] = [],
+    index?: BankExpensePaymentIndex,
 ): BankExpenseClaim | null {
     if (!transaction.bankPaymentClaimJson || transaction.bankPaymentClaimJson !== expense.bankPaymentClaimJson
         || transaction.businessExpenseId !== expense.id || transaction.matchStatus !== "matched"
-        || matches.some((row) => row.bankTransactionId === transaction.id && Reflect.get(row, "isDeleted") !== 1
-            && (Reflect.get(row, "ownerId") == null || Reflect.get(row, "ownerId") === Reflect.get(transaction, "ownerId")))) return null;
+        || hasInvoiceReservation(transaction, matches, index)) return null;
     const claim = parseBankExpenseClaim(transaction.bankPaymentClaimJson);
     if (!claim || claim.state !== "linked" || claim.transactionId !== transaction.id || claim.expenseId !== expense.id
         || !bankExpenseEvidenceMatches(transaction, expense, claim.mode)
@@ -148,17 +194,28 @@ export function releasedBankExpenseReceipt(expense: EvoluExpenseRow): BankExpens
 /** Presentation projection is never written to backups, mutations or owner-copy maintenance. */
 export function effectiveExpensePayment(
     expense: EvoluExpenseRow, transactions: readonly EvoluBankTransactionRow[], matches: readonly EvoluBankTransactionMatchRow[] = [],
+    index?: BankExpensePaymentIndex,
 ): EvoluExpenseRow {
     if (expense.bankPaymentClaimJson == null) return expense;
     const selected = parseBankExpenseClaim(expense.bankPaymentClaimJson);
-    const candidates = transactions.filter((row) => row.id === selected?.transactionId
-        && row.companyId === expense.companyId && Reflect.get(row, "ownerId") === Reflect.get(expense, "ownerId"));
+    const candidates = !selected ? [] : index?.transactions === transactions
+        ? index.transactionsByScope.get(bankExpenseScopeKey(Reflect.get(expense, "ownerId"), expense.companyId, selected.transactionId)) ?? []
+        : transactions.filter((row) => row.id === selected.transactionId
+            && row.companyId === expense.companyId && Reflect.get(row, "ownerId") === Reflect.get(expense, "ownerId"));
     const receipt = releasedBankExpenseReceipt(expense);
-    const claim = receipt ?? (candidates.length === 1 ? activeBankExpenseClaim(candidates[0]!, expense, matches) : null);
+    const claim = receipt ?? (candidates.length === 1 ? activeBankExpenseClaim(candidates[0]!, expense, matches, index) : null);
     return {
         ...expense, bankMatchConflict: claim ? 0 : 1,
         ...(claim?.paidIntent && expense.status === "recorded" && !expense.paidAt ? { status: "paid", paidAt: claim.paidAt } : {}),
     };
+}
+
+/** Project a presentation/accounting snapshot with one bank index; raw storage and maintenance rows remain unchanged. */
+export function projectExpensePayments(
+    expenses: readonly EvoluExpenseRow[], transactions: readonly EvoluBankTransactionRow[], matches: readonly EvoluBankTransactionMatchRow[] = [],
+): EvoluExpenseRow[] {
+    const index = createBankExpensePaymentIndex(transactions, matches);
+    return expenses.map((expense) => effectiveExpensePayment(expense, transactions, matches, index));
 }
 
 /** Claims, including losing/invalid cells, reserve the record until explicit review/unlink. */

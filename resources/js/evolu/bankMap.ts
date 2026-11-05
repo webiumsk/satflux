@@ -1,4 +1,4 @@
-import { activeBankExpenseClaim, effectiveExpensePayment } from "./bankExpenseClaims";
+import { activeBankExpenseClaim, effectiveExpensePayment, type BankExpensePaymentIndex } from "./bankExpenseClaims";
 import { resolvedBankDirection } from "./bankDirectionGuesser";
 import type { EvoluDocumentRow } from "./documentMap";
 import type { EvoluExpenseRow } from "./expenseMap";
@@ -167,12 +167,14 @@ export function evoluBankTxToApi(
     match: EvoluBankTransactionMatchRow | null,
     document: EvoluDocumentRow | null,
     expense: EvoluExpenseRow | null,
+    evidence?: { transactions: readonly EvoluBankTransactionRow[]; matches: readonly EvoluBankTransactionMatchRow[]; index: BankExpensePaymentIndex },
 ): BankTxApiRow {
     const direction = resolvedBankDirection(row);
     const claimed = row.bankPaymentClaimJson != null;
-    const active = claimed && expense ? activeBankExpenseClaim(row, expense, match ? [match] : []) : null;
-    const conflict = claimed ? !active : expense?.bankPaymentClaimJson != null;
-    const paymentExpense = expense ? effectiveExpensePayment(expense, [row], match ? [match] : []) : null;
+    const matches = evidence?.matches ?? (match ? [match] : []);
+    const active = claimed && expense ? activeBankExpenseClaim(row, expense, matches, evidence?.index) : null;
+    const paymentExpense = expense ? effectiveExpensePayment(expense, evidence?.transactions ?? [row], matches, evidence?.index) : null;
+    const conflict = claimed ? !active || Boolean(paymentExpense?.bankMatchConflict) : expense?.bankPaymentClaimJson != null;
     const payload: BankTxApiRow = {
         id: row.id,
         booked_at: row.bookedAt || "",

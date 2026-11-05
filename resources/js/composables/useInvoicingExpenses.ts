@@ -1,4 +1,4 @@
-import { effectiveExpensePayment } from "@/evolu/bankExpenseClaims";
+import { effectiveExpensePayment, projectExpensePayments } from "@/evolu/bankExpenseClaims";
 import type { EvoluBankTransactionRow, EvoluBankTransactionMatchRow } from "@/evolu/bankMap";
 import type { Evolu } from "@evolu/common/local-first";
 import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
@@ -87,8 +87,8 @@ function useLocalInvoicingExpenses(companyId: Ref<string>): UseInvoicingExpenses
     }
 
     // UI target selection and filters use the same effective view. Writers still re-read raw records under their gate.
-    const projectedExpenseRows = computed(() => toAppRows<EvoluExpenseRow>(expenseRows.value).map((row) => effectiveExpensePayment(row,
-        toAppRows<EvoluBankTransactionRow>(transactionRows.value), toAppRows<EvoluBankTransactionMatchRow>(matchRows.value))));
+    const projectedExpenseRows = computed(() => projectExpensePayments(toAppRows<EvoluExpenseRow>(expenseRows.value),
+        toAppRows<EvoluBankTransactionRow>(transactionRows.value), toAppRows<EvoluBankTransactionMatchRow>(matchRows.value)));
     const expenses = computed(() => {
         const companyRows = projectedExpenseRows.value.filter((row) => row.companyId === companyId.value);
         return filterLocalExpenses(companyRows, filters.value).map((row) =>
