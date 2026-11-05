@@ -1,5 +1,104 @@
 # Project state
 
+## PR429 second review fixes accepted locally - 2026-11-05
+
+All five CI jobs pass on published `714e078b`; CodeRabbit exact-head review has
+92.41% docstring coverage. Its three new inline and one outside-diff findings are
+now fixed from that baseline. Payment mapping and expense/accountant projection
+use scoped snapshot indexes with duplicate/wildcard safety and status filtering
+before the fifty-row bound. Node engines are `^22.13.0 || >=24.0.0` with unchanged
+dependencies. Server unmark/cancel lock fresh Company → Expense state and require
+explicit unlinking; bulk cancellation skips only the exact linked-payment code
+and returns truthful counters. Other failures propagate. Existing localization
+now consumes the actual HTTP rejection envelope.
+
+Independent QA/security accept runtime45
+`2fcb0006f3c4cd7dd9da2909e1a668c9b55534c64a16583243790bd925c73a4e`
+and source/tests/CI72
+`dbbcab19e27396f7ce1f72ca3f51a289072fab6d23ad16b2ec354286863b81c7`.
+Main full frontend: 1,854 tests / 185 files; typecheck111, lint48/52, production
+build and scoped helper lint pass. Backend: 170 focused / 867 assertions,
+Pint/PHPStan pass; independent status/bulk15 / 126, helper13 and index/canonical31
+pass (overlapping selections). QA separately verifies actual HTTP-to-UI guidance,
+linear access budgets, scope/parity and both bulk ordering/repeat paths. The
+PostgreSQL four-case gate is unchanged; no new PostgreSQL execution is claimed.
+AST-only Graphify update completes. No unresolved QA/security blocker remains.
+
+Next authorized step: main commits/pushes only the bounded second-review fixes to
+the same branch, then verifies fresh actual CI/review. Prior green evidence stays
+pinned to `714e078b`. Preserve dirty primary work; no merge/deployment is authorized.
+
+## PR429 review remediation accepted locally - 2026-11-05
+
+The owner requests correction of PR429's failed PHP job and CodeRabbit findings.
+Actual run `41996402233` on `1cb68a96` passed PHP tests; only Composer audit failed.
+Six affected Symfony packages now use 7.4.23 and the locked audit is clean. All nine
+inline findings, the follow-up and four test notes are implemented. The original
+55.26% docstring warning is addressed through meaningful documentation, retaining
+the 80% threshold; fresh remote coverage is still required.
+
+New manual/automatic/create bank associations use reciprocal encrypted claims and
+one canonical reactive projection. Revision-checked conflict recovery, linked-edit
+guards and released receipts preserve independent payments. Historical claimless
+rows and mixed older clients remain explicit limits. A native restore review also
+fixes rejection of system owner metadata while preserving live trusted routing.
+Independent QA/security accept frozen logic runtime44 `9e494a62...bddf2f` and
+source/tests/CI68 `5edbc1e1...e8c7ec`. Publication changes only proved docstrings:
+runtime44 `b89dbb70...366899`, source/tests/CI68 `4d52bf9c...1e0013`.
+
+Full PHP with guarded synthetic configuration and DNS: 2,902 tests / 13,860
+assertions, zero failures, 58 conditional skips and one existing deprecation.
+Actual PostgreSQL: 4 / 74, zero skips; the CI gate now requires four. Frontend:
+1,830 / 183 files; typecheck111, lint48/52, locales, build, API, Pint1122 and
+PHPStan pass. Scoped post-documentation Pint/ESLint pass. AST-only Graphify update
+completes. No ratchet/audit/authentication rule was weakened.
+
+Staging also removes exactly one redundant EOF LF from the new claim helper;
+AST/emitted JavaScript remain identical.
+
+Main's next authorized step is scoped commit/push to the existing owned
+`feat/expense-reconciliation` branch, then actual new-head CI/review verification.
+Preserve unrelated primary checkout work; no merge/deployment is authorized.
+See the feature branch's `docs/development/PR429_REVIEW.md` for exact evidence.
+
+## Expense reconciliation source push authorized - 2026-11-05
+
+The owner explicitly requests commit/push of the reviewed 51-path feature to owned
+`webiumsk/satflux:feat/expense-reconciliation`, based on `cb55aab0`. Fresh byte
+verification matches the accepted implementation. Staging exposed one extra EOF
+blank line in `bankPaymentValues.ts`; removing exactly one LF leaves executable
+content unchanged. Publication runtime23 is `620c7f00...956f2` and source/test/CI35
+`c947959b...8557b`; original review hashes remain in the implementation note. Initial
+remote branch and PR checks return none. Main owns commit/push and exact remote
+tip/tree verification; unrelated primary work is excluded. No merge/deployment
+authorization or new test/CI success is inferred.
+
+## Expense payment review and duplicate warnings implemented - 2026-11-05
+
+The owner authorized the first two recommended improvements. The isolated
+`feat/expense-reconciliation` worktree starts from freshly fetched `cb55aab0`
+(merged PR427/428), preserving unrelated primary checkout work. Explicit outgoing
+payment-to-existing-expense confirmation and advisory create/edit/import duplicate
+warnings support local-first and legacy server invoicing, with five-locale UI/docs.
+No supplier/contact schema or QR/relay implementation is included.
+
+Independent QA and security accept final runtime23 manifest
+`982868ca...5ef95` and source/test/CI35 `edf41386...46850`.
+Post-handler evidence verification, transaction-first locks and recorded-direction
+action gating resolve the reproduced review findings. Real PostgreSQL control
+reproduces historical `40P01` and the corrected clean conflict; CI now requires two
+actual contention cases without skips. Final frontend is 1,760 tests / 177 files;
+129 focused SQLite / 563 assertions and independent PostgreSQL 2 / 36 pass.
+Lint48/limit52, unchanged typecheck ratchet111, locale parity, build, API, Pint and
+PHPStan pass. Full PHP has six DNS-dependent failures also reproduced on unchanged
+base, plus 54 conditional skips; do not claim global or remote CI green.
+
+See the feature worktree's `docs/development/EXPENSE_RECONCILIATION.md` for exact
+hashes, commands, reviews and limits. Work remains local and uncommitted; no PR,
+publication, merge, deployment, real payment or merchant-data access. The next step
+is owner review and applicable source-publication/CI/merge/deployment approval.
+
+
 ## PR428 semantic review clean; supported test-helper documentation repair - 2026-11-04
 
 The owner-authorized `@coderabbitai review` comment `6638746873` was posted after

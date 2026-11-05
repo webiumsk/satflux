@@ -1,3 +1,4 @@
+import { activeBankExpenseClaim, effectiveExpensePayment, type BankExpensePaymentIndex } from "./bankExpenseClaims";
 import { resolvedBankDirection } from "./bankDirectionGuesser";
 import type { EvoluDocumentRow } from "./documentMap";
 import type { EvoluExpenseRow } from "./expenseMap";
@@ -37,6 +38,7 @@ export type EvoluBankTransactionRow = {
     recordedDirectionEvidence?: "credit" | "debit" | "unverified" | null;
     matchStatus: BankTransactionMatchStatus;
     businessExpenseId: ExpenseId | null;
+    bankPaymentClaimJson?: string | null;
     variableSymbol: string | null;
     constantSymbol: string | null;
     specificSymbol: string | null;
@@ -58,6 +60,10 @@ export type EvoluBankTransactionMatchRow = {
 };
 
 export type BankTxApiRow = {
+    bank_match_conflict?: boolean;
+    bank_match_claim?: string | null;
+    /** Persisted payment direction; explicit unverified/null evidence must not fall back to display guesses. */
+    recorded_direction?: "credit" | "debit" | "unverified" | null;
     id: string;
     booked_at: string;
     amount: string;
@@ -155,26 +161,37 @@ export function evoluBankBatchToApi(row: EvoluBankImportBatchRow): BankBatchApiR
     };
 }
 
+/** Map a bank movement to its display row, exposing invalid reciprocal claims as reviewable conflicts. */
 export function evoluBankTxToApi(
     row: EvoluBankTransactionRow,
     match: EvoluBankTransactionMatchRow | null,
     document: EvoluDocumentRow | null,
     expense: EvoluExpenseRow | null,
+    evidence?: { transactions: readonly EvoluBankTransactionRow[]; matches: readonly EvoluBankTransactionMatchRow[]; index: BankExpensePaymentIndex },
 ): BankTxApiRow {
     const direction = resolvedBankDirection(row);
+    const claimed = row.bankPaymentClaimJson != null;
+    const matches = evidence?.matches ?? (match ? [match] : []);
+    const active = claimed && expense ? activeBankExpenseClaim(row, expense, matches, evidence?.index) : null;
+    const paymentExpense = expense ? effectiveExpensePayment(expense, evidence?.transactions ?? [row], matches, evidence?.index) : null;
+    const conflict = claimed ? !active || Boolean(paymentExpense?.bankMatchConflict) : expense?.bankPaymentClaimJson != null;
     const payload: BankTxApiRow = {
         id: row.id,
         booked_at: row.bookedAt || "",
         amount: row.amount || "0.00",
         currency: row.currency || "EUR",
         direction,
+        recorded_direction: row.source === "inbound_email" && row.recordedDirectionEvidence != null
+            && row.recordedDirectionEvidence !== row.direction ? "unverified" : row.direction,
         variable_symbol: row.variableSymbol,
         counterparty_name: row.counterpartyName,
         reference: row.reference,
-        match_status: row.matchStatus,
+        match_status: conflict ? "unmatched" : row.matchStatus,
+        bank_match_claim: row.bankPaymentClaimJson ?? null,
+        ...(conflict ? { bank_match_conflict: true } : {}),
     };
 
-    if (match && document) {
+    if (match && document && !conflict) {
         payload.match = {
             id: match.id,
             matched_amount: match.matchedAmount || row.amount || "0.00",
@@ -189,14 +206,14 @@ export function evoluBankTxToApi(
         };
     }
 
-    if (expense) {
+    if (paymentExpense && !conflict) {
         payload.expense = {
-            id: expense.id,
-            internal_number: expense.internalNumber,
-            title: expense.title,
-            status: expense.status,
-            total: expense.total,
-            currency: expense.currency,
+            id: paymentExpense.id,
+            internal_number: paymentExpense.internalNumber,
+            title: paymentExpense.title,
+            status: paymentExpense.status,
+            total: paymentExpense.total,
+            currency: paymentExpense.currency,
         };
     }
 

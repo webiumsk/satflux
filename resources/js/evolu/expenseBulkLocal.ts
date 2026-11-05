@@ -1,3 +1,4 @@
+import { effectiveExpensePayment, hasExpenseBankAssociation } from "./bankExpenseClaims";
 import type { Evolu } from "@evolu/common/local-first";
 import type { BulkResult } from "./documentBulkLocal";
 import { withExpenseReconciliation } from "./expenseReconciliation";
@@ -39,7 +40,7 @@ export async function bulkMarkPaidLocalExpenses(
 
     for (const target of targets) {
         const row = scope.context.expenses.find((candidate) => candidate.id === target.id && candidate.companyId === target.companyId);
-        if (!row || row.status === "paid" || row.status === "cancelled") {
+        if (!row || effectiveExpensePayment(row, scope.context.transactions, scope.context.matches).status === "paid" || row.status === "cancelled") {
             skipped++;
             continue;
         }
@@ -67,7 +68,7 @@ export async function bulkCancelLocalExpenses(
 
     for (const target of targets) {
         const row = scope.context.expenses.find((candidate) => candidate.id === target.id && candidate.companyId === target.companyId);
-        if (!row || row.status === "cancelled") {
+        if (!row || row.status === "cancelled" || hasExpenseBankAssociation(row, scope.context)) {
             skipped++;
             continue;
         }

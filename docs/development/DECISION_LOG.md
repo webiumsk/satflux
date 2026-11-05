@@ -1,5 +1,95 @@
 # Development decision log
 
+## 2026-11-05 - Bound projection work and preserve linked-status bulk semantics
+
+Keep the canonical bank-claim validator and build immutable snapshot indexes once,
+using actual owner/company/ID keys and duplicate buckets. Invoice wildcards and
+stale-index fallback remain conservative. Preselect raw bank statuses only when
+safe; evaluate effective conflict-aware status before the fifty-row limit. Raw
+writers/backups remain unchanged. Deterministic getter/iteration budgets verify
+linear growth rather than wall-clock assumptions.
+
+Server unmark/cancel reuse fresh Company → Expense locking and plain link reads.
+The new guard initially revealed a mixed bulk selection could partially cancel
+then return 422. Preserve the existing processed/skipped contract instead: skip
+only exact `['status' => ['expense_linked_payment']]`, report truthful success,
+and propagate unrelated/mixed validation and runtime failures. Keep the existing
+successful bulk intent audit; no controller/audit redesign. UI translates this
+known HTTP code using existing five-locale guidance.
+
+Exclude the unsupported Node23 branch with `^22.13.0 || >=24.0.0`; the dependency
+graph is unchanged. Independent acceptance covers runtime45 `2fcb0006...25c73a4e`
+and source72 `dbbcab19...863b81c7`. Main owns the next scoped corrective push and
+actual new-head verification; `714e078b` remains the prior fully green baseline.
+No merge/deployment authority follows from local review or source publication.
+
+## 2026-11-05 - Repair PR429 audit and convergent expense associations
+
+The owner authorizes remediation of the current PR and the prior source-push
+request remains applicable. Verify actual CI: the PHP tests passed on `1cb68a96`;
+the failing step was Composer audit. Update only six affected Symfony patches to
+7.4.23 and preserve the audit and all test/type/lint thresholds.
+
+Use one identical encrypted claim on both rows for new bank-derived associations.
+A canonical JavaScript validator derives paid state only from reciprocal,
+owner/company-scoped, snapshot-valid, invoice-free evidence. Manual/automatic
+matching stays strict; distinct create provenance preserves explicitly confirmed
+legacy draft/payment decisions. Winning unlink writes a released receipt in the
+same expense cell, never independent raw paid/date fields. Losing/orphan recovery
+checks the displayed revision and preserves other winners and independent history.
+Shared raw queries continue to serve backups/maintenance; presentation/export alone
+project effective state. Strip system owner metadata from restore payloads and
+retain live trusted routing. No imported metadata may choose another partition.
+
+Convergence requires sync and current clients; do not silently rewrite historical
+claimless or independent manual payments. Keep the claim-only 32,768 bound for
+escaped existing evidence, with a separately bounded token. Signed/zero comparison
+is limited to unchanged expense-edit equivalence, preserving positive bank matching.
+Independent QA/security accept frozen44/68 logic manifests. The later 74 plain
+purpose docblocks preserve PHP tokens and TypeScript AST/emitted JS exactly;
+Staging removes exactly one redundant EOF LF from the new claim helper, with
+identical AST/emitted JavaScript. Publication hashes are `b89dbb70...366899` /
+`4d52bf9c...1e0013`. Main owns source publication and actual CI/review verification.
+Merge/deployment remain separate.
+
+## 2026-11-05 - Push the reviewed expense feature without expanding scope
+
+The explicit push request authorizes main-agent commit/push of the accepted expense
+feature to owned Satflux. Include only its 51 scoped paths, verify accepted code
+manifests and remote commit/tree, and preserve unrelated primary work. Existing
+tests remain prior evidence. Do not invent a PR source URL or remote CI result;
+merge and deployment remain outside this request.
+
+Normalize only the extra EOF blank line detected on first staging of the previously
+untracked bank-value helper. Exact old bytes equal new bytes plus one LF; all other
+code/test/CI bytes match the independent review. Record separate publication hashes
+and verify this equivalence independently rather than claiming a new test run.
+
+## 2026-11-05 - Add explicit expense matching and advisory duplicate review
+
+Treat the owner's instruction to proceed as authorization for the two recommended
+priorities in owned Satflux: outgoing payment-to-existing-expense confirmation and
+duplicate expense warnings. Preserve the separate relay/QR proposals and unrelated
+work; implement from fresh master in a durable feature worktree.
+
+Require exact positive full amount/currency and strong reference evidence. Suggestions
+never authorize a write: revalidate fresh company/owner/origin and link state, then
+verify local financial evidence after the receipt. Use transaction, fresh company,
+expense lock order, demonstrated against the historical PostgreSQL deadlock.
+The new action follows recorded direction; preserve legacy display heuristics.
+Unlinking removes only the relationship and keeps independent payment state.
+
+The existing expense schema has no supplier/contact association. Duplicate reasons
+therefore describe document-number or title/received-date evidence without claiming
+supplier identity. Warnings remain advisory, bounded and local to their storage
+boundary, including existing/in-file mapped import checks. No silent merge/delete.
+
+Independent QA/security accept runtime23 `982868ca...5ef95` and source/test/CI35
+`edf41386...46850`. Final tests/static evidence and six unchanged-base DNS failures
+are recorded in the feature review note. Add a mandatory no-skips two-case PG CI
+gate. No authentication weakening, publication, merge, deployment or real payment.
+
+
 ## PR428 semantic review clean; supported test-helper documentation repair - 2026-11-04
 
 The owner-authorized `@coderabbitai review` comment `6638746873` was posted after

@@ -8,8 +8,8 @@ import { toAppRows } from "@/evolu/queryLoad";
 import type { EvoluExpenseAttachmentRow } from "@/evolu/expenseAttachmentCrud";
 
 const mocks = vi.hoisted(() => ({
-    local: true, evolu: {} as object | null, displayForeign: false, filteredLagId: null as string | null,
-    push: vi.fn(), remember: vi.fn(), refresh: vi.fn(), duplicate: vi.fn(),
+    local: true, evolu: {} as object | null, displayForeign: false,
+    release: vi.fn(), push: vi.fn(), remember: vi.fn(), refresh: vi.fn(), duplicate: vi.fn(),
     insertExpense: vi.fn(), updateExpense: vi.fn(), updateNote: vi.fn(), insertAttachment: vi.fn(), read: vi.fn(), lookup: vi.fn(),
     detect: vi.fn(), extract: vi.fn(), quota: vi.fn(), purchase: vi.fn(), upload: vi.fn(),
     localDetect: vi.fn(), localExtract: vi.fn(), localQuota: vi.fn(),
@@ -19,6 +19,8 @@ const localCompany = "abcdefghijklmnopqrstuv";
 const serverCompany = "00000000-0000-4000-8000-000000000001";
 const newExpenseId = "synthetic-created-expense";
 const company = ref(localCompany);
+// A lagging query is observable state, including when another consumer warms the computed projection.
+const filteredLagId = ref<string | null>(null);
 const route = reactive({ name: "invoicing-expense-new", params: {} as { expenseId?: string } });
 type Attachment = { id: string; original_filename: string; mime: string | null };
 function fixture(id = "expense-a", owner = localCompany) {
@@ -33,7 +35,7 @@ function fixture(id = "expense-a", owner = localCompany) {
 }
 const models = ref<ReturnType<typeof fixture>[]>([]);
 function rawRow(expense: ReturnType<typeof fixture>) { return {
-    id: expense.id, companyId: expense.companyId, internalNumber: expense.internal_number,
+    id: expense.id, bankMatchConflict: Reflect.get(expense, "bank_match_conflict"), bankPaymentClaimJson: Reflect.get(expense, "bank_match_claim"), companyId: expense.companyId, internalNumber: expense.internal_number,
     externalNumber: expense.external_number, title: expense.title, status: expense.status,
     issueDate: expense.issue_date, deliveryDate: expense.delivery_date, dueDate: expense.due_date,
     paidAt: expense.paid_at, cancelledAt: null, total: expense.total, currency: expense.currency,
@@ -41,7 +43,7 @@ function rawRow(expense: ReturnType<typeof fixture>) { return {
     specificSymbol: expense.specific_symbol, internalNote: expense.internal_note, isDeleted: expense.isDeleted,
 }; }
 const expenseRows = computed(() => models.value
-    .filter((expense) => expense.isDeleted !== 1 && expense.id !== mocks.filteredLagId).map(rawRow));
+    .filter((expense) => expense.isDeleted !== 1 && expense.id !== filteredLagId.value).map(rawRow));
 const attachmentRows = computed(() => models.value.flatMap((expense) => expense.attachments.map((attachment) => ({
     id: attachment.id, expenseId: expense.id, originalFilename: attachment.original_filename,
     mimeType: attachment.mime, sizeBytes: "18", contentBase64: "c3ludGhldGlj",
@@ -97,6 +99,7 @@ vi.mock("@/components/invoicing/ExpenseAttachmentPanel.vue", () => ({ default: {
     emits: ["file-selected", "files-selected", "clear", "select-pending", "remove-pending"],
     template: '<section data-test="attachment-panel"><span>{{ fileName }}</span><p>{{ detectError }}</p></section>',
 } }));
+vi.mock("@/evolu/bankCrud", () => ({ releaseLocalExpenseBankClaim: mocks.release }));
 import ExpenseForm from "@/pages/invoicing/ExpenseForm.vue";
 import ExpenseShow from "@/pages/invoicing/ExpenseShow.vue";
 import ExpenseIsdocExtractModal from "@/components/invoicing/ExpenseIsdocExtractModal.vue";
@@ -139,9 +142,10 @@ function expectNoLegacyExpenseWrites() {
 }
 beforeEach(() => {
     vi.resetAllMocks();
+    mocks.release.mockResolvedValue(undefined);
     mocks.local = true;
     mocks.displayForeign = false;
-    mocks.filteredLagId = null;
+    filteredLagId.value = null;
     mocks.evolu = { loadQuery: mocks.lookup };
     route.params = {};
     route.name = "invoicing-expense-new";
@@ -318,7 +322,7 @@ describe("expense attachment page integration", () => {
         await select();
         await wrapper!.find("form").trigger("submit");
         await flushPromises();
-        mocks.filteredLagId = newExpenseId;
+        filteredLagId.value = newExpenseId;
         expect(expenseRows.value.some((row) => row.id === newExpenseId)).toBe(false);
         await wrapper!.find("form").trigger("submit");
         await flushPromises();
@@ -706,4 +710,42 @@ describe("expense attachment page integration", () => {
         expect(wrapper!.text()).not.toContain("Obsolete paid expense");
         expect(mocks.history).toHaveBeenCalledTimes(2);
     });
+});
+
+
+/** Seed the opaque revision returned by the actual expense mapper. */
+function markBankConflict(){Object.assign(models.value[0]!,{bank_match_conflict:true,bank_match_claim:'synthetic-opaque-A'});}
+/** Locate recovery by its translated label, as a user would find it. */
+function releaseButton(){return wrapper!.findAll('button').find(button=>button.text()===en.invoicing.bank_unmatch);}
+describe('expense-detail conflict recovery and reactive payment view',()=>{
+ it('shows a conflict action from actual raw-to-API mapping and requires explicit confirmation',async()=>{
+  markBankConflict();render('show');await flushPromises();expect(wrapper!.text()).toContain(en.invoicing.expense_bank_match_conflict);expect(releaseButton()).toBeDefined();
+  await releaseButton()!.trigger('click');expect(window.confirm).toHaveBeenCalledExactlyOnceWith(en.invoicing.bank_unlink_expense_conflict_confirm);expect(mocks.release).not.toHaveBeenCalled();
+ });
+ it('passes the exact opaque revision and waits for one completion while disabled',async()=>{
+  const pending=deferred<void>();mocks.release.mockReturnValueOnce(pending.promise);vi.mocked(window.confirm).mockReturnValue(true);
+  markBankConflict();render('show');await flushPromises();await releaseButton()!.trigger('click');await flushPromises();
+  expect(mocks.release).toHaveBeenCalledExactlyOnceWith(mocks.evolu,localCompany,'expense-a','synthetic-opaque-A');expect(releaseButton()!.attributes('disabled')).toBeDefined();
+  await releaseButton()!.trigger('click');expect(mocks.release).toHaveBeenCalledOnce();
+  Object.assign(models.value[0]!,{bank_match_conflict:false,bank_match_claim:null});pending.resolve();await flushPromises();expect(releaseButton()).toBeUndefined();
+ });
+ it('keeps a stale-claim failure recoverable and never retries or navigates',async()=>{
+  mocks.release.mockRejectedValueOnce(new Error('bank_expense_claim_changed'));vi.mocked(window.confirm).mockReturnValue(true);
+  markBankConflict();render('show');await flushPromises();const reads=mocks.refresh.mock.calls.length;await releaseButton()!.trigger('click');await flushPromises();
+  expect(window.alert).toHaveBeenCalledExactlyOnceWith(en.invoicing.bank_expense_match_failed);expect(mocks.release).toHaveBeenCalledOnce();expect(mocks.refresh).toHaveBeenCalledTimes(reads);expect(mocks.push).not.toHaveBeenCalled();
+ });
+ it('does not offer local claim recovery for legacy server expense details',async()=>{
+  markBankConflict();render('show',false);await flushPromises();expect(releaseButton()).toBeUndefined();expect(mocks.release).not.toHaveBeenCalled();
+ });
+ it('updates payment-only fields from incoming projection while preserving an unsaved note draft',async()=>{
+  markBankConflict();Object.assign(models.value[0]!,{internal_note:'Saved note'});render('show');await flushPromises();
+  await wrapper!.get('textarea').setValue('My unsaved note');expect(wrapper!.text()).toContain(en.invoicing.expense_bank_match_conflict);
+  Object.assign(models.value[0]!,{status:'paid',paid_at:'2026-11-05',bank_match_conflict:false,bank_match_claim:null,internal_note:'Other device note'});await flushPromises();
+  expect(wrapper!.text()).not.toContain(en.invoicing.expense_bank_match_conflict);expect((wrapper!.get('textarea').element as HTMLTextAreaElement).value).toBe('My unsaved note');
+ });
+ it('does not surface an old recovery failure after a real company change',async()=>{
+  const pending=deferred<void>();mocks.release.mockReturnValueOnce(pending.promise);vi.mocked(window.confirm).mockReturnValue(true);
+  markBankConflict();render('show');await flushPromises();await releaseButton()!.trigger('click');company.value='bcdefghijklmnopqrstuvw';await flushPromises();
+  pending.reject(new Error('bank_expense_claim_changed'));await flushPromises();expect(window.alert).not.toHaveBeenCalled();expect(mocks.push).not.toHaveBeenCalled();
+ });
 });

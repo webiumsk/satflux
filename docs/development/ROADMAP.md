@@ -1,5 +1,63 @@
 # Development roadmap
 
+## Publish accepted PR429 second-review fixes - 2026-11-05
+
+The new performance, Node-range and server linked-status findings are repaired
+and independently accepted. Runtime45 `2fcb0006...25c73a4e`, source/test/CI72
+`dbbcab19...863b81c7`; source is frozen. Full frontend1,854/185 and typecheck,
+lint/build pass; backend170/867 and independent semantic/security controls pass.
+Keep exact linked-error skipping and truthful bulk counters; no blanket exception
+swallowing or independent payment-history changes. Commit/push the scoped delta
+from `714e078b`, then verify actual new-head CI and CodeRabbit state. Existing
+historical/old-client limits and the owner merge/deployment gate remain.
+
+## Deliver reviewed PR429 remediation - 2026-11-05
+
+Implement and independently review the owner-requested PHP audit/CodeRabbit fixes
+on the existing expense feature branch. Local gates pass: PHP: 2,902; PostgreSQL: 4/74;
+frontend: 1,830/183; typecheck111; lint48; locale/build/API/Pint/PHPStan. Reciprocal
+claims cover new manual, automatic and bank-created expense writes, including
+explicit recovery and unchanged zero/negative bookkeeping edits. Preserve legacy
+claimless history and current-owner raw backup restoration.
+
+The 74 added docblocks are proved executable-equivalent to accepted logic.
+Publication manifests: runtime44 `b89dbb70...366899`, source/test/CI68
+`4d52bf9c...1e0013`. Next: main commits/pushes these exact bytes, verifies the
+remote tip, actual new-head required CI and CodeRabbit semantic/docstring state.
+Staging also removes exactly one redundant EOF LF from the new claim helper;
+AST/emitted JavaScript remain identical.
+
+Only a separate applicable owner approval can authorize merge or deployment.
+
+## Publish reviewed expense reconciliation branch - 2026-11-05
+
+Owner-authorized next step: commit/push the existing reviewed 51 paths to
+`webiumsk/satflux:feat/expense-reconciliation`, then verify remote tip/tree.
+Publication runtime23 is `620c7f00...956f2`, source/test/CI35 `c947959b...8557b`.
+The only code-file difference from accepted bytes is one removed trailing LF;
+documented behavior/tests are unchanged. PR, merge and deployment remain separate.
+
+## Expense reconciliation ready for local review - 2026-11-05
+
+Implemented user-confirmed full-amount outgoing matches to existing expenses and
+advisory duplicate warnings in forms and mapped imports. Both storage modes,
+shared-owner/origin safety, EN/SK/ES/DE/CS docs and copy are covered. Unlinking keeps
+payment status; candidate evidence is rechecked before and after local writes.
+
+Independent QA/security accept runtime23 `982868ca...5ef95` and source/test/CI35
+`edf41386...46850`. Final frontend1,760/177, SQLite129/563 and actual PostgreSQL2/36
+pass, with the historical deadlock reproduced and eliminated. The existing PG CI
+job now enforces both contention cases. Static, locale, build and API gates pass;
+six broad-PHP DNS failures reproduce on unchanged baseline and are recorded.
+
+Retain `storage/app/private/worktrees/expense-reconciliation` on
+`feat/expense-reconciliation`. Next: owner review, applicable source publication,
+fresh CI and separate merge/deployment approval. No release/deployment occurred.
+Relay redundancy, QR expense payments, partial payments and the remaining ideas
+stay separate proposals. Full evidence is in the feature worktree's
+`docs/development/EXPENSE_RECONCILIATION.md`.
+
+
 ## PR428 semantic review clean; supported test-helper documentation repair - 2026-11-04
 
 The owner-authorized `@coderabbitai review` comment `6638746873` was posted after

@@ -940,6 +940,11 @@ export const invoicingApi = {
         },
     },
     expenses: {
+        /** Advisory duplicate checks for legacy server records; local-first drafts stay in the browser. */
+        async duplicateSuggestions<T = unknown>(companyId: string, payload: Record<string, unknown>, options: { signal?: AbortSignal } = {}): Promise<T[]> {
+            const { data } = await api.post<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/expenses/duplicate-suggestions`, payload, { ...options, skipErrorFlash: true });
+            return data.data ?? [];
+        },
         ephemeral: {
             async detectIsdoc<T = unknown>(formData: FormData): Promise<T> {
                 const { data } = await api.post<ApiEnvelope<T>>("/invoicing/ephemeral/expenses/detect-isdoc", formData);
@@ -1181,6 +1186,15 @@ export const invoicingApi = {
             const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/suggestions`);
             return data.data ?? [];
         },
+        /** Fetch eligible existing expenses without changing global error flashes. */
+        async expenseSuggestions<T = unknown>(companyId: string, transactionId: string): Promise<T[]> {
+            const { data } = await api.get<ApiEnvelope<T[]>>(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/expense-suggestions`, { skipErrorFlash: true });
+            return data.data ?? [];
+        },
+        /** Confirm one expense match; the server revalidates current payment evidence. */
+        async matchExpense(companyId: string, transactionId: string, expenseId: string): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/match-expense`, { expense_id: expenseId }, { skipErrorFlash: true });
+        },
         async match(companyId: string, transactionId: string, businessDocumentId: string, options: { skipErrorFlash?: boolean } = {}): Promise<void> {
             await api.post(`/invoicing/companies/${companyId}/bank-transactions/${transactionId}/match`, { business_document_id: businessDocumentId }, options);
         },
@@ -1284,8 +1298,8 @@ export const invoicingApi = {
 /** Excel-style import trio shared by contacts/expenses/stock-items/documents. */
 function spreadsheetImportGroup(basePath: string) {
     return {
-        async preview<T = unknown>(companyId: string, formData: FormData): Promise<T> {
-            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/${basePath}/preview`, formData);
+        async preview<T = unknown>(companyId: string, formData: FormData, options: { signal?: AbortSignal; timeout?: number } = {}): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/${basePath}/preview`, formData, options);
             return data.data;
         },
         async run<T = unknown>(companyId: string, formData: FormData): Promise<T> {

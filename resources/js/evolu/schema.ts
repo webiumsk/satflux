@@ -344,6 +344,7 @@ export const InvoicingLocalSchema = {
     },
     expense: {
         id: ExpenseId,
+        bankPaymentClaimJson: nullOr(maxLength(32768)(NonEmptyString)),
         companyId: CompanyId,
         status: ExpenseStatus,
         internalNumber: maxLength(64)(NonEmptyString),
@@ -496,6 +497,7 @@ export const InvoicingLocalSchema = {
         recordedDirectionEvidence: nullOr(union("credit", "debit", "unverified")),
         matchStatus: BankTransactionMatchStatus,
         businessExpenseId: nullOr(ExpenseId),
+        bankPaymentClaimJson: nullOr(maxLength(32768)(NonEmptyString)),
         variableSymbol: OptionalString32,
         constantSymbol: OptionalString16,
         specificSymbol: OptionalString16,

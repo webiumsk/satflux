@@ -27,7 +27,9 @@ import { withExpenseMaintenance, commitExpenseMutation } from "./expenseReconcil
 // snapshot / backup / restore cycle (docs/COMPANY_SHARING.md).
 type InvoicingTable = Exclude<keyof InvoicingLocalSchema, "companyShare" | "_expenseReconciliation">;
 
-const UPSERT_STRIP_KEYS = new Set(["createdAt", "updatedAt"]);
+// System metadata is not a writable column. Restore uses the live owner-scoping policy,
+// never a partition supplied by an imported backup.
+const UPSERT_STRIP_KEYS = new Set(["createdAt", "updatedAt", "ownerId"]);
 
 function rowForUpsert<T extends Record<string, unknown>>(row: T): T {
     const out = { ...row };

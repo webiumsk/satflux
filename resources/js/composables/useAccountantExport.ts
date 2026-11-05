@@ -1,9 +1,13 @@
+import { projectExpensePayments } from "@/evolu/bankExpenseClaims";
+import type { EvoluBankTransactionRow, EvoluBankTransactionMatchRow } from "@/evolu/bankMap";
 import { computed, ref, type Ref } from "vue";
 import { useQuery } from "@evolu/vue";
 import {
     allDocumentsQuery,
     allExpenseAttachmentsQuery,
     allExpensesQuery,
+    allBankTransactionsQuery,
+    allBankTransactionMatchesQuery,
     useInvoicingEvolu,
 } from "@/evolu/client";
 import { toAppRows } from "@/evolu/queryLoad";
@@ -72,8 +76,11 @@ export function useAccountantExport(companyId: Ref<string>, companyName: Ref<str
     const localDoc = localFirst ? useLocalInvoiceDocumentSupport() : null;
     const documentRows = localFirst ? useQuery(allDocumentsQuery) : ref<readonly unknown[]>([]);
     const expenseRows = localFirst ? useQuery(allExpensesQuery) : ref<readonly unknown[]>([]);
+    const transactionRows = localFirst ? useQuery(allBankTransactionsQuery) : ref<readonly unknown[]>([]);
+    const matchRows = localFirst ? useQuery(allBankTransactionMatchesQuery) : ref<readonly unknown[]>([]);
     const attachmentRows = localFirst ? useQuery(allExpenseAttachmentsQuery) : ref<readonly unknown[]>([]);
 
+    /** Load raw expense, bank and attachment queries before preparing the accountant export view. */
     async function load(): Promise<void> {
         if (!evolu) return;
         loading.value = true;
@@ -82,6 +89,8 @@ export function useAccountantExport(companyId: Ref<string>, companyName: Ref<str
             await Promise.all([
                 evolu.loadQuery(allDocumentsQuery),
                 evolu.loadQuery(allExpensesQuery),
+                evolu.loadQuery(allBankTransactionsQuery),
+                evolu.loadQuery(allBankTransactionMatchesQuery),
                 evolu.loadQuery(allExpenseAttachmentsQuery),
             ]);
         } catch (e) {
@@ -94,7 +103,8 @@ export function useAccountantExport(companyId: Ref<string>, companyName: Ref<str
     void load();
 
     const documents = computed(() => toAppRows<EvoluDocumentRow>(documentRows.value));
-    const expenses = computed(() => toAppRows<EvoluExpenseRow>(expenseRows.value));
+    const expenses = computed(() => projectExpensePayments(toAppRows<EvoluExpenseRow>(expenseRows.value),
+        toAppRows<EvoluBankTransactionRow>(transactionRows.value), toAppRows<EvoluBankTransactionMatchRow>(matchRows.value)));
     const attachments = computed(() => toAppRows<EvoluExpenseAttachmentRow>(attachmentRows.value));
 
     /** Local-first only - server mode has no cheap preview (rows live on the server). */

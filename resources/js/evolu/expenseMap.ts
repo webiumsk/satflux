@@ -8,6 +8,8 @@ import type { CompanyId, ExpenseId } from "./schema";
 
 export type EvoluExpenseRow = {
     id: ExpenseId;
+    bankPaymentClaimJson?: string | null;
+    bankMatchConflict?: number | boolean;
     companyId: CompanyId;
     status: string;
     internalNumber: string;
@@ -27,6 +29,7 @@ export type EvoluExpenseRow = {
 };
 
 export type ExpenseApiRow = ExpenseListRow & {
+    bank_match_claim?: string | null;
     cancelled_at?: string | null;
     attachments?: unknown[];
     attachments_count?: number;
@@ -34,6 +37,7 @@ export type ExpenseApiRow = ExpenseListRow & {
     original_filename?: string | null;
 };
 
+/** Map an expense detail and attachments while retaining the opaque local claim revision for explicit recovery. */
 export function evoluExpenseToApi(
     row: EvoluExpenseRow,
     attachments: EvoluExpenseAttachmentRow[] = [],
@@ -49,6 +53,8 @@ export function evoluExpenseToApi(
 
     return {
         id: row.id,
+        bank_match_conflict: Boolean(row.bankMatchConflict),
+        bank_match_claim: row.bankPaymentClaimJson ?? null,
         internal_number: row.internalNumber,
         external_number: row.externalNumber,
         title: row.title,
@@ -78,6 +84,7 @@ export function evoluExpenseToListRow(
     const api = evoluExpenseToApi(row, attachments);
     return {
         id: api.id,
+        bank_match_conflict: Boolean(api.bank_match_conflict),
         internal_number: api.internal_number,
         external_number: api.external_number,
         variable_symbol: api.variable_symbol,

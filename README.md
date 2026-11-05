@@ -54,7 +54,7 @@ Rollout guide: **[docs/INVOICING_LOCAL_FIRST_ROLLOUT.md](docs/INVOICING_LOCAL_FI
 ## Prerequisites
 
 - Docker and Docker Compose
-- Node.js **22+** and npm (frontend dev / build; see `package.json` `engines`)
+- Node.js **22.13.0+ within 22.x, or 24.0.0+** and npm (frontend dev / build and native SQLite tests; see `package.json` `engines`)
 
 ## Local setup
 

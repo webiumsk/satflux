@@ -714,6 +714,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/expenses', [BusinessExpenseController::class, 'store'])
                 ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/expenses/duplicate-suggestions', [BusinessExpenseController::class, 'duplicateSuggestions'])
+                ->middleware(EnsureCompanyOwnership::class);
             Route::get('/companies/{company}/expenses/import/excel/example', [BusinessExpenseImportController::class, 'example'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::get('/companies/{company}/expenses/import/excel/fields', [BusinessExpenseImportController::class, 'fields'])
@@ -772,6 +774,10 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::get('/companies/{company}/bank-transactions/inbound-email', [BankTransactionController::class, 'inboundEmailAddress'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::get('/companies/{company}/bank-transactions/{bankTransaction}/suggestions', [BankTransactionController::class, 'suggestions'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/bank-transactions/{bankTransaction}/expense-suggestions', [BankTransactionController::class, 'expenseSuggestions'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/bank-transactions/{bankTransaction}/match-expense', [BankTransactionController::class, 'matchExpense'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/bank-transactions/{bankTransaction}/match', [BankTransactionController::class, 'match'])
                 ->middleware(EnsureCompanyOwnership::class);

@@ -2416,7 +2416,7 @@ parameters:
 		-
 			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessExpenseStatus\:\:Cancelled will always evaluate to false\.$#'
 			identifier: identical.alwaysFalse
-			count: 2
+			count: 1
 			path: app/Services/Invoicing/BusinessExpenseService.php
 
 		-

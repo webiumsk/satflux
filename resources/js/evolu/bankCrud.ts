@@ -1,4 +1,5 @@
-import { sqliteTrue } from "@evolu/common";
+import { activeBankExpenseClaim, bankExpenseScopeKey, createBankExpenseClaim, createBankExpensePaymentIndex, releasedBankExpenseReceipt } from "./bankExpenseClaims";
+import { sqliteTrue, createId, createRandomBytes } from "@evolu/common";
 import { ExpenseId } from "./schema";
 import type { Evolu, OwnerId } from "@evolu/common/local-first";
 import {
@@ -23,6 +24,7 @@ import {
     documentAmountDue,
     evoluBankBatchToApi,
     evoluBankTxToApi,
+    type BankTxApiRow,
     type EvoluBankImportBatchRow,
     type EvoluBankTransactionMatchRow,
     type EvoluBankTransactionRow,
@@ -30,7 +32,7 @@ import {
 import type { EvoluDocumentRow } from "./documentMap";
 import { markLocalDocumentPaidWithAmount, unmarkLocalDocumentPaid } from "./documentCrud";
 import type { EvoluExpenseRow } from "./expenseMap";
-import { insertLocalExpenseInReconciliation, nextLocalExpenseInternalNumber, type ExpenseSavePayload } from "./expenseCrud";
+import { insertLocalExpenseInReconciliation, mapLocalExpensePayloadFields, nextLocalExpenseInternalNumber, type ExpenseSavePayload } from "./expenseCrud";
 import { withExpenseReconciliation, assertExpenseCompanyOwner, expenseReconciliationScope, commitExpenseMutation, type ExpenseReconciliationScope } from "./expenseReconciliation";
 import { toAppRows } from "./queryLoad";
 import type {
@@ -195,6 +197,7 @@ export async function tryAutoMatchTransaction(
     transaction: EvoluBankTransactionRow,
     ctx: BankPaymentContext,
 ): Promise<boolean> {
+    if (transaction.bankPaymentClaimJson != null) return false;
     if (transaction.direction === "debit") return tryAutoMatchBankEmailExpense(evolu, transaction, ctx);
     if (transaction.matchStatus === "matched") return true;
     if (resolvedBankDirection(transaction) !== "credit") return false;
@@ -690,6 +693,7 @@ function manualMatchLocalTransactionCore(
     if (!transaction || !document) {
         throw new Error("Transaction or document not found.");
     }
+    if (transaction.bankPaymentClaimJson != null) throw new Error("bank_expense_claim_changed");
     if (transaction.matchStatus === "matched") {
         throw new Error("Transaction is already matched.");
     }
@@ -719,6 +723,7 @@ export async function ignoreLocalBankTransaction(
 ): Promise<void> {
     const scope = await withExpenseReconciliation(evolu, (scope) => {
     const tx = scope.context.transactions.find((row) => row.id === transactionId);
+    if (tx?.bankPaymentClaimJson != null) throw new Error("bank_expense_claim_changed");
     if (!tx || tx.matchStatus !== "unmatched" || tx.businessExpenseId) return scope;
     const result = scope.evolu.update("bankTransaction", {
         id: transactionId,
@@ -734,9 +739,10 @@ export async function unmatchLocalBankTransaction(
     evolu: Evolu<InvoicingLocalSchema>,
     transactionId: BankTransactionId,
     ctx: BankPaymentContext,
+    expected?: { companyId: string; claim: string | null },
 ): Promise<void> {
-    const scope = await withExpenseReconciliation(evolu, (scope) => {
-        unmatchLocalBankTransactionCore(scope.evolu, transactionId, scope.context);
+    const scope = await withExpenseReconciliation(evolu, async (scope) => {
+        await unmatchLocalBankTransactionCore(scope.evolu, transactionId, scope.context, expected);
         return scope;
     });
     Object.assign(ctx, scope.context);
@@ -746,11 +752,41 @@ export async function unmatchLocalBankTransaction(
  * Remove the bank link and reverse invoice payment bookkeeping when applicable.
  * Unlinking an expense deliberately leaves its paid status unchanged.
  */
-function unmatchLocalBankTransactionCore(
+async function unmatchLocalBankTransactionCore(
     evolu: Evolu<InvoicingLocalSchema>, transactionId: BankTransactionId, ctx: BankPaymentContext,
-): void {
-    const transaction = ctx.transactions.find((row) => row.id === transactionId);
-    if (!transaction) return;
+    expected?: { companyId: string; claim: string | null },
+): Promise<void> {
+    const candidates = ctx.transactions.filter((row) => row.id === transactionId);
+    if (candidates.length !== 1) throw new Error("bank_expense_claim_changed");
+    const transaction = candidates[0]!;
+    if (expected && (transaction.companyId !== expected.companyId || (transaction.bankPaymentClaimJson ?? null) !== expected.claim)) {
+        throw new Error("bank_expense_claim_changed");
+    }
+    if (transaction.bankPaymentClaimJson != null) {
+        if (!expected) throw new Error("bank_expense_claim_changed");
+        const ownerId = Reflect.get(transaction, "ownerId");
+        if (typeof ownerId !== "string") throw new Error("bank_expense_claim_changed");
+        assertExpenseCompanyOwner(expenseReconciliationScope(evolu), transaction.companyId, ownerId);
+        const expense = ctx.expenses.find((row) => row.id === transaction.businessExpenseId
+            && row.companyId === transaction.companyId && Reflect.get(row, "ownerId") === ownerId);
+        const reciprocal = expense?.bankPaymentClaimJson === transaction.bankPaymentClaimJson;
+        const claim = expense ? activeBankExpenseClaim(transaction, expense, ctx.matches) : null;
+        const transactionPatch = { id: transaction.id, companyId: transaction.companyId, businessExpenseId: null,
+            matchStatus: "unmatched" as const, bankPaymentClaimJson: null };
+        // A losing selection never clears the winning expense cell. Winning release is independent paid history,
+        // represented by the same atomic cell rather than overwriting separately merged manual status/date fields.
+        const expensePatch = expense && reciprocal ? { id: expense.id, companyId: expense.companyId,
+            bankPaymentClaimJson: claim?.paidIntent ? JSON.stringify({ ...claim, state: "released" }) : null } : null;
+        if (!evolu.update("bankTransaction", transactionPatch, { onlyValidate: true }).ok
+            || (expensePatch && !evolu.update("expense", expensePatch, { onlyValidate: true }).ok)) throw new Error("expense_mutation_batch_rejected");
+        const result = await commitExpenseMutation(evolu, (onComplete) => {
+            const transactionResult = evolu.update("bankTransaction", transactionPatch, expensePatch ? undefined : { onComplete });
+            const expenseResult = expensePatch ? evolu.update("expense", expensePatch, { onComplete }) : { ok: true };
+            return { ok: transactionResult.ok && expenseResult.ok };
+        });
+        if (!result.ok) throw new Error("expense_mutation_batch_rejected");
+        return;
+    }
 
     if (transaction.businessExpenseId) {
         evolu.update("bankTransaction", {
@@ -777,6 +813,33 @@ function unmatchLocalBankTransactionCore(
     transaction.matchStatus = "unmatched";
 }
 
+/** Explicit expense-side recovery for a losing/orphan selection; never touches another expense's winning bank claim. */
+export async function releaseLocalExpenseBankClaim(
+    evolu: Evolu<InvoicingLocalSchema>, companyId: CompanyId, expenseId: ExpenseId, expectedClaim: string,
+): Promise<void> {
+    await withExpenseReconciliation(evolu, async (scope) => {
+        const expenses = scope.context.expenses.filter((row) => row.id === expenseId && row.companyId === companyId);
+        const expense = expenses[0];
+        if (expenses.length !== 1 || !expense || expense.bankPaymentClaimJson !== expectedClaim) throw new Error("bank_expense_claim_changed");
+        const ownerId = Reflect.get(expense, "ownerId");
+        if (typeof ownerId !== "string") throw new Error("bank_expense_claim_changed");
+        assertExpenseCompanyOwner(scope, companyId, ownerId);
+        if (releasedBankExpenseReceipt(expense)) return; // Independent paid-preserving history is already detached.
+        const ownTransactions = scope.context.transactions.filter((row) => row.companyId === companyId
+            && Reflect.get(row, "ownerId") === ownerId && row.businessExpenseId === expenseId
+            && row.bankPaymentClaimJson === expectedClaim);
+        if (ownTransactions.length === 1) {
+            await unmatchLocalBankTransactionCore(scope.evolu, ownTransactions[0]!.id, scope.context, { companyId, claim: expectedClaim });
+            return;
+        }
+        if (ownTransactions.length > 1) throw new Error("bank_expense_claim_changed");
+        const cleared = await commitExpenseMutation(scope.evolu, (onComplete) => scope.evolu.update("expense", {
+            id: expenseId, companyId, bankPaymentClaimJson: null,
+        }, { onComplete }));
+        if (!cleared.ok) throw new Error("expense_mutation_batch_rejected");
+    });
+}
+
 /**
  * Create and link an expense under the shared writer gate.
  * Publish the resulting expense and linkage into caller context only after persistence is verified.
@@ -787,10 +850,14 @@ export async function createLocalExpenseFromBankTransaction(
     payload: ExpenseSavePayload & { supplier?: string; category?: string },
     ctx: BankPaymentContext,
 ): Promise<EvoluExpenseRow> {
-    const expense = await withExpenseReconciliation(evolu, (scope) => createExpenseFromBankTransactionInReconciliation(scope, transactionId, payload));
-    ctx.expenses.push(expense);
-    const transaction = ctx.transactions.find((row) => row.id === transactionId);
-    if (transaction) { transaction.businessExpenseId = expense.id; transaction.matchStatus = "matched"; }
+    const saved = await withExpenseReconciliation(evolu, (scope) => ({
+        id: createExpenseFromBankTransactionInReconciliation(scope, transactionId, payload).id, scope,
+    }));
+    const fresh = saved.scope.context;
+    const expense = fresh.expenses.find((row) => row.id === saved.id);
+    const transaction = fresh.transactions.find((row) => row.id === transactionId);
+    if (!expense || !transaction || !activeBankExpenseClaim(transaction, expense, fresh.matches)) throw new Error("bank_reconciliation_state_changed");
+    Object.assign(ctx, fresh);
     return expense;
 }
 
@@ -806,6 +873,7 @@ function createExpenseFromBankTransactionInReconciliation(
     const ctx = scope.context;
     const transaction = ctx.transactions.find((row) => row.id === transactionId);
     if (!transaction) throw new Error("Transaction not found.");
+    if (transaction.bankPaymentClaimJson != null) throw new Error("bank_expense_claim_changed");
     if (resolvedBankDirection(transaction) !== "debit") {
         throw new Error("Expenses can only be created from outgoing bank movements.");
     }
@@ -833,71 +901,76 @@ function createExpenseFromBankTransactionInReconciliation(
         total: payload.total ?? transaction.amount ?? "0",
         currency: payload.currency ?? transaction.currency ?? "EUR",
         internal_note: payload.internal_note ?? transaction.reference ?? undefined,
-        mark_paid: payload.mark_paid !== false,
+        mark_paid: false,
     };
+    const paidIntent = payload.mark_paid !== false;
+    const paidAt = paidIntent ? new Date().toISOString().slice(0, 10) : null;
 
     const internalNumber = nextLocalExpenseInternalNumber(transaction.companyId, ctx.expenses);
 
-    // Validate the link before queueing the expense insert. Generated Evolu IDs
-    // have the same validated representation regardless of their table brand.
-    if (!evolu.update("bankTransaction", { id: transaction.id, businessExpenseId: ExpenseId.orThrow(transaction.id),
-        matchStatus: "matched" }, { onlyValidate: true }).ok) throw new Error("Could not link expense.");
-    const result = insertLocalExpenseInReconciliation(
-        scope,
-        transaction.companyId,
-        expensePayload,
-    );
-    if (!result.ok) {
-        throw new Error("Could not create expense.");
-    }
-
-    const linked = evolu.update("bankTransaction", {
-        id: transactionId,
-        businessExpenseId: result.value.id,
-        matchStatus: "matched",
-    });
-    if (!linked.ok) throw new Error("expense_mutation_batch_rejected");
-
-    const paidAt = expensePayload.mark_paid ? new Date().toISOString().slice(0, 10) : null;
-    const expenseRow: EvoluExpenseRow = {
-        id: result.value.id,
-        companyId: transaction.companyId,
-        status: expensePayload.mark_paid ? "paid" : "recorded",
-        internalNumber,
-        externalNumber: null,
-        title: expensePayload.title ?? null,
-        variableSymbol: expensePayload.variable_symbol ?? null,
-        constantSymbol: expensePayload.constant_symbol ?? null,
-        specificSymbol: expensePayload.specific_symbol ?? null,
-        issueDate: expensePayload.issue_date,
-        deliveryDate: expensePayload.delivery_date ?? null,
-        dueDate: expensePayload.due_date ?? null,
-        paidAt,
-        cancelledAt: null,
-        total: typeof expensePayload.total === "number"
-            ? expensePayload.total.toFixed(2)
-            : String(expensePayload.total),
-        currency: expensePayload.currency ?? "EUR",
-        internalNote: expensePayload.internal_note ?? null,
-    };
+    const mapped = mapLocalExpensePayloadFields(expensePayload);
+    if (!mapped.ok) throw new Error("Could not create expense.");
+    const id = ExpenseId.orThrow(createId({ randomBytes: createRandomBytes() }));
+    const ownerId = Reflect.get(transaction, "ownerId");
+    if (typeof ownerId !== "string") throw new Error("expense_reconciliation_owner_unavailable");
+    const expenseRow = { id, companyId: transaction.companyId, ownerId, internalNumber,
+        ...mapped.value, status: "recorded", paidAt: null, cancelledAt: null } as unknown as EvoluExpenseRow;
+    const claimJson = createBankExpenseClaim(transaction, expenseRow, "create", { paid: paidIntent, paidAt });
+    expenseRow.bankPaymentClaimJson = claimJson;
+    const link = { id: transactionId, companyId: transaction.companyId, businessExpenseId: id,
+        matchStatus: "matched" as const, bankPaymentClaimJson: claimJson };
+    if (!evolu.update("bankTransaction", link, { onlyValidate: true }).ok) throw new Error("Could not link expense.");
+    const result = insertLocalExpenseInReconciliation(scope, transaction.companyId, expensePayload,
+        { id, internalNumber, bankPaymentClaimJson: claimJson });
+    if (!result.ok) throw new Error("Could not create expense.");
+    if (!evolu.update("bankTransaction", link).ok) throw new Error("expense_mutation_batch_rejected");
 
     return expenseRow;
 }
 
+/** Index related rows once, reserving duplicate keys as ambiguous instead of choosing an arbitrary record. */
+function indexBankApiRows<T extends object>(rows: readonly T[], key: (row: T) => string): Map<string, T | null> {
+    const index = new Map<string, T | null>();
+    for (const row of rows) {
+        if (Reflect.get(row, "isDeleted") === 1) continue;
+        const rowKey = key(row);
+        index.set(rowKey, index.has(rowKey) ? null : row);
+    }
+    return index;
+}
+
+/** Resolve scoped relations once and project only candidates needed by the effective-status filter and limit. */
 export function mapLocalBankTransactionsToApi(
-    rows: EvoluBankTransactionRow[],
+    rows: readonly EvoluBankTransactionRow[],
     ctx: BankPaymentContext,
+    options: { matchStatus?: string; limit?: number } = {},
 ) {
-    return rows.map((row) => {
-        const match = ctx.matches.find((m) => m.bankTransactionId === row.id) ?? null;
-        const document = match
-            ? ctx.documents.find((d) => d.id === match.businessDocumentId) ?? null
-            : null;
+    const result: BankTxApiRow[] = [];
+    const limit = Math.max(0, options.limit ?? Infinity);
+    if (rows.length === 0 || limit === 0) return result;
+    const requested = options.matchStatus;
+    const selective = requested && requested !== "all";
+    const matches = indexBankApiRows(ctx.matches, (row) => bankExpenseScopeKey(Reflect.get(row, "ownerId"), "", row.bankTransactionId));
+    const documents = indexBankApiRows(ctx.documents, (row) => bankExpenseScopeKey(Reflect.get(row, "ownerId"), row.companyId, row.id));
+    const expenses = indexBankApiRows(ctx.expenses, (row) => bankExpenseScopeKey(Reflect.get(row, "ownerId"), row.companyId, row.id));
+    const evidence = { transactions: ctx.transactions, matches: ctx.matches, index: createBankExpensePaymentIndex(ctx.transactions, ctx.matches) };
+    for (const row of rows) {
+        // Claims can turn any raw status into a conflict/unmatched row, but cannot promote it to another status.
+        if (selective && requested !== "unmatched" && row.matchStatus !== requested) continue;
+        const owner = Reflect.get(row, "ownerId");
         const expense = row.businessExpenseId
-            ? ctx.expenses.find((e) => e.id === row.businessExpenseId) ?? null
-            : null;
-        return evoluBankTxToApi(row, match, document, expense);
-    });
+            ? expenses.get(bankExpenseScopeKey(owner, row.companyId, row.businessExpenseId)) ?? null : null;
+        if (selective && requested === "unmatched" && row.matchStatus !== requested
+            && row.bankPaymentClaimJson == null && expense?.bankPaymentClaimJson == null) continue;
+        const match = matches.get(bankExpenseScopeKey(owner, "", row.id)) ?? null;
+        const document = match
+            ? documents.get(bankExpenseScopeKey(owner, row.companyId, match.businessDocumentId)) ?? null : null;
+        const projected = evoluBankTxToApi(row, match, document, expense, evidence);
+        if (selective && projected.match_status !== requested) continue;
+        result.push(projected);
+        if (result.length >= limit) break;
+    }
+    return result;
 }
 
 /**

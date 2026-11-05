@@ -1,10 +1,11 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { computed, reactive, ref, nextTick } from 'vue';
-import type { BankTxApiRow } from '@/evolu/bankMap';
+import { evoluBankTxToApi, type BankTxApiRow, type EvoluBankTransactionRow } from '@/evolu/bankMap';
 
 const mocks = vi.hoisted(() => ({ ensure: vi.fn(), inbound: vi.fn(), local: true,
   autoMatchBatch: vi.fn(), importFile: vi.fn(), ignore: vi.fn(), unmatch: vi.fn(), load: vi.fn(), loadBatches: vi.fn(), flashError: vi.fn(),
+  fetchExpenseSuggestions: vi.fn(), matchExpense: vi.fn(),
   fetchWiseStatus: vi.fn(),
   connectWise: vi.fn(), flashSuccess: vi.fn(),
   syncWise: vi.fn(),
@@ -23,8 +24,8 @@ vi.mock('vue-router', () => ({ useRoute: () => route }));
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key, locale: ref('en') }) }));
 vi.mock('@/components/invoicing/InvoicingPageShell.vue', () => ({ default: { template: '<div><slot name="header"/><slot/></div>' } }));
 vi.mock('@/components/invoicing/InvoicingAppHeader.vue', () => ({ default: { template: '<div><slot name="actions"/></div>' } }));
-vi.mock('@/components/invoicing/InvoicingMobileCard.vue', () => ({ default: { template: '<div/>' } }));
-vi.mock('@/components/invoicing/InvoicingRowActionsMenu.vue', () => ({ default: { template: '<div/>' } }));
+vi.mock('@/components/invoicing/InvoicingMobileCard.vue', () => ({ default: { template: '<div><slot/><slot name="actions"/></div>' } }));
+vi.mock('@/components/invoicing/InvoicingRowActionsMenu.vue', () => ({ default: { template: '<div><slot/></div>' } }));
 vi.mock('@/components/invoicing/BankCreateExpenseModal.vue', () => ({ default: { template: '<div/>' } }));
 vi.mock('@/composables/useInvoicingLayout', () => ({ useInvoicingLayout: () => ({ rememberCompany: vi.fn() }) }));
 vi.mock('@/composables/useInvoicingCompanySummary', () => ({ useInvoicingCompanySummary: () => ({
@@ -36,6 +37,7 @@ vi.mock('@/composables/useInvoicingBankPayments', () => ({ useInvoicingBankPayme
   wiseStatus, wiseStatusFailed, wiseBridgeMissing, bridgeLookupFailed, bridgeRoutingKey,
   load: mocks.load, loadBatches: mocks.loadBatches, autoMatchBatch: mocks.autoMatchBatch, importFile: mocks.importFile,
   ignoreTransaction: mocks.ignore, unmatchTransaction: mocks.unmatch,
+  fetchExpenseSuggestions: mocks.fetchExpenseSuggestions, matchExpense: mocks.matchExpense,
   fetchWiseStatus: mocks.fetchWiseStatus,
   connectWise: mocks.connectWise,
   syncWise: mocks.syncWise,
@@ -81,10 +83,12 @@ beforeEach(() => {
   mocks.autoMatchBatch.mockResolvedValue(undefined);
   mocks.ignore.mockResolvedValue(undefined);
   mocks.unmatch.mockResolvedValue(undefined);
+  mocks.fetchExpenseSuggestions.mockResolvedValue([]);
+  mocks.matchExpense.mockResolvedValue(undefined);
   mocks.ensure.mockImplementation(async (company: string) => ({ ok: true, bridgeCompanyId: `bridge-${company}` }));
   mocks.inbound.mockImplementation(async (company: string) => response(company === 'bridge-local-a' ? addressA : addressB));
 });
-afterEach(() => { wrapper?.unmount(); wrapper = undefined; });
+afterEach(() => { wrapper?.unmount(); wrapper = undefined; vi.restoreAllMocks(); });
 
 describe('recorded bridge address context', () => {
   it.each(['switch', 'aba', 'unmount'] as const)('cancels stale address-helper reads after %s', async (change) => {
@@ -757,4 +761,140 @@ describe('independent bank address context probes', () => {
     expect(mocks.inbound).toHaveBeenCalledWith('server-company-uuid', expect.objectContaining({ signal: expect.any(AbortSignal) }));
     expect(wrapper!.get('code').text()).toBe(addressA);
   });
+});
+
+
+describe('recorded debit action reachability', () => {
+  function mapped(patch: Record<string, unknown> = {}): BankTxApiRow {
+    return evoluBankTxToApi({
+      id: 'synthetic-debit', companyId: 'local-a', amount: '19.00', currency: 'EUR', bookedAt: '2026-11-05',
+      direction: 'debit', recordedDirectionEvidence: null, source: 'csv', reference: 'INV-0019',
+      counterpartyName: null, variableSymbol: '0019', matchStatus: 'unmatched', businessExpenseId: null,
+      ...patch,
+    } as unknown as EvoluBankTransactionRow, null, null, null);
+  }
+  async function showTransactions(tx: BankTxApiRow) {
+    transactions.value = [tx];
+    await render();
+    await wrapper!.findAll('button').find((button) => button.text() === 'invoicing.bank_tab_transactions')!.trigger('click');
+    await flushPromises();
+  }
+  function existingExpenseAction() {
+    return wrapper!.findAll('button').find((button) => button.text() === 'invoicing.bank_match_expense');
+  }
+  it('offers the existing-expense action for an actual mapped debit despite a credit display guess', async () => {
+    const tx = mapped();
+    expect(tx.direction).toBe('credit');
+    expect(tx.recorded_direction).toBe('debit');
+    await showTransactions(tx);
+    expect(existingExpenseAction()).toBeDefined();
+    // Existing display/create behavior is intentionally outside this action's policy.
+    expect(wrapper!.findAll('button').some((button) => button.text() === 'invoicing.bank_create_expense')).toBe(false);
+    await existingExpenseAction()!.trigger('click');
+    await flushPromises();
+    expect(mocks.fetchExpenseSuggestions).toHaveBeenCalledExactlyOnceWith('synthetic-debit');
+    expect(mocks.matchExpense).not.toHaveBeenCalled();
+  });
+  it('declines an actual recorded credit even when debit hints change its legacy display', async () => {
+    const tx = mapped({ direction: 'credit', reference: 'platba kartou' });
+    expect(tx.direction).toBe('debit');
+    expect(tx.recorded_direction).toBe('credit');
+    await showTransactions(tx);
+    expect(existingExpenseAction()).toBeUndefined();
+    expect(wrapper!.findAll('button').some((button) => button.text() === 'invoicing.bank_create_expense')).toBe(true);
+  });
+  it('offers the action for a legacy API payload with explicit recorded debit and credit display', async () => {
+    await showTransactions({ ...mapped(), direction: 'credit', recorded_direction: 'debit' });
+    expect(existingExpenseAction()).toBeDefined();
+  });
+  it.each([null, 'unverified', 'credit'] as const)('does not fall back from explicit recorded %s to a debit display', async (recorded_direction) => {
+    await showTransactions({ ...mapped(), direction: 'debit', recorded_direction });
+    expect(existingExpenseAction()).toBeUndefined();
+  });
+  it('retains display fallback only for older payloads with no recorded direction', async () => {
+    const tx = { ...mapped(), direction: 'debit' };
+    delete tx.recorded_direction;
+    await showTransactions(tx);
+    expect(existingExpenseAction()).toBeDefined();
+  });
+  it.each(['unverified', 'credit'] as const)('hides email direction evidence %s even when the raw row says debit', async (recordedDirectionEvidence) => {
+    const tx = mapped({ source: 'inbound_email', recordedDirectionEvidence });
+    expect(tx.recorded_direction).toBe('unverified');
+    await showTransactions(tx);
+    expect(existingExpenseAction()).toBeUndefined();
+  });
+  it('preserves the existing eligibility of legacy email rows with null provenance', async () => {
+    await showTransactions(mapped({ source: 'inbound_email', recordedDirectionEvidence: null }));
+    expect(existingExpenseAction()).toBeDefined();
+  });
+});
+
+
+/** A recorded debit eligible for explicit expense review in either routing context. */
+function matchTransaction(): BankTxApiRow {
+  return { id: 'tx-a', booked_at: '2026-11-05', amount: '19.00', currency: 'EUR', direction: 'debit', match_status: 'unmatched', variable_symbol: '00019' } as BankTxApiRow;
+}
+/** Open the real suggestion dialog without dispatching its financial confirmation. */
+async function openPendingMatch() {
+  mocks.fetchExpenseSuggestions.mockResolvedValue([{ expense: { id: 'expense-a', internal_number: 'EXP-1', external_number: 'DOC-19', title: 'Synthetic hosting', total: '19.00', currency: 'EUR', issue_date: '2026-11-01', status: 'recorded' }, reason: 'variable_symbol' }]);
+  transactions.value = [matchTransaction()];
+  await render();
+  await wrapper!.findAll('button').find((button) => button.text() === 'invoicing.bank_tab_transactions')!.trigger('click');
+  await wrapper!.findAll('button').find((button) => button.text() === 'invoicing.bank_match_expense')!.trigger('click');
+  await flushPromises();
+}
+/** Find the confirmation inside the active modal, excluding background payment actions. */
+function matchConfirm() {
+  return wrapper!.findAll('[role="dialog"] button').find((button) => button.text() === 'invoicing.bank_match_confirm')!;
+}
+describe('routing changes during financial confirmation', () => {
+  it.each(['once', 'aba'])('preserves a pending unknown outcome on same-company routing %s', async (change) => {
+    const pending = deferred<void>(); mocks.matchExpense.mockReturnValueOnce(pending.promise);
+    await openPendingMatch(); await matchConfirm().trigger('click'); await flushPromises();
+    selectedRouting.value = 'shared-new'; if (change === 'aba') { await nextTick(); selectedRouting.value = 'private'; }
+    await flushPromises();
+    expect(wrapper!.find('[role="dialog"]').exists()).toBe(true);
+    expect(matchConfirm().attributes('disabled')).toBeDefined();
+    pending.reject(new Error('bank_reconciliation_outcome_unknown')); await flushPromises();
+    expect(wrapper!.find('[role="dialog"] [role="alert"]').text()).toBe('invoicing.bank_matching_unknown');
+    expect(mocks.matchExpense).toHaveBeenCalledOnce();
+  });
+  it('invalidates the old result when the actual company changes', async () => {
+    const pending = deferred<void>(); mocks.matchExpense.mockReturnValueOnce(pending.promise);
+    await openPendingMatch(); await matchConfirm().trigger('click');
+    route.params.companyId = 'local-b'; await flushPromises(); const loads = mocks.load.mock.calls.length;
+    pending.reject(new Error('bank_reconciliation_outcome_unknown')); await flushPromises();
+    expect(wrapper!.find('[role="dialog"]').exists()).toBe(false);
+    expect(mocks.load).toHaveBeenCalledTimes(loads);
+    expect(mocks.flashError).not.toHaveBeenCalled();
+  });
+});
+
+
+function conflictingTransaction(direction='debit',claim:unknown='opaque-revision-a'){
+ return {...matchTransaction(),direction,match_status:'unmatched',bank_match_conflict:true,bank_match_claim:claim,
+ expense:{id:'raw-expense',internal_number:'RAW-EXP-1',status:'paid',total:'19.00',currency:'EUR'}} as BankTxApiRow;
+}
+describe('bank claim conflict presentation and revision guards',()=>{
+ it.each(['debit','credit'])('shows conflict and no payment actions or green corner even with a raw expense pointer (%s)',async(direction)=>{
+  transactions.value=[conflictingTransaction(direction)]; await render(); await wrapper!.findAll('button').find(button => button.text() === 'invoicing.bank_tab_transactions')!.trigger('click'); await flushPromises();
+  expect(wrapper!.text()).toContain('invoicing.bank_expense_match_conflict');
+  for(const key of ['bank_ignore','bank_match','bank_create_expense','bank_match_expense'])expect(wrapper!.findAll('button').some(button=>button.text()===`invoicing.${key}`)).toBe(false);
+  expect(wrapper!.findAll('.bank-movement-row .status-corner--matched')).toHaveLength(0);
+  expect(wrapper!.find('.bank-movement-row .status-corner--unmatched').exists()).toBe(true);
+  expect(wrapper!.findAll('button').filter(button=>button.text()==='invoicing.bank_unmatch')).toHaveLength(2);
+ });
+ it.each(['opaque-revision-a',null])('requires special confirmation and forwards the exact opaque revision %s',async(claim)=>{
+  const confirm=vi.spyOn(window,'confirm').mockReturnValue(false); transactions.value=[conflictingTransaction('debit',claim)];await render(); await wrapper!.findAll('button').find(button => button.text() === 'invoicing.bank_tab_transactions')!.trigger('click'); await flushPromises();
+  const button=wrapper!.findAll('button').find(button=>button.text()==='invoicing.bank_unmatch')!;
+  await button.trigger('click');expect(confirm).toHaveBeenCalledExactlyOnceWith('invoicing.bank_unlink_expense_conflict_confirm');expect(mocks.unmatch).not.toHaveBeenCalled();
+  confirm.mockReturnValue(true);await button.trigger('click');await flushPromises();expect(mocks.unmatch).toHaveBeenCalledExactlyOnceWith('tx-a',claim);
+ });
+ it('reports a changed revision without retry or false successful refresh',async()=>{
+  vi.spyOn(window,'confirm').mockReturnValue(true);mocks.unmatch.mockRejectedValueOnce(new Error('bank_expense_claim_changed'));
+  transactions.value=[conflictingTransaction()];await render(); await wrapper!.findAll('button').find(button => button.text() === 'invoicing.bank_tab_transactions')!.trigger('click'); await flushPromises();const loaded=mocks.load.mock.calls.length;
+  await wrapper!.findAll('button').find(button=>button.text()==='invoicing.bank_unmatch')!.trigger('click');await flushPromises();
+  expect(mocks.flashError).toHaveBeenCalledExactlyOnceWith('invoicing.bank_expense_match_failed');expect(mocks.unmatch).toHaveBeenCalledOnce();expect(mocks.load).toHaveBeenCalledTimes(loaded);
+  expect(wrapper!.text()).toContain('invoicing.bank_expense_match_conflict');
+ });
 });

@@ -255,6 +255,7 @@ export const allDocumentSnapshotsQuery = evolu.createQuery((db) =>
 
 const expenseColumns = [
     "id",
+    "bankPaymentClaimJson",
     "companyId",
     "status",
     "internalNumber",
@@ -507,6 +508,7 @@ const bankTransactionColumns = [
     "recordedDirectionEvidence",
     "matchStatus",
     "businessExpenseId",
+    "bankPaymentClaimJson",
     "variableSymbol",
     "constantSymbol",
     "specificSymbol",

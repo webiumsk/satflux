@@ -32,6 +32,8 @@ Enthält die Belegnummer mehr als 32 Ziffern, bleibt das automatisch abgeleitete
 
 Lokale Ausgabenänderungen warten vor dem Speichern auf einen laufenden Zahlungsabgleich. Kann der Browser Änderungen nicht koordinieren, laden Sie den Tab neu oder verwenden Sie einen aktuellen Browser. Bei einem unbestätigten Ergebnis laden Sie den Tab neu und prüfen Sie den gespeicherten Datensatz vor einem weiteren Versuch. Spätere bewusste Änderungen an einer bezahlten Ausgabe behalten deren bestehenden Zahlungsstatus bei.
 
+Lösen Sie die Bankverknüpfung, bevor Sie Betrag oder Währung der verknüpften Ausgabe ändern. Offline-Zuordnungen werden nach der Synchronisierung erneut geprüft. Muss eine Verknüpfung geprüft werden, erscheint unter Zahlungen und bei der Ausgabe ein Hinweis. Lösen Sie die ungeklärte Bankverknüpfung vor einer erneuten Zuordnung. Andere Zuordnungen und separat erfasste Zahlungen bleiben erhalten. Verwenden Sie auf allen Geräten aktuelle Anwendungsversionen.
+
 ## Ausgabenübersicht
 
 Die Übersicht unter **Ausgaben** umfasst alle Dokumente, die den aktuellen Filtern entsprechen, auf sämtlichen Seiten. Sie zeigt Anzahl, Gesamtsumme und Summe unbezahlter Ausgaben. Die Auswahl von Zeilen verändert die Übersicht nicht. Jede Währung hat eigene Summen.

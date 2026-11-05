@@ -1,3 +1,6 @@
+import { effectiveExpensePayment } from '@/evolu/bankExpenseClaims';
+import type { EvoluExpenseRow } from '@/evolu/expenseMap';
+import type { EvoluBankTransactionRow } from '@/evolu/bankMap';
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearRowOwnerIndex } from "@/evolu/ownerScope";
 import { clearCompanyShares } from "@/evolu/companyShareRegistry";
@@ -29,20 +32,24 @@ afterEach(() => { clearRowOwnerIndex(); clearCompanyShares(); vi.unstubAllGlobal
 
 describe("real Evolu mutation queue and worker-response boundary", () => {
     it.each([false, true])("actual matcher waits for one atomic mutation and post-handler fresh query (shared=%s)", async (shared) => {
-        const { evolu, messages, ownerId, appOwnerId, transaction, candidate, ctx, financialMutations } = createProbe(shared);
+        const { evolu, messages, ownerId, appOwnerId, transaction, candidate, ctx, state, financialMutations } = createProbe(shared);
         const before = structuredClone(ctx);
         const pending = tryAutoMatchBankEmailExpense(evolu, transaction as never, ctx as never);
         expect(ctx).toEqual(before);
         expect(await pending).toBe(true);
         expect(transaction).toMatchObject({ matchStatus: "matched", businessExpenseId: candidate.id });
-        expect(candidate).toMatchObject({ status: "paid", paidAt: "2026-11-03" });
+        expect(candidate).toMatchObject({ status: "recorded", paidAt: null });
+        expect(effectiveExpensePayment(state.expense[0] as unknown as EvoluExpenseRow, state.bankTransaction as unknown as EvoluBankTransactionRow[]))
+            .toMatchObject({ status: "paid", paidAt: "2026-11-03" });
         const mutations = financialMutations();
         expect(mutations).toHaveLength(1);
         expect(mutations[0].changes?.map((change) => change.table)).toEqual(["bankTransaction", "expense"]);
         expect(mutations[0].changes?.map((change) => change.ownerId)).toEqual(shared ? [ownerId, ownerId] : [appOwnerId, appOwnerId]);
         expect(mutations[0].subscribedQueries).toEqual([]);
         const queries = messages.filter((message) => message.type === "query");
-        expect(queries).toHaveLength(3); expect(queries[1].queries).toHaveLength(5);
+        expect(queries).toHaveLength(3);
+        // The shared claim writer refreshes all five financial and three owner/target proof keys together.
+        expect(queries[1].queries).toHaveLength(8);
     });
     it.each([false, true])("queues both valid writes in one worker transaction (shared=%s)", async (shared) => {
         const { evolu, messages, ownerId, bank, expense } = createProbe(shared);

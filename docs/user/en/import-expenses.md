@@ -32,6 +32,8 @@ If the document number contains more than 32 digits, the automatic variable symb
 
 Local expense changes wait for ongoing bank matching before they are saved. If the browser cannot coordinate changes, reload the tab or use an up-to-date browser. If a result cannot be confirmed, reload and check the saved record before another attempt. Later deliberate edits to a paid expense keep its existing payment status.
 
+Unlink a bank payment before changing the linked expense amount or currency. Offline matches are confirmed again after synchronization. If a link needs review, Payments and the expense show a warning; unlink the unresolved bank link before matching again. Other matches and separately recorded payments are preserved. Use up-to-date clients on every device.
+
 ## Expense list summary
 
 The summary below **Expenses** covers every document matching the current filters, across all pages. It shows the count, total and unpaid expense total. Selecting rows does not change it. Each currency has its own totals.

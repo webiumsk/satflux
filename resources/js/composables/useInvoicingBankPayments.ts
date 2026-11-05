@@ -1,3 +1,5 @@
+import { bankExpenseMatchSuggestions, matchLocalBankTransactionToExpense, type BankExpenseMatchSuggestion } from "@/evolu/bankExpenseManualMatching";
+import { resolveMutationOwner } from "@/evolu/ownerScope";
 import { getActivePinia } from "pinia";
 import { sha256Hex } from "@/utils/sha256";
 import { readBankSyncCheckpoint, compareAndSetBankSyncCheckpoint, type BankSyncCheckpoint } from "@/services/bankSyncCheckpointStore";
@@ -83,10 +85,12 @@ export interface UseInvoicingBankPaymentsResult {
     loadInbound: () => Promise<void>;
     importFile: (file: File, format?: string) => Promise<{ imported: number; auto_matched: number }>;
     autoMatchBatch: (batchId: string) => Promise<void>;
+    fetchExpenseSuggestions: (transactionId: string) => Promise<BankExpenseMatchSuggestion[]>;
+    matchExpense: (transactionId: string, expenseId: string) => Promise<void>;
     fetchSuggestions: (transactionId: string) => Promise<BankMatchSuggestion[]>;
     matchTransaction: (transactionId: string, documentId: string) => Promise<void>;
     ignoreTransaction: (transactionId: string) => Promise<void>;
-    unmatchTransaction: (transactionId: string) => Promise<void>;
+    unmatchTransaction: (transactionId: string, expectedClaim?: string | null) => Promise<void>;
     createExpenseFromTransaction: (transactionId: string, draft: BankExpenseDraft) => Promise<void>;
     wiseStatus: Ref<WiseStatus | null>;
     wiseStatusFailed: Ref<boolean>;
@@ -109,6 +113,7 @@ function emptySummary(defaultCurrency = "EUR"): BankSummary {
     };
 }
 
+/** Manage server-backed payment filters and explicit reconciliation actions within the current company. */
 function useServerInvoicingBankPayments(
     companyId: Ref<string>,
     defaultCurrency: Ref<string>,
@@ -258,6 +263,20 @@ function useServerInvoicingBankPayments(
         await invoicingApi.bankTransactions.autoMatchBatch(cid, batchId, { skipErrorFlash: true });
     }
 
+    /** Fetch server-authoritative expense candidates for the current company and selected movement. */
+    async function fetchExpenseSuggestions(transactionId: string): Promise<BankExpenseMatchSuggestion[]> {
+        const cid = requireCompanyId();
+        if (!cid) return [];
+        return invoicingApi.bankTransactions.expenseSuggestions<BankExpenseMatchSuggestion>(cid, transactionId);
+    }
+
+    /** Confirm the selected existing expense through the server reconciliation endpoint. */
+    async function matchExpense(transactionId: string, expenseId: string): Promise<void> {
+        const cid = requireCompanyId();
+        if (!cid) throw new Error("bank_expense_match_ineligible");
+        await invoicingApi.bankTransactions.matchExpense(cid, transactionId, expenseId);
+    }
+
     async function fetchSuggestions(transactionId: string): Promise<BankMatchSuggestion[]> {
         const cid = requireCompanyId();
         if (!cid) return [];
@@ -387,6 +406,8 @@ function useServerInvoicingBankPayments(
         loadInbound,
         importFile,
         autoMatchBatch,
+        fetchExpenseSuggestions,
+        matchExpense,
         fetchSuggestions,
         matchTransaction,
         ignoreTransaction,
@@ -402,6 +423,7 @@ function useServerInvoicingBankPayments(
     };
 }
 
+/** Manage encrypted local payment views and await guarded writers before refreshing reconciliation state. */
 function useLocalInvoicingBankPayments(
     companyId: Ref<string>,
     defaultCurrency: Ref<string>,
@@ -459,17 +481,12 @@ function useLocalInvoicingBankPayments(
         expenses: toAppRows<BankPaymentContext["expenses"][number]>(expenseRows.value),
     }));
 
-    const filteredRows = computed(() =>
-        filterLocalBankTransactions(
-            toAppRows<BankPaymentContext["transactions"][number]>(bankTxRows.value),
-            companyId.value as CompanyId,
-            matchFilter.value === "all" ? undefined : matchFilter.value,
-        ).slice(0, 50),
-    );
+    const filteredRows = computed(() => filterLocalBankTransactions(
+        toAppRows<BankPaymentContext["transactions"][number]>(bankTxRows.value), companyId.value as CompanyId,
+    ));
 
-    const transactions = computed(() =>
-        mapLocalBankTransactionsToApi(filteredRows.value, ctx.value),
-    );
+    const transactions = computed(() => mapLocalBankTransactionsToApi(filteredRows.value, ctx.value,
+        { matchStatus: matchFilter.value, limit: 50 }));
 
     const summary = computed(() =>
         buildBankSummary(
@@ -900,6 +917,30 @@ function useLocalInvoicingBankPayments(
         await autoMatchLocalBatchAsync(evolu, batchId as BankImportBatchId);
     }
 
+    /** Read fresh owner-scoped local candidates without transmitting encrypted expense records to the server. */
+    async function fetchExpenseSuggestions(transactionId: string): Promise<BankExpenseMatchSuggestion[]> {
+        const cid = companyId.value;
+        const generation = bridgeIdentityGeneration;
+        return withBankReadBudget(async (controls, signal) => {
+            await waitCompanyShareRegistryReady(signal);
+            controls();
+            const paymentCtx = await loadBankPaymentContext(evolu);
+            const appOwner = await evolu.appOwner;
+            controls();
+            const ownerId = resolveMutationOwner("expense", { companyId: cid }, undefined) ?? appOwner.id;
+            const transaction = paymentCtx.transactions.find((row) => row.id === transactionId && row.companyId === cid
+                && Reflect.get(row, "ownerId") === ownerId);
+            return transaction ? bankExpenseMatchSuggestions(transaction, paymentCtx, ownerId) : [];
+        }, { isCurrent: () => !disposed && companyId.value === cid && bridgeIdentityGeneration === generation, registerCancel: registerBankRead });
+    }
+
+    /** Confirm a local candidate through fresh guarded evidence checks, then refresh the payment view. */
+    async function matchExpense(transactionId: string, expenseId: string): Promise<void> {
+        const cid = companyId.value;
+        if (disposed || !cid) throw new Error("bank_expense_match_ineligible");
+        await matchLocalBankTransactionToExpense(evolu, cid, transactionId, expenseId);
+    }
+
     async function fetchSuggestions(transactionId: string): Promise<BankMatchSuggestion[]> {
         const paymentCtx = await loadBankPaymentContext(evolu);
         const transaction = paymentCtx.transactions.find((row) => row.id === transactionId);
@@ -930,9 +971,13 @@ function useLocalInvoicingBankPayments(
         await ignoreLocalBankTransaction(evolu, transactionId as BankTransactionId, paymentCtx);
     }
 
-    async function unmatchTransaction(transactionId: string) {
+    /** Release the selected local claim revision under the writer gate, then refresh the payment context. */
+    async function unmatchTransaction(transactionId: string, expectedClaim?: string | null) {
+        const cid = companyId.value;
         const paymentCtx = await loadBankPaymentContext(evolu);
-        await unmatchLocalBankTransaction(evolu, transactionId as BankTransactionId, paymentCtx);
+        if (companyId.value !== cid || disposed) throw new Error("bank_expense_claim_changed");
+        await unmatchLocalBankTransaction(evolu, transactionId as BankTransactionId, paymentCtx,
+            expectedClaim === undefined ? undefined : { companyId: cid, claim: expectedClaim });
     }
 
     /**
@@ -977,6 +1022,8 @@ function useLocalInvoicingBankPayments(
         loadInbound,
         importFile,
         autoMatchBatch,
+        fetchExpenseSuggestions,
+        matchExpense,
         fetchSuggestions,
         matchTransaction,
         ignoreTransaction,

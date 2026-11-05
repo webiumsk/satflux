@@ -1165,6 +1165,20 @@
             "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."
         },
         {
+            "route": "GET api/invoicing/companies/{company}/bank-transactions/{bankTransaction}/expense-suggestions",
+            "action": "App\\Http\\Controllers\\Invoicing\\BankTransactionController@expenseSuggestions",
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "App\\Http\\Middleware\\RequireVerifiedEmail",
+                "throttle:api-user",
+                "App\\Http\\Middleware\\EnsurePlanAllowsBusinessInvoicing",
+                "App\\Http\\Middleware\\EnsureCompanyOwnership"
+            ],
+            "status": "excluded",
+            "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."
+        },
+        {
             "route": "GET api/invoicing/companies/{company}/bank-transactions/{bankTransaction}/suggestions",
             "action": "App\\Http\\Controllers\\Invoicing\\BankTransactionController@suggestions",
             "middleware": [
@@ -3423,6 +3437,20 @@
             "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."
         },
         {
+            "route": "POST api/invoicing/companies/{company}/bank-transactions/{bankTransaction}/match-expense",
+            "action": "App\\Http\\Controllers\\Invoicing\\BankTransactionController@matchExpense",
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "App\\Http\\Middleware\\RequireVerifiedEmail",
+                "throttle:api-user",
+                "App\\Http\\Middleware\\EnsurePlanAllowsBusinessInvoicing",
+                "App\\Http\\Middleware\\EnsureCompanyOwnership"
+            ],
+            "status": "excluded",
+            "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."
+        },
+        {
             "route": "POST api/invoicing/companies/{company}/bank-transactions/{bankTransaction}/unmatch",
             "action": "App\\Http\\Controllers\\Invoicing\\BankTransactionController@unmatch",
             "middleware": [
@@ -4046,6 +4074,20 @@
         {
             "route": "POST api/invoicing/companies/{company}/expenses/detect-isdoc",
             "action": "App\\Http\\Controllers\\Invoicing\\BusinessExpenseController@detectIsdoc",
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "App\\Http\\Middleware\\RequireVerifiedEmail",
+                "throttle:api-user",
+                "App\\Http\\Middleware\\EnsurePlanAllowsBusinessInvoicing",
+                "App\\Http\\Middleware\\EnsureCompanyOwnership"
+            ],
+            "status": "excluded",
+            "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."
+        },
+        {
+            "route": "POST api/invoicing/companies/{company}/expenses/duplicate-suggestions",
+            "action": "App\\Http\\Controllers\\Invoicing\\BusinessExpenseController@duplicateSuggestions",
             "middleware": [
                 "api",
                 "auth:sanctum",

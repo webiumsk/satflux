@@ -39,3 +39,7 @@ Pokud párování uspěje, ale seznam se nepodaří obnovit, uložené výsledky
 ## Náklady
 
 Odchozí platby můžete převést na **náklady** pro úplný export účetnímu.
+
+Pokud náklad již existuje, zkontrolujte a potvrďte navržené přiřazení platby.
+[Kontrola úhrad nákladů](/documentation/expense-payment-review) popisuje podmínky
+párování, zrušení přiřazení a upozornění na možné duplicity.

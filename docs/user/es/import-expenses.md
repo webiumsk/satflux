@@ -32,6 +32,8 @@ Si el número de documento contiene más de 32 dígitos, el símbolo variable au
 
 Los cambios locales de gastos esperan a que termine la conciliación bancaria en curso antes de guardarse. Si el navegador no puede coordinar los cambios, recargue la pestaña o utilice un navegador actualizado. Si no se puede confirmar un resultado, recargue y compruebe el registro guardado antes de realizar otro intento. Las modificaciones deliberadas posteriores de un gasto pagado conservan su estado de pago existente.
 
+Desvincule el pago bancario antes de cambiar el importe o la moneda del gasto vinculado. Las conciliaciones sin conexión se vuelven a confirmar tras la sincronización. Si un vínculo requiere revisión, se muestra un aviso en Pagos y en el gasto; elimine el vínculo pendiente antes de volver a conciliar. Se conservan las demás conciliaciones y los pagos registrados por separado. Utilice clientes actualizados en todos los dispositivos.
+
 ## Resumen de gastos
 
 El resumen bajo **Gastos** incluye todos los documentos que coinciden con los filtros actuales, en todas las páginas. Muestra el número, el total y el importe de los gastos no pagados. Seleccionar filas no modifica el resumen. Cada moneda tiene sus propios totales.

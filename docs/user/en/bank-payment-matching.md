@@ -39,3 +39,7 @@ If matching succeeds but refreshing the list fails, reload the tab to see the sa
 ## Expenses
 
 Outgoing payments can be turned into **expenses** so your books stay complete for the accountant export.
+
+If the expense already exists, review and confirm a suggested association instead
+of creating another expense. See [expense payment review](/documentation/expense-payment-review)
+for matching requirements, unlinking and possible duplicate warnings.

@@ -1,3 +1,5 @@
+import { bankPaymentCurrency, positiveBankAmount } from "./bankPaymentValues";
+import { normalizedExpenseNumber, normalizedExpenseTitle, expenseCandidate, type ExpenseDuplicateSuggestion } from "./expenseDuplicateSuggestions";
 import type { Evolu } from "@evolu/common/local-first";
 import type {
     ExpenseImportFieldKey,
@@ -315,6 +317,64 @@ export async function previewLocalExpenseImport(file: File): Promise<ExpenseImpo
         suggested_mapping: suggestExpenseImportMapping(parsed.headers),
         row_count: parsed.rows.filter((row) => !isEmptyRow(row)).length,
     };
+}
+
+export type ExpenseImportDuplicateWarning = ExpenseDuplicateSuggestion & { row: number; in_file: boolean };
+
+/** Parse the mapped file without financial writes and show at most twenty advisory existing/in-file matches. */
+export async function previewLocalExpenseImportDuplicates(
+    companyId: string, ownerId: string, file: File, mappingInput: ExpenseImportMapping,
+    existingRows: readonly EvoluExpenseRow[],
+): Promise<ExpenseImportDuplicateWarning[]> {
+    const parsed = await parseSpreadsheetFile(file, SPREADSHEET_LIMITS);
+    const mapping = normalizeMapping(mappingInput, parsed.headers.length);
+    const byNumber = new Map<string, EvoluExpenseRow>();
+    const byTitle = new Map<string, EvoluExpenseRow>();
+    /** Build duplicate keys from the exact two-decimal total persisted by the import. */
+    const keys = (draft: { external_number?: string | null; title?: string | null; issue_date?: string | null; total: string | number; currency?: string | null }) => {
+        const amount = positiveBankAmount(Number(draft.total).toFixed(2));
+        const currency = bankPaymentCurrency(draft.currency);
+        if (!amount || !currency) return { number: null, title: null };
+        const number = normalizedExpenseNumber(draft.external_number);
+        const title = normalizedExpenseTitle(draft.title);
+        return {
+            number: number ? JSON.stringify([amount, currency, number]) : null,
+            title: title && draft.issue_date ? JSON.stringify([amount, currency, title, draft.issue_date]) : null,
+        };
+    };
+    /** Keep the first deterministic existing document for each supported duplicate key. */
+    const indexRow = (row: EvoluExpenseRow) => {
+        const key = keys({ external_number: row.externalNumber, title: row.title, issue_date: row.issueDate,
+            total: row.total || '', currency: row.currency });
+        if (key.number && !byNumber.has(key.number)) byNumber.set(key.number, row);
+        if (key.title && !byTitle.has(key.title)) byTitle.set(key.title, row);
+    };
+    existingRows.filter((row) => row.companyId === companyId && Reflect.get(row, 'ownerId') === ownerId
+        && row.status !== 'cancelled' && !row.cancelledAt && Reflect.get(row, 'isDeleted') !== 1)
+        .sort((a, b) => a.internalNumber.localeCompare(b.internalNumber) || a.id.localeCompare(b.id)).forEach(indexRow);
+    const previewIds = new Set<string>();
+    const warnings: ExpenseImportDuplicateWarning[] = [];
+    for (const [index, cells] of parsed.rows.entries()) {
+        if (isEmptyRow(cells)) continue;
+        if (index > 0 && index % IMPORT_YIELD_EVERY_ROWS === 0) await yieldToEventLoop();
+        let draft: ExpenseSavePayload;
+        try { draft = rowToPayload(cells, mapping, new Set()); }
+        catch { continue; } // The real import reports invalid rows; advisory checks never change that decision.
+        const key = keys(draft);
+        const numbered = key.number ? byNumber.get(key.number) : undefined;
+        const matched = numbered ?? (key.title ? byTitle.get(key.title) : undefined);
+        if (matched) warnings.push({ expense: expenseCandidate(matched), reason: numbered ? 'external_number' : 'title_date_amount',
+            row: index + 2, in_file: previewIds.has(matched.id) });
+        if (warnings.length >= 20) break;
+        const id = `preview-row-${index + 2}`;
+        previewIds.add(id);
+        indexRow({ id, companyId, ownerId, internalNumber: String(index + 2),
+            externalNumber: draft.external_number ?? null, title: draft.title ?? null,
+            issueDate: draft.issue_date, total: String(draft.total), currency: draft.currency ?? null,
+            status: "recorded", cancelledAt: null,
+        } as unknown as EvoluExpenseRow);
+    }
+    return warnings;
 }
 
 export function downloadExpenseImportExampleCsv(): void {

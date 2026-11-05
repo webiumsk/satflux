@@ -32,6 +32,8 @@ Pokud číslo dokladu obsahuje více než 32 číslic, automatický variabilní 
 
 Lokální změny nákladů před uložením počkají na probíhající párování plateb. Pokud prohlížeč nedokáže koordinovat změny, znovu načtěte kartu nebo použijte aktuální prohlížeč. Pokud výsledek nelze potvrdit, před dalším pokusem kartu znovu načtěte a zkontrolujte uložený záznam. Pozdější vědomá úprava uhrazeného nákladu zachová jeho existující stav úhrady.
 
+Před změnou částky nebo měny propojeného nákladu odpojte bankovní platbu. Offline párování se po synchronizaci znovu ověří. Pokud je třeba propojení zkontrolovat, v Platbách i u nákladu se zobrazí upozornění; před opětovným párováním nevyřešené bankovní propojení odpojte. Ostatní párování a samostatně zaznamenané úhrady se zachovají. Na všech zařízeních používejte aktuální verzi aplikace.
+
 ## Souhrn nákladů
 
 Souhrn pod seznamem **Nákladů** zahrnuje všechny doklady odpovídající aktuálním filtrům na všech stránkách. Zobrazuje počet, celkovou částku a součet neuhrazených nákladů. Výběr položek součet nemění. Každá měna má vlastní součty.

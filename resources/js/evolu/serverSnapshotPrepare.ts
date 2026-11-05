@@ -269,6 +269,8 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
                 }),
                 companyIdByServerUuid,
             );
+            // Server snapshots cannot create or erase encrypted local payment evidence.
+            delete mapped.bankPaymentClaimJson;
             const internalNumber = emptyToNull(mapped.internalNumber) ?? "1";
             return { ...mapped, internalNumber };
         }),
@@ -353,8 +355,8 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
                 companyIdByServerUuid,
             ),
         ),
-        bankTransaction: snapshot.bankTransaction.map((row) =>
-            withCompanyFk(
+        bankTransaction: snapshot.bankTransaction.map((row) => {
+            const mapped = withCompanyFk(
                 mapRowIds(row, {
                     id: BankTransactionId,
                     fields: {
@@ -363,8 +365,10 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
                     },
                 }),
                 companyIdByServerUuid,
-            ),
-        ),
+            );
+            delete mapped.bankPaymentClaimJson;
+            return mapped;
+        }),
         bankTransactionMatch: snapshot.bankTransactionMatch.map((row) =>
             mapRowIds(row, {
                 id: BankTransactionMatchId,

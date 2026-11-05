@@ -165,6 +165,9 @@
                 <p class="text-xs text-gray-500 mt-0.5 truncate">
                   {{ row.internal_number }}
                 </p>
+                <p v-if="row.bank_match_conflict" class="text-xs text-amber-800 mt-1" role="status">
+                  {{ t('invoicing.expense_bank_match_conflict') }}
+                </p>
               </div>
             </div>
           </td>
@@ -366,6 +369,9 @@
             </p>
             <p class="text-xs text-gray-500 mt-1">
               {{ formatDate(row.issue_date) }}
+            </p>
+            <p v-if="row.bank_match_conflict" class="text-xs text-amber-800 mt-1" role="status">
+              {{ t('invoicing.expense_bank_match_conflict') }}
             </p>
           </div>
           <p class="text-sm font-semibold shrink-0">

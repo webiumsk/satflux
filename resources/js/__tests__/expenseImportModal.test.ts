@@ -147,3 +147,47 @@ describe("expense import modal lifecycle", () => {
         expect(wrapper!.findAll("select")).toHaveLength(0);
     });
 });
+
+
+describe('mapped server duplicate preview cancellation', () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+    /** Advance header detection and debounce, then capture the actual mapped server request. */
+    async function startPendingPreview() {
+        mocks.serverPreview.mockResolvedValueOnce(preview()).mockImplementation(() => new Promise(() => {}));
+        render(false);
+        await choose(new File(['synthetic'], 'expenses.csv'));
+        await vi.advanceTimersByTimeAsync(301);
+        const [company, form, options] = mocks.serverPreview.mock.calls[1]!;
+        expect(company).toBe('company-a');
+        expect((form as FormData).get('mapping')).toBeTruthy();
+        expect(options).toMatchObject({ signal: expect.any(AbortSignal), timeout: 10000 });
+        expect(options.signal.aborted).toBe(false);
+        return options.signal as AbortSignal;
+    }
+    it.each(['mapping', 'company', 'file', 'unmount'])('aborts the actual request after %s changes', async (change) => {
+        const signal = await startPendingPreview();
+        if (change === 'mapping') await wrapper!.get('#expense-import-total').setValue('0');
+        if (change === 'company') await wrapper!.setProps({ companyId: 'company-b' });
+        if (change === 'file') await choose(new File(['replacement'], 'replacement.csv'));
+        if (change === 'unmount') { wrapper!.unmount(); wrapper = undefined; }
+        await flushPromises();
+        expect(signal.aborted).toBe(true);
+    });
+    it('aborts at the finite deadline and keeps the warning advisory', async () => {
+        let signal: AbortSignal | undefined;
+        mocks.serverPreview.mockResolvedValueOnce(preview()).mockImplementationOnce((_company, _form, options) => new Promise((_resolve, reject) => {
+            signal = options.signal;
+            signal!.addEventListener('abort', () => reject(new Error('synthetic cancellation')), { once: true });
+        }));
+        render(false);
+        await choose(new File(['synthetic'], 'expenses.csv'));
+        await vi.advanceTimersByTimeAsync(301);
+        expect(signal?.aborted).toBe(false);
+        await vi.advanceTimersByTimeAsync(10000);
+        await flushPromises();
+        expect(signal?.aborted).toBe(true);
+        expect(wrapper!.text()).toContain(en.invoicing.expense_duplicate_check_failed);
+        expect(submit().attributes('disabled')).toBeUndefined();
+    });
+});
