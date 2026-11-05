@@ -10,6 +10,10 @@ vi.mock("@/evolu/client", () => ({
 vi.mock("@/evolu/documentCrud", () => ({ markLocalDocumentPaidWithAmount: vi.fn(), unmarkLocalDocumentPaid: vi.fn() }));
 import { autoMatchLocalBatchAsync, importInboundServerTransactionsAsync } from "@/evolu/bankCrud";
 
+import { effectiveExpensePayment } from "@/evolu/bankExpenseClaims";
+import type { EvoluExpenseRow } from "@/evolu/expenseMap";
+import type { EvoluBankTransactionRow } from "@/evolu/bankMap";
+
 type DataRow = Record<string, unknown>;
 function fixture(existing = false) {
     const expense = { id: "expense-a", companyId: "company-a", status: "recorded", paidAt: null, cancelledAt: null,
@@ -83,7 +87,9 @@ it("serializes two client objects across one origin despite stale subscribed UI 
     expect(state.transactions.filter((transaction) => transaction.businessExpenseId === expense.id)).toHaveLength(1);
     expect(second.evolu.loadQuery.mock.calls.some(([key]) => key === "fresh:expenses")).toBe(true);
     expect(await second.evolu.loadQuery("expenses")).toMatchObject([{ status: "recorded" }]);
-    expect(state.expenses[0].status).toBe("paid");
+    expect(state.expenses[0]).toMatchObject({ status: "recorded", paidAt: null });
+    expect(effectiveExpensePayment(state.expenses[0] as unknown as EvoluExpenseRow,
+        state.transactions as unknown as EvoluBankTransactionRow[])).toMatchObject({ status: "paid", paidAt: "2026-11-03", bankMatchConflict: 0 });
     const fresh = new Set([...first.evolu.loadQuery.mock.calls, ...second.evolu.loadQuery.mock.calls]
         .map(([key]) => key).filter((key) => key.startsWith("fresh:")));
     expect(fresh.size).toBe(5);

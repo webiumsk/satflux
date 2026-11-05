@@ -1,0 +1,7 @@
+{
+  "id": "expense-payment-review",
+  "source": "https://github.com/webiumsk/satflux/pull/429",
+  "title": "Review expense payments and possible duplicates",
+  "body": "Match an outgoing bank payment to an existing expense after reviewing the suggested match. Possible duplicate expenses are highlighted during creation, editing and spreadsheet import. Conflicting offline bank links require review after synchronization, while separately recorded payments are preserved.",
+  "labels": ["improvement"]
+}

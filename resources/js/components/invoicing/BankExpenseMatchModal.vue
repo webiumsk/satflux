@@ -59,6 +59,9 @@ watch(() => props.transaction?.id, async (id) => {
     panel.value?.focus();
   } else previousFocus?.focus();
 }, { immediate: true });
+watch(() => props.saving, (saving) => {
+  if (saving && props.transaction) panel.value?.focus();
+}, { flush: 'sync' });
 onBeforeUnmount(() => previousFocus?.focus());
 
 /** Keep a dispatched financial operation visible until its outcome is known. */

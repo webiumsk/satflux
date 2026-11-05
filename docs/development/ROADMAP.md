@@ -1,5 +1,23 @@
 # Development roadmap
 
+## Deliver reviewed PR429 remediation - 2026-11-05
+
+Implement and independently review the owner-requested PHP audit/CodeRabbit fixes
+on the existing expense feature branch. Local gates pass: PHP: 2,902; PostgreSQL: 4/74;
+frontend: 1,830/183; typecheck111; lint48; locale/build/API/Pint/PHPStan. Reciprocal
+claims cover new manual, automatic and bank-created expense writes, including
+explicit recovery and unchanged zero/negative bookkeeping edits. Preserve legacy
+claimless history and current-owner raw backup restoration.
+
+The 74 added docblocks are proved executable-equivalent to accepted logic.
+Publication manifests: runtime44 `b89dbb70...366899`, source/test/CI68
+`4d52bf9c...1e0013`. Next: main commits/pushes these exact bytes, verifies the
+remote tip, actual new-head required CI and CodeRabbit semantic/docstring state.
+Staging also removes exactly one redundant EOF LF from the new claim helper;
+AST/emitted JavaScript remain identical.
+
+Only a separate applicable owner approval can authorize merge or deployment.
+
 ## Publish reviewed expense reconciliation branch - 2026-11-05
 
 Owner-authorized next step: commit/push the existing reviewed 51 paths to

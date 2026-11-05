@@ -111,6 +111,16 @@
 
     <div v-else-if="expense" class="flex flex-col lg:flex-row gap-6 mt-2">
       <div class="flex-1 min-w-0 space-y-4">
+        <div v-if="expense.bank_match_conflict" class="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800" role="status">
+          <p>{{ t('invoicing.expense_bank_match_conflict') }}</p>
+          <button
+            v-if="localFirst && expense.bank_match_claim != null"
+            type="button"
+            class="invoicing-btn-secondary mt-2"
+            :disabled="acting || duplicating || uploading || processingExtraction || noteSaving"
+            @click="releaseBankConflict"
+          >{{ t('invoicing.bank_unmatch') }}</button>
+        </div>
         <div class="invoicing-card overflow-hidden">
           <div
             class="expense-show-banner flex flex-wrap items-center justify-between gap-4 px-6 py-4 bg-sky-50 border-b border-sky-100"
@@ -342,6 +352,7 @@ import {
   unmarkLocalExpensePaid,
   updateLocalExpense,
 } from "../../evolu/expenseCrud";
+import { releaseLocalExpenseBankClaim } from "../../evolu/bankCrud";
 import { filterLocalExpenses, type EvoluExpenseRow } from "../../evolu/expenseMap";
 import { toAppRows } from "../../evolu/queryLoad";
 import {
@@ -365,6 +376,8 @@ type ExpenseAttachment = {
 };
 
 type Expense = {
+  bank_match_conflict?: boolean;
+  bank_match_claim?: string | null;
   id: string;
   internal_number: string;
   external_number: string | null;
@@ -545,6 +558,17 @@ const isOverdue = computed(() => {
 const neighborIndex = computed(() =>
   expenseId.value ? neighborIds.value.indexOf(expenseId.value) : -1,
 );
+
+// Keep the visible payment outcome current when another device's claims arrive.
+watch(expenseResource.expense, (projected) => {
+  if (!localFirst || !projected || !expense.value || loading.value
+    || projected.id !== expenseId.value || expense.value.id !== expenseId.value) return;
+  Object.assign(expense.value, {
+    status: projected.status, paid_at: projected.paid_at,
+    bank_match_conflict: projected.bank_match_conflict,
+    bank_match_claim: projected.bank_match_claim,
+  });
+}, { flush: 'sync' });
 
 watch(expense, (e) => {
   noteDraft.value = e?.internal_note ?? "";
@@ -883,6 +907,24 @@ async function duplicate() {
     if (isCurrentContext(context)) window.alert(t(expenseMutationErrorKey(error) || 'errors.generic'));
   } finally {
     if (isCurrentContext(context)) duplicating.value = false;
+  }
+}
+
+/** Release only the displayed local conflict; a changed context or claim requires fresh review. */
+async function releaseBankConflict() {
+  const context = captureContext();
+  if (!localFirst || !hasLoadedExpense(context) || !expenseResource.evolu || acting.value
+    || !expense.value?.bank_match_conflict || expense.value.bank_match_claim == null) return;
+  const expectedClaim = expense.value.bank_match_claim;
+  if (!window.confirm(t('invoicing.bank_unlink_expense_conflict_confirm'))) return;
+  acting.value = true;
+  try {
+    await releaseLocalExpenseBankClaim(expenseResource.evolu, context.company as CompanyId, context.expense as ExpenseId, expectedClaim);
+    if (isCurrentContext(context)) await load();
+  } catch (error: unknown) {
+    if (isCurrentContext(context)) window.alert(t(expenseMutationErrorKey(error) || 'errors.generic'));
+  } finally {
+    if (isCurrentContext(context)) acting.value = false;
   }
 }
 

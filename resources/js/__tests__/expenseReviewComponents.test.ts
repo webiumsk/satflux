@@ -64,7 +64,15 @@ describe('expense review components', () => {
     expect(wrapper.emitted('confirm')).toBeUndefined();
     await wrapper.find('button').trigger('click');
     expect(wrapper.emitted('confirm')).toEqual([['expense-a']]);
+    wrapper.find('button').element.focus();
+    expect(document.activeElement).toBe(wrapper.find('button').element);
     await wrapper.setProps({ saving: true });
+    const panel = wrapper.find<HTMLElement>('[tabindex="-1"]').element;
+    expect(document.activeElement).toBe(panel);
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    panel.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(panel);
     await wrapper.find('[role="dialog"]').trigger('keydown', { key: 'Escape' });
     expect(wrapper.emitted('close')).toBeUndefined();
     expect(wrapper.findAll('button').every((button) => button.attributes('disabled') !== undefined)).toBe(true);

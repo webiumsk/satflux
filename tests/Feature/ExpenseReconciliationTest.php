@@ -16,11 +16,14 @@ use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\Invoicing\BusinessExpenseExcelImportService;
 use App\Services\Invoicing\BusinessExpenseReconciliationService;
+use App\Services\Invoicing\BusinessExpenseService;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestWith;
 use RuntimeException;
@@ -34,6 +37,7 @@ class ExpenseReconciliationTest extends TestCase
 
     private Company $company;
 
+    /** Prepare an authenticated synthetic company with isolated legacy invoicing. */
     protected function setUp(): void
     {
         parent::setUp();
@@ -57,6 +61,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->actingAs($this->user);
     }
 
+    /** Create a synthetic expense with configurable financial and identity evidence. */
     private function expense(array $overrides = []): BusinessExpense
     {
         return BusinessExpense::create(array_merge([
@@ -72,6 +77,7 @@ class ExpenseReconciliationTest extends TestCase
         ], $overrides));
     }
 
+    /** Create a distinct recorded bank debit for reconciliation scenarios. */
     private function movement(array $overrides = []): BankTransaction
     {
         return BankTransaction::create(array_merge([
@@ -87,16 +93,19 @@ class ExpenseReconciliationTest extends TestCase
         ], $overrides));
     }
 
+    /** Build the company-scoped endpoint for a synthetic bank movement. */
     private function bankUrl(BankTransaction $transaction, string $action): string
     {
         return "/api/invoicing/companies/{$this->company->id}/bank-transactions/{$transaction->id}/{$action}";
     }
 
+    /** Build the current company's advisory duplicate-preview endpoint. */
     private function duplicateUrl(): string
     {
         return "/api/invoicing/companies/{$this->company->id}/expenses/duplicate-suggestions";
     }
 
+    /** Keep ambiguous suggestions read-only until the user selects one expense. */
     #[Test]
     public function suggestions_are_read_only_and_ambiguous_candidates_require_explicit_confirmation(): void
     {
@@ -118,6 +127,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->assertSame('2026-11-03', $second->fresh()->paid_at->toDateString());
     }
 
+    /** Allow explicit full-amount confirmation across supported persisted bank sources. */
     #[Test]
     #[TestWith(['csv'])]
     #[TestWith(['camt053'])]
@@ -136,6 +146,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->assertSame($expense->id, $transaction->fresh()->business_expense_id);
     }
 
+    /** Keep successful retries idempotent for payment dates and both audit histories. */
     #[Test]
     public function same_pair_retries_preserve_paid_date_and_one_audit_entry(): void
     {
@@ -150,8 +161,10 @@ class ExpenseReconciliationTest extends TestCase
 
         $this->assertSame($originalDate, $expense->fresh()->getRawOriginal('paid_at'));
         $this->assertSame(1, AuditLog::where('action', 'bank_transaction.expense_matched')->count());
+        $this->assertSame(1, AuditLog::where('action', 'business_expense.marked_paid')->where('target_id', $expense->id)->count());
     }
 
+    /** Reject retries that would overwrite a deliberate change to independent payment state. */
     #[Test]
     public function retry_cannot_silently_reverse_a_deliberate_unpaid_edit(): void
     {
@@ -166,6 +179,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->assertNull($expense->fresh()->paid_at);
     }
 
+    /** Reject weak or incompatible movement evidence without marking an expense paid. */
     #[Test]
     #[TestWith(['amount', '123.44'])]
     #[TestWith(['amount', '123.46'])]
@@ -192,6 +206,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->assertNull($transaction->fresh()->business_expense_id);
     }
 
+    /** Preserve recorded credit evidence when display heuristics infer an outgoing movement. */
     #[Test]
     public function free_text_debit_inference_cannot_override_recorded_credit_evidence(): void
     {
@@ -202,6 +217,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->postJson($this->bankUrl($transaction, 'match-expense'), ['expense_id' => $expense->id])->assertUnprocessable();
     }
 
+    /** Require complete fallback references and preserve the precedence of a supplied bank symbol. */
     #[Test]
     public function full_reference_fallback_does_not_accept_partial_reference_or_override_a_different_bank_symbol(): void
     {
@@ -215,6 +231,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->postJson($this->bankUrl($transaction, 'match-expense'), ['expense_id' => $expense->id])->assertUnprocessable();
     }
 
+    /** Revalidate financial evidence changed after a suggestion was displayed. */
     #[Test]
     public function confirmation_rechecks_changes_since_the_suggestion_was_loaded(): void
     {
@@ -227,6 +244,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->assertSame(BusinessExpenseStatus::Recorded, $expense->fresh()->status);
     }
 
+    /** Prevent a second movement from claiming an expense with an existing bank link. */
     #[Test]
     public function another_transaction_cannot_claim_the_same_expense_even_if_its_status_is_manually_reset(): void
     {
@@ -241,6 +259,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->assertNull($second->fresh()->business_expense_id);
     }
 
+    /** Preserve an established expense link until the user explicitly removes it. */
     #[Test]
     public function an_already_matched_movement_cannot_be_reassigned_or_ignored(): void
     {
@@ -254,6 +273,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->assertSame($first->id, $transaction->fresh()->business_expense_id);
     }
 
+    /** Detach bookkeeping relationships without rewriting independent payment evidence. */
     #[Test]
     public function removing_a_link_preserves_paid_evidence_and_records_the_detach(): void
     {
@@ -268,6 +288,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->assertSame(1, AuditLog::where('action', 'bank_transaction.expense_unmatched')->count());
     }
 
+    /** Exclude paid, cancelled and foreign-company expenses from eligible confirmations. */
     #[Test]
     public function paid_cancelled_and_foreign_expenses_are_not_match_candidates(): void
     {
@@ -289,8 +310,9 @@ class ExpenseReconciliationTest extends TestCase
         $this->getJson($this->bankUrl($foreignTransaction, 'expense-suggestions'))->assertNotFound();
     }
 
+    /** Deny another authenticated user access to company-scoped reconciliation endpoints. */
     #[Test]
-    public function forbidden_company_and_guest_requests_cannot_read_or_attach_candidates(): void
+    public function foreign_user_requests_cannot_read_or_attach_candidates(): void
     {
         $expense = $this->expense();
         $transaction = $this->movement();
@@ -300,6 +322,152 @@ class ExpenseReconciliationTest extends TestCase
         $this->actingAs($otherUser)->postJson($this->duplicateUrl(), ['total' => '123.45', 'currency' => 'EUR'])->assertForbidden();
     }
 
+    /** Require authentication independently on each new reconciliation endpoint. */
+    #[Test]
+    public function unauthenticated_requests_cannot_access_the_three_reconciliation_endpoints(): void
+    {
+        $expense = $this->expense();
+        $transaction = $this->movement();
+        auth()->forgetGuards();
+        $this->getJson($this->bankUrl($transaction, 'expense-suggestions'))->assertUnauthorized();
+        auth()->forgetGuards();
+        $this->postJson($this->bankUrl($transaction, 'match-expense'), ['expense_id' => $expense->id])->assertUnauthorized();
+        auth()->forgetGuards();
+        $this->postJson($this->duplicateUrl(), ['total' => '123.45', 'currency' => 'EUR'])->assertUnauthorized();
+    }
+
+    /** Expose the confirmed payment in expense history exactly once across retries. */
+    #[Test]
+    public function confirming_a_match_adds_one_expense_history_event_with_payment_evidence(): void
+    {
+        $expense = $this->expense();
+        $transaction = $this->movement();
+        $url = $this->bankUrl($transaction, 'match-expense');
+        $this->postJson($url, ['expense_id' => $expense->id])->assertOk();
+        $this->postJson($url, ['expense_id' => $expense->id])->assertOk();
+
+        $this->getJson("/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}/history")
+            ->assertOk()->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.action', 'business_expense.marked_paid')
+            ->assertJsonPath('data.0.metadata', [
+                'company_id' => $this->company->id,
+                'bank_transaction_id' => $transaction->id,
+                'match_type' => 'manual',
+            ]);
+    }
+
+    /** Roll back both bookkeeping records and bank history if expense-history persistence fails. */
+    #[Test]
+    public function expense_history_audit_failure_rolls_back_the_bank_audit_and_both_records(): void
+    {
+        $expense = $this->expense();
+        $transaction = $this->movement();
+        DB::listen(function (QueryExecuted $query): void {
+            if (str_contains($query->sql, 'insert into "audit_logs"')
+                && in_array('business_expense.marked_paid', $query->bindings, true)) {
+                throw new RuntimeException('Synthetic expense history failure');
+            }
+        });
+        try {
+            app(BusinessExpenseReconciliationService::class)->match($this->company, $transaction, $expense->id, $this->user->id);
+            $this->fail('Expected the synthetic expense history failure.');
+        } catch (RuntimeException $error) {
+            $this->assertSame('Synthetic expense history failure', $error->getMessage());
+        }
+        $this->assertNull($transaction->fresh()->business_expense_id);
+        $this->assertSame(BusinessExpenseStatus::Recorded, $expense->fresh()->status);
+        $this->assertSame(0, AuditLog::whereIn('action', ['bank_transaction.expense_matched', 'business_expense.marked_paid'])->count());
+    }
+
+    /** Reject changed linked financial values while preserving payment status and history. */
+    #[Test]
+    #[TestWith(['total', '123.46'])]
+    #[TestWith(['total', '0'])]
+    #[TestWith(['total', '123.451'])]
+    #[TestWith(['currency', 'USD'])]
+    public function linked_expense_financial_edits_require_unlinking_first(string $field, string $value): void
+    {
+        $expense = $this->expense();
+        $transaction = $this->movement();
+        $this->postJson($this->bankUrl($transaction, 'match-expense'), ['expense_id' => $expense->id])->assertOk();
+        $paidAt = $expense->fresh()->getRawOriginal('paid_at');
+
+        $this->patchJson("/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}", [$field => $value])
+            ->assertUnprocessable()->assertJsonValidationErrors($field);
+
+        $this->assertSame('123.45', $expense->fresh()->total);
+        $this->assertSame('EUR', $expense->fresh()->currency);
+        $this->assertSame(BusinessExpenseStatus::Paid, $expense->fresh()->status);
+        $this->assertSame($paidAt, $expense->fresh()->getRawOriginal('paid_at'));
+        $this->assertSame($expense->id, $transaction->fresh()->business_expense_id);
+        $this->assertSame(BankTransactionMatchStatus::Matched, $transaction->fresh()->match_status);
+        $this->assertSame(0, AuditLog::where('action', 'business_expense.updated')->count());
+    }
+
+    /** Allow canonical equivalents and descriptive edits without altering the established match. */
+    #[Test]
+    #[TestWith(['123.4500', 'eur'])]
+    #[TestWith(['000123.45', 'EUR'])]
+    #[TestWith(['1.2345e2', 'eUr'])]
+    public function equivalent_financial_values_and_nonfinancial_edits_preserve_the_match(string $total, string $currency): void
+    {
+        $expense = $this->expense();
+        $transaction = $this->movement();
+        $this->postJson($this->bankUrl($transaction, 'match-expense'), ['expense_id' => $expense->id])->assertOk();
+        $paidAt = $expense->fresh()->getRawOriginal('paid_at');
+
+        $this->patchJson("/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}", [
+            'total' => $total, 'currency' => $currency, 'title' => 'Corrected nonfinancial description',
+        ])->assertOk();
+        $this->patchJson("/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}", [
+            'internal_note' => 'Synthetic nonfinancial note',
+        ])->assertOk();
+
+        $this->assertSame('123.45', $expense->fresh()->total);
+        $this->assertSame('Corrected nonfinancial description', $expense->fresh()->title);
+        $this->assertSame(BusinessExpenseStatus::Paid, $expense->fresh()->status);
+        $this->assertSame($paidAt, $expense->fresh()->getRawOriginal('paid_at'));
+        $this->assertSame($expense->id, $transaction->fresh()->business_expense_id);
+        $this->assertSame(BankTransactionMatchStatus::Matched, $transaction->fresh()->match_status);
+        $this->assertSame(1, AuditLog::where('action', 'business_expense.marked_paid')->count());
+    }
+
+    /** Allow financial correction after unlinking while preserving independent paid history. */
+    #[Test]
+    public function an_unlinked_paid_expense_can_be_edited_without_rewriting_paid_history(): void
+    {
+        $expense = $this->expense();
+        $transaction = $this->movement();
+        $this->postJson($this->bankUrl($transaction, 'match-expense'), ['expense_id' => $expense->id])->assertOk();
+        $paidAt = $expense->fresh()->getRawOriginal('paid_at');
+        $this->postJson($this->bankUrl($transaction, 'unmatch'))->assertOk();
+
+        $this->patchJson("/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}", ['total' => '130.00', 'currency' => 'USD'])->assertOk();
+        $this->assertSame('130.00', $expense->fresh()->total);
+        $this->assertSame('USD', $expense->fresh()->currency);
+        $this->assertSame(BusinessExpenseStatus::Paid, $expense->fresh()->status);
+        $this->assertSame($paidAt, $expense->fresh()->getRawOriginal('paid_at'));
+        $this->assertNull($transaction->fresh()->business_expense_id);
+    }
+
+    /** Reload financial state before allowing edits from a stale expense instance. */
+    #[Test]
+    public function stale_expense_objects_cannot_bypass_the_current_bank_link(): void
+    {
+        $stale = $this->expense();
+        $transaction = $this->movement();
+        $this->postJson($this->bankUrl($transaction, 'match-expense'), ['expense_id' => $stale->id])->assertOk();
+        try {
+            app(BusinessExpenseService::class)->update($stale, ['total' => '200.00']);
+            $this->fail('A stale expense object must not overwrite matched financial evidence.');
+        } catch (ValidationException $error) {
+            $this->assertArrayHasKey('total', $error->errors());
+        }
+        $this->assertSame('123.45', $stale->fresh()->total);
+        $this->assertSame(BusinessExpenseStatus::Paid, $stale->fresh()->status);
+    }
+
+    /** Keep local-first expense reconciliation outside the legacy server storage path. */
     #[Test]
     public function local_first_companies_never_send_server_expense_reconciliation(): void
     {
@@ -313,6 +481,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->assertSame(BusinessExpenseStatus::Recorded, $expense->fresh()->status);
     }
 
+    /** Roll back both financial records when the bank audit cannot be persisted. */
     #[Test]
     public function audit_failure_rolls_back_both_bookkeeping_updates(): void
     {
@@ -333,6 +502,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->assertSame(BusinessExpenseStatus::Recorded, $expense->fresh()->status);
     }
 
+    /** Report available duplicate evidence with stable reason priority and no expense mutations. */
     #[Test]
     public function duplicate_suggestions_use_available_fields_with_stable_reason_priority_and_are_advisory(): void
     {
@@ -347,6 +517,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->assertDatabaseCount('business_expenses', 1);
     }
 
+    /** Isolate duplicate advice from the edited record, cancelled rows and other companies. */
     #[Test]
     public function duplicate_search_excludes_the_editing_record_and_other_companies_and_cancelled_rows(): void
     {
@@ -364,6 +535,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->assertSame(BusinessExpenseStatus::Cancelled, $cancelled->fresh()->status);
     }
 
+    /** Avoid duplicate warnings when amount or currency evidence is incompatible. */
     #[Test]
     #[TestWith(['currency', 'USD'])]
     #[TestWith(['total', '123.44'])]
@@ -377,6 +549,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->postJson($this->duplicateUrl(), array_merge($draft, [$field => $value]))->assertOk()->assertJsonCount(0, 'data');
     }
 
+    /** Preserve significant document-number zeros and require dates for title-based advice. */
     #[Test]
     public function leading_zero_document_numbers_remain_distinct_and_title_requires_the_same_date(): void
     {
@@ -387,6 +560,7 @@ class ExpenseReconciliationTest extends TestCase
         ])->assertOk()->assertJsonCount(0, 'data');
     }
 
+    /** Bound advisory results while retaining deterministic candidate ordering. */
     #[Test]
     public function duplicate_results_are_deterministic_and_bounded_to_twenty(): void
     {
@@ -423,6 +597,7 @@ class ExpenseReconciliationTest extends TestCase
         return ['title' => 0, 'external_number' => 1, 'issue_date' => 2, 'total' => 3, 'currency' => 4];
     }
 
+    /** Preview existing and in-file similarities without changing import outcomes. */
     #[Test]
     public function mapped_import_preview_detects_existing_and_in_file_duplicates_without_mutations_or_skips(): void
     {
@@ -451,6 +626,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->assertDatabaseCount('business_expenses', 5);
     }
 
+    /** Recompute duplicate advice from the column mapping explicitly submitted by the user. */
     #[Test]
     public function legacy_preview_recalculates_warning_from_the_submitted_mapping(): void
     {
@@ -465,6 +641,7 @@ class ExpenseReconciliationTest extends TestCase
             ->assertOk()->assertJsonPath('data.duplicate_warnings.0.expense.id', $expense->id);
     }
 
+    /** Keep mapped import advice bounded without issuing one company query per file row. */
     #[Test]
     public function import_warning_lookup_is_one_company_query_and_twenty_results_even_for_many_file_rows(): void
     {
@@ -485,6 +662,7 @@ class ExpenseReconciliationTest extends TestCase
         $this->assertSame(1, $reads);
     }
 
+    /** Exclude cancelled and foreign-company rows from import duplicate advice. */
     #[Test]
     public function import_preflight_excludes_cancelled_and_foreign_expenses(): void
     {
@@ -501,5 +679,27 @@ class ExpenseReconciliationTest extends TestCase
         );
 
         $this->assertSame([], $preview['duplicate_warnings']);
+    }
+
+    /** Exclude crossed amount/currency pairs before hydrating import-preview candidates. */
+    #[Test]
+    public function import_preflight_loads_only_the_files_exact_amount_and_normalized_currency_pairs(): void
+    {
+        $euro = $this->expense(['external_number' => 'EU-1', 'total' => '100.00', 'currency' => 'eUr']);
+        $dollar = $this->expense(['external_number' => 'US-1', 'total' => '200.00', 'currency' => 'USD']);
+        $this->expense(['external_number' => 'EU-1', 'total' => '100.00', 'currency' => 'USD']);
+        $this->expense(['external_number' => 'US-1', 'total' => '200.00', 'currency' => 'EUR']);
+        $this->expense(['external_number' => 'EU-1', 'total' => '100.01', 'currency' => 'EUR']);
+        $loaded = [];
+        Event::listen('eloquent.retrieved: '.BusinessExpense::class, function (BusinessExpense $expense) use (&$loaded): void {
+            $loaded[] = $expense->id;
+        });
+        $preview = app(BusinessExpenseExcelImportService::class)->preview($this->company, $this->importFile([
+            ['Euro charge', 'EU-1', '2026-11-01', '100.00', 'EUR'],
+            ['Dollar charge', 'US-1', '2026-11-01', '200.00', 'USD'],
+        ]), $this->importMapping());
+
+        $this->assertCount(2, $preview['duplicate_warnings']);
+        $this->assertEqualsCanonicalizing([$euro->id, $dollar->id], $loaded);
     }
 }

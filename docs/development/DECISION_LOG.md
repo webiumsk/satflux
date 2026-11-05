@@ -1,5 +1,34 @@
 # Development decision log
 
+## 2026-11-05 - Repair PR429 audit and convergent expense associations
+
+The owner authorizes remediation of the current PR and the prior source-push
+request remains applicable. Verify actual CI: the PHP tests passed on `1cb68a96`;
+the failing step was Composer audit. Update only six affected Symfony patches to
+7.4.23 and preserve the audit and all test/type/lint thresholds.
+
+Use one identical encrypted claim on both rows for new bank-derived associations.
+A canonical JavaScript validator derives paid state only from reciprocal,
+owner/company-scoped, snapshot-valid, invoice-free evidence. Manual/automatic
+matching stays strict; distinct create provenance preserves explicitly confirmed
+legacy draft/payment decisions. Winning unlink writes a released receipt in the
+same expense cell, never independent raw paid/date fields. Losing/orphan recovery
+checks the displayed revision and preserves other winners and independent history.
+Shared raw queries continue to serve backups/maintenance; presentation/export alone
+project effective state. Strip system owner metadata from restore payloads and
+retain live trusted routing. No imported metadata may choose another partition.
+
+Convergence requires sync and current clients; do not silently rewrite historical
+claimless or independent manual payments. Keep the claim-only 32,768 bound for
+escaped existing evidence, with a separately bounded token. Signed/zero comparison
+is limited to unchanged expense-edit equivalence, preserving positive bank matching.
+Independent QA/security accept frozen44/68 logic manifests. The later 74 plain
+purpose docblocks preserve PHP tokens and TypeScript AST/emitted JS exactly;
+Staging removes exactly one redundant EOF LF from the new claim helper, with
+identical AST/emitted JavaScript. Publication hashes are `b89dbb70...366899` /
+`4d52bf9c...1e0013`. Main owns source publication and actual CI/review verification.
+Merge/deployment remain separate.
+
 ## 2026-11-05 - Push the reviewed expense feature without expanding scope
 
 The explicit push request authorizes main-agent commit/push of the accepted expense

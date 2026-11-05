@@ -226,6 +226,8 @@ describe("expense import duplicate preflight", () => {
     });
     it("ignores other owner/company records and caps repetitive output at twenty warnings", async () => {
         const existing = [{ id: "foreign", ownerId: "owner-b", companyId, internalNumber: "EXP001", status: "recorded",
+            externalNumber: "INV-001", title: "Fee", issueDate: "2026-11-05", total: "19.00", currency: "EUR" },
+        { id: "other-company", ownerId: "owner-a", companyId: "company-b", internalNumber: "EXP002", status: "recorded",
             externalNumber: "INV-001", title: "Fee", issueDate: "2026-11-05", total: "19.00", currency: "EUR" }] as unknown as EvoluExpenseRow[];
         const single = csvFile([headers, ["Fee", "INV-001", "2026-11-05", "19.00", "EUR"]]);
         expect(await previewLocalExpenseImportDuplicates(companyId, "owner-a", single, mapping, existing)).toEqual([]);
@@ -233,5 +235,15 @@ describe("expense import duplicate preflight", () => {
         const warnings = await previewLocalExpenseImportDuplicates(companyId, "owner-a", repeated, mapping, []);
         expect(warnings).toHaveLength(20);
         expect(warnings.every((row) => row.in_file)).toBe(true);
+    });
+    it("compares the rounded amount that import will persist for existing and repeated rows", async () => {
+        const existing = [{ id: "existing-rounded", ownerId: "owner-a", companyId, internalNumber: "EXP001", status: "recorded",
+            externalNumber: "INV-001", title: "Fee", issueDate: "2026-11-05", total: "19.00", currency: "EUR" }] as unknown as EvoluExpenseRow[];
+        const file = csvFile([headers, ["Fee", "INV-001", "2026-11-05", "19.001", "EUR"],
+            ["Hosting", "INV-002", "2026-11-05", "29.004", "EUR"], ["Hosting", "INV-002", "2026-11-05", "29.00", "EUR"]]);
+        expect(await previewLocalExpenseImportDuplicates(companyId, "owner-a", file, mapping, existing)).toMatchObject([
+            { row: 2, expense: { id: "existing-rounded" }, in_file: false },
+            { row: 4, expense: { id: "preview-row-3" }, in_file: true },
+        ]);
     });
 });

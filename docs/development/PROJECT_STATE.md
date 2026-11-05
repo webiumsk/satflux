@@ -1,5 +1,38 @@
 # Project state
 
+## PR429 review remediation accepted locally - 2026-11-05
+
+The owner requests correction of PR429's failed PHP job and CodeRabbit findings.
+Actual run `41996402233` on `1cb68a96` passed PHP tests; only Composer audit failed.
+Six affected Symfony packages now use 7.4.23 and the locked audit is clean. All nine
+inline findings, the follow-up and four test notes are implemented. The original
+55.26% docstring warning is addressed through meaningful documentation, retaining
+the 80% threshold; fresh remote coverage is still required.
+
+New manual/automatic/create bank associations use reciprocal encrypted claims and
+one canonical reactive projection. Revision-checked conflict recovery, linked-edit
+guards and released receipts preserve independent payments. Historical claimless
+rows and mixed older clients remain explicit limits. A native restore review also
+fixes rejection of system owner metadata while preserving live trusted routing.
+Independent QA/security accept frozen logic runtime44 `9e494a62...bddf2f` and
+source/tests/CI68 `5edbc1e1...e8c7ec`. Publication changes only proved docstrings:
+runtime44 `b89dbb70...366899`, source/tests/CI68 `4d52bf9c...1e0013`.
+
+Full PHP with guarded synthetic configuration and DNS: 2,902 tests / 13,860
+assertions, zero failures, 58 conditional skips and one existing deprecation.
+Actual PostgreSQL: 4 / 74, zero skips; the CI gate now requires four. Frontend:
+1,830 / 183 files; typecheck111, lint48/52, locales, build, API, Pint1122 and
+PHPStan pass. Scoped post-documentation Pint/ESLint pass. AST-only Graphify update
+completes. No ratchet/audit/authentication rule was weakened.
+
+Staging also removes exactly one redundant EOF LF from the new claim helper;
+AST/emitted JavaScript remain identical.
+
+Main's next authorized step is scoped commit/push to the existing owned
+`feat/expense-reconciliation` branch, then actual new-head CI/review verification.
+Preserve unrelated primary checkout work; no merge/deployment is authorized.
+See the feature branch's `docs/development/PR429_REVIEW.md` for exact evidence.
+
 ## Expense reconciliation source push authorized - 2026-11-05
 
 The owner explicitly requests commit/push of the reviewed 51-path feature to owned

@@ -1,3 +1,4 @@
+import { effectiveExpensePayment } from '@/evolu/bankExpenseClaims';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Evolu } from '@evolu/common/local-first';
 import type { BankPaymentContext } from '@/evolu/bankCrud';
@@ -14,6 +15,7 @@ vi.mock('@/evolu/client', () => ({
 }));
 import { bankExpenseMatchSuggestions, matchLocalBankTransactionToExpense } from '@/evolu/bankExpenseManualMatching';
 
+/** Build owner-scoped mutable bank and expense snapshots with worker receipts for guarded matching tests. */
 function fixture() {
   const transaction = { id: 'tx-a', companyId: 'company-a', ownerId: 'app-owner', bankImportBatchId: 'batch-a',
     bookedAt: '2026-11-05T12:00:00Z', amount: '19.00', currency: 'EUR', direction: 'debit', matchStatus: 'unmatched',
@@ -54,7 +56,8 @@ describe('confirmed outgoing payment matching to an existing expense', () => {
     expect(update).not.toHaveBeenCalled();
     await matchLocalBankTransactionToExpense(evolu, 'company-a', 'tx-a', 'expense-a');
     expect(transaction).toMatchObject({ businessExpenseId: 'expense-a', matchStatus: 'matched' });
-    expect(expense).toMatchObject({ status: 'paid', paidAt: '2026-11-05' });
+    expect(expense).toMatchObject({ status: 'recorded', paidAt: null });
+    expect(effectiveExpensePayment(ctx.expenses[0]!, ctx.transactions)).toMatchObject({ status: 'paid', paidAt: '2026-11-05' });
     const writes = update.mock.calls.filter((call) => !call[2]?.onlyValidate).length;
     await matchLocalBankTransactionToExpense(evolu, 'company-a', 'tx-a', 'expense-a');
     expect(update.mock.calls.filter((call) => !call[2]?.onlyValidate)).toHaveLength(writes);

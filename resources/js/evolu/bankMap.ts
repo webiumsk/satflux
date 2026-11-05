@@ -1,3 +1,4 @@
+import { activeBankExpenseClaim, effectiveExpensePayment } from "./bankExpenseClaims";
 import { resolvedBankDirection } from "./bankDirectionGuesser";
 import type { EvoluDocumentRow } from "./documentMap";
 import type { EvoluExpenseRow } from "./expenseMap";
@@ -37,6 +38,7 @@ export type EvoluBankTransactionRow = {
     recordedDirectionEvidence?: "credit" | "debit" | "unverified" | null;
     matchStatus: BankTransactionMatchStatus;
     businessExpenseId: ExpenseId | null;
+    bankPaymentClaimJson?: string | null;
     variableSymbol: string | null;
     constantSymbol: string | null;
     specificSymbol: string | null;
@@ -58,6 +60,8 @@ export type EvoluBankTransactionMatchRow = {
 };
 
 export type BankTxApiRow = {
+    bank_match_conflict?: boolean;
+    bank_match_claim?: string | null;
     /** Persisted payment direction; explicit unverified/null evidence must not fall back to display guesses. */
     recorded_direction?: "credit" | "debit" | "unverified" | null;
     id: string;
@@ -157,6 +161,7 @@ export function evoluBankBatchToApi(row: EvoluBankImportBatchRow): BankBatchApiR
     };
 }
 
+/** Map a bank movement to its display row, exposing invalid reciprocal claims as reviewable conflicts. */
 export function evoluBankTxToApi(
     row: EvoluBankTransactionRow,
     match: EvoluBankTransactionMatchRow | null,
@@ -164,6 +169,10 @@ export function evoluBankTxToApi(
     expense: EvoluExpenseRow | null,
 ): BankTxApiRow {
     const direction = resolvedBankDirection(row);
+    const claimed = row.bankPaymentClaimJson != null;
+    const active = claimed && expense ? activeBankExpenseClaim(row, expense, match ? [match] : []) : null;
+    const conflict = claimed ? !active : expense?.bankPaymentClaimJson != null;
+    const paymentExpense = expense ? effectiveExpensePayment(expense, [row], match ? [match] : []) : null;
     const payload: BankTxApiRow = {
         id: row.id,
         booked_at: row.bookedAt || "",
@@ -175,10 +184,12 @@ export function evoluBankTxToApi(
         variable_symbol: row.variableSymbol,
         counterparty_name: row.counterpartyName,
         reference: row.reference,
-        match_status: row.matchStatus,
+        match_status: conflict ? "unmatched" : row.matchStatus,
+        bank_match_claim: row.bankPaymentClaimJson ?? null,
+        ...(conflict ? { bank_match_conflict: true } : {}),
     };
 
-    if (match && document) {
+    if (match && document && !conflict) {
         payload.match = {
             id: match.id,
             matched_amount: match.matchedAmount || row.amount || "0.00",
@@ -193,14 +204,14 @@ export function evoluBankTxToApi(
         };
     }
 
-    if (expense) {
+    if (paymentExpense && !conflict) {
         payload.expense = {
-            id: expense.id,
-            internal_number: expense.internalNumber,
-            title: expense.title,
-            status: expense.status,
-            total: expense.total,
-            currency: expense.currency,
+            id: paymentExpense.id,
+            internal_number: paymentExpense.internalNumber,
+            title: paymentExpense.title,
+            status: paymentExpense.status,
+            total: paymentExpense.total,
+            currency: paymentExpense.currency,
         };
     }
 

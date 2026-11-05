@@ -1,3 +1,4 @@
+import { effectiveExpensePayment } from '@/evolu/bankExpenseClaims';
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Evolu } from "@evolu/common/local-first";
 import type { BankPaymentContext } from "@/evolu/bankCrud";
@@ -78,9 +79,10 @@ afterEach(() => { clearRowOwnerIndex(); clearCompanyShares(); vi.unstubAllGlobal
 
 describe("exact existing-expense bank email reconciliation", () => {
     it("links one exact debit to the expense with the bank booking date", async () => {
-        const ctx = context(); const { evolu, update } = fakeEvolu(ctx);
+        const ctx = context(); const { evolu, update, state } = fakeEvolu(ctx);
         expect(await tryAutoMatchTransaction(evolu, ctx.transactions[0]!, ctx)).toBe(true);
-        expect(ctx.expenses[0]).toMatchObject({ status: "paid", paidAt: "2026-11-03" });
+        expect(ctx.expenses[0]).toMatchObject({ status: "recorded", paidAt: null });
+        expect(effectiveExpensePayment(state.expenses[0]!, state.transactions)).toMatchObject({ status: "paid", paidAt: "2026-11-03" });
         expect(ctx.transactions[0]).toMatchObject({ matchStatus: "matched", businessExpenseId: "expense-a" });
         expect(update.mock.calls.filter((call) => !call[2]?.onlyValidate)).toHaveLength(2);
         expect(await tryAutoMatchTransaction(evolu, ctx.transactions[0]!, ctx)).toBe(false);
@@ -146,8 +148,10 @@ describe("exact existing-expense bank email reconciliation", () => {
         const second = { ...ctx.transactions[0]!, id: "tx-b", matchStatus: "unmatched", businessExpenseId: null } as EvoluBankTransactionRow;
         ctx.transactions.push(second);
         expect(await tryAutoMatchBankEmailExpense(evolu, second, ctx)).toBe(false);
-        await unmatchLocalBankTransaction(evolu, ctx.transactions[0]!.id, ctx);
-        expect(ctx.expenses[0]!.status).toBe("paid");
+        await unmatchLocalBankTransaction(evolu, ctx.transactions[0]!.id, ctx,
+            { companyId: ctx.transactions[0]!.companyId, claim: ctx.transactions[0]!.bankPaymentClaimJson! });
+        expect(ctx.expenses[0]!.status).toBe("recorded");
+        expect(effectiveExpensePayment(ctx.expenses[0]!, ctx.transactions).status).toBe("paid");
         expect(ctx.transactions[0]!.businessExpenseId).toBeNull();
     });
     it("accepts real leap days and rejects impossible dates", () => {
@@ -162,7 +166,8 @@ describe("email ingestion retains evidence for automatic expense matching", () =
         const ctx = context(); ctx.transactions = [];
         const { evolu, state } = fakeEvolu(ctx);
         expect(await importInboundServerTransactionsAsync(evolu, ctx.expenses[0]!.companyId, [input])).toEqual({ imported: 1, auto_matched: 1 });
-        expect(state.expenses[0]).toMatchObject({ status: "paid", paidAt: "2026-11-03" });
+        expect(state.expenses[0]).toMatchObject({ status: "recorded", paidAt: null });
+        expect(effectiveExpensePayment(state.expenses[0]!, state.transactions)).toMatchObject({ status: "paid", paidAt: "2026-11-03" });
         expect(await importInboundServerTransactionsAsync(evolu, ctx.expenses[0]!.companyId, [input])).toEqual({ imported: 0, auto_matched: 0 });
     });
     it.each([{ amount: "19oops" }, { amount: "-19.00" }, { amount: "19.001" }, { currency: "" }, { currency: "EU" }, { booked_at: "2026-02-30" }])("never manufactures matching evidence from %j", async (patch) => {
@@ -180,7 +185,8 @@ describe("email ingestion retains evidence for automatic expense matching", () =
         expect(await importInboundServerTransactionsAsync(evolu, ctx.expenses[0]!.companyId, [input])).toEqual({ imported: 0, auto_matched: 0 });
         expect(state.expenses[0]!.status).toBe("recorded");
         expect(await autoMatchLocalBatchAsync(evolu, ctx.transactions[0]!.bankImportBatchId!)).toEqual({ auto_matched: 1 });
-        expect(state.expenses[0]!.status).toBe("paid");
+        expect(state.expenses[0]!.status).toBe("recorded");
+        expect(effectiveExpensePayment(state.expenses[0]!, state.transactions).status).toBe("paid");
     });
     it.each([undefined, "credit", "invalid"])("does not auto-pay using an inferred display debit when recorded direction is %s", async (recordedDirection) => {
         const ctx = context(); ctx.transactions = [];

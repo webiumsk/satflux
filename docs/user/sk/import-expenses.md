@@ -32,6 +32,8 @@ Ak číslo dokladu obsahuje viac ako 32 číslic, automatický variabilný symbo
 
 Lokálne zmeny nákladov pred uložením počkajú na prebiehajúce párovanie platieb. Ak prehliadač nedokáže koordinovať zmeny, znovu načítajte kartu alebo použite aktuálny prehliadač. Ak výsledok nemožno potvrdiť, pred ďalším pokusom kartu znovu načítajte a skontrolujte uložený záznam. Neskoršia vedomá úprava uhradeného nákladu zachová jeho existujúci stav úhrady.
 
+Pred zmenou sumy alebo meny prepojeného nákladu odpojte bankovú platbu. Offline párovania sa po synchronizácii znovu overia. Ak treba prepojenie skontrolovať, v Platbách aj pri náklade sa zobrazí upozornenie; pred opätovným párovaním nevyriešené bankové prepojenie odpojte. Ostatné párovania a samostatne zaznamenané úhrady sa zachovajú. Na všetkých zariadeniach používajte aktuálnu verziu aplikácie.
+
 ## Sumár nákladov
 
 Sumár pod zoznamom **Nákladov** zahŕňa všetky doklady zodpovedajúce aktuálnym filtrom na všetkých stránkach. Zobrazuje počet, celkovú sumu a sumu neuhradených nákladov. Výber položiek súčet nemení. Každá mena má vlastné súčty.

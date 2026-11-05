@@ -239,13 +239,13 @@ jobs:
           php <<'PHP'
           <?php
           $report = simplexml_load_file('storage/logs/expense-reconciliation-postgres.xml');
-          if ($report === false || count($report->xpath('//testcase')) !== 2
+          if ($report === false || count($report->xpath('//testcase')) !== 4
               || $report->xpath('//testcase/skipped') !== []
               || $report->xpath('//testcase/error') !== []
               || $report->xpath('//testcase/failure') !== []) {
-              throw new RuntimeException('Both expense contention tests must execute and pass without skips.');
+              throw new RuntimeException('All four expense contention tests must execute and pass without skips.');
           }
-          echo "Verified two executed expense contention tests without skips.", PHP_EOL;
+          echo "Verified four executed expense contention tests without skips.", PHP_EOL;
           PHP
 
   e2e:

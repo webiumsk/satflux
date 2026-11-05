@@ -3,6 +3,7 @@
 namespace App\Services\Invoicing;
 
 use App\Enums\BusinessExpenseStatus;
+use App\Models\BankTransaction;
 use App\Models\BusinessExpense;
 use App\Models\BusinessExpenseAttachment;
 use App\Models\Company;
@@ -90,29 +91,98 @@ class BusinessExpenseService
      */
     public function update(BusinessExpense $expense, array $data): BusinessExpense
     {
-        if ($expense->status === BusinessExpenseStatus::Cancelled) {
-            throw ValidationException::withMessages([
-                'status' => ['Cancelled expenses cannot be edited.'],
+        $connection = $expense->getConnection();
+        $connectionName = $connection->getName();
+
+        return $connection->transaction(function () use ($expense, $data, $connectionName): BusinessExpense {
+            // Edits never lock a bank movement: Company -> Expense is compatible with matching's Tx -> Company -> Expense.
+            Company::on($connectionName)->whereKey($expense->company_id)->lockForUpdate()->firstOrFail();
+            $locked = BusinessExpense::on($connectionName)->whereKey($expense->id)
+                ->where('company_id', $expense->company_id)->lockForUpdate()->firstOrFail();
+            if ($locked->getRawOriginal('status') === BusinessExpenseStatus::Cancelled->value) {
+                throw ValidationException::withMessages([
+                    'status' => ['Cancelled expenses cannot be edited.'],
+                ]);
+            }
+
+            $changed = [];
+            if (isset($data['total'])) {
+                $before = $this->canonicalAmount($locked->getRawOriginal('total'));
+                $after = $this->canonicalAmount($data['total']);
+                if ($before === null || $after === null || $before !== $after) {
+                    $changed[] = 'total';
+                }
+            }
+            if (isset($data['currency'])) {
+                $before = $this->canonicalCurrency($locked->getRawOriginal('currency'));
+                $after = $this->canonicalCurrency($data['currency']);
+                if ($before === null || $after === null || $before !== $after) {
+                    $changed[] = 'currency';
+                }
+            }
+            // Read only after the expense lock: a concurrent match must finish before financial evidence can change.
+            if ($changed !== [] && BankTransaction::on($connectionName)->where('business_expense_id', $locked->id)->exists()) {
+                throw ValidationException::withMessages(array_fill_keys($changed, [
+                    'Unmatch the linked bank movement before changing the expense total or currency.',
+                ]));
+            }
+
+            $locked->fill([
+                'external_number' => $data['external_number'] ?? $locked->external_number,
+                'title' => $data['title'] ?? $locked->title,
+                'variable_symbol' => $data['variable_symbol'] ?? $locked->variable_symbol,
+                'constant_symbol' => $data['constant_symbol'] ?? $locked->constant_symbol,
+                'specific_symbol' => $data['specific_symbol'] ?? $locked->specific_symbol,
+                'issue_date' => $data['issue_date'] ?? $locked->issue_date,
+                'delivery_date' => array_key_exists('delivery_date', $data) ? $data['delivery_date'] : $locked->delivery_date,
+                'due_date' => $data['due_date'] ?? $locked->due_date,
+                'total' => $data['total'] ?? $locked->total,
+                'currency' => $data['currency'] ?? $locked->currency,
+                'internal_note' => $data['internal_note'] ?? $locked->internal_note,
             ]);
+            $locked->save();
+
+            return $locked->fresh();
+        });
+    }
+
+    /** Compare exact cent values, including harmless leading/trailing zeros and decimal exponent notation. */
+    private function canonicalAmount(mixed $value): ?string
+    {
+        if (is_float($value)) {
+            if (! is_finite($value)) {
+                return null;
+            }
+            $formatted = number_format($value, 2, '.', '');
+            if ((float) $formatted !== $value) {
+                return null;
+            }
+            $value = $formatted;
         }
+        if ((! is_string($value) && ! is_int($value))
+            || ! preg_match('/\A\+?(\d+)(?:\.(\d*))?(?:[eE]([+-]?\d+))?\z/', trim((string) $value), $parts)) {
+            return null;
+        }
+        $digits = ltrim($parts[1].($parts[2] ?? ''), '0');
+        if ($digits === '') {
+            return '0';
+        }
+        $exponent = $parts[3] ?? '0';
+        if (strlen(ltrim($exponent, '+-0')) > 4) {
+            return null;
+        }
+        $trimmed = rtrim($digits, '0');
+        $scale = (int) $exponent - strlen($parts[2] ?? '') + strlen($digits) - strlen($trimmed);
 
-        $expense->fill([
-            'external_number' => $data['external_number'] ?? $expense->external_number,
-            'title' => $data['title'] ?? $expense->title,
-            'variable_symbol' => $data['variable_symbol'] ?? $expense->variable_symbol,
-            'constant_symbol' => $data['constant_symbol'] ?? $expense->constant_symbol,
-            'specific_symbol' => $data['specific_symbol'] ?? $expense->specific_symbol,
-            'issue_date' => $data['issue_date'] ?? $expense->issue_date,
-            'delivery_date' => array_key_exists('delivery_date', $data) ? $data['delivery_date'] : $expense->delivery_date,
-            'due_date' => $data['due_date'] ?? $expense->due_date,
-            'total' => $data['total'] ?? $expense->total,
-            'currency' => $data['currency'] ?? $expense->currency,
-            'internal_note' => $data['internal_note'] ?? $expense->internal_note,
-        ]);
+        return $scale >= -2 ? $trimmed.'e'.$scale : null;
+    }
 
-        $expense->save();
+    /** Normalize currency evidence for linked-expense edit comparisons. */
+    private function canonicalCurrency(mixed $value): ?string
+    {
+        $currency = strtoupper(trim((string) $value));
 
-        return $expense->fresh();
+        return preg_match('/\A[A-Z]{3}\z/', $currency) ? $currency : null;
     }
 
     public function duplicate(Company $company, BusinessExpense $source): BusinessExpense

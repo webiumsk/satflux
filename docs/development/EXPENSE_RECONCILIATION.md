@@ -197,3 +197,31 @@ The disposable PostgreSQL container was stopped and removed after review. Its da
 was held only in tmpfs; synthetic JUnit evidence and review probes remain outside
 the source checkout. The isolated AST-only Graphify update completed without LLM
 extraction, leaving the primary checkout's existing graph unchanged.
+
+
+## PR429 remediation after publication - 2026-11-05
+
+Published commit `1cb68a96` is the head of PR429. Actual remote CI run
+`41996402233` passes all 2,869 PHP tests (18 skips), PostgreSQL, Node, E2E and
+changelog checks; the PHP job fails only its final Composer security audit.
+The owner requests remediation of that job and CodeRabbit's nine inline findings,
+one follow-up and four test notes.
+
+The corrective work updates only six affected Symfony packages to 7.4.23 and keeps
+the audit enabled. It also closes linked financial edits, adds atomic expense
+history, narrows import candidates and fixes modal focus, cancelled preview reads,
+rounded duplicate keys, routing-only pending outcomes and native worker cleanup.
+The local reconciliation policy now uses reciprocal encrypted claims across all
+new bank-derived writers and one canonical presentation/export validator. Explicit
+revision-checked conflict recovery preserves independent payment history. Historical
+claimless rows and mixed old clients remain an explicit compatibility limitation.
+
+The restore review independently reproduces an older `ownerId` metadata rejection;
+only non-writable system metadata is stripped from upsert payloads, while live
+trusted owner routing and raw claim data remain intact. No imported metadata can
+select another owner. Current private/shared restoration and refusal controls pass.
+
+See [PR429 review remediation](PR429_REVIEW.md) for exact final manifests, all
+finding dispositions, independent reviews and current verification. This record
+supersedes earlier local-only/no-PR statements as new evidence; it does not rewrite
+historical results or claim deployment.

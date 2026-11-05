@@ -15,6 +15,7 @@ use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestWith;
 use Symfony\Component\Process\InputStream;
 use Symfony\Component\Process\Process;
 use Tests\Support\ExpenseSnapshotTestDatabase;
@@ -24,6 +25,7 @@ class ExpenseReconciliationConcurrencyTest extends TestCase
 {
     private ?Connection $connection = null;
 
+    /** Verify the opted-in disposable PostgreSQL target before rebuilding contention fixtures. */
     protected function setUp(): void
     {
         parent::setUp();
@@ -41,6 +43,7 @@ class ExpenseReconciliationConcurrencyTest extends TestCase
         $this->artisan('migrate:fresh', ['--database' => 'pgsql', '--drop-types' => true, '--force' => true])->assertSuccessful();
     }
 
+    /** Release test transactions and connections even after a contention assertion fails. */
     protected function tearDown(): void
     {
         try {
@@ -79,6 +82,7 @@ class ExpenseReconciliationConcurrencyTest extends TestCase
         return [$company, $expense, $transaction];
     }
 
+    /** Create an independent recorded debit within the synthetic contention company. */
     private function movement(Company $company): BankTransaction
     {
         return BankTransaction::create([
@@ -94,6 +98,7 @@ class ExpenseReconciliationConcurrencyTest extends TestCase
         ]);
     }
 
+    /** Prove expense creation locks its movement first and safely wins against concurrent matching. */
     #[Test]
     public function creating_an_expense_and_matching_the_same_movement_follow_one_lock_order(): void
     {
@@ -102,6 +107,7 @@ class ExpenseReconciliationConcurrencyTest extends TestCase
         $matcher = null;
         try {
             $this->waitUntil(fn () => str_contains($creator->getOutput(), "LOCK_HELD\n"));
+            $this->assertStringContainsString("FIRST_LOCK:bank_transactions\n", $creator->getOutput());
             [$matcher] = $this->worker('match', $company, $expense, $transaction);
             $this->waitForLock($matcher, 'bank_transactions');
             $release->write("GO\n");
@@ -122,6 +128,7 @@ class ExpenseReconciliationConcurrencyTest extends TestCase
         }
     }
 
+    /** Serialize competing confirmations into one bank link and one bank-match audit. */
     #[Test]
     public function two_movements_competing_for_one_expense_produce_one_link_and_one_audit(): void
     {
@@ -146,6 +153,44 @@ class ExpenseReconciliationConcurrencyTest extends TestCase
         } finally {
             $release->close();
             $this->stop($winner, $other);
+        }
+    }
+
+    /** Prove both edit-first and match-first contention preserve compatible financial evidence. */
+    #[Test]
+    #[TestWith(['edit'])]
+    #[TestWith(['match'])]
+    public function financial_edits_and_matching_serialize_without_leaving_a_stale_payment_link(string $firstMode): void
+    {
+        [$company, $expense, $transaction] = $this->fixture();
+        [$first, $release] = $this->worker($firstMode, $company, $expense, $transaction, 'business_expenses');
+        $second = null;
+        try {
+            $this->waitUntil(fn () => str_contains($first->getOutput(), "LOCK_HELD\n"));
+            [$second] = $this->worker($firstMode === 'edit' ? 'match' : 'edit', $company, $expense, $transaction);
+            $this->waitForLock($second, 'companies');
+            $release->write("GO\n");
+            $release->close();
+
+            $this->assertTrue($this->workerResult($first)['ok']);
+            $this->assertSame(['ok' => false, 'status' => 422], $this->workerResult($second));
+            if ($firstMode === 'edit') {
+                $this->assertSame('200.00', $expense->fresh()->total);
+                $this->assertSame(BusinessExpenseStatus::Recorded, $expense->fresh()->status);
+                $this->assertNull($transaction->fresh()->business_expense_id);
+                $this->assertSame(BankTransactionMatchStatus::Unmatched, $transaction->fresh()->match_status);
+                $this->assertSame(0, AuditLog::where('action', 'business_expense.marked_paid')->count());
+            } else {
+                $this->assertSame('123.45', $expense->fresh()->total);
+                $this->assertSame(BusinessExpenseStatus::Paid, $expense->fresh()->status);
+                $this->assertSame('2026-11-03', $expense->fresh()->paid_at->toDateString());
+                $this->assertSame($expense->id, $transaction->fresh()->business_expense_id);
+                $this->assertSame(BankTransactionMatchStatus::Matched, $transaction->fresh()->match_status);
+                $this->assertSame(1, AuditLog::where('action', 'business_expense.marked_paid')->count());
+            }
+        } finally {
+            $release->close();
+            $this->stop($first, $second);
         }
     }
 
@@ -195,6 +240,7 @@ class ExpenseReconciliationConcurrencyTest extends TestCase
         return $result;
     }
 
+    /** Wait briefly for a deterministic worker barrier and fail if it is never reached. */
     private function waitUntil(\Closure $condition): void
     {
         $deadline = microtime(true) + 10;
@@ -207,6 +253,7 @@ class ExpenseReconciliationConcurrencyTest extends TestCase
         $this->fail('The deterministic reconciliation worker barrier was not reached.');
     }
 
+    /** Terminate remaining synthetic workers after a completed or failed contention scenario. */
     private function stop(?Process ...$workers): void
     {
         foreach ($workers as $worker) {
@@ -216,6 +263,7 @@ class ExpenseReconciliationConcurrencyTest extends TestCase
         }
     }
 
+    /** Build guarded subprocess code that exercises actual services on the disposable PostgreSQL target. */
     private static function workerSource(): string
     {
         return <<<'PHP'
@@ -236,8 +284,19 @@ try {
     $company = App\Models\Company::findOrFail($argv[2]);
     $movement = App\Models\BankTransaction::findOrFail($argv[4]);
     $gateTable = $argv[6];
+    $mode = $argv[1];
     $held = false;
-    $connection->listen(function (Illuminate\Database\Events\QueryExecuted $query) use ($gateTable, &$held) {
+    $firstLock = null;
+    $connection->listen(function (Illuminate\Database\Events\QueryExecuted $query) use ($gateTable, $mode, &$held, &$firstLock) {
+        if ($mode === 'create' && $firstLock === null && str_contains($query->sql, 'for update')) {
+            preg_match('/\bfrom\s+"([^"]+)"/i', $query->sql, $parts);
+            $firstLock = $parts[1] ?? 'unknown';
+            fwrite(STDOUT, 'FIRST_LOCK:'.$firstLock."\n");
+            fflush(STDOUT);
+            if ($firstLock !== 'bank_transactions') {
+                throw new LogicException('Expense creation must lock its movement first.');
+            }
+        }
         if (! $held && $gateTable !== '' && str_starts_with($query->sql, 'select')
             && str_contains($query->sql, '"'.$gateTable.'"') && str_contains($query->sql, 'for update')) {
             $held = true;
@@ -250,6 +309,9 @@ try {
     });
     if ($argv[1] === 'create') {
         $app->make(App\Services\Invoicing\BankTransactionExpenseService::class)->createFromTransaction($company, $movement, []);
+    } elseif ($argv[1] === 'edit') {
+        $expense = App\Models\BusinessExpense::findOrFail($argv[3]);
+        $app->make(App\Services\Invoicing\BusinessExpenseService::class)->update($expense, ['total' => '200.00']);
     } else {
         $app->make(App\Services\Invoicing\BusinessExpenseReconciliationService::class)->match($company, $movement, $argv[3], $company->user_id);
     }

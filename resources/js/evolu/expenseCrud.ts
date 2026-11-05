@@ -1,3 +1,5 @@
+import { effectiveExpensePayment, hasExpenseBankAssociation } from "./bankExpenseClaims";
+import { bankPaymentCurrency } from "./bankPaymentValues";
 import { maxLength, NonEmptyString } from "@evolu/common";
 import type { Evolu } from "@evolu/common/local-first";
 import type { EvoluExpenseRow } from "./expenseMap";
@@ -40,6 +42,14 @@ function formatTotal(value: number | string): string {
     return Number.isFinite(n) ? n.toFixed(2) : "0.00";
 }
 
+/** Edit equivalence also covers explicit CREATE bookkeeping overrides; bank matching stays positive-only. */
+function canonicalExpenseCents(value: string | null | undefined): string | null {
+    const parts = /^([+-]?)(\d+)(?:\.(\d{1,2}))?$/.exec(value?.trim() ?? "");
+    if (!parts) return null;
+    const cents = `${parts[2]}${(parts[3] ?? "").padEnd(2, "0")}`.replace(/^0+/, "") || "0";
+    return parts[1] === "-" && cents !== "0" ? `-${cents}` : cents;
+}
+
 export function nextLocalExpenseInternalNumber(
     companyId: CompanyId,
     rows: EvoluExpenseRow[],
@@ -63,7 +73,7 @@ export function nextLocalExpenseInternalNumber(
  * Validate API-shaped fields and map them to Evolu column names.
  * An omitted delivery value maps to the issue date; update callers decide whether omission should be written.
  */
-function mapPayloadFields(payload: ExpenseSavePayload) {
+export function mapLocalExpensePayloadFields(payload: ExpenseSavePayload) {
     const title = parseOpt(payload.title ?? null, Opt255);
     if (!title.ok) return title;
     const external = parseOpt(payload.external_number ?? null, Opt64);
@@ -112,9 +122,9 @@ function insertLocalExpenseCore(
     companyId: CompanyId,
     payload: ExpenseSavePayload,
     existingRows: EvoluExpenseRow[],
-    options?: { internalNumber?: string; id?: ExpenseId },
+    options?: { internalNumber?: string; id?: ExpenseId; bankPaymentClaimJson?: string },
 ) {
-    const mapped = mapPayloadFields(payload);
+    const mapped = mapLocalExpensePayloadFields(payload);
     if (!mapped.ok) return mapped;
 
     const numberSource = options?.internalNumber?.trim()
@@ -126,6 +136,7 @@ function insertLocalExpenseCore(
     const now = new Date().toISOString();
     const row = {
         companyId,
+        bankPaymentClaimJson: options?.bankPaymentClaimJson ?? null,
         status: markPaid ? "paid" : "recorded",
         internalNumber: internalNumber.value,
         ...mapped.value,
@@ -157,10 +168,21 @@ function updateLocalExpenseCore(
         return { ok: false as const, error: "cancelled" };
     }
 
-    const mapped = mapPayloadFields(payload);
+    const mapped = mapLocalExpensePayloadFields(payload);
     if (!mapped.ok) return mapped;
 
     const { deliveryDate, ...fields } = mapped.value;
+    if (current && hasExpenseBankAssociation(current, expenseReconciliationScope(evolu).context)) {
+        const beforeAmount = canonicalExpenseCents(current.total);
+        const afterAmount = canonicalExpenseCents(fields.total);
+        if (!beforeAmount || !afterAmount || beforeAmount !== afterAmount
+            || bankPaymentCurrency(current.currency) !== bankPaymentCurrency(fields.currency)) {
+            throw new Error("expense_linked_payment");
+        }
+        // Canonically equal edits preserve the exact claimed evidence rather than rewriting its formatting.
+        fields.total = current.total!;
+        fields.currency = current.currency as typeof fields.currency;
+    }
 
     return evolu.update("expense", {
         id: expenseId,
@@ -189,6 +211,7 @@ function unmarkLocalExpensePaidCore(
         id: expenseId,
         status: "recorded",
         paidAt: null,
+        bankPaymentClaimJson: null,
     });
 }
 
@@ -243,7 +266,7 @@ function duplicateLocalExpenseCore(
 /** Synchronous compound writers must hold this runtime-checked live lease. */
 export function insertLocalExpenseInReconciliation(
     scope: ExpenseReconciliationScope, companyId: CompanyId, payload: ExpenseSavePayload,
-    options?: { internalNumber?: string; id?: ExpenseId },
+    options?: { internalNumber?: string; id?: ExpenseId; bankPaymentClaimJson?: string },
 ) {
     if (expenseReconciliationScope(scope.evolu) !== scope) throw new Error("expense_reconciliation_lease_expired");
     if (options?.id) {
@@ -258,7 +281,7 @@ export function insertLocalExpenseInReconciliation(
 
 export async function insertLocalExpense(
     evolu: Evolu<InvoicingLocalSchema>, companyId: CompanyId, payload: ExpenseSavePayload,
-    _existingRows: EvoluExpenseRow[], options?: { internalNumber?: string; id?: ExpenseId },
+    _existingRows: EvoluExpenseRow[], options?: { internalNumber?: string; id?: ExpenseId; bankPaymentClaimJson?: string },
 ) {
     return withExpenseReconciliation(evolu, (scope) => insertLocalExpenseInReconciliation(scope, companyId, payload, options));
 }
@@ -305,6 +328,9 @@ export async function markLocalExpensePaid(evolu: Evolu<InvoicingLocalSchema>, e
     return withExpenseReconciliation(evolu, (scope) => {
         const fresh = currentExpenseTarget(scope, expenseId);
         if (!fresh || fresh.isDeleted === 1 || fresh.status === "cancelled") return { ok: false as const, error: "expense_target_changed" };
+        if (fresh.bankPaymentClaimJson != null && effectiveExpensePayment(fresh, scope.context.transactions, scope.context.matches).status === "paid") {
+            return { ok: true as const, value: { id: expenseId } };
+        }
         return markLocalExpensePaidCore(scope.evolu, expenseId);
     });
 }
@@ -317,6 +343,7 @@ export async function unmarkLocalExpensePaid(evolu: Evolu<InvoicingLocalSchema>,
     return withExpenseReconciliation(evolu, (scope) => {
         const fresh = currentExpenseTarget(scope, expenseId);
         if (!fresh || fresh.isDeleted === 1 || fresh.status === "cancelled") return { ok: false as const, error: "expense_target_changed" };
+        if (hasExpenseBankAssociation(fresh, scope.context)) throw new Error("expense_linked_payment");
         return unmarkLocalExpensePaidCore(scope.evolu, expenseId);
     });
 }
@@ -329,6 +356,7 @@ export async function cancelLocalExpense(evolu: Evolu<InvoicingLocalSchema>, exp
     return withExpenseReconciliation(evolu, (scope) => {
         const fresh = currentExpenseTarget(scope, expenseId);
         if (!fresh || fresh.isDeleted === 1) return { ok: false as const, error: "expense_target_changed" };
+        if (hasExpenseBankAssociation(fresh, scope.context)) throw new Error("expense_linked_payment");
         return cancelLocalExpenseCore(scope.evolu, expenseId);
     });
 }

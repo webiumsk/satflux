@@ -330,8 +330,9 @@ export async function previewLocalExpenseImportDuplicates(
     const mapping = normalizeMapping(mappingInput, parsed.headers.length);
     const byNumber = new Map<string, EvoluExpenseRow>();
     const byTitle = new Map<string, EvoluExpenseRow>();
+    /** Build duplicate keys from the exact two-decimal total persisted by the import. */
     const keys = (draft: { external_number?: string | null; title?: string | null; issue_date?: string | null; total: string | number; currency?: string | null }) => {
-        const amount = positiveBankAmount(String(draft.total));
+        const amount = positiveBankAmount(Number(draft.total).toFixed(2));
         const currency = bankPaymentCurrency(draft.currency);
         if (!amount || !currency) return { number: null, title: null };
         const number = normalizedExpenseNumber(draft.external_number);
@@ -341,6 +342,7 @@ export async function previewLocalExpenseImportDuplicates(
             title: title && draft.issue_date ? JSON.stringify([amount, currency, title, draft.issue_date]) : null,
         };
     };
+    /** Keep the first deterministic existing document for each supported duplicate key. */
     const indexRow = (row: EvoluExpenseRow) => {
         const key = keys({ external_number: row.externalNumber, title: row.title, issue_date: row.issueDate,
             total: row.total || '', currency: row.currency });

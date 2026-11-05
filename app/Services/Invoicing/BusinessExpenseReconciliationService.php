@@ -110,6 +110,17 @@ class BusinessExpenseReconciliationService
                     'match_type' => 'manual',
                 ],
             ]);
+            AuditLog::on($connectionName)->create([
+                'user_id' => $userId,
+                'action' => 'business_expense.marked_paid',
+                'target_type' => 'business_expense',
+                'target_id' => $expense->id,
+                'metadata' => [
+                    'company_id' => $company->id,
+                    'bank_transaction_id' => $locked->id,
+                    'match_type' => 'manual',
+                ],
+            ]);
 
             return $expense->fresh();
         });
@@ -180,9 +191,19 @@ class BusinessExpenseReconciliationService
     {
         $this->assertServerCompany($company);
         $needed = [];
+        $candidatePairs = [];
         foreach ($drafts as $draft) {
-            foreach ($this->duplicateKeys($draft) as $key) {
+            $keys = $this->duplicateKeys($draft);
+            foreach ($keys as $key) {
                 $needed[$key] = true;
+            }
+            if ($keys !== []) {
+                $cents = $this->positiveCents($draft['total']);
+                $currency = $this->currency($draft['currency']);
+                if ($cents !== null && $currency !== null) {
+                    $amount = $this->decimalAmount($cents);
+                    $candidatePairs[$amount.':'.$currency] = [$amount, $currency];
+                }
             }
         }
         if ($needed === []) {
@@ -190,8 +211,11 @@ class BusinessExpenseReconciliationService
         }
 
         $index = [];
+        $placeholders = implode(', ', array_fill(0, count($candidatePairs), '(?, ?)'));
+        $bindings = array_merge(...array_values($candidatePairs));
         $query = BusinessExpense::query()->where('company_id', $company->id)
             ->where('status', '!=', BusinessExpenseStatus::Cancelled)->whereNull('cancelled_at')
+            ->whereRaw('(total, UPPER(TRIM(currency))) IN ('.$placeholders.')', $bindings)
             ->orderBy('internal_number')->orderBy('id');
         foreach ($query->cursor() as $expense) {
             $payload = $this->expensePayload($expense);
@@ -289,6 +313,7 @@ class BusinessExpenseReconciliationService
             ->orderBy('id');
     }
 
+    /** Require an unlinked debit with valid persisted movement evidence and no invoice match. */
     private function eligibleMovement(BankTransaction $transaction): bool
     {
         return $this->validMovementEvidence($transaction)
@@ -357,6 +382,7 @@ class BusinessExpenseReconciliationService
         return $cents !== '' ? $cents : null;
     }
 
+    /** Render canonical cent digits as a fixed two-decimal database amount. */
     private function decimalAmount(string $cents): string
     {
         $padded = str_pad($cents, 3, '0', STR_PAD_LEFT);
@@ -364,6 +390,7 @@ class BusinessExpenseReconciliationService
         return substr($padded, 0, -2).'.'.substr($padded, -2);
     }
 
+    /** Accept only a normalized three-letter ASCII currency code. */
     private function currency(mixed $value): ?string
     {
         $currency = strtoupper(trim((string) $value));
@@ -371,6 +398,7 @@ class BusinessExpenseReconciliationService
         return preg_match('/\A[A-Z]{3}\z/', $currency) ? $currency : null;
     }
 
+    /** Normalize duplicate-comparison text while preserving document-number punctuation. */
     private function normalizedText(mixed $value, bool $collapseWhitespace = false): string
     {
         $trimmed = preg_replace('/\A[\s\x{FEFF}]+|[\s\x{FEFF}]+\z/u', '', (string) $value) ?? trim((string) $value);
@@ -379,6 +407,7 @@ class BusinessExpenseReconciliationService
         return $collapseWhitespace ? (preg_replace('/[\s\x{FEFF}]+/u', ' ', $text) ?? $text) : $text;
     }
 
+    /** Keep reconciliation within the company's authoritative server-side invoicing path. */
     private function assertServerCompany(Company $company): void
     {
         if (! $company->usesServerInvoicing()) {
@@ -386,6 +415,7 @@ class BusinessExpenseReconciliationService
         }
     }
 
+    /** Reject stale or incompatible payment-to-expense confirmation evidence. */
     private function invalidMatch(): never
     {
         throw ValidationException::withMessages(['expense_id' => ['The movement and expense are no longer eligible for this match.']]);

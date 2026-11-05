@@ -14,6 +14,7 @@ export type ExpenseListRow = {
   internal_note?: string | null;
   is_overdue?: boolean;
   has_attachment?: boolean;
+  bank_match_conflict?: boolean;
 };
 
 export function parseExpenseRowMeta(row: ExpenseListRow) {

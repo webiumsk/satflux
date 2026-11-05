@@ -1,8 +1,10 @@
+import { effectiveExpensePayment } from "@/evolu/bankExpenseClaims";
+import type { EvoluBankTransactionRow, EvoluBankTransactionMatchRow } from "@/evolu/bankMap";
 import type { Evolu } from "@evolu/common/local-first";
 import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
 import { useQuery } from "@evolu/vue";
 import { invoicingApi } from "@/services/api";
-import { allExpensesQuery, allExpenseAttachmentsQuery, useInvoicingEvolu } from "@/evolu/client";
+import { allExpensesQuery, allBankTransactionsQuery, allBankTransactionMatchesQuery, allExpenseAttachmentsQuery, useInvoicingEvolu } from "@/evolu/client";
 import {
     evoluExpenseToApi,
     evoluExpenseToListRow,
@@ -67,10 +69,14 @@ function useLocalInvoicingExpenses(companyId: Ref<string>): UseInvoicingExpenses
 
     const expensesPromise = evolu.loadQuery(allExpensesQuery);
     const attachmentsPromise = evolu.loadQuery(allExpenseAttachmentsQuery);
+    const transactionsPromise = evolu.loadQuery(allBankTransactionsQuery);
+    const matchesPromise = evolu.loadQuery(allBankTransactionMatchesQuery);
+    const transactionRows = useQuery(allBankTransactionsQuery, { promise: transactionsPromise });
+    const matchRows = useQuery(allBankTransactionMatchesQuery, { promise: matchesPromise });
     const expenseRows = useQuery(allExpensesQuery, { promise: expensesPromise });
     const attachmentRows = useQuery(allExpenseAttachmentsQuery, { promise: attachmentsPromise });
 
-    void Promise.all([expensesPromise, attachmentsPromise]).finally(() => {
+    void Promise.all([expensesPromise, attachmentsPromise, transactionsPromise, matchesPromise]).finally(() => {
         loading.value = false;
     });
 
@@ -80,11 +86,11 @@ function useLocalInvoicingExpenses(companyId: Ref<string>): UseInvoicingExpenses
         );
     }
 
+    // UI target selection and filters use the same effective view. Writers still re-read raw records under their gate.
+    const projectedExpenseRows = computed(() => toAppRows<EvoluExpenseRow>(expenseRows.value).map((row) => effectiveExpensePayment(row,
+        toAppRows<EvoluBankTransactionRow>(transactionRows.value), toAppRows<EvoluBankTransactionMatchRow>(matchRows.value))));
     const expenses = computed(() => {
-        const companyRows = toAppRows<EvoluExpenseRow>(
-            expenseRows.value.filter((row) => row.companyId === companyId.value),
-        );
-
+        const companyRows = projectedExpenseRows.value.filter((row) => row.companyId === companyId.value);
         return filterLocalExpenses(companyRows, filters.value).map((row) =>
             evoluExpenseToListRow(row, attachmentsForExpense(row.id)),
         );
@@ -97,6 +103,8 @@ function useLocalInvoicingExpenses(companyId: Ref<string>): UseInvoicingExpenses
         try {
             await Promise.all([
                 evolu.loadQuery(allExpensesQuery),
+                evolu.loadQuery(allBankTransactionsQuery),
+                evolu.loadQuery(allBankTransactionMatchesQuery),
                 evolu.loadQuery(allExpenseAttachmentsQuery),
             ]);
         } finally {
@@ -110,7 +118,7 @@ function useLocalInvoicingExpenses(companyId: Ref<string>): UseInvoicingExpenses
         loading,
         refresh,
         evolu,
-        expenseRows: computed(() => toAppRows<EvoluExpenseRow>(expenseRows.value)),
+        expenseRows: projectedExpenseRows,
     };
 }
 
@@ -121,6 +129,7 @@ export function useInvoicingExpenses(companyId: Ref<string>): UseInvoicingExpens
     return useServerInvoicingExpenses(companyId);
 }
 
+/** Expose reactive expense detail with canonical payment state from raw expense and bank evidence. */
 export function useInvoicingExpense(
     companyId: Ref<string>,
     expenseId: Ref<string | undefined>,
@@ -132,8 +141,11 @@ export function useInvoicingExpense(
     if (localFirst) {
         const evolu = useInvoicingEvolu();
         const expenseRows = useQuery(allExpensesQuery);
+        const transactionRows = useQuery(allBankTransactionsQuery);
+        const matchRows = useQuery(allBankTransactionMatchesQuery);
         const attachmentRows = useQuery(allExpenseAttachmentsQuery);
 
+        /** Rebuild the current detail from its company-scoped row and the latest bank evidence subscriptions. */
         function syncExpense(): void {
             if (!expenseId.value) {
                 expense.value = null;
@@ -145,16 +157,19 @@ export function useInvoicingExpense(
             const attachments = toAppRows<EvoluExpenseAttachmentRow>(
                 attachmentRows.value.filter((a) => a.expenseId === expenseId.value),
             );
-            expense.value = row ? evoluExpenseToApi(row as EvoluExpenseRow, attachments) : null;
+            expense.value = row ? evoluExpenseToApi(effectiveExpensePayment(row as EvoluExpenseRow,
+                toAppRows<EvoluBankTransactionRow>(transactionRows.value), toAppRows<EvoluBankTransactionMatchRow>(matchRows.value)), attachments) : null;
         }
 
-        watch([expenseRows, attachmentRows, expenseId, companyId], syncExpense, { immediate: true });
+        watch([expenseRows, transactionRows, matchRows, attachmentRows, expenseId, companyId], syncExpense, { immediate: true });
 
         async function refresh(): Promise<void> {
             loading.value = true;
             try {
                 await Promise.all([
                     evolu.loadQuery(allExpensesQuery),
+                    evolu.loadQuery(allBankTransactionsQuery),
+                    evolu.loadQuery(allBankTransactionMatchesQuery),
                     evolu.loadQuery(allExpenseAttachmentsQuery),
                 ]);
                 syncExpense();

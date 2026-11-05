@@ -2,6 +2,8 @@
 export function expenseMutationErrorKey(error: unknown): string | null {
     if (!(error instanceof Error)) return null;
     switch (error.message) {
+        case "bank_expense_claim_changed": return "invoicing.bank_expense_match_failed";
+        case "expense_linked_payment": return "invoicing.expense_linked_payment";
         case "expense_reconciliation_lock_unavailable": return "invoicing.expense_changes_unavailable";
         case "expense_reconciliation_owner_unavailable": return "invoicing.expense_owner_unavailable";
         case "bank_reconciliation_wait_timed_out": return "invoicing.expense_changes_busy";

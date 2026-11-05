@@ -463,9 +463,12 @@
                         {{ t("invoicing.bank_status_ignored") }}
                       </span>
                       <span v-else class="text-gray-400">-</span>
+                      <p v-if="tx.bank_match_conflict" class="text-xs text-amber-800 mt-1 whitespace-normal" role="status">
+                        {{ t('invoicing.bank_expense_match_conflict') }}
+                      </p>
                     </td>
                     <td class="p-3 text-right space-x-2 whitespace-nowrap">
-                      <template v-if="tx.match_status === 'unmatched'">
+                      <template v-if="tx.match_status === 'unmatched' && !tx.bank_match_conflict">
                         <button
                           type="button"
                           class="bank-action-link"
@@ -499,7 +502,7 @@
                         </button>
                       </template>
                       <button
-                        v-else-if="tx.match_status === 'matched'"
+                        v-else-if="tx.match_status === 'matched' || tx.bank_match_conflict"
                         type="button"
                         class="bank-action-link"
                         @click="unmatchTx(tx)"
@@ -537,13 +540,16 @@
                       <p class="text-sm text-gray-700 truncate mt-1">
                         {{ counterpartyDisplay(tx) }}
                       </p>
+                      <p v-if="tx.bank_match_conflict" class="text-xs text-amber-800 mt-1" role="status">
+                        {{ t('invoicing.bank_expense_match_conflict') }}
+                      </p>
                     </div>
                   </div>
                 </div>
                 <template #actions>
                   <InvoicingRowActionsMenu>
                     <button
-                      v-if="tx.match_status === 'unmatched'"
+                      v-if="tx.match_status === 'unmatched' && !tx.bank_match_conflict"
                       type="button"
                       class="invoicing-dropdown-item"
                       @click="ignoreTx(tx)"
@@ -552,7 +558,7 @@
                     </button>
                     <button
                       v-if="
-                        tx.match_status === 'unmatched' &&
+                        tx.match_status === 'unmatched' && !tx.bank_match_conflict &&
                         tx.direction === 'credit'
                       "
                       type="button"
@@ -571,7 +577,7 @@
                     </button>
                     <button
                       v-if="
-                        tx.match_status === 'unmatched' &&
+                        tx.match_status === 'unmatched' && !tx.bank_match_conflict &&
                         tx.direction === 'debit'
                       "
                       type="button"
@@ -581,7 +587,7 @@
                       {{ t("invoicing.bank_create_expense") }}
                     </button>
                     <button
-                      v-if="tx.match_status === 'matched'"
+                      v-if="tx.match_status === 'matched' || tx.bank_match_conflict"
                       type="button"
                       class="invoicing-dropdown-item"
                       @click="unmatchTx(tx)"
@@ -907,7 +913,8 @@ let expenseMatchRequest = 0;
 const expenseModalTx = ref<BankTx | null>(null);
 const creatingExpense = ref(false);
 const expenseError = ref("");
-watch([companyId, bank.bridgeRoutingKey], () => {
+watch([companyId, bank.bridgeRoutingKey], ([cid], [previousCid]) => {
+  if (cid === previousCid && matchingExpense.value) return;
   expenseMatchRequest++;
   expenseMatchTx.value = null;
   expenseSuggestions.value = [];
@@ -1016,6 +1023,7 @@ function documentShowTo(doc: LinkedDocument) {
 }
 
 function pairingCornerClass(tx: BankTx): string {
+  if (tx.bank_match_conflict) return "status-corner--unmatched";
   if (tx.match_status === "ignored") {
     return "status-corner--ignored";
   }
@@ -1317,7 +1325,7 @@ function reconciliationErrorKey(error: unknown): string | null {
 /** The new financial action uses recorded evidence; only older payloads may fall back to display direction. */
 function canMatchExistingExpense(tx: BankTx): boolean {
   const direction = tx.recorded_direction === undefined ? tx.direction : tx.recorded_direction;
-  return tx.match_status === 'unmatched' && direction === 'debit';
+  return !tx.bank_match_conflict && tx.match_status === 'unmatched' && direction === 'debit';
 }
 
 /** Resolve suggestions only into the current company, modal and request generation. */
@@ -1392,8 +1400,13 @@ async function ignoreTx(tx: BankTx) {
 }
 
 async function unmatchTx(tx: BankTx) {
-  if (linkedExpense(tx) && !window.confirm(t('invoicing.bank_unlink_expense_confirm'))) return;
-  if (await runBankAction(() => bank.unmatchTransaction(tx.id))) await refreshBankAction();
+  if ((tx.bank_match_conflict || linkedExpense(tx)) && !window.confirm(t(
+    tx.bank_match_conflict ? 'invoicing.bank_unlink_expense_conflict_confirm' : 'invoicing.bank_unlink_expense_confirm',
+  ))) return;
+  const unlink = () => tx.bank_match_claim === undefined
+    ? bank.unmatchTransaction(tx.id)
+    : bank.unmatchTransaction(tx.id, tx.bank_match_claim);
+  if (await runBankAction(unlink)) await refreshBankAction();
 }
 
 async function runBankAction(action: () => Promise<void>): Promise<boolean> {

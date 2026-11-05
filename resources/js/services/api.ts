@@ -1298,8 +1298,8 @@ export const invoicingApi = {
 /** Excel-style import trio shared by contacts/expenses/stock-items/documents. */
 function spreadsheetImportGroup(basePath: string) {
     return {
-        async preview<T = unknown>(companyId: string, formData: FormData): Promise<T> {
-            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/${basePath}/preview`, formData);
+        async preview<T = unknown>(companyId: string, formData: FormData, options: { signal?: AbortSignal; timeout?: number } = {}): Promise<T> {
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/${basePath}/preview`, formData, options);
             return data.data;
         },
         async run<T = unknown>(companyId: string, formData: FormData): Promise<T> {

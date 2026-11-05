@@ -328,7 +328,10 @@ watch(() => [props.open, props.companyId, props.localFirst, selectedFile.value,
         const form = new FormData();
         form.append('file', file);
         form.append('mapping', JSON.stringify(selectedMapping));
-        const preview = await invoicingApi.expenses.import.preview<{ duplicate_warnings?: ExpenseImportDuplicateWarning[] }>(targetCompany, form);
+        const preview = await invoicingApi.expenses.import.preview<{ duplicate_warnings?: ExpenseImportDuplicateWarning[] }>(targetCompany, form, {
+          signal: readController.signal,
+          timeout: 10_000,
+        });
         warnings = preview.duplicate_warnings ?? [];
       }
       if (current()) duplicateWarnings.value = warnings;
