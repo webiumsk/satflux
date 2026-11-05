@@ -39,3 +39,7 @@ Si la conciliación tiene éxito pero no se puede actualizar la lista, recargue 
 ## Gastos
 
 Puede convertir los pagos salientes en **gastos** para completar la exportación contable.
+
+Si el gasto ya existe, revise y confirme la asociación sugerida del pago.
+[Revisar pagos de gastos](/documentation/expense-payment-review) explica los
+requisitos, la eliminación de asociaciones y los avisos de posibles duplicados.

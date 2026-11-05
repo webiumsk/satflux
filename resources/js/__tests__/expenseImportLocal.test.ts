@@ -19,6 +19,7 @@ vi.mock("@/evolu/client", async () => {
 import {
     importLocalExpensesFromFile,
     previewLocalExpenseImport,
+    previewLocalExpenseImportDuplicates,
     suggestExpenseImportMapping,
 } from "@/evolu/expenseImportLocal";
 import { nextLocalExpenseInternalNumber } from "@/evolu/expenseCrud";
@@ -204,5 +205,33 @@ describe("SuperFaktura local expense import", () => {
     it("generates large existing number sequences without floating point collisions", () => {
         const prefix = `EXP${new Date().getFullYear()}`;
         expect(nextLocalExpenseInternalNumber(companyId, [existing(`${prefix}9007199254740992`)])).toBe(`${prefix}9007199254740993`);
+    });
+});
+
+
+describe("expense import duplicate preflight", () => {
+    const mapping = { title: 0, external_number: 1, issue_date: 2, total: 3, currency: 4 };
+    const headers = ["Title", "External number", "Issue date", "Total", "Currency"];
+    it("warns about existing and repeated file rows without invoking financial writers", async () => {
+        const existing = [{ id: "existing", ownerId: "owner-a", companyId, internalNumber: "EXP001", status: "paid",
+            title: "Other", externalNumber: "INV-001", issueDate: "2026-11-01", total: "19.00", currency: "EUR", cancelledAt: null }] as unknown as EvoluExpenseRow[];
+        const file = csvFile([headers, ["Fee", "INV-001", "2026-11-05", "19.00", "EUR"],
+            ["Hosting", "INV-002", "2026-11-05", "29.00", "EUR"], ["Hosting", "INV-002", "2026-11-05", "29.00", "EUR"]]);
+        const before = JSON.stringify(existing);
+        expect(await previewLocalExpenseImportDuplicates(companyId, "owner-a", file, mapping, existing)).toMatchObject([
+            { row: 2, expense: { id: "existing" }, reason: "external_number", in_file: false },
+            { row: 4, expense: { id: "preview-row-3", internal_number: "3" }, reason: "external_number", in_file: true },
+        ]);
+        expect(JSON.stringify(existing)).toBe(before);
+    });
+    it("ignores other owner/company records and caps repetitive output at twenty warnings", async () => {
+        const existing = [{ id: "foreign", ownerId: "owner-b", companyId, internalNumber: "EXP001", status: "recorded",
+            externalNumber: "INV-001", title: "Fee", issueDate: "2026-11-05", total: "19.00", currency: "EUR" }] as unknown as EvoluExpenseRow[];
+        const single = csvFile([headers, ["Fee", "INV-001", "2026-11-05", "19.00", "EUR"]]);
+        expect(await previewLocalExpenseImportDuplicates(companyId, "owner-a", single, mapping, existing)).toEqual([]);
+        const repeated = csvFile([headers, ...Array.from({ length: 40 }, () => ["Fee", "INV-001", "2026-11-05", "19.00", "EUR"])]);
+        const warnings = await previewLocalExpenseImportDuplicates(companyId, "owner-a", repeated, mapping, []);
+        expect(warnings).toHaveLength(20);
+        expect(warnings.every((row) => row.in_file)).toBe(true);
     });
 });

@@ -1,5 +1,43 @@
 # Project state
 
+## Expense reconciliation source push authorized - 2026-11-05
+
+The owner explicitly requests commit/push of the reviewed 51-path feature to owned
+`webiumsk/satflux:feat/expense-reconciliation`, based on `cb55aab0`. Fresh byte
+verification matches the accepted implementation. Staging exposed one extra EOF
+blank line in `bankPaymentValues.ts`; removing exactly one LF leaves executable
+content unchanged. Publication runtime23 is `620c7f00...956f2` and source/test/CI35
+`c947959b...8557b`; original review hashes remain in the implementation note. Initial
+remote branch and PR checks return none. Main owns commit/push and exact remote
+tip/tree verification; unrelated primary work is excluded. No merge/deployment
+authorization or new test/CI success is inferred.
+
+## Expense payment review and duplicate warnings implemented - 2026-11-05
+
+The owner authorized the first two recommended improvements. The isolated
+`feat/expense-reconciliation` worktree starts from freshly fetched `cb55aab0`
+(merged PR427/428), preserving unrelated primary checkout work. Explicit outgoing
+payment-to-existing-expense confirmation and advisory create/edit/import duplicate
+warnings support local-first and legacy server invoicing, with five-locale UI/docs.
+No supplier/contact schema or QR/relay implementation is included.
+
+Independent QA and security accept final runtime23 manifest
+`982868ca...5ef95` and source/test/CI35 `edf41386...46850`.
+Post-handler evidence verification, transaction-first locks and recorded-direction
+action gating resolve the reproduced review findings. Real PostgreSQL control
+reproduces historical `40P01` and the corrected clean conflict; CI now requires two
+actual contention cases without skips. Final frontend is 1,760 tests / 177 files;
+129 focused SQLite / 563 assertions and independent PostgreSQL 2 / 36 pass.
+Lint48/limit52, unchanged typecheck ratchet111, locale parity, build, API, Pint and
+PHPStan pass. Full PHP has six DNS-dependent failures also reproduced on unchanged
+base, plus 54 conditional skips; do not claim global or remote CI green.
+
+See the feature worktree's `docs/development/EXPENSE_RECONCILIATION.md` for exact
+hashes, commands, reviews and limits. Work remains local and uncommitted; no PR,
+publication, merge, deployment, real payment or merchant-data access. The next step
+is owner review and applicable source-publication/CI/merge/deployment approval.
+
+
 ## PR428 semantic review clean; supported test-helper documentation repair - 2026-11-04
 
 The owner-authorized `@coderabbitai review` comment `6638746873` was posted after

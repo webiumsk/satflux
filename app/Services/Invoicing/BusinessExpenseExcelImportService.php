@@ -28,7 +28,7 @@ class BusinessExpenseExcelImportService
     ) {}
 
     /**
-     * @return array{headers: list<string>, suggested_mapping: array<string, int|null>, row_count: int, preview: list<array<string, mixed>>}
+     * @return array{headers: list<string>, suggested_mapping: array<string, int|null>, row_count: int, preview: list<array<string, mixed>>, duplicate_warnings: list<array{row: int, expense: array<string, mixed>, reason: string, in_file: bool}>}
      */
     public function preview(Company $company, UploadedFile $file, ?array $mapping = null): array
     {
@@ -36,14 +36,21 @@ class BusinessExpenseExcelImportService
         $mapping = $this->normalizeMapping($mapping ?? $this->suggestMapping($parsed['headers']), count($parsed['headers']));
 
         $preview = [];
-        foreach (array_slice($parsed['rows'], 0, 10) as $index => $row) {
+        $duplicateDrafts = [];
+        foreach ($parsed['rows'] as $index => $row) {
             try {
-                $preview[] = array_merge(
+                $draft = array_merge(
                     ['row' => $index + 2],
                     $this->rowToExpensePreview($company, $row, $mapping)
                 );
+                $duplicateDrafts[] = $draft;
+                if ($index < 10) {
+                    $preview[] = $draft;
+                }
             } catch (\InvalidArgumentException $e) {
-                $preview[] = ['row' => $index + 2, 'error' => $e->getMessage()];
+                if ($index < 10) {
+                    $preview[] = ['row' => $index + 2, 'error' => $e->getMessage()];
+                }
             }
         }
 
@@ -52,6 +59,9 @@ class BusinessExpenseExcelImportService
             'suggested_mapping' => $mapping,
             'row_count' => count($parsed['rows']),
             'preview' => $preview,
+            'duplicate_warnings' => $company->usesServerInvoicing()
+                ? app(BusinessExpenseReconciliationService::class)->importDuplicateSuggestions($company, $duplicateDrafts)
+                : [],
         ];
     }
 

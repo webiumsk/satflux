@@ -474,6 +474,14 @@
                           {{ t("invoicing.bank_ignore") }}
                         </button>
                         <button
+                          v-if="canMatchExistingExpense(tx)"
+                          type="button"
+                          class="bank-action-link bank-action-link--primary"
+                          @click="openExpenseMatch(tx)"
+                        >
+                          {{ t("invoicing.bank_match_expense") }}
+                        </button>
+                        <button
                           v-if="tx.direction === 'debit'"
                           type="button"
                           class="bank-action-link"
@@ -552,6 +560,14 @@
                       @click="openMatch(tx)"
                     >
                       {{ t("invoicing.bank_match") }}
+                    </button>
+                    <button
+                      v-if="canMatchExistingExpense(tx)"
+                      type="button"
+                      class="invoicing-dropdown-item"
+                      @click="openExpenseMatch(tx)"
+                    >
+                      {{ t("invoicing.bank_match_expense") }}
                     </button>
                     <button
                       v-if="
@@ -708,6 +724,16 @@
       </div>
     </template>
 
+    <BankExpenseMatchModal
+      :transaction="expenseMatchTx"
+      :suggestions="expenseSuggestions"
+      :loading="expenseSuggestionsLoading"
+      :saving="matchingExpense"
+      :error="expenseMatchError"
+      @close="closeExpenseMatch"
+      @confirm="confirmExpenseMatch"
+    />
+
     <BankCreateExpenseModal
       :open="!!expenseModalTx"
       :currency="expenseModalTx?.currency || 'EUR'"
@@ -782,6 +808,8 @@ import InvoicingPageShell from "../../components/invoicing/InvoicingPageShell.vu
 import InvoicingAppHeader from "../../components/invoicing/InvoicingAppHeader.vue";
 import InvoicingMobileCard from "../../components/invoicing/InvoicingMobileCard.vue";
 import InvoicingRowActionsMenu from "../../components/invoicing/InvoicingRowActionsMenu.vue";
+import BankExpenseMatchModal from "../../components/invoicing/BankExpenseMatchModal.vue";
+import type { BankExpenseMatchSuggestion } from "../../evolu/bankExpenseManualMatching";
 import BankCreateExpenseModal, {
   type BankExpenseDraft,
 } from "../../components/invoicing/BankCreateExpenseModal.vue";
@@ -870,9 +898,25 @@ const suggestions = ref<
   }[]
 >([]);
 const suggestionsLoading = ref(false);
+const expenseMatchTx = ref<BankTx | null>(null);
+const expenseSuggestions = ref<BankExpenseMatchSuggestion[]>([]);
+const expenseSuggestionsLoading = ref(false);
+const matchingExpense = ref(false);
+const expenseMatchError = ref('');
+let expenseMatchRequest = 0;
 const expenseModalTx = ref<BankTx | null>(null);
 const creatingExpense = ref(false);
 const expenseError = ref("");
+watch([companyId, bank.bridgeRoutingKey], () => {
+  expenseMatchRequest++;
+  expenseMatchTx.value = null;
+  expenseSuggestions.value = [];
+  expenseSuggestionsLoading.value = false;
+  matchingExpense.value = false;
+  expenseMatchError.value = '';
+}, { flush: 'sync' });
+onBeforeUnmount(() => { expenseMatchRequest++; });
+
 const expenseDraft = ref<BankExpenseDraft>({
   title: "",
   total: 0,
@@ -1270,6 +1314,59 @@ function reconciliationErrorKey(error: unknown): string | null {
   }
 }
 
+/** The new financial action uses recorded evidence; only older payloads may fall back to display direction. */
+function canMatchExistingExpense(tx: BankTx): boolean {
+  const direction = tx.recorded_direction === undefined ? tx.direction : tx.recorded_direction;
+  return tx.match_status === 'unmatched' && direction === 'debit';
+}
+
+/** Resolve suggestions only into the current company, modal and request generation. */
+async function openExpenseMatch(tx: BankTx) {
+  if (matchingExpense.value || !canMatchExistingExpense(tx)) return;
+  const request = ++expenseMatchRequest;
+  const cid = companyId.value;
+  expenseMatchTx.value = tx;
+  expenseSuggestions.value = [];
+  expenseMatchError.value = '';
+  expenseSuggestionsLoading.value = true;
+  try {
+    const rows = await bank.fetchExpenseSuggestions(tx.id);
+    if (request === expenseMatchRequest && companyId.value === cid) expenseSuggestions.value = rows;
+  } catch {
+    if (request === expenseMatchRequest && companyId.value === cid) expenseMatchError.value = t('invoicing.bank_expense_suggestions_failed');
+  } finally {
+    if (request === expenseMatchRequest) expenseSuggestionsLoading.value = false;
+  }
+}
+
+function closeExpenseMatch() {
+  if (matchingExpense.value) return;
+  expenseMatchRequest++;
+  expenseMatchTx.value = null;
+}
+
+/** Confirmation is explicit; errors retain the dialog and never retry a financial write. */
+async function confirmExpenseMatch(expenseId: string) {
+  if (!expenseMatchTx.value || matchingExpense.value) return;
+  const tx = expenseMatchTx.value;
+  const cid = companyId.value;
+  const request = expenseMatchRequest;
+  matchingExpense.value = true;
+  expenseMatchError.value = '';
+  try {
+    await bank.matchExpense(tx.id, expenseId);
+    if (request !== expenseMatchRequest || companyId.value !== cid) return;
+    expenseMatchTx.value = null;
+    await refreshBankAction();
+  } catch (error: unknown) {
+    if (request === expenseMatchRequest && companyId.value === cid) {
+      expenseMatchError.value = t(reconciliationErrorKey(error) || expenseMutationErrorKey(error) || 'invoicing.bank_expense_match_failed');
+    }
+  } finally {
+    if (request === expenseMatchRequest) matchingExpense.value = false;
+  }
+}
+
 async function openMatch(tx: BankTx) {
   matchModal.value = tx;
   suggestionsLoading.value = true;
@@ -1295,6 +1392,7 @@ async function ignoreTx(tx: BankTx) {
 }
 
 async function unmatchTx(tx: BankTx) {
+  if (linkedExpense(tx) && !window.confirm(t('invoicing.bank_unlink_expense_confirm'))) return;
   if (await runBankAction(() => bank.unmatchTransaction(tx.id))) await refreshBankAction();
 }
 

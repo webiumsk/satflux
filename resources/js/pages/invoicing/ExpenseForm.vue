@@ -37,6 +37,16 @@
       {{ importNotice }}
     </div>
 
+    <ExpenseDuplicateWarning
+      class="mb-4"
+      :company-id="companyId"
+      :draft="form"
+      :exclude-id="expenseId || createdLocalExpenseId || undefined"
+      :local-first="localFirst"
+      :local-rows="expenseRows"
+      :evolu="expenseResource.evolu"
+    />
+
     <div class="grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)] gap-6 items-start">
       <form class="invoicing-card-pad space-y-4 min-w-0" @submit.prevent="save">
         <div>
@@ -132,6 +142,7 @@
 </template>
 
 <script setup lang="ts">
+import ExpenseDuplicateWarning from "../../components/invoicing/ExpenseDuplicateWarning.vue";
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';

@@ -123,6 +123,21 @@
           </p>
         </div>
 
+        <div v-if="!result && duplicateWarnings.length" role="status" class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+          <p class="font-semibold">{{ t('invoicing.expense_duplicate_warning') }}</p>
+          <p class="mt-1">{{ t('invoicing.expense_duplicate_import_advisory') }}</p>
+          <ul class="mt-2 space-y-1">
+            <li v-for="warning in duplicateWarnings" :key="`${warning.row}:${warning.expense.id}`">
+              {{ t(warning.in_file ? 'invoicing.expense_duplicate_import_file_row' : 'invoicing.expense_duplicate_import_existing', {
+                row: warning.row, number: warning.expense.internal_number,
+              }) }}
+              · {{ t(`invoicing.expense_duplicate_reason_${warning.reason}`) }}
+            </li>
+          </ul>
+        </div>
+        <p v-else-if="!result && checkingDuplicates" role="status" class="text-sm text-gray-600">{{ t('invoicing.expense_duplicate_import_checking') }}</p>
+        <p v-if="!result && duplicateCheckFailed" role="status" class="text-sm text-amber-900">{{ t('invoicing.expense_duplicate_check_failed') }}</p>
+
         <p v-if="error" role="alert" class="text-sm text-red-600">{{ error }}</p>
 
         <div
@@ -208,7 +223,11 @@ import {
   downloadExpenseImportExampleCsv,
   importLocalExpensesFromFile,
   previewLocalExpenseImport,
+  previewLocalExpenseImportDuplicates,
+  type ExpenseImportDuplicateWarning,
 } from "../../evolu/expenseImportLocal";
+import { companyShareRoutingKey, waitCompanyShareRegistryReady } from "../../evolu/companyShareRegistry";
+import { resolveMutationOwner } from "../../evolu/ownerScope";
 import type { CompanyId } from "../../evolu/schema";
 
 const props = defineProps<{
@@ -240,6 +259,13 @@ const selectedFile = ref<File | null>(null);
 const headers = ref<string[]>([]);
 const mapping = reactive<ExpenseImportMapping>({});
 const rowCount = ref(0);
+const duplicateWarnings = ref<ExpenseImportDuplicateWarning[]>([]);
+const checkingDuplicates = ref(false);
+const duplicateCheckFailed = ref(false);
+let duplicateVersion = 0;
+let duplicateTimer: ReturnType<typeof setTimeout> | undefined;
+let duplicateController: AbortController | undefined;
+
 const loadingPreview = ref(false);
 const importing = ref(false);
 const error = ref("");
@@ -256,6 +282,9 @@ let previousFocus: HTMLElement | null = null;
 
 onBeforeUnmount(() => {
   disposed = true;
+  duplicateVersion++;
+  clearTimeout(duplicateTimer);
+  duplicateController?.abort();
   previewVersion += 1;
   previousFocus?.focus();
 });
@@ -265,6 +294,52 @@ const mappingReady = computed(() =>
     (field) => mapping[field] !== null && mapping[field] !== undefined,
   ),
 );
+
+watch(() => [props.open, props.companyId, props.localFirst, selectedFile.value,
+  { ...mapping }, companyShareRoutingKey(props.companyId)], () => {
+  const version = ++duplicateVersion;
+  clearTimeout(duplicateTimer);
+  duplicateController?.abort();
+  duplicateWarnings.value = [];
+  duplicateCheckFailed.value = false;
+  checkingDuplicates.value = false;
+  if (!props.open || !selectedFile.value || !mappingReady.value || importing.value) return;
+  const file = selectedFile.value;
+  const targetCompany = props.companyId;
+  const useLocal = props.localFirst;
+  const selectedMapping = { ...mapping };
+  const current = () => !disposed && props.open && version === duplicateVersion && props.companyId === targetCompany;
+  checkingDuplicates.value = true;
+  const readController = new AbortController();
+  duplicateController = readController;
+  duplicateTimer = setTimeout(async () => {
+    const deadline = setTimeout(() => readController.abort(), 10_000);
+    try {
+      let warnings: ExpenseImportDuplicateWarning[];
+      if (useLocal) {
+        if (!evolu || !invoicingExpenses) throw new Error('local_context_unavailable');
+        await waitCompanyShareRegistryReady(readController.signal);
+        const owner = await evolu.appOwner;
+        await invoicingExpenses.refresh();
+        if (!current()) return;
+        const ownerId = resolveMutationOwner('expense', { companyId: targetCompany }, undefined) ?? owner.id;
+        warnings = await previewLocalExpenseImportDuplicates(targetCompany, ownerId, file, selectedMapping, invoicingExpenses.expenseRows.value);
+      } else {
+        const form = new FormData();
+        form.append('file', file);
+        form.append('mapping', JSON.stringify(selectedMapping));
+        const preview = await invoicingApi.expenses.import.preview<{ duplicate_warnings?: ExpenseImportDuplicateWarning[] }>(targetCompany, form);
+        warnings = preview.duplicate_warnings ?? [];
+      }
+      if (current()) duplicateWarnings.value = warnings;
+    } catch {
+      if (current()) duplicateCheckFailed.value = true;
+    } finally {
+      clearTimeout(deadline);
+      if (current()) checkingDuplicates.value = false;
+    }
+  }, 300);
+}, { deep: true });
 
 watch(
   () => [props.open, props.companyId, props.localFirst] as const,
@@ -284,6 +359,12 @@ watch(
 );
 
 function resetState() {
+  duplicateVersion++;
+  clearTimeout(duplicateTimer);
+  duplicateController?.abort();
+  duplicateWarnings.value = [];
+  checkingDuplicates.value = false;
+  duplicateCheckFailed.value = false;
   previewVersion += 1;
   selectedFile.value = null;
   headers.value = [];
@@ -474,6 +555,10 @@ async function submitImport() {
   const targetCompany = props.companyId;
   const useLocal = props.localFirst;
   const selectedMapping = { ...mapping };
+  duplicateVersion++;
+  clearTimeout(duplicateTimer);
+  duplicateController?.abort();
+  checkingDuplicates.value = false;
   importing.value = true;
   error.value = "";
   try {

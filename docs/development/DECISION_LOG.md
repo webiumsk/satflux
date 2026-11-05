@@ -1,5 +1,43 @@
 # Development decision log
 
+## 2026-11-05 - Push the reviewed expense feature without expanding scope
+
+The explicit push request authorizes main-agent commit/push of the accepted expense
+feature to owned Satflux. Include only its 51 scoped paths, verify accepted code
+manifests and remote commit/tree, and preserve unrelated primary work. Existing
+tests remain prior evidence. Do not invent a PR source URL or remote CI result;
+merge and deployment remain outside this request.
+
+Normalize only the extra EOF blank line detected on first staging of the previously
+untracked bank-value helper. Exact old bytes equal new bytes plus one LF; all other
+code/test/CI bytes match the independent review. Record separate publication hashes
+and verify this equivalence independently rather than claiming a new test run.
+
+## 2026-11-05 - Add explicit expense matching and advisory duplicate review
+
+Treat the owner's instruction to proceed as authorization for the two recommended
+priorities in owned Satflux: outgoing payment-to-existing-expense confirmation and
+duplicate expense warnings. Preserve the separate relay/QR proposals and unrelated
+work; implement from fresh master in a durable feature worktree.
+
+Require exact positive full amount/currency and strong reference evidence. Suggestions
+never authorize a write: revalidate fresh company/owner/origin and link state, then
+verify local financial evidence after the receipt. Use transaction, fresh company,
+expense lock order, demonstrated against the historical PostgreSQL deadlock.
+The new action follows recorded direction; preserve legacy display heuristics.
+Unlinking removes only the relationship and keeps independent payment state.
+
+The existing expense schema has no supplier/contact association. Duplicate reasons
+therefore describe document-number or title/received-date evidence without claiming
+supplier identity. Warnings remain advisory, bounded and local to their storage
+boundary, including existing/in-file mapped import checks. No silent merge/delete.
+
+Independent QA/security accept runtime23 `982868ca...5ef95` and source/test/CI35
+`edf41386...46850`. Final tests/static evidence and six unchanged-base DNS failures
+are recorded in the feature review note. Add a mandatory no-skips two-case PG CI
+gate. No authentication weakening, publication, merge, deployment or real payment.
+
+
 ## PR428 semantic review clean; supported test-helper documentation repair - 2026-11-04
 
 The owner-authorized `@coderabbitai review` comment `6638746873` was posted after

@@ -1,3 +1,5 @@
+import { bankExpenseMatchSuggestions, matchLocalBankTransactionToExpense, type BankExpenseMatchSuggestion } from "@/evolu/bankExpenseManualMatching";
+import { resolveMutationOwner } from "@/evolu/ownerScope";
 import { getActivePinia } from "pinia";
 import { sha256Hex } from "@/utils/sha256";
 import { readBankSyncCheckpoint, compareAndSetBankSyncCheckpoint, type BankSyncCheckpoint } from "@/services/bankSyncCheckpointStore";
@@ -83,6 +85,8 @@ export interface UseInvoicingBankPaymentsResult {
     loadInbound: () => Promise<void>;
     importFile: (file: File, format?: string) => Promise<{ imported: number; auto_matched: number }>;
     autoMatchBatch: (batchId: string) => Promise<void>;
+    fetchExpenseSuggestions: (transactionId: string) => Promise<BankExpenseMatchSuggestion[]>;
+    matchExpense: (transactionId: string, expenseId: string) => Promise<void>;
     fetchSuggestions: (transactionId: string) => Promise<BankMatchSuggestion[]>;
     matchTransaction: (transactionId: string, documentId: string) => Promise<void>;
     ignoreTransaction: (transactionId: string) => Promise<void>;
@@ -258,6 +262,18 @@ function useServerInvoicingBankPayments(
         await invoicingApi.bankTransactions.autoMatchBatch(cid, batchId, { skipErrorFlash: true });
     }
 
+    async function fetchExpenseSuggestions(transactionId: string): Promise<BankExpenseMatchSuggestion[]> {
+        const cid = requireCompanyId();
+        if (!cid) return [];
+        return invoicingApi.bankTransactions.expenseSuggestions<BankExpenseMatchSuggestion>(cid, transactionId);
+    }
+
+    async function matchExpense(transactionId: string, expenseId: string): Promise<void> {
+        const cid = requireCompanyId();
+        if (!cid) throw new Error("bank_expense_match_ineligible");
+        await invoicingApi.bankTransactions.matchExpense(cid, transactionId, expenseId);
+    }
+
     async function fetchSuggestions(transactionId: string): Promise<BankMatchSuggestion[]> {
         const cid = requireCompanyId();
         if (!cid) return [];
@@ -387,6 +403,8 @@ function useServerInvoicingBankPayments(
         loadInbound,
         importFile,
         autoMatchBatch,
+        fetchExpenseSuggestions,
+        matchExpense,
         fetchSuggestions,
         matchTransaction,
         ignoreTransaction,
@@ -900,6 +918,28 @@ function useLocalInvoicingBankPayments(
         await autoMatchLocalBatchAsync(evolu, batchId as BankImportBatchId);
     }
 
+    async function fetchExpenseSuggestions(transactionId: string): Promise<BankExpenseMatchSuggestion[]> {
+        const cid = companyId.value;
+        const generation = bridgeIdentityGeneration;
+        return withBankReadBudget(async (controls, signal) => {
+            await waitCompanyShareRegistryReady(signal);
+            controls();
+            const paymentCtx = await loadBankPaymentContext(evolu);
+            const appOwner = await evolu.appOwner;
+            controls();
+            const ownerId = resolveMutationOwner("expense", { companyId: cid }, undefined) ?? appOwner.id;
+            const transaction = paymentCtx.transactions.find((row) => row.id === transactionId && row.companyId === cid
+                && Reflect.get(row, "ownerId") === ownerId);
+            return transaction ? bankExpenseMatchSuggestions(transaction, paymentCtx, ownerId) : [];
+        }, { isCurrent: () => !disposed && companyId.value === cid && bridgeIdentityGeneration === generation, registerCancel: registerBankRead });
+    }
+
+    async function matchExpense(transactionId: string, expenseId: string): Promise<void> {
+        const cid = companyId.value;
+        if (disposed || !cid) throw new Error("bank_expense_match_ineligible");
+        await matchLocalBankTransactionToExpense(evolu, cid, transactionId, expenseId);
+    }
+
     async function fetchSuggestions(transactionId: string): Promise<BankMatchSuggestion[]> {
         const paymentCtx = await loadBankPaymentContext(evolu);
         const transaction = paymentCtx.transactions.find((row) => row.id === transactionId);
@@ -977,6 +1017,8 @@ function useLocalInvoicingBankPayments(
         loadInbound,
         importFile,
         autoMatchBatch,
+        fetchExpenseSuggestions,
+        matchExpense,
         fetchSuggestions,
         matchTransaction,
         ignoreTransaction,

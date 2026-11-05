@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Invoicing;
 
 use App\Enums\BankTransactionMatchStatus;
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\BankImportBatch;
 use App\Models\BankTransaction;
 use App\Models\BusinessDocument;
@@ -13,6 +14,7 @@ use App\Services\Invoicing\BankInboundAddressService;
 use App\Services\Invoicing\BankStatementImportService;
 use App\Services\Invoicing\BankTransactionExpenseService;
 use App\Services\Invoicing\BusinessDocumentPaymentMatcher;
+use App\Services\Invoicing\BusinessExpenseReconciliationService;
 use App\Support\Invoicing\BankTransactionListSummary;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -191,12 +193,21 @@ class BankTransactionController extends Controller
             ->where('id', $validated['business_document_id'])
             ->firstOrFail();
 
-        $match = $this->matcher->manualMatch(
-            $bankTransaction,
-            $document,
-            isset($validated['matched_amount']) ? (float) $validated['matched_amount'] : null,
-            $request->user()->id,
-        );
+        // Serialize legacy invoice matching with explicit expense confirmation on the same movement.
+        $match = $bankTransaction->getConnection()->transaction(function () use ($bankTransaction, $company, $document, $validated, $request) {
+            $locked = BankTransaction::on($bankTransaction->getConnectionName())->whereKey($bankTransaction->id)
+                ->where('company_id', $company->id)->lockForUpdate()->firstOrFail();
+            if ($locked->business_expense_id !== null) {
+                throw ValidationException::withMessages(['bank_transaction' => ['This movement is already linked to an expense.']]);
+            }
+
+            return $this->matcher->manualMatch(
+                $locked,
+                $document,
+                isset($validated['matched_amount']) ? (float) $validated['matched_amount'] : null,
+                $request->user()->id,
+            );
+        });
 
         return response()->json([
             'data' => [
@@ -210,7 +221,15 @@ class BankTransactionController extends Controller
     {
         $this->assertTransactionCompany($bankTransaction, $company);
 
-        $tx = $this->matcher->ignore($bankTransaction, $request->user()->id);
+        $tx = $bankTransaction->getConnection()->transaction(function () use ($bankTransaction, $company, $request) {
+            $locked = BankTransaction::on($bankTransaction->getConnectionName())->whereKey($bankTransaction->id)
+                ->where('company_id', $company->id)->lockForUpdate()->firstOrFail();
+            if ($locked->business_expense_id !== null) {
+                throw ValidationException::withMessages(['bank_transaction' => ['Unmatch the linked expense before ignoring this movement.']]);
+            }
+
+            return $this->matcher->ignore($locked, $request->user()->id);
+        });
 
         return response()->json(['data' => $this->transactionPayload($tx)]);
     }
@@ -219,20 +238,56 @@ class BankTransactionController extends Controller
     {
         $this->assertTransactionCompany($bankTransaction, $company);
 
-        if ($bankTransaction->business_expense_id !== null) {
-            $bankTransaction->update([
-                'business_expense_id' => null,
-                'match_status' => BankTransactionMatchStatus::Unmatched,
-            ]);
+        $tx = $bankTransaction->getConnection()->transaction(function () use ($bankTransaction, $company, $request) {
+            $locked = BankTransaction::on($bankTransaction->getConnectionName())->whereKey($bankTransaction->id)
+                ->where('company_id', $company->id)->lockForUpdate()->firstOrFail();
+            if ($locked->business_expense_id !== null) {
+                // Removing a bookkeeping link is not evidence that an expense became unpaid.
+                $expenseId = $locked->business_expense_id;
+                $locked->update([
+                    'business_expense_id' => null,
+                    'match_status' => BankTransactionMatchStatus::Unmatched,
+                ]);
+                AuditLog::on($locked->getConnectionName())->create([
+                    'user_id' => $request->user()->id,
+                    'action' => 'bank_transaction.expense_unmatched',
+                    'target_type' => 'bank_transaction',
+                    'target_id' => $locked->id,
+                    'metadata' => ['company_id' => $company->id, 'business_expense_id' => $expenseId],
+                ]);
 
-            return response()->json([
-                'data' => $this->transactionPayload($bankTransaction->fresh(['match.document', 'expense'])),
-            ]);
-        }
+                return $locked->fresh(['match.document', 'expense']);
+            }
 
-        $tx = $this->matcher->unmatch($bankTransaction, $request->user()->id);
+            return $this->matcher->unmatch($locked, $request->user()->id);
+        });
 
         return response()->json(['data' => $this->transactionPayload($tx)]);
+    }
+
+    /** Suggest existing expenses without changing either record. */
+    public function expenseSuggestions(Company $company, BankTransaction $bankTransaction): JsonResponse
+    {
+        $this->assertTransactionCompany($bankTransaction, $company);
+
+        return response()->json([
+            'data' => app(BusinessExpenseReconciliationService::class)->suggestions($company, $bankTransaction),
+        ]);
+    }
+
+    /** Explicitly confirm a freshly revalidated full-amount outgoing match. */
+    public function matchExpense(Request $request, Company $company, BankTransaction $bankTransaction): JsonResponse
+    {
+        $this->assertTransactionCompany($bankTransaction, $company);
+        $validated = $request->validate(['expense_id' => ['required', 'uuid']]);
+        $expense = app(BusinessExpenseReconciliationService::class)->match(
+            $company, $bankTransaction, $validated['expense_id'], $request->user()->id,
+        );
+
+        return response()->json(['data' => [
+            'expense' => $expense,
+            'transaction' => $this->transactionPayload($bankTransaction->fresh(['match.document', 'expense'])),
+        ]]);
     }
 
     public function createExpense(

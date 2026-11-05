@@ -1,5 +1,34 @@
 # Development roadmap
 
+## Publish reviewed expense reconciliation branch - 2026-11-05
+
+Owner-authorized next step: commit/push the existing reviewed 51 paths to
+`webiumsk/satflux:feat/expense-reconciliation`, then verify remote tip/tree.
+Publication runtime23 is `620c7f00...956f2`, source/test/CI35 `c947959b...8557b`.
+The only code-file difference from accepted bytes is one removed trailing LF;
+documented behavior/tests are unchanged. PR, merge and deployment remain separate.
+
+## Expense reconciliation ready for local review - 2026-11-05
+
+Implemented user-confirmed full-amount outgoing matches to existing expenses and
+advisory duplicate warnings in forms and mapped imports. Both storage modes,
+shared-owner/origin safety, EN/SK/ES/DE/CS docs and copy are covered. Unlinking keeps
+payment status; candidate evidence is rechecked before and after local writes.
+
+Independent QA/security accept runtime23 `982868ca...5ef95` and source/test/CI35
+`edf41386...46850`. Final frontend1,760/177, SQLite129/563 and actual PostgreSQL2/36
+pass, with the historical deadlock reproduced and eliminated. The existing PG CI
+job now enforces both contention cases. Static, locale, build and API gates pass;
+six broad-PHP DNS failures reproduce on unchanged baseline and are recorded.
+
+Retain `storage/app/private/worktrees/expense-reconciliation` on
+`feat/expense-reconciliation`. Next: owner review, applicable source publication,
+fresh CI and separate merge/deployment approval. No release/deployment occurred.
+Relay redundancy, QR expense payments, partial payments and the remaining ideas
+stay separate proposals. Full evidence is in the feature worktree's
+`docs/development/EXPENSE_RECONCILIATION.md`.
+
+
 ## PR428 semantic review clean; supported test-helper documentation repair - 2026-11-04
 
 The owner-authorized `@coderabbitai review` comment `6638746873` was posted after

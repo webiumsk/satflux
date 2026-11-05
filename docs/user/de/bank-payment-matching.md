@@ -39,3 +39,7 @@ Ist der Abgleich erfolgreich, aber die Liste lässt sich nicht aktualisieren, la
 ## Ausgaben
 
 Ausgehende Zahlungen können Sie in **Ausgaben** umwandeln, damit der Export für die Buchhaltung vollständig bleibt.
+
+Existiert die Ausgabe bereits, prüfen und bestätigen Sie die vorgeschlagene
+Zahlungszuordnung. [Ausgabenzahlungen prüfen](/documentation/expense-payment-review)
+erklärt Voraussetzungen, das Aufheben von Zuordnungen und mögliche Duplikatwarnungen.

@@ -13,6 +13,7 @@ use App\Services\Invoicing\BusinessExpenseBulkService;
 use App\Services\Invoicing\BusinessExpenseIsdocImportService;
 use App\Services\Invoicing\BusinessExpenseIsdocPackService;
 use App\Services\Invoicing\BusinessExpenseIsdocQuotaService;
+use App\Services\Invoicing\BusinessExpenseReconciliationService;
 use App\Services\Invoicing\BusinessExpenseService;
 use App\Support\Invoicing\BusinessExpenseListSummary;
 use App\Support\Invoicing\ExpenseAttachmentMime;
@@ -110,6 +111,23 @@ class BusinessExpenseController extends Controller
         ]);
 
         return response()->json(['data' => $expense], 201);
+    }
+
+    /** Preview potential duplicates; saving remains an independent user decision. */
+    public function duplicateSuggestions(Request $request, Company $company): JsonResponse
+    {
+        $validated = $request->validate([
+            'external_number' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'title' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'issue_date' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
+            'total' => ['required', 'numeric', 'min:0'],
+            'currency' => ['required', 'string', 'size:3', 'regex:/\A[A-Za-z]{3}\z/'],
+            'exclude_id' => ['sometimes', 'nullable', 'uuid'],
+        ]);
+
+        return response()->json([
+            'data' => app(BusinessExpenseReconciliationService::class)->duplicateSuggestions($company, $validated),
+        ]);
     }
 
     public function isdocExtractQuota(Request $request, Company $company): JsonResponse

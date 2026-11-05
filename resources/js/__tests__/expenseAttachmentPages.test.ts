@@ -8,7 +8,7 @@ import { toAppRows } from "@/evolu/queryLoad";
 import type { EvoluExpenseAttachmentRow } from "@/evolu/expenseAttachmentCrud";
 
 const mocks = vi.hoisted(() => ({
-    local: true, evolu: {} as object | null, displayForeign: false, filteredLagId: null as string | null,
+    local: true, evolu: {} as object | null, displayForeign: false,
     push: vi.fn(), remember: vi.fn(), refresh: vi.fn(), duplicate: vi.fn(),
     insertExpense: vi.fn(), updateExpense: vi.fn(), updateNote: vi.fn(), insertAttachment: vi.fn(), read: vi.fn(), lookup: vi.fn(),
     detect: vi.fn(), extract: vi.fn(), quota: vi.fn(), purchase: vi.fn(), upload: vi.fn(),
@@ -19,6 +19,8 @@ const localCompany = "abcdefghijklmnopqrstuv";
 const serverCompany = "00000000-0000-4000-8000-000000000001";
 const newExpenseId = "synthetic-created-expense";
 const company = ref(localCompany);
+// A lagging query is observable state, including when another consumer warms the computed projection.
+const filteredLagId = ref<string | null>(null);
 const route = reactive({ name: "invoicing-expense-new", params: {} as { expenseId?: string } });
 type Attachment = { id: string; original_filename: string; mime: string | null };
 function fixture(id = "expense-a", owner = localCompany) {
@@ -41,7 +43,7 @@ function rawRow(expense: ReturnType<typeof fixture>) { return {
     specificSymbol: expense.specific_symbol, internalNote: expense.internal_note, isDeleted: expense.isDeleted,
 }; }
 const expenseRows = computed(() => models.value
-    .filter((expense) => expense.isDeleted !== 1 && expense.id !== mocks.filteredLagId).map(rawRow));
+    .filter((expense) => expense.isDeleted !== 1 && expense.id !== filteredLagId.value).map(rawRow));
 const attachmentRows = computed(() => models.value.flatMap((expense) => expense.attachments.map((attachment) => ({
     id: attachment.id, expenseId: expense.id, originalFilename: attachment.original_filename,
     mimeType: attachment.mime, sizeBytes: "18", contentBase64: "c3ludGhldGlj",
@@ -141,7 +143,7 @@ beforeEach(() => {
     vi.resetAllMocks();
     mocks.local = true;
     mocks.displayForeign = false;
-    mocks.filteredLagId = null;
+    filteredLagId.value = null;
     mocks.evolu = { loadQuery: mocks.lookup };
     route.params = {};
     route.name = "invoicing-expense-new";
@@ -318,7 +320,7 @@ describe("expense attachment page integration", () => {
         await select();
         await wrapper!.find("form").trigger("submit");
         await flushPromises();
-        mocks.filteredLagId = newExpenseId;
+        filteredLagId.value = newExpenseId;
         expect(expenseRows.value.some((row) => row.id === newExpenseId)).toBe(false);
         await wrapper!.find("form").trigger("submit");
         await flushPromises();

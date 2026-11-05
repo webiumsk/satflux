@@ -58,6 +58,8 @@ export type EvoluBankTransactionMatchRow = {
 };
 
 export type BankTxApiRow = {
+    /** Persisted payment direction; explicit unverified/null evidence must not fall back to display guesses. */
+    recorded_direction?: "credit" | "debit" | "unverified" | null;
     id: string;
     booked_at: string;
     amount: string;
@@ -168,6 +170,8 @@ export function evoluBankTxToApi(
         amount: row.amount || "0.00",
         currency: row.currency || "EUR",
         direction,
+        recorded_direction: row.source === "inbound_email" && row.recordedDirectionEvidence != null
+            && row.recordedDirectionEvidence !== row.direction ? "unverified" : row.direction,
         variable_symbol: row.variableSymbol,
         counterparty_name: row.counterpartyName,
         reference: row.reference,
