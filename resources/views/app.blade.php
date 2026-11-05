@@ -1,3 +1,7 @@
+@php
+    $homepageVariant = \App\Support\HomepageVariant::resolve();
+    $homepageDemoPosUrl = \App\Support\HomepageDemoUrl::resolve();
+@endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
@@ -13,9 +17,9 @@
 
 <body class="font-sans antialiased">
     @if(isset($page))
-        <div id="app" class="min-h-dvh" data-page="{{ is_array($page) ? json_encode($page) : $page }}" data-lnurl-auth-enabled="{{ $lnurlAuthEnabled ? 'true' : 'false' }}"></div>
+        <div id="app" class="min-h-dvh" data-page="{{ is_array($page) ? json_encode($page) : $page }}" data-homepage-variant="{{ $homepageVariant }}" data-homepage-demo-pos-url="{{ $homepageDemoPosUrl }}" data-lnurl-auth-enabled="{{ $lnurlAuthEnabled ? 'true' : 'false' }}"></div>
     @else
-        <div id="app" class="min-h-dvh" data-lnurl-auth-enabled="{{ $lnurlAuthEnabled ? 'true' : 'false' }}"></div>
+        <div id="app" class="min-h-dvh" data-homepage-variant="{{ $homepageVariant }}" data-homepage-demo-pos-url="{{ $homepageDemoPosUrl }}" data-lnurl-auth-enabled="{{ $lnurlAuthEnabled ? 'true' : 'false' }}"></div>
     @endif
 </body>
 

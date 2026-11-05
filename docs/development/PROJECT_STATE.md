@@ -1,5 +1,48 @@
 # Project state
 
+## Landing showcase source publication authorized - 2026-11-06
+
+The Product Owner requests pushing the completed `feat/landing-showcase` work.
+The publication set is exactly 82 paths: reviewed runtime70, source/tests77 and
+five coordination documents. Runtime `8466ca0e...ab90f3f` and source/tests
+`fbb90756...4493576` match the frozen QA/security review evidence. Publication additionally removes
+two trailing spaces from one blank CSS line; the implementation contract records
+publication hashes and unchanged CSS semantics.
+The primary checkout and original design artifacts remain preserved.
+
+Local evidence remains frontend1,882/188, PHP44/279, lint48/52, typecheck111 known
+and zero new, locale parity, production build, Pint/PHPStan and AST-only Graphify.
+Only publication documentation and the verified CSS blank-line normalization follow
+acceptance, so product tests are not repeated. Main commits/pushes the bounded set and verifies the actual remote head.
+Remote CI/review and deployment are distinct evidence; no merge or deployment is
+authorized by this source-push request.
+
+## Landing showcase implementation and navigation follow-ups - 2026-11-05
+
+The owner authorizes implementing the approved V6 homepage and desktop footer
+placement. Work is isolated on `feat/landing-showcase`, based on freshly fetched
+`origin/master` `e584490d` (expense reconciliation PR429 merged in source).
+The unrelated primary checkout remains preserved. No deployment is inferred.
+
+A runtime Laravel configuration selects `legacy` or `showcase`, defaults safely
+to legacy and supplies the same escaped enum to both SPA documents. Both Vue
+routers share a document-stable selector. The showcase uses a matching localized
+Blade first-paint hero, genuine synthetic screenshots, existing production
+headers, live pricing/promotion policy and accessible tool/solution/image dialogs.
+Desktop footers move inside audited primary scroll hosts; nested/embedded panes
+do not create additional footers. Optional HTTPS PoS demo loading requires a click.
+
+Independent QA/security accept runtime70 `8466ca0e...ab90f3f` and source/tests77
+`fbb90756...4493576`. Final frontend1,882/188, PHP44/279 assertions, config-cache
+switch/rollback, locale parity, lint48/52, typecheck111 known/zero new, build,
+Pint/PHPStan and AST-only Graphify pass. The credentialed-demo disclosure and two
+nested-footer branches found during review are fixed and independently retested.
+The preserved header still overflows at768px and has existing drawer accessibility
+gaps; these are follow-ups. Source is local/uncommitted, not published. See
+[implementation contract](LANDING_SHOWCASE_IMPLEMENTATION.md) for exact ownership,
+acceptance, switch/rollback and separate Inertia/SEO/quality recommendations.
+Source publication, merge and deployment remain separate actions.
+
 ## PR429 second review fixes accepted locally - 2026-11-05
 
 All five CI jobs pass on published `714e078b`; CodeRabbit exact-head review has

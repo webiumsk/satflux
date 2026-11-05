@@ -43,10 +43,12 @@
       <DashboardStoresTab v-show="activeTab === 'stores'" ref="storesTabRef" />
       <DashboardInvoicingTab v-if="activeTab === 'invoicing'" />
     </div>
+    <AppFooter class="hidden md:block" />
   </div>
 </template>
 
 <script setup lang="ts">
+import AppFooter from '../components/layout/AppFooter.vue';
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';

@@ -1,5 +1,50 @@
 # Development decision log
 
+## 2026-11-06 - Publish the accepted landing scope without runtime changes
+
+Treat the owner's push request as authorization to commit and publish only the
+reviewed landing showcase/footer work to owned Satflux. Verify exact runtime70
+`8466ca0e...ab90f3f`, source/tests77 `fbb90756...4493576` and the 82-path staged
+boundary. Documentation records publication authority; accepted code, tests,
+assets, dependencies and thresholds have unchanged behavior. Publication removes
+two trailing spaces from a blank stylesheet line; publication manifests and an
+identical CSS semantic structure document the sole source-byte difference. Reuse the completed local
+checks and independent QA/security evidence, then verify the actual remote tip.
+Preserve unrelated primary work; source publication does not authorize merge or
+deployment or establish new-head CI/review coverage.
+
+## 2026-11-05 - Keep homepage switching runtime and preserve navigation boundaries
+
+Implement the owner-approved V6 alongside the existing `Landing.vue` rather than
+replace it. One Laravel resolver accepts only `showcase`, otherwise legacy, and
+passes an escaped enum to both SPA documents. Shared `LandingEntry.vue` selection
+is stable until full reload; the public Blade hero uses the same decision and
+shared locale copy. Runtime config-cache refresh switches or rolls back without
+rebuilding assets. No unauthenticated query override or admin persistence exists.
+
+Retain existing public/app headers and canonical/authentication behavior. Ship four
+provenance-backed synthetic screenshots, fixed Vue-rendered tool explanations and
+existing live pricing/promotion sources. Use local fonts; an optional configured
+credential-free HTTPS terminal loads only after a visitor action, under existing
+CSP. Demo availability does not assert payment-sandbox behavior.
+
+Place the desktop application footer inside each designated primary content scroll
+host. Explicit AppScrollPane opt-in defaults off, and embedded invoicing suppresses
+its footer. Preserve fixed store toolbars, sidebar, banner and mobile navigation.
+
+Keep Laravel/Inertia store-app routes and Vue Router behavior unchanged for this
+scope. Consolidation of duplicate routing, deliberate shared-prop middleware/auth
+initialization and complete marketing HTML rendering require separate bounded
+work. No new implementation or release authority follows from these proposals.
+
+Final independent QA/security accept runtime70 `8466ca0e...ab90f3f` and
+source/tests77 `fbb90756...4493576`. Server-side demo URL sanitization closes a
+reproduced credential-disclosure finding before public bootstrap. Exact inner
+avatar/loading div restoration and actual-page regressions close two duplicate
+footer findings; scoped CSS preserves shared underline utilities. Final frontend
+1,882/188 and PHP44/279 pass alongside unchanged lint/type baselines and the other
+recorded gates. Existing tablet-header/drawer issues remain explicit follow-ups.
+
 ## 2026-11-05 - Bound projection work and preserve linked-status bulk semantics
 
 Keep the canonical bank-claim validator and build immutable snapshot indexes once,

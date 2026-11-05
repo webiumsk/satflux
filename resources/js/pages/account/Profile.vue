@@ -1590,10 +1590,12 @@
         @done="handleRecoveryEnrolled"
       />
     </div>
+    <AppFooter class="hidden md:block" />
   </div>
 </template>
 
 <script setup lang="ts">
+import AppFooter from '../../components/layout/AppFooter.vue';
 import FreeProNotice from "@/components/account/FreeProNotice.vue";
 import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
 import { isPurchasePausedError } from "@/services/apiError";

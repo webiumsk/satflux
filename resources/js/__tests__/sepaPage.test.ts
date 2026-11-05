@@ -111,6 +111,8 @@ async function mountPage() {
         global: {
             stubs: {
                 RafflesPageLayout: { template: "<div><slot /></div>" },
+                // The shared footer's optional /version fetch is outside SEPA request counts.
+                AppFooter: { template: "<footer />" },
             },
         },
     });

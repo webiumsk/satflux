@@ -1,7 +1,7 @@
 <template>
   <div
     class="flex flex-col"
-    :class="embedded ? '' : 'flex-1'"
+    :class="embedded ? '' : 'min-h-0 flex-1 overflow-y-auto max-md:overflow-visible'"
   >
     <InvoicingLoadingState
       v-if="!error"
@@ -17,10 +17,12 @@
         {{ t('invoicing.evolu_reload_page') }}
       </button>
     </div>
+    <AppFooter v-if="!embedded" class="hidden md:block" />
   </div>
 </template>
 
 <script setup lang="ts">
+import AppFooter from '../layout/AppFooter.vue';
 import { useI18n } from 'vue-i18n';
 import InvoicingLoadingState from './ui/InvoicingLoadingState.vue';
 

@@ -6,7 +6,10 @@ export default {
     content: [
         './resources/views/public.blade.php',
         './resources/views/partials/landing-hero-shell.blade.php',
+        './resources/views/partials/landing-showcase-shell.blade.php',
         './resources/js/pages/Landing.vue',
+        './resources/js/pages/LandingEntry.vue',
+        './resources/js/pages/LandingShowcase.vue',
         './resources/js/pages/Pricing.vue',
         './resources/js/pages/BillingSuccess.vue',
         './resources/js/pages/Support.vue',

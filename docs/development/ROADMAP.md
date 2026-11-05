@@ -1,5 +1,29 @@
 # Development roadmap
 
+## Publish the accepted landing showcase source - 2026-11-06
+
+The owner authorizes commit/push of the existing reviewed 82-path feature scope.
+Preserve the accepted runtime/source behavior, allowing only the documented
+two-space blank-line normalization, and preserve the dirty primary checkout
+and verify the resulting owned remote branch. Retain all local test/review evidence
+without inferring fresh CI or deployment. Subsequent navigation, header, type-debt,
+PR, merge and deployment actions remain separately bounded.
+
+## Landing showcase and footer ready for source handoff - 2026-11-05
+
+The accepted scope is the V6 Vue showcase, reversible environment-only homepage
+selection with matching first paint, five locales and desktop footer placement.
+Main integrates server/bootstrap/router contracts; frontend specialists own the
+showcase and audited scroll hosts; independent QA/security review actual files.
+
+Frozen-scope QA/security reviews and local gates are complete: frontend1,882/188,
+PHP44/279, cache switch/rollback, lint/type/locales/build/Pint/PHPStan and AST graph.
+The isolated `feat/landing-showcase` worktree retains all local uncommitted changes.
+Source publication and release actions remain separate. No admin selector,
+whole-app Inertia migration, billing change, merge or deployment is included.
+Follow-up navigation ownership, shared props/auth, public indexing/performance and
+frontend type debt are proposals in the implementation contract.
+
 ## Publish accepted PR429 second-review fixes - 2026-11-05
 
 The new performance, Node-range and server linked-status findings are repaired

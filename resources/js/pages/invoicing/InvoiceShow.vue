@@ -282,10 +282,12 @@
         />
       </div>
     </div>
+    <AppFooter class="hidden md:block" />
   </div>
 </template>
 
 <script setup lang="ts">
+import AppFooter from '../../components/layout/AppFooter.vue';
 import { toAppRows } from '../../evolu/queryLoad';
 import { asApiError } from "../../utils/apiError";
 import { computed, onMounted, ref, watch } from 'vue';
