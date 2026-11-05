@@ -1,5 +1,18 @@
 # Local workspace
 
+## PR430 review corrections ready in the retained feature worktree - 2026-11-06
+
+`storage/app/private/worktrees/landing-showcase` retains the independently accepted
+review-fix scope on `feat/landing-showcase`, based on published `665cc2f6`.
+Runtime15 `f936a8ae...68369f` / source-tests22 `c5c36215...d1bed` match QA/security
+acceptance. Main owns source publication to the same owned branch and verification
+of the actual remote commit/checks. The dirty primary checkout, design originals,
+other worktrees and external repositories are preserved. No merge/deployment.
+
+Evidence, exact scope, original CI attribution and known unchanged header limits
+are in [the review record](LANDING_SHOWCASE_REVIEW.md); private reproducible evidence
+is retained beneath the feature worktree's existing review evidence directory.
+
 ## Landing showcase publication handoff - 2026-11-06
 
 The Product Owner authorizes commit/push from the existing durable

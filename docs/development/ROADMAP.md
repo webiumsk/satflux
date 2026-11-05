@@ -1,5 +1,15 @@
 # Development roadmap
 
+## Publish accepted PR430 review corrections - 2026-11-06
+
+Keep the accepted runtime15/source-tests22 manifests and bounded six-document
+handoff. Publish the corrections on the existing owned `feat/landing-showcase`
+branch, verify its remote head and observe actual new-head CI/CodeRabbit state.
+Full local frontend1,910/191 plus final focused53 and footer16, PHP44/279 and all
+recorded lint/type/locale/build/Pint/graph/browser gates pass. Preserve thresholds,
+public headers and unrelated primary work. Remaining header/navigation redesign,
+merge and deployment stay outside this review-fix scope.
+
 ## Publish the accepted landing showcase source - 2026-11-06
 
 The owner authorizes commit/push of the existing reviewed 82-path feature scope.

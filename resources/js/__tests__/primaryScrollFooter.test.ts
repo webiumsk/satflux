@@ -10,7 +10,7 @@ import AppShowLayout from '../components/stores/AppShowLayout.vue';
 enableAutoUnmount(afterEach);
 
 const mocks = vi.hoisted(() => ({
-  fetchStore: vi.fn(), fetchDashboard: vi.fn(), fetchApps: vi.fn(),
+  fetchStore: vi.fn(), fetchDashboard: vi.fn(), fetchApps: vi.fn(), fetchApp: vi.fn(),
 }));
 
 beforeEach(() => {
@@ -18,13 +18,14 @@ beforeEach(() => {
   mocks.fetchStore.mockResolvedValue({ id: 'sample-store', name: 'Sample Store', logo_url: null, wallet_type: null });
   mocks.fetchDashboard.mockResolvedValue(undefined);
   mocks.fetchApps.mockResolvedValue([]);
+  mocks.fetchApp.mockResolvedValue({ id: 'sample-app', name: 'Sample App' });
 });
 
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ path: '/stores/sample-store', name: 'stores-show', params: { id: 'sample-store' }, query: {} }),
+  useRoute: () => ({ path: '/stores/sample-store', name: 'stores-show', params: { id: 'sample-store', appId: 'sample-app' }, query: {} }),
   useRouter: () => ({ push: vi.fn() }),
 }));
-vi.mock('../store/apps', () => ({ useAppsStore: () => ({ apps: [], fetchApps: mocks.fetchApps }) }));
+vi.mock('../store/apps', () => ({ useAppsStore: () => ({ apps: [], fetchApps: mocks.fetchApps, fetchApp: mocks.fetchApp }) }));
 vi.mock('../store/stores', () => ({ useStoresStore: () => ({ dashboard: null, fetchStore: mocks.fetchStore, fetchDashboard: mocks.fetchDashboard }) }));
 vi.mock('../store/flash', () => ({ useFlashStore: () => ({ error: vi.fn(), success: vi.fn(), clear: vi.fn() }) }));
 vi.mock('../composables/useBtcPayUrl', () => ({
@@ -85,6 +86,30 @@ describe('primary scroll footer ownership', () => {
     expect(pane.get('article').text()).toBe('Long app content');
     expect(pane.find('[data-testid="toolbar"]').exists()).toBe(false);
     expect(wrapper.get('[data-testid="toolbar"]').element.parentElement?.nextElementSibling).toBe(pane.element);
+    expect(pane.element.lastElementChild?.tagName).toBe('FOOTER');
+  });
+
+  it('keeps route-loaded app tools fixed while content and one footer share the primary scrollport', async () => {
+    let resolveStore!: (store: { id: string; name: string }) => void;
+    const pendingStore = new Promise<{ id: string; name: string }>(resolve => { resolveStore = resolve; });
+    mocks.fetchStore.mockReturnValueOnce(pendingStore);
+    const wrapper = mount(AppShowLayout, {
+      slots: { toolbar: '<nav data-testid="toolbar">Store tools</nav>', default: '<article>Loaded app content</article>' },
+      global: { stubs },
+    });
+
+    expect(mocks.fetchStore).toHaveBeenCalledWith('sample-store');
+    expect(wrapper.find('[data-testid="toolbar"]').exists()).toBe(false);
+    resolveStore({ id: 'sample-store', name: 'Sample Store' });
+    await flushPromises();
+
+    expect(mocks.fetchApps).toHaveBeenCalledWith('sample-store');
+    expect(mocks.fetchApp).toHaveBeenCalledWith('sample-store', 'sample-app');
+    const pane = wrapper.getComponent(AppScrollPane);
+    expect(pane.get('article').text()).toBe('Loaded app content');
+    expect(pane.find('[data-testid="toolbar"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="toolbar"]').element.parentElement?.nextElementSibling).toBe(pane.element);
+    expect(wrapper.findAll('footer')).toHaveLength(1);
     expect(pane.element.lastElementChild?.tagName).toBe('FOOTER');
   });
 

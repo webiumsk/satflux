@@ -1,5 +1,29 @@
 # Development decision log
 
+## 2026-11-06 - Resolve marketing outcomes before rendering and preserve native event order
+
+Distinguish canonical loaded, confirmed guest and unavailable session outcomes
+without changing existing fetchUser boolean semantics or authorization/cleanup.
+Only the showcase uses the explicit outcome; pricing requires its own completed
+request and real loaded state. Keep optional work idle and iframe loading explicit.
+
+Reuse the raffle preview's mounted reduced-motion preference in a shared helper.
+Actual native DOM listeners can flush microtasks between propagation listeners,
+so nextTick alone cannot override the existing header's smooth scroll. Select the
+panel synchronously and schedule the final fragment scroll in one owned/coalesced
+zero-delay task, canceled on unmount. Preserve PublicHeader itself.
+
+Keep fallback/footer ownership in CompanyShow and cache only public release
+metadata across footer mounts. Reject the review phrase placing a footer outside
+its primary scrollport: the accepted contract puts toolbar outside, footer inside
+after content. Add actual route-loaded coverage without removing prop/Inertia cases.
+
+Retain CodeRabbit thresholds and add meaningful docs rather than alter coverage
+rules. Independent QA/security accept runtime15 `f936a8ae...68369f` and source22
+`c5c36215...d1bed`. Local and independent tests/browser evidence are recorded in
+[the review record](LANDING_SHOWCASE_REVIEW.md). Source publication is continuing
+authorized PR remediation; merge/deployment remain separate gates.
+
 ## 2026-11-06 - Publish the accepted landing scope without runtime changes
 
 Treat the owner's push request as authorization to commit and publish only the

@@ -1,5 +1,5 @@
 <template>
-  <div class="landing-showcase">
+  <div class="landing-showcase" @click.capture="onFragmentLinkClick">
     <PublicHeader />
     <div class="showcase-body">
       <div class="ambient-glow" aria-hidden="true">
@@ -26,12 +26,22 @@
                 {{ t('showcase.hero.intro') }}
               </p>
               <div class="actions">
-                <router-link class="btn btn-primary" :to="accountDestination">
+                <router-link v-if="authReady" class="btn btn-primary" :to="accountDestination">
                   {{ t('showcase.hero.start') }}
                   <span aria-hidden="true">
                     ↗
                   </span>
                 </router-link>
+                <button
+                  v-else
+                  class="btn btn-primary"
+                  type="button"
+                  :disabled="authState === 'loading'"
+                  :aria-busy="authState === 'loading'"
+                  @click="loadAuthentication"
+                >
+                  {{ t(authState === 'loading' ? 'common.loading' : 'common.retry') }}
+                </button>
                 <button class="btn btn-secondary" type="button" @click="showDemo">
                   ⚡
                   {{ t('showcase.hero.demo') }}
@@ -394,7 +404,7 @@
           </div>
         </section>
         <section id="pricing" class="wrap pricing-section" aria-labelledby="pricing-title">
-          <FreeProNotice :active="promotionActive" :show-action="true" class="mb-6" />
+          <FreeProNotice v-if="pricingReady && authReady" :active="promotionActive" :show-action="true" class="mb-6" />
           <div class="pricing-panel">
             <div>
               <p class="eyebrow">
@@ -403,9 +413,13 @@
               <h2 id="pricing-title">
                 {{ t('showcase.pricing.title') }}
               </h2>
-              <p>
+              <p v-if="pricingReady">
                 {{ promotionActive ? t('free_pro.description') : t('landing.pricing_hero_subheadline', { days: pricing.trial_days }) }}
               </p>
+              <button v-else-if="pricingChecked" type="button" class="link-button" @click="loadCurrentPricing">
+                {{ t('common.retry') }}
+              </button>
+              <p v-else role="status">{{ t('common.loading') }}</p>
             </div>
             <router-link class="btn btn-secondary" to="/pricing">
               {{ t('showcase.pricing.compare') }}
@@ -449,10 +463,20 @@
           <p>
             {{ t('showcase.cta.copy') }}
           </p>
-          <router-link class="btn btn-primary" :to="accountDestination">
+          <router-link v-if="authReady" class="btn btn-primary" :to="accountDestination">
             {{ t('showcase.hero.start') }}
             ↗
           </router-link>
+          <button
+            v-else
+            class="btn btn-primary"
+            type="button"
+            :disabled="authState === 'loading'"
+            :aria-busy="authState === 'loading'"
+            @click="loadAuthentication"
+          >
+            {{ t(authState === 'loading' ? 'common.loading' : 'common.retry') }}
+          </button>
         </section>
       </main>
       <ShowcaseDialog id="detail-dialog" ref="solutionDialog" v-slot="{ close }" labelledby="dialog-title">
@@ -486,9 +510,19 @@
             </article>
           </div>
           <div class="dialog-actions">
-            <router-link class="btn btn-primary" :to="accountDestination" @click="close">
+            <router-link v-if="authReady" class="btn btn-primary" :to="accountDestination" @click="close">
               {{ t('showcase.hero.start') }}
             </router-link>
+            <button
+              v-else
+              class="btn btn-primary"
+              type="button"
+              :disabled="authState === 'loading'"
+              :aria-busy="authState === 'loading'"
+              @click="loadAuthentication"
+            >
+              {{ t(authState === 'loading' ? 'common.loading' : 'common.retry') }}
+            </button>
             <button type="button" class="link-button" @click="showToolOverview">
               {{ t('showcase.ui.all_tools') }}
               ↗
@@ -546,7 +580,10 @@
             </div>
           </div>
           <div class="tool-detail-links">
-            <router-link class="link-button" :to="`/documentation/${currentTool.docs}`" @click="close">
+            <a v-if="currentTool.docs.startsWith('https://')" class="link-button" :href="currentTool.docs" target="_blank" rel="noopener noreferrer">
+              {{ t('showcase.ui.documentation') }} ↗
+            </a>
+            <router-link v-else class="link-button" :to="`/documentation/${currentTool.docs}`" @click="close">
               {{ t('showcase.ui.documentation') }}
               ↗
             </router-link>
@@ -656,13 +693,20 @@ import { useAuthStore } from '../store/auth';
 import { usePricing } from '../composables/usePricing';
 import { usePlanFeatures } from '../composables/usePlanFeatures';
 import { useBtcPayUrl } from '../composables/useBtcPayUrl';
+import { usePrefersReducedMotion } from '../composables/usePrefersReducedMotion';
 import '../styles/landing-showcase.css';
 const { t } = useI18n();
 const authStore = useAuthStore();
-const { pricing, promotionActive, load: loadPricing } = usePricing();
+const { pricing, promotionActive, loaded: pricingLoaded, load: loadPricing } = usePricing();
 const { load: loadFeatures } = usePlanFeatures();
 const { load: loadBtcpay } = useBtcPayUrl();
-const accountDestination = computed(() => authStore.isAuthenticated ? '/dashboard' : '/register');
+const authState = ref<'loading' | 'ready' | 'unavailable'>('loading');
+const authReady = computed(() => authState.value === 'ready');
+const accountDestination = computed(() => authReady.value && authStore.isAuthenticated ? '/dashboard' : '/register');
+const pricingChecked = ref(false);
+const pricingRequestSucceeded = ref(false);
+const pricingReady = computed(() => pricingChecked.value && pricingRequestSucceeded.value && pricingLoaded.value);
+const prefersReducedMotion = usePrefersReducedMotion();
 const preview = ref<'overview' | 'demo'>('overview');
 const demoLoaded = ref(false);
 const demoUrl = readShowcaseDemoUrl();
@@ -690,11 +734,44 @@ const solutionItems: Record<ShowcaseStoryKey, string[]> = {
   invoicing: ['local_first', 'companies', 'matching', 'expenses', 'recurring', 'invoice_payment', 'accounting'],
   events: ['tickets', 'checkin', 'raffle', 'crowdfund'],
 };
-function eventOpener(event: Event): HTMLElement | null { return event.currentTarget instanceof HTMLElement ? event.currentTarget : null; }
-function zoomLabel(key: ShowcaseScreenshotKey): string { return `${t('showcase.ui.zoom')}: ${t(`showcase.screenshots.${key}`)}`; }
-async function openSolution(key: ShowcaseStoryKey, event: Event): Promise<void> { const origin = eventOpener(event); activeSolution.value = key; await nextTick(); solutionDialog.value?.open(origin); }
-async function openTool(index: number, event: Event): Promise<void> { const origin = eventOpener(event); activeTool.value = index; toolOpen.value = true; await nextTick(); toolDialog.value?.open(origin); toolTitle.value?.focus(); }
-async function openScreenshot(key: ShowcaseScreenshotKey, event: Event): Promise<void> { const origin = eventOpener(event); activeScreenshot.value = key; nativeZoom.value = false; await nextTick(); screenshotDialog.value?.open(origin); }
+/** Keep the original interactive element so dialog close restores its focus. */
+function eventOpener(event: Event): HTMLElement | null {
+  return event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+}
+
+/** Identify both the zoom action and selected illustrative screenshot to assistive technology. */
+function zoomLabel(key: ShowcaseScreenshotKey): string {
+  return `${t('showcase.ui.zoom')}: ${t(`showcase.screenshots.${key}`)}`;
+}
+
+/** Render the selected solution before opening its single native dialog. */
+async function openSolution(key: ShowcaseStoryKey, event: Event): Promise<void> {
+  const origin = eventOpener(event);
+  activeSolution.value = key;
+  await nextTick();
+  solutionDialog.value?.open(origin);
+}
+
+/** Open one tool browser while retaining the card that originally invoked it. */
+async function openTool(index: number, event: Event): Promise<void> {
+  const origin = eventOpener(event);
+  activeTool.value = index;
+  toolOpen.value = true;
+  await nextTick();
+  toolDialog.value?.open(origin);
+  toolTitle.value?.focus();
+}
+
+/** Reset zoom to fit for each new illustrative screenshot and preserve its opener. */
+async function openScreenshot(key: ShowcaseScreenshotKey, event: Event): Promise<void> {
+  const origin = eventOpener(event);
+  activeScreenshot.value = key;
+  nativeZoom.value = false;
+  await nextTick();
+  screenshotDialog.value?.open(origin);
+}
+
+/** Page within the fixed tool list without wrapping or stacking dialogs. */
 async function changeTool(delta: number): Promise<void> {
   const next = activeTool.value + delta;
   if (next < 0 || next >= showcaseTools.length) return;
@@ -704,6 +781,7 @@ async function changeTool(delta: number): Promise<void> {
   toolTitle.value?.focus();
 }
 
+/** Reserve unmodified in-bounds arrows for the currently open tool dialog. */
 function onToolKeydown(event: KeyboardEvent): void {
   const dialog = event.currentTarget;
   if (!(dialog instanceof HTMLDialogElement) || !dialog.open || !toolOpen.value) return;
@@ -715,11 +793,25 @@ function onToolKeydown(event: KeyboardEvent): void {
   void changeTool(delta);
 }
 
-async function showToolOverview(): Promise<void> { solutionDialog.value?.close(false); await nextTick(); ecosystemTitle.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }); ecosystemTitle.value?.focus({ preventScroll: true }); }
-async function showDemo(): Promise<void> { preview.value = 'demo'; await nextTick(); demoTab.value?.scrollIntoView({ behavior: 'smooth', block: 'center' }); demoTab.value?.focus({ preventScroll: true }); }
+/** Leave the solution dialog for the tool overview without refocusing the old opener. */
+async function showToolOverview(): Promise<void> {
+  solutionDialog.value?.close(false);
+  await nextTick();
+  ecosystemTitle.value?.scrollIntoView({ behavior: prefersReducedMotion.value ? 'instant' : 'smooth', block: 'start' });
+  ecosystemTitle.value?.focus({ preventScroll: true });
+}
+
+/** Select the demo preview while keeping external iframe activation a separate action. */
+async function showDemo(): Promise<void> {
+  preview.value = 'demo';
+  await nextTick();
+  demoTab.value?.scrollIntoView({ behavior: prefersReducedMotion.value ? 'instant' : 'smooth', block: 'center' });
+  demoTab.value?.focus({ preventScroll: true });
+}
+
+/** Implement roving tab focus for the two preview panels without loading the iframe. */
 function onTabKeydown(event: KeyboardEvent): void {
-  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key))
-    return;
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
   event.preventDefault();
   preview.value = event.key === 'Home' ? 'demo' : event.key === 'End' ? 'overview' : preview.value === 'overview' ? 'demo' : 'overview';
   void nextTick().then(() => (preview.value === 'demo' ? demoTab.value : overviewTab.value)?.focus());
@@ -727,25 +819,97 @@ function onTabKeydown(event: KeyboardEvent): void {
 let idleHandle: number | undefined;
 let deferredTimer: ReturnType<typeof setTimeout> | undefined;
 let hashTimer: ReturnType<typeof setTimeout> | undefined;
+let fragmentTimer: ReturnType<typeof setTimeout> | undefined;
 let frameHandle: number | undefined;
-function scrollToHash(): void {
-  const id = window.location.hash.slice(1);
-  if (!id)
-    return;
+/** Decode a fragment and select its panel before either header or deferred page scrolling. */
+function selectFragmentTarget(fragment: string): string | null {
+  const id = fragment.slice(1);
+  if (!id) return null;
+  let targetId: string;
   try {
-    document.getElementById(decodeURIComponent(id))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    targetId = decodeURIComponent(id);
+  } catch {
+    return null; // Malformed fragments must never become selectors.
   }
-  catch { /* Malformed fragments are not selectors. */ }
+  if (targetId === 'how-it-works-pos') {
+    preview.value = 'demo';
+  }
+  return targetId;
 }
+
+/** Scroll a decoded fragment after its panel renders, honoring the shared motion preference. */
+async function scrollToHash(fragment = window.location.hash): Promise<void> {
+  const targetId = selectFragmentTarget(fragment);
+  if (!targetId) return;
+  await nextTick();
+  document.getElementById(targetId)?.scrollIntoView({ behavior: prefersReducedMotion.value ? 'instant' : 'smooth', block: 'start' });
+}
+/** Follow same-page header links even when Vue Router reuses the current hash. */
+function onFragmentLinkClick(event: MouseEvent): void {
+  if (event.defaultPrevented || event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+  const anchor = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('a[href]') : null;
+  if (!anchor || (anchor.target && anchor.target !== '_self') || anchor.hasAttribute('download')) return;
+  let destination: URL;
+  try {
+    destination = new URL(anchor.href, window.location.href);
+  } catch {
+    return;
+  }
+  if (destination.origin !== window.location.origin || destination.pathname !== '/' || !destination.hash) return;
+  if (!selectFragmentTarget(destination.hash)) return;
+  if (fragmentTimer !== undefined) clearTimeout(fragmentTimer);
+  // Native browsers can flush microtasks between event listeners; finish after the entire click.
+  fragmentTimer = setTimeout(() => {
+    fragmentTimer = undefined;
+    void scrollToHash(destination.hash);
+  }, 0);
+}
+
+/** Adapt native hash events without passing the event object as a fragment value. */
+function onHashChange(): void {
+  void scrollToHash();
+}
+
+/** Resolve auth before advertising registration or dashboard routing; unavailable checks remain retriable. */
+async function loadAuthentication(): Promise<void> {
+  authState.value = 'loading';
+  try {
+    const outcome = await authStore.fetchUserWithOutcome();
+    authState.value = outcome === 'loaded' || outcome === 'guest' ? 'ready' : 'unavailable';
+  } catch {
+    authState.value = 'unavailable';
+  }
+}
+
+/** Wait for this pricing request and a real loaded result before showing any trial or promotion terms. */
+async function loadCurrentPricing(): Promise<void> {
+  pricingChecked.value = false;
+  pricingRequestSucceeded.value = false;
+  try {
+    await loadPricing();
+    pricingRequestSucceeded.value = pricingLoaded.value;
+  } catch {
+    // A transport failure must never expose fallback or stale pricing terms.
+  } finally {
+    pricingChecked.value = true;
+  }
+}
+
+/** Defer only optional feature and provider configuration, never CTA or pricing decisions. */
+function loadDeferred(): void {
+  void Promise.all([loadFeatures(), loadBtcpay()]);
+}
+
 onMounted(() => {
   void nextTick().then(() => { frameHandle = requestAnimationFrame(() => { document.getElementById('landing-shell')?.remove(); document.getElementById('app')?.classList.remove('sf-app-pending'); }); });
-  const loadDeferred = () => { void Promise.all([loadPricing(), loadFeatures(), loadBtcpay(), authStore.fetchUser()]); };
-  if ('requestIdleCallback' in window)
+  void loadAuthentication();
+  void loadCurrentPricing();
+  if (typeof window.requestIdleCallback === 'function')
     idleHandle = requestIdleCallback(loadDeferred);
   else
     deferredTimer = setTimeout(loadDeferred, 0);
-  hashTimer = setTimeout(scrollToHash, 100);
-  window.addEventListener('hashchange', scrollToHash);
+  hashTimer = setTimeout(() => { void scrollToHash(); }, 100);
+  window.addEventListener('hashchange', onHashChange);
 });
 onBeforeUnmount(() => {
   if (idleHandle !== undefined)
@@ -754,8 +918,10 @@ onBeforeUnmount(() => {
     clearTimeout(deferredTimer);
   if (hashTimer !== undefined)
     clearTimeout(hashTimer);
+  if (fragmentTimer !== undefined)
+    clearTimeout(fragmentTimer);
   if (frameHandle !== undefined)
     cancelAnimationFrame(frameHandle);
-  window.removeEventListener('hashchange', scrollToHash);
+  window.removeEventListener('hashchange', onHashChange);
 });
 </script>

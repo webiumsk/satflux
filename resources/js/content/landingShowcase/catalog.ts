@@ -1,7 +1,7 @@
 /** Public documentation destinations and illustrative screenshots, never payment credentials. */
 export const showcaseTools = [
   { key: 'lightning', anchor: 'how-it-works-ln-address', symbol: '@', docs: 'store-lightning-addresses' },
-  { key: 'woocommerce', anchor: 'how-it-works-eshop', symbol: '↗', docs: 'pay-button', secondary: 'https://wordpress.org/plugins/satflux-for-woocommerce/' },
+  { key: 'woocommerce', anchor: 'how-it-works-eshop', symbol: '↗', docs: 'https://github.com/webiumsk/satflux-woocommerce/blob/main/readme.txt', secondary: 'https://wordpress.org/plugins/satflux-for-woocommerce/' },
   { key: 'paybutton', anchor: 'how-it-works-pay-button', symbol: '⌘', docs: 'pay-button' },
   { key: 'bankqr', anchor: 'how-it-works-bank-qr', symbol: '▤', docs: 'sepa-instant-qr' },
   { key: 'crowdfund', anchor: 'how-it-works-crowdfund', symbol: '◷', docs: 'what-is-satflux' },

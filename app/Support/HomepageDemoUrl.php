@@ -4,6 +4,7 @@ namespace App\Support;
 
 final class HomepageDemoUrl
 {
+    /** Return a public HTTPS demo URL without embedded user/password credentials. */
     public static function resolve(): string
     {
         $url = config('marketing.demo_pos_url');

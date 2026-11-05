@@ -23,6 +23,7 @@ export default {
         './resources/js/pages/faq/**/*.vue',
         './resources/js/components/layout/PublicHeader.vue',
         './resources/js/components/layout/AppFooter.vue',
+        './resources/js/components/account/FreeProNotice.vue',
         './resources/js/components/legal/**/*.vue',
         './resources/js/components/landing/**/*.vue',
         './resources/js/components/ui/FlashMessage.vue',

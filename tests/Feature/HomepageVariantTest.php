@@ -10,6 +10,7 @@ use Tests\TestCase;
 
 class HomepageVariantTest extends TestCase
 {
+    /** Supply valid and malformed configuration values with their expected fallback. */
     public static function variants(): array
     {
         return [
@@ -26,6 +27,7 @@ class HomepageVariantTest extends TestCase
     }
 
     #[DataProvider('variants')]
+    /** Verify both SPA bootstrap paths and the selected first-paint shell use one safe variant. */
     public function test_both_documents_use_the_resolved_variant_and_matching_public_shell(mixed $configured, string $expected): void
     {
         $this->withoutVite();
@@ -45,6 +47,7 @@ class HomepageVariantTest extends TestCase
         }
     }
 
+    /** Prevent public query parameters from changing the configured homepage. */
     public function test_public_query_parameters_cannot_override_the_server_variant(): void
     {
         $this->withoutVite();
@@ -56,6 +59,7 @@ class HomepageVariantTest extends TestCase
             ->assertSee('id="landing-hero-heading"', false);
     }
 
+    /** Keep internal public-page navigation aware of the variant without rendering a homepage shell. */
     public function test_non_home_public_pages_receive_bootstrap_without_a_landing_shell(): void
     {
         $this->withoutVite();
@@ -67,6 +71,7 @@ class HomepageVariantTest extends TestCase
             ->assertDontSee('id="landing-shell"', false);
     }
 
+    /** Preserve the full-document handoff when an Inertia visit reaches the public homepage. */
     public function test_inertia_home_visits_keep_the_existing_full_document_boundary(): void
     {
         config(['marketing.homepage_variant' => 'showcase', 'app.url' => 'https://panel.test']);
@@ -76,6 +81,7 @@ class HomepageVariantTest extends TestCase
             ->assertHeader('X-Inertia-Location', 'https://panel.test/');
     }
 
+    /** Escape a valid public demo URL consistently in both document templates. */
     public function test_public_demo_url_is_escaped_in_both_documents(): void
     {
         $this->withoutVite();
@@ -88,6 +94,7 @@ class HomepageVariantTest extends TestCase
         }
     }
 
+    /** Supply malformed, unsafe and credential-bearing demo URL configurations. */
     public static function unsafeDemoUrls(): array
     {
         return [
@@ -106,6 +113,7 @@ class HomepageVariantTest extends TestCase
     }
 
     #[DataProvider('unsafeDemoUrls')]
+    /** Ensure rejected demo URL values cannot disclose credentials through either HTML bootstrap. */
     public function test_unsafe_demo_configuration_is_never_published_in_either_document(mixed $url): void
     {
         $this->withoutVite();
@@ -121,6 +129,7 @@ class HomepageVariantTest extends TestCase
         }
     }
 
+    /** Verify the first-paint hero resolves the same authored copy in all five supported locales. */
     public function test_showcase_shell_uses_the_shared_localized_hero_copy(): void
     {
         foreach (['en', 'sk', 'es', 'de', 'cs'] as $locale) {

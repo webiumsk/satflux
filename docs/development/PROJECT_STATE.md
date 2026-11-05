@@ -1,5 +1,29 @@
 # Project state
 
+## PR430 review remediation accepted locally - 2026-11-06
+
+Verified all supplied findings against published `665cc2f6`. Critical auth/pricing
+requests now start independently of idle and gate page outcomes on confirmed
+results. A narrow auth outcome helper preserves the existing boolean API and
+all original generation/CSRF/key/tenant handling. Native header fragments select
+the PoS panel without activating its iframe; a coalesced, cleaned-up task makes
+the final scroll respect reduced motion after all native listeners.
+
+Missing/error company views retain their footer. Public version requests share
+successful/in-flight state with failure retry. WooCommerce points to verified
+setup/compatibility documentation; primary anchors meet AA and public CSS includes
+FreeProNotice borders. Operator docs explicitly forbid secrets in the entire
+public demo URL. Missing handler/helper/test-method documentation is supplied.
+
+Independent QA/security accept runtime15 `f936a8ae...68369f` and source/tests22
+`c5c36215...d1bed`. Local full frontend1,910/191 passes before the final native-event
+timing correction; final focused53/4 and unchanged footer16/3 pass afterward.
+PHP44/279, final type111 known/zero new, lint48/52, locale parity, build, Pint and
+AST-only graph pass. QA native16/16, focused15/15 and extra5/5 pass. No unresolved
+implementation finding remains. Main owns the next scoped corrective commit/push
+and actual new-head CI/review verification; prior CI42126779244 green remains
+attributed only to `665cc2f6`. No merge or deployment is authorized.
+
 ## Landing showcase source publication authorized - 2026-11-06
 
 The Product Owner requests pushing the completed `feat/landing-showcase` work.

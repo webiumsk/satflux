@@ -78,7 +78,8 @@
       transition: background 0.2s, transform 0.2s, border-color 0.2s;
     }
     .landing-showcase .showcase-body .btn:hover { transform: translateY(-1px); }
-    .landing-showcase .showcase-body .btn-primary {
+    .landing-showcase .showcase-body .btn-primary,
+    .landing-showcase .showcase-body a.btn-primary:not(.underline) {
       background: #a49bff;
       color: #171326;
       box-shadow: 0 5px 22px rgba(133, 119, 255, 0.2);
