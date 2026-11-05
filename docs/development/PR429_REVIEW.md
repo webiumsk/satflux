@@ -205,7 +205,7 @@ not evidence for the new working changes.
 
 | Finding | Accepted contract |
 | --- | --- |
-| 4479679830, Node 23 | Declare `^22.13.0 || >=24.0.0` consistently in package metadata/README. Official Node history removes the SQLite flag at 22.13 and 23.4; exclude the unsupported 23 branch. Only root engine metadata changes; the dependency graph stays unchanged. |
+| 4479679830, Node 23 | Declare `^22.13.0 \|\| >=24.0.0` consistently in package metadata/README. Official Node history removes the SQLite flag at 22.13 and 23.4; exclude the unsupported 23 branch. Only root engine metadata changes; the dependency graph stays unchanged. |
 | 4479679843, bank-page mapping | Preselect only where raw status is safe, index related rows once, and apply effective conflict-aware status/limit in one pass. A claimed raw matched movement can become unmatched after sync and must remain discoverable. |
 | 4479679852, expense projection | Build an exact owner/company/transaction lookup once per reactive snapshot for the expense list and accountant export. Preserve duplicate-bucket ambiguity and invoice reservation semantics, using the same canonical validator. |
 | Outside diff, server unmark/cancel | Lock fresh Company then Expense, read the bank-link check without inverse transaction locks, and reject linked status changes before expense/transaction/audit mutation. Explicit unlink restores existing independent actions; stale callers cannot bypass it. |
