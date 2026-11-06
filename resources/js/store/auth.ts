@@ -82,6 +82,9 @@ export interface User {
     evolu_relay_url?: string | null;
 }
 
+/** Distinguish a confirmed signed-out session from an unavailable session check. */
+export type AuthFetchOutcome = 'loaded' | 'guest' | 'unavailable';
+
 export const useAuthStore = defineStore('auth', () => {
     const user = ref<User | null>(null);
     const loading = ref(false);
@@ -218,18 +221,18 @@ export const useAuthStore = defineStore('auth', () => {
         writeRelayOverrideUrl(normalized);
     }
 
-    /** Resolves true when the canonical /user payload was loaded; false when the reload failed (user left as is). */
-    async function fetchUser(): Promise<boolean> {
+    /** Load the canonical session once while retaining guest, failure and stale-generation distinctions. */
+    async function fetchUserWithOutcome(): Promise<AuthFetchOutcome> {
         synchronizeLogout();
         const generation = logoutGeneration;
         try {
             await ensureCsrfCookie();
             synchronizeLogout();
-            if (generation !== logoutGeneration) return false;
+            if (generation !== logoutGeneration) return 'unavailable';
             hydrateAccountMnemonicSession();
             const response = await api.get('/user');
             synchronizeLogout();
-            if (generation !== logoutGeneration) return false;
+            if (generation !== logoutGeneration) return 'unavailable';
             const previousUserId = user.value?.id ?? null;
             user.value = normalizeUserPayload(response.data);
             if ((user.value?.id ?? null) !== previousUserId) {
@@ -240,27 +243,32 @@ export const useAuthStore = defineStore('auth', () => {
             if (mnemonic && isInvoicingLocalFirst()) {
                 void ensureEvoluBoundToAccountSeed();
             }
-            return true;
+            return 'loaded';
         } catch (rawError) {
             synchronizeLogout();
-            if (generation !== logoutGeneration) return false;
+            if (generation !== logoutGeneration) return 'unavailable';
             const error = asApiError(rawError);
             const status = error?.response?.status ?? error?.status;
             if (status === 403 && isEmailNotVerifiedResponse(error)) {
                 // Authenticated but unverified: keep whatever user we have so
                 // the "check your email" screen can render instead of the
                 // login form (GET /user itself no longer 403s; belt and braces).
-                return false;
+                return 'unavailable';
             }
             if (status === 401 || status === 403) {
                 clearLocalAuthAndTenantState();
                 scheduleChoralaSync();
                 // A retained phrase must never turn logout/expiry into a login.
                 // Recovery authentication requires an explicit user action.
-                return false;
+                return 'guest';
             }
-            return false;
+            return 'unavailable';
         }
+    }
+
+    /** Preserve existing callers' true-only-on-loaded contract without issuing a second request. */
+    async function fetchUser(): Promise<boolean> {
+        return (await fetchUserWithOutcome()) === 'loaded';
     }
 
     async function login(email: string, password: string, remember = false) {
@@ -445,6 +453,7 @@ export const useAuthStore = defineStore('auth', () => {
         isAuthenticated,
         requiresRecoveryMigration,
         fetchUser,
+        fetchUserWithOutcome,
         login,
         completeLegacyRecoveryMigration,
         register,

@@ -52,7 +52,7 @@ const router = createRouter({
         {
             path: '/',
             name: 'landing',
-            component: () => import('../pages/Landing.vue'),
+            component: () => import('../pages/LandingEntry.vue'),
             meta: { public: true, titleKey: 'seo.landing_title', descriptionKey: 'seo.landing_description' },
         },
         {

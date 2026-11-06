@@ -380,10 +380,12 @@
         @close="handleModalClose"
       />
     </div>
+    <AppFooter class="hidden md:block" />
   </div>
 </template>
 
 <script setup lang="ts">
+import AppFooter from '../../components/layout/AppFooter.vue';
 import type { SupportWalletConnection } from "../../services/api";
 import { asApiError } from "../../utils/apiError";
 import { ref, onMounted, computed, watch } from "vue";

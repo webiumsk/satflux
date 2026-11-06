@@ -1,5 +1,25 @@
 # Project state
 
+## PR431 base conflicts resolved and independently accepted - 2026-11-06
+
+Integrate master `2154101e` (merged landing PR430) into published PoS head
+`5a105124` without rewriting its history. AppsShow retains the exact master
+template and published PoS script plus AppScrollPane import. Both prefixes in
+PROJECT_STATE, ROADMAP and DECISION_LOG are preserved with common history once.
+Other five PoS runtime files and all88 auto-merged master paths retain parent
+bytes; the combined PR still changes exactly13 scoped paths versus master.
+
+Independent QA accepts focused71/3 and Chrome18/18, including desktop/tablet/mobile
+scroll/footer geometry. Independent security accepts the exact merge and focused45.
+Main full frontend1,948/192, PHP127/784, lint48/52, type110, locale parity,
+production build and AST update pass. Runtime6 `4a40f576...5cf9fb` / source9
+`42586cbb...4252e6` match the reviewed merge. PHP source is unchanged; earlier
+Pint/PHPStan evidence carries forward. No new dependency or ratchet changes.
+
+Publish the resolved feature branch under the owner's conflict-fix request, then
+verify the actual remote head, PR mergeability and new-head CI separately. No PR
+merge or deployment is authorized or performed; preserve unrelated primary work.
+
 ## PoS settings preservation accepted before publication - 2026-11-06
 
 The owner conditions source publication on preserving the other settings. A pinned
@@ -42,6 +62,73 @@ changed. No source publication, merge or deployment has occurred for this fix.
 
 The correction is ready for owner-directed publication; retain
 separate merge/deployment approval. Preserve unrelated primary checkout edits.
+
+## PR430 review remediation accepted locally - 2026-11-06
+
+Verified all supplied findings against published `665cc2f6`. Critical auth/pricing
+requests now start independently of idle and gate page outcomes on confirmed
+results. A narrow auth outcome helper preserves the existing boolean API and
+all original generation/CSRF/key/tenant handling. Native header fragments select
+the PoS panel without activating its iframe; a coalesced, cleaned-up task makes
+the final scroll respect reduced motion after all native listeners.
+
+Missing/error company views retain their footer. Public version requests share
+successful/in-flight state with failure retry. WooCommerce points to verified
+setup/compatibility documentation; primary anchors meet AA and public CSS includes
+FreeProNotice borders. Operator docs explicitly forbid secrets in the entire
+public demo URL. Missing handler/helper/test-method documentation is supplied.
+
+Independent QA/security accept runtime15 `f936a8ae...68369f` and source/tests22
+`c5c36215...d1bed`. Local full frontend1,910/191 passes before the final native-event
+timing correction; final focused53/4 and unchanged footer16/3 pass afterward.
+PHP44/279, final type111 known/zero new, lint48/52, locale parity, build, Pint and
+AST-only graph pass. QA native16/16, focused15/15 and extra5/5 pass. No unresolved
+implementation finding remains. Main owns the next scoped corrective commit/push
+and actual new-head CI/review verification; prior CI42126779244 green remains
+attributed only to `665cc2f6`. No merge or deployment is authorized.
+
+## Landing showcase source publication authorized - 2026-11-06
+
+The Product Owner requests pushing the completed `feat/landing-showcase` work.
+The publication set is exactly 82 paths: reviewed runtime70, source/tests77 and
+five coordination documents. Runtime `8466ca0e...ab90f3f` and source/tests
+`fbb90756...4493576` match the frozen QA/security review evidence. Publication additionally removes
+two trailing spaces from one blank CSS line; the implementation contract records
+publication hashes and unchanged CSS semantics.
+The primary checkout and original design artifacts remain preserved.
+
+Local evidence remains frontend1,882/188, PHP44/279, lint48/52, typecheck111 known
+and zero new, locale parity, production build, Pint/PHPStan and AST-only Graphify.
+Only publication documentation and the verified CSS blank-line normalization follow
+acceptance, so product tests are not repeated. Main commits/pushes the bounded set and verifies the actual remote head.
+Remote CI/review and deployment are distinct evidence; no merge or deployment is
+authorized by this source-push request.
+
+## Landing showcase implementation and navigation follow-ups - 2026-11-05
+
+The owner authorizes implementing the approved V6 homepage and desktop footer
+placement. Work is isolated on `feat/landing-showcase`, based on freshly fetched
+`origin/master` `e584490d` (expense reconciliation PR429 merged in source).
+The unrelated primary checkout remains preserved. No deployment is inferred.
+
+A runtime Laravel configuration selects `legacy` or `showcase`, defaults safely
+to legacy and supplies the same escaped enum to both SPA documents. Both Vue
+routers share a document-stable selector. The showcase uses a matching localized
+Blade first-paint hero, genuine synthetic screenshots, existing production
+headers, live pricing/promotion policy and accessible tool/solution/image dialogs.
+Desktop footers move inside audited primary scroll hosts; nested/embedded panes
+do not create additional footers. Optional HTTPS PoS demo loading requires a click.
+
+Independent QA/security accept runtime70 `8466ca0e...ab90f3f` and source/tests77
+`fbb90756...4493576`. Final frontend1,882/188, PHP44/279 assertions, config-cache
+switch/rollback, locale parity, lint48/52, typecheck111 known/zero new, build,
+Pint/PHPStan and AST-only Graphify pass. The credentialed-demo disclosure and two
+nested-footer branches found during review are fixed and independently retested.
+The preserved header still overflows at768px and has existing drawer accessibility
+gaps; these are follow-ups. Source is local/uncommitted, not published. See
+[implementation contract](LANDING_SHOWCASE_IMPLEMENTATION.md) for exact ownership,
+acceptance, switch/rollback and separate Inertia/SEO/quality recommendations.
+Source publication, merge and deployment remain separate actions.
 
 ## PR429 second review fixes accepted locally - 2026-11-05
 

@@ -1,14 +1,16 @@
 <template>
   <!-- Wait for app to be loaded for this route to avoid "reading 'id' of undefined" when navigating -->
-  <div v-if="loadingApp" class="flex min-h-0 flex-1 items-center justify-center bg-gray-900">
-    <div class="flex flex-col items-center">
-      <svg class="animate-spin h-10 w-10 text-indigo-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>
-      <p class="text-gray-400">{{ t('common.loading') }}</p>
+  <AppScrollPane v-if="loadingApp" show-footer class="bg-gray-900">
+    <div class="min-h-full flex items-center justify-center bg-gray-900">
+      <div class="flex flex-col items-center">
+        <svg class="animate-spin h-10 w-10 text-indigo-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="text-gray-400">{{ t('common.loading') }}</p>
+      </div>
     </div>
-  </div>
+  </AppScrollPane>
   <!-- SPA: wrap in layout with sidebar so Tickets/PoS/PayButton all have the store sidebar -->
   <div v-else-if="storeForRoute && app" class="flex min-h-0 flex-1 overflow-hidden bg-gray-900">
     <StoreSidebar
@@ -22,29 +24,34 @@
       <PayButtonShow v-else-if="appType === 'PaymentButton'" :store="storeForRoute" :app="app" />
       <TicketsShow v-else-if="appType === 'Tickets'" :store="storeForRoute" :app="app" />
       <CrowdfundShow v-else-if="appType === 'Crowdfund'" :store="storeForRoute" :app="app" />
-      <div v-else class="flex min-h-0 flex-1 items-center justify-center bg-gray-100">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div class="bg-white shadow rounded-lg p-6">
-            <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ t('apps.app_type_not_supported') }}</h1>
-            <p class="text-sm text-gray-500">{{ t('apps.app_type_value', { type: appType }) }}</p>
-            <p class="mt-4 text-gray-600">{{ t('apps.app_type_not_supported_description') }}</p>
+      <AppScrollPane v-else show-footer class="bg-gray-900">
+        <div class="min-h-full flex items-center justify-center bg-gray-100">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="bg-white shadow rounded-lg p-6">
+              <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ t('apps.app_type_not_supported') }}</h1>
+              <p class="text-sm text-gray-500">{{ t('apps.app_type_value', { type: appType }) }}</p>
+              <p class="mt-4 text-gray-600">{{ t('apps.app_type_not_supported_description') }}</p>
+            </div>
           </div>
+        </div>
+      </AppScrollPane>
+    </div>
+  </div>
+  <AppScrollPane v-else show-footer class="bg-gray-900">
+    <div class="min-h-full flex items-center justify-center bg-gray-100">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="bg-white shadow rounded-lg p-6">
+          <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ t('apps.app_type_not_supported') }}</h1>
+          <p class="text-sm text-gray-500">{{ t('apps.app_type_value', { type: appType }) }}</p>
+          <p class="mt-4 text-gray-600">{{ t('apps.app_type_not_supported_description') }}</p>
         </div>
       </div>
     </div>
-  </div>
-  <div v-else class="flex min-h-0 flex-1 items-center justify-center bg-gray-100">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div class="bg-white shadow rounded-lg p-6">
-        <h1 class="text-3xl font-bold text-gray-900 mb-4">{{ t('apps.app_type_not_supported') }}</h1>
-        <p class="text-sm text-gray-500">{{ t('apps.app_type_value', { type: appType }) }}</p>
-        <p class="mt-4 text-gray-600">{{ t('apps.app_type_not_supported_description') }}</p>
-      </div>
-    </div>
-  </div>
+  </AppScrollPane>
 </template>
 
 <script setup lang="ts">
+import AppScrollPane from '../../components/layout/AppScrollPane.vue';
 import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import type { AppRef } from '../../types/btcpayApps';
 import { useRoute, useRouter } from 'vue-router';

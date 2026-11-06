@@ -188,10 +188,12 @@
         </div>
       </div>
     </div>
+    <AppFooter class="hidden md:block" />
   </div>
 </template>
 
 <script setup lang="ts">
+import AppFooter from '../../../components/layout/AppFooter.vue';
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { adminRegwatchApi } from '../../../services/api';

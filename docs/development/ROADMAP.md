@@ -1,5 +1,25 @@
 # Development roadmap
 
+## PR431 base conflicts resolved and independently accepted - 2026-11-06
+
+Integrate master `2154101e` (merged landing PR430) into published PoS head
+`5a105124` without rewriting its history. AppsShow retains the exact master
+template and published PoS script plus AppScrollPane import. Both prefixes in
+PROJECT_STATE, ROADMAP and DECISION_LOG are preserved with common history once.
+Other five PoS runtime files and all88 auto-merged master paths retain parent
+bytes; the combined PR still changes exactly13 scoped paths versus master.
+
+Independent QA accepts focused71/3 and Chrome18/18, including desktop/tablet/mobile
+scroll/footer geometry. Independent security accepts the exact merge and focused45.
+Main full frontend1,948/192, PHP127/784, lint48/52, type110, locale parity,
+production build and AST update pass. Runtime6 `4a40f576...5cf9fb` / source9
+`42586cbb...4252e6` match the reviewed merge. PHP source is unchanged; earlier
+Pint/PHPStan evidence carries forward. No new dependency or ratchet changes.
+
+Publish the resolved feature branch under the owner's conflict-fix request, then
+verify the actual remote head, PR mergeability and new-head CI separately. No PR
+merge or deployment is authorized or performed; preserve unrelated primary work.
+
 ## PoS settings preservation accepted before publication - 2026-11-06
 
 The owner conditions source publication on preserving the other settings. A pinned
@@ -42,6 +62,40 @@ changed. No source publication, merge or deployment has occurred for this fix.
 
 The correction is ready for owner-directed publication; retain
 separate merge/deployment approval. Preserve unrelated primary checkout edits.
+
+## Publish accepted PR430 review corrections - 2026-11-06
+
+Keep the accepted runtime15/source-tests22 manifests and bounded six-document
+handoff. Publish the corrections on the existing owned `feat/landing-showcase`
+branch, verify its remote head and observe actual new-head CI/CodeRabbit state.
+Full local frontend1,910/191 plus final focused53 and footer16, PHP44/279 and all
+recorded lint/type/locale/build/Pint/graph/browser gates pass. Preserve thresholds,
+public headers and unrelated primary work. Remaining header/navigation redesign,
+merge and deployment stay outside this review-fix scope.
+
+## Publish the accepted landing showcase source - 2026-11-06
+
+The owner authorizes commit/push of the existing reviewed 82-path feature scope.
+Preserve the accepted runtime/source behavior, allowing only the documented
+two-space blank-line normalization, and preserve the dirty primary checkout
+and verify the resulting owned remote branch. Retain all local test/review evidence
+without inferring fresh CI or deployment. Subsequent navigation, header, type-debt,
+PR, merge and deployment actions remain separately bounded.
+
+## Landing showcase and footer ready for source handoff - 2026-11-05
+
+The accepted scope is the V6 Vue showcase, reversible environment-only homepage
+selection with matching first paint, five locales and desktop footer placement.
+Main integrates server/bootstrap/router contracts; frontend specialists own the
+showcase and audited scroll hosts; independent QA/security review actual files.
+
+Frozen-scope QA/security reviews and local gates are complete: frontend1,882/188,
+PHP44/279, cache switch/rollback, lint/type/locales/build/Pint/PHPStan and AST graph.
+The isolated `feat/landing-showcase` worktree retains all local uncommitted changes.
+Source publication and release actions remain separate. No admin selector,
+whole-app Inertia migration, billing change, merge or deployment is included.
+Follow-up navigation ownership, shared props/auth, public indexing/performance and
+frontend type debt are proposals in the implementation contract.
 
 ## Publish accepted PR429 second-review fixes - 2026-11-05
 

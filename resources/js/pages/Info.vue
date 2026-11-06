@@ -9,10 +9,12 @@
         <AppFooterContent layout="page" />
       </div>
     </div>
+    <AppFooter class="hidden md:block" />
   </div>
 </template>
 
 <script setup lang="ts">
+import AppFooter from '../components/layout/AppFooter.vue';
 import { useI18n } from 'vue-i18n';
 import AppFooterContent from '../components/layout/AppFooterContent.vue';
 

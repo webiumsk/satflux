@@ -4855,5 +4855,295 @@
     "limits_apply": "Los límites PRO siguen vigentes. Los datos existentes siguen disponibles. Gestione los objetos existentes para liberar capacidad.",
     "verification_benefit": "Verifique su email para acceder gratis a las funciones PRO hasta nuevo aviso.",
     "details": "Detalles del acceso"
+  },
+  "showcase": {
+    "hero": {
+      "eyebrow": "Tu negocio. Tus pagos.",
+      "line1": "Tu negocio.",
+      "line2": "Pagos en Bitcoin.",
+      "line3": "Todo junto.",
+      "intro": "Desde un café en el mostrador hasta un evento con todas las entradas vendidas. Acepta pagos instantáneos y gestiona facturas y entradas en un solo panel.",
+      "start": "Empezar con SATFLUX",
+      "demo": "Probar el terminal en vivo",
+      "note": "Los pagos llegan directamente a tu cartera conectada",
+      "powered": "Creado con",
+      "open_source": "Código abierto"
+    },
+    "ui": {
+      "preview": "Modo de vista previa",
+      "live_pos": "Caja en vivo (PoS)",
+      "overview": "Resumen de ventas",
+      "sample": "Datos de ejemplo",
+      "demo": "Demostración",
+      "demo_notice": "Carga el terminal externo de demostración para explorar la interfaz. Se conecta al servidor BTCPay configurado. No envíes pagos solo para probarlo.",
+      "demo_unavailable": "Descubre cómo funciona la caja en la documentación. No hay una demostración en vivo configurada para este sitio.",
+      "load_demo": "Cargar demostración externa",
+      "demo_hint": "Explora el menú y la introducción del importe.",
+      "open_demo": "Abrir terminal",
+      "documentation": "Documentación",
+      "zoom": "Ampliar captura",
+      "sample_caption": "Componentes reales de SATFLUX con datos de ejemplo sintéticos. Haz clic para ampliar.",
+      "real_ui": "INTERFAZ REAL",
+      "solutions": "Soluciones",
+      "close": "Cerrar",
+      "all_tools": "Todas las herramientas",
+      "fit": "Ajustar a la pantalla",
+      "native": "Tamaño original (100 %)",
+      "zoom_region": "Captura ampliada; desplázate con las flechas o mediante gestos",
+      "zoom_instruction": "Al 100 %, desplázate con gestos, ratón o flechas. Escape cierra la vista previa."
+    },
+    "trust": {
+      "label": "Principios básicos",
+      "wallet": {
+        "title": "Tu cartera",
+        "copy": "Tú decides adónde llegan los pagos."
+      },
+      "workspace": {
+        "title": "Un espacio de trabajo",
+        "copy": "Para tu tienda, documentos y eventos."
+      },
+      "infrastructure": {
+        "title": "BTCPay Server + Evolu",
+        "copy": "Infraestructura de pagos abierta."
+      }
+    },
+    "solutions": {
+      "eyebrow": "Menos cambios. Más negocio.",
+      "title": "Varias herramientas. Un día de trabajo más sencillo.",
+      "copy": "Empieza con lo que necesitas hoy. Siempre tendrás más opciones a mano."
+    },
+    "stories": {
+      "payments": {
+        "name": "PAGOS",
+        "eyebrow": "Desde el cobro hasta la exportación",
+        "title": "Cada pago. Un estado claro.",
+        "copy": "Convierte una tableta en una caja para tu personal. Revisa los pagos de la tienda, filtra por período y exporta las transacciones a CSV o XLSX para tu contable.",
+        "benefit1": "Estado, fecha e importe de cada pago",
+        "benefit2": "Filtrar por estado y período",
+        "benefit3": "Exportar transacciones a CSV y XLSX",
+        "action": "Todas las formas de aceptar pagos",
+        "detail_title": "Cada pago llega a su destino.",
+        "detail_intro": "Herramientas de pago para tiendas, comercios en línea y particulares."
+      },
+      "invoicing": {
+        "name": "FACTURACIÓN",
+        "eyebrow": "Desde la emisión hasta el pago",
+        "title": "Facturas, gastos, movimientos bancarios, inventario, ... Todos tus documentos bajo control.",
+        "copy": "Reúne tus documentos y su estado en un solo lugar. La facturación añade conciliación bancaria por referencia, registro de gastos y enlaces de pago en Bitcoin.",
+        "benefit1": "Perfiles de empresa y facturas PDF para SK/CZ o tu LLC de Wyoming",
+        "benefit2": "Importar extractos y conciliar por referencia de pago",
+        "benefit3": "Gastos, documentos recurrentes y exportaciones contables (ISDOC)",
+        "action": "Explorar la facturación",
+        "detail_title": "Todos tus documentos de empresa bajo control.",
+        "detail_intro": "Gestiona documentos y concilia pagos en un solo espacio de trabajo."
+      },
+      "events": {
+        "name": "EVENTOS",
+        "eyebrow": "Desde la primera entrada hasta el sorteo",
+        "title": "Tu evento. Tus entradas bajo control.",
+        "copy": "Crea eventos y vende entradas directamente por Bitcoin. El personal valida las entradas con la cámara del móvil y puedes organizar una rifa con vista de presentación durante el evento.",
+        "benefit1": "Venta de entradas sin comisiones de portales de venta",
+        "benefit2": "Validación QR rápida en la entrada",
+        "benefit3": "Rifa integrada y financiación colectiva",
+        "action": "Herramientas para tu evento",
+        "detail_title": "Desde la venta de entradas hasta el sorteo.",
+        "detail_intro": "Herramientas para encuentros, conferencias y eventos."
+      }
+    },
+    "local_first": {
+      "title": "Local-first con Evolu",
+      "copy": "En la facturación local-first, empresas, contactos y documentos se guardan principalmente en tu navegador con Evolu. No almacenamos este registro en la base de datos de la aplicación Satflux; la sincronización tiene cifrado de extremo a extremo. Los PDF, correos y ciertas integraciones pueden procesarse en el servidor.",
+      "privacy": "Cómo tratamos los datos"
+    },
+    "screenshots": {
+      "overview": "Resumen de ventas SATFLUX con datos sintéticos",
+      "payments": "Pagos de la tienda con datos de ejemplo",
+      "invoicing": "Facturas de empresa con datos de ejemplo y acciones de fila visibles",
+      "events": "Eventos con uno desplegado y tipos de entradas de ejemplo"
+    },
+    "captions": {
+      "payments": "Componentes reales de SATFLUX, datos sintéticos. Haz clic para ampliar.",
+      "invoicing": "Facturas con datos sintéticos. La primera fila muestra las acciones al pasar el ratón.",
+      "events": "Un evento desplegado y tipos de entradas con datos sintéticos."
+    },
+    "tools": {
+      "eyebrow": "Más posibilidades cuando las necesites",
+      "title": "Pequeñas herramientas. Una gran diferencia.",
+      "hint": "Selecciona una herramienta y recorre sus detalles con Siguiente y Anterior.",
+      "context": "Herramientas SATFLUX",
+      "example": "Ejemplo de uso",
+      "plugin": "Ver plugin WooCommerce",
+      "navigation": "Explorar herramientas",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "first": "Primera herramienta",
+      "last": "Última herramienta",
+      "position": "{current} de {total}",
+      "lightning": {
+        "title": "Direcciones Lightning",
+        "summary": "MENO{'@'}satflux.org u OBCHOD{'@'}satflux.org para pagos Lightning.",
+        "copy": "Recibe pagos Lightning repetidos en una dirección fácil de recordar, sin compartir un enlace nuevo cada vez. Tu tienda necesita una conexión Lightning operativa.",
+        "note": "Las direcciones alojadas usan únicamente satflux.org; no se admiten dominios propios. Los límites dependen del plan. Estos ejemplos muestran el formato, no cómo conectar una cartera externa.",
+        "example": "Formatos ilustrativos para una persona o tienda. Este texto no es un enlace de pago ni un código QR."
+      },
+      "woocommerce": {
+        "title": "WooCommerce",
+        "summary": "Pagos Bitcoin para tu tienda WordPress.",
+        "copy": "Usa SATFLUX for WooCommerce en tu tienda WordPress. Los clientes pueden pagar pedidos mediante la infraestructura Bitcoin de BTCPay.",
+        "note": "El plugin se instala en tu tienda WooCommerce. Consulta la documentación para su configuración y compatibilidad; un botón de pago en un blog es otra integración.",
+        "example": "Carrito WooCommerce → factura BTCPay → estado del pedido. El cliente elige productos y continúa al pago Bitcoin."
+      },
+      "paybutton": {
+        "title": "Pay Button",
+        "summary": "Un botón de pago sencillo para insertar en tu web.",
+        "copy": "Inserta el HTML generado en tu tienda en un blog, proyecto o web sencilla. El botón abre una página de pago Bitcoin o Lightning.",
+        "note": "Sirve para aportaciones o un producto sencillo. Fija el importe o deja que lo elija el cliente. Es una ilustración, no un código de pago operativo.",
+        "example": "Un botón de apoyo debajo de un artículo abre la página de pago generada por tu tienda."
+      },
+      "bankqr": {
+        "title": "QR bancario - SEPA",
+        "summary": "PAY by square y formatos SEPA locales compatibles.",
+        "copy": "Ofrece transferencia bancaria con un formato QR compatible junto a Bitcoin. El cliente paga desde su aplicación bancaria a la cuenta configurada para tu tienda.",
+        "note": "La confirmación automática depende del banco admitido, una fuente verificada y datos coincidentes. Una confirmación ausente o ambigua requiere verificación manual; mostrar un QR no significa que esté pagado. Las fuentes automáticas admitidas incluyen actualmente Fio y Tatra banka.",
+        "example": "QR en la página de pago → aplicación bancaria → tu cuenta. El formato y la confirmación dependen de la configuración compatible."
+      },
+      "crowdfund": {
+        "title": "Crowdfund",
+        "summary": "Un objetivo común y financiación colectiva con progreso público.",
+        "copy": "Prepara una campaña con objetivo, fecha límite y niveles de aportación. Una página pública explica el proyecto y muestra su progreso.",
+        "note": "Es una campaña ilustrativa, no una recaudación real ni una promesa de resultados. Consulta herramientas y límites en tu cuenta y los planes.",
+        "example": "Objetivo: equipamiento compartido para un taller. Niveles de aportación y una página pública permiten seguir el proyecto."
+      },
+      "exports": {
+        "title": "Exportación de datos",
+        "summary": "Informes CSV y XLSX para tu contable.",
+        "copy": "Filtra una lista y prepara datos para procesarlos en CSV o XLSX. Las exportaciones incluyen, por ejemplo, pagos de la tienda y documentos empresariales.",
+        "note": "Las columnas y formatos dependen de la lista y el plan. El ejemplo muestra tipos de datos, no una cabecera exacta de exportación.",
+        "example": "Fecha · estado · importe · moneda. Lista → filtros de período y estado → archivo para hojas de cálculo o contabilidad."
+      },
+      "cashu": {
+        "title": "Cashu",
+        "summary": "Liquidación ecash opcional mediante una mint elegida.",
+        "copy": "CashuMelt puede intermediar la liquidación Lightning mediante una mint elegida hacia tu dirección Lightning. El cliente paga una factura Lightning, no con tokens ecash.",
+        "note": "La beta requiere confiar en la mint elegida. Fallos o problemas de enrutamiento pueden causar retrasos o pérdidas; una factura pagada no demuestra por sí sola la liquidación completada en tu cartera.",
+        "example": "Pago Lightning → mint elegida → tu dirección Lightning. La disponibilidad depende del plan, módulo y ruta de pago."
+      },
+      "stores": {
+        "title": "Varias tiendas",
+        "summary": "Gestiona varias ubicaciones y proyectos desde una cuenta.",
+        "copy": "Separa tu local, tienda en línea o proyecto en tiendas propias y gestiónalas desde una cuenta. Cambia de tienda según la tarea.",
+        "note": "Cada tienda tiene su configuración. Los límites dependen del plan y los permisos; una cuenta común no combina pagos ni evita los controles de propiedad.",
+        "example": "Tu cuenta → local físico + tienda en línea. Dos actividades, tiendas separadas, un panel."
+      }
+    },
+    "steps": {
+      "eyebrow": "De la idea al primer pago",
+      "title": "Empieza en tres pasos.",
+      "copy": "Empieza por lo básico. Descubre más herramientas cuando las necesites.",
+      "step1": {
+        "title": "Crea una cuenta",
+        "copy": "Regístrate y crea una tienda para tu negocio."
+      },
+      "step2": {
+        "title": "Conecta una cartera",
+        "copy": "Elige una conexión compatible, como Blink, Blitz, Coinos, Flash o una cartera con LUD21. Consulta los requisitos del proveedor en la documentación."
+      },
+      "step3": {
+        "title": "Recibe un pago",
+        "copy": "Abre la caja PoS o añade un enlace de pago a tu web y recibe sats."
+      }
+    },
+    "pricing": {
+      "eyebrow": "Condiciones justas",
+      "title": "Empieza por lo básico. Crece más adelante.",
+      "compare": "Comparar planes"
+    },
+    "faq": {
+      "eyebrow": "Antes de empezar",
+      "title": "Preguntas frecuentes",
+      "copy": "Cómo funciona y cómo se tratan tus datos.",
+      "all": "Todas las preguntas y respuestas",
+      "q1": "¿Qué es SATFLUX y qué relación tiene con BTCPay?",
+      "a1": "SATFLUX es una interfaz para gestionar tiendas, cajas y documentos empresariales. BTCPay Server proporciona la infraestructura de pagos. Juntos conectan herramientas cotidianas con pagos Bitcoin abiertos.",
+      "q2": "¿Adónde llegan los bitcoins recibidos?",
+      "a2": "Los pagos llegan a la cartera conectada a tu tienda. SATFLUX no ofrece custodia de Bitcoin. La custodia de claves y las funciones dependen del proveedor y conexión elegidos; Cashu tiene condiciones propias de confianza en la mint y recuperación.",
+      "q3": "¿Tengo que usar todas las funciones a la vez?",
+      "a3": "No. Empieza con una caja en el móvil. Añade facturación, entradas o WooCommerce cuando lo necesites, según tu plan y módulos activos."
+    },
+    "cta": {
+      "title": "Tu próximo día de trabajo. Un poco más sencillo.",
+      "copy": "Elige una herramienta y empieza por ahí. Crear una cuenta es gratis."
+    },
+    "details": {
+      "woocommerce": {
+        "title": "WooCommerce",
+        "copy": "Usa SATFLUX for WooCommerce en tu tienda WordPress. Los clientes pueden pagar pedidos mediante la infraestructura Bitcoin de BTCPay. El plugin se instala en tu tienda WooCommerce. Consulta la documentación para su configuración y compatibilidad; un botón de pago en un blog es otra integración."
+      },
+      "lightning": {
+        "title": "Direcciones Lightning",
+        "copy": "Recibe pagos Lightning repetidos en una dirección fácil de recordar, sin compartir un enlace nuevo cada vez. Tu tienda necesita una conexión Lightning operativa. Las direcciones alojadas usan únicamente satflux.org; no se admiten dominios propios. Los límites dependen del plan. Estos ejemplos muestran el formato, no cómo conectar una cartera externa."
+      },
+      "paybutton": {
+        "title": "Pay Button",
+        "copy": "Inserta el HTML generado en tu tienda en un blog, proyecto o web sencilla. El botón abre una página de pago Bitcoin o Lightning. Sirve para aportaciones o un producto sencillo. Fija el importe o deja que lo elija el cliente. Es una ilustración, no un código de pago operativo."
+      },
+      "bankqr": {
+        "title": "QR bancario - SEPA",
+        "copy": "Ofrece transferencia bancaria con un formato QR compatible junto a Bitcoin. El cliente paga desde su aplicación bancaria a la cuenta configurada para tu tienda. La confirmación automática depende del banco admitido, una fuente verificada y datos coincidentes. Una confirmación ausente o ambigua requiere verificación manual; mostrar un QR no significa que esté pagado. Las fuentes automáticas admitidas incluyen actualmente Fio y Tatra banka."
+      },
+      "exports": {
+        "title": "Exportación de datos",
+        "copy": "Filtra una lista y prepara datos para procesarlos en CSV o XLSX. Las exportaciones incluyen, por ejemplo, pagos de la tienda y documentos empresariales. Las columnas y formatos dependen de la lista y el plan. El ejemplo muestra tipos de datos, no una cabecera exacta de exportación."
+      },
+      "crowdfund": {
+        "title": "Crowdfund",
+        "copy": "Prepara una campaña con objetivo, fecha límite y niveles de aportación. Una página pública explica el proyecto y muestra su progreso. Es una campaña ilustrativa, no una recaudación real ni una promesa de resultados. Consulta herramientas y límites en tu cuenta y los planes."
+      },
+      "local_first": {
+        "title": "Local-first con Evolu",
+        "copy": "En la facturación local-first, empresas, contactos y documentos se guardan principalmente en tu navegador con Evolu. No almacenamos este registro en la base de datos de la aplicación Satflux; la sincronización tiene cifrado de extremo a extremo. Los PDF, correos y ciertas integraciones pueden procesarse en el servidor.",
+        "legacy": "Esto describe el modo local-first. El modo de servidor anterior almacena los datos de otra forma."
+      },
+      "pos": {
+        "title": "Terminal PoS",
+        "copy": "Una caja en el navegador para el personal sin acceso al saldo de la cartera."
+      },
+      "companies": {
+        "title": "Perfiles de empresa",
+        "copy": "Perfiles de empresa y facturas PDF para SK/CZ o una LLC de Wyoming."
+      },
+      "matching": {
+        "title": "Conciliación de pagos",
+        "copy": "Concilia pagos bancarios importados con documentos por referencia y revisa su estado."
+      },
+      "expenses": {
+        "title": "Registro de gastos",
+        "copy": "Facturas de proveedores con avisos de duplicados y adjuntos."
+      },
+      "recurring": {
+        "title": "Documentos recurrentes",
+        "copy": "Prepara facturas recurrentes para suscripciones y servicios periódicos."
+      },
+      "invoice_payment": {
+        "title": "Bitcoin y transferencia",
+        "copy": "Ofrece en tus facturas las opciones compatibles de Bitcoin y transferencia bancaria."
+      },
+      "accounting": {
+        "title": "Exportaciones contables",
+        "copy": "Exportaciones ISDOC e informes para tu contable."
+      },
+      "tickets": {
+        "title": "Venta de entradas",
+        "copy": "Vende entradas en línea sin comisiones de portales de venta."
+      },
+      "checkin": {
+        "title": "Validación QR",
+        "copy": "Valida entradas con la cámara del móvil o busca al participante en la entrada."
+      },
+      "raffle": {
+        "title": "Rifa",
+        "copy": "Vende boletos, realiza el sorteo en la aplicación y muestra la vista de presentación en una pantalla grande."
+      }
+    }
   }
 }

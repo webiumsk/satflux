@@ -19,7 +19,6 @@
           <slot />
         </div>
         <AppMobileBottomNav />
-        <AppFooter class="hidden md:block shrink-0" />
       </div>
     </main>
     <OnboardingTour />
@@ -29,7 +28,6 @@
 <script setup lang="ts">
 import AppHeader from './AppHeader.vue';
 import SecurityAlertBanner from './SecurityAlertBanner.vue';
-import AppFooter from './AppFooter.vue';
 import AppMobileBottomNav from './AppMobileBottomNav.vue';
 import OnboardingTour from '../OnboardingTour.vue';
 import { useAppLayoutScroll } from '../../composables/useAppLayoutScroll';

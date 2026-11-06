@@ -246,7 +246,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import api from '../../services/api';
+import { useAppVersion } from '../../composables/useAppVersion';
 
 withDefaults(
   defineProps<{
@@ -258,11 +258,12 @@ withDefaults(
 );
 
 const { t } = useI18n();
-const version = ref<string | null>(null);
+const { version, load: loadVersion } = useAppVersion();
 const lnAddress = 'hello@satflux.org';
 const lnCopied = ref(false);
 let lnCopyResetTimer: ReturnType<typeof setTimeout> | null = null;
 
+/** Copy the public contact Lightning address and briefly announce success without changing payment state. */
 async function copyLnAddress() {
   try {
     await navigator.clipboard.writeText(lnAddress);
@@ -277,13 +278,8 @@ async function copyLnAddress() {
   }
 }
 
-onMounted(async () => {
-  try {
-    const response = await api.get('/version');
-    version.value = response.data.version || null;
-  } catch {
-    // Version is optional
-  }
+onMounted(() => {
+  void loadVersion();
 });
 </script>
 

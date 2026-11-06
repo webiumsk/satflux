@@ -1,0 +1,58 @@
+<template>
+  <dialog
+    ref="dialog"
+    :id="id"
+    :aria-labelledby="labelledby"
+    :aria-describedby="describedby"
+    @click="onBackdropClick"
+    @close="onClose"
+  >
+    <slot :close="() => close()" />
+  </dialog>
+</template>
+
+<script setup lang="ts">
+import { onBeforeUnmount, ref } from 'vue';
+defineProps<{ id: string; labelledby: string; describedby?: string }>();
+const emit = defineEmits<{ closed: [] }>();
+const dialog = ref<HTMLDialogElement>();
+let opener: HTMLElement | null = null;
+let originalOverflow: string | null = null;
+/** Open one native modal, remember its opener and temporarily lock document scrolling. */
+function open(origin: HTMLElement | null): void {
+  if (!dialog.value || dialog.value.open)
+    return;
+  opener = origin;
+  originalOverflow = document.body.style.overflow;
+  document.body.style.overflow = 'hidden';
+  dialog.value.showModal();
+}
+/** Restore the prior body overflow and return focus to a connected opener once. */
+function restore(): void {
+  if (originalOverflow !== null) {
+    document.body.style.overflow = originalOverflow;
+    originalOverflow = null;
+  }
+  if (opener?.isConnected)
+    opener.focus({ preventScroll: true });
+  opener = null;
+}
+/** Close the modal, optionally suppressing opener focus when moving to another page section. */
+function close(restoreFocus = true): void {
+  if (!restoreFocus)
+    opener = null;
+  dialog.value?.close();
+}
+/** Restore document state after native Escape, backdrop or explicit close actions. */
+function onClose(): void { restore(); emit('closed'); }
+/** Dismiss only clicks outside the modal rectangle, preserving clicks on its contents. */
+function onBackdropClick(event: MouseEvent): void {
+  if (event.target !== dialog.value || !dialog.value)
+    return;
+  const rect = dialog.value.getBoundingClientRect();
+  if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)
+    close();
+}
+onBeforeUnmount(() => { dialog.value?.close(); restore(); });
+defineExpose({ open, close });
+</script>

@@ -5,22 +5,24 @@
       <div class="shrink-0 bg-gray-900">
         <slot name="toolbar" :app="propsApp" :store="propsStore" />
       </div>
-      <AppScrollPane>
+      <AppScrollPane show-footer>
         <slot :app="propsApp" :store="propsStore" />
       </AppScrollPane>
     </template>
-    <AppScrollPane v-else>
+    <AppScrollPane show-footer v-else>
       <slot :app="propsApp" :store="propsStore" />
     </AppScrollPane>
   </div>
 
-  <div v-else-if="loading && !loadedApp" class="flex items-center justify-center h-screen bg-gray-900">
-     <svg class="animate-spin h-10 w-10 text-indigo-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-     </svg>
-    <p class="text-gray-400 ml-4">{{ t('apps.loading_app') }}</p>
-  </div>
+  <AppScrollPane v-else-if="loading && !loadedApp" show-footer class="bg-gray-900">
+    <div class="min-h-full flex items-center justify-center bg-gray-900">
+       <svg class="animate-spin h-10 w-10 text-indigo-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+       </svg>
+      <p class="text-gray-400 ml-4">{{ t('apps.loading_app') }}</p>
+    </div>
+  </AppScrollPane>
 
   <div v-else-if="loadedStore && loadedApp" class="flex min-h-0 flex-1 max-md:overflow-visible bg-gray-900 md:overflow-hidden">
     <!-- Sidebar -->
@@ -38,14 +40,14 @@
         <div class="shrink-0 bg-gray-900">
           <slot name="toolbar" :app="loadedApp" :store="loadedStore" />
         </div>
-        <AppScrollPane>
+        <AppScrollPane show-footer>
           <div class="px-4 sm:px-6 lg:px-8 pt-8">
             <ArchivedStoreBanner :store="loadedStore" />
           </div>
           <slot :app="loadedApp" :store="loadedStore" />
         </AppScrollPane>
       </template>
-      <AppScrollPane v-else>
+      <AppScrollPane show-footer v-else>
         <div class="px-4 sm:px-6 lg:px-8 pt-8">
           <ArchivedStoreBanner :store="loadedStore" />
         </div>
@@ -54,13 +56,15 @@
     </div>
   </div>
 
-  <div v-else class="flex flex-col items-center justify-center h-screen bg-gray-900">
-    <div class="h-16 w-16 bg-gray-800 rounded-full flex items-center justify-center mb-4">
-        <svg class="h-8 w-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+  <AppScrollPane v-else show-footer class="bg-gray-900">
+    <div class="min-h-full flex flex-col items-center justify-center bg-gray-900">
+      <div class="h-16 w-16 bg-gray-800 rounded-full flex items-center justify-center mb-4">
+          <svg class="h-8 w-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      </div>
+      <p class="text-gray-400 font-medium">{{ t('apps.app_not_found') }}</p>
+      <button @click="goToAppsList" class="mt-4 text-indigo-400 hover:text-indigo-300 transition-colors text-sm">{{ t('apps.back_to_apps') }}</button>
     </div>
-    <p class="text-gray-400 font-medium">{{ t('apps.app_not_found') }}</p>
-    <button @click="goToAppsList" class="mt-4 text-indigo-400 hover:text-indigo-300 transition-colors text-sm">{{ t('apps.back_to_apps') }}</button>
-  </div>
+  </AppScrollPane>
 </template>
 
 <script setup lang="ts">

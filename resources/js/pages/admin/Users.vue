@@ -337,10 +337,12 @@
         </div>
       </div>
     </div>
+    <AppFooter class="hidden md:block" />
   </div>
 </template>
 
 <script setup lang="ts">
+import AppFooter from '../../components/layout/AppFooter.vue';
 import { asApiError } from "../../utils/apiError";
 import { ref, computed, onMounted } from "vue";
 import api from "../../services/api";

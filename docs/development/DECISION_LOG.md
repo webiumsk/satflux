@@ -1,5 +1,25 @@
 # Development decision log
 
+## PR431 base conflicts resolved and independently accepted - 2026-11-06
+
+Integrate master `2154101e` (merged landing PR430) into published PoS head
+`5a105124` without rewriting its history. AppsShow retains the exact master
+template and published PoS script plus AppScrollPane import. Both prefixes in
+PROJECT_STATE, ROADMAP and DECISION_LOG are preserved with common history once.
+Other five PoS runtime files and all88 auto-merged master paths retain parent
+bytes; the combined PR still changes exactly13 scoped paths versus master.
+
+Independent QA accepts focused71/3 and Chrome18/18, including desktop/tablet/mobile
+scroll/footer geometry. Independent security accepts the exact merge and focused45.
+Main full frontend1,948/192, PHP127/784, lint48/52, type110, locale parity,
+production build and AST update pass. Runtime6 `4a40f576...5cf9fb` / source9
+`42586cbb...4252e6` match the reviewed merge. PHP source is unchanged; earlier
+Pint/PHPStan evidence carries forward. No new dependency or ratchet changes.
+
+Publish the resolved feature branch under the owner's conflict-fix request, then
+verify the actual remote head, PR mergeability and new-head CI separately. No PR
+merge or deployment is authorized or performed; preserve unrelated primary work.
+
 ## PoS settings preservation accepted before publication - 2026-11-06
 
 The owner conditions source publication on preserving the other settings. A pinned
@@ -42,6 +62,75 @@ changed. No source publication, merge or deployment has occurred for this fix.
 
 The correction is ready for owner-directed publication; retain
 separate merge/deployment approval. Preserve unrelated primary checkout edits.
+
+## 2026-11-06 - Resolve marketing outcomes before rendering and preserve native event order
+
+Distinguish canonical loaded, confirmed guest and unavailable session outcomes
+without changing existing fetchUser boolean semantics or authorization/cleanup.
+Only the showcase uses the explicit outcome; pricing requires its own completed
+request and real loaded state. Keep optional work idle and iframe loading explicit.
+
+Reuse the raffle preview's mounted reduced-motion preference in a shared helper.
+Actual native DOM listeners can flush microtasks between propagation listeners,
+so nextTick alone cannot override the existing header's smooth scroll. Select the
+panel synchronously and schedule the final fragment scroll in one owned/coalesced
+zero-delay task, canceled on unmount. Preserve PublicHeader itself.
+
+Keep fallback/footer ownership in CompanyShow and cache only public release
+metadata across footer mounts. Reject the review phrase placing a footer outside
+its primary scrollport: the accepted contract puts toolbar outside, footer inside
+after content. Add actual route-loaded coverage without removing prop/Inertia cases.
+
+Retain CodeRabbit thresholds and add meaningful docs rather than alter coverage
+rules. Independent QA/security accept runtime15 `f936a8ae...68369f` and source22
+`c5c36215...d1bed`. Local and independent tests/browser evidence are recorded in
+[the review record](LANDING_SHOWCASE_REVIEW.md). Source publication is continuing
+authorized PR remediation; merge/deployment remain separate gates.
+
+## 2026-11-06 - Publish the accepted landing scope without runtime changes
+
+Treat the owner's push request as authorization to commit and publish only the
+reviewed landing showcase/footer work to owned Satflux. Verify exact runtime70
+`8466ca0e...ab90f3f`, source/tests77 `fbb90756...4493576` and the 82-path staged
+boundary. Documentation records publication authority; accepted code, tests,
+assets, dependencies and thresholds have unchanged behavior. Publication removes
+two trailing spaces from a blank stylesheet line; publication manifests and an
+identical CSS semantic structure document the sole source-byte difference. Reuse the completed local
+checks and independent QA/security evidence, then verify the actual remote tip.
+Preserve unrelated primary work; source publication does not authorize merge or
+deployment or establish new-head CI/review coverage.
+
+## 2026-11-05 - Keep homepage switching runtime and preserve navigation boundaries
+
+Implement the owner-approved V6 alongside the existing `Landing.vue` rather than
+replace it. One Laravel resolver accepts only `showcase`, otherwise legacy, and
+passes an escaped enum to both SPA documents. Shared `LandingEntry.vue` selection
+is stable until full reload; the public Blade hero uses the same decision and
+shared locale copy. Runtime config-cache refresh switches or rolls back without
+rebuilding assets. No unauthenticated query override or admin persistence exists.
+
+Retain existing public/app headers and canonical/authentication behavior. Ship four
+provenance-backed synthetic screenshots, fixed Vue-rendered tool explanations and
+existing live pricing/promotion sources. Use local fonts; an optional configured
+credential-free HTTPS terminal loads only after a visitor action, under existing
+CSP. Demo availability does not assert payment-sandbox behavior.
+
+Place the desktop application footer inside each designated primary content scroll
+host. Explicit AppScrollPane opt-in defaults off, and embedded invoicing suppresses
+its footer. Preserve fixed store toolbars, sidebar, banner and mobile navigation.
+
+Keep Laravel/Inertia store-app routes and Vue Router behavior unchanged for this
+scope. Consolidation of duplicate routing, deliberate shared-prop middleware/auth
+initialization and complete marketing HTML rendering require separate bounded
+work. No new implementation or release authority follows from these proposals.
+
+Final independent QA/security accept runtime70 `8466ca0e...ab90f3f` and
+source/tests77 `fbb90756...4493576`. Server-side demo URL sanitization closes a
+reproduced credential-disclosure finding before public bootstrap. Exact inner
+avatar/loading div restoration and actual-page regressions close two duplicate
+footer findings; scoped CSS preserves shared underline utilities. Final frontend
+1,882/188 and PHP44/279 pass alongside unchanged lint/type baselines and the other
+recorded gates. Existing tablet-header/drawer issues remain explicit follow-ups.
 
 ## 2026-11-05 - Bound projection work and preserve linked-status bulk semantics
 

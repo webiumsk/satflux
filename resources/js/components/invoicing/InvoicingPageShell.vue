@@ -26,10 +26,12 @@
       </header>
       <slot />
     </div>
+    <AppFooter v-if="!embedded" class="hidden md:block" />
   </div>
 </template>
 
 <script setup lang="ts">
+import AppFooter from '../layout/AppFooter.vue';
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { INVOICING_CONTAINER_CLASS } from '../../composables/useInvoicingLayout';
