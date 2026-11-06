@@ -1,30 +1,32 @@
 ---
-title: Pridanie vlastného Evolu relaya
+title: Správa Evolu relayov
 category: security
 order: 7
-meta_description: Synchronizujte šifrované fakturačné dáta cez vlastný relay popri predvolenom.
-updated: 2026-11-06
+meta_description: Spravujte šifrovanú synchronizáciu fakturačných dát cez viacero relayov.
+updated: 2026-11-07
 ---
 
-# Pridanie vlastného Evolu relaya
+# Správa Evolu relayov
 
-Pri local-first fakturácii môžete pripojiť vlastný Evolu relay popri predvolenom. Obnovovacia fráza aj šifrovacie kľúče zostávajú rovnaké. Oba relaye prijímajú šifrované dáta vrátane dát zdieľaných firiem, ku ktorým máte prístup.
+Satflux uchováva fakturačné dáta na vašom zariadení a synchronizuje šifrované zmeny cez relaye. Predvolený zoznam obsahuje `wss://evolu.satflux.io` a `wss://free.evoluhq.com`. Môžete pridať ďalšie kompatibilné relaye, najviac osem serverov.
 
-1. Otvorte **Nastavenia účtu > Evolu sync**.
-2. Zadajte adresu zabezpečeného WebSocket pripojenia, napríklad `wss://relay.example.com` alebo `wss://relay.example.com:8443`.
-3. Ponechajte zapnutú možnosť používať aj predvolený relay a uložte nastavenie. Stránka sa obnoví, aby sa pripojenia prejavili.
-4. Pred zatvorením ktorejkoľvek karty Satfluxu sa uistite, že máte uloženú [obnovovaciu frázu](/documentation/backup-and-recovery). Na každom zariadení sa prihláste a načítajte aktualizované nastavenia. Potom zatvorte **všetky karty Satfluxu** a znova otvorte Satflux. Tým sa reštartuje existujúci synchronizačný worker; obnovenie iba jednej karty nestačí.
+1. Otvorte **Nastavenia účtu > Evolu sync**. Každý riadok zobrazuje adresu a aktuálny stav spojenia.
+2. Vyberte **Pridať relay**, zadajte bezpečnú adresu, napríklad `wss://relay.example.com:8443`, a potvrďte **Pridať relay**. Existujúce relaye zostanú v zozname.
+3. Otvorte riadok relaya, zobrazte spojenie a zapnite alebo vypnite **Používať tento relay**. Predvolené relaye zostávajú v zozname a môžete ich vypnúť. Vlastný relay môžete po potvrdení odstrániť.
+4. Pred zatvorením kariet si uložte [obnovovaciu frázu](/documentation/backup-and-recovery). Na každom zariadení sa prihláste, načítajte aktualizované nastavenia, zatvorte **všetky karty Satfluxu** a otvorte Satflux znova. Tým sa reštartuje existujúci synchronizačný worker; obnovenie jednej karty nestačí.
 
-Adresa musí používať `wss://` a nesmie obsahovať používateľské meno, heslo, cestu, parametre ani fragment. Server musí podporovať protokol Evolu kompatibilný s klientom Evolu 7.x používaným v Satfluxe; obyčajný WebSocket server nestačí.
+Zmeny zoznamu platia pre váš účet. **Vypnúť synchronizáciu na tomto zariadení** pozastaví všetky relaye iba na aktuálnom zariadení. Vypnutie alebo odstránenie relaya zachová lokálne dáta a nevymaže dáta už uložené na serveri.
 
-Existujúce nastavenia vlastného relaya ho naďalej používajú samostatne, kým nezapnete možnosť používať aj predvolený. Vypnutím tejto možnosti používate iba vlastný relay. Vymazaním vlastnej adresy sa vrátite k nastavenému predvolenému relayu. Ak inštalácia predvolený relay vypína, pridanie vlastného nezapne verejný náhradný relay.
+## Stavy spojenia
+
+**Pripojený** znamená otvorené skutočné synchronizačné WebSocket spojenie. **Pripája sa**, **Odpojený** a **Chyba spojenia** opisujú toto spojenie. **Neznámy** znamená, že aktuálny stav nie je dostupný; po aktualizácii môže byť potrebné zatvoriť všetky karty a otvoriť ich znova. **Sync je pozastavený** znamená, že aktuálny lokálny vlastník ešte nemá povolenú synchronizáciu; obnovte fakturačné dáta správnou obnovovacou frázou. Vypnuté relaye a vypnutá synchronizácia zariadenia sa zobrazujú osobitne.
+
+Otvorené spojenie nepotvrdzuje kompatibilitu protokolu, úspešné zápisy ani úplnú zálohu. Nainštalovaný klient potrebuje relay kompatibilný s Evolu 7.x. Spojenia fungujú nezávisle a chýbajúca história sa dopĺňa pri prihlásení na odber alebo novom pripojení. Relaye sa nekopírujú priamo medzi sebou; synchronizuje ich klient. Novému relayu doprajte čas na doplnenie dát.
+
+Adresa musí používať `wss://` bez prihlasovacích údajov, cesty, parametrov či fragmentu. Duplicitné adresy sa odmietajú. Existujúce nastavenie iba vlastného relaya zostáva zachované; predvolené pridáte vedome cez **Pridať predvolené relaye**. Inštalácia s výslovne vypnutým predvoleným relayom automaticky nezapína verejné predvolené relaye. Staršie HTTPS adresy z konfigurácie používajú zodpovedajúce WSS spojenie. Pri nezabezpečenom WS/HTTP predvolenom relayi musí správca pred úpravou zoznamu nastaviť bezpečnú adresu.
 
 ## Dostupnosť a obnova
 
-Pripojenia fungujú nezávisle: nedostupnosť jedného relaya nevypína druhé pripojenie. Dáta sa dorovnávajú pri pripojení alebo opätovnom pripojení. Prijatie dát z jedného relaya nepotvrdzuje, že ich už má aj druhý. Nový relay môže potrebovať čas na dosynchronizovanie.
+Verejný `free.evoluhq.com` je testovací relay a jeho dáta môžu byť zmazané. Pozrite si [dokumentáciu Evolu](https://www.evolu.dev/docs/relay). Uchovávajte samostatný [export dát](/documentation/backup-and-recovery) a obnovovaciu frázu. Obnova potrebuje správnu frázu aj dostupnú kópiu dát; fráza samotná neobsahuje faktúry.
 
-Test pripojenia overuje dostupnosť, nie kompatibilitu protokolu Evolu ani úplnosť zálohy. Štatistiky využitia sa pri nastavenej vlastnej adrese týkajú primárneho vlastného relaya. Nepotvrdzujú, že každý relay obsahuje úplnú kópiu.
-
-Možnosť **Vypnúť synchronizáciu na tomto zariadení** vypne všetky relay pripojenia na danom zariadení. Ostatné zariadenia si ponechajú svoje nastavenia. Odstránenie relaya zastaví budúce pripojenia; nevymaže dáta už uložené na jeho serveri.
-
-Bezpečne si uložte [obnovovaciu frázu](/documentation/backup-and-recovery) a pravidelne exportujte dáta. Obnova vyžaduje správnu frázu aj dostupnú kópiu dát.
+Veľkosť lokálnej SQLite databázy opisuje toto zariadenie a štatistiky využitia relaya iba prvý zapnutý relay. Ani jeden údaj nepotvrdzuje úplnú kópiu na každom relayi.

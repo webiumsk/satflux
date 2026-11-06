@@ -2,6 +2,7 @@ import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Component } from "vue";
 import type { User } from "../store/auth";
+import { clearRelayOverride, readRelayOverride, writeRelayOverrideDisabled } from "../evolu/relayOverrideStorage";
 import { getStoredAccountMnemonic } from "../services/accountSeed";
 
 const mocks = vi.hoisted(() => ({
@@ -26,6 +27,7 @@ const mocks = vi.hoisted(() => ({
     apiPost: vi.fn(),
     apiPut: vi.fn(),
     fetchUser: vi.fn(),
+    reconcileEvoluRelayPreferenceFromProfile: vi.fn(),
     captureLocalDefaultRelayOwnerConfirmation: vi.fn(),
     confirmLocalDefaultRelayOwner: vi.fn(),
     writeRelayOverrideUrl: vi.fn(),
@@ -56,6 +58,7 @@ vi.mock("../store/auth", async () => {
             isAuthenticated: true,
             get user() { return user.value; },
             fetchUser: mocks.fetchUser,
+            reconcileEvoluRelayPreferenceFromProfile: mocks.reconcileEvoluRelayPreferenceFromProfile,
             captureLocalDefaultRelayOwnerConfirmation: mocks.captureLocalDefaultRelayOwnerConfirmation,
             enrollGuestRecoveryPublicKey: vi.fn(),
         }),
@@ -231,7 +234,8 @@ vi.mock("../services/evoluRelayUsageApi", () => ({
     relayUsagePercent: vi.fn(() => 0),
 }));
 
-vi.mock("../evolu/relayOverrideStorage", () => ({
+vi.mock("../evolu/relayOverrideStorage", async (importOriginal) => ({
+    ...await importOriginal<typeof import("../evolu/relayOverrideStorage")>(),
     clearRelayOverride: vi.fn(),
     readRelayOverride: vi.fn(() => ({ kind: "none" })),
     writeRelayOverrideDisabled: vi.fn(),
@@ -279,6 +283,7 @@ async function mountProfile(): Promise<VueWrapper> {
                 GuestUpgradeForm: true,
                 InvoicingBackupCard: true,
                 LocalStorageCard: true,
+                EvoluRelayManager: true,
             },
         },
     });
@@ -290,6 +295,8 @@ async function mountProfile(): Promise<VueWrapper> {
 describe("Profile recovery phrase owner switch guard", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mocks.fetchUser.mockResolvedValue(true);
+        vi.mocked(readRelayOverride).mockReturnValue({ kind: "none" });
         mocks.captureLocalDefaultRelayOwnerConfirmation.mockReturnValue(mocks.confirmLocalDefaultRelayOwner);
         mocks.confirmLocalDefaultRelayOwner.mockReturnValue(false);
         mocks.activeRelayUrl = "";
@@ -557,92 +564,59 @@ describe("Profile recovery phrase owner switch guard", () => {
         wrapper.unmount();
     });
 
-    describe('custom relay settings', () => {
-        const form = (wrapper: VueWrapper) => wrapper.vm as unknown as {
-            evoluRelayForm: { url: string; addDefault: boolean };
-            saveEvoluRelayUrl: () => Promise<void>;
-            testEvoluRelayUrl: () => Promise<void>;
-        };
-
-        it('adds new custom relays alongside default while preserving legacy replacements', async () => {
-            let wrapper = await mountProfile();
-            expect(form(wrapper).evoluRelayForm.addDefault).toBe(true);
-            wrapper.unmount();
-            mocks.user = { ...mocks.user!, evolu_relay_url: 'wss://custom.test' };
-            wrapper = await mountProfile();
-            expect(form(wrapper).evoluRelayForm.addDefault).toBe(false);
-            wrapper.unmount();
-        });
-
-        it('persists a mode-only change and reloads instead of refreshing only the app owner', async () => {
-            mocks.user = { ...mocks.user!, evolu_relay_url: 'wss://custom.test' };
-            const wrapper = await mountProfile();
-            const originalWindow = window;
+    describe('device relay sync resume', () => {
+        /** Stub only navigation so resume ordering remains observable. */
+        function stubReload() {
             const reload = vi.fn();
-            vi.stubGlobal('window', new Proxy(originalWindow, {
-                /** Stub location reload while preserving all other window properties. */
+            const original = window;
+            vi.stubGlobal('window', new Proxy(original, {
+                /** Preserve all browser behavior except the navigation under test. */
                 get(target, key) { return key === 'location' ? { reload } : Reflect.get(target, key); },
             }));
+            return reload;
+        }
+        it('keeps device sync off while refreshing canonical destinations before resume', async () => {
+            vi.mocked(readRelayOverride).mockReturnValue({ kind: 'disabled' });
+            const wrapper = await mountProfile();
+            const reload = stubReload();
             try {
-                mocks.apiPut.mockResolvedValue({ data: {} });
-                mocks.fetchUser.mockImplementation(async () => {
-                    mocks.user = { ...mocks.user!, evolu_relay_add_default: true };
+                mocks.fetchUser.mockImplementationOnce(async () => {
+                    expect(clearRelayOverride).not.toHaveBeenCalled();
+                    mocks.user = { ...mocks.user!, evolu_relays: [{ url: 'wss://kept.test', enabled: true }] };
                     return true;
                 });
-                form(wrapper).evoluRelayForm.addDefault = true;
-                await form(wrapper).saveEvoluRelayUrl();
-                expect(mocks.apiPut).toHaveBeenCalledWith('/user', {
-                    evolu_relay_url: 'wss://custom.test', evolu_relay_add_default: true,
-                });
+                const state = wrapper.vm as unknown as { relaySyncDisabledOnDevice: boolean; toggleRelaySyncOnDevice: () => Promise<void> };
+                state.relaySyncDisabledOnDevice = false;
+                await state.toggleRelaySyncOnDevice();
+                expect(mocks.fetchUser).toHaveBeenCalledOnce();
+                expect(clearRelayOverride).toHaveBeenCalledOnce();
+                expect(mocks.reconcileEvoluRelayPreferenceFromProfile).toHaveBeenCalledOnce();
+                expect(mocks.fetchUser.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(clearRelayOverride).mock.invocationCallOrder[0]);
                 expect(reload).toHaveBeenCalledOnce();
-                expect(mocks.flashSuccess).toHaveBeenCalled();
-            } finally {
-                vi.unstubAllGlobals();
-                wrapper.unmount();
-            }
+            } finally { vi.unstubAllGlobals(); wrapper.unmount(); }
         });
-
-        it('does not cache or announce success after a failed canonical profile refresh', async () => {
+        it.each(['failed', 'account_change', 'account_aba'] as const)('retains device-off after %s during canonical refresh', async failure => {
+            vi.mocked(readRelayOverride).mockReturnValue({ kind: 'disabled' });
             const wrapper = await mountProfile();
-            mocks.apiPut.mockResolvedValue({ data: {} });
-            mocks.fetchUser.mockResolvedValue(false);
-            form(wrapper).evoluRelayForm.url = 'wss://custom.test';
-            await form(wrapper).saveEvoluRelayUrl();
-            expect(mocks.flashError).toHaveBeenCalledWith('account.evolu_relay_save_failed');
-            expect(mocks.flashSuccess).not.toHaveBeenCalled();
-            expect(mocks.writeRelayOverrideUrl).not.toHaveBeenCalled();
-            wrapper.unmount();
-        });
-
-        it.each(['https://relay.example.test', 'ws://relay.example.test', 'wss://relay.example.test'])(
-            'probes the configured fallback %s when the custom field is empty', async (url) => {
-                mocks.activeRelayUrl = `${url}/usage?ignored=1`;
-                const wrapper = await mountProfile();
-                form(wrapper).evoluRelayForm.url = '  ';
-                await form(wrapper).testEvoluRelayUrl();
-                expect(mocks.probeRelayReachability).toHaveBeenCalledWith(url);
-                wrapper.unmount();
-            },
-        );
-
-        it.each(['https://custom.example.test', 'wss://custom.example.test/path'])(
-            'rejects invalid nonempty input %s instead of probing a fallback', async (url) => {
-                mocks.activeRelayUrl = 'wss://fallback.example.test';
-                const wrapper = await mountProfile();
-                form(wrapper).evoluRelayForm.url = url;
-                await form(wrapper).testEvoluRelayUrl();
-                expect(mocks.probeRelayReachability).not.toHaveBeenCalled();
-                wrapper.unmount();
-            },
-        );
-
-        it('probes the validated entered origin instead of the configured fallback', async () => {
-            mocks.activeRelayUrl = 'https://fallback.example.test';
-            const wrapper = await mountProfile();
-            form(wrapper).evoluRelayForm.url = ' wss://Custom.Example.test:8443/ ';
-            await form(wrapper).testEvoluRelayUrl();
-            expect(mocks.probeRelayReachability).toHaveBeenCalledWith('wss://custom.example.test:8443');
-            wrapper.unmount();
+            const reload = stubReload();
+            try {
+                mocks.fetchUser.mockImplementationOnce(async () => {
+                    if (failure !== 'failed') {
+                        const original = mocks.user!;
+                        mocks.user = { ...original, id: 2 };
+                        if (failure === 'account_aba') mocks.user = original;
+                    }
+                    return failure !== 'failed';
+                });
+                const state = wrapper.vm as unknown as { relaySyncDisabledOnDevice: boolean; toggleRelaySyncOnDevice: () => Promise<void> };
+                state.relaySyncDisabledOnDevice = false;
+                await state.toggleRelaySyncOnDevice();
+                expect(state.relaySyncDisabledOnDevice).toBe(true);
+                expect(writeRelayOverrideDisabled).toHaveBeenCalledOnce();
+                expect(clearRelayOverride).not.toHaveBeenCalled();
+                expect(mocks.reconcileEvoluRelayPreferenceFromProfile).not.toHaveBeenCalled();
+                expect(reload).not.toHaveBeenCalled();
+            } finally { vi.unstubAllGlobals(); wrapper.unmount(); }
         });
     });
 

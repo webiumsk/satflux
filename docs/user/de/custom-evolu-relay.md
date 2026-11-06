@@ -1,30 +1,32 @@
 ---
-title: Eigenes Evolu-Relay hinzufügen
+title: Evolu-Relays verwalten
 category: security
 order: 7
-meta_description: Verschlüsselte Rechnungsdaten über ein eigenes Relay zusätzlich zum Standard-Relay synchronisieren.
-updated: 2026-11-06
+meta_description: Verwalten Sie die verschlüsselte Synchronisierung von Rechnungsdaten über mehrere Relays.
+updated: 2026-11-07
 ---
 
-# Eigenes Evolu-Relay hinzufügen
+# Evolu-Relays verwalten
 
-Bei der lokalen Rechnungsstellung kannst du ein eigenes Evolu-Relay zusätzlich zum Standard-Relay verbinden. Wiederherstellungsphrase und Verschlüsselungsschlüssel bleiben gleich. Beide Relays erhalten verschlüsselte Daten, einschließlich der Daten freigegebener Unternehmen, auf die du Zugriff hast.
+Satflux speichert Rechnungsdaten auf Ihrem Gerät und synchronisiert verschlüsselte Änderungen über Relays. Standardmäßig sind `wss://evolu.satflux.io` und `wss://free.evoluhq.com` eingerichtet. Sie können weitere kompatible Relays hinzufügen, insgesamt höchstens acht Server.
 
-1. Öffne **Kontoeinstellungen > Evolu sync**.
-2. Gib den sicheren WebSocket-Ursprung deines Relays ein, zum Beispiel `wss://relay.example.com` oder `wss://relay.example.com:8443`.
-3. Lass die Option zur zusätzlichen Verwendung des Standard-Relays aktiviert und speichere. Die Seite wird neu geladen, um die Verbindungen anzuwenden.
-4. Bevor du einen Satflux-Tab schließt, stelle sicher, dass du deine [Wiederherstellungsphrase](/documentation/backup-and-recovery) gesichert hast. Melde dich auf jedem Gerät an und lade die aktualisierten Einstellungen. Schließe dann **alle Satflux-Tabs** und öffne Satflux erneut. Dadurch startet der vorhandene Synchronisierungsworker neu; das Neuladen eines einzelnen Tabs reicht nicht aus.
+1. Öffnen Sie **Kontoeinstellungen > Evolu sync**. Jede Zeile zeigt die Adresse und den aktuellen Verbindungsstatus.
+2. Wählen Sie **Relay hinzufügen**, geben Sie eine sichere Adresse wie `wss://relay.example.com:8443` ein und bestätigen Sie **Relay hinzufügen**. Bestehende Relays bleiben erhalten.
+3. Öffnen Sie ein Relay, um die Verbindung anzusehen und **Dieses Relay verwenden** ein- oder auszuschalten. Standard-Relays bleiben in der Liste und können deaktiviert werden. Eigene Relays können nach Bestätigung entfernt werden.
+4. Sichern Sie Ihre [Wiederherstellungsphrase](/documentation/backup-and-recovery), bevor Sie Tabs schließen. Melden Sie sich auf jedem Gerät an, laden Sie die aktuellen Einstellungen, schließen Sie **alle Satflux-Tabs** und öffnen Sie Satflux erneut. Dadurch startet der bestehende Synchronisierungsworker neu; das Neuladen eines einzelnen Tabs reicht nicht.
 
-Die Adresse muss `wss://` verwenden und darf weder Benutzername, Passwort, Pfad, Parameter noch Fragment enthalten. Der Server muss das mit Satflux' Evolu-7.x-Client kompatible Evolu-Protokoll unterstützen; ein gewöhnlicher WebSocket-Server reicht nicht aus.
+Listenänderungen gelten für Ihr Konto. **Synchronisierung auf diesem Gerät deaktivieren** pausiert alle Relays nur auf diesem Gerät. Das Deaktivieren oder Entfernen eines Relays behält lokale Daten und löscht keine bereits auf dem Server gespeicherten Daten.
 
-Bestehende Einstellungen für ein eigenes Relay verwenden weiterhin nur dieses Relay, bis du die zusätzliche Standardverbindung aktivierst. Wenn du die Option deaktivierst, wird nur dein eigenes Relay verwendet. Eine leere eigene Adresse stellt das konfigurierte Standard-Relay wieder her. Ist das Standard-Relay in der Installation deaktiviert, aktiviert ein eigenes Relay keinen öffentlichen Ersatz.
+## Verbindungsstatus
+
+**Verbunden** bedeutet, dass eine echte Synchronisierungs-WebSocket-Verbindung geöffnet ist. **Verbindung wird aufgebaut**, **Getrennt** und **Verbindungsfehler** beschreiben diese Verbindung. **Unbekannt** bedeutet, dass aktuelle Verbindungsinformationen fehlen; nach einem Update kann ein Neustart aller Tabs nötig sein. **Synchronisierung pausiert** bedeutet, dass der aktuelle lokale Eigentümer noch nicht zur Synchronisierung berechtigt ist; stellen Sie Rechnungsdaten mit der richtigen Wiederherstellungsphrase wieder her. Deaktivierte Relays und die Gerätepause werden separat angezeigt.
+
+Eine offene Verbindung bestätigt weder Protokollkompatibilität noch erfolgreiche Schreibvorgänge oder eine vollständige Sicherung. Der installierte Client benötigt ein mit Evolu 7.x kompatibles Relay. Verbindungen arbeiten unabhängig; fehlende Historie wird beim Abonnieren oder erneuten Verbinden abgeglichen. Relays kopieren nicht direkt untereinander, sondern werden durch einen Client synchronisiert. Geben Sie einem neuen Relay Zeit zum Aufholen.
+
+Adressen müssen `wss://` verwenden, ohne Anmeldedaten, Pfad, Parameter oder Fragment. Doppelte Adressen werden abgewiesen. Bestehende Einstellungen mit nur einem eigenen Relay bleiben erhalten; fügen Sie Standards bewusst über **Standard-Relays hinzufügen** hinzu. Ein ausdrücklich deaktivierter Build-Standard aktiviert keine öffentlichen Standards. Ältere HTTPS-Adressen verwenden die entsprechende WSS-Verbindung. Bei einem unsicheren WS/HTTP-Standard muss der Administrator vor Listenänderungen eine sichere Standardadresse einrichten.
 
 ## Verfügbarkeit und Wiederherstellung
 
-Die Verbindungen arbeiten unabhängig: Ein nicht erreichbares Relay schaltet die andere Verbindung nicht ab. Der Datenabgleich erfolgt beim Abonnieren oder erneuten Verbinden. Der Empfang von Daten über ein Relay beweist nicht, dass das andere sie bereits besitzt. Ein neu hinzugefügtes Relay braucht möglicherweise Zeit zum Aufholen.
+`free.evoluhq.com` ist ein Testrelay; dessen Daten können gelöscht werden. Siehe [Evolu-Relay-Dokumentation](https://www.evolu.dev/docs/relay). Bewahren Sie einen unabhängigen [Datenexport](/documentation/backup-and-recovery) und Ihre Wiederherstellungsphrase auf. Die Wiederherstellung benötigt die richtige Phrase und eine verfügbare Datenkopie; die Phrase selbst enthält keine Rechnungen.
 
-Der Verbindungstest prüft die Erreichbarkeit, nicht die Evolu-Protokollkompatibilität oder die Vollständigkeit einer Sicherung. Die Nutzungsstatistik bezieht sich bei einer eigenen Adresse auf das primäre eigene Relay. Sie bestätigt keine vollständige Kopie auf jedem Relay.
-
-**Synchronisierung auf diesem Gerät deaktivieren** schaltet alle Relay-Verbindungen auf diesem Gerät ab. Andere Geräte behalten ihre Einstellungen. Das Entfernen eines Relays beendet künftige Verbindungen; bereits dort gespeicherte Daten werden nicht gelöscht.
-
-Bewahre deine [Wiederherstellungsphrase](/documentation/backup-and-recovery) sicher auf und exportiere deine Daten regelmäßig. Zur Wiederherstellung sind die richtige Phrase und eine verfügbare Datenkopie erforderlich.
+Die lokale SQLite-Größe beschreibt dieses Gerät. Relay-Nutzungsstatistiken betreffen nur das erste aktivierte Relay. Beide bestätigen keine vollständige Kopie auf jedem Relay.

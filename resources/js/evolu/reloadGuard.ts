@@ -1,4 +1,11 @@
-import { evoluWebDeps } from "@evolu/web";
+import { createSharedWebWorker, evoluWebDeps } from "@evolu/web";
+import type { CreateDbWorker, DbWorkerInput, DbWorkerOutput } from "@evolu/common/local-first";
+
+/** Keep the SDK shared-worker name and storage lock while using the public observable worker entry. */
+const createDbWorker: CreateDbWorker = name => createSharedWebWorker<DbWorkerInput, DbWorkerOutput>(
+    name,
+    () => new Worker(new URL("./Db.worker.ts", import.meta.url), { type: "module" }),
+);
 
 const EVOLU_ALLOW_PAGE_RELOAD_KEY = "satflux.evolu.allow_page_reload.v1";
 
@@ -14,6 +21,7 @@ export function allowEvoluPageReload(): void {
 export function createEvoluWebDepsWithReloadGuard() {
     return {
         ...evoluWebDeps,
+        createDbWorker,
         reloadApp: (url: string) => {
             if (sessionStorage.getItem(EVOLU_ALLOW_PAGE_RELOAD_KEY) !== "1") {
                 if (import.meta.env.DEV) {

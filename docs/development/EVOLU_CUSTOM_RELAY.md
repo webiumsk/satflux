@@ -1,5 +1,14 @@
 # Custom Evolu relay
 
+## Multi-relay manager supersedes the initial UI - 2026-11-07
+
+The owner authorizes a full relay list with add/detail/enable/remove and actual
+per-relay socket status, with Satflux + Evolu free as the requested defaults.
+See [Evolu relay manager](EVOLU_RELAY_MANAGER.md) for the current contract,
+compatibility, review evidence and gates. The sections below retain the earlier
+single-custom/default implementation history.
+
+
 ## PR432 second review accepted locally - 2026-11-06
 
 All four supplied findings are verified valid against published `ee294579` and

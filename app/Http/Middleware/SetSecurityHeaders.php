@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Rules\EvoluRelays;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class SetSecurityHeaders
 {
+    /** Apply the authenticated relay allowlist without replacing an existing policy header. */
     public function handle(Request $request, Closure $next): Response
     {
         // Fail-closed: refuse to serve production traffic with CSP explicitly
@@ -34,24 +36,32 @@ class SetSecurityHeaders
             : 'Content-Security-Policy';
 
         if (! $response->headers->has($header)) {
-            // Include the authenticated user's own Evolu relay so a custom relay
-            // set in Profile is not blocked by connect-src on the next document load.
-            $userRelay = $this->userRelayOrigin($request);
-            $response->headers->set($header, $this->buildPolicy($userRelay));
+            // Include only the authenticated user's enabled relay selection.
+            $userRelays = $this->userRelayOrigins($request);
+            $response->headers->set($header, $this->buildPolicy($userRelays));
         }
 
         return $response;
     }
 
-    protected function userRelayOrigin(Request $request): ?string
+    /** @return list<string> Safe enabled origins, preserving explicit empty/off selections. */
+    protected function userRelayOrigins(Request $request): array
     {
         $user = $request->user();
-        $relay = is_object($user) ? ($user->evolu_relay_url ?? null) : null;
+        if (is_object($user) && ($user->evolu_relays ?? null) !== null) {
+            $relays = EvoluRelays::normalize($user->evolu_relays) ?? [];
 
-        return is_string($relay) && $relay !== '' ? $this->originOf($relay) : null;
+            return array_values(array_map(fn (array $relay): string => $relay['url'],
+                array_filter($relays, fn (array $relay): bool => $relay['enabled'])));
+        }
+        $relay = is_object($user) ? ($user->evolu_relay_url ?? null) : null;
+        $origin = is_string($relay) && $relay !== '' ? $this->originOf($relay) : null;
+
+        return $origin ? [$origin] : [];
     }
 
-    protected function buildPolicy(?string $userRelayOrigin = null): string
+    /** @param list<string> $userRelayOrigins */
+    protected function buildPolicy(array $userRelayOrigins = []): string
     {
         // Matomo (when configured) loads matomo.js from its own origin.
         $matomoOrigin = $this->originOf((string) config('services.matomo.url', ''));
@@ -82,7 +92,7 @@ class SetSecurityHeaders
             'img-src' => ["'self'", 'data:', 'blob:', 'https:'],
             // Explicit allowlist (no bare https:/wss:): BTCPay, Evolu relay,
             // Matomo beacon, Chorala widget, the user's own relay and any extras.
-            'connect-src' => $this->connectSrc($matomoOrigin, $choralaOrigin, $userRelayOrigin),
+            'connect-src' => $this->connectSrc($matomoOrigin, $choralaOrigin, $userRelayOrigins),
             'worker-src' => ["'self'", 'blob:'],
             // YouTube embeds: landing SK video + documentation articles (both use youtube-nocookie);
             // Chorala widget may render its UI in an iframe.
@@ -104,9 +114,10 @@ class SetSecurityHeaders
      * connect-src allowlist: self + BTCPay + Evolu relay (ws/wss) + Matomo +
      * extras. XHR/fetch and WebSocket targets the SPA legitimately reaches.
      *
+     * @param  list<string>  $userRelayOrigins
      * @return list<string>
      */
-    protected function connectSrc(?string $matomoOrigin, ?string $choralaOrigin = null, ?string $userRelayOrigin = null): array
+    protected function connectSrc(?string $matomoOrigin, ?string $choralaOrigin = null, array $userRelayOrigins = []): array
     {
         $sources = ["'self'"];
 
@@ -127,10 +138,13 @@ class SetSecurityHeaders
             $sources[] = $btcpay;
         }
 
-        // Build-default relay plus the authenticated user's own relay override.
+        // Default relay origins plus the authenticated user's enabled selection.
+        // An allowlisted origin does not enable that relay in the client.
         foreach ([
+            'wss://evolu.satflux.io',
+            'wss://free.evoluhq.com',
             $this->originOf((string) config('security.csp.evolu_relay_url', '')),
-            $userRelayOrigin,
+            ...$userRelayOrigins,
         ] as $relayOrigin) {
             if ($relayOrigin) {
                 $sources[] = $relayOrigin;

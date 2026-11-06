@@ -1,30 +1,32 @@
 ---
-title: Add your own Evolu relay
+title: Manage Evolu relays
 category: security
 order: 7
-meta_description: Synchronize encrypted invoicing data through your own relay alongside the default relay.
-updated: 2026-11-06
+meta_description: Manage encrypted invoicing synchronization across multiple relays.
+updated: 2026-11-07
 ---
 
-# Add your own Evolu relay
+# Manage Evolu relays
 
-In local-first invoicing, you can connect your own Evolu relay alongside the default relay. Your recovery phrase and encryption keys stay the same. Both relays receive encrypted data, including data for shared companies you have access to.
+Satflux keeps invoicing data on your device and synchronizes encrypted changes through relays. The default list contains `wss://evolu.satflux.io` and `wss://free.evoluhq.com`. You can add other compatible relays, up to eight configured servers.
 
-1. Open **Account settings > Evolu sync**.
-2. Enter your relay's secure WebSocket origin, for example `wss://relay.example.com` or `wss://relay.example.com:8443`.
-3. Keep the option to also use the default relay enabled and save. The page reloads to apply the connections.
-4. Before closing any Satflux tabs, make sure you have saved your [recovery phrase](/documentation/backup-and-recovery). On each device, sign in and load the updated settings, then close **all Satflux tabs** and reopen Satflux. This restarts the existing synchronization worker; reloading only one tab is not sufficient.
+1. Open **Account settings > Evolu sync**. Each row shows the relay address and its current connection state.
+2. Choose **Add relay**, enter a secure origin such as `wss://relay.example.com:8443`, and choose **Add relay**. Existing relays stay in the list.
+3. Open a relay row to see its connection and turn **Use this relay** on or off. Default relays remain in the list and can be turned off. A custom relay can be removed after confirmation.
+4. Before closing any Satflux tabs, save your [recovery phrase](/documentation/backup-and-recovery). On each device, sign in and load the updated settings, close **all Satflux tabs**, and reopen Satflux. This restarts an existing synchronization worker; reloading only one tab is insufficient.
 
-The address must use `wss://` and contain no username, password, path, query or fragment. Your server must implement the Evolu protocol compatible with Satflux's installed Evolu 7.x client; an ordinary WebSocket server is insufficient.
+Relay list changes apply to your account. **Disable sync on this device** pauses every relay only on the current device. Turning off or removing a relay keeps local data and does not erase data already stored on that server.
 
-Existing custom-relay settings continue to use that relay alone until you enable the additional-default option. Disabling that option uses only your custom relay. Clearing the custom address restores the configured default. If the installation disables its default relay, adding a custom relay does not enable a public fallback.
+## Connection states
+
+**Connected** means an actual synchronization WebSocket is open. **Connecting**, **Disconnected**, and **Connection error** describe that connection. **Unknown** means current connection evidence is unavailable; restarting all tabs may be necessary after an update. **Sync paused** means the current local owner is not yet authorized to synchronize; restore your invoicing data with the correct recovery phrase. Disabled relays and device sync-off are shown separately.
+
+An open connection does not prove protocol compatibility, successful writes, or a complete backup. The installed client requires a relay compatible with Evolu 7.x. Connections work independently, and missing history is reconciled on subscription or reconnect. Relays do not copy directly between themselves; a client synchronizes them. Allow time for a new relay to catch up.
+
+Addresses must use `wss://`, with no credentials, path, query, or fragment. Duplicate addresses are rejected. Existing custom-only settings remain custom-only; use **Add default relays** to add the defaults deliberately. An installation that explicitly disables its default relay does not silently enable public defaults. Legacy HTTPS build addresses use the equivalent WSS connection; managing a list with an insecure WS/HTTP build default requires the administrator to configure a secure default first.
 
 ## Availability and recovery
 
-The connections work independently: an unavailable relay does not turn off the other connection. Reconciliation happens when a connection subscribes or reconnects. Receiving data from one relay does not prove the other already has it. A newly added relay may need time to catch up.
+The public `free.evoluhq.com` relay is a testing service and its data may be deleted. See the [Evolu relay documentation](https://www.evolu.dev/docs/relay). Keep an independent [data export](/documentation/backup-and-recovery) and your recovery phrase. Recovery needs both the correct phrase and an available copy of the data; the phrase itself contains no invoices.
 
-The connection test checks reachability, not Evolu protocol compatibility or a complete backup. Usage statistics describe the primary custom relay when one is configured. They do not confirm that every relay holds a complete copy.
-
-**Disable sync on this device** disables all relay connections on that device. Other devices keep their settings. Removing a relay stops future connections; it does not erase data already stored on that relay.
-
-Keep your [recovery phrase](/documentation/backup-and-recovery) safe and make regular data exports. Recovery requires both the correct phrase and an available copy of the data.
+The local SQLite size describes this device, and relay usage statistics describe only the first enabled relay. Neither confirms a complete copy on every relay.

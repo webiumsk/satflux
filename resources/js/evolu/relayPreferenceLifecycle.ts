@@ -1,14 +1,40 @@
 import { createOwnerWebSocketTransport } from "@evolu/common";
 import type { Evolu, SyncOwner, UnuseOwner } from "@evolu/common/local-first";
 import { deriveRecoveryPublicKeyHex } from "@/services/accountSeed";
-import { normalizeEvoluRelayBaseUrl, resolveEvoluRelayUrls } from "./config";
-import { EVOLU_RELAY_OVERRIDE_STORAGE_KEY, parseRelayOverride, writeRelayOverrideUrl, type RelayOverride } from "./relayOverrideStorage";
+import { MAX_EVOLU_RELAYS, normalizeEvoluRelayBaseUrl, resolveEvoluRelayUrls, resolveSelectedEvoluRelayUrls } from "./config";
+import { EVOLU_RELAY_OVERRIDE_STORAGE_KEY, parseRelayOverride, writeRelayOverrideRelays, writeRelayOverrideUrl, type RelayOverride } from "./relayOverrideStorage";
 import type { InvoicingLocalSchema } from "./schema";
 
 type Client = Evolu<InvoicingLocalSchema>;
 type Selection = { urls: readonly string[]; accountPublicKey?: string | null };
-type Binding = { evolu: Client; owner: SyncOwner; accountPublicKey?: string | null; unuse?: UnuseOwner; signature?: string; removed: boolean };
+type Binding = { evolu: Client; owner: SyncOwner; isAppOwner: boolean; urls: readonly string[]; accountPublicKey?: string | null; unuse?: UnuseOwner; signature?: string; removed: boolean };
 const bindings = new Set<Binding>();
+const activeUrlListeners = new Set<() => void>();
+let activeUrlSignature = "[]";
+
+/** Observe only destinations actually permitted for this tab's AppOwner registrations. */
+export function getActiveEvoluRelayUrls(): readonly string[] {
+    return suspended ? [] : [...new Set([...bindings]
+        .filter(binding => !binding.removed && binding.isAppOwner).flatMap(binding => binding.urls))];
+}
+
+/** Subscribe without publishing owner identifiers or private material to the UI. */
+export function subscribeActiveEvoluRelayUrls(listener: () => void): () => void {
+    activeUrlListeners.add(listener);
+    return () => { activeUrlListeners.delete(listener); };
+}
+
+/** Notify presentation consumers only after the actual guarded registration set changes. */
+function notifyActiveUrls(): void {
+    const signature = JSON.stringify(getActiveEvoluRelayUrls());
+    if (signature === activeUrlSignature) return;
+    activeUrlSignature = signature;
+    for (const listener of activeUrlListeners) {
+        try { listener(); } catch {
+            // Presentation listeners must not interrupt owner reconciliation.
+        }
+    }
+}
 const publicKeys = new WeakMap<Client, string | null>();
 const ownerPublicKeyCache = new WeakMap<SyncOwner, string>();
 let selection: Selection | undefined;
@@ -25,9 +51,13 @@ function cacheSnapshot(): { selection: Selection; override: RelayOverride; avail
             override: cached,
             available: true,
             selection: {
-                urls: cached.kind === "disabled" ? [] : resolveEvoluRelayUrls(cached.kind === "url" ? cached.url : null,
-                    cached.kind === "url" && cached.addDefault === true),
-                accountPublicKey: cached.kind === "url" ? cached.accountPublicKey : undefined,
+                urls: cached.kind === "disabled" ? [] : cached.kind === "relays"
+                    ? resolveSelectedEvoluRelayUrls({ evolu_relays: cached.relays })
+                    : resolveEvoluRelayUrls(cached.kind === "url" ? cached.url : null,
+                        cached.kind === "url" && cached.addDefault === true),
+                // No cache proves no account association. Retained OPFS owners must
+                // wait for canonical authentication before using new defaults.
+                accountPublicKey: cached.kind === "url" || cached.kind === "relays" ? cached.accountPublicKey : null,
             },
         };
     } catch {
@@ -62,7 +92,10 @@ function applyBinding(binding: Binding): void {
     const signature = JSON.stringify(urls);
     if (binding.signature === signature) return;
     const oldUnuse = binding.unuse;
-    if (urls.length === 0) oldUnuse?.();
+    if (urls.length === 0) {
+        oldUnuse?.();
+        binding.urls = [];
+    }
     const nextUnuse = binding.evolu.useOwner({
         ...binding.owner,
         transports: urls.map(url => createOwnerWebSocketTransport({ url, ownerId: binding.owner.id })),
@@ -70,12 +103,14 @@ function applyBinding(binding: Binding): void {
     if (urls.length > 0) oldUnuse?.();
     binding.unuse = nextUnuse;
     binding.signature = signature;
+    binding.urls = urls;
 }
 
 /** Apply a single current selection to all AppOwner and SharedOwner registrations in this tab. */
 function applySelection(next: Selection): void {
     selection = next;
     for (const binding of bindings) applyBinding(binding);
+    notifyActiveUrls();
 }
 
 /** Honor device-off independently of the canonical account preference. */
@@ -94,7 +129,9 @@ function applyCachedSelection(): void {
         && (selection.accountPublicKey !== undefined || JSON.stringify(next.urls) !== JSON.stringify(selection.urls))) {
         next.accountPublicKey = null;
         const cached = snapshot.override;
-        if (cached.kind !== "disabled") {
+        if (cached.kind === "relays") {
+            writeRelayOverrideRelays(cached.relays, null);
+        } else if (cached.kind !== "disabled") {
             writeRelayOverrideUrl(cached.kind === "url" ? cached.url : "", cached.kind === "url" && cached.addDefault === true, null);
         }
     }
@@ -113,7 +150,9 @@ function onPageHide(): void {
         binding.unuse?.();
         binding.unuse = undefined;
         binding.signature = undefined;
+        binding.urls = [];
     }
+    notifyActiveUrls();
 }
 
 /** Restore registrations after back-forward cache resume using the newest persisted selection. */
@@ -143,7 +182,7 @@ function observePreferences(): void {
         }
         channel.onmessage = (event: MessageEvent<unknown>) => {
             const value = event.data as (Partial<Selection> & { persisted?: unknown }) | null;
-            if (!value || !Array.isArray(value.urls) || value.urls.length > 2
+            if (!value || !Array.isArray(value.urls) || value.urls.length > MAX_EVOLU_RELAYS
                 || !value.urls.every(url => typeof url === "string" && normalizeEvoluRelayBaseUrl(url) === url)
                 || (value.accountPublicKey !== undefined && value.accountPublicKey !== null
                     && (typeof value.accountPublicKey !== "string" || !/^[a-f0-9]{64}$/i.test(value.accountPublicKey)))) return;
@@ -156,6 +195,11 @@ function observePreferences(): void {
             }
         };
     }
+}
+
+/** Pause this tab's owned references while a changed cross-tab preference is revalidated. */
+export function pauseEvoluRelayPreference(): void {
+    applySelection({ urls: [], accountPublicKey: null });
 }
 
 /** Reconcile canonical destinations locally and across tabs even when the cache write failed. */
@@ -175,28 +219,36 @@ export function reconcileEvoluRelayPreference(urls: readonly string[], accountPu
 export function registerEvoluRelayOwner(evolu: Client, owner: SyncOwner): UnuseOwner {
     observePreferences();
     selection ??= cachedSelection();
-    const binding: Binding = { evolu, owner, removed: false, accountPublicKey: publicKeys.get(evolu) };
+    const binding: Binding = { evolu, owner, removed: false, isAppOwner: false, urls: [], accountPublicKey: publicKeys.get(evolu) };
     bindings.add(binding);
     const publicKey = ownerPublicKey(owner);
     if (publicKey) {
+        binding.isAppOwner = true;
         publicKeys.set(evolu, publicKey);
         binding.accountPublicKey = publicKey;
     }
     applyBinding(binding);
+    notifyActiveUrls();
     void Promise.resolve(evolu.appOwner).then(appOwner => {
         if (binding.removed) return;
+        binding.isAppOwner = appOwner?.id === owner.id;
         const key = appOwner ? ownerPublicKey(appOwner) : null;
         if (!publicKeys.has(evolu)) publicKeys.set(evolu, key);
         // This association belongs to the registration, not a later restored owner on the same client.
         binding.accountPublicKey ??= key;
         applyBinding(binding);
+        notifyActiveUrls();
     }).catch(() => {
         if (!publicKeys.has(evolu)) publicKeys.set(evolu, null);
-        if (!binding.removed) applyBinding(binding);
+        if (!binding.removed) {
+            applyBinding(binding);
+            notifyActiveUrls();
+        }
     });
     return () => {
         binding.removed = true;
         binding.unuse?.();
         bindings.delete(binding);
+        notifyActiveUrls();
     };
 }

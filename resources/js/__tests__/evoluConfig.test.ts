@@ -6,12 +6,13 @@ describe("evoluTransports", () => {
         vi.resetModules();
     });
 
-    it("defaults to the public relay when no relay URL is configured", async () => {
+    it("defaults to Satflux and the public relay when no relay URL is configured", async () => {
         vi.stubEnv("VITE_EVOLU_RELAY_URL", undefined);
 
         const { evoluTransports } = await import("../evolu/config");
 
         expect(evoluTransports()).toEqual([
+            { type: "WebSocket", url: "wss://evolu.satflux.io" },
             { type: "WebSocket", url: "wss://free.evoluhq.com" },
         ]);
     });
@@ -23,6 +24,7 @@ describe("evoluTransports", () => {
 
         expect(evoluTransports()).toEqual([
             { type: "WebSocket", url: "wss://relay.example.com" },
+            { type: "WebSocket", url: "wss://free.evoluhq.com" },
         ]);
     });
 

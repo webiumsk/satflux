@@ -1,5 +1,29 @@
 # Project state
 
+## Multi-relay manager independently accepted - 2026-11-07
+
+Owner-authorized list/add/detail/enable/remove replaces the single-custom form.
+Defaults are `wss://evolu.satflux.io` and `wss://free.evoluhq.com`; existing
+custom-only preferences stay exact. Canonical nullable `evolu_relays` rows preserve
+explicit empty/off selections, with strict bounded validation and account CSP.
+Real SDK worker sockets supply per-relay state through origin-only observations;
+Connected never asserts a complete backup. Same worker/SQLite identity is retained.
+
+Independent security accepts19 TS/SFC +30 PHP cases; QA accepts3 SDK/Profile tests,
+8 real Chrome worker/OPFS cases and10 responsive/keyboard UI cases. Six verified
+review findings are closed, including stale relay revival, device-off resume,
+missing-cache pre-auth exposure, queued status replies and SDK owner-query redaction.
+Reviewed runtime30 `ebae93dc...18ac3c` / source54 `f9ca87d8...cd60a8` match before
+and after independent checks. Main frontend2,129/201, PHP102/693 (relay/CSP/API +
+guide selections), type110, lint48/52, locale/build, Pint/PHPStan/API/changelog pass.
+Local AST documents87/87 changed complexity-qualified functions, including78 runtime
+functions. No dependency, threshold, billing or external repository changes.
+
+PR432 is open at prior published `da17233a`; main owns the scoped corrective
+publication and exact-head verification. Merge/deployment remain separate pending
+owner gates. Full contract, compatibility limits and private evidence are in
+`EVOLU_RELAY_MANAGER.md`; unrelated primary work is preserved.
+
 ## PR432 second review accepted locally - 2026-11-06
 
 All four findings are valid and corrected against published `ee294579`: reject

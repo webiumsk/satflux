@@ -18,19 +18,21 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); localStorage.clear(); });
 
 const both = ['wss://custom.example.test', 'wss://default.example.test'];
+const free = 'wss://free.evoluhq.com';
+const all = [...both, free];
 
 describe('multiple Evolu relays', () => {
     it('boots both relays from cache while preserving the old replacement representation', () => {
         writeRelayOverrideUrl(both[0], true);
         expect(readRelayOverride()).toEqual({ kind: 'url', url: both[0], addDefault: true });
-        expect(evoluTransports().map(t => t.url)).toEqual(both);
-        expect(getResolvedEvoluRelayUrls()).toEqual(both);
+        expect(evoluTransports().map(t => t.url)).toEqual(all);
+        expect(getResolvedEvoluRelayUrls()).toEqual(all);
         writeRelayOverrideUrl(both[0]);
         expect(evoluTransports().map(t => t.url)).toEqual([both[0]]);
     });
 
     it('deduplicates identical origins and respects disabled build defaults', () => {
-        expect(resolveEvoluRelayUrls('wss://default.example.test/', true)).toEqual([both[1]]);
+        expect(resolveEvoluRelayUrls('wss://default.example.test/', true)).toEqual([both[1], free]);
         vi.stubEnv('VITE_EVOLU_RELAY_URL', '');
         expect(resolveEvoluRelayUrls(both[0], true)).toEqual([both[0]]);
         expect(resolveEvoluRelayUrls(null, true)).toEqual([]);
@@ -39,7 +41,7 @@ describe('multiple Evolu relays', () => {
     it('uses canonical authenticated settings even when the previous account cache differs', () => {
         writeRelayOverrideUrl(both[0], true);
         auth.user = { evolu_relay_url: null };
-        expect(getResolvedEvoluRelayUrls()).toEqual([both[1]]);
+        expect(getResolvedEvoluRelayUrls()).toEqual([both[1], free]);
         expect(getResolvedEvoluRelayUrl()).toBe(both[1]);
         auth.user = { evolu_relay_url: both[0], evolu_relay_add_default: false };
         expect(getResolvedEvoluRelayUrls()).toEqual([both[0]]);
@@ -50,7 +52,7 @@ describe('multiple Evolu relays', () => {
         const owner = sharedOwnerFromSecret(createCompanyShareSecret());
         const evolu = { appOwner: Promise.resolve(owner) } as unknown as Evolu<InvoicingLocalSchema>;
         for (const sync of [await createSyncOwnerForRelay(evolu), sharedOwnerForRelay(owner)]) {
-            expect(sync.transports).toEqual(both.map(url => ({ type: 'WebSocket', url: `${url}?ownerId=${owner.id}` })));
+            expect(sync.transports).toEqual(all.map(url => ({ type: 'WebSocket', url: `${url}?ownerId=${owner.id}` })));
             expect(sync.id).toBe(owner.id);
             expect(sync.encryptionKey).toBe(owner.encryptionKey);
             expect(sync.writeKey).toBe(owner.writeKey);

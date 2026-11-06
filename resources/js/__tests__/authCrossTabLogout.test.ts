@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { useAuthStore } from '../store/auth';
 import { getStoredAccountMnemonic, storeAccountMnemonic } from '../services/accountSeed';
 import { evoluTransports } from '../evolu/config';
-import { writeRelayOverrideUrl, writeRelayOverrideDisabled } from '../evolu/relayOverrideStorage';
+import { readRelayOverride, writeRelayOverrideRelays, writeRelayOverrideUrl, writeRelayOverrideDisabled } from '../evolu/relayOverrideStorage';
 
 const mocks = vi.hoisted(() => ({
     get: vi.fn(), post: vi.fn(), csrf: vi.fn(), replace: vi.fn(),
@@ -230,7 +230,7 @@ it.each([false, true])('retains the selected boot relays after a signed-out prof
         await store.fetchUser();
         expect(store.user).toBeNull();
         expect(evoluTransports().map(transport => transport.url)).toEqual(addDefault
-            ? ['wss://custom.example.test', 'wss://default.example.test']
+            ? ['wss://custom.example.test', 'wss://default.example.test', 'wss://free.evoluhq.com']
             : ['wss://custom.example.test']);
     } finally {
         vi.unstubAllEnvs();
@@ -249,4 +249,57 @@ it('retains custom-only boot selection and device sync-off across explicit logou
     } finally {
         vi.unstubAllEnvs();
     }
+});
+
+
+it('retains the complete configured list and offline rows across explicit logout', async () => {
+    const rows = [
+        { url: 'wss://one.example.test', enabled: true },
+        { url: 'wss://two.example.test', enabled: false },
+        { url: 'wss://three.example.test', enabled: true },
+    ];
+    writeRelayOverrideRelays(rows, 'a'.repeat(64));
+    await store.logout();
+    expect(readRelayOverride()).toEqual({ kind: 'relays', relays: rows, accountPublicKey: 'a'.repeat(64) });
+    expect(evoluTransports().map(transport => transport.url)).toEqual([rows[0].url, rows[2].url]);
+});
+
+it('does not issue an older profile GET when a newer read finishes during its CSRF wait', async () => {
+    let finishCsrf!: (value: boolean) => void;
+    mocks.csrf.mockImplementationOnce(() => new Promise(resolve => { finishCsrf = resolve; }));
+    const oldRead = store.fetchUser();
+    mocks.get.mockResolvedValue({ data: { id: 8, email: 'newer@example.test' } });
+    expect(await store.fetchUser()).toBe(true);
+    finishCsrf(true);
+    expect(await oldRead).toBe(false);
+    expect(mocks.get).toHaveBeenCalledTimes(1);
+    expect(store.user?.id).toBe(8);
+});
+
+it('a profile response after store disposal cannot update authentication', async () => {
+    let finishRead!: (value: unknown) => void;
+    mocks.get.mockImplementationOnce(() => new Promise(resolve => { finishRead = resolve; }));
+    const read = store.fetchUserWithOutcome();
+    await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(1));
+    store.$dispose();
+    finishRead({ data: { id: 8, email: 'late@example.test' } });
+    expect(await read).toBe('unavailable');
+    expect(store.user?.id).toBe(7);
+});
+
+it.each(['login', 'register', 'guest', 'enroll'] as const)('invalidates older profile reads when the explicit %s action starts', async action => {
+    const original = { ...store.user };
+    let finishRead!: (value: unknown) => void;
+    mocks.get.mockImplementationOnce(() => new Promise(resolve => { finishRead = resolve; }))
+        .mockResolvedValue({ data: { id: 8, email: 'current@example.test' } });
+    const oldRead = store.fetchUserWithOutcome();
+    await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(1));
+    mocks.post.mockResolvedValue({ data: { user: { id: 8 } } });
+    if (action === 'login') await store.login('current@example.test', 'synthetic-password');
+    else if (action === 'register') await store.register('new@example.test', 'synthetic-password', 'synthetic-password');
+    else if (action === 'guest') await store.continueAsGuest();
+    else await store.enrollGuestRecoveryPublicKey('a'.repeat(64));
+    finishRead({ data: original });
+    expect(await oldRead).toBe('unavailable');
+    expect(store.user?.id ?? null).toBe(action === 'register' ? null : 8);
 });
