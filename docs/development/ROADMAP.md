@@ -1,5 +1,27 @@
 # Development roadmap
 
+## PR431 seven review findings corrected and independently accepted - 2026-11-06
+
+All seven supplied findings reproduce on published38e03295 and are corrected.
+Raw detail completeness and Unicode-aware product titles are validated before
+cached overlay; only genuine list paths opt out of full-detail confirmation.
+Both aliases reject invalid input with422 before normal or legacy merging/API
+work. Valid legacy aliases retain JSON template transport and explicit clears.
+App-list writes honor the caller guard; failed reads retain existing Delete
+without Save. Original category arrays and post-submit same-app drafts survive.
+The legacy bypass and category-ID reuse regression found independently are closed.
+
+Independent QA accepts JS66/3, PHP135/1014 (including its extra legacy proof),
+and Chrome10/10. Security accepts the same frozen runtime7 `fe560b24...79bec`
+and source11 `1394cad4...50f02`; no unresolved finding remains. Main full
+frontend1,969/193, PHP218/1407, lint48/52, type110, five-locale parity, build,
+scoped Pint/PHPStan and AST update pass. Earlier superseded frontend evidence
+is excluded from these final-head claims. No dependency or ratchet changes.
+
+Publication uses the existing owned PoS branch; verify remote head and new CI
+before claiming external success. Resolve only the seven verified review threads.
+No PR merge, deployment, production state or unrelated primary edits are changed.
+
 ## PR431 base conflicts resolved and independently accepted - 2026-11-06
 
 Integrate master `2154101e` (merged landing PR430) into published PoS head

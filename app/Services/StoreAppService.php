@@ -9,6 +9,7 @@ use App\Services\BtcPay\Exceptions\BtcPayException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Business logic for store apps (PoS, Crowdfund, Payment Button, LN Address):
@@ -44,7 +45,7 @@ class StoreAppService
                 return $localApps->map(function ($localApp) use ($btcpayAppsMap) {
                     $btcpayApp = $btcpayAppsMap->get($localApp->btcpay_app_id);
 
-                    return $this->formatter->format($localApp, $btcpayApp);
+                    return $this->formatter->format($localApp, $btcpayApp, requireCompleteConfig: false);
                 })->values()->all();
             } catch (BtcPayException $e) {
                 Log::warning('BTCPay API failed when listing apps, using local apps only', [
@@ -52,7 +53,7 @@ class StoreAppService
                     'error' => $e->getMessage(),
                 ]);
 
-                return $localApps->map(fn ($app) => $this->formatter->format($app))->values()->all();
+                return $localApps->map(fn ($app) => $this->formatter->format($app, requireCompleteConfig: false))->values()->all();
             }
         }
 
@@ -77,7 +78,7 @@ class StoreAppService
                     'config' => $btcpayApp,
                 ]);
 
-                return $this->formatter->format($localApp, $btcpayApp);
+                return $this->formatter->format($localApp, $btcpayApp, requireCompleteConfig: false);
             })->filter()->values()->all();
         } catch (BtcPayException $e) {
             Log::warning('BTCPay API failed when listing apps, no local apps found', [
@@ -214,6 +215,8 @@ class StoreAppService
      */
     public function createInBtcPayForLegacyApp(Store $store, App $app, ?string $name, ?array $requestConfig): array
     {
+        $this->validateSubmittedPointOfSaleProducts($app, $requestConfig);
+
         Log::warning('App update called but btcpay_app_id is missing - creating app in BTCPay first', [
             'app_id' => $app->id,
             'store_id' => $store->id,
@@ -234,7 +237,19 @@ class StoreAppService
                 $requestConfig['appName'] = $requestConfig['name'];
                 unset($requestConfig['name']);
             }
-            $config = array_merge($config, $requestConfig);
+            $config = strtolower($app->app_type) === 'pointofsale'
+                ? $this->formatter->mergePointOfSaleConfig($config, $requestConfig)
+                : array_merge($config, $requestConfig);
+        }
+
+        if (strtolower($app->app_type) === 'pointofsale') {
+            if (array_key_exists('items', $config)) {
+                $config['template'] = $config['items'];
+                unset($config['items']);
+            }
+            if (isset($config['template']) && is_array($config['template'])) {
+                $config['template'] = json_encode($config['template'], JSON_THROW_ON_ERROR);
+            }
         }
 
         $btcpayApp = $this->appService->createApp($store->btcpay_store_id, $app->app_type, $config, $userApiKey);
@@ -279,6 +294,8 @@ class StoreAppService
      */
     public function buildUpdateConfig(App $app, ?array $requestConfig, ?string $name, ?bool $archived): array
     {
+        $this->validateSubmittedPointOfSaleProducts($app, $requestConfig);
+
         $config = [];
 
         if ($requestConfig !== null) {
@@ -328,6 +345,28 @@ class StoreAppService
         }
 
         return $config;
+    }
+
+    /**
+     * Reject both invalid submitted product aliases before normal or legacy updates.
+     *
+     * @param  array<string, mixed>|null  $requestConfig
+     */
+    private function validateSubmittedPointOfSaleProducts(App $app, ?array $requestConfig): void
+    {
+        if (strtolower($app->app_type) !== 'pointofsale' || $requestConfig === null) {
+            return;
+        }
+
+        $errors = [];
+        foreach (['items', 'template'] as $key) {
+            if (array_key_exists($key, $requestConfig) && ! $this->formatter->isPointOfSaleProductList($requestConfig[$key])) {
+                $errors['config.'.$key] = [__('validation.in', ['attribute' => 'config.'.$key])];
+            }
+        }
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
     }
 
     /**

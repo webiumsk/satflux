@@ -79,3 +79,27 @@ export function preserveUnchangedPosSettings(payload: Record<string, unknown>, f
     }
   }
 }
+
+/** Private category metadata stays outside merchant products and upstream templates. */
+export type PosCategorySnapshots = Map<string, { rendered: string | null; values: string[] }>;
+type CategoryProduct = { id: string; categories: string | null };
+
+/** Associate original category arrays with stable product IDs and their rendered editor text. */
+export function capturePosCategories(products: readonly CategoryProduct[], items: readonly { id?: unknown; categories?: unknown }[]): PosCategorySnapshots {
+  const rawCategories = new Map(items.map(item => [item.id, item.categories]));
+  const snapshot: PosCategorySnapshots = new Map();
+  for (const product of products) {
+    const values = rawCategories.get(product.id);
+    if (Array.isArray(values) && values.every(value => typeof value === 'string')) {
+      snapshot.set(product.id, { rendered: product.categories, values: [...values] });
+    }
+  }
+  return snapshot;
+}
+
+/** Preserve untouched category arrays, parsing comma-separated text only after a deliberate edit. */
+export function serializePosCategories(product: CategoryProduct, snapshot: PosCategorySnapshots): string[] | null {
+  const original = snapshot.get(product.id);
+  if (original && product.categories === original.rendered) return [...original.values];
+  return product.categories ? product.categories.split(',').map(value => value.trim()).filter(Boolean) : null;
+}

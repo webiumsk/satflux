@@ -116,7 +116,7 @@ async function loadApp() {
   try {
     await storesStore.fetchStore(requestedStoreId);
     if (!isCurrentRequest()) return;
-    await appsStore.fetchApps(requestedStoreId);
+    await appsStore.fetchApps(requestedStoreId, isCurrentRequest);
     if (!isCurrentRequest()) return;
     const currentApp = await appsStore.fetchApp(requestedStoreId, requestedAppId);
     if (!isCurrentRequest() || currentApp?.id !== requestedAppId) return;

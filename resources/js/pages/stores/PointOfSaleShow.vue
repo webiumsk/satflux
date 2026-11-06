@@ -18,9 +18,22 @@
     <template #default="{ app, store }">
       <!-- Content Container -->
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <p v-if="!configIsEditable" role="alert" class="rounded-xl border border-red-500/30 bg-red-900/20 p-4 text-red-300">
-          {{ t("stores.settings_load_failed") }}
-        </p>
+        <div v-if="!configIsEditable" class="space-y-6">
+          <p role="alert" class="rounded-xl border border-red-500/30 bg-red-900/20 p-4 text-red-300">
+            {{ t("stores.settings_load_failed") }}
+          </p>
+          <button
+            type="button"
+            @click="showDeleteModal = true"
+            :disabled="saving || deleting"
+            class="inline-flex items-center px-4 py-2 border border-red-600 rounded-xl text-sm font-medium text-red-400 hover:bg-red-600 hover:text-white transition-colors"
+          >
+            <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            {{ t("stores.delete_app") }}
+          </button>
+        </div>
         <form
           v-else
           id="pos-settings-form"
@@ -1125,7 +1138,7 @@
   <!-- Delete Confirmation Modal -->
   <DeleteAppModal
     :is-open="showDeleteModal"
-    :app-name="layoutRef?.app?.name || ''"
+    :app-name="editorApp?.name || ''"
     :deleting="deleting"
     :error="deleteError"
     @close="showDeleteModal = false"
@@ -1166,7 +1179,7 @@ import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import ProPlanBadge from "../../components/stores/ProPlanBadge.vue";
 import { currencies } from "../../data/currencies";
 import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
-import { canEditPosConfig, capturePosSettings, hasPosConfigReadErrors, preserveUnchangedPosSettings, readPosProducts, type PosSettingsSnapshot } from "../../utils/posEditorConfig";
+import { canEditPosConfig, capturePosCategories, capturePosSettings, hasPosConfigReadErrors, preserveUnchangedPosSettings, readPosProducts, serializePosCategories, type PosCategorySnapshots, type PosSettingsSnapshot } from "../../utils/posEditorConfig";
 
 const { t } = useI18n();
 const { btcPayUrl, load: loadBtcpayConfig } = useBtcPayUrl();
@@ -1252,6 +1265,7 @@ const form = ref({
 });
 
 let loadedSettings: PosSettingsSnapshot | null = null;
+let loadedCategories: PosCategorySnapshots = new Map();
 let settingsGeneration = 0;
 
 const accordionSections = ref({
@@ -1326,10 +1340,18 @@ function editProduct(index: number) {
   showProductDrawer.value = true;
 }
 
+/** Retain private category identity when the product drawer changes an existing item ID. */
 function handleProductSave(product: PosProduct) {
   if (editingProductIndex.value !== null) {
+    const previousId = products.value[editingProductIndex.value]?.id;
+    const categories = previousId !== undefined ? loadedCategories.get(previousId) : undefined;
+    if (previousId !== undefined && categories && previousId !== product.id) {
+      loadedCategories.delete(previousId);
+      loadedCategories.set(product.id, categories);
+    }
     products.value[editingProductIndex.value] = product;
   } else {
+    loadedCategories.delete(product.id);
     products.value.push(product);
   }
   editingProductIndex.value = null;
@@ -1493,6 +1515,7 @@ async function loadApp(clearErrors: boolean = true) {
     } else {
       products.value = [];
     }
+    loadedCategories = capturePosCategories(products.value, templateArray ?? []);
     loadedSettings = capturePosSettings(config, form.value);
   } else {
     form.value.currency = store?.default_currency || "EUR";
@@ -1507,14 +1530,17 @@ const currentAppId = ref<string | null>(null);
 
 watch(
   editorApp,
-  (newApp, oldApp) => {
+  (newApp) => {
     if (!canEditPosConfig(newApp)) {
       loadedSettings = null;
+      loadedCategories = new Map();
       settingsGeneration++;
     }
-    // A new app or replacement detail response must hydrate the form again.
-    if (newApp && (newApp.id !== currentAppId.value || newApp !== oldApp)) {
+    // Switch apps or recover an incomplete read; confirmed same-app replacements retain the saved draft.
+    const recoveringRead = canEditPosConfig(newApp) && (!loadedSettings || saveReadFailed.value);
+    if (newApp && (newApp.id !== currentAppId.value || recoveringRead)) {
       loadedSettings = null;
+      loadedCategories = new Map();
       currentAppId.value = newApp.id;
       if (canEditPosConfig(newApp)) saveReadFailed.value = false;
       success.value = ""; // Clear success when switching apps
@@ -1589,12 +1615,7 @@ async function handleSubmit() {
           title: p.title,
           disabled: p.disabled || false,
           description: p.description || null,
-          categories: p.categories
-            ? String(p.categories)
-                .split(",")
-                .map((c: string) => c.trim())
-                .filter((c: string) => c)
-            : null,
+          categories: serializePosCategories(p, loadedCategories),
           image: p.image || null,
           priceType: p.priceType || "Fixed",
           price:
@@ -1666,6 +1687,7 @@ async function handleSubmit() {
     config.template = template;
 
     const submittedForm = Object.freeze({ ...form.value });
+    const submittedProducts = products.value.map(product => ({ id: product.id, categories: product.categories }));
     const updatedApp = await appsStore.updateApp(submittedStoreId, submittedAppId, {
       name: form.value.appName,
       config,
@@ -1673,10 +1695,12 @@ async function handleSubmit() {
     if (!isCurrentSubmission()) return;
     if (hasPosConfigReadErrors(updatedApp)) {
       loadedSettings = null;
+      loadedCategories = new Map();
       saveReadFailed.value = true;
       return;
     }
     loadedSettings = capturePosSettings(config, submittedForm, updatedApp?.config);
+    loadedCategories = capturePosCategories(submittedProducts, template);
 
     // Set success and clear error immediately; show flash toast
     success.value = "Settings saved successfully";

@@ -126,12 +126,13 @@ class PosAppRoundtripTest extends TestCase
             $baseUrl."/api/v1/stores/{$store->btcpay_store_id}/apps" => Http::response([$this->metadata()]),
         ]);
 
-        $this->actingAs($user)->getJson("/api/stores/{$store->id}/apps")
+        $response = $this->actingAs($user)->getJson("/api/stores/{$store->id}/apps")
             ->assertOk()
             ->assertJsonPath('data.0.id', $app->id)
             ->assertJsonPath('data.0.config.showItems', true)
             ->assertJsonPath('data.0.config.enableTips', true)
             ->assertJsonPath('data.0.config.template', $this->items());
+        $this->assertArrayNotHasKey('config_read_errors', $response->json('data.0'));
     }
 
     public function test_submitted_pos_settings_survive_partial_update_and_detail_responses(): void
@@ -159,7 +160,8 @@ class PosAppRoundtripTest extends TestCase
         ])->assertOk()
             ->assertJsonPath('data.config.showItems', true)
             ->assertJsonPath('data.config.enableTips', true)
-            ->assertJsonPath('data.config.template', $this->items());
+            ->assertJsonPath('data.config.template', $this->items())
+            ->assertJsonPath('data.config_read_errors', ['settings', 'products']);
 
         Http::assertSent(fn (Request $request): bool => $request->method() === 'PUT'
             && $request['showItems'] === true
@@ -174,7 +176,8 @@ class PosAppRoundtripTest extends TestCase
             ->assertJsonPath('data.config.enableTips', true)
             ->assertJsonPath('data.config.tipTaxRate', null)
             ->assertJsonPath('data.config.unsupportedSetting.keep', true)
-            ->assertJsonPath('data.config.template', $this->items());
+            ->assertJsonPath('data.config.template', $this->items())
+            ->assertJsonPath('data.config_read_errors', ['settings', 'products']);
 
         $config = $app->fresh()->config;
         $this->assertSame($this->items(), $config['template']);
@@ -240,14 +243,181 @@ class PosAppRoundtripTest extends TestCase
     #[DataProvider('invalidProductSources')]
     public function test_invalid_product_reads_retain_cached_products_and_report_incomplete_config(mixed $source): void
     {
-        [, , $app] = $this->createPos(['items' => $this->items(), 'showItems' => true]);
+        [, , $app] = $this->createPos($this->completePosConfig());
 
-        $data = app(AppResponseFormatter::class)->format($app, $this->metadata() + ['items' => $source]);
+        $raw = array_replace($this->completePosConfig(), ['items' => $source]);
+        $data = app(AppResponseFormatter::class)->format($app, $this->metadata() + $raw);
 
         $this->assertSame($this->items(), $data['config']['items']);
         $this->assertSame($this->items(), $data['config']['template']);
         $this->assertSame(['products'], $data['config_read_errors']);
         $this->assertSame($this->items(), $app->fresh()->config['items']);
+    }
+
+    /**
+     * Cached completeness cannot confirm fields absent or malformed in a live read.
+     *
+     * @param  array<string, mixed>  $overrides
+     * @param  list<string>  $missing
+     * @param  list<string>  $errors
+     */
+    #[DataProvider('incompleteLiveConfigs')]
+    public function test_incomplete_live_details_remain_unconfirmed_with_a_complete_cache(array $overrides, array $missing, array $errors): void
+    {
+        [$user, $store, $app] = $this->createPos($this->completePosConfig());
+        $raw = array_replace($this->completePosConfig(), $overrides);
+        foreach ($missing as $key) {
+            unset($raw[$key]);
+        }
+        $baseUrl = config('services.btcpay.base_url');
+        Http::fake([$baseUrl.'/api/v1/apps/pos/test-pos-app' => Http::response($this->metadata() + $raw)]);
+
+        $this->actingAs($user)->getJson("/api/stores/{$store->id}/apps/{$app->id}")
+            ->assertOk()
+            ->assertJsonPath('data.config_read_errors', $errors)
+            ->assertJsonPath('data.config.items', $this->items());
+        $this->assertArrayNotHasKey('config_read_errors', $app->fresh()->config);
+    }
+
+    /**
+     * Validate both submitted aliases before fallback merging can hide bad input.
+     */
+    #[DataProvider('invalidProductSources')]
+    public function test_malformed_submitted_product_aliases_return_422_without_requests_or_cache_writes(mixed $source): void
+    {
+        $cached = $this->completePosConfig();
+        [$user, $store, $app] = $this->createPos($cached);
+        $originalName = $app->name;
+        Http::fake(['*' => Http::response($this->metadata() + $cached)]);
+
+        foreach (['items' => 'template', 'template' => 'items'] as $alias => $other) {
+            $this->actingAs($user)->putJson("/api/stores/{$store->id}/apps/{$app->id}", [
+                'name' => 'Must not persist',
+                'config' => [$alias => $source, $other => $this->items()],
+            ])->assertUnprocessable()->assertJsonValidationErrors('config.'.$alias);
+            $this->assertSame($cached, $app->fresh()->config);
+            $this->assertSame($originalName, $app->fresh()->name);
+        }
+        Http::assertNothingSent();
+    }
+
+    /**
+     * Legacy updates must reject both malformed aliases before creating a remote app.
+     */
+    #[DataProvider('invalidProductSources')]
+    public function test_legacy_malformed_submitted_aliases_return_422_without_creation_or_local_writes(mixed $source): void
+    {
+        [$user, $store, $app] = $this->createPos($this->completePosConfig());
+        $app->update(['btcpay_app_id' => '']);
+        $before = $app->fresh()->getRawOriginal();
+        Http::fake(['*' => Http::response($this->metadata() + $this->completePosConfig())]);
+
+        foreach (['items' => 'template', 'template' => 'items'] as $alias => $other) {
+            $this->actingAs($user)->putJson("/api/stores/{$store->id}/apps/{$app->id}", [
+                'name' => 'Must not persist',
+                'config' => [$alias => $source, $other => $this->items()],
+            ])->assertUnprocessable()->assertJsonValidationErrors('config.'.$alias);
+            $this->assertSame($before, $app->fresh()->getRawOriginal());
+        }
+        Http::assertNothingSent();
+    }
+
+    /**
+     * Legacy creation must serialize valid product aliases into the supported request.
+     *
+     * @param  list<array<string, mixed>>  $expected
+     */
+    #[DataProvider('validSubmittedCatalogs')]
+    public function test_legacy_valid_submitted_aliases_preserve_lists_and_explicit_clears(string $alias, mixed $source, array $expected): void
+    {
+        $cached = $this->completePosConfig();
+        $cached[$alias === 'items' ? 'template' : 'items'] = [[]];
+        [$user, $store, $app] = $this->createPos($cached);
+        $app->update(['btcpay_app_id' => '']);
+        $baseUrl = config('services.btcpay.base_url');
+        Http::fake([
+            $baseUrl."/api/v1/stores/{$store->btcpay_store_id}/apps/pos" => function (Request $request) {
+                $template = $request['template'];
+                $items = is_string($template) ? json_decode($template, true) : [];
+
+                return Http::response($this->metadata() + array_replace($this->completePosConfig(), ['items' => $items]), 201);
+            },
+        ]);
+
+        $this->actingAs($user)->putJson("/api/stores/{$store->id}/apps/{$app->id}", ['config' => [$alias => $source]])
+            ->assertOk()->assertJsonPath('data.config.items', $expected);
+        Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
+            && is_string($request['template'])
+            && json_decode($request['template'], true) === $expected
+            && ! array_key_exists('items', $request->data()));
+        $this->assertSame('test-pos-app', $app->fresh()->btcpay_app_id);
+        $this->assertSame($expected, $app->fresh()->config['items']);
+    }
+
+    /**
+     * Preserve a usable cached catalog when legacy creation only changes the name.
+     */
+    public function test_legacy_name_only_update_preserves_cached_products(): void
+    {
+        [$user, $store, $app] = $this->createPos($this->completePosConfig());
+        $app->update(['btcpay_app_id' => '']);
+        Http::fake(['*' => Http::response($this->metadata() + $this->completePosConfig(), 201)]);
+
+        $this->actingAs($user)->putJson("/api/stores/{$store->id}/apps/{$app->id}", ['name' => 'Renamed legacy PoS'])
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Renamed legacy PoS')
+            ->assertJsonPath('data.config.items', $this->items());
+        Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
+            && $request['appName'] === 'Renamed legacy PoS'
+            && is_string($request['template'])
+            && json_decode($request['template'], true) === $this->items()
+            && ! array_key_exists('items', $request->data()));
+        Http::assertSentCount(1);
+    }
+
+    /**
+     * Valid serialized lists and deliberate empty lists retain their update meaning.
+     *
+     * @param  list<array<string, mixed>>  $expected
+     */
+    #[DataProvider('validSubmittedCatalogs')]
+    public function test_valid_submitted_product_aliases_preserve_extras_and_explicit_clears(string $alias, mixed $source, array $expected): void
+    {
+        [$user, $store, $app] = $this->createPos($this->completePosConfig());
+        $remote = $this->metadata() + $this->completePosConfig();
+        $baseUrl = config('services.btcpay.base_url');
+        Http::fake([
+            $baseUrl.'/api/v1/apps/pos/test-pos-app' => function (Request $request) use (&$remote) {
+                if ($request->method() === 'PUT') {
+                    $remote['items'] = json_decode($request['template'], true);
+                }
+
+                return Http::response($remote);
+            },
+        ]);
+
+        $response = $this->actingAs($user)->putJson("/api/stores/{$store->id}/apps/{$app->id}", ['config' => [$alias => $source]])
+            ->assertOk()->assertJsonPath('data.config.items', $expected);
+        $this->assertArrayNotHasKey('config_read_errors', $response->json('data'));
+        Http::assertSent(fn (Request $request): bool => $request->method() === 'PUT'
+            && json_decode($request['template'], true) === $expected);
+        $this->assertSame($expected, $app->fresh()->config['items']);
+    }
+
+    /**
+     * Confirm explicit false flags and an empty catalog without consulting cache.
+     */
+    public function test_complete_live_false_flags_and_empty_catalog_are_confirmed(): void
+    {
+        [, , $app] = $this->createPos($this->completePosConfig());
+        $raw = array_fill_keys(['showItems', 'showCustomAmount', 'showDiscount', 'showSearch', 'showCategories', 'enableTips'], false);
+        $raw += ['defaultView' => 'Light', 'items' => []];
+
+        $data = app(AppResponseFormatter::class)->format($app, $this->metadata() + $raw);
+
+        $this->assertArrayNotHasKey('config_read_errors', $data);
+        $this->assertFalse($data['config']['showItems']);
+        $this->assertSame([], $data['config']['items']);
     }
 
     public function test_partial_update_serializes_cached_detail_items_back_to_template(): void
@@ -277,9 +447,11 @@ class PosAppRoundtripTest extends TestCase
 
     public function test_serialized_empty_template_intentionally_clears_cached_items(): void
     {
-        [, , $app] = $this->createPos(['items' => $this->items()]);
+        [, , $app] = $this->createPos($this->completePosConfig());
+        $raw = $this->completePosConfig();
+        unset($raw['items']);
 
-        $data = app(AppResponseFormatter::class)->format($app, $this->metadata() + ['template' => '[]']);
+        $data = app(AppResponseFormatter::class)->format($app, $this->metadata() + ['template' => '[]'] + $raw);
 
         $this->assertSame([], $data['config']['template']);
         $this->assertArrayNotHasKey('items', $data['config']);
@@ -379,13 +551,90 @@ class PosAppRoundtripTest extends TestCase
      */
     public static function invalidProductSources(): array
     {
-        return [
+        $cases = [
             'null' => [null],
             'empty string' => [''],
             'invalid JSON' => ['invalid-json'],
             'JSON object' => ['{}'],
             'scalar' => [false],
             'object-shaped array' => [['id' => 'coffee']],
+        ];
+        foreach ([
+            'missing title' => [],
+            'empty title' => ['title' => ''],
+            'ASCII blank title' => ['title' => " \t\r\n"],
+            'Unicode blank title' => ['title' => "\u{00a0}\u{feff}"],
+            'null title' => ['title' => null],
+            'numeric title' => ['title' => 0],
+            'array title' => ['title' => []],
+        ] as $label => $item) {
+            $cases[$label.' array'] = [[$item]];
+            $cases[$label.' serialized'] = [json_encode([$item], JSON_THROW_ON_ERROR)];
+        }
+
+        return $cases;
+    }
+
+    /**
+     * Exercise every required raw setting plus missing or unreadable products.
+     *
+     * @return array<string, array{array<string, mixed>, list<string>, list<string>}>
+     */
+    public static function incompleteLiveConfigs(): array
+    {
+        $flags = ['showItems', 'showCustomAmount', 'showDiscount', 'showSearch', 'showCategories', 'enableTips'];
+        $cases = [
+            'missing view' => [[], ['defaultView'], ['settings']],
+            'invalid view' => [['defaultView' => 'Unsupported'], [], ['settings']],
+            'numeric flag' => [['showItems' => 0], [], ['settings']],
+            'string flag' => [['showItems' => 'false'], [], ['settings']],
+            'missing products' => [[], ['items'], ['products']],
+            'invalid products' => [['items' => [[]]], [], ['products']],
+            'metadata only' => [[], ['defaultView', ...$flags, 'items'], ['settings', 'products']],
+        ];
+        foreach ($flags as $flag) {
+            $cases['missing '.$flag] = [[], [$flag], ['settings']];
+            $cases['null '.$flag] = [[$flag => null], [], ['settings']];
+        }
+
+        return $cases;
+    }
+
+    /**
+     * Accept one canonical product list representation without passing through fields.
+     *
+     * @return array<string, array{string, mixed, list<array<string, mixed>>}>
+     */
+    public static function validSubmittedCatalogs(): array
+    {
+        $items = [['id' => 'coffee', 'title' => 'Coffee', 'price' => 0, 'custom' => ['keep' => false]]];
+        $cases = [];
+        foreach (['items', 'template'] as $alias) {
+            $cases[$alias.' list'] = [$alias, $items, $items];
+            $cases[$alias.' serialized'] = [$alias, json_encode($items, JSON_THROW_ON_ERROR), $items];
+            $cases[$alias.' empty'] = [$alias, [], []];
+            $cases[$alias.' serialized empty'] = [$alias, '[]', []];
+        }
+
+        return $cases;
+    }
+
+    /**
+     * Supply a complete canonical raw detail independently of local fallback values.
+     *
+     * @return array<string, mixed>
+     */
+    private function completePosConfig(): array
+    {
+        return [
+            'defaultView' => 'Light',
+            'showItems' => true,
+            'showCustomAmount' => false,
+            'showDiscount' => false,
+            'showSearch' => true,
+            'showCategories' => true,
+            'enableTips' => true,
+            'items' => $this->items(),
         ];
     }
 

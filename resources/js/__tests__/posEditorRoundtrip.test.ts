@@ -9,14 +9,14 @@ import type { AppRef, PosProduct } from '../types/btcpayApps';
 import type { Store } from '../store/stores';
 
 const mocks = vi.hoisted(() => ({
-  hasFeature: vi.fn(), updateApp: vi.fn(), fetchApp: vi.fn(), fetchApps: vi.fn(), fetchStore: vi.fn(), success: vi.fn(), error: vi.fn(),
+  deleteApp: vi.fn(), hasFeature: vi.fn(), updateApp: vi.fn(), fetchApp: vi.fn(), fetchApps: vi.fn(), fetchStore: vi.fn(), success: vi.fn(), error: vi.fn(),
   appsState: null as unknown as { apps: AppRef[] },
   storesState: null as unknown as { currentStore: Store | null },
   route: { params: { id: '00000000-0000-4000-8000-000000000001', appId: '00000000-0000-4000-8000-000000000002' } },
 }));
 vi.mock('../store/apps', async () => {
   const { reactive } = await import('vue');
-  const state = reactive({ apps: [] as AppRef[], updateApp: mocks.updateApp, fetchApp: mocks.fetchApp, fetchApps: mocks.fetchApps });
+  const state = reactive({ apps: [] as AppRef[], deleteApp: mocks.deleteApp, updateApp: mocks.updateApp, fetchApp: mocks.fetchApp, fetchApps: mocks.fetchApps });
   mocks.appsState = state;
   return { useAppsStore: () => state };
 });
@@ -595,6 +595,153 @@ describe('PoS editor settings and product round-trip', () => {
     await flushPromises();
     await vi.advanceTimersByTimeAsync(501);
     expect(mocks.updateApp.mock.calls[1]?.[2].config).toMatchObject({ title: 'Renamed PoS', fixedAmountPayButtonText: 'Buy for {0}', customAmountPayButtonText: 'Pay', tipsMessage: 'Do you want to leave a tip?' });
+  });
+
+
+  it.each([
+    ['missing settings', { defaultView: undefined, showItems: undefined }],
+    ['malformed catalog', { items: '{invalid' }],
+    ['failed legacy read', { showItems: undefined, items: undefined }],
+  ])('keeps the existing Delete action available without Save after %s', async (_label, config) => {
+    const page = await mountEditor(config);
+    expect(page.find('#pos-settings-form').exists()).toBe(false);
+    expect(page.getComponent({ name: 'AppShowHeader' }).props('showSaveButton')).toBe(false);
+    const deleteButton = page.findAll('button').find(button => button.text() === 'stores.delete_app');
+    expect(deleteButton).toBeDefined();
+    await deleteButton!.trigger('click');
+    const modal = page.getComponent({ name: 'DeleteAppModal' });
+    expect(modal.props('isOpen')).toBe(true);
+    mocks.deleteApp.mockRejectedValue({ response: { data: { message: 'Synthetic authorization denial' } } });
+    modal.vm.$emit('delete');
+    await flushPromises();
+    expect(mocks.deleteApp).toHaveBeenCalledWith(store.id, appId);
+    expect(modal.props('error')).toBe('Synthetic authorization denial');
+    expect(mocks.updateApp).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('retains original category arrays through repeated name-only saves (editor visible: %s)', async showItems => {
+    const items = [{ ...products[0], categories: ['Drinks, hot', 'Featured'] }, { ...products[1], categories: [] }];
+    const page = await mountEditor({ showItems, items });
+    mocks.updateApp.mockImplementation(async (_store: string, _app: string, payload: { config: Record<string, unknown> }) => ({ id: appId, config: payload.config }));
+    vi.useFakeTimers();
+    for (const name of ['Renamed once', 'Renamed twice']) {
+      await page.get('#appName').setValue(name);
+      await page.get('#pos-settings-form').trigger('submit');
+      await flushPromises();
+      await vi.advanceTimersByTimeAsync(501);
+      const config = mocks.updateApp.mock.calls[mocks.updateApp.mock.calls.length - 1]?.[2].config;
+      expect(config.template[0].categories).toEqual(['Drinks, hot', 'Featured']);
+      expect(config.template[1].categories).toEqual([]);
+      expect(Object.keys(config.template[0])).toEqual(Object.keys(items[0]));
+    }
+  });
+
+  it('retains untouched category arrays across a drawer ID/price edit and product reorder', async () => {
+    const items = [{ ...products[0], categories: ['Drinks, hot', 'Featured'] }, { ...products[1], categories: [] }];
+    const page = await mountEditor({ showItems: true, items });
+    const editor = page.getComponent(PointOfSaleProductsEditor);
+    editor.vm.$emit('edit', 0);
+    await flushPromises();
+    const drawer = page.getComponent({ name: 'ProductEditDrawer' });
+    drawer.vm.$emit('save', { ...drawer.props('product'), id: 'coffee-renamed', title: 'Renamed coffee', price: 3 });
+    await flushPromises();
+    editor.vm.$emit('update:products', [...editor.props('products')].reverse());
+    await flushPromises();
+    mocks.updateApp.mockResolvedValue({ id: appId });
+    vi.useFakeTimers();
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    expect(mocks.updateApp.mock.calls[0]?.[2].config.template).toEqual([
+      expect.objectContaining({ id: 'tea', categories: [] }),
+      expect.objectContaining({ id: 'coffee-renamed', price: '3', categories: ['Drinks, hot', 'Featured'] }),
+    ]);
+  });
+
+  it('honors a deliberate category edit and clear on successive saves', async () => {
+    const page = await mountEditor({ showItems: true, items: [{ ...products[0], categories: ['Drinks, hot', 'Featured'] }] });
+    mocks.updateApp.mockResolvedValue({ id: appId });
+    vi.useFakeTimers();
+    for (const [text, expected] of [['Cold, Seasonal', ['Cold', 'Seasonal']], ['', null]] as const) {
+      page.getComponent(PointOfSaleProductsEditor).vm.$emit('edit', 0);
+      await flushPromises();
+      const drawer = page.getComponent({ name: 'ProductEditDrawer' });
+      drawer.vm.$emit('save', { ...drawer.props('product'), categories: text });
+      await flushPromises();
+      await page.get('#pos-settings-form').trigger('submit');
+      await flushPromises();
+      await vi.advanceTimersByTimeAsync(501);
+      expect(mocks.updateApp.mock.calls[mocks.updateApp.mock.calls.length - 1]?.[2].config.template[0].categories).toEqual(expected);
+    }
+  });
+
+  it('keeps new field and product edits when the same app props are replaced after a successful save', async () => {
+    const page = await mountEditor({ title: 'Original title', showItems: true, items: products });
+    mocks.updateApp.mockImplementation(async (_store: string, _app: string, payload: { config: Record<string, unknown> }) => ({ id: appId, config: payload.config }));
+    vi.useFakeTimers();
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    await page.get('#title').setValue('New draft title');
+    page.getComponent(PointOfSaleProductsEditor).vm.$emit('update:products', [{ ...products[1], title: 'New draft tea' }]);
+    await flushPromises();
+    const initial = page.getComponent(AppShowLayout).props('app') as AppRef;
+    await page.setProps({ app: { ...initial, config: { ...standardConfig, title: 'Confirmed old title', showItems: true, items: products } } });
+    expect((page.get('#title').element as HTMLInputElement).value).toBe('New draft title');
+    expect(page.getComponent(PointOfSaleProductsEditor).props('products')).toEqual([expect.objectContaining({ id: 'tea', title: 'New draft tea' })]);
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    expect(mocks.updateApp.mock.calls[1]?.[2].config).toMatchObject({ title: 'New draft title', template: [expect.objectContaining({ id: 'tea', title: 'New draft tea' })] });
+  });
+
+  it('recovers valid same-app settings after a failed read following a successful save', async () => {
+    const page = await mountEditor({ title: 'Original title', showItems: true, items: products });
+    mocks.updateApp.mockResolvedValue({ id: appId });
+    vi.useFakeTimers();
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    const initial = page.getComponent(AppShowLayout).props('app') as AppRef;
+    await page.setProps({ app: { ...initial, config_read_errors: ['settings'] } });
+    expect(page.find('#pos-settings-form').exists()).toBe(false);
+    await page.setProps({ app: { ...initial, config: { ...standardConfig, title: 'Recovered title', showItems: true, items: [products[1]] } } });
+    expect((page.get('#title').element as HTMLInputElement).value).toBe('Recovered title');
+    expect(page.getComponent(PointOfSaleProductsEditor).props('products')).toHaveLength(1);
+  });
+
+
+  it('hydrates another app after a successful save instead of retaining the previous draft', async () => {
+    const page = await mountEditor({ title: 'Original title', showItems: true, items: products });
+    mocks.updateApp.mockResolvedValue({ id: appId });
+    vi.useFakeTimers();
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    await page.get('#title').setValue('Old app draft');
+    await page.setProps({ app: { id: '00000000-0000-4000-8000-000000000003', app_type: 'PointOfSale', name: 'Another PoS', config: { ...standardConfig, title: 'Another title', items: [] } } });
+    expect((page.get('#appName').element as HTMLInputElement).value).toBe('Another PoS');
+    expect((page.get('#title').element as HTMLInputElement).value).toBe('Another title');
+    await page.get('#showItems').setValue(true);
+    expect(page.getComponent(PointOfSaleProductsEditor).props('products')).toEqual([]);
+  });
+
+
+  it('treats a new product with a removed item ID as a deliberate new category entry', async () => {
+    const page = await mountEditor({ showItems: true, items: [{ ...products[0], categories: ['Drinks, hot'] }] });
+    const editor = page.getComponent(PointOfSaleProductsEditor);
+    editor.vm.$emit('update:products', []);
+    await flushPromises();
+    editor.vm.$emit('add');
+    await flushPromises();
+    page.getComponent({ name: 'ProductEditDrawer' }).vm.$emit('save', { ...products[0], categories: 'Drinks, hot' });
+    await flushPromises();
+    mocks.updateApp.mockResolvedValue({ id: appId });
+    vi.useFakeTimers();
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    expect(mocks.updateApp.mock.calls[0]?.[2].config.template[0].categories).toEqual(['Drinks', 'hot']);
   });
 
 });
