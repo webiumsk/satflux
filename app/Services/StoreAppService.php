@@ -101,7 +101,12 @@ class StoreAppService
         }
         // Legacy record without a BTCPay app ID - a BTCPay lookup cannot succeed
         if (! $app->btcpay_app_id) {
-            return $this->formatter->format($app);
+            $data = $this->formatter->format($app);
+            if (strtolower($app->app_type) === 'pointofsale') {
+                $data['config_read_errors'] = ['settings'];
+            }
+
+            return $data;
         }
         try {
             $userApiKey = $store->user->getBtcPayApiKeyOrFail();
@@ -120,7 +125,12 @@ class StoreAppService
                 'error' => $e->getMessage(),
             ]);
 
-            return $this->formatter->format($app);
+            $data = $this->formatter->format($app);
+            if (strtolower($app->app_type) === 'pointofsale') {
+                $data['config_read_errors'] = ['settings'];
+            }
+
+            return $data;
         }
     }
 
@@ -296,7 +306,14 @@ class StoreAppService
         }
 
         // DB config as fallback (request config takes priority)
-        $config = array_merge($dbConfig, $config);
+        $config = strtolower($app->app_type) === 'pointofsale'
+            ? $this->formatter->mergePointOfSaleConfig($dbConfig, $config)
+            : array_merge($dbConfig, $config);
+        if (strtolower($app->app_type) === 'pointofsale' && array_key_exists('items', $config)) {
+            // Greenfield reads use items, while its update request requires template.
+            $config['template'] = $config['items'];
+            unset($config['items']);
+        }
 
         // id MUST come from the btcpay_app_id parameter, never the config
         unset($config['id']);
@@ -414,10 +431,17 @@ class StoreAppService
 
         $finalBtcpayAppId = $returnedAppId ?: $app->btcpay_app_id;
 
+        // Keep successfully submitted PoS settings when a response omits them.
+        $savedConfig = $btcpayApp;
+        if (strtolower($app->app_type) === 'pointofsale') {
+            $submittedConfig = $this->formatter->mergePointOfSaleConfig($app->config ?? [], $config);
+            $savedConfig = $this->formatter->mergePointOfSaleConfig($submittedConfig, $btcpayApp);
+        }
+
         $app->update([
             'name' => $name ?? $app->name,
             'btcpay_app_id' => $finalBtcpayAppId, // Always preserve btcpay_app_id
-            'config' => $btcpayApp,
+            'config' => $savedConfig,
         ]);
 
         // Reload fresh data from BTCPay so template/products are current and
@@ -430,7 +454,9 @@ class StoreAppService
                 $userApiKey
             );
             $app->update([
-                'config' => $freshBtcpayApp,
+                'config' => strtolower($app->app_type) === 'pointofsale'
+                    ? $this->formatter->mergePointOfSaleConfig($app->config ?? [], $freshBtcpayApp)
+                    : $freshBtcpayApp,
                 'btcpay_app_id' => $finalBtcpayAppId,
             ]);
         } catch (\Exception $e) {

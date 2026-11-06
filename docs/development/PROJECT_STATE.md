@@ -1,5 +1,27 @@
 # Project state
 
+## PoS editor product and tipping hydration accepted locally - 2026-11-06
+
+Branch `fix/pos-editor-roundtrip` is based on owned master `e584490d`; the affected
+source matches the owner-reported deployed candidate `76422c07`, without inspecting
+production. AppsShow passed list metadata as complete editor props, suppressing the
+detail fetch. It now retains the selected detail separately, rejects stale route
+responses and requires complete settings before editing. PoS cache/update overlays
+preserve omitted fields, false/empty values, product aliases and canonical tip text;
+failed or malformed reads block unsafe saves. Customer-data request/formId remains
+a separate pre-existing contract audit.
+
+Independent QA/security accept identical runtime6 `db71578a...710df5` and source9
+`57e944e5...7165e9`, without unresolved findings. Real Chrome10 scenarios plus a
+stable-ID roundtrip, focused frontend25, full frontend1,879/186, PHP96/320, targeted
+Pint/PHPStan, lint48/52, type110, locale parity, production build and AST update pass. Full evidence
+is recorded in `POS_EDITOR_ROUNDTRIP.md`. All tests use synthetic
+isolated state; production host/version and merchant state are not validated or
+changed. No source publication, merge or deployment has occurred for this fix.
+
+The correction is ready for owner-directed publication; retain
+separate merge/deployment approval. Preserve unrelated primary checkout edits.
+
 ## PR429 second review fixes accepted locally - 2026-11-05
 
 All five CI jobs pass on published `714e078b`; CodeRabbit exact-head review has
