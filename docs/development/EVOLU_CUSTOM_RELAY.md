@@ -1,5 +1,25 @@
 # Custom Evolu relay
 
+## PR432 master conflicts resolved locally - 2026-11-06
+
+Integrate master `b4c2270d` (merged PoS PR431) into relay head `30a9363e`
+without rewriting published history. Only PROJECT_STATE, ROADMAP and DECISION_LOG
+conflict: retain both complete parent prefixes and their common history exactly
+once. All30 reviewed relay source/test/doc bytes retain runtime16
+`5bbc13eb...dc39d7` / source30 `4594a9d3...beb9f`; all12 nonconflicting master
+paths retain master bytes. The feature diff remains exactly35 paths.
+
+Independent QA `/root/relay_conflict_qa` accepts this content-preservation proof.
+Prior relay security acceptance remains applicable to unchanged relay bytes; this
+is not a new semantic/security review of unrelated source. Main PHP182/1408,
+type110, lint48/52, locale parity and production build pass on the combined tree.
+Full frontend1,998/194 also passes. The inspected PHP target is network-disabled,
+SQLite-memory with synthetic uncached configuration. No dependencies/ratchets change.
+
+Publish the conflict resolution to the existing owned PR432 branch under the
+owner's request, then verify remote head and mergeability. New-head CI must be
+attributed separately. No PR merge, deployment or unrelated primary edits occur.
+
 ## Accepted scope and contract - 2026-11-06
 
 Owner explicitly confirms adding a custom Evolu relay alongside the default.

@@ -12,12 +12,30 @@
         :save-button-text="t('apps.save_pos_settings')"
         :saving-text="t('auth.saving')"
         :saving="saving"
+        :show-save-button="configIsEditable"
       />
     </template>
     <template #default="{ app, store }">
       <!-- Content Container -->
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div v-if="!configIsEditable" class="space-y-6">
+          <p role="alert" class="rounded-xl border border-red-500/30 bg-red-900/20 p-4 text-red-300">
+            {{ t("stores.settings_load_failed") }}
+          </p>
+          <button
+            type="button"
+            @click="showDeleteModal = true"
+            :disabled="saving || deleting"
+            class="inline-flex items-center px-4 py-2 border border-red-600 rounded-xl text-sm font-medium text-red-400 hover:bg-red-600 hover:text-white transition-colors"
+          >
+            <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            {{ t("stores.delete_app") }}
+          </button>
+        </div>
         <form
+          v-else
           id="pos-settings-form"
           @submit.prevent="handleSubmit"
           class="space-y-6"
@@ -492,13 +510,11 @@
                                 class="block text-xs font-medium text-gray-400 mb-1"
                               >
                                 {{ t("apps.pos_tip_message") }}
-                                <span class="text-red-400">*</span>
                               </label>
                               <input
                                 id="tipsMessage"
                                 v-model="form.tipsMessage"
                                 type="text"
-                                required
                                 class="block w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                               />
                             </div>
@@ -568,13 +584,11 @@
                               class="block text-xs font-medium text-gray-400 mb-1"
                             >
                               {{ t("apps.pos_custom_pay_button_text") }}
-                              <span class="text-red-400">*</span>
                             </label>
                             <input
                               id="customAmountPayButtonText"
                               v-model="form.customAmountPayButtonText"
                               type="text"
-                              required
                               class="block w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                             />
                           </div>
@@ -666,13 +680,11 @@
                           class="block text-sm font-medium text-gray-300 mb-1"
                         >
                           {{ t("apps.pos_buy_button_text") }}
-                          <span class="text-red-400">*</span>
                         </label>
                         <input
                           id="fixedAmountPayButtonText"
                           v-model="form.fixedAmountPayButtonText"
                           type="text"
-                          required
                           :placeholder="t('apps.pos_buy_button_placeholder')"
                           class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                         />
@@ -1126,7 +1138,7 @@
   <!-- Delete Confirmation Modal -->
   <DeleteAppModal
     :is-open="showDeleteModal"
-    :app-name="layoutRef?.app?.name || ''"
+    :app-name="editorApp?.name || ''"
     :deleting="deleting"
     :error="deleteError"
     @close="showDeleteModal = false"
@@ -1157,7 +1169,7 @@ import { useAppsStore } from "../../store/apps";
 import { useFlashStore } from "../../store/flash";
 import ProductEditDrawer from "../../components/stores/ProductEditDrawer.vue";
 import PointOfSaleProductsEditor from "../../components/stores/PointOfSaleProductsEditor.vue";
-import type { AppRef, PosProduct, RawPosItem } from "../../types/btcpayApps";
+import type { AppRef, PosProduct } from "../../types/btcpayApps";
 import AppNavLink from "../../components/layout/AppNavLink.vue";
 import AppShowLayout from "../../components/stores/AppShowLayout.vue";
 import Select from "../../components/ui/Select.vue";
@@ -1167,6 +1179,7 @@ import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import ProPlanBadge from "../../components/stores/ProPlanBadge.vue";
 import { currencies } from "../../data/currencies";
 import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
+import { canEditPosConfig, capturePosCategories, capturePosSettings, hasPosConfigReadErrors, preserveUnchangedPosSettings, readPosProducts, serializePosCategories, type PosCategorySnapshots, type PosSettingsSnapshot } from "../../utils/posEditorConfig";
 
 const { t } = useI18n();
 const { btcPayUrl, load: loadBtcpayConfig } = useBtcPayUrl();
@@ -1192,6 +1205,10 @@ const appId = computed(
   () => (props.app?.id ?? route?.params?.appId ?? "") as string,
 );
 const layoutRef = ref<InstanceType<typeof AppShowLayout> | null>(null);
+const editorApp = computed(() => props.app ?? layoutRef.value?.app);
+const editorStore = computed(() => props.store ?? layoutRef.value?.store);
+const saveReadFailed = ref(false);
+const configIsEditable = computed(() => !saveReadFailed.value && canEditPosConfig(editorApp.value));
 const saving = ref(false);
 const error = ref("");
 const success = ref("");
@@ -1233,7 +1250,7 @@ const form = ref({
   showSearch: false,
   showCategories: false,
   enableTips: false,
-  tipsMessage: "Do you want to leave a tip?",
+  tipsMessage: "Do you want to leave a tip?" as string | null,
   defaultTaxRate: 0,
   tipTaxRate: null as number | null,
   taxIncludedInPrice: false,
@@ -1246,6 +1263,10 @@ const form = ref({
   redirectAutomatically: "",
   notificationUrl: "",
 });
+
+let loadedSettings: PosSettingsSnapshot | null = null;
+let loadedCategories: PosCategorySnapshots = new Map();
+let settingsGeneration = 0;
 
 const accordionSections = ref({
   htmlHeaders: false,
@@ -1273,7 +1294,7 @@ const shouldShowProductsEditor = computed(() => {
 
 // Computed property for BTCPay app URL
 const btcpayAppUrl = computed(() => {
-  const app = layoutRef.value?.app;
+  const app = editorApp.value;
   if (!app) return "";
   const baseUrl =
     btcPayUrl.value || (import.meta.env.VITE_BTCPAY_BASE_URL as string) || "";
@@ -1319,10 +1340,18 @@ function editProduct(index: number) {
   showProductDrawer.value = true;
 }
 
+/** Retain private category identity when the product drawer changes an existing item ID. */
 function handleProductSave(product: PosProduct) {
   if (editingProductIndex.value !== null) {
+    const previousId = products.value[editingProductIndex.value]?.id;
+    const categories = previousId !== undefined ? loadedCategories.get(previousId) : undefined;
+    if (previousId !== undefined && categories && previousId !== product.id) {
+      loadedCategories.delete(previousId);
+      loadedCategories.set(product.id, categories);
+    }
     products.value[editingProductIndex.value] = product;
   } else {
+    loadedCategories.delete(product.id);
     products.value.push(product);
   }
   editingProductIndex.value = null;
@@ -1370,11 +1399,12 @@ function parseBoolean(value: unknown, defaultValue: boolean = false): boolean {
   return Boolean(value);
 }
 
+/** Hydrate the current complete detail response without guessing settings after an unsuccessful read. */
 async function loadApp(clearErrors: boolean = true) {
-  const app = layoutRef.value?.app;
-  const store = layoutRef.value?.store;
+  const app = editorApp.value;
+  const store = editorStore.value;
 
-  if (!app || !store) return;
+  if (!app || !store || !configIsEditable.value) return;
 
   const hadSuccess = success.value;
   // Don't clear errors if we're reloading after successful submit
@@ -1395,6 +1425,7 @@ async function loadApp(clearErrors: boolean = true) {
 
   // Only load form values if we're not reloading after successful save
   if (!skipFormLoad && app.config) {
+    settingsGeneration++;
     const config = app.config;
     form.value.title = config.title || "";
     form.value.description = config.description || "";
@@ -1417,8 +1448,10 @@ async function loadApp(clearErrors: boolean = true) {
     form.value.showSearch = parseBoolean(config.showSearch, true);
     form.value.showCategories = parseBoolean(config.showCategories, true);
     form.value.enableTips = parseBoolean(config.enableTips, false);
-    form.value.tipsMessage =
-      config.tipsMessage || "Do you want to leave a tip?";
+    const tipText = Object.prototype.hasOwnProperty.call(config, "tipText") ? config.tipText : config.tipsMessage;
+    form.value.tipsMessage = typeof tipText === "string" || tipText === null
+      ? tipText
+      : "Do you want to leave a tip?";
     form.value.defaultTaxRate = config.defaultTaxRate
       ? parseFloat(String(config.defaultTaxRate))
       : 0;
@@ -1429,9 +1462,9 @@ async function loadApp(clearErrors: boolean = true) {
     );
     form.value.requestCustomerData = config.requestCustomerData || "";
     form.value.fixedAmountPayButtonText =
-      config.fixedAmountPayButtonText || "Buy for {0}";
+      config.fixedAmountPayButtonText ?? "Buy for {0}";
     form.value.customAmountPayButtonText =
-      config.customAmountPayButtonText || "Pay";
+      config.customAmountPayButtonText ?? "Pay";
     form.value.htmlLang = config.htmlLang || "";
     form.value.htmlMetaTags = config.htmlMetaTags || "";
     form.value.redirectUrl = config.redirectUrl || "";
@@ -1441,28 +1474,7 @@ async function loadApp(clearErrors: boolean = true) {
         : "";
     form.value.notificationUrl = config.notificationUrl || "";
 
-    let templateArray: RawPosItem[] = [];
-    const productsSource = config.items || config.template;
-
-    if (productsSource) {
-      if (Array.isArray(productsSource)) {
-        templateArray = productsSource;
-      } else if (typeof productsSource === "string") {
-        try {
-          const parsed = JSON.parse(productsSource);
-          templateArray = Array.isArray(parsed)
-            ? parsed
-            : Array.isArray(parsed.template)
-              ? parsed.template
-              : Array.isArray(parsed.items)
-                ? parsed.items
-                : [parsed];
-        } catch (e) {
-          console.warn("Failed to parse products", e);
-          templateArray = [];
-        }
-      }
-    }
+    const templateArray = readPosProducts(config);
 
     if (templateArray && templateArray.length > 0) {
       products.value = templateArray.map((p) => {
@@ -1479,6 +1491,7 @@ async function loadApp(clearErrors: boolean = true) {
         }
 
         return {
+          ...p,
           id: p.id || "",
           title: p.title || "",
           priceType: p.priceType || "Fixed",
@@ -1502,6 +1515,8 @@ async function loadApp(clearErrors: boolean = true) {
     } else {
       products.value = [];
     }
+    loadedCategories = capturePosCategories(products.value, templateArray ?? []);
+    loadedSettings = capturePosSettings(config, form.value);
   } else {
     form.value.currency = store?.default_currency || "EUR";
     products.value = [];
@@ -1514,11 +1529,20 @@ const isReloadingAfterSubmit = ref(false);
 const currentAppId = ref<string | null>(null);
 
 watch(
-  () => layoutRef.value?.app,
+  editorApp,
   (newApp) => {
-    // If app ID changed, we're switching apps - clear success and reset reloading flag
-    if (newApp && newApp.id !== currentAppId.value) {
+    if (!canEditPosConfig(newApp)) {
+      loadedSettings = null;
+      loadedCategories = new Map();
+      settingsGeneration++;
+    }
+    // Switch apps or recover an incomplete read; confirmed same-app replacements retain the saved draft.
+    const recoveringRead = canEditPosConfig(newApp) && (!loadedSettings || saveReadFailed.value);
+    if (newApp && (newApp.id !== currentAppId.value || recoveringRead)) {
+      loadedSettings = null;
+      loadedCategories = new Map();
       currentAppId.value = newApp.id;
+      if (canEditPosConfig(newApp)) saveReadFailed.value = false;
       success.value = ""; // Clear success when switching apps
       isReloadingAfterSubmit.value = false; // Reset reloading flag
       loadApp();
@@ -1559,9 +1583,16 @@ watchEffect(() => {
   }
 });
 
+/** Save a complete catalog and retain a failed read guard if the response cannot confirm current settings. */
 async function handleSubmit() {
-  const app = layoutRef.value?.app;
-  if (!app) return;
+  const app = editorApp.value;
+  if (!app || !configIsEditable.value) return;
+  const submittedStoreId = storeId.value;
+  const submittedAppId = appId.value;
+  const submittedGeneration = settingsGeneration;
+  /** Prevent an obsolete save response from changing replacement app settings or their read guard. */
+  const isCurrentSubmission = () => submittedGeneration === settingsGeneration && editorApp.value === app
+    && storeId.value === submittedStoreId && appId.value === submittedAppId;
 
   saving.value = true;
   error.value = "";
@@ -1579,16 +1610,12 @@ async function handleSubmit() {
         }
 
         return {
+          ...p,
           id: p.id || generateProductId(p.title),
           title: p.title,
           disabled: p.disabled || false,
           description: p.description || null,
-          categories: p.categories
-            ? String(p.categories)
-                .split(",")
-                .map((c: string) => c.trim())
-                .filter((c: string) => c)
-            : null,
+          categories: serializePosCategories(p, loadedCategories),
           image: p.image || null,
           priceType: p.priceType || "Fixed",
           price:
@@ -1615,10 +1642,8 @@ async function handleSubmit() {
       showSearch: form.value.showSearch,
       showCategories: form.value.showCategories,
       enableTips: form.value.enableTips,
-      tipsMessage: form.value.tipsMessage || null,
-      defaultTaxRate: form.value.defaultTaxRate
-        ? String(form.value.defaultTaxRate)
-        : null,
+      tipsMessage: form.value.tipsMessage,
+      defaultTaxRate: String(form.value.defaultTaxRate),
       tipTaxRate:
         form.value.tipTaxRate !== null && form.value.tipTaxRate !== undefined
           ? String(form.value.tipTaxRate)
@@ -1656,19 +1681,26 @@ async function handleSubmit() {
       config.description = form.value.description || null;
     }
 
-    // Always save template/products if they exist, regardless of whether editor is visible
-    // This ensures products are saved even if editor visibility changes
-    if (template && template.length > 0) {
-      config.template = template;
-    } else if (shouldShowProductsEditor.value) {
-      // If no products but editor should be visible, set empty array
-      config.template = [];
-    }
+    preserveUnchangedPosSettings(config, form.value, loadedSettings);
 
-    await appsStore.updateApp(storeId.value, appId.value, {
+    // A complete read makes an empty catalog authoritative even when Light item selection is hidden.
+    config.template = template;
+
+    const submittedForm = Object.freeze({ ...form.value });
+    const submittedProducts = products.value.map(product => ({ id: product.id, categories: product.categories }));
+    const updatedApp = await appsStore.updateApp(submittedStoreId, submittedAppId, {
       name: form.value.appName,
       config,
     });
+    if (!isCurrentSubmission()) return;
+    if (hasPosConfigReadErrors(updatedApp)) {
+      loadedSettings = null;
+      loadedCategories = new Map();
+      saveReadFailed.value = true;
+      return;
+    }
+    loadedSettings = capturePosSettings(config, submittedForm, updatedApp?.config);
+    loadedCategories = capturePosCategories(submittedProducts, template);
 
     // Set success and clear error immediately; show flash toast
     success.value = "Settings saved successfully";
@@ -1739,6 +1771,7 @@ async function handleSubmit() {
       }
     }
   } catch (rawError) {
+    if (!isCurrentSubmission()) return;
     const err = asApiError(rawError);
     // Only set error if we don't have success
     if (!success.value) {
@@ -1805,7 +1838,7 @@ async function handleUnarchive() {
 }
 
 async function handleDelete() {
-  const app = layoutRef.value?.app;
+  const app = editorApp.value;
   if (!app) return;
 
   deleting.value = true;
