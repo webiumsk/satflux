@@ -135,7 +135,7 @@ export function normalizeCustomEvoluRelayUrl(raw: string): string {
     }
     try {
         const url = new URL(value);
-        if (/(?:^|\.)(?:[0-9]+|0x[0-9a-f]+)$/i.test(numericHost) && url.hostname !== numericHost) return "";
+        if (/(?:^|\.)(?:[0-9]+|0x[0-9a-f]*)$/i.test(numericHost) && url.hostname !== numericHost) return "";
         if (url.protocol !== "wss:" || !url.hostname || url.username || url.password
             || (url.pathname !== "" && url.pathname !== "/")) return "";
         return url.origin;

@@ -1,5 +1,27 @@
 # Project state
 
+## PR432 second review accepted locally - 2026-11-06
+
+All four findings are valid and corrected against published `ee294579`: reject
+bare hexadecimal numeric hosts, require recovery backup before closing tabs,
+cache successful public derivations by weak owner identity, and allow default-only
+keyless profiles after explicit account-bound local owner confirmation. Retained
+other-account owners, custom destinations, stale callbacks and device-off remain
+guarded. The session proof contains only public account ID/key provenance.
+
+Independent security/QA accept runtime20 `67ba4a4d...cdf5a9` / source36
+`b93cdd7e...a0e814`, with all bytes verified before/after. Security56 TS +20 Profile
++23 PHP and QA26/3 pass, including actual SDK/SQLite and Profile race coverage.
+Main frontend2,052/196, focused87/4, isolated PHP69/481, Pint/PHPStan, type110,
+lint48/52, locales/build/API/changelog pass; local AST documents37/37 changed
+complexity-qualified runtime functions. No external docstring success is inferred.
+
+PR #432 remains open; main owns corrective publication and exact-head verification.
+Prior-head CI passed; new-head checks need separate evidence. Merge/deployment are
+pending owner gates. Full contracts/limits/evidence are in `EVOLU_CUSTOM_RELAY.md`
+and private `reviews/evolu-custom-relay/second-review/`. Unrelated primary work,
+old-worker restart guidance and existing test ratchets are preserved.
+
 ## PR432 review fixes independently accepted locally - 2026-11-06
 
 PR #432 is open. These corrections were verified from published review base

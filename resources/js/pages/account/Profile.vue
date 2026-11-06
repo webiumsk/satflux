@@ -1799,12 +1799,16 @@ async function submitDeviceUnlock(): Promise<void> {
   deviceUnlockError.value = "";
   deviceUnlockLoading.value = true;
   const previousMnemonic = getStoredAccountMnemonic();
+  const confirmLocalOwner = authStore.captureLocalDefaultRelayOwnerConfirmation();
   try {
     const { recoveryPhrase } = await unlockDeviceWithPassphrase(devicePassphraseInput.value);
     if (!(await confirmRestoreOwnerSwitchIfNeeded(recoveryPhrase))) {
       restorePreviousSessionMnemonic(previousMnemonic);
       devicePassphraseInput.value = "";
       return;
+    }
+    if (confirmLocalOwner(recoveryPhrase)) {
+      await authStore.fetchUser();
     }
     resetEvoluBootstrapForRetry();
     storedGuestMnemonic.value = getStoredGuestMnemonic();
@@ -1860,11 +1864,15 @@ async function submitDeviceUnlockWithPasskey(): Promise<void> {
   deviceUnlockError.value = "";
   deviceUnlockLoading.value = true;
   const previousMnemonic = getStoredAccountMnemonic();
+  const confirmLocalOwner = authStore.captureLocalDefaultRelayOwnerConfirmation();
   try {
     const { recoveryPhrase } = await unlockDeviceWithPasskey();
     if (!(await confirmRestoreOwnerSwitchIfNeeded(recoveryPhrase))) {
       restorePreviousSessionMnemonic(previousMnemonic);
       return;
+    }
+    if (confirmLocalOwner(recoveryPhrase)) {
+      await authStore.fetchUser();
     }
     resetEvoluBootstrapForRetry();
     storedGuestMnemonic.value = getStoredGuestMnemonic();
@@ -2056,6 +2064,7 @@ async function removeMergedPasskey(entry: MergedPasskey): Promise<void> {
 async function submitRestoreWithAccountPasskey(): Promise<void> {
   restoreOnDeviceError.value = "";
   accountPasskeyRestoreLoading.value = true;
+  const confirmLocalOwner = authStore.captureLocalDefaultRelayOwnerConfirmation();
   try {
     const { recoveryPhrase } = await restoreWithAccountPasskey();
     if (!(await confirmRestoreOwnerSwitchIfNeeded(recoveryPhrase))) {
@@ -2063,6 +2072,9 @@ async function submitRestoreWithAccountPasskey(): Promise<void> {
     }
     resetEvoluBootstrapForRetry();
     const result = await bindRecoveryPhraseOnThisDevice(recoveryPhrase);
+    if (result !== "owner_restore_failed" && confirmLocalOwner(recoveryPhrase)) {
+      await authStore.fetchUser();
+    }
     storedGuestMnemonic.value = getStoredGuestMnemonic();
     showRestoreOnDeviceModal.value = false;
     if (result === "restored" || result === "migrated_legacy_owner") {
@@ -2088,10 +2100,17 @@ async function submitRestoreWithAccountPasskey(): Promise<void> {
   }
 }
 
+/** Clear pending owner-switch approval when the user changes or the flow completes. */
 function resetRestoreOwnerSwitchGuard(): void {
   restoreOwnerSwitchImpact.value = null;
   restoreOwnerSwitchConfirmedFor.value = "";
 }
+
+let restoreOwnerSwitchAccountGeneration = 0;
+watch(() => authStore.user?.id, () => {
+  restoreOwnerSwitchAccountGeneration++;
+  resetRestoreOwnerSwitchGuard();
+}, { flush: "sync" });
 
 function restorePreviousSessionMnemonic(previousMnemonic: string | null): void {
   clearSessionAccountMnemonic();
@@ -2106,10 +2125,13 @@ function restorePreviousSessionMnemonic(previousMnemonic: string | null): void {
   storedGuestMnemonic.value = getStoredGuestMnemonic();
 }
 
+/** Require a fresh preview confirmation for the same phrase and uninterrupted account session. */
 async function confirmRestoreOwnerSwitchIfNeeded(recoveryPhrase: string): Promise<boolean> {
+  const generation = restoreOwnerSwitchAccountGeneration;
   const recoveryPublicKeyHex = deriveRecoveryPublicKeyHex(recoveryPhrase);
   if (restoreOwnerSwitchConfirmedFor.value !== recoveryPublicKeyHex) {
     const impact = await previewOwnerSwitchImpact(recoveryPhrase);
+    if (generation !== restoreOwnerSwitchAccountGeneration) return false;
     if (impact.switches) {
       restoreOwnerSwitchImpact.value = impact;
       restoreOwnerSwitchConfirmedFor.value = recoveryPublicKeyHex;
@@ -2570,9 +2592,12 @@ async function handleRecoveryEnrolled(payload: {
   }
 }
 
+/** Bind the entered phrase and reconcile only a successfully confirmed local owner. */
 async function submitRestoreOnDevice(): Promise<void> {
   restoreOnDeviceError.value = "";
   restoreOnDeviceLoading.value = true;
+  const mnemonic = restoreOnDeviceInput.value;
+  const confirmLocalOwner = authStore.captureLocalDefaultRelayOwnerConfirmation();
   try {
     // Optional "remember this device": validate the passphrase before touching
     // anything, so a weak passphrase fails fast without half-binding.
@@ -2583,24 +2608,27 @@ async function submitRestoreOnDevice(): Promise<void> {
       return;
     }
 
-    if (!(await confirmRestoreOwnerSwitchIfNeeded(restoreOnDeviceInput.value))) {
+    if (!(await confirmRestoreOwnerSwitchIfNeeded(mnemonic))) {
       return;
     }
     resetEvoluBootstrapForRetry();
-    const result = await bindRecoveryPhraseOnThisDevice(restoreOnDeviceInput.value);
+    const result = await bindRecoveryPhraseOnThisDevice(mnemonic);
 
     if (wantsRemember) {
       // Wrap the just-entered phrase in a device passphrase envelope. If this
       // fails the phrase is still bound for the session - surface the error but
       // do not block the restore.
       try {
-        await rememberDeviceWithPassphrase(restoreOnDeviceInput.value, devicePassphraseInput.value);
+        await rememberDeviceWithPassphrase(mnemonic, devicePassphraseInput.value);
         await refreshDeviceRemembered();
       } catch {
         flashStore.warning(t("account.device_remember_failed"));
       }
     }
 
+    if (result !== "owner_restore_failed" && confirmLocalOwner(mnemonic)) {
+      await authStore.fetchUser();
+    }
     storedGuestMnemonic.value = getStoredGuestMnemonic();
     showRestoreOnDeviceModal.value = false;
     restoreOnDeviceInput.value = "";

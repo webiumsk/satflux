@@ -10,6 +10,7 @@ type Selection = { urls: readonly string[]; accountPublicKey?: string | null };
 type Binding = { evolu: Client; owner: SyncOwner; accountPublicKey?: string | null; unuse?: UnuseOwner; signature?: string; removed: boolean };
 const bindings = new Set<Binding>();
 const publicKeys = new WeakMap<Client, string | null>();
+const ownerPublicKeyCache = new WeakMap<SyncOwner, string>();
 let selection: Selection | undefined;
 let observing = false;
 let suspended = false;
@@ -37,11 +38,15 @@ function cacheSnapshot(): { selection: Selection; override: RelayOverride; avail
 /** Resolve public URLs and their account guard from the same atomic snapshot. */
 function cachedSelection(): Selection { return cacheSnapshot().selection; }
 
-/** Derive only a public identifier locally; the mnemonic never leaves the existing owner object. */
+/** Cache successful public derivations by weak owner identity without retaining its mnemonic. */
 function ownerPublicKey(owner: SyncOwner): string | null {
+    const cached = ownerPublicKeyCache.get(owner);
+    if (cached) return cached;
     try {
-        return "mnemonic" in owner && typeof owner.mnemonic === "string"
+        const key = "mnemonic" in owner && typeof owner.mnemonic === "string"
             ? deriveRecoveryPublicKeyHex(owner.mnemonic) : null;
+        if (key) ownerPublicKeyCache.set(owner, key);
+        return key;
     } catch {
         return null;
     }

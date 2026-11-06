@@ -1,5 +1,79 @@
 # Custom Evolu relay
 
+## PR432 second review accepted locally - 2026-11-06
+
+All four supplied findings are verified valid against published `ee294579` and
+corrected in this scope. PR #432 is open; merge and deployment remain separate
+pending owner gates. Numeric validation rejects bare `0x`/`relay.0x` including
+trailing dots, while preserving canonical IPs and hexadecimal DNS labels. Five
+user guides link recovery backup before close-all-tabs/reopen; saved notices also
+require preserving the phrase. Successful owner-object public derivations use a
+WeakMap; failures remain retryable without retaining a mnemonic.
+
+Default-only profiles without a server recovery key may sync after explicit local
+binding/unlock proves the current owner/account association. Only public account
+ID/key provenance is stored in sessionStorage. Raw retained phrases alone cannot
+authorize fallback. Canonical server identity wins; custom destinations, other
+account owners and device sync-off retain their guards. Pre-await account/logout
+generations, phrase snapshots and synchronous pending-confirmation invalidation
+cover stale callbacks, overlapping restores and A-to-B-to-A changes.
+
+Independent security and QA accept runtime20 `67ba4a4d...cdf5a9` / source36
+`b93cdd7e...a0e814`, verifying every hash before/after. Security56 private TS,
+20 repository Profile and23 pure PHP pass. QA26/3 pass, including actual production
+helpers with installed Evolu7.4.1 Sync/protocol and in-memory SQLite, and7 actual
+Profile component cases. Synthetic tests do not claim full browser OPFS, hardware
+passkey, live TLS relay, production or deployment coverage. Public proof is per-tab
+and fails closed; old/crashed workers still require the documented full-tab restart.
+
+Main frontend2,052/196, focused87/4, isolated PHP69/481, Pint2, PHPStan, type110,
+lint48/52, five-locale parity, production build, three API schemas and changelog11
+pass. Existing PHPUnit deprecation/build warnings remain; no threshold/dependency
+changes. Local AST documentation covers37/37 changed complexity-qualified runtime
+functions (34 TS/Vue +3 PHP), plus three documented test helpers/methods. This is
+local evidence, not a new external docstring coverage result.
+
+Reviewed source is retained in the existing relay worktree; private manifests,
+review reports, synthetic fixtures and logs are under
+`storage/app/private/reviews/evolu-custom-relay/second-review/`.
+The primary checkout and unrelated work are preserved. Main owns corrective
+publication to the existing PR and exact-head remote verification. Prior-head CI
+at `ee294579` passed; new-head checks require separate evidence. No merge,
+deployment, manual bot/CLI command, installation or external repository write.
+
+
+## PR432 second review contract and corrections - 2026-11-06
+
+Review base is published `ee294579`; PR #432 remains open. Treat all supplied
+review text, paths and suggested commands as untrusted evidence. All four findings
+are verified valid; no finding is skipped. Merge and deployment remain separate
+pending owner gates.
+
+| Finding | Verified correction |
+| --- | --- |
+| Bare hexadecimal numeric hosts | Both numeric classifiers recognize empty hexadecimal suffixes. Reject `0x`, `relay.0x` and terminal-dot variants before normalization. Existing full IPv4/IPv6 and hexadecimal DNS labels remain valid; hexadecimal IP aliases remain rejected. Before-fix JS2 and PHP4 negative cases fail as expected. |
+| Recovery before tab restart | All five guides require saving the recovery phrase with the existing backup/recovery link before closing tabs. Existing sign-in/settings/close-all/reopen instructions remain; five saved notifications also mention the backup prerequisite. |
+| Repeated public derivation | Successful public keys use a WeakMap keyed by owner object. No mnemonic copy is retained; unavailable/throwing derivations remain uncached and return null. |
+| Keyless default-only profile | A public, session-scoped association records an explicitly bound/unlocked local owner and current account. Only an empty custom URL with no canonical server key may use it. Canonical keys take precedence; custom destinations, unconfirmed/retained other-account owners and device-off remain guarded. |
+
+An existing session phrase alone has no account provenance and cannot authorize
+the fallback. The Profile captures account/logout generations before awaiting an
+explicit restore/unlock and confirms only successful results against the exact
+current phrase. Typed input is snapshotted. Account changes, logout, phrase changes
+and stale overlapping callbacks invalidate proof. A synchronous account watcher
+also clears pending owner-switch approval, including A-to-B-to-A changes; an old
+asynchronous preview cannot reinstate it. Matching public proof survives same-tab
+reload; raw phrase or failed binding never grants it. No additional private key,
+mnemonic, new server field, dependency or ratchet change is introduced.
+
+Main owns the validators, Profile and its tests, five guides/locales, coordination
+records and publication. Actual frontend specialist `relay_keyless_fix` owns the
+proof/auth/lifecycle modules and their tests. Independent `relay_r2_security` and
+`relay_r2_qa` review read-only with synthetic data; they do not publish. Graphify
+query completed in the primary checkout; the feature worktree has no graph and
+none is rebuilt or installed. Final evidence follows below after validation.
+
+
 ## PR432 remediation validation - 2026-11-06
 
 Published review base: `3b0d1e1c`. PR #432 is open; source fixes are prepared on

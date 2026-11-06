@@ -31,7 +31,7 @@ class EvoluRelayUrl implements ValidationRule
             }
         } elseif (filter_var($host, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME) === false) {
             return null;
-        } elseif (preg_match('/(?:^|\.)(?:[0-9]+|0x[0-9a-f]+)$/iD', $numericHost) === 1
+        } elseif (preg_match('/(?:^|\.)(?:[0-9]+|0x[0-9a-f]*)$/iD', $numericHost) === 1
             && filter_var($numericHost, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) {
             // Browsers reinterpret shortened, decimal, octal and hexadecimal IPs.
             return null;

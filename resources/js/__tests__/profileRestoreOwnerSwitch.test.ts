@@ -26,6 +26,8 @@ const mocks = vi.hoisted(() => ({
     apiPost: vi.fn(),
     apiPut: vi.fn(),
     fetchUser: vi.fn(),
+    captureLocalDefaultRelayOwnerConfirmation: vi.fn(),
+    confirmLocalDefaultRelayOwner: vi.fn(),
     writeRelayOverrideUrl: vi.fn(),
     probeRelayReachability: vi.fn(async () => true),
     activeRelayUrl: "",
@@ -41,14 +43,24 @@ vi.mock("vue-router", () => ({
     }),
 }));
 
-vi.mock("../store/auth", () => ({
-    useAuthStore: () => ({
-        isAuthenticated: true,
-        get user() { return mocks.user; },
-        fetchUser: mocks.fetchUser,
-        enrollGuestRecoveryPublicKey: vi.fn(),
-    }),
-}));
+vi.mock("../store/auth", async () => {
+    const { shallowRef } = await import("vue");
+    const user = shallowRef(mocks.user);
+    Object.defineProperty(mocks, "user", {
+        get: () => user.value,
+        set: (value: User | null) => { user.value = value; },
+        configurable: true,
+    });
+    return {
+        useAuthStore: () => ({
+            isAuthenticated: true,
+            get user() { return user.value; },
+            fetchUser: mocks.fetchUser,
+            captureLocalDefaultRelayOwnerConfirmation: mocks.captureLocalDefaultRelayOwnerConfirmation,
+            enrollGuestRecoveryPublicKey: vi.fn(),
+        }),
+    };
+});
 
 vi.mock("../store/flash", () => ({
     useFlashStore: () => ({
@@ -278,6 +290,8 @@ async function mountProfile(): Promise<VueWrapper> {
 describe("Profile recovery phrase owner switch guard", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mocks.captureLocalDefaultRelayOwnerConfirmation.mockReturnValue(mocks.confirmLocalDefaultRelayOwner);
+        mocks.confirmLocalDefaultRelayOwner.mockReturnValue(false);
         mocks.activeRelayUrl = "";
         mocks.user = {
             id: 1, name: 'Synthetic Merchant', email: 'synthetic@example.test', role: 'free', is_guest: false,
@@ -324,6 +338,7 @@ describe("Profile recovery phrase owner switch guard", () => {
 
         expect(mocks.restoreWithAccountPasskey).toHaveBeenCalledTimes(1);
         expect(mocks.previewOwnerSwitchImpact).toHaveBeenCalledWith("passkey phrase");
+        expect(mocks.confirmLocalDefaultRelayOwner).not.toHaveBeenCalled();
         expect(mocks.bindRecoveryPhraseOnThisDevice).not.toHaveBeenCalled();
         expect(mocks.resetEvoluBootstrapForRetry).not.toHaveBeenCalled();
         expect(wrapper.text()).toContain("auth.guest_restore_owner_switch_title");
@@ -335,6 +350,7 @@ describe("Profile recovery phrase owner switch guard", () => {
         expect(mocks.previewOwnerSwitchImpact).toHaveBeenCalledTimes(1);
         expect(mocks.resetEvoluBootstrapForRetry).toHaveBeenCalledTimes(1);
         expect(mocks.bindRecoveryPhraseOnThisDevice).toHaveBeenCalledWith("passkey phrase");
+        expect(mocks.confirmLocalDefaultRelayOwner).toHaveBeenCalledWith("passkey phrase");
     }, 15000);
 
     it("requires confirmation before typed phrase restore re-links existing local invoicing data", async () => {
@@ -345,6 +361,7 @@ describe("Profile recovery phrase owner switch guard", () => {
         await flushPromises();
 
         expect(mocks.previewOwnerSwitchImpact).toHaveBeenCalledWith("typed phrase");
+        expect(mocks.confirmLocalDefaultRelayOwner).not.toHaveBeenCalled();
         expect(mocks.bindRecoveryPhraseOnThisDevice).not.toHaveBeenCalled();
         expect(mocks.resetEvoluBootstrapForRetry).not.toHaveBeenCalled();
         expect(wrapper.text()).toContain("auth.guest_restore_owner_switch_title");
@@ -355,6 +372,7 @@ describe("Profile recovery phrase owner switch guard", () => {
         expect(mocks.previewOwnerSwitchImpact).toHaveBeenCalledTimes(1);
         expect(mocks.resetEvoluBootstrapForRetry).toHaveBeenCalledTimes(1);
         expect(mocks.bindRecoveryPhraseOnThisDevice).toHaveBeenCalledWith("typed phrase");
+        expect(mocks.confirmLocalDefaultRelayOwner).toHaveBeenCalledWith("typed phrase");
     }, 15000);
 
     it("requires confirmation before remembered-device passphrase unlock re-links existing local invoicing data", async () => {
@@ -379,6 +397,7 @@ describe("Profile recovery phrase owner switch guard", () => {
         expect(mocks.unlockDeviceWithPassphrase).toHaveBeenCalledTimes(2);
         expect(mocks.previewOwnerSwitchImpact).toHaveBeenCalledTimes(1);
         expect(mocks.resetEvoluBootstrapForRetry).toHaveBeenCalledTimes(1);
+        expect(mocks.confirmLocalDefaultRelayOwner).toHaveBeenCalled();
         expect(mocks.reloadApp).toHaveBeenCalledTimes(1);
     }, 15000);
 
@@ -434,8 +453,69 @@ describe("Profile recovery phrase owner switch guard", () => {
         expect(mocks.unlockDeviceWithPasskey).toHaveBeenCalledTimes(2);
         expect(mocks.previewOwnerSwitchImpact).toHaveBeenCalledTimes(1);
         expect(mocks.resetEvoluBootstrapForRetry).toHaveBeenCalledTimes(1);
+        expect(mocks.confirmLocalDefaultRelayOwner).toHaveBeenCalled();
         expect(mocks.reloadApp).toHaveBeenCalledTimes(1);
     }, 15000);
+
+    it("reconciles the canonical profile after a successful local owner confirmation", async () => {
+        mocks.previewOwnerSwitchImpact.mockResolvedValue({ switches: false });
+        mocks.confirmLocalDefaultRelayOwner.mockReturnValue(true);
+        const wrapper = await mountProfile();
+        await wrapper.find("textarea").setValue("confirmed phrase");
+        await findButton(wrapper, "account.recovery_phrase_restore_on_device_submit").trigger("click");
+        await flushPromises();
+        expect(mocks.confirmLocalDefaultRelayOwner).toHaveBeenCalledWith("confirmed phrase");
+        expect(mocks.fetchUser).toHaveBeenCalledTimes(1);
+        expect(mocks.captureLocalDefaultRelayOwnerConfirmation.mock.invocationCallOrder[0])
+            .toBeLessThan(mocks.bindRecoveryPhraseOnThisDevice.mock.invocationCallOrder[0]);
+        expect(mocks.bindRecoveryPhraseOnThisDevice.mock.invocationCallOrder[0])
+            .toBeLessThan(mocks.confirmLocalDefaultRelayOwner.mock.invocationCallOrder[0]);
+        wrapper.unmount();
+    });
+
+    it("does not authorize a default owner after a failed local bind", async () => {
+        mocks.previewOwnerSwitchImpact.mockResolvedValue({ switches: false });
+        mocks.bindRecoveryPhraseOnThisDevice.mockResolvedValue("owner_restore_failed");
+        const wrapper = await mountProfile();
+        await wrapper.find("textarea").setValue("failed phrase");
+        await findButton(wrapper, "account.recovery_phrase_restore_on_device_submit").trigger("click");
+        await flushPromises();
+        expect(mocks.confirmLocalDefaultRelayOwner).not.toHaveBeenCalled();
+        expect(mocks.fetchUser).not.toHaveBeenCalled();
+        wrapper.unmount();
+    });
+
+    it("confirms the bound phrase even when the input changes during the bind", async () => {
+        mocks.previewOwnerSwitchImpact.mockResolvedValue({ switches: false });
+        let finishBind!: (result: string) => void;
+        mocks.bindRecoveryPhraseOnThisDevice.mockImplementationOnce(() => new Promise<string>(resolve => { finishBind = resolve; }));
+        const wrapper = await mountProfile();
+        await wrapper.find("textarea").setValue("original phrase");
+        await findButton(wrapper, "account.recovery_phrase_restore_on_device_submit").trigger("click");
+        await flushPromises();
+        await wrapper.find("textarea").setValue("different phrase");
+        finishBind("already_synced");
+        await flushPromises();
+        expect(mocks.confirmLocalDefaultRelayOwner).toHaveBeenCalledWith("original phrase");
+        wrapper.unmount();
+    });
+
+    it("requires a new owner-switch preview after the account changes away and back", async () => {
+        const wrapper = await mountProfile();
+        await wrapper.find("textarea").setValue("typed phrase");
+        await findButton(wrapper, "account.recovery_phrase_restore_on_device_submit").trigger("click");
+        await flushPromises();
+        const originalUser = mocks.user!;
+        mocks.user = { ...originalUser, id: 2 };
+        mocks.user = originalUser;
+        await flushPromises();
+        await findButton(wrapper, "account.recovery_phrase_restore_on_device_submit").trigger("click");
+        await flushPromises();
+        expect(mocks.previewOwnerSwitchImpact).toHaveBeenCalledTimes(2);
+        expect(mocks.bindRecoveryPhraseOnThisDevice).not.toHaveBeenCalled();
+        expect(mocks.confirmLocalDefaultRelayOwner).not.toHaveBeenCalled();
+        wrapper.unmount();
+    });
 
     it("allows actual Enterprise subscriber credit purchases while PRO sales are paused", async () => {
         mocks.user = { ...mocks.user!, role: 'enterprise', plan: {
@@ -500,6 +580,7 @@ describe("Profile recovery phrase owner switch guard", () => {
             const originalWindow = window;
             const reload = vi.fn();
             vi.stubGlobal('window', new Proxy(originalWindow, {
+                /** Stub location reload while preserving all other window properties. */
                 get(target, key) { return key === 'location' ? { reload } : Reflect.get(target, key); },
             }));
             try {

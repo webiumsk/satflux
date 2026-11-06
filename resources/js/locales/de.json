@@ -3091,7 +3091,7 @@
     "evolu_relay_save": "Relay speichern",
     "evolu_relay_saving": "Speichere…",
     "evolu_relay_clear": "Standard verwenden",
-    "evolu_relay_saved": "Relay-URL gespeichert. Laden Sie auf jedem Gerät die aktualisierten Einstellungen, schließen Sie alle Satflux-Tabs und öffnen Sie Satflux erneut.",
+    "evolu_relay_saved": "Relay-URL gespeichert. Laden Sie auf jedem Gerät die aktualisierten Einstellungen, schließen Sie alle Satflux-Tabs und öffnen Sie Satflux erneut. Sichern Sie Ihre Wiederherstellungsphrase, bevor Sie Tabs schließen.",
     "evolu_relay_save_failed": "Das Relay konnte nicht gespeichert werden. Verwenden Sie eine gültige wss://-Serveradresse ohne Pfad, Anmeldedaten, Abfrage oder Fragment. Bei gültiger Adresse versuchen Sie es erneut.",
     "evolu_stats_title": "Lokale Rechnungsdaten (Evolu)",
     "evolu_stats_desc": "Zähler aus diesem Browser. Das Relay speichert nur ein verschlüsseltes Backup - die Backup-Größe erscheint, wenn das Relay die /usage-API bereitstellt.",

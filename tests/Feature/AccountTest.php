@@ -171,6 +171,7 @@ class AccountTest extends TestCase
             'ipv4 trailing dot' => ['wss://127.0.0.1.:8443', 'wss://127.0.0.1.:8443'],
             'hostname trailing dot' => ['wss://relay.example.com.', 'wss://relay.example.com.'],
             'ipv6' => ['wss://[::1]:8443/', 'wss://[::1]:8443'],
+            'hex label in DNS hostname' => ['wss://0x.example.com', 'wss://0x.example.com'],
         ];
     }
 
@@ -217,6 +218,10 @@ class AccountTest extends TestCase
             'wss://0177.0.0.1.',
             'wss://0x7f000001',
             'wss://0x7f000001.',
+            'wss://0x',
+            'wss://relay.0x',
+            'wss://0x.',
+            'wss://relay.0x.',
             'wss://'.str_repeat('a', 510).'.example.com',
         ]);
     }

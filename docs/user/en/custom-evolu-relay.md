@@ -13,7 +13,7 @@ In local-first invoicing, you can connect your own Evolu relay alongside the def
 1. Open **Account settings > Evolu sync**.
 2. Enter your relay's secure WebSocket origin, for example `wss://relay.example.com` or `wss://relay.example.com:8443`.
 3. Keep the option to also use the default relay enabled and save. The page reloads to apply the connections.
-4. On each device, sign in and load the updated settings, then close **all Satflux tabs** and reopen Satflux. This restarts the existing synchronization worker; reloading only one tab is not sufficient.
+4. Before closing any Satflux tabs, make sure you have saved your [recovery phrase](/documentation/backup-and-recovery). On each device, sign in and load the updated settings, then close **all Satflux tabs** and reopen Satflux. This restarts the existing synchronization worker; reloading only one tab is not sufficient.
 
 The address must use `wss://` and contain no username, password, path, query or fragment. Your server must implement the Evolu protocol compatible with Satflux's installed Evolu 7.x client; an ordinary WebSocket server is insufficient.
 

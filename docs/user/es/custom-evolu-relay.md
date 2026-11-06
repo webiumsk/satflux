@@ -13,7 +13,7 @@ En la facturación local-first puedes conectar tu propio relay Evolu junto al pr
 1. Abre **Configuración de la cuenta > Evolu sync**.
 2. Introduce el origen WebSocket seguro de tu relay, por ejemplo `wss://relay.example.com` o `wss://relay.example.com:8443`.
 3. Mantén activada la opción de usar también el relay predeterminado y guarda. La página se recarga para aplicar las conexiones.
-4. En cada dispositivo, inicia sesión y carga los ajustes actualizados; después cierra **todas las pestañas de Satflux** y vuelve a abrir Satflux. Así se reinicia el worker de sincronización existente; recargar una sola pestaña no basta.
+4. Antes de cerrar cualquier pestaña de Satflux, asegúrate de haber guardado tu [frase de recuperación](/documentation/backup-and-recovery). En cada dispositivo, inicia sesión y carga los ajustes actualizados; después cierra **todas las pestañas de Satflux** y vuelve a abrir Satflux. Así se reinicia el worker de sincronización existente; recargar una sola pestaña no basta.
 
 La dirección debe usar `wss://` y no contener usuario, contraseña, ruta, parámetros ni fragmento. El servidor debe implementar el protocolo Evolu compatible con el cliente Evolu 7.x de Satflux; un servidor WebSocket genérico no basta.
 

@@ -19,6 +19,7 @@ import { ensureEvoluBoundToAccountSeed } from '../evolu/bootstrap';
 import { EVOLU_RELAY_OVERRIDE_STORAGE_KEY, parseRelayOverride, writeRelayOverrideUrl, type RelayOverride } from '@/evolu/relayOverrideStorage';
 import { normalizeEvoluRelayBaseUrl, resolveEvoluRelayUrls } from '@/evolu/config';
 import { reconcileEvoluRelayPreference } from '@/evolu/relayPreferenceLifecycle';
+import { clearLocalDefaultRelayOwner, confirmLocalDefaultRelayOwner, resolveLocalDefaultRelayOwner } from '@/evolu/localDefaultRelayProof';
 
 function isEmailNotVerifiedResponse(error: { response?: { data?: unknown } } | null): boolean {
     const data = error?.response?.data as { code?: unknown } | undefined;
@@ -91,6 +92,7 @@ export const useAuthStore = defineStore('auth', () => {
     const user = ref<User | null>(null);
     const loading = ref(false);
     let logoutGeneration = 0;
+    let localOwnerConfirmationGeneration = 0;
     let disposed = false;
     const logoutSignalKey = 'satflux.auth.logout.v1';
     let lastLogoutSignal: string | null = null;
@@ -108,6 +110,8 @@ export const useAuthStore = defineStore('auth', () => {
 
     /** Drop in-memory user + tenant store selection (same as logout’s local cleanup; no API call). */
     function clearLocalAuthAndTenantState() {
+        localOwnerConfirmationGeneration++;
+        clearLocalDefaultRelayOwner();
         user.value = null;
         const storesStore = useStoresStore();
         storesStore.stores = [];
@@ -196,6 +200,20 @@ export const useAuthStore = defineStore('auth', () => {
         if (generation !== logoutGeneration) throw new Error('Authentication cancelled by logout.');
     }
 
+    /** Capture account provenance before an explicit local binding or unlock starts awaiting. */
+    function captureLocalDefaultRelayOwnerConfirmation(): (mnemonic: string) => boolean {
+        synchronizeLogout();
+        const accountId = user.value?.id;
+        const generation = logoutGeneration;
+        const confirmationGeneration = localOwnerConfirmationGeneration;
+        return mnemonic => {
+            synchronizeLogout();
+            if (disposed || accountId == null || user.value?.id !== accountId
+                || generation !== logoutGeneration || confirmationGeneration !== localOwnerConfirmationGeneration) return false;
+            return confirmLocalDefaultRelayOwner(accountId, mnemonic);
+        };
+    }
+
     function normalizeUserPayload(data: User): User {
         return { ...data };
     }
@@ -229,7 +247,9 @@ export const useAuthStore = defineStore('auth', () => {
         }
         const normalized = normalizeEvoluRelayBaseUrl(profileRelayUrl ?? '');
         const urls = resolveEvoluRelayUrls(normalized, addDefault);
-        const association = accountPublicKey ?? null;
+        const defaultOnly = profileRelayUrl == null || profileRelayUrl.trim() === '';
+        const association = accountPublicKey ?? (defaultOnly && user.value
+            ? resolveLocalDefaultRelayOwner(user.value.id) : null);
         writeRelayOverrideUrl(normalized, addDefault, association);
         reconcileEvoluRelayPreference(urls, association);
     }
@@ -248,6 +268,10 @@ export const useAuthStore = defineStore('auth', () => {
             if (generation !== logoutGeneration) return 'unavailable';
             const previousUserId = user.value?.id ?? null;
             user.value = normalizeUserPayload(response.data);
+            if (previousUserId !== null && user.value?.id !== previousUserId) {
+                localOwnerConfirmationGeneration++;
+                clearLocalDefaultRelayOwner();
+            }
             if ((user.value?.id ?? null) !== previousUserId) {
                 scheduleChoralaSync();
             }
@@ -468,6 +492,7 @@ export const useAuthStore = defineStore('auth', () => {
         requiresRecoveryMigration,
         fetchUser,
         fetchUserWithOutcome,
+        captureLocalDefaultRelayOwnerConfirmation,
         login,
         completeLegacyRecoveryMigration,
         register,

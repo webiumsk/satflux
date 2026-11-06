@@ -3091,7 +3091,7 @@
     "evolu_relay_save": "Uložit relay",
     "evolu_relay_saving": "Ukládám…",
     "evolu_relay_clear": "Použít výchozí",
-    "evolu_relay_saved": "Relay URL bylo uloženo. Na každém zařízení načtěte aktualizovaná nastavení, zavřete všechny karty Satfluxu a znovu otevřete Satflux.",
+    "evolu_relay_saved": "Relay URL bylo uloženo. Na každém zařízení načtěte aktualizovaná nastavení, zavřete všechny karty Satfluxu a znovu otevřete Satflux. Před zavřením karet si bezpečně uložte obnovovací frázi.",
     "evolu_relay_save_failed": "Relay se nepodařilo uložit. Použijte platnou adresu serveru wss:// bez cesty, přihlašovacích údajů, parametrů a fragmentu. Pokud je adresa platná, zkuste to znovu.",
     "evolu_stats_title": "Lokální fakturační data (Evolu)",
     "evolu_stats_desc": "Počty z tohoto prohlížeče. Relay na serveru drží jen šifrovanou zálohu - velikost zálohy se zobrazí, když relay vystaví /usage API.",

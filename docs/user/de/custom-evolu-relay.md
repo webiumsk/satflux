@@ -13,7 +13,7 @@ Bei der lokalen Rechnungsstellung kannst du ein eigenes Evolu-Relay zusätzlich 
 1. Öffne **Kontoeinstellungen > Evolu sync**.
 2. Gib den sicheren WebSocket-Ursprung deines Relays ein, zum Beispiel `wss://relay.example.com` oder `wss://relay.example.com:8443`.
 3. Lass die Option zur zusätzlichen Verwendung des Standard-Relays aktiviert und speichere. Die Seite wird neu geladen, um die Verbindungen anzuwenden.
-4. Melde dich auf jedem Gerät an und lade die aktualisierten Einstellungen. Schließe dann **alle Satflux-Tabs** und öffne Satflux erneut. Dadurch startet der vorhandene Synchronisierungsworker neu; das Neuladen eines einzelnen Tabs reicht nicht aus.
+4. Bevor du einen Satflux-Tab schließt, stelle sicher, dass du deine [Wiederherstellungsphrase](/documentation/backup-and-recovery) gesichert hast. Melde dich auf jedem Gerät an und lade die aktualisierten Einstellungen. Schließe dann **alle Satflux-Tabs** und öffne Satflux erneut. Dadurch startet der vorhandene Synchronisierungsworker neu; das Neuladen eines einzelnen Tabs reicht nicht aus.
 
 Die Adresse muss `wss://` verwenden und darf weder Benutzername, Passwort, Pfad, Parameter noch Fragment enthalten. Der Server muss das mit Satflux' Evolu-7.x-Client kompatible Evolu-Protokoll unterstützen; ein gewöhnlicher WebSocket-Server reicht nicht aus.
 

@@ -3,10 +3,12 @@ import { createPinia, setActivePinia } from "pinia";
 import { createRandomBytes } from "@evolu/common";
 import { createAppOwner, createOwnerSecret, createSharedOwner, type Evolu, type SyncOwner } from "@evolu/common/local-first";
 import { deriveRecoveryPublicKeyHex } from "@/services/accountSeed";
+import * as accountSeed from "@/services/accountSeed";
 import type { InvoicingLocalSchema } from "@/evolu/schema";
 import { EVOLU_RELAY_OVERRIDE_STORAGE_KEY, readRelayOverride, writeRelayOverrideDisabled, writeRelayOverrideUrl } from "@/evolu/relayOverrideStorage";
 import { reconcileEvoluRelayPreference, registerEvoluRelayOwner } from "@/evolu/relayPreferenceLifecycle";
 import { useAuthStore } from "@/store/auth";
+import { resolveLocalDefaultRelayOwner } from "@/evolu/localDefaultRelayProof";
 
 const authMocks = vi.hoisted(() => ({ get: vi.fn(), csrf: vi.fn() }));
 vi.mock("@/services/api", () => ({ default: { get: authMocks.get } }));
@@ -79,6 +81,7 @@ beforeAll(() => { vi.stubGlobal("BroadcastChannel", PreferenceChannel); });
 afterAll(() => { vi.unstubAllGlobals(); });
 beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
     vi.stubEnv("VITE_EVOLU_RELAY_URL", DEFAULT);
     canonical(CUSTOM, true);
     PreferenceChannel.instance.postMessage.mockReset();
@@ -92,6 +95,7 @@ afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
     localStorage.clear();
+    sessionStorage.clear();
 });
 
 it("retires default registrations for both owner kinds and keeps the replacement registered before release", async () => {
@@ -107,6 +111,45 @@ it("retires default registrations for both owner kinds and keeps the replacement
     expect(probe.destinations(shared.id)).toEqual([CUSTOM]);
     expect(probe.calls).toEqual(["register", "release", "register", "release"]);
 });
+
+it("caches successful public derivations by owner object and keeps distinct owners separate", async () => {
+    const fresh = createAppOwner(createOwnerSecret({ randomBytes }));
+    const key = deriveRecoveryPublicKeyHex(fresh.mnemonic!);
+    canonical(CUSTOM, false, key);
+    const derive = vi.spyOn(accountSeed, "deriveRecoveryPublicKeyHex");
+    const probe = client(Promise.resolve(fresh));
+    register(probe.evolu, fresh);
+    register(probe.evolu, fresh);
+    register(probe.evolu, shared);
+    await Promise.resolve();
+    expect(derive).toHaveBeenCalledTimes(1);
+    register(probe.evolu, { ...fresh });
+    await Promise.resolve();
+    expect(derive).toHaveBeenCalledTimes(2);
+});
+
+it.each([undefined, "synthetic invalid mnemonic"])(
+    "does not cache an unavailable or unsuccessful public derivation (%s)", async unavailable => {
+        const fresh = createAppOwner(createOwnerSecret({ randomBytes }));
+        const key = deriveRecoveryPublicKeyHex(fresh.mnemonic!);
+        canonical(CUSTOM, false, key);
+        // Only this synthetic fixture is mutable; SDK owner objects expose readonly mnemonics.
+        const mutable = { ...fresh, mnemonic: unavailable };
+        const probe = client(Promise.resolve(mutable as typeof fresh));
+        const derive = vi.spyOn(accountSeed, "deriveRecoveryPublicKeyHex");
+        register(probe.evolu, mutable as SyncOwner);
+        await Promise.resolve();
+        expect(probe.destinations(fresh.id)).toEqual([]);
+        if (unavailable) expect(derive).toHaveBeenCalledTimes(2);
+        else expect(derive).not.toHaveBeenCalled();
+        derive.mockClear();
+        mutable.mnemonic = fresh.mnemonic!;
+        register(probe.evolu, mutable as SyncOwner);
+        register(probe.evolu, mutable as SyncOwner);
+        await Promise.resolve();
+        expect(derive).toHaveBeenCalledTimes(1);
+    },
+);
 
 it("keeps retained owners paused for another account across a fresh client and guarded default selection", async () => {
     const retained = client();
@@ -304,4 +347,148 @@ it("a canonical missing public identity pauses even when the cached URLs are unc
     expect(probe.destinations(app.id)).toEqual([]);
     expect(probe.destinations(shared.id)).toEqual([]);
     expect(readRelayOverride()).toMatchObject({ accountPublicKey: null });
+});
+
+/** Create a signed-in keyless account without granting a local owner association. */
+function keylessAuth() {
+    vi.stubEnv("VITE_INVOICING_LOCAL_FIRST", "true");
+    setActivePinia(createPinia());
+    const auth = useAuthStore();
+    disposeAuth = () => auth.$dispose();
+    auth.user = { id: 7, email: "synthetic@example.test", evolu_relay_url: null, recovery_public_key: null };
+    return auth;
+}
+
+it("syncs a keyless default-only profile after explicit local confirmation while retained other owners stay paused", async () => {
+    const auth = keylessAuth();
+    accountSeed.storeAccountMnemonic(app.mnemonic!);
+    const confirm = auth.captureLocalDefaultRelayOwnerConfirmation();
+    expect(confirm(app.mnemonic!)).toBe(true);
+    const probe = client();
+    const retained = client(Promise.resolve(otherApp));
+    register(probe.evolu, app);
+    register(probe.evolu, shared);
+    register(retained.evolu, otherApp);
+    register(retained.evolu, otherShared);
+    await Promise.resolve();
+    authMocks.get.mockResolvedValue({ data: { ...auth.user } });
+    await expect(auth.fetchUserWithOutcome()).resolves.toBe("loaded");
+    expect(probe.destinations(app.id)).toEqual([DEFAULT]);
+    expect(probe.destinations(shared.id)).toEqual([DEFAULT]);
+    expect(retained.destinations(otherApp.id)).toEqual([]);
+    expect(retained.destinations(otherShared.id)).toEqual([]);
+    expect(readRelayOverride()).toMatchObject({ url: "", accountPublicKey: publicKey });
+});
+
+it("keeps a keyless default-only profile paused without explicit confirmation despite a retained phrase", async () => {
+    const auth = keylessAuth();
+    accountSeed.storeAccountMnemonic(app.mnemonic!);
+    const probe = client();
+    register(probe.evolu, app);
+    authMocks.get.mockResolvedValue({ data: { ...auth.user } });
+    await expect(auth.fetchUserWithOutcome()).resolves.toBe("loaded");
+    expect(probe.destinations(app.id)).toEqual([]);
+});
+
+it.each([CUSTOM, "wss://invalid.example.test/path"])("does not authorize a keyless nonempty custom field using local default proof (%s)", async custom => {
+    const auth = keylessAuth();
+    accountSeed.storeAccountMnemonic(app.mnemonic!);
+    expect(auth.captureLocalDefaultRelayOwnerConfirmation()(app.mnemonic!)).toBe(true);
+    const probe = client();
+    register(probe.evolu, app);
+    authMocks.get.mockResolvedValue({ data: { ...auth.user, evolu_relay_url: custom } });
+    await expect(auth.fetchUserWithOutcome()).resolves.toBe("loaded");
+    expect(probe.destinations(app.id)).toEqual([]);
+});
+
+it("preserves device-off despite a confirmed keyless default owner", async () => {
+    const auth = keylessAuth();
+    accountSeed.storeAccountMnemonic(app.mnemonic!);
+    expect(auth.captureLocalDefaultRelayOwnerConfirmation()(app.mnemonic!)).toBe(true);
+    const probe = client();
+    register(probe.evolu, app);
+    writeRelayOverrideDisabled();
+    authMocks.get.mockResolvedValue({ data: { ...auth.user } });
+    await expect(auth.fetchUserWithOutcome()).resolves.toBe("loaded");
+    expect(probe.destinations(app.id)).toEqual([]);
+    expect(readRelayOverride().kind).toBe("disabled");
+});
+
+it("prefers a canonical server identity over local default proof", async () => {
+    const auth = keylessAuth();
+    accountSeed.storeAccountMnemonic(app.mnemonic!);
+    expect(auth.captureLocalDefaultRelayOwnerConfirmation()(app.mnemonic!)).toBe(true);
+    const probe = client();
+    register(probe.evolu, app);
+    authMocks.get.mockResolvedValue({ data: { ...auth.user, recovery_public_key: otherPublicKey } });
+    await expect(auth.fetchUserWithOutcome()).resolves.toBe("loaded");
+    expect(probe.destinations(app.id)).toEqual([]);
+    expect(readRelayOverride()).toMatchObject({ accountPublicKey: otherPublicKey });
+});
+
+it("preserves exact-account confirmation during initial profile loading after a tab reload", async () => {
+    const auth = keylessAuth();
+    const profile = { ...auth.user };
+    accountSeed.storeAccountMnemonic(app.mnemonic!);
+    expect(auth.captureLocalDefaultRelayOwnerConfirmation()(app.mnemonic!)).toBe(true);
+    auth.$dispose();
+    setActivePinia(createPinia());
+    const reloaded = useAuthStore();
+    disposeAuth = () => reloaded.$dispose();
+    const probe = client();
+    register(probe.evolu, app);
+    authMocks.get.mockResolvedValue({ data: profile });
+    await expect(reloaded.fetchUserWithOutcome()).resolves.toBe("loaded");
+    expect(probe.destinations(app.id)).toEqual([DEFAULT]);
+});
+
+it("rejects confirmation captured before a logout signal even after the same account signs in again", async () => {
+    const auth = keylessAuth();
+    accountSeed.storeAccountMnemonic(app.mnemonic!);
+    const confirm = auth.captureLocalDefaultRelayOwnerConfirmation();
+    localStorage.setItem("satflux.auth.logout.v1", "synthetic-logout");
+    // Capturing again observes the signal and clears the previous account generation.
+    auth.captureLocalDefaultRelayOwnerConfirmation();
+    auth.user = { id: 7, email: "synthetic@example.test" };
+    accountSeed.storeAccountMnemonic(app.mnemonic!);
+    expect(confirm(app.mnemonic!)).toBe(false);
+    expect(resolveLocalDefaultRelayOwner(7)).toBeNull();
+});
+
+it("clears confirmation on known account switches and rejects stale A-to-B-to-A callbacks", async () => {
+    const auth = keylessAuth();
+    accountSeed.storeAccountMnemonic(app.mnemonic!);
+    const confirm = auth.captureLocalDefaultRelayOwnerConfirmation();
+    expect(confirm(app.mnemonic!)).toBe(true);
+    authMocks.get.mockResolvedValueOnce({ data: { id: 8, email: "other@example.test" } });
+    await expect(auth.fetchUserWithOutcome()).resolves.toBe("loaded");
+    authMocks.get.mockResolvedValueOnce({ data: { id: 7, email: "synthetic@example.test" } });
+    await expect(auth.fetchUserWithOutcome()).resolves.toBe("loaded");
+    expect(confirm(app.mnemonic!)).toBe(false);
+    expect(resolveLocalDefaultRelayOwner(7)).toBeNull();
+});
+
+it("rejects a late overlapping local phrase confirmation without replacing the newer public proof", () => {
+    const auth = keylessAuth();
+    const first = auth.captureLocalDefaultRelayOwnerConfirmation();
+    const second = auth.captureLocalDefaultRelayOwnerConfirmation();
+    accountSeed.storeAccountMnemonic(otherApp.mnemonic!);
+    expect(second(otherApp.mnemonic!)).toBe(true);
+    expect(first(app.mnemonic!)).toBe(false);
+    expect(resolveLocalDefaultRelayOwner(7) === otherPublicKey).toBe(true);
+    accountSeed.storeAccountMnemonic(app.mnemonic!);
+    expect(resolveLocalDefaultRelayOwner(7)).toBeNull();
+});
+
+it("invalidates captured confirmation when session expiry is followed by the same account returning", async () => {
+    const auth = keylessAuth();
+    accountSeed.storeAccountMnemonic(app.mnemonic!);
+    const confirm = auth.captureLocalDefaultRelayOwnerConfirmation();
+    expect(confirm(app.mnemonic!)).toBe(true);
+    authMocks.get.mockRejectedValueOnce({ response: { status: 401 } });
+    await expect(auth.fetchUserWithOutcome()).resolves.toBe("guest");
+    authMocks.get.mockResolvedValueOnce({ data: { id: 7, email: "synthetic@example.test" } });
+    await expect(auth.fetchUserWithOutcome()).resolves.toBe("loaded");
+    expect(confirm(app.mnemonic!)).toBe(false);
+    expect(resolveLocalDefaultRelayOwner(7)).toBeNull();
 });

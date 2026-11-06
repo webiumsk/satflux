@@ -74,9 +74,12 @@ describe('custom relay address validation', () => {
         expect(normalizeCustomEvoluRelayUrl(' wss://Relay.Example.test:8443/ ')).toBe('wss://relay.example.test:8443');
         expect(normalizeCustomEvoluRelayUrl('wss://127.0.0.1.:8443')).toBe('wss://127.0.0.1:8443');
         expect(normalizeCustomEvoluRelayUrl('wss://relay.example.test.')).toBe('wss://relay.example.test.');
+        expect(normalizeCustomEvoluRelayUrl('wss://192.0.2.1')).toBe('wss://192.0.2.1');
+        expect(normalizeCustomEvoluRelayUrl('wss://0x.example.test')).toBe('wss://0x.example.test');
     });
     it.each(['https://relay.test', 'ws://relay.test', 'wss://u:p@relay.test', 'wss://relay.test/path', 'wss://relay.test/path/..', 'wss://relay.test/./', 'wss://0x7f000001', 'wss://127.1', 'wss://relay.test:0',
         'wss://127.1.', 'wss://2130706433.', 'wss://0177.0.0.1.', 'wss://0x7f000001.',
+        'wss://0x', 'wss://relay.0x', 'wss://0x.', 'wss://relay.0x.',
         'wss://relay.test?token=secret', 'wss://relay.test#fragment', 'wss://relay.test?', 'wss://relay.test#',
         'wss://relay.test\\path', 'wss://rel\nay.test', 'wss://', 'invalid'])('rejects unsafe or retargeted input %s', value => {
         expect(normalizeCustomEvoluRelayUrl(value)).toBe('');
