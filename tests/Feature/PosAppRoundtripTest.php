@@ -16,6 +16,102 @@ class PosAppRoundtripTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Carry every writable v2.4.7 PoS setting through an unrelated name edit.
+     *
+     * @param  array<int, int>|null  $tipPercentages
+     */
+    #[DataProvider('unrepresentedFieldValues')]
+    public function test_unrelated_edit_preserves_all_supported_pos_settings_and_nested_items(?array $tipPercentages, ?string $formId): void
+    {
+        $settings = [
+            'title' => 'Original title',
+            'description' => 'Original description',
+            'defaultView' => 'Light',
+            'showItems' => true,
+            'showCustomAmount' => false,
+            'showDiscount' => false,
+            'showSearch' => true,
+            'showCategories' => false,
+            'enableTips' => true,
+            'currency' => 'EUR',
+            'fixedAmountPayButtonText' => '',
+            'customAmountPayButtonText' => 'Custom payment',
+            'tipText' => '',
+            'notificationUrl' => 'https://merchant.test/notify',
+            'redirectUrl' => '',
+            'redirectAutomatically' => false,
+            'customTipPercentages' => $tipPercentages,
+            'htmlLang' => 'sk',
+            'htmlMetaTags' => '<meta name="description" content="Synthetic PoS">',
+            'formId' => $formId,
+        ];
+        $items = $this->items();
+        $items[0]['customField'] = ['enabled' => false, 'values' => [0, 10]];
+        $remote = $this->metadata() + $settings + [
+            'archived' => true,
+            'storeId' => 'synthetic-remote-store',
+            'created' => 1700000000,
+            'items' => $items,
+        ];
+        [$user, $store, $app] = $this->createPos($remote);
+        $baseUrl = config('services.btcpay.base_url');
+        Http::fake([
+            $baseUrl.'/api/v1/apps/pos/test-pos-app' => function (Request $request) use (&$remote, $settings) {
+                if ($request->method() === 'PUT') {
+                    $payload = $request->data();
+                    // The host replaces settings; omitted form/tip fields become null.
+                    $remote = array_replace($remote, ['customTipPercentages' => null, 'formId' => null], array_intersect_key($payload, $settings));
+                    $remote['appName'] = $payload['appName'];
+                    $remote['items'] = json_decode($payload['template'], true);
+                    if (isset($payload['archived'])) {
+                        $remote['archived'] = $payload['archived'];
+                    }
+                }
+
+                return Http::response($remote);
+            },
+        ]);
+
+        $this->actingAs($user)->getJson("/api/stores/{$store->id}/apps/{$app->id}")->assertOk();
+        $this->actingAs($user)->putJson("/api/stores/{$store->id}/apps/{$app->id}", ['name' => 'Renamed PoS'])->assertOk();
+
+        $requests = Http::recorded(fn (Request $request): bool => $request->method() === 'PUT');
+        $this->assertCount(1, $requests);
+        $payload = $requests->first()[0]->data();
+        foreach ($settings as $key => $value) {
+            $this->assertArrayHasKey($key, $payload);
+            $this->assertSame($value, $payload[$key]);
+        }
+        $this->assertSame($items, json_decode($payload['template'], true));
+        foreach (['id', 'storeId', 'appType', 'created', 'config_read_errors'] as $key) {
+            $this->assertArrayNotHasKey($key, $payload);
+        }
+
+        $response = $this->actingAs($user)->getJson("/api/stores/{$store->id}/apps/{$app->id}")
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Renamed PoS')
+            ->assertJsonPath('data.archived', true)
+            ->assertJsonPath('data.config.items', $items);
+        foreach ($settings as $key => $value) {
+            $response->assertJsonPath('data.config.'.$key, $value);
+        }
+    }
+
+    /**
+     * Exercise configured values and explicit empty/null resets through the API.
+     *
+     * @return array<string, array{array<int, int>|null, ?string}>
+     */
+    public static function unrepresentedFieldValues(): array
+    {
+        return [
+            'configured' => [[0, 5, 20], 'synthetic-form'],
+            'empty' => [[], ''],
+            'null reset' => [null, null],
+        ];
+    }
+
     public function test_metadata_only_list_response_preserves_cached_pos_settings(): void
     {
         [$user, $store, $app] = $this->createPos([

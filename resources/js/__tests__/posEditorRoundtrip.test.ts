@@ -9,7 +9,7 @@ import type { AppRef, PosProduct } from '../types/btcpayApps';
 import type { Store } from '../store/stores';
 
 const mocks = vi.hoisted(() => ({
-  updateApp: vi.fn(), fetchApp: vi.fn(), fetchApps: vi.fn(), fetchStore: vi.fn(), success: vi.fn(), error: vi.fn(),
+  hasFeature: vi.fn(), updateApp: vi.fn(), fetchApp: vi.fn(), fetchApps: vi.fn(), fetchStore: vi.fn(), success: vi.fn(), error: vi.fn(),
   appsState: null as unknown as { apps: AppRef[] },
   storesState: null as unknown as { currentStore: Store | null },
   route: { params: { id: '00000000-0000-4000-8000-000000000001', appId: '00000000-0000-4000-8000-000000000002' } },
@@ -40,7 +40,7 @@ vi.mock('vue-router', async importOriginal => {
 vi.mock('../store/flash', () => ({ useFlashStore: () => ({ success: mocks.success, error: mocks.error }) }));
 vi.mock('../composables/useEffectiveAccess', async importOriginal => ({
   ...await importOriginal<typeof import('../composables/useEffectiveAccess')>(),
-  useEffectiveAccess: () => ({ hasFeature: () => true }),
+  useEffectiveAccess: () => ({ hasFeature: mocks.hasFeature }),
 }));
 vi.mock('../composables/useBtcPayUrl', () => ({ useBtcPayUrl: () => ({ btcPayUrl: ref('https://btcpay.example'), load: vi.fn().mockResolvedValue(undefined) }) }));
 vi.mock('vue-i18n', async importOriginal => ({
@@ -94,6 +94,7 @@ async function mountSpaEditor(config: Record<string, unknown>): Promise<VueWrapp
 
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.hasFeature.mockReturnValue(true);
   mocks.route.params.id = store.id;
   mocks.route.params.appId = appId;
   mocks.appsState.apps = [];
@@ -341,7 +342,7 @@ describe('PoS editor settings and product round-trip', () => {
     await page.get('#pos-settings-form').trigger('submit');
     await flushPromises();
     await vi.advanceTimersByTimeAsync(501);
-    expect(mocks.updateApp.mock.calls[0]?.[2].config).toMatchObject({ defaultTaxRate: '0', taxIncludedInPrice: false, tipTaxRate: null });
+    expect(mocks.updateApp.mock.calls[0]?.[2].config).toMatchObject({ defaultTaxRate: 0, taxIncludedInPrice: false, tipTaxRate: null });
   });
 
   it('uses the returned Crowdfund detail while preserving sidebar metadata', async () => {
@@ -392,6 +393,208 @@ describe('PoS editor settings and product round-trip', () => {
     await flushPromises();
     await vi.advanceTimersByTimeAsync(501);
     expect(mocks.updateApp.mock.calls[0]?.[2].config).toMatchObject({ showItems: false, template: [] });
+  });
+
+
+  it.each([
+    { profile: 'custom values', fields: { title: 'Custom title', description: 'Custom description', currency: 'USD', tipText: 'Custom tips', defaultTaxRate: '21.25', tipTaxRate: '8.50', taxIncludedInPrice: true, fixedAmountPayButtonText: 'Purchase {0}', customAmountPayButtonText: 'Contribute', htmlLang: 'sk', htmlMetaTags: '<meta name="description" content="Synthetic">', redirectUrl: 'https://merchant.example/complete', redirectAutomatically: false, notificationUrl: 'https://merchant.example/notify', requestCustomerData: 'email_name' } },
+    { profile: 'empty values', fields: { title: '', description: '', currency: '', tipText: '', defaultTaxRate: '', tipTaxRate: '', taxIncludedInPrice: false, fixedAmountPayButtonText: '', customAmountPayButtonText: '', htmlLang: '', htmlMetaTags: '', redirectUrl: '', redirectAutomatically: false, notificationUrl: '', requestCustomerData: '' } },
+    { profile: 'nullable values', fields: { title: null, description: null, currency: null, tipText: null, defaultTaxRate: null, tipTaxRate: null, taxIncludedInPrice: null, fixedAmountPayButtonText: null, customAmountPayButtonText: null, htmlLang: null, htmlMetaTags: null, redirectUrl: null, redirectAutomatically: null, notificationUrl: null, requestCustomerData: null } },
+  ])('retains every untouched editor setting across SPA name/title saves and full remounts with $profile', async ({ profile, fields }) => {
+    const initial = { ...standardConfig, defaultView: 'Static', showItems: true, showCustomAmount: true, showDiscount: true, showSearch: false, showCategories: false, enableTips: true, ...fields, items: products, formId: 'Email', customTipPercentages: [0, 10, 20], serverOnlySetting: 'Synthetic private setting' };
+    let persisted: Record<string, unknown> = structuredClone(initial);
+    const payloads: Record<string, unknown>[] = [];
+    const page = await mountSpaEditor(initial);
+    mocks.updateApp.mockImplementation(async (_store: string, _app: string, payload: { config: Record<string, unknown> }) => {
+      const saved = structuredClone(payload.config);
+      payloads.push(saved);
+      persisted = { ...persisted, ...saved };
+      if (Object.prototype.hasOwnProperty.call(saved, 'tipsMessage')) persisted.tipText = saved.tipsMessage;
+      if (Object.prototype.hasOwnProperty.call(saved, 'template')) persisted.items = saved.template;
+      return { id: appId, name: 'Renamed PoS', config: persisted };
+    });
+    await page.get('#appName').setValue('Renamed PoS');
+    vi.useFakeTimers();
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    const { tipText, ...unchanged } = fields;
+    const expected = { ...unchanged, tipsMessage: tipText, defaultView: 'Static', showItems: true, showCustomAmount: true, showDiscount: true, showSearch: false, showCategories: false, enableTips: true };
+    expect(payloads[0]).toMatchObject(expected);
+    expect(payloads[0]).toMatchObject({ appName: 'Renamed PoS' });
+    expect(payloads[0]).not.toHaveProperty('serverOnlySetting');
+    expect(payloads[0]).not.toHaveProperty('formId');
+    expect(payloads[0]).not.toHaveProperty('customTipPercentages');
+    page.unmount();
+    wrapper = undefined;
+    vi.useRealTimers();
+    const reopened = await mountSpaEditor(persisted);
+    expect(reopened.getComponent(PointOfSaleShow).props('app')?.config).toMatchObject({ ...fields, formId: 'Email', customTipPercentages: [0, 10, 20] });
+    if (profile === 'empty values') {
+      expect((reopened.get('#fixedAmountPayButtonText').element as HTMLInputElement).value).toBe('');
+      expect((reopened.get('#customAmountPayButtonText').element as HTMLInputElement).value).toBe('');
+      expect(reopened.get('#fixedAmountPayButtonText').attributes('required')).toBeUndefined();
+      expect(reopened.get('#customAmountPayButtonText').attributes('required')).toBeUndefined();
+    }
+    await reopened.get('#title').setValue('Updated terminal');
+    vi.useFakeTimers();
+    await reopened.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    expect(payloads[1]).toMatchObject({ ...expected, title: 'Updated terminal' });
+    reopened.unmount();
+    wrapper = undefined;
+    vi.useRealTimers();
+    const secondReopen = await mountSpaEditor(persisted);
+    expect((secondReopen.get('#title').element as HTMLInputElement).value).toBe('Updated terminal');
+    expect(secondReopen.getComponent(PointOfSaleShow).props('app')?.config).toMatchObject({ ...fields, title: 'Updated terminal', formId: 'Email', customTipPercentages: [0, 10, 20] });
+  });
+
+
+  it('advances the confirmed baseline before returning controls to their original rendered defaults on the same page', async () => {
+    const page = await mountSpaEditor({ defaultView: 'Static', currency: null, fixedAmountPayButtonText: null, customAmountPayButtonText: null, defaultTaxRate: null, taxIncludedInPrice: null, showCustomAmount: true, items: products });
+    const payloads: Record<string, unknown>[] = [];
+    mocks.updateApp.mockImplementation(async (_store: string, _app: string, payload: { config: Record<string, unknown> }) => {
+      const config = structuredClone(payload.config);
+      payloads.push(config);
+      return { id: appId, config };
+    });
+    await page.get('#currency').setValue('USD');
+    await page.get('#fixedAmountPayButtonText').setValue('Checkout');
+    await page.get('#customAmountPayButtonText').setValue('Contribute');
+    await page.get('#defaultTaxRate').setValue(5.5);
+    await page.get('#taxIncludedInPrice').setValue(true);
+    vi.useFakeTimers();
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    expect(payloads[0]).toMatchObject({ currency: 'USD', fixedAmountPayButtonText: 'Checkout', customAmountPayButtonText: 'Contribute', defaultTaxRate: '5.5', taxIncludedInPrice: true });
+    await page.get('#currency').setValue('EUR');
+    await page.get('#fixedAmountPayButtonText').setValue('Buy for {0}');
+    await page.get('#customAmountPayButtonText').setValue('Pay');
+    await page.get('#defaultTaxRate').setValue(0);
+    await page.get('#taxIncludedInPrice').setValue(false);
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    expect(payloads[1]).toMatchObject({ currency: 'EUR', fixedAmountPayButtonText: 'Buy for {0}', customAmountPayButtonText: 'Pay', defaultTaxRate: '0', taxIncludedInPrice: false });
+  });
+
+  it('keeps deliberate clearing and edits distinct from unchanged original settings', async () => {
+    const page = await mountSpaEditor({ defaultView: 'Static', title: 'Original title', description: 'Original description', currency: 'USD', showCustomAmount: true, fixedAmountPayButtonText: 'Checkout', customAmountPayButtonText: 'Contribute', htmlLang: 'sk', htmlMetaTags: '<meta name="description" content="Synthetic">', redirectUrl: 'https://merchant.example/complete', notificationUrl: 'https://merchant.example/notify', defaultTaxRate: '21.25', tipTaxRate: '8.50', items: products });
+    for (const id of ['title', 'description', 'fixedAmountPayButtonText', 'customAmountPayButtonText', 'htmlLang', 'htmlMetaTags', 'redirectUrl', 'notificationUrl']) {
+      await page.get('#' + id).setValue('');
+    }
+    await page.get('#currency').setValue('EUR');
+    await page.get('#defaultTaxRate').setValue(5.5);
+    mocks.updateApp.mockResolvedValue({ id: appId });
+    vi.useFakeTimers();
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    expect(mocks.updateApp.mock.calls[0]?.[2].config).toMatchObject({ title: '', description: null, currency: 'EUR', fixedAmountPayButtonText: '', customAmountPayButtonText: '', htmlLang: null, htmlMetaTags: null, redirectUrl: null, notificationUrl: null, defaultTaxRate: '5.5', tipTaxRate: '8.50' });
+  });
+
+  it('normalizes legacy boolean-like core settings rather than forwarding their raw spelling', async () => {
+    const page = await mountSpaEditor({ defaultView: 'Static', showItems: 'yes', showCustomAmount: 1, showDiscount: 'no', showSearch: '0', showCategories: '1', enableTips: 'true', items: products });
+    mocks.updateApp.mockResolvedValue({ id: appId });
+    vi.useFakeTimers();
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    expect(mocks.updateApp.mock.calls[0]?.[2].config).toMatchObject({ showItems: true, showCustomAmount: true, showDiscount: false, showSearch: false, showCategories: true, enableTips: true });
+  });
+
+  it('does not restore advanced settings removed by the existing entitlement gate', async () => {
+    mocks.hasFeature.mockImplementation((feature: string) => feature !== 'advanced_pos');
+    const page = await mountSpaEditor({ htmlLang: '', htmlMetaTags: '', redirectUrl: '', redirectAutomatically: false, notificationUrl: '' });
+    mocks.updateApp.mockResolvedValue({ id: appId });
+    vi.useFakeTimers();
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    for (const key of ['htmlLang', 'htmlMetaTags', 'redirectUrl', 'redirectAutomatically', 'notificationUrl']) {
+      expect(mocks.updateApp.mock.calls[0]?.[2].config).not.toHaveProperty(key);
+    }
+  });
+
+
+  it('keeps edits made while a submitted update is pending for the next save', async () => {
+    const page = await mountSpaEditor({ currency: 'USD', items: products });
+    let resolveUpdate!: (value: AppRef) => void;
+    const pending = new Promise<AppRef>(resolve => { resolveUpdate = resolve; });
+    mocks.updateApp.mockReturnValueOnce(pending);
+    mocks.updateApp.mockResolvedValueOnce({ id: appId });
+    await page.get('#currency').setValue('EUR');
+    vi.useFakeTimers();
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    expect(mocks.updateApp.mock.calls[0]?.[2].config.currency).toBe('EUR');
+    await page.get('#currency').setValue('GBP');
+    resolveUpdate({ id: appId, config: { currency: 'EUR' } });
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    expect((page.get('#currency').element as HTMLInputElement).value).toBe('GBP');
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    expect(mocks.updateApp.mock.calls[1]?.[2].config.currency).toBe('GBP');
+  });
+
+  it('retains newly submitted tip text when a successful response supplies only metadata', async () => {
+    const page = await mountSpaEditor({ enableTips: true, tipText: 'Original canonical tip', items: products });
+    mocks.updateApp.mockResolvedValue({ id: appId, config: { appName: 'Sample PoS' } });
+    await page.get('#tipsMessage').setValue('Updated tip');
+    vi.useFakeTimers();
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    await page.get('#appName').setValue('Renamed PoS');
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    expect(mocks.updateApp.mock.calls[0]?.[2].config.tipsMessage).toBe('Updated tip');
+    expect(mocks.updateApp.mock.calls[1]?.[2].config.tipsMessage).toBe('Updated tip');
+  });
+
+
+  it.each([false, true])('ignores an old update response after replacement detail props hydrate (read error: %s)', async failedRead => {
+    const page = await mountEditor({ currency: 'USD', items: products });
+    let resolveUpdate!: (value: AppRef) => void;
+    mocks.updateApp.mockReturnValueOnce(new Promise<AppRef>(resolve => { resolveUpdate = resolve; }));
+    mocks.updateApp.mockResolvedValueOnce({ id: appId });
+    await page.get('#currency').setValue('GBP');
+    vi.useFakeTimers();
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    const initial = page.getComponent(AppShowLayout).props('app') as AppRef;
+    await page.setProps({ app: { ...initial, config: { ...standardConfig, currency: null, items: [] } } });
+    resolveUpdate({ id: appId, config: { currency: 'GBP' }, ...(failedRead ? { config_read_errors: ['settings'] } : {}) });
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    expect(page.find('[role="alert"]').exists()).toBe(false);
+    expect((page.get('#currency').element as HTMLInputElement).value).toBe('EUR');
+    await page.get('#appName').setValue('Renamed replacement');
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    expect(mocks.updateApp.mock.calls[1]?.[2].config.currency).toBeNull();
+  });
+
+  it('uses confirmed host defaults after nullable values are normalized by the response', async () => {
+    const page = await mountSpaEditor({ title: null, fixedAmountPayButtonText: null, customAmountPayButtonText: null, enableTips: true, tipText: null, items: products });
+    mocks.updateApp.mockResolvedValue({ id: appId, config: { title: 'Renamed PoS', fixedAmountPayButtonText: 'Buy for {0}', customAmountPayButtonText: 'Pay', tipText: 'Do you want to leave a tip?' } });
+    await page.get('#appName').setValue('Renamed PoS');
+    vi.useFakeTimers();
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    expect(mocks.updateApp.mock.calls[0]?.[2].config).toMatchObject({ title: null, fixedAmountPayButtonText: null, customAmountPayButtonText: null, tipsMessage: null });
+    await page.get('#appName').setValue('Renamed again');
+    await page.get('#pos-settings-form').trigger('submit');
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(501);
+    expect(mocks.updateApp.mock.calls[1]?.[2].config).toMatchObject({ title: 'Renamed PoS', fixedAmountPayButtonText: 'Buy for {0}', customAmountPayButtonText: 'Pay', tipsMessage: 'Do you want to leave a tip?' });
   });
 
 });

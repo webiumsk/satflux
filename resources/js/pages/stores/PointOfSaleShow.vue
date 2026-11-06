@@ -571,13 +571,11 @@
                               class="block text-xs font-medium text-gray-400 mb-1"
                             >
                               {{ t("apps.pos_custom_pay_button_text") }}
-                              <span class="text-red-400">*</span>
                             </label>
                             <input
                               id="customAmountPayButtonText"
                               v-model="form.customAmountPayButtonText"
                               type="text"
-                              required
                               class="block w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                             />
                           </div>
@@ -669,13 +667,11 @@
                           class="block text-sm font-medium text-gray-300 mb-1"
                         >
                           {{ t("apps.pos_buy_button_text") }}
-                          <span class="text-red-400">*</span>
                         </label>
                         <input
                           id="fixedAmountPayButtonText"
                           v-model="form.fixedAmountPayButtonText"
                           type="text"
-                          required
                           :placeholder="t('apps.pos_buy_button_placeholder')"
                           class="block w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                         />
@@ -1170,7 +1166,7 @@ import UpgradeModal from "../../components/stores/UpgradeModal.vue";
 import ProPlanBadge from "../../components/stores/ProPlanBadge.vue";
 import { currencies } from "../../data/currencies";
 import { useBtcPayUrl } from "../../composables/useBtcPayUrl";
-import { canEditPosConfig, hasPosConfigReadErrors, readPosProducts } from "../../utils/posEditorConfig";
+import { canEditPosConfig, capturePosSettings, hasPosConfigReadErrors, preserveUnchangedPosSettings, readPosProducts, type PosSettingsSnapshot } from "../../utils/posEditorConfig";
 
 const { t } = useI18n();
 const { btcPayUrl, load: loadBtcpayConfig } = useBtcPayUrl();
@@ -1254,6 +1250,9 @@ const form = ref({
   redirectAutomatically: "",
   notificationUrl: "",
 });
+
+let loadedSettings: PosSettingsSnapshot | null = null;
+let settingsGeneration = 0;
 
 const accordionSections = ref({
   htmlHeaders: false,
@@ -1404,6 +1403,7 @@ async function loadApp(clearErrors: boolean = true) {
 
   // Only load form values if we're not reloading after successful save
   if (!skipFormLoad && app.config) {
+    settingsGeneration++;
     const config = app.config;
     form.value.title = config.title || "";
     form.value.description = config.description || "";
@@ -1440,9 +1440,9 @@ async function loadApp(clearErrors: boolean = true) {
     );
     form.value.requestCustomerData = config.requestCustomerData || "";
     form.value.fixedAmountPayButtonText =
-      config.fixedAmountPayButtonText || "Buy for {0}";
+      config.fixedAmountPayButtonText ?? "Buy for {0}";
     form.value.customAmountPayButtonText =
-      config.customAmountPayButtonText || "Pay";
+      config.customAmountPayButtonText ?? "Pay";
     form.value.htmlLang = config.htmlLang || "";
     form.value.htmlMetaTags = config.htmlMetaTags || "";
     form.value.redirectUrl = config.redirectUrl || "";
@@ -1493,6 +1493,7 @@ async function loadApp(clearErrors: boolean = true) {
     } else {
       products.value = [];
     }
+    loadedSettings = capturePosSettings(config, form.value);
   } else {
     form.value.currency = store?.default_currency || "EUR";
     products.value = [];
@@ -1507,8 +1508,13 @@ const currentAppId = ref<string | null>(null);
 watch(
   editorApp,
   (newApp, oldApp) => {
+    if (!canEditPosConfig(newApp)) {
+      loadedSettings = null;
+      settingsGeneration++;
+    }
     // A new app or replacement detail response must hydrate the form again.
     if (newApp && (newApp.id !== currentAppId.value || newApp !== oldApp)) {
+      loadedSettings = null;
       currentAppId.value = newApp.id;
       if (canEditPosConfig(newApp)) saveReadFailed.value = false;
       success.value = ""; // Clear success when switching apps
@@ -1555,6 +1561,12 @@ watchEffect(() => {
 async function handleSubmit() {
   const app = editorApp.value;
   if (!app || !configIsEditable.value) return;
+  const submittedStoreId = storeId.value;
+  const submittedAppId = appId.value;
+  const submittedGeneration = settingsGeneration;
+  /** Prevent an obsolete save response from changing replacement app settings or their read guard. */
+  const isCurrentSubmission = () => submittedGeneration === settingsGeneration && editorApp.value === app
+    && storeId.value === submittedStoreId && appId.value === submittedAppId;
 
   saving.value = true;
   error.value = "";
@@ -1610,9 +1622,7 @@ async function handleSubmit() {
       showCategories: form.value.showCategories,
       enableTips: form.value.enableTips,
       tipsMessage: form.value.tipsMessage,
-      defaultTaxRate: form.value.defaultTaxRate === 0 && app.config?.defaultTaxRate === null
-        ? null
-        : String(form.value.defaultTaxRate),
+      defaultTaxRate: String(form.value.defaultTaxRate),
       tipTaxRate:
         form.value.tipTaxRate !== null && form.value.tipTaxRate !== undefined
           ? String(form.value.tipTaxRate)
@@ -1634,19 +1644,6 @@ async function handleSubmit() {
       notificationUrl: form.value.notificationUrl || null,
     };
 
-    // The supported host omits these tax fields; avoid replacing unknown values with UI defaults.
-    const defaultTaxValues = { defaultTaxRate: 0, tipTaxRate: null, taxIncludedInPrice: false };
-    for (const key of ['defaultTaxRate', 'tipTaxRate', 'taxIncludedInPrice'] as const) {
-      if (app.config?.[key] === undefined && form.value[key] === defaultTaxValues[key]) {
-        delete config[key];
-      }
-    }
-
-    if (app.config?.tipText === undefined && app.config?.tipsMessage === undefined
-      && form.value.tipsMessage === "Do you want to leave a tip?") {
-      delete config.tipsMessage;
-    }
-
     // Free tier: do not send advanced options so we don't overwrite them
     if (!canEditAdvancedOptions.value) {
       delete config.htmlLang;
@@ -1663,17 +1660,23 @@ async function handleSubmit() {
       config.description = form.value.description || null;
     }
 
+    preserveUnchangedPosSettings(config, form.value, loadedSettings);
+
     // A complete read makes an empty catalog authoritative even when Light item selection is hidden.
     config.template = template;
 
-    const updatedApp = await appsStore.updateApp(storeId.value, appId.value, {
+    const submittedForm = Object.freeze({ ...form.value });
+    const updatedApp = await appsStore.updateApp(submittedStoreId, submittedAppId, {
       name: form.value.appName,
       config,
     });
+    if (!isCurrentSubmission()) return;
     if (hasPosConfigReadErrors(updatedApp)) {
+      loadedSettings = null;
       saveReadFailed.value = true;
       return;
     }
+    loadedSettings = capturePosSettings(config, submittedForm, updatedApp?.config);
 
     // Set success and clear error immediately; show flash toast
     success.value = "Settings saved successfully";
@@ -1744,6 +1747,7 @@ async function handleSubmit() {
       }
     }
   } catch (rawError) {
+    if (!isCurrentSubmission()) return;
     const err = asApiError(rawError);
     // Only set error if we don't have success
     if (!success.value) {

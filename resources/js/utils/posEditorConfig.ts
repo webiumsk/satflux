@@ -40,3 +40,42 @@ export function canEditPosConfig(app: AppRef | null | undefined): boolean {
     && booleanSettings.every(key => isBooleanSetting(config[key]))
     && readPosProducts(config) !== null;
 }
+
+const preservedSettings = [
+  'title', 'description', 'currency', 'tipsMessage', 'defaultTaxRate', 'tipTaxRate',
+  'taxIncludedInPrice', 'requestCustomerData', 'fixedAmountPayButtonText', 'customAmountPayButtonText',
+  'htmlLang', 'htmlMetaTags', 'redirectUrl', 'redirectAutomatically', 'notificationUrl',
+] as const;
+
+/** Raw known settings and their rendered values from one successful editor hydration. */
+export interface PosSettingsSnapshot {
+  rendered: Record<string, unknown>;
+  values: Record<string, unknown>;
+}
+
+/** Capture known submitted values, allowing confirmed response fields to supersede them without exposing other settings. */
+export function capturePosSettings(config: RawAppConfig, form: Record<string, unknown>, confirmed?: RawAppConfig): PosSettingsSnapshot {
+  const snapshot: PosSettingsSnapshot = { rendered: {}, values: {} };
+  for (const key of preservedSettings) {
+    snapshot.rendered[key] = form[key];
+    for (const source of confirmed ? [config, confirmed] : [config]) {
+      const sourceKey = key === 'tipsMessage' && Object.prototype.hasOwnProperty.call(source, 'tipText') ? 'tipText' : key;
+      if (Object.prototype.hasOwnProperty.call(source, sourceKey)) snapshot.values[key] = source[sourceKey];
+    }
+  }
+  return snapshot;
+}
+
+/** Restore unchanged known scalars while retaining explicit edits, normalized booleans and entitlement omissions. */
+export function preserveUnchangedPosSettings(payload: Record<string, unknown>, form: Record<string, unknown>, snapshot: PosSettingsSnapshot | null): void {
+  if (!snapshot) return;
+  for (const key of preservedSettings) {
+    if (!Object.prototype.hasOwnProperty.call(payload, key) || !Object.is(form[key], snapshot.rendered[key])) continue;
+    const original = snapshot.values[key];
+    if (original === undefined) {
+      delete payload[key];
+    } else if ((key !== 'taxIncludedInPrice' && key !== 'redirectAutomatically') || original === null) {
+      payload[key] = original;
+    }
+  }
+}

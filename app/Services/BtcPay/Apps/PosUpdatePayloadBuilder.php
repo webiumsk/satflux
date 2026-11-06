@@ -32,6 +32,7 @@ class PosUpdatePayloadBuilder
             'enableTips' => 'enableTips',
             'tipsMessage' => 'tipText', // BTCPay uses 'tipText'
             'tipText' => 'tipText',
+            'customTipPercentages' => 'customTipPercentages',
             'defaultTaxRate' => 'defaultTaxRate',
             'tipTaxRate' => 'tipTaxRate',
             'taxIncludedInPrice' => 'taxIncludedInPrice',
@@ -42,13 +43,14 @@ class PosUpdatePayloadBuilder
             'redirectUrl' => 'redirectUrl',
             'redirectAutomatically' => 'redirectAutomatically',
             'notificationUrl' => 'notificationUrl',
+            'formId' => 'formId',
         ];
 
         foreach ($fieldMapping as $ourField => $btcpayField) {
             if (array_key_exists($ourField, $config)) {
                 $value = $config[$ourField];
-                // Keep intentional nullable tax/text values, including text resets.
-                if (in_array($ourField, ['tipTaxRate', 'tipsMessage', 'tipText'], true) && $value === null) {
+                // Keep explicit nullable values so callers can reset these settings.
+                if (in_array($ourField, ['tipTaxRate', 'tipsMessage', 'tipText', 'customTipPercentages', 'formId'], true) && $value === null) {
                     $filteredConfig[$btcpayField] = null;
 
                     continue;

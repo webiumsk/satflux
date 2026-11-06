@@ -1,5 +1,26 @@
 # Development roadmap
 
+## PoS settings preservation accepted before publication - 2026-11-06
+
+The owner conditions source publication on preserving the other settings. A pinned
+BTCPay v2.4.7 audit finds missing formId/customTipPercentages request fields and
+untouched empty/null values replaced by UI defaults. Both are corrected. All20
+writable PoS base fields are covered; metadata remains excluded. Confirmed save
+snapshots advance from immutable submitted values, preserve later edits and reject
+obsolete app/detail responses. Explicit edits, clears and normalized flags remain.
+
+Independent QA accepts Chrome15/15 with actual PHP request building and PHP43/386.
+Independent security accepts focused37/37 and boundary8/8, with no unresolved
+finding. Runtime6 `1721c2cb...477cd7` and source9 `60687a9e...aefaa3` match both
+reviews. Main PHP102/560, full frontend1,891/186, lint48/52, type110, locale,
+production build and AST update pass. Contract, normalization and full review
+evidence is recorded in `POS_EDITOR_ROUNDTRIP.md`.
+
+Tax3 fields have cache/payload preservation evidence, not official host support.
+Legacy customer-data selector compatibility remains separate; existing formId is
+preserved. Production state/version is unqueried. Publish only the owned PoS fix
+branch with the verified final gates; no merge/deployment is authorized. Preserve primary edits.
+
 ## PoS editor product and tipping hydration accepted locally - 2026-11-06
 
 Branch `fix/pos-editor-roundtrip` is based on owned master `e584490d`; the affected

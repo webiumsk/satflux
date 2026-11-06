@@ -64,4 +64,42 @@ class PosUpdatePayloadBuilderTest extends TestCase
             'legacy null' => [['tipsMessage' => null], null],
         ];
     }
+
+    /**
+     * Preserve supported settings that are not represented by editor controls.
+     *
+     * @param  array<string, mixed>  $config
+     */
+    #[Test]
+    #[DataProvider('unrepresentedSettings')]
+    public function it_preserves_tip_percentages_and_form_id(array $config): void
+    {
+        $payload = (new PosUpdatePayloadBuilder)->build($config + [
+            'id' => 'untrusted-app-id',
+            'storeId' => 'untrusted-store-id',
+            'unknownSetting' => ['doNotForward' => true],
+        ]);
+
+        foreach ($config as $key => $value) {
+            $this->assertArrayHasKey($key, $payload);
+            $this->assertSame($value, $payload[$key]);
+        }
+        $this->assertArrayNotHasKey('id', $payload);
+        $this->assertArrayNotHasKey('storeId', $payload);
+        $this->assertArrayNotHasKey('unknownSetting', $payload);
+    }
+
+    /**
+     * Distinguish deliberate resets from nonempty values, including a zero tip.
+     *
+     * @return array<string, array{array<string, mixed>}>
+     */
+    public static function unrepresentedSettings(): array
+    {
+        return [
+            'configured' => [['customTipPercentages' => [0, 5, 20], 'formId' => 'synthetic-form']],
+            'empty' => [['customTipPercentages' => [], 'formId' => '']],
+            'null reset' => [['customTipPercentages' => null, 'formId' => null]],
+        ];
+    }
 }
