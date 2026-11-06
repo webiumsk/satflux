@@ -27,6 +27,6 @@ Las direcciones deben usar `wss://`, sin credenciales, ruta, parámetros ni frag
 
 ## Disponibilidad y recuperación
 
-`free.evoluhq.com` es un relay de pruebas y sus datos pueden borrarse. Consulta la [documentación de Evolu](https://www.evolu.dev/docs/relay). Conserva una [exportación de datos](/documentation/backup-and-recovery) independiente y tu frase de recuperación. Restaurar requiere la frase correcta y una copia disponible de los datos; la frase por sí sola no contiene facturas.
+`free.evoluhq.com` es un relay de pruebas y sus datos pueden borrarse. Consulta la [documentación de Evolu](https://www.evolu.dev/docs/relay). Conserva una [exportación de datos](/documentation/backup-and-recovery) independiente y tu frase de recuperación. **La recuperación mediante un relay** requiere la frase de recuperación correcta y una copia disponible de los datos; la frase por sí sola no contiene facturas. Una **copia exportada de los datos de facturación** se puede restaurar en otra cuenta sin la frase de recuperación original. Una copia cifrada requiere la contraseña de copia de seguridad elegida para ese archivo.
 
 El tamaño de SQLite local describe este dispositivo y las estadísticas del relay solo describen el primer relay activado. Ninguno confirma una copia completa en todos los relays.

@@ -27,6 +27,6 @@ Addresses must use `wss://`, with no credentials, path, query, or fragment. Dupl
 
 ## Availability and recovery
 
-The public `free.evoluhq.com` relay is a testing service and its data may be deleted. See the [Evolu relay documentation](https://www.evolu.dev/docs/relay). Keep an independent [data export](/documentation/backup-and-recovery) and your recovery phrase. Recovery needs both the correct phrase and an available copy of the data; the phrase itself contains no invoices.
+The public `free.evoluhq.com` relay is a testing service and its data may be deleted. See the [Evolu relay documentation](https://www.evolu.dev/docs/relay). Keep an independent [data export](/documentation/backup-and-recovery) and your recovery phrase. **Relay recovery** requires the correct recovery phrase and an available copy of the data; the phrase itself contains no invoices. An **exported invoicing backup** can be restored into another account without the original recovery phrase. An encrypted backup requires the backup passphrase chosen for that file.
 
 The local SQLite size describes this device, and relay usage statistics describe only the first enabled relay. Neither confirms a complete copy on every relay.

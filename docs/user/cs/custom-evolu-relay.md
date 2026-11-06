@@ -27,6 +27,6 @@ Adresa musí používat `wss://` bez přihlašovacích údajů, cesty, parametr�
 
 ## Dostupnost a obnova
 
-Veřejný `free.evoluhq.com` je testovací relay a jeho data mohou být smazána. Viz [dokumentace Evolu](https://www.evolu.dev/docs/relay). Uchovávejte samostatný [export dat](/documentation/backup-and-recovery) a obnovovací frázi. Obnova potřebuje správnou frázi i dostupnou kopii dat; fráze samotná neobsahuje faktury.
+Veřejný `free.evoluhq.com` je testovací relay a jeho data mohou být smazána. Viz [dokumentace Evolu](https://www.evolu.dev/docs/relay). Uchovávejte samostatný [export dat](/documentation/backup-and-recovery) a obnovovací frázi. **Obnova přes relay** potřebuje správnou obnovovací frázi i dostupnou kopii dat; fráze samotná neobsahuje faktury. **Exportovanou zálohu fakturačních dat** můžete obnovit do jiného účtu bez původní obnovovací fráze. Šifrovaná záloha vyžaduje přístupovou frázi zvolenou pro daný soubor.
 
 Velikost místní SQLite databáze popisuje toto zařízení a statistiky využití relaye pouze první zapnutý relay. Ani jeden údaj nepotvrzuje úplnou kopii na každém relayi.

@@ -1,5 +1,25 @@
 # Evolu relay manager
 
+## Recovery documentation review corrections - 2026-11-07
+
+Both supplied findings are verified valid against published `d79191ea`. All five
+relay guides now distinguish same-owner relay recovery (correct phrase plus an
+available data copy) from exported invoicing-backup import into another prepared
+account (no original recovery phrase; the file's backup passphrase if encrypted).
+The existing EN/SK backup guides include actual sync-tab export/decrypt/preview/
+merge steps and remove phrase-alone recovery promises. Other locales retain the
+established English fallback for that article; no new article set is introduced.
+
+Independent QA accepts all seven guide hashes and23 existing backup/export/import/
+crypto tests across4 files. Main DocumentationController8/26 passes; all7 real
+articles render,12 local links resolve, and3 English fallbacks remain intact.
+Runtime/app/database/resources/tests are unchanged; prior runtime30 security/QA
+acceptance remains applicable. Prior-head CI passed, and new-head checks require
+separate evidence. Merge/deployment remain separate gates. Private evidence is in
+`reviews/evolu-custom-relay/recovery-docs/`. Optional review CLI hints grant no
+installation or manual bot-command authorization.
+
+
 ## Multi-relay manager independently accepted - 2026-11-07
 
 Owner-authorized list/add/detail/enable/remove replaces the single-custom form.

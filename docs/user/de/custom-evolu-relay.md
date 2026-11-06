@@ -27,6 +27,6 @@ Adressen müssen `wss://` verwenden, ohne Anmeldedaten, Pfad, Parameter oder Fra
 
 ## Verfügbarkeit und Wiederherstellung
 
-`free.evoluhq.com` ist ein Testrelay; dessen Daten können gelöscht werden. Siehe [Evolu-Relay-Dokumentation](https://www.evolu.dev/docs/relay). Bewahren Sie einen unabhängigen [Datenexport](/documentation/backup-and-recovery) und Ihre Wiederherstellungsphrase auf. Die Wiederherstellung benötigt die richtige Phrase und eine verfügbare Datenkopie; die Phrase selbst enthält keine Rechnungen.
+`free.evoluhq.com` ist ein Testrelay; dessen Daten können gelöscht werden. Siehe [Evolu-Relay-Dokumentation](https://www.evolu.dev/docs/relay). Bewahren Sie einen unabhängigen [Datenexport](/documentation/backup-and-recovery) und Ihre Wiederherstellungsphrase auf. **Die Wiederherstellung über ein Relay** benötigt die richtige Wiederherstellungsphrase und eine verfügbare Datenkopie; die Phrase selbst enthält keine Rechnungen. Eine **exportierte Sicherung der Rechnungsdaten** kann ohne die ursprüngliche Wiederherstellungsphrase in einem anderen Konto wiederhergestellt werden. Eine verschlüsselte Sicherung benötigt die für diese Datei gewählte Sicherungspassphrase.
 
 Die lokale SQLite-Größe beschreibt dieses Gerät. Relay-Nutzungsstatistiken betreffen nur das erste aktivierte Relay. Beide bestätigen keine vollständige Kopie auf jedem Relay.
