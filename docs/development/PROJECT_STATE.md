@@ -1,5 +1,90 @@
 # Project state
 
+## PR431 seven review findings corrected and independently accepted - 2026-11-06
+
+All seven supplied findings reproduce on published38e03295 and are corrected.
+Raw detail completeness and Unicode-aware product titles are validated before
+cached overlay; only genuine list paths opt out of full-detail confirmation.
+Both aliases reject invalid input with422 before normal or legacy merging/API
+work. Valid legacy aliases retain JSON template transport and explicit clears.
+App-list writes honor the caller guard; failed reads retain existing Delete
+without Save. Original category arrays and post-submit same-app drafts survive.
+The legacy bypass and category-ID reuse regression found independently are closed.
+
+Independent QA accepts JS66/3, PHP135/1014 (including its extra legacy proof),
+and Chrome10/10. Security accepts the same frozen runtime7 `fe560b24...79bec`
+and source11 `1394cad4...50f02`; no unresolved finding remains. Main full
+frontend1,969/193, PHP218/1407, lint48/52, type110, five-locale parity, build,
+scoped Pint/PHPStan and AST update pass. Earlier superseded frontend evidence
+is excluded from these final-head claims. No dependency or ratchet changes.
+
+Publication uses the existing owned PoS branch; verify remote head and new CI
+before claiming external success. Resolve only the seven verified review threads.
+No PR merge, deployment, production state or unrelated primary edits are changed.
+
+## PR431 base conflicts resolved and independently accepted - 2026-11-06
+
+Integrate master `2154101e` (merged landing PR430) into published PoS head
+`5a105124` without rewriting its history. AppsShow retains the exact master
+template and published PoS script plus AppScrollPane import. Both prefixes in
+PROJECT_STATE, ROADMAP and DECISION_LOG are preserved with common history once.
+Other five PoS runtime files and all88 auto-merged master paths retain parent
+bytes; the combined PR still changes exactly13 scoped paths versus master.
+
+Independent QA accepts focused71/3 and Chrome18/18, including desktop/tablet/mobile
+scroll/footer geometry. Independent security accepts the exact merge and focused45.
+Main full frontend1,948/192, PHP127/784, lint48/52, type110, locale parity,
+production build and AST update pass. Runtime6 `4a40f576...5cf9fb` / source9
+`42586cbb...4252e6` match the reviewed merge. PHP source is unchanged; earlier
+Pint/PHPStan evidence carries forward. No new dependency or ratchet changes.
+
+Publish the resolved feature branch under the owner's conflict-fix request, then
+verify the actual remote head, PR mergeability and new-head CI separately. No PR
+merge or deployment is authorized or performed; preserve unrelated primary work.
+
+## PoS settings preservation accepted before publication - 2026-11-06
+
+The owner conditions source publication on preserving the other settings. A pinned
+BTCPay v2.4.7 audit finds missing formId/customTipPercentages request fields and
+untouched empty/null values replaced by UI defaults. Both are corrected. All20
+writable PoS base fields are covered; metadata remains excluded. Confirmed save
+snapshots advance from immutable submitted values, preserve later edits and reject
+obsolete app/detail responses. Explicit edits, clears and normalized flags remain.
+
+Independent QA accepts Chrome15/15 with actual PHP request building and PHP43/386.
+Independent security accepts focused37/37 and boundary8/8, with no unresolved
+finding. Runtime6 `1721c2cb...477cd7` and source9 `60687a9e...aefaa3` match both
+reviews. Main PHP102/560, full frontend1,891/186, lint48/52, type110, locale,
+production build and AST update pass. Contract, normalization and full review
+evidence is recorded in `POS_EDITOR_ROUNDTRIP.md`.
+
+Tax3 fields have cache/payload preservation evidence, not official host support.
+Legacy customer-data selector compatibility remains separate; existing formId is
+preserved. Production state/version is unqueried. Publish only the owned PoS fix
+branch with the verified final gates; no merge/deployment is authorized. Preserve primary edits.
+
+## PoS editor product and tipping hydration accepted locally - 2026-11-06
+
+Branch `fix/pos-editor-roundtrip` is based on owned master `e584490d`; the affected
+source matches the owner-reported deployed candidate `76422c07`, without inspecting
+production. AppsShow passed list metadata as complete editor props, suppressing the
+detail fetch. It now retains the selected detail separately, rejects stale route
+responses and requires complete settings before editing. PoS cache/update overlays
+preserve omitted fields, false/empty values, product aliases and canonical tip text;
+failed or malformed reads block unsafe saves. Customer-data request/formId remains
+a separate pre-existing contract audit.
+
+Independent QA/security accept identical runtime6 `db71578a...710df5` and source9
+`57e944e5...7165e9`, without unresolved findings. Real Chrome10 scenarios plus a
+stable-ID roundtrip, focused frontend25, full frontend1,879/186, PHP96/320, targeted
+Pint/PHPStan, lint48/52, type110, locale parity, production build and AST update pass. Full evidence
+is recorded in `POS_EDITOR_ROUNDTRIP.md`. All tests use synthetic
+isolated state; production host/version and merchant state are not validated or
+changed. No source publication, merge or deployment has occurred for this fix.
+
+The correction is ready for owner-directed publication; retain
+separate merge/deployment approval. Preserve unrelated primary checkout edits.
+
 ## PR430 review remediation accepted locally - 2026-11-06
 
 Verified all supplied findings against published `665cc2f6`. Critical auth/pricing

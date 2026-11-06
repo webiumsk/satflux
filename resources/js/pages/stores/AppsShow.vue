@@ -52,7 +52,8 @@
 
 <script setup lang="ts">
 import AppScrollPane from '../../components/layout/AppScrollPane.vue';
-import { computed, ref, onMounted, watch } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue';
+import type { AppRef } from '../../types/btcpayApps';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useAppsStore } from '../../store/apps';
@@ -77,6 +78,9 @@ const { openGuestUpgradeModal } = useGuestUpgradeModal();
 const storeId = computed(() => route.params.id as string);
 const appId = computed(() => route.params.appId as string);
 const loadingApp = ref(true);
+const loadedApp = ref<AppRef | null>(null);
+const loadedAppStoreId = ref('');
+let loadRequestId = 0;
 
 // Store only valid when it matches current route (avoids stale store when navigating)
 const storeForRoute = computed(() => {
@@ -86,40 +90,51 @@ const storeForRoute = computed(() => {
   return current;
 });
 
-// App only valid when it belongs to current store's apps (avoids wrong app when navigating)
+// Detail responses belong to the route that requested them; list entries are only sidebar metadata.
 const app = computed(() => {
-  if (!storeId.value || !appId.value) return null;
-  const apps = appsStore.apps;
-  // Only use app if store is loaded for this route (apps are for this store)
-  if (!storeForRoute.value) return null;
-  return apps.find((a) => a.id === appId.value) ?? null;
+  if (!storeForRoute.value || loadedAppStoreId.value !== storeId.value) return null;
+  return loadedApp.value?.id === appId.value ? loadedApp.value : null;
 });
 
 const appType = computed(() => app.value?.app_type ?? null);
 
+/** Load the selected app detail and ignore responses superseded by another route. */
 async function loadApp() {
-  if (!storeId.value || !appId.value) {
+  const requestId = ++loadRequestId;
+  const requestedStoreId = storeId.value;
+  const requestedAppId = appId.value;
+  /** Verify that an awaited response still belongs to the active route. */
+  const isCurrentRequest = () => requestId === loadRequestId
+    && storeId.value === requestedStoreId && appId.value === requestedAppId;
+  loadedApp.value = null;
+  loadedAppStoreId.value = '';
+  if (!requestedStoreId || !requestedAppId) {
     loadingApp.value = false;
     return;
   }
   loadingApp.value = true;
   try {
-    await storesStore.fetchStore(storeId.value);
-    await appsStore.fetchApps(storeId.value);
-    const currentApp = appsStore.apps.find((a) => a.id === appId.value);
-    if (authStore.user?.is_guest && currentApp && currentApp.app_type !== 'PointOfSale') {
+    await storesStore.fetchStore(requestedStoreId);
+    if (!isCurrentRequest()) return;
+    await appsStore.fetchApps(requestedStoreId, isCurrentRequest);
+    if (!isCurrentRequest()) return;
+    const currentApp = await appsStore.fetchApp(requestedStoreId, requestedAppId);
+    if (!isCurrentRequest() || currentApp?.id !== requestedAppId) return;
+    if (authStore.user?.is_guest && currentApp.app_type !== 'PointOfSale') {
       openGuestUpgradeModal('apps.title');
-      router.replace({ name: 'stores-apps', params: { id: storeId.value } });
+      router.replace({ name: 'stores-apps', params: { id: requestedStoreId } });
       return;
     }
-    if (currentApp?.app_type === 'Tickets') {
-      router.replace({ name: 'stores-tickets', params: { id: storeId.value } });
+    if (currentApp.app_type === 'Tickets') {
+      router.replace({ name: 'stores-tickets', params: { id: requestedStoreId } });
       return;
     }
+    loadedApp.value = currentApp;
+    loadedAppStoreId.value = requestedStoreId;
   } catch (err) {
-    console.error('Failed to load app:', err);
+    if (isCurrentRequest()) console.error('Failed to load app:', err);
   } finally {
-    loadingApp.value = false;
+    if (isCurrentRequest()) loadingApp.value = false;
   }
 }
 
@@ -129,6 +144,10 @@ onMounted(() => {
 
 watch([() => route.params.id, () => route.params.appId], () => {
   loadApp();
+});
+
+onBeforeUnmount(() => {
+  loadRequestId++;
 });
 
 function handleShowSettings() {

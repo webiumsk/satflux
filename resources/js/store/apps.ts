@@ -19,17 +19,23 @@ export const useAppsStore = defineStore('apps', () => {
     const currentApp = ref<App | null>(null);
     const loading = ref(false);
 
-    async function fetchApps(storeId: string) {
+    /**
+     * Guard list/loading publications while preserving behavior for unguarded callers.
+     * Errors from started requests still propagate after their caller becomes obsolete.
+     * @param isCurrentRequest Defaults to true; every shared-state write checks this guard.
+     */
+    async function fetchApps(storeId: string, isCurrentRequest: () => boolean = () => true) {
+        if (!isCurrentRequest()) return apps.value;
         loading.value = true;
         try {
             const response = await api.get(`/stores/${storeId}/apps`);
-            apps.value = response.data.data || [];
+            if (isCurrentRequest()) apps.value = response.data.data || [];
             return apps.value;
         } catch (error) {
-            apps.value = [];
+            if (isCurrentRequest()) apps.value = [];
             throw error;
         } finally {
-            loading.value = false;
+            if (isCurrentRequest()) loading.value = false;
         }
     }
 

@@ -13,15 +13,26 @@ use App\Support\SatfluxStorageUrl;
 class AppResponseFormatter
 {
     /**
+     * Only metadata list responses may opt out of raw detail completeness checks.
+     *
      * @param  array<string, mixed>|null  $btcpayApp
      * @return array<string, mixed>
      */
-    public function format(App $app, ?array $btcpayApp = null): array
+    public function format(App $app, ?array $btcpayApp = null, bool $requireCompleteConfig = true): array
     {
-        // Get config from local DB or BTCPay API - prioritize BTCPay API data
-        $config = $btcpayApp ?? $app->config ?? [];
+        $readErrors = [];
+        if (strtolower($app->app_type) === 'pointofsale') {
+            $source = $requireCompleteConfig ? ($btcpayApp ?? []) : ($btcpayApp ?? $app->config ?? []);
+            $readErrors = $this->pointOfSaleReadErrors($source, $requireCompleteConfig);
+        }
 
-        // BTCPay API may return products in 'items' field (GET) or 'template' field (POST/PUT)
+        // PoS app lists contain metadata only; retain settings omitted by those responses.
+        $config = $btcpayApp ?? $app->config ?? [];
+        if (strtolower($app->app_type) === 'pointofsale' && $btcpayApp !== null) {
+            $config = $this->mergePointOfSaleConfig($app->config ?? [], $btcpayApp);
+        }
+
+        // Greenfield responses use 'items'; requests and local configs can use 'template'.
         // Normalize 'items' to 'template' for frontend consistency
         if (isset($config['items']) && ! isset($config['template'])) {
             $config['template'] = $config['items'];
@@ -52,12 +63,17 @@ class AppResponseFormatter
             'created_at' => $app->created_at,
             'updated_at' => $app->updated_at,
         ];
+        if ($readErrors !== []) {
+            $data['config_read_errors'] = $readErrors;
+        }
 
         // Merge BTCPay data if available
         if ($btcpayApp) {
             // Side effect kept from the original controller: persist the latest
             // BTCPay config onto the local record so template/products stay fresh.
-            $app->config = array_merge($app->config ?? [], $btcpayApp);
+            $app->config = strtolower($app->app_type) === 'pointofsale'
+                ? $this->mergePointOfSaleConfig($app->config ?? [], $btcpayApp)
+                : array_merge($app->config ?? [], $btcpayApp);
             $app->save();
 
             $btcpayAppId = $btcpayApp['id'] ?? $app->btcpay_app_id ?? null;
@@ -72,6 +88,100 @@ class AppResponseFormatter
         }
 
         return $data;
+    }
+
+    /**
+     * Overlay supplied PoS fields, replacing the items/template aliases as one value.
+     *
+     * @param  array<string, mixed>  $cached
+     * @param  array<string, mixed>  $incoming
+     * @return array<string, mixed>
+     */
+    public function mergePointOfSaleConfig(array $cached, array $incoming): array
+    {
+        foreach (['items', 'template'] as $key) {
+            if (array_key_exists($key, $incoming) && ! $this->isPointOfSaleProductList($incoming[$key])) {
+                // A malformed read cannot replace the last usable product list.
+                unset($incoming[$key]);
+            }
+        }
+
+        if (array_key_exists('items', $incoming)) {
+            unset($cached['template'], $incoming['template']);
+        } elseif (array_key_exists('template', $incoming)) {
+            unset($cached['items']);
+        }
+        if (array_key_exists('tipText', $incoming)) {
+            unset($cached['tipsMessage'], $incoming['tipsMessage']);
+        } elseif (array_key_exists('tipsMessage', $incoming)) {
+            unset($cached['tipText']);
+        }
+
+        // A shallow overlay preserves explicit false, null and empty product lists.
+        return array_replace($cached, $incoming);
+    }
+
+    /**
+     * Accept product lists and serialized JSON lists, including an intentional [].
+     */
+    public function isPointOfSaleProductList(mixed $value): bool
+    {
+        if (is_string($value)) {
+            if (! str_starts_with(ltrim($value), '[')) {
+                return false;
+            }
+            $value = json_decode($value, true);
+        }
+
+        if (! is_array($value) || ! array_is_list($value)) {
+            return false;
+        }
+
+        foreach ($value as $item) {
+            // Match JavaScript's trimmed whitespace, including Unicode separators and BOM.
+            if (! is_array($item) || ! is_string($item['title'] ?? null)
+                || preg_match('/[^\x09-\x0D\x20\p{Z}\x{FEFF}]/u', $item['title']) !== 1) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Check the raw detail before cached fields can disguise an incomplete read.
+     *
+     * @param  array<string, mixed>  $source
+     * @return list<string>
+     */
+    private function pointOfSaleReadErrors(array $source, bool $requireCompleteConfig): array
+    {
+        $errors = [];
+        if ($requireCompleteConfig) {
+            $complete = in_array($source['defaultView'] ?? null, ['Light', 'Static', 'Cart', 'Print'], true);
+            foreach (['showItems', 'showCustomAmount', 'showDiscount', 'showSearch', 'showCategories', 'enableTips'] as $key) {
+                $complete = $complete && is_bool($source[$key] ?? null);
+            }
+            if (! $complete) {
+                $errors[] = 'settings';
+            }
+        }
+
+        $hasProducts = false;
+        foreach (['items', 'template'] as $key) {
+            if (array_key_exists($key, $source)) {
+                $hasProducts = true;
+                if (! $this->isPointOfSaleProductList($source[$key])) {
+                    $errors[] = 'products';
+                    break;
+                }
+            }
+        }
+        if ($requireCompleteConfig && ! $hasProducts) {
+            $errors[] = 'products';
+        }
+
+        return $errors;
     }
 
     /**
