@@ -16,7 +16,7 @@ const DISABLED_SENTINEL = "off";
 
 export type RelayOverride =
     | { kind: "none" }
-    | { kind: "url"; url: string }
+    | { kind: "url"; url: string; addDefault?: boolean }
     | { kind: "disabled" };
 
 export function readRelayOverride(): RelayOverride {
@@ -28,6 +28,15 @@ export function readRelayOverride(): RelayOverride {
         if (raw === DISABLED_SENTINEL) {
             return { kind: "disabled" };
         }
+        if (raw.startsWith("{")) {
+            const value: unknown = JSON.parse(raw);
+            if (typeof value === "object" && value !== null
+                && "url" in value && typeof value.url === "string"
+                && "addDefault" in value && value.addDefault === true) {
+                return { kind: "url", url: value.url, addDefault: true };
+            }
+            return { kind: "none" };
+        }
         return { kind: "url", url: raw };
     } catch {
         return { kind: "none" };
@@ -35,12 +44,12 @@ export function readRelayOverride(): RelayOverride {
 }
 
 /** Cache a validated relay base URL (normalized ws(s)/http(s) origin). */
-export function writeRelayOverrideUrl(url: string): void {
+export function writeRelayOverrideUrl(url: string, addDefault = false): void {
     try {
         if (url === "") {
             localStorage.removeItem(KEY);
         } else {
-            localStorage.setItem(KEY, url);
+            localStorage.setItem(KEY, addDefault ? JSON.stringify({ url, addDefault: true }) : url);
         }
     } catch {
         // Storage unavailable - the build default applies on next load.

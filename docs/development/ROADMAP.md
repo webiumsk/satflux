@@ -1,5 +1,35 @@
 # Development roadmap
 
+## Evolu relay source publication authorized - 2026-11-06
+
+The owner requests pushing the independently accepted additional-relay feature.
+Prepare one scoped commit on `feat/evolu-custom-relay` in the owned Satflux
+repository, then verify the actual remote tip. Product bytes remain runtime16
+`5bbc13eb...dc39d7` / source30 `4594a9d3...beb9f`, accepted independently by QA
+and security. Exactly35 paths include those30 reviewed source/test/doc files and
+five coordination records; no unrelated primary edits or private fixtures belong
+in the commit. Prior frontend1,940/192, PHP58/432 and static/build/API results
+remain attributed to the reviewed bytes; no product checks are repeated for this
+publication-only documentation update.
+
+Source push is authorized. PR creation, merge and deployment remain separate;
+actual publication outcome and fresh remote checks must be verified after push.
+The primary checkout remains on its existing branch with unrelated work preserved.
+
+## Additional custom Evolu relay accepted locally - 2026-11-06
+
+Custom + default synchronization now covers account settings, boot and both owner
+types, with secure origins, unchanged keys, legacy custom-only/device-off safety
+and five-locale UI/docs. QA/security accept final runtime16 `5bbc13eb...dc39d7`
+and source30 `4594a9d3...beb9f`; no unresolved finding remains. Main frontend1,940
+/192, static/locale/build, PHP58/432 and API export/schema gates pass. Real installed
+SDK tests cover outage, additional-only restore, reconnect and protocol mismatch.
+
+Retain the uncommitted local `feat/evolu-custom-relay` worktree for owner review.
+No publication, merge or deployment occurred. See its `EVOLU_CUSTOM_RELAY.md`
+for exact evidence, excluded offline-DNS cases, protocol simulation and live-backup
+limits. Apply separate applicable approval before publication/deployment.
+
 ## Publish accepted PR430 review corrections - 2026-11-06
 
 Keep the accepted runtime15/source-tests22 manifests and bounded six-document

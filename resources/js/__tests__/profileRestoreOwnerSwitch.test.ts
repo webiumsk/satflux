@@ -24,6 +24,8 @@ const mocks = vi.hoisted(() => ({
     reloadApp: vi.fn(),
     apiGet: vi.fn(),
     apiPost: vi.fn(),
+    apiPut: vi.fn(),
+    fetchUser: vi.fn(),
     user: null as User | null,
     invoicingCompaniesList: vi.fn(),
 }));
@@ -40,7 +42,7 @@ vi.mock("../store/auth", () => ({
     useAuthStore: () => ({
         isAuthenticated: true,
         get user() { return mocks.user; },
-        fetchUser: vi.fn(),
+        fetchUser: mocks.fetchUser,
         enrollGuestRecoveryPublicKey: vi.fn(),
     }),
 }));
@@ -102,7 +104,7 @@ vi.mock("../services/api", () => ({
     default: {
         get: mocks.apiGet,
         post: mocks.apiPost,
-        put: vi.fn(),
+        put: mocks.apiPut,
     },
     invoicingApi: {
         companies: {
@@ -180,10 +182,12 @@ vi.mock("../evolu/client", () => ({
 
 vi.mock("../evolu/config", () => ({
     getEvoluRelayBuildInfo: () => ({ enabled: false, url: "" }),
+    normalizeCustomEvoluRelayUrl: (value: string) => value.startsWith("wss://") ? value : "",
     normalizeEvoluRelayBaseUrl: (value: string | null | undefined) => value ?? "",
 }));
 
 vi.mock("../services/evoluRelayPreference", () => ({
+    getResolvedEvoluRelayUrls: () => [],
     getEvoluRelayRuntimeInfo: () => ({
         url: "",
         defaultUrl: "",
@@ -465,6 +469,61 @@ describe("Profile recovery phrase owner switch guard", () => {
         await expect(actions.startCreditCheckout(500)).resolves.toBe(false);
         expect(mocks.apiPost).not.toHaveBeenCalled();
         wrapper.unmount();
+    });
+
+    describe('custom relay settings', () => {
+        const form = (wrapper: VueWrapper) => wrapper.vm as unknown as {
+            evoluRelayForm: { url: string; addDefault: boolean };
+            saveEvoluRelayUrl: () => Promise<void>;
+        };
+
+        it('adds new custom relays alongside default while preserving legacy replacements', async () => {
+            let wrapper = await mountProfile();
+            expect(form(wrapper).evoluRelayForm.addDefault).toBe(true);
+            wrapper.unmount();
+            mocks.user = { ...mocks.user!, evolu_relay_url: 'wss://custom.test' };
+            wrapper = await mountProfile();
+            expect(form(wrapper).evoluRelayForm.addDefault).toBe(false);
+            wrapper.unmount();
+        });
+
+        it('persists a mode-only change and reloads instead of refreshing only the app owner', async () => {
+            mocks.user = { ...mocks.user!, evolu_relay_url: 'wss://custom.test' };
+            const wrapper = await mountProfile();
+            const originalWindow = window;
+            const reload = vi.fn();
+            vi.stubGlobal('window', new Proxy(originalWindow, {
+                get(target, key) { return key === 'location' ? { reload } : Reflect.get(target, key); },
+            }));
+            try {
+                mocks.apiPut.mockResolvedValue({ data: {} });
+                mocks.fetchUser.mockImplementation(async () => {
+                    mocks.user = { ...mocks.user!, evolu_relay_add_default: true };
+                    return true;
+                });
+                form(wrapper).evoluRelayForm.addDefault = true;
+                await form(wrapper).saveEvoluRelayUrl();
+                expect(mocks.apiPut).toHaveBeenCalledWith('/user', {
+                    evolu_relay_url: 'wss://custom.test', evolu_relay_add_default: true,
+                });
+                expect(reload).toHaveBeenCalledOnce();
+                expect(mocks.flashSuccess).toHaveBeenCalled();
+            } finally {
+                vi.unstubAllGlobals();
+                wrapper.unmount();
+            }
+        });
+
+        it('does not cache or announce success after a failed canonical profile refresh', async () => {
+            const wrapper = await mountProfile();
+            mocks.apiPut.mockResolvedValue({ data: {} });
+            mocks.fetchUser.mockResolvedValue(false);
+            form(wrapper).evoluRelayForm.url = 'wss://custom.test';
+            await form(wrapper).saveEvoluRelayUrl();
+            expect(mocks.flashError).toHaveBeenCalledWith('account.evolu_relay_save_failed');
+            expect(mocks.flashSuccess).not.toHaveBeenCalled();
+            wrapper.unmount();
+        });
     });
 
 });

@@ -63,7 +63,10 @@
             {{ t("account.evolu_relay_desc") }}
           </p>
           <p class="text-xs text-gray-400">
-            {{ t("account.evolu_relay_active", { url: activeRelayUrl }) }}
+            {{ t("account.evolu_relay_active", { url: activeRelayUrls.join(', ') }) }}
+          </p>
+          <p v-if="activeRelayUrls.length > 1" class="text-xs text-gray-400">
+            {{ t("account.evolu_relay_primary_status", { url: activeRelayUrl }) }}
           </p>
           <p v-if="relayBuildDefault" class="text-xs text-gray-500">
             {{ t("account.evolu_relay_build_default", { url: relayBuildDefault }) }}
@@ -79,6 +82,16 @@
               spellcheck="false"
             />
           </label>
+          <label class="flex items-start gap-2 text-sm text-gray-300 cursor-pointer">
+            <input
+              v-model="evoluRelayForm.addDefault"
+              type="checkbox"
+              class="mt-1 h-4 w-4 rounded border-gray-500 bg-gray-800 text-indigo-600 focus:ring-indigo-500"
+              :disabled="evoluRelaySaving || !relayBuildDefault"
+            />
+            <span>{{ t("account.evolu_relay_add_default") }}</span>
+          </label>
+          <p class="text-xs text-gray-400">{{ t("account.evolu_relay_compatibility") }}</p>
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
@@ -1660,8 +1673,8 @@ import {
 } from "../../services/deviceUnlock/passkeyPrf";
 import { isAcceptableDevicePassphrase, RecoveryOwnerMismatchError } from "../../services/deviceUnlock/envelope";
 import { isInvoicingLocalFirst } from "../../evolu/flags";
-import { getEvoluRelayBuildInfo, normalizeEvoluRelayBaseUrl } from "../../evolu/config";
-import { getEvoluRelayRuntimeInfo } from "../../services/evoluRelayPreference";
+import { getEvoluRelayBuildInfo, normalizeCustomEvoluRelayUrl, normalizeEvoluRelayBaseUrl } from "../../evolu/config";
+import { getEvoluRelayRuntimeInfo, getResolvedEvoluRelayUrls } from "../../services/evoluRelayPreference";
 import { refreshEvoluRelaySubscription } from "../../evolu/evoluRelaySubscription";
 import { ensureEvoluBoundToAccountSeed, resetEvoluBootstrapForRetry } from "../../evolu/bootstrap";
 import { allowEvoluPageReload } from "../../evolu/reloadGuard";
@@ -2163,13 +2176,14 @@ function setProfileTab(tab: ProfileTab) {
   void router.replace({ path: route.path, query });
 }
 
-const evoluRelayForm = ref({ url: "" });
+const evoluRelayForm = ref({ url: "", addDefault: true });
 const evoluRelaySaving = ref(false);
 const relayBuildDefault = computed(() => {
   const build = getEvoluRelayBuildInfo();
   return build.enabled ? build.url : "";
 });
 const activeRelayUrl = computed(() => getEvoluRelayRuntimeInfo().url);
+const activeRelayUrls = computed(() => getResolvedEvoluRelayUrls());
 const evoluLocalStats = ref<InvoicingLocalStats | null>(null);
 const evoluRelayUsage = ref<EvoluRelayUsageResponse | null>(null);
 const evoluStatsLoading = ref(false);
@@ -2323,6 +2337,9 @@ onMounted(async () => {
   if (authStore.user) {
     profileForm.value.name = authStore.user.name || "";
     evoluRelayForm.value.url = authStore.user.evolu_relay_url ?? "";
+    evoluRelayForm.value.addDefault = authStore.user.evolu_relay_url
+      ? authStore.user.evolu_relay_add_default === true
+      : true;
   }
 
   await loadSubscriptionDetails();
@@ -2611,7 +2628,7 @@ async function testEvoluRelayUrl(): Promise<void> {
   evoluRelayTesting.value = true;
   evoluRelayTestResult.value = null;
   try {
-    const url = normalizeEvoluRelayBaseUrl(evoluRelayForm.value.url.trim() || activeRelayUrl.value);
+    const url = normalizeCustomEvoluRelayUrl(evoluRelayForm.value.url.trim() || activeRelayUrl.value);
     const reachable = url ? await probeRelayReachability(url) : false;
     evoluRelayTestResult.value = reachable ? "ok" : "failed";
   } catch {
@@ -2637,19 +2654,37 @@ function toggleRelaySyncOnDevice(): void {
 
 function cacheProfileIntoOverride(): void {
   const normalized = normalizeEvoluRelayBaseUrl(authStore.user?.evolu_relay_url ?? "");
-  writeRelayOverrideUrl(normalized);
+  writeRelayOverrideUrl(normalized, authStore.user?.evolu_relay_add_default === true);
 }
 
+watch(() => [evoluRelayForm.value.url, evoluRelayForm.value.addDefault], () => {
+  evoluRelayTestResult.value = null;
+});
+
 async function saveEvoluRelayUrl(): Promise<void> {
+  if (evoluRelaySaving.value) return;
+  const enteredUrl = evoluRelayForm.value.url.trim();
+  const url = enteredUrl ? normalizeCustomEvoluRelayUrl(enteredUrl) : "";
+  if (enteredUrl && !url) {
+    flashStore.error(t("account.evolu_relay_save_failed"));
+    return;
+  }
   evoluRelaySaving.value = true;
   try {
-    const url = evoluRelayForm.value.url.trim();
+    const userId = authStore.user?.id;
     const previous = authStore.user?.evolu_relay_url ?? "";
+    const previousAddDefault = authStore.user?.evolu_relay_add_default === true;
+    const addDefault = evoluRelayForm.value.addDefault;
     await api.put("/user", {
       evolu_relay_url: url !== "" ? url : null,
+      evolu_relay_add_default: addDefault,
     });
-    await authStore.fetchUser();
+    const refreshed = await authStore.fetchUser();
+    if (!refreshed || authStore.user?.id !== userId) throw new Error("Profile refresh unavailable");
     evoluRelayForm.value.url = authStore.user?.evolu_relay_url ?? "";
+    evoluRelayForm.value.addDefault = authStore.user?.evolu_relay_url
+      ? authStore.user.evolu_relay_add_default === true
+      : true;
     // Ensure the worker transport cache matches the saved profile before the
     // reload below boots Evolu (fetchUser also caches; belt and braces).
     if (readRelayOverride().kind !== "disabled") {
@@ -2660,10 +2695,11 @@ async function saveEvoluRelayUrl(): Promise<void> {
     // The Content-Security-Policy connect-src allowlist for the custom relay is
     // built at document load. A full reload gets a fresh CSP header that permits
     // the new relay websocket; a live reconnect alone would be blocked under an
-    // enforced CSP. Only reload when the relay origin actually changed.
+    // enforced CSP. Reload for either URL or mode changes to also refresh shared owners.
     if (
       localFirst
-      && normalizeEvoluRelayBaseUrl(url) !== normalizeEvoluRelayBaseUrl(previous)
+      && (normalizeEvoluRelayBaseUrl(url) !== normalizeEvoluRelayBaseUrl(previous)
+        || addDefault !== previousAddDefault)
     ) {
       window.location.reload();
       return;

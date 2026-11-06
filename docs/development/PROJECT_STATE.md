@@ -1,5 +1,44 @@
 # Project state
 
+## Evolu relay source publication authorized - 2026-11-06
+
+The owner requests pushing the independently accepted additional-relay feature.
+Prepare one scoped commit on `feat/evolu-custom-relay` in the owned Satflux
+repository, then verify the actual remote tip. Product bytes remain runtime16
+`5bbc13eb...dc39d7` / source30 `4594a9d3...beb9f`, accepted independently by QA
+and security. Exactly35 paths include those30 reviewed source/test/doc files and
+five coordination records; no unrelated primary edits or private fixtures belong
+in the commit. Prior frontend1,940/192, PHP58/432 and static/build/API results
+remain attributed to the reviewed bytes; no product checks are repeated for this
+publication-only documentation update.
+
+Source push is authorized. PR creation, merge and deployment remain separate;
+actual publication outcome and fresh remote checks must be verified after push.
+The primary checkout remains on its existing branch with unrelated work preserved.
+
+## Additional Evolu relay implemented and independently accepted - 2026-11-06
+
+Owner-confirmed custom relay alongside the default is implemented locally on
+`feat/evolu-custom-relay`, base local origin/master `2154101e`. Account persistence,
+strict secure origins and one deduplicated transport list cover boot, AppOwner and
+SharedOwners. New custom settings offer both; legacy custom-only/device-off and
+keys are preserved. UI and user docs cover all five locales.
+
+Independent QA/security accept runtime16 `5bbc13eb...dc39d7` / source30
+`4594a9d3...beb9f`. The intermediate HIGH logout-cache privacy regression is
+removed and independently reproduced before/fixed after. Main full frontend1,940
+/192, type111, lint48/52, locale/build, PHP58/432, API export/three-schema validation
+and changelog11 pass. Author PHP67/262, QA extra16 + focused71/7 + PHP47/202 and
+real SDK protocol6 pass; selections overlap. Five unrelated offline email-DNS
+cases remain excluded from the earlier broad-PHP claim. Scoped Pint/PHPStan pass.
+
+Retain `storage/app/private/worktrees/evolu-custom-relay`; full contracts, reviewed
+hashes, validation limits and private evidence are recorded in its feature note
+`docs/development/EVOLU_CUSTOM_RELAY.md`. Primary edits are preserved. Source is
+uncommitted/unpublished; no PR, merge, deployment or production verification.
+Next: owner review and applicable publication approval, with separate deployment
+approval and migration/assets compatibility. No other repository or billing scope.
+
 ## PR430 review remediation accepted locally - 2026-11-06
 
 Verified all supplied findings against published `665cc2f6`. Critical auth/pricing

@@ -107,30 +107,49 @@ export function resolveEvoluRelayUrl(profileRelayUrl?: string | null): EvoluRela
  */
 export function evoluTransports(): { type: "WebSocket"; url: string }[] {
     const override = readRelayOverride();
-    if (override.kind === "disabled") {
-        return [];
-    }
-    if (override.kind === "url") {
-        const url = normalizeEvoluRelayBaseUrl(override.url);
-        if (url) {
-            return [{ type: "WebSocket", url }];
-        }
-    }
-    const { url, enabled } = getEvoluRelayBuildInfo();
-    if (!enabled || !url) {
-        return [];
-    }
-    // Normalize first, guard after - the default-branch URL bypasses the
-    // source normalization in getEvoluRelayBuildInfo (env branch is already
-    // normalized), and an empty result must mean local-only, never a
-    // WebSocket transport with an empty URL.
-    const normalized = normalizeEvoluRelayBaseUrl(url);
-    if (!normalized) {
-        return [];
-    }
-    return [{ type: "WebSocket", url: normalized }];
+    if (override.kind === "disabled") return [];
+    const urls = resolveEvoluRelayUrls(
+        override.kind === "url" ? override.url : null,
+        override.kind === "url" && override.addDefault === true,
+    );
+    return urls.map((url) => ({ type: "WebSocket", url }));
 }
 
 export function isEvoluRelayEnabledInBuild(): boolean {
     return getEvoluRelayBuildInfo().enabled;
+}
+
+/** Reject user settings that would be silently retargeted by origin normalization. */
+export function normalizeCustomEvoluRelayUrl(raw: string): string {
+    const value = raw.trim();
+    // Validate the original shape before URL() removes dot-segments or rewrites IPs.
+    const match = /^wss:\/\/(\[[0-9a-f:]+\]|[a-z0-9][a-z0-9.-]*)(?::([0-9]{1,5}))?\/?$/i.exec(value);
+    if (!match || value.length > 512) return "";
+    const host = match[1].toLowerCase();
+    if (match[2] && (Number(match[2]) < 1 || Number(match[2]) > 65535)) return "";
+    if (!host.startsWith("[")) {
+        const labels = host.replace(/\.$/, "").split(".");
+        if (host.length > 253 || labels.some(label => label.length > 63
+            || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label))) return "";
+    }
+    try {
+        const url = new URL(value);
+        if (/(?:^|\.)(?:[0-9]+|0x[0-9a-f]+)$/i.test(host) && url.hostname !== host) return "";
+        if (url.protocol !== "wss:" || !url.hostname || url.username || url.password
+            || (url.pathname !== "" && url.pathname !== "/")) return "";
+        return url.origin;
+    } catch {
+        return "";
+    }
+}
+
+/** One ordered, deduplicated selection for boot, app-owner and shared-owner sync. */
+export function resolveEvoluRelayUrls(profileRelayUrl?: string | null, addDefault = false): string[] {
+    const primary = resolveEvoluRelayUrl(profileRelayUrl);
+    if (!primary.enabled || !primary.url) return [];
+    const urls = [primary.url];
+    if (primary.source === "profile" && addDefault && primary.build.enabled && primary.build.url) {
+        urls.push(primary.build.url);
+    }
+    return [...new Set(urls)];
 }

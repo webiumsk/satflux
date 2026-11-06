@@ -34,7 +34,7 @@ const Q = vi.hoisted(() => {
     };
 });
 vi.mock('@/evolu/client', () => Q);
-vi.mock('@/services/evoluRelayPreference', () => ({ getResolvedEvoluRelayUrl: () => '' }));
+vi.mock('@/services/evoluRelayPreference', () => ({ getResolvedEvoluRelayUrls: () => [] }));
 vi.mock('@/evolu/relaySyncWait', () => ({ waitForInvoicingDataSettled: vi.fn(async () => undefined), waitForInvoicingRelaySync: vi.fn(async () => true) }));
 
 import type { Evolu } from '@evolu/common/local-first';

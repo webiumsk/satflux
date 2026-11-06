@@ -3,6 +3,7 @@ import {
     getEvoluRelayBuildInfo,
     normalizeEvoluRelayBaseUrl,
     resolveEvoluRelayUrl,
+    resolveEvoluRelayUrls,
     type EvoluRelayRuntimeInfo,
 } from "@/evolu/config";
 import { readRelayOverride } from "@/evolu/relayOverrideStorage";
@@ -22,9 +23,9 @@ export function getEvoluRelayRuntimeInfo(): EvoluRelayRuntimeInfo {
         };
     }
     const auth = useAuthStore();
-    const profile =
-        auth.user?.evolu_relay_url
-        ?? (override.kind === "url" ? override.url : null);
+    const profile = auth.user
+        ? auth.user.evolu_relay_url
+        : (override.kind === "url" ? override.url : null);
     return resolveEvoluRelayUrl(profile);
 }
 
@@ -35,4 +36,17 @@ export function getResolvedEvoluRelayUrl(): string {
 
 export function isEvoluRelayConfiguredAtRuntime(): boolean {
     return getResolvedEvoluRelayUrl().length > 0;
+}
+
+/** All selected relays; legacy URL consumers continue to describe the first relay. */
+export function getResolvedEvoluRelayUrls(): string[] {
+    const override = readRelayOverride();
+    if (override.kind === "disabled") return [];
+    const auth = useAuthStore();
+    return auth.user
+        ? resolveEvoluRelayUrls(auth.user.evolu_relay_url, auth.user.evolu_relay_add_default === true)
+        : resolveEvoluRelayUrls(
+            override.kind === "url" ? override.url : null,
+            override.kind === "url" && override.addDefault === true,
+        );
 }

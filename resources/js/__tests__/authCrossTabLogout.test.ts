@@ -2,6 +2,8 @@ import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { useAuthStore } from '../store/auth';
 import { getStoredAccountMnemonic, storeAccountMnemonic } from '../services/accountSeed';
+import { evoluTransports } from '../evolu/config';
+import { writeRelayOverrideUrl, writeRelayOverrideDisabled } from '../evolu/relayOverrideStorage';
 
 const mocks = vi.hoisted(() => ({
     get: vi.fn(), post: vi.fn(), csrf: vi.fn(), replace: vi.fn(),
@@ -217,4 +219,34 @@ it('a profile read started during server logout cannot repopulate state after co
     finishProfile({ data: { id: 7, email: 'synthetic@example.test' } });
     expect(await profile).toBe(false);
     expect(store.user).toBeNull();
+});
+
+
+it.each([false, true])('retains the selected boot relays after a signed-out profile response (additional=%s)', async (addDefault) => {
+    vi.stubEnv('VITE_EVOLU_RELAY_URL', 'wss://default.example.test');
+    mocks.get.mockRejectedValue({ response: { status: 401 } });
+    writeRelayOverrideUrl('wss://custom.example.test', addDefault);
+    try {
+        await store.fetchUser();
+        expect(store.user).toBeNull();
+        expect(evoluTransports().map(transport => transport.url)).toEqual(addDefault
+            ? ['wss://custom.example.test', 'wss://default.example.test']
+            : ['wss://custom.example.test']);
+    } finally {
+        vi.unstubAllEnvs();
+    }
+});
+
+it('retains custom-only boot selection and device sync-off across explicit logout', async () => {
+    vi.stubEnv('VITE_EVOLU_RELAY_URL', 'wss://default.example.test');
+    writeRelayOverrideUrl('wss://custom.example.test');
+    try {
+        await store.logout();
+        expect(evoluTransports()).toEqual([{ type: 'WebSocket', url: 'wss://custom.example.test' }]);
+        writeRelayOverrideDisabled();
+        await store.logout();
+        expect(evoluTransports()).toEqual([]);
+    } finally {
+        vi.unstubAllEnvs();
+    }
 });

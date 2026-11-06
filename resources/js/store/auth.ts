@@ -80,6 +80,7 @@ export interface User {
     effective_access?: EffectiveAccess;
     purchase_availability?: PurchaseAvailability;
     evolu_relay_url?: string | null;
+    evolu_relay_add_default?: boolean;
 }
 
 /** Distinguish a confirmed signed-out session from an unavailable session check. */
@@ -213,12 +214,12 @@ export const useAuthStore = defineStore('auth', () => {
      * override storage is the only way the profile relay reaches the
      * worker socket. A device-level "sync off" choice is never overwritten.
      */
-    function cacheRelayOverrideFromProfile(profileRelayUrl: string | null): void {
+    function cacheRelayOverrideFromProfile(profileRelayUrl: string | null, addDefault = false): void {
         if (!isInvoicingLocalFirst()) return;
         const override = readRelayOverride();
         if (override.kind === 'disabled') return;
         const normalized = normalizeEvoluRelayBaseUrl(profileRelayUrl ?? '');
-        writeRelayOverrideUrl(normalized);
+        writeRelayOverrideUrl(normalized, addDefault);
     }
 
     /** Load the canonical session once while retaining guest, failure and stale-generation distinctions. */
@@ -238,7 +239,7 @@ export const useAuthStore = defineStore('auth', () => {
             if ((user.value?.id ?? null) !== previousUserId) {
                 scheduleChoralaSync();
             }
-            cacheRelayOverrideFromProfile(user.value?.evolu_relay_url ?? null);
+            cacheRelayOverrideFromProfile(user.value?.evolu_relay_url ?? null, user.value?.evolu_relay_add_default === true);
             const mnemonic = getStoredGuestMnemonic();
             if (mnemonic && isInvoicingLocalFirst()) {
                 void ensureEvoluBoundToAccountSeed();

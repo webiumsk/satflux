@@ -8,7 +8,7 @@ import {
 } from "@evolu/common/local-first";
 import type { Evolu, SyncOwner, UnuseOwner } from "@evolu/common/local-first";
 import type { InvoicingLocalSchema } from "./schema";
-import { getResolvedEvoluRelayUrl } from "@/services/evoluRelayPreference";
+import { getResolvedEvoluRelayUrls } from "@/services/evoluRelayPreference";
 
 /**
  * Company sharing (Track C) rests on Evolu SharedOwners: one owner per shared
@@ -64,13 +64,9 @@ export function sharedOwnerFromSecret(secret: OwnerSecret): SharedOwner {
 
 /** Owner with its own relay transport, like the AppOwner in evoluRelayOwner.ts. */
 export function sharedOwnerForRelay(owner: SharedOwner): SyncOwner {
-    const relayUrl = getResolvedEvoluRelayUrl();
-    if (!relayUrl) {
-        return owner;
-    }
     return {
         ...owner,
-        transports: [createOwnerWebSocketTransport({ url: relayUrl, ownerId: owner.id })],
+        transports: getResolvedEvoluRelayUrls().map((url) => createOwnerWebSocketTransport({ url, ownerId: owner.id })),
     };
 }
 

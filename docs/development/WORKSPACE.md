@@ -1,5 +1,36 @@
 # Local workspace
 
+## Evolu relay source publication authorized - 2026-11-06
+
+The owner requests pushing the independently accepted additional-relay feature.
+Prepare one scoped commit on `feat/evolu-custom-relay` in the owned Satflux
+repository, then verify the actual remote tip. Product bytes remain runtime16
+`5bbc13eb...dc39d7` / source30 `4594a9d3...beb9f`, accepted independently by QA
+and security. Exactly35 paths include those30 reviewed source/test/doc files and
+five coordination records; no unrelated primary edits or private fixtures belong
+in the commit. Prior frontend1,940/192, PHP58/432 and static/build/API results
+remain attributed to the reviewed bytes; no product checks are repeated for this
+publication-only documentation update.
+
+Source push is authorized. PR creation, merge and deployment remain separate;
+actual publication outcome and fresh remote checks must be verified after push.
+The primary checkout remains on its existing branch with unrelated work preserved.
+
+## Additional Evolu relay worktree - 2026-11-06
+
+Retain `storage/app/private/worktrees/evolu-custom-relay` on
+`feat/evolu-custom-relay`, base local origin/master `2154101e`. Source and five-locale
+docs are uncommitted and locally reviewed; the primary checkout stays on its
+existing branch with unrelated changes preserved. Private fixtures, manifests,
+QA/security reports and gate logs are in that worktree's
+`storage/app/private/reviews/evolu-custom-relay/`.
+
+QA/security accept runtime16 `5bbc13eb...dc39d7` / source30 `4594a9d3...beb9f`.
+Full frontend1,940/192 and related PHP/API/static/build gates pass; no unresolved
+finding remains. Full evidence: the worktree's `docs/development/EVOLU_CUSTOM_RELAY.md`.
+No commit, publication, merge, deployment or production verification occurred.
+Next: owner review/applicable publication approval, then separate release approval.
+
 ## PR430 review corrections ready in the retained feature worktree - 2026-11-06
 
 `storage/app/private/worktrees/landing-showcase` retains the independently accepted

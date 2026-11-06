@@ -1,5 +1,42 @@
 # Development decision log
 
+## Evolu relay source publication authorized - 2026-11-06
+
+The owner requests pushing the independently accepted additional-relay feature.
+Prepare one scoped commit on `feat/evolu-custom-relay` in the owned Satflux
+repository, then verify the actual remote tip. Product bytes remain runtime16
+`5bbc13eb...dc39d7` / source30 `4594a9d3...beb9f`, accepted independently by QA
+and security. Exactly35 paths include those30 reviewed source/test/doc files and
+five coordination records; no unrelated primary edits or private fixtures belong
+in the commit. Prior frontend1,940/192, PHP58/432 and static/build/API results
+remain attributed to the reviewed bytes; no product checks are repeated for this
+publication-only documentation update.
+
+Source push is authorized. PR creation, merge and deployment remain separate;
+actual publication outcome and fresh remote checks must be verified after push.
+The primary checkout remains on its existing branch with unrelated work preserved.
+
+## 2026-11-06 - Add a custom Evolu relay alongside the default
+
+The owner explicitly selects simultaneous default and custom synchronization.
+Add optional `evolu_relay_add_default` with DB defaultfalse to preserve existing
+custom-only accounts; the form checks it initially when no custom address exists.
+Keep one deduplicated transport list across boot and both owner types, with
+explicit empty transports for device-off. Reload after URL/mode changes.
+
+Retain the selected pre-auth relay cache on logout: clearing it could silently
+send a persisted custom-only owner's encrypted history to the default relay
+when recovery preview initializes Evolu before authentication. Authenticated
+profile values override stale cache after loading. Reject unsafe custom origins
+atomically; preserve keys and avoid per-relay complete-backup claims.
+
+Independent QA/security accept runtime16 `5bbc13eb...dc39d7` and source30
+`4594a9d3...beb9f`; the HIGH intermediate privacy regression is closed by an
+independent before/after proof. Generated API inventory changes only two matching
+source hashes; export and schema gates pass. Main frontend1,940/192, PHP58/432 and
+static/locale/build pass. Exact tests/limits are recorded in the feature note.
+No billing, other repository, dependency, publication or deployment scope is added.
+
 ## 2026-11-06 - Resolve marketing outcomes before rendering and preserve native event order
 
 Distinguish canonical loaded, confirmed guest and unavailable session outcomes
