@@ -1,5 +1,35 @@
 # Development decision log
 
+## PR432 review fixes independently accepted locally - 2026-11-06
+
+PR #432 is open. These corrections were verified from published review base
+`3b0d1e1c`; merge and deployment are separate pending gates. All five supplied inline findings and the cache-writer test nit
+are verified still valid and corrected. Secure numeric-host validation rejects
+trailing-dot aliases; Profile probing preserves compatible configured fallbacks.
+Status records acknowledge the PR; five guides/notifications require loading
+settings, closing all Satflux tabs and reopening.
+
+New workers boot local-only and managed public owner registrations reconcile
+canonical relay preferences across cooperative tabs. Atomic URL/mode/public-owner
+association guards prevent cross-account or torn-cache destination routing;
+unknown canonical identity pauses synchronization. No mnemonic/private key is
+persisted or sent by this mechanism. Old/crashed worker references require the
+close-all-tabs step; already in-flight protocol traffic has SDK100ms disposal grace.
+
+Independent QA/security accept runtime19 `cbef0059...c8e22` and source34
+`b878983d...754c84`. QA actual-source helper/real SDK+SQLite scenario1 and SDK5,
+security12/1, author79/6 and main43/2 pass; selections overlap. Main full frontend
+2,024/195, PHP64/458, scoped Pint/PHPStan, lint48/52, locale and build pass.
+Final typecheck110 passes after two erased test-type assertions. The test's
+emitted JavaScript is byte-identical; no baseline/runtime change is introduced.
+
+Local AST audit documents all26 changed complexity-qualified named TS/Vue and
+all3 PHP methods. This is local evidence, not a fresh external docstring result;
+the prior CodeRabbit76.92% warning covers older source. No threshold is weakened,
+CLI installed or manual bot command issued. Full findings, contracts, review
+manifests and limitations are in `EVOLU_CUSTOM_RELAY.md` and private review evidence.
+Main owns scoped source publication to the existing PR; no PR merge/deployment.
+
 ## PR432 master conflicts resolved locally - 2026-11-06
 
 Integrate master `b4c2270d` (merged PoS PR431) into relay head `30a9363e`

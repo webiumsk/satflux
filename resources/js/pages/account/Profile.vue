@@ -2628,7 +2628,10 @@ async function testEvoluRelayUrl(): Promise<void> {
   evoluRelayTesting.value = true;
   evoluRelayTestResult.value = null;
   try {
-    const url = normalizeCustomEvoluRelayUrl(evoluRelayForm.value.url.trim() || activeRelayUrl.value);
+    const enteredUrl = evoluRelayForm.value.url.trim();
+    const url = enteredUrl
+      ? normalizeCustomEvoluRelayUrl(enteredUrl)
+      : normalizeEvoluRelayBaseUrl(activeRelayUrl.value);
     const reachable = url ? await probeRelayReachability(url) : false;
     evoluRelayTestResult.value = reachable ? "ok" : "failed";
   } catch {
@@ -2652,15 +2655,21 @@ function toggleRelaySyncOnDevice(): void {
   window.location.reload();
 }
 
+/** Keep the next worker boot aligned with the confirmed account preference. */
 function cacheProfileIntoOverride(): void {
   const normalized = normalizeEvoluRelayBaseUrl(authStore.user?.evolu_relay_url ?? "");
-  writeRelayOverrideUrl(normalized, authStore.user?.evolu_relay_add_default === true);
+  writeRelayOverrideUrl(
+    normalized,
+    authStore.user?.evolu_relay_add_default === true,
+    authStore.user?.recovery_public_key ?? null,
+  );
 }
 
 watch(() => [evoluRelayForm.value.url, evoluRelayForm.value.addDefault], () => {
   evoluRelayTestResult.value = null;
 });
 
+/** Save a validated preference and apply it only after a confirmed profile refresh. */
 async function saveEvoluRelayUrl(): Promise<void> {
   if (evoluRelaySaving.value) return;
   const enteredUrl = evoluRelayForm.value.url.trim();
@@ -2685,11 +2694,7 @@ async function saveEvoluRelayUrl(): Promise<void> {
     evoluRelayForm.value.addDefault = authStore.user?.evolu_relay_url
       ? authStore.user.evolu_relay_add_default === true
       : true;
-    // Ensure the worker transport cache matches the saved profile before the
-    // reload below boots Evolu (fetchUser also caches; belt and braces).
-    if (readRelayOverride().kind !== "disabled") {
-      cacheProfileIntoOverride();
-    }
+    // Canonical fetchUser owns the atomic relay cache update and live reconciliation.
     flashStore.success(t("account.evolu_relay_saved"));
 
     // The Content-Security-Policy connect-src allowlist for the custom relay is

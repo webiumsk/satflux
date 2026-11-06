@@ -126,6 +126,7 @@ export function normalizeCustomEvoluRelayUrl(raw: string): string {
     const match = /^wss:\/\/(\[[0-9a-f:]+\]|[a-z0-9][a-z0-9.-]*)(?::([0-9]{1,5}))?\/?$/i.exec(value);
     if (!match || value.length > 512) return "";
     const host = match[1].toLowerCase();
+    const numericHost = host.replace(/\.$/, "");
     if (match[2] && (Number(match[2]) < 1 || Number(match[2]) > 65535)) return "";
     if (!host.startsWith("[")) {
         const labels = host.replace(/\.$/, "").split(".");
@@ -134,7 +135,7 @@ export function normalizeCustomEvoluRelayUrl(raw: string): string {
     }
     try {
         const url = new URL(value);
-        if (/(?:^|\.)(?:[0-9]+|0x[0-9a-f]+)$/i.test(host) && url.hostname !== host) return "";
+        if (/(?:^|\.)(?:[0-9]+|0x[0-9a-f]+)$/i.test(numericHost) && url.hostname !== numericHost) return "";
         if (url.protocol !== "wss:" || !url.hostname || url.username || url.password
             || (url.pathname !== "" && url.pathname !== "/")) return "";
         return url.origin;

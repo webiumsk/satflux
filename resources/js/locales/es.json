@@ -1830,7 +1830,7 @@
     "evolu_relay_save": "Guardar relay",
     "evolu_relay_saving": "Guardando…",
     "evolu_relay_clear": "Usar predeterminado",
-    "evolu_relay_saved": "URL del relay guardada. En otros dispositivos, inicie sesión de nuevo o actualice la página.",
+    "evolu_relay_saved": "URL del relay guardada. En cada dispositivo, cargue los ajustes actualizados, cierre todas las pestañas de Satflux y vuelva a abrir Satflux.",
     "evolu_relay_save_failed": "No se pudo guardar el relay. Utilice una dirección wss:// válida sin ruta, credenciales, parámetros ni fragmento. Si la dirección es válida, inténtelo de nuevo.",
     "evolu_stats_title": "Datos de facturación locales (Evolu)",
     "evolu_stats_desc": "Recuentos de este navegador. El relay solo guarda copia cifrada - el tamaño aparece cuando el relay expone la API /usage.",

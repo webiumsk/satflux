@@ -13,7 +13,7 @@ Při local-first fakturaci můžete připojit vlastní Evolu relay vedle výchoz
 1. Otevřete **Nastavení účtu > Evolu sync**.
 2. Zadejte adresu zabezpečeného WebSocket připojení, například `wss://relay.example.com` nebo `wss://relay.example.com:8443`.
 3. Ponechte zapnutou možnost používat i výchozí relay a uložte nastavení. Stránka se obnoví, aby se připojení projevila.
-4. Na ostatních zařízeních po přihlášení obnovte stránku, aby načetla stejná nastavení.
+4. Na každém zařízení se přihlaste a načtěte aktualizovaná nastavení. Potom zavřete **všechny karty Satfluxu** a znovu otevřete Satflux. Tím se restartuje existující synchronizační worker; obnovení pouze jedné karty nestačí.
 
 Adresa musí používat `wss://` a nesmí obsahovat uživatelské jméno, heslo, cestu, parametry ani fragment. Server musí podporovat protokol Evolu kompatibilní s klientem Evolu 7.x používaným v Satfluxu; obyčejný WebSocket server nestačí.
 

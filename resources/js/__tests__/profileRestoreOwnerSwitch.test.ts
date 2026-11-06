@@ -26,6 +26,9 @@ const mocks = vi.hoisted(() => ({
     apiPost: vi.fn(),
     apiPut: vi.fn(),
     fetchUser: vi.fn(),
+    writeRelayOverrideUrl: vi.fn(),
+    probeRelayReachability: vi.fn(async () => true),
+    activeRelayUrl: "",
     user: null as User | null,
     invoicingCompaniesList: vi.fn(),
 }));
@@ -180,16 +183,15 @@ vi.mock("../evolu/client", () => ({
     },
 }));
 
-vi.mock("../evolu/config", () => ({
+vi.mock("../evolu/config", async (importOriginal) => ({
+    ...await importOriginal<typeof import("../evolu/config")>(),
     getEvoluRelayBuildInfo: () => ({ enabled: false, url: "" }),
-    normalizeCustomEvoluRelayUrl: (value: string) => value.startsWith("wss://") ? value : "",
-    normalizeEvoluRelayBaseUrl: (value: string | null | undefined) => value ?? "",
 }));
 
 vi.mock("../services/evoluRelayPreference", () => ({
     getResolvedEvoluRelayUrls: () => [],
     getEvoluRelayRuntimeInfo: () => ({
-        url: "",
+        url: mocks.activeRelayUrl,
         defaultUrl: "",
         profileUrl: "",
         override: { kind: "none" },
@@ -213,7 +215,7 @@ vi.mock("../evolu/invoicingLocalStats", () => ({
 
 vi.mock("../services/evoluRelayUsageApi", () => ({
     fetchEvoluRelayUsage: vi.fn(async () => null),
-    probeRelayReachability: vi.fn(async () => true),
+    probeRelayReachability: mocks.probeRelayReachability,
     relayUsagePercent: vi.fn(() => 0),
 }));
 
@@ -221,13 +223,14 @@ vi.mock("../evolu/relayOverrideStorage", () => ({
     clearRelayOverride: vi.fn(),
     readRelayOverride: vi.fn(() => ({ kind: "none" })),
     writeRelayOverrideDisabled: vi.fn(),
-    writeRelayOverrideUrl: vi.fn(),
+    writeRelayOverrideUrl: mocks.writeRelayOverrideUrl,
 }));
 
 vi.mock("../utils/dashboardInvoicingTab", () => ({
     dashboardInvoicingTabPath: () => "/dashboard/invoicing",
 }));
 
+/** Find a translated Profile action and fail clearly when its control is absent. */
 function findButton(wrapper: VueWrapper, text: string) {
     const button = wrapper.findAll("button").find((candidate) => candidate.text().includes(text));
     if (!button) {
@@ -236,6 +239,7 @@ function findButton(wrapper: VueWrapper, text: string) {
     return button;
 }
 
+/** Select the last matching action when multiple Profile sections share its label. */
 function findLastButton(wrapper: VueWrapper, text: string) {
     const buttons = wrapper.findAll("button").filter((candidate) => candidate.text().includes(text));
     const button = buttons[buttons.length - 1];
@@ -253,6 +257,7 @@ beforeAll(async () => {
     Profile = (await import("../pages/account/Profile.vue")).default;
 }, 30000);
 
+/** Mount the real Profile component with synthetic account services and settle its initial requests. */
 async function mountProfile(): Promise<VueWrapper> {
     const wrapper = mount(Profile, {
         global: {
@@ -273,6 +278,7 @@ async function mountProfile(): Promise<VueWrapper> {
 describe("Profile recovery phrase owner switch guard", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mocks.activeRelayUrl = "";
         mocks.user = {
             id: 1, name: 'Synthetic Merchant', email: 'synthetic@example.test', role: 'free', is_guest: false,
             email_verified_at: '2026-01-01', guest_recovery_enrolled: true, can_use_password_login: true, evolu_relay_url: null,
@@ -475,6 +481,7 @@ describe("Profile recovery phrase owner switch guard", () => {
         const form = (wrapper: VueWrapper) => wrapper.vm as unknown as {
             evoluRelayForm: { url: string; addDefault: boolean };
             saveEvoluRelayUrl: () => Promise<void>;
+            testEvoluRelayUrl: () => Promise<void>;
         };
 
         it('adds new custom relays alongside default while preserving legacy replacements', async () => {
@@ -522,6 +529,38 @@ describe("Profile recovery phrase owner switch guard", () => {
             await form(wrapper).saveEvoluRelayUrl();
             expect(mocks.flashError).toHaveBeenCalledWith('account.evolu_relay_save_failed');
             expect(mocks.flashSuccess).not.toHaveBeenCalled();
+            expect(mocks.writeRelayOverrideUrl).not.toHaveBeenCalled();
+            wrapper.unmount();
+        });
+
+        it.each(['https://relay.example.test', 'ws://relay.example.test', 'wss://relay.example.test'])(
+            'probes the configured fallback %s when the custom field is empty', async (url) => {
+                mocks.activeRelayUrl = `${url}/usage?ignored=1`;
+                const wrapper = await mountProfile();
+                form(wrapper).evoluRelayForm.url = '  ';
+                await form(wrapper).testEvoluRelayUrl();
+                expect(mocks.probeRelayReachability).toHaveBeenCalledWith(url);
+                wrapper.unmount();
+            },
+        );
+
+        it.each(['https://custom.example.test', 'wss://custom.example.test/path'])(
+            'rejects invalid nonempty input %s instead of probing a fallback', async (url) => {
+                mocks.activeRelayUrl = 'wss://fallback.example.test';
+                const wrapper = await mountProfile();
+                form(wrapper).evoluRelayForm.url = url;
+                await form(wrapper).testEvoluRelayUrl();
+                expect(mocks.probeRelayReachability).not.toHaveBeenCalled();
+                wrapper.unmount();
+            },
+        );
+
+        it('probes the validated entered origin instead of the configured fallback', async () => {
+            mocks.activeRelayUrl = 'https://fallback.example.test';
+            const wrapper = await mountProfile();
+            form(wrapper).evoluRelayForm.url = ' wss://Custom.Example.test:8443/ ';
+            await form(wrapper).testEvoluRelayUrl();
+            expect(mocks.probeRelayReachability).toHaveBeenCalledWith('wss://custom.example.test:8443');
             wrapper.unmount();
         });
     });

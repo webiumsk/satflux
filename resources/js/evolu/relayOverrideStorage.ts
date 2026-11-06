@@ -1,27 +1,36 @@
 /**
  * Runtime relay override (P2 phase 1).
  *
- * createEvolu accepts transports only at creation time, which runs at module
- * init - before auth. This tiny storage module is the synchronous bridge:
- * the profile relay URL (or a device-level "sync off" choice) is cached in
- * localStorage so the NEXT page load boots the Evolu worker against the
- * right relay without a rebuild. Kept dependency-free so evolu/config.ts can
- * import it without cycles.
+ * The synchronous cache bridges pre-auth startup and canonical account settings.
+ * Managed owner registrations reconcile live transports after a profile change.
+ * A public account identifier associates the cached destinations with their owner;
+ * explicit null pauses unverified destinations. No mnemonic or private key is
+ * stored here. Kept dependency-free so evolu/config.ts can import it without cycles.
  */
 
-const KEY = "satflux.evolu.relay_override.v1";
+export const EVOLU_RELAY_OVERRIDE_STORAGE_KEY = "satflux.evolu.relay_override.v1";
+const KEY = EVOLU_RELAY_OVERRIDE_STORAGE_KEY;
 
 /** Sentinel stored when the user disabled sync on this device. */
 const DISABLED_SENTINEL = "off";
 
 export type RelayOverride =
     | { kind: "none" }
-    | { kind: "url"; url: string; addDefault?: boolean }
+    | { kind: "url"; url: string; addDefault?: boolean; accountPublicKey?: string | null }
     | { kind: "disabled" };
 
+/** Read the saved relay selection, retaining legacy URL and device-off formats. */
 export function readRelayOverride(): RelayOverride {
     try {
-        const raw = localStorage.getItem(KEY);
+        return parseRelayOverride(localStorage.getItem(KEY));
+    } catch {
+        return { kind: "none" };
+    }
+}
+
+/** Parse one atomic cache snapshot without performing another storage read. */
+export function parseRelayOverride(raw: string | null): RelayOverride {
+    try {
         if (raw === null || raw === "") {
             return { kind: "none" };
         }
@@ -32,8 +41,15 @@ export function readRelayOverride(): RelayOverride {
             const value: unknown = JSON.parse(raw);
             if (typeof value === "object" && value !== null
                 && "url" in value && typeof value.url === "string"
-                && "addDefault" in value && value.addDefault === true) {
-                return { kind: "url", url: value.url, addDefault: true };
+                && "addDefault" in value && typeof value.addDefault === "boolean") {
+                const selection: RelayOverride = { kind: "url", url: value.url };
+                if (value.addDefault) selection.addDefault = true;
+                if ("accountPublicKey" in value) {
+                    selection.accountPublicKey = typeof value.accountPublicKey === "string"
+                        && /^[a-f0-9]{64}$/i.test(value.accountPublicKey)
+                        ? value.accountPublicKey.toLowerCase() : null;
+                }
+                return selection;
             }
             return { kind: "none" };
         }
@@ -43,13 +59,15 @@ export function readRelayOverride(): RelayOverride {
     }
 }
 
-/** Cache a validated relay base URL (normalized ws(s)/http(s) origin). */
-export function writeRelayOverrideUrl(url: string, addDefault = false): void {
+/** Atomically cache destinations with their optional public owner association; null means paused. */
+export function writeRelayOverrideUrl(url: string, addDefault = false, accountPublicKey?: string | null): void {
     try {
-        if (url === "") {
+        if (url === "" && accountPublicKey === undefined) {
             localStorage.removeItem(KEY);
         } else {
-            localStorage.setItem(KEY, addDefault ? JSON.stringify({ url, addDefault: true }) : url);
+            localStorage.setItem(KEY, addDefault || accountPublicKey !== undefined
+                ? JSON.stringify({ url, addDefault, ...(accountPublicKey !== undefined ? { accountPublicKey } : {}) })
+                : url);
         }
     } catch {
         // Storage unavailable - the build default applies on next load.

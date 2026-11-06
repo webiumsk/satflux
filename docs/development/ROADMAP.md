@@ -1,6 +1,36 @@
 # Development roadmap
 
-## PR432 master conflicts resolved locally - 2026-11-06
+## PR432 review fixes independently accepted locally - 2026-11-06
+
+PR #432 is open. These corrections were verified from published review base
+`3b0d1e1c`; merge and deployment are separate pending gates. All five supplied inline findings and the cache-writer test nit
+are verified still valid and corrected. Secure numeric-host validation rejects
+trailing-dot aliases; Profile probing preserves compatible configured fallbacks.
+Status records acknowledge the PR; five guides/notifications require loading
+settings, closing all Satflux tabs and reopening.
+
+New workers boot local-only and managed public owner registrations reconcile
+canonical relay preferences across cooperative tabs. Atomic URL/mode/public-owner
+association guards prevent cross-account or torn-cache destination routing;
+unknown canonical identity pauses synchronization. No mnemonic/private key is
+persisted or sent by this mechanism. Old/crashed worker references require the
+close-all-tabs step; already in-flight protocol traffic has SDK100ms disposal grace.
+
+Independent QA/security accept runtime19 `cbef0059...c8e22` and source34
+`b878983d...754c84`. QA actual-source helper/real SDK+SQLite scenario1 and SDK5,
+security12/1, author79/6 and main43/2 pass; selections overlap. Main full frontend
+2,024/195, PHP64/458, scoped Pint/PHPStan, lint48/52, locale and build pass.
+Final typecheck110 passes after two erased test-type assertions. The test's
+emitted JavaScript is byte-identical; no baseline/runtime change is introduced.
+
+Local AST audit documents all26 changed complexity-qualified named TS/Vue and
+all3 PHP methods. This is local evidence, not a fresh external docstring result;
+the prior CodeRabbit76.92% warning covers older source. No threshold is weakened,
+CLI installed or manual bot command issued. Full findings, contracts, review
+manifests and limitations are in `EVOLU_CUSTOM_RELAY.md` and private review evidence.
+Main owns scoped source publication to the existing PR; no PR merge/deployment.
+
+## PR432 master conflicts resolved and published - 2026-11-06
 
 Integrate master `b4c2270d` (merged PoS PR431) into relay head `30a9363e`
 without rewriting published history. Only PROJECT_STATE, ROADMAP and DECISION_LOG
@@ -16,9 +46,9 @@ type110, lint48/52, locale parity and production build pass on the combined tree
 Full frontend1,998/194 also passes. The inspected PHP target is network-disabled,
 SQLite-memory with synthetic uncached configuration. No dependencies/ratchets change.
 
-Publish the conflict resolution to the existing owned PR432 branch under the
-owner's request, then verify remote head and mergeability. New-head CI must be
-attributed separately. No PR merge, deployment or unrelated primary edits occur.
+Conflict resolution is published as `3b0d1e1c` and PR #432 is open. Its remote
+head and mergeability were verified separately; new-head CI requires its own
+evidence. PR merge and deployment remain pending owner approval.
 
 ## Evolu relay source publication authorized - 2026-11-06
 
@@ -32,8 +62,8 @@ in the commit. Prior frontend1,940/192, PHP58/432 and static/build/API results
 remain attributed to the reviewed bytes; no product checks are repeated for this
 publication-only documentation update.
 
-Source push is authorized. PR creation, merge and deployment remain separate;
-actual publication outcome and fresh remote checks must be verified after push.
+Source publication is complete and PR #432 is open. Merge and deployment remain
+separate pending gates; fresh remote checks require actual-head verification.
 The primary checkout remains on its existing branch with unrelated work preserved.
 
 ## Additional custom Evolu relay accepted locally - 2026-11-06
@@ -45,10 +75,10 @@ and source30 `4594a9d3...beb9f`; no unresolved finding remains. Main frontend1,9
 /192, static/locale/build, PHP58/432 and API export/schema gates pass. Real installed
 SDK tests cover outage, additional-only restore, reconnect and protocol mismatch.
 
-Retain the uncommitted local `feat/evolu-custom-relay` worktree for owner review.
-No publication, merge or deployment occurred. See its `EVOLU_CUSTOM_RELAY.md`
-for exact evidence, excluded offline-DNS cases, protocol simulation and live-backup
-limits. Apply separate applicable approval before publication/deployment.
+Retain the published `feat/evolu-custom-relay` worktree for review in open PR #432.
+Merge and deployment remain pending. See its `EVOLU_CUSTOM_RELAY.md` for exact
+evidence, excluded offline-DNS cases, protocol simulation and live-backup limits.
+Apply separate applicable approval before merge/deployment.
 
 ## PR431 seven review findings corrected and independently accepted - 2026-11-06
 

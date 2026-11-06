@@ -168,6 +168,8 @@ class AccountTest extends TestCase
             'canonical scheme and default port' => ['WSS://RELAY.EXAMPLE.COM:443/', 'wss://relay.example.com'],
             'custom port' => ['wss://relay.example.com:8443/', 'wss://relay.example.com:8443'],
             'ipv4' => ['wss://127.0.0.1:8443', 'wss://127.0.0.1:8443'],
+            'ipv4 trailing dot' => ['wss://127.0.0.1.:8443', 'wss://127.0.0.1.:8443'],
+            'hostname trailing dot' => ['wss://relay.example.com.', 'wss://relay.example.com.'],
             'ipv6' => ['wss://[::1]:8443/', 'wss://[::1]:8443'],
         ];
     }
@@ -208,13 +210,18 @@ class AccountTest extends TestCase
             'wss://relay..example.com',
             'wss://[invalid]',
             'wss://127.1',
+            'wss://127.1.',
             'wss://2130706433',
+            'wss://2130706433.',
             'wss://0177.0.0.1',
+            'wss://0177.0.0.1.',
             'wss://0x7f000001',
+            'wss://0x7f000001.',
             'wss://'.str_repeat('a', 510).'.example.com',
         ]);
     }
 
+    /** Reject invalid mode values and verify profile writes cannot target another user. */
     public function test_relay_opt_in_requires_a_boolean_and_updates_only_authenticated_user(): void
     {
         $user = User::factory()->create();

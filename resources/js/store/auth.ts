@@ -16,8 +16,9 @@ import {
 } from '../services/guestRecovery';
 import { isInvoicingLocalFirst } from '../evolu/flags';
 import { ensureEvoluBoundToAccountSeed } from '../evolu/bootstrap';
-import { readRelayOverride, writeRelayOverrideUrl } from '@/evolu/relayOverrideStorage';
-import { normalizeEvoluRelayBaseUrl } from '@/evolu/config';
+import { EVOLU_RELAY_OVERRIDE_STORAGE_KEY, parseRelayOverride, writeRelayOverrideUrl, type RelayOverride } from '@/evolu/relayOverrideStorage';
+import { normalizeEvoluRelayBaseUrl, resolveEvoluRelayUrls } from '@/evolu/config';
+import { reconcileEvoluRelayPreference } from '@/evolu/relayPreferenceLifecycle';
 
 function isEmailNotVerifiedResponse(error: { response?: { data?: unknown } } | null): boolean {
     const data = error?.response?.data as { code?: unknown } | undefined;
@@ -209,17 +210,28 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     /**
-     * Cache the profile relay URL for the NEXT page load (P2 phase 1):
-     * createEvolu picks transports at module init, before auth, so the
-     * override storage is the only way the profile relay reaches the
-     * worker socket. A device-level "sync off" choice is never overwritten.
+     * Cache guarded destinations for pre-auth startup and reconcile live owners.
+     * Public account identity gates retargeting; an unknown canonical identity pauses
+     * until the owner is confirmed. Device-level sync-off is never overwritten.
      */
-    function cacheRelayOverrideFromProfile(profileRelayUrl: string | null, addDefault = false): void {
+    function cacheRelayOverrideFromProfile(profileRelayUrl: string | null, addDefault = false, accountPublicKey?: string | null): void {
         if (!isInvoicingLocalFirst()) return;
-        const override = readRelayOverride();
-        if (override.kind === 'disabled') return;
+        let override: RelayOverride;
+        try {
+            override = parseRelayOverride(localStorage.getItem(EVOLU_RELAY_OVERRIDE_STORAGE_KEY));
+        } catch {
+            reconcileEvoluRelayPreference([], null);
+            return;
+        }
+        if (override.kind === 'disabled') {
+            reconcileEvoluRelayPreference([], accountPublicKey ?? null);
+            return;
+        }
         const normalized = normalizeEvoluRelayBaseUrl(profileRelayUrl ?? '');
-        writeRelayOverrideUrl(normalized, addDefault);
+        const urls = resolveEvoluRelayUrls(normalized, addDefault);
+        const association = accountPublicKey ?? null;
+        writeRelayOverrideUrl(normalized, addDefault, association);
+        reconcileEvoluRelayPreference(urls, association);
     }
 
     /** Load the canonical session once while retaining guest, failure and stale-generation distinctions. */
@@ -239,7 +251,8 @@ export const useAuthStore = defineStore('auth', () => {
             if ((user.value?.id ?? null) !== previousUserId) {
                 scheduleChoralaSync();
             }
-            cacheRelayOverrideFromProfile(user.value?.evolu_relay_url ?? null, user.value?.evolu_relay_add_default === true);
+            cacheRelayOverrideFromProfile(user.value?.evolu_relay_url ?? null, user.value?.evolu_relay_add_default === true,
+                user.value?.recovery_public_key ?? null);
             const mnemonic = getStoredGuestMnemonic();
             if (mnemonic && isInvoicingLocalFirst()) {
                 void ensureEvoluBoundToAccountSeed();
