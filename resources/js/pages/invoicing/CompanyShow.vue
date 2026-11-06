@@ -73,6 +73,15 @@
   <InvoicingPageShell v-else-if="loading" content-class="pb-8">
     <div class="invoicing-muted py-8">{{ t('common.loading') }}</div>
   </InvoicingPageShell>
+
+  <InvoicingPageShell v-else content-class="pb-8">
+    <p class="invoicing-muted py-8" role="status">
+      {{ t('invoicing.company_share_error_company_not_found') }}
+    </p>
+    <router-link to="/invoicing" class="invoicing-btn-secondary">
+      {{ t('common.back') }}
+    </router-link>
+  </InvoicingPageShell>
 </template>
 
 <script setup lang="ts">

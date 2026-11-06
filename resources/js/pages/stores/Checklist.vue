@@ -1,5 +1,5 @@
 <template>
-  <AppScrollPane class="border-l border-gray-800 bg-gray-900">
+  <AppScrollPane show-footer class="border-l border-gray-800 bg-gray-900">
     <div class="max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
       <!-- Back Link -->
       <div class="mb-8">

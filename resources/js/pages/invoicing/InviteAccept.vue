@@ -1,35 +1,39 @@
 <template>
-  <div class="mx-auto max-w-lg py-8" data-testid="invite-accept">
-    <section class="invoicing-card invoicing-card-pad">
-      <h1 class="text-lg font-semibold text-gray-900">{{ t('invoicing.invite_accept_title') }}</h1>
+  <div class="min-h-0 flex-1 max-md:flex-none max-md:overflow-visible md:overflow-y-auto overscroll-y-contain custom-scrollbar">
+    <div class="mx-auto max-w-lg py-8" data-testid="invite-accept">
+      <section class="invoicing-card invoicing-card-pad">
+        <h1 class="text-lg font-semibold text-gray-900">{{ t('invoicing.invite_accept_title') }}</h1>
 
-      <p v-if="loading" class="mt-4 text-sm text-gray-500">{{ t('common.loading') }}</p>
+        <p v-if="loading" class="mt-4 text-sm text-gray-500">{{ t('common.loading') }}</p>
 
-      <template v-else-if="preview">
-        <p class="mt-3 text-sm text-gray-700">
-          {{ t('invoicing.invite_accept_intro', { company: preview.company_name || t('invoicing.invite_accept_company_fallback'), inviter: preview.invited_by || '' }) }}
-        </p>
-        <p class="mt-1 text-sm text-gray-600">{{ t('invoicing.invite_accept_role', { role: t(`invoicing.company_invite_role_${preview.role}`) }) }}</p>
+        <template v-else-if="preview">
+          <p class="mt-3 text-sm text-gray-700">
+            {{ t('invoicing.invite_accept_intro', { company: preview.company_name || t('invoicing.invite_accept_company_fallback'), inviter: preview.invited_by || '' }) }}
+          </p>
+          <p class="mt-1 text-sm text-gray-600">{{ t('invoicing.invite_accept_role', { role: t(`invoicing.company_invite_role_${preview.role}`) }) }}</p>
 
-        <p v-if="secretError" class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{{ secretError }}</p>
+          <p v-if="secretError" class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{{ secretError }}</p>
 
-        <template v-else>
-          <p v-if="retryError" class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{{ retryError }}</p>
-          <div class="mt-5 flex flex-wrap gap-2">
-            <button type="button" class="invoicing-btn-primary text-sm" :disabled="working" @click="accept">
-              {{ working ? t('invoicing.invite_accept_working') : t(accepted ? 'invoicing.invite_accept_retry' : 'invoicing.invite_accept_button') }}
-            </button>
-            <router-link to="/invoicing" class="invoicing-btn-secondary text-sm">{{ t('common.cancel') }}</router-link>
-          </div>
+          <template v-else>
+            <p v-if="retryError" class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{{ retryError }}</p>
+            <div class="mt-5 flex flex-wrap gap-2">
+              <button type="button" class="invoicing-btn-primary text-sm" :disabled="working" @click="accept">
+                {{ working ? t('invoicing.invite_accept_working') : t(accepted ? 'invoicing.invite_accept_retry' : 'invoicing.invite_accept_button') }}
+              </button>
+              <router-link to="/invoicing" class="invoicing-btn-secondary text-sm">{{ t('common.cancel') }}</router-link>
+            </div>
+          </template>
         </template>
-      </template>
 
-      <p v-else class="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{{ errorMsg || t('invoicing.invite_accept_invalid') }}</p>
-    </section>
+        <p v-else class="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{{ errorMsg || t('invoicing.invite_accept_invalid') }}</p>
+      </section>
+    </div>
+    <AppFooter class="hidden md:block" />
   </div>
 </template>
 
 <script setup lang="ts">
+import AppFooter from '../../components/layout/AppFooter.vue';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';

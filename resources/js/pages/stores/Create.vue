@@ -626,10 +626,12 @@
       @close="showUpgradeModal = false"
     />
   </div>
+    <AppFooter class="hidden md:block" />
   </div>
 </template>
 
 <script setup lang="ts">
+import AppFooter from '../../components/layout/AppFooter.vue';
 import { BOLTZ_RECEIVING_AVAILABLE } from "../../utils/boltzAvailability";
 import { asApiError, type ApiErrorLike } from "../../utils/apiError";
 import { ref, computed, onMounted, onUnmounted, watch, nextTick, defineAsyncComponent } from "vue";

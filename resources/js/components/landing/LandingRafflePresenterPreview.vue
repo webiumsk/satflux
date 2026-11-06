@@ -104,6 +104,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { usePrefersReducedMotion } from "../../composables/usePrefersReducedMotion";
 
 type DrawPhase = "spinning" | "revealed" | "celebrating" | "done";
 
@@ -120,7 +121,7 @@ const displayNumber = ref(drawSequence[0]);
 const drawnHistory = ref<number[]>([]);
 const revealedWinningTickets = ref<number[]>([]);
 const showConfetti = ref(false);
-const prefersReducedMotion = ref(false);
+const prefersReducedMotion = usePrefersReducedMotion();
 
 let spinTimer: ReturnType<typeof setTimeout> | null = null;
 let phaseTimer: ReturnType<typeof setTimeout> | null = null;
@@ -392,10 +393,6 @@ function runDrawCycle() {
 }
 
 onMounted(() => {
-  prefersReducedMotion.value = window.matchMedia(
-    "(prefers-reduced-motion: reduce)",
-  ).matches;
-
   if (prefersReducedMotion.value) {
     drawnHistory.value = [...drawSequence];
     revealedWinningTickets.value = [...winningTickets];

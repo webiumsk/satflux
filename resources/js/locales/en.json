@@ -4855,5 +4855,295 @@
     "limits_apply": "PRO limits still apply. Existing data remains available. Manage your existing objects to free capacity.",
     "verification_benefit": "Verify your email to access PRO features free until further notice.",
     "details": "Access details"
+  },
+  "showcase": {
+    "hero": {
+      "eyebrow": "Your business. Your payments.",
+      "line1": "Your business.",
+      "line2": "Bitcoin payments.",
+      "line3": "All together.",
+      "intro": "From coffee at the counter to a sold-out event. Accept instant payments and manage invoices and tickets in one clear dashboard.",
+      "start": "Start with SATFLUX",
+      "demo": "Try the live terminal",
+      "note": "Payments go directly to your connected wallet",
+      "powered": "Built on",
+      "open_source": "Open source"
+    },
+    "ui": {
+      "preview": "Preview mode",
+      "live_pos": "Live checkout (PoS)",
+      "overview": "Sales overview",
+      "sample": "Sample data",
+      "demo": "Demo",
+      "demo_notice": "Load the external demo terminal to explore the interface. It connects to the configured BTCPay server. Do not send payments just to try the demo.",
+      "demo_unavailable": "Explore how the checkout works in the documentation. A live demo is not configured for this site.",
+      "load_demo": "Load external demo",
+      "demo_hint": "Explore the menu and amount entry.",
+      "open_demo": "Open terminal",
+      "documentation": "Documentation",
+      "zoom": "Enlarge screenshot",
+      "sample_caption": "Real SATFLUX components with synthetic sample data. Click to enlarge.",
+      "real_ui": "REAL INTERFACE",
+      "solutions": "Solutions",
+      "close": "Close",
+      "all_tools": "All tools",
+      "fit": "Fit to screen",
+      "native": "Original size (100%)",
+      "zoom_region": "Enlarged application screenshot; scroll with arrows or touch",
+      "zoom_instruction": "At 100% size, scroll with touch, mouse or arrow keys. Escape closes the preview."
+    },
+    "trust": {
+      "label": "Core principles",
+      "wallet": {
+        "title": "Your wallet",
+        "copy": "You choose where payments go."
+      },
+      "workspace": {
+        "title": "One workspace",
+        "copy": "For your store, documents and events."
+      },
+      "infrastructure": {
+        "title": "BTCPay Server + Evolu",
+        "copy": "Open payment infrastructure."
+      }
+    },
+    "solutions": {
+      "eyebrow": "Less switching. More business.",
+      "title": "Several tools. One smooth working day.",
+      "copy": "Start with what you need today. More possibilities are always at hand."
+    },
+    "stories": {
+      "payments": {
+        "name": "PAYMENTS",
+        "eyebrow": "From receipt to export",
+        "title": "Every payment. A clear status.",
+        "copy": "Turn a tablet at the counter into a checkout for your staff. Review store payments, filter by period and export transactions to CSV or XLSX for your accountant.",
+        "benefit1": "Status, date and amount of every payment",
+        "benefit2": "Filter by status and period",
+        "benefit3": "Export transactions to CSV and XLSX",
+        "action": "All ways to accept payments",
+        "detail_title": "Every payment finds its destination.",
+        "detail_intro": "Payment tools for stores, online shops and individuals."
+      },
+      "invoicing": {
+        "name": "INVOICING",
+        "eyebrow": "From issue to payment",
+        "title": "Invoices, expenses, bank movements, inventory, ... All your documents under control.",
+        "copy": "Keep business documents and their status in one place. Invoicing adds bank payment matching by reference, expense tracking and Bitcoin payment links.",
+        "benefit1": "Company profiles and PDF invoices for SK/CZ or your Wyoming LLC",
+        "benefit2": "Import bank statements and match by payment reference",
+        "benefit3": "Expenses, recurring documents and accounting exports (ISDOC)",
+        "action": "Explore invoicing",
+        "detail_title": "All your business documents under control.",
+        "detail_intro": "Manage business documents and match payments in one workspace."
+      },
+      "events": {
+        "name": "EVENTS",
+        "eyebrow": "From the first ticket to the raffle draw",
+        "title": "Your event. Your tickets under control.",
+        "copy": "Create events and sell tickets directly for Bitcoin. Staff can check tickets with a phone camera at the entrance, and you can run a raffle with a presenter view during the event.",
+        "benefit1": "Ticket sales without ticketing platform commissions",
+        "benefit2": "Fast QR check-in at the entrance",
+        "benefit3": "Built-in raffle and community crowdfunding",
+        "action": "Tools for your event",
+        "detail_title": "From ticket sales to the raffle draw.",
+        "detail_intro": "Tools for community gatherings, conferences and events."
+      }
+    },
+    "local_first": {
+      "title": "Local-first with Evolu",
+      "copy": "In local-first invoicing, companies, contacts and documents are stored primarily in your browser with Evolu. We do not store this register in the Satflux application database; synchronization is end-to-end encrypted. PDF, email and selected integrations may use server processing.",
+      "privacy": "How we handle data"
+    },
+    "screenshots": {
+      "overview": "SATFLUX sales overview with synthetic sample data",
+      "payments": "Store payments with sample data",
+      "invoicing": "Company invoices with sample data and row actions visible",
+      "events": "Events with one expanded event and sample ticket types"
+    },
+    "captions": {
+      "payments": "Real SATFLUX components, synthetic sample data. Click to enlarge.",
+      "invoicing": "Company invoices with synthetic sample data. Hover actions are visible in the first row.",
+      "events": "One expanded event and ticket types, using synthetic sample data."
+    },
+    "tools": {
+      "eyebrow": "More possibilities when you need them",
+      "title": "Small tools. A big difference.",
+      "hint": "Select a tool and browse its details with Next and Previous.",
+      "context": "SATFLUX tools",
+      "example": "Example use",
+      "plugin": "View WooCommerce plugin",
+      "navigation": "Browse tools",
+      "previous": "Previous",
+      "next": "Next",
+      "first": "First tool",
+      "last": "Last tool",
+      "position": "{current} of {total}",
+      "lightning": {
+        "title": "Lightning addresses",
+        "summary": "MENO{'@'}satflux.org or OBCHOD{'@'}satflux.org for Lightning payments.",
+        "copy": "Receive repeat Lightning payments at a memorable address instead of sharing a new link each time. Your store needs a working Lightning connection.",
+        "note": "Hosted addresses use only satflux.org; custom domains are not supported. Address limits depend on your plan. These examples show the format, not a way to connect an external wallet.",
+        "example": "Illustrative formats for a person or store. This text is not a payment link or QR code."
+      },
+      "woocommerce": {
+        "title": "WooCommerce",
+        "summary": "Bitcoin payments for your WordPress shop.",
+        "copy": "Use SATFLUX for WooCommerce in your WordPress shop. Customers can pay for orders through the BTCPay Bitcoin payment infrastructure.",
+        "note": "The plugin belongs in your WooCommerce shop. Check its documentation for setup and compatibility; a blog payment button is a different integration.",
+        "example": "WooCommerce cart → BTCPay invoice → order status. A customer selects products and continues to the Bitcoin payment."
+      },
+      "paybutton": {
+        "title": "Pay Button",
+        "summary": "A simple payment button to embed on your website.",
+        "copy": "Embed HTML generated in your store on a blog, project page or simple website. The button opens a payment page for Bitcoin or Lightning.",
+        "note": "Suitable for contributions or a simple product. Set a fixed amount or let the customer choose. This is an illustration, not working payment code.",
+        "example": "A support button below an article opens the payment page generated by your store."
+      },
+      "bankqr": {
+        "title": "Bank QR - SEPA",
+        "summary": "PAY by square and supported local SEPA formats.",
+        "copy": "Offer a bank transfer via a supported QR format alongside Bitcoin. Customers send the payment from their banking app to the account configured for your store.",
+        "note": "Automatic confirmation depends on the supported bank, verified source and matching details. Missing or ambiguous confirmation requires manual verification; displaying a QR does not mean paid. Supported automated sources currently include Fio and Tatra banka.",
+        "example": "Checkout QR → banking app → your bank account. The format and confirmation method depend on supported configuration."
+      },
+      "crowdfund": {
+        "title": "Crowdfund",
+        "summary": "A shared goal and community fundraising with public progress.",
+        "copy": "Create a community campaign with a goal, deadline and contribution tiers. A public page explains the project and shows campaign progress.",
+        "note": "This is a campaign illustration, not a real fundraiser or a promised outcome. Check available tools and limits in your account and pricing.",
+        "example": "Goal: shared workshop equipment. Contribution tiers and a public page help the community follow the project."
+      },
+      "exports": {
+        "title": "Data exports",
+        "summary": "CSV and XLSX reports for your accountant.",
+        "copy": "Filter a list and prepare data for further processing in CSV or XLSX. Exports cover store payment history and business documents, for example.",
+        "note": "Columns and available formats depend on the list and plan. This example shows types of data, not an exact export header.",
+        "example": "Date · status · amount · currency. List → period and status filters → spreadsheet or accounting file."
+      },
+      "cashu": {
+        "title": "Cashu",
+        "summary": "Optional ecash settlement through a selected mint.",
+        "copy": "CashuMelt can bridge Lightning settlement through a selected mint to your Lightning address. The customer pays a Lightning invoice, not ecash tokens.",
+        "note": "Beta requires trust in the selected mint. Outages or routing problems can cause delay or loss; a paid invoice alone does not prove completed settlement to your wallet.",
+        "example": "Lightning payment → selected mint → your Lightning address. Availability depends on your plan, module and payment route."
+      },
+      "stores": {
+        "title": "Multiple stores",
+        "summary": "Manage several locations and projects from one account.",
+        "copy": "Give your physical store, online shop or next project its own store and manage them from one account. Switch stores according to the work at hand.",
+        "note": "Each store has its own settings. Store limits depend on the plan and permissions; a shared account neither combines payments nor bypasses ownership.",
+        "example": "Your account → physical store + online shop. Two activities, separate stores, one dashboard."
+      }
+    },
+    "steps": {
+      "eyebrow": "From idea to first payment",
+      "title": "Start in three steps.",
+      "copy": "Start with the basics. Discover more tools when you need them.",
+      "step1": {
+        "title": "Create an account",
+        "copy": "Register and create a store for your business."
+      },
+      "step2": {
+        "title": "Connect a wallet",
+        "copy": "Choose a supported connection, such as Blink, Blitz, Coinos, Flash or a wallet supporting LUD21. Check provider requirements in the documentation."
+      },
+      "step3": {
+        "title": "Receive a payment",
+        "copy": "Open the PoS checkout or place a payment link on your website and receive sats."
+      }
+    },
+    "pricing": {
+      "eyebrow": "Fair terms",
+      "title": "Start with the basics. Grow later.",
+      "compare": "Compare plans"
+    },
+    "faq": {
+      "eyebrow": "Before you start",
+      "title": "Frequently asked questions",
+      "copy": "How it works and how your data is handled.",
+      "all": "All questions and answers",
+      "q1": "What is SATFLUX and how does it relate to BTCPay?",
+      "a1": "SATFLUX is an interface for managing stores, checkouts and business documents. BTCPay Server provides the payment infrastructure in the background. Together, they connect everyday tools with open Bitcoin payments.",
+      "q2": "Where do received bitcoins go?",
+      "a2": "Payments go to the wallet connected to your store. SATFLUX does not provide Bitcoin custody. Key custody and available features depend on the wallet provider and connection you choose; Cashu settlement has separate mint-trust and recovery conditions.",
+      "q3": "Do I need to use every feature at once?",
+      "a3": "No. Start with a checkout on your phone. Add invoicing, event tickets or WooCommerce when you need them, according to your plan and enabled modules."
+    },
+    "cta": {
+      "title": "Your next working day. A little simpler.",
+      "copy": "Choose one tool and start there. Creating an account is free."
+    },
+    "details": {
+      "woocommerce": {
+        "title": "WooCommerce",
+        "copy": "Use SATFLUX for WooCommerce in your WordPress shop. Customers can pay for orders through the BTCPay Bitcoin payment infrastructure. The plugin belongs in your WooCommerce shop. Check its documentation for setup and compatibility; a blog payment button is a different integration."
+      },
+      "lightning": {
+        "title": "Lightning addresses",
+        "copy": "Receive repeat Lightning payments at a memorable address instead of sharing a new link each time. Your store needs a working Lightning connection. Hosted addresses use only satflux.org; custom domains are not supported. Address limits depend on your plan. These examples show the format, not a way to connect an external wallet."
+      },
+      "paybutton": {
+        "title": "Pay Button",
+        "copy": "Embed HTML generated in your store on a blog, project page or simple website. The button opens a payment page for Bitcoin or Lightning. Suitable for contributions or a simple product. Set a fixed amount or let the customer choose. This is an illustration, not working payment code."
+      },
+      "bankqr": {
+        "title": "Bank QR - SEPA",
+        "copy": "Offer a bank transfer via a supported QR format alongside Bitcoin. Customers send the payment from their banking app to the account configured for your store. Automatic confirmation depends on the supported bank, verified source and matching details. Missing or ambiguous confirmation requires manual verification; displaying a QR does not mean paid. Supported automated sources currently include Fio and Tatra banka."
+      },
+      "exports": {
+        "title": "Data exports",
+        "copy": "Filter a list and prepare data for further processing in CSV or XLSX. Exports cover store payment history and business documents, for example. Columns and available formats depend on the list and plan. This example shows types of data, not an exact export header."
+      },
+      "crowdfund": {
+        "title": "Crowdfund",
+        "copy": "Create a community campaign with a goal, deadline and contribution tiers. A public page explains the project and shows campaign progress. This is a campaign illustration, not a real fundraiser or a promised outcome. Check available tools and limits in your account and pricing."
+      },
+      "local_first": {
+        "title": "Local-first with Evolu",
+        "copy": "In local-first invoicing, companies, contacts and documents are stored primarily in your browser with Evolu. We do not store this register in the Satflux application database; synchronization is end-to-end encrypted. PDF, email and selected integrations may use server processing.",
+        "legacy": "This describes local-first mode. Legacy server mode stores data differently."
+      },
+      "pos": {
+        "title": "PoS terminal",
+        "copy": "A browser checkout for staff without access to the wallet balance."
+      },
+      "companies": {
+        "title": "Company profiles",
+        "copy": "Company profiles and PDF invoices for SK/CZ or a Wyoming LLC."
+      },
+      "matching": {
+        "title": "Payment matching",
+        "copy": "Match imported bank payments to documents by payment reference and review their status."
+      },
+      "expenses": {
+        "title": "Expense tracking",
+        "copy": "Supplier invoices with duplicate warnings and attachments."
+      },
+      "recurring": {
+        "title": "Recurring documents",
+        "copy": "Prepare recurring invoices for subscriptions and regular services."
+      },
+      "invoice_payment": {
+        "title": "Bitcoin and bank transfer",
+        "copy": "Offer supported Bitcoin and bank-transfer payment options on your invoices."
+      },
+      "accounting": {
+        "title": "Accounting exports",
+        "copy": "ISDOC exports and reports for your accountant."
+      },
+      "tickets": {
+        "title": "Ticket sales",
+        "copy": "Sell event tickets online without ticketing-platform commissions."
+      },
+      "checkin": {
+        "title": "QR check-in",
+        "copy": "Check tickets with a phone camera or look up a participant at the entrance."
+      },
+      "raffle": {
+        "title": "Raffle",
+        "copy": "Sell raffle entries, draw in the application and display the presenter view on a big screen."
+      }
+    }
   }
 }

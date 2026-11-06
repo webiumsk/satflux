@@ -27,7 +27,11 @@ function deferred<T>() {
     return { promise, resolve };
 }
 function mountPage() {
-    return mount(ApiDocumentation, { global: { stubs: { RouterLink: { template: '<a><slot /></a>' } } } });
+    return mount(ApiDocumentation, { global: { stubs: {
+        RouterLink: { template: '<a><slot /></a>' },
+        // Keep optional footer /version requests outside the portal transport assertions.
+        AppFooter: { template: '<footer />' },
+    } } });
 }
 enableAutoUnmount(afterEach);
 beforeEach(() => {

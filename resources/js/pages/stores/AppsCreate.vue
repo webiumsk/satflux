@@ -52,7 +52,7 @@
       </div>
 
       <!-- Content Container -->
-      <AppScrollPane>
+      <AppScrollPane show-footer>
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div
             class="bg-gray-800 shadow-xl rounded-2xl border border-gray-700 overflow-hidden"

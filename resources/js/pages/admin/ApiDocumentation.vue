@@ -42,10 +42,12 @@
         </template>
       </template>
     </div>
+    <AppFooter class="hidden md:block" />
   </main>
 </template>
 
 <script setup lang="ts">
+import AppFooter from '../../components/layout/AppFooter.vue';
 import { computed, onBeforeUnmount, shallowRef, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ApiReference } from '@scalar/api-reference';

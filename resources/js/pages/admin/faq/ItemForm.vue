@@ -1,102 +1,106 @@
 <template>
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-white">
-        {{ isEdit ? t('admin.faq.items.edit_item') : t('admin.faq.items.create_item') }}
-      </h1>
-    </div>
+  <div class="min-h-0 flex-1 max-md:flex-none max-md:overflow-visible md:overflow-y-auto overscroll-y-contain custom-scrollbar">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-white">
+          {{ isEdit ? t('admin.faq.items.edit_item') : t('admin.faq.items.create_item') }}
+        </h1>
+      </div>
 
-    <form @submit.prevent="handleSubmit" class="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-6">
-      <!-- Slug -->
-      <div>
-        <label class="block text-sm font-medium text-gray-300 mb-2">
-          {{ t('admin.faq.items.slug') }}
-        </label>
-        <input
-          v-model="form.slug"
+      <form @submit.prevent="handleSubmit" class="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-6">
+        <!-- Slug -->
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">
+            {{ t('admin.faq.items.slug') }}
+          </label>
+          <input
+            v-model="form.slug"
+            type="text"
+            class="block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700/50 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <!-- Question (Multilanguage) -->
+        <MultilanguageEditor
+          v-model="form.question"
+          label="Question"
+          placeholder="FAQ question"
+          required
           type="text"
-          class="block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700/50 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
-      </div>
 
-      <!-- Question (Multilanguage) -->
-      <MultilanguageEditor
-        v-model="form.question"
-        label="Question"
-        placeholder="FAQ question"
-        required
-        type="text"
-      />
-
-      <!-- Answer (Multilanguage) -->
-      <MultilanguageEditor
-        v-model="form.answer"
-        label="Answer"
-        placeholder="FAQ answer"
-        required
-        type="textarea"
-        :rows="8"
-      />
-
-      <!-- Category -->
-      <div>
-        <label class="block text-sm font-medium text-gray-300 mb-2">
-          {{ t('admin.faq.items.category') }}
-        </label>
-        <Select
-          v-model="form.category_id"
-          :options="categoryOptions"
-          :placeholder="t('admin.faq.items.no_category')"
+        <!-- Answer (Multilanguage) -->
+        <MultilanguageEditor
+          v-model="form.answer"
+          label="Answer"
+          placeholder="FAQ answer"
+          required
+          type="textarea"
+          :rows="8"
         />
-      </div>
 
-      <!-- Order -->
-      <div>
-        <label class="block text-sm font-medium text-gray-300 mb-2">
-          {{ t('admin.faq.items.order') }}
-        </label>
-        <input
-          v-model.number="form.order"
-          type="number"
-          min="0"
-          class="block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700/50 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-      </div>
+        <!-- Category -->
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">
+            {{ t('admin.faq.items.category') }}
+          </label>
+          <Select
+            v-model="form.category_id"
+            :options="categoryOptions"
+            :placeholder="t('admin.faq.items.no_category')"
+          />
+        </div>
 
-      <!-- Published -->
-      <div class="flex items-center">
-        <input
-          v-model="form.is_published"
-          type="checkbox"
-          id="is_published"
-          class="w-4 h-4 text-indigo-600 bg-gray-700 border-gray-600 rounded focus:ring-indigo-500"
-        />
-        <label for="is_published" class="ml-2 text-sm text-gray-300">
-          {{ t('admin.faq.items.published') }}
-        </label>
-      </div>
+        <!-- Order -->
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">
+            {{ t('admin.faq.items.order') }}
+          </label>
+          <input
+            v-model.number="form.order"
+            type="number"
+            min="0"
+            class="block w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700/50 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
 
-      <!-- Actions -->
-      <div class="flex justify-end gap-4 pt-4 border-t border-gray-700">
-        <router-link
-          to="/admin/faq"
-          class="px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700"
-        >
-          {{ t('admin.faq.items.cancel') }}
-        </router-link>
-        <button
-          type="submit"
-          :disabled="saving"
-          class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50"
-        >
-          {{ saving ? t('admin.faq.items.saving') : (isEdit ? t('admin.faq.items.update') : t('admin.faq.items.create')) }}
-        </button>
-      </div>
-    </form>
+        <!-- Published -->
+        <div class="flex items-center">
+          <input
+            v-model="form.is_published"
+            type="checkbox"
+            id="is_published"
+            class="w-4 h-4 text-indigo-600 bg-gray-700 border-gray-600 rounded focus:ring-indigo-500"
+          />
+          <label for="is_published" class="ml-2 text-sm text-gray-300">
+            {{ t('admin.faq.items.published') }}
+          </label>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex justify-end gap-4 pt-4 border-t border-gray-700">
+          <router-link
+            to="/admin/faq"
+            class="px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700"
+          >
+            {{ t('admin.faq.items.cancel') }}
+          </router-link>
+          <button
+            type="submit"
+            :disabled="saving"
+            class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50"
+          >
+            {{ saving ? t('admin.faq.items.saving') : (isEdit ? t('admin.faq.items.update') : t('admin.faq.items.create')) }}
+          </button>
+        </div>
+      </form>
+    </div>
+    <AppFooter class="hidden md:block" />
   </div>
 </template>
 
 <script setup lang="ts">
+import AppFooter from '../../../components/layout/AppFooter.vue';
 import { asApiError } from "../../../utils/apiError";
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';

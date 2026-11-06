@@ -4859,5 +4859,295 @@
     "limits_apply": "Limity PRO zostávajú v platnosti. Existujúce dáta sú dostupné. Správou existujúcich objektov môžete uvoľniť kapacitu.",
     "verification_benefit": "Overte email a získajte PRO funkcie zdarma do odvolania.",
     "details": "Podrobnosti prístupu"
+  },
+  "showcase": {
+    "hero": {
+      "eyebrow": "Vaše podnikanie. Vaše platby.",
+      "line1": "Vaše podnikanie.",
+      "line2": "Bitcoin platby.",
+      "line3": "Všetko spolu.",
+      "intro": "Od kávy pri pulte po vypredané podujatie. Prijímajte bleskové platby a spravujte faktúry aj vstupenky v jednej prehľadnej nástenke.",
+      "start": "Začať so SATFLUX",
+      "demo": "Vyskúšať live terminál",
+      "note": "Platby smerujú priamo do vašej pripojenej peňaženky",
+      "powered": "Postavené na",
+      "open_source": "Otvorený zdrojový kód"
+    },
+    "ui": {
+      "preview": "Režim náhľadu",
+      "live_pos": "Živá pokladňa (PoS)",
+      "overview": "Prehľad predajov",
+      "sample": "Ukážkové dáta",
+      "demo": "Ukážka",
+      "demo_notice": "Načítajte externý ukážkový terminál a prezrite si rozhranie. Pripojí sa k nastavenému BTCPay serveru. Na vyskúšanie ukážky neposielajte platby.",
+      "demo_unavailable": "Fungovanie pokladne si môžete pozrieť v dokumentácii. Živá ukážka pre túto stránku nie je nastavená.",
+      "load_demo": "Načítať externú ukážku",
+      "demo_hint": "Prezrite si menu a zadávanie sumy.",
+      "open_demo": "Otvoriť terminál",
+      "documentation": "Dokumentácia",
+      "zoom": "Zväčšiť snímku",
+      "sample_caption": "Skutočné komponenty SATFLUX so syntetickými ukážkovými dátami. Kliknutím zväčšíte.",
+      "real_ui": "SKUTOČNÉ ROZHRANIE",
+      "solutions": "Riešenia",
+      "close": "Zavrieť",
+      "all_tools": "Všetky nástroje",
+      "fit": "Prispôsobiť obrazovke",
+      "native": "Pôvodná veľkosť (100 %)",
+      "zoom_region": "Zväčšená snímka aplikácie, posúvajte šípkami alebo dotykom",
+      "zoom_instruction": "Pri 100 % veľkosti môžete snímku posúvať dotykom, myšou alebo šípkami. Kláves Escape zatvorí náhľad."
+    },
+    "trust": {
+      "label": "Základné princípy",
+      "wallet": {
+        "title": "Vaša peňaženka",
+        "copy": "Vyberáte si, kam platby smerujú."
+      },
+      "workspace": {
+        "title": "Jeden pracovný priestor",
+        "copy": "Pre obchod, doklady aj podujatia."
+      },
+      "infrastructure": {
+        "title": "BTCPay Server + Evolu",
+        "copy": "Otvorená platobná infraštruktúra."
+      }
+    },
+    "solutions": {
+      "eyebrow": "Menej prepínania. Viac podnikania.",
+      "title": "Niekoľko nástrojov. Jeden plynulý pracovný deň.",
+      "copy": "Začnite tým, čo potrebujete dnes. Ďalšie možnosti máte vždy poruke."
+    },
+    "stories": {
+      "payments": {
+        "name": "PLATBY",
+        "eyebrow": "Od prijatia po export",
+        "title": "Každá platba. Jasný stav.",
+        "copy": "Z tabletu na pulte spravíte pokladňu pre personál. Pozrite si platby svojho obchodu, vyfiltrujte obdobie a pripravte transakcie na export do CSV alebo XLSX pre účtovníka.",
+        "benefit1": "Stav, dátum a suma každej platby",
+        "benefit2": "Filtrovanie podľa stavu a obdobia",
+        "benefit3": "Export transakcií do CSV a XLSX",
+        "action": "Všetky možnosti prijímania platieb",
+        "detail_title": "Každá platba nájde svoj cieľ.",
+        "detail_intro": "Možnosti prijímania platieb pre predajne, e-shopy aj jednotlivcov."
+      },
+      "invoicing": {
+        "name": "FAKTURÁCIA",
+        "eyebrow": "Od vystavenia po úhradu",
+        "title": "Vystavené faktúry, náklady, bankové pohyby, sklad, ... Všetky doklady pod kontrolou.",
+        "copy": "Majte firemné doklady a ich stav na jednom mieste. Fakturácia pridáva automatické párovanie bankových platieb podľa variabilného symbolu, evidenciu nákladov a Bitcoin platobné odkazy.",
+        "benefit1": "Firemné profily a PDF faktúry pre SK/CZ, či vašu Wyoming LLC",
+        "benefit2": "Import výpisov a automatické párovanie podľa VS",
+        "benefit3": "Náklady, pravidelné doklady a účtovné exporty (ISDOC)",
+        "action": "Čo všetko zvládne fakturácia",
+        "detail_title": "Všetky firemné doklady pod kontrolou.",
+        "detail_intro": "Správa firemných dokladov a párovanie platieb v jednom pracovnom priestore."
+      },
+      "events": {
+        "name": "PODUJATIA",
+        "eyebrow": "Od prvého lístka po žrebovanie",
+        "title": "Vaše podujatie. Lístky pod kontrolou.",
+        "copy": "Vytvárajte podujatia a spravujte predaj vstupeniek priamo za Bitcoin. Pri vstupe personál využije rýchly QR check-in cez mobil a počas programu môžete spustiť tombolu s presenter režimom na plátne.",
+        "benefit1": "Predaj vstupeniek bez provízie pre predajné portály",
+        "benefit2": "Bleskový QR check-in účastníkov na vstupe",
+        "benefit3": "Vstavaná tombola a komunitný crowdfund",
+        "action": "Nástroje pre vaše podujatie",
+        "detail_title": "Od predaja lístkov po žrebovanie tomboly.",
+        "detail_intro": "Nástroje pre komunitné stretnutia, konferencie a podujatia."
+      }
+    },
+    "local_first": {
+      "title": "Local-first cez Evolu",
+      "copy": "Firmy, kontakty a doklady sú pri local-first fakturácii uložené primárne vo vašom prehliadači cez Evolu. Tento register neukladáme do aplikačnej databázy Satfluxu; synchronizácia je end-to-end šifrovaná. PDF, e-mail a vybrané integrácie môžu využívať serverové spracovanie.",
+      "privacy": "Ako pracujeme s údajmi"
+    },
+    "screenshots": {
+      "overview": "Prehľad predajov SATFLUX so syntetickými ukážkovými údajmi",
+      "payments": "Prehľad platieb obchodu s ukážkovými dátami",
+      "invoicing": "Firemné faktúry s ukážkovými dátami a viditeľnými akciami riadka",
+      "events": "Podujatia s jedným rozbaleným eventom a ukážkovými typmi vstupeniek"
+    },
+    "captions": {
+      "payments": "Skutočné komponenty SATFLUX, syntetické ukážkové dáta. Kliknutím zväčšíte.",
+      "invoicing": "Firemné faktúry so syntetickými ukážkovými dátami. Prvý riadok zobrazuje akčné ikony pri hoveri.",
+      "events": "Rozbalené podujatie a typy vstupeniek so syntetickými ukážkovými dátami."
+    },
+    "tools": {
+      "eyebrow": "Ďalšie možnosti, keď ich potrebujete",
+      "title": "Malé nástroje. Veľký rozdiel.",
+      "hint": "Vyberte nástroj a prechádzajte detailmi šípkami Ďalší a Predchádzajúci.",
+      "context": "Nástroje SATFLUX",
+      "example": "Príklad použitia",
+      "plugin": "Pozrieť WooCommerce plugin",
+      "navigation": "Prehliadanie nástrojov",
+      "previous": "Predchádzajúci",
+      "next": "Ďalší",
+      "first": "Prvý nástroj",
+      "last": "Posledný nástroj",
+      "position": "{current} z {total}",
+      "lightning": {
+        "title": "Lightning adresy",
+        "summary": "Adresa MENO{'@'}satflux.org alebo OBCHOD{'@'}satflux.org pre Lightning platby.",
+        "copy": "Prijímajte opakované Lightning platby na zapamätateľnú adresu namiesto zdieľania nového odkazu pri každom príspevku. Adresa vyžaduje funkčné Lightning prepojenie vášho obchodu.",
+        "note": "Hostované adresy používajú výhradne doménu satflux.org; vlastné domény nie sú podporované. Počet adries závisí od plánu. Príklady ukazujú formát, nie návod na pripojenie externej peňaženky.",
+        "example": "Ilustračné formáty adresy pre osobu alebo obchod. Text nie je platobný odkaz ani QR kód."
+      },
+      "woocommerce": {
+        "title": "WooCommerce",
+        "summary": "Bitcoin platobná brána pre váš WordPress e-shop.",
+        "copy": "Pre e-shop na WordPresse použite SATFLUX for WooCommerce. Zákazník môže zaplatiť objednávku cez Bitcoin platobnú infraštruktúru BTCPay.",
+        "note": "Plugin patrí do WooCommerce obchodu. Nastavenie a kompatibilitu overte v jeho dokumentácii; platobné tlačidlo na blog je odlišná integrácia.",
+        "example": "Košík WooCommerce → BTCPay faktúra → stav objednávky. Zákazník si vyberie tovar a pokračuje na Bitcoin platbu."
+      },
+      "paybutton": {
+        "title": "Pay Button",
+        "summary": "Jednoduché platobné tlačidlo na vloženie do vášho webu.",
+        "copy": "Vložte na blog, projektovú stránku alebo jednoduchý web HTML kód vygenerovaný vo svojom obchode. Tlačidlo otvorí platobnú stránku pre Bitcoin alebo Lightning.",
+        "note": "Hodí sa na príspevky aj jednoduchý produkt. Sumu nastavíte pevne alebo ju necháte na zákazníkovi. Toto je ilustrácia, nie funkčný platobný kód.",
+        "example": "Tlačidlo pod článkom na podporu autora otvorí platobnú stránku vygenerovanú vaším obchodom."
+      },
+      "bankqr": {
+        "title": "Bankové QR - SEPA",
+        "summary": "PAY by square a podpora lokálnych SEPA formátov.",
+        "copy": "Ponúknite bankový prevod cez podporovaný QR formát vedľa Bitcoinu. Zákazník odošle platbu zo svojej bankovej aplikácie na účet nastavený pre váš obchod.",
+        "note": "Automatické potvrdenie závisí od podporovanej banky, overeného zdroja a zhody údajov. Pri chýbajúcom alebo nejednoznačnom potvrdení overte úhradu manuálne; zobrazenie QR neznamená zaplatenie. Medzi podporované automatické zdroje aktuálne patrí Fio a Tatra banka.",
+        "example": "QR na platobnej stránke → banková aplikácia → váš účet. Formát a potvrdenie závisia od podporovaného nastavenia."
+      },
+      "crowdfund": {
+        "title": "Crowdfund",
+        "summary": "Spoločný cieľ a komunitné zbierky s verejným počítadlom.",
+        "copy": "Pripravte komunitnú kampaň s cieľom, termínom a úrovňami príspevkov. Verejná stránka vysvetlí zámer projektu a zobrazí priebeh kampane.",
+        "note": "Ide o ilustráciu kampane, nie reálnu zbierku ani prísľub výsledku. Dostupnosť nástrojov a limity overte v účte a cenníku.",
+        "example": "Zámer: spoločné vybavenie dielne. Úrovne príspevkov a verejná stránka pomáhajú komunite sledovať projekt."
+      },
+      "exports": {
+        "title": "Exporty dát",
+        "summary": "CSV a XLSX reporty pre vašu účtovníčku.",
+        "copy": "Použite filtre v zozname a pripravte údaje na ďalšie spracovanie v CSV alebo XLSX. Exporty pokrývajú napríklad platby obchodu aj firemné doklady.",
+        "note": "Stĺpce a dostupné formáty závisia od zoznamu a plánu. Príklad ukazuje typ údajov, nie presnú hlavičku exportu.",
+        "example": "Dátum · stav · suma · mena. Zoznam → filtre obdobia a stavu → súbor pre tabuľku alebo účtovníctvo."
+      },
+      "cashu": {
+        "title": "Cashu",
+        "summary": "Voliteľné e-cash vyrovnanie cez vybraný mint.",
+        "copy": "CashuMelt môže slúžiť ako most na vyrovnanie Lightning platieb cez vybraný mint na vašu Lightning adresu. Zákazník platí Lightning faktúru, nie ecash tokenmi.",
+        "note": "Beta vyžaduje dôveru vo vybraný mint. Výpadok alebo problém s routovaním môže spôsobiť oneskorenie či stratu; zaplatená faktúra sama osebe nedokazuje dokončené vyrovnanie do peňaženky.",
+        "example": "Lightning platba → vybraný mint → vaša Lightning adresa. Dostupnosť závisí od plánu, modulu a platobnej cesty."
+      },
+      "stores": {
+        "title": "Viac obchodov",
+        "summary": "Správa viacerých prevádzok a projektov v jednom konte.",
+        "copy": "Oddeľte prevádzku, e-shop alebo ďalší projekt do vlastných obchodov a spravujte ich z jedného účtu. Prepínajte podľa toho, ktorému sa práve venujete.",
+        "note": "Každý obchod má vlastné nastavenie. Počet obchodov závisí od plánu a oprávnení; spoločný účet nezlučuje platby ani neobchádza vlastníctvo.",
+        "example": "Váš účet → kamenná prevádzka + e-shop. Dve činnosti, samostatné obchody, jedna nástenka."
+      }
+    },
+    "steps": {
+      "eyebrow": "Od nápadu k prvej platbe",
+      "title": "Začnite v troch krokoch.",
+      "copy": "Najprv základ. Ďalšie nástroje objavíte vtedy, keď ich budete potrebovať.",
+      "step1": {
+        "title": "Vytvorte si účet",
+        "copy": "Zaregistrujte sa a vytvorte obchod pre svoju prevádzku."
+      },
+      "step2": {
+        "title": "Pripojte peňaženku",
+        "copy": "Vyberte podporované pripojenie, napríklad Blink, Blitz, Coinos, Flash alebo peňaženku s podporou LUD21. Podmienky poskytovateľa overte v dokumentácii."
+      },
+      "step3": {
+        "title": "Prijmite platbu",
+        "copy": "Otvorte PoS pokladňu alebo vložte platobný odkaz na web a prijímajte sats."
+      }
+    },
+    "pricing": {
+      "eyebrow": "Férové podmienky",
+      "title": "Začnite základom. Rásť môžete neskôr.",
+      "compare": "Porovnať plány"
+    },
+    "faq": {
+      "eyebrow": "Ešte pred začiatkom",
+      "title": "Časté otázky",
+      "copy": "Všetko o fungovaní a práci s údajmi.",
+      "all": "Všetky otázky a odpovede",
+      "q1": "Čo je SATFLUX a ako súvisí s BTCPay?",
+      "a1": "SATFLUX je rozhranie na správu obchodov, pokladní a firemných dokladov. BTCPay Server na pozadí zabezpečuje platobnú infraštruktúru. Spolu prepájajú každodenné nástroje s otvorenými Bitcoin platbami.",
+      "q2": "Kde končia prijaté bitcoiny?",
+      "a2": "Platby smerujú do peňaženky pripojenej k vášmu obchodu. SATFLUX neposkytuje úschovu bitcoinov. Správa kľúčov a dostupné funkcie závisia od zvoleného poskytovateľa peňaženky a pripojenia; Cashu vyrovnanie má samostatné podmienky dôvery v mint a obnovy.",
+      "q3": "Musím používať všetky funkcie naraz?",
+      "a3": "Nie. Začnite pokladňou na mobile. Fakturáciu, vstupenky či WooCommerce pridáte podľa potreby, svojho plánu a zapnutých modulov."
+    },
+    "cta": {
+      "title": "Váš ďalší pracovný deň. O niečo jednoduchší.",
+      "copy": "Vyberte si jeden nástroj a začnite tam. Založenie účtu je bezplatné."
+    },
+    "details": {
+      "woocommerce": {
+        "title": "WooCommerce",
+        "copy": "Pre e-shop na WordPresse použite SATFLUX for WooCommerce. Zákazník môže zaplatiť objednávku cez Bitcoin platobnú infraštruktúru BTCPay. Plugin patrí do WooCommerce obchodu. Nastavenie a kompatibilitu overte v jeho dokumentácii; platobné tlačidlo na blog je odlišná integrácia."
+      },
+      "lightning": {
+        "title": "Lightning adresy",
+        "copy": "Prijímajte opakované Lightning platby na zapamätateľnú adresu namiesto zdieľania nového odkazu pri každom príspevku. Adresa vyžaduje funkčné Lightning prepojenie vášho obchodu. Hostované adresy používajú výhradne doménu satflux.org; vlastné domény nie sú podporované. Počet adries závisí od plánu. Príklady ukazujú formát, nie návod na pripojenie externej peňaženky."
+      },
+      "paybutton": {
+        "title": "Pay Button",
+        "copy": "Vložte na blog, projektovú stránku alebo jednoduchý web HTML kód vygenerovaný vo svojom obchode. Tlačidlo otvorí platobnú stránku pre Bitcoin alebo Lightning. Hodí sa na príspevky aj jednoduchý produkt. Sumu nastavíte pevne alebo ju necháte na zákazníkovi. Toto je ilustrácia, nie funkčný platobný kód."
+      },
+      "bankqr": {
+        "title": "Bankové QR - SEPA",
+        "copy": "Ponúknite bankový prevod cez podporovaný QR formát vedľa Bitcoinu. Zákazník odošle platbu zo svojej bankovej aplikácie na účet nastavený pre váš obchod. Automatické potvrdenie závisí od podporovanej banky, overeného zdroja a zhody údajov. Pri chýbajúcom alebo nejednoznačnom potvrdení overte úhradu manuálne; zobrazenie QR neznamená zaplatenie. Medzi podporované automatické zdroje aktuálne patrí Fio a Tatra banka."
+      },
+      "exports": {
+        "title": "Exporty dát",
+        "copy": "Použite filtre v zozname a pripravte údaje na ďalšie spracovanie v CSV alebo XLSX. Exporty pokrývajú napríklad platby obchodu aj firemné doklady. Stĺpce a dostupné formáty závisia od zoznamu a plánu. Príklad ukazuje typ údajov, nie presnú hlavičku exportu."
+      },
+      "crowdfund": {
+        "title": "Crowdfund",
+        "copy": "Pripravte komunitnú kampaň s cieľom, termínom a úrovňami príspevkov. Verejná stránka vysvetlí zámer projektu a zobrazí priebeh kampane. Ide o ilustráciu kampane, nie reálnu zbierku ani prísľub výsledku. Dostupnosť nástrojov a limity overte v účte a cenníku."
+      },
+      "local_first": {
+        "title": "Local-first cez Evolu",
+        "copy": "Firmy, kontakty a doklady sú pri local-first fakturácii uložené primárne vo vašom prehliadači cez Evolu. Tento register neukladáme do aplikačnej databázy Satfluxu; synchronizácia je end-to-end šifrovaná. PDF, e-mail a vybrané integrácie môžu využívať serverové spracovanie.",
+        "legacy": "Toto vysvetlenie sa týka local-first režimu. Starší serverový režim má odlišné uloženie dát."
+      },
+      "pos": {
+        "title": "PoS terminál",
+        "copy": "Pokladňa v prehliadači pre obsluhu bez prístupu k zostatku peňaženky."
+      },
+      "companies": {
+        "title": "Firemné profily",
+        "copy": "Firemné profily a PDF faktúry pre SK/CZ či Wyoming LLC."
+      },
+      "matching": {
+        "title": "Párovanie platieb",
+        "copy": "Párujte importované bankové platby s dokladmi podľa variabilného symbolu a skontrolujte ich stav."
+      },
+      "expenses": {
+        "title": "Evidencia nákladov",
+        "copy": "Prijaté faktúry od dodávateľov s kontrolou duplicít a prílohami."
+      },
+      "recurring": {
+        "title": "Pravidelné doklady",
+        "copy": "Pripravte pravidelné faktúry pre predplatné a opakované služby."
+      },
+      "invoice_payment": {
+        "title": "Bitcoin aj prevod",
+        "copy": "Ponúknite na faktúrach podporované možnosti úhrady v Bitcoine aj bankovým prevodom."
+      },
+      "accounting": {
+        "title": "Účtovné exporty",
+        "copy": "Exporty ISDOC a prehľady pre účtovníka."
+      },
+      "tickets": {
+        "title": "Predaj vstupeniek",
+        "copy": "Predávajte vstupenky online bez provízie pre predajné portály."
+      },
+      "checkin": {
+        "title": "QR check-in",
+        "copy": "Overte lístok kamerou telefónu alebo vyhľadajte účastníka pri vstupe."
+      },
+      "raffle": {
+        "title": "Tombola",
+        "copy": "Predávajte losy, žrebujte v aplikácii a zobrazte presenter režim na plátne."
+      }
+    }
   }
 }
