@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import { defineComponent } from "vue";
 import { createRandomBytes, err, idBytesToId, IdBytes, ok, PositiveInt, type CreateWebSocket, type WebSocketOptions, type WebSocketReadyState } from "@evolu/common";
-import { createAppOwner, createOwnerSecret, createOwnerWebSocketTransport, createProtocolMessageBuffer, MessageType, ProtocolErrorCode } from "@evolu/common/local-first";
+import { createAppOwner, createOwnerSecret, createOwnerWebSocketTransport, createProtocolMessageBuffer, MessageType, ProtocolErrorCode, SubscriptionFlags } from "@evolu/common/local-first";
 import {
     RELAY_CONNECTION_HEARTBEAT_MS,
     RELAY_CONNECTION_STALE_MS,
@@ -119,6 +119,69 @@ describe("observed Evolu worker sockets", () => {
         b[Symbol.dispose]();
         subscription.dispose();
         observer.dispose();
+    });
+
+    it("coalesces bulk protocol traffic while preserving frame delivery, fresh heartbeats and explicit replies", () => {
+        const sdk = sockets(); const channel = new Channel();
+        const observer = createObservedRelayWebSockets(sdk.create, () => channel);
+        const onMessage = vi.fn();
+        const socket = observer.createWebSocket(A, { onMessage });
+        const handle = sdk.handles[0]!;
+        const owner = idBytesToId(IdBytes.orThrow(new Uint8Array(16).fill(1)));
+        const request = createProtocolMessageBuffer(owner as never, { messageType: MessageType.Request }).unwrap();
+        const response = createProtocolMessageBuffer(owner as never, { messageType: MessageType.Response, errorCode: ProtocolErrorCode.NoError }).unwrap().slice().buffer as ArrayBuffer;
+        try {
+            socket.send(request);
+            handle.options.onMessage?.(response);
+            const steadyCount = channel.messages.length;
+            for (let i = 0; i < 1_000; i++) {
+                socket.send(request);
+                handle.options.onMessage?.(response);
+            }
+            expect(channel.messages.length - steadyCount).toBe(0);
+            expect(handle.send).toHaveBeenCalledTimes(1_001);
+            expect(onMessage).toHaveBeenCalledTimes(1_001);
+            expect(onMessage.mock.calls.every(([frame]) => frame === response)).toBe(true);
+
+            vi.advanceTimersByTime(2_000);
+            handle.options.onMessage?.(response);
+            expect(channel.messages).toHaveLength(steadyCount);
+            vi.advanceTimersByTime(RELAY_CONNECTION_HEARTBEAT_MS - 2_000);
+            expect(channel.messages).toHaveLength(steadyCount + 1);
+            const heartbeat = channel.messages.at(-1) as RelayConnectionSnapshot;
+            expect(heartbeat.connections[0]?.protocol).toEqual({ state: "response_received", observedAt: 3_000 });
+
+            channel.onmessage?.call(channel as unknown as BroadcastChannel, {
+                data: { type: "request", requestId: "perf-refresh" },
+            } as MessageEvent);
+            expect(channel.messages).toHaveLength(steadyCount + 2);
+            expect((channel.messages.at(-1) as RelayConnectionSnapshot).requestId).toBe("perf-refresh");
+        } finally { socket[Symbol.dispose](); observer.dispose(); }
+    });
+
+    it("publishes protocol changes immediately for quota, fresh-request recovery and unsubscribe", () => {
+        const sdk = sockets(); const channel = new Channel();
+        const observer = createObservedRelayWebSockets(sdk.create, () => channel);
+        const socket = observer.createWebSocket(A);
+        const owner = idBytesToId(IdBytes.orThrow(new Uint8Array(16).fill(1)));
+        const request = createProtocolMessageBuffer(owner as never, { messageType: MessageType.Request }).unwrap();
+        const response = (errorCode: 0 | 3) => createProtocolMessageBuffer(owner as never, { messageType: MessageType.Response, errorCode }).unwrap().slice().buffer as ArrayBuffer;
+        try {
+            socket.send(request);
+            const beforeQuota = channel.messages.length;
+            sdk.handles[0]!.options.onMessage?.(response(ProtocolErrorCode.QuotaError));
+            expect(channel.messages).toHaveLength(beforeQuota + 1);
+            expect((channel.messages.at(-1) as RelayConnectionSnapshot).connections[0]?.protocol?.state).toBe("quota_exceeded");
+            socket.send(request);
+            expect(channel.messages).toHaveLength(beforeQuota + 1);
+            sdk.handles[0]!.options.onMessage?.(response(ProtocolErrorCode.NoError));
+            expect(channel.messages).toHaveLength(beforeQuota + 2);
+            sdk.handles[0]!.options.onMessage?.(response(ProtocolErrorCode.QuotaError));
+            const beforeUnsubscribe = channel.messages.length;
+            socket.send(createProtocolMessageBuffer(owner as never, { messageType: MessageType.Request, subscriptionFlag: SubscriptionFlags.Unsubscribe }).unwrap());
+            expect(channel.messages).toHaveLength(beforeUnsubscribe + 1);
+            expect((channel.messages.at(-1) as RelayConnectionSnapshot).connections[0]?.protocol?.state).toBe("unknown");
+        } finally { socket[Symbol.dispose](); observer.dispose(); }
     });
 
     it("keeps route and owner quota evidence independent of open sockets, other owners and reconnection", () => {

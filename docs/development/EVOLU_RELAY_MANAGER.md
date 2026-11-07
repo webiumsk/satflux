@@ -1,5 +1,22 @@
 # Evolu relay manager
 
+## Protocol snapshot publication performance - 2026-11-07
+
+Verified the review finding on `fdaeb583`: a steady burst of1,000 request/reply
+pairs generated2,000 redundant BroadcastChannel snapshots. Both observer paths
+still process every frame/send, but publish immediately only when their sanitized
+protocol enum changes. The five-second heartbeat keeps fresh timestamps, explicit
+snapshot requests still reply immediately, and quota/recovery/unsubscribe remain
+immediate. No client/schema/lifecycle/provider/authority behavior changes.
+
+Two regressions fail before the fix and pass after it: zero extra snapshots for
+the same burst, with identical SDK frame delivery, fresh heartbeat and explicit
+request replies. Scoped90 tests/5 files, type110 and scoped ESLint0warnings pass.
+The other32 runtime/63 source entries retain prior accepted bytes. Main owns this
+bounded frequency correction and publication; no new broad security audit is claimed.
+Fresh exact-head CI remains a publication gate; merge/deployment remain separate.
+Private sanitized evidence is in `reviews/evolu-custom-relay/snapshot-performance/`.
+
 ## Per-relay protocol status and Freedomrelay defaults - 2026-11-07
 
 Owner requests separate connection/synchronization status and chooses Satflux plus

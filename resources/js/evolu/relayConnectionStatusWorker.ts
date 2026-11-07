@@ -87,7 +87,13 @@ export function createObservedRelayWebSockets(
             socket = createSocket(url, {
                 ...options,
                 onMessage: data => {
-                    try { if (!disposed && !stopped) { handle.protocol.received(data); publish(); } } catch { /* Observation must not interrupt SDK processing. */ }
+                    try {
+                        if (!disposed && !stopped) {
+                            const before = handle.protocol.snapshot().state;
+                            handle.protocol.received(data);
+                            if (handle.protocol.snapshot().state !== before) publish();
+                        }
+                    } catch { /* Observation must not interrupt SDK processing. */ }
                     onMessage?.(data);
                 },
                 onOpen: () => {
@@ -113,7 +119,11 @@ export function createObservedRelayWebSockets(
             send: data => {
                 const result = socket.send(data);
                 if (result.ok && !disposed && !stopped) {
-                    try { handle.protocol.sent(data); publish(); } catch { /* Preserve the SDK send result. */ }
+                    try {
+                        const before = handle.protocol.snapshot().state;
+                        handle.protocol.sent(data);
+                        if (handle.protocol.snapshot().state !== before) publish();
+                    } catch { /* Preserve the SDK send result. */ }
                 }
                 return result;
             },
