@@ -4,7 +4,7 @@
 
 Multi-tenant web app for merchants to run **BTCPay Server** stores and **Pro business invoicing** (companies, accounting documents, expenses) through a Vue SPA backed by Laravel and the **Greenfield API**.
 
-**Current app version:** `2.0.0` (see `package.json`; `/api/version` reads the same value).
+**App version:** see [`package.json`](package.json); `/api/version` reads the same value. Versions are prepared through [release PRs](docs/development/RELEASE_PROCESS.md).
 
 ## Features
 
@@ -132,7 +132,7 @@ Rollout guide: **[docs/INVOICING_LOCAL_FIRST_ROLLOUT.md](docs/INVOICING_LOCAL_FI
 | Frontend production build | `npm run build`                                              |
 | ESLint (with fix)         | `npm run lint` / `npm run lint:fix`                          |
 | Frontend unit tests       | `npm run test`                                               |
-| Semver bump               | `npm run version:patch` / `version:minor` / `version:major`  |
+| Prepare a release         | Review the automated [release PR](docs/development/RELEASE_PROCESS.md) |
 | PHPUnit                   | `docker-compose exec php php artisan test`                   |
 | Single test               | `docker-compose exec php php artisan test --filter=TestName` |
 | PHP style (Pint)          | `docker-compose exec php vendor/bin/pint`                    |
