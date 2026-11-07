@@ -323,47 +323,75 @@ export function hasEvoluOwnerRestoreBeenAttempted(): boolean {
     return sessionStorage.getItem(EVOLU_OWNER_RESTORE_ATTEMPTED_KEY) === "1";
 }
 
+/**
+ * Bind the local Evolu owner and migrate existing rows while an optional initiating context remains current.
+ * A lost context throws before newly scheduled mutations; already submitted SDK/row commits are not rolled back.
+ * Existing callers without a predicate retain their normal initialization and result contract.
+ */
 export async function initEvoluFromAccountSeedIfNeeded(
     mnemonic: string,
+    isCurrent?: () => boolean,
 ): Promise<EvoluAccountSeedInitResult> {
+    /** Stop new mutations after the caller's account or initiating flow becomes obsolete. */
+    function assertCurrent(): void {
+        if (isCurrent && !isCurrent()) throw new Error("recovery_context_changed");
+    }
+    assertCurrent();
     const evoluMnemonic = deriveEvoluOwnerMnemonic(mnemonic);
     const { evolu } = await import("@/evolu/client");
+    assertCurrent();
     // Fail fast (instead of the 60s bootstrap cap) when the worker never
     // initializes - every operation below would hang on it.
     await awaitEvoluReady(evolu);
+    assertCurrent();
     const { isEvoluRelaySyncPending, markEvoluRelaySyncPending, waitForInvoicingRelaySync } =
         await import("@/evolu/relaySyncWait");
+    assertCurrent();
     const { ensureEvoluRelaySubscription } = await import("@/evolu/evoluRelaySubscription");
+    assertCurrent();
     const {
         restoreInvoicingSnapshotAsync,
         snapshotHasInvoicingData,
         snapshotInvoicingData,
     } = await import("@/evolu/invoicingSnapshot");
+    assertCurrent();
     type InvoicingDataSnapshot = Awaited<ReturnType<typeof snapshotInvoicingData>>;
 
     const pendingSnapshotRaw = sessionStorage.getItem(PENDING_OWNER_MIGRATION_SNAPSHOT_KEY);
     if (pendingSnapshotRaw) {
-        sessionStorage.removeItem(PENDING_OWNER_MIGRATION_SNAPSHOT_KEY);
+        // A guarded restore keeps its recovery snapshot until completion; a
+        // cancelled old flow must not discard data a later flow may still need.
+        if (!isCurrent) sessionStorage.removeItem(PENDING_OWNER_MIGRATION_SNAPSHOT_KEY);
         try {
             const pendingSnapshot = JSON.parse(pendingSnapshotRaw) as InvoicingDataSnapshot;
             if (snapshotHasInvoicingData(pendingSnapshot)) {
                 markEvoluRelaySyncPending();
-                await restoreInvoicingSnapshotAsync(evolu, pendingSnapshot);
+                await restoreInvoicingSnapshotAsync(evolu, pendingSnapshot, isCurrent);
+                assertCurrent();
                 await ensureEvoluRelaySubscription(evolu);
+                assertCurrent();
                 await waitForInvoicingRelaySync(evolu);
+                assertCurrent();
+                if (isCurrent) sessionStorage.removeItem(PENDING_OWNER_MIGRATION_SNAPSHOT_KEY);
                 return "migrated_legacy_owner";
             }
+            if (isCurrent) sessionStorage.removeItem(PENDING_OWNER_MIGRATION_SNAPSHOT_KEY);
         } catch {
+            assertCurrent();
+            if (isCurrent) sessionStorage.removeItem(PENDING_OWNER_MIGRATION_SNAPSHOT_KEY);
             // Corrupt pending snapshot - continue with normal init.
         }
     }
 
     const owner = await evolu.appOwner;
+    assertCurrent();
     if (isTargetEvoluOwner(owner.mnemonic, mnemonic)) {
         clearEvoluOwnerRestoreAttempted();
         await ensureEvoluRelaySubscription(evolu);
+        assertCurrent();
         if (isEvoluRelaySyncPending()) {
             const synced = await waitForInvoicingRelaySync(evolu);
+            assertCurrent();
             return synced ? "relay_synced" : "already_synced";
         }
         return "already_synced";
@@ -371,51 +399,65 @@ export async function initEvoluFromAccountSeedIfNeeded(
 
     if (hasEvoluOwnerRestoreBeenAttempted()) {
         const ownerAfterAttempt = await evolu.appOwner;
+        assertCurrent();
         if (isTargetEvoluOwner(ownerAfterAttempt.mnemonic, mnemonic)) {
             clearEvoluOwnerRestoreAttempted();
             await ensureEvoluRelaySubscription(evolu);
+            assertCurrent();
             return "already_synced";
         }
         return "owner_restore_failed";
     }
 
     const snapshot = await snapshotInvoicingData(evolu);
+    assertCurrent();
     const hasData = snapshotHasInvoicingData(snapshot);
     const wrongOwner = owner.mnemonic != null && owner.mnemonic !== evoluMnemonic;
 
+    /** Restore only while the initiating context still owns the operation, including per-row checks. */
     async function restoreInvoicingAfterOwnerReset(
         dataSnapshot: InvoicingDataSnapshot,
     ): Promise<void> {
+        assertCurrent();
         if (!snapshotHasInvoicingData(dataSnapshot)) {
             return;
         }
         markEvoluRelaySyncPending();
-        await restoreInvoicingSnapshotAsync(evolu, dataSnapshot);
+        await restoreInvoicingSnapshotAsync(evolu, dataSnapshot, isCurrent);
+        assertCurrent();
         await ensureEvoluRelaySubscription(evolu);
+        assertCurrent();
         await waitForInvoicingRelaySync(evolu);
+        assertCurrent();
     }
 
+    /** Validate a completed restore without scheduling flags or subscriptions for an obsolete flow. */
     async function finishAfterOwnerRestore(
         result: "restored" | "migrated_legacy_owner",
     ): Promise<EvoluAccountSeedInitResult> {
         const ownerAfterRestore = await evolu.appOwner;
+        assertCurrent();
         if (!isTargetEvoluOwner(ownerAfterRestore.mnemonic, mnemonic)) {
             markEvoluOwnerRestoreAttempted();
             return "owner_restore_failed";
         }
         clearEvoluOwnerRestoreAttempted();
         await ensureEvoluRelaySubscription(evolu);
+        assertCurrent();
         return result;
     }
 
     if (wrongOwner && hasData) {
         markEvoluRelaySyncPending();
         await evolu.restoreAppOwner(evoluMnemonic, { reload: false });
+        assertCurrent();
         await restoreInvoicingAfterOwnerReset(snapshot);
+        assertCurrent();
         return finishAfterOwnerRestore("migrated_legacy_owner");
     }
 
     markEvoluRelaySyncPending();
     await evolu.restoreAppOwner(evoluMnemonic, { reload: false });
+    assertCurrent();
     return finishAfterOwnerRestore("restored");
 }

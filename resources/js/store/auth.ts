@@ -546,14 +546,13 @@ export const useAuthStore = defineStore('auth', () => {
      * legacy email migration). Dedicated endpoint: /auth/guest never attaches
      * a key to an existing session's account.
      */
-    async function enrollGuestRecoveryPublicKey(recoveryPublicKeyHex: string) {
+    async function enrollGuestRecoveryPublicKey(recoveryPublicKeyHex: string, expectedUserId: number | null = user.value?.id ?? null) {
         synchronizeLogout();
         const generation = logoutGeneration;
         profileReadSequence++;
-        // Capture before awaiting CSRF setup: another tab can switch the shared
-        // session while this tab still displays the original account.
-        const expectedUserId = user.value?.id;
-        if (expectedUserId == null) {
+        // A multi-step wizard supplies its opening account. Other callers capture
+        // the current account before CSRF; explicit null must never fall back.
+        if (expectedUserId == null || user.value?.id == null) {
             throw new Error('Recovery enrollment requires a signed-in account.');
         }
         loading.value = true;

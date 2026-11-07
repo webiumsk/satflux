@@ -405,7 +405,7 @@
             v-else
             type="button"
             class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
-            @click="showRecoveryBackupWizard = true"
+            @click="openRecoveryBackupWizard"
           >
             {{ t("account.recovery_phrase_setup") }}
           </button>
@@ -1522,8 +1522,8 @@
 
       <GuestBackupWizardModal
         :open="showRecoveryBackupWizard"
-        @close="showRecoveryBackupWizard = false"
-        @done="handleRecoveryEnrolled"
+        @close="recoveryBackupClose"
+        @done="recoveryBackupDone"
       />
     </div>
     <AppFooter class="hidden md:block" />
@@ -1679,6 +1679,13 @@ const loadingSubscription = ref(false);
 
 const showGuestSeedModal = ref(false);
 const showRecoveryBackupWizard = ref(false);
+type RecoveryEnrollmentPayload = { recoveryPublicKeyHex: string; mnemonic: string };
+type RecoveryEnrollmentContext = { readonly accountId: number; readonly accountGeneration: number; readonly flowGeneration: number };
+let recoveryBackupFlowGeneration = 0;
+let recoveryBackupContext: RecoveryEnrollmentContext | null = null;
+const recoveryBackupDone = ref<((payload: RecoveryEnrollmentPayload) => Promise<void>) | undefined>();
+const recoveryBackupClose = ref<(() => void) | undefined>();
+onUnmounted(() => { recoveryBackupFlowGeneration++; recoveryBackupContext = null; });
 const showRestoreOnDeviceModal = ref(false);
 watch(showRestoreOnDeviceModal, (open) => {
   if (open) {
@@ -2475,26 +2482,76 @@ async function copyStoredSeed() {
   }
 }
 
-async function handleRecoveryEnrolled(payload: {
-  recoveryPublicKeyHex: string;
-  mnemonic: string;
-}) {
+/** Bind this wizard opening to the account that chose to create a recovery phrase. */
+function openRecoveryBackupWizard(): void {
+  if (showRecoveryBackupWizard.value) return;
+  const accountId = authStore.user?.id;
+  const flowGeneration = ++recoveryBackupFlowGeneration;
+  if (accountId == null) {
+    recoveryBackupContext = null;
+    recoveryBackupDone.value = undefined;
+    recoveryBackupClose.value = undefined;
+    flashStore.error(t("account.recovery_phrase_save_failed"));
+    return;
+  }
+  const context = { accountId, accountGeneration: restoreOwnerSwitchAccountGeneration, flowGeneration };
+  recoveryBackupContext = context;
+  recoveryBackupDone.value = payload => handleRecoveryEnrolled(payload, context);
+  recoveryBackupClose.value = () => closeRecoveryBackupWizard(context);
+  showRecoveryBackupWizard.value = true;
+}
+
+/** Invalidate a cancelled opening while ignoring the wizard's synchronous close after done. */
+function closeRecoveryBackupWizard(context: RecoveryEnrollmentContext): void {
+  if (!showRecoveryBackupWizard.value || recoveryBackupContext !== context
+    || context.flowGeneration !== recoveryBackupFlowGeneration) return;
+  showRecoveryBackupWizard.value = false;
+  recoveryBackupFlowGeneration++;
+  recoveryBackupContext = null;
+  recoveryBackupDone.value = undefined;
+  recoveryBackupClose.value = undefined;
+}
+
+/** Guard local phrase binding and UI completion against account changes or a newer wizard opening. */
+function isCurrentRecoveryEnrollment(context: RecoveryEnrollmentContext): boolean {
+  return context.flowGeneration === recoveryBackupFlowGeneration
+    && context.accountGeneration === restoreOwnerSwitchAccountGeneration
+    && authStore.user?.id === context.accountId;
+}
+
+/** Enroll only the opening account; obsolete callbacks cannot bind secrets or affect a later flow. */
+async function handleRecoveryEnrolled(payload: RecoveryEnrollmentPayload, context: RecoveryEnrollmentContext): Promise<void> {
+  if (recoveryBackupContext !== context || context.flowGeneration !== recoveryBackupFlowGeneration) return;
+  recoveryBackupContext = null;
+  recoveryBackupDone.value = undefined;
+  recoveryBackupClose.value = undefined;
   showRecoveryBackupWizard.value = false;
   try {
-    await authStore.enrollGuestRecoveryPublicKey(payload.recoveryPublicKeyHex);
+    // A different current account must reach the server with the original ID so
+    // its account_changed guard remains authoritative. Returning to the original
+    // account after an intervening switch still requires a new wizard opening.
+    if (authStore.user?.id === context.accountId
+      && context.accountGeneration !== restoreOwnerSwitchAccountGeneration) {
+      throw new Error("Recovery enrollment account changed");
+    }
+    await authStore.enrollGuestRecoveryPublicKey(payload.recoveryPublicKeyHex, context.accountId);
+    if (!isCurrentRecoveryEnrollment(context)) return;
     storeGuestMnemonic(payload.mnemonic);
     try {
-      await initEvoluFromAccountSeedIfNeeded(payload.mnemonic);
+      await initEvoluFromAccountSeedIfNeeded(payload.mnemonic, () => isCurrentRecoveryEnrollment(context));
     } catch (evoluError) {
+      if (!isCurrentRecoveryEnrollment(context)) return;
       // Enrollment succeeded server-side; unavailable local-first storage
       // (private window without OPFS) must not report it as failed.
       if (!isEvoluUnavailableError(evoluError)) {
         throw evoluError;
       }
     }
+    if (!isCurrentRecoveryEnrollment(context)) return;
     storedGuestMnemonic.value = payload.mnemonic;
     flashStore.success(t("account.recovery_phrase_saved"));
   } catch (rawError) {
+    if (context.flowGeneration !== recoveryBackupFlowGeneration) return;
     const e = asApiError(rawError);
     flashStore.error(
       e?.response?.data?.message || t("account.recovery_phrase_save_failed"),

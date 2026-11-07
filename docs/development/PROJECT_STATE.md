@@ -1,5 +1,23 @@
 # Project state
 
+## PR432 recovery enrollment CI correction - 2026-11-07
+
+CI42353889750 on `4fab39c6` failed only the unchanged recovery-enrollment E2E:
+a Profile wizard opened for A submitted refreshed account B (expected409, got200).
+Independent browser reproduction confirms the failure. The wizard now preserves
+its opening account/flow; stale completion cannot bind local phrases or update a
+later flow. Optional current-context guards stop new owner/snapshot work after
+invalidation, preserving existing callers. Already submitted work cannot roll back.
+
+Independent security29/4 accepts runtime32 `74de89b0...5fa619` / source62
+`49872677...6499c9`; QA84/7 focused checks pass. Every frozen byte matches.
+Main lint48/52, type110, locale parity and CI-flags production build pass.
+Main frontend2,179/203 and browser24pass/3existing conditional skips pass without retries.
+Original409 and subsequent enrollment/restore/logout checks pass unchanged. Main owns
+scoped corrective publication and new-head CI verification.
+PR432 is open/unmerged; merge and deployment remain separate pending owner gates.
+Evidence: `EVOLU_RELAY_MANAGER.md` and private `reviews/evolu-custom-relay/ci-recovery/`.
+
 ## PR432 relay origins and canonical cache review - 2026-11-07
 
 Both outside-diff findings reproduce on published `b84d82a6` and are corrected.

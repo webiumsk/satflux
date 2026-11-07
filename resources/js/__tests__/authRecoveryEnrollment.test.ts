@@ -56,3 +56,37 @@ it("does not enroll when this tab has no authenticated account", async () => {
     await expect(useAuthStore().enrollGuestRecoveryPublicKey("a".repeat(64))).rejects.toThrow("signed-in account");
     expect(mocks.post).not.toHaveBeenCalled();
 });
+
+
+it("sends the explicit wizard-opening account instead of a newer canonical profile account", async () => {
+    const { useAuthStore } = await import("../store/auth");
+    const store = useAuthStore();
+    store.user = { id: 8, email: "current@example.test" };
+    const mismatch = { response: { status: 409, data: { code: "account_changed" } } };
+    mocks.post.mockRejectedValueOnce(mismatch);
+    await expect(store.enrollGuestRecoveryPublicKey("a".repeat(64), 7)).rejects.toBe(mismatch);
+    expect(mocks.post).toHaveBeenCalledWith("/account/recovery-key", {
+        expected_user_id: 7, recovery_public_key: "a".repeat(64),
+    });
+    expect(mocks.get).not.toHaveBeenCalled();
+    store.$dispose();
+});
+
+it("never substitutes the current account for an explicitly absent opening account", async () => {
+    const { useAuthStore } = await import("../store/auth");
+    const store = useAuthStore();
+    store.user = { id: 8, email: "current@example.test" };
+    await expect(store.enrollGuestRecoveryPublicKey("a".repeat(64), null)).rejects.toThrow("signed-in account");
+    expect(mocks.post).not.toHaveBeenCalled();
+    store.$dispose();
+});
+
+
+it("rejects an explicit former account when the current local session has already signed out", async () => {
+    const { useAuthStore } = await import("../store/auth");
+    const store = useAuthStore();
+    store.user = null;
+    await expect(store.enrollGuestRecoveryPublicKey("a".repeat(64), 7)).rejects.toThrow("signed-in account");
+    expect(mocks.post).not.toHaveBeenCalled();
+    store.$dispose();
+});

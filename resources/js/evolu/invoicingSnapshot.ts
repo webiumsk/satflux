@@ -180,11 +180,13 @@ export async function restoreInvoicingSnapshot(
     return (await restoreInvoicingSnapshotDetailedAsync(evolu, snapshot)).upserted;
 }
 
+/** Restore committed rows with an optional current-context predicate forwarded to every mutation boundary. */
 export async function restoreInvoicingSnapshotAsync(
     evolu: Evolu<InvoicingLocalSchema>,
     snapshot: InvoicingDataSnapshot,
+    isCurrent?: () => boolean,
 ): Promise<number> {
-    return (await restoreInvoicingSnapshotDetailedAsync(evolu, snapshot)).upserted;
+    return (await restoreInvoicingSnapshotDetailedAsync(evolu, snapshot, isCurrent)).upserted;
 }
 
 export type SnapshotRestoreFailure = {
@@ -220,18 +222,28 @@ export async function restoreInvoicingSnapshotDetailed(
 /**
  * Restore allowlisted rows in dependency order under the maintenance gate, awaiting each committed result.
  * Report known row rejections; share-secret rows and the local coordination marker are outside the restore allowlist.
+ * Optional currentness checks stop newly scheduled rows after waits; already issued commits are not rolled back.
  */
 export async function restoreInvoicingSnapshotDetailedAsync(
     evolu: Evolu<InvoicingLocalSchema>,
     snapshot: InvoicingDataSnapshot,
+    isCurrent?: () => boolean,
 ): Promise<SnapshotRestoreReport> {
+    /** Stop newly scheduled writes without attempting to roll back already submitted row commits. */
+    function assertCurrent(): void {
+        if (isCurrent && !isCurrent()) throw new Error("recovery_context_changed");
+    }
+    assertCurrent();
     return withExpenseMaintenance(evolu, async (scope) => {
+    assertCurrent();
     evolu = scope.evolu;
     let upserted = 0;
     const failed: SnapshotRestoreFailure[] = [];
     for (const table of UPSERT_ORDER) {
         for (const row of snapshot[table] ?? []) {
+            assertCurrent();
             const result = await upsertRowAwait(evolu, table, row as Record<string, unknown>);
+            assertCurrent();
             if (result.ok) {
                 upserted += 1;
             } else {

@@ -1,5 +1,42 @@
 # Evolu relay manager
 
+## Recovery enrollment CI correction - 2026-11-07
+
+The only failure in CI42353889750 (`4fab39c6`) is the existing multi-tab Profile
+recovery enrollment scenario: expected409 account_changed, received200. An
+independent real-browser run reproduces it with the same unmodified spec and CI
+build flags. Background canonical profile refresh exposes a target captured only
+at final submission. The server correctly checks the ID it receives; the client
+must preserve the wizard-opening account instead of adopting a newer profile ID.
+
+Each Profile opening now captures account/flow generations and an immutable done
+callback. Explicit expected IDs reach the existing server guard; null intent never
+falls back. Changed-account, ABA, unmounted and obsolete completions cannot bind
+local phrases or affect a reopened wizard. Optional current-context predicates in
+local initialization/snapshot restoration stop new owner/flag/subscription work
+after waits and stop queued/next row writes. Already submitted SDK/row/setup work
+cannot be cancelled or rolled back; canonical lifecycle still gates transport
+identity. Existing callers without the opt-in guard retain their behavior.
+
+The correction is eight source/test paths. Frozen runtime32 `74de89b0...5fa619`
+and source62 `49872677...6499c9` are independently verified before/after review.
+Security29/4 accepts; QA84/7 focused checks pass, including native snapshots and
+existing default callers. Main lint48/52, type110, locale parity and CI build pass.
+Local AST documents86/86 changed complexity-qualified TS/Vue named functions;
+unchanged PHP evidence remains separate. No fresh external docstring pass is inferred.
+Main full frontend2,179/203 and browser24pass/3existing Free-PRO conditional skips
+pass without retries. All original recovery assertions remain:409 account_changed,
+CSRF419, intentional enrollment, new-device restore, store cleanup and cross-tab
+logout. All enabled checkout/signed-settlement cases pass too. Main owns scoped
+publication and exact-head CI verification; prior CI failure is not counted as green.
+
+This is a bounded Profile correction; other enrollment callers are not claimed as
+a new complete recovery audit. No E2E assertion, dependency, baseline, locale string,
+backend authorization, cryptography or relay fail-closed policy is weakened. Private
+sanitized reports/fixtures/manifests stay in `reviews/evolu-custom-relay/ci-recovery/`.
+No raw browser state, generated phrase or trace is retained there. Merge and
+deployment remain separate pending gates.
+
 ## IP origins and canonical cache confirmation review - 2026-11-07
 
 Both supplied outside-diff findings reproduce against `b84d82a6`. Canonicalize

@@ -27,6 +27,9 @@ const mocks = vi.hoisted(() => ({
     apiPost: vi.fn(),
     apiPut: vi.fn(),
     fetchUser: vi.fn(),
+    enrollGuestRecoveryPublicKey: vi.fn(),
+    storeGuestMnemonic: vi.fn(),
+    initEvoluFromAccountSeedIfNeeded: vi.fn(),
     reconcileEvoluRelayPreferenceFromProfile: vi.fn(),
     resumeEvoluRelaySyncOnDevice: vi.fn(),
     captureLocalDefaultRelayOwnerConfirmation: vi.fn(),
@@ -62,7 +65,7 @@ vi.mock("../store/auth", async () => {
             reconcileEvoluRelayPreferenceFromProfile: mocks.reconcileEvoluRelayPreferenceFromProfile,
             resumeEvoluRelaySyncOnDevice: mocks.resumeEvoluRelaySyncOnDevice,
             captureLocalDefaultRelayOwnerConfirmation: mocks.captureLocalDefaultRelayOwnerConfirmation,
-            enrollGuestRecoveryPublicKey: vi.fn(),
+            enrollGuestRecoveryPublicKey: mocks.enrollGuestRecoveryPublicKey,
         }),
     };
 });
@@ -135,11 +138,11 @@ vi.mock("../services/api", () => ({
 
 vi.mock("../services/guestRecovery", () => ({
     getStoredGuestMnemonic: vi.fn(() => null),
-    storeGuestMnemonic: vi.fn(),
+    storeGuestMnemonic: mocks.storeGuestMnemonic,
 }));
 
 vi.mock("../services/accountSeed", () => ({
-    initEvoluFromAccountSeedIfNeeded: vi.fn(async () => "already_synced"),
+    initEvoluFromAccountSeedIfNeeded: mocks.initEvoluFromAccountSeedIfNeeded,
     bindRecoveryPhraseOnThisDevice: mocks.bindRecoveryPhraseOnThisDevice,
     clearSessionAccountMnemonic: mocks.clearSessionAccountMnemonic,
     deriveRecoveryPublicKeyHex: vi.fn((phrase: string) => `pk:${phrase}`),
@@ -297,6 +300,8 @@ async function mountProfile(): Promise<VueWrapper> {
 describe("Profile recovery phrase owner switch guard", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mocks.enrollGuestRecoveryPublicKey.mockResolvedValue({ user: { id: 1 } });
+        mocks.initEvoluFromAccountSeedIfNeeded.mockResolvedValue("already_synced");
         mocks.fetchUser.mockResolvedValue(true);
         mocks.resumeEvoluRelaySyncOnDevice.mockResolvedValue(true);
         vi.mocked(readRelayOverride).mockReturnValue({ kind: "none" });
@@ -338,6 +343,181 @@ describe("Profile recovery phrase owner switch guard", () => {
             },
         });
         mocks.invoicingCompaniesList.mockResolvedValue([]);
+    });
+
+    it("keeps Profile enrollment bound to the wizard-opening account after canonical background refresh", async () => {
+        mocks.route.query = {};
+        mocks.user = { ...mocks.user!, guest_recovery_enrolled: false };
+        const mismatch = { response: { status: 409, data: { code: "account_changed", message: "The signed-in account changed." } } };
+        mocks.enrollGuestRecoveryPublicKey.mockRejectedValueOnce(mismatch);
+        const wrapper = await mountProfile();
+        await findButton(wrapper, "account.recovery_phrase_setup").trigger("click");
+        const wizard = wrapper.getComponent({ name: "GuestBackupWizardModal" });
+        expect(wizard.props("open")).toBe(true);
+        mocks.user = { ...mocks.user!, id: 2 };
+        wizard.vm.$emit("done", { recoveryPublicKeyHex: "a".repeat(64), mnemonic: "synthetic account-one phrase" });
+        await flushPromises();
+        expect(mocks.enrollGuestRecoveryPublicKey).toHaveBeenCalledWith("a".repeat(64), 1);
+        expect(mocks.storeGuestMnemonic).not.toHaveBeenCalled();
+        expect(mocks.initEvoluFromAccountSeedIfNeeded).not.toHaveBeenCalled();
+        expect(mocks.flashError).toHaveBeenCalledWith("The signed-in account changed.");
+        wrapper.unmount();
+    });
+
+    it("rejects stale Profile enrollment after the account changes away and back", async () => {
+        mocks.route.query = {};
+        mocks.user = { ...mocks.user!, guest_recovery_enrolled: false };
+        const wrapper = await mountProfile();
+        await findButton(wrapper, "account.recovery_phrase_setup").trigger("click");
+        const original = mocks.user!;
+        mocks.user = { ...original, id: 2 };
+        mocks.user = original;
+        wrapper.getComponent({ name: "GuestBackupWizardModal" }).vm.$emit("done", {
+            recoveryPublicKeyHex: "a".repeat(64), mnemonic: "synthetic stale phrase",
+        });
+        await flushPromises();
+        expect(mocks.enrollGuestRecoveryPublicKey).not.toHaveBeenCalled();
+        expect(mocks.storeGuestMnemonic).not.toHaveBeenCalled();
+        expect(mocks.flashError).toHaveBeenCalledWith("account.recovery_phrase_save_failed");
+        wrapper.unmount();
+    });
+
+    it("recaptures the intended account when the Profile backup wizard is closed and reopened", async () => {
+        mocks.route.query = {};
+        mocks.user = { ...mocks.user!, guest_recovery_enrolled: false };
+        const wrapper = await mountProfile();
+        await findButton(wrapper, "account.recovery_phrase_setup").trigger("click");
+        const wizard = wrapper.getComponent({ name: "GuestBackupWizardModal" });
+        wizard.vm.$emit("close");
+        mocks.user = { ...mocks.user!, id: 2 };
+        await findButton(wrapper, "account.recovery_phrase_setup").trigger("click");
+        wizard.vm.$emit("done", { recoveryPublicKeyHex: "b".repeat(64), mnemonic: "synthetic account-two phrase" });
+        wizard.vm.$emit("close");
+        await flushPromises();
+        expect(mocks.enrollGuestRecoveryPublicKey).toHaveBeenCalledWith("b".repeat(64), 2);
+        expect(mocks.storeGuestMnemonic).toHaveBeenCalledWith("synthetic account-two phrase");
+        expect(mocks.flashSuccess).toHaveBeenCalledWith("account.recovery_phrase_saved");
+        wrapper.unmount();
+    });
+
+    it("does not let a previous pending enrollment bind its phrase or close a newly opened wizard", async () => {
+        mocks.route.query = {};
+        mocks.user = { ...mocks.user!, guest_recovery_enrolled: false };
+        let finish!: (value: unknown) => void;
+        mocks.enrollGuestRecoveryPublicKey.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+        const wrapper = await mountProfile();
+        await findButton(wrapper, "account.recovery_phrase_setup").trigger("click");
+        const wizard = wrapper.getComponent({ name: "GuestBackupWizardModal" });
+        wizard.vm.$emit("done", { recoveryPublicKeyHex: "a".repeat(64), mnemonic: "synthetic old phrase" });
+        await flushPromises();
+        mocks.user = { ...mocks.user!, id: 2 };
+        await findButton(wrapper, "account.recovery_phrase_setup").trigger("click");
+        finish({ user: { id: 1 } });
+        await flushPromises();
+        expect(wizard.props("open")).toBe(true);
+        expect(mocks.storeGuestMnemonic).not.toHaveBeenCalled();
+        expect(mocks.initEvoluFromAccountSeedIfNeeded).not.toHaveBeenCalled();
+        expect(mocks.flashSuccess).not.toHaveBeenCalled();
+        wizard.vm.$emit("done", { recoveryPublicKeyHex: "b".repeat(64), mnemonic: "synthetic new phrase" });
+        await flushPromises();
+        expect(mocks.enrollGuestRecoveryPublicKey).toHaveBeenLastCalledWith("b".repeat(64), 2);
+        expect(mocks.storeGuestMnemonic).toHaveBeenCalledTimes(1);
+        expect(mocks.storeGuestMnemonic).toHaveBeenCalledWith("synthetic new phrase");
+        wrapper.unmount();
+    });
+
+    it("ignores backup completion without an opening account context rather than enrolling the current account", async () => {
+        mocks.route.query = {};
+        const wrapper = await mountProfile();
+        wrapper.getComponent({ name: "GuestBackupWizardModal" }).vm.$emit("done", {
+            recoveryPublicKeyHex: "a".repeat(64), mnemonic: "synthetic unbound phrase",
+        });
+        await flushPromises();
+        expect(mocks.enrollGuestRecoveryPublicKey).not.toHaveBeenCalled();
+        expect(mocks.storeGuestMnemonic).not.toHaveBeenCalled();
+        wrapper.unmount();
+    });
+
+    it("ignores retained done and close callbacks from an earlier Profile wizard opening", async () => {
+        mocks.route.query = {};
+        mocks.user = { ...mocks.user!, guest_recovery_enrolled: false };
+        const wrapper = await mountProfile();
+        await findButton(wrapper, "account.recovery_phrase_setup").trigger("click");
+        const wizard = wrapper.getComponent({ name: "GuestBackupWizardModal" });
+        const oldDone = wizard.vm.$.vnode.props?.onDone as (payload: { recoveryPublicKeyHex: string; mnemonic: string }) => Promise<void>;
+        const oldClose = wizard.vm.$.vnode.props?.onClose as () => void;
+        oldClose();
+        mocks.user = { ...mocks.user!, id: 2 };
+        await findButton(wrapper, "account.recovery_phrase_setup").trigger("click");
+        await oldDone({ recoveryPublicKeyHex: "a".repeat(64), mnemonic: "synthetic discarded phrase" });
+        oldClose();
+        await flushPromises();
+        expect(wizard.props("open")).toBe(true);
+        expect(mocks.enrollGuestRecoveryPublicKey).not.toHaveBeenCalled();
+        expect(mocks.storeGuestMnemonic).not.toHaveBeenCalled();
+        wrapper.unmount();
+    });
+
+    it("consumes a Profile opening once when its completion callback is submitted twice", async () => {
+        mocks.route.query = {};
+        mocks.user = { ...mocks.user!, guest_recovery_enrolled: false };
+        let finish!: (value: unknown) => void;
+        mocks.enrollGuestRecoveryPublicKey.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+        const wrapper = await mountProfile();
+        await findButton(wrapper, "account.recovery_phrase_setup").trigger("click");
+        const wizard = wrapper.getComponent({ name: "GuestBackupWizardModal" });
+        const done = wizard.vm.$.vnode.props?.onDone as (payload: { recoveryPublicKeyHex: string; mnemonic: string }) => Promise<void>;
+        const payload = { recoveryPublicKeyHex: "a".repeat(64), mnemonic: "synthetic confirmed phrase" };
+        const first = done(payload);
+        await done(payload);
+        expect(mocks.enrollGuestRecoveryPublicKey).toHaveBeenCalledTimes(1);
+        finish({ user: { id: 1 } });
+        await first;
+        expect(mocks.storeGuestMnemonic).toHaveBeenCalledTimes(1);
+        wrapper.unmount();
+    });
+
+    it("suppresses stale Profile success when the account changes while Evolu initialization waits", async () => {
+        mocks.route.query = {};
+        mocks.user = { ...mocks.user!, guest_recovery_enrolled: false };
+        let finishInit!: (value: string) => void;
+        mocks.initEvoluFromAccountSeedIfNeeded.mockImplementationOnce(() => new Promise(resolve => { finishInit = resolve; }));
+        const wrapper = await mountProfile();
+        await findButton(wrapper, "account.recovery_phrase_setup").trigger("click");
+        wrapper.getComponent({ name: "GuestBackupWizardModal" }).vm.$emit("done", {
+            recoveryPublicKeyHex: "a".repeat(64), mnemonic: "synthetic confirmed phrase",
+        });
+        await flushPromises();
+        expect(mocks.storeGuestMnemonic).toHaveBeenCalledTimes(1);
+        expect(mocks.initEvoluFromAccountSeedIfNeeded).toHaveBeenCalledWith("synthetic confirmed phrase", expect.any(Function));
+        const isCurrent = mocks.initEvoluFromAccountSeedIfNeeded.mock.calls[0][1] as () => boolean;
+        expect(isCurrent()).toBe(true);
+        mocks.user = { ...mocks.user!, id: 2 };
+        expect(isCurrent()).toBe(false);
+        finishInit("already_synced");
+        await flushPromises();
+        expect(mocks.storeGuestMnemonic).toHaveBeenCalledTimes(1);
+        expect(mocks.flashSuccess).not.toHaveBeenCalled();
+        wrapper.unmount();
+    });
+
+    it("does not bind a pending Profile enrollment after the page unmounts", async () => {
+        mocks.route.query = {};
+        mocks.user = { ...mocks.user!, guest_recovery_enrolled: false };
+        let finish!: (value: unknown) => void;
+        mocks.enrollGuestRecoveryPublicKey.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+        const wrapper = await mountProfile();
+        await findButton(wrapper, "account.recovery_phrase_setup").trigger("click");
+        wrapper.getComponent({ name: "GuestBackupWizardModal" }).vm.$emit("done", {
+            recoveryPublicKeyHex: "a".repeat(64), mnemonic: "synthetic pending phrase",
+        });
+        await flushPromises();
+        wrapper.unmount();
+        finish({ user: { id: 1 } });
+        await flushPromises();
+        expect(mocks.storeGuestMnemonic).not.toHaveBeenCalled();
+        expect(mocks.initEvoluFromAccountSeedIfNeeded).not.toHaveBeenCalled();
+        expect(mocks.flashSuccess).not.toHaveBeenCalled();
     });
 
     it("requires confirmation before passkey restore re-links existing local invoicing data", async () => {
