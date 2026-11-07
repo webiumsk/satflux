@@ -121,6 +121,70 @@ class SecurityHeadersTest extends TestCase
         $this->assertStringContainsString('wss://my-relay.example.com', $m[1] ?? '');
     }
 
+    /** Verify enabled origins are isolated from disabled and other-account relays. */
+    #[Test]
+    public function csp_allows_only_this_users_enabled_canonical_relay_origins(): void
+    {
+        config(['security.csp.enabled' => true, 'security.csp.report_only' => false]);
+        $user = User::factory()->create([
+            'evolu_relays' => [
+                ['url' => 'wss://enabled-one.example.com', 'enabled' => true],
+                ['url' => 'wss://disabled.example.com', 'enabled' => false],
+                ['url' => 'wss://enabled-two.example.com:8443', 'enabled' => true],
+            ],
+            'evolu_relay_url' => 'wss://legacy.example.com',
+        ]);
+        User::factory()->create(['evolu_relays' => [['url' => 'wss://other-user.example.com', 'enabled' => true]]]);
+        $this->actingAs($user);
+
+        $policy = (string) $this->get('/')->headers->get('Content-Security-Policy');
+        foreach (['wss://enabled-one.example.com', 'https://enabled-one.example.com',
+            'wss://enabled-two.example.com:8443', 'https://enabled-two.example.com:8443'] as $origin) {
+            $this->assertStringContainsString($origin, $policy);
+        }
+        foreach (['disabled.example.com', 'legacy.example.com', 'other-user.example.com'] as $host) {
+            $this->assertStringNotContainsString($host, $policy);
+        }
+        $this->assertStringContainsString('wss://evolu.satflux.io', $policy);
+        $this->assertStringContainsString('wss://evolu.eu.freedomrelay.dev', $policy);
+    }
+
+    /** The retired testing default is allowed only when explicitly configured for this account. */
+    #[Test]
+    public function csp_preserves_an_explicit_testing_relay_without_allowing_it_as_a_default(): void
+    {
+        config(['security.csp.enabled' => true, 'security.csp.report_only' => false,
+            'security.csp.evolu_relay_url' => '']);
+        $this->assertStringNotContainsString('free.evoluhq.com', (string) $this->get('/')
+            ->headers->get('Content-Security-Policy'));
+
+        $user = User::factory()->create(['evolu_relays' => [
+            ['url' => 'wss://free.evoluhq.com', 'enabled' => true],
+        ]]);
+        $this->actingAs($user);
+        $policy = (string) $this->get('/')->headers->get('Content-Security-Policy');
+        $this->assertStringContainsString('wss://free.evoluhq.com', $policy);
+        $this->assertStringContainsString('https://free.evoluhq.com', $policy);
+        $this->assertStringContainsString('wss://evolu.eu.freedomrelay.dev', $policy);
+    }
+
+    /** Empty or malformed canonical lists must not restore legacy relay permissions. */
+    #[Test]
+    public function csp_does_not_restore_legacy_or_disabled_origins_for_empty_or_invalid_canonical_lists(): void
+    {
+        config(['security.csp.enabled' => true, 'security.csp.report_only' => false]);
+        foreach ([[], [['url' => 'wss://disabled.example.com', 'enabled' => false]],
+            [['url' => 'wss://evil.example.com;script-src *', 'enabled' => true]]] as $relays) {
+            $user = User::factory()->create(['evolu_relays' => $relays, 'evolu_relay_url' => 'wss://legacy.example.com']);
+            $this->actingAs($user);
+
+            $policy = (string) $this->get('/')->headers->get('Content-Security-Policy');
+            foreach (['disabled.example.com', 'legacy.example.com', 'evil.example.com', 'script-src *'] as $fragment) {
+                $this->assertStringNotContainsString($fragment, $policy);
+            }
+        }
+    }
+
     #[Test]
     public function csp_disabled_in_production_fails_closed(): void
     {

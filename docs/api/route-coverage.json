@@ -2,7 +2,7 @@
     "generator": "dedoc/scramble 0.13.49 + reviewed DocumentationSchemas overlays",
     "scope": "Runtime api/* routes, excluding automatically added HEAD; framework/vendor/web routes are outside this inventory.",
     "source_hashes": {
-        "app/Http/Controllers/AccountController.php": "dfde669dd986edd469c84d46dde0c8033dc6e65992ccd48c3fd03038fe09e96c",
+        "app/Http/Controllers/AccountController.php": "6436ab11eab236c1eadc2bd88f7866707157fc09926c17fa92e391f7aaaf8981",
         "app/Http/Controllers/StoreController.php": "77214a46a3059b3c48b6c6d65c455ee6735a3e3d55a80f9185533cafe25faac9",
         "app/Http/Controllers/RaffleController.php": "8fd52be5b76da0758ba81da7276016a4b64afb6474f8e62c467e62bf79ea4e41",
         "app/Http/Controllers/WebhookController.php": "2ffa9405fca64630844ff19ff71ce4a28727b513114e9a6543812e43763804a5",
@@ -38,7 +38,7 @@
         "app/Services/StoreResponseFormatter.php": "ad6aa7a44546342644813a3a81ff48ce8061dd09244da50466b8b284ed1e5e3b",
         "app/Models/CompanyContact.php": "65e0ddae6c38852ef8277e1a3c8168b36e14230b32dc636814ccf6a12d869b47",
         "app/Models/BusinessDocument.php": "560b6a2aeb66b153fd0757cfc7dd7df3ee2aab289cca5af866cc06fa8cbd3c48",
-        "app/Models/User.php": "2d8b883197a2f943e32323deef201dc217dbb843f324c77ac2eed4f81dbe7d2d",
+        "app/Models/User.php": "dae6d9cc8955b360d143a0951d396f0c84c51718f48ece527c16e0fb07c67178",
         "app/Http/Middleware/RequireVerifiedEmail.php": "20bab2724fce39b66e34e9e1e1bf9f641b018c88d95e5139237866cc39d7d332"
     },
     "routes": [

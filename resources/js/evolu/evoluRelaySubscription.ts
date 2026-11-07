@@ -3,6 +3,7 @@ import { getResolvedEvoluRelayUrl, isEvoluRelayConfiguredAtRuntime } from "@/ser
 import { isEvoluRelayEnabledInBuild } from "./config";
 import type { InvoicingLocalSchema } from "./schema";
 import { createSyncOwnerForRelay } from "./evoluRelayOwner";
+import { registerEvoluRelayOwner } from "./relayPreferenceLifecycle";
 
 let activeUnuseOwner: (() => void) | null = null;
 
@@ -31,7 +32,7 @@ export async function ensureEvoluRelaySubscription(
     }
 
     if (!activeUnuseOwner) {
-        activeUnuseOwner = evolu.useOwner(owner);
+        activeUnuseOwner = registerEvoluRelayOwner(evolu, owner);
     }
 
     return true;
@@ -50,6 +51,7 @@ export async function refreshEvoluRelaySubscription(
     return ensureEvoluRelaySubscription(evolu);
 }
 
+/** Release the explicit app subscription without changing its persisted relay preference. */
 export function releaseEvoluRelaySubscription(): void {
     activeUnuseOwner?.();
     activeUnuseOwner = null;

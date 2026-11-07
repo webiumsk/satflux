@@ -58,6 +58,7 @@ describe("evoluTransports runtime ladder (P2 phase 1)", () => {
         const clean = await import("../evolu/config");
         expect(clean.evoluTransports()).toEqual([
             { type: "WebSocket", url: "wss://build.example.com" },
+            { type: "WebSocket", url: "wss://evolu.eu.freedomrelay.dev" },
         ]);
 
         vi.resetModules();
@@ -65,6 +66,7 @@ describe("evoluTransports runtime ladder (P2 phase 1)", () => {
         const withGarbage = await import("../evolu/config");
         expect(withGarbage.evoluTransports()).toEqual([
             { type: "WebSocket", url: "wss://build.example.com" },
+            { type: "WebSocket", url: "wss://evolu.eu.freedomrelay.dev" },
         ]);
         warn.mockRestore();
     });

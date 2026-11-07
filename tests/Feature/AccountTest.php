@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\ReadsEmailCodes;
 use Tests\TestCase;
 
@@ -121,6 +122,314 @@ class AccountTest extends TestCase
         $response->assertStatus(200);
         $user->refresh();
         $this->assertNull($user->evolu_relay_url);
+    }
+
+    public function test_relay_default_opt_in_is_false_until_explicitly_changed(): void
+    {
+        $user = User::factory()->create();
+        $user->refresh();
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/user')->assertJsonPath('evolu_relay_add_default', false);
+        $this->putJson('/api/user', [
+            'evolu_relay_url' => 'wss://relay.example.com',
+            'evolu_relay_add_default' => true,
+        ])->assertOk()->assertJsonPath('user.evolu_relay_add_default', true);
+
+        $this->assertTrue($user->fresh()->evolu_relay_add_default);
+        $this->getJson('/api/user')->assertJsonPath('evolu_relay_add_default', true);
+
+        // Older clients updating only the URL or name preserve this preference.
+        $this->putJson('/api/user', ['name' => 'Relay user'])
+            ->assertOk()->assertJsonPath('user.evolu_relay_add_default', true);
+        $this->putJson('/api/user', ['evolu_relay_url' => null])
+            ->assertOk()->assertJsonPath('user.evolu_relay_add_default', true);
+        $this->putJson('/api/user', ['evolu_relay_add_default' => false])
+            ->assertOk()->assertJsonPath('user.evolu_relay_add_default', false);
+
+        $this->assertFalse($user->fresh()->evolu_relay_add_default);
+    }
+
+    #[DataProvider('validRelayOrigins')]
+    public function test_relay_origins_are_normalized_without_discarding_components(string $input, string $expected): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->putJson('/api/user', ['evolu_relay_url' => $input])
+            ->assertOk()->assertJsonPath('user.evolu_relay_url', $expected);
+        $this->assertSame($expected, $user->fresh()->evolu_relay_url);
+    }
+
+    public static function validRelayOrigins(): array
+    {
+        return array_merge([
+            'secure origin' => ['wss://relay.example.com', 'wss://relay.example.com'],
+            'canonical scheme and default port' => ['WSS://RELAY.EXAMPLE.COM:443/', 'wss://relay.example.com'],
+            'custom port' => ['wss://relay.example.com:8443/', 'wss://relay.example.com:8443'],
+            'ipv4' => ['wss://127.0.0.1:8443', 'wss://127.0.0.1:8443'],
+            'ipv4 trailing dot' => ['wss://127.0.0.1.:8443', 'wss://127.0.0.1:8443'],
+            'hostname trailing dot' => ['wss://relay.example.com.', 'wss://relay.example.com.'],
+            'ipv6' => ['wss://[::1]:8443/', 'wss://[::1]:8443'],
+            'hex label in DNS hostname' => ['wss://0x.example.com', 'wss://0x.example.com'],
+        ], self::canonicalIpv6RelayOrigins());
+    }
+
+    /** Match browser URL canonicalization, including mapped IPv4 kept in hexadecimal form. */
+    public static function canonicalIpv6RelayOrigins(): array
+    {
+        return [
+            'expanded loopback and default port' => ['wss://[0:0:0:0:0:0:0:1]:443/', 'wss://[::1]'],
+            'leading zeros and first longest zero run' => ['wss://[2001:0DB8:0000:0000:0001:0000:0000:0001]:8443/', 'wss://[2001:db8::1:0:0:1]:8443'],
+            'IPv4 mapped hexadecimal' => ['wss://[0:0:0:0:0:FFFF:C000:0201]/', 'wss://[::ffff:c000:201]'],
+            'IPv4 compatible hexadecimal' => ['wss://[0:0:0:0:0:0:C000:0201]', 'wss://[::c000:201]'],
+            'single zero remains uncompressed' => ['wss://[2001:db8:0:1:2:3:4:5]', 'wss://[2001:db8:0:1:2:3:4:5]'],
+            'all zero IPv6' => ['wss://[0:0:0:0:0:0:0:0]', 'wss://[::]'],
+        ];
+    }
+
+    /** Canonicalize before persisting the list and its legacy first-enabled projection. */
+    #[DataProvider('canonicalIpv6RelayOrigins')]
+    public function test_evolu_relay_lists_store_canonical_ipv6_origins(string $input, string $expected): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+        $relays = [['url' => $input, 'enabled' => true]];
+        $canonical = [['url' => $expected, 'enabled' => true]];
+
+        $this->putJson('/api/user', ['evolu_relays' => $relays])
+            ->assertOk()->assertJsonPath('user.evolu_relays', $canonical)
+            ->assertJsonPath('user.evolu_relay_url', $expected);
+        $this->assertSame($canonical, $user->fresh()->evolu_relays);
+    }
+
+    #[DataProvider('invalidRelayOrigins')]
+    public function test_invalid_relay_origins_do_not_change_either_setting(string $input): void
+    {
+        $user = User::factory()->create(['evolu_relay_url' => 'wss://original.example.com']);
+        Sanctum::actingAs($user);
+
+        $this->putJson('/api/user', [
+            'evolu_relay_url' => $input,
+            'evolu_relay_add_default' => true,
+        ])->assertUnprocessable()->assertJsonValidationErrors('evolu_relay_url');
+
+        $this->assertSame('wss://original.example.com', $user->fresh()->evolu_relay_url);
+        $this->assertFalse($user->fresh()->evolu_relay_add_default);
+    }
+
+    public static function invalidRelayOrigins(): array
+    {
+        return array_map(fn (string $url) => [$url], [
+            'ws://relay.example.com',
+            'https://relay.example.com',
+            'wss://',
+            'wss://user:password@relay.example.com',
+            'wss://relay.example.com/path',
+            'wss://relay.example.com?key=value',
+            'wss://relay.example.com?',
+            'wss://relay.example.com#fragment',
+            'wss://relay.example.com#',
+            'wss://relay.example.com:65536',
+            'wss://relay.example.com:0',
+            'wss://relay.example.com;script-src *',
+            "wss://relay.example.com\nscript-src *",
+            'wss://relay.example.com\\@evil.example.com',
+            'wss://-invalid.example.com',
+            'wss://relay..example.com',
+            'wss://[invalid]',
+            'wss://127.1',
+            'wss://127.1.',
+            'wss://2130706433',
+            'wss://2130706433.',
+            'wss://0177.0.0.1',
+            'wss://0177.0.0.1.',
+            'wss://0x7f000001',
+            'wss://0x7f000001.',
+            'wss://0x',
+            'wss://relay.0x',
+            'wss://0x.',
+            'wss://relay.0x.',
+            'wss://'.str_repeat('a', 510).'.example.com',
+        ]);
+    }
+
+    /** Reject invalid mode values and verify profile writes cannot target another user. */
+    public function test_relay_opt_in_requires_a_boolean_and_updates_only_authenticated_user(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create(['evolu_relay_url' => 'wss://other.example.com']);
+        Sanctum::actingAs($user);
+
+        foreach ([null, 'true', 'yes', [], 2] as $invalid) {
+            $this->putJson('/api/user', ['evolu_relay_add_default' => $invalid])
+                ->assertUnprocessable()->assertJsonValidationErrors('evolu_relay_add_default');
+        }
+        $this->putJson('/api/user', [
+            'id' => $other->id,
+            'evolu_relay_url' => 'wss://mine.example.com',
+            'evolu_relay_add_default' => true,
+        ])->assertOk();
+
+        $this->assertTrue($user->fresh()->evolu_relay_add_default);
+        $this->assertSame('wss://other.example.com', $other->fresh()->evolu_relay_url);
+        $this->assertFalse($other->fresh()->evolu_relay_add_default);
+    }
+
+    public function test_relay_settings_update_requires_authentication(): void
+    {
+        $this->putJson('/api/user', [
+            'evolu_relay_url' => 'wss://relay.example.com',
+            'evolu_relay_add_default' => true,
+        ])->assertUnauthorized();
+    }
+
+    /** Persist an ordered selection and expose only the first enabled relay to older clients. */
+    public function test_user_can_manage_multiple_evolu_relays_without_changing_another_account(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create(['evolu_relay_url' => 'wss://other.example.com']);
+        Sanctum::actingAs($user);
+        $relays = [
+            ['url' => 'WSS://FIRST.EXAMPLE.COM:443/', 'enabled' => false],
+            ['url' => 'wss://second.example.com', 'enabled' => true],
+            ['url' => 'wss://third.example.com:8443', 'enabled' => true],
+        ];
+        $expected = $relays;
+        $expected[0]['url'] = 'wss://first.example.com';
+
+        $this->putJson('/api/user', ['id' => $other->id, 'evolu_relays' => $relays])
+            ->assertOk()->assertJsonPath('user.evolu_relays', $expected)
+            ->assertJsonPath('user.evolu_relay_url', 'wss://second.example.com')
+            ->assertJsonPath('user.evolu_relay_add_default', false);
+        $this->assertSame($expected, $user->fresh()->evolu_relays);
+        $this->getJson('/api/user')->assertOk()->assertJsonPath('evolu_relays', $expected);
+        $this->assertNull($other->fresh()->evolu_relays);
+        $this->assertSame('wss://other.example.com', $other->fresh()->evolu_relay_url);
+
+        $expected[0]['enabled'] = true;
+        $this->putJson('/api/user', ['evolu_relays' => $expected])
+            ->assertOk()->assertJsonPath('user.evolu_relay_url', 'wss://first.example.com');
+        $this->putJson('/api/user', ['name' => 'Retain relays'])
+            ->assertOk()->assertJsonPath('user.evolu_relays', $expected);
+    }
+
+    /** Accept all eight rows at the aggregate URL boundary instead of limiting the list to one. */
+    public function test_evolu_relay_list_accepts_eight_origins_at_the_combined_length_limit(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+        $host = str_repeat('a', 63).'.'.str_repeat('b', 63).'.'.str_repeat('c', 63).'.'.str_repeat('d', 57);
+        $relays = array_map(fn (int $i) => ['url' => "wss://{$host}{$i}", 'enabled' => true], range(1, 8));
+        $this->assertSame(2048, array_sum(array_map(fn (array $relay) => strlen($relay['url']), $relays)));
+
+        $this->putJson('/api/user', ['evolu_relays' => $relays])
+            ->assertOk()->assertJsonPath('user.evolu_relays', $relays);
+    }
+
+    /** Preserve explicit off/empty selections instead of silently restoring a relay. */
+    public function test_empty_and_disabled_evolu_relays_remain_explicit_selections(): void
+    {
+        $user = User::factory()->create(['evolu_relay_url' => 'wss://old.example.com', 'evolu_relay_add_default' => true]);
+        Sanctum::actingAs($user);
+
+        foreach ([[['url' => 'wss://disabled.example.com', 'enabled' => false]], []] as $relays) {
+            $this->putJson('/api/user', ['evolu_relays' => $relays])
+                ->assertOk()->assertJsonPath('user.evolu_relays', $relays)
+                ->assertJsonPath('user.evolu_relay_url', null)
+                ->assertJsonPath('user.evolu_relay_add_default', false);
+            $this->getJson('/api/user')->assertJsonPath('evolu_relays', $relays);
+            $this->assertSame($relays, $user->fresh()->evolu_relays);
+        }
+    }
+
+    /** Canonical input wins mixed payloads; explicit null resets both legacy relay settings. */
+    public function test_evolu_relay_list_wins_legacy_fields_and_can_reset_to_defaults(): void
+    {
+        $user = User::factory()->create(['evolu_relay_url' => 'wss://old.example.com', 'evolu_relay_add_default' => true]);
+        Sanctum::actingAs($user);
+        $relays = [['url' => 'wss://chosen.example.com', 'enabled' => true]];
+
+        $this->putJson('/api/user', [
+            'evolu_relays' => $relays,
+            'evolu_relay_url' => 'invalid legacy URL',
+            'evolu_relay_add_default' => 'invalid legacy mode',
+        ])->assertOk()->assertJsonPath('user.evolu_relays', $relays)
+            ->assertJsonPath('user.evolu_relay_url', 'wss://chosen.example.com')
+            ->assertJsonPath('user.evolu_relay_add_default', false);
+        $this->putJson('/api/user', ['evolu_relays' => null])
+            ->assertOk()->assertJsonPath('user.evolu_relays', null)
+            ->assertJsonPath('user.evolu_relay_url', null)
+            ->assertJsonPath('user.evolu_relay_add_default', false);
+        $this->assertNull($user->fresh()->evolu_relays);
+    }
+
+    /** Explicit relay edits by an older client release the canonical list; unrelated edits do not. */
+    public function test_legacy_relay_edits_clear_the_canonical_selection(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+        foreach ([['evolu_relay_url' => 'wss://legacy.example.com'], ['evolu_relay_add_default' => true]] as $legacy) {
+            $this->putJson('/api/user', ['evolu_relays' => [['url' => 'wss://new.example.com', 'enabled' => true]]])->assertOk();
+            $this->putJson('/api/user', $legacy)->assertOk()->assertJsonPath('user.evolu_relays', null);
+            $this->assertNull($user->fresh()->evolu_relays);
+        }
+    }
+
+    /** Invalid list submissions must leave every existing relay setting untouched. */
+    #[DataProvider('invalidRelaySelections')]
+    public function test_invalid_evolu_relay_lists_fail_atomically(mixed $relays): void
+    {
+        $original = [['url' => 'wss://original.example.com', 'enabled' => true]];
+        $user = User::factory()->create([
+            'name' => 'Original name', 'evolu_relays' => $original,
+            'evolu_relay_url' => 'wss://original.example.com', 'evolu_relay_add_default' => false,
+        ]);
+        Sanctum::actingAs($user);
+
+        $this->putJson('/api/user', ['name' => 'Changed name', 'evolu_relays' => $relays])
+            ->assertUnprocessable()->assertJsonValidationErrors('evolu_relays');
+        $fresh = $user->fresh();
+        $this->assertSame($original, $fresh->evolu_relays);
+        $this->assertSame('Original name', $fresh->name);
+        $this->assertSame('wss://original.example.com', $fresh->evolu_relay_url);
+        $this->assertFalse($fresh->evolu_relay_add_default);
+    }
+
+    /** Cover structural, origin, duplicate and resource bounds without involving real relays. */
+    public static function invalidRelaySelections(): array
+    {
+        $valid = ['url' => 'wss://valid.example.com', 'enabled' => true];
+        $longHost = str_repeat('a', 63).'.'.str_repeat('b', 63).'.'.str_repeat('c', 63).'.'.str_repeat('d', 58);
+
+        return [
+            'not a list' => ['wss://invalid.example.com'],
+            'associative list' => [['primary' => $valid]],
+            'string item' => [['wss://invalid.example.com']],
+            'missing enabled' => [[['url' => 'wss://invalid.example.com']]],
+            'missing url' => [[['enabled' => true]]],
+            'extra key' => [[['url' => $valid['url'], 'enabled' => true, 'token' => 'synthetic']]],
+            'string enabled' => [[['url' => $valid['url'], 'enabled' => 'true']]],
+            'numeric enabled' => [[['url' => $valid['url'], 'enabled' => 1]]],
+            'null enabled' => [[['url' => $valid['url'], 'enabled' => null]]],
+            'null url' => [[['url' => null, 'enabled' => true]]],
+            'insecure URL' => [[['url' => 'ws://invalid.example.com', 'enabled' => true]]],
+            'path URL' => [[['url' => 'wss://invalid.example.com/path', 'enabled' => false]]],
+            'numeric alias' => [[['url' => 'wss://relay.0x', 'enabled' => true]]],
+            'CSP injection' => [[['url' => 'wss://relay.example.com;script-src *', 'enabled' => true]]],
+            'duplicate origin' => [[$valid, ['url' => 'WSS://VALID.EXAMPLE.COM:443/', 'enabled' => false]]],
+            'duplicate IPv4 trailing dot' => [[['url' => 'wss://192.0.2.1', 'enabled' => true], ['url' => 'wss://192.0.2.1.:443/', 'enabled' => false]]],
+            'duplicate IPv6 expanded default port' => [[['url' => 'wss://[::1]', 'enabled' => true], ['url' => 'wss://[0:0:0:0:0:0:0:1]:443/', 'enabled' => false]]],
+            'duplicate IPv6 leading zeros custom port' => [[['url' => 'wss://[2001:db8::1]:8443', 'enabled' => true], ['url' => 'wss://[2001:0db8:0000:0000:0000:0000:0000:0001]:8443', 'enabled' => true]]],
+            'duplicate IPv4 mapped hexadecimal' => [[['url' => 'wss://[::ffff:c000:201]', 'enabled' => true], ['url' => 'wss://[0000:0000:0000:0000:0000:ffff:c000:0201]:443', 'enabled' => true]]],
+            'too many' => [array_map(fn (int $i) => ['url' => "wss://relay{$i}.example.com", 'enabled' => true], range(1, 9))],
+            'too many URL bytes' => [array_map(fn (int $i) => ['url' => "wss://{$longHost}{$i}", 'enabled' => true], range(1, 8))],
+        ];
+    }
+
+    public function test_evolu_relay_list_update_requires_authentication(): void
+    {
+        $this->putJson('/api/user', ['evolu_relays' => [['url' => 'wss://relay.example.com', 'enabled' => true]]])
+            ->assertUnauthorized();
     }
 
     public function test_user_can_update_password(): void

@@ -16,8 +16,10 @@ import {
 } from '../services/guestRecovery';
 import { isInvoicingLocalFirst } from '../evolu/flags';
 import { ensureEvoluBoundToAccountSeed } from '../evolu/bootstrap';
-import { readRelayOverride, writeRelayOverrideUrl } from '@/evolu/relayOverrideStorage';
-import { normalizeEvoluRelayBaseUrl } from '@/evolu/config';
+import { EVOLU_RELAY_OVERRIDE_STORAGE_KEY, clearRelayOverride, parseRelayOverride, writeRelayOverrideDisabled, writeRelayOverrideRelays, writeRelayOverrideUrl, type RelayOverride } from '@/evolu/relayOverrideStorage';
+import { LEGACY_SECONDARY_EVOLU_RELAY_URL, getDefaultEvoluRelayUrls, normalizeEvoluRelayBaseUrl, normalizeEvoluRelayConfigurations, resolveConfiguredEvoluRelays, resolveSelectedEvoluRelayUrls, type EvoluRelayConfiguration } from '@/evolu/config';
+import { getEvoluRelayPreferenceRevision, invalidateEvoluRelayPreference, pauseEvoluRelayPreference, reconcileEvoluRelayPreference, setEvoluRelayPreferenceRevalidator } from '@/evolu/relayPreferenceLifecycle';
+import { clearLocalDefaultRelayOwner, confirmLocalDefaultRelayOwner, resolveLocalDefaultRelayOwner } from '@/evolu/localDefaultRelayProof';
 
 function isEmailNotVerifiedResponse(error: { response?: { data?: unknown } } | null): boolean {
     const data = error?.response?.data as { code?: unknown } | undefined;
@@ -79,7 +81,9 @@ export interface User {
     };
     effective_access?: EffectiveAccess;
     purchase_availability?: PurchaseAvailability;
+    evolu_relays?: EvoluRelayConfiguration[] | null;
     evolu_relay_url?: string | null;
+    evolu_relay_add_default?: boolean;
 }
 
 /** Distinguish a confirmed signed-out session from an unavailable session check. */
@@ -89,7 +93,11 @@ export const useAuthStore = defineStore('auth', () => {
     const user = ref<User | null>(null);
     const loading = ref(false);
     let logoutGeneration = 0;
+    let profileReadSequence = 0;
+    let localOwnerConfirmationGeneration = 0;
     let disposed = false;
+    let relayRevalidationAllowed = true;
+    let activeProfileRead: Promise<AuthFetchOutcome> | undefined;
     const logoutSignalKey = 'satflux.auth.logout.v1';
     let lastLogoutSignal: string | null = null;
     try {
@@ -106,6 +114,11 @@ export const useAuthStore = defineStore('auth', () => {
 
     /** Drop in-memory user + tenant store selection (same as logout’s local cleanup; no API call). */
     function clearLocalAuthAndTenantState() {
+        profileReadSequence++;
+        relayRevalidationAllowed = false;
+        invalidateEvoluRelayPreference(false);
+        localOwnerConfirmationGeneration++;
+        clearLocalDefaultRelayOwner();
         user.value = null;
         const storesStore = useStoresStore();
         storesStore.stores = [];
@@ -182,16 +195,36 @@ export const useAuthStore = defineStore('auth', () => {
     window.addEventListener('storage', onStorage);
     window.addEventListener('focus', refreshAccess);
     document.addEventListener('visibilitychange', onVisibility);
+    const stopRelayRevalidation = setEvoluRelayPreferenceRevalidator(() => {
+        if (disposed || !relayRevalidationAllowed) return Promise.resolve('unavailable');
+        return activeProfileRead ?? fetchUserWithOutcome({ announceRelayPreference: false });
+    });
     onScopeDispose(() => {
         disposed = true;
+        stopRelayRevalidation();
         window.removeEventListener('storage', onStorage);
         window.removeEventListener('focus', refreshAccess);
         document.removeEventListener('visibilitychange', onVisibility);
     });
 
+    /** Reject explicit authentication work after logout or store disposal. */
     function assertCurrentAuthOperation(generation: number): void {
         synchronizeLogout();
-        if (generation !== logoutGeneration) throw new Error('Authentication cancelled by logout.');
+        if (disposed || generation !== logoutGeneration) throw new Error('Authentication cancelled by logout or disposal.');
+    }
+
+    /** Capture account provenance before an explicit local binding or unlock starts awaiting. */
+    function captureLocalDefaultRelayOwnerConfirmation(): (mnemonic: string) => boolean {
+        synchronizeLogout();
+        const accountId = user.value?.id;
+        const generation = logoutGeneration;
+        const confirmationGeneration = localOwnerConfirmationGeneration;
+        return mnemonic => {
+            synchronizeLogout();
+            if (disposed || accountId == null || user.value?.id !== accountId
+                || generation !== logoutGeneration || confirmationGeneration !== localOwnerConfirmationGeneration) return false;
+            return confirmLocalDefaultRelayOwner(accountId, mnemonic);
+        };
     }
 
     function normalizeUserPayload(data: User): User {
@@ -208,45 +241,174 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     /**
-     * Cache the profile relay URL for the NEXT page load (P2 phase 1):
-     * createEvolu picks transports at module init, before auth, so the
-     * override storage is the only way the profile relay reaches the
-     * worker socket. A device-level "sync off" choice is never overwritten.
+     * Cache guarded destinations for pre-auth startup and reconcile live owners.
+     * Public account identity gates retargeting; an unknown canonical identity pauses
+     * until the owner is confirmed. Device-level sync-off is never overwritten.
      */
-    function cacheRelayOverrideFromProfile(profileRelayUrl: string | null): void {
+    function cacheRelayOverrideFromProfile(profile: User, options: { announce?: boolean; revision: number }): void {
         if (!isInvoicingLocalFirst()) return;
-        const override = readRelayOverride();
-        if (override.kind === 'disabled') return;
-        const normalized = normalizeEvoluRelayBaseUrl(profileRelayUrl ?? '');
-        writeRelayOverrideUrl(normalized);
+        const profileRelayUrl = profile.evolu_relay_url ?? null;
+        const addDefault = profile.evolu_relay_add_default === true;
+        const accountPublicKey = profile.recovery_public_key ?? null;
+        let override: RelayOverride;
+        try {
+            override = parseRelayOverride(localStorage.getItem(EVOLU_RELAY_OVERRIDE_STORAGE_KEY));
+        } catch {
+            reconcileEvoluRelayPreference([], null, options);
+            return;
+        }
+        if (override.kind === 'disabled') {
+            reconcileEvoluRelayPreference([], accountPublicKey ?? null, options);
+            return;
+        }
+        const canonical = profile.evolu_relays !== undefined && profile.evolu_relays !== null;
+        const urls = resolveSelectedEvoluRelayUrls(profile);
+        // Saved defaults from older releases retain the same account-bound local proof.
+        // The testing relay is not appended to new default configurations.
+        const defaults = getDefaultEvoluRelayUrls();
+        const compatibleDefaults = defaults.length > 0 ? [...defaults, LEGACY_SECONDARY_EVOLU_RELAY_URL] : defaults;
+        const defaultOnly = canonical
+            ? normalizeEvoluRelayConfigurations(profile.evolu_relays) !== null
+                && urls.every(url => compatibleDefaults.includes(url))
+            : profileRelayUrl == null || profileRelayUrl.trim() === '';
+        const association = accountPublicKey ?? (defaultOnly
+            ? resolveLocalDefaultRelayOwner(profile.id) : null);
+        // Shared metadata describes the server profile identically in every tab.
+        // Session-only keyless proof authorizes only this tab's live registrations.
+        if (canonical) writeRelayOverrideRelays(resolveConfiguredEvoluRelays(profile), accountPublicKey);
+        else writeRelayOverrideUrl(normalizeEvoluRelayBaseUrl(profileRelayUrl ?? ''), addDefault, accountPublicKey);
+        reconcileEvoluRelayPreference(urls, association, options);
     }
 
-    /** Load the canonical session once while retaining guest, failure and stale-generation distinctions. */
-    async function fetchUserWithOutcome(): Promise<AuthFetchOutcome> {
+    /** Revalidate canonical destinations after a device override is cleared; stale user memory is insufficient. */
+    function reconcileEvoluRelayPreferenceFromProfile(): Promise<boolean> {
+        pauseEvoluRelayPreference();
+        return fetchUser();
+    }
+
+    /** Keep device-off in place until one uninterrupted account has a fresh winning profile proof. */
+    async function resumeEvoluRelaySyncOnDevice(): Promise<boolean> {
         synchronizeLogout();
+        const accountId = user.value?.id;
         const generation = logoutGeneration;
+        const confirmationGeneration = localOwnerConfirmationGeneration;
+        const revision = getEvoluRelayPreferenceRevision();
+        try {
+            if (disposed || accountId == null
+                || parseRelayOverride(localStorage.getItem(EVOLU_RELAY_OVERRIDE_STORAGE_KEY)).kind !== 'disabled') return false;
+            pauseEvoluRelayPreference();
+            const read = fetchUserWithOutcome();
+            const sequence = profileReadSequence;
+            if (await read !== 'loaded') return false;
+            synchronizeLogout();
+            if (disposed || sequence !== profileReadSequence || generation !== logoutGeneration
+                || confirmationGeneration !== localOwnerConfirmationGeneration || user.value?.id !== accountId
+                || revision !== getEvoluRelayPreferenceRevision()
+                || parseRelayOverride(localStorage.getItem(EVOLU_RELAY_OVERRIDE_STORAGE_KEY)).kind !== 'disabled') return false;
+            clearRelayOverride();
+            if (parseRelayOverride(localStorage.getItem(EVOLU_RELAY_OVERRIDE_STORAGE_KEY)).kind === 'disabled') return false;
+            cacheRelayOverrideFromProfile(user.value, { revision });
+            return true;
+        } catch {
+            // No unsuccessful resume may leave live transports enabled or lose the device-off choice.
+            pauseEvoluRelayPreference();
+            writeRelayOverrideDisabled();
+            return false;
+        }
+    }
+
+    /** Accept only the latest profile read before it can change authentication or relay destinations. */
+    function isCurrentProfileRead(sequence: number, generation: number): boolean {
+        synchronizeLogout();
+        return !disposed && sequence === profileReadSequence && generation === logoutGeneration;
+    }
+
+    /** Snapshot only public relay preferences, including a stable unavailable-storage state. */
+    function relayPreferenceFingerprint(): string | null | undefined {
+        try {
+            return localStorage.getItem(EVOLU_RELAY_OVERRIDE_STORAGE_KEY);
+        } catch {
+            return undefined;
+        }
+    }
+
+    /** Load the latest canonical session while retaining guest, failure and stale-generation distinctions. */
+    function fetchUserWithOutcome(options: { announceRelayPreference?: boolean } = {}): Promise<AuthFetchOutcome> {
+        const read = loadUserWithOutcome(options);
+        activeProfileRead = read;
+        /** Release only this read's slot without creating an unhandled rejected child promise. */
+        const release = () => { if (activeProfileRead === read) activeProfileRead = undefined; };
+        void read.then(release, release);
+        return read;
+    }
+
+    /** Commit only a current canonical profile; invalidated reads retry once without superseding their callers. */
+    async function loadUserWithOutcome(options: { announceRelayPreference?: boolean }): Promise<AuthFetchOutcome> {
+        synchronizeLogout();
+        if (disposed) return 'unavailable';
+        const generation = logoutGeneration;
+        const sequence = ++profileReadSequence;
+        let relayFingerprint = relayPreferenceFingerprint();
+        let relayRevision = getEvoluRelayPreferenceRevision();
         try {
             await ensureCsrfCookie();
-            synchronizeLogout();
-            if (generation !== logoutGeneration) return 'unavailable';
+            if (!isCurrentProfileRead(sequence, generation)) return 'unavailable';
             hydrateAccountMnemonicSession();
-            const response = await api.get('/user');
-            synchronizeLogout();
-            if (generation !== logoutGeneration) return 'unavailable';
-            const previousUserId = user.value?.id ?? null;
-            user.value = normalizeUserPayload(response.data);
-            if ((user.value?.id ?? null) !== previousUserId) {
-                scheduleChoralaSync();
+            // A different tab can change canonical destinations while this GET is
+            // in flight without delivering a storage event. Retry once against
+            // the new snapshot; continuous changes remain unavailable and paused.
+            for (let attempt = 0; attempt < 2; attempt++) {
+                relayFingerprint = relayPreferenceFingerprint();
+                relayRevision = getEvoluRelayPreferenceRevision();
+                let result: { ok: true; data: User } | { ok: false; error: unknown };
+                try {
+                    const response = await api.get('/user');
+                    result = { ok: true, data: response.data };
+                } catch (error) {
+                    result = { ok: false, error };
+                }
+                if (!isCurrentProfileRead(sequence, generation)) return 'unavailable';
+                if (getEvoluRelayPreferenceRevision() !== relayRevision
+                    || relayPreferenceFingerprint() !== relayFingerprint) {
+                    pauseEvoluRelayPreference();
+                    continue;
+                }
+                if (!result.ok) throw result.error;
+                const previousUserId = user.value?.id ?? null;
+                user.value = normalizeUserPayload(result.data);
+                if (previousUserId !== null && user.value?.id !== previousUserId) {
+                    localOwnerConfirmationGeneration++;
+                    clearLocalDefaultRelayOwner();
+                }
+                if ((user.value?.id ?? null) !== previousUserId) {
+                    scheduleChoralaSync();
+                }
+                if (!isCurrentProfileRead(sequence, generation)) return 'unavailable';
+                if (getEvoluRelayPreferenceRevision() !== relayRevision) {
+                    pauseEvoluRelayPreference();
+                    continue;
+                }
+                relayRevalidationAllowed = true;
+                cacheRelayOverrideFromProfile(user.value, { announce: options.announceRelayPreference !== false, revision: relayRevision });
+                if (!isCurrentProfileRead(sequence, generation)) return 'unavailable';
+                if (getEvoluRelayPreferenceRevision() !== relayRevision) {
+                    pauseEvoluRelayPreference();
+                    continue;
+                }
+                const mnemonic = getStoredGuestMnemonic();
+                if (mnemonic && isInvoicingLocalFirst()) {
+                    void ensureEvoluBoundToAccountSeed();
+                }
+                return 'loaded';
             }
-            cacheRelayOverrideFromProfile(user.value?.evolu_relay_url ?? null);
-            const mnemonic = getStoredGuestMnemonic();
-            if (mnemonic && isInvoicingLocalFirst()) {
-                void ensureEvoluBoundToAccountSeed();
-            }
-            return 'loaded';
+            return 'unavailable';
         } catch (rawError) {
-            synchronizeLogout();
-            if (generation !== logoutGeneration) return 'unavailable';
+            if (!isCurrentProfileRead(sequence, generation)) return 'unavailable';
+            if (getEvoluRelayPreferenceRevision() !== relayRevision
+                || relayPreferenceFingerprint() !== relayFingerprint) {
+                pauseEvoluRelayPreference();
+                return 'unavailable';
+            }
             const error = asApiError(rawError);
             const status = error?.response?.status ?? error?.status;
             if (status === 403 && isEmailNotVerifiedResponse(error)) {
@@ -271,9 +433,11 @@ export const useAuthStore = defineStore('auth', () => {
         return (await fetchUserWithOutcome()) === 'loaded';
     }
 
+    /** Authenticate explicitly and refresh the canonical profile after invalidating older reads. */
     async function login(email: string, password: string, remember = false) {
         synchronizeLogout();
         const generation = logoutGeneration;
+        profileReadSequence++;
         loading.value = true;
         try {
             // Ensure CSRF cookie is set before login
@@ -303,12 +467,14 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    /** Complete explicit recovery enrollment without accepting a pre-migration profile response. */
     async function completeLegacyRecoveryMigration(payload: {
         recoveryPublicKeyHex: string;
         mnemonic: string;
     }) {
         synchronizeLogout();
         const generation = logoutGeneration;
+        profileReadSequence++;
         loading.value = true;
         try {
             await enrollGuestRecoveryPublicKey(payload.recoveryPublicKeyHex);
@@ -322,16 +488,21 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    /** Register without a session and prevent older profile reads from restoring authentication. */
     async function register(
         email: string,
         password: string,
         password_confirmation: string,
         consents?: { privacy_consent: boolean; terms_accepted: boolean },
     ) {
+        synchronizeLogout();
+        const generation = logoutGeneration;
+        profileReadSequence++;
         loading.value = true;
         try {
             // Ensure CSRF cookie is set before register
             await ensureCsrfCookie();
+            assertCurrentAuthOperation(generation);
 
             const response = await api.post('/auth/register', {
                 email,
@@ -340,6 +511,7 @@ export const useAuthStore = defineStore('auth', () => {
                 privacy_consent: consents?.privacy_consent ?? false,
                 terms_accepted: consents?.terms_accepted ?? false,
             });
+            assertCurrentAuthOperation(generation);
             // Session is not created until email is verified; do not treat as logged in.
             clearLocalAuthAndTenantState();
             return response.data;
@@ -348,9 +520,11 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    /** Create a guest session explicitly and load its latest canonical account profile. */
     async function continueAsGuest(recoveryPublicKeyHex?: string, turnstileToken?: string) {
         synchronizeLogout();
         const generation = logoutGeneration;
+        profileReadSequence++;
         loading.value = true;
         try {
             await ensureCsrfCookie();
@@ -375,13 +549,13 @@ export const useAuthStore = defineStore('auth', () => {
      * legacy email migration). Dedicated endpoint: /auth/guest never attaches
      * a key to an existing session's account.
      */
-    async function enrollGuestRecoveryPublicKey(recoveryPublicKeyHex: string) {
+    async function enrollGuestRecoveryPublicKey(recoveryPublicKeyHex: string, expectedUserId: number | null = user.value?.id ?? null) {
         synchronizeLogout();
         const generation = logoutGeneration;
-        // Capture before awaiting CSRF setup: another tab can switch the shared
-        // session while this tab still displays the original account.
-        const expectedUserId = user.value?.id;
-        if (expectedUserId == null) {
+        profileReadSequence++;
+        // A multi-step wizard supplies its opening account. Other callers capture
+        // the current account before CSRF; explicit null must never fall back.
+        if (expectedUserId == null || user.value?.id == null) {
             throw new Error('Recovery enrollment requires a signed-in account.');
         }
         loading.value = true;
@@ -405,9 +579,11 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    /** Restore explicitly with a signed challenge while rejecting stale profile reads and logout. */
     async function restoreGuestFromMnemonic(mnemonic: string) {
         synchronizeLogout();
         const generation = logoutGeneration;
+        profileReadSequence++;
         loading.value = true;
         try {
             await ensureCsrfCookie();
@@ -454,6 +630,9 @@ export const useAuthStore = defineStore('auth', () => {
         requiresRecoveryMigration,
         fetchUser,
         fetchUserWithOutcome,
+        captureLocalDefaultRelayOwnerConfirmation,
+        reconcileEvoluRelayPreferenceFromProfile,
+        resumeEvoluRelaySyncOnDevice,
         login,
         completeLegacyRecoveryMigration,
         register,
