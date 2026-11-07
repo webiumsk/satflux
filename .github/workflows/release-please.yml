@@ -1,0 +1,61 @@
+name: Release Please
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-please-webiumsk-satflux
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Prepare reviewed release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+      issues: write
+      pull-requests: write
+    if: >-
+      github.repository == 'webiumsk/satflux' &&
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.path == '.github/workflows/ci.yml' &&
+      github.event.workflow_run.head_branch == 'master' &&
+      github.event.workflow_run.head_repository.full_name == 'webiumsk/satflux'
+    steps:
+      # Execute only trusted default-branch code, never triggering PR code.
+      - name: Checkout trusted master
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: master
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+
+      - name: Validate successful CI against current master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/release/guard.mjs
+
+      # The action maintains one release PR. Only the owner's later merge permits
+      # it to create that release's tag and GitHub Release. It does not deploy.
+      - name: Maintain release PR and tag reviewed releases
+        uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repo-url: webiumsk/satflux
+          target-branch: master
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

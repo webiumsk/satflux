@@ -1,5 +1,30 @@
 # Development roadmap
 
+## Release PR automation independently accepted locally - 2026-11-07
+
+Owner selected release PRs for Satflux. Implementation on `ci/release-pr-automation`
+is based on verified owned master `f7118b10f2cbde07f15edc68bc154ceb2a94718d`.
+Pinned Release Please v4.4.1 manages one root Node package from current2.0.0,
+with a bootstrap boundary, synchronized package/lock/manifest and technical changelog.
+Only successful owned master-push CI invokes trusted code. Every pending release
+candidate needs its own exact merge-SHA CI; newer failures override older success.
+Malformed, unavailable, incomplete and stale API evidence fails closed.
+
+Independent security and QA accept10 implementation/doc paths, ordered source
+manifest SHA256 `196f1a9d21a5d33002d45a93ddc09e1a1c51dc7a511a6f67528311ee1cb92013`.
+Main/security/QA repeat12 release tests; QA13 extra adversarial fixtures pass.
+Existing full changelog71 and14 fragment validation, version parity2.0.0, syntax,
+YAML and whitespace checks pass. Existing CI jobs and five deployment/runtime/package
+contract paths remain unchanged. No application/database suite was required or run.
+
+Read-only settings show Actions PR creation disabled, default token permissions
+read, and no effective master branch protection. Owner approval is required before
+changing that setting; human merge/CI approval and the documented preflight race
+remain explicit. No merge, tag/release, workflow dispatch, settings change or
+deployment occurred. Next: publish the scoped implementation PR, verify its exact
+head CI, then obtain applicable merge/settings approval. Unrelated primary changes
+are preserved. See [release process](RELEASE_PROCESS.md).
+
 ## Per-relay protocol status and Freedomrelay defaults - 2026-11-07
 
 Owner requests separate connection/synchronization status and chooses Satflux plus

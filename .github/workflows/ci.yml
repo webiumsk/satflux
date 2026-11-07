@@ -11,6 +11,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  release:
+    name: Release automation (offline)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "22"
+      - name: Test release source guards
+        run: node --test scripts/release/*.test.mjs
+      - name: Check package and release version consistency
+        run: node scripts/release/check.mjs
+
   changelog:
     name: Changelog automation (offline)
     runs-on: ubuntu-latest

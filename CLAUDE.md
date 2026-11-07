@@ -32,10 +32,13 @@ If Git, ESLint, or exports fail with permission errors on `storage/app/private` 
 
 ### Versioning
 
-```bash
-npm run version:patch   # Bump patch version
-npm run version:minor   # Bump minor version
-```
+Use the automated release PR described in [RELEASE_PROCESS.md](docs/development/RELEASE_PROCESS.md).
+Keep feature PRs on the current application version. Release Please updates
+`package.json`, `package-lock.json`, its version manifest and the technical changelog
+together in a separate reviewed PR. Use Conventional Commits (`fix:`, `feat:`,
+`feat!:` / `BREAKING CHANGE:`) for changes that should affect the next version.
+The legacy `version:*` commands are not the normal release process: their script
+only changes `package.json` and does not synchronize the lockfile or release manifest.
 
 ## Architecture
 
