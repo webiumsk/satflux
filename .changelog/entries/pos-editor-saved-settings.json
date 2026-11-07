@@ -1,0 +1,9 @@
+{
+  "id": "pos-editor-saved-settings",
+  "source": "https://github.com/webiumsk/satflux/pull/431",
+  "title": "PoS editing preserves saved products and settings",
+  "body": "Opening a point of sale from the store sidebar now loads its full saved configuration before editing. Supported products, tipping options and categories are preserved when you save changes.\n\nIf the saved configuration cannot be loaded completely, saving stays blocked instead of replacing it with incomplete settings. Outdated detail and list responses are prevented from replacing newer edits.",
+  "labels": [
+    "fix"
+  ]
+}
