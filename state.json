@@ -82,6 +82,12 @@
       "sourceSha": "e584490d2b1ee05105e2d252361a51b507ab7afd",
       "phase": "published",
       "entryId": "cl_ZCLrn3QMy0kGJ4vINXZgw"
+    },
+    "evolu-relay-management-and-status": {
+      "hash": "bbbefacfcfa5538fd707bb64e8a7e1c6283fda2c75f813a87acea2da0abcbc2a",
+      "source": "https://github.com/webiumsk/satflux/pull/432",
+      "sourceSha": "f7118b10f2cbde07f15edc68bc154ceb2a94718d",
+      "phase": "create_pending"
     }
   },
   "deploymentSha": "9dfc4166a6fd52575b831bf1fd0d31fabbb4a9a5"
