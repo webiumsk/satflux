@@ -16,9 +16,9 @@ import {
 } from '../services/guestRecovery';
 import { isInvoicingLocalFirst } from '../evolu/flags';
 import { ensureEvoluBoundToAccountSeed } from '../evolu/bootstrap';
-import { EVOLU_RELAY_OVERRIDE_STORAGE_KEY, parseRelayOverride, writeRelayOverrideRelays, writeRelayOverrideUrl, type RelayOverride } from '@/evolu/relayOverrideStorage';
+import { EVOLU_RELAY_OVERRIDE_STORAGE_KEY, clearRelayOverride, parseRelayOverride, writeRelayOverrideDisabled, writeRelayOverrideRelays, writeRelayOverrideUrl, type RelayOverride } from '@/evolu/relayOverrideStorage';
 import { getDefaultEvoluRelayUrls, normalizeEvoluRelayBaseUrl, normalizeEvoluRelayConfigurations, resolveConfiguredEvoluRelays, resolveSelectedEvoluRelayUrls, type EvoluRelayConfiguration } from '@/evolu/config';
-import { pauseEvoluRelayPreference, reconcileEvoluRelayPreference } from '@/evolu/relayPreferenceLifecycle';
+import { getEvoluRelayPreferenceRevision, invalidateEvoluRelayPreference, pauseEvoluRelayPreference, reconcileEvoluRelayPreference, setEvoluRelayPreferenceRevalidator } from '@/evolu/relayPreferenceLifecycle';
 import { clearLocalDefaultRelayOwner, confirmLocalDefaultRelayOwner, resolveLocalDefaultRelayOwner } from '@/evolu/localDefaultRelayProof';
 
 function isEmailNotVerifiedResponse(error: { response?: { data?: unknown } } | null): boolean {
@@ -96,6 +96,8 @@ export const useAuthStore = defineStore('auth', () => {
     let profileReadSequence = 0;
     let localOwnerConfirmationGeneration = 0;
     let disposed = false;
+    let relayRevalidationAllowed = true;
+    let activeProfileRead: Promise<AuthFetchOutcome> | undefined;
     const logoutSignalKey = 'satflux.auth.logout.v1';
     let lastLogoutSignal: string | null = null;
     try {
@@ -113,6 +115,8 @@ export const useAuthStore = defineStore('auth', () => {
     /** Drop in-memory user + tenant store selection (same as logout’s local cleanup; no API call). */
     function clearLocalAuthAndTenantState() {
         profileReadSequence++;
+        relayRevalidationAllowed = false;
+        invalidateEvoluRelayPreference(false);
         localOwnerConfirmationGeneration++;
         clearLocalDefaultRelayOwner();
         user.value = null;
@@ -191,8 +195,13 @@ export const useAuthStore = defineStore('auth', () => {
     window.addEventListener('storage', onStorage);
     window.addEventListener('focus', refreshAccess);
     document.addEventListener('visibilitychange', onVisibility);
+    const stopRelayRevalidation = setEvoluRelayPreferenceRevalidator(() => {
+        if (disposed || !relayRevalidationAllowed) return Promise.resolve('unavailable');
+        return activeProfileRead ?? fetchUserWithOutcome({ announceRelayPreference: false });
+    });
     onScopeDispose(() => {
         disposed = true;
+        stopRelayRevalidation();
         window.removeEventListener('storage', onStorage);
         window.removeEventListener('focus', refreshAccess);
         document.removeEventListener('visibilitychange', onVisibility);
@@ -236,7 +245,7 @@ export const useAuthStore = defineStore('auth', () => {
      * Public account identity gates retargeting; an unknown canonical identity pauses
      * until the owner is confirmed. Device-level sync-off is never overwritten.
      */
-    function cacheRelayOverrideFromProfile(profile: User): void {
+    function cacheRelayOverrideFromProfile(profile: User, options: { announce?: boolean; revision: number }): void {
         if (!isInvoicingLocalFirst()) return;
         const profileRelayUrl = profile.evolu_relay_url ?? null;
         const addDefault = profile.evolu_relay_add_default === true;
@@ -245,11 +254,11 @@ export const useAuthStore = defineStore('auth', () => {
         try {
             override = parseRelayOverride(localStorage.getItem(EVOLU_RELAY_OVERRIDE_STORAGE_KEY));
         } catch {
-            reconcileEvoluRelayPreference([], null);
+            reconcileEvoluRelayPreference([], null, options);
             return;
         }
         if (override.kind === 'disabled') {
-            reconcileEvoluRelayPreference([], accountPublicKey ?? null);
+            reconcileEvoluRelayPreference([], accountPublicKey ?? null, options);
             return;
         }
         const canonical = profile.evolu_relays !== undefined && profile.evolu_relays !== null;
@@ -261,15 +270,48 @@ export const useAuthStore = defineStore('auth', () => {
             : profileRelayUrl == null || profileRelayUrl.trim() === '';
         const association = accountPublicKey ?? (defaultOnly
             ? resolveLocalDefaultRelayOwner(profile.id) : null);
-        if (canonical) writeRelayOverrideRelays(resolveConfiguredEvoluRelays(profile), association);
-        else writeRelayOverrideUrl(normalizeEvoluRelayBaseUrl(profileRelayUrl ?? ''), addDefault, association);
-        reconcileEvoluRelayPreference(urls, association);
+        // Shared metadata describes the server profile identically in every tab.
+        // Session-only keyless proof authorizes only this tab's live registrations.
+        if (canonical) writeRelayOverrideRelays(resolveConfiguredEvoluRelays(profile), accountPublicKey);
+        else writeRelayOverrideUrl(normalizeEvoluRelayBaseUrl(profileRelayUrl ?? ''), addDefault, accountPublicKey);
+        reconcileEvoluRelayPreference(urls, association, options);
     }
 
-    /** Reapply the current canonical profile after a device-level sync override is cleared. */
-    function reconcileEvoluRelayPreferenceFromProfile(): void {
+    /** Revalidate canonical destinations after a device override is cleared; stale user memory is insufficient. */
+    function reconcileEvoluRelayPreferenceFromProfile(): Promise<boolean> {
+        pauseEvoluRelayPreference();
+        return fetchUser();
+    }
+
+    /** Keep device-off in place until one uninterrupted account has a fresh winning profile proof. */
+    async function resumeEvoluRelaySyncOnDevice(): Promise<boolean> {
         synchronizeLogout();
-        if (user.value) cacheRelayOverrideFromProfile(user.value);
+        const accountId = user.value?.id;
+        const generation = logoutGeneration;
+        const confirmationGeneration = localOwnerConfirmationGeneration;
+        const revision = getEvoluRelayPreferenceRevision();
+        try {
+            if (disposed || accountId == null
+                || parseRelayOverride(localStorage.getItem(EVOLU_RELAY_OVERRIDE_STORAGE_KEY)).kind !== 'disabled') return false;
+            pauseEvoluRelayPreference();
+            const read = fetchUserWithOutcome();
+            const sequence = profileReadSequence;
+            if (await read !== 'loaded') return false;
+            synchronizeLogout();
+            if (disposed || sequence !== profileReadSequence || generation !== logoutGeneration
+                || confirmationGeneration !== localOwnerConfirmationGeneration || user.value?.id !== accountId
+                || revision !== getEvoluRelayPreferenceRevision()
+                || parseRelayOverride(localStorage.getItem(EVOLU_RELAY_OVERRIDE_STORAGE_KEY)).kind !== 'disabled') return false;
+            clearRelayOverride();
+            if (parseRelayOverride(localStorage.getItem(EVOLU_RELAY_OVERRIDE_STORAGE_KEY)).kind === 'disabled') return false;
+            cacheRelayOverrideFromProfile(user.value, { revision });
+            return true;
+        } catch {
+            // No unsuccessful resume may leave live transports enabled or lose the device-off choice.
+            pauseEvoluRelayPreference();
+            writeRelayOverrideDisabled();
+            return false;
+        }
     }
 
     /** Accept only the latest profile read before it can change authentication or relay destinations. */
@@ -288,12 +330,23 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     /** Load the latest canonical session while retaining guest, failure and stale-generation distinctions. */
-    async function fetchUserWithOutcome(): Promise<AuthFetchOutcome> {
+    function fetchUserWithOutcome(options: { announceRelayPreference?: boolean } = {}): Promise<AuthFetchOutcome> {
+        const read = loadUserWithOutcome(options);
+        activeProfileRead = read;
+        /** Release only this read's slot without creating an unhandled rejected child promise. */
+        const release = () => { if (activeProfileRead === read) activeProfileRead = undefined; };
+        void read.then(release, release);
+        return read;
+    }
+
+    /** Commit only a current canonical profile; invalidated reads retry once without superseding their callers. */
+    async function loadUserWithOutcome(options: { announceRelayPreference?: boolean }): Promise<AuthFetchOutcome> {
         synchronizeLogout();
         if (disposed) return 'unavailable';
         const generation = logoutGeneration;
         const sequence = ++profileReadSequence;
         let relayFingerprint = relayPreferenceFingerprint();
+        let relayRevision = getEvoluRelayPreferenceRevision();
         try {
             await ensureCsrfCookie();
             if (!isCurrentProfileRead(sequence, generation)) return 'unavailable';
@@ -303,6 +356,7 @@ export const useAuthStore = defineStore('auth', () => {
             // the new snapshot; continuous changes remain unavailable and paused.
             for (let attempt = 0; attempt < 2; attempt++) {
                 relayFingerprint = relayPreferenceFingerprint();
+                relayRevision = getEvoluRelayPreferenceRevision();
                 let result: { ok: true; data: User } | { ok: false; error: unknown };
                 try {
                     const response = await api.get('/user');
@@ -311,7 +365,8 @@ export const useAuthStore = defineStore('auth', () => {
                     result = { ok: false, error };
                 }
                 if (!isCurrentProfileRead(sequence, generation)) return 'unavailable';
-                if (relayPreferenceFingerprint() !== relayFingerprint) {
+                if (getEvoluRelayPreferenceRevision() !== relayRevision
+                    || relayPreferenceFingerprint() !== relayFingerprint) {
                     pauseEvoluRelayPreference();
                     continue;
                 }
@@ -326,8 +381,17 @@ export const useAuthStore = defineStore('auth', () => {
                     scheduleChoralaSync();
                 }
                 if (!isCurrentProfileRead(sequence, generation)) return 'unavailable';
-                reconcileEvoluRelayPreferenceFromProfile();
+                if (getEvoluRelayPreferenceRevision() !== relayRevision) {
+                    pauseEvoluRelayPreference();
+                    continue;
+                }
+                relayRevalidationAllowed = true;
+                cacheRelayOverrideFromProfile(user.value, { announce: options.announceRelayPreference !== false, revision: relayRevision });
                 if (!isCurrentProfileRead(sequence, generation)) return 'unavailable';
+                if (getEvoluRelayPreferenceRevision() !== relayRevision) {
+                    pauseEvoluRelayPreference();
+                    continue;
+                }
                 const mnemonic = getStoredGuestMnemonic();
                 if (mnemonic && isInvoicingLocalFirst()) {
                     void ensureEvoluBoundToAccountSeed();
@@ -337,7 +401,8 @@ export const useAuthStore = defineStore('auth', () => {
             return 'unavailable';
         } catch (rawError) {
             if (!isCurrentProfileRead(sequence, generation)) return 'unavailable';
-            if (relayPreferenceFingerprint() !== relayFingerprint) {
+            if (getEvoluRelayPreferenceRevision() !== relayRevision
+                || relayPreferenceFingerprint() !== relayFingerprint) {
                 pauseEvoluRelayPreference();
                 return 'unavailable';
             }
@@ -565,6 +630,7 @@ export const useAuthStore = defineStore('auth', () => {
         fetchUserWithOutcome,
         captureLocalDefaultRelayOwnerConfirmation,
         reconcileEvoluRelayPreferenceFromProfile,
+        resumeEvoluRelaySyncOnDevice,
         login,
         completeLegacyRecoveryMigration,
         register,

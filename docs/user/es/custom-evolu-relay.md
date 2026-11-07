@@ -19,7 +19,7 @@ Los cambios de la lista se aplican a tu cuenta. **Desactivar la sincronización 
 
 ## Estados de conexión
 
-**Conectado** significa que una conexión WebSocket real de sincronización está abierta. **Conectando**, **Desconectado** y **Error de conexión** describen esa conexión. **Desconocido** indica que no hay información actual disponible; después de una actualización puede ser necesario reiniciar todas las pestañas. **Sincronización pausada** indica que el propietario local actual aún no está autorizado para sincronizar; restaura la facturación con la frase correcta. Los relays desactivados y la pausa del dispositivo se muestran por separado.
+**Conectado** significa que una conexión WebSocket real de sincronización está abierta. **Conectando**, **Desconectado** y **Error de conexión** describen esa conexión. **Desconocido** indica que no hay información actual disponible; después de una actualización puede ser necesario reiniciar todas las pestañas. **Sincronización pausada** indica que el propietario local o los ajustes actuales del relay aún no están confirmados. Inicia sesión y carga los ajustes de la cuenta con conexión; si la facturación local está bloqueada, restáurala con la frase de recuperación correcta. Los relays desactivados y la pausa del dispositivo se muestran por separado.
 
 Una conexión abierta no confirma compatibilidad del protocolo, escrituras correctas ni una copia completa. El cliente instalado necesita un relay compatible con Evolu 7.x. Las conexiones funcionan de forma independiente y el historial faltante se reconcilia al suscribirse o reconectarse. Los relays no se copian directamente entre sí; los sincroniza un cliente. Deja tiempo para que un relay nuevo reciba los datos.
 

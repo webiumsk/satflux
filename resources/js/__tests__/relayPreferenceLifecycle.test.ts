@@ -184,7 +184,7 @@ it("a confirmed new owner cannot re-enable old owner registrations on the same c
     expect(probe.destinations(otherShared.id)).toEqual([OTHER]);
 });
 
-it("explicit missing account identity remains paused while legacy cache retains its original destination", async () => {
+it("missing canonical account identity remains paused while legacy cache stays readable without routing authority", async () => {
     canonical(CUSTOM, false, null);
     const paused = client();
     register(paused.evolu, app);
@@ -196,7 +196,7 @@ it("explicit missing account identity remains paused while legacy cache retains 
     const legacy = client();
     register(legacy.evolu, app);
     await Promise.resolve();
-    expect(legacy.destinations(app.id)).toEqual([CUSTOM]);
+    expect(legacy.destinations(app.id)).toEqual([]);
     expect(readRelayOverride()).toEqual({ kind: "url", url: CUSTOM });
 });
 
@@ -227,12 +227,14 @@ it("applies canonical custom-only locally when persistence fails and invalidates
     expect(probe.destinations(shared.id)).toEqual([]);
 });
 
-it("reads the newest persisted preference when an older successful cross-tab notice arrives", async () => {
+it("requires fresh canonical proof after an older successful cross-tab notice", async () => {
     const probe = client();
     register(probe.evolu, app);
     await Promise.resolve();
     canonical(CUSTOM, false);
     PreferenceChannel.instance.onmessage?.({ data: { urls: [CUSTOM, DEFAULT], accountPublicKey: publicKey, persisted: true } } as MessageEvent);
+    expect(probe.destinations(app.id)).toEqual([]);
+    canonical(CUSTOM, false);
     expect(probe.destinations(app.id)).toEqual([CUSTOM]);
 });
 
@@ -250,7 +252,7 @@ it("releases tab references on pagehide and rejects unassociated changed destina
     expect(probe.calls).toHaveLength(releasedCalls);
     window.dispatchEvent(new Event("pageshow"));
     expect(probe.destinations(app.id)).toEqual([]);
-    expect(readRelayOverride()).toMatchObject({ accountPublicKey: null });
+    expect(readRelayOverride()).toEqual({ kind: "url", url: OTHER });
     canonical(OTHER, false);
     expect(probe.destinations(app.id)).toEqual([OTHER]);
 });
@@ -310,7 +312,7 @@ it("optional cross-tab posting failure does not undo a successful canonical auth
     expect(probe.destinations(app.id)).toEqual([CUSTOM]);
 });
 
-it("reads destination URLs and their public guard from exactly one atomic cache snapshot", async () => {
+it("never reads cached destination or owner snapshots to authorize a storage notification", async () => {
     canonical(CUSTOM, false);
     const probe = client();
     register(probe.evolu, app);
@@ -320,8 +322,8 @@ it("reads destination URLs and their public guard from exactly one atomic cache 
         ? { url: CUSTOM, addDefault: false, accountPublicKey: publicKey }
         : { url: OTHER, addDefault: false, accountPublicKey: otherPublicKey }));
     storageChanged();
-    expect(reads).toBe(1);
-    expect(probe.destinations(app.id)).toEqual([CUSTOM]);
+    expect(reads).toBe(0);
+    expect(probe.destinations(app.id)).toEqual([]);
 });
 
 it("cannot drop a guard by replacing a different account's selection with the same unassociated URL", async () => {
@@ -332,7 +334,7 @@ it("cannot drop a guard by replacing a different account's selection with the sa
     storageChanged();
     await Promise.resolve();
     expect(probe.destinations(app.id)).toEqual([]);
-    expect(readRelayOverride()).toMatchObject({ url: OTHER, accountPublicKey: null });
+    expect(readRelayOverride()).toEqual({ kind: "url", url: OTHER });
 });
 
 it("a canonical missing public identity pauses even when the cached URLs are unchanged", async () => {
@@ -379,7 +381,7 @@ it("syncs a keyless default-only profile after explicit local confirmation while
     expect(probe.destinations(shared.id)).toEqual([DEFAULT, FREE]);
     expect(retained.destinations(otherApp.id)).toEqual([]);
     expect(retained.destinations(otherShared.id)).toEqual([]);
-    expect(readRelayOverride()).toMatchObject({ url: "", accountPublicKey: publicKey });
+    expect(readRelayOverride()).toMatchObject({ url: "", accountPublicKey: null });
 });
 
 it("keeps a keyless default-only profile paused without explicit confirmation despite a retained phrase", async () => {
@@ -572,11 +574,11 @@ it("reconciles full rows after device sync is re-enabled and preserves the off s
     const probe = client();
     register(probe.evolu, app);
     writeRelayOverrideDisabled();
-    auth.reconcileEvoluRelayPreferenceFromProfile();
+    await auth.reconcileEvoluRelayPreferenceFromProfile();
     expect(readRelayOverride().kind).toBe("disabled");
     expect(probe.destinations(app.id)).toEqual([]);
     localStorage.removeItem(EVOLU_RELAY_OVERRIDE_STORAGE_KEY);
-    auth.reconcileEvoluRelayPreferenceFromProfile();
+    await auth.reconcileEvoluRelayPreferenceFromProfile();
     expect(readRelayOverride()).toMatchObject({ kind: "relays", relays: rows, accountPublicKey: publicKey });
     expect(probe.destinations(app.id)).toEqual([OTHER]);
 });
@@ -600,12 +602,14 @@ it("reports only this tab's permitted AppOwner URLs and notifies guarded registr
     window.dispatchEvent(new Event("pagehide"));
     expect(getActiveEvoluRelayUrls()).toEqual([]);
     window.dispatchEvent(new Event("pageshow"));
+    expect(getActiveEvoluRelayUrls()).toEqual([]);
+    canonical(CUSTOM, false);
     expect(getActiveEvoluRelayUrls()).toEqual([CUSTOM]);
     unsubscribe();
 });
 
 
-it("adopts multi-row notifications from the newest atomic cache and keeps missing identity paused across fresh registrations", async () => {
+it("requires canonical proof for multi-row notifications and keeps missing identity paused across fresh registrations", async () => {
     const probe = client();
     register(probe.evolu, app);
     register(probe.evolu, shared);
@@ -613,10 +617,14 @@ it("adopts multi-row notifications from the newest atomic cache and keeps missin
     const rows = [CUSTOM, DEFAULT, OTHER].map(url => ({ url, enabled: true }));
     writeRelayOverrideRelays(rows, publicKey);
     PreferenceChannel.instance.onmessage?.({ data: { urls: rows.map(row => row.url), accountPublicKey: publicKey, persisted: true } } as MessageEvent);
+    expect(probe.destinations(app.id)).toEqual([]);
+    reconcileEvoluRelayPreference(rows.map(row => row.url), publicKey);
     expect(probe.destinations(app.id)).toEqual([CUSTOM, DEFAULT, OTHER]);
     const disabled = rows.map(row => ({ ...row, enabled: row.url === OTHER }));
     writeRelayOverrideRelays(disabled, publicKey);
     PreferenceChannel.instance.onmessage?.({ data: { urls: rows.map(row => row.url), accountPublicKey: publicKey, persisted: true } } as MessageEvent);
+    expect(probe.destinations(app.id)).toEqual([]);
+    reconcileEvoluRelayPreference([OTHER], publicKey);
     expect(probe.destinations(app.id)).toEqual([OTHER]);
     expect(probe.destinations(shared.id)).toEqual([OTHER]);
     writeRelayOverrideRelays(disabled);

@@ -1597,6 +1597,7 @@ import {
 import { isAcceptableDevicePassphrase, RecoveryOwnerMismatchError } from "../../services/deviceUnlock/envelope";
 import { isInvoicingLocalFirst } from "../../evolu/flags";
 import { getEvoluRelayRuntimeInfo } from "../../services/evoluRelayPreference";
+import { pauseEvoluRelayPreference } from "../../evolu/relayPreferenceLifecycle";
 import { ensureEvoluBoundToAccountSeed, resetEvoluBootstrapForRetry } from "../../evolu/bootstrap";
 import { allowEvoluPageReload } from "../../evolu/reloadGuard";
 import {
@@ -1613,7 +1614,6 @@ import {
   type EvoluRelayUsageResponse,
 } from "../../services/evoluRelayUsageApi";
 import {
-  clearRelayOverride,
   readRelayOverride,
   writeRelayOverrideDisabled,
 } from "../../evolu/relayOverrideStorage";
@@ -2569,6 +2569,7 @@ async function toggleRelaySyncOnDevice(event?: Event): Promise<void> {
   if (relayDeviceSyncChanging.value) return;
   if (relaySyncDisabledOnDevice.value) {
     writeRelayOverrideDisabled();
+    pauseEvoluRelayPreference();
     window.location.reload();
     return;
   }
@@ -2578,12 +2579,10 @@ async function toggleRelaySyncOnDevice(event?: Event): Promise<void> {
   if (input) input.checked = true;
   relayDeviceSyncChanging.value = true;
   try {
-    const refreshed = accountId != null && await authStore.fetchUser();
+    const refreshed = accountId != null && await authStore.resumeEvoluRelaySyncOnDevice();
     if (!refreshed || authStore.user?.id !== accountId || generation !== relayDeviceSyncGeneration) {
       throw new Error("Canonical relay preference unavailable");
     }
-    clearRelayOverride();
-    authStore.reconcileEvoluRelayPreferenceFromProfile();
     relaySyncDisabledOnDevice.value = false;
     if (input) input.checked = false;
     window.location.reload();
@@ -2591,6 +2590,7 @@ async function toggleRelaySyncOnDevice(event?: Event): Promise<void> {
     // A failed refresh or an account switch must retain the device-off sentinel.
     relaySyncDisabledOnDevice.value = true;
     writeRelayOverrideDisabled();
+    pauseEvoluRelayPreference();
     if (authStore.user?.id === accountId && generation === relayDeviceSyncGeneration) {
       flashStore.error(t("account.evolu_relay_save_failed"));
     }

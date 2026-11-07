@@ -19,7 +19,7 @@ Relay list changes apply to your account. **Disable sync on this device** pauses
 
 ## Connection states
 
-**Connected** means an actual synchronization WebSocket is open. **Connecting**, **Disconnected**, and **Connection error** describe that connection. **Unknown** means current connection evidence is unavailable; restarting all tabs may be necessary after an update. **Sync paused** means the current local owner is not yet authorized to synchronize; restore your invoicing data with the correct recovery phrase. Disabled relays and device sync-off are shown separately.
+**Connected** means an actual synchronization WebSocket is open. **Connecting**, **Disconnected**, and **Connection error** describe that connection. **Unknown** means current connection evidence is unavailable; restarting all tabs may be necessary after an update. **Sync paused** means the local owner or current relay settings have not yet been confirmed. Sign in and load account settings while online; if local invoicing is locked, restore it with the correct recovery phrase. Disabled relays and device sync-off are shown separately.
 
 An open connection does not prove protocol compatibility, successful writes, or a complete backup. The installed client requires a relay compatible with Evolu 7.x. Connections work independently, and missing history is reconciled on subscription or reconnect. Relays do not copy directly between themselves; a client synchronizes them. Allow time for a new relay to catch up.
 

@@ -2,7 +2,7 @@ import { createOwnerWebSocketTransport } from "@evolu/common";
 import type { Evolu, SyncOwner, UnuseOwner } from "@evolu/common/local-first";
 import { deriveRecoveryPublicKeyHex } from "@/services/accountSeed";
 import { MAX_EVOLU_RELAYS, normalizeEvoluRelayBaseUrl, resolveEvoluRelayUrls, resolveSelectedEvoluRelayUrls } from "./config";
-import { EVOLU_RELAY_OVERRIDE_STORAGE_KEY, parseRelayOverride, writeRelayOverrideRelays, writeRelayOverrideUrl, type RelayOverride } from "./relayOverrideStorage";
+import { EVOLU_RELAY_OVERRIDE_STORAGE_KEY, parseRelayOverride, type RelayOverride } from "./relayOverrideStorage";
 import type { InvoicingLocalSchema } from "./schema";
 
 type Client = Evolu<InvoicingLocalSchema>;
@@ -38,6 +38,10 @@ function notifyActiveUrls(): void {
 const publicKeys = new WeakMap<Client, string | null>();
 const ownerPublicKeyCache = new WeakMap<SyncOwner, string>();
 let selection: Selection | undefined;
+let canonicalSelectionConfirmed = false;
+let preferenceRevision = 0;
+let revalidator: (() => Promise<unknown>) | undefined;
+let requestedRevision: number | undefined;
 let observing = false;
 let suspended = false;
 let channel: BroadcastChannel | undefined;
@@ -65,9 +69,6 @@ function cacheSnapshot(): { selection: Selection; override: RelayOverride; avail
     }
 }
 
-/** Resolve public URLs and their account guard from the same atomic snapshot. */
-function cachedSelection(): Selection { return cacheSnapshot().selection; }
-
 /** Cache successful public derivations by weak owner identity without retaining its mnemonic. */
 function ownerPublicKey(owner: SyncOwner): string | null {
     const cached = ownerPublicKeyCache.get(owner);
@@ -85,9 +86,9 @@ function ownerPublicKey(owner: SyncOwner): string | null {
 /** Replace one owned registration; empty transports deliberately disable every relay. */
 function applyBinding(binding: Binding): void {
     if (binding.removed || suspended) return;
-    const desired = selection ?? cachedSelection();
-    const permitted = desired.accountPublicKey === undefined
-        || (desired.accountPublicKey !== null && desired.accountPublicKey === binding.accountPublicKey);
+    const desired = selection ?? { urls: [], accountPublicKey: null };
+    const permitted = canonicalSelectionConfirmed && desired.accountPublicKey != null
+        && desired.accountPublicKey === binding.accountPublicKey;
     const urls = permitted ? desired.urls : [];
     const signature = JSON.stringify(urls);
     if (binding.signature === signature) return;
@@ -120,32 +121,54 @@ function deviceSelection(next: Selection): Selection {
         : cached.override.kind === "disabled" ? { ...next, urls: [] } : next;
 }
 
-/** Read the latest atomic value instead of trusting a possibly delayed storage event payload. */
-function applyCachedSelection(): void {
-    const snapshot = cacheSnapshot();
-    const next = snapshot.selection;
-    // An old client cannot authorize a new destination with an unassociated raw URL.
-    if (next.accountPublicKey === undefined && selection
-        && (selection.accountPublicKey !== undefined || JSON.stringify(next.urls) !== JSON.stringify(selection.urls))) {
-        next.accountPublicKey = null;
-        const cached = snapshot.override;
-        if (cached.kind === "relays") {
-            writeRelayOverrideRelays(cached.relays, null);
-        } else if (cached.kind !== "disabled") {
-            writeRelayOverrideUrl(cached.kind === "url" ? cached.url : "", cached.kind === "url" && cached.addDefault === true, null);
-        }
+/** Identify invalidation boundaries without treating persisted data as fresh destination authority. */
+export function getEvoluRelayPreferenceRevision(): number { return preferenceRevision; }
+
+/** Ask auth for canonical proof once per revision; completion never overrides newer confirmation. */
+function requestCanonicalRevalidation(): void {
+    if (!revalidator || requestedRevision === preferenceRevision) return;
+    const revision = preferenceRevision;
+    requestedRevision = revision;
+    try {
+        void revalidator().catch(() => {
+            // References were already paused; an unavailable profile cannot authorize cached routes.
+        }).finally(() => {
+            if (requestedRevision === revision) requestedRevision = undefined;
+        });
+    } catch {
+        if (requestedRevision === revision) requestedRevision = undefined;
     }
-    applySelection(next);
+}
+
+/** Register an auth callback without importing the database or initiating standalone lifecycle networking. */
+export function setEvoluRelayPreferenceRevalidator(callback: () => Promise<unknown>): () => void {
+    if (revalidator && revalidator !== callback) invalidateEvoluRelayPreference(false);
+    revalidator = callback;
+    if (bindings.size > 0 && !canonicalSelectionConfirmed) requestCanonicalRevalidation();
+    return () => {
+        if (revalidator !== callback) return;
+        revalidator = undefined;
+        requestedRevision = undefined;
+        invalidateEvoluRelayPreference(false);
+    };
+}
+
+/** Pause first, then require a new canonical read before any cached destination could be enabled. */
+export function invalidateEvoluRelayPreference(requestRevalidation = true): void {
+    preferenceRevision++;
+    pauseEvoluRelayPreference();
+    if (requestRevalidation) requestCanonicalRevalidation();
 }
 
 /** Reconcile only relevant storage changes through the guarded cache adoption path. */
 function onStorage(event: StorageEvent): void {
-    if (event.key === EVOLU_RELAY_OVERRIDE_STORAGE_KEY || event.key === null) applyCachedSelection();
+    if (event.key === EVOLU_RELAY_OVERRIDE_STORAGE_KEY || event.key === null) invalidateEvoluRelayPreference();
 }
 
 /** Drop this tab's references before a reload/close so another tab's worker cannot retain them. */
 function onPageHide(): void {
     suspended = true;
+    invalidateEvoluRelayPreference(false);
     for (const binding of bindings) {
         binding.unuse?.();
         binding.unuse = undefined;
@@ -155,10 +178,10 @@ function onPageHide(): void {
     notifyActiveUrls();
 }
 
-/** Restore registrations after back-forward cache resume using the newest persisted selection. */
+/** Resume locally only after a fresh canonical profile confirms the current destinations. */
 function onPageShow(): void {
     suspended = false;
-    applyCachedSelection();
+    invalidateEvoluRelayPreference();
 }
 
 /** Compare public cache state so delayed notifications cannot overwrite a newer persisted preference. */
@@ -186,27 +209,28 @@ function observePreferences(): void {
                 || !value.urls.every(url => typeof url === "string" && normalizeEvoluRelayBaseUrl(url) === url)
                 || (value.accountPublicKey !== undefined && value.accountPublicKey !== null
                     && (typeof value.accountPublicKey !== "string" || !/^[a-f0-9]{64}$/i.test(value.accountPublicKey)))) return;
-            if (value.persisted === true) {
-                applyCachedSelection();
-            } else if (value.persisted === false) {
-                // Failed writes have no durable ordering. A late notice may pause,
-                // but it must never re-enable a removed destination in another tab.
-                applySelection({ urls: [], accountPublicKey: null });
-            }
+            if (value.persisted === true || value.persisted === false) invalidateEvoluRelayPreference();
         };
     }
 }
 
 /** Pause this tab's owned references while a changed cross-tab preference is revalidated. */
 export function pauseEvoluRelayPreference(): void {
+    canonicalSelectionConfirmed = false;
     applySelection({ urls: [], accountPublicKey: null });
 }
 
 /** Reconcile canonical destinations locally and across tabs even when the cache write failed. */
-export function reconcileEvoluRelayPreference(urls: readonly string[], accountPublicKey?: string | null): void {
+export function reconcileEvoluRelayPreference(
+    urls: readonly string[], accountPublicKey?: string | null,
+    options: { announce?: boolean; revision?: number } = {},
+): void {
     observePreferences();
-    const next = deviceSelection({ urls, accountPublicKey });
+    if (options.revision !== undefined && options.revision !== preferenceRevision) return;
+    const next = deviceSelection({ urls, accountPublicKey: accountPublicKey ?? null });
+    canonicalSelectionConfirmed = true;
     applySelection(next);
+    if (options.announce === false) return;
     const cached = cacheSnapshot();
     try {
         channel?.postMessage({ ...next, persisted: cached.available && selectionFingerprint(cached.selection) === selectionFingerprint(next) });
@@ -218,7 +242,7 @@ export function reconcileEvoluRelayPreference(urls: readonly string[], accountPu
 /** Register an owner through tracked public SDK handles so later preference changes can release every relay. */
 export function registerEvoluRelayOwner(evolu: Client, owner: SyncOwner): UnuseOwner {
     observePreferences();
-    selection ??= cachedSelection();
+    if (!canonicalSelectionConfirmed) requestCanonicalRevalidation();
     const binding: Binding = { evolu, owner, removed: false, isAppOwner: false, urls: [], accountPublicKey: publicKeys.get(evolu) };
     bindings.add(binding);
     const publicKey = ownerPublicKey(owner);

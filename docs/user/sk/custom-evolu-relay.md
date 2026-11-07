@@ -19,7 +19,7 @@ Zmeny zoznamu platia pre váš účet. **Vypnúť synchronizáciu na tomto zaria
 
 ## Stavy spojenia
 
-**Pripojený** znamená otvorené skutočné synchronizačné WebSocket spojenie. **Pripája sa**, **Odpojený** a **Chyba spojenia** opisujú toto spojenie. **Neznámy** znamená, že aktuálny stav nie je dostupný; po aktualizácii môže byť potrebné zatvoriť všetky karty a otvoriť ich znova. **Sync je pozastavený** znamená, že aktuálny lokálny vlastník ešte nemá povolenú synchronizáciu; obnovte fakturačné dáta správnou obnovovacou frázou. Vypnuté relaye a vypnutá synchronizácia zariadenia sa zobrazujú osobitne.
+**Pripojený** znamená otvorené skutočné synchronizačné WebSocket spojenie. **Pripája sa**, **Odpojený** a **Chyba spojenia** opisujú toto spojenie. **Neznámy** znamená, že aktuálny stav nie je dostupný; po aktualizácii môže byť potrebné zatvoriť všetky karty a otvoriť ich znova. **Sync je pozastavený** znamená, že lokálny vlastník alebo aktuálne nastavenia relayov ešte nie sú potvrdené. Prihláste sa a načítajte nastavenia účtu online; ak sú lokálne fakturačné dáta zamknuté, obnovte ich správnou obnovovacou frázou. Vypnuté relaye a vypnutá synchronizácia zariadenia sa zobrazujú osobitne.
 
 Otvorené spojenie nepotvrdzuje kompatibilitu protokolu, úspešné zápisy ani úplnú zálohu. Nainštalovaný klient potrebuje relay kompatibilný s Evolu 7.x. Spojenia fungujú nezávisle a chýbajúca história sa dopĺňa pri prihlásení na odber alebo novom pripojení. Relaye sa nekopírujú priamo medzi sebou; synchronizuje ich klient. Novému relayu doprajte čas na doplnenie dát.
 

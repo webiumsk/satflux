@@ -1,5 +1,49 @@
 # Evolu relay manager
 
+## IP origins and canonical cache confirmation review - 2026-11-07
+
+Both supplied outside-diff findings reproduce against `b84d82a6`. Canonicalize
+accepted IPv6 forms before the existing list duplicate check and persistence;
+preserve strict address/port validation. A related accepted full-IPv4 terminal-dot
+alias is normalized too, matching browser origins without adding new host forms.
+
+Persisted relay cache, including legacy formats and matching public owner keys,
+is metadata rather than authority. Startup and page restoration pause transports
+until a fresh canonical profile confirms the current destinations. Cache/storage/
+channel notices request revalidation; unavailable or stale responses remain local.
+A revision guard and bounded retry protect invalidations during a profile read;
+revalidation reads do not echo broadcasts or supersede initial router auth reads.
+Device resume retains its off sentinel until a fresh same-account read succeeds,
+then clears and applies synchronously. No additional private material is persisted.
+
+Backend owns the URL rule/API regressions; frontend owns lifecycle/auth and their
+focused tests. Main owns Profile integration, related guides, final state and Git.
+Independent security and QA review read-only with synthetic data. Preserve prior
+worker/SQLite identity and unsupported dead-reference/in-flight disposal limits.
+No billing, dependency, baseline, upstream, merge or deployment scope is added.
+
+
+Validation on the frozen correction: runtime30 `40db84da...b8d22d` and source57
+`c29b6fa7...92a622` are byte-verified by independent security and QA before/after.
+Security20 actual-auth integration probes plus900 browser/PHP origin comparisons,
+90 duplicate pairs and19 invalid controls pass. QA16 tests/3 files pass, including
+actual SDK/SQLite routing, local reads while paused, router initialization, bounded
+retries, suspension and device-off races. Both original findings are valid; none
+is skipped. Independent review additionally caught the missed-Off-event edge:
+resume now pauses existing handles before awaiting its canonical GET.
+
+Main full frontend2,156/202, isolated PHP110/737 (relay/CSP/API), Profile/manager34/2,
+author112/5, type110, lint48/52, locale parity and production build pass. Scoped
+Pint/PHPStan, three API schemas and11 changelog fragments pass. Seven actual user
+articles render,12 local links resolve, and3 established English fallbacks remain.
+Local AST documents91/91 changed complexity-qualified named functions,81 runtime;
+no fresh external docstring success is inferred. Private reports/manifests/fixtures/
+logs stay in `reviews/evolu-custom-relay/cache-confirmation/`. The existing SDK
+in-flight disposal grace and old/crashed-worker full-close restart limits remain.
+Prior-head CI passed; new-head checks require their own evidence. Main owns the
+scoped push to open PR432; merge/deployment remain separate pending gates.
+
+
 ## Recovery documentation review corrections - 2026-11-07
 
 Both supplied findings are verified valid against published `d79191ea`. All five
@@ -144,8 +188,9 @@ no production data, external relay, real funds or hardware passkey is used.
 Private reports, manifests, fixtures, logs and previews are retained under
 `storage/app/private/reviews/evolu-custom-relay/relay-manager/`.
 No full production TLS relay or per-relay complete-backup guarantee is claimed.
-Legacy unassociated raw-URL cache behavior remains a bounded compatibility path;
-missing/malformed new caches fail closed. Old/crashed worker references need the
+Legacy cache formats remain readable for migration, but cached selections cannot
+authorize transports; startup and page restoration require fresh canonical
+confirmation. Missing/malformed caches fail closed. Old/crashed worker references need the
 full-tab restart, and SDK in-flight transport disposal retains its grace period.
 Database migrations must precede compatible frontend assets. Older bundles cannot
 represent an all-disabled/empty account list, so rollback to those bundles needs

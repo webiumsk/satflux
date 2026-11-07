@@ -1,5 +1,27 @@
 # Development decision log
 
+## PR432 relay origins and canonical cache review - 2026-11-07
+
+Both outside-diff findings reproduce on published `b84d82a6` and are corrected.
+Equivalent IPv6 origins normalize before list uniqueness/persistence; accepted
+full-IPv4 trailing-dot aliases normalize consistently too. Cached selections never
+authorize startup/restored owners without a fresh canonical account read. Unknown
+or stale responses remain paused; device-off and account/read ordering are retained.
+
+Reviewed runtime30 `40db84da...b8d22d` / source57 `c29b6fa7...92a622` match the
+independent security/QA scope before and after checks. Security20 integration cases
+plus900 origin/90 duplicate comparisons pass; QA16/3 including actual SDK/SQLite
+and auth races passes. Main frontend2,156/202, PHP110/737, type110, lint48/52,
+locale/build, scoped Pint/PHPStan, API/changelog11 and7 rendered guides pass.
+Local AST documents91/91 changed complexity-qualified named functions (81 runtime);
+this is local evidence, not a new external docstring coverage result.
+
+PR432 remains open/unmerged; review base is `b84d82a6`. Main owns scoped corrective
+publication and exact-head CI verification. Merge and deployment remain separate
+pending owner gates. No dependencies, ratchets, billing or unrelated primary work
+change. Contract, review limits and private evidence: `EVOLU_RELAY_MANAGER.md` and
+`reviews/evolu-custom-relay/cache-confirmation/` in the feature worktree.
+
 ## Multi-relay manager independently accepted - 2026-11-07
 
 Owner-authorized list/add/detail/enable/remove replaces the single-custom form.

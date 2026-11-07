@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({
     apiPut: vi.fn(),
     fetchUser: vi.fn(),
     reconcileEvoluRelayPreferenceFromProfile: vi.fn(),
+    resumeEvoluRelaySyncOnDevice: vi.fn(),
     captureLocalDefaultRelayOwnerConfirmation: vi.fn(),
     confirmLocalDefaultRelayOwner: vi.fn(),
     writeRelayOverrideUrl: vi.fn(),
@@ -59,6 +60,7 @@ vi.mock("../store/auth", async () => {
             get user() { return user.value; },
             fetchUser: mocks.fetchUser,
             reconcileEvoluRelayPreferenceFromProfile: mocks.reconcileEvoluRelayPreferenceFromProfile,
+            resumeEvoluRelaySyncOnDevice: mocks.resumeEvoluRelaySyncOnDevice,
             captureLocalDefaultRelayOwnerConfirmation: mocks.captureLocalDefaultRelayOwnerConfirmation,
             enrollGuestRecoveryPublicKey: vi.fn(),
         }),
@@ -296,6 +298,7 @@ describe("Profile recovery phrase owner switch guard", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.fetchUser.mockResolvedValue(true);
+        mocks.resumeEvoluRelaySyncOnDevice.mockResolvedValue(true);
         vi.mocked(readRelayOverride).mockReturnValue({ kind: "none" });
         mocks.captureLocalDefaultRelayOwnerConfirmation.mockReturnValue(mocks.confirmLocalDefaultRelayOwner);
         mocks.confirmLocalDefaultRelayOwner.mockReturnValue(false);
@@ -580,7 +583,7 @@ describe("Profile recovery phrase owner switch guard", () => {
             const wrapper = await mountProfile();
             const reload = stubReload();
             try {
-                mocks.fetchUser.mockImplementationOnce(async () => {
+                mocks.resumeEvoluRelaySyncOnDevice.mockImplementationOnce(async () => {
                     expect(clearRelayOverride).not.toHaveBeenCalled();
                     mocks.user = { ...mocks.user!, evolu_relays: [{ url: 'wss://kept.test', enabled: true }] };
                     return true;
@@ -588,10 +591,11 @@ describe("Profile recovery phrase owner switch guard", () => {
                 const state = wrapper.vm as unknown as { relaySyncDisabledOnDevice: boolean; toggleRelaySyncOnDevice: () => Promise<void> };
                 state.relaySyncDisabledOnDevice = false;
                 await state.toggleRelaySyncOnDevice();
-                expect(mocks.fetchUser).toHaveBeenCalledOnce();
-                expect(clearRelayOverride).toHaveBeenCalledOnce();
-                expect(mocks.reconcileEvoluRelayPreferenceFromProfile).toHaveBeenCalledOnce();
-                expect(mocks.fetchUser.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(clearRelayOverride).mock.invocationCallOrder[0]);
+                expect(mocks.resumeEvoluRelaySyncOnDevice).toHaveBeenCalledOnce();
+                expect(mocks.fetchUser).not.toHaveBeenCalled();
+                expect(clearRelayOverride).not.toHaveBeenCalled();
+                expect(mocks.reconcileEvoluRelayPreferenceFromProfile).not.toHaveBeenCalled();
+                expect(mocks.resumeEvoluRelaySyncOnDevice.mock.invocationCallOrder[0]).toBeLessThan(reload.mock.invocationCallOrder[0]);
                 expect(reload).toHaveBeenCalledOnce();
             } finally { vi.unstubAllGlobals(); wrapper.unmount(); }
         });
@@ -600,7 +604,7 @@ describe("Profile recovery phrase owner switch guard", () => {
             const wrapper = await mountProfile();
             const reload = stubReload();
             try {
-                mocks.fetchUser.mockImplementationOnce(async () => {
+                mocks.resumeEvoluRelaySyncOnDevice.mockImplementationOnce(async () => {
                     if (failure !== 'failed') {
                         const original = mocks.user!;
                         mocks.user = { ...original, id: 2 };

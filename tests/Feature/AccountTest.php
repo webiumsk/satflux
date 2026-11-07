@@ -163,16 +163,44 @@ class AccountTest extends TestCase
 
     public static function validRelayOrigins(): array
     {
-        return [
+        return array_merge([
             'secure origin' => ['wss://relay.example.com', 'wss://relay.example.com'],
             'canonical scheme and default port' => ['WSS://RELAY.EXAMPLE.COM:443/', 'wss://relay.example.com'],
             'custom port' => ['wss://relay.example.com:8443/', 'wss://relay.example.com:8443'],
             'ipv4' => ['wss://127.0.0.1:8443', 'wss://127.0.0.1:8443'],
-            'ipv4 trailing dot' => ['wss://127.0.0.1.:8443', 'wss://127.0.0.1.:8443'],
+            'ipv4 trailing dot' => ['wss://127.0.0.1.:8443', 'wss://127.0.0.1:8443'],
             'hostname trailing dot' => ['wss://relay.example.com.', 'wss://relay.example.com.'],
             'ipv6' => ['wss://[::1]:8443/', 'wss://[::1]:8443'],
             'hex label in DNS hostname' => ['wss://0x.example.com', 'wss://0x.example.com'],
+        ], self::canonicalIpv6RelayOrigins());
+    }
+
+    /** Match browser URL canonicalization, including mapped IPv4 kept in hexadecimal form. */
+    public static function canonicalIpv6RelayOrigins(): array
+    {
+        return [
+            'expanded loopback and default port' => ['wss://[0:0:0:0:0:0:0:1]:443/', 'wss://[::1]'],
+            'leading zeros and first longest zero run' => ['wss://[2001:0DB8:0000:0000:0001:0000:0000:0001]:8443/', 'wss://[2001:db8::1:0:0:1]:8443'],
+            'IPv4 mapped hexadecimal' => ['wss://[0:0:0:0:0:FFFF:C000:0201]/', 'wss://[::ffff:c000:201]'],
+            'IPv4 compatible hexadecimal' => ['wss://[0:0:0:0:0:0:C000:0201]', 'wss://[::c000:201]'],
+            'single zero remains uncompressed' => ['wss://[2001:db8:0:1:2:3:4:5]', 'wss://[2001:db8:0:1:2:3:4:5]'],
+            'all zero IPv6' => ['wss://[0:0:0:0:0:0:0:0]', 'wss://[::]'],
         ];
+    }
+
+    /** Canonicalize before persisting the list and its legacy first-enabled projection. */
+    #[DataProvider('canonicalIpv6RelayOrigins')]
+    public function test_evolu_relay_lists_store_canonical_ipv6_origins(string $input, string $expected): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+        $relays = [['url' => $input, 'enabled' => true]];
+        $canonical = [['url' => $expected, 'enabled' => true]];
+
+        $this->putJson('/api/user', ['evolu_relays' => $relays])
+            ->assertOk()->assertJsonPath('user.evolu_relays', $canonical)
+            ->assertJsonPath('user.evolu_relay_url', $expected);
+        $this->assertSame($canonical, $user->fresh()->evolu_relays);
     }
 
     #[DataProvider('invalidRelayOrigins')]
@@ -389,6 +417,10 @@ class AccountTest extends TestCase
             'numeric alias' => [[['url' => 'wss://relay.0x', 'enabled' => true]]],
             'CSP injection' => [[['url' => 'wss://relay.example.com;script-src *', 'enabled' => true]]],
             'duplicate origin' => [[$valid, ['url' => 'WSS://VALID.EXAMPLE.COM:443/', 'enabled' => false]]],
+            'duplicate IPv4 trailing dot' => [[['url' => 'wss://192.0.2.1', 'enabled' => true], ['url' => 'wss://192.0.2.1.:443/', 'enabled' => false]]],
+            'duplicate IPv6 expanded default port' => [[['url' => 'wss://[::1]', 'enabled' => true], ['url' => 'wss://[0:0:0:0:0:0:0:1]:443/', 'enabled' => false]]],
+            'duplicate IPv6 leading zeros custom port' => [[['url' => 'wss://[2001:db8::1]:8443', 'enabled' => true], ['url' => 'wss://[2001:0db8:0000:0000:0000:0000:0000:0001]:8443', 'enabled' => true]]],
+            'duplicate IPv4 mapped hexadecimal' => [[['url' => 'wss://[::ffff:c000:201]', 'enabled' => true], ['url' => 'wss://[0000:0000:0000:0000:0000:ffff:c000:0201]:443', 'enabled' => true]]],
             'too many' => [array_map(fn (int $i) => ['url' => "wss://relay{$i}.example.com", 'enabled' => true], range(1, 9))],
             'too many URL bytes' => [array_map(fn (int $i) => ['url' => "wss://{$longHost}{$i}", 'enabled' => true], range(1, 8))],
         ];
