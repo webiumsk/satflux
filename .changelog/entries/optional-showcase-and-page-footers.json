@@ -1,0 +1,9 @@
+{
+  "id": "optional-showcase-and-page-footers",
+  "source": "https://github.com/webiumsk/satflux/pull/430",
+  "title": "Optional product showcase and consistent page footers",
+  "body": "Satflux can now show an optional showcase homepage with product stories, pricing, FAQs and screenshots. The existing homepage remains the default.\n\nPage footers follow the content with more consistent responsive layouts and scrolling. Where configured, the point-of-sale demo loads only after you choose to open it.",
+  "labels": [
+    "improvement"
+  ]
+}

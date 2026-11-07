@@ -1,0 +1,9 @@
+{
+  "id": "evolu-relay-management-and-status",
+  "source": "https://github.com/webiumsk/satflux/pull/432",
+  "title": "Manage Evolu relays and see synchronization errors",
+  "body": "Account settings now lets you add Evolu relays, inspect their details, enable or pause them, and remove custom relays. Satflux and Freedomrelay are the defaults; existing explicit relay selections and disabled settings are preserved.\n\nConnection status is shown separately from observed protocol errors, including quota, write-key, write, synchronization and version failures. An open connection or a received reply does not confirm a complete backup.\n\nAfter updating, keep your recovery phrase and independent invoicing exports safe, load account settings on each device, close all Satflux tabs and reopen.",
+  "labels": [
+    "feature"
+  ]
+}
