@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\EmailCodeChallengeException;
 use App\Models\Store;
+use App\Rules\EvoluRelays;
+use App\Rules\EvoluRelayUrl;
 use App\Services\Auth\EmailCodeChallengeService;
 use App\Services\BtcPay\LightningAddressService;
 use App\Services\BtcPay\RaffleService;
@@ -217,14 +219,30 @@ class AccountController extends Controller
      */
     public function updateProfile(Request $request)
     {
-        $validated = $request->validate([
+        $rules = [
             'name' => ['nullable', 'string', 'max:255'],
-            'evolu_relay_url' => ['nullable', 'string', 'max:512', 'regex:/^wss:\/\/.+/i'],
-        ]);
+            'evolu_relays' => ['nullable', new EvoluRelays],
+        ];
+        if (! $request->exists('evolu_relays')) {
+            $rules['evolu_relay_url'] = ['nullable', 'string', 'max:512', new EvoluRelayUrl];
+            $rules['evolu_relay_add_default'] = ['sometimes', 'boolean'];
+        }
+        $validated = $request->validate($rules);
 
-        if (array_key_exists('evolu_relay_url', $validated)) {
-            $url = trim((string) ($validated['evolu_relay_url'] ?? ''));
-            $validated['evolu_relay_url'] = $url !== '' ? $url : null;
+        if (array_key_exists('evolu_relays', $validated)) {
+            $relays = $validated['evolu_relays'] === null ? null
+                : (EvoluRelays::normalize($validated['evolu_relays']) ?? []);
+            $validated['evolu_relays'] = $relays;
+            // Old clients can represent only the first enabled explicit destination.
+            $validated['evolu_relay_url'] = collect($relays ?? [])->firstWhere('enabled', true)['url'] ?? null;
+            $validated['evolu_relay_add_default'] = false;
+        } elseif (array_key_exists('evolu_relay_url', $validated)
+            || array_key_exists('evolu_relay_add_default', $validated)) {
+            $validated['evolu_relays'] = null;
+            if (array_key_exists('evolu_relay_url', $validated)) {
+                $url = trim((string) ($validated['evolu_relay_url'] ?? ''));
+                $validated['evolu_relay_url'] = $url !== '' ? EvoluRelayUrl::normalize($url) : null;
+            }
         }
 
         $request->user()->update($validated);

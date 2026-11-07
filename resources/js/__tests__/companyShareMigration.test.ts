@@ -35,7 +35,7 @@ const Q = vi.hoisted(() => {
     };
 });
 vi.mock('@/evolu/client', () => Q);
-vi.mock('@/services/evoluRelayPreference', () => ({ getResolvedEvoluRelayUrl: () => '' }));
+vi.mock('@/services/evoluRelayPreference', () => ({ getResolvedEvoluRelayUrls: () => [] }));
 const bridge = vi.hoisted(() => ({
     ensure: vi.fn<() => Promise<{ ok: boolean; bridgeCompanyId?: string | null }>>(async () => ({ ok: true, bridgeCompanyId: 'bridge-1' })),
 }));

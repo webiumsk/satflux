@@ -8,7 +8,8 @@ import {
 } from "@evolu/common/local-first";
 import type { Evolu, SyncOwner, UnuseOwner } from "@evolu/common/local-first";
 import type { InvoicingLocalSchema } from "./schema";
-import { getResolvedEvoluRelayUrl } from "@/services/evoluRelayPreference";
+import { getResolvedEvoluRelayUrls } from "@/services/evoluRelayPreference";
+import { registerEvoluRelayOwner } from "./relayPreferenceLifecycle";
 
 /**
  * Company sharing (Track C) rests on Evolu SharedOwners: one owner per shared
@@ -38,6 +39,7 @@ export function encodeOwnerSecret(secret: OwnerSecret): string {
     return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+/** Decode a shared-owner secret, rejecting malformed base64url and incorrect lengths. */
 export function decodeOwnerSecret(encoded: string): OwnerSecret | null {
     const normalized = encoded.trim().replace(/-/g, "+").replace(/_/g, "/");
     if (normalized === "" || !/^[A-Za-z0-9+/]+$/.test(normalized)) {
@@ -64,19 +66,16 @@ export function sharedOwnerFromSecret(secret: OwnerSecret): SharedOwner {
 
 /** Owner with its own relay transport, like the AppOwner in evoluRelayOwner.ts. */
 export function sharedOwnerForRelay(owner: SharedOwner): SyncOwner {
-    const relayUrl = getResolvedEvoluRelayUrl();
-    if (!relayUrl) {
-        return owner;
-    }
     return {
         ...owner,
-        transports: [createOwnerWebSocketTransport({ url: relayUrl, ownerId: owner.id })],
+        transports: getResolvedEvoluRelayUrls().map((url) => createOwnerWebSocketTransport({ url, ownerId: owner.id })),
     };
 }
 
 /** Registrations are scoped per Evolu instance so two clients (or tests) can use the same owner independently. */
 const activeOwners = new WeakMap<Evolu<InvoicingLocalSchema>, Map<OwnerId, UnuseOwner>>();
 
+/** Keep each Evolu instance's shared-owner registration handles independent. */
 function registryFor(evolu: Evolu<InvoicingLocalSchema>): Map<OwnerId, UnuseOwner> {
     let registry = activeOwners.get(evolu);
     if (!registry) {
@@ -93,17 +92,19 @@ function registryFor(evolu: Evolu<InvoicingLocalSchema>): Map<OwnerId, UnuseOwne
 export function registerSharedOwner(evolu: Evolu<InvoicingLocalSchema>, owner: SharedOwner): OwnerId {
     const registry = registryFor(evolu);
     if (!registry.has(owner.id)) {
-        registry.set(owner.id, evolu.useOwner(sharedOwnerForRelay(owner)));
+        registry.set(owner.id, registerEvoluRelayOwner(evolu, sharedOwnerForRelay(owner)));
     }
     return owner.id;
 }
 
+/** Release one shared owner's current transports and remove its local registration. */
 export function unregisterSharedOwner(evolu: Evolu<InvoicingLocalSchema>, ownerId: OwnerId): void {
     const registry = activeOwners.get(evolu);
     registry?.get(ownerId)?.();
     registry?.delete(ownerId);
 }
 
+/** Report whether this instance currently tracks the requested shared owner. */
 export function isSharedOwnerRegistered(evolu: Evolu<InvoicingLocalSchema>, ownerId: OwnerId): boolean {
     return activeOwners.get(evolu)?.has(ownerId) ?? false;
 }

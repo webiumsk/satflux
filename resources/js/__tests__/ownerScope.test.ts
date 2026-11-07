@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // companyShareBootstrap imports the real Evolu singleton; the tests only need the query token.
 vi.mock('@/evolu/client', () => ({ allCompanySharesQuery: {} }));
-vi.mock('@/services/evoluRelayPreference', () => ({ getResolvedEvoluRelayUrl: () => '' }));
+vi.mock('@/services/evoluRelayPreference', () => ({ getResolvedEvoluRelayUrls: () => [] }));
 import type { Evolu } from '@evolu/common/local-first';
 import type { OwnerId } from '@evolu/common/local-first';
 import {

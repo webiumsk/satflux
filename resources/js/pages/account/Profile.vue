@@ -56,77 +56,13 @@
           v-if="localFirst"
           class="rounded-2xl border border-gray-700 bg-gray-800/80 p-5 space-y-3"
         >
-          <h4 class="text-sm font-semibold text-white">
-            {{ t("account.evolu_relay_title") }}
-          </h4>
-          <p class="text-sm text-gray-300">
-            {{ t("account.evolu_relay_desc") }}
-          </p>
-          <p class="text-xs text-gray-400">
-            {{ t("account.evolu_relay_active", { url: activeRelayUrl }) }}
-          </p>
-          <p v-if="relayBuildDefault" class="text-xs text-gray-500">
-            {{ t("account.evolu_relay_build_default", { url: relayBuildDefault }) }}
-          </p>
-          <label class="block text-sm text-gray-300">
-            <span class="mb-1 block">{{ t("account.evolu_relay_url_label") }}</span>
-            <input
-              v-model="evoluRelayForm.url"
-              type="url"
-              class="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white"
-              :placeholder="t('account.evolu_relay_url_placeholder')"
-              autocomplete="off"
-              spellcheck="false"
-            />
-          </label>
-          <div class="flex flex-wrap gap-2">
-            <button
-              type="button"
-              class="inline-flex items-center px-4 py-2 border border-indigo-400 rounded-lg text-sm font-medium text-indigo-200 hover:bg-indigo-500/20 disabled:opacity-50"
-              :disabled="evoluRelaySaving"
-              @click="saveEvoluRelayUrl"
-            >
-              {{
-                evoluRelaySaving
-                  ? t("account.evolu_relay_saving")
-                  : t("account.evolu_relay_save")
-              }}
-            </button>
-            <button
-              type="button"
-              class="inline-flex items-center px-4 py-2 border border-gray-500 rounded-lg text-sm font-medium text-gray-200 hover:bg-gray-700/50 disabled:opacity-50"
-              :disabled="evoluRelaySaving"
-              @click="clearEvoluRelayUrl"
-            >
-              {{ t("account.evolu_relay_clear") }}
-            </button>
-            <button
-              type="button"
-              class="inline-flex items-center px-4 py-2 border border-gray-500 rounded-lg text-sm font-medium text-gray-200 hover:bg-gray-700/50 disabled:opacity-50"
-              :disabled="evoluRelayTesting"
-              @click="testEvoluRelayUrl"
-            >
-              {{ evoluRelayTesting ? t("account.evolu_relay_testing") : t("account.evolu_relay_test") }}
-            </button>
-          </div>
-          <p
-            v-if="evoluRelayTestResult"
-            class="text-xs"
-            :class="evoluRelayTestResult === 'ok' ? 'text-emerald-300' : 'text-red-400'"
-            role="status"
-            aria-live="polite"
-          >
-            {{
-              evoluRelayTestResult === "ok"
-                ? t("account.evolu_relay_test_ok")
-                : t("account.evolu_relay_test_failed")
-            }}
-          </p>
+          <EvoluRelayManager :device-sync-disabled="relaySyncDisabledOnDevice" />
           <label class="flex items-start gap-2 text-xs text-gray-400 cursor-pointer select-none">
             <input
               v-model="relaySyncDisabledOnDevice"
               type="checkbox"
               class="mt-0.5 h-4 w-4 rounded border-gray-500 bg-gray-800 text-indigo-600 focus:ring-indigo-500"
+              :disabled="relayDeviceSyncChanging"
               @change="toggleRelaySyncOnDevice"
             />
             <span>{{ t("account.evolu_relay_device_off_label") }}</span>
@@ -1600,7 +1536,7 @@ import FreeProNotice from "@/components/account/FreeProNotice.vue";
 import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
 import { isPurchasePausedError } from "@/services/apiError";
 import { asApiError } from "../../utils/apiError";
-import { ref, onMounted, computed, watch } from "vue";
+import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { localeTagFor } from "@/i18n";
@@ -1660,9 +1596,8 @@ import {
 } from "../../services/deviceUnlock/passkeyPrf";
 import { isAcceptableDevicePassphrase, RecoveryOwnerMismatchError } from "../../services/deviceUnlock/envelope";
 import { isInvoicingLocalFirst } from "../../evolu/flags";
-import { getEvoluRelayBuildInfo, normalizeEvoluRelayBaseUrl } from "../../evolu/config";
 import { getEvoluRelayRuntimeInfo } from "../../services/evoluRelayPreference";
-import { refreshEvoluRelaySubscription } from "../../evolu/evoluRelaySubscription";
+import { pauseEvoluRelayPreference } from "../../evolu/relayPreferenceLifecycle";
 import { ensureEvoluBoundToAccountSeed, resetEvoluBootstrapForRetry } from "../../evolu/bootstrap";
 import { allowEvoluPageReload } from "../../evolu/reloadGuard";
 import {
@@ -1672,17 +1607,15 @@ import {
 } from "../../evolu/invoicingLocalStats";
 import InvoicingBackupCard from "../../components/account/InvoicingBackupCard.vue";
 import LocalStorageCard from "../../components/account/LocalStorageCard.vue";
+import EvoluRelayManager from "../../components/account/EvoluRelayManager.vue";
 import {
   fetchEvoluRelayUsage,
-  probeRelayReachability,
   relayUsagePercent,
   type EvoluRelayUsageResponse,
 } from "../../services/evoluRelayUsageApi";
 import {
-  clearRelayOverride,
   readRelayOverride,
   writeRelayOverrideDisabled,
-  writeRelayOverrideUrl,
 } from "../../evolu/relayOverrideStorage";
 import { dashboardInvoicingTabPath } from "../../utils/dashboardInvoicingTab";
 const { t, locale } = useI18n();
@@ -1786,12 +1719,16 @@ async function submitDeviceUnlock(): Promise<void> {
   deviceUnlockError.value = "";
   deviceUnlockLoading.value = true;
   const previousMnemonic = getStoredAccountMnemonic();
+  const confirmLocalOwner = authStore.captureLocalDefaultRelayOwnerConfirmation();
   try {
     const { recoveryPhrase } = await unlockDeviceWithPassphrase(devicePassphraseInput.value);
     if (!(await confirmRestoreOwnerSwitchIfNeeded(recoveryPhrase))) {
       restorePreviousSessionMnemonic(previousMnemonic);
       devicePassphraseInput.value = "";
       return;
+    }
+    if (confirmLocalOwner(recoveryPhrase)) {
+      await authStore.fetchUser();
     }
     resetEvoluBootstrapForRetry();
     storedGuestMnemonic.value = getStoredGuestMnemonic();
@@ -1847,11 +1784,15 @@ async function submitDeviceUnlockWithPasskey(): Promise<void> {
   deviceUnlockError.value = "";
   deviceUnlockLoading.value = true;
   const previousMnemonic = getStoredAccountMnemonic();
+  const confirmLocalOwner = authStore.captureLocalDefaultRelayOwnerConfirmation();
   try {
     const { recoveryPhrase } = await unlockDeviceWithPasskey();
     if (!(await confirmRestoreOwnerSwitchIfNeeded(recoveryPhrase))) {
       restorePreviousSessionMnemonic(previousMnemonic);
       return;
+    }
+    if (confirmLocalOwner(recoveryPhrase)) {
+      await authStore.fetchUser();
     }
     resetEvoluBootstrapForRetry();
     storedGuestMnemonic.value = getStoredGuestMnemonic();
@@ -2043,6 +1984,7 @@ async function removeMergedPasskey(entry: MergedPasskey): Promise<void> {
 async function submitRestoreWithAccountPasskey(): Promise<void> {
   restoreOnDeviceError.value = "";
   accountPasskeyRestoreLoading.value = true;
+  const confirmLocalOwner = authStore.captureLocalDefaultRelayOwnerConfirmation();
   try {
     const { recoveryPhrase } = await restoreWithAccountPasskey();
     if (!(await confirmRestoreOwnerSwitchIfNeeded(recoveryPhrase))) {
@@ -2050,6 +1992,9 @@ async function submitRestoreWithAccountPasskey(): Promise<void> {
     }
     resetEvoluBootstrapForRetry();
     const result = await bindRecoveryPhraseOnThisDevice(recoveryPhrase);
+    if (result !== "owner_restore_failed" && confirmLocalOwner(recoveryPhrase)) {
+      await authStore.fetchUser();
+    }
     storedGuestMnemonic.value = getStoredGuestMnemonic();
     showRestoreOnDeviceModal.value = false;
     if (result === "restored" || result === "migrated_legacy_owner") {
@@ -2075,10 +2020,17 @@ async function submitRestoreWithAccountPasskey(): Promise<void> {
   }
 }
 
+/** Clear pending owner-switch approval when the user changes or the flow completes. */
 function resetRestoreOwnerSwitchGuard(): void {
   restoreOwnerSwitchImpact.value = null;
   restoreOwnerSwitchConfirmedFor.value = "";
 }
+
+let restoreOwnerSwitchAccountGeneration = 0;
+watch(() => authStore.user?.id, () => {
+  restoreOwnerSwitchAccountGeneration++;
+  resetRestoreOwnerSwitchGuard();
+}, { flush: "sync" });
 
 function restorePreviousSessionMnemonic(previousMnemonic: string | null): void {
   clearSessionAccountMnemonic();
@@ -2093,10 +2045,13 @@ function restorePreviousSessionMnemonic(previousMnemonic: string | null): void {
   storedGuestMnemonic.value = getStoredGuestMnemonic();
 }
 
+/** Require a fresh preview confirmation for the same phrase and uninterrupted account session. */
 async function confirmRestoreOwnerSwitchIfNeeded(recoveryPhrase: string): Promise<boolean> {
+  const generation = restoreOwnerSwitchAccountGeneration;
   const recoveryPublicKeyHex = deriveRecoveryPublicKeyHex(recoveryPhrase);
   if (restoreOwnerSwitchConfirmedFor.value !== recoveryPublicKeyHex) {
     const impact = await previewOwnerSwitchImpact(recoveryPhrase);
+    if (generation !== restoreOwnerSwitchAccountGeneration) return false;
     if (impact.switches) {
       restoreOwnerSwitchImpact.value = impact;
       restoreOwnerSwitchConfirmedFor.value = recoveryPublicKeyHex;
@@ -2163,12 +2118,6 @@ function setProfileTab(tab: ProfileTab) {
   void router.replace({ path: route.path, query });
 }
 
-const evoluRelayForm = ref({ url: "" });
-const evoluRelaySaving = ref(false);
-const relayBuildDefault = computed(() => {
-  const build = getEvoluRelayBuildInfo();
-  return build.enabled ? build.url : "";
-});
 const activeRelayUrl = computed(() => getEvoluRelayRuntimeInfo().url);
 const evoluLocalStats = ref<InvoicingLocalStats | null>(null);
 const evoluRelayUsage = ref<EvoluRelayUsageResponse | null>(null);
@@ -2322,7 +2271,7 @@ onMounted(async () => {
   }
   if (authStore.user) {
     profileForm.value.name = authStore.user.name || "";
-    evoluRelayForm.value.url = authStore.user.evolu_relay_url ?? "";
+
   }
 
   await loadSubscriptionDetails();
@@ -2553,9 +2502,12 @@ async function handleRecoveryEnrolled(payload: {
   }
 }
 
+/** Bind the entered phrase and reconcile only a successfully confirmed local owner. */
 async function submitRestoreOnDevice(): Promise<void> {
   restoreOnDeviceError.value = "";
   restoreOnDeviceLoading.value = true;
+  const mnemonic = restoreOnDeviceInput.value;
+  const confirmLocalOwner = authStore.captureLocalDefaultRelayOwnerConfirmation();
   try {
     // Optional "remember this device": validate the passphrase before touching
     // anything, so a weak passphrase fails fast without half-binding.
@@ -2566,24 +2518,27 @@ async function submitRestoreOnDevice(): Promise<void> {
       return;
     }
 
-    if (!(await confirmRestoreOwnerSwitchIfNeeded(restoreOnDeviceInput.value))) {
+    if (!(await confirmRestoreOwnerSwitchIfNeeded(mnemonic))) {
       return;
     }
     resetEvoluBootstrapForRetry();
-    const result = await bindRecoveryPhraseOnThisDevice(restoreOnDeviceInput.value);
+    const result = await bindRecoveryPhraseOnThisDevice(mnemonic);
 
     if (wantsRemember) {
       // Wrap the just-entered phrase in a device passphrase envelope. If this
       // fails the phrase is still bound for the session - surface the error but
       // do not block the restore.
       try {
-        await rememberDeviceWithPassphrase(restoreOnDeviceInput.value, devicePassphraseInput.value);
+        await rememberDeviceWithPassphrase(mnemonic, devicePassphraseInput.value);
         await refreshDeviceRemembered();
       } catch {
         flashStore.warning(t("account.device_remember_failed"));
       }
     }
 
+    if (result !== "owner_restore_failed" && confirmLocalOwner(mnemonic)) {
+      await authStore.fetchUser();
+    }
     storedGuestMnemonic.value = getStoredGuestMnemonic();
     showRestoreOnDeviceModal.value = false;
     restoreOnDeviceInput.value = "";
@@ -2602,87 +2557,46 @@ async function submitRestoreOnDevice(): Promise<void> {
   }
 }
 
-const evoluRelayTesting = ref(false);
-const evoluRelayTestResult = ref<"ok" | "failed" | null>(null);
 const relaySyncDisabledOnDevice = ref(readRelayOverride().kind === "disabled");
+const relayDeviceSyncChanging = ref(false);
+let relayDeviceSyncGeneration = 0;
+watch(() => authStore.user?.id, () => { relayDeviceSyncGeneration++; }, { flush: "sync" });
+onUnmounted(() => { relayDeviceSyncGeneration++; });
 
-/** Probe the ENTERED URL (not the saved one) before committing to it. */
-async function testEvoluRelayUrl(): Promise<void> {
-  evoluRelayTesting.value = true;
-  evoluRelayTestResult.value = null;
-  try {
-    const url = normalizeEvoluRelayBaseUrl(evoluRelayForm.value.url.trim() || activeRelayUrl.value);
-    const reachable = url ? await probeRelayReachability(url) : false;
-    evoluRelayTestResult.value = reachable ? "ok" : "failed";
-  } catch {
-    evoluRelayTestResult.value = "failed";
-  } finally {
-    evoluRelayTesting.value = false;
-  }
-}
-
-/**
- * Device-level sync off (P2 phase 1): stored only on this device; the Evolu
- * worker boots with empty transports on next load, so a reload applies it.
- */
-function toggleRelaySyncOnDevice(): void {
+/** Keep sync paused until a fresh canonical profile confirms the current account's destinations. */
+async function toggleRelaySyncOnDevice(event?: Event): Promise<void> {
+  const input = event?.target instanceof HTMLInputElement ? event.target : null;
+  if (relayDeviceSyncChanging.value) return;
   if (relaySyncDisabledOnDevice.value) {
     writeRelayOverrideDisabled();
-  } else {
-    clearRelayOverride();
-    cacheProfileIntoOverride();
+    pauseEvoluRelayPreference();
+    window.location.reload();
+    return;
   }
-  window.location.reload();
-}
-
-function cacheProfileIntoOverride(): void {
-  const normalized = normalizeEvoluRelayBaseUrl(authStore.user?.evolu_relay_url ?? "");
-  writeRelayOverrideUrl(normalized);
-}
-
-async function saveEvoluRelayUrl(): Promise<void> {
-  evoluRelaySaving.value = true;
+  const accountId = authStore.user?.id;
+  const generation = relayDeviceSyncGeneration;
+  relaySyncDisabledOnDevice.value = true;
+  if (input) input.checked = true;
+  relayDeviceSyncChanging.value = true;
   try {
-    const url = evoluRelayForm.value.url.trim();
-    const previous = authStore.user?.evolu_relay_url ?? "";
-    await api.put("/user", {
-      evolu_relay_url: url !== "" ? url : null,
-    });
-    await authStore.fetchUser();
-    evoluRelayForm.value.url = authStore.user?.evolu_relay_url ?? "";
-    // Ensure the worker transport cache matches the saved profile before the
-    // reload below boots Evolu (fetchUser also caches; belt and braces).
-    if (readRelayOverride().kind !== "disabled") {
-      cacheProfileIntoOverride();
+    const refreshed = accountId != null && await authStore.resumeEvoluRelaySyncOnDevice();
+    if (!refreshed || authStore.user?.id !== accountId || generation !== relayDeviceSyncGeneration) {
+      throw new Error("Canonical relay preference unavailable");
     }
-    flashStore.success(t("account.evolu_relay_saved"));
-
-    // The Content-Security-Policy connect-src allowlist for the custom relay is
-    // built at document load. A full reload gets a fresh CSP header that permits
-    // the new relay websocket; a live reconnect alone would be blocked under an
-    // enforced CSP. Only reload when the relay origin actually changed.
-    if (
-      localFirst
-      && normalizeEvoluRelayBaseUrl(url) !== normalizeEvoluRelayBaseUrl(previous)
-    ) {
-      window.location.reload();
-      return;
-    }
-    if (localFirst) {
-      const { evolu } = await import("@/evolu/client");
-      await refreshEvoluRelaySubscription(evolu);
-    }
-    void refreshEvoluStats();
+    relaySyncDisabledOnDevice.value = false;
+    if (input) input.checked = false;
+    window.location.reload();
   } catch {
-    flashStore.error(t("account.evolu_relay_save_failed"));
+    // A failed refresh or an account switch must retain the device-off sentinel.
+    relaySyncDisabledOnDevice.value = true;
+    writeRelayOverrideDisabled();
+    pauseEvoluRelayPreference();
+    if (authStore.user?.id === accountId && generation === relayDeviceSyncGeneration) {
+      flashStore.error(t("account.evolu_relay_save_failed"));
+    }
   } finally {
-    evoluRelaySaving.value = false;
+    relayDeviceSyncChanging.value = false;
   }
-}
-
-async function clearEvoluRelayUrl(): Promise<void> {
-  evoluRelayForm.value.url = "";
-  await saveEvoluRelayUrl();
 }
 
 function formatStatsTime(ms: number): string {

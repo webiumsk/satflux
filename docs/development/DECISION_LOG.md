@@ -1,5 +1,160 @@
 # Development decision log
 
+## PR432 relay origins and canonical cache review - 2026-11-07
+
+Both outside-diff findings reproduce on published `b84d82a6` and are corrected.
+Equivalent IPv6 origins normalize before list uniqueness/persistence; accepted
+full-IPv4 trailing-dot aliases normalize consistently too. Cached selections never
+authorize startup/restored owners without a fresh canonical account read. Unknown
+or stale responses remain paused; device-off and account/read ordering are retained.
+
+Reviewed runtime30 `40db84da...b8d22d` / source57 `c29b6fa7...92a622` match the
+independent security/QA scope before and after checks. Security20 integration cases
+plus900 origin/90 duplicate comparisons pass; QA16/3 including actual SDK/SQLite
+and auth races passes. Main frontend2,156/202, PHP110/737, type110, lint48/52,
+locale/build, scoped Pint/PHPStan, API/changelog11 and7 rendered guides pass.
+Local AST documents91/91 changed complexity-qualified named functions (81 runtime);
+this is local evidence, not a new external docstring coverage result.
+
+PR432 remains open/unmerged; review base is `b84d82a6`. Main owns scoped corrective
+publication and exact-head CI verification. Merge and deployment remain separate
+pending owner gates. No dependencies, ratchets, billing or unrelated primary work
+change. Contract, review limits and private evidence: `EVOLU_RELAY_MANAGER.md` and
+`reviews/evolu-custom-relay/cache-confirmation/` in the feature worktree.
+
+## Multi-relay manager independently accepted - 2026-11-07
+
+Owner-authorized list/add/detail/enable/remove replaces the single-custom form.
+Defaults are `wss://evolu.satflux.io` and `wss://free.evoluhq.com`; existing
+custom-only preferences stay exact. Canonical nullable `evolu_relays` rows preserve
+explicit empty/off selections, with strict bounded validation and account CSP.
+Real SDK worker sockets supply per-relay state through origin-only observations;
+Connected never asserts a complete backup. Same worker/SQLite identity is retained.
+
+Independent security accepts19 TS/SFC +30 PHP cases; QA accepts3 SDK/Profile tests,
+8 real Chrome worker/OPFS cases and10 responsive/keyboard UI cases. Six verified
+review findings are closed, including stale relay revival, device-off resume,
+missing-cache pre-auth exposure, queued status replies and SDK owner-query redaction.
+Reviewed runtime30 `ebae93dc...18ac3c` / source54 `f9ca87d8...cd60a8` match before
+and after independent checks. Main frontend2,129/201, PHP102/693 (relay/CSP/API +
+guide selections), type110, lint48/52, locale/build, Pint/PHPStan/API/changelog pass.
+Local AST documents87/87 changed complexity-qualified functions, including78 runtime
+functions. No dependency, threshold, billing or external repository changes.
+
+PR432 is open at prior published `da17233a`; main owns the scoped corrective
+publication and exact-head verification. Merge/deployment remain separate pending
+owner gates. Full contract, compatibility limits and private evidence are in
+`EVOLU_RELAY_MANAGER.md`; unrelated primary work is preserved.
+
+## PR432 second review accepted locally - 2026-11-06
+
+All four findings are valid and corrected against published `ee294579`: reject
+bare hexadecimal numeric hosts, require recovery backup before closing tabs,
+cache successful public derivations by weak owner identity, and allow default-only
+keyless profiles after explicit account-bound local owner confirmation. Retained
+other-account owners, custom destinations, stale callbacks and device-off remain
+guarded. The session proof contains only public account ID/key provenance.
+
+Independent security/QA accept runtime20 `67ba4a4d...cdf5a9` / source36
+`b93cdd7e...a0e814`, with all bytes verified before/after. Security56 TS +20 Profile
++23 PHP and QA26/3 pass, including actual SDK/SQLite and Profile race coverage.
+Main frontend2,052/196, focused87/4, isolated PHP69/481, Pint/PHPStan, type110,
+lint48/52, locales/build/API/changelog pass; local AST documents37/37 changed
+complexity-qualified runtime functions. No external docstring success is inferred.
+
+PR #432 remains open; main owns corrective publication and exact-head verification.
+Prior-head CI passed; new-head checks need separate evidence. Merge/deployment are
+pending owner gates. Full contracts/limits/evidence are in `EVOLU_CUSTOM_RELAY.md`
+and private `reviews/evolu-custom-relay/second-review/`. Unrelated primary work,
+old-worker restart guidance and existing test ratchets are preserved.
+
+## PR432 review fixes independently accepted locally - 2026-11-06
+
+PR #432 is open. These corrections were verified from published review base
+`3b0d1e1c`; merge and deployment are separate pending gates. All five supplied inline findings and the cache-writer test nit
+are verified still valid and corrected. Secure numeric-host validation rejects
+trailing-dot aliases; Profile probing preserves compatible configured fallbacks.
+Status records acknowledge the PR; five guides/notifications require loading
+settings, closing all Satflux tabs and reopening.
+
+New workers boot local-only and managed public owner registrations reconcile
+canonical relay preferences across cooperative tabs. Atomic URL/mode/public-owner
+association guards prevent cross-account or torn-cache destination routing;
+unknown canonical identity pauses synchronization. No mnemonic/private key is
+persisted or sent by this mechanism. Old/crashed worker references require the
+close-all-tabs step; already in-flight protocol traffic has SDK100ms disposal grace.
+
+Independent QA/security accept runtime19 `cbef0059...c8e22` and source34
+`b878983d...754c84`. QA actual-source helper/real SDK+SQLite scenario1 and SDK5,
+security12/1, author79/6 and main43/2 pass; selections overlap. Main full frontend
+2,024/195, PHP64/458, scoped Pint/PHPStan, lint48/52, locale and build pass.
+Final typecheck110 passes after two erased test-type assertions. The test's
+emitted JavaScript is byte-identical; no baseline/runtime change is introduced.
+
+Local AST audit documents all26 changed complexity-qualified named TS/Vue and
+all3 PHP methods. This is local evidence, not a fresh external docstring result;
+the prior CodeRabbit76.92% warning covers older source. No threshold is weakened,
+CLI installed or manual bot command issued. Full findings, contracts, review
+manifests and limitations are in `EVOLU_CUSTOM_RELAY.md` and private review evidence.
+Main owns scoped source publication to the existing PR; no PR merge/deployment.
+
+## PR432 master conflicts resolved locally - 2026-11-06
+
+Integrate master `b4c2270d` (merged PoS PR431) into relay head `30a9363e`
+without rewriting published history. Only PROJECT_STATE, ROADMAP and DECISION_LOG
+conflict: retain both complete parent prefixes and their common history exactly
+once. All30 reviewed relay source/test/doc bytes retain runtime16
+`5bbc13eb...dc39d7` / source30 `4594a9d3...beb9f`; all12 nonconflicting master
+paths retain master bytes. The feature diff remains exactly35 paths.
+
+Independent QA `/root/relay_conflict_qa` accepts this content-preservation proof.
+Prior relay security acceptance remains applicable to unchanged relay bytes; this
+is not a new semantic/security review of unrelated source. Main PHP182/1408,
+type110, lint48/52, locale parity and production build pass on the combined tree.
+Full frontend1,998/194 also passes. The inspected PHP target is network-disabled,
+SQLite-memory with synthetic uncached configuration. No dependencies/ratchets change.
+
+Publish the conflict resolution to the existing owned PR432 branch under the
+owner's request, then verify remote head and mergeability. New-head CI must be
+attributed separately. No PR merge, deployment or unrelated primary edits occur.
+
+## Evolu relay source publication authorized - 2026-11-06
+
+The owner requests pushing the independently accepted additional-relay feature.
+Prepare one scoped commit on `feat/evolu-custom-relay` in the owned Satflux
+repository, then verify the actual remote tip. Product bytes remain runtime16
+`5bbc13eb...dc39d7` / source30 `4594a9d3...beb9f`, accepted independently by QA
+and security. Exactly35 paths include those30 reviewed source/test/doc files and
+five coordination records; no unrelated primary edits or private fixtures belong
+in the commit. Prior frontend1,940/192, PHP58/432 and static/build/API results
+remain attributed to the reviewed bytes; no product checks are repeated for this
+publication-only documentation update.
+
+Source push is authorized. PR creation, merge and deployment remain separate;
+actual publication outcome and fresh remote checks must be verified after push.
+The primary checkout remains on its existing branch with unrelated work preserved.
+
+## 2026-11-06 - Add a custom Evolu relay alongside the default
+
+The owner explicitly selects simultaneous default and custom synchronization.
+Add optional `evolu_relay_add_default` with DB defaultfalse to preserve existing
+custom-only accounts; the form checks it initially when no custom address exists.
+Keep one deduplicated transport list across boot and both owner types, with
+explicit empty transports for device-off. Reload after URL/mode changes.
+
+Retain the selected pre-auth relay cache on logout: clearing it could silently
+send a persisted custom-only owner's encrypted history to the default relay
+when recovery preview initializes Evolu before authentication. Authenticated
+profile values override stale cache after loading. Reject unsafe custom origins
+atomically; preserve keys and avoid per-relay complete-backup claims.
+
+Independent QA/security accept runtime16 `5bbc13eb...dc39d7` and source30
+`4594a9d3...beb9f`; the HIGH intermediate privacy regression is closed by an
+independent before/after proof. Generated API inventory changes only two matching
+source hashes; export and schema gates pass. Main frontend1,940/192, PHP58/432 and
+static/locale/build pass. Exact tests/limits are recorded in the feature note.
+No billing, other repository, dependency, publication or deployment scope is added.
+
 ## PR431 seven review findings corrected and independently accepted - 2026-11-06
 
 All seven supplied findings reproduce on published38e03295 and are corrected.

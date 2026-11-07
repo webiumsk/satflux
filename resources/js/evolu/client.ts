@@ -1,14 +1,17 @@
 import { createEvolu, kysely, SimpleName, sqliteTrue } from "@evolu/common";
 import { createUseEvolu } from "@evolu/vue";
-import { evoluTransports } from "./config";
+import { registerEvoluRelayOwner } from "./relayPreferenceLifecycle";
 import { withCompanyOwnerScoping } from "./ownerScope";
 import { createEvoluWebDepsWithReloadGuard } from "./reloadGuard";
 import { EVOLU_APP_NAME, InvoicingLocalSchema, type ExpenseId } from "./schema";
 
 const rawEvolu = createEvolu(createEvoluWebDepsWithReloadGuard())(InvoicingLocalSchema, {
     name: SimpleName.orThrow(EVOLU_APP_NAME),
-    transports: evoluTransports(),
+    // SDK's implicit AppOwner cannot be released through public handles. All
+    // relay connections belong to managed registrations below instead.
+    transports: [],
 });
+void rawEvolu.appOwner.then(owner => registerEvoluRelayOwner(rawEvolu, owner)).catch(() => undefined);
 
 /**
  * Every consumer (composables, CRUD modules, EvoluProvider) gets the
