@@ -1,3 +1,4 @@
+import { createRelayProtocolObserver, preferredRelayProtocolObservation, type RelayProtocolObservation } from "./relayProtocolStatus";
 import { createWebSocket, type CreateWebSocket, type WebSocket as EvoluWebSocket } from "@evolu/common";
 import {
     MAX_RELAY_CONNECTIONS,
@@ -12,7 +13,7 @@ import {
     type RelayConnectionSnapshot,
 } from "./relayConnectionStatus";
 
-type Handle = { url: string; state: ObservedRelayConnectionState; socket?: EvoluWebSocket };
+type Handle = { url: string; state: ObservedRelayConnectionState; socket?: EvoluWebSocket; protocol: ReturnType<typeof createRelayProtocolObserver> };
 
 /** Observe the SDK's real sockets while leaving their protocol, retries and ownership untouched. */
 export function createObservedRelayWebSockets(
@@ -31,15 +32,19 @@ export function createObservedRelayWebSockets(
     function publish(requestId?: string): void {
         if (!channel || stopped) return;
         const rows = new Map<string, ObservedRelayConnectionState>();
+        const protocols = new Map<string, RelayProtocolObservation>();
         const rank: Record<ObservedRelayConnectionState, number> = { disconnected: 0, error: 1, connecting: 2, connected: 3 };
         for (const handle of handles) {
+            const current = handle.protocol.snapshot();
+            const previousProtocol = protocols.get(handle.url);
+            protocols.set(handle.url, previousProtocol ? preferredRelayProtocolObservation(previousProtocol, current) : current);
             const previous = rows.get(handle.url);
             if (previous === undefined || rank[handle.state] > rank[previous]) rows.set(handle.url, handle.state);
         }
         const message: RelayConnectionSnapshot = {
             type: "snapshot", source, startedAt, sequence: ++sequence,
             ...(requestId === undefined ? {} : { requestId }),
-            connections: Array.from(rows, ([url, state]) => ({ url, state })).slice(0, MAX_RELAY_CONNECTIONS),
+            connections: Array.from(rows, ([url, state]) => ({ url, state, protocol: protocols.get(url)! })).slice(0, MAX_RELAY_CONNECTIONS),
         };
         try { channel.postMessage(message); } catch { /* Lost telemetry cannot change synchronization. */ }
     }
@@ -72,8 +77,8 @@ export function createObservedRelayWebSockets(
     const observedCreateWebSocket: CreateWebSocket = (url, options = {}) => {
         const origin = relayConnectionOrigin(url);
         if (!origin || stopped) return createSocket(url, options);
-        const { onOpen, onClose, onError } = options;
-        const handle: Handle = { url: origin, state: "connecting" };
+        const { onOpen, onClose, onError, onMessage } = options;
+        const handle: Handle = { url: origin, state: "connecting", protocol: createRelayProtocolObserver() };
         handles.add(handle);
         publish();
         let disposed = false;
@@ -81,6 +86,10 @@ export function createObservedRelayWebSockets(
         try {
             socket = createSocket(url, {
                 ...options,
+                onMessage: data => {
+                    try { if (!disposed && !stopped) { handle.protocol.received(data); publish(); } } catch { /* Observation must not interrupt SDK processing. */ }
+                    onMessage?.(data);
+                },
                 onOpen: () => {
                     if (!disposed) { handle.state = "connected"; publish(); }
                     onOpen?.();
@@ -101,7 +110,13 @@ export function createObservedRelayWebSockets(
         }
         handle.socket = socket;
         return {
-            send: data => socket.send(data),
+            send: data => {
+                const result = socket.send(data);
+                if (result.ok && !disposed && !stopped) {
+                    try { handle.protocol.sent(data); publish(); } catch { /* Preserve the SDK send result. */ }
+                }
+                return result;
+            },
             getReadyState: () => socket.getReadyState(),
             isOpen: () => socket.isOpen(),
             /** Retire only this observed handle before delegating SDK socket disposal once. */
@@ -109,6 +124,7 @@ export function createObservedRelayWebSockets(
                 if (disposed) return;
                 disposed = true;
                 handles.delete(handle);
+                handle.protocol.dispose();
                 publish();
                 socket[Symbol.dispose]();
             },
@@ -121,6 +137,7 @@ export function createObservedRelayWebSockets(
         dispose(): void {
             stopped = true;
             if (timer !== null) clearInterval(timer);
+            for (const handle of handles) handle.protocol.dispose();
             handles.clear();
             try { channel?.close(); } catch { /* Optional channel cleanup. */ }
             channel = null;

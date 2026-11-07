@@ -18,8 +18,8 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); localStorage.clear(); });
 
 const both = ['wss://custom.example.test', 'wss://default.example.test'];
-const free = 'wss://free.evoluhq.com';
-const all = [...both, free];
+const secondary = 'wss://evolu.eu.freedomrelay.dev';
+const all = [...both, secondary];
 
 describe('multiple Evolu relays', () => {
     it('boots both relays from cache while preserving the old replacement representation', () => {
@@ -32,7 +32,7 @@ describe('multiple Evolu relays', () => {
     });
 
     it('deduplicates identical origins and respects disabled build defaults', () => {
-        expect(resolveEvoluRelayUrls('wss://default.example.test/', true)).toEqual([both[1], free]);
+        expect(resolveEvoluRelayUrls('wss://default.example.test/', true)).toEqual([both[1], secondary]);
         vi.stubEnv('VITE_EVOLU_RELAY_URL', '');
         expect(resolveEvoluRelayUrls(both[0], true)).toEqual([both[0]]);
         expect(resolveEvoluRelayUrls(null, true)).toEqual([]);
@@ -41,7 +41,7 @@ describe('multiple Evolu relays', () => {
     it('uses canonical authenticated settings even when the previous account cache differs', () => {
         writeRelayOverrideUrl(both[0], true);
         auth.user = { evolu_relay_url: null };
-        expect(getResolvedEvoluRelayUrls()).toEqual([both[1], free]);
+        expect(getResolvedEvoluRelayUrls()).toEqual([both[1], secondary]);
         expect(getResolvedEvoluRelayUrl()).toBe(both[1]);
         auth.user = { evolu_relay_url: both[0], evolu_relay_add_default: false };
         expect(getResolvedEvoluRelayUrls()).toEqual([both[0]]);

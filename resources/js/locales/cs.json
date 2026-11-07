@@ -3107,7 +3107,7 @@
     "evolu_stats_last_push": "Poslední push na relay",
     "evolu_stats_last_force_push": "Poslední force push",
     "evolu_stats_company_row": "{invoices} fa. · {documents} dokl. · {contacts} kont.",
-    "evolu_stats_relay_error": "Chyba relay: {error}",
+    "evolu_stats_relay_error": "Poslední zaznamenaná chyba Evolu (může být starší): {error}",
     "evolu_relay_usage_title": "Záloha na relay (server)",
     "evolu_relay_usage_size": "{used} / {quota} ({percent}% kvóty)",
     "evolu_relay_usage_last_activity": "Poslední aktivita na relay: {time}",
@@ -3355,7 +3355,17 @@
     "evolu_relay_state_disabled": "Vypnuto",
     "evolu_relay_state_device_off": "Sync zařízení je vypnutý",
     "evolu_relay_state_paused": "Sync je pozastavený",
-    "evolu_relay_secure_default_required": "Změna tohoto seznamu vyžaduje bezpečnou adresu výchozího relaye (wss://). Požádejte správce o aktualizaci adresy výchozího relaye."
+    "evolu_relay_secure_default_required": "Změna tohoto seznamu vyžaduje bezpečnou adresu výchozího relaye (wss://). Požádejte správce o aktualizaci adresy výchozího relaye.",
+    "evolu_relay_protocol_label": "Synchronizace",
+    "evolu_relay_protocol_unknown": "Zatím bez odpovědi protokolu",
+    "evolu_relay_protocol_response_received": "Odpověď přijata",
+    "evolu_relay_protocol_quota_exceeded": "Překročená kvóta",
+    "evolu_relay_protocol_write_key_rejected": "Klíč pro zápis odmítnut",
+    "evolu_relay_protocol_write_failed": "Zápis na relay selhal",
+    "evolu_relay_protocol_sync_failed": "Synchronizace relay selhala",
+    "evolu_relay_protocol_version_mismatch": "Nekompatibilní verze protokolu",
+    "evolu_relay_protocol_invalid_message": "Neplatná odpověď protokolu",
+    "evolu_relay_quota_hint": "Relay odmítl synchronizaci kvůli překročené kapacitě nebo platební kvótě. Ověřte limity poskytovatele nebo použijte jiný relay. Lokální data zůstávají na tomto zařízení."
   },
   "header": {
     "dashboard": "Nástěnka",

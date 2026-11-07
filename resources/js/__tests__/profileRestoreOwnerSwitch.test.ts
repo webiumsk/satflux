@@ -37,6 +37,7 @@ const mocks = vi.hoisted(() => ({
     writeRelayOverrideUrl: vi.fn(),
     probeRelayReachability: vi.fn(async () => true),
     activeRelayUrl: "",
+    recordedRelayError: "",
     user: null as User | null,
     invoicingCompaniesList: vi.fn(),
 }));
@@ -230,6 +231,8 @@ vi.mock("../evolu/invoicingLocalStats", () => ({
         contacts: 0,
         documents: 0,
         dbBytes: 0,
+        counts: { companies: 0, contacts: 0, documents: 0, expenses: 0, documentByType: {} },
+        relayError: mocks.recordedRelayError,
     })),
 }));
 
@@ -308,6 +311,7 @@ describe("Profile recovery phrase owner switch guard", () => {
         mocks.captureLocalDefaultRelayOwnerConfirmation.mockReturnValue(mocks.confirmLocalDefaultRelayOwner);
         mocks.confirmLocalDefaultRelayOwner.mockReturnValue(false);
         mocks.activeRelayUrl = "";
+        mocks.recordedRelayError = "";
         mocks.user = {
             id: 1, name: 'Synthetic Merchant', email: 'synthetic@example.test', role: 'free', is_guest: false,
             email_verified_at: '2026-01-01', guest_recovery_enrolled: true, can_use_password_login: true, evolu_relay_url: null,
@@ -343,6 +347,23 @@ describe("Profile recovery phrase owner switch guard", () => {
             },
         });
         mocks.invoicingCompaniesList.mockResolvedValue([]);
+    });
+
+    it("uses live guarded row errors for the current sync badge while retaining historical SDK errors", async () => {
+        vi.mocked(getStoredAccountMnemonic).mockReturnValue("synthetic-invalid-history-fixture");
+        mocks.recordedRelayError = "ProtocolQuotaError";
+        mocks.route.query = { tab: "sync" };
+        const wrapper = await mountProfile();
+        const tab = findButton(wrapper, "account.tab_sync");
+        expect(wrapper.text()).toContain("account.evolu_stats_relay_error");
+        expect(tab.find('[title="account.tab_sync_badge_hint"]').exists()).toBe(false);
+        const manager = wrapper.getComponent({ name: "EvoluRelayManager" });
+        manager.vm.$emit("sync-error", true); await flushPromises();
+        expect(tab.find('[title="account.tab_sync_badge_hint"]').exists()).toBe(true);
+        manager.vm.$emit("sync-error", false); await flushPromises();
+        expect(tab.find('[title="account.tab_sync_badge_hint"]').exists()).toBe(false);
+        expect(wrapper.text()).toContain("account.evolu_stats_relay_error");
+        wrapper.unmount(); vi.mocked(getStoredAccountMnemonic).mockReturnValue(null);
     });
 
     it("keeps Profile enrollment bound to the wizard-opening account after canonical background refresh", async () => {

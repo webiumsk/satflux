@@ -230,7 +230,7 @@ it.each([false, true])('retains the selected boot relays after a signed-out prof
         await store.fetchUser();
         expect(store.user).toBeNull();
         expect(evoluTransports().map(transport => transport.url)).toEqual(addDefault
-            ? ['wss://custom.example.test', 'wss://default.example.test', 'wss://free.evoluhq.com']
+            ? ['wss://custom.example.test', 'wss://default.example.test', 'wss://evolu.eu.freedomrelay.dev']
             : ['wss://custom.example.test']);
     } finally {
         vi.unstubAllEnvs();

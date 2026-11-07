@@ -1,3 +1,4 @@
+import type { RelayProtocols } from "./relayProtocolStatus";
 import {
     RELAY_CONNECTION_HEARTBEAT_MS,
     RELAY_CONNECTION_STALE_MS,
@@ -11,7 +12,7 @@ import {
 
 /** Subscribe to fresh worker-only observations; the channel never controls synchronization. */
 export function subscribeRelayConnections(
-    onChange: (connections: RelayConnections) => void,
+    onChange: (connections: RelayConnections, protocols: RelayProtocols) => void,
     channelFactory: RelayConnectionChannelFactory = openRelayConnectionChannel,
 ) {
     let channel: ReturnType<RelayConnectionChannelFactory> = null;
@@ -29,7 +30,7 @@ export function subscribeRelayConnections(
         if (active && now - active.seenAt >= RELAY_CONNECTION_STALE_MS) {
             active = null;
             pending.clear();
-            onChange({});
+            onChange({}, {});
         }
     }
 
@@ -63,7 +64,8 @@ export function subscribeRelayConnections(
                 seenAt: relayObservationTime(),
             };
             if (message.requestId !== undefined) pending.delete(message.requestId);
-            onChange(Object.fromEntries(message.connections.map(row => [row.url, row.state])));
+            onChange(Object.fromEntries(message.connections.map(row => [row.url, row.state])),
+                Object.fromEntries(message.connections.filter(row => row.protocol !== undefined).map(row => [row.url, row.protocol!])));
         };
     }
     const timer = channel ? setInterval(refresh, RELAY_CONNECTION_HEARTBEAT_MS) : null;
@@ -80,7 +82,7 @@ export function subscribeRelayConnections(
             active = null;
             try { channel?.close(); } catch { /* Optional observation cleanup. */ }
             channel = null;
-            onChange({});
+            onChange({}, {});
         },
     };
 }

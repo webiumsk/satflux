@@ -1,5 +1,37 @@
 # Development roadmap
 
+## Per-relay protocol status and Freedomrelay defaults - 2026-11-07
+
+Owner requests separate connection/synchronization status and chooses Satflux plus
+Freedomrelay defaults after compatibility verification. Both public endpoints reply
+with wire1 in a read-only version challenge; no key, subscription or data is sent.
+This does not establish quotas, write acceptance, retention or uptime. Freedomrelay
+publishes fair-use/no-uptime terms without a numeric cap; free.evoluhq.com remains
+a testing service whose data may be deleted and is no longer automatically offered.
+Explicit saved lists/order/off flags and legacy custom-only selections remain exact.
+
+Worker observation uses bounded public SDK header primitives, internal owner-ledger
+isolation and finite origin/status/timestamp output. Socket-open and protocol quota
+are separate. Only a fresh complete same-owner empty reply clears its error;
+unrelated owners/reconnect/partial replies cannot. A reply never proves full backup
+or replay of previously rejected history. Profile current warnings use live guarded
+protocol evidence; global SDK errors are explicitly historical. Offline paused
+status leakage is independently reproduced then fixed. Prior authority/SDK limits
+remain; the old confirmed keyless default exception is preserved only in its prior
+scope, including build/device-off/account guards.
+
+Security35/4 accepts runtime33 `1feebae8...47cc16e`; final source65
+`6626058d...da868aa` differs from tested source only in six reviewed text paths.
+QA115/6, actual SDK/SQLite1 and final-CSS browser12 pass; provider proof is version
+only. Main frontend2,207/204, PHP119/767, type110, lint48/52, locale/build,
+Pint/PHPStan2, API3/changelog11 and7 rendered guides/12 links/3 fallbacks pass.
+Local AST documents108/108 qualified named functions; no external pass is inferred.
+
+PR432 is open/unmerged at reviewed base `6e747b30`. Main owns scoped publication
+and fresh exact-head CI verification; merge/deployment remain separate gates.
+Private sanitized evidence: `reviews/evolu-custom-relay/protocol-status/`.
+Unrelated primary work is preserved; no dependency, baseline or production-data change.
+
 ## PR432 recovery enrollment CI correction - 2026-11-07
 
 CI42353889750 on `4fab39c6` failed only the unchanged recovery-enrollment E2E:

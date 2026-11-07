@@ -17,7 +17,7 @@ import {
 import { isInvoicingLocalFirst } from '../evolu/flags';
 import { ensureEvoluBoundToAccountSeed } from '../evolu/bootstrap';
 import { EVOLU_RELAY_OVERRIDE_STORAGE_KEY, clearRelayOverride, parseRelayOverride, writeRelayOverrideDisabled, writeRelayOverrideRelays, writeRelayOverrideUrl, type RelayOverride } from '@/evolu/relayOverrideStorage';
-import { getDefaultEvoluRelayUrls, normalizeEvoluRelayBaseUrl, normalizeEvoluRelayConfigurations, resolveConfiguredEvoluRelays, resolveSelectedEvoluRelayUrls, type EvoluRelayConfiguration } from '@/evolu/config';
+import { LEGACY_SECONDARY_EVOLU_RELAY_URL, getDefaultEvoluRelayUrls, normalizeEvoluRelayBaseUrl, normalizeEvoluRelayConfigurations, resolveConfiguredEvoluRelays, resolveSelectedEvoluRelayUrls, type EvoluRelayConfiguration } from '@/evolu/config';
 import { getEvoluRelayPreferenceRevision, invalidateEvoluRelayPreference, pauseEvoluRelayPreference, reconcileEvoluRelayPreference, setEvoluRelayPreferenceRevalidator } from '@/evolu/relayPreferenceLifecycle';
 import { clearLocalDefaultRelayOwner, confirmLocalDefaultRelayOwner, resolveLocalDefaultRelayOwner } from '@/evolu/localDefaultRelayProof';
 
@@ -263,10 +263,13 @@ export const useAuthStore = defineStore('auth', () => {
         }
         const canonical = profile.evolu_relays !== undefined && profile.evolu_relays !== null;
         const urls = resolveSelectedEvoluRelayUrls(profile);
+        // Saved defaults from older releases retain the same account-bound local proof.
+        // The testing relay is not appended to new default configurations.
         const defaults = getDefaultEvoluRelayUrls();
+        const compatibleDefaults = defaults.length > 0 ? [...defaults, LEGACY_SECONDARY_EVOLU_RELAY_URL] : defaults;
         const defaultOnly = canonical
             ? normalizeEvoluRelayConfigurations(profile.evolu_relays) !== null
-                && urls.every(url => defaults.includes(url))
+                && urls.every(url => compatibleDefaults.includes(url))
             : profileRelayUrl == null || profileRelayUrl.trim() === '';
         const association = accountPublicKey ?? (defaultOnly
             ? resolveLocalDefaultRelayOwner(profile.id) : null);

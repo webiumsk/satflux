@@ -27,7 +27,7 @@ it('keeps retained owners local before authentication when the relay cache is ab
   await Promise.resolve();
   const destinations = () => [...active.values()].flatMap(row => row.transports ?? []).map(row => new URL(row.url).origin);
   expect(destinations()).toEqual([]);
-  const defaults = ['wss://evolu.satflux.io', 'wss://free.evoluhq.com'];
+  const defaults = ['wss://evolu.satflux.io', 'wss://evolu.eu.freedomrelay.dev'];
   const publicKey = deriveRecoveryPublicKeyHex(owner.mnemonic!);
   writeRelayOverrideRelays(defaults.map(url => ({ url, enabled: true })), publicKey);
   reconcileEvoluRelayPreference(defaults, publicKey);

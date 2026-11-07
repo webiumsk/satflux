@@ -19,7 +19,7 @@ vi.mock("@/evolu/bootstrap", () => ({ ensureEvoluBoundToAccountSeed: vi.fn() }))
 vi.mock("@/store/stores", () => ({ useStoresStore: () => ({ stores: [], currentStore: null }) }));
 
 const DEFAULT = "wss://default.example.test";
-const FREE = "wss://free.evoluhq.com";
+const SECONDARY = "wss://evolu.eu.freedomrelay.dev";
 const CUSTOM = "wss://custom.example.test";
 const OTHER = "wss://other.example.test";
 const randomBytes = createRandomBytes();
@@ -105,8 +105,8 @@ it("retires default registrations for both owner kinds and keeps the replacement
     register(probe.evolu, app);
     register(probe.evolu, shared);
     await Promise.resolve();
-    expect(probe.destinations(app.id)).toEqual([CUSTOM, DEFAULT, FREE]);
-    expect(probe.destinations(shared.id)).toEqual([CUSTOM, DEFAULT, FREE]);
+    expect(probe.destinations(app.id)).toEqual([CUSTOM, DEFAULT, SECONDARY]);
+    expect(probe.destinations(shared.id)).toEqual([CUSTOM, DEFAULT, SECONDARY]);
     probe.calls.length = 0;
     canonical(CUSTOM, false);
     expect(probe.destinations(app.id)).toEqual([CUSTOM]);
@@ -363,6 +363,33 @@ function keylessAuth() {
     return auth;
 }
 
+it.each(["confirmed", "build_disabled", "device_off", "unconfirmed"])(
+    "preserves a saved former default without widening keyless authorization (%s)", async mode => {
+        const auth = keylessAuth();
+        const legacy = "wss://free.evoluhq.com";
+        auth.user = { ...auth.user!, evolu_relays: [{ url: legacy, enabled: true }] };
+        accountSeed.storeAccountMnemonic(app.mnemonic!);
+        if (mode !== "unconfirmed") expect(auth.captureLocalDefaultRelayOwnerConfirmation()(app.mnemonic!)).toBe(true);
+        if (mode === "build_disabled") vi.stubEnv("VITE_EVOLU_RELAY_URL", "");
+        const probe = client();
+        const retained = client(Promise.resolve(otherApp));
+        register(probe.evolu, app);
+        register(probe.evolu, shared);
+        register(retained.evolu, otherApp);
+        register(retained.evolu, otherShared);
+        await Promise.resolve();
+        if (mode === "device_off") writeRelayOverrideDisabled();
+        authMocks.get.mockResolvedValue({ data: { ...auth.user } });
+        await expect(auth.fetchUserWithOutcome()).resolves.toBe("loaded");
+        expect(probe.destinations(app.id)).toEqual(mode === "confirmed" ? [legacy] : []);
+        expect(probe.destinations(shared.id)).toEqual(mode === "confirmed" ? [legacy] : []);
+        expect(retained.destinations(otherApp.id)).toEqual([]);
+        expect(retained.destinations(otherShared.id)).toEqual([]);
+        expect(auth.user?.evolu_relays).toEqual([{ url: legacy, enabled: true }]);
+        if (mode === "device_off") expect(readRelayOverride().kind).toBe("disabled");
+    },
+);
+
 it("syncs a keyless default-only profile after explicit local confirmation while retained other owners stay paused", async () => {
     const auth = keylessAuth();
     accountSeed.storeAccountMnemonic(app.mnemonic!);
@@ -377,8 +404,8 @@ it("syncs a keyless default-only profile after explicit local confirmation while
     await Promise.resolve();
     authMocks.get.mockResolvedValue({ data: { ...auth.user } });
     await expect(auth.fetchUserWithOutcome()).resolves.toBe("loaded");
-    expect(probe.destinations(app.id)).toEqual([DEFAULT, FREE]);
-    expect(probe.destinations(shared.id)).toEqual([DEFAULT, FREE]);
+    expect(probe.destinations(app.id)).toEqual([DEFAULT, SECONDARY]);
+    expect(probe.destinations(shared.id)).toEqual([DEFAULT, SECONDARY]);
     expect(retained.destinations(otherApp.id)).toEqual([]);
     expect(retained.destinations(otherShared.id)).toEqual([]);
     expect(readRelayOverride()).toMatchObject({ url: "", accountPublicKey: null });
@@ -443,7 +470,7 @@ it("preserves exact-account confirmation during initial profile loading after a 
     register(probe.evolu, app);
     authMocks.get.mockResolvedValue({ data: profile });
     await expect(reloaded.fetchUserWithOutcome()).resolves.toBe("loaded");
-    expect(probe.destinations(app.id)).toEqual([DEFAULT, FREE]);
+    expect(probe.destinations(app.id)).toEqual([DEFAULT, SECONDARY]);
 });
 
 it("rejects confirmation captured before a logout signal even after the same account signs in again", async () => {
@@ -555,13 +582,13 @@ it("allows confirmed keyless default subsets while disabled custom rows remain d
     register(probe.evolu, shared);
     await Promise.resolve();
     authMocks.get.mockResolvedValue({ data: { ...auth.user, evolu_relays: [
-        { url: CUSTOM, enabled: false }, { url: FREE, enabled: true },
+        { url: CUSTOM, enabled: false }, { url: SECONDARY, enabled: true },
     ] } });
     await auth.fetchUser();
-    expect(probe.destinations(app.id)).toEqual([FREE]);
-    expect(probe.destinations(shared.id)).toEqual([FREE]);
+    expect(probe.destinations(app.id)).toEqual([SECONDARY]);
+    expect(probe.destinations(shared.id)).toEqual([SECONDARY]);
     authMocks.get.mockResolvedValue({ data: { ...auth.user, evolu_relays: [
-        { url: CUSTOM, enabled: true }, { url: FREE, enabled: true },
+        { url: CUSTOM, enabled: true }, { url: SECONDARY, enabled: true },
     ] } });
     await auth.fetchUser();
     expect(probe.destinations(app.id)).toEqual([]);
@@ -592,7 +619,7 @@ it("reports only this tab's permitted AppOwner URLs and notifies guarded registr
     expect(getActiveEvoluRelayUrls()).toEqual([]);
     register(probe.evolu, app);
     await Promise.resolve();
-    expect(getActiveEvoluRelayUrls()).toEqual([CUSTOM, DEFAULT, FREE]);
+    expect(getActiveEvoluRelayUrls()).toEqual([CUSTOM, DEFAULT, SECONDARY]);
     expect(changed).toHaveBeenCalledTimes(1);
     canonical(CUSTOM, false, otherPublicKey);
     expect(getActiveEvoluRelayUrls()).toEqual([]);

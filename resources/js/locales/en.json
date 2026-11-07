@@ -3107,7 +3107,7 @@
     "evolu_stats_last_push": "Last push to relay",
     "evolu_stats_last_force_push": "Last force push",
     "evolu_stats_company_row": "{invoices} inv. · {documents} docs · {contacts} contacts",
-    "evolu_stats_relay_error": "Relay error: {error}",
+    "evolu_stats_relay_error": "Last recorded Evolu error (may be older): {error}",
     "evolu_relay_usage_title": "Relay backup (server)",
     "evolu_relay_usage_size": "{used} / {quota} ({percent}% of quota)",
     "evolu_relay_usage_last_activity": "Last relay activity: {time}",
@@ -3355,7 +3355,17 @@
     "evolu_relay_state_disabled": "Turned off",
     "evolu_relay_state_device_off": "Device sync off",
     "evolu_relay_state_paused": "Sync paused",
-    "evolu_relay_secure_default_required": "Changing this list requires a secure default relay address (wss://). Ask the administrator to update the default relay address."
+    "evolu_relay_secure_default_required": "Changing this list requires a secure default relay address (wss://). Ask the administrator to update the default relay address.",
+    "evolu_relay_protocol_label": "Synchronization",
+    "evolu_relay_protocol_unknown": "No protocol response observed",
+    "evolu_relay_protocol_response_received": "Response received",
+    "evolu_relay_protocol_quota_exceeded": "Quota exceeded",
+    "evolu_relay_protocol_write_key_rejected": "Write key rejected",
+    "evolu_relay_protocol_write_failed": "Relay write failed",
+    "evolu_relay_protocol_sync_failed": "Relay synchronization failed",
+    "evolu_relay_protocol_version_mismatch": "Protocol version mismatch",
+    "evolu_relay_protocol_invalid_message": "Invalid protocol response",
+    "evolu_relay_quota_hint": "This relay rejected synchronization because its storage or billing quota was exceeded. Check the provider’s limits or use another relay. Local data stays on this device."
   },
   "header": {
     "dashboard": "Dashboard",

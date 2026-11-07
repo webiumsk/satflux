@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import { defineComponent } from "vue";
-import { createRandomBytes, ok, PositiveInt, type CreateWebSocket, type WebSocketOptions, type WebSocketReadyState } from "@evolu/common";
-import { createAppOwner, createOwnerSecret, createOwnerWebSocketTransport } from "@evolu/common/local-first";
+import { createRandomBytes, err, idBytesToId, IdBytes, ok, PositiveInt, type CreateWebSocket, type WebSocketOptions, type WebSocketReadyState } from "@evolu/common";
+import { createAppOwner, createOwnerSecret, createOwnerWebSocketTransport, createProtocolMessageBuffer, MessageType, ProtocolErrorCode } from "@evolu/common/local-first";
 import {
     RELAY_CONNECTION_HEARTBEAT_MS,
     RELAY_CONNECTION_STALE_MS,
@@ -12,6 +12,7 @@ import {
     type RelayConnections,
 } from "../evolu/relayConnectionStatus";
 import { createObservedRelayWebSockets } from "../evolu/relayConnectionStatusWorker";
+import type { RelayProtocols } from "../evolu/relayProtocolStatus";
 import { subscribeRelayConnections } from "../evolu/relayConnectionStatusClient";
 import { useEvoluRelayConnections } from "../composables/useEvoluRelayConnections";
 
@@ -120,6 +121,54 @@ describe("observed Evolu worker sockets", () => {
         observer.dispose();
     });
 
+    it("keeps route and owner quota evidence independent of open sockets, other owners and reconnection", () => {
+        const sdk = sockets(); const channel = new Channel();
+        const observer = createObservedRelayWebSockets(sdk.create, () => channel);
+        let protocols: RelayProtocols = {};
+        const subscription = subscribeRelayConnections((_connections, values) => { protocols = values; }, () => new Channel());
+        const ownerA = idBytesToId(IdBytes.orThrow(new Uint8Array(16).fill(1)));
+        const ownerB = idBytesToId(IdBytes.orThrow(new Uint8Array(16).fill(2)));
+        const request = (owner: typeof ownerA) => createProtocolMessageBuffer(owner as never, { messageType: MessageType.Request }).unwrap();
+        const response = (owner: typeof ownerA, errorCode: 0 | 3) => createProtocolMessageBuffer(owner as never, { messageType: MessageType.Response, errorCode }).unwrap().slice().buffer as ArrayBuffer;
+        const a = observer.createWebSocket(A); const b = observer.createWebSocket(B);
+        a.send(request(ownerA)); a.send(request(ownerB)); b.send(request(ownerA));
+        sdk.handles[0]!.ready = 'open'; sdk.handles[0]!.options.onOpen?.();
+        sdk.handles[0]!.options.onMessage?.(response(ownerA, ProtocolErrorCode.QuotaError));
+        sdk.handles[0]!.options.onMessage?.(response(ownerB, ProtocolErrorCode.NoError));
+        sdk.handles[1]!.options.onMessage?.(response(ownerA, ProtocolErrorCode.NoError));
+        expect(protocols[A]?.state).toBe('quota_exceeded');
+        expect(protocols[B]?.state).toBe('response_received');
+        sdk.handles[0]!.options.onClose?.(new CloseEvent('close'));
+        sdk.handles[0]!.options.onOpen?.(); vi.advanceTimersByTime(RELAY_CONNECTION_HEARTBEAT_MS);
+        expect(protocols[A]?.state).toBe('quota_exceeded');
+        a.send(request(ownerA)); sdk.handles[0]!.options.onMessage?.(response(ownerA, ProtocolErrorCode.NoError));
+        expect(protocols[A]?.state).toBe('response_received');
+        const publicMessages = JSON.stringify(channel.messages);
+        expect(publicMessages.includes(String(ownerA)) || publicMessages.includes(String(ownerB)) || publicMessages.includes('ownerId')).toBe(false);
+        expect(Object.keys(protocols[A]!).sort()).toEqual(['observedAt', 'state']);
+        a[Symbol.dispose](); b[Symbol.dispose](); subscription.dispose(); observer.dispose();
+    });
+
+    it("forwards the identical inbound frame exactly once and cannot observe a failed send or disposed callback", () => {
+        const sdk = sockets(); const observer = createObservedRelayWebSockets(sdk.create, () => new Channel());
+        let protocols: RelayProtocols = {};
+        const subscription = subscribeRelayConnections((_connections, values) => { protocols = values; }, () => new Channel());
+        const onMessage = vi.fn(); const socket = observer.createWebSocket(A, { onMessage });
+        const owner = idBytesToId(IdBytes.orThrow(new Uint8Array(16).fill(1)));
+        const request = createProtocolMessageBuffer(owner as never, { messageType: MessageType.Request }).unwrap();
+        const frame = createProtocolMessageBuffer(owner as never, { messageType: MessageType.Response, errorCode: ProtocolErrorCode.QuotaError }).unwrap().slice().buffer as ArrayBuffer;
+        sdk.handles[0]!.send.mockReturnValueOnce(err({ type: 'WebSocketSendError' }));
+        expect(socket.send(request).ok).toBe(false);
+        sdk.handles[0]!.options.onMessage?.(frame);
+        expect(protocols[A]?.state).toBe('unknown');
+        expect(onMessage).toHaveBeenCalledTimes(1); expect(onMessage.mock.calls[0]?.[0] === frame).toBe(true);
+        socket.send(request); sdk.handles[0]!.options.onMessage?.(frame);
+        expect(protocols[A]?.state).toBe('quota_exceeded');
+        socket[Symbol.dispose](); sdk.handles[0]!.options.onMessage?.(frame);
+        expect(protocols[A]).toBeUndefined(); expect(onMessage).toHaveBeenCalledTimes(3);
+        subscription.dispose(); observer.dispose();
+    });
+
     it("samples SDK automatic retry state and prevents older handles from overriding another open handle", () => {
         const sdk = sockets();
         const observer = createObservedRelayWebSockets(sdk.create, () => new Channel());
@@ -172,7 +221,7 @@ describe("observed Evolu worker sockets", () => {
         observer.createWebSocket("wss://relay.test?secret=value#private");
         expect(JSON.stringify(channel.messages)).not.toContain("secret");
         expect(JSON.stringify(channel.messages)).not.toContain("private");
-        expect((channel.messages.at(-1) as RelayConnectionSnapshot).connections).toEqual([{ url: "wss://relay.test", state: "connecting" }]);
+        expect((channel.messages.at(-1) as RelayConnectionSnapshot).connections).toEqual([{ url: "wss://relay.test", state: "connecting", protocol: { state: "unknown", observedAt: 0 } }]);
         observer.dispose();
     });
 
@@ -247,9 +296,28 @@ describe("page connection observations", () => {
         subscription.dispose();
     });
 
+    it("drops protocol evidence with expired workers and treats a connection-only legacy snapshot as protocol unknown", () => {
+        let elapsed = 0; vi.spyOn(performance, 'now').mockImplementation(() => elapsed);
+        const channel = new Channel(); let protocols: RelayProtocols = {};
+        const subscription = subscribeRelayConnections((_connections, values) => { protocols = values; }, () => channel);
+        const nonce = (channel.messages.at(-1) as { requestId: string }).requestId;
+        const receive = (data: unknown) => channel.onmessage?.call(channel as unknown as BroadcastChannel, { data } as MessageEvent);
+        const message = { type: 'snapshot', source: 'worker-a', startedAt: 1000, sequence: 1, requestId: nonce, connections: [{ url: A, state: 'connected', protocol: { state: 'quota_exceeded', observedAt: 1000 } }] };
+        receive(message); expect(protocols[A]?.state).toBe('quota_exceeded');
+        receive({ ...message, requestId: undefined, sequence: 2, connections: [{ url: A, state: 'connected' }] });
+        expect(protocols[A]).toBeUndefined();
+        receive({ ...message, requestId: undefined, sequence: 3 });
+        expect(protocols[A]?.state).toBe('quota_exceeded');
+        elapsed = RELAY_CONNECTION_STALE_MS + 1; subscription.refresh();
+        expect(protocols).toEqual({}); subscription.dispose();
+    });
+
     it.each([
         null,
         {},
+        { type: "snapshot", source: "worker", startedAt: 1, sequence: 1, connections: [{ url: A, state: "connected", protocol: { state: "quota_exceeded", observedAt: 1, ownerId: "forbidden" } }] },
+        { type: "snapshot", source: "worker", startedAt: 1, sequence: 1, connections: [{ url: A, state: "connected", protocol: { state: "untrusted raw error", observedAt: 1 } }] },
+        { type: "snapshot", source: "worker", startedAt: 1, sequence: 1, connections: [{ url: A, state: "connected", protocol: { state: "quota_exceeded", observedAt: -1 } }] },
         { type: "snapshot", source: "worker", startedAt: 1, sequence: 1, connections: [{ url: A + "?ownerId=synthetic-owner", state: "connected" }] },
         { type: "snapshot", source: "worker", startedAt: 1, sequence: 1, privateData: "forbidden", connections: [] },
         { type: "snapshot", source: "worker", startedAt: 1, sequence: 1, connections: [{ url: A, state: "connected", owner: "forbidden" }] },

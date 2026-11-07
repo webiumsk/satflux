@@ -20,7 +20,7 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllEnvs(); localStorage.clear(); });
 
-const defaults = ["wss://evolu.satflux.io", "wss://free.evoluhq.com"];
+const defaults = ["wss://evolu.satflux.io", "wss://evolu.eu.freedomrelay.dev"];
 const rows = [
     { url: "wss://one.example.test", enabled: true },
     { url: "wss://two.example.test", enabled: false },
@@ -43,6 +43,25 @@ describe("canonical Evolu relay lists", () => {
         expect(resolveSelectedEvoluRelayUrls({ evolu_relay_url: rows[0].url })).toEqual([rows[0].url]);
         expect(resolveSelectedEvoluRelayUrls({ evolu_relay_url: rows[0].url, evolu_relay_add_default: true }))
             .toEqual([rows[0].url, ...defaults]);
+    });
+
+    it("preserves a saved three-relay selection including the disabled former default", () => {
+        const saved = [
+            { url: defaults[0], enabled: true },
+            { url: "wss://free.evoluhq.com", enabled: false },
+            { url: defaults[1], enabled: true },
+        ];
+        auth.user = { evolu_relays: saved };
+        expect(resolveConfiguredEvoluRelays(auth.user)).toEqual(saved);
+        expect(getResolvedEvoluRelayUrls()).toEqual(defaults);
+        expect(getDefaultEvoluRelayUrls()).not.toContain("wss://free.evoluhq.com");
+    });
+
+    it("keeps explicit former-default lists and legacy custom-only settings without adding Freedomrelay", () => {
+        const saved = [defaults[0], "wss://free.evoluhq.com"].map(url => ({ url, enabled: true }));
+        expect(resolveConfiguredEvoluRelays({ evolu_relays: saved })).toEqual(saved);
+        expect(resolveSelectedEvoluRelayUrls({ evolu_relay_url: "wss://free.evoluhq.com" }))
+            .toEqual(["wss://free.evoluhq.com"]);
     });
 
     it("preserves full row order while selecting only enabled URLs without appending a default", () => {

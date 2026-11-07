@@ -1,9 +1,10 @@
+import { validRelayProtocolObservation, type RelayProtocolObservation } from "./relayProtocolStatus";
 /** Connection observations contain no owners, protocol messages or recovery material. */
 export type RelayConnectionState = "unknown" | "connecting" | "connected" | "disconnected" | "error";
 export type ObservedRelayConnectionState = Exclude<RelayConnectionState, "unknown">;
 export type RelayConnections = Readonly<Record<string, RelayConnectionState>>;
 
-export const RELAY_CONNECTION_CHANNEL = "satflux.evolu.relay_connections.v1";
+export const RELAY_CONNECTION_CHANNEL = "satflux.evolu.relay_connections.v2";
 export const RELAY_CONNECTION_HEARTBEAT_MS = 5_000;
 export const RELAY_CONNECTION_STALE_MS = 15_000;
 export const MAX_RELAY_CONNECTIONS = 16;
@@ -14,7 +15,7 @@ export type RelayConnectionSnapshot = {
     startedAt: number;
     sequence: number;
     requestId?: string;
-    connections: { url: string; state: ObservedRelayConnectionState }[];
+    connections: { url: string; state: ObservedRelayConnectionState; protocol?: RelayProtocolObservation }[];
 };
 
 export type RelayConnectionRequest = { type: "request"; requestId: string };
@@ -55,8 +56,9 @@ export function parseRelayConnectionSnapshot(value: unknown): RelayConnectionSna
         || !Array.isArray(item.connections) || item.connections.length > MAX_RELAY_CONNECTIONS) return null;
     const seen = new Set<string>();
     for (const row of item.connections) {
-        if (!row || typeof row !== "object" || Object.keys(row).some(key => key !== "url" && key !== "state")
+        if (!row || typeof row !== "object" || Object.keys(row).some(key => key !== "url" && key !== "state" && key !== "protocol")
             || relayConnectionOrigin(row.url) !== row.url
+            || (row.protocol !== undefined && !validRelayProtocolObservation(row.protocol))
             || !["connecting", "connected", "disconnected", "error"].includes(row.state) || seen.has(row.url)) return null;
         seen.add(row.url);
     }

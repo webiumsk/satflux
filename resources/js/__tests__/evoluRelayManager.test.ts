@@ -7,11 +7,12 @@ import type { User } from '../store/auth';
 import EvoluRelayManager from '../components/account/EvoluRelayManager.vue';
 
 const SATFLUX = 'wss://evolu.satflux.io';
-const FREE = 'wss://free.evoluhq.com';
+const FREE = 'wss://evolu.eu.freedomrelay.dev';
 const CUSTOM = 'wss://relay.example.test';
 const mocks = vi.hoisted(() => ({
   user: null as User | null,
   put: vi.fn(), fetchUser: vi.fn(), success: vi.fn(), error: vi.fn(), cacheWriter: vi.fn(), reload: vi.fn(),
+  protocols: undefined as Ref<Record<string, { state: string; observedAt: number }>> | undefined,
   connections: undefined as Ref<Record<string, string>> | undefined,
   online: undefined as Ref<boolean> | undefined,
   active: [] as string[], notifyActive: undefined as (() => void) | undefined,
@@ -32,7 +33,8 @@ vi.mock('../evolu/relayPreferenceLifecycle', () => ({
 vi.mock('../composables/useEvoluRelayConnections', async () => {
   const { ref } = await import('vue');
   mocks.connections = ref({});
-  return { useEvoluRelayConnections: () => ({ connections: mocks.connections, refresh: vi.fn() }) };
+  mocks.protocols = ref({});
+  return { useEvoluRelayConnections: () => ({ connections: mocks.connections, protocols: mocks.protocols, refresh: vi.fn() }) };
 });
 vi.mock('../composables/useOnlineStatus', async () => {
   const { ref } = await import('vue');
@@ -73,6 +75,7 @@ beforeEach(() => {
   mocks.active = [SATFLUX, FREE];
   mocks.connections!.value = { [SATFLUX]: 'connected', [FREE]: 'connecting' };
   mocks.online!.value = true;
+  mocks.protocols!.value = {};
   mocks.put.mockResolvedValue({ data: {} });
   mocks.fetchUser.mockImplementation(async () => {
     const payload = mocks.put.mock.lastCall?.[1] as { evolu_relays: User['evolu_relays'] };
@@ -96,6 +99,77 @@ describe('Evolu relay manager', () => {
     expect(wrapper!.text()).toContain('Connected: 1 of 2 enabled relays');
     expect(wrapper!.findAll('li')[0].text()).toContain('Connected');
     expect(wrapper!.findAll('li')[1].text()).toContain('Connecting');
+    expect(mocks.put).not.toHaveBeenCalled();
+  });
+
+  it('shows an open connection and its quota failure separately, including detail guidance and a current warning', async () => {
+    mocks.protocols!.value = { [FREE]: { state: 'quota_exceeded', observedAt: 1000 } };
+    await render();
+    const row = wrapper!.findAll('li')[1];
+    expect(row.text()).toContain('Connecting');
+    expect(row.text()).toContain('Quota exceeded');
+    expect(wrapper!.emitted('sync-error')?.at(-1)).toEqual([true]);
+    mocks.connections!.value = { ...mocks.connections!.value, [FREE]: 'connected' };
+    await flushPromises();
+    expect(row.text()).toContain('Connected');
+    expect(row.text()).toContain('Quota exceeded');
+    mocks.online!.value = false; await flushPromises();
+    expect(row.text()).toContain('Disconnected');
+    expect(row.text()).toContain('Quota exceeded');
+    expect(wrapper!.emitted('sync-error')?.at(-1)).toEqual([true]);
+    mocks.online!.value = true; await flushPromises();
+    await detail(FREE);
+    expect(wrapper!.text()).toContain('Synchronization');
+    expect(wrapper!.text()).toContain('Check the provider');
+    mocks.protocols!.value = { [FREE]: { state: 'response_received', observedAt: 2000 } };
+    await flushPromises();
+    expect(wrapper!.text()).toContain('Response received');
+    expect(wrapper!.emitted('sync-error')?.at(-1)).toEqual([false]);
+  });
+
+  it('requires this tab’s active route even while offline and retains quota only for an authorized offline route', async () => {
+    mocks.online!.value = false;
+    mocks.active = [];
+    mocks.protocols!.value = { [FREE]: { state: 'quota_exceeded', observedAt: 1000 } };
+    await render();
+    expect(wrapper!.text()).not.toContain('Quota exceeded');
+    expect(wrapper!.emitted('sync-error')?.at(-1)).toEqual([false]);
+    mocks.active = [FREE]; mocks.notifyActive?.();
+    await flushPromises();
+    expect(wrapper!.text()).toContain('Quota exceeded');
+    expect(wrapper!.text()).toContain('Disconnected');
+    expect(wrapper!.emitted('sync-error')?.at(-1)).toEqual([true]);
+    mocks.active = []; mocks.notifyActive?.();
+    await flushPromises();
+    expect(wrapper!.text()).not.toContain('Quota exceeded');
+    expect(wrapper!.emitted('sync-error')?.at(-1)).toEqual([false]);
+  });
+
+  it('does not present a worker error for a disabled, paused or device-off route', async () => {
+    mocks.protocols!.value = { [FREE]: { state: 'quota_exceeded', observedAt: 1000 } };
+    await render(true);
+    expect(wrapper!.text()).not.toContain('Quota exceeded');
+    expect(wrapper!.emitted('sync-error')?.at(-1)).toEqual([false]);
+    await wrapper!.setProps({ deviceSyncDisabled: false });
+    mocks.active = [SATFLUX]; mocks.notifyActive?.();
+    await flushPromises();
+    expect(wrapper!.text()).not.toContain('Quota exceeded');
+    expect(wrapper!.emitted('sync-error')?.at(-1)).toEqual([false]);
+    mocks.active = [SATFLUX, FREE]; mocks.notifyActive?.();
+    mocks.user = { ...mocks.user!, evolu_relays: [{ url: SATFLUX, enabled: true }, { url: FREE, enabled: false }] };
+    await flushPromises();
+    expect(wrapper!.text()).not.toContain('Quota exceeded');
+    expect(wrapper!.emitted('sync-error')?.at(-1)).toEqual([false]);
+  });
+
+  it('keeps an explicitly stored former free relay unchanged and removable', async () => {
+    const previous = 'wss://free.evoluhq.com';
+    mocks.user = { ...mocks.user!, evolu_relays: [{ url: SATFLUX, enabled: true }, { url: previous, enabled: true }] };
+    await render();
+    expect(wrapper!.text()).toContain(previous);
+    expect(wrapper!.text()).not.toContain(FREE);
+    await detail(previous);
+    expect(button('Remove relay').exists()).toBe(true);
     expect(mocks.put).not.toHaveBeenCalled();
   });
 

@@ -3,7 +3,9 @@ import { MAX_EVOLU_RELAYS, MAX_EVOLU_RELAY_URL_BYTES, readRelayOverride } from "
 export { MAX_EVOLU_RELAYS, MAX_EVOLU_RELAY_URL_BYTES } from "./relayOverrideStorage";
 
 export const DEFAULT_EVOLU_RELAY_URL = "wss://evolu.satflux.io";
-export const SECONDARY_EVOLU_RELAY_URL = "wss://free.evoluhq.com";
+export const SECONDARY_EVOLU_RELAY_URL = "wss://evolu.eu.freedomrelay.dev";
+/** Preserve confirmed legacy default selections without offering this testing relay automatically. */
+export const LEGACY_SECONDARY_EVOLU_RELAY_URL = "wss://free.evoluhq.com";
 
 export type EvoluRelayConfiguration = { url: string; enabled: boolean };
 export type EvoluRelayPreference = {

@@ -8,7 +8,7 @@ updated: 2026-11-07
 
 # Správa Evolu relayov
 
-Satflux uchováva fakturačné dáta na vašom zariadení a synchronizuje šifrované zmeny cez relaye. Predvolený zoznam obsahuje `wss://evolu.satflux.io` a `wss://free.evoluhq.com`. Môžete pridať ďalšie kompatibilné relaye, najviac osem serverov.
+Satflux uchováva fakturačné dáta na vašom zariadení a synchronizuje šifrované zmeny cez relaye. Predvolený zoznam obsahuje `wss://evolu.satflux.io` a `wss://evolu.eu.freedomrelay.dev`. Môžete pridať ďalšie kompatibilné relaye, najviac osem serverov.
 
 1. Otvorte **Nastavenia účtu > Evolu sync**. Každý riadok zobrazuje adresu a aktuálny stav spojenia.
 2. Vyberte **Pridať relay**, zadajte bezpečnú adresu, napríklad `wss://relay.example.com:8443`, a potvrďte **Pridať relay**. Existujúce relaye zostanú v zozname.
@@ -21,12 +21,14 @@ Zmeny zoznamu platia pre váš účet. **Vypnúť synchronizáciu na tomto zaria
 
 **Pripojený** znamená otvorené skutočné synchronizačné WebSocket spojenie. **Pripája sa**, **Odpojený** a **Chyba spojenia** opisujú toto spojenie. **Neznámy** znamená, že aktuálny stav nie je dostupný; po aktualizácii môže byť potrebné zatvoriť všetky karty a otvoriť ich znova. **Sync je pozastavený** znamená, že lokálny vlastník alebo aktuálne nastavenia relayov ešte nie sú potvrdené. Prihláste sa a načítajte nastavenia účtu online; ak sú lokálne fakturačné dáta zamknuté, obnovte ich správnou obnovovacou frázou. Vypnuté relaye a vypnutá synchronizácia zariadenia sa zobrazujú osobitne.
 
+**Spojenie** a **Synchronizácia** sa zobrazujú samostatne. **Prekročená kvóta** znamená, že tento relay odmietol dáta pre limit úložiska alebo služby, aj keď je spojenie otvorené. **Odpoveď prijatá** znamená zaznamenanú odpoveď protokolu; nepotvrdzuje úplnú zálohu ani opätovné odoslanie skôr odmietnutých zmien. Keď poskytovateľ zvýši kvótu, reštartujte všetky karty Satfluxu podľa postupu vyššie, aby klient zosúladil čakajúcu históriu. Posledná zaznamenaná chyba Evolu v lokálnych štatistikách môže byť staršia a nie je aktuálnym stavom jednotlivých relayov.
+
 Otvorené spojenie nepotvrdzuje kompatibilitu protokolu, úspešné zápisy ani úplnú zálohu. Nainštalovaný klient potrebuje relay kompatibilný s Evolu 7.x. Spojenia fungujú nezávisle a chýbajúca história sa dopĺňa pri prihlásení na odber alebo novom pripojení. Relaye sa nekopírujú priamo medzi sebou; synchronizuje ich klient. Novému relayu doprajte čas na doplnenie dát.
 
 Adresa musí používať `wss://` bez prihlasovacích údajov, cesty, parametrov či fragmentu. Duplicitné adresy sa odmietajú. Existujúce nastavenie iba vlastného relaya zostáva zachované; predvolené pridáte vedome cez **Pridať predvolené relaye**. Inštalácia s výslovne vypnutým predvoleným relayom automaticky nezapína verejné predvolené relaye. Staršie HTTPS adresy z konfigurácie používajú zodpovedajúce WSS spojenie. Pri nezabezpečenom WS/HTTP predvolenom relayi musí správca pred úpravou zoznamu nastaviť bezpečnú adresu.
 
 ## Dostupnosť a obnova
 
-Verejný `free.evoluhq.com` je testovací relay a jeho dáta môžu byť zmazané. Pozrite si [dokumentáciu Evolu](https://www.evolu.dev/docs/relay). Uchovávajte samostatný [export dát](/documentation/backup-and-recovery) a obnovovaciu frázu. **Obnova cez relay** potrebuje správnu obnovovaciu frázu aj dostupnú kópiu dát; fráza samotná neobsahuje faktúry. **Exportovanú zálohu fakturačných dát** môžete obnoviť do iného účtu bez pôvodnej obnovovacej frázy. Šifrovaná záloha vyžaduje prístupovú frázu zvolenú pre daný súbor.
+Freedomrelay uplatňuje limity primeraného používania na vlastníka dát a negarantuje dostupnosť. Jeho zverejnené podmienky neuvádzajú číselnú kvótu úložiska; pozrite si [Freedomrelay](https://freedomrelay.dev/). Testovací `free.evoluhq.com` už nie je medzi predvolenými relaymi; výslovne uložené výbery relayov zostávajú zachované. Dáta na tomto testovacom relayi môžu byť zmazané; pozrite si [dokumentáciu Evolu](https://www.evolu.dev/docs/relay). Uchovávajte samostatný [export dát](/documentation/backup-and-recovery) a obnovovaciu frázu. **Obnova cez relay** potrebuje správnu obnovovaciu frázu aj dostupnú kópiu dát; fráza samotná neobsahuje faktúry. **Exportovanú zálohu fakturačných dát** môžete obnoviť do iného účtu bez pôvodnej obnovovacej frázy. Šifrovaná záloha vyžaduje prístupovú frázu zvolenú pre daný súbor.
 
 Veľkosť lokálnej SQLite databázy opisuje toto zariadenie a štatistiky využitia relaya iba prvý zapnutý relay. Ani jeden údaj nepotvrdzuje úplnú kópiu na každom relayi.

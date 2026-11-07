@@ -142,7 +142,7 @@ class SetSecurityHeaders
         // An allowlisted origin does not enable that relay in the client.
         foreach ([
             'wss://evolu.satflux.io',
-            'wss://free.evoluhq.com',
+            'wss://evolu.eu.freedomrelay.dev',
             $this->originOf((string) config('security.csp.evolu_relay_url', '')),
             ...$userRelayOrigins,
         ] as $relayOrigin) {

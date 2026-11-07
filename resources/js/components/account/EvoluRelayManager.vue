@@ -25,10 +25,13 @@
               <span class="block break-all text-sm text-gray-100">{{ relay.url }}</span>
               <span v-if="isDefault(relay.url)" class="inline-flex rounded-full bg-indigo-500/15 px-2 py-0.5 text-xs font-medium text-indigo-200">{{ t('account.evolu_relay_default_badge') }}</span>
             </span>
-            <span class="flex shrink-0 items-center gap-2 text-xs sm:text-sm" :class="statusClass(stateFor(relay))">
-              <span>{{ statusText(stateFor(relay)) }}</span>
-              <span class="h-2 w-2 rounded-full" :class="dotClass(stateFor(relay))" aria-hidden="true" />
-              <span class="text-gray-400" aria-hidden="true">›</span>
+            <span class="flex shrink-0 flex-col items-end gap-1 text-xs sm:text-sm">
+              <span v-if="protocolFor(relay).state !== 'unknown'" :class="isRelayProtocolError(protocolFor(relay).state) ? 'text-amber-300' : 'text-gray-400'">{{ protocolText(relay) }}</span>
+              <span class="flex items-center gap-2" :class="statusClass(stateFor(relay))">
+                <span>{{ statusText(stateFor(relay)) }}</span>
+                <span class="h-2 w-2 rounded-full" :class="dotClass(stateFor(relay))" aria-hidden="true" />
+                <span class="text-gray-400" aria-hidden="true">›</span>
+              </span>
             </span>
           </button>
         </li>
@@ -60,7 +63,12 @@
             <span class="h-2 w-2 rounded-full" :class="dotClass(stateFor(selectedRelay))" aria-hidden="true" />
           </dd>
         </div>
+        <div class="flex items-center justify-between gap-4">
+          <dt class="text-gray-300">{{ t('account.evolu_relay_protocol_label') }}</dt>
+          <dd :class="isRelayProtocolError(protocolFor(selectedRelay).state) ? 'text-amber-300' : 'text-gray-400'">{{ protocolText(selectedRelay) }}</dd>
+        </div>
       </dl>
+      <p v-if="protocolFor(selectedRelay).state === 'quota_exceeded'" class="text-sm text-amber-300" role="status">{{ t('account.evolu_relay_quota_hint') }}</p>
       <label class="flex cursor-pointer items-center justify-between gap-4 text-sm text-gray-300">
         <span>{{ t('account.evolu_relay_enabled_label') }}</span>
         <span class="relative inline-flex shrink-0 items-center">
@@ -91,13 +99,15 @@ import { getDefaultEvoluRelayUrls, normalizeCustomEvoluRelayUrl, normalizeEvoluR
 import { getActiveEvoluRelayUrls, subscribeActiveEvoluRelayUrls } from '@/evolu/relayPreferenceLifecycle';
 import { useEvoluRelayConnections } from '@/composables/useEvoluRelayConnections';
 import { useOnlineStatus } from '@/composables/useOnlineStatus';
+import { isRelayProtocolError, type RelayProtocolObservation } from '@/evolu/relayProtocolStatus';
 import DangerConfirmModal from '@/components/ui/DangerConfirmModal.vue';
 
 const props = defineProps<{ deviceSyncDisabled: boolean }>();
+const emit = defineEmits<{ 'sync-error': [value: boolean] }>();
 const { t } = useI18n();
 const auth = useAuthStore();
 const flash = useFlashStore();
-const { connections } = useEvoluRelayConnections();
+const { connections, protocols } = useEvoluRelayConnections();
 const isOnline = useOnlineStatus();
 const relays = computed(() => resolveConfiguredEvoluRelays(auth.user ?? {}));
 const defaults = computed(() => getDefaultEvoluRelayUrls());
@@ -125,6 +135,8 @@ onMounted(() => { unsubscribe = subscribeActiveEvoluRelayUrls(() => { activeUrls
 onUnmounted(() => { accountGeneration++; unsubscribe?.(); });
 watch(() => auth.user?.id, () => { accountGeneration++; view.value = 'list'; selectedUrl.value = ''; enteredUrl.value = ''; confirmRemove.value = false; error.value = ''; }, { flush: 'sync' });
 const enabledCount = computed(() => relays.value.filter(row => row.enabled).length);
+const hasProtocolError = computed(() => relays.value.some(row => isRelayProtocolError(protocolFor(row).state)));
+watch(hasProtocolError, value => emit('sync-error', value), { immediate: true, flush: 'sync' });
 const connectedCount = computed(() => relays.value.filter(row => stateFor(row) === 'connected').length);
 
 /** Identify the configured application defaults without promoting arbitrary servers. */
@@ -138,6 +150,16 @@ function stateFor(relay: EvoluRelayConfiguration): RowState {
   if (!activeUrls.value.includes(relay.url)) return 'paused';
   return connections.value[relay.url] ?? 'unknown';
 }
+/** Hide worker observations when this tab has no current permission to use the destination. */
+function protocolFor(relay: EvoluRelayConfiguration): RelayProtocolObservation {
+  const connection = stateFor(relay);
+  if (!activeUrls.value.includes(relay.url) || ['disabled', 'device_off', 'paused'].includes(connection)) return { state: 'unknown', observedAt: 0 };
+  const protocol = protocols.value[relay.url] ?? { state: 'unknown', observedAt: 0 };
+  if (connection === 'disconnected' && !isRelayProtocolError(protocol.state)) return { state: 'unknown', observedAt: 0 };
+  return protocol;
+}
+/** Render sanitized protocol evidence separately from the socket's connection state. */
+function protocolText(relay: EvoluRelayConfiguration): string { return t(`account.evolu_relay_protocol_${protocolFor(relay).state}`); }
 function statusText(state: RowState): string { return t(`account.evolu_relay_state_${state}`); }
 /** Keep connection evidence readable without relying on dot color alone. */
 function statusClass(state: RowState): string { return state === 'connected' ? 'text-emerald-300' : state === 'error' || state === 'disconnected' ? 'text-amber-300' : 'text-gray-400'; }

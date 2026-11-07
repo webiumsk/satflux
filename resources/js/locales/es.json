@@ -1846,7 +1846,7 @@
     "evolu_stats_last_push": "Último push al relay",
     "evolu_stats_last_force_push": "Último force push",
     "evolu_stats_company_row": "{invoices} fact. · {documents} docs · {contacts} contactos",
-    "evolu_stats_relay_error": "Error del relay: {error}",
+    "evolu_stats_relay_error": "Último error de Evolu registrado (puede ser anterior): {error}",
     "evolu_relay_usage_title": "Copia en relay (servidor)",
     "evolu_relay_usage_size": "{used} / {quota} ({percent} % de cuota)",
     "evolu_relay_usage_last_activity": "Última actividad en relay: {time}",
@@ -2094,7 +2094,17 @@
     "evolu_relay_state_disabled": "Desactivado",
     "evolu_relay_state_device_off": "Sincronización del dispositivo desactivada",
     "evolu_relay_state_paused": "Sincronización pausada",
-    "evolu_relay_secure_default_required": "Para cambiar esta lista se necesita una dirección segura del relay predeterminado (wss://). Pide al administrador que actualice la dirección predeterminada."
+    "evolu_relay_secure_default_required": "Para cambiar esta lista se necesita una dirección segura del relay predeterminado (wss://). Pide al administrador que actualice la dirección predeterminada.",
+    "evolu_relay_protocol_label": "Sincronización",
+    "evolu_relay_protocol_unknown": "Aún no se ha observado una respuesta del protocolo",
+    "evolu_relay_protocol_response_received": "Respuesta recibida",
+    "evolu_relay_protocol_quota_exceeded": "Cuota superada",
+    "evolu_relay_protocol_write_key_rejected": "Clave de escritura rechazada",
+    "evolu_relay_protocol_write_failed": "Error de escritura en el relay",
+    "evolu_relay_protocol_sync_failed": "Error de sincronización del relay",
+    "evolu_relay_protocol_version_mismatch": "Versión de protocolo incompatible",
+    "evolu_relay_protocol_invalid_message": "Respuesta de protocolo no válida",
+    "evolu_relay_quota_hint": "Este relay rechazó la sincronización porque se superó su cuota de almacenamiento o facturación. Comprueba los límites del proveedor o utiliza otro relay. Los datos locales permanecen en este dispositivo."
   },
   "header": {
     "dashboard": "Tablero de control",

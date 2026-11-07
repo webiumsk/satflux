@@ -146,7 +146,26 @@ class SecurityHeadersTest extends TestCase
             $this->assertStringNotContainsString($host, $policy);
         }
         $this->assertStringContainsString('wss://evolu.satflux.io', $policy);
+        $this->assertStringContainsString('wss://evolu.eu.freedomrelay.dev', $policy);
+    }
+
+    /** The retired testing default is allowed only when explicitly configured for this account. */
+    #[Test]
+    public function csp_preserves_an_explicit_testing_relay_without_allowing_it_as_a_default(): void
+    {
+        config(['security.csp.enabled' => true, 'security.csp.report_only' => false,
+            'security.csp.evolu_relay_url' => '']);
+        $this->assertStringNotContainsString('free.evoluhq.com', (string) $this->get('/')
+            ->headers->get('Content-Security-Policy'));
+
+        $user = User::factory()->create(['evolu_relays' => [
+            ['url' => 'wss://free.evoluhq.com', 'enabled' => true],
+        ]]);
+        $this->actingAs($user);
+        $policy = (string) $this->get('/')->headers->get('Content-Security-Policy');
         $this->assertStringContainsString('wss://free.evoluhq.com', $policy);
+        $this->assertStringContainsString('https://free.evoluhq.com', $policy);
+        $this->assertStringContainsString('wss://evolu.eu.freedomrelay.dev', $policy);
     }
 
     /** Empty or malformed canonical lists must not restore legacy relay permissions. */

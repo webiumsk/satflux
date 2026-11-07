@@ -56,7 +56,7 @@
           v-if="localFirst"
           class="rounded-2xl border border-gray-700 bg-gray-800/80 p-5 space-y-3"
         >
-          <EvoluRelayManager :device-sync-disabled="relaySyncDisabledOnDevice" />
+          <EvoluRelayManager :device-sync-disabled="relaySyncDisabledOnDevice" @sync-error="relayProtocolError = $event" />
           <label class="flex items-start gap-2 text-xs text-gray-400 cursor-pointer select-none">
             <input
               v-model="relaySyncDisabledOnDevice"
@@ -2141,13 +2141,8 @@ const accountTabBadge = computed(() => {
   return !storedGuestMnemonic.value && !getStoredAccountMnemonic();
 });
 
-const syncTabBadge = computed(() => {
-  if (!localFirst) {
-    return false;
-  }
-  const relayError = evoluLocalStats.value?.relayError;
-  return typeof relayError === "string" && relayError.length > 0;
-});
+const relayProtocolError = ref(false);
+const syncTabBadge = computed(() => localFirst && relayProtocolError.value);
 
 const visibleProfileTabs = computed(() => {
   const tabs: {

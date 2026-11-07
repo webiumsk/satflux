@@ -3107,7 +3107,7 @@
     "evolu_stats_last_push": "Letzter Push zum Relay",
     "evolu_stats_last_force_push": "Letzter Force-Push",
     "evolu_stats_company_row": "{invoices} Rg. · {documents} Belege · {contacts} Kontakte",
-    "evolu_stats_relay_error": "Relay-Fehler: {error}",
+    "evolu_stats_relay_error": "Zuletzt aufgezeichneter Evolu-Fehler (kann älter sein): {error}",
     "evolu_relay_usage_title": "Relay-Backup (Server)",
     "evolu_relay_usage_size": "{used} / {quota} ({percent}% der Quote)",
     "evolu_relay_usage_last_activity": "Letzte Relay-Aktivität: {time}",
@@ -3355,7 +3355,17 @@
     "evolu_relay_state_disabled": "Deaktiviert",
     "evolu_relay_state_device_off": "Gerätesynchronisierung aus",
     "evolu_relay_state_paused": "Synchronisierung pausiert",
-    "evolu_relay_secure_default_required": "Zum Ändern dieser Liste ist eine sichere Standard-Relay-Adresse (wss://) erforderlich. Bitten Sie den Administrator, die Standardadresse zu aktualisieren."
+    "evolu_relay_secure_default_required": "Zum Ändern dieser Liste ist eine sichere Standard-Relay-Adresse (wss://) erforderlich. Bitten Sie den Administrator, die Standardadresse zu aktualisieren.",
+    "evolu_relay_protocol_label": "Synchronisierung",
+    "evolu_relay_protocol_unknown": "Noch keine Protokollantwort beobachtet",
+    "evolu_relay_protocol_response_received": "Antwort empfangen",
+    "evolu_relay_protocol_quota_exceeded": "Kontingent überschritten",
+    "evolu_relay_protocol_write_key_rejected": "Schreibschlüssel abgelehnt",
+    "evolu_relay_protocol_write_failed": "Schreiben auf Relay fehlgeschlagen",
+    "evolu_relay_protocol_sync_failed": "Relay-Synchronisierung fehlgeschlagen",
+    "evolu_relay_protocol_version_mismatch": "Inkompatible Protokollversion",
+    "evolu_relay_protocol_invalid_message": "Ungültige Protokollantwort",
+    "evolu_relay_quota_hint": "Dieses Relay hat die Synchronisierung wegen eines überschrittenen Speicher- oder Abrechnungskontingents abgelehnt. Prüfen Sie die Limits des Anbieters oder verwenden Sie ein anderes Relay. Lokale Daten bleiben auf diesem Gerät."
   },
   "header": {
     "dashboard": "Dashboard",
