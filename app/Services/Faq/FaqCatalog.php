@@ -20,8 +20,8 @@ class FaqCatalog
         }
 
         $categories = [];
-        foreach ($catalog['categories'] as $category) {
-            $this->entry($category, ['name', 'description']);
+        foreach ($catalog['categories'] as $index => $category) {
+            $catalog['categories'][$index]['order'] = $this->entry($category, ['name', 'description']);
             if (isset($categories[$category['slug']])) {
                 throw new RuntimeException('Duplicate FAQ category slug.');
             }
@@ -30,8 +30,8 @@ class FaqCatalog
 
         $slugs = [];
         $sources = [];
-        foreach ($catalog['items'] as $item) {
-            $this->entry($item, ['question', 'answer']);
+        foreach ($catalog['items'] as $index => $item) {
+            $catalog['items'][$index]['order'] = $this->entry($item, ['question', 'answer']);
             if (isset($slugs[$item['slug']]) || ! is_string($item['category'] ?? null) || ! isset($categories[$item['category']])) {
                 throw new RuntimeException('Duplicate FAQ item or unknown category.');
             }
@@ -83,12 +83,14 @@ class FaqCatalog
         return $catalog;
     }
 
-    /** Validate one record before any database planning or writes. */
-    private function entry(mixed $entry, array $fields): void
+    /** Validate one record and normalize finite whole JSON order numbers to stable database integers. */
+    private function entry(mixed $entry, array $fields): int
     {
+        $order = is_array($entry) ? ($entry['order'] ?? null) : null;
         if (! is_array($entry) || ! is_string($entry['slug'] ?? null) || strlen($entry['slug']) > 255
             || ! preg_match('~^[a-z0-9]+(?:-[a-z0-9]+)*$~D', $entry['slug'])
-            || ! is_int($entry['order'] ?? null) || $entry['order'] < 0 || $entry['order'] > 2147483647) {
+            || (! is_int($order) && ! is_float($order)) || ! is_finite((float) $order)
+            || floor((float) $order) !== (float) $order || $order < 0 || $order > 2147483647) {
             throw new RuntimeException('Invalid FAQ slug or ordering.');
         }
         foreach ($fields as $field) {
@@ -102,6 +104,8 @@ class FaqCatalog
                 }
             }
         }
+
+        return (int) $order;
     }
 
     /** Resolve only repository documentation paths and require their reviewed bytes. */

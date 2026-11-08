@@ -48,10 +48,16 @@ class FaqSyncTest extends TestCase
         $this->assertDatabaseCount('faq_categories', 0);
     }
 
+    /** Exercise the real default-path catalog loader while any command-time database connection is invalid. */
     public function test_offline_check_succeeds_with_an_unavailable_database_connection(): void
     {
+        $loader = new FaqCatalog;
+        $this->app->instance(FaqCatalog::class, $loader);
+        $this->assertSame($loader, $this->app->make(FaqCatalog::class));
         config(['database.default' => 'unavailable-faq-check-proof']);
-        $this->artisan('faq:sync', ['--check' => true])->assertSuccessful();
+        $this->artisan('faq:sync', ['--check' => true])
+            ->expectsOutput('FAQ catalog, five-language translations, documentation links and source fingerprints are valid.')
+            ->assertSuccessful();
     }
 
     /** Require explicit support/admin attribution before any import can write records. */
@@ -85,6 +91,21 @@ class FaqSyncTest extends TestCase
         $this->assertFalse($category->fresh()->is_active);
         $this->assertDatabaseCount('faq_items', 1);
         $this->assertDatabaseCount('faq_categories', 1);
+    }
+
+    /** Decimal and exponent spellings load as integers and do not create spurious repeated-import updates. */
+    public function test_equivalent_raw_json_number_orders_have_stable_repeated_import_semantics(): void
+    {
+        $first = $this->loadNumericLiteralCatalog('1.0', '1e0');
+        $second = $this->loadNumericLiteralCatalog('1e0', '1.0');
+        $this->assertSame(1, $first['categories'][0]['order']);
+        $this->assertSame(1, $first['items'][0]['order']);
+        $sync = app(FaqSynchronizer::class);
+        $sync->apply($first, 1);
+        $before = FaqItem::firstOrFail()->getRawOriginal();
+        $this->assertSame(['unchanged', 'unchanged'], array_column($sync->apply($second, 1), 'action'));
+        $this->assertSame($before, FaqItem::firstOrFail()->getRawOriginal());
+        $this->assertSame(1, FaqCategory::firstOrFail()->order);
     }
 
     public function test_reviewed_update_preserves_publication_counters_and_extra_locales(): void
@@ -253,6 +274,38 @@ class FaqSyncTest extends TestCase
         $this->artisan('faq:sync', ['--check' => true, '--apply' => true])->assertFailed();
         $this->artisan('faq:sync', ['--user' => '1'])->assertFailed();
         $this->assertDatabaseCount('faq_items', 0);
+    }
+
+    /** Load literal JSON order spellings through the real validator using synthetic source-backed files. */
+    private function loadNumericLiteralCatalog(string $categoryOrder, string $itemOrder): array
+    {
+        $root = sys_get_temp_dir().'/faq-number-import-'.bin2hex(random_bytes(8));
+        mkdir($root.'/docs/faq', 0700, true);
+        mkdir($root.'/docs/user/en', 0700, true);
+        try {
+            $content = $this->catalog();
+            $content['categories'][0]['order'] = '__CATEGORY_ORDER__';
+            $content['items'][0]['order'] = '__ITEM_ORDER__';
+            $content['items'][0]['sources'] = ['docs/user/en/start.md'];
+            $content['items'][0]['answer'] = array_fill_keys(FaqCatalog::LOCALES, 'Read [guide](/documentation/start).');
+            file_put_contents($root.'/docs/user/en/start.md', '# Reviewed synthetic source');
+            file_put_contents($root.'/docs/faq/sources.lock.json', json_encode([
+                'docs/user/en/start.md' => hash_file('sha256', $root.'/docs/user/en/start.md'),
+            ], JSON_THROW_ON_ERROR));
+            $json = str_replace(['"__CATEGORY_ORDER__"', '"__ITEM_ORDER__"'], [$categoryOrder, $itemOrder], json_encode($content, JSON_THROW_ON_ERROR));
+            file_put_contents($root.'/docs/faq/catalog.json', $json);
+
+            return (new FaqCatalog)->load($root);
+        } finally {
+            foreach (['docs/faq/catalog.json', 'docs/faq/sources.lock.json', 'docs/user/en/start.md'] as $path) {
+                if (is_file($root.'/'.$path)) {
+                    unlink($root.'/'.$path);
+                }
+            }
+            foreach (['docs/faq', 'docs/user/en', 'docs/user', 'docs', ''] as $path) {
+                rmdir($root.($path === '' ? '' : '/'.$path));
+            }
+        }
     }
 
     /** Build a complete five-language catalog fixture and reuse the reviewed source fingerprints. */

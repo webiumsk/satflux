@@ -27,6 +27,11 @@ function insideFile(root, relative) {
 /** Read a versioned JSON artifact without loading the application or database. */
 function readJson(path) { return JSON.parse(readFileSync(path, 'utf8')); }
 
+/** Accept finite whole decoded JSON numbers, including 1.0/1e0, within PostgreSQL's integer range. */
+function validOrder(value) {
+    return Number.isSafeInteger(value) && value >= 0 && value <= maxOrder;
+}
+
 /** Validate tracked content without connecting to the application or a database. */
 export function validateCatalog(root, { refresh = false } = {}) {
     const catalog = readJson(resolve(root, 'docs/faq/catalog.json'));
@@ -36,7 +41,7 @@ export function validateCatalog(root, { refresh = false } = {}) {
     for (const category of catalog.categories) {
         if (typeof category.slug !== 'string' || category.slug.length > 255 || !slugPattern.test(category.slug) || categories.has(category.slug)) fail('Invalid/duplicate category slug');
         categories.add(category.slug);
-        if (!Number.isSafeInteger(category.order) || category.order < 0 || category.order > maxOrder) fail('Invalid category order');
+        if (!validOrder(category.order)) fail('Invalid category order');
         localized(category.name, `category ${category.slug} name`);
         localized(category.description, `category ${category.slug} description`);
     }
@@ -46,7 +51,7 @@ export function validateCatalog(root, { refresh = false } = {}) {
     for (const item of catalog.items) {
         if (typeof item.slug !== 'string' || item.slug.length > 255 || !slugPattern.test(item.slug) || slugs.has(item.slug)) fail('Invalid/duplicate item slug');
         slugs.add(item.slug);
-        if (!categories.has(item.category) || !Number.isSafeInteger(item.order) || item.order < 0 || item.order > maxOrder) fail(`Invalid category/order: ${item.slug}`);
+        if (!categories.has(item.category) || !validOrder(item.order)) fail(`Invalid category/order: ${item.slug}`);
         localized(item.question, `${item.slug} question`, 500);
         localized(item.answer, `${item.slug} answer`);
         if (!Array.isArray(item.sources) || !item.sources.length || new Set(item.sources).size !== item.sources.length

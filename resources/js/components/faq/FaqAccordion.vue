@@ -128,27 +128,38 @@ type InlineResult = { html: string; next: number; closed: boolean };
 
 /**
  * Consume sanitized inline text until its matching emphasis delimiter.
- * Recognize only emphasis and exact local documentation links; eight nested
- * levels bound recursion, and unmatched delimiters retain their literal text.
+ * Recognize only emphasis and exact local documentation links. At eight nested
+ * levels, suppress further emphasis and label recursion while retaining links.
+ * Unmatched emphasis delimiters retain their literal text.
  */
 const parseInline = (source: string, start = 0, delimiter = '', depth = 0): InlineResult => {
-  if (depth >= 8) return { html: source.slice(start), next: source.length, closed: false };
   let html = '';
   let index = start;
+  let failedLinkBoundary = -1;
   while (index < source.length) {
     if (delimiter && source.startsWith(delimiter, index)
       && (delimiter === '**' || !source.startsWith('**', index) || source.startsWith('***', index))) {
       return { html, next: index + delimiter.length, closed: true };
     }
-    const link = source[index] === '['
-      ? /^\[([^[\]\n]+)\]\((\/documentation\/[a-z0-9]+(?:-[a-z0-9]+)*)\)/.exec(source.slice(index))
+    const tryLink = source[index] === '[' && index > failedLinkBoundary;
+    const link = tryLink
+      ? /^\[([^\]\r\n]+)\]\((\/documentation\/[a-z0-9]+(?:-[a-z0-9]+)*)\)/.exec(source.slice(index))
       : null;
+    if (tryLink && !link) {
+      // Openings before the same first boundary share the same failed destination.
+      // Cache that boundary to avoid rescanning long unmatched '[' runs.
+      const boundary = /[\]\r\n]/.exec(source.slice(index + 1));
+      failedLinkBoundary = boundary ? index + 1 + boundary.index : source.length;
+    }
     if (link) {
-      html += `<a href="${link[2]}">${parseInline(link[1], 0, '', depth + 1).html}</a>`;
+      const label = depth < 8 ? parseInline(link[1], 0, '', depth + 1).html : link[1];
+      html += `<a href="${link[2]}">${label}</a>`;
       index += link[0].length;
       continue;
     }
-    const opening = source.startsWith('**', index) ? '**' : source[index] === '*' ? '*' : '';
+    const opening = depth < 8
+      ? source.startsWith('**', index) ? '**' : source[index] === '*' ? '*' : ''
+      : '';
     if (opening) {
       const nested = parseInline(source, index + opening.length, opening, depth + 1);
       const tag = opening === '**' ? 'strong' : 'em';

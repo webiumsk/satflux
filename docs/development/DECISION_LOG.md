@@ -1,5 +1,25 @@
 # Development decision log
 
+## FAQ PR435 second review corrections accepted locally - 2026-11-08
+
+All four owner-supplied findings are valid against `cc60c4b8` and fixed on the
+existing FAQ branch. Complete opening-bracket labels match validator grammar;
+links remain clickable throughout depth-capped input, without deeper recursion or
+quadratic malformed-label retries. PHP/Node accept finite whole decoded JSON
+numbers in 0..2147483647 consistently, with PHP integer normalization. The real
+--check command test now uses default catalog paths with an unavailable database;
+wrong-path and database-read mutation tests prove the regression assertion works.
+
+Independent QA/security accept seven exact source/test paths. PHP 33/185, UI 52,
+Node 60, unchanged catalog 12/5/39, PHPStan/Pint 3, scoped frontend lint/type 110/
+parity/build pass. Independent raw-number and renderer attack/performance probes
+pass; local documentation inspection is 45/45 PHP and 9/9 JS qualified functions.
+No dependencies, thresholds, baselines or catalog fingerprints changed. Evidence:
+`docs/faq/REVIEW_FIXES.md` and private `reviews/faq-automation/pr435-round2/`.
+The coordinator owns corrective publication and exact-head CI verification;
+prior-head CI/CodeRabbit results are historical. No merge, production import,
+FAQ publication or deployment occurred; unrelated primary work is preserved.
+
 ## FAQ PR435 review corrections accepted locally - 2026-11-08
 
 All six owner-supplied findings were valid against `8242c351` and are corrected on

@@ -108,3 +108,31 @@ test('English fallback remains valid when translated source files are unavailabl
     const { root } = fixture(t);
     assert.doesNotThrow(() => validateCatalog(root));
 });
+
+/** Write an order as literal JSON so decimal/exponent spellings survive fixture serialization. */
+function literalOrder(t, kind, literal) {
+    const { root, catalog, save } = fixture(t);
+    catalog[kind][0].order = 1234567890;
+    save();
+    const path = resolve(root, 'docs/faq/catalog.json');
+    const encoded = readFileSync(path, 'utf8');
+    assert.equal(encoded.split('"order":1234567890').length, 2);
+    writeFileSync(path, encoded.replace('"order":1234567890', `"order":${literal}`));
+    assert.ok(readFileSync(path, 'utf8').includes(`"order":${literal}`));
+    return root;
+}
+
+for (const kind of ['categories', 'items']) {
+    for (const literal of ['0', '-0.0', '1', '1.0', '1e0', '1E+0', '2147483647.0', '2.147483647e9']) {
+        test(`${kind} accept whole raw JSON order ${literal}`, t => {
+            const root = literalOrder(t, kind, literal);
+            assert.doesNotThrow(() => validateCatalog(root));
+        });
+    }
+    for (const literal of ['-1', '-1.0', '1.5', '1e-1', '2147483648', '2147483648.0', '1e309', '9007199254740993', '"1"', '"1.0"', 'true', 'null']) {
+        test(`${kind} reject unsafe or nonnumeric raw JSON order ${literal}`, t => {
+            const root = literalOrder(t, kind, literal);
+            assert.throws(() => validateCatalog(root), /Invalid category order|Invalid category\/order/);
+        });
+    }
+}

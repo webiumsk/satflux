@@ -200,6 +200,47 @@ class FaqCatalogTest extends TestCase
         }
     }
 
+    /** Preserve raw decimal/exponent JSON syntax while accepting only bounded whole decoded numbers. */
+    public function test_raw_json_whole_number_order_literals_are_accepted_and_normalized(): void
+    {
+        $valid = [['0', 0], ['-0.0', 0], ['1', 1], ['1.0', 1], ['1e0', 1], ['1E+0', 1],
+            ['2147483647.0', 2147483647], ['2.147483647e9', 2147483647]];
+        foreach (['categories', 'items'] as $type) {
+            foreach ($valid as [$literal, $expected]) {
+                $content = $this->loadWithRawOrderLiteral($type, $literal);
+                $this->assertSame($expected, $content[$type][0]['order'], $type.' raw order '.$literal);
+            }
+        }
+    }
+
+    /** Raw JSON strings, fractions, booleans, null, nonfinite values and overflowing numbers fail closed. */
+    public function test_raw_json_invalid_order_literals_are_rejected_for_both_record_types(): void
+    {
+        $invalid = ['-1', '-1.0', '1.5', '1e-1', '2147483648', '2147483648.0', '1e309', '9007199254740993',
+            '"1"', '"1.0"', 'true', 'null'];
+        foreach (['categories', 'items'] as $type) {
+            foreach ($invalid as $literal) {
+                try {
+                    $this->loadWithRawOrderLiteral($type, $literal);
+                    $this->fail($type.' raw order '.$literal.' must be rejected.');
+                } catch (RuntimeException $exception) {
+                    $this->assertSame('Invalid FAQ slug or ordering.', $exception->getMessage());
+                }
+            }
+        }
+    }
+
+    /** Write the requested numeric token directly so JSON encoding cannot canonicalize its lexical form. */
+    private function loadWithRawOrderLiteral(string $type, string $literal): array
+    {
+        $content = $this->catalog;
+        $content[$type][0]['order'] = '__FAQ_ORDER_LITERAL__';
+        $json = str_replace('"__FAQ_ORDER_LITERAL__"', $literal, json_encode($content, JSON_THROW_ON_ERROR));
+        file_put_contents($this->root.'/docs/faq/catalog.json', $json);
+
+        return (new FaqCatalog)->load($this->root);
+    }
+
     /** Create one synthetic translation and add its per-item declaration and reviewed lock entry. */
     private function addTranslatedSource(string $locale): void
     {

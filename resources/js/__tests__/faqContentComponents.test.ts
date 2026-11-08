@@ -86,6 +86,36 @@ describe('FAQ safe answer rendering', () => {
     expect(wrapper.get(selector).text()).toBe('guide');
   });
 
+  it('consumes the complete validator-supported label including opening brackets', () => {
+    const wrapper = mountFaq('[outer [inner](/documentation/guide)');
+    expect(wrapper.get('.prose a').text()).toBe('outer [inner');
+    expect(wrapper.get('.prose').text()).toBe('outer [inner');
+    expect(wrapper.get('.prose a').attributes('href')).toBe('/documentation/guide');
+  });
+
+  it.each(['\r', '\n', '\r\n'])('rejects label line breaks consistently for %j', lineBreak => {
+    const wrapper = mountFaq(`[first${lineBreak}second](/documentation/guide)`);
+    expect(wrapper.find('.prose a').exists()).toBe(false);
+  });
+
+  it('sanitizes the complete nested-bracket label rather than rendering a literal prefix', () => {
+    const wrapper = mountFaq('[outer [<strong onclick="alert(1)">inner</strong>](/documentation/guide)');
+    expect(wrapper.get('.prose a').text()).toBe('outer [inner');
+    expect(wrapper.get('.prose a strong').text()).toBe('inner');
+    expect(wrapper.get('.prose').text()).toBe('outer [inner');
+    expect(wrapper.find('.prose [onclick]').exists()).toBe(false);
+  });
+
+  it('keeps links clickable inside capped emphasis and after the capped span', () => {
+    const delimiters = Array.from({ length: 12 }, (_, index) => index % 2 ? '*' : '**');
+    const opening = delimiters.map(delimiter => `${delimiter}layer `).join('');
+    const closing = delimiters.slice().reverse().map(delimiter => ` layer${delimiter}`).join('');
+    const wrapper = mountFaq(`${opening}[inside](/documentation/guide)${closing} [after](/documentation/backup-and-recovery)`);
+    expect(wrapper.findAll('.prose a').map(link => [link.text(), link.attributes('href')])).toEqual([
+      ['inside', '/documentation/guide'], ['after', '/documentation/backup-and-recovery'],
+    ]);
+  });
+
   it('preserves prior safe HTML paragraphs, breaks and emphasis without attributes', () => {
     const wrapper = mountFaq('<p class="legacy" onclick="alert(1)">First <strong title="old">bold</strong><br>and <em style="color:red">italic</em>.</p><p>Second paragraph.</p>');
     expect(wrapper.get('.prose strong').text()).toBe('bold');
@@ -161,6 +191,27 @@ describe('FAQ safe answer rendering', () => {
     const wrapper = mountFaq(answer);
     expect(wrapper.get('.prose').text()).toBe(answer);
     expect(wrapper.find('.prose a').exists()).toBe(false);
+  });
+
+  it.each([
+    '['.repeat(10000) + '](javascript:bad)',
+    '['.repeat(10000) + '\n' + 'x](/documentation/guide)',
+  ])('retains long failed label runs and still recognizes a later safe link', prefix => {
+    const wrapper = mountFaq(`${prefix} **visible** [later](/documentation/guide)`);
+    expect(wrapper.findAll('.prose a').map(link => [link.text(), link.attributes('href')])).toEqual([
+      ['later', '/documentation/guide'],
+    ]);
+    expect(wrapper.get('.prose strong').text()).toBe('visible');
+  });
+
+  it('preserves complete sanitized link labels at the emphasis recursion limit', () => {
+    const delimiters = Array.from({ length: 12 }, (_, index) => index % 2 ? '*' : '**');
+    const opening = delimiters.map(delimiter => `${delimiter}layer `).join('');
+    const closing = delimiters.slice().reverse().map(delimiter => ` layer${delimiter}`).join('');
+    const wrapper = mountFaq(`${opening}[outer [<em onclick="alert(1)">inner</em>](/documentation/guide)${closing}`);
+    expect(wrapper.get('.prose a').text()).toBe('outer [inner');
+    expect(wrapper.get('.prose a').attributes('href')).toBe('/documentation/guide');
+    expect(wrapper.find('.prose [onclick]').exists()).toBe(false);
   });
 
   it('keeps ampersands and quotes readable while preventing attribute injection', () => {
