@@ -1,5 +1,30 @@
 # Project state
 
+## FAQ PR435 review corrections accepted locally - 2026-11-08
+
+All six owner-supplied findings were valid against `8242c351` and are corrected on
+`feat/faq-automation` for existing open PR435. Search predicates live in the public
+controller rather than the model referenced by the review. Omitted category keys
+retain assignment; explicit null clears. Czech search includes legacy `cz` only for
+`cs`. PHP/Node source checks require per-item available translated counterparts and
+reject order overflow beyond 2147483647. Bounded Markdown parsing restores nested
+links and safe legacy HTML while retaining two sanitization passes and local URLs.
+
+Independent security and QA accept exact corrective source manifests. PHP 30/136,
+actual PostgreSQL 4/23, frontend 43, Node 20 and independent renderer/source attack
+cases pass. PHPStan, Pint 9, scoped lint/type 110/parity/build/API checks pass. Local
+AST/token coverage is 42/42 PHP + 8/8 JS qualified named functions with docstrings;
+no external post-push CodeRabbit coverage pass is inferred. New PostgreSQL CI
+coverage uses a separate test database and rejects skipped/error/failed JUnit cases;
+the exact step passed locally. No thresholds, baselines or dependencies changed.
+
+See `docs/faq/REVIEW_FIXES.md`; sanitized review records remain private under
+`storage/app/private/reviews/faq-automation/pr435-corrections/`. Earlier broad PHP
+suite/environment limitations remain historical; no new whole-suite pass is claimed.
+Catalog 12/5/39 and its fingerprints are unchanged. No merge, production import,
+FAQ publication or deployment occurred; unrelated primary work remains preserved.
+Coordinator owns the corrective commit/push and exact-head remote verification.
+
 ## Multilingual FAQ automation accepted locally - 2026-11-08
 
 Owner-approved FAQ automation is implemented on `feat/faq-automation` from owned

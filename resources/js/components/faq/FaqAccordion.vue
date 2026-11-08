@@ -109,6 +109,7 @@ const emit = defineEmits<{
 const openItems = ref<string[]>([]);
 const accordionId = useId();
 
+/** Toggle one answer while keeping other expanded answers open. */
 const toggleItem = (itemId: string) => {
   const index = openItems.value.indexOf(itemId);
   if (index > -1) {
@@ -118,29 +119,68 @@ const toggleItem = (itemId: string) => {
   }
 };
 
+/** Report the selected local FAQ identifier to the parent feedback handler. */
 const handleHelpful = (itemId: string) => {
   emit('helpful', itemId);
 };
 
-/** Escape authored text before recognizing the small supported Markdown subset. */
+type InlineResult = { html: string; next: number; closed: boolean };
+
+/**
+ * Consume sanitized inline text until its matching emphasis delimiter.
+ * Recognize only emphasis and exact local documentation links; eight nested
+ * levels bound recursion, and unmatched delimiters retain their literal text.
+ */
+const parseInline = (source: string, start = 0, delimiter = '', depth = 0): InlineResult => {
+  if (depth >= 8) return { html: source.slice(start), next: source.length, closed: false };
+  let html = '';
+  let index = start;
+  while (index < source.length) {
+    if (delimiter && source.startsWith(delimiter, index)
+      && (delimiter === '**' || !source.startsWith('**', index) || source.startsWith('***', index))) {
+      return { html, next: index + delimiter.length, closed: true };
+    }
+    const link = source[index] === '['
+      ? /^\[([^[\]\n]+)\]\((\/documentation\/[a-z0-9]+(?:-[a-z0-9]+)*)\)/.exec(source.slice(index))
+      : null;
+    if (link) {
+      html += `<a href="${link[2]}">${parseInline(link[1], 0, '', depth + 1).html}</a>`;
+      index += link[0].length;
+      continue;
+    }
+    const opening = source.startsWith('**', index) ? '**' : source[index] === '*' ? '*' : '';
+    if (opening) {
+      const nested = parseInline(source, index + opening.length, opening, depth + 1);
+      const tag = opening === '**' ? 'strong' : 'em';
+      html += nested.closed ? `<${tag}>${nested.html}</${tag}>` : opening + nested.html;
+      index = nested.next;
+      continue;
+    }
+    html += source[index];
+    index += 1;
+  }
+  return { html, next: index, closed: false };
+};
+
+/**
+ * Preserve legacy paragraph/emphasis HTML without attributes, expand the bounded
+ * Markdown subset, then sanitize every output with exact documentation URL rules.
+ */
 const formatAnswer = (answer: string) => {
   if (!answer) return '';
-  const entities: Record<string, string> = {
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  };
-  const escaped = answer.replace(/[&<>"']/g, character => entities[character]);
-  const inline = escaped.replace(
-    /\[([^\]\n]+)\]\((\/documentation\/[a-z0-9]+(?:-[a-z0-9]+)*)\)|\*\*([^*\n]+)\*\*|\*([^*\n]+)\*/g,
-    (_match, label: string | undefined, href: string | undefined, bold: string | undefined, emphasis: string | undefined) => {
-      if (label !== undefined && href !== undefined) return `<a href="${href}">${label}</a>`;
-      if (bold !== undefined) return `<strong>${bold}</strong>`;
-      return `<em>${emphasis}</em>`;
-    },
-  );
+  const legacy = DOMPurify.sanitize(answer, {
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'em'],
+    ALLOWED_ATTR: [],
+    ALLOW_DATA_ATTR: false,
+    ALLOW_ARIA_ATTR: false,
+  });
+  const inline = parseInline(legacy).html;
   const paragraphs = inline.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>');
   return DOMPurify.sanitize(`<p>${paragraphs}</p>`, {
     ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'a'],
     ALLOWED_ATTR: ['href'],
+    ALLOW_DATA_ATTR: false,
+    ALLOW_ARIA_ATTR: false,
     ALLOWED_URI_REGEXP: /^\/documentation\/[a-z0-9]+(?:-[a-z0-9]+)*$/,
   });
 };

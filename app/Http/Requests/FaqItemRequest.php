@@ -16,12 +16,15 @@ class FaqItemRequest extends FormRequest
         return true; // Authorization handled by middleware
     }
 
-    /** Preserve stored legacy/extra language text when a five-language editor saves. */
+    /** Preserve omitted categories and stored legacy/extra locales when an existing item is edited. */
     protected function prepareForValidation(): void
     {
         $item = $this->route('item');
         if (! $item instanceof FaqItem) {
             return;
+        }
+        if (! array_key_exists('category_id', $this->all())) {
+            $this->merge(['category_id' => $item->getAttribute('category_id')]);
         }
         foreach (['question', 'answer'] as $field) {
             if (is_array($this->input($field))) {

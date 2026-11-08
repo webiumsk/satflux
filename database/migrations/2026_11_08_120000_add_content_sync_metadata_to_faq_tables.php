@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /** Add nullable import ownership and fingerprint metadata without adopting existing FAQ content. */
     public function up(): void
     {
         foreach (['faq_categories', 'faq_items'] as $name) {
@@ -16,6 +17,7 @@ return new class extends Migration
         }
     }
 
+    /** Remove synchronization metadata and its indexes while retaining all FAQ content rows. */
     public function down(): void
     {
         foreach (['faq_categories', 'faq_items'] as $name) {

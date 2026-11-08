@@ -1,13 +1,16 @@
 import { createHash } from 'node:crypto';
-import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const locales = ['en', 'sk', 'es', 'de', 'cs'];
+const maxOrder = 2147483647;
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const sourcePattern = /^docs\/user\/(en|sk|es|de|cs)\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/;
 
+/** Reject invalid reviewed content without changing any source files. */
 function fail(message) { throw new Error(message); }
+/** Require nonempty text in exactly the five supported application locales. */
 function localized(value, label, max = Infinity) {
     if (!value || typeof value !== 'object' || Array.isArray(value)
         || Object.keys(value).sort().join() !== [...locales].sort().join()) fail(`${label}: require exactly five locales`);
@@ -15,11 +18,13 @@ function localized(value, label, max = Infinity) {
         if (typeof value[locale] !== 'string' || !value[locale].trim() || Array.from(value[locale]).length > max) fail(`${label}.${locale}: invalid text`);
     }
 }
+/** Resolve a documentation file and reject symlinks outside the documentation root. */
 function insideFile(root, relative) {
     const path = realpathSync(resolve(root, relative));
     if (!path.startsWith(realpathSync(resolve(root, 'docs/user')) + sep)) fail('Source escapes documentation');
     return path;
 }
+/** Read a versioned JSON artifact without loading the application or database. */
 function readJson(path) { return JSON.parse(readFileSync(path, 'utf8')); }
 
 /** Validate tracked content without connecting to the application or a database. */
@@ -31,7 +36,7 @@ export function validateCatalog(root, { refresh = false } = {}) {
     for (const category of catalog.categories) {
         if (typeof category.slug !== 'string' || category.slug.length > 255 || !slugPattern.test(category.slug) || categories.has(category.slug)) fail('Invalid/duplicate category slug');
         categories.add(category.slug);
-        if (!Number.isSafeInteger(category.order) || category.order < 0) fail('Invalid category order');
+        if (!Number.isSafeInteger(category.order) || category.order < 0 || category.order > maxOrder) fail('Invalid category order');
         localized(category.name, `category ${category.slug} name`);
         localized(category.description, `category ${category.slug} description`);
     }
@@ -41,7 +46,7 @@ export function validateCatalog(root, { refresh = false } = {}) {
     for (const item of catalog.items) {
         if (typeof item.slug !== 'string' || item.slug.length > 255 || !slugPattern.test(item.slug) || slugs.has(item.slug)) fail('Invalid/duplicate item slug');
         slugs.add(item.slug);
-        if (!categories.has(item.category) || !Number.isSafeInteger(item.order) || item.order < 0) fail(`Invalid category/order: ${item.slug}`);
+        if (!categories.has(item.category) || !Number.isSafeInteger(item.order) || item.order < 0 || item.order > maxOrder) fail(`Invalid category/order: ${item.slug}`);
         localized(item.question, `${item.slug} question`, 500);
         localized(item.answer, `${item.slug} answer`);
         if (!Array.isArray(item.sources) || !item.sources.length || new Set(item.sources).size !== item.sources.length
@@ -51,6 +56,15 @@ export function validateCatalog(root, { refresh = false } = {}) {
             const path = insideFile(root, source);
             expected[source] = createHash('sha256').update(readFileSync(path)).digest('hex');
             (sourceItems[source] ??= []).push(item.slug);
+            if (source.startsWith('docs/user/en/')) {
+                for (const locale of locales) {
+                    const translated = source.replace('docs/user/en/', `docs/user/${locale}/`);
+                    const path = resolve(root, translated);
+                    if (existsSync(path) && statSync(path).isFile() && !item.sources.includes(translated)) {
+                        fail(`Missing translated source: ${item.slug}: ${translated}`);
+                    }
+                }
+            }
         }
         for (const locale of locales) {
             // Answers deliberately support a small local-documentation Markdown subset.

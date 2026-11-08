@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { locales, validateCatalog } from './check.mjs';
 
+/** Create an isolated catalog and source lock for validator regression scenarios. */
 function fixture(t) {
     const root = mkdtempSync(resolve(tmpdir(), 'satflux-faq-check-'));
     t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -74,4 +75,36 @@ test('missing and overlong slugs fail without coercion', t => {
     assert.throws(() => validateCatalog(root), /Invalid\/duplicate item slug/);
     catalog.items[0].slug = 'first-payment'; delete catalog.categories[0].slug; save();
     assert.throws(() => validateCatalog(root), /Invalid\/duplicate category slug/);
+});
+
+for (const kind of ['categories', 'items']) {
+    test(`${kind} accept the signed PostgreSQL integer maximum`, t => {
+        const { root, catalog, save } = fixture(t);
+        catalog[kind][0].order = 2147483647; save();
+        assert.doesNotThrow(() => validateCatalog(root));
+    });
+    for (const invalid of [-1, 2147483648, 1.5, '1']) {
+        test(`${kind} reject invalid order ${JSON.stringify(invalid)}`, t => {
+            const { root, catalog, save } = fixture(t);
+            catalog[kind][0].order = invalid; save();
+            assert.throws(() => validateCatalog(root), /Invalid category order|Invalid category\/order/);
+        });
+    }
+}
+
+test('each available translated counterpart must be declared by its own FAQ item', t => {
+    const { root, catalog, save } = fixture(t);
+    mkdirSync(resolve(root, 'docs/user/cs'), { recursive: true });
+    writeFileSync(resolve(root, 'docs/user/cs/start.md'), '# Začátek\n');
+    catalog.items.push({ ...catalog.items[0], slug: 'another-payment', sources: [...catalog.items[0].sources, 'docs/user/cs/start.md'] });
+    save();
+    assert.throws(() => validateCatalog(root, { refresh: true }), /Missing translated source: first-payment: docs\/user\/cs\/start.md/);
+    catalog.items[0].sources.push('docs/user/cs/start.md'); save();
+    validateCatalog(root, { refresh: true });
+    assert.deepEqual(validateCatalog(root), { items: 2, locales: 5, sources: 2 });
+});
+
+test('English fallback remains valid when translated source files are unavailable', t => {
+    const { root } = fixture(t);
+    assert.doesNotThrow(() => validateCatalog(root));
 });

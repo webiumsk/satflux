@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\Admin\FaqCategoryController;
+use App\Http\Controllers\Admin\FaqItemController;
 use App\Http\Requests\FaqItemRequest;
 use App\Models\FaqCategory;
 use App\Models\FaqItem;
+use App\Models\User;
 use App\Services\Faq\FaqCatalog;
 use App\Services\Faq\FaqSynchronizer;
 use Illuminate\Database\Schema\Blueprint;
@@ -52,6 +54,7 @@ class FaqSyncTest extends TestCase
         $this->artisan('faq:sync', ['--check' => true])->assertSuccessful();
     }
 
+    /** Require explicit support/admin attribution before any import can write records. */
     public function test_apply_requires_explicit_existing_staff_actor(): void
     {
         foreach ([[], ['--user' => '2'], ['--user' => '999'], ['--user' => '0'], ['--user' => '1.0']] as $options) {
@@ -104,6 +107,7 @@ class FaqSyncTest extends TestCase
         $this->assertSame(3, $item->updated_by);
     }
 
+    /** Reject the entire import when an edited item conflicts, preserving category and item bytes. */
     public function test_manual_item_edit_aborts_entire_batch_before_category_changes(): void
     {
         $sync = app(FaqSynchronizer::class);
@@ -145,6 +149,7 @@ class FaqSyncTest extends TestCase
         $this->assertSame('Existing', FaqCategory::firstOrFail()->name['en']);
     }
 
+    /** Verify a late persistence error rolls back every earlier category and item write. */
     public function test_late_database_failure_rolls_back_categories_and_all_prior_items(): void
     {
         $content = $this->catalog();
@@ -208,6 +213,28 @@ class FaqSyncTest extends TestCase
         $this->assertSame('Answer en', $item->answer['en']);
     }
 
+    /** Exercise real validation/controller updates for omitted category retention and explicit clearing. */
+    public function test_item_update_retains_omitted_category_and_explicit_null_clears_it(): void
+    {
+        app(FaqSynchronizer::class)->apply($this->catalog(), 1);
+        $item = FaqItem::firstOrFail();
+        $categoryId = $item->category_id;
+        $item->update(['question' => $item->question + ['cz' => 'Legacy question']]);
+        $this->app['router']->put('/faq-review-item/{item}', function (FaqItemRequest $request, FaqItem $item) {
+            $request->setUserResolver(fn () => User::findOrFail(1));
+
+            return app(FaqItemController::class)->update($request, $item);
+        })->middleware(SubstituteBindings::class);
+        $payload = ['slug' => 'first', 'question' => ['cs' => 'Česká otázka'], 'answer' => ['cs' => 'Česká odpověď']];
+        $this->putJson('/faq-review-item/'.$item->id, $payload)->assertOk();
+        $item->refresh();
+        $this->assertSame($categoryId, $item->category_id);
+        $this->assertSame('Legacy question', $item->question['cz']);
+        $this->assertSame('Question en', $item->question['en']);
+        $this->putJson('/faq-review-item/'.$item->id, $payload + ['category_id' => null])->assertOk();
+        $this->assertNull($item->fresh()->category_id);
+    }
+
     public function test_category_save_keeps_omitted_legacy_and_extra_languages(): void
     {
         $category = FaqCategory::create(['slug' => 'manual', 'name' => ['en' => 'English', 'cz' => 'Legacy', 'fr' => 'French'],
@@ -228,6 +255,7 @@ class FaqSyncTest extends TestCase
         $this->assertDatabaseCount('faq_items', 0);
     }
 
+    /** Build a complete five-language catalog fixture and reuse the reviewed source fingerprints. */
     private function catalog(): array
     {
         $names = $questions = $answers = [];

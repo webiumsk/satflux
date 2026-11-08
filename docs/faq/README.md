@@ -9,7 +9,7 @@ npm run test:faq
 php artisan faq:sync --check
 ```
 
-Both checks validate the catalog, five-language completeness, safe documentation links and reviewed source fingerprints. The Node check runs in existing CI and does not bootstrap the application. The Artisan `--check` performs no database reads or writes. Translated documentation source files are fingerprinted when present; documentation retains its existing per-article English fallback.
+Both checks validate the catalog, five-language completeness, safe documentation links and reviewed source fingerprints. The Node check runs in existing CI and does not bootstrap the application. The Artisan `--check` performs no database reads or writes. Each declared English source must include every available EN/SK/ES/DE/CS counterpart in that same FAQ item. Those files are fingerprinted; unavailable translations retain the existing per-article English fallback.
 
 When a source changes, the check fails and identifies the affected content. Review every affected answer and all five translations against the changed source. Review current deployed functionality separately: repository documentation is not evidence that an unreleased feature is deployed. Once the corresponding content changes are ready, explicitly refresh the fingerprints and include both content and lock changes in review:
 

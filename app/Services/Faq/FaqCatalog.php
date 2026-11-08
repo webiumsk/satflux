@@ -54,6 +54,7 @@ class FaqCatalog
             if (! $hasEnglishSource) {
                 throw new RuntimeException('FAQ item requires a canonical English source.');
             }
+            $this->translatedSources($root, $item['sources']);
             foreach (self::LOCALES as $locale) {
                 if (mb_strlen($item['question'][$locale]) > 500) {
                     throw new RuntimeException('FAQ question exceeds 500 characters.');
@@ -87,7 +88,7 @@ class FaqCatalog
     {
         if (! is_array($entry) || ! is_string($entry['slug'] ?? null) || strlen($entry['slug']) > 255
             || ! preg_match('~^[a-z0-9]+(?:-[a-z0-9]+)*$~D', $entry['slug'])
-            || ! is_int($entry['order'] ?? null) || $entry['order'] < 0) {
+            || ! is_int($entry['order'] ?? null) || $entry['order'] < 0 || $entry['order'] > 2147483647) {
             throw new RuntimeException('Invalid FAQ slug or ordering.');
         }
         foreach ($fields as $field) {
@@ -115,6 +116,24 @@ class FaqCatalog
         }
     }
 
+    /** Require each item's English references to track all available translated counterparts. */
+    private function translatedSources(string $root, array $sources): void
+    {
+        foreach ($sources as $path) {
+            if (! str_starts_with($path, 'docs/user/en/')) {
+                continue;
+            }
+            $filename = substr($path, strlen('docs/user/en/'));
+            foreach (self::LOCALES as $locale) {
+                $translated = 'docs/user/'.$locale.'/'.$filename;
+                if (is_file($root.'/'.$translated) && ! in_array($translated, $sources, true)) {
+                    throw new RuntimeException('FAQ item must declare its existing translated source: '.$translated);
+                }
+            }
+        }
+    }
+
+    /** Decode a required catalog object without database access or permissive JSON recovery. */
     private function readJson(string $path): array
     {
         if (! is_file($path)) {

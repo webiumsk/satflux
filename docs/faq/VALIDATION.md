@@ -1,5 +1,9 @@
 # FAQ automation validation
 
+## PR435 review corrections - 2026-11-08
+
+All six supplied behavior findings were verified and corrected; none was skipped. Category omission/null, legacy Czech search, translated-source coverage, PostgreSQL integer bounds, nested documentation links and safe legacy HTML have independent regression coverage. The older Czech-search limitation below describes the original `8242c351` snapshot and is resolved by this correction. See [review disposition and current evidence](REVIEW_FIXES.md). Local docstring measurement passes without weakening the external threshold; no fresh external coverage result is inferred before post-push review.
+
 Implementation branch: `feat/faq-automation`, based on owned master `f7118b10f2cbde07f15edc68bc154ceb2a94718d`. All implementation evidence is local; it does not establish production deployment, database import or publication.
 
 ## Independent acceptance

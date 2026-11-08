@@ -248,6 +248,39 @@ jobs:
           echo "Verified four executed expense contention tests without skips.", PHP_EOL;
           PHP
 
+      - name: Test actual PostgreSQL FAQ locale search
+        env:
+          DB_DATABASE: satflux_faq_testing
+          FAQ_POSTGRES_TESTS: "1"
+        run: |
+          php <<'PHP'
+          <?php
+          if (getenv('APP_ENV') !== 'testing'
+              || getenv('DB_HOST') !== '127.0.0.1'
+              || getenv('DB_DATABASE') !== 'satflux_faq_testing') {
+              throw new RuntimeException('FAQ search requires the isolated CI database.');
+          }
+          $connection = new PDO(
+              'pgsql:host=127.0.0.1;port=5432;dbname=satflux_bank_sync_testing',
+              getenv('DB_USERNAME'),
+              getenv('DB_PASSWORD'),
+              [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION],
+          );
+          $connection->exec('CREATE DATABASE satflux_faq_testing');
+          PHP
+          php artisan test tests/Feature/FaqSearchPostgresTest.php --log-junit=storage/logs/faq-postgres.xml
+          php <<'PHP'
+          <?php
+          $report = simplexml_load_file('storage/logs/faq-postgres.xml');
+          if ($report === false || count($report->xpath('//testcase')) < 1
+              || $report->xpath('//testcase/skipped') !== []
+              || $report->xpath('//testcase/error') !== []
+              || $report->xpath('//testcase/failure') !== []) {
+              throw new RuntimeException('FAQ PostgreSQL tests must execute and pass without skips.');
+          }
+          echo "Verified FAQ PostgreSQL search tests without skips.", PHP_EOL;
+          PHP
+
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest

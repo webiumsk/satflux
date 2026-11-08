@@ -5,14 +5,17 @@ import FaqAccordion from '../components/faq/FaqAccordion.vue';
 
 enableAutoUnmount(afterEach);
 
+/** Mount an isolated FAQ list with synthetic authored answer content. */
 const mountFaq = (answer = 'A plain answer.') => mount(FaqAccordion, {
   props: { items: [{ id: 'synthetic-faq', question: 'A synthetic question?', answer }] },
 });
 
+/** Mount the shared editor with the supplied synthetic locale payload. */
 const mountEditor = (modelValue: Record<string, string>) => mount(MultilanguageEditor, {
   props: { modelValue, label: 'Question' },
 });
 
+/** Select canonical Czech and expose its input without changing stored text. */
 async function czechInput(modelValue: Record<string, string>) {
   const wrapper = mountEditor(modelValue);
   await wrapper.findAll('nav button').find(button => button.text() === 'Čeština')!.trigger('click');
@@ -72,6 +75,27 @@ describe('FAQ safe answer rendering', () => {
   });
 
   it.each([
+    ['**[guide](/documentation/guide)**', '.prose strong a'],
+    ['*[guide](/documentation/guide)*', '.prose em a'],
+    ['**Keep *[guide](/documentation/guide)* safe**', '.prose strong em a'],
+    ['*Keep **[guide](/documentation/guide)** safe*', '.prose em strong a'],
+    ['***[guide](/documentation/guide)***', '.prose strong em a'],
+  ])('keeps nested documentation links clickable in %s', (answer, selector) => {
+    const wrapper = mountFaq(answer);
+    expect(wrapper.get(selector).attributes('href')).toBe('/documentation/guide');
+    expect(wrapper.get(selector).text()).toBe('guide');
+  });
+
+  it('preserves prior safe HTML paragraphs, breaks and emphasis without attributes', () => {
+    const wrapper = mountFaq('<p class="legacy" onclick="alert(1)">First <strong title="old">bold</strong><br>and <em style="color:red">italic</em>.</p><p>Second paragraph.</p>');
+    expect(wrapper.get('.prose strong').text()).toBe('bold');
+    expect(wrapper.get('.prose em').text()).toBe('italic');
+    expect(wrapper.findAll('.prose br')).toHaveLength(1);
+    expect(wrapper.findAll('.prose p').some(node => node.text() === 'Second paragraph.')).toBe(true);
+    expect(wrapper.find('.prose [onclick], .prose [class], .prose [title], .prose [style]').exists()).toBe(false);
+  });
+
+  it.each([
     'https://example.com/documentation/guide', '//example.com/guide', 'javascript:alert(1)',
     'data:text/html,hello', '/documentation/../account', '/documentation/%2e%2e/account',
     '/documentation/guide?redirect=https://example.com', '/documentation/guide#section',
@@ -82,11 +106,61 @@ describe('FAQ safe answer rendering', () => {
     expect(wrapper.findAll('.prose [onclick], .prose [onmouseover]')).toHaveLength(0);
   });
 
-  it('treats raw HTML and hostile link labels as plain text', () => {
-    const wrapper = mountFaq('<img src=x onerror="alert(1)"> <script>alert(1)</script> [<svg onload="alert(2)">](/documentation/guide)');
+  it('removes unsafe raw HTML and hostile link label elements', () => {
+    const wrapper = mountFaq('<img src=x onerror="alert(1)"> <script>alert(1)</script> [guide<svg onload="alert(2)"></svg>](/documentation/guide)');
     expect(wrapper.find('.prose img, .prose script, .prose svg, .prose [onload], .prose [onerror]').exists()).toBe(false);
-    expect(wrapper.get('.prose a').text()).toBe('<svg onload="alert(2)">');
-    expect(wrapper.get('.prose').text()).toContain('<script>alert(1)</script>');
+    expect(wrapper.get('.prose a').attributes('href')).toBe('/documentation/guide');
+    expect(wrapper.get('.prose').text()).not.toContain('alert(1)');
+  });
+
+  it('combines legacy safe HTML and nested Markdown without accepting attributes', () => {
+    const wrapper = mountFaq('<p data-owner="private" aria-label="injected">Use <strong>[guide](/documentation/guide)</strong> or **<em>[recovery](/documentation/backup-and-recovery)</em>**.</p>');
+    expect(wrapper.findAll('.prose strong a').map(link => link.attributes('href'))).toEqual([
+      '/documentation/guide', '/documentation/backup-and-recovery',
+    ]);
+    expect(wrapper.get('.prose strong em a').text()).toBe('recovery');
+    expect(wrapper.find('.prose [data-owner], .prose [aria-label]').exists()).toBe(false);
+  });
+
+  it.each([
+    '<p><a href="javascript:alert(1)">unsafe</a> <a href="/documentation/guide" onclick="alert(2)">legacy anchor</a></p>',
+    '<p><strong onclick="&#97;lert(1)" data-x="1" aria-label="hidden">**[guide](/documentation/guide)**</strong></p>',
+    '<svg><foreignObject><p onmouseover="alert(1)">Bad</p></foreignObject></svg> **[guide](/documentation/guide)**',
+    '<math><mtext><table><mglyph><style><!--</style><img title="--><img src=x onerror=alert(1)>">',
+    '<p><em>Broken **[guide](/documentation/guide)</p></strong><script>alert(1)</script>',
+    '[label &quot; onclick=&quot;alert(1)](/documentation/guide) <em onfocus="alert(1)">safe</em>',
+    '&lt;img src=x onerror=alert(1)&gt; **[guide](/documentation/guide)**',
+  ])('sanitizes mixed or malformed markup %s', answer => {
+    const wrapper = mountFaq(answer);
+    const prose = wrapper.get('.prose');
+    const allowed = ['P', 'BR', 'STRONG', 'EM', 'A'];
+    for (const node of prose.element.querySelectorAll('*')) {
+      expect(allowed).toContain(node.tagName);
+      for (const attribute of Array.from(node.attributes)) {
+        expect(node.tagName).toBe('A');
+        expect(attribute.name).toBe('href');
+        expect(attribute.value).toMatch(/^\/documentation\/[a-z0-9]+(?:-[a-z0-9]+)*$/);
+      }
+    }
+  });
+
+  it.each(['**', '*', '**Keep *', '*Keep **', '**<em>'])('keeps forbidden nested Markdown destinations inert inside %s', prefix => {
+    const wrapper = mountFaq(`${prefix}[unsafe](javascript:alert(1)) and [unsafe](//example.com/guide)${prefix}`);
+    expect(wrapper.find('.prose a, .prose [onclick]').exists()).toBe(false);
+  });
+
+  it('bounds deeply nested or unmatched emphasis while keeping its text and sanitization', () => {
+    const opening = Array.from({ length: 100 }, (_, index) => index % 2 ? '*inner ' : '**outer ').join('');
+    const wrapper = mountFaq(`${opening}[guide](/documentation/guide)<img src=x onerror="alert(1)">`);
+    expect(wrapper.get('.prose').text()).toContain('guide');
+    expect(wrapper.find('.prose img, .prose [onerror]').exists()).toBe(false);
+  });
+
+  it('retains long unmatched bracket text without interpreting nested link labels', () => {
+    const answer = '['.repeat(10000) + 'ordinary text';
+    const wrapper = mountFaq(answer);
+    expect(wrapper.get('.prose').text()).toBe(answer);
+    expect(wrapper.find('.prose a').exists()).toBe(false);
   });
 
   it('keeps ampersands and quotes readable while preventing attribute injection', () => {

@@ -14,6 +14,7 @@ class SyncFaqCommand extends Command
 
     protected $description = 'Validate, preview or import reviewed multilingual FAQ content without overwriting manual edits';
 
+    /** Validate options and reviewed content, then preview or atomically import drafts with safe errors. */
     public function handle(FaqCatalog $catalog, FaqSynchronizer $synchronizer): int
     {
         try {

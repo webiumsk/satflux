@@ -94,6 +94,7 @@ class FaqSynchronizer
         return $models->first();
     }
 
+    /** Classify a catalog record against its immutable ownership key and last imported content hash. */
     private function action(string $type, array $entry, ?Model $model, array $attributes): array
     {
         $action = 'create';
@@ -111,6 +112,7 @@ class FaqSynchronizer
         return ['type' => $type, 'slug' => $entry['slug'], 'action' => $action];
     }
 
+    /** Merge reviewed category fields while preserving languages outside the managed locale set. */
     private function categoryAttributes(array $entry, ?Model $model): array
     {
         return [
@@ -121,6 +123,7 @@ class FaqSynchronizer
         ];
     }
 
+    /** Merge reviewed FAQ text and category membership without touching publication or counters. */
     private function itemAttributes(array $entry, ?Model $model, string $categoryId): array
     {
         return [
@@ -149,6 +152,7 @@ class FaqSynchronizer
         return hash('sha256', json_encode($attributes, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 
+    /** Persist only changed managed content and its baseline hash without publishing or deleting rows. */
     private function save(Model $model, array $attributes, string $key): void
     {
         $model->fill($attributes);

@@ -31,11 +31,18 @@ class FaqCatalogTest extends TestCase
         ], JSON_THROW_ON_ERROR));
     }
 
+    /** Remove synthetic source files and links after each isolated catalog validation scenario. */
     protected function tearDown(): void
     {
-        foreach (['docs/faq/catalog.json', 'docs/faq/sources.lock.json', 'docs/user/en/start.md'] as $path) {
+        foreach (['docs/faq/catalog.json', 'docs/faq/sources.lock.json', 'docs/user/en/start.md', 'outside.md'] as $path) {
             if (is_file($this->root.'/'.$path)) {
                 unlink($this->root.'/'.$path);
+            }
+        }
+        foreach (array_diff(FaqCatalog::LOCALES, ['en']) as $locale) {
+            if (is_file($this->root.'/docs/user/'.$locale.'/start.md') || is_link($this->root.'/docs/user/'.$locale.'/start.md')) {
+                unlink($this->root.'/docs/user/'.$locale.'/start.md');
+                rmdir($this->root.'/docs/user/'.$locale);
             }
         }
         foreach (['docs/faq', 'docs/user/en', 'docs/user', 'docs', ''] as $path) {
@@ -65,6 +72,7 @@ class FaqCatalogTest extends TestCase
         $this->load();
     }
 
+    /** Reject unsupported URL schemes, malformed links and raw HTML before importing content. */
     public function test_external_and_malformed_links_and_html_are_rejected(): void
     {
         foreach (['Read [guide](https://outside.test/guide)', 'Read [guide](javascript:alert(1))',
@@ -89,6 +97,7 @@ class FaqCatalogTest extends TestCase
         $this->load();
     }
 
+    /** Reject source paths outside the permitted documentation grammar and repeated source declarations. */
     public function test_path_traversal_and_duplicate_sources_are_rejected(): void
     {
         foreach ([['docs/user/en/../../secret.md'], ['docs/user/en/start.md', 'docs/user/en/start.md']] as $sources) {
@@ -111,6 +120,96 @@ class FaqCatalogTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('exactly cover');
         $this->load();
+    }
+
+    /** Existing translations belong to each dependent FAQ, even when another item already tracks them. */
+    public function test_existing_translated_source_cannot_be_omitted_from_one_dependent_item(): void
+    {
+        $this->addTranslatedSource('sk');
+        $second = $this->catalog['items'][0];
+        $second['slug'] = 'second';
+        $second['sources'] = ['docs/user/en/start.md'];
+        $this->catalog['items'][] = $second;
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('existing translated source: docs/user/sk/start.md');
+        $this->load();
+    }
+
+    /** A locale file appearing on disk must be declared even if the old lock did not mention it. */
+    public function test_newly_available_translation_must_be_declared_and_fingerprinted(): void
+    {
+        mkdir($this->root.'/docs/user/cs', 0700);
+        file_put_contents($this->root.'/docs/user/cs/start.md', '# Český zdroj');
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('existing translated source: docs/user/cs/start.md');
+        $this->load();
+    }
+
+    /** A declared translated symlink outside docs/user must fail the same source-boundary checks. */
+    public function test_translated_symlink_outside_documentation_root_is_rejected(): void
+    {
+        mkdir($this->root.'/docs/user/cs', 0700);
+        file_put_contents($this->root.'/outside.md', '# Outside documentation root');
+        symlink($this->root.'/outside.md', $this->root.'/docs/user/cs/start.md');
+        $this->catalog['items'][0]['sources'][] = 'docs/user/cs/start.md';
+        $lock = json_decode(file_get_contents($this->root.'/docs/faq/sources.lock.json'), true, 512, JSON_THROW_ON_ERROR);
+        $lock['docs/user/cs/start.md'] = hash_file('sha256', $this->root.'/outside.md');
+        file_put_contents($this->root.'/docs/faq/sources.lock.json', json_encode($lock, JSON_THROW_ON_ERROR));
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Missing or changed FAQ source: docs/user/cs/start.md');
+        $this->load();
+    }
+
+    /** Missing translated articles keep the established canonical-English fallback valid. */
+    public function test_unavailable_translated_article_keeps_english_fallback_valid(): void
+    {
+        $this->assertFileDoesNotExist($this->root.'/docs/user/cs/start.md');
+        $this->assertSame($this->catalog, $this->load());
+    }
+
+    /** Declaring and locking an available translation satisfies coverage without changing its bytes. */
+    public function test_available_translated_source_with_reviewed_fingerprint_is_accepted(): void
+    {
+        $this->addTranslatedSource('de');
+        $this->assertSame($this->catalog, $this->load());
+    }
+
+    /** Category and item order boundaries match PostgreSQL signed integer storage exactly. */
+    public function test_zero_and_signed_integer_maximum_orders_are_accepted_for_both_record_types(): void
+    {
+        foreach ([0, 2147483647] as $order) {
+            $this->catalog['categories'][0]['order'] = $order;
+            $this->catalog['items'][0]['order'] = $order;
+            $this->assertSame($this->catalog, $this->load());
+        }
+    }
+
+    /** Neither category nor item overflow may pass offline validation and later fail during import. */
+    public function test_signed_integer_overflow_is_rejected_for_categories_and_items(): void
+    {
+        foreach (['categories', 'items'] as $type) {
+            $this->catalog['categories'][0]['order'] = 1;
+            $this->catalog['items'][0]['order'] = 1;
+            $this->catalog[$type][0]['order'] = 2147483648;
+            try {
+                $this->load();
+                $this->fail('PostgreSQL integer overflow must fail validation.');
+            } catch (RuntimeException $exception) {
+                $this->assertSame('Invalid FAQ slug or ordering.', $exception->getMessage());
+            }
+        }
+    }
+
+    /** Create one synthetic translation and add its per-item declaration and reviewed lock entry. */
+    private function addTranslatedSource(string $locale): void
+    {
+        mkdir($this->root.'/docs/user/'.$locale, 0700);
+        $path = 'docs/user/'.$locale.'/start.md';
+        file_put_contents($this->root.'/'.$path, '# Reviewed translated source');
+        $this->catalog['items'][0]['sources'][] = $path;
+        $lock = json_decode(file_get_contents($this->root.'/docs/faq/sources.lock.json'), true, 512, JSON_THROW_ON_ERROR);
+        $lock[$path] = hash_file('sha256', $this->root.'/'.$path);
+        file_put_contents($this->root.'/docs/faq/sources.lock.json', json_encode($lock, JSON_THROW_ON_ERROR));
     }
 
     private function load(): array

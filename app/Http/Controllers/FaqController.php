@@ -36,6 +36,10 @@ class FaqController extends Controller
                   // Fallback to English if current locale doesn't have content
                     ->orWhereRaw("question->>'en' ILIKE ?", ["%{$search}%"])
                     ->orWhereRaw("answer->>'en' ILIKE ?", ["%{$search}%"]);
+                if ($locale === 'cs') {
+                    $q->orWhereRaw("question->>'cz' ILIKE ?", ["%{$search}%"])
+                        ->orWhereRaw("answer->>'cz' ILIKE ?", ["%{$search}%"]);
+                }
             });
         }
 

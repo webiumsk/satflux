@@ -91,6 +91,7 @@ const valueForLocale = (locale: SupportedLocale): string => {
   return value || '';
 };
 
+/** Emit one locale edit while preserving legacy and additional translations. */
 const updateValue = (locale: string, value: string) => {
   const updated = { ...props.modelValue };
   updated[locale] = value;
