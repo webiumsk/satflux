@@ -147,7 +147,8 @@ describe('FAQ safe answer rendering', () => {
     expect(wrapper.get('.prose').text()).toBe(plain);
     expect(wrapper.get('.prose a').text()).toBe('center');
     expect(wrapper.get('.prose').text()).not.toContain('*');
-    expect(wrapper.findAll('.prose strong, .prose em').length).toBeLessThanOrEqual(8);
+    expect(wrapper.findAll('.prose a strong').map(node => node.text())).toEqual(layers < 8 ? ['center'] : []);
+    expect(wrapper.findAll('.prose strong, .prose em')).toHaveLength(Math.min(layers + 1, 8));
   });
 
   it('matches ten thousand logical layers with bounded rendered depth and no recursive unwinding', () => {

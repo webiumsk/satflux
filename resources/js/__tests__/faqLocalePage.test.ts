@@ -195,15 +195,22 @@ describe('public FAQ locale requests', () => {
   ])('shows current request failure %s locally and retries without changing locale or filters', async (status, key) => {
     state.locale.value = 'sk';
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    state.index.mockRejectedValueOnce({ isAxiosError: true, ...(status === undefined ? {} : { response: { status } }) });
     const wrapper = mountPage(); await flushPromises();
-    expect(state.index.mock.calls[0][1]).toMatchObject({ skipErrorFlash: true });
+    await wrapper.get('select').setValue('category-shared-id'); await flushPromises();
+    await wrapper.get('input').setValue('shared');
+    state.index.mockRejectedValueOnce({ isAxiosError: true, ...(status === undefined ? {} : { response: { status } }) });
+    await vi.advanceTimersByTimeAsync(300); await flushPromises();
+    const params = { locale: 'sk', category_id: 'category-shared-id', search: 'shared' };
+    expect(state.index.mock.calls.at(-1)![0]).toEqual(params);
+    expect(state.index.mock.calls.at(-1)![1]).toMatchObject({ skipErrorFlash: true });
     expect(wrapper.get('[role=alert]').text()).toContain(`sk:${key}`);
     expect(wrapper.text()).not.toContain('faq.no_items_found');
     await wrapper.get('[role=alert] button').trigger('click'); await flushPromises();
-    expect(state.index.mock.calls.at(-1)![0]).toEqual({ locale: 'sk' });
+    expect(state.index.mock.calls.at(-1)![0]).toEqual(params);
     expect(wrapper.find('[role=alert]').exists()).toBe(false);
     expect(wrapper.get('[data-test=answers]').text()).toContain('sk shared question');
+    expect((wrapper.get('input').element as HTMLInputElement).value).toBe('shared');
+    expect((wrapper.get('select').element as HTMLSelectElement).value).toBe('category-shared-id');
     expect(error).toHaveBeenCalledTimes(1);
   });
 

@@ -55,6 +55,68 @@ class FaqSearchPostgresTest extends TestCase
         $this->assertSame('Legacy Answer Needle', $this->search('cs', 'answer needle')[0]['answer']);
     }
 
+    /** Nonblank canonical Czech text hides superseded legacy question and answer search terms. */
+    public function test_nonblank_canonical_czech_suppresses_legacy_question_and_answer_search_matches(): void
+    {
+        $this->item('canonical-precedence', ['cs' => 'Canonical question', 'cz' => 'HiddenQuestionNeedle'],
+            ['cs' => 'Canonical answer', 'cz' => 'HiddenAnswerNeedle']);
+        $this->assertSame([], $this->search('cs', 'HiddenQuestionNeedle'));
+        $this->assertSame([], $this->search('cs', 'HiddenAnswerNeedle'));
+    }
+
+    /** Canonical availability is checked per field, so one translated field cannot suppress the other's fallback. */
+    public function test_czech_legacy_question_and_answer_fallbacks_are_independent(): void
+    {
+        $question = $this->item('canonical-question-only', ['cs' => 'Canonical question', 'cz' => 'HiddenQuestionNeedle'],
+            ['cs' => " \t", 'cz' => 'AnswerFallbackNeedle']);
+        $answer = $this->item('canonical-answer-only', ['cs' => '', 'cz' => 'QuestionFallbackNeedle'],
+            ['cs' => 'Canonical answer', 'cz' => 'HiddenAnswerNeedle']);
+        $this->assertSame([], $this->search('cs', 'HiddenQuestionNeedle'));
+        $this->assertSame([], $this->search('cs', 'HiddenAnswerNeedle'));
+        $this->assertSame([$question->id], array_column($this->search('cs', 'AnswerFallbackNeedle'), 'id'));
+        $this->assertSame([$answer->id], array_column($this->search('cs', 'QuestionFallbackNeedle'), 'id'));
+    }
+
+    /** Missing/null/empty canonical values and exactly PHP-trim whitespace allow legacy search and display. */
+    public function test_czech_legacy_search_matches_missing_null_empty_and_php_trim_blank_canonical_fields(): void
+    {
+        $variants = [[], ['cs' => null], ['cs' => ''], ['cs' => ' '], ['cs' => "\t"], ['cs' => "\n"],
+            ['cs' => "\r"], ['cs' => "\x0B"], ['cs' => " \t\n\r\x0B"]];
+        foreach ($variants as $index => $canonical) {
+            $questionNeedle = 'QuestionBlank'.$index.'Needle';
+            $answerNeedle = 'AnswerBlank'.$index.'Needle';
+            $item = $this->item('blank-variant-'.$index, $canonical + ['cz' => $questionNeedle], $canonical + ['cz' => $answerNeedle]);
+            $questionResults = $this->search('cs', $questionNeedle);
+            $answerResults = $this->search('cs', $answerNeedle);
+            $this->assertSame([$item->id], array_column($questionResults, 'id'));
+            $this->assertSame([$item->id], array_column($answerResults, 'id'));
+            $this->assertSame($questionNeedle, $questionResults[0]['question']);
+            $this->assertSame($answerNeedle, $answerResults[0]['answer']);
+        }
+    }
+
+    /** Formfeed and nonbreaking spaces remain nonblank because PHP trim does not remove them. */
+    public function test_non_php_trim_whitespace_does_not_enable_hidden_legacy_search(): void
+    {
+        foreach (["\x0C", "\u{00A0}", " \tCanonical text\r\n"] as $index => $canonical) {
+            $this->item('nonblank-variant-'.$index, ['cs' => $canonical, 'cz' => 'HiddenQuestion'.$index.'Needle'],
+                ['cs' => $canonical, 'cz' => 'HiddenAnswer'.$index.'Needle']);
+            $this->assertSame([], $this->search('cs', 'HiddenQuestion'.$index.'Needle'));
+            $this->assertSame([], $this->search('cs', 'HiddenAnswer'.$index.'Needle'));
+        }
+    }
+
+    /** The existing English predicates remain searchable even when both Czech canonical fields are present. */
+    public function test_english_search_remains_available_with_nonblank_canonical_czech_translations(): void
+    {
+        $item = $this->item('english-with-canonical', ['en' => 'EnglishQuestionNeedle', 'cs' => 'Canonical question'],
+            ['en' => 'EnglishAnswerNeedle', 'cs' => 'Canonical answer']);
+        $this->assertSame([$item->id], array_column($this->search('cs', 'EnglishQuestionNeedle'), 'id'));
+        $this->assertSame([$item->id], array_column($this->search('cs', 'EnglishAnswerNeedle'), 'id'));
+        $this->assertSame('Canonical question', $this->search('cs', 'EnglishQuestionNeedle')[0]['question']);
+        $this->assertSame('Canonical answer', $this->search('cs', 'EnglishAnswerNeedle')[0]['answer']);
+    }
+
     /** Legacy Czech must not widen searches performed in another locale or the English fallback. */
     public function test_non_czech_search_does_not_match_legacy_czech_text(): void
     {

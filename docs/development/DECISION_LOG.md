@@ -1,5 +1,25 @@
 # Development decision log
 
+## FAQ PR435 Czech precedence and label-depth corrections accepted locally - 2026-11-09
+
+Three owner-supplied findings are verified against `70d57319`: two correctness
+issues and one retry-coverage gap. Per-field Czech legacy search now follows
+canonical blank/trim precedence without changing English predicates. Link labels
+no longer consume an emphasis level for their container; actual eighth-level
+formatting is asserted. Retry tests set both filters before failure and check
+request parameters and retained controls after success. No finding was skipped.
+
+Independent QA/security accept five exact source/test paths. UI83, SQLite38/403,
+actual PostgreSQL11/100, scoped lint/Pint2/PHPStan, type110/parity, catalog12/5/39,
+build and whitespace pass. Independent QA adds seven label cases; security13
+focused frontend cases. Both original behavioral defects reproduce on the exact
+base. Existing sanitizers/URLs/depth bounds, English search and filter grouping
+remain. No dependency, schema, catalog, locale-key or baseline change.
+Evidence: `docs/faq/REVIEW_FIXES.md`; private `reviews/faq-automation/pr435-round5/`.
+Coordinator publication and exact-head CI remain the next step. The disposable
+PostgreSQL target is removed. No merge or production command/deployment ran;
+unrelated primary changes are preserved.
+
 ## FAQ live locale/admin/link fixes accepted locally - 2026-11-08
 
 Owner-reported live failures are fixed on the existing FAQ branch from `85a633b5`.

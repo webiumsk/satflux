@@ -160,7 +160,7 @@ const parseInline = (source: string, depth = 0, allowLinks = true): string => {
     }
     if (link) {
       const labelDepth = depth + frames.length;
-      const label = parseInline(link[1], labelDepth + 1, false);
+      const label = parseInline(link[1], labelDepth, false);
       tokens.push(`<a href="${link[2]}">${label}</a>`);
       index += link[0].length;
       continue;

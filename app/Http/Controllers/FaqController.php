@@ -41,8 +41,10 @@ class FaqController extends Controller
                         ->orWhereRaw("question->>'en' ILIKE ?", ["%{$search}%"])
                         ->orWhereRaw("answer->>'en' ILIKE ?", ["%{$search}%"]);
                     if ($locale === 'cs') {
-                        $q->orWhereRaw("question->>'cz' ILIKE ?", ["%{$search}%"])
-                            ->orWhereRaw("answer->>'cz' ILIKE ?", ["%{$search}%"]);
+                        // Match PHP trim whitespace; PostgreSQL text cannot represent the remaining NUL character.
+                        $blankCharacters = " \t\n\r\x0B";
+                        $q->orWhereRaw("(BTRIM(COALESCE(question->>'cs', ''), ?) = '' AND question->>'cz' ILIKE ?)", [$blankCharacters, "%{$search}%"])
+                            ->orWhereRaw("(BTRIM(COALESCE(answer->>'cs', ''), ?) = '' AND answer->>'cz' ILIKE ?)", [$blankCharacters, "%{$search}%"]);
                     }
                 });
             }
