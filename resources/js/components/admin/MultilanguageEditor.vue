@@ -30,7 +30,7 @@
           </label>
           <textarea
             v-if="type === 'textarea'"
-            :value="modelValue[locale.code] || ''"
+            :value="valueForLocale(locale.code)"
             :rows="rows"
             :placeholder="`${placeholder} (${locale.name})`"
             class="block w-full px-3 py-2 border border-gray-700 bg-gray-800 text-white placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -38,7 +38,7 @@
           ></textarea>
           <input
             v-else
-            :value="modelValue[locale.code] || ''"
+            :value="valueForLocale(locale.code)"
             type="text"
             :placeholder="`${placeholder} (${locale.name})`"
             class="block w-full px-3 py-2 border border-gray-700 bg-gray-800 text-white placeholder-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -55,17 +55,16 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { supportedLocales as applicationLocales, type SupportedLocale } from '../../i18n';
 
-const supportedLocales = [
-  { code: 'en', name: 'English' },
-  { code: 'sk', name: 'Slovenčina' },
-  { code: 'es', name: 'Español' },
-  { code: 'cz', name: 'Čeština' },
-  { code: 'de', name: 'Deutsch' },
-  { code: 'fr', name: 'Français' },
-  { code: 'hu', name: 'Magyar' },
-  { code: 'pl', name: 'Polski' },
-];
+const localeNames: Record<SupportedLocale, string> = {
+  en: 'English',
+  sk: 'Slovenčina',
+  es: 'Español',
+  cs: 'Čeština',
+  de: 'Deutsch',
+};
+const supportedLocales = applicationLocales.map(code => ({ code, name: localeNames[code] }));
 
 const props = defineProps<{
   modelValue: Record<string, string>;
@@ -82,6 +81,15 @@ const emit = defineEmits<{
 }>();
 
 const activeLocale = ref('en');
+
+/** Display legacy Czech without replacing either stored translation. */
+const valueForLocale = (locale: SupportedLocale): string => {
+  const value = props.modelValue[locale];
+  if (locale === 'cs' && !value?.trim()) {
+    return props.modelValue.cz || '';
+  }
+  return value || '';
+};
 
 const updateValue = (locale: string, value: string) => {
   const updated = { ...props.modelValue };

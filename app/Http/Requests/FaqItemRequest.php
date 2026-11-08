@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\FaqItem;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -15,13 +16,27 @@ class FaqItemRequest extends FormRequest
         return true; // Authorization handled by middleware
     }
 
+    /** Preserve stored legacy/extra language text when a five-language editor saves. */
+    protected function prepareForValidation(): void
+    {
+        $item = $this->route('item');
+        if (! $item instanceof FaqItem) {
+            return;
+        }
+        foreach (['question', 'answer'] as $field) {
+            if (is_array($this->input($field))) {
+                $this->merge([$field => array_replace($item->getAttribute($field) ?? [], $this->input($field))]);
+            }
+        }
+    }
+
     /**
      * Get the validation rules that apply to the request.
      */
     public function rules(): array
     {
         $itemId = $this->route('item')?->id ?? null;
-        $supportedLocales = ['en', 'sk', 'es', 'cz', 'de', 'fr', 'hu', 'pl'];
+        $supportedLocales = ['en', 'sk', 'es', 'cs', 'cz', 'de', 'fr', 'hu', 'pl'];
 
         $rules = [
             'slug' => [

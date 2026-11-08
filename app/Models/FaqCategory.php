@@ -19,6 +19,8 @@ class FaqCategory extends Model
         'is_active',
     ];
 
+    protected $hidden = ['content_sync_key', 'content_sync_hash'];
+
     protected function casts(): array
     {
         return [
@@ -59,10 +61,14 @@ class FaqCategory extends Model
     public function getLocalizedNameAttribute(): ?string
     {
         $locale = app()->getLocale();
-        $name = $this->name;
+        $name = $this->getAttribute('name');
 
-        if (is_array($name) && isset($name[$locale])) {
+        if (is_array($name) && is_string($name[$locale] ?? null) && trim($name[$locale]) !== '') {
             return $name[$locale];
+        }
+
+        if ($locale === 'cs' && is_array($name) && is_string($name['cz'] ?? null) && trim($name['cz']) !== '') {
+            return $name['cz'];
         }
 
         // Fallback to English
@@ -79,10 +85,14 @@ class FaqCategory extends Model
     public function getLocalizedDescriptionAttribute(): ?string
     {
         $locale = app()->getLocale();
-        $description = $this->description;
+        $description = $this->getAttribute('description');
 
-        if (is_array($description) && isset($description[$locale])) {
+        if (is_array($description) && is_string($description[$locale] ?? null) && trim($description[$locale]) !== '') {
             return $description[$locale];
+        }
+
+        if ($locale === 'cs' && is_array($description) && is_string($description['cz'] ?? null) && trim($description['cz']) !== '') {
+            return $description['cz'];
         }
 
         // Fallback to English

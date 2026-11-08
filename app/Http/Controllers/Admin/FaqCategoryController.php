@@ -107,6 +107,12 @@ class FaqCategoryController extends Controller
             }
         }
 
+        // Retain legacy/extra locale text omitted by the five-language editor.
+        foreach (['name', 'description'] as $field) {
+            if (isset($validated[$field]) && is_array($validated[$field])) {
+                $validated[$field] = array_replace($category->getAttribute($field) ?? [], $validated[$field]);
+            }
+        }
         $category->update($validated);
 
         return response()->json([

@@ -405,6 +405,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: FAQ content, translations and source freshness
+        run: npm run test:faq
+
       - name: Locale parity
         run: npm run test:locale-parity
 

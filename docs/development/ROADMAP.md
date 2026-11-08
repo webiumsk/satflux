@@ -1,5 +1,41 @@
 # Development roadmap
 
+## Multilingual FAQ automation accepted locally - 2026-11-08
+
+Owner-approved FAQ automation is implemented on `feat/faq-automation` from owned
+master `f7118b10`, isolated in `storage/app/private/worktrees/faq-automation`.
+Twelve questions across four categories have EN/SK/ES/DE/CS text (60 variants),
+75 safe documentation links and 39 reviewed source fingerprints. Offline CI checks
+reject incomplete translations, unsafe links and changed documentation sources.
+No AI provider or dependency installation is introduced.
+
+`faq:sync --check` needs no database; default invocation previews. Explicit staff
+attribution and `--apply` create drafts transactionally. Stable keys and baseline
+hashes protect manual edits and unmanaged slug collisions; publication state,
+counters and extra locale text are preserved. Nullable metadata migration never
+imports/publishes content. Canonical Czech uses `cs` with preserved legacy `cz`
+fallback. The editor retains omitted languages; public answers allow sanitized
+local documentation links and expose accordion keyboard state.
+
+Independent security and QA accept final 23-path implementation scope. Focused
+PHP22/115 plus independent real-catalog4/36, UI22 and Node8 pass. Full frontend
+2,231/205 passes with two workers after an earlier contention-limited run.
+Type110, lint48/52, locale/build, scoped Pint/PHPStan and API-contract checks pass;
+nine obsolete FAQ baseline entries are removed with no new suppressions.
+The broader PHP run completed with 27 errors/11 failures across 3,169 tests.
+All 32 bank cases pass after supplying the existing compatible Node/runtime; six
+DNS-dependent e-mail failures reproduce on unchanged master without networking.
+No clean whole-PHP-suite rerun or remote CI result is inferred. Full evidence and
+limits are in `docs/faq/VALIDATION.md`; sanitized independent records stay private
+under `storage/app/private/reviews/faq-automation/`.
+
+Existing legacy-only Czech search remains limited to canonical Czech/English;
+new imported entries have `cs`. Some documentation translations use English
+fallback. PostgreSQL concurrency and real-browser checks were not executed.
+No production import, publication, merge or deployment occurred. Primary unrelated
+changes are preserved. Next step: review source changes, then separately approve
+normal deployment/import and editorial publication through existing admin tools.
+
 ## Per-relay protocol status and Freedomrelay defaults - 2026-11-07
 
 Owner requests separate connection/synchronization status and chooses Satflux plus
