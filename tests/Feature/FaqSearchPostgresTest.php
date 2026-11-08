@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Admin\FaqCategoryController;
 use App\Http\Controllers\FaqController;
 use App\Models\FaqCategory;
 use App\Models\FaqItem;
@@ -89,6 +90,46 @@ class FaqSearchPostgresTest extends TestCase
         $draft = $this->item('draft-item', ['cz' => 'ScopedNeedle'], ['en' => 'Answer'], false);
         $draft->update(['category_id' => $firstCategory->id]);
         $this->assertSame([$first->id], array_column($this->search('cs', 'ScopedNeedle', $firstCategory->id), 'id'));
+    }
+
+    /** Actual public search requests use the same allowlisted query locale for SQL predicates and response text. */
+    public function test_public_route_search_uses_explicit_locale_and_rejects_malformed_locale_sql(): void
+    {
+        $slovak = $this->item('slovak', ['en' => 'English neutral', 'sk' => 'SlovakNeedle'], ['en' => 'Answer', 'sk' => 'Slovak answer']);
+        $legacy = $this->item('legacy-query', ['en' => 'English neutral', 'cz' => 'LegacyNeedle'], ['en' => 'Answer']);
+        app()->setLocale('en');
+        $this->getJson('/api/faq?'.http_build_query(['locale' => 'sk', 'search' => 'slovakneedle']))
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $slovak->id)
+            ->assertJsonPath('data.0.question', 'SlovakNeedle');
+        $this->getJson('/api/faq?'.http_build_query(['locale' => 'cs', 'search' => 'legacyneedle']))
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $legacy->id);
+        foreach (["sk' OR 1=1 --", ['sk'], 'unsupported'] as $locale) {
+            $this->getJson('/api/faq?'.http_build_query(['locale' => $locale, 'search' => 'slovakneedle']))
+                ->assertOk()->assertJsonCount(0, 'data');
+        }
+        $this->assertSame('en', app()->getLocale());
+    }
+
+    /** PostgreSQL sorts JSON category names by canonical text after primary order, with stable ties and counts. */
+    public function test_admin_category_index_orders_json_names_as_text_and_preserves_item_counts(): void
+    {
+        $first = FaqCategory::create(['slug' => 'primary-first', 'order' => 0, 'name' => ['en' => 'Zebra']]);
+        $alpha = FaqCategory::create(['slug' => 'alpha', 'order' => 1, 'name' => ['en' => 'Alpha']]);
+        $tied = FaqCategory::create(['slug' => 'alpha-tie', 'order' => 1, 'name' => ['en' => 'Alpha']]);
+        $zulu = FaqCategory::create(['slug' => 'zulu', 'order' => 1, 'name' => ['en' => 'Zulu']]);
+        $missing = FaqCategory::create(['slug' => 'missing-english', 'order' => 1, 'name' => ['sk' => 'Slovensky']]);
+        $published = $this->item('count-published', ['en' => 'Question'], ['en' => 'Answer']);
+        $draft = $this->item('count-draft', ['en' => 'Draft'], ['en' => 'Draft answer'], false);
+        $published->update(['category_id' => $alpha->id]);
+        $draft->update(['category_id' => $alpha->id]);
+        $data = app(FaqCategoryController::class)->index(Request::create('/api/admin/faq/categories'))->getData(true)['data'];
+        $tieIds = [$alpha->id, $tied->id];
+        sort($tieIds, SORT_STRING);
+        $this->assertSame([$first->id, $missing->id, ...$tieIds, $zulu->id], array_column($data, 'id'));
+        $counts = array_column($data, 'items_count', 'id');
+        $this->assertSame(2, $counts[$alpha->id]);
+        $this->assertSame(0, $counts[$missing->id]);
+        $this->assertSame('Alpha', collect($data)->firstWhere('id', $alpha->id)['name']['en']);
     }
 
     /** Create synthetic FAQ content with no merchant identity or external payment dependencies. */

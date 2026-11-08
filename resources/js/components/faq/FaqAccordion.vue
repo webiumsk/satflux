@@ -235,13 +235,22 @@ if (props.searchQuery) {
   font-style: italic;
 }
 
-.prose a {
-  color: #818cf8;
+.prose :deep(a) {
+  color: #a5b4fc;
+  font-weight: 600;
   text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
-.prose a:hover {
-  color: #a5b4fc;
+.prose :deep(a:hover) {
+  color: #c7d2fe;
+}
+
+.prose :deep(a:focus-visible) {
+  outline: 2px solid #a5b4fc;
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 </style>
 

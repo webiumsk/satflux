@@ -4,114 +4,147 @@ namespace App\Http\Controllers;
 
 use App\Models\FaqCategory;
 use App\Models\FaqItem;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class FaqController extends Controller
 {
+    private const SUPPORTED_LOCALES = ['en', 'sk', 'es', 'de', 'cs'];
+
     /**
      * Get all published FAQ items with optional filtering.
      */
     public function index(Request $request)
     {
-        $locale = app()->getLocale();
-        $categoryId = $request->query('category_id');
-        $search = $request->query('search');
+        return $this->withLocale($request, function () use ($request) {
+            $locale = app()->getLocale();
+            $categoryId = $request->query('category_id');
+            $search = $request->query('search');
 
-        $query = FaqItem::query()
-            ->published()
-            ->with(['category'])
-            ->orderBy('order')
-            ->orderBy('created_at', 'desc');
+            $query = FaqItem::query()
+                ->published()
+                ->with(['category'])
+                ->orderBy('order')
+                ->orderBy('created_at', 'desc');
 
-        // Filter by category
-        if ($categoryId) {
-            $query->where('category_id', $categoryId);
-        }
+            // Filter by category
+            if ($categoryId) {
+                $query->where('category_id', $categoryId);
+            }
 
-        // Search in question and answer (current locale)
-        if ($search) {
-            $query->where(function ($q) use ($search, $locale) {
-                $q->whereRaw("question->>'{$locale}' ILIKE ?", ["%{$search}%"])
-                    ->orWhereRaw("answer->>'{$locale}' ILIKE ?", ["%{$search}%"])
-                  // Fallback to English if current locale doesn't have content
-                    ->orWhereRaw("question->>'en' ILIKE ?", ["%{$search}%"])
-                    ->orWhereRaw("answer->>'en' ILIKE ?", ["%{$search}%"]);
-                if ($locale === 'cs') {
-                    $q->orWhereRaw("question->>'cz' ILIKE ?", ["%{$search}%"])
-                        ->orWhereRaw("answer->>'cz' ILIKE ?", ["%{$search}%"]);
-                }
-            });
-        }
+            // Search in question and answer (current locale)
+            if ($search) {
+                $query->where(function ($q) use ($search, $locale) {
+                    $q->whereRaw("question->>'{$locale}' ILIKE ?", ["%{$search}%"])
+                        ->orWhereRaw("answer->>'{$locale}' ILIKE ?", ["%{$search}%"])
+                      // Fallback to English if current locale doesn't have content
+                        ->orWhereRaw("question->>'en' ILIKE ?", ["%{$search}%"])
+                        ->orWhereRaw("answer->>'en' ILIKE ?", ["%{$search}%"]);
+                    if ($locale === 'cs') {
+                        $q->orWhereRaw("question->>'cz' ILIKE ?", ["%{$search}%"])
+                            ->orWhereRaw("answer->>'cz' ILIKE ?", ["%{$search}%"]);
+                    }
+                });
+            }
 
-        $items = $query->get()->map(function ($item) {
-            return [
-                'id' => $item->id,
-                'slug' => $item->slug,
-                'question' => $item->getLocalizedQuestionAttribute(),
-                'answer' => $item->getLocalizedAnswerAttribute(),
-                'category' => $item->category ? [
-                    'id' => $item->category->id,
-                    'slug' => $item->category->slug,
-                    'name' => $item->category->getLocalizedNameAttribute(),
-                ] : null,
-                'view_count' => $item->view_count,
-                'helpful_count' => $item->helpful_count,
-                'created_at' => $item->created_at,
-                'updated_at' => $item->updated_at,
-            ];
-        });
-
-        // Get categories for filtering
-        $categories = FaqCategory::active()
-            ->orderBy('order')
-            ->get()
-            ->map(function ($category) {
+            $items = $query->get()->map(function ($item) {
                 return [
-                    'id' => $category->id,
-                    'slug' => $category->slug,
-                    'name' => $category->getLocalizedNameAttribute(),
-                    'description' => $category->getLocalizedDescriptionAttribute(),
+                    'id' => $item->id,
+                    'slug' => $item->slug,
+                    'question' => $item->getLocalizedQuestionAttribute(),
+                    'answer' => $item->getLocalizedAnswerAttribute(),
+                    'category' => $item->category ? [
+                        'id' => $item->category->id,
+                        'slug' => $item->category->slug,
+                        'name' => $item->category->getLocalizedNameAttribute(),
+                    ] : null,
+                    'view_count' => $item->view_count,
+                    'helpful_count' => $item->helpful_count,
+                    'created_at' => $item->created_at,
+                    'updated_at' => $item->updated_at,
                 ];
             });
 
-        return response()->json([
-            'data' => $items,
-            'categories' => $categories,
-        ]);
+            // Get categories for filtering
+            $categories = FaqCategory::active()
+                ->orderBy('order')
+                ->get()
+                ->map(function ($category) {
+                    return [
+                        'id' => $category->id,
+                        'slug' => $category->slug,
+                        'name' => $category->getLocalizedNameAttribute(),
+                        'description' => $category->getLocalizedDescriptionAttribute(),
+                    ];
+                });
+
+            return response()->json([
+                'data' => $items,
+                'categories' => $categories,
+            ]);
+        });
     }
 
     /**
      * Get a single FAQ item by slug.
      */
-    public function show(string $slug)
+    public function show(Request $request, string $slug)
     {
-        $locale = app()->getLocale();
+        return $this->withLocale($request, function () use ($slug) {
+            $item = FaqItem::where('slug', $slug)
+                ->published()
+                ->with(['category'])
+                ->firstOrFail();
 
-        $item = FaqItem::where('slug', $slug)
-            ->published()
-            ->with(['category'])
-            ->firstOrFail();
+            // Increment view count
+            $item->incrementViewCount();
 
-        // Increment view count
-        $item->incrementViewCount();
+            return response()->json([
+                'data' => [
+                    'id' => $item->id,
+                    'slug' => $item->slug,
+                    'question' => $item->getLocalizedQuestionAttribute(),
+                    'answer' => $item->getLocalizedAnswerAttribute(),
+                    'category' => $item->category ? [
+                        'id' => $item->category->id,
+                        'slug' => $item->category->slug,
+                        'name' => $item->category->getLocalizedNameAttribute(),
+                    ] : null,
+                    'view_count' => $item->view_count,
+                    'helpful_count' => $item->helpful_count,
+                    'created_at' => $item->created_at,
+                    'updated_at' => $item->updated_at,
+                ],
+            ]);
+        });
+    }
 
-        return response()->json([
-            'data' => [
-                'id' => $item->id,
-                'slug' => $item->slug,
-                'question' => $item->getLocalizedQuestionAttribute(),
-                'answer' => $item->getLocalizedAnswerAttribute(),
-                'category' => $item->category ? [
-                    'id' => $item->category->id,
-                    'slug' => $item->category->slug,
-                    'name' => $item->category->getLocalizedNameAttribute(),
-                ] : null,
-                'view_count' => $item->view_count,
-                'helpful_count' => $item->helpful_count,
-                'created_at' => $item->created_at,
-                'updated_at' => $item->updated_at,
-            ],
-        ]);
+    /** Resolve an allowlisted query locale, then supported application locale, with English as final fallback. */
+    private function resolveLocale(Request $request): string
+    {
+        $locale = $request->query('locale');
+        if (is_string($locale) && in_array($locale, self::SUPPORTED_LOCALES, true)) {
+            return $locale;
+        }
+        $fallback = app()->getLocale();
+
+        return in_array($fallback, self::SUPPORTED_LOCALES, true) ? $fallback : 'en';
+    }
+
+    /**
+     * Build a localized JSON response and restore application locale even when the operation throws.
+     *
+     * @param  callable(): JsonResponse  $operation
+     */
+    private function withLocale(Request $request, callable $operation): JsonResponse
+    {
+        $previous = app()->getLocale();
+        app()->setLocale($this->resolveLocale($request));
+        try {
+            return $operation();
+        } finally {
+            app()->setLocale($previous);
+        }
     }
 
     /**

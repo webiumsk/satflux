@@ -1,5 +1,25 @@
 # Development roadmap
 
+## FAQ live locale/admin/link fixes accepted locally - 2026-11-08
+
+Owner-reported live failures are fixed on the existing FAQ branch from `85a633b5`.
+Explicit allowlisted request locale now controls public list/detail/search/category
+text with restored request context. The page reloads on language changes, preserves
+filters and ignores/aborts obsolete responses, errors and timers. Admin categories
+sort by primary order, canonical English JSON text and id, avoiding the PostgreSQL
+JSON ordering error. Deep-scoped CSS makes injected links underlined and visibly
+focusable. No global middleware, auth, catalog, schema or dependency changes.
+
+Independent QA/security accept eight exact source/test paths. UI 83, PHP 38/403,
+actual PostgreSQL 6/43, additional auth/locale/race probes, PHPStan/Pint 4, scoped
+lint/type 110/parity/build/API/whitespace pass. Existing Chrome offline CSS proof
+confirms underline/focus and 7.36:1 contrast; no browser install or live data access.
+Evidence: `docs/faq/REVIEW_FIXES.md` and private
+`storage/app/private/reviews/faq-automation/live-fixes/`.
+Coordinator owns source commit/push and exact-head CI verification. The owner
+reports an earlier deployment; this corrective revision is not deployed by the
+agent. No production command/import ran; unrelated primary changes are preserved.
+
 ## FAQ PR435 deep emphasis matching accepted locally - 2026-11-08
 
 The supplied finding is valid against `08cf0e62` and corrected in the existing
