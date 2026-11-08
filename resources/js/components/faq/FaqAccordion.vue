@@ -124,24 +124,31 @@ const handleHelpful = (itemId: string) => {
   emit('helpful', itemId);
 };
 
-type InlineResult = { html: string; next: number; closed: boolean };
+type EmphasisFrame = { delimiter: string; token: number; rendered: boolean };
 
 /**
- * Consume sanitized inline text until its matching emphasis delimiter.
- * Recognize only emphasis and exact local documentation links. At eight nested
- * levels, suppress further emphasis and label recursion while retaining links.
- * Unmatched emphasis delimiters retain their literal text.
+ * Match emphasis with logical frames even beyond the eight-level rendering cap.
+ * A flat token buffer keeps matching linear and leaves unmatched openers literal.
+ * Labels use one links-disabled child call, bounding the call stack to two while
+ * consuming balanced markers even when their combined depth suppresses formatting.
  */
-const parseInline = (source: string, start = 0, delimiter = '', depth = 0): InlineResult => {
-  let html = '';
-  let index = start;
+const parseInline = (source: string, depth = 0, allowLinks = true): string => {
+  const tokens: string[] = [];
+  const frames: EmphasisFrame[] = [];
+  let index = 0;
   let failedLinkBoundary = -1;
   while (index < source.length) {
-    if (delimiter && source.startsWith(delimiter, index)
-      && (delimiter === '**' || !source.startsWith('**', index) || source.startsWith('***', index))) {
-      return { html, next: index + delimiter.length, closed: true };
+    const current = frames[frames.length - 1];
+    if (current && source.startsWith(current.delimiter, index)
+      && (current.delimiter === '**' || !source.startsWith('**', index) || source.startsWith('***', index))) {
+      frames.pop();
+      const tag = current.delimiter === '**' ? 'strong' : 'em';
+      tokens[current.token] = current.rendered ? `<${tag}>` : '';
+      if (current.rendered) tokens.push(`</${tag}>`);
+      index += current.delimiter.length;
+      continue;
     }
-    const tryLink = source[index] === '[' && index > failedLinkBoundary;
+    const tryLink = allowLinks && source[index] === '[' && index > failedLinkBoundary;
     const link = tryLink
       ? /^\[([^\]\r\n]+)\]\((\/documentation\/[a-z0-9]+(?:-[a-z0-9]+)*)\)/.exec(source.slice(index))
       : null;
@@ -152,25 +159,23 @@ const parseInline = (source: string, start = 0, delimiter = '', depth = 0): Inli
       failedLinkBoundary = boundary ? index + 1 + boundary.index : source.length;
     }
     if (link) {
-      const label = depth < 8 ? parseInline(link[1], 0, '', depth + 1).html : link[1];
-      html += `<a href="${link[2]}">${label}</a>`;
+      const labelDepth = depth + frames.length;
+      const label = parseInline(link[1], labelDepth + 1, false);
+      tokens.push(`<a href="${link[2]}">${label}</a>`);
       index += link[0].length;
       continue;
     }
-    const opening = depth < 8
-      ? source.startsWith('**', index) ? '**' : source[index] === '*' ? '*' : ''
-      : '';
+    const opening = source.startsWith('**', index) ? '**' : source[index] === '*' ? '*' : '';
     if (opening) {
-      const nested = parseInline(source, index + opening.length, opening, depth + 1);
-      const tag = opening === '**' ? 'strong' : 'em';
-      html += nested.closed ? `<${tag}>${nested.html}</${tag}>` : opening + nested.html;
-      index = nested.next;
+      frames.push({ delimiter: opening, token: tokens.length, rendered: depth + frames.length < 8 });
+      tokens.push(opening);
+      index += opening.length;
       continue;
     }
-    html += source[index];
+    tokens.push(source[index]);
     index += 1;
   }
-  return { html, next: index, closed: false };
+  return tokens.join('');
 };
 
 /**
@@ -185,7 +190,7 @@ const formatAnswer = (answer: string) => {
     ALLOW_DATA_ATTR: false,
     ALLOW_ARIA_ATTR: false,
   });
-  const inline = parseInline(legacy).html;
+  const inline = parseInline(legacy);
   const paragraphs = inline.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>');
   return DOMPurify.sanitize(`<p>${paragraphs}</p>`, {
     ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'a'],

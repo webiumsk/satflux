@@ -22,6 +22,16 @@ async function czechInput(modelValue: Record<string, string>) {
   return { wrapper, input: wrapper.findAll('input')[3] };
 }
 
+/** Build balanced alternating emphasis with named inner/outer tails for scope assertions. */
+const balancedEmphasis = (layers: number) => {
+  const delimiters = Array.from({ length: layers }, (_, index) => index % 2 ? '*' : '**');
+  const openings = delimiters.map((delimiter, index) => `${delimiter}open-${index} `);
+  const closings = delimiters.map((delimiter, index) => ` close-${index}${delimiter}`).reverse();
+  const plain = Array.from({ length: layers }, (_, index) => `open-${index} `).join('')
+    + 'center' + Array.from({ length: layers }, (_, index) => ` close-${layers - index - 1}`).join('');
+  return { answer: openings.join('') + '[center](/documentation/guide)' + closings.join(''), plain };
+};
+
 describe('FAQ localized content editor', () => {
   it('offers only the five canonical application locales', () => {
     const wrapper = mountEditor({ en: 'English' });
@@ -114,6 +124,67 @@ describe('FAQ safe answer rendering', () => {
     expect(wrapper.findAll('.prose a').map(link => [link.text(), link.attributes('href')])).toEqual([
       ['inside', '/documentation/guide'], ['after', '/documentation/backup-and-recovery'],
     ]);
+  });
+
+  it.each([9, 10, 12, 64])('matches balanced %i-layer delimiters without leaking markers or outer-tail scope', layers => {
+    const { answer, plain } = balancedEmphasis(layers);
+    const wrapper = mountFaq(`${answer} outside [tail](/documentation/backup-and-recovery)`);
+    expect(wrapper.get('.prose').text()).toBe(`${plain} outside tail`);
+    expect(wrapper.get('.prose').text()).not.toContain('*');
+    expect(wrapper.findAll('.prose strong, .prose em')).toHaveLength(8);
+    const outer = wrapper.get('.prose > p > strong');
+    expect(outer.text()).toBe(plain);
+    expect(outer.text()).not.toContain('outside');
+    expect(wrapper.get('.prose > p > a').text()).toBe('tail');
+    expect(wrapper.findAll('.prose a').map(link => link.attributes('href'))).toEqual([
+      '/documentation/guide', '/documentation/backup-and-recovery',
+    ]);
+  });
+
+  it.each([0, 7, 8, 9, 64])('consumes balanced label emphasis inside %i outer layers even when formatting is capped', layers => {
+    const { answer, plain } = balancedEmphasis(layers);
+    const wrapper = mountFaq(answer.replace('[center]', '[**center**]'));
+    expect(wrapper.get('.prose').text()).toBe(plain);
+    expect(wrapper.get('.prose a').text()).toBe('center');
+    expect(wrapper.get('.prose').text()).not.toContain('*');
+    expect(wrapper.findAll('.prose strong, .prose em').length).toBeLessThanOrEqual(8);
+  });
+
+  it('matches ten thousand logical layers with bounded rendered depth and no recursive unwinding', () => {
+    const { answer, plain } = balancedEmphasis(10000);
+    const wrapper = mountFaq(`${answer} outside [tail](/documentation/backup-and-recovery)`);
+    expect(wrapper.get('.prose').text()).toBe(`${plain} outside tail`);
+    expect(wrapper.findAll('.prose strong, .prose em')).toHaveLength(8);
+    expect(wrapper.get('.prose > p > strong').text()).toBe(plain);
+    expect(wrapper.get('.prose > p > a').text()).toBe('tail');
+  });
+
+  it.each([
+    ['Plain *literal', 'Plain *literal'],
+    ['Unmatched **literal', 'Unmatched **literal'],
+    ['***literal**', '***literal**'],
+    ['**outer *inner*', '**outer inner'],
+  ])('preserves unmatched markers in %s', (answer, expected) => {
+    const wrapper = mountFaq(answer);
+    expect(wrapper.get('.prose').text()).toBe(expected);
+  });
+
+  it('retains deep unmatched openers literally while keeping documentation links clickable', () => {
+    const opening = Array.from({ length: 64 }, (_, index) => index % 2 ? '*inner ' : '**outer ').join('');
+    const wrapper = mountFaq(`${opening}[center](/documentation/guide)`);
+    expect(wrapper.get('.prose').text()).toBe(opening + 'center');
+    expect(wrapper.find('.prose strong, .prose em').exists()).toBe(false);
+    expect(wrapper.get('.prose a').attributes('href')).toBe('/documentation/guide');
+  });
+
+  it('preserves triple runs and sanitizes malicious markup inside deep balanced label emphasis', () => {
+    const { answer, plain } = balancedEmphasis(64);
+    const wrapper = mountFaq('***before*** ' + answer.replace('[center]', '[***center<img src=x onerror="alert(1)">***]') + ' ***after***');
+    expect(wrapper.get('.prose').text()).toBe(`before ${plain} after`);
+    expect(wrapper.get('.prose a').text()).toBe('center');
+    expect(wrapper.find('.prose img, .prose [onerror]').exists()).toBe(false);
+    expect(wrapper.findAll('.prose > p > strong > em').map(node => node.text())).toContain('before');
+    expect(wrapper.findAll('.prose > p > strong > em').map(node => node.text())).toContain('after');
   });
 
   it('preserves prior safe HTML paragraphs, breaks and emphasis without attributes', () => {

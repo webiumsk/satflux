@@ -1,5 +1,22 @@
 # Development roadmap
 
+## FAQ PR435 deep emphasis matching accepted locally - 2026-11-08
+
+The supplied finding is valid against `08cf0e62` and corrected in the existing
+FAQ branch. Iterative logical frames and flat output tokens preserve delimiter
+ownership beyond eight generated formatting levels, consume matched syntax and
+retain ordinary unmatched markers. Label parsing uses one links-disabled child
+call, keeping parser calls bounded to two; URLs, sanitizers and scan caching remain.
+
+Independent QA/security accept two exact component/test files. Focused 68, QA 31,
+security 18, actual 60 answers/75 links, scoped lint/type 110/parity/build/whitespace
+and local JS documentation 9/9 pass. Deep 10,000-layer and malformed-input probes
+pass. No backend, catalog, fingerprint, dependency or ratchet changed. See
+`docs/faq/REVIEW_FIXES.md`; private evidence is under
+`storage/app/private/reviews/faq-automation/pr435-round3/`.
+Coordinator owns commit/push and exact-head CI verification. No merge, production
+import, FAQ publication or deployment occurred; unrelated primary work is preserved.
+
 ## FAQ PR435 second review corrections accepted locally - 2026-11-08
 
 All four owner-supplied findings are valid against `cc60c4b8` and fixed on the
