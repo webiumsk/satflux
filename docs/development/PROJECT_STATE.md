@@ -1,5 +1,23 @@
 # Project state
 
+## Footer document overflow corrected locally - 2026-11-09
+
+Owner-reported double scrollbars and white space reproduce on master `f7118b10`:
+the footer's absolutely positioned screen-reader label escapes static clipping
+ancestors (document 1877px for a 1015px viewport). A single `relative` class on
+`AppFooterContent` contains it; document height becomes 1015px. Accessible text,
+public scrolling, inner scroll owners and footer placement remain intact.
+
+Independent QA/security accept the exact component and four-viewport E2E spec.
+Actual production-build Chrome E2E4, existing footer/version12, type110, lint48/52,
+five-locale parity, build and whitespace pass. QA separately verifies five viewport
+sizes, short pages, footer reachability and public document scrolling. Browser
+requests use synthetic intercepted responses; no backend or production test ran.
+The local branch is `fix/footer-scroll-containment` in the durable worktree
+`storage/app/private/worktrees/footer-scroll-containment`. Private evidence is in
+`storage/app/private/reviews/footer-scroll-containment`. Primary unrelated edits
+are preserved. No push, PR, merge or deployment occurred; publication remains separate.
+
 ## Per-relay protocol status and Freedomrelay defaults - 2026-11-07
 
 Owner requests separate connection/synchronization status and chooses Satflux plus
