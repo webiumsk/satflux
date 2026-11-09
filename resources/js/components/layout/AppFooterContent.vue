@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex flex-col gap-2"
+    class="relative flex flex-col gap-2"
     :class="layout === 'page' ? 'text-left' : 'text-center'"
   >
     <div :class="layout === 'page' ? 'mb-8' : ''">
