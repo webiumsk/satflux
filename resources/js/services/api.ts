@@ -1337,11 +1337,14 @@ export const documentationApi = {
 
 // FAQ API
 export const faqApi = {
-    index: (params?: { category_id?: string; search?: string }) => 
-        api.get('/faq', { params }),
-    show: (slug: string) => 
-        api.get(`/faq/${slug}`),
-    markHelpful: (slug: string) => 
+    /** Fetch localized FAQs with optional cancellation and caller-owned error feedback. */
+    index: (params?: { category_id?: string; search?: string; locale?: string }, options?: { signal?: AbortSignal; skipErrorFlash?: boolean }) =>
+        api.get('/faq', { params, ...options }),
+    /** Fetch one FAQ in an explicit supported locale when supplied. */
+    show: (slug: string, params?: { locale?: string }) =>
+        api.get(`/faq/${slug}`, { params: params ?? {} }),
+    /** Record helpful feedback without changing the authenticated session contract. */
+    markHelpful: (slug: string) =>
         api.post(`/faq/${slug}/helpful`),
 };
 

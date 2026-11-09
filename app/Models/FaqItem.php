@@ -25,6 +25,8 @@ class FaqItem extends Model
         'updated_by',
     ];
 
+    protected $hidden = ['content_sync_key', 'content_sync_hash'];
+
     protected function casts(): array
     {
         return [
@@ -103,10 +105,14 @@ class FaqItem extends Model
     public function getLocalizedQuestionAttribute(): ?string
     {
         $locale = app()->getLocale();
-        $question = $this->question;
+        $question = $this->getAttribute('question');
 
-        if (is_array($question) && isset($question[$locale])) {
+        if (is_array($question) && is_string($question[$locale] ?? null) && trim($question[$locale]) !== '') {
             return $question[$locale];
+        }
+
+        if ($locale === 'cs' && is_array($question) && is_string($question['cz'] ?? null) && trim($question['cz']) !== '') {
+            return $question['cz'];
         }
 
         // Fallback to English
@@ -123,10 +129,14 @@ class FaqItem extends Model
     public function getLocalizedAnswerAttribute(): ?string
     {
         $locale = app()->getLocale();
-        $answer = $this->answer;
+        $answer = $this->getAttribute('answer');
 
-        if (is_array($answer) && isset($answer[$locale])) {
+        if (is_array($answer) && is_string($answer[$locale] ?? null) && trim($answer[$locale]) !== '') {
             return $answer[$locale];
+        }
+
+        if ($locale === 'cs' && is_array($answer) && is_string($answer['cz'] ?? null) && trim($answer['cz']) !== '') {
+            return $answer['cz'];
         }
 
         // Fallback to English

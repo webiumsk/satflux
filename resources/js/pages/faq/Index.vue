@@ -22,7 +22,6 @@
         <CategoryFilter
           v-model="selectedCategory"
           :categories="categories"
-          @filter="handleCategoryFilter"
         />
       </div>
 
@@ -52,15 +51,22 @@
 
       <!-- FAQ Accordion -->
       <FaqAccordion
-        v-else
+        v-else-if="!loadError"
         :items="filteredItems"
         :search-query="searchQuery"
         @helpful="handleHelpful"
       />
 
+      <div v-if="!loading && loadError" role="alert" class="rounded-xl border border-gray-700 bg-gray-800 p-6 text-gray-300">
+        <p>{{ t(loadError) }}</p>
+        <button type="button" class="mt-3 text-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" @click="loadItems">
+          {{ t('common.retry') }}
+        </button>
+      </div>
+
       <!-- Empty State -->
       <div
-        v-if="!loading && filteredItems.length === 0"
+        v-if="!loading && !loadError && filteredItems.length === 0"
         class="text-center py-20 bg-gray-800/50 backdrop-blur-sm rounded-3xl border border-gray-700/50 border-dashed"
       >
         <div class="w-20 h-20 bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -92,18 +98,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { faqApi } from '../../services/api';
+import { classifyApiErrorForFlash, GLOBAL_API_ERROR_MESSAGE_KEYS } from '../../services/apiError';
 import PublicHeader from '../../components/layout/PublicHeader.vue';
 import AppFooter from '../../components/layout/AppFooter.vue';
 import FaqAccordion from '../../components/faq/FaqAccordion.vue';
 import FaqSearch from '../../components/faq/FaqSearch.vue';
 import CategoryFilter from '../../components/documentation/CategoryFilter.vue';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const loading = ref(false);
+const loadError = ref<string | null>(null);
 interface FaqItem {
   id: string;
   slug: string;
@@ -124,6 +132,9 @@ const searchQuery = ref('');
 const selectedCategory = ref<string | null>(null);
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+let activeRequest: AbortController | null = null;
+let requestGeneration = 0;
+let disposed = false;
 
 const filteredItems = computed(() => {
   let filtered = items.value;
@@ -141,64 +152,94 @@ const filteredItems = computed(() => {
   return filtered;
 });
 
+/** Invalidate in-flight callbacks immediately and cancel scheduled/list work. */
+const invalidatePendingLoad = () => {
+  requestGeneration += 1;
+  if (searchTimeout !== null) {
+    clearTimeout(searchTimeout);
+    searchTimeout = null;
+  }
+  activeRequest?.abort();
+  activeRequest = null;
+};
+
+/** Load a captured locale/filter snapshot, accepting only the current generation. */
 const loadItems = async () => {
+  if (disposed) return;
+  invalidatePendingLoad();
+  const generation = requestGeneration;
+  const controller = new AbortController();
+  activeRequest = controller;
+  const params: { locale: string; category_id?: string; search?: string } = { locale: locale.value };
+  if (selectedCategory.value) params.category_id = selectedCategory.value;
+  if (searchQuery.value) params.search = searchQuery.value;
   loading.value = true;
+  loadError.value = null;
   try {
-    const params: Record<string, unknown> = {};
-    if (selectedCategory.value) {
-      params.category_id = selectedCategory.value;
-    }
-    if (searchQuery.value) {
-      params.search = searchQuery.value;
-    }
-    const response = await faqApi.index(params);
+    const response = await faqApi.index(params, { signal: controller.signal, skipErrorFlash: true });
+    if (disposed || generation !== requestGeneration) return;
     items.value = response.data.data || [];
     categories.value = response.data.categories || [];
   } catch (error) {
+    if (disposed || generation !== requestGeneration || controller.signal.aborted) return;
+    const kind = classifyApiErrorForFlash(error);
+    loadError.value = kind ? GLOBAL_API_ERROR_MESSAGE_KEYS[kind] : 'errors.generic';
     console.error('Failed to load FAQ items:', error);
     items.value = [];
+    categories.value = [];
   } finally {
-    loading.value = false;
+    if (!disposed && generation === requestGeneration) {
+      activeRequest = null;
+      loading.value = false;
+    }
   }
 };
 
-const handleSearch = (query: string) => {
-  searchQuery.value = query;
-  if (searchTimeout) {
-    clearTimeout(searchTimeout);
-  }
+/** Debounce text search while invalidating old responses before the delay begins. */
+const scheduleSearch = () => {
+  if (disposed) return;
+  invalidatePendingLoad();
   searchTimeout = setTimeout(() => {
-    loadItems();
+    searchTimeout = null;
+    void loadItems();
   }, 300);
 };
 
-const handleCategoryFilter = (categoryId: string | null) => {
-  selectedCategory.value = categoryId;
-  loadItems();
+/** Coalesce Enter with model updates so one search intent produces one request. */
+const handleSearch = (query: string) => {
+  if (searchQuery.value !== query) searchQuery.value = query;
+  else scheduleSearch();
 };
 
+/** Apply feedback only while the originating FAQ generation is still displayed. */
 const handleHelpful = async (itemId: string) => {
   const item = items.value.find(i => i.id === itemId);
   if (!item) return;
-  
+  const generation = requestGeneration;
   try {
     await faqApi.markHelpful(item.slug);
-    item.helpful_count = (item.helpful_count || 0) + 1;
+    if (!disposed && generation === requestGeneration) {
+      item.helpful_count = (item.helpful_count || 0) + 1;
+    }
   } catch (error) {
-    console.error('Failed to mark as helpful:', error);
+    if (!disposed && generation === requestGeneration) console.error('Failed to mark as helpful:', error);
   }
 };
 
-watch([searchQuery, selectedCategory], () => {
-  if (searchTimeout) {
-    clearTimeout(searchTimeout);
-  }
-  searchTimeout = setTimeout(() => {
-    loadItems();
-  }, 300);
+watch([locale, selectedCategory, searchQuery], ([nextLocale, nextCategory], [previousLocale, previousCategory]) => {
+  if (nextLocale !== previousLocale || nextCategory !== previousCategory) {
+    if (nextLocale !== previousLocale) {
+      items.value = [];
+      categories.value = [];
+    }
+    void loadItems();
+  } else scheduleSearch();
+}, { flush: 'sync' });
+
+onMounted(() => { void loadItems(); });
+onBeforeUnmount(() => {
+  disposed = true;
+  invalidatePendingLoad();
 });
 
-onMounted(() => {
-  loadItems();
-});
 </script>

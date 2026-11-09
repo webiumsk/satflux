@@ -11,14 +11,15 @@ use Illuminate\Validation\Rule;
 class FaqCategoryController extends Controller
 {
     /**
-     * List all FAQ categories.
+     * List categories by primary order, canonical English name text and stable identity with item counts.
      */
     public function index(Request $request)
     {
         $categories = FaqCategory::query()
             ->withCount('items')
             ->orderBy('order')
-            ->orderBy('name')
+            ->orderByRaw("COALESCE(name->>'en', '')")
+            ->orderBy('id')
             ->get();
 
         return response()->json([
@@ -107,6 +108,12 @@ class FaqCategoryController extends Controller
             }
         }
 
+        // Retain legacy/extra locale text omitted by the five-language editor.
+        foreach (['name', 'description'] as $field) {
+            if (isset($validated[$field]) && is_array($validated[$field])) {
+                $validated[$field] = array_replace($category->getAttribute($field) ?? [], $validated[$field]);
+            }
+        }
         $category->update($validated);
 
         return response()->json([

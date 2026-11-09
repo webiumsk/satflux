@@ -5,32 +5,42 @@
       :key="item.id"
       class="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden transition-all hover:border-indigo-500/50"
     >
-      <button
-        class="w-full px-6 py-4 text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset"
-        @click="toggleItem(item.id)"
-      >
-        <h3 class="text-lg font-semibold text-white pr-4">
-          {{ item.question }}
-        </h3>
-        <svg
-          :class="[
-            'w-5 h-5 text-gray-400 flex-shrink-0 transition-transform',
-            openItems.includes(item.id) ? 'transform rotate-180' : ''
-          ]"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+      <h3>
+        <button
+          :id="`${accordionId}-question-${item.id}`"
+          type="button"
+          :aria-expanded="openItems.includes(item.id)"
+          :aria-controls="`${accordionId}-answer-${item.id}`"
+          class="w-full px-6 py-4 text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset"
+          @click="toggleItem(item.id)"
         >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
-      </button>
+          <span class="text-lg font-semibold text-white pr-4">
+            {{ item.question }}
+          </span>
+          <svg
+            aria-hidden="true"
+            :class="[
+              'w-5 h-5 text-gray-400 flex-shrink-0 transition-transform',
+              openItems.includes(item.id) ? 'transform rotate-180' : ''
+            ]"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
+      </h3>
       
       <div
+        :id="`${accordionId}-answer-${item.id}`"
+        role="region"
+        :aria-labelledby="`${accordionId}-question-${item.id}`"
         v-show="openItems.includes(item.id)"
         class="px-6 pb-4 border-t border-gray-700"
       >
@@ -49,6 +59,7 @@
             </span>
           </div>
           <button
+            type="button"
             class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
             @click.stop="handleHelpful(item.id)"
           >
@@ -74,7 +85,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, useId } from 'vue';
 import { useI18n } from 'vue-i18n';
 import DOMPurify from 'dompurify';
 
@@ -96,7 +107,9 @@ const emit = defineEmits<{
 }>();
 
 const openItems = ref<string[]>([]);
+const accordionId = useId();
 
+/** Toggle one answer while keeping other expanded answers open. */
 const toggleItem = (itemId: string) => {
   const index = openItems.value.indexOf(itemId);
   if (index > -1) {
@@ -106,19 +119,85 @@ const toggleItem = (itemId: string) => {
   }
 };
 
+/** Report the selected local FAQ identifier to the parent feedback handler. */
 const handleHelpful = (itemId: string) => {
   emit('helpful', itemId);
 };
 
+type EmphasisFrame = { delimiter: string; token: number; rendered: boolean };
+
+/**
+ * Match emphasis with logical frames even beyond the eight-level rendering cap.
+ * A flat token buffer keeps matching linear and leaves unmatched openers literal.
+ * Labels use one links-disabled child call, bounding the call stack to two while
+ * consuming balanced markers even when their combined depth suppresses formatting.
+ */
+const parseInline = (source: string, depth = 0, allowLinks = true): string => {
+  const tokens: string[] = [];
+  const frames: EmphasisFrame[] = [];
+  let index = 0;
+  let failedLinkBoundary = -1;
+  while (index < source.length) {
+    const current = frames[frames.length - 1];
+    if (current && source.startsWith(current.delimiter, index)
+      && (current.delimiter === '**' || !source.startsWith('**', index) || source.startsWith('***', index))) {
+      frames.pop();
+      const tag = current.delimiter === '**' ? 'strong' : 'em';
+      tokens[current.token] = current.rendered ? `<${tag}>` : '';
+      if (current.rendered) tokens.push(`</${tag}>`);
+      index += current.delimiter.length;
+      continue;
+    }
+    const tryLink = allowLinks && source[index] === '[' && index > failedLinkBoundary;
+    const link = tryLink
+      ? /^\[([^\]\r\n]+)\]\((\/documentation\/[a-z0-9]+(?:-[a-z0-9]+)*)\)/.exec(source.slice(index))
+      : null;
+    if (tryLink && !link) {
+      // Openings before the same first boundary share the same failed destination.
+      // Cache that boundary to avoid rescanning long unmatched '[' runs.
+      const boundary = /[\]\r\n]/.exec(source.slice(index + 1));
+      failedLinkBoundary = boundary ? index + 1 + boundary.index : source.length;
+    }
+    if (link) {
+      const labelDepth = depth + frames.length;
+      const label = parseInline(link[1], labelDepth, false);
+      tokens.push(`<a href="${link[2]}">${label}</a>`);
+      index += link[0].length;
+      continue;
+    }
+    const opening = source.startsWith('**', index) ? '**' : source[index] === '*' ? '*' : '';
+    if (opening) {
+      frames.push({ delimiter: opening, token: tokens.length, rendered: depth + frames.length < 8 });
+      tokens.push(opening);
+      index += opening.length;
+      continue;
+    }
+    tokens.push(source[index]);
+    index += 1;
+  }
+  return tokens.join('');
+};
+
+/**
+ * Preserve legacy paragraph/emphasis HTML without attributes, expand the bounded
+ * Markdown subset, then sanitize every output with exact documentation URL rules.
+ */
 const formatAnswer = (answer: string) => {
   if (!answer) return '';
-  let formatted = answer.replace(/\n\n/g, '</p><p>');
-  formatted = formatted.replace(/\n/g, '<br>');
-  formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  return DOMPurify.sanitize(`<p>${formatted}</p>`, {
+  const legacy = DOMPurify.sanitize(answer, {
     ALLOWED_TAGS: ['p', 'br', 'strong', 'em'],
     ALLOWED_ATTR: [],
+    ALLOW_DATA_ATTR: false,
+    ALLOW_ARIA_ATTR: false,
+  });
+  const inline = parseInline(legacy);
+  const paragraphs = inline.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>');
+  return DOMPurify.sanitize(`<p>${paragraphs}</p>`, {
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'a'],
+    ALLOWED_ATTR: ['href'],
+    ALLOW_DATA_ATTR: false,
+    ALLOW_ARIA_ATTR: false,
+    ALLOWED_URI_REGEXP: /^\/documentation\/[a-z0-9]+(?:-[a-z0-9]+)*$/,
   });
 };
 
@@ -156,13 +235,22 @@ if (props.searchQuery) {
   font-style: italic;
 }
 
-.prose a {
-  color: #818cf8;
+.prose :deep(a) {
+  color: #a5b4fc;
+  font-weight: 600;
   text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
-.prose a:hover {
-  color: #a5b4fc;
+.prose :deep(a:hover) {
+  color: #c7d2fe;
+}
+
+.prose :deep(a:focus-visible) {
+  outline: 2px solid #a5b4fc;
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 </style>
 

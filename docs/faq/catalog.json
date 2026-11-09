@@ -1,0 +1,408 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "slug": "getting-started",
+      "order": 1,
+      "name": {
+        "en": "Getting started",
+        "sk": "Začíname",
+        "es": "Primeros pasos",
+        "de": "Erste Schritte",
+        "cs": "Začínáme"
+      },
+      "description": {
+        "en": "What Satflux does and what you need to begin.",
+        "sk": "Čo Satflux ponúka a čo potrebujete na začiatok.",
+        "es": "Qué ofrece Satflux y qué necesitas para empezar.",
+        "de": "Was Satflux bietet und was Sie für den Einstieg brauchen.",
+        "cs": "Co Satflux nabízí a co potřebujete na začátek."
+      }
+    },
+    {
+      "slug": "money-and-wallets",
+      "order": 2,
+      "name": {
+        "en": "Money and wallets",
+        "sk": "Peniaze a peňaženky",
+        "es": "Dinero y carteras",
+        "de": "Geld und Wallets",
+        "cs": "Peníze a peněženky"
+      },
+      "description": {
+        "en": "Payment destinations, wallet connections and costs.",
+        "sk": "Príjem platieb, pripojenie peňaženiek a náklady.",
+        "es": "Destino de los pagos, conexión de carteras y costes.",
+        "de": "Zahlungsziele, Wallet-Verbindungen und Kosten.",
+        "cs": "Příjem plateb, připojení peněženek a náklady."
+      }
+    },
+    {
+      "slug": "everyday-payments",
+      "order": 3,
+      "name": {
+        "en": "Everyday payments",
+        "sk": "Každodenné platby",
+        "es": "Pagos del día a día",
+        "de": "Zahlungen im Alltag",
+        "cs": "Každodenní platby"
+      },
+      "description": {
+        "en": "Taking payments in person and online, and checking their status.",
+        "sk": "Platby v prevádzke aj online a overovanie ich stavu.",
+        "es": "Cobrar en persona y por internet y comprobar el estado de los pagos.",
+        "de": "Vor Ort und online kassieren und den Zahlungsstatus prüfen.",
+        "cs": "Platby v provozovně i online a ověřování jejich stavu."
+      }
+    },
+    {
+      "slug": "data-and-help",
+      "order": 4,
+      "name": {
+        "en": "Data and help",
+        "sk": "Údaje a pomoc",
+        "es": "Datos y ayuda",
+        "de": "Daten und Hilfe",
+        "cs": "Údaje a pomoc"
+      },
+      "description": {
+        "en": "Storage, recovery, accounting exports and support.",
+        "sk": "Ukladanie údajov, obnova, účtovné exporty a podpora.",
+        "es": "Almacenamiento, recuperación, exportaciones contables y soporte.",
+        "de": "Speicherung, Wiederherstellung, Buchhaltungsexporte und Support.",
+        "cs": "Ukládání údajů, obnova, účetní exporty a podpora."
+      }
+    }
+  ],
+  "items": [
+    {
+      "slug": "what-is-satflux",
+      "category": "getting-started",
+      "order": 1,
+      "question": {
+        "en": "What is Satflux and who is it for?",
+        "sk": "Čo je Satflux a pre koho je určený?",
+        "es": "¿Qué es Satflux y para quién está pensado?",
+        "de": "Was ist Satflux und für wen ist es gedacht?",
+        "cs": "Co je Satflux a pro koho je určený?"
+      },
+      "answer": {
+        "en": "Satflux is a control panel for BTCPay Server that helps shops, service providers and online merchants manage Bitcoin and Lightning payments. You can manage stores, payment tools and reports from one place, with invoicing available according to your access. [Learn about Satflux](/documentation/what-is-satflux).",
+        "sk": "Satflux je ovládací panel pre BTCPay Server, ktorý obchodom, poskytovateľom služieb a e-shopom pomáha spravovať platby v Bitcoine a cez Lightning. Na jednom mieste spravujete obchody, platobné nástroje a prehľady; fakturácia je dostupná podľa vášho prístupu. [Viac o Satfluxe](/documentation/what-is-satflux).",
+        "es": "Satflux es un panel de control para BTCPay Server que ayuda a comercios, profesionales y tiendas en línea a gestionar pagos con Bitcoin y Lightning. Permite gestionar tiendas, herramientas de pago e informes desde un solo lugar; la facturación está disponible según tu acceso. [Conoce Satflux](/documentation/what-is-satflux).",
+        "de": "Satflux ist ein Verwaltungsbereich für BTCPay Server, mit dem Geschäfte, Dienstleister und Onlinehändler Bitcoin- und Lightning-Zahlungen verwalten. Shops, Zahlungswerkzeuge und Berichte finden Sie an einem Ort; die Rechnungsstellung steht je nach Zugangsberechtigung zur Verfügung. [Mehr über Satflux](/documentation/what-is-satflux).",
+        "cs": "Satflux je ovládací panel pro BTCPay Server, který obchodům, poskytovatelům služeb a e-shopům pomáhá spravovat platby v Bitcoinu a přes Lightning. Na jednom místě spravujete obchody, platební nástroje a přehledy; fakturace je dostupná podle vašeho přístupu. [Více o Satfluxu](/documentation/what-is-satflux)."
+      },
+      "sources": [
+        "docs/user/en/what-is-satflux.md",
+        "docs/user/sk/what-is-satflux.md",
+        "docs/user/en/plans-and-limits.md",
+        "docs/user/sk/plans-and-limits.md"
+      ]
+    },
+    {
+      "slug": "start-accepting-payments",
+      "category": "getting-started",
+      "order": 2,
+      "question": {
+        "en": "What do I need to accept my first payment?",
+        "sk": "Čo potrebujem na prijatie prvej platby?",
+        "es": "¿Qué necesito para recibir mi primer pago?",
+        "de": "Was brauche ich, um die erste Zahlung zu empfangen?",
+        "cs": "Co potřebuji pro přijetí první platby?"
+      },
+      "answer": {
+        "en": "Create or open a store, connect a supported receiving wallet or Lightning address, and create a Point of Sale. Follow the store onboarding checklist and verify that a payment from a different wallet reaches your receiving wallet. The checklist records your progress; ticking a step does not verify the connection automatically. [Follow the onboarding checklist](/documentation/store-onboarding-checklist).",
+        "sk": "Vytvorte alebo otvorte obchod, pripojte podporovanú peňaženku na príjem alebo Lightning adresu a vytvorte pokladňu. Postupujte podľa úvodného checklistu obchodu a overte, že platba z inej peňaženky dorazí do prijímacej peňaženky. Checklist zaznamenáva váš postup; zaškrtnutie kroku samo pripojenie neoverí. [Otvoriť návod k checklistu](/documentation/store-onboarding-checklist).",
+        "es": "Crea o abre una tienda, conecta una cartera receptora o dirección Lightning compatible y crea un punto de venta. Sigue la lista de configuración y comprueba que un pago desde otra cartera llegue a la cartera receptora. La lista registra tu progreso; marcar un paso no verifica la conexión automáticamente. [Sigue la lista de configuración](/documentation/store-onboarding-checklist).",
+        "de": "Erstellen oder öffnen Sie einen Shop, verbinden Sie eine unterstützte Empfangs-Wallet oder Lightning-Adresse und richten Sie eine Kasse ein. Folgen Sie der Einrichtungscheckliste und prüfen Sie, ob eine Zahlung aus einer anderen Wallet in Ihrer Empfangs-Wallet ankommt. Die Checkliste hält Ihren Fortschritt fest; ein Häkchen prüft die Verbindung nicht automatisch. [Zur Einrichtungscheckliste](/documentation/store-onboarding-checklist).",
+        "cs": "Vytvořte nebo otevřete obchod, připojte podporovanou peněženku pro příjem nebo Lightning adresu a vytvořte pokladnu. Postupujte podle úvodního checklistu obchodu a ověřte, že platba z jiné peněženky dorazí do přijímací peněženky. Checklist zaznamenává váš postup; zaškrtnutí kroku samo připojení neověří. [Otevřít návod k checklistu](/documentation/store-onboarding-checklist)."
+      },
+      "sources": [
+        "docs/user/en/creating-your-first-store.md",
+        "docs/user/sk/creating-your-first-store.md",
+        "docs/user/en/store-onboarding-checklist.md",
+        "docs/user/sk/store-onboarding-checklist.md"
+      ]
+    },
+    {
+      "slug": "own-server-or-node",
+      "category": "getting-started",
+      "order": 3,
+      "question": {
+        "en": "Do I need my own server or Lightning node?",
+        "sk": "Potrebujem vlastný server alebo Lightning uzol?",
+        "es": "¿Necesito mi propio servidor o nodo Lightning?",
+        "de": "Brauche ich einen eigenen Server oder Lightning-Knoten?",
+        "cs": "Potřebuji vlastní server nebo Lightning uzel?"
+      },
+      "answer": {
+        "en": "For the hosted Satflux service, you do not need to run your own BTCPay Server or Lightning node: you can connect a supported Lightning address through the panel. If you already run a compatible node or hub, an NWC connection is another option. Available receiving methods depend on the connection checks for your store. [See connection options](/documentation/wallet-connection-overview).",
+        "sk": "Pri hostovanej službe Satflux nemusíte prevádzkovať vlastný BTCPay Server ani Lightning uzol: cez panel môžete pripojiť podporovanú Lightning adresu. Ak už prevádzkujete kompatibilný uzol alebo hub, ďalšou možnosťou je pripojenie cez NWC. Dostupné spôsoby príjmu závisia od overenia pripojenia pre váš obchod. [Možnosti pripojenia](/documentation/wallet-connection-overview).",
+        "es": "Para usar el servicio alojado de Satflux no necesitas mantener tu propio BTCPay Server ni nodo Lightning: puedes conectar una dirección Lightning compatible desde el panel. Si ya tienes un nodo o hub compatible, también puedes conectarlo mediante NWC. Los métodos de recepción disponibles dependen de las comprobaciones de conexión de tu tienda. [Consulta las opciones de conexión](/documentation/wallet-connection-overview).",
+        "de": "Für den gehosteten Satflux-Dienst müssen Sie keinen eigenen BTCPay Server oder Lightning-Knoten betreiben: Eine unterstützte Lightning-Adresse lässt sich im Verwaltungsbereich verbinden. Wenn Sie bereits einen kompatiblen Knoten oder Hub betreiben, ist auch eine NWC-Verbindung möglich. Welche Empfangsmethoden verfügbar sind, hängt von den Verbindungsprüfungen für Ihren Shop ab. [Verbindungsmöglichkeiten ansehen](/documentation/wallet-connection-overview).",
+        "cs": "U hostované služby Satflux nemusíte provozovat vlastní BTCPay Server ani Lightning uzel: přes panel můžete připojit podporovanou Lightning adresu. Pokud již provozujete kompatibilní uzel nebo hub, další možností je připojení přes NWC. Dostupné způsoby příjmu závisejí na ověření připojení pro váš obchod. [Možnosti připojení](/documentation/wallet-connection-overview)."
+      },
+      "sources": [
+        "docs/user/en/store-onboarding-checklist.md",
+        "docs/user/sk/store-onboarding-checklist.md",
+        "docs/user/en/wallet-connection-overview.md",
+        "docs/user/sk/wallet-connection-overview.md",
+        "docs/user/en/connect-with-nwc.md",
+        "docs/user/sk/connect-with-nwc.md"
+      ]
+    },
+    {
+      "slug": "where-payments-go",
+      "category": "money-and-wallets",
+      "order": 4,
+      "question": {
+        "en": "Where do payments go, and who holds my funds?",
+        "sk": "Kam prídu platby a kto drží moje prostriedky?",
+        "es": "¿Adónde llegan los pagos y quién custodia mis fondos?",
+        "de": "Wohin gehen Zahlungen und wer verwahrt mein Geld?",
+        "cs": "Kam přijdou platby a kdo drží mé prostředky?"
+      },
+      "answer": {
+        "en": "Payments go to the wallet or payment destination configured for your store; Satflux is the control panel and does not take custody of your funds. Custody still depends on your chosen wallet or provider: a Lightning address can belong to a custodial service. Read that provider's terms before connecting it. [Understand how Satflux works](/documentation/what-is-satflux).",
+        "sk": "Platby smerujú do peňaženky alebo na platobný cieľ nastavený pre váš obchod; Satflux je ovládací panel a nepreberá úschovu vašich prostriedkov. Úschova však závisí od zvolenej peňaženky alebo poskytovateľa: Lightning adresa môže patriť kustodiálnej službe. Pred pripojením si prečítajte podmienky poskytovateľa. [Ako Satflux funguje](/documentation/what-is-satflux).",
+        "es": "Los pagos llegan a la cartera o destino de pago configurado para tu tienda; Satflux es el panel de control y no asume la custodia de tus fondos. La custodia depende de la cartera o proveedor elegido: una dirección Lightning puede pertenecer a un servicio de custodia. Revisa las condiciones del proveedor antes de conectarlo. [Cómo funciona Satflux](/documentation/what-is-satflux).",
+        "de": "Zahlungen gehen an die für Ihren Shop eingerichtete Wallet oder das eingerichtete Zahlungsziel; Satflux ist der Verwaltungsbereich und übernimmt keine Verwahrung Ihrer Gelder. Die Verwahrung hängt dennoch von der gewählten Wallet oder dem Anbieter ab: Eine Lightning-Adresse kann zu einem Anbieter gehören, der die Gelder verwahrt. Prüfen Sie dessen Bedingungen vor der Verbindung. [So funktioniert Satflux](/documentation/what-is-satflux).",
+        "cs": "Platby směřují do peněženky nebo na platební cíl nastavený pro váš obchod; Satflux je ovládací panel a nepřebírá úschovu vašich prostředků. Úschova však závisí na zvolené peněžence nebo poskytovateli: Lightning adresa může patřit kustodiální službě. Před připojením si přečtěte podmínky poskytovatele. [Jak Satflux funguje](/documentation/what-is-satflux)."
+      },
+      "sources": [
+        "docs/user/en/what-is-satflux.md",
+        "docs/user/sk/what-is-satflux.md",
+        "docs/user/en/connect-with-any-lightning-address.md",
+        "docs/user/sk/connect-with-any-lightning-address.md",
+        "docs/user/es/connect-with-any-lightning-address.md",
+        "docs/user/de/connect-with-any-lightning-address.md",
+        "docs/user/cs/connect-with-any-lightning-address.md"
+      ]
+    },
+    {
+      "slug": "supported-wallet-connections",
+      "category": "money-and-wallets",
+      "order": 5,
+      "question": {
+        "en": "Which wallets and Lightning addresses can I connect?",
+        "sk": "Ktoré peňaženky a Lightning adresy môžem pripojiť?",
+        "es": "¿Qué carteras y direcciones Lightning puedo conectar?",
+        "de": "Welche Wallets und Lightning-Adressen kann ich verbinden?",
+        "cs": "Které peněženky a Lightning adresy mohu připojit?"
+      },
+      "answer": {
+        "en": "Use a supported Lightning address or a compatible NWC connection to your own node or hub. Satflux checks the specific address; a wallet brand alone does not guarantee compatibility, and a Cashu settlement option may require explicit consent and mint trust. New Aqua/Bull descriptor connections and Aqua SamRock pairing are paused while the Boltz receiving integration is unavailable. [Check connection requirements](/documentation/connect-with-any-lightning-address).",
+        "sk": "Použite podporovanú Lightning adresu alebo kompatibilné NWC pripojenie k vlastnému uzlu či hubu. Satflux overuje konkrétnu adresu; samotná značka peňaženky nezaručuje kompatibilitu a možnosť vyrovnania cez Cashu môže vyžadovať výslovný súhlas a dôveru v mint. Nové pripojenia cez deskriptor Aqua/Bull a párovanie Aqua cez SamRock sú pozastavené, kým nie je dostupné prijímanie cez Boltz. [Požiadavky na pripojenie](/documentation/connect-with-any-lightning-address).",
+        "es": "Usa una dirección Lightning compatible o una conexión NWC compatible a tu propio nodo o hub. Satflux comprueba la dirección concreta; la marca de la cartera no garantiza la compatibilidad y la opción de liquidación mediante Cashu puede exigir consentimiento explícito y confianza en el mint. Las nuevas conexiones mediante descriptor de Aqua/Bull y el emparejamiento de Aqua con SamRock están suspendidos mientras no esté disponible la integración de recepción de Boltz. [Requisitos de conexión](/documentation/connect-with-any-lightning-address).",
+        "de": "Nutzen Sie eine unterstützte Lightning-Adresse oder eine kompatible NWC-Verbindung zu Ihrem eigenen Knoten oder Hub. Satflux prüft die konkrete Adresse; die Wallet-Marke allein garantiert keine Kompatibilität, und eine Cashu-Abwicklung kann eine ausdrückliche Zustimmung und Vertrauen in den Mint erfordern. Neue Aqua/Bull-Descriptor-Verbindungen und die Aqua-Kopplung über SamRock sind ausgesetzt, solange die Boltz-Empfangsanbindung nicht verfügbar ist. [Verbindungsanforderungen prüfen](/documentation/connect-with-any-lightning-address).",
+        "cs": "Použijte podporovanou Lightning adresu nebo kompatibilní NWC připojení k vlastnímu uzlu či hubu. Satflux ověřuje konkrétní adresu; samotná značka peněženky nezaručuje kompatibilitu a možnost vypořádání přes Cashu může vyžadovat výslovný souhlas a důvěru v mint. Nová připojení přes deskriptor Aqua/Bull a párování Aqua přes SamRock jsou pozastavena, dokud není dostupný příjem přes Boltz. [Požadavky na připojení](/documentation/connect-with-any-lightning-address)."
+      },
+      "sources": [
+        "docs/user/en/wallet-connection-overview.md",
+        "docs/user/sk/wallet-connection-overview.md",
+        "docs/user/en/connect-with-any-lightning-address.md",
+        "docs/user/sk/connect-with-any-lightning-address.md",
+        "docs/user/es/connect-with-any-lightning-address.md",
+        "docs/user/de/connect-with-any-lightning-address.md",
+        "docs/user/cs/connect-with-any-lightning-address.md",
+        "docs/user/en/connect-with-nwc.md",
+        "docs/user/sk/connect-with-nwc.md"
+      ]
+    },
+    {
+      "slug": "plans-and-payment-costs",
+      "category": "money-and-wallets",
+      "order": 6,
+      "question": {
+        "en": "What does Satflux cost, and can there be other fees?",
+        "sk": "Koľko stojí Satflux a môžu vzniknúť ďalšie poplatky?",
+        "es": "¿Cuánto cuesta Satflux y puede haber otras comisiones?",
+        "de": "Was kostet Satflux und können weitere Gebühren anfallen?",
+        "cs": "Kolik stojí Satflux a mohou vzniknout další poplatky?"
+      },
+      "answer": {
+        "en": "Satflux has Free, PRO and Enterprise plans; current prices, limits and any promotional access are shown in Pricing and Account. If temporary free PRO access is active, eligibility and limits still apply, so check the current conditions rather than assuming every account has access. Network, wallet-provider or Cashu mint fees may apply separately. [Read about plans and limits](/documentation/plans-and-limits).",
+        "sk": "Satflux má plány Free, PRO a Enterprise; aktuálne ceny, limity a prípadný akciový prístup nájdete v Cenníku a Účte. Ak je aktívny dočasný PRO prístup zdarma, naďalej platia podmienky oprávnenosti a limity, preto si overte aktuálne pravidlá pre svoj účet. Sieťové poplatky a poplatky poskytovateľa peňaženky či Cashu mintu môžu byť účtované samostatne. [Plány a limity](/documentation/plans-and-limits).",
+        "es": "Satflux ofrece los planes Free, PRO y Enterprise; los precios, límites y posibles promociones vigentes se muestran en Precios y Cuenta. Si está activo el acceso PRO gratuito temporal, siguen aplicándose requisitos y límites, por lo que debes comprobar las condiciones de tu cuenta. Las comisiones de red, del proveedor de la cartera o del mint de Cashu pueden cobrarse por separado. [Planes y límites](/documentation/plans-and-limits).",
+        "de": "Satflux bietet die Tarife Free, PRO und Enterprise; aktuelle Preise, Grenzen und mögliche Aktionen finden Sie unter Preise und Konto. Wenn vorübergehend kostenloser PRO-Zugang aktiv ist, gelten weiterhin die Teilnahmebedingungen und Grenzen; prüfen Sie daher die aktuellen Bedingungen für Ihr Konto. Netzwerkgebühren sowie Gebühren des Wallet-Anbieters oder Cashu-Mints können zusätzlich anfallen. [Tarife und Grenzen](/documentation/plans-and-limits).",
+        "cs": "Satflux má plány Free, PRO a Enterprise; aktuální ceny, limity a případný akční přístup najdete v Ceníku a Účtu. Pokud je aktivní dočasný PRO přístup zdarma, nadále platí podmínky oprávněnosti a limity, proto si ověřte aktuální pravidla pro svůj účet. Síťové poplatky a poplatky poskytovatele peněženky či Cashu mintu mohou být účtovány samostatně. [Plány a limity](/documentation/plans-and-limits)."
+      },
+      "sources": [
+        "docs/user/en/plans-and-limits.md",
+        "docs/user/sk/plans-and-limits.md",
+        "docs/user/en/connect-with-any-lightning-address.md",
+        "docs/user/sk/connect-with-any-lightning-address.md",
+        "docs/user/es/connect-with-any-lightning-address.md",
+        "docs/user/de/connect-with-any-lightning-address.md",
+        "docs/user/cs/connect-with-any-lightning-address.md"
+      ]
+    },
+    {
+      "slug": "in-person-and-online-payments",
+      "category": "everyday-payments",
+      "order": 7,
+      "question": {
+        "en": "Can I accept payments in a shop and on a website?",
+        "sk": "Môžem prijímať platby v prevádzke aj na webe?",
+        "es": "¿Puedo aceptar pagos en un local y en una web?",
+        "de": "Kann ich im Geschäft und auf einer Website Zahlungen annehmen?",
+        "cs": "Mohu přijímat platby v provozovně i na webu?"
+      },
+      "answer": {
+        "en": "Yes: a Point of Sale lets you show a payment QR code at the counter, while a Pay Button adds a payment link to your website. Customers can pay using the methods enabled for that store, such as Bitcoin or Lightning. A complete online shop may need a separate e-commerce integration and its own setup. [Set up a Point of Sale](/documentation/point-of-sale) or [add a Pay Button](/documentation/pay-button).",
+        "sk": "Áno: pokladňa vám umožní zobraziť platobný QR kód pri predaji a platobné tlačidlo pridá možnosť platby na váš web. Zákazníci môžu platiť spôsobmi povolenými pre daný obchod, napríklad Bitcoinom alebo cez Lightning. Plnohodnotný e-shop môže vyžadovať samostatnú integráciu a jej nastavenie. [Nastaviť pokladňu](/documentation/point-of-sale) alebo [pridať platobné tlačidlo](/documentation/pay-button).",
+        "es": "Sí: un punto de venta permite mostrar un código QR de pago en el mostrador y un botón de pago añade la opción de pagar en tu web. Los clientes pueden usar los métodos habilitados para esa tienda, como Bitcoin o Lightning. Una tienda en línea completa puede necesitar una integración de comercio electrónico y su propia configuración. [Configura un punto de venta](/documentation/point-of-sale) o [añade un botón de pago](/documentation/pay-button).",
+        "de": "Ja: Mit einer Kasse zeigen Sie am Verkaufstresen einen Zahlungs-QR-Code an, und mit einem Pay Button ergänzen Sie Ihre Website um eine Bezahlmöglichkeit. Kunden können die im jeweiligen Shop aktivierten Methoden wie Bitcoin oder Lightning verwenden. Ein vollständiger Onlineshop kann eine separate E-Commerce-Anbindung und deren Einrichtung benötigen. [Kasse einrichten](/documentation/point-of-sale) oder [Pay Button hinzufügen](/documentation/pay-button).",
+        "cs": "Ano: pokladna vám umožní zobrazit platební QR kód při prodeji a platební tlačítko přidá možnost platby na váš web. Zákazníci mohou platit způsoby povolenými pro daný obchod, například Bitcoinem nebo přes Lightning. Plnohodnotný e-shop může vyžadovat samostatnou integraci a její nastavení. [Nastavit pokladnu](/documentation/point-of-sale) nebo [přidat platební tlačítko](/documentation/pay-button)."
+      },
+      "sources": [
+        "docs/user/en/point-of-sale.md",
+        "docs/user/sk/point-of-sale.md",
+        "docs/user/en/pay-button.md",
+        "docs/user/sk/pay-button.md",
+        "docs/user/es/pay-button.md",
+        "docs/user/de/pay-button.md",
+        "docs/user/cs/pay-button.md"
+      ]
+    },
+    {
+      "slug": "customer-account-required",
+      "category": "everyday-payments",
+      "order": 8,
+      "question": {
+        "en": "Does a customer need a Satflux account to pay?",
+        "sk": "Potrebuje zákazník účet Satflux na zaplatenie?",
+        "es": "¿Necesita el cliente una cuenta de Satflux para pagar?",
+        "de": "Braucht ein Kunde zum Bezahlen ein Satflux-Konto?",
+        "cs": "Potřebuje zákazník účet Satflux k zaplacení?"
+      },
+      "answer": {
+        "en": "No: for a public Point of Sale or Pay Button checkout, the customer opens the payment page and pays with a wallet compatible with the selected method. A merchant account is used to manage the store, not to identify every payer. Your e-shop or another payment provider may have its own requirements. [See how Point of Sale payments work](/documentation/point-of-sale).",
+        "sk": "Nie: pri verejnej pokladni alebo platobnom tlačidle zákazník otvorí platobnú stránku a zaplatí peňaženkou kompatibilnou so zvoleným spôsobom. Účet obchodníka slúži na správu obchodu, nie na registráciu každého platiteľa. Váš e-shop alebo iný poskytovateľ platieb môže mať vlastné požiadavky. [Ako fungujú platby cez pokladňu](/documentation/point-of-sale).",
+        "es": "No: en el pago público de un punto de venta o botón de pago, el cliente abre la página de pago y usa una cartera compatible con el método elegido. La cuenta del comerciante sirve para gestionar la tienda, no para registrar a cada pagador. Tu tienda en línea u otro proveedor de pagos puede tener sus propios requisitos. [Cómo funcionan los pagos en el punto de venta](/documentation/point-of-sale).",
+        "de": "Nein: Bei einer öffentlichen Kasse oder einem Pay Button öffnet der Kunde die Zahlungsseite und bezahlt mit einer Wallet, die zur gewählten Methode passt. Das Händlerkonto dient zur Verwaltung des Shops, nicht zur Registrierung jedes Zahlenden. Ihr Onlineshop oder ein anderer Zahlungsanbieter kann eigene Anforderungen haben. [So funktionieren Kassenzahlungen](/documentation/point-of-sale).",
+        "cs": "Ne: u veřejné pokladny nebo platebního tlačítka zákazník otevře platební stránku a zaplatí peněženkou kompatibilní se zvoleným způsobem. Účet obchodníka slouží ke správě obchodu, nikoli k registraci každého plátce. Váš e-shop nebo jiný poskytovatel plateb může mít vlastní požadavky. [Jak fungují platby přes pokladnu](/documentation/point-of-sale)."
+      },
+      "sources": [
+        "docs/user/en/point-of-sale.md",
+        "docs/user/sk/point-of-sale.md",
+        "docs/user/en/pay-button.md",
+        "docs/user/sk/pay-button.md",
+        "docs/user/es/pay-button.md",
+        "docs/user/de/pay-button.md",
+        "docs/user/cs/pay-button.md"
+      ]
+    },
+    {
+      "slug": "payment-not-confirmed",
+      "category": "everyday-payments",
+      "order": 9,
+      "question": {
+        "en": "What if the customer paid but the payment is not confirmed?",
+        "sk": "Čo ak zákazník zaplatil, ale platba nie je potvrdená?",
+        "es": "¿Qué hago si el cliente pagó pero el pago no está confirmado?",
+        "de": "Was tun, wenn der Kunde bezahlt hat, die Zahlung aber unbestätigt bleibt?",
+        "cs": "Co když zákazník zaplatil, ale platba není potvrzená?"
+      },
+      "answer": {
+        "en": "Check the status of the specific payment invoice and whether the funds arrived at the configured receiving wallet; do not treat a screenshot or an error message as proof of settlement. If the result is uncertain, contact support before asking for another payment or changing the receiving connection. With Cashu, a pending settlement or recovery hold can remain even when a separate Lightning invoice is settled. [Read about unresolved settlements and recovery](/documentation/cashu-change-recovery).",
+        "sk": "Skontrolujte stav konkrétnej platobnej faktúry a či prostriedky dorazili do nastavenej prijímacej peňaženky; screenshot ani chybové hlásenie nepovažujte za dôkaz vyrovnania. Ak je výsledok neistý, kontaktujte podporu skôr, než požiadate o ďalšiu platbu alebo zmeníte prijímacie pripojenie. Pri Cashu môže neukončené vyrovnanie alebo blokovanie kvôli obnove pretrvávať aj vtedy, keď je samostatná Lightning faktúra uhradená. [Neukončené vyrovnania a obnova](/documentation/cashu-change-recovery).",
+        "es": "Comprueba el estado de la factura de pago concreta y si los fondos llegaron a la cartera receptora configurada; ni una captura de pantalla ni un mensaje de error prueban la liquidación. Si el resultado es incierto, contacta con soporte antes de pedir otro pago o cambiar la conexión receptora. Con Cashu puede seguir pendiente una liquidación o un bloqueo por recuperación aunque otra factura Lightning ya esté liquidada. [Liquidaciones pendientes y recuperación](/documentation/cashu-change-recovery).",
+        "de": "Prüfen Sie den Status der konkreten Zahlungsrechnung und ob die Gelder in der eingerichteten Empfangs-Wallet angekommen sind; ein Screenshot oder eine Fehlermeldung ist kein Nachweis der Abwicklung. Ist das Ergebnis unklar, kontaktieren Sie den Support, bevor Sie eine weitere Zahlung verlangen oder die Empfangsverbindung ändern. Bei Cashu kann eine Abwicklung oder Wiederherstellungssperre offenbleiben, obwohl eine separate Lightning-Rechnung bereits beglichen ist. [Offene Abwicklungen und Wiederherstellung](/documentation/cashu-change-recovery).",
+        "cs": "Zkontrolujte stav konkrétní platební faktury a zda prostředky dorazily do nastavené přijímací peněženky; screenshot ani chybové hlášení nepovažujte za důkaz vypořádání. Pokud je výsledek nejistý, kontaktujte podporu dříve, než požádáte o další platbu nebo změníte přijímací připojení. U Cashu může nedokončené vypořádání nebo blokování kvůli obnově přetrvávat i tehdy, když je samostatná Lightning faktura uhrazena. [Nedokončená vypořádání a obnova](/documentation/cashu-change-recovery)."
+      },
+      "sources": [
+        "docs/user/en/store-onboarding-checklist.md",
+        "docs/user/sk/store-onboarding-checklist.md",
+        "docs/user/en/cashu-change-recovery.md",
+        "docs/user/sk/cashu-change-recovery.md",
+        "docs/user/es/cashu-change-recovery.md",
+        "docs/user/de/cashu-change-recovery.md",
+        "docs/user/cs/cashu-change-recovery.md"
+      ]
+    },
+    {
+      "slug": "where-data-is-stored",
+      "category": "data-and-help",
+      "order": 10,
+      "question": {
+        "en": "Where are my invoices and customer data stored?",
+        "sk": "Kde sú uložené moje faktúry a údaje zákazníkov?",
+        "es": "¿Dónde se guardan mis facturas y los datos de mis clientes?",
+        "de": "Wo werden meine Rechnungen und Kundendaten gespeichert?",
+        "cs": "Kde jsou uložené mé faktury a údaje zákazníků?"
+      },
+      "answer": {
+        "en": "In local-first invoicing mode, companies, contacts and documents are stored in your browser, with end-to-end encrypted synchronization when enabled. This does not mean that all Satflux data is browser-only: account and connection data are handled separately, and legacy server-side invoicing also exists. Clearing browser data can remove your local invoicing copy, so keep a separate backup. [Learn about invoicing](/documentation/getting-started-with-invoicing) and [backup and recovery](/documentation/backup-and-recovery).",
+        "sk": "V režime local-first fakturácie sú firmy, kontakty a doklady uložené vo vašom prehliadači; pri zapnutej synchronizácii sa prenášajú s koncovým šifrovaním. Neznamená to, že všetky údaje Satfluxu sú iba v prehliadači: údaje účtu a pripojení sa spracúvajú samostatne a existuje aj starší serverový režim fakturácie. Vymazanie dát prehliadača môže odstrániť lokálnu kópiu fakturácie, preto si uchovávajte samostatnú zálohu. [Ako funguje fakturácia](/documentation/getting-started-with-invoicing) a [záloha a obnova](/documentation/backup-and-recovery).",
+        "es": "En el modo de facturación local-first, las empresas, contactos y documentos se guardan en tu navegador, con sincronización cifrada de extremo a extremo cuando está activada. Esto no significa que todos los datos de Satflux estén solo en el navegador: los datos de cuenta y conexión se gestionan por separado y también existe un modo anterior de facturación en el servidor. Borrar los datos del navegador puede eliminar la copia local de facturación, por lo que debes conservar una copia de seguridad independiente. [Cómo funciona la facturación](/documentation/getting-started-with-invoicing) y [copias de seguridad y recuperación](/documentation/backup-and-recovery).",
+        "de": "Im Local-first-Modus der Rechnungsstellung werden Firmen, Kontakte und Belege in Ihrem Browser gespeichert und bei aktivierter Synchronisierung Ende-zu-Ende verschlüsselt übertragen. Das bedeutet nicht, dass sämtliche Satflux-Daten nur im Browser liegen: Konto- und Verbindungsdaten werden getrennt verarbeitet, und ein älterer serverseitiger Rechnungsmodus existiert ebenfalls. Beim Löschen der Browserdaten kann die lokale Rechnungskopie verloren gehen; bewahren Sie deshalb eine separate Sicherung auf. [Rechnungsstellung kennenlernen](/documentation/getting-started-with-invoicing) und [Sicherung und Wiederherstellung](/documentation/backup-and-recovery).",
+        "cs": "V režimu local-first fakturace jsou firmy, kontakty a doklady uložené ve vašem prohlížeči; při zapnuté synchronizaci se přenášejí s koncovým šifrováním. Neznamená to, že všechny údaje Satfluxu jsou pouze v prohlížeči: údaje účtu a připojení se zpracovávají samostatně a existuje i starší serverový režim fakturace. Vymazání dat prohlížeče může odstranit místní kopii fakturace, proto si uchovávejte samostatnou zálohu. [Jak funguje fakturace](/documentation/getting-started-with-invoicing) a [záloha a obnova](/documentation/backup-and-recovery)."
+      },
+      "sources": [
+        "docs/user/en/getting-started-with-invoicing.md",
+        "docs/user/sk/getting-started-with-invoicing.md",
+        "docs/user/en/what-we-store-and-how-its-protected.md",
+        "docs/user/sk/what-we-store-and-how-its-protected.md",
+        "docs/user/en/backup-and-recovery.md",
+        "docs/user/sk/backup-and-recovery.md"
+      ]
+    },
+    {
+      "slug": "backup-and-new-device",
+      "category": "data-and-help",
+      "order": 11,
+      "question": {
+        "en": "How do I back up my data and restore it on another device?",
+        "sk": "Ako zálohujem údaje a obnovím ich na inom zariadení?",
+        "es": "¿Cómo hago una copia de seguridad y recupero mis datos en otro dispositivo?",
+        "de": "Wie sichere ich Daten und stelle sie auf einem anderen Gerät wieder her?",
+        "cs": "Jak zálohuji údaje a obnovím je na jiném zařízení?"
+      },
+      "answer": {
+        "en": "Keep your 24-word recovery phrase offline and export an invoicing backup file from Account settings. Restoring invoicing data through synchronization needs both the correct recovery phrase and a surviving data copy; the phrase alone contains no invoices. A backup file can be imported into another prepared account without the original account's phrase, but an encrypted file requires its own backup passphrase. [Follow the backup and recovery guide](/documentation/backup-and-recovery).",
+        "sk": "Uchovávajte 24-slovnú obnovovaciu frázu offline a v nastaveniach účtu exportujte súbor zálohy fakturácie. Obnova fakturačných dát cez synchronizáciu potrebuje správnu obnovovaciu frázu aj zachovanú kópiu dát; samotná fráza faktúry neobsahuje. Súbor zálohy možno importovať do iného pripraveného účtu bez frázy pôvodného účtu, no šifrovaný súbor vyžaduje vlastnú prístupovú frázu k zálohe. [Návod na zálohu a obnovu](/documentation/backup-and-recovery).",
+        "es": "Guarda sin conexión tu frase de recuperación de 24 palabras y exporta un archivo de copia de seguridad de facturación desde los ajustes de la cuenta. Para recuperar los datos mediante sincronización necesitas tanto la frase correcta como una copia de los datos que siga disponible; la frase por sí sola no contiene facturas. Puedes importar el archivo en otra cuenta preparada sin la frase de la cuenta original, pero un archivo cifrado exige su propia contraseña de copia de seguridad. [Guía de copias de seguridad y recuperación](/documentation/backup-and-recovery).",
+        "de": "Bewahren Sie Ihre Wiederherstellungsphrase mit 24 Wörtern offline auf und exportieren Sie in den Kontoeinstellungen eine Sicherungsdatei der Rechnungsdaten. Die Wiederherstellung per Synchronisierung braucht sowohl die richtige Phrase als auch eine noch vorhandene Datenkopie; die Phrase allein enthält keine Rechnungen. Eine Sicherungsdatei lässt sich ohne die Phrase des ursprünglichen Kontos in ein anderes vorbereitetes Konto importieren, eine verschlüsselte Datei benötigt jedoch ihre eigene Sicherungspassphrase. [Anleitung zu Sicherung und Wiederherstellung](/documentation/backup-and-recovery).",
+        "cs": "Uchovávejte 24slovnou obnovovací frázi offline a v nastavení účtu exportujte soubor zálohy fakturace. Obnova fakturačních dat přes synchronizaci potřebuje správnou obnovovací frázi i zachovanou kopii dat; samotná fráze faktury neobsahuje. Soubor zálohy lze importovat do jiného připraveného účtu bez fráze původního účtu, ale šifrovaný soubor vyžaduje vlastní přístupovou frázi k záloze. [Návod na zálohu a obnovu](/documentation/backup-and-recovery)."
+      },
+      "sources": [
+        "docs/user/en/backup-and-recovery.md",
+        "docs/user/sk/backup-and-recovery.md"
+      ]
+    },
+    {
+      "slug": "accountant-exports-and-help",
+      "category": "data-and-help",
+      "order": 12,
+      "question": {
+        "en": "How do I prepare records for my accountant and get help?",
+        "sk": "Ako pripravím podklady pre účtovníka a získam pomoc?",
+        "es": "¿Cómo preparo la documentación para mi asesor contable y consigo ayuda?",
+        "de": "Wie bereite ich Unterlagen für die Buchhaltung vor und erhalte Hilfe?",
+        "cs": "Jak připravím podklady pro účetního a získám pomoc?"
+      },
+      "answer": {
+        "en": "Open Accountant export in your company, select a period and choose a format supported by your accountant's software; PDF documents can be included where offered. You can also share the company with your accountant using an invitation and an appropriate role, without handing over your recovery phrase. For support, email hello@satflux.io with a description of the problem, without recovery phrases, wallet credentials or spendable Cashu tokens. [Prepare an accountant export](/documentation/export-for-your-accountant) or [share a company](/documentation/share-with-accountant).",
+        "sk": "Vo firme otvorte export pre účtovníka, vyberte obdobie a formát podporovaný jeho softvérom; ak je táto možnosť dostupná, priložte aj PDF doklady. Firmu môžete účtovníkovi aj zdieľať pozvánkou a vhodnou rolou bez odovzdania obnovovacej frázy. Ak potrebujete podporu, napíšte na hello@satflux.io a opíšte problém bez posielania obnovovacích fráz, prihlasovacích údajov peňaženky alebo utratiteľných Cashu tokenov. [Pripraviť export pre účtovníka](/documentation/export-for-your-accountant) alebo [zdieľať firmu](/documentation/share-with-accountant).",
+        "es": "Abre la exportación contable de tu empresa, elige un período y un formato compatible con el programa de tu asesor; puedes incluir documentos PDF cuando se ofrezca esa opción. También puedes compartir la empresa mediante una invitación y un rol adecuado, sin entregar tu frase de recuperación. Para recibir soporte, escribe a hello@satflux.io y describe el problema sin enviar frases de recuperación, credenciales de la cartera ni tokens de Cashu que puedan gastarse. [Prepara una exportación contable](/documentation/export-for-your-accountant) o [comparte una empresa](/documentation/share-with-accountant).",
+        "de": "Öffnen Sie in Ihrer Firma den Buchhaltungsexport, wählen Sie einen Zeitraum und ein Format, das die Buchhaltungssoftware unterstützt; PDF-Belege lassen sich gegebenenfalls hinzufügen. Sie können die Firma auch per Einladung mit einer geeigneten Rolle freigeben, ohne Ihre Wiederherstellungsphrase weiterzugeben. Schreiben Sie für Unterstützung an hello@satflux.io und beschreiben Sie das Problem, ohne Wiederherstellungsphrasen, Wallet-Zugangsdaten oder ausgebbare Cashu-Token zu senden. [Buchhaltungsexport vorbereiten](/documentation/export-for-your-accountant) oder [Firma freigeben](/documentation/share-with-accountant).",
+        "cs": "Ve firmě otevřete export pro účetního, vyberte období a formát podporovaný jeho softwarem; pokud je tato možnost dostupná, přiložte i PDF doklady. Firmu můžete účetnímu také sdílet pozvánkou a vhodnou rolí bez předání obnovovací fráze. Pokud potřebujete podporu, napište na hello@satflux.io a popište problém bez posílání obnovovacích frází, přihlašovacích údajů peněženky nebo utratitelných Cashu tokenů. [Připravit export pro účetního](/documentation/export-for-your-accountant) nebo [sdílet firmu](/documentation/share-with-accountant)."
+      },
+      "sources": [
+        "docs/user/en/export-for-your-accountant.md",
+        "docs/user/sk/export-for-your-accountant.md",
+        "docs/user/en/share-with-accountant.md",
+        "docs/user/sk/share-with-accountant.md",
+        "docs/user/en/backup-and-recovery.md",
+        "docs/user/sk/backup-and-recovery.md",
+        "docs/user/en/cashu-change-recovery.md",
+        "docs/user/sk/cashu-change-recovery.md",
+        "docs/user/es/cashu-change-recovery.md",
+        "docs/user/de/cashu-change-recovery.md",
+        "docs/user/cs/cashu-change-recovery.md"
+      ]
+    }
+  ]
+}
