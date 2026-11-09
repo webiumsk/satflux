@@ -1,5 +1,143 @@
 # Development roadmap
 
+## FAQ PR435 Czech precedence and label-depth corrections accepted locally - 2026-11-09
+
+Three owner-supplied findings are verified against `70d57319`: two correctness
+issues and one retry-coverage gap. Per-field Czech legacy search now follows
+canonical blank/trim precedence without changing English predicates. Link labels
+no longer consume an emphasis level for their container; actual eighth-level
+formatting is asserted. Retry tests set both filters before failure and check
+request parameters and retained controls after success. No finding was skipped.
+
+Independent QA/security accept five exact source/test paths. UI83, SQLite38/403,
+actual PostgreSQL11/100, scoped lint/Pint2/PHPStan, type110/parity, catalog12/5/39,
+build and whitespace pass. Independent QA adds seven label cases; security13
+focused frontend cases. Both original behavioral defects reproduce on the exact
+base. Existing sanitizers/URLs/depth bounds, English search and filter grouping
+remain. No dependency, schema, catalog, locale-key or baseline change.
+Evidence: `docs/faq/REVIEW_FIXES.md`; private `reviews/faq-automation/pr435-round5/`.
+Coordinator publication and exact-head CI remain the next step. The disposable
+PostgreSQL target is removed. No merge or production command/deployment ran;
+unrelated primary changes are preserved.
+
+## FAQ live locale/admin/link fixes accepted locally - 2026-11-08
+
+Owner-reported live failures are fixed on the existing FAQ branch from `85a633b5`.
+Explicit allowlisted request locale now controls public list/detail/search/category
+text with restored request context. The page reloads on language changes, preserves
+filters and ignores/aborts obsolete responses, errors and timers. Admin categories
+sort by primary order, canonical English JSON text and id, avoiding the PostgreSQL
+JSON ordering error. Deep-scoped CSS makes injected links underlined and visibly
+focusable. No global middleware, auth, catalog, schema or dependency changes.
+
+Independent QA/security accept eight exact source/test paths. UI 83, PHP 38/403,
+actual PostgreSQL 6/43, additional auth/locale/race probes, PHPStan/Pint 4, scoped
+lint/type 110/parity/build/API/whitespace pass. Existing Chrome offline CSS proof
+confirms underline/focus and 7.36:1 contrast; no browser install or live data access.
+Evidence: `docs/faq/REVIEW_FIXES.md` and private
+`storage/app/private/reviews/faq-automation/live-fixes/`.
+Coordinator owns source commit/push and exact-head CI verification. The owner
+reports an earlier deployment; this corrective revision is not deployed by the
+agent. No production command/import ran; unrelated primary changes are preserved.
+
+## FAQ PR435 deep emphasis matching accepted locally - 2026-11-08
+
+The supplied finding is valid against `08cf0e62` and corrected in the existing
+FAQ branch. Iterative logical frames and flat output tokens preserve delimiter
+ownership beyond eight generated formatting levels, consume matched syntax and
+retain ordinary unmatched markers. Label parsing uses one links-disabled child
+call, keeping parser calls bounded to two; URLs, sanitizers and scan caching remain.
+
+Independent QA/security accept two exact component/test files. Focused 68, QA 31,
+security 18, actual 60 answers/75 links, scoped lint/type 110/parity/build/whitespace
+and local JS documentation 9/9 pass. Deep 10,000-layer and malformed-input probes
+pass. No backend, catalog, fingerprint, dependency or ratchet changed. See
+`docs/faq/REVIEW_FIXES.md`; private evidence is under
+`storage/app/private/reviews/faq-automation/pr435-round3/`.
+Coordinator owns commit/push and exact-head CI verification. No merge, production
+import, FAQ publication or deployment occurred; unrelated primary work is preserved.
+
+## FAQ PR435 second review corrections accepted locally - 2026-11-08
+
+All four owner-supplied findings are valid against `cc60c4b8` and fixed on the
+existing FAQ branch. Complete opening-bracket labels match validator grammar;
+links remain clickable throughout depth-capped input, without deeper recursion or
+quadratic malformed-label retries. PHP/Node accept finite whole decoded JSON
+numbers in 0..2147483647 consistently, with PHP integer normalization. The real
+--check command test now uses default catalog paths with an unavailable database;
+wrong-path and database-read mutation tests prove the regression assertion works.
+
+Independent QA/security accept seven exact source/test paths. PHP 33/185, UI 52,
+Node 60, unchanged catalog 12/5/39, PHPStan/Pint 3, scoped frontend lint/type 110/
+parity/build pass. Independent raw-number and renderer attack/performance probes
+pass; local documentation inspection is 45/45 PHP and 9/9 JS qualified functions.
+No dependencies, thresholds, baselines or catalog fingerprints changed. Evidence:
+`docs/faq/REVIEW_FIXES.md` and private `reviews/faq-automation/pr435-round2/`.
+The coordinator owns corrective publication and exact-head CI verification;
+prior-head CI/CodeRabbit results are historical. No merge, production import,
+FAQ publication or deployment occurred; unrelated primary work is preserved.
+
+## FAQ PR435 review corrections accepted locally - 2026-11-08
+
+All six owner-supplied findings were valid against `8242c351` and are corrected on
+`feat/faq-automation` for existing open PR435. Search predicates live in the public
+controller rather than the model referenced by the review. Omitted category keys
+retain assignment; explicit null clears. Czech search includes legacy `cz` only for
+`cs`. PHP/Node source checks require per-item available translated counterparts and
+reject order overflow beyond 2147483647. Bounded Markdown parsing restores nested
+links and safe legacy HTML while retaining two sanitization passes and local URLs.
+
+Independent security and QA accept exact corrective source manifests. PHP 30/136,
+actual PostgreSQL 4/23, frontend 43, Node 20 and independent renderer/source attack
+cases pass. PHPStan, Pint 9, scoped lint/type 110/parity/build/API checks pass. Local
+AST/token coverage is 42/42 PHP + 8/8 JS qualified named functions with docstrings;
+no external post-push CodeRabbit coverage pass is inferred. New PostgreSQL CI
+coverage uses a separate test database and rejects skipped/error/failed JUnit cases;
+the exact step passed locally. No thresholds, baselines or dependencies changed.
+
+See `docs/faq/REVIEW_FIXES.md`; sanitized review records remain private under
+`storage/app/private/reviews/faq-automation/pr435-corrections/`. Earlier broad PHP
+suite/environment limitations remain historical; no new whole-suite pass is claimed.
+Catalog 12/5/39 and its fingerprints are unchanged. No merge, production import,
+FAQ publication or deployment occurred; unrelated primary work remains preserved.
+Coordinator owns the corrective commit/push and exact-head remote verification.
+
+## Multilingual FAQ automation accepted locally - 2026-11-08
+
+Owner-approved FAQ automation is implemented on `feat/faq-automation` from owned
+master `f7118b10`, isolated in `storage/app/private/worktrees/faq-automation`.
+Twelve questions across four categories have EN/SK/ES/DE/CS text (60 variants),
+75 safe documentation links and 39 reviewed source fingerprints. Offline CI checks
+reject incomplete translations, unsafe links and changed documentation sources.
+No AI provider or dependency installation is introduced.
+
+`faq:sync --check` needs no database; default invocation previews. Explicit staff
+attribution and `--apply` create drafts transactionally. Stable keys and baseline
+hashes protect manual edits and unmanaged slug collisions; publication state,
+counters and extra locale text are preserved. Nullable metadata migration never
+imports/publishes content. Canonical Czech uses `cs` with preserved legacy `cz`
+fallback. The editor retains omitted languages; public answers allow sanitized
+local documentation links and expose accordion keyboard state.
+
+Independent security and QA accept final 23-path implementation scope. Focused
+PHP22/115 plus independent real-catalog4/36, UI22 and Node8 pass. Full frontend
+2,231/205 passes with two workers after an earlier contention-limited run.
+Type110, lint48/52, locale/build, scoped Pint/PHPStan and API-contract checks pass;
+nine obsolete FAQ baseline entries are removed with no new suppressions.
+The broader PHP run completed with 27 errors/11 failures across 3,169 tests.
+All 32 bank cases pass after supplying the existing compatible Node/runtime; six
+DNS-dependent e-mail failures reproduce on unchanged master without networking.
+No clean whole-PHP-suite rerun or remote CI result is inferred. Full evidence and
+limits are in `docs/faq/VALIDATION.md`; sanitized independent records stay private
+under `storage/app/private/reviews/faq-automation/`.
+
+Existing legacy-only Czech search remains limited to canonical Czech/English;
+new imported entries have `cs`. Some documentation translations use English
+fallback. PostgreSQL concurrency and real-browser checks were not executed.
+No production import, publication, merge or deployment occurred. Primary unrelated
+changes are preserved. Next step: review source changes, then separately approve
+normal deployment/import and editorial publication through existing admin tools.
+
 ## Per-relay protocol status and Freedomrelay defaults - 2026-11-07
 
 Owner requests separate connection/synchronization status and chooses Satflux plus
