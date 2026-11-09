@@ -1,4 +1,6 @@
-# Slovak e-faktura (digitálny poštár) - príprava do 1.1.2027
+# Slovak eFaktura - implementation reference and current limitations
+
+> **Product status - 2026-11-09:** A complete Slovak eFaktura provider integration has not been verified. Satflux is currently not presented as a ready solution for mandatory Slovak e-invoicing. UBL export alone does not deliver an invoice, and a successful OAuth connection test does not prove document acceptance, delivery, receiving or reporting. Provider compatibility, API access and any separate fees must be verified for the selected service. Further SK eFaktura development is paused pending Product Owner direction, provider terms and complete integration verification; no completion date is promised. Existing code, configuration, credentials, document history and safeguards are retained. The implementation and runbook below are technical reference, not evidence of production readiness or authorization to activate a provider.
 
 Od **1. januára 2027** platí pre tuzemské B2B transakcie na Slovensku povinná štruktúrovaná elektronická fakturácia (zákon č. 385/2025 Z. z.). Dokumenty idú cez sieť **Peppol** a certifikovaného **digitálneho poštára** (CPDS). Finančná správa SR spravuje výber poskytovateľa a národné pravidlá (SK CIUS).
 
@@ -90,11 +92,11 @@ BusinessDocumentIssueService::issue()
                  -> business_document_compliance row
 ```
 
-Provider-agnostic vrstva: [`SapiSkClient`](../app/Services/Invoicing/Efaktura/SapiSkClient.php) implementuje štandard SAPI-SK; base URL smeruje na konkrétneho CPDS (ePošťák, Flowis, …).
+Provider compatibility: [`SapiSkClient`](../app/Services/Invoicing/Efaktura/SapiSkClient.php) uses the SAPI-SK routes and payloads implemented in Satflux. Compatibility with a particular CPDS must be verified; a provider's stated SAPI-SK support or entering its base URL does not establish compatibility.
 
 ## Fallback bez API
 
-Merchant môže stiahnuť UBL/XML z detailu faktúry a nahrať do webového rozhrania poštára. PDF e-mailom **nie je** e-faktúra pre B2B od 2027.
+Merchants can download UBL/XML from the invoice detail. Manual upload is an option only if the selected provider accepts this format and its service performs the required delivery; that complete workflow has not been verified as a Satflux solution. Exporting a file or emailing a PDF does not prove that mandatory delivery has been completed.
 
 ## Inbound (Fáza B)
 

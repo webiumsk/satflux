@@ -1,5 +1,20 @@
 # Development roadmap
 
+## Slovak eFaktura delivery work paused; truthful public copy prepared - 2026-11-09
+
+Owner approved withdrawing ready SK eFaktura marketing claims while retaining
+existing integrations and file exports. Five-language copy and documentation are
+corrected locally on `fix/efaktura-public-claims`; independent QA/security accept
+18 source paths. Focused 87/9, lint 48/52, type 110, parity/build, FAQ 12/5/39,
+changelog 14 and whitespace checks pass; QA 322/110 compiled messages and 8.75:1
+warning contrast pass. See the feature worktree's
+`docs/development/EFAKTURA_PUBLIC_STATUS.md` for scope and evidence.
+
+Next allowed step is review of this bounded copy correction; merge/deployment need
+applicable owner approval. Further SK delivery implementation waits for a separate
+product decision, concrete provider/API terms and complete send/receive verification.
+No replacement provider or delivery date is promised. No live change occurred.
+
 ## FAQ PR435 Czech precedence and label-depth corrections accepted locally - 2026-11-09
 
 Three owner-supplied findings are verified against `70d57319`: two correctness

@@ -1,5 +1,20 @@
 # Development decision log
 
+## 2026-11-09 - Withdraw unverified Slovak eFaktura readiness claims
+
+The owner approved immediate withdrawal of SK eFaktura as a ready marketed feature
+and an explicit unverified-integration status in settings, readiness guidance and
+five-language documentation. Keep ISDOC/UBL export claims limited to file export;
+authentication success does not establish complete delivery or regulatory readiness.
+Retain existing controls, settings, credentials, histories, eligibility and security
+invariants. Use a reserved example domain rather than an unverified provider host.
+
+Further Slovak eFaktura development is paused pending a new owner decision, provider
+terms and complete integration verification. No provider or completion date is
+promised. This does not authorize changes to payments, entitlements, existing
+integrations, deployment or database-backed content. The bounded correction passed
+independent QA/security and relevant source checks; no live update is inferred.
+
 ## FAQ PR435 Czech precedence and label-depth corrections accepted locally - 2026-11-09
 
 Three owner-supplied findings are verified against `70d57319`: two correctness

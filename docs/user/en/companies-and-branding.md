@@ -3,7 +3,7 @@ title: Companies and branding
 category: invoicing
 order: 2
 meta_description: Set up your company details, logo, numbering and bank account.
-updated: 2026-10-14
+updated: 2026-11-09
 ---
 
 # Companies and branding
@@ -24,6 +24,8 @@ Open your company's **profile** settings and fill in:
 - **Bank account** (IBAN/BIC) for payment instructions on invoices
 
 Your jurisdiction (country) drives country-specific rules such as VAT handling and, in Slovakia, e-invoicing.
+
+Choosing Slovakia does not activate a verified complete e-invoicing service. See the [current Slovak e-invoicing limitations](/documentation/efaktura-slovakia).
 
 ## Branding
 

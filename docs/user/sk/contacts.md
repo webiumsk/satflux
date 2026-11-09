@@ -3,6 +3,7 @@ title: Kontakty
 category: invoicing
 order: 3
 meta_description: Spravujte zákazníkov a dodávateľov, ktorých fakturujete.
+updated: 2026-11-09
 ---
 
 # Kontakty
@@ -25,6 +26,8 @@ Máte existujúci zoznam? Použite **import** a načítajte kontakty z tabuľky 
 ## Peppol / e-fakturačné ID
 
 Ak posielate e-faktúry (napríklad slovenská e-fakturácia), vaši zákazníci môžu potrebovať Peppol participant ID. Satflux ho vie odvodiť z daňového ID, kde je to možné, a kontrolný zoznam pripravenosti na e-fakturáciu označí kontakty, ktorým ešte chýba.
+
+Tieto polia ani položky kontrolného zoznamu nepotvrdzujú kompatibilitu poskytovateľa ani doručenie faktúry. Pred používaním prepojenia si prečítajte [aktuálne obmedzenia slovenskej e-fakturácie](/documentation/efaktura-slovakia).
 
 ## Ďalší krok
 

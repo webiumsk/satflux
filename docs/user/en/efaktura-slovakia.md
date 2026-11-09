@@ -1,31 +1,31 @@
 ---
-title: E-invoicing in Slovakia (eFaktúra)
+title: Slovak e-invoicing - current limitations
 category: invoicing
 order: 6
-meta_description: Get ready to send and receive Slovak e-invoices from Satflux.
+meta_description: Current status and limitations of the Slovak eFaktura connection in Satflux.
+updated: 2026-11-09
 ---
 
-# E-invoicing in Slovakia (eFaktúra)
+# Slovak e-invoicing - current limitations
 
-Slovakia is introducing structured **e-invoicing** for businesses, phased in over the coming period. Satflux helps you get ready to both **send** e-invoices to your customers and **receive** them from suppliers. Check the current rules and deadlines with the tax authority or your accountant - Satflux does not decide when it applies to you.
+**A complete Slovak eFaktura provider integration has not been verified in Satflux. We currently do not present Satflux as a ready solution for mandatory Slovak e-invoicing.** Further development of this connection is paused while its future is assessed. No completion date is promised.
 
-## Who needs what
+## Export and delivery
 
-- **VAT payers** typically need to both issue and receive e-invoices.
-- **Non-payers** usually need mainly to **receive** them, but your exact duties depend on the VAT rules and your situation - check them.
+Satflux can export invoices as **UBL/XML**. Downloading this file does not deliver the invoice to its recipient or confirm that legal obligations have been met. A provider must accept the document and perform the required delivery. Manual upload is an option only if the selected provider supports it; that complete workflow has not been verified in Satflux.
 
-Satflux shows a **readiness checklist** on your company based on your situation, so you only see the steps that apply to you.
+## Provider account and costs
 
-## Get ready
+A provider may require its own account and separately paid API access. A free web inbox does not necessarily include a connection from Satflux. Before paying for or relying on a provider, confirm its price, permitted use and compatibility with Satflux. Choosing the provider on the Financial Administration portal does not automatically create working access credentials in Satflux.
 
-On your company's **e-invoicing** settings:
+## Existing settings and documents
 
-1. Choose your access/provider and enter your credentials.
-2. **Test the connection** to confirm it works.
-3. Turn on sending (auto-send) and/or receiving (inbound) as needed.
+Existing settings, document history and integration controls are retained. If you already use the connection, open your company's **e-invoicing** settings to review the saved provider and sending or receiving options. Keep access credentials private.
 
-Your customers' **Peppol IDs** are needed to send to them - Satflux derives them from the tax ID where possible and flags contacts that still need one.
+**Test the connection** checks authentication. A successful result or a completed checklist does not prove that the provider accepted or delivered an invoice, that receiving works, or that required reporting was completed. Check the status and evidence with your provider.
 
-## Sending and receiving
+Where available, the document panel shows submission status and the provider's document reference. The incoming invoice inbox lets you review received documents and import them as expenses. These controls describe existing functionality; their presence does not confirm a verified complete provider integration.
 
-Once set up, you can send an issued invoice as an e-invoice directly from the document. Incoming e-invoices arrive in your **inbox**, where you can review and book them as expenses.
+## Planning your invoicing
+
+Until you have a verified arrangement, use a service that can demonstrate the sending and receiving you need. Confirm your specific obligations and deadlines with the Financial Administration or your accountant.
