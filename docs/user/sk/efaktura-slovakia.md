@@ -1,31 +1,31 @@
 ---
-title: E-fakturácia na Slovensku (eFaktúra)
+title: Slovenská e-fakturácia - aktuálne obmedzenia
 category: invoicing
 order: 6
-meta_description: Pripravte sa na posielanie a prijímanie slovenských e-faktúr zo Satfluxu.
+meta_description: Aktuálny stav a obmedzenia prepojenia slovenskej eFaktúry v Satfluxe.
+updated: 2026-11-09
 ---
 
-# E-fakturácia na Slovensku (eFaktúra)
+# Slovenská e-fakturácia - aktuálne obmedzenia
 
-Slovensko zavádza pre podniky štruktúrovanú **e-fakturáciu**, postupne v nasledujúcom období. Satflux vám pomôže pripraviť sa na **posielanie** e-faktúr zákazníkom aj na ich **prijímanie** od dodávateľov. Aktuálne pravidlá a termíny si overte na finančnej správe alebo u účtovníka - Satflux nerozhoduje, odkedy sa vás to týka.
+**Kompletné napojenie Satfluxu na poskytovateľa slovenskej eFaktúry zatiaľ nie je overené. Satflux aktuálne neprezentujeme ako hotové riešenie povinnej slovenskej e-fakturácie.** Ďalší vývoj tohto prepojenia je pozastavený, kým sa posúdi jeho budúcnosť. Termín dokončenia nie je prisľúbený.
 
-## Kto čo potrebuje
+## Export a doručenie
 
-- **Platitelia DPH** zvyčajne potrebujú e-faktúry aj vystavovať, aj prijímať.
-- **Neplatitelia** zvyčajne potrebujú hlavne **prijímať**, ale presné povinnosti závisia od pravidiel DPH a vašej situácie - overte si ich.
+Satflux dokáže exportovať faktúry ako **UBL/XML**. Stiahnutie súboru nedoručí faktúru odberateľovi ani nepotvrdzuje splnenie zákonných povinností. Poskytovateľ musí doklad prijať a zabezpečiť požadované doručenie. Manuálne nahratie je možnosťou len vtedy, ak ho vybraný poskytovateľ podporuje; tento kompletný postup zatiaľ v Satfluxe nie je overený.
 
-Satflux zobrazuje na firme **kontrolný zoznam pripravenosti** podľa vašej situácie, takže vidíte len kroky, ktoré sa vás týkajú.
+## Účet u poskytovateľa a náklady
 
-## Príprava
+Poskytovateľ môže vyžadovať vlastný účet a osobitne platený API prístup. Bezplatná webová schránka nemusí zahŕňať prepojenie so Satfluxom. Pred zaplatením alebo používaním poskytovateľa si potvrďte cenu, podmienky používania a kompatibilitu so Satfluxom. Výber poskytovateľa na portáli Finančnej správy automaticky nevytvorí funkčné prístupové údaje v Satfluxe.
 
-V nastaveniach **e-fakturácie** firmy:
+## Existujúce nastavenia a doklady
 
-1. Zvoľte prístup/poskytovateľa a zadajte prihlasovacie údaje.
-2. **Otestujte pripojenie**, aby ste potvrdili, že funguje.
-3. Podľa potreby zapnite posielanie (auto-send) a/alebo prijímanie (inbound).
+Existujúce nastavenia, história dokladov a ovládacie prvky prepojenia zostávajú zachované. Ak prepojenie už používate, v nastaveniach **e-fakturácie** firmy si môžete skontrolovať uloženého poskytovateľa a možnosti odosielania alebo prijímania. Prístupové údaje uchovávajte v súkromí.
 
-Na posielanie zákazníkom sú potrebné ich **Peppol ID** - Satflux ich odvodí z daňového ID, kde je to možné, a označí kontakty, ktorým ešte chýba.
+**Otestovať pripojenie** overuje prihlásenie. Úspešný výsledok ani dokončený kontrolný zoznam nedokazuje, že poskytovateľ faktúru prijal alebo doručil, že funguje príjem, ani že prebehlo požadované hlásenie. Stav a dôkazy si overte u poskytovateľa.
 
-## Posielanie a prijímanie
+Ak je panel dokladu dostupný, zobrazuje stav odovzdania a referenciu dokladu u poskytovateľa. Inbox prijatých faktúr umožňuje skontrolovať prijaté doklady a importovať ich ako náklady. Tieto prvky opisujú existujúce funkcie; ich prítomnosť nepotvrdzuje overené kompletné napojenie na poskytovateľa.
 
-Po nastavení môžete vystavenú faktúru poslať ako e-faktúru priamo z dokladu. Prichádzajúce e-faktúry dorazia do vášho **inboxu**, kde ich viete skontrolovať a zaúčtovať ako náklad.
+## Plánovanie fakturácie
+
+Kým nemáte overený postup, používajte službu, ktorá vie preukázať potrebné odosielanie a prijímanie. Svoje konkrétne povinnosti a termíny si potvrďte na Finančnej správe alebo u účtovníka.

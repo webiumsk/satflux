@@ -1,11 +1,11 @@
 <template>
   <div
     v-if="visible"
-    class="rounded-lg border border-indigo-200 bg-indigo-50/60 px-4 py-3"
+    class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3"
     role="status"
   >
     <div class="flex flex-wrap items-start justify-between gap-3">
-      <div class="text-sm text-indigo-900">
+      <div class="text-sm text-amber-900">
         <p class="font-medium">
           {{
             inboundOnly
@@ -13,7 +13,7 @@
               : t('invoicing.efaktura_readiness_title', { date: mandatoryFromDisplay })
           }}
         </p>
-        <p class="text-indigo-800 text-xs mt-0.5">
+        <p class="text-xs mt-0.5">
           {{
             inboundOnly
               ? t('invoicing.efaktura_readiness_inbound_intro')
@@ -77,7 +77,7 @@ import { invoicingApi } from '../../services/api';
 import { resolvePeppolEndpoint } from '../../utils/peppolEndpoint';
 
 /**
- * "Get ready for 2027" checklist for SK companies - shown on the invoices
+ * Unverified-integration notice and setup checklist for SK companies - shown on the invoices
  * list and company settings until every step is done. Full VAT payers get
  * the issuing checklist (plus a reduced "prepare your contacts" teaser while
  * the module is globally off - the statutory deadline is public via

@@ -29,9 +29,11 @@ Multi-tenant web app for merchants to run **BTCPay Server** stores and **Pro bus
 - **Stock** items and **warehouses**; company branding and e-mail settings
 - **Expenses** with attachments; browser Excel import; ISDOC extract and bulk PDF import via ephemeral server bridge
 - **Bank payment matching** (CSV / CAMT.053) and optional b-mail inbound ([docs/BANK_PAYMENT_MATCHING.md](docs/BANK_PAYMENT_MATCHING.md))
-- **SK e-faktura** (Peppol UBL, SAPI-SK send, inbound poll) for SK VAT payers ([docs/SK_EFAKTURA.md](docs/SK_EFAKTURA.md))
+- **Structured exports**: ISDOC and Peppol BIS UBL files
 - **WooCommerce** plugin: connect shop, draft/issue documents, integration inbox ([docs/WOOCOMMERCE.md](docs/WOOCOMMERCE.md))
 - Bitcoin pay links on issued invoices (BTCPay checkout); subscription billing can auto-issue paid invoices into a billing company
+
+**Slovak eFaktura status:** a complete provider integration has not been verified. Satflux is currently not presented as a ready solution for mandatory Slovak e-invoicing. UBL export alone does not deliver an invoice. Further SK eFaktura development is paused pending a provider decision and complete integration verification. Existing integration code and settings are retained; see [docs/SK_EFAKTURA.md](docs/SK_EFAKTURA.md).
 
 ### Local-first invoicing (v2)
 

@@ -1,5 +1,29 @@
 # Project state
 
+## Slovak eFaktura public claims withdrawn locally - 2026-11-09
+
+Owner-approved copy correction on `fix/efaktura-public-claims` from owned master
+`8dfa449b` removes ready SK eFaktura delivery claims from five-language public
+marketing and comparisons. Existing ISDOC/UBL export stays accurately described.
+Settings/readiness warnings explain unverified integration, authentication versus
+delivery and separate provider/API terms. Reserved example host replaces the
+unverified service URL. Five localized status articles preserve the canonical slug;
+existing controls, credentials, eligibility, histories and runtime logic remain.
+
+Independent QA/security accept 18 source paths, manifest SHA256
+`5635c72e4a167e408edb2fc70ffa19d5283125371428193c2f07f19d337ab0ba`.
+Focused UI 87/9, full lint 48/52, type 110, locale parity, build, FAQ 12/5/39,
+changelog 14 and whitespace pass; QA independently passes 322 assertions, compiles 110
+messages and checks 8.75:1 warning contrast. No test, baseline, dependency, schema,
+configuration or provider changes. Evidence: `docs/development/EFAKTURA_PUBLIC_STATUS.md`
+in the durable feature worktree; private reviews under
+`storage/app/private/reviews/efaktura-public-claims`.
+
+Further Slovak eFaktura development is paused pending owner direction, provider
+terms and complete verification; no completion date is promised. No PR, push,
+merge, deployment, database content edit or live-provider operation occurred.
+Primary unrelated work remains preserved. Source changes do not update live copy.
+
 ## FAQ PR435 Czech precedence and label-depth corrections accepted locally - 2026-11-09
 
 Three owner-supplied findings are verified against `70d57319`: two correctness

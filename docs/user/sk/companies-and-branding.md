@@ -3,7 +3,7 @@ title: Firmy a branding
 category: invoicing
 order: 2
 meta_description: Nastavte údaje firmy, logo, číslovanie a bankový účet.
-updated: 2026-10-14
+updated: 2026-11-09
 ---
 
 # Firmy a branding
@@ -24,6 +24,8 @@ Otvorte **profil** firmy a vyplňte:
 - **Bankový účet** (IBAN/BIC) pre platobné pokyny na faktúrach
 
 Jurisdikcia (krajina) určuje pravidlá špecifické pre krajinu, ako spracovanie DPH a na Slovensku e-fakturáciu.
+
+Výber Slovenska neaktivuje overenú kompletnú službu e-fakturácie. Pozrite si [aktuálne obmedzenia slovenskej e-fakturácie](/documentation/efaktura-slovakia).
 
 ## Branding
 

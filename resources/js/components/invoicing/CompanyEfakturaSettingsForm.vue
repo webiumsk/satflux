@@ -1,8 +1,11 @@
 <template>
   <form class="space-y-6 max-w-2xl" @submit.prevent="save">
-    <div class="rounded-lg border border-indigo-100 bg-indigo-50/40 p-4 text-sm text-gray-700 space-y-2">
+    <div
+      class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 space-y-2"
+      role="status"
+    >
       <p>{{ t('invoicing.efaktura_intro') }}</p>
-      <p class="text-xs text-gray-600">{{ t('invoicing.efaktura_cpds_note') }}</p>
+      <p class="text-xs">{{ t('invoicing.efaktura_cpds_note') }}</p>
     </div>
     <p
       v-if="inboundOnly"

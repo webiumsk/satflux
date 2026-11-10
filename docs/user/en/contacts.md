@@ -3,6 +3,7 @@ title: Contacts
 category: invoicing
 order: 3
 meta_description: Manage the customers and suppliers you invoice.
+updated: 2026-11-09
 ---
 
 # Contacts
@@ -25,6 +26,8 @@ Have an existing list? Use the **import** option to bring contacts in from a spr
 ## Peppol / e-invoicing IDs
 
 If you send e-invoices (for example Slovak e-invoicing), your customers may need a Peppol participant ID. Satflux can derive it from the tax ID where possible, and the e-invoicing readiness checklist flags any contacts still missing one.
+
+These fields and checklist items do not confirm provider compatibility or invoice delivery. Read the [current Slovak e-invoicing limitations](/documentation/efaktura-slovakia) before relying on this connection.
 
 ## Next step
 
