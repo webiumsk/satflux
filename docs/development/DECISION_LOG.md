@@ -1,5 +1,25 @@
 # Development decision log
 
+## 2026-11-10 - Accept bounded receiving with verified original handoff
+
+Accept the independently reviewed ePostman receiving source (`b8296faf`,36 paths)
+for local handoff, not production activation. Bind identity/provenance to the exact
+company and fixed environment; unknown historical receipt provenance fails closed.
+Require fresh row-locked settings and connection/credential generation matching so
+old polls/authentication tests cannot undo revocation or stamp a new connection as
+healthy. Named ePostman sending remains unavailable.
+
+Retain the owner-selected local encrypted data/provider archive model. Pending
+server originals cannot be purged/dismissed while they are the only established
+copy. A client digest is an integrity confirmation, not server attestation of
+browser persistence; local checkpoint/read-back is required. Oversize originals
+remain visible/recoverable under the existing384KiB local cap. Deploy client/server
+handoff together; rollback cannot restore destructive old cleanup against new data.
+
+Record globalPHP failures honestly: all61 error/failure cases reproduce on the
+unchanged base under the same minimal environment; do not modify unrelated product
+logic or weaken tests. Actual network/archival/production evidence is a separate gate.
+
 ## 2026-11-09 - Withdraw unverified Slovak eFaktura readiness claims
 
 The owner approved immediate withdrawal of SK eFaktura as a ready marketed feature

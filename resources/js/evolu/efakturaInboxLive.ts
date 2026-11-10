@@ -7,6 +7,7 @@ import {
 } from "./efakturaInboxImport";
 import { isInvoicingLocalFirst } from "./flags";
 import { toAppRows } from "./queryLoad";
+import { invoicingApi } from "@/services/api";
 
 /**
  * Shared live state of the e-faktura inbox (module singleton) - the
@@ -24,6 +25,23 @@ const REFRESH_MIN_GAP_MS = 15_000;
 const entries = ref<EfakturaInboxEntry[]>([]);
 const pendingCount = computed(() => entries.value.length);
 const bridgeCompanyIdRef = ref<string | null>(null);
+export type EfakturaInboundHealth = {
+    state: "not_polled" | "ok" | "failed" | "stale" | "disabled" | "unavailable";
+    last_poll_at: string | null;
+    failed: number;
+};
+const health = ref<EfakturaInboundHealth | null>(null);
+const receivingEnabled = ref(false);
+
+/** Unknown/malformed status must not make an empty inbox appear healthy. */
+export function parseInboundHealth(raw: unknown): EfakturaInboundHealth {
+    if (!raw || typeof raw !== "object") throw new Error("invalid_inbound_health");
+    const row = raw as Record<string, unknown>;
+    if (!["not_polled", "ok", "failed", "stale", "disabled"].includes(String(row.state))) throw new Error("invalid_inbound_health");
+    return { state: row.state as EfakturaInboundHealth["state"],
+        last_poll_at: typeof row.last_poll_at === "string" ? row.last_poll_at : null,
+        failed: typeof row.failed === "number" && Number.isFinite(row.failed) ? row.failed : 0 };
+}
 
 let companyId = "";
 let enabled = false;
@@ -51,6 +69,8 @@ async function deriveCompanyParams(nextCompanyId: string): Promise<void> {
     const myGeneration = ++generation;
     companyId = nextCompanyId;
     enabled = false;
+    receivingEnabled.value = false;
+    health.value = null;
     bridgeCompanyIdRef.value = null;
     entries.value = [];
 
@@ -61,12 +81,15 @@ async function deriveCompanyParams(nextCompanyId: string): Promise<void> {
     if (row == null || !inboundEnabledFromSettingsJson(row.appSettingsJson)) {
         return;
     }
+    receivingEnabled.value = true;
+    health.value = { state: "not_polled", last_poll_at: null, failed: 0 };
 
     const bridge = await ensureBridgeCompanyIdForLocalCompany(nextCompanyId);
     if (myGeneration !== generation) return;
     const bridgeId = bridge.ok ? bridge.bridgeCompanyId : null;
     bridgeCompanyIdRef.value = bridgeId;
     enabled = bridgeId !== null;
+    if (!enabled) health.value = { state: "unavailable", last_poll_at: null, failed: 0 };
 }
 
 /**
@@ -90,19 +113,26 @@ export async function refreshEfakturaInboxLive(
     refreshing = true;
     try {
         const { evolu } = await import("./client");
-        const fetched = await fetchEfakturaInbox(bridgeId);
+        const [fetched, inboundHealth] = await Promise.all([
+            fetchEfakturaInbox(bridgeId), invoicingApi.efaktura.inboundHealth(bridgeId),
+        ]);
         if (myGeneration !== generation) return;
+        health.value = parseInboundHealth(inboundHealth);
         const remaining = await reconcileEfakturaInboxWithLocalExpenses(evolu, myCompanyId, bridgeId, fetched);
         if (myGeneration !== generation || bridgeCompanyIdRef.value !== bridgeId) return;
         entries.value = remaining;
         lastRefreshAt = Date.now();
     } catch (error) {
+        if (myGeneration !== generation || bridgeCompanyIdRef.value !== bridgeId) return;
+        health.value = { state: "unavailable", last_poll_at: health.value?.last_poll_at ?? null, failed: 0 };
         if (options.throwOnError) {
             throw error;
         }
-        // Background poll: errors stay silent, the panel surfaces its own.
+        // Background failures remain visible through shared health, even with no documents.
     } finally {
         refreshing = false;
+        // A previous company's in-flight request must not delay the new inbox until the next timer tick.
+        if (myGeneration !== generation && enabled) void refreshEfakturaInboxLive(true);
     }
 }
 
@@ -154,5 +184,5 @@ export function initEfakturaInboxLive(activeCompanyId: Ref<string>): void {
 }
 
 export function useEfakturaInboxLive() {
-    return { entries, pendingCount, bridgeCompanyId: bridgeCompanyIdRef };
+    return { entries, pendingCount, bridgeCompanyId: bridgeCompanyIdRef, health, receivingEnabled };
 }

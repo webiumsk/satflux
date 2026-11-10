@@ -51,8 +51,13 @@ class EfakturaCpdsProvider extends Model
      */
     public static function activePresets(): array
     {
+        $builtIn = [
+            ['id' => 'epostman-production', 'name' => 'ePostman (SLOVAKODATA)', 'base_url' => 'https://postman.slovakodata.com'],
+            ['id' => 'epostman-test', 'name' => 'ePostman (SLOVAKODATA) - TEST', 'base_url' => 'https://testpostman.slovakodata.com'],
+        ];
+
         try {
-            return self::query()
+            $presets = self::query()
                 ->where('active', true)
                 ->orderBy('sort_order')
                 ->orderBy('name')
@@ -63,10 +68,12 @@ class EfakturaCpdsProvider extends Model
                     'base_url' => rtrim($preset->base_url, '/'),
                 ])
                 ->all();
+
+            return array_merge($builtIn, array_filter($presets, static fn (array $preset): bool => ! in_array($preset['base_url'], array_column($builtIn, 'base_url'), true)));
         } catch (\Throwable) {
             // Missing table (fresh install before migrate) must never break
             // config or sending - presets are an additive convenience.
-            return [];
+            return $builtIn;
         }
     }
 

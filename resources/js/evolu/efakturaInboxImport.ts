@@ -1,17 +1,18 @@
 import { createIdFromString } from "@evolu/common";
-import { isAxiosError } from "axios";
 import type { Evolu } from "@evolu/common/local-first";
 import { invoicingApi } from "@/services/api";
-import { allExpensesQuery } from "./client";
+import { sha256Hex } from "@/utils/sha256";
+import { allExpensesQuery, allExpenseAttachmentsQuery } from "./client";
 import { insertLocalExpense, type ExpenseSavePayload } from "./expenseCrud";
 import {
     insertLocalExpenseAttachmentFromBase64,
     LOCAL_EXPENSE_ATTACHMENT_MAX_BYTES,
+    type EvoluExpenseAttachmentRow,
 } from "./expenseAttachmentCrud";
 import type { EvoluExpenseRow } from "./expenseMap";
 import { ExpenseAttachmentId, ExpenseId, type CompanyId, type InvoicingLocalSchema } from "./schema";
 import { toAppRows } from "./queryLoad";
-import { withExpenseReconciliation, currentExpenseTarget, checkpointExpenseMutations } from "./expenseReconciliation";
+import { withExpenseReconciliation, currentExpenseTarget, checkpointExpenseMutations, assertExpenseCompanyOwner, expenseReconciliationScope } from "./expenseReconciliation";
 
 /**
  * Received e-invoices (Peppol via the CPDS) for a LOCAL-FIRST company. The
@@ -27,6 +28,7 @@ export type EfakturaInboxEntry = {
     external_document_id: string;
     inbox_status: string;
     created_at: string | null;
+    original_sha256?: string | null;
     draft: Record<string, unknown> | null;
     summary: {
         supplier_name: string | null;
@@ -36,11 +38,11 @@ export type EfakturaInboxEntry = {
     };
 };
 
-export type EfakturaInboxEntryDetail = EfakturaInboxEntry & { ubl: string | null };
+export type EfakturaInboxEntryDetail = EfakturaInboxEntry & { ubl: string | null; original_sha256: string | null };
 
 export type EfakturaInboxImportResult =
-    | { ok: true; expenseId: ExpenseId; attachmentSkipped: boolean; alreadyImported: boolean }
-    | { ok: false; error: "invalid_entry" | "expense_insert_failed" };
+    | { ok: true; expenseId: ExpenseId; attachmentSkipped: false; alreadyImported: boolean }
+    | { ok: false; error: "invalid_entry" | "expense_insert_failed" | "original_unavailable" | "original_too_large" | "original_storage_failed" };
 
 /** Same inbox item -> same Evolu expense id on every device. */
 export function stableExpenseIdFromInboxUuid(inboxEvoluUuid: string | null | undefined): ExpenseId | null {
@@ -96,37 +98,44 @@ export async function fetchEfakturaInboxDetail(bridgeCompanyId: string, inboxId:
     return invoicingApi.efaktura.inboxDetail<EfakturaInboxEntryDetail>(bridgeCompanyId, inboxId);
 }
 
-export async function markEfakturaInboxImported(bridgeCompanyId: string, inboxId: string): Promise<void> {
-    await invoicingApi.efaktura.inboxImported(bridgeCompanyId, inboxId);
+export async function markEfakturaInboxImported(bridgeCompanyId: string, inboxId: string, originalSha256: string): Promise<void> {
+    await invoicingApi.efaktura.inboxImported(bridgeCompanyId, inboxId, originalSha256);
 }
 
 export async function dismissEfakturaInboxItem(bridgeCompanyId: string, inboxId: string): Promise<void> {
     await invoicingApi.efaktura.inboxDismiss(bridgeCompanyId, inboxId);
 }
 
-/** Entries whose expense already exists locally (imported on another device) are cleared server-side and hidden. */
+/** An expense alone is a partial import. Resolve only after reading back its exact original attachment. */
 export async function reconcileEfakturaInboxWithLocalExpenses(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: string,
     bridgeCompanyId: string,
     entries: EfakturaInboxEntry[],
 ): Promise<EfakturaInboxEntry[]> {
-    const rows = toAppRows<EvoluExpenseRow>(await evolu.loadQuery(allExpensesQuery));
-    const remaining: EfakturaInboxEntry[] = [];
-
-    for (const entry of entries) {
-        if (!findLocalExpenseForInboxEntry(rows, companyId, entry)) {
-            remaining.push(entry);
-            continue;
+    return withExpenseReconciliation(evolu, async (scope) => {
+        assertExpenseCompanyOwner(scope, companyId);
+        const remaining: EfakturaInboxEntry[] = [];
+        for (const entry of entries) {
+            if (!findLocalExpenseForInboxEntry(scope.context.expenses, companyId, entry)) {
+                remaining.push(entry);
+                continue;
+            }
+            try {
+                const detail = entry.original_sha256 ? entry : await fetchEfakturaInboxDetail(bridgeCompanyId, entry.inbox_id);
+                const digest = normalizeOriginalDigest(detail.original_sha256);
+                if (!digest || !await hasVerifiedOriginal(scope.evolu, companyId, entry, digest)) {
+                    remaining.push(entry);
+                    continue;
+                }
+                await markEfakturaInboxImported(bridgeCompanyId, entry.inbox_id, digest);
+            } catch {
+                // Failure is not evidence of successful import. Keep the item visible for retry.
+                remaining.push(entry);
+            }
         }
-        try {
-            await markEfakturaInboxImported(bridgeCompanyId, entry.inbox_id);
-        } catch {
-            // Server copy may already be cleared; still hide locally.
-        }
-    }
-
-    return remaining;
+        return remaining;
+    }, undefined, ["allExpenseAttachmentsQuery"]);
 }
 
 export function findLocalExpenseForInboxEntry(
@@ -141,20 +150,37 @@ export function findLocalExpenseForInboxEntry(
     return rows.find((row) => row.id === stableId && String(row.companyId) === companyId) ?? null;
 }
 
-/** Recognize only the server's terminal-inbox conflict; it does not attest an imported remote state. */
-function isResolvedInboxConflict(error: unknown): boolean {
-    if (!isAxiosError<{ errors?: { inbox?: unknown } }>(error) || error.response?.status !== 422) return false;
-    const errors = error.response.data?.errors;
-    if (!errors || !Array.isArray(errors.inbox)) return false;
-    return errors.inbox.length === 1
-        && errors.inbox[0] === "Inbox item is not pending." && Object.keys(errors).length === 1;
+function normalizeOriginalDigest(value: unknown): string | null {
+    return typeof value === "string" && /^[a-f0-9]{64}$/.test(value) ? value : null;
 }
 
-/**
- * Import one inbox item: expense under its stable id (upsert - idempotent),
- * the UBL as an XML attachment when it fits the local cap, then clear the
- * server copy. Already-imported items only get cleared.
- */
+/** A fresh worker snapshot must contain a live same-company expense and the exact original bytes. */
+async function hasVerifiedOriginal(
+    evolu: Evolu<InvoicingLocalSchema>, companyId: string, entry: EfakturaInboxEntry, digest: string,
+): Promise<boolean> {
+    const rows = toAppRows<EvoluExpenseRow>(await evolu.loadQuery(allExpensesQuery));
+    const expense = findLocalExpenseForInboxEntry(rows, companyId, entry);
+    if (!expense) return false;
+    const target = currentExpenseTarget(expenseReconciliationScope(evolu), expense.id);
+    const ownerId = target && Reflect.get(target, "ownerId");
+    if (typeof ownerId !== "string" || ownerId === "") return false;
+    const id = stableAttachmentIdFromInboxUuid(entry.evolu_expense_id);
+    const attachments = toAppRows<EvoluExpenseAttachmentRow>(await evolu.loadQuery(allExpenseAttachmentsQuery));
+    const matches = attachments.filter((row) => row.id === id && row.expenseId === expense.id
+        && Reflect.get(row, "ownerId") === ownerId);
+    if (matches.length !== 1 || !matches[0].contentBase64) return false;
+    try {
+        const binary = atob(matches[0].contentBase64);
+        if (binary.length > LOCAL_EXPENSE_ATTACHMENT_MAX_BYTES) return false;
+        const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+        const original = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+        return await sha256Hex(original) === digest;
+    } catch {
+        return false;
+    }
+}
+
+/** Complete or repair a stable expense, then prove its original survived the worker before resolving custody. */
 export async function importEfakturaInboxEntry(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: string,
@@ -162,62 +188,51 @@ export async function importEfakturaInboxEntry(
     entry: EfakturaInboxEntry,
 ): Promise<EfakturaInboxImportResult> {
     const stableId = stableExpenseIdFromInboxUuid(entry.evolu_expense_id);
-    if (!stableId) {
+    const attachmentId = stableAttachmentIdFromInboxUuid(entry.evolu_expense_id);
+    if (!stableId || !attachmentId) {
         return { ok: false, error: "invalid_entry" };
     }
     return withExpenseReconciliation(evolu, async (scope) => {
-    evolu = scope.evolu;
-    const target = currentExpenseTarget(scope, stableId);
-    if (target && (target.isDeleted === 1 || target.companyId !== companyId)) return { ok: false as const, error: "expense_insert_failed" };
-    const rows = scope.context.expenses;
-    if (findLocalExpenseForInboxEntry(rows, companyId, entry)) {
-        try {
-            await markEfakturaInboxImported(bridgeCompanyId, entry.inbox_id);
-        } catch (error) {
-            // A prior ACK may have succeeded, or another client may have resolved the inbox.
-            // The fresh local stable-ID copy already establishes this client's successful import.
-            if (!isResolvedInboxConflict(error)) throw error;
-        }
-        return { ok: true, expenseId: stableId, attachmentSkipped: false, alreadyImported: true };
-    }
+        evolu = scope.evolu;
+        assertExpenseCompanyOwner(scope, companyId);
+        const target = currentExpenseTarget(scope, stableId);
+        if (target && (target.isDeleted === 1 || target.companyId !== companyId)) return { ok: false as const, error: "expense_insert_failed" };
+        const existing = findLocalExpenseForInboxEntry(scope.context.expenses, companyId, entry);
+        const detail = await fetchEfakturaInboxDetail(bridgeCompanyId, entry.inbox_id);
+        const digest = normalizeOriginalDigest(detail.original_sha256);
+        if (!digest) return { ok: false, error: "original_unavailable" };
 
-    const detail = await fetchEfakturaInboxDetail(bridgeCompanyId, entry.inbox_id);
-    const payload = draftToExpensePayload(detail.draft ?? entry.draft, entry);
-    if (!payload) {
-        return { ok: false, error: "invalid_entry" };
-    }
-
-    const inserted = await insertLocalExpense(evolu, companyId as CompanyId, payload, rows, { id: stableId });
-    if (!inserted.ok) {
-        return { ok: false, error: "expense_insert_failed" };
-    }
-
-    let attachmentSkipped = false;
-    const ubl = detail.ubl ?? "";
-    if (ubl !== "") {
-        const contentBase64 = utf8ToBase64(ubl);
-        const decodedBytes = new TextEncoder().encode(ubl).length;
-        if (decodedBytes > LOCAL_EXPENSE_ATTACHMENT_MAX_BYTES) {
-            attachmentSkipped = true;
-        } else {
-            const filename = `efaktura-${sanitizeFilenamePart(entry.external_document_id)}.xml`;
-            const attachment = insertLocalExpenseAttachmentFromBase64(
-                evolu,
-                stableId,
-                { filename, mimeType: "application/xml", contentBase64 },
-                { id: stableAttachmentIdFromInboxUuid(entry.evolu_expense_id) ?? undefined },
-            );
-            if (!attachment.ok) {
-                attachmentSkipped = true;
+        if (!await hasVerifiedOriginal(evolu, companyId, entry, digest)) {
+            const ubl = detail.ubl ?? "";
+            if (!ubl || await sha256Hex(ubl) !== digest) return { ok: false, error: "original_unavailable" };
+            if (new TextEncoder().encode(ubl).length > LOCAL_EXPENSE_ATTACHMENT_MAX_BYTES) {
+                return { ok: false, error: "original_too_large" };
             }
+            if (!existing) {
+                const payload = draftToExpensePayload(detail.draft ?? entry.draft, entry);
+                if (!payload) return { ok: false, error: "invalid_entry" };
+                const inserted = await insertLocalExpense(evolu, companyId as CompanyId, payload, scope.context.expenses, { id: stableId });
+                if (!inserted.ok) return { ok: false, error: "expense_insert_failed" };
+            }
+            const expenseTarget = currentExpenseTarget(scope, stableId);
+            const ownerId = expenseTarget && Reflect.get(expenseTarget, "ownerId");
+            const attachments = toAppRows<EvoluExpenseAttachmentRow>(await evolu.loadQuery(allExpenseAttachmentsQuery));
+            if (typeof ownerId !== "string" || attachments.some((row) => row.id === attachmentId
+                && (row.expenseId !== stableId || Reflect.get(row, "ownerId") !== ownerId))) {
+                return { ok: false, error: "original_storage_failed" };
+            }
+            const attachment = insertLocalExpenseAttachmentFromBase64(evolu, stableId, {
+                filename: `efaktura-${sanitizeFilenamePart(entry.external_document_id)}.xml`,
+                mimeType: "application/xml", contentBase64: utf8ToBase64(ubl),
+            }, { id: attachmentId });
+            if (!attachment.ok) return { ok: false, error: "original_storage_failed" };
+            await checkpointExpenseMutations(evolu);
+            if (!await hasVerifiedOriginal(evolu, companyId, entry, digest)) return { ok: false, error: "original_storage_failed" };
         }
-    }
-
-    await checkpointExpenseMutations(evolu);
-    await markEfakturaInboxImported(bridgeCompanyId, entry.inbox_id);
-
-    return { ok: true, expenseId: stableId, attachmentSkipped, alreadyImported: false };
-    });
+        // The server's same-digest retry is idempotent. Any failure keeps the item visible.
+        await markEfakturaInboxImported(bridgeCompanyId, entry.inbox_id, digest);
+        return { ok: true, expenseId: stableId, attachmentSkipped: false, alreadyImported: Boolean(existing) };
+    }, undefined, ["allExpenseAttachmentsQuery"]);
 }
 
 export function utf8ToBase64(text: string): string {

@@ -9,7 +9,7 @@ class PurgeEfakturaInboundInboxCommand extends Command
 {
     protected $signature = 'efaktura:purge-inbound-inbox {--days= : Override the retention window in days}';
 
-    protected $description = 'Drop the payload of local-first e-faktura inbox items nobody imported within the retention window';
+    protected $description = 'Compatibility check; unresolved e-faktura originals are retained until safely imported';
 
     public function handle(EfakturaInboundInboxService $inboxService): int
     {

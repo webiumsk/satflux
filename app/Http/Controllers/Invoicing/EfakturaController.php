@@ -11,12 +11,12 @@ use App\Services\Invoicing\Efaktura\ComplianceStatusSyncService;
 use App\Services\Invoicing\Efaktura\ComplianceSubmissionService;
 use App\Services\Invoicing\Efaktura\EfakturaConnectionTester;
 use App\Services\Invoicing\Efaktura\EfakturaInboundService;
-use App\Support\Invoicing\CompanyAppSettings;
 use App\Support\Invoicing\CompanyEfakturaEligibility;
 use App\Support\Invoicing\CompanyEfakturaSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class EfakturaController extends Controller
@@ -168,11 +168,20 @@ class EfakturaController extends Controller
         $testedAt = null;
         if ($result['ok']) {
             $testedAt = Carbon::now()->toIso8601String();
-            // getAttribute keeps the mixed shape (array cast vs string PHPDoc).
-            $rawSettings = $company->getAttribute('app_settings');
-            $settings = CompanyAppSettings::from(is_array($rawSettings) ? $rawSettings : null)->toArray();
-            $settings['efaktura_connection_tested_at'] = $testedAt;
-            $company->update(['app_settings' => $settings]);
+            DB::transaction(function () use ($company, $baseUrl, $clientId, $clientSecret, $testedAt) {
+                $fresh = Company::query()->whereKey($company->id)->lockForUpdate()->first();
+                if ($fresh === null || ! app(CompanyEfakturaEligibility::class)->supportsAny($fresh)) {
+                    return;
+                }
+                $current = CompanyEfakturaSettings::fromCompany($fresh);
+                if ($current->sapiBaseUrl() !== $baseUrl || $current->sapiClientId() !== $clientId || ! hash_equals((string) $current->sapiClientSecret(), (string) $clientSecret)) {
+                    return;
+                }
+                $rawSettings = $fresh->getAttribute('app_settings');
+                $settings = is_array($rawSettings) ? $rawSettings : [];
+                $settings['efaktura_connection_tested_at'] = $testedAt;
+                $fresh->update(['app_settings' => $settings]);
+            });
         }
 
         return response()->json(['data' => array_merge($result, ['tested_at' => $testedAt])]);

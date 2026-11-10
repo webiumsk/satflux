@@ -3,12 +3,12 @@ title: Slovenská e-fakturace - aktuální omezení
 category: invoicing
 order: 6
 meta_description: Aktuální stav a omezení připojení slovenské eFaktúry v Satfluxu.
-updated: 2026-11-09
+updated: 2026-11-10
 ---
 
 # Slovenská e-fakturace - aktuální omezení
 
-**Kompletní napojení Satfluxu na poskytovatele slovenské eFaktúry zatím není ověřené. Satflux aktuálně neprezentujeme jako hotové řešení povinné slovenské e-fakturace.** Další vývoj tohoto propojení je pozastavený, než se posoudí jeho budoucnost. Termín dokončení není přislíbený.
+**Kompletní napojení Satfluxu na poskytovatele slovenské eFaktúry zatím není ověřené. Satflux aktuálně neprezentujeme jako hotové řešení povinné slovenské e-fakturace.** Vyvíjí se propojení pro příjem, které ještě vyžaduje ověření s poskytovatelem. Termín dokončení není přislíbený.
 
 ## Export a doručení
 
@@ -29,3 +29,13 @@ Pokud je panel dokladu dostupný, zobrazuje stav předání a referenci dokladu 
 ## Plánování fakturace
 
 Dokud nemáte ověřený postup, používejte službu, která dokáže doložit potřebné odesílání a příjem. Své konkrétní povinnosti a termíny si potvrďte u slovenské Finanční správy nebo účetního.
+
+## Příjem přes ePostman
+
+Až bude pilot příjmu dostupný, vyberte ePostman v nastavení e-fakturace správné slovenské firmy. Produkční a testovací účty jsou oddělené. Dokončete aktivaci u poskytovatele a zkontrolujte registraci pro příjem; úspěšný test připojení ověřuje pouze přístupové údaje. Tento konektor nezapíná odesílání přes ePostman.
+
+Přijaté doklady se zobrazí v inboxu na stránce **Náklady**. Doklad můžete zkontrolovat nebo stáhnout původní XML. Import vytvoří náklad a uloží originál do vašich šifrovaných lokálních dat. Při chybě nebo příliš velké příloze zůstane položka dostupná pro obnovu; samotná existence nákladu import nedokončí. Dobropisy musí být rozlišeny a zpracovány jako opravy, nikoli potichu zaúčtovány jako běžné kladné náklady.
+
+Dokud se lokální import úspěšně nedokončí, originál je na serveru šifrován klíči serveru; zpracovávají se tam také přístupové údaje poštára a rozparsovaný souhrn. Čekající originály se automaticky nemažou podle stáří. Po ověřeném lokálním převzetí se dočasný obsah serveru odstraní. Nejde o dlouhodobý serverový archiv Satfluxu. Přístup do archivu, dobu uchování a export si potvrďte s poštárem i pro případ zrušení účtu.
+
+Připojení jednotlivých firem uchovávejte odděleně. Aktivace příjmu slovenské firmy nezapíná příjem zahraniční LLC. Tento návod nepotvrzuje ověřený příjem v reálné síti ani připravenost hlášení.

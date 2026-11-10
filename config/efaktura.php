@@ -18,11 +18,16 @@ return [
 
     'queue' => env('EFAKTURA_QUEUE', 'default'),
 
+    // Bounds one scheduled run; later runs resume safely from provider state.
+    'inbound_max_pages' => 100,
+    'inbound_health_stale_minutes' => 45,
+
     'inbound_poll_limit' => max(1, min(100, (int) env('EFAKTURA_INBOUND_POLL_LIMIT', 20))),
 
     // Local-first inbox: received documents wait server-side (parsed draft +
-    // encrypted UBL) until the client imports them into Evolu. Rows still
-    // pending after this many days are purged by efaktura:purge-inbound-inbox.
+    // encrypted UBL) until the client imports them into Evolu.
+    // Pending originals are not purged until a durable destination is confirmed.
+    // Legacy setting retained for compatibility; it cannot discard pending XML.
     'inbound_inbox_retention_days' => max(1, (int) env('EFAKTURA_INBOUND_INBOX_RETENTION_DAYS', 60)),
 
     'allowed_sapi_hosts' => array_values(array_filter(array_map(

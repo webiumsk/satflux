@@ -1223,6 +1223,12 @@ export const invoicingApi = {
         },
     },
     efaktura: {
+        async inboundHealth<T = unknown>(companyId: string): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/efaktura/inbound-health`, {
+                timeout: EFAKTURA_INBOX_REQUEST_TIMEOUT_MS,
+            });
+            return data.data;
+        },
         async pollInbound<T = unknown>(companyId: string): Promise<T> {
             const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/efaktura/poll-inbound`);
             return data.data ?? ({} as T);
@@ -1257,8 +1263,8 @@ export const invoicingApi = {
             return data.data;
         },
         /** Acknowledges an existing local copy; timeout does not establish whether the server accepted the acknowledgment. */
-        async inboxImported(companyId: string, receiptId: string): Promise<void> {
-            await api.post(`/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}/imported`, undefined, {
+        async inboxImported(companyId: string, receiptId: string, originalSha256: string): Promise<void> {
+            await api.post(`/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}/imported`, { original_sha256: originalSha256 }, {
                 timeout: EFAKTURA_INBOX_REQUEST_TIMEOUT_MS,
             });
         },

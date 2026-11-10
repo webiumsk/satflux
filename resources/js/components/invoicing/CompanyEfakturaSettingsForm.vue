@@ -34,11 +34,11 @@
         <i18n-t keypath="invoicing.efaktura_step1_portal" tag="p" class="text-xs text-gray-600">
           <template #portal>
             <a
-              href="https://www.financnasprava.sk"
+              href="https://vpds.financnasprava.sk"
               target="_blank"
               rel="noopener noreferrer"
               class="text-indigo-600 hover:text-indigo-500 underline"
-            >www.financnasprava.sk</a>
+            >vpds.financnasprava.sk</a>
           </template>
         </i18n-t>
 
@@ -67,6 +67,17 @@
         <p v-else-if="form.efaktura_sapi_base_url" class="text-xs text-gray-500 font-mono">
           {{ form.efaktura_sapi_base_url }}
         </p>
+        <div v-if="isEpostman" data-testid="epostman-setup" class="space-y-2 text-xs text-gray-700">
+          <p>{{ t('invoicing.efaktura_epostman_setup') }}</p>
+          <p v-if="derivedParticipantId" class="font-medium">{{ t('invoicing.efaktura_peppol_derived_hint', { id: derivedParticipantId }) }}</p>
+          <a
+            href="https://postman.slovakodata.com/help/zaciname/onboarding/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-block text-indigo-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          >{{ t('invoicing.efaktura_epostman_setup_link') }}</a>
+          <p v-if="isEpostmanTest" class="font-medium text-amber-900">{{ t('invoicing.efaktura_epostman_test_notice') }}</p>
+        </div>
       </section>
 
       <!-- Step 2: credentials + connection test -->
@@ -97,10 +108,10 @@
             type="password"
             class="invoicing-sf-input font-mono text-sm"
             autocomplete="new-password"
-            :placeholder="secretSet ? t('invoicing.efaktura_sapi_client_secret_placeholder_set') : t('invoicing.efaktura_sapi_client_secret_placeholder')"
+            :placeholder="secretSet && !connectionChanged ? t('invoicing.efaktura_sapi_client_secret_placeholder_set') : t('invoicing.efaktura_sapi_client_secret_placeholder')"
             @input="invalidateConnectionTest"
           />
-          <p v-if="secretSet && !form.efaktura_sapi_client_secret" class="text-xs text-emerald-700 mt-1">
+          <p v-if="secretSet && !connectionChanged && !form.efaktura_sapi_client_secret" class="text-xs text-emerald-700 mt-1">
             {{ t('invoicing.efaktura_sapi_client_secret_saved') }}
           </p>
         </div>
@@ -132,7 +143,7 @@
 
         <div class="space-y-2">
           <!-- Issuing is a full-payer obligation - inbound-only companies never see auto-send. -->
-          <label v-if="!inboundOnly" class="flex items-start gap-2 text-sm text-gray-700">
+          <label v-if="!inboundOnly && !isEpostman" class="flex items-start gap-2 text-sm text-gray-700">
             <input
               v-model="form.efaktura_auto_send"
               type="checkbox"
@@ -140,6 +151,7 @@
             />
             <span>{{ t('invoicing.efaktura_auto_send') }}</span>
           </label>
+          <p v-if="isEpostman" data-testid="epostman-receiving-only" class="text-xs text-amber-900">{{ t('invoicing.efaktura_epostman_receiving_only') }}</p>
           <label class="flex items-start gap-2 text-sm text-gray-700">
             <input
               v-model="form.efaktura_inbound_enabled"
@@ -187,7 +199,7 @@
 
         <!-- Advanced: explicit Peppol ID override; the DIC/ICO derivation
              covers the normal case, so merchants never see the syntax. -->
-        <details v-if="!inboundOnly" class="pt-1">
+        <details v-if="!inboundOnly && !isEpostman" class="pt-1">
           <summary class="text-xs text-gray-600 cursor-pointer select-none">
             {{ t('invoicing.efaktura_advanced') }}
           </summary>
@@ -221,7 +233,7 @@
 
 <script setup lang="ts">
 import { asApiError } from "../../utils/apiError";
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type {
   EfakturaCompanyMode,
@@ -281,7 +293,16 @@ const testMessage = ref('');
 const testFailed = ref(false);
 const selectedPresetId = ref('');
 const form = reactive<CompanyEfakturaSettingsState>(efakturaSettingsFromCompany(null));
+let connectionGeneration = 0;
+let active = true;
+onBeforeUnmount(() => { active = false; connectionGeneration++; });
 const inboundOnly = computed(() => props.mode === 'inbound_only');
+const isEpostman = computed(() => ['https://postman.slovakodata.com', 'https://testpostman.slovakodata.com']
+  .includes(normalizeBaseUrl(form.efaktura_sapi_base_url)));
+const isEpostmanTest = computed(() => normalizeBaseUrl(form.efaktura_sapi_base_url) === 'https://testpostman.slovakodata.com');
+const connectionChanged = computed(() => normalizeBaseUrl(form.efaktura_sapi_base_url)
+  !== normalizeBaseUrl(String(props.company?.app_settings?.efaktura_sapi_base_url ?? ''))
+  || form.efaktura_sapi_client_id.trim() !== String(props.company?.app_settings?.efaktura_sapi_client_id ?? '').trim());
 
 const step1Done = computed(() => form.efaktura_sapi_base_url.trim() !== '');
 const step2Done = computed(
@@ -312,6 +333,9 @@ const derivedParticipantId = computed(() => {
 watch(
   () => props.company,
   (company) => {
+    connectionGeneration++;
+    testMessage.value = '';
+    testingConnection.value = false;
     Object.assign(form, efakturaSettingsFromCompany(company));
     secretSet.value = efakturaSecretIsSet(company);
     syncSelectedPreset();
@@ -319,25 +343,29 @@ watch(
   { immediate: true, deep: true }
 );
 
-// "The system takes care of the rest": a merchant switching the module on
-// for the first time gets auto-send preselected (still unticked at will);
-// an inbound-only company gets receiving preselected instead.
+// Receiving is the baseline for every SK company. Never opt a customer into sending.
 watch(
   () => form.efaktura_enabled,
   (enabled, wasEnabled) => {
     if (!enabled || wasEnabled || form.efaktura_sapi_base_url.trim() !== '') {
       return;
     }
-    if (inboundOnly.value) {
-      form.efaktura_inbound_enabled = true;
-    } else if (!form.efaktura_auto_send) {
-      form.efaktura_auto_send = true;
-    }
+    form.efaktura_inbound_enabled = true;
   },
 );
 
 function normalizeBaseUrl(url: string): string {
-  return url.trim().replace(/\/$/, '');
+  const value = url.trim().replace(/\/+$/, '');
+  try {
+    const parsed = new URL(value);
+    if (['https://postman.slovakodata.com', 'https://testpostman.slovakodata.com'].includes(parsed.origin)
+      && parsed.username === '' && parsed.password === '' && parsed.pathname === '/' && parsed.search === '' && parsed.hash === '') {
+      return parsed.origin;
+    }
+  } catch {
+    // Keep malformed input intact for validation instead of silently repairing it.
+  }
+  return value;
 }
 
 function syncSelectedPreset() {
@@ -356,8 +384,19 @@ function applyPreset() {
   }
   const preset = cpdsPresets.value.find((row) => row.id === selectedPresetId.value);
   if (preset) {
+    const changed = normalizeBaseUrl(form.efaktura_sapi_base_url) !== normalizeBaseUrl(preset.base_url);
     form.efaktura_sapi_base_url = preset.base_url;
-    form.efaktura_connection_tested_at = null;
+    invalidateConnectionTest();
+    if (changed) {
+      form.efaktura_sapi_client_id = '';
+      form.efaktura_sapi_client_secret = '';
+      secretSet.value = false;
+    }
+    if (isEpostman.value) {
+      form.efaktura_auto_send = false;
+      form.efaktura_inbound_enabled = true;
+      form.efaktura_peppol_participant_id = '';
+    }
   }
 }
 
@@ -367,7 +406,10 @@ function applyPreset() {
  * keeps the stored timestamp.
  */
 function invalidateConnectionTest() {
+  connectionGeneration++;
   form.efaktura_connection_tested_at = null;
+  testMessage.value = '';
+  testingConnection.value = false;
 }
 
 function stepBadgeClass(done: boolean): string {
@@ -393,6 +435,10 @@ function buildPayload(): Partial<CompanyEfakturaSettingsState> {
     payload.efaktura_auto_send = false;
     payload.efaktura_peppol_participant_id = '';
   }
+  if (isEpostman.value) {
+    payload.efaktura_auto_send = false;
+    payload.efaktura_peppol_participant_id = '';
+  }
   delete payload.efaktura_inbound_last_poll_at;
   delete payload.efaktura_inbound_last_poll_stats;
   // The server stamps the tested-at timestamp itself; Evolu keeps its own.
@@ -411,10 +457,18 @@ function storedLocalSecret(): string {
 }
 
 async function testConnection() {
+  const generation = ++connectionGeneration;
+  const companyId = props.companyId;
+  const isCurrent = () => active && generation === connectionGeneration && companyId === props.companyId;
   testingConnection.value = true;
   testMessage.value = '';
   testFailed.value = false;
   try {
+    if (connectionChanged.value && !form.efaktura_sapi_client_secret) {
+      testFailed.value = true;
+      testMessage.value = t('invoicing.efaktura_connection_new_credentials');
+      return;
+    }
     const payload: Record<string, unknown> = {
       efaktura_sapi_base_url: form.efaktura_sapi_base_url || null,
       efaktura_sapi_client_id: form.efaktura_sapi_client_id || null,
@@ -428,8 +482,9 @@ async function testConnection() {
       }
       result = await invoicingApi.efaktura.testConnectionEphemeral(payload);
     } else {
-      result = await invoicingApi.efaktura.testConnection(props.companyId, payload);
+      result = await invoicingApi.efaktura.testConnection(companyId, payload);
     }
+    if (!isCurrent()) return;
 
     if (result.ok) {
       testFailed.value = false;
@@ -438,7 +493,7 @@ async function testConnection() {
       if (localFirst && evolu) {
         // Persist the stamp into the local settings so the readiness
         // checklist survives a reload (server mode stamps server-side).
-        updateLocalEfakturaSettings(evolu, asCompanyId(props.companyId), {
+        updateLocalEfakturaSettings(evolu, asCompanyId(companyId), {
           efaktura_connection_tested_at: form.efaktura_connection_tested_at,
         });
       }
@@ -448,11 +503,12 @@ async function testConnection() {
       testMessage.value = t(`invoicing.efaktura_test_error_${code}`, { message: result.message ?? '' });
     }
   } catch (rawError) {
+    if (!isCurrent()) return;
     const e = asApiError(rawError);
     testFailed.value = true;
     testMessage.value = e?.response?.data?.message ?? t('common.error_generic');
   } finally {
-    testingConnection.value = false;
+    if (isCurrent()) testingConnection.value = false;
   }
 }
 
@@ -562,6 +618,10 @@ async function save() {
   saving.value = true;
   saveError.value = '';
   try {
+    if (form.efaktura_enabled && connectionChanged.value && !form.efaktura_sapi_client_secret) {
+      saveError.value = t('invoicing.efaktura_connection_new_credentials');
+      return;
+    }
     const payload = buildPayload();
 
     if (localFirst && evolu) {

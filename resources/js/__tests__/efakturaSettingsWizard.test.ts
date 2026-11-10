@@ -1,5 +1,5 @@
-import { mount } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mount, flushPromises } from '@vue/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed, nextTick } from 'vue';
 
 const state = vi.hoisted(() => ({
@@ -71,6 +71,7 @@ function mountForm(company: Record<string, unknown>, mode: 'full' | 'inbound_onl
 }
 
 describe('eFaktura settings wizard', () => {
+  afterEach(() => vi.restoreAllMocks());
   beforeEach(() => {
     state.presets = [];
     state.testResult = { ok: true, tested_at: '2026-07-23T10:00:00Z' };
@@ -167,7 +168,7 @@ describe('eFaktura settings wizard', () => {
     expect(wrapper.text()).not.toContain('efaktura_connection_tested_at');
   });
 
-  it('turning the module on for the first time preselects auto-send', async () => {
+  it('turning the module on for the first time preselects receiving without opting into auto-send', async () => {
     const wrapper = mountForm({
       ...skCompany(),
       app_settings: { efaktura_enabled: false },
@@ -182,7 +183,80 @@ describe('eFaktura settings wizard', () => {
       .findAll('label')
       .find((l) => l.text().includes('efaktura_auto_send'))
       ?.find('input');
-    expect((autoSend?.element as HTMLInputElement).checked).toBe(true);
+    expect((autoSend?.element as HTMLInputElement).checked).toBe(false);
+    const receiving = wrapper.findAll('label').find((label) => label.text().includes('efaktura_inbound_enabled'))?.find('input');
+    expect((receiving?.element as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('offers fixed ePostman production and test choices and suppresses unsupported sending', async () => {
+    state.presets = [
+      { id: 'epostman-production', name: 'ePostman', base_url: 'https://postman.slovakodata.com' },
+      { id: 'epostman-test', name: 'ePostman test', base_url: 'https://testpostman.slovakodata.com' },
+    ];
+    const wrapper = mountForm(skCompany({ efaktura_auto_send: true }));
+    await wrapper.find('#efaktura-cpds-preset').setValue('epostman-production');
+    expect(wrapper.find('#efaktura-base-url').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="epostman-setup"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('efaktura_epostman_receiving_only');
+    expect(wrapper.findAll('label').some((label) => label.text().includes('efaktura_auto_send'))).toBe(false);
+    expect(wrapper.text()).not.toContain('efaktura_epostman_test_notice');
+    await wrapper.find('#efaktura-cpds-preset').setValue('epostman-test');
+    expect(wrapper.text()).toContain('efaktura_epostman_test_notice');
+    expect(wrapper.text()).toContain('https://testpostman.slovakodata.com');
+  });
+
+  it('does not reuse a saved provider secret when selecting another environment', async () => {
+    state.presets = [
+      { id: 'epostman-production', name: 'ePostman', base_url: 'https://postman.slovakodata.com' },
+      { id: 'epostman-test', name: 'ePostman test', base_url: 'https://testpostman.slovakodata.com' },
+    ];
+    const wrapper = mountForm(skCompany({ efaktura_sapi_base_url: 'https://postman.slovakodata.com',
+      efaktura_sapi_client_id: 'synthetic-prod', efaktura_sapi_client_secret_set: true }));
+    await wrapper.find('#efaktura-cpds-preset').setValue('epostman-test');
+    expect((wrapper.find('#efaktura-client-id').element as HTMLInputElement).value).toBe('');
+    const testButton = wrapper.findAll('button').find((button) => button.text().includes('efaktura_test_connection'))!;
+    await testButton.trigger('click');
+    expect(wrapper.text()).toContain('efaktura_connection_new_credentials');
+    expect(state.testCalls).toHaveLength(0);
+    wrapper.unmount();
+  });
+
+  it.each(['https://postman.slovakodata.com:443', 'https://POSTMAN.SLOVAKODATA.COM/'])('recognizes the canonical ePostman origin without enabling sending: %s', async (baseUrl) => {
+    state.presets = [{ id: 'epostman-production', name: 'ePostman', base_url: 'https://postman.slovakodata.com' }];
+    const wrapper = mountForm(skCompany({ efaktura_sapi_base_url: baseUrl, efaktura_auto_send: true }));
+    await nextTick();
+    expect((wrapper.find('#efaktura-cpds-preset').element as HTMLSelectElement).value).toBe('epostman-production');
+    expect(wrapper.find('[data-testid="epostman-receiving-only"]').exists()).toBe(true);
+    expect(wrapper.findAll('label').some((label) => label.text().includes('efaktura_auto_send'))).toBe(false);
+    expect(wrapper.find('#efaktura-peppol-id').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it.each(['https://postman.slovakodata.com.attacker.test', 'https://postman.slovakodata.com:444'])('does not recognize a foreign origin as the named provider: %s', async (baseUrl) => {
+    state.presets = [{ id: 'epostman-production', name: 'ePostman', base_url: 'https://postman.slovakodata.com' }];
+    const wrapper = mountForm(skCompany({ efaktura_sapi_base_url: baseUrl }));
+    await nextTick();
+    expect((wrapper.find('#efaktura-cpds-preset').element as HTMLSelectElement).value).toBe('custom');
+    expect(wrapper.find('[data-testid="epostman-setup"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it.each(['credentials', 'provider', 'company'])('ignores a late auth success after changing %s', async (changed) => {
+    state.presets = [{ id: 'epostman-test', name: 'ePostman test', base_url: 'https://testpostman.slovakodata.com' }];
+    const { invoicingApi } = await import('../services/api');
+    let resolve!: (value: unknown) => void;
+    vi.spyOn(invoicingApi.efaktura, 'testConnection').mockImplementation(() => new Promise((done) => { resolve = done; }) as never);
+    const wrapper = mountForm(skCompany({ efaktura_sapi_base_url: 'https://postman.slovakodata.com',
+      efaktura_sapi_client_id: 'synthetic-prod', efaktura_sapi_client_secret_set: true }));
+    const testButton = wrapper.findAll('button').find((button) => button.text().includes('efaktura_test_connection'))!;
+    await testButton.trigger('click');
+    if (changed === 'credentials') await wrapper.find('#efaktura-client-id').setValue('synthetic-replacement');
+    if (changed === 'provider') await wrapper.find('#efaktura-cpds-preset').setValue('epostman-test');
+    if (changed === 'company') await wrapper.setProps({ companyId: 'company-2', company: { ...skCompany(), id: 'company-2' } });
+    resolve({ ok: true, tested_at: '2026-11-10T10:00:00Z' }); await flushPromises();
+    expect(wrapper.text()).not.toContain('invoicing.efaktura_test_ok');
+    expect(wrapper.text()).not.toContain('efaktura_connection_tested_at');
+    wrapper.unmount();
   });
 
   it('inbound-only mode hides issuing options and preselects receiving instead', async () => {

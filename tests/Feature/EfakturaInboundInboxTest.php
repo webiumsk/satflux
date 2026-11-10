@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Enums\CompanyJurisdiction;
+use App\Enums\CompanyMemberRole;
 use App\Models\Company;
+use App\Models\CompanyMember;
 use App\Models\EfakturaInboundReceipt;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
@@ -204,7 +206,9 @@ XML;
         $this->assertStringContainsString('<Invoice', (string) $detail['ubl']);
 
         $this->actingAs($user)
-            ->postJson("/api/invoicing/companies/{$company->id}/efaktura/inbox/{$receipt->id}/imported")
+            ->postJson("/api/invoicing/companies/{$company->id}/efaktura/inbox/{$receipt->id}/imported", [
+                'original_sha256' => hash('sha256', $this->sampleUbl()),
+            ])
             ->assertNoContent();
 
         $receipt->refresh();
@@ -241,7 +245,7 @@ XML;
     }
 
     #[Test]
-    public function dismiss_clears_the_payload(): void
+    public function dismiss_cannot_clear_the_only_original(): void
     {
         $this->localFirst();
         $this->fakeCpds($this->sampleUbl());
@@ -251,11 +255,11 @@ XML;
 
         $this->actingAs($user)
             ->postJson("/api/invoicing/companies/{$company->id}/efaktura/inbox/{$receipt->id}/dismiss")
-            ->assertNoContent();
+            ->assertStatus(422);
 
         $receipt->refresh();
-        $this->assertSame('dismissed', $receipt->inbox_status);
-        $this->assertNull($receipt->ubl_encrypted);
+        $this->assertSame('pending', $receipt->inbox_status);
+        $this->assertSame($this->sampleUbl(), Crypt::decryptString($receipt->ubl_encrypted));
     }
 
     #[Test]
@@ -285,7 +289,54 @@ XML;
     }
 
     #[Test]
-    public function stale_pending_items_are_purged_by_the_command(): void
+    public function members_and_malformed_confirmation_cannot_destroy_staged_originals(): void
+    {
+        $this->localFirst();
+        $this->fakeCpds($this->sampleUbl());
+        [$user, $company] = $this->proUserWithBridgeCompany();
+        app(EfakturaInboundService::class)->pollCompany($company);
+        $receipt = EfakturaInboundReceipt::firstOrFail();
+        $member = User::factory()->create();
+        CompanyMember::create([
+            'company_id' => $company->id, 'user_id' => $member->id,
+            'role' => CompanyMemberRole::Accountant,
+            'invited_by' => $user->id, 'accepted_at' => now(),
+        ]);
+        $base = "/api/invoicing/companies/{$company->id}/efaktura/inbox/{$receipt->id}";
+        $this->actingAs($member)->getJson($base)->assertForbidden();
+        $this->actingAs($member)->postJson($base.'/imported', ['original_sha256' => hash('sha256', $this->sampleUbl())])->assertForbidden();
+        $this->actingAs($member)->postJson($base.'/dismiss')->assertForbidden();
+        $this->actingAs($user)->postJson($base.'/imported', ['original_sha256' => ['bad']])->assertUnprocessable();
+        $this->actingAs($user)->postJson($base.'/imported')->assertUnprocessable();
+        $this->assertSame('pending', $receipt->fresh()->inbox_status);
+        $this->assertNotNull($receipt->fresh()->ubl_encrypted);
+    }
+
+    #[Test]
+    public function receiving_health_exposes_poll_failure_or_staleness_without_provider_calls(): void
+    {
+        $this->localFirst();
+        [$user, $company] = $this->proUserWithBridgeCompany();
+        $route = "/api/invoicing/companies/{$company->id}/efaktura/inbound-health";
+        $this->actingAs($user)->getJson($route)->assertOk()->assertJsonPath('data.state', 'not_polled');
+        foreach ([['failed' => 1, 'age' => 1, 'state' => 'failed'], ['failed' => 0, 'age' => 46, 'state' => 'stale'], ['failed' => 0, 'age' => 1, 'state' => 'ok']] as $case) {
+            $settings = $company->fresh()->app_settings;
+            $settings['efaktura_inbound_last_poll_at'] = now()->subMinutes($case['age'])->toIso8601String();
+            $settings['efaktura_inbound_last_poll_stats'] = ['failed' => $case['failed']];
+            $company->update(['app_settings' => $settings]);
+            $this->actingAs($user)->getJson($route)->assertOk()
+                ->assertJsonPath('data.state', $case['state'])
+                ->assertJsonPath('data.failed', $case['failed'])
+                ->assertJsonMissingPath('data.efaktura_sapi_client_secret');
+        }
+        $this->actingAs(User::factory()->create())->getJson($route)->assertForbidden();
+        config(['efaktura.enabled' => false]);
+        $this->actingAs($user)->getJson($route)->assertOk()->assertJsonPath('data.state', 'disabled');
+        Http::assertNothingSent();
+    }
+
+    #[Test]
+    public function stale_pending_originals_are_retained_until_verified_import(): void
     {
         $this->localFirst();
         $this->fakeCpds($this->sampleUbl());
@@ -298,10 +349,10 @@ XML;
 
         EfakturaInboundReceipt::query()->whereKey($receipt->id)->update(['created_at' => now()->subDays(61)]);
 
-        $this->artisan('efaktura:purge-inbound-inbox')->expectsOutputToContain('Purged 1');
+        $this->artisan('efaktura:purge-inbound-inbox')->expectsOutputToContain('Purged 0');
         $receipt->refresh();
-        $this->assertSame('dismissed', $receipt->inbox_status);
-        $this->assertNull($receipt->ubl_encrypted);
-        $this->assertNull($receipt->draft_json);
+        $this->assertSame('pending', $receipt->inbox_status);
+        $this->assertNotNull($receipt->ubl_encrypted);
+        $this->assertNotNull($receipt->draft_json);
     }
 }

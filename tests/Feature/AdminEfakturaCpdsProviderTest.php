@@ -163,8 +163,8 @@ class AdminEfakturaCpdsProviderTest extends TestCase
         config(['efaktura.enabled' => true]);
         $presets = $this->getJson('/api/config')->assertOk()->json('efaktura_cpds_presets');
 
-        $this->assertSame(['A postman', 'B postman'], array_column($presets, 'name'));
-        $this->assertSame(['https://a.test', 'https://b.test'], array_column($presets, 'base_url'));
+        $this->assertSame(['ePostman (SLOVAKODATA)', 'ePostman (SLOVAKODATA) - TEST', 'A postman', 'B postman'], array_column($presets, 'name'));
+        $this->assertSame(['https://postman.slovakodata.com', 'https://testpostman.slovakodata.com', 'https://a.test', 'https://b.test'], array_column($presets, 'base_url'));
     }
 
     #[Test]

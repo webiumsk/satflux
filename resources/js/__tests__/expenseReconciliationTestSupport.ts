@@ -15,6 +15,7 @@ export function expenseTestQueryExports() {
     exports.allCompaniesQuery = "ui:company";
     exports.allCompaniesDetailQuery = "ui:company";
     exports.allCompanySharesQuery = "ui:companyShare";
+    exports.allExpenseAttachmentsQuery = "ui:expenseAttachment";
     return exports;
 }
 

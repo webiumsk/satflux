@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { createHash, webcrypto } from "node:crypto";
 import { AxiosError, type AxiosAdapter, type InternalAxiosRequestConfig } from "axios";
 import api, { invoicingApi } from "@/services/api";
 import { importEfakturaInboxEntry, stableExpenseIdFromInboxUuid, type EfakturaInboxEntry } from "@/evolu/efakturaInboxImport";
@@ -13,6 +14,8 @@ const flash = vi.hoisted(() => ({ errorKey: vi.fn() }));
 vi.mock("@/store/flash", () => ({ useFlashStore: () => flash }));
 
 const originalAdapter = api.defaults.adapter;
+const originalXml = '<Invoice><Name>Synthetic supplier</Name></Invoice>';
+const originalSha256 = createHash('sha256').update(originalXml).digest('hex');
 const entry: EfakturaInboxEntry = {
     inbox_id: "synthetic-receipt", evolu_expense_id: "0192a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b", external_document_id: "synthetic-document",
     inbox_status: "pending", created_at: "2026-11-04T10:00:00Z",
@@ -37,7 +40,7 @@ function bridgeTransport(hang: "detail" | "ack" | "none", retryStatus = 200,
             });
         }
         const response = { config, status: isAck ? retryStatus : 200, statusText: "Synthetic", headers: {},
-            data: isAck && retryStatus >= 400 ? errorData : { data: config.url?.endsWith("/inbox") ? [] : { ...entry, ubl: "" } } };
+            data: isAck && retryStatus >= 400 ? errorData : { data: config.url?.endsWith("/inbox") ? [] : { ...entry, ubl: originalXml, original_sha256: originalSha256 } } };
         if (isAck && retryStatus >= 400) return Promise.reject(new AxiosError("synthetic_ack_failure", "ERR_BAD_REQUEST", config, undefined, response));
         return Promise.resolve(response);
     };
@@ -45,7 +48,7 @@ function bridgeTransport(hang: "detail" | "ack" | "none", retryStatus = 200,
     return requests;
 }
 
-beforeEach(() => { flash.errorKey.mockClear(); vi.useFakeTimers(); installBankLocks(); });
+beforeEach(() => { flash.errorKey.mockClear(); vi.useFakeTimers(); installBankLocks(); vi.stubGlobal('crypto', webcrypto); });
 afterEach(() => { api.defaults.adapter = originalAdapter; clearRowOwnerIndex(); clearCompanyShares(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 it("bounds inbox detail below the gate wait, writes no expense and releases the gate after timeout", async () => {
@@ -67,16 +70,18 @@ it("bounds inbox detail below the gate wait, writes no expense and releases the 
     expect(requests).toHaveLength(1); // No request-level retry or acknowledgement.
 });
 
-it.each([200, 422])("preserves one committed stable expense after an ACK timeout and a retry status %s", async (retryStatus) => {
-    const locks = installBankLocks(); const requests = bridgeTransport("ack", retryStatus);
+it("preserves one complete stable expense after an ACK timeout and a successful idempotent retry", async () => {
+    const locks = installBankLocks(); const requests = bridgeTransport("ack");
     const { evolu, state } = createExpenseWriterTestAdapter();
     const outcome = importEfakturaInboxEntry(evolu as never, "company-a", "synthetic-bridge", entry).catch((error) => error);
-    await vi.advanceTimersByTimeAsync(0);
+    await vi.waitFor(() => expect(requests).toHaveLength(2));
     expect(requests).toHaveLength(2);
     expect(requests[1]).toMatchObject({ method: "post", timeout: 10_000, withCredentials: true,
         url: "/invoicing/companies/synthetic-bridge/efaktura/inbox/synthetic-receipt/imported" });
     expect(state.expense).toHaveLength(1);
     expect(state.expense[0].id).toBe(stableExpenseIdFromInboxUuid(entry.evolu_expense_id));
+    expect(state.expenseAttachment).toHaveLength(1);
+    expect(JSON.parse(requests[1].data)).toEqual({ original_sha256: originalSha256 });
     const saved = structuredClone(state.expense[0]);
     const next = withExpenseReconciliation(evolu as never, () => true);
     await vi.advanceTimersByTimeAsync(10_000);
@@ -88,7 +93,7 @@ it.each([200, 422])("preserves one committed stable expense after an ACK timeout
     expect(await retry).toMatchObject({ ok: true, alreadyImported: true });
     expect(state.expense).toEqual([saved]);
     expect(evolu.upsert.mock.calls.filter(([table]) => table === "expense")).toHaveLength(1);
-    expect(requests.filter((request) => request.method === "get")).toHaveLength(1);
+    expect(requests.filter((request) => request.method === "get")).toHaveLength(2);
     expect(await invoicingApi.efaktura.inboxList("synthetic-bridge")).toEqual([]);
     expect(await withExpenseReconciliation(evolu as never, () => true)).toBe(true);
 });
@@ -106,12 +111,13 @@ it.each([
     await expect(importEfakturaInboxEntry(evolu as never, "company-a", "synthetic-bridge", entry))
         .rejects.toMatchObject({ response: { status } });
     expect(state.expense).toEqual(saved);
-    expect(requests).toHaveLength(1);
-    expect(requests[0].method).toBe("post");
+    expect(requests).toHaveLength(2);
+    expect(requests[0].method).toBe("get");
+    expect(requests[1].method).toBe("post");
     expect(evolu.upsert.mock.calls.some(([table]) => table === "expense")).toBe(false);
 });
 
-it("propagates a terminal ACK on a new import, then recovers only after a fresh local copy exists", async () => {
+it("does not treat a terminal conflict as import proof even after the complete local copy exists", async () => {
     const requests = bridgeTransport("none", 422);
     const { evolu, state } = createExpenseWriterTestAdapter();
     await expect(importEfakturaInboxEntry(evolu as never, "company-a", "synthetic-bridge", entry))
@@ -119,9 +125,9 @@ it("propagates a terminal ACK on a new import, then recovers only after a fresh 
     expect(state.expense).toHaveLength(1);
     const saved = structuredClone(state.expense);
     await expect(importEfakturaInboxEntry(evolu as never, "company-a", "synthetic-bridge", entry))
-        .resolves.toMatchObject({ ok: true, alreadyImported: true });
+        .rejects.toMatchObject({ response: { status: 422 } });
     expect(state.expense).toEqual(saved);
-    expect(requests.filter((request) => request.method === "get")).toHaveLength(1);
+    expect(requests.filter((request) => request.method === "get")).toHaveLength(2);
     expect(evolu.upsert.mock.calls.filter(([table]) => table === "expense")).toHaveLength(1);
 });
 

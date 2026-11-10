@@ -3,12 +3,12 @@ title: Slowakische E-Rechnungen - aktuelle Einschränkungen
 category: invoicing
 order: 6
 meta_description: Aktueller Stand und Einschränkungen der slowakischen eFaktura-Anbindung in Satflux.
-updated: 2026-11-09
+updated: 2026-11-10
 ---
 
 # Slowakische E-Rechnungen - aktuelle Einschränkungen
 
-**Eine vollständige Anbindung von Satflux an einen Anbieter für die slowakische eFaktura wurde bisher nicht verifiziert. Wir stellen Satflux derzeit nicht als einsatzbereite Lösung für die verpflichtende slowakische E-Rechnung dar.** Die weitere Entwicklung dieser Anbindung ist ausgesetzt, während über ihre Zukunft entschieden wird. Ein Fertigstellungstermin ist nicht zugesagt.
+**Eine vollständige Anbindung von Satflux an einen Anbieter für die slowakische eFaktura wurde bisher nicht verifiziert. Wir stellen Satflux derzeit nicht als einsatzbereite Lösung für die verpflichtende slowakische E-Rechnung dar.** Eine Empfangsanbindung wird entwickelt und muss noch mit dem Anbieter verifiziert werden. Ein Fertigstellungstermin ist nicht zugesagt.
 
 ## Export und Zustellung
 
@@ -29,3 +29,13 @@ Soweit verfügbar, zeigt die Dokumentansicht den Übergabestatus und die Dokumen
 ## Planung Ihrer Rechnungsstellung
 
 Verwenden Sie bis zur Verifizierung Ihres Ablaufs einen Dienst, der den benötigten Versand und Empfang nachweisen kann. Klären Sie Ihre konkreten Pflichten und Fristen mit der slowakischen Finanzverwaltung oder Ihrer Steuerberatung.
+
+## Empfang mit ePostman
+
+Sobald der Empfangspilot verfügbar ist, wählen Sie ePostman in den E-Rechnungseinstellungen des richtigen slowakischen Unternehmens. Produktions- und Testkonten sind getrennt. Schließen Sie die Aktivierung beim Anbieter ab und prüfen Sie die Empfangsregistrierung; ein erfolgreicher Verbindungstest prüft nur die Zugangsdaten. Dieser Konnektor aktiviert keinen Versand über ePostman.
+
+Empfangene Dokumente erscheinen im Posteingang unter **Ausgaben**. Prüfen Sie das Dokument oder laden Sie das ursprüngliche XML herunter. Der Import erstellt eine Ausgabe und speichert das Original in Ihren verschlüsselten lokalen Daten. Bei einem Fehler oder einem zu großen Anhang bleibt der Eintrag zur Wiederherstellung verfügbar; eine vorhandene Ausgabe allein schließt den Import nicht ab. Gutschriften müssen als solche erkannt und verarbeitet werden und dürfen nicht unbemerkt als gewöhnliche positive Ausgaben verbucht werden.
+
+Bis zum erfolgreichen lokalen Import bleibt das Original auf dem Server mit serverseitigen Schlüsseln verschlüsselt; dort werden auch Anbieterzugangsdaten und die ausgelesene Zusammenfassung verarbeitet. Ausstehende Originale werden nicht automatisch altersbedingt gelöscht. Nach der verifizierten lokalen Übernahme werden temporäre Serverinhalte entfernt. Dies ist kein langfristiges Satflux-Serverarchiv. Klären Sie Archivzugriff, Aufbewahrung und Export mit Ihrem Anbieter, auch nach einer Kündigung.
+
+Halten Sie die Verbindungen der Unternehmen getrennt. Die Empfangsaktivierung für ein slowakisches Unternehmen aktiviert keine ausländische LLC. Diese Anleitung bestätigt weder einen verifizierten Empfang im realen Netzwerk noch die Bereitschaft zur Meldung.

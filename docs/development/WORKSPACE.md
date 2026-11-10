@@ -1,5 +1,19 @@
 # Local workspace
 
+## ePostman receiving retained for handoff - 2026-11-10
+
+`feat/efaktura-epostman-inbound` from `6e6c0587` is retained in durable worktree
+`storage/app/private/worktrees/efaktura-epostman-inbound`. Independent QA/security
+accept36 runtime/test paths (`b8296faf`). Runbook and private review evidence record
+exact source, locked dependencies, passing targeted/browser checks and baseline
+reproduction of broad PHP failures. No public Git publication or deployment yet.
+
+Primary checkout remains on `fix/sepa-confirmation-isolation` with unrelated dirty
+work intact. Existing vendor/node dependencies are not changed; a separate locked
+vendor copy and disposable per-container storage support PHP verification. Synthetic
+browser profiles and base snapshots are disposable test artifacts, not the sole
+copy of implementation. No production data or provider credentials were used.
+
 ## Per-relay protocol status and Freedomrelay defaults - 2026-11-07
 
 Owner requests separate connection/synchronization status and chooses Satflux plus

@@ -155,7 +155,7 @@ class CompanyController extends Controller
         }
         $current = CompanyAppSettings::from($company->app_settings)->toArray();
         $merged = CompanyEfakturaSettings::mergeIncoming(
-            array_merge($current, $incoming),
+            $current,
             $incoming,
         );
         unset($merged['efaktura_sapi_client_secret']);

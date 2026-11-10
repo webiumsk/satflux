@@ -5,6 +5,7 @@ namespace App\Services\Invoicing\Efaktura;
 use App\Models\EfakturaCpdsProvider;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -16,22 +17,19 @@ class SapiSkClient
      */
     public function authenticate(string $clientId, string $clientSecret, ?string $baseUrl = null): array
     {
-        $response = $this->http()
-            ->asForm()
-            ->post($this->url(config('efaktura.providers.sapi_sk.token_path'), $baseUrl), [
+        $request = $this->http();
+        $request = $this->isEpostman($baseUrl) ? $request->asJson() : $request->asForm();
+        $response = $request
+            ->post($this->url($this->path('token_path', $baseUrl), $baseUrl), [
                 'grant_type' => 'client_credentials',
                 'client_id' => $clientId,
                 'client_secret' => $clientSecret,
             ]);
 
-        $response->throw();
+        $json = $this->jsonResponse($response);
 
-        $json = $response->json();
-        if (! is_array($json)) {
-            throw new \RuntimeException(sprintf(
-                'SAPI-SK token response is not valid JSON (HTTP %d).',
-                $response->status(),
-            ));
+        if ($this->isEpostman($baseUrl) && (! is_string($json['access_token'] ?? null) || trim($json['access_token']) === '' || ! is_numeric($json['expires_in'] ?? null) || $json['expires_in'] <= 0 || strtolower((string) ($json['token_type'] ?? '')) !== 'bearer')) {
+            throw new \RuntimeException('Invalid ePostman authentication response.');
         }
 
         return $json;
@@ -70,6 +68,10 @@ class SapiSkClient
         ?string $idempotencyKey = null,
         ?string $baseUrl = null,
     ): array {
+        if ($this->isEpostman($baseUrl)) {
+            throw new \RuntimeException('The ePostman connection supports receiving only.');
+        }
+
         $response = $this->http()
             ->withToken($accessToken)
             ->withHeaders([
@@ -96,6 +98,9 @@ class SapiSkClient
         string $documentId,
         ?string $baseUrl = null,
     ): array {
+        if ($this->isEpostman($baseUrl)) {
+            throw new \RuntimeException('The ePostman connection supports receiving only.');
+        }
         $pathTemplate = (string) $this->sentDocumentDetailPathTemplate($baseUrl);
         if ($pathTemplate === '') {
             throw new \RuntimeException('SAPI-SK sent document detail path is not configured.');
@@ -139,13 +144,18 @@ class SapiSkClient
         $response = $this->http()
             ->withToken($accessToken)
             ->withHeaders(['X-Peppol-Participant-Id' => $receiverParticipantId])
-            ->get($this->url(config('efaktura.providers.sapi_sk.receive_path'), $baseUrl), $query);
+            ->get($this->url($this->path('receive_path', $baseUrl), $baseUrl), $query);
 
-        $response->throw();
+        $json = $this->jsonResponse($response);
+        $documents = $json['documents'] ?? $json['items'] ?? null;
+        if (! is_array($documents) || ! array_is_list($documents)) {
+            throw new \RuntimeException('Invalid SAPI-SK received-document list.');
+        }
+        if (isset($json['nextPageToken']) && (! is_string($json['nextPageToken']) || strlen($json['nextPageToken']) > 8192)) {
+            throw new \RuntimeException('Invalid SAPI-SK pagination token.');
+        }
 
-        $json = $response->json();
-
-        return is_array($json) ? $json : ['documents' => []];
+        return $json;
     }
 
     /**
@@ -160,7 +170,7 @@ class SapiSkClient
         $path = str_replace(
             '{id}',
             rawurlencode($documentId),
-            (string) config('efaktura.providers.sapi_sk.receive_detail_path'),
+            $this->path('receive_detail_path', $baseUrl),
         );
 
         $response = $this->http()
@@ -168,11 +178,15 @@ class SapiSkClient
             ->withHeaders(['X-Peppol-Participant-Id' => $receiverParticipantId])
             ->get($this->url($path, $baseUrl));
 
-        $response->throw();
+        $json = $this->jsonResponse($response);
+        if ($this->isEpostman($baseUrl)) {
+            $metadata = $json['metadata'] ?? null;
+            if (! is_array($metadata) || ($metadata['documentId'] ?? null) !== $documentId || ($metadata['receiverParticipantId'] ?? null) !== $receiverParticipantId || ! is_string($json['payload'] ?? null) || $json['payload'] === '' || ($json['payloadFormat'] ?? null) !== 'XML' || ! in_array($json['status'] ?? null, ['RECEIVED', 'ACKNOWLEDGED'], true)) {
+                throw new \RuntimeException('Invalid ePostman received document or receiver.');
+            }
+        }
 
-        $json = $response->json();
-
-        return is_array($json) ? $json : ['payload' => $response->body()];
+        return $json;
     }
 
     /**
@@ -187,7 +201,7 @@ class SapiSkClient
         $path = str_replace(
             '{id}',
             rawurlencode($documentId),
-            (string) config('efaktura.providers.sapi_sk.acknowledge_path'),
+            $this->path('acknowledge_path', $baseUrl),
         );
 
         $response = $this->http()
@@ -195,11 +209,58 @@ class SapiSkClient
             ->withHeaders(['X-Peppol-Participant-Id' => $receiverParticipantId])
             ->post($this->url($path, $baseUrl));
 
+        $json = $this->jsonResponse($response);
+        if ($this->isEpostman($baseUrl) && (($json['documentId'] ?? null) !== $documentId || ($json['status'] ?? null) !== 'ACKNOWLEDGED')) {
+            throw new \RuntimeException('Invalid ePostman acknowledgement response.');
+        }
+
+        return $json;
+    }
+
+    /** A named profile is selected only for the two published, fixed origins. */
+    public function isEpostman(?string $baseUrl): bool
+    {
+        $parts = parse_url((string) ($baseUrl ?? config('efaktura.providers.sapi_sk.base_url')));
+
+        return is_array($parts) && in_array(strtolower((string) ($parts['host'] ?? '')), [
+            'postman.slovakodata.com', 'testpostman.slovakodata.com',
+        ], true);
+    }
+
+    public function forgetAccessToken(string $clientId, string $clientSecret, string $baseUrl): void
+    {
+        Cache::forget('efaktura.sapi_sk.token.'.hash('sha256', $clientId.'|'.$clientSecret.'|'.$this->resolveBaseUrl($baseUrl)));
+    }
+
+    public function connectionKey(string $baseUrl, string $participantId): string
+    {
+        return hash('sha256', ($this->isEpostman($baseUrl) ? 'epostman' : 'sapi_sk').'|'.$this->resolveBaseUrl($baseUrl).'|'.$participantId);
+    }
+
+    protected function path(string $key, ?string $baseUrl): string
+    {
+        if ($this->isEpostman($baseUrl)) {
+            return match ($key) {
+                'token_path' => '/sapi/auth/token',
+                'receive_path' => '/sapi/document/receive',
+                'receive_detail_path' => '/sapi/document/receive/{id}',
+                'acknowledge_path' => '/sapi/document/receive/{id}/acknowledge',
+                default => throw new \RuntimeException('Unsupported ePostman operation.'),
+            };
+        }
+
+        return (string) config('efaktura.providers.sapi_sk.'.$key);
+    }
+
+    /** @return array<string, mixed> */
+    protected function jsonResponse(Response $response): array
+    {
         $response->throw();
+        if (! $response->successful() || ! is_array($response->json()) || array_is_list($response->json())) {
+            throw new \RuntimeException('SAPI-SK response is not a successful JSON object.');
+        }
 
-        $json = $response->json();
-
-        return is_array($json) ? $json : ['status' => 'acknowledged'];
+        return $response->json();
     }
 
     public function isRecipientNotFoundError(RequestException $exception): bool
@@ -273,6 +334,9 @@ class SapiSkClient
         }
 
         $host = strtolower((string) $parts['host']);
+        if ($this->isEpostman($candidate) && (isset($parts['user']) || isset($parts['pass']) || isset($parts['query']) || isset($parts['fragment']) || (isset($parts['port']) && $parts['port'] !== 443) || ! in_array($parts['path'] ?? '', ['', '/'], true))) {
+            throw new \RuntimeException('The ePostman connection requires its fixed HTTPS origin.');
+        }
         if (filter_var($host, FILTER_VALIDATE_IP)) {
             throw new \RuntimeException('SAPI-SK base URL must not use an IP address.');
         }
@@ -280,7 +344,7 @@ class SapiSkClient
         $this->assertResolvablePublicHost($host);
         $this->assertAllowedSapiHost($host);
 
-        $port = isset($parts['port']) ? ':'.$parts['port'] : '';
+        $port = isset($parts['port']) && $parts['port'] !== 443 ? ':'.$parts['port'] : '';
 
         return 'https://'.$host.$port;
     }
@@ -294,7 +358,7 @@ class SapiSkClient
     {
         $configHosts = array_map('strtolower', (array) config('efaktura.allowed_sapi_hosts', []));
 
-        return array_values(array_unique(array_merge($configHosts, EfakturaCpdsProvider::allowedHosts())));
+        return array_values(array_unique(array_merge($configHosts, EfakturaCpdsProvider::allowedHosts(), ['postman.slovakodata.com', 'testpostman.slovakodata.com'])));
     }
 
     protected function assertResolvablePublicHost(string $host): void

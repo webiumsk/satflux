@@ -1,5 +1,24 @@
 # Development roadmap
 
+## ePostman receiving implementation accepted locally - 2026-11-10
+
+- [x] Implement fixed test/production receiving with company/XML validation,
+  provenance, pagination/retry, safe custody and observable connection health.
+- [x] Verify exact local original before server handoff; repair partial imports,
+  preserve pending originals and provide readable view/download in five locales.
+- [x] Independent security/QA accept36 runtime/test paths (`b8296faf`); targeted
+  lockedPHP104/554, independent67/424, fullUI2325/209/finalwizard19, build/static/API
+  checks pass. BroadPHP61 failures exactly reproduce on unchanged base/minimalenv.
+- [ ] Verify actual cross-AP sandbox with securely supplied test credentials and
+  provider archive/export/contract terms; no network interoperability is claimed.
+- [ ] Resolve supported handling of originals above384KiB before claiming complete
+  local handoff for all allowed provider document sizes; currently safe/pending.
+- [ ] Obtain separate production approval, deploy frontend/backend/migration
+  together, activate the correct SK participant and monitor the first receipt.
+
+See the feature runbook. No paid plans, billing/entitlements, external repository,
+production or readiness-claim changes. Existing primary work remains preserved.
+
 ## Slovak eFaktura delivery work paused; truthful public copy prepared - 2026-11-09
 
 Owner approved withdrawing ready SK eFaktura marketing claims while retaining

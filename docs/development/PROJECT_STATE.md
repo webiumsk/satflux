@@ -1,5 +1,34 @@
 # Project state
 
+## ePostman receiving accepted locally - 2026-11-10
+
+Owner-authorized receiving-first implementation is ready on
+`feat/efaktura-epostman-inbound`, base `6e6c0587`, in durable worktree
+`storage/app/private/worktrees/efaktura-epostman-inbound`. Fixed test/production
+profiles support JSON /sapi receiving, complete pagination, validated company/XML
+identity, immutable receipt provenance, safe original custody, visible poll health
+and protected credential/settings changes. ePostman outgoing is explicitly blocked.
+Local original read-back/digest confirmation and partial-import recovery preserve
+Evolu encryption; no destructive pending expiry/dismiss or new permanent server
+archive. Owner's separate LLC and existing generic provider behavior remain isolated.
+
+Independent security/QA accept36 runtime/test paths, manifest SHA256
+`b8296fafe97a6d7a77c57eecc9a1e83165335a8a19e6a24732e5268a4051b75f`.
+Real Chrome verifies exact original bytes after reload and full browser restart,
+including failed-confirmation retry without duplicates.
+Locked PHP104/554 and independent67/424, frontend2325/209 plus finalwizard19,
+Pint19/PHPStan/API checks, final build/type110/lint48/parity/changelog14 pass.
+Full PHP is not green:3216 tests,33 errors/28 failures/69 skips; all61 failing
+identities/classifications/diagnostics reproduce on unchanged base in the identical
+minimal environment, independently checked by QA. No unrelated fixes or exclusions.
+
+Evidence: feature `docs/development/EPOSTMAN_INBOUND_IMPLEMENTATION.md`; private
+review material under `storage/app/private/reviews/epostman-inbound` in coordinator
+checkout. Actual cross-AP receiving, provider archive/activation and production
+remain unverified. Originals above384KiB stay pending/downloadable; local handoff
+cannot finish for them. No provider account, paid contract, production credential,
+push/PR, merge or deployment occurred. Primary unrelated dirty work is preserved.
+
 ## Slovak eFaktura public claims withdrawn locally - 2026-11-09
 
 Owner-approved copy correction on `fix/efaktura-public-claims` from owned master
