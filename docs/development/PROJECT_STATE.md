@@ -1,5 +1,16 @@
 # Project state
 
+## ePostman sandbox account ready; protected probe prepared - 2026-11-10
+
+Owner reports an activated sandbox account and asks for live testing. Credentials
+were shared in chat; no values were copied into tools, source, reports or agents.
+Rotate that test secret and enter replacements only through local hidden prompts.
+A read-only sandbox probe is prepared: fixed test origin, isolated uncached testing
+configuration, protected JSON input and anonymous output, no send/ACK/import or
+model/database writes. Live authentication has not run; the private credential
+file is not yet configured. A missing-file launch reached the credentials stage
+and stopped safely before authentication. Production state remains unchanged.
+
 ## ePostman receiving accepted locally - 2026-11-10
 
 Owner-authorized receiving-first implementation is ready on

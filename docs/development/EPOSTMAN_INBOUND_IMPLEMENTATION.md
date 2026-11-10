@@ -67,6 +67,10 @@ temporary storage and isolated test settings. Frontend tests use synthetic data.
 
 ## Production handoff gates
 
+For an initial read-only sandbox authentication/list/detail diagnostic, see the
+[protected-input probe instructions](../../scripts/efaktura/README.md). This does
+not acknowledge or import documents and is separate from the full test below.
+
 1. Complete local implementation checks and independent QA/security review.
 2. Obtain company-scoped sandbox credentials securely outside chat/source and
    verify their allowed test environment. Do not reuse production credentials.

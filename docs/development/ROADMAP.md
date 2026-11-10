@@ -1,5 +1,17 @@
 # Development roadmap
 
+## ePostman read-only sandbox verification prepared - 2026-11-10
+
+- [x] Prepare hidden local credential capture and isolated fixed-host auth/list/detail
+  diagnostic with no sending, acknowledgement, import or persistence.
+- [x] Security accepts the five-file diagnostic snapshot; offline helper/probe
+  regressions cover echo fallback, permissions, isolation, bounds and redaction.
+- [ ] Owner rotates the previously shared test secret and captures new SAPI values
+  locally; do not copy credentials into chat/tool arguments or source.
+- [ ] Execute the authorized read-only probe once private input is configured.
+- [ ] Obtain a synthetic incoming invoice/credit note, then verify full durable
+  Satflux import separately. Empty listing/authentication alone is not receiving proof.
+
 ## ePostman receiving implementation accepted locally - 2026-11-10
 
 - [x] Implement fixed test/production receiving with company/XML validation,

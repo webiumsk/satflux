@@ -1,5 +1,16 @@
 # Development decision log
 
+## 2026-11-10 - Keep first live sandbox probe read-only and secret-free in logs
+
+Owner's activated test account authorizes sandbox verification. Do not repeat
+credentials shared in chat. Provide hidden local input and use a protected ignored
+file instead of embedding secret values in commands. Fail closed on terminal echo
+fallback, symlinks, existing files, unsafe modes and oversized input. The real
+SapiSkClient diagnostic fixes the sandbox origin and checks resolved isolated
+configuration before credential access. Auth/list/bounded detail GETs are allowed;
+no ACK/send/import/migrations/model writes. Anonymous status/count output alone
+cannot certify cross-AP receiving, original handoff, archive or production readiness.
+
 ## 2026-11-10 - Accept bounded receiving with verified original handoff
 
 Accept the independently reviewed ePostman receiving source (`b8296faf`,36 paths)

@@ -1,5 +1,17 @@
 # Local workspace
 
+## ePostman sandbox probe waiting for private input - 2026-11-10
+
+Feature remains in `storage/app/private/worktrees/efaktura-epostman-inbound`.
+Owner reports an active test account. Hidden capture helper is
+`scripts/efaktura/prepare_sandbox.py` in that feature; run from coordinator checkout
+so private input lands at `storage/app/private/epostman-sandbox/.env.credentials.json`.
+Never print/read that file into model output. Once owner confirms it is saved,
+read-only sandbox auth/list/detail testing is authorized; no repeated permission
+is needed. Check owner/mode and isolate synthetic dotenv/configuration first.
+Reviewed disposable launcher is retained for this session separately from source;
+production configuration, provider sends/ACK and billing remain outside scope.
+
 ## ePostman receiving retained for handoff - 2026-11-10
 
 `feat/efaktura-epostman-inbound` from `6e6c0587` is retained in durable worktree
