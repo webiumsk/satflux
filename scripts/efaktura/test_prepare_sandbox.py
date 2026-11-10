@@ -31,6 +31,15 @@ class CaptureTests(unittest.TestCase):
         self.assertEqual(stat.S_IMODE(self.target.parent.stat().st_mode), 0o700)
         self.assertEqual(set(json.loads(self.target.read_text())), {"client_id", "client_secret", "participant_id"})
 
+    def test_new_private_directory_drops_inherited_setgid_without_changing_parent(self):
+        parent = self.target.parent.parent
+        parent.mkdir(parents=True)
+        parent.chmod(0o2700)
+        self.capture()
+        self.assertEqual(stat.S_IMODE(self.target.parent.stat().st_mode), 0o700)
+        self.assertEqual(stat.S_IMODE(self.target.stat().st_mode), 0o600)
+        self.assertEqual(stat.S_IMODE(parent.stat().st_mode), 0o2700)
+
     def test_existing_credentials_are_never_overwritten_or_prompted(self):
         self.capture()
         original = self.target.read_bytes()
@@ -69,6 +78,11 @@ class CaptureTests(unittest.TestCase):
             with self.assertRaises(helper.CaptureError):
                 self.capture(values)
             self.assertFalse(self.target.exists())
+
+    def test_identical_client_id_and_secret_are_rejected_before_write(self):
+        with self.assertRaises(helper.CaptureError):
+            self.capture(["synthetic-identical-value", "synthetic-identical-value", "0245:1234567890"])
+        self.assertFalse(self.target.exists())
 
     def test_cancellation_creates_no_file(self):
         def cancel(prompt):

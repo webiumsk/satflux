@@ -22,14 +22,22 @@ def private_directory(root: Path) -> int:
     """Traverse directory descriptors, refusing symlinks and unsafe final modes."""
     descriptor = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
-        for part in DIRECTORY:
+        for index, part in enumerate(DIRECTORY):
+            created = False
             try:
                 os.mkdir(part, 0o700, dir_fd=descriptor)
+                created = True
             except FileExistsError:
                 pass
             child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor)
             os.close(descriptor)
             descriptor = child
+            if created and index == len(DIRECTORY) - 1:
+                if os.fstat(descriptor).st_uid != os.geteuid():
+                    raise CaptureError("New sandbox credential directory must be owned by you.")
+                # mkdir inherits setgid from the parent even with mode 0700.
+                # Tighten only our new leaf; existing directories still fail closed.
+                os.fchmod(descriptor, 0o700)
         metadata = os.fstat(descriptor)
         if metadata.st_uid != os.geteuid() or stat.S_IMODE(metadata.st_mode) != 0o700:
             raise CaptureError("Sandbox credential directory must be owned by you with mode 0700.")
@@ -62,6 +70,8 @@ def capture(root: Path, read_secret=getpass.getpass) -> None:
             raise CaptureError("Invalid sandbox input; no credential file was written.")
         if len(values["client_id"]) > 256 or len(values["client_secret"]) > 4096 or not re.fullmatch(r"0245:[0-9]{10}", values["participant_id"]):
             raise CaptureError("Invalid sandbox input; check the SAPI fields and participant format.")
+        if values["client_id"] == values["client_secret"]:
+            raise CaptureError("Client ID and Client Secret must be different; no credential file was written.")
         serialized = json.dumps(values, ensure_ascii=True) + "\n"
         if len(serialized.encode("utf-8")) > 16384:
             raise CaptureError("Sandbox input exceeds the protected credential file size limit.")
