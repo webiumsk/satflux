@@ -1,5 +1,15 @@
 # Development roadmap
 
+## First real sandbox transport check passed - 2026-11-10
+
+- [x] Authenticate with actual owner-configured ePostman sandbox credentials.
+- [x] Fetch actual receive listing: one page, empty inbox, no provider ACK/send.
+- [ ] Obtain a synthetic incoming invoice/credit note and verify actual detail,
+  XML identity, durable custody and local import in an isolated persistent test app.
+- [ ] Verify cross-AP and archive/production gates separately.
+
+Successful authentication and an empty inbox do not complete receiving validation.
+
 ## ePostman read-only sandbox verification prepared - 2026-11-10
 
 - [x] Prepare hidden local credential capture and isolated fixed-host auth/list/detail

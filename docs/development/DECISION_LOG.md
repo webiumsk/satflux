@@ -1,5 +1,15 @@
 # Development decision log
 
+## 2026-11-10 - Record transport success without overstating receiving proof
+
+The owner-authorized read-only real sandbox probe now authenticates and lists
+received documents successfully. The inbox is empty; record exactly that boundary.
+No invoices were sent or acknowledged, no original XML was retrieved, and no live
+company settings/database records changed. Keep production and full receiving
+claims gated on a real synthetic incoming document, isolated durable handoff,
+cross-AP evidence and provider archive verification. Never expose credential
+values while collecting the next evidence.
+
 ## 2026-11-10 - Keep first live sandbox probe read-only and secret-free in logs
 
 Owner's activated test account authorizes sandbox verification. Do not repeat

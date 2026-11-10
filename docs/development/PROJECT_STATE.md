@@ -1,5 +1,17 @@
 # Project state
 
+## Real ePostman sandbox authentication/listing verified - 2026-11-10
+
+Owner re-entered distinct sandbox credentials through hidden local prompts. The
+reviewed read-only probe completed successfully against the fixed test origin:
+authenticated=true, one receive page, zero documents. No detail/XML retrieval,
+ACK, invoice sending, import or company/database write occurred. This verifies
+actual sandbox authentication and receive-list access, not document delivery,
+provider/archive guarantees, cross-AP interoperability or production readiness.
+Next receiving evidence requires a synthetic incoming invoice/credit note in the
+test inbox, followed by isolated durable import verification. Secret values remain
+in the owner-only local file and were not printed or copied into reports.
+
 ## ePostman sandbox account ready; protected probe prepared - 2026-11-10
 
 Owner reports an activated sandbox account and asks for live testing. Credentials

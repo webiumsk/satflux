@@ -112,6 +112,11 @@ proof that this copy is recoverable until actual account terms/export are verifi
 
 ## Verification record
 
+Actual read-only ePostman sandbox probe on 2026-11-10: authentication succeeded
+and the real receive listing returned one page with zero documents. No XML detail,
+ACK/send, expense import or company write occurred. This is actual transport
+evidence, not actual invoice reception or cross-AP/archival/production proof.
+
 Independent security and QA accept the frozen 36 runtime/test paths, manifest
 SHA256 `b8296fafe97a6d7a77c57eecc9a1e83165335a8a19e6a24732e5268a4051b75f`.
 The final 17-path frontend manifest is
