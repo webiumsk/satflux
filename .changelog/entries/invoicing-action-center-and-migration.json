@@ -1,0 +1,9 @@
+{
+  "id": "invoicing-action-center-and-migration",
+  "source": "https://github.com/webiumsk/satflux/pull/438",
+  "title": "Review invoicing tasks and migrate from SuperFaktura or Zaprite",
+  "body": "Company invoicing now has a Needs attention page for unmatched payments, failed document delivery, synchronization issues and received documents awaiting processing. Each item explains the problem and links to the next step.\n\nThe migration wizard previews historical invoices, checks totals and payment evidence, detects duplicates and retains source files with your encrypted invoicing data. SuperFaktura imports can preserve verified ISDOC items from supplied PDFs, including deductions. Zaprite imports support detailed items and confirmed payments through a read-only API key or a saved wizard export.\n\nZaprite invoices in unsupported currencies, including native BTC, require explicit exclusion and remain in the archived JSON source. Original source archives are preserved across backups, sharing and interrupted retries. Local company lists and statistics can load while relay synchronization is unavailable, and relay quotas are distinguished from local storage failures.",
+  "labels": [
+    "feature"
+  ]
+}

@@ -5,14 +5,15 @@
     role="status"
   >
     <div class="text-sm text-red-900">
-      <p class="font-medium">{{ t("invoicing.storage_warning_title") }}</p>
-      <p class="text-red-800">
-        {{
-          quotaError
-            ? t("invoicing.storage_quota_exceeded")
-            : t("invoicing.storage_warning_80", { percent: usagePercent ?? 0 })
-        }}
+      <p class="font-medium">
+        {{ t(usageCritical ? "invoicing.storage_warning_title"
+          : quotaError ? "invoicing.storage_error_title" : "invoicing.relay_quota_title") }}
       </p>
+      <p v-if="usageCritical" class="text-red-800">
+        {{ t("invoicing.storage_warning_80", { percent: usagePercent ?? 0 }) }}
+      </p>
+      <p v-if="quotaError" class="text-red-800">{{ t("invoicing.storage_quota_exceeded") }}</p>
+      <p v-if="relayQuotaError" class="text-red-800">{{ t("account.evolu_relay_quota_hint") }}</p>
     </div>
     <router-link
       to="/account?tab=sync"
@@ -33,9 +34,8 @@ import {
 import { evoluErrorRef, isQuotaLikeEvoluError } from "../../evolu/evoluErrorMonitor";
 
 /**
- * Storage pressure warning (P1 phase 5): shown when the origin uses >= 80%
- * of its browser quota or when Evolu reported a quota-like error. The CTA
- * points at the Profile backup export - saving the data comes first.
+ * Show local storage pressure and relay quota refusals with their own
+ * explanations. The Profile link offers backup and synchronization settings.
  */
 const { t } = useI18n();
 
@@ -44,7 +44,8 @@ const usageCritical = ref(false);
 const evoluError = evoluErrorRef();
 
 const quotaError = computed(() => isQuotaLikeEvoluError(evoluError.value));
-const visible = computed(() => usageCritical.value || quotaError.value);
+const relayQuotaError = computed(() => evoluError.value === "ProtocolQuotaError");
+const visible = computed(() => usageCritical.value || quotaError.value || relayQuotaError.value);
 
 onMounted(async () => {
   const info = await getStorageEstimate();

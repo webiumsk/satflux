@@ -93,6 +93,27 @@ class CanonicalInvoiceBuilderTest extends TestCase
     }
 
     #[Test]
+    public function signed_deduction_reduces_the_taxable_base_and_vat_at_its_own_rate(): void
+    {
+        $canonical = app(CanonicalInvoiceBuilder::class)->fromLinePayloads($this->vatCompany(), [
+            ['name' => 'Standard', 'quantity' => 1, 'unit_price' => 100, 'tax_rate' => 23],
+            ['name' => 'Reduced', 'quantity' => 1, 'unit_price' => 100, 'tax_rate' => 10],
+            ['name' => 'Service deduction', 'quantity' => 1, 'unit_price' => -20, 'tax_rate' => 23],
+        ]);
+
+        $this->assertSame('-20.00', $canonical->lines[2]->netAmount);
+        $this->assertSame('-4.60', $canonical->lines[2]->taxAmount);
+        $this->assertSame('-24.60', $canonical->lines[2]->grossAmount);
+        $this->assertSame('100.00', $canonical->taxBreakdown[0]->taxableAmount);
+        $this->assertSame('10.00', $canonical->taxBreakdown[0]->taxAmount);
+        $this->assertSame('80.00', $canonical->taxBreakdown[1]->taxableAmount);
+        $this->assertSame('18.40', $canonical->taxBreakdown[1]->taxAmount);
+        $this->assertSame('180.00', $canonical->subtotal);
+        $this->assertSame('28.40', $canonical->taxTotal);
+        $this->assertSame('208.40', $canonical->total);
+    }
+
+    #[Test]
     public function from_document_matches_persisted_totals_when_lines_are_consistent(): void
     {
         $company = $this->vatCompany();

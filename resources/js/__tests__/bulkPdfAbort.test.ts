@@ -14,7 +14,12 @@ vi.mock("@/evolu/client", () => ({
     allDocumentSnapshotsQuery: "allDocumentSnapshotsQuery",
 }));
 
-import { downloadEphemeralPdfZip, type EphemeralBulkRequestBody } from "../evolu/ephemeralBridge";
+import {
+    buildEphemeralSnapshotFromApiDocument,
+    downloadEphemeralPdfZip,
+    type EphemeralBulkRequestBody,
+    type EphemeralSnapshotPayload,
+} from "../evolu/ephemeralBridge";
 
 const body = { company: {}, documents: [] } as unknown as EphemeralBulkRequestBody;
 
@@ -27,6 +32,41 @@ describe("isAbortError", () => {
         expect(isAbortError(null)).toBe(false);
         expect(isAbortError("ERR_CANCELED")).toBe(false);
     });
+});
+
+it("includes the stored amounts and zero tax rate for a signed historical PDF", () => {
+    const document = {
+        type: "invoice",
+        status: "paid",
+        subtotal: "80.00",
+        tax_total: "0.00",
+        total: "80.00",
+        lines: [{ line_total: "100.00" }, { line_total: "-20.00" }],
+    };
+    const deduction: EphemeralSnapshotPayload["lines"][number] = {
+        name: "Deduction",
+        description: null,
+        quantity: 1,
+        unit: "ks",
+        unit_price: -20,
+        line_discount_percent: 0,
+        tax_rate: 0,
+        company_stock_item_id: null,
+        company_warehouse_id: null,
+    };
+
+    const service = { ...deduction, name: "Service", unit_price: 100 };
+    const signed = buildEphemeralSnapshotFromApiDocument(null, null, document, [service, deduction]);
+    expect(signed.source_totals).toEqual({
+        subtotal: "80.00",
+        tax_total: "0.00",
+        total: "80.00",
+        line_totals: ["100.00", "-20.00"],
+    });
+    expect(signed.lines[1]).toMatchObject({ unit_price: -20, tax_rate: 0 });
+
+    const unsigned = buildEphemeralSnapshotFromApiDocument(null, null, document, [service]);
+    expect(unsigned).not.toHaveProperty("source_totals");
 });
 
 describe("bulk PDF abort (P2 phase 4)", () => {

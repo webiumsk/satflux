@@ -99,6 +99,7 @@ describe("isQuotaLikeEvoluError", () => {
         expect(isQuotaLikeEvoluError("QuotaExceededError")).toBe(true);
         expect(isQuotaLikeEvoluError("StorageError")).toBe(true);
         expect(isQuotaLikeEvoluError("TransferError")).toBe(false);
+        expect(isQuotaLikeEvoluError("ProtocolQuotaError")).toBe(false);
         expect(isQuotaLikeEvoluError(null)).toBe(false);
     });
 });

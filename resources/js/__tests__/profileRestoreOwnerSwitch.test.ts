@@ -1,9 +1,12 @@
 import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Component } from "vue";
 import type { User } from "../store/auth";
 import { clearRelayOverride, readRelayOverride, writeRelayOverrideDisabled } from "../evolu/relayOverrideStorage";
 import { getStoredAccountMnemonic } from "../services/accountSeed";
+import { loadInvoicingLocalStats, type InvoicingLocalStats } from "../evolu/invoicingLocalStats";
+import { fetchEvoluRelayUsage } from "../services/evoluRelayUsageApi";
+import { evolu } from "../evolu/client";
 
 const mocks = vi.hoisted(() => ({
     route: { query: { restore_phrase: "1" } as Record<string, string | undefined> },
@@ -201,6 +204,7 @@ vi.mock("../evolu/client", () => ({
     evolu: {
         loadQuery: vi.fn(async () => []),
         reloadApp: mocks.reloadApp,
+        exportDatabase: vi.fn(async () => new Uint8Array(123)),
     },
 }));
 
@@ -822,6 +826,102 @@ describe("Profile recovery phrase owner switch guard", () => {
                 expect(mocks.reconcileEvoluRelayPreferenceFromProfile).not.toHaveBeenCalled();
                 expect(reload).not.toHaveBeenCalled();
             } finally { vi.unstubAllGlobals(); wrapper.unmount(); }
+        });
+    });
+
+
+    describe("Profile local stats loading", () => {
+        const stats: InvoicingLocalStats = {
+            ownerId: "synthetic-local-owner",
+            ownerIdShort: "synthetic",
+            counts: {
+                company: 1, contact: 2, document: 3, documentByType: { invoice: 3 },
+                expense: 0, documentLine: 3, documentEvent: 1, expenseAttachment: 0,
+                recurringProfile: 0, numberSeries: 1,
+            },
+            companies: [{ id: "company", name: "Verified local company", invoices: 3, documents: 3, contacts: 2 }],
+            lastRelayPushAt: null,
+            lastForceRelayPushAt: null,
+            localDbBytes: null,
+            relayError: "ProtocolQuotaError",
+        };
+        beforeEach(() => {
+            mocks.route.query = { tab: "sync" };
+            mocks.activeRelayUrl = "wss://relay.example.invalid";
+            vi.mocked(getStoredAccountMnemonic).mockReturnValue("synthetic-stats-unlock");
+            vi.mocked(loadInvoicingLocalStats).mockReset().mockResolvedValue(stats);
+            vi.mocked(fetchEvoluRelayUsage).mockReset().mockResolvedValue(null);
+            vi.mocked(evolu.exportDatabase).mockReset().mockResolvedValue(new Uint8Array(123));
+        });
+        afterEach(() => {
+            vi.mocked(getStoredAccountMnemonic).mockReturnValue(null);
+        });
+
+        it("shows verified local counts without waiting for relay usage or exporting the database", async () => {
+            vi.mocked(fetchEvoluRelayUsage).mockImplementation(() => new Promise(() => undefined));
+            const wrapper = await mountProfile();
+            const state = wrapper.vm as unknown as { evoluStatsLoading: boolean };
+            expect(wrapper.text()).toContain("Verified local company");
+            expect(state.evoluStatsLoading).toBe(false);
+            expect(fetchEvoluRelayUsage).toHaveBeenCalledWith("wss://relay.example.invalid", stats.ownerId);
+            expect(evolu.exportDatabase).not.toHaveBeenCalled();
+            wrapper.unmount();
+        });
+
+        it("keeps local counts visible while an explicitly requested database size is calculated", async () => {
+            let completeExport!: (bytes: Awaited<ReturnType<typeof evolu.exportDatabase>>) => void;
+            vi.mocked(evolu.exportDatabase).mockImplementation(() => new Promise(resolve => { completeExport = resolve; }));
+            const wrapper = await mountProfile();
+            await findButton(wrapper, "account.evolu_stats_refresh").trigger("click");
+            await flushPromises();
+            const state = wrapper.vm as unknown as { evoluStatsLoading: boolean; evoluStatsExporting: boolean; evoluLocalStats: InvoicingLocalStats };
+            expect(wrapper.text()).toContain("Verified local company");
+            expect(state.evoluStatsLoading).toBe(false);
+            expect(state.evoluStatsExporting).toBe(true);
+            completeExport(new Uint8Array(42));
+            await flushPromises();
+            expect(state.evoluLocalStats.localDbBytes).toBe(42);
+            expect(state.evoluStatsExporting).toBe(false);
+            wrapper.unmount();
+        });
+
+        it("rejects late local stats after an account change away and back before requesting remote usage", async () => {
+            let completeStats!: (value: InvoicingLocalStats) => void;
+            vi.mocked(loadInvoicingLocalStats).mockImplementation(() => new Promise(resolve => { completeStats = resolve; }));
+            const wrapper = await mountProfile();
+            const original = mocks.user!;
+            mocks.user = { ...original, id: 2 };
+            mocks.user = original;
+            completeStats(stats);
+            await flushPromises();
+            expect(wrapper.text()).not.toContain("Verified local company");
+            expect(fetchEvoluRelayUsage).not.toHaveBeenCalled();
+            expect(evolu.exportDatabase).not.toHaveBeenCalled();
+            wrapper.unmount();
+        });
+
+        it("discards a late relay response after the account changes", async () => {
+            let completeUsage!: (value: Awaited<ReturnType<typeof fetchEvoluRelayUsage>>) => void;
+            vi.mocked(fetchEvoluRelayUsage).mockImplementation(() => new Promise(resolve => { completeUsage = resolve; }));
+            const wrapper = await mountProfile();
+            mocks.user = { ...mocks.user!, id: 2 };
+            completeUsage({ ownerId: stats.ownerId, storedBytes: 5, quotaBytes: 100, firstActivityAt: null, lastActivityAt: null });
+            await flushPromises();
+            const state = wrapper.vm as unknown as { evoluRelayUsage: unknown; evoluLocalStats: unknown };
+            expect(state.evoluRelayUsage).toBeNull();
+            expect(state.evoluLocalStats).toBeNull();
+            wrapper.unmount();
+        });
+
+        it("does not issue usage or export requests after the Profile is unmounted", async () => {
+            let completeStats!: (value: InvoicingLocalStats) => void;
+            vi.mocked(loadInvoicingLocalStats).mockImplementation(() => new Promise(resolve => { completeStats = resolve; }));
+            const wrapper = await mountProfile();
+            wrapper.unmount();
+            completeStats(stats);
+            await flushPromises();
+            expect(fetchEvoluRelayUsage).not.toHaveBeenCalled();
+            expect(evolu.exportDatabase).not.toHaveBeenCalled();
         });
     });
 

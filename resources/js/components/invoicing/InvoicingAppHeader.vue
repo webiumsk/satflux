@@ -166,6 +166,7 @@ const displayCompanyLabel = computed(() => props.companyLabel || summaryCompanyN
 
 const visibleMainNav = computed(() => {
   const items: { id: InvoicingMainSection; labelKey: string }[] = [
+    { id: 'attention', labelKey: 'invoicing.action_center.title' },
     { id: 'documents', labelKey: 'invoicing.main_nav_documents' },
     { id: 'expenses', labelKey: 'invoicing.main_nav_expenses' },
   ];

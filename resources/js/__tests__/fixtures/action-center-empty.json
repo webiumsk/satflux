@@ -1,0 +1,10 @@
+{
+  "checked_at": "2026-11-10T12:00:00+00:00",
+  "categories": [
+    { "key": "unmatched_payments", "state": "ready", "count": 0, "items": [], "has_more": false },
+    { "key": "failed_sends", "state": "ready", "count": 0, "items": [], "has_more": false },
+    { "key": "synchronization", "state": "not_configured", "count": null, "items": [], "has_more": false },
+    { "key": "incoming_documents", "state": "ready", "count": 0, "items": [], "has_more": false }
+  ],
+  "restricted_sources": []
+}

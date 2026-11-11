@@ -83,6 +83,36 @@ class EphemeralBusinessDocumentBulkTest extends TestCase
         $this->assertDatabaseCount('business_documents', 0);
     }
 
+    #[Test]
+    public function both_bulk_pdf_formats_accept_issued_invoices_with_deductions(): void
+    {
+        [$user, $company] = $this->createProUserWithCompany();
+        $this->actingAs($user);
+        $item = $this->singleDocumentPayload();
+        $item['document']['payment_bank_enabled'] = false;
+        $item['lines'][] = ['name' => 'Service deduction', 'quantity' => 1, 'unit_price' => -20];
+        $item['source_totals'] = [
+            'subtotal' => '80.00',
+            'tax_total' => '0.00',
+            'total' => '80.00',
+            'line_totals' => ['100.00', '-20.00'],
+        ];
+        $payload = ['company' => $item['company'], 'documents' => [$item]];
+
+        $this->postJson('/api/invoicing/ephemeral/bulk/pdf-zip', $payload)
+            ->assertOk()
+            ->assertHeader('content-type', 'application/zip');
+        $response = $this->postJson("/api/invoicing/companies/{$company->id}/documents/ephemeral/bulk/pdf-merge", $payload);
+        $response->assertOk()->assertHeader('content-type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+        $this->assertDatabaseCount('business_documents', 0);
+
+        $payload['documents'][0]['lines'][1]['unit_price'] = -101;
+        $this->postJson('/api/invoicing/ephemeral/bulk/pdf-zip', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('documents.0.lines');
+    }
+
     /**
      * @return array{0: User, 1: Company}
      */

@@ -14,7 +14,8 @@ vi.mock('@/evolu/client', async () => {
     CompaniesDetail:'company', Companies:'company', CompanyShares:'companyShare', CompanyStockBalances:'companyStockBalance', CompanyStockItems:'companyStockItem',
     CompanyStockMovements:'companyStockMovement', CompanyWarehouses:'companyWarehouse', Contacts:'contact', DocumentEvents:'documentEvent', InvoiceTemplates:'invoiceTemplate',
     DocumentLines:'documentLine', DocumentSnapshots:'documentSnapshot', Documents:'document', Expenses:'expense', ExpenseAttachments:'expenseAttachment',
-    NumberSeries:'numberSeries', RecurringProfileLines:'recurringProfileLine', RecurringProfiles:'recurringProfile' };
+    NumberSeries:'numberSeries', RecurringProfileLines:'recurringProfileLine', RecurringProfiles:'recurringProfile',
+    MigrationSourcesBackup:'migrationSource', MigrationChunks:'migrationChunk' };
   const {InvoicingLocalSchema}=await import('@/evolu/schema');
   const queries:Record<string,unknown> = {};
   for (const [suffix,table] of Object.entries(tables)) queries[`all${suffix}Query`] = createQuery(db => db.selectFrom(table).select([...Object.keys(InvoicingLocalSchema[table as keyof typeof InvoicingLocalSchema]),'ownerId']).where('isDeleted','is not',sqliteTrue));

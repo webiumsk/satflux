@@ -12,6 +12,7 @@ vi.mock("@/evolu/client", async () => {
         ["allContactsQuery", "contact"], ["allNumberSeriesQuery", "numberSeries"], ["allInvoiceTemplatesQuery", "invoiceTemplate"],
         ["allDocumentsQuery", "document"], ["allDocumentLinesQuery", "documentLine"], ["allDocumentEventsQuery", "documentEvent"],
         ["allDocumentSnapshotsQuery", "documentSnapshot"], ["allExpensesQuery", "expense"], ["allExpenseAttachmentsQuery", "expenseAttachment"],
+        ["allMigrationSourcesBackupQuery", "migrationSource"], ["allMigrationChunksQuery", "migrationChunk"],
         ["allRecurringProfilesQuery", "recurringProfile"], ["allRecurringProfileLinesQuery", "recurringProfileLine"],
         ["allCompanyWarehousesQuery", "companyWarehouse"], ["allCompanyStockItemsQuery", "companyStockItem"],
         ["allCompanyStockBalancesQuery", "companyStockBalance"], ["allCompanyStockMovementsQuery", "companyStockMovement"],

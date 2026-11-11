@@ -293,6 +293,17 @@ function writeIssueSnapshot(
     return insertIssuedDocumentSnapshot(evolu, doc.id as DocumentId, content.value);
 }
 
+function isPendingMigration(document: EvoluDocumentRow | null | undefined): boolean {
+    return document?.status === "draft" && Boolean(Reflect.get(document, "migrationFingerprint"))
+        && !Reflect.get(document, "migrationCompletedAt");
+}
+
+function ordinaryIssueError(documentId: DocumentId, draft: EvoluDocumentRow | null | undefined, lines: readonly EvoluDocumentLineRow[]) {
+    if (isPendingMigration(draft)) return "migration_pending" as const;
+    if (lines.some(line => line.documentId === documentId && Number(line.unitPrice) < 0)) return "negative_line_price" as const;
+    return null;
+}
+
 export function saveLocalDocument(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
@@ -324,16 +335,17 @@ export function saveLocalDocument(
     },
 ) {
     const existing = options.existingDocument ?? null;
+    const persisted = options.documentId
+        ? toAppRows<EvoluDocumentRow>(evolu.getQueryRows(allDocumentsQuery))
+            .find((row) => row.id === options.documentId) ?? existing
+        : existing;
+    if (isPendingMigration(persisted)) return { ok: false as const, error: "migration_pending" as const };
 
     // GoBD lock first, and against PERSISTED state - the caller's
     // existingDocument copy may be missing or stale, and an issued document
     // must stay immutable even then. An unverifiable update (a documentId
     // whose row cannot be found) is rejected rather than trusted.
     if (options.lockIssuedContent) {
-        const persisted = options.documentId
-            ? toAppRows<EvoluDocumentRow>(evolu.getQueryRows(allDocumentsQuery))
-                .find((row) => row.id === options.documentId) ?? existing
-            : existing;
         if (options.documentId && !persisted) {
             return { ok: false as const, error: "issued_locked" };
         }
@@ -344,6 +356,9 @@ export function saveLocalDocument(
 
     if (!payload.lines.length) {
         return { ok: false as const, error: "lines_required" };
+    }
+    if (payload.lines.some(line => line.unit_price < 0)) {
+        return { ok: false as const, error: "negative_line_price" as const };
     }
 
     const totals = calcDocumentTotals(
@@ -492,6 +507,7 @@ export async function issueLocalDocumentAsync(
     if (!draft || draft.status !== "draft") {
         return { ok: false as const, error: "not_draft" };
     }
+    if (isPendingMigration(draft)) return { ok: false as const, error: "migration_pending" as const };
 
     const { documents, series } = await loadIssueContext(evolu);
     const [lineRows, contactRows] = await Promise.all([
@@ -504,6 +520,8 @@ export async function issueLocalDocumentAsync(
             (toAppRows<EvoluContactRow>(contactRows).find((c) => c.id === draft.contactId)
                 ?? null),
     };
+    const issueError = ordinaryIssueError(documentId, draft, snapshotContext.lines);
+    if (issueError) return { ok: false as const, error: issueError };
 
     // Server number allocator (audit F3): the number is reserved atomically
     // on the server, keyed by the document id so a retried issue gets the
@@ -667,6 +685,12 @@ export function applyReservedNumberToLocalDocument(
     variableSymbol?: string | null,
     snapshotContext?: ReservedIssueSnapshotContext,
 ) {
+    const draft = toAppRows<EvoluDocumentRow>(evolu.getQueryRows(allDocumentsQuery))
+        .find(row => row.id === documentId);
+    const lines = toAppRows<EvoluDocumentLineRow>(evolu.getQueryRows(allDocumentLinesQuery));
+    const issueError = ordinaryIssueError(documentId, draft, lines)
+        ?? ordinaryIssueError(documentId, snapshotContext?.doc, snapshotContext?.lines ?? []);
+    if (issueError) return { ok: false as const, error: issueError };
     const quoteStatus = documentType === "quote" ? "pending" : null;
 
     // Snapshot before status flip (audit F2): a document may only become
@@ -713,15 +737,17 @@ export async function applyReservedNumberToLocalDocumentAsync(
     variableSymbol?: string | null,
     snapshotContext?: ReservedIssueSnapshotContext,
 ) {
+    const doc = await waitForDraftDocument(evolu, documentId);
+    const lines = toAppRows<EvoluDocumentLineRow>(await evolu.loadQuery(allDocumentLinesQuery));
+    const issueError = ordinaryIssueError(documentId, doc, lines);
+    if (issueError) return { ok: false as const, error: issueError };
     // Callers without local row context (e.g. Woo inbox import) get it loaded
     // here so their issues also freeze a snapshot. Best-effort: a missing
     // company row falls back to issuing without a snapshot (legacy behavior).
     let context = snapshotContext;
     if (!context) {
-        const doc = await waitForDraftDocument(evolu, documentId);
         if (doc) {
-            const [lineRows, contactRows, companyRows, documents] = await Promise.all([
-                evolu.loadQuery(allDocumentLinesQuery),
+            const [contactRows, companyRows, documents] = await Promise.all([
                 evolu.loadQuery(allContactsQuery),
                 evolu.loadQuery(allCompaniesDetailQuery),
                 evolu.loadQuery(allDocumentsQuery),
@@ -734,7 +760,7 @@ export async function applyReservedNumberToLocalDocumentAsync(
                     company,
                     doc,
                     allDocuments: toAppRows<EvoluDocumentRow>(documents),
-                    lines: toAppRows<EvoluDocumentLineRow>(lineRows),
+                    lines,
                     contact:
                         (toAppRows<EvoluContactRow>(contactRows).find(
                             (c) => c.id === doc.contactId,

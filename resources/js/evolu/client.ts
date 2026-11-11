@@ -3,7 +3,7 @@ import { createUseEvolu } from "@evolu/vue";
 import { registerEvoluRelayOwner } from "./relayPreferenceLifecycle";
 import { withCompanyOwnerScoping } from "./ownerScope";
 import { createEvoluWebDepsWithReloadGuard } from "./reloadGuard";
-import { EVOLU_APP_NAME, InvoicingLocalSchema, type ExpenseId } from "./schema";
+import { EVOLU_APP_NAME, InvoicingLocalSchema, type CompanyId, type ExpenseId, type MigrationSourceId } from "./schema";
 
 const rawEvolu = createEvolu(createEvoluWebDepsWithReloadGuard())(InvoicingLocalSchema, {
     name: SimpleName.orThrow(EVOLU_APP_NAME),
@@ -104,6 +104,9 @@ const documentColumns = [
     "title",
     "number",
     "sourceDocumentId",
+    "migrationSourceId",
+    "migrationFingerprint",
+    "migrationCompletedAt",
     "issueDate",
     "deliveryDate",
     "dueDate",
@@ -599,3 +602,25 @@ export const allCompanySharesQuery = evolu.createQuery((db) =>
         .where("isDeleted", "is not", sqliteTrue)
         .orderBy("createdAt"),
 );
+
+/** Metadata only: the wizard never subscribes to or renders original file bytes. */
+export const allMigrationSourcesQuery = evolu.createQuery((db) => db.selectFrom("migrationSource")
+    .select(["id", "companyId", "sourceKind", "relatedExportId", "originalFilename", "mimeType", "sizeBytes", "checksum", "chunkCount", "savedAt"])
+    .where("isDeleted", "is not", sqliteTrue).where("savedAt", "is not", null).orderBy("createdAt"));
+
+/** Private read-back queries: never subscribe these as UI caches. */
+export const migrationSourceProofQuery = evolu.createQuery((db) => db.selectFrom("migrationSource")
+    .selectAll().where("id", "is not", null));
+export function migrationChunkProofQuery(companyId: CompanyId, sourceId: MigrationSourceId) {
+    return evolu.createQuery((db) => db.selectFrom("migrationChunk").selectAll()
+        .where("companyId", "=", companyId).where("sourceId", "=", sourceId)
+        .where("isDeleted", "is not", sqliteTrue));
+}
+
+export const allMigrationSourcesBackupQuery = evolu.createQuery((db) => db.selectFrom("migrationSource")
+    .select(["id", "companyId", "sourceKind", "relatedExportId", "originalFilename", "mimeType", "sizeBytes", "checksum", "chunkCount", "savedAt"])
+    .where("isDeleted", "is not", sqliteTrue).orderBy("createdAt"));
+export const allMigrationChunksQuery = evolu.createQuery((db) => db.selectFrom("migrationChunk")
+    .select(["id", "companyId", "sourceId", "chunkIndex", "contentBase64"])
+    .where("isDeleted", "is not", sqliteTrue).orderBy("createdAt"));
+export const migrationDocumentTargetsQuery = evolu.createQuery((db) => db.selectFrom("document").selectAll().where("id", "is not", null));

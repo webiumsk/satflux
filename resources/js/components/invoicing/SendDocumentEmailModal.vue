@@ -66,6 +66,7 @@
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { invoicingApi } from '../../services/api';
+import { recordLocalEmailFailure } from '../../evolu/localEmailAttention';
 import {
   previewEphemeralEmail,
   sendEphemeralEmail,
@@ -148,6 +149,11 @@ async function loadPreview() {
 }
 
 async function send() {
+  if (sending.value) return;
+  const attemptCompanyId = props.companyId;
+  const attemptDocumentId = props.documentId;
+  const attemptStartedAt = new Date().toISOString();
+  const localAttempt = Boolean(props.ephemeralSnapshot);
   sending.value = true;
   error.value = '';
   try {
@@ -174,6 +180,9 @@ async function send() {
     close();
   } catch (e: unknown) {
     error.value = extractError(e);
+    if (localAttempt) {
+      void recordLocalEmailFailure(attemptCompanyId, attemptDocumentId, attemptStartedAt);
+    }
   } finally {
     sending.value = false;
   }

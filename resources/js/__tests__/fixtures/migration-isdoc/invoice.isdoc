@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Invoice xmlns="http://isdoc.cz/namespace/2013" version="6.0.2">
+  <DocumentType>1</DocumentType>
+  <ID>TEST-2026-123</ID>
+  <UUID>00000000-0000-4000-8000-000000000001</UUID>
+  <IssuingSystem>Satflux synthetic fixture</IssuingSystem>
+  <IssueDate>2026-08-15</IssueDate>
+  <TaxPointDate>2026-08-15</TaxPointDate>
+  <VATApplicable>true</VATApplicable>
+  <ElectronicPossibilityAgreementReference>Fixture agreement</ElectronicPossibilityAgreementReference>
+  <LocalCurrencyCode>EUR</LocalCurrencyCode>
+  <CurrRate>1</CurrRate>
+  <RefCurrRate>1</RefCurrRate>
+  <AccountingSupplierParty>
+    <Party>
+      <PartyIdentification><ID>12345678</ID></PartyIdentification>
+      <PartyName><Name>Fixture supplier</Name></PartyName>
+      <PostalAddress><StreetName>Fixture street</StreetName><BuildingNumber>1</BuildingNumber><CityName>Fixture city</CityName><PostalZone>00000</PostalZone><Country><IdentificationCode>SK</IdentificationCode><Name>Slovakia</Name></Country></PostalAddress>
+    </Party>
+  </AccountingSupplierParty>
+  <AccountingCustomerParty>
+    <Party>
+      <PartyIdentification><ID>87654321</ID></PartyIdentification>
+      <PartyName><Name>Fixture buyer</Name></PartyName>
+      <PostalAddress><StreetName>Fixture street</StreetName><BuildingNumber>2</BuildingNumber><CityName>Fixture city</CityName><PostalZone>00000</PostalZone><Country><IdentificationCode>SK</IdentificationCode><Name>Slovakia</Name></Country></PostalAddress>
+    </Party>
+  </AccountingCustomerParty>
+  <InvoiceLines>
+    <InvoiceLine>
+      <ID>1</ID>
+      <InvoicedQuantity unitCode="ks">2.0000</InvoicedQuantity>
+      <LineExtensionAmount>80.00</LineExtensionAmount>
+      <LineExtensionAmountTaxInclusive>98.40</LineExtensionAmountTaxInclusive>
+      <LineExtensionTaxAmount>18.40</LineExtensionTaxAmount>
+      <UnitPrice>40.00</UnitPrice>
+      <UnitPriceTaxInclusive>49.20</UnitPriceTaxInclusive>
+      <ClassifiedTaxCategory><Percent>23</Percent><VATCalculationMethod>0</VATCalculationMethod></ClassifiedTaxCategory>
+      <Item><Description>Support plan</Description></Item>
+    </InvoiceLine>
+    <InvoiceLine>
+      <ID>2</ID>
+      <InvoicedQuantity unitCode="h">1.5</InvoicedQuantity>
+      <LineExtensionAmount>30.00</LineExtensionAmount>
+      <LineExtensionAmountTaxInclusive>31.50</LineExtensionAmountTaxInclusive>
+      <LineExtensionTaxAmount>1.50</LineExtensionTaxAmount>
+      <UnitPrice>20.00</UnitPrice>
+      <UnitPriceTaxInclusive>21.00</UnitPriceTaxInclusive>
+      <ClassifiedTaxCategory><Percent>5</Percent><VATCalculationMethod>0</VATCalculationMethod></ClassifiedTaxCategory>
+      <Note>From the source invoice</Note>
+      <Item><Description>Consulting &amp; setup</Description></Item>
+    </InvoiceLine>
+  </InvoiceLines>
+  <TaxTotal>
+    <TaxSubTotal>
+      <TaxableAmount>80.00</TaxableAmount><TaxAmount>18.40</TaxAmount><TaxInclusiveAmount>98.40</TaxInclusiveAmount>
+      <AlreadyClaimedTaxableAmount>0</AlreadyClaimedTaxableAmount><AlreadyClaimedTaxAmount>0</AlreadyClaimedTaxAmount><AlreadyClaimedTaxInclusiveAmount>0</AlreadyClaimedTaxInclusiveAmount>
+      <DifferenceTaxableAmount>80.00</DifferenceTaxableAmount><DifferenceTaxAmount>18.40</DifferenceTaxAmount><DifferenceTaxInclusiveAmount>98.40</DifferenceTaxInclusiveAmount>
+      <TaxCategory><Percent>23</Percent></TaxCategory>
+    </TaxSubTotal>
+    <TaxSubTotal>
+      <TaxableAmount>30.00</TaxableAmount><TaxAmount>1.50</TaxAmount><TaxInclusiveAmount>31.50</TaxInclusiveAmount>
+      <AlreadyClaimedTaxableAmount>0</AlreadyClaimedTaxableAmount><AlreadyClaimedTaxAmount>0</AlreadyClaimedTaxAmount><AlreadyClaimedTaxInclusiveAmount>0</AlreadyClaimedTaxInclusiveAmount>
+      <DifferenceTaxableAmount>30.00</DifferenceTaxableAmount><DifferenceTaxAmount>1.50</DifferenceTaxAmount><DifferenceTaxInclusiveAmount>31.50</DifferenceTaxInclusiveAmount>
+      <TaxCategory><Percent>5</Percent></TaxCategory>
+    </TaxSubTotal>
+    <TaxAmount>19.90</TaxAmount>
+  </TaxTotal>
+  <LegalMonetaryTotal>
+    <TaxExclusiveAmount>110.00</TaxExclusiveAmount>
+    <TaxInclusiveAmount>129.90</TaxInclusiveAmount>
+    <AlreadyClaimedTaxExclusiveAmount>0</AlreadyClaimedTaxExclusiveAmount>
+    <AlreadyClaimedTaxInclusiveAmount>0</AlreadyClaimedTaxInclusiveAmount>
+    <DifferenceTaxExclusiveAmount>110.00</DifferenceTaxExclusiveAmount>
+    <DifferenceTaxInclusiveAmount>129.90</DifferenceTaxInclusiveAmount>
+    <PaidDepositsAmount>0</PaidDepositsAmount>
+    <PayableAmount>129.90</PayableAmount>
+  </LegalMonetaryTotal>
+</Invoice>

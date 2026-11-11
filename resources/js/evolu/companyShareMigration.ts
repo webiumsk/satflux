@@ -22,6 +22,8 @@ import {
     allExpensesQuery,
     allInvoiceTemplatesQuery,
     allNumberSeriesQuery,
+    allMigrationSourcesBackupQuery,
+    allMigrationChunksQuery,
     allRecurringProfileLinesQuery,
     allRecurringProfilesQuery,
 } from "./client";
@@ -63,6 +65,8 @@ export type MigrationTable =
     | "invoiceTemplate"
     | "expense"
     | "expenseAttachment"
+    | "migrationSource"
+    | "migrationChunk"
     | "recurringProfile"
     | "recurringProfileLine"
     | "companyWarehouse"
@@ -89,6 +93,8 @@ export const MIGRATION_ORDER: MigrationTable[] = [
     "documentSnapshot",
     "expense",
     "expenseAttachment",
+    "migrationSource",
+    "migrationChunk",
     "recurringProfile",
     "recurringProfileLine",
     "bankImportBatch",
@@ -146,6 +152,8 @@ export function collectCompanyRows(all: Record<MigrationTable, readonly Row[]>, 
         documentSnapshot: byParent(all.documentSnapshot, "documentId", documentIds),
         expense: expenses,
         expenseAttachment: byParent(all.expenseAttachment, "expenseId", expenseIds),
+        migrationSource: own(all.migrationSource),
+        migrationChunk: own(all.migrationChunk),
         recurringProfile: profiles,
         recurringProfileLine: byParent(all.recurringProfileLine, "recurringProfileId", profileIds),
         bankImportBatch: own(all.bankImportBatch),
@@ -209,6 +217,8 @@ export const MIGRATION_TABLE_QUERIES: Record<MigrationTable, unknown> = {
     documentSnapshot: allDocumentSnapshotsQuery,
     expense: allExpensesQuery,
     expenseAttachment: allExpenseAttachmentsQuery,
+    migrationSource: allMigrationSourcesBackupQuery,
+    migrationChunk: allMigrationChunksQuery,
     recurringProfile: allRecurringProfilesQuery,
     recurringProfileLine: allRecurringProfileLinesQuery,
     bankImportBatch: allBankImportBatchesQuery,
@@ -221,7 +231,7 @@ export async function loadAllMigrationRows(evolu: Loader): Promise<Record<Migrat
     await checkpointExpenseMutations(evolu);
     const [
         company, contact, numberSeries, invoiceTemplate, companyWarehouse, companyStockItem, companyStockBalance,
-        companyStockMovement, document, documentLine, documentEvent, documentSnapshot, expense, expenseAttachment,
+        companyStockMovement, document, documentLine, documentEvent, documentSnapshot, expense, expenseAttachment, migrationSource, migrationChunk,
         recurringProfile, recurringProfileLine, bankImportBatch, bankTransaction, bankTransactionMatch,
     ] = await Promise.all([
         evolu.loadQuery(allCompaniesDetailQuery),
@@ -238,6 +248,8 @@ export async function loadAllMigrationRows(evolu: Loader): Promise<Record<Migrat
         evolu.loadQuery(allDocumentSnapshotsQuery),
         evolu.loadQuery(allExpensesQuery),
         evolu.loadQuery(allExpenseAttachmentsQuery),
+        evolu.loadQuery(allMigrationSourcesBackupQuery),
+        evolu.loadQuery(allMigrationChunksQuery),
         evolu.loadQuery(allRecurringProfilesQuery),
         evolu.loadQuery(allRecurringProfileLinesQuery),
         evolu.loadQuery(allBankImportBatchesQuery),
@@ -246,7 +258,7 @@ export async function loadAllMigrationRows(evolu: Loader): Promise<Record<Migrat
     ]);
     return {
         company, contact, numberSeries, invoiceTemplate, companyWarehouse, companyStockItem, companyStockBalance,
-        companyStockMovement, document, documentLine, documentEvent, documentSnapshot, expense, expenseAttachment,
+        companyStockMovement, document, documentLine, documentEvent, documentSnapshot, expense, expenseAttachment, migrationSource, migrationChunk,
         recurringProfile, recurringProfileLine, bankImportBatch, bankTransaction, bankTransactionMatch,
     } as unknown as Record<MigrationTable, readonly Row[]>;
 }

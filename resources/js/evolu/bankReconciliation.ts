@@ -23,8 +23,9 @@ export function assertBankReconciliationLease(evolu: Evolu<InvoicingLocalSchema>
 }
 
 /** A worker error or missing receipt is not evidence of rollback. */
+export type BankReconciliationUnknownReason = "worker_error" | "receipt_timeout" | "start_exception" | "unavailable";
 export class BankReconciliationUnknownError extends Error {
-    constructor() {
+    constructor(readonly reason: BankReconciliationUnknownReason = "unavailable") {
         super("bank_reconciliation_outcome_unknown");
         this.name = "BankReconciliationUnknownError";
     }
@@ -55,12 +56,13 @@ export function awaitWorkerOutcome<T>(
     /**
      * Reject once as uncertain; a later completion cannot turn this outcome into success.
      */
-    const unknown = () => {
+    const rejectUnknown = (reason: BankReconciliationUnknownReason) => {
         if (settled) return;
         settled = true;
         cleanup();
-        rejectOutcome(new BankReconciliationUnknownError());
+        rejectOutcome(new BankReconciliationUnknownError(reason));
     };
+    const unknown = () => rejectUnknown("unavailable");
     /**
      * Resolve the first known outcome and ignore completion after an Unknown rejection.
      */
@@ -71,13 +73,19 @@ export function awaitWorkerOutcome<T>(
             resolveOutcome(value);
         }
     };
+    // A relay quota rejects remote uploads. Local SQLite writes still require
+    // their own receipt and post-handler readback before the caller can succeed.
+    const hasBlockingError = () => {
+        const error = evolu.getError();
+        return Boolean(error && error.type !== "ProtocolQuotaError");
+    };
     try {
-        unsubscribe = evolu.subscribeError(() => { if (evolu.getError()) unknown(); });
-        timer = setTimeout(unknown, BANK_RECONCILIATION_TIMEOUT_MS);
-        if (evolu.getError()) unknown();
+        unsubscribe = evolu.subscribeError(() => { if (hasBlockingError()) rejectUnknown("worker_error"); });
+        timer = setTimeout(() => rejectUnknown("receipt_timeout"), BANK_RECONCILIATION_TIMEOUT_MS);
+        if (hasBlockingError()) rejectUnknown("worker_error");
         else start(complete, unknown);
     } catch {
-        unknown();
+        rejectUnknown("start_exception");
     }
     return outcome;
 }

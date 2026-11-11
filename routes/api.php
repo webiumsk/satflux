@@ -40,6 +40,7 @@ use App\Http\Controllers\Invoicing\BusinessDocumentImportController;
 use App\Http\Controllers\Invoicing\BusinessExpenseController;
 use App\Http\Controllers\Invoicing\BusinessExpenseImportController;
 use App\Http\Controllers\Invoicing\BusinessRecurringProfileController;
+use App\Http\Controllers\Invoicing\CompanyActionCenterController;
 use App\Http\Controllers\Invoicing\CompanyAutoIssueProfileController;
 use App\Http\Controllers\Invoicing\CompanyBrandingController;
 use App\Http\Controllers\Invoicing\CompanyContactController;
@@ -63,6 +64,7 @@ use App\Http\Controllers\Invoicing\StoreDocumentSequenceController;
 use App\Http\Controllers\Invoicing\UsSalesTaxController;
 use App\Http\Controllers\Invoicing\ViesValidationController;
 use App\Http\Controllers\Invoicing\WiseBankController;
+use App\Http\Controllers\Invoicing\ZapriteMigrationController;
 use App\Http\Controllers\LightningAddressController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MessageController;
@@ -414,6 +416,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware('throttle:5,60');
             Route::get('/migration/export-attachments', [InvoicingMigrationController::class, 'exportAttachments'])
                 ->middleware('throttle:3,60');
+            Route::post('/ephemeral/migration/zaprite', ZapriteMigrationController::class)
+                ->middleware('throttle:30,1');
             Route::post('/ephemeral/pdf', [EphemeralBusinessDocumentController::class, 'pdfWithoutCompany']);
             Route::post('/ephemeral/email-preview', [EphemeralBusinessDocumentController::class, 'emailPreviewWithoutCompany']);
             Route::post('/ephemeral/send-email', [EphemeralBusinessDocumentController::class, 'sendEmailWithoutCompany'])
@@ -448,6 +452,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             Route::get('/companies/{company}', [CompanyController::class, 'show'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::get('/companies/{company}/summary', [CompanyController::class, 'summary'])
+                ->middleware(EnsureCompanyOwnership::class);
+            Route::get('/companies/{company}/action-center', CompanyActionCenterController::class)
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/us-sales-tax/preview', [UsSalesTaxController::class, 'preview'])
                 ->middleware(EnsureCompanyOwnership::class);
