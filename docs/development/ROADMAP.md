@@ -17,7 +17,8 @@
 - [x] Owner authorizes branch push only; PR creation remains with the owner.
 - [x] Privacy/evidence binding accepts all 20 files; push source commit `c42aa652`
   and verify the remote feature branch.
-- [ ] Owner creates the PR; add its canonical changelog source before merge.
+- [x] Owner opens [PR #439](https://github.com/webiumsk/satflux/pull/439).
+- [ ] Add the canonical changelog source before merge.
 
 The local preview supports verified unpaid, partially paid and fully paid native
 invoices. Unsupported/inconsistent finance fails

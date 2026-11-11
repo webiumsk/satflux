@@ -166,8 +166,7 @@ function readLines(source: Fields, subtotal: bigint, total: bigint): Pick<Migrat
         const net = bounded(round(rawNet, RAW_NET_PER_CENT));
         const tax = bounded(round(rawTax, RAW_TAX_PER_CENT));
         const gross = bounded(net + tax);
-        if (round(net * rate, 10_000n) !== tax
-            || round(rawNet * 10_000n + rawTax, RAW_TAX_PER_CENT) !== gross) fail("fakturoid_totals");
+        if (round(rawNet * 10_000n + rawTax, RAW_TAX_PER_CENT) !== gross) fail("fakturoid_totals");
         netSum = bounded(netSum + net); taxSum = bounded(taxSum + tax); grossSum = bounded(grossSum + gross);
         rawNetSum += rawNet; rawTaxSum += rawTax;
         const bucket = buckets.get(rate) ?? { net: 0n, tax: 0n, rawNet: 0n, rawTax: 0n };

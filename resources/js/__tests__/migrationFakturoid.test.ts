@@ -228,6 +228,18 @@ describe("Fakturoid exact arithmetic", () => {
         expect(result.rows[0].invoice!.structured!.lines[0]).toMatchObject({ quantity: "2.5000", unitPrice: "1.2344", lineTotal: "3.09" });
     });
 
+    it("calculates line VAT from the entered price and quantity before rounding", () => {
+        const result = parse(change(invoice => {
+            setLines(invoice, [{ id: "1", quantity: "0.4", price: "0.06", grossPrice: "0.0738", rate: "23" }]);
+            totals(invoice, "0.02", "0.03");
+        }));
+        expect(result.rows[0].kind).toBe("ready");
+        expect(result.rows[0].invoice!.structured).toMatchObject({ subtotal: "0.02", taxTotal: "0.01" });
+        expect(result.rows[0].invoice!.structured!.lines[0]).toMatchObject({
+            quantity: "0.4000", unitPrice: "0.0600", taxRate: "23.00", lineTotal: "0.03",
+        });
+    });
+
     it("rejects raw-gross rounding that differs from net plus VAT", () => {
         expectInvalid(change(invoice => {
             setLines(invoice, [{ id: "1", quantity: "0.4", price: "0.01", grossPrice: "0.013", rate: "30" },
@@ -361,7 +373,9 @@ describe("Fakturoid structural and unsupported-source boundaries", () => {
     });
 
     it("uses a finite controlled error class and never returns raw XML parser errors", () => {
-        try { parse("<invoices><private_note>synthetic-secret</invoices>"); }
+        const malformed = "<invoices><private_note>synthetic-secret</invoices>";
+        expect(() => parse(malformed)).toThrow(FakturoidMigrationError);
+        try { parse(malformed); }
         catch (error) {
             expect(error).toBeInstanceOf(FakturoidMigrationError);
             expect((error as Error).message).toBe("fakturoid_invalid_export");
