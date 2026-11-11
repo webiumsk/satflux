@@ -139,7 +139,7 @@ This excludes browser profiles, OPFS/authentication/key state and merchant data.
 | PHP formatting/static analysis | Seven changed PHP files pass Pint; changed backend classes pass PHPStan using existing baseline and temporary cache |
 | Locale parity | EN/SK/ES/DE/CS pass; four inherited extra SK keys remain informational |
 | API documentation | Export freshness passes; validator test passes; all three OpenAPI documents validate |
-| Changelog tooling | 71 tests pass; 14 existing fragments validate. New fragment waits for an actual canonical PR URL required by the schema |
+| Changelog tooling | Initial gate: 71 tests and 14 fragments pass. Publication adds the combined feature fragment using the actual PR #438 URL |
 | Whitespace/dependencies | Diff check passes; the initial summary implementation keeps package/lock files and warning/type baselines unchanged |
 
 PHP tests use locked dependencies, guarded uncached testing configuration, synthetic
@@ -594,4 +594,8 @@ Private publication evidence is under
 `storage/app/private/reviews/action-center-migration/publication-followup` in the
 primary checkout. Previous browser restart/source-digest evidence remains valid;
 this gate does not claim an additional browser run. GitHub CI is not yet observed.
-The canonical PR URL and reviewed changelog follow the initial source push.
+The initial source commit `ed683ff9` is pushed to
+`feat/invoicing-action-center-migration` and
+[draft PR #438](https://github.com/webiumsk/satflux/pull/438) targets master.
+The combined user-facing changelog uses that canonical PR source. GitHub CI
+results will be observed separately; source publication does not merge or deploy.

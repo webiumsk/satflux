@@ -1,10 +1,10 @@
 # Project state
 
-## Feature prepared for authorized GitHub publication - 2026-11-11
+## Feature published for GitHub review - 2026-11-11
 
 The owner explicitly authorizes pushing `feat/invoicing-action-center-migration`
 to the owned Satflux repository. Freshly fetched master remains `6e6c0587`, the
-feature base. The publication candidate contains 124 feature files, excluding
+feature base. The initial published commit `ed683ff9` contains 124 feature files, excluding
 local preview configuration and a local dependency recovery link. The primary
 checkout's unrelated work is preserved.
 
@@ -21,9 +21,10 @@ existing dependency advisories remain attributed in the private review.
 
 Independent publication privacy review accepts the exact 124-file allowlist.
 Earlier independent browser/Evolu custody and 74-path security evidence remain
-linked in the feature runbook. GitHub CI has not yet run for this feature.
-Next step is the authorized source push and draft PR; merge and deployment
-remain separate owner decisions.
+linked in the feature runbook. The feature branch is pushed and
+[draft PR #438](https://github.com/webiumsk/satflux/pull/438) targets master.
+The reviewed user-facing changelog uses that canonical PR URL. GitHub CI is
+pending observation; merge and deployment remain separate owner decisions.
 
 ## Zaprite migration accepted in the local feature preview - 2026-11-11
 

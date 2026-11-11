@@ -1,10 +1,11 @@
 # Development roadmap
 
-## Feature source publication authorized - 2026-11-11
+## Feature published for GitHub review - 2026-11-11
 
 - [x] Owner authorizes publishing the existing feature to the owned repository.
 - [x] Final full frontend, combined backend, static and publication privacy gates.
-- [ ] Push the feature branch and open a draft PR targeting master.
+- [x] Push the feature branch and open [draft PR #438](https://github.com/webiumsk/satflux/pull/438) targeting master.
+- [x] Add the reviewed user-facing changelog with the canonical PR source.
 - [ ] Inspect fresh GitHub CI and review findings before owner merge approval.
 
 Local preview and source publication do not activate the feature in production.

@@ -10,6 +10,8 @@ Open a draft PR to run CI without merging or deploying. Add the user-facing
 changelog fragment once the actual canonical PR URL exists, as its schema
 requires. Preserve the existing type/lint baselines and label local evidence
 separately from future GitHub CI results.
+The initial source commit is `ed683ff9`; draft PR #438 now exists and supplies
+the canonical changelog source. No merge or deployment was performed.
 
 ## 2026-11-11 - Migrate Zaprite through a transient read and complete source custody
 
