@@ -1,6 +1,6 @@
 # Project state
 
-## Fakturoid source publication authorized - 2026-11-12
+## Fakturoid branch published for owner PR - 2026-11-12
 
 The owner confirms the import works, accepts the local official logo and asks for
 `feat/invoicing-fakturoid-migration` to be pushed to the owned Satflux repository.
@@ -14,7 +14,10 @@ recovery link, private owner exports and browser state are excluded. Existing
 313-test regression, independent security/browser and static evidence below
 remain attributed to the tested revisions. The later logo-only delta passes
 scoped ESLint, Vue template compilation and isolated source-card image rendering.
-Publication privacy/evidence review and the branch push are being finalized.
+Independent privacy and QA evidence binding accept the exact candidate. Source
+commit `c42aa65234daa34be76f5dc032a75205883a5fc7` is pushed and verified on
+`origin/feat/invoicing-fakturoid-migration`. No PR was created. GitHub CI and
+merge/deployment remain separate from these local checks and this branch push.
 
 ## Fakturoid migration resumed from merged master - 2026-11-11
 

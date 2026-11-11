@@ -11,6 +11,10 @@ regression rerun is claimed for the later static logo-only change. No merge or
 deployment is included. Add the user-facing changelog entry after the owner opens
 the actual PR, because its schema requires the canonical PR URL.
 
+Source commit `c42aa652` is pushed and verified on the remote feature branch.
+Independent privacy and QA binding accept the exact 20-file candidate. No PR,
+merge or deployment was performed.
+
 ## 2026-11-11 - Preserve verified native Fakturoid payment amounts and dates
 
 The owner updated the same native export with partial and fully paid documents.

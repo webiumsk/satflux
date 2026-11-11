@@ -155,6 +155,8 @@ Fresh owned master remains the exact `007b9c02` feature base. The publication
 allowlist contains 20 feature files; local preview settings, the dependency
 recovery link and all private source/browser artifacts are excluded. Existing
 functional/security evidence is verified against candidate hashes, with the
-later local-logo-only delta separately checked. Final privacy/evidence review
-and push are pending. No PR, merge or deployment is included. The changelog
+later local-logo-only delta separately checked. Independent privacy and QA
+binding accept that exact candidate. Source commit `c42aa652` is pushed and
+verified on the remote feature branch. No PR, merge or deployment is included.
+The changelog
 fragment follows the owner's actual PR so its canonical source URL is real.

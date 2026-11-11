@@ -15,7 +15,9 @@
 - [x] Complete focused paid/partial browser restart/custody acceptance.
 - [x] Owner confirms import works and accepts the official local logo.
 - [x] Owner authorizes branch push only; PR creation remains with the owner.
-- [ ] Finish publication privacy/evidence binding and push the bounded candidate.
+- [x] Privacy/evidence binding accepts all 20 files; push source commit `c42aa652`
+  and verify the remote feature branch.
+- [ ] Owner creates the PR; add its canonical changelog source before merge.
 
 The local preview supports verified unpaid, partially paid and fully paid native
 invoices. Unsupported/inconsistent finance fails
