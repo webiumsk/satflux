@@ -1,5 +1,50 @@
 # Project state
 
+## Fakturoid source publication authorized - 2026-11-12
+
+The owner confirms the import works, accepts the local official logo and asks for
+`feat/invoicing-fakturoid-migration` to be pushed to the owned Satflux repository.
+The owner will create the PR. No PR creation, merge or deployment is authorized
+for this handoff. Fresh remote master remains `007b9c02`, the exact feature base.
+
+The candidate contains 20 explicit feature paths: native XML adapter, shared
+import integration, source picker/logo, synthetic fixtures/tests, five locales
+and four development documents. Local preview configuration, a dependency
+recovery link, private owner exports and browser state are excluded. Existing
+313-test regression, independent security/browser and static evidence below
+remain attributed to the tested revisions. The later logo-only delta passes
+scoped ESLint, Vue template compilation and isolated source-card image rendering.
+Publication privacy/evidence review and the branch push are being finalized.
+
+## Fakturoid migration resumed from merged master - 2026-11-11
+
+GitHub confirms PR #438 merged at `007b9c027c7887d59300a781e861ad09ecb94e06`.
+The owner authorizes continuing with Fakturoid. New branch
+`feat/invoicing-fakturoid-migration` starts from that freshly fetched master in
+the existing clean preview checkout, preserving its local-only settings and the
+primary checkout's unrelated work. Merge evidence is not a deployment claim.
+
+The owner subsequently supplied genuine native XML. Read-only inspection verifies
+the initial two unpaid invoices and three items, then an updated four-invoice/
+five-item sample with actual partial and full payment fields. The local preview now offers a
+Fakturoid XML adapter with exact finance, fresh issuer binding, shared duplicate
+checks and immutable original custody. The verified payment expansion uses exact
+`paid_amount` with a null partial date and actual full date; coverage fields never
+become balances. Final payment-specific regression/security/static and isolated browser gates pass.
+
+Final 13 migration/import/backup suites pass (313 tests), plus separate independent
+payment security review (232 tests, no open Critical/High/Medium). Full typecheck adds no errors to
+the 110 baseline, full lint passes with 48 inherited warnings, and locale parity
+and production build pass. Independent browser QA passes unpaid detailed import,
+unsupported/company rejection, duplicates/conflicts, six load/confirm ABA races
+and delayed-error suppression. Reload/full restart preserve exact XML/PDF
+downloads and records, with zero page errors/backend business writes. A separate
+paid browser follow-up verifies four invoices/five lines, exact partial/full
+amounts/dates, overpayment blocking, changed completed amount/date conflicts and
+exact XML custody after a full restart. No owner invoices
+were written by the agent. No new feature publication or deployment is claimed.
+See [FAKTUROID_MIGRATION.md](FAKTUROID_MIGRATION.md).
+
 ## Feature published for GitHub review - 2026-11-11
 
 The owner explicitly authorizes pushing `feat/invoicing-action-center-migration`

@@ -1,5 +1,27 @@
 # Development roadmap
 
+## Fakturoid adapter from merged master - 2026-11-11
+
+- [x] Verify PR #438 merge and freshly fetch master base `007b9c02`.
+- [x] Start the new feature branch while preserving the current local preview.
+- [x] Research official export/API contracts without provider business mutations.
+- [x] Inspect owner-supplied native XML read-only: two unpaid invoices, three items.
+- [x] Implement the bounded unpaid adapter, exact items/totals and source custody.
+- [x] Pass focused regression and independent core security checks.
+- [x] Pass final lint/type/build and five-locale parity gates.
+- [x] Complete isolated browser custody/lifecycle QA, including full restart.
+- [x] Obtain authentic partial/full payment XML evidence without real funds.
+- [x] Complete exact payment expansion, 313 regressions and independent security.
+- [x] Complete focused paid/partial browser restart/custody acceptance.
+- [x] Owner confirms import works and accepts the official local logo.
+- [x] Owner authorizes branch push only; PR creation remains with the owner.
+- [ ] Finish publication privacy/evidence binding and push the bounded candidate.
+
+The local preview supports verified unpaid, partially paid and fully paid native
+invoices. Unsupported/inconsistent finance fails
+explicitly before writes. See
+[FAKTUROID_MIGRATION.md](FAKTUROID_MIGRATION.md).
+
 ## Feature published for GitHub review - 2026-11-11
 
 - [x] Owner authorizes publishing the existing feature to the owned repository.

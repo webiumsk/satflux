@@ -19,7 +19,8 @@ export type MigrationInvoice = {
         phone: string | null; email: string | null;
     };
     structured?: MigrationStructuredInvoice;
-    sourceIdentity?: { provider: "zaprite"; organizationId: string; invoiceId: string; orderId: string };
+    sourceIdentity?: { provider: "zaprite"; organizationId: string; invoiceId: string; orderId: string }
+        | { provider: "fakturoid"; issuerRegistrationNumber: string; invoiceId: string };
 };
 export type StructuredMismatch = "multiple" | "company_id" | "supplier" | "date" | "currency" | "total" | "items" | "payment" | "buyer";
 export type MigrationPreviewRow = {

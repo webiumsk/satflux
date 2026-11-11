@@ -1,5 +1,51 @@
 # Development decision log
 
+## 2026-11-12 - Publish the accepted Fakturoid branch without creating a PR
+
+The owner explicitly requests a source push and retains PR creation. Publish only
+the bounded 20-path Fakturoid implementation, local static logo, synthetic tests,
+five-locale copy and development evidence. Preserve unrelated primary work and
+exclude local preview settings and private source/browser artifacts. Existing
+security/QA evidence is bound to the candidate before commit; no financial
+regression rerun is claimed for the later static logo-only change. No merge or
+deployment is included. Add the user-facing changelog entry after the owner opens
+the actual PR, because its schema requires the canonical PR URL.
+
+## 2026-11-11 - Preserve verified native Fakturoid payment amounts and dates
+
+The owner updated the same native export with partial and fully paid documents.
+Both retain coverage fields equal to document totals, while `paid_amount` holds
+actual paid value. Under the existing FX1/native-total checks, require an exact
+paid amount from zero through total. Partial open/sent/overdue records preserve
+empty `paid_on` as unknown; a full amount requires paid status and a valid actual
+date. Reject contradictory/overpaid evidence and unproved date variants. Derive
+balance from total minus paid amount, never coverage. Preserve existing financial
+leases, source custody and completed-import conflict behavior without fabricated
+payment events. Extend sanitized fixtures and independent reviews for this bounded
+matrix; earlier unpaid gates remain separately attributed.
+
+## 2026-11-11 - Enable only the native Fakturoid subset proved by source evidence
+
+The owner supplied genuine XML after source discovery. Implement its ordinary
+unpaid invoice structure with exact line/rate/document math and fresh supplier
+registration binding. Preserve source bytes before awaits, reparse them at commit,
+archive before financial writes and reuse existing duplicate/recovery contracts.
+Project approved fields explicitly; token/private-note content stays in raw source
+custody only. Native payment representation remains unproved, so positive/partial
+payments and paid status are blocked pending authentic test exports. API or Excel
+field similarity cannot establish their monetary meaning. Tests use synthetic
+records, and the owner's export is inspected read-only without financial writes.
+
+## 2026-11-11 - Resume Fakturoid from the verified merged feature
+
+Start `feat/invoicing-fakturoid-migration` at freshly fetched master `007b9c02`,
+which contains the merged action-center/SF/Zaprite work. Reuse the already mounted
+clean preview checkout and preserve local settings and unrelated primary work.
+Investigate native Fakturoid export evidence before implementation, including
+public demonstration access because the owner has no account/export. Do not
+infer a native XML grammar from API JSON or a third-party converter. Respect
+Fakturoid's documented Authorization Code requirement for multi-tenant API apps.
+
 ## 2026-11-11 - Publish the reviewed invoicing feature for GitHub review
 
 The owner explicitly authorizes the existing feature source push. Publish only
