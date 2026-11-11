@@ -1,5 +1,87 @@
 # Development decision log
 
+## 2026-11-11 - Publish the reviewed invoicing feature for GitHub review
+
+The owner explicitly authorizes the existing feature source push. Publish only
+the reviewed action center, SF/Zaprite migration and their storage/recovery
+fixes, tests, assets and documentation. Exclude local preview settings, dependency
+recovery links and all private source data. Keep unrelated primary-checkout work.
+Open a draft PR to run CI without merging or deploying. Add the user-facing
+changelog fragment once the actual canonical PR URL exists, as its schema
+requires. Preserve the existing type/lint baselines and label local evidence
+separately from future GitHub CI results.
+
+## 2026-11-11 - Migrate Zaprite through a transient read and complete source custody
+
+Use an authenticated account-scoped ephemeral bridge for fixed-host HTTPS GETs,
+keeping the provider key out of persistence, URLs, raw errors and archived data.
+Destination authority remains the existing current company/owner/share gate at
+commit. Fetch all coherent pages, including pending invoice/apiInvoice orders,
+and convert locally rather than store a server plaintext invoice archive.
+
+Require exact per-line, per-rate and document net/VAT/gross reconciliation and
+unique confirmed-payment evidence. Same-currency transactions may use their
+native amount when conversion fields are null; cross-currency payments need an
+explicit amount in the invoice currency. Manual status alone is not payment.
+Preserve source identities in the fingerprint and existing number conflicts.
+
+Keep the current two-decimal financial contract. Unsupported currencies block
+until explicitly excluded, and the complete JSON remains archived. BTC precision
+across invoicing needs separate work. Copy source bytes before asynchronous
+processing and reparse that copy at commit. Independent security/QA accept the
+local implementation; no provider writes, owner-company import, publication or
+deployment were performed. Evidence is in the feature runbook.
+The owner later confirmed that API import works. Saved-file copy distinguishes
+Zaprite data from the JSON file produced by this wizard, without broadening
+the accepted import format.
+
+## 2026-11-11 - Keep complete snapshots as the default and narrow passive view reads
+
+Fingerprinting and Profile statistics do not consume migration originals.
+Give these two callers an explicit archive opt-out and bounded passive reads.
+Preserve complete snapshots for backups and recovery. Publish verified nonempty
+local company lists outside the pending recovery gate without a forced relay
+pull. Keep empty-list recovery and account binding checks.
+
+Profile local counts publish before optional relay usage or database export.
+The Refresh action can calculate database size. Account generations and unmount
+checks prevent stale results and requests after an account change. See
+[ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
+## 2026-11-11 - Separate relay quota refusal from local mutation outcome
+
+The installed SDK's exact `ProtocolQuotaError` indicates that the relay
+refuses synchronization due to storage or billing quota. A local mutation can
+still commit and produce its own receipt. Exclude only this discriminator from
+the local completion observer while retaining receipts, readback and quarantine
+for all other failures. Keep the relay failure visible using the existing
+synchronization explanation, and reserve browser-pressure wording for measured
+local pressure. See
+[ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
+## 2026-11-11 - Check migration schema on the existing worker before writes
+
+Use fixed SQLite schema metadata and the existing bounded query helper before
+archive queries, preview and import admission. Keep the current browser
+database identity and shared-worker coordination. If an older tab holds the
+previous schema, offer a localized close-all-tabs and reopen action.
+
+Treat rejected contact and audit-event results as known validation failures.
+Retain quarantine for genuinely uncertain writes and record only closed phase
+and reason codes for diagnosis. Independent synthetic Chrome testing covers
+the 30-second discarded-receipt mechanism and same-profile recovery.
+See [ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
+## 2026-11-11 - Preserve signed deductions during SuperFaktura migration
+
+A verified ISDOC invoice may carry a negative unit price with a positive
+quantity. Preserve the deduction as a separate historical line when the signed
+amounts, VAT buckets and total reconcile. Keep the archived original and use
+spreadsheet payment evidence. The local signed PDF path requires exact
+agreement with stored line and document amounts. Ordinary issuance, payment
+and structured delivery keep their existing scope. See
+[ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
 ## 2026-11-09 - Withdraw unverified Slovak eFaktura readiness claims
 
 The owner approved immediate withdrawal of SK eFaktura as a ready marketed feature

@@ -1,5 +1,120 @@
 # Project state
 
+## Feature prepared for authorized GitHub publication - 2026-11-11
+
+The owner explicitly authorizes pushing `feat/invoicing-action-center-migration`
+to the owned Satflux repository. Freshly fetched master remains `6e6c0587`, the
+feature base. The publication candidate contains 124 feature files, excluding
+local preview configuration and a local dependency recovery link. The primary
+checkout's unrelated work is preserved.
+
+Final complete frontend verification passes 2,540 tests / 225 files, with zero
+failures, skipped tests or todos. Combined backend verification passes 80 tests /
+665 assertions across seven suites in guarded disposable SQLite with the
+configured dompdf driver. Pint passes 17 PHP paths, scoped PHPStan passes 11
+runtime paths, and API contract/inventory freshness passes. Final full typecheck
+passes the unchanged 110 baseline and the production build passes. Full lint
+passes with zero errors and 48 warnings within the unchanged limit of 52. Changelog
+71 tests, FAQ/catalog, OpenAPI validation, production critical-audit gate and
+locale parity pass. The new dependency nodes have no reported advisory;
+existing dependency advisories remain attributed in the private review.
+
+Independent publication privacy review accepts the exact 124-file allowlist.
+Earlier independent browser/Evolu custody and 74-path security evidence remain
+linked in the feature runbook. GitHub CI has not yet run for this feature.
+Next step is the authorized source push and draft PR; merge and deployment
+remain separate owner decisions.
+
+## Zaprite migration accepted in the local feature preview - 2026-11-11
+
+Owner authorized continuing with Zaprite and supplied a read-only Sandbox key.
+The existing migration wizard now offers Zaprite API/JSON, detailed item and
+payment preview, exact fiat totals, common duplicate/conflict protection and
+complete encrypted JSON custody. An ephemeral authenticated fixed-host GET
+bridge does not retain credentials or mutate Zaprite. Source bytes are parsed
+again at commit before the existing company/owner, receipt and readback gates.
+BTC/LBTC and unsupported currencies block by default; explicit exclusion retains
+the complete source JSON without importing excluded invoices.
+
+The actual isolated PHP client read three Sandbox invoices successfully without
+financial writes. The converter matched two supported fiat invoices, preserving
+the partial payment and two items each. Main regression passes 218 tests / 13
+suites; final converter passes 53. Backend passes 31 tests / 151 assertions.
+Typecheck passes the unchanged 110 baseline; scoped lint, Pint, build, locale
+parity and API inventory checks pass. Independent security accepts 74 paths,
+manifest `1fa38f5159491a672c76f0f88dfcd7d54a779db5858a7710933a880c75ba571d`.
+Independent Chrome/Evolu QA verifies explicit exclusions, API pagination,
+ABA cancellation, duplicates/conflicts and exact source/item/payment persistence
+after reload and full browser restart. See the feature runbook for evidence.
+Status remains localhost preview on `feat/invoicing-action-center-migration`.
+The owner subsequently confirmed that API import works. The saved-JSON label
+now identifies Zaprite as the data source and this wizard as the file producer.
+This is copy clarification only; the accepted JSON envelope is unchanged.
+The agent did not import into the owner's company, publish or deploy during
+local acceptance.
+The owner-supplied Zaprite logo is bundled locally. Final bounded QA passes
+57 parser/date tests and a separate fresh accessible source-card browser check.
+
+## Local company and Profile loading corrected in the feature preview - 2026-11-11
+
+Normal browser entry reproduced a blocked company list and Profile statistics
+despite answered local company queries. Passive fingerprint/statistics reads
+now explicitly omit migration originals while complete snapshots remain the
+default. Nonempty local company lists are available before optional relay
+work outside pending recovery. Profile publishes counts before relay usage
+and calculates database size on explicit refresh, with stale-account guards.
+
+Integrated regression passes 109 tests across 12 suites. Typecheck passes
+the 110-finding baseline, scoped lint/parity/build pass. Independent security
+accepts the source and independently passes 45 tests. Normal-entry Chrome QA
+confirms the local screens load with quota refusal and withheld archives,
+then verifies complete snapshot archive digests and manual database export.
+See [ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+Current status is localhost feature preview.
+
+## Relay quota is distinguished from local storage failure - 2026-11-11
+
+A browser-storage warning exposed two coupled errors. A relay-generated
+`ProtocolQuotaError` was classified as browser storage pressure and rejected
+local receipt observation despite an independently committed local write.
+The local observer now excludes only that exact relay discriminator and still
+requires a positive receipt and post-handler readback. Local worker errors,
+missing receipts and quarantine remain enforced. The banner shows the relay
+limit and its synchronization explanation.
+
+Focused regression passes 295 tests across 15 suites. Typecheck passes the
+110-finding baseline, scoped lint and locale parity pass. Independent security
+accepts the source with 59 tests. Current status is the local feature preview.
+See [ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
+## Migration storage readiness and rejected-write recovery prepared locally - 2026-11-11
+
+The owner reported an unknown storage result after about 30 seconds. Two
+independent synthetic Chrome reproductions cover an older tab holding the
+previous database schema and an ignored contact validation failure discarding
+the completion callback. The importer now checks schema metadata before writes
+and handles known contact and audit-event rejections explicitly. Unknown
+storage results carry finite phase/reason diagnostics and require reopening
+the browser clients before another attempt. The exact cause of the owner's
+original attempt remains unverified.
+
+Focused regression passes 150 tests across 12 suites. Typecheck passes the
+110-finding baseline, scoped lint and locale parity pass, and the application
+build passes. Current status is local preview on the existing feature branch.
+See [ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
+## Signed SuperFaktura deductions verified on the local migration branch - 2026-11-11
+
+The local `feat/invoicing-action-center-migration` worktree preserves negative
+unit prices as separate historical lines when ISDOC amounts reconcile.
+The localhost worker read 33 originals and matched all 32 supplied workbook
+rows, including six signed invoices, with no invoice writes. Independent
+Chrome/Evolu QA verified custody and retry with synthetic documents. Signed
+SK/CZ visual PDF generation verifies stored line gross, subtotal, VAT and total
+and requires disabled payment routing. Evidence and scope are recorded in
+[ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+Owner preview is available on localhost. No publication or deployment occurred.
+
 ## Slovak eFaktura public claims withdrawn locally - 2026-11-09
 
 Owner-approved copy correction on `fix/efaktura-public-claims` from owned master

@@ -1,5 +1,65 @@
 # Development roadmap
 
+## Feature source publication authorized - 2026-11-11
+
+- [x] Owner authorizes publishing the existing feature to the owned repository.
+- [x] Final full frontend, combined backend, static and publication privacy gates.
+- [ ] Push the feature branch and open a draft PR targeting master.
+- [ ] Inspect fresh GitHub CI and review findings before owner merge approval.
+
+Local preview and source publication do not activate the feature in production.
+
+## Zaprite migration accepted locally - 2026-11-11
+
+- [x] Verify the owner-created Sandbox with a locally supplied read-only key.
+- [x] Add a fixed-host ephemeral read bridge and complete API/JSON migration.
+- [x] Preserve verified items, exact fiat sums and actual payment evidence;
+  require explicit unsupported-currency exclusion and archive the whole JSON.
+- [x] Independent security/QA, real browser restart custody and static gates.
+- [x] Owner confirms Zaprite API import works in the localhost feature preview.
+- [x] Clarify saved JSON provenance in all five languages.
+- [ ] Native BTC precision support remains separate invoicing follow-up scope.
+
+The user explicitly prioritized Zaprite after the SuperFaktura preview worked.
+Fakturoid/iDoklad adapters remain future work. No merge/release is implied.
+Evidence: [ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
+## Local views load independently of optional relay work - 2026-11-11
+
+The company list and Profile statistics no longer await unused archive payloads.
+Verified nonempty local company lists load immediately outside pending recovery.
+Profile shows local counts before relay usage, and explicit refresh can calculate
+database size. Normal app-entry QA verifies the quota/blocked-archive case and
+full snapshot custody. Owner verification on localhost is the next step. See
+[ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
+## Relay quota and local import confirmation corrected locally - 2026-11-11
+
+The migration preview differentiates relay quota refusal from browser storage
+pressure. A locally confirmed import can complete while the affected relay
+reports its quota limit. Other storage errors and incomplete local receipts
+remain blocking. The next step is owner verification on localhost and review
+of the affected relay in the existing synchronization settings. See
+[ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
+## Migration storage-readiness and recovery follow-up - 2026-11-11
+
+The local migration preview checks the current worker's schema before writing
+and exposes finite storage-failure diagnostics. Known rejected contact and
+audit-event writes stop immediately. Owner verification on the existing
+localhost profile is the next step. Reopening all Satflux tabs loads the
+current worker, and the same source files support verified draft continuation
+and duplicate skipping. See
+[ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
+## SuperFaktura historical migration with verified deductions available locally - 2026-11-11
+
+Owner preview includes the company action center and the SuperFaktura migration
+wizard. Signed ISDOC deductions are preserved when line amounts, VAT and totals
+reconcile. The next step is owner review of the local preview. The confirmed
+source order after SuperFaktura remains Fakturoid, iDoklad and Zaprite. See
+[ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
 ## Slovak eFaktura delivery work paused; truthful public copy prepared - 2026-11-09
 
 Owner approved withdrawing ready SK eFaktura marketing claims while retaining

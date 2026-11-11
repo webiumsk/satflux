@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\Invoicing;
 
 use App\Enums\BusinessDocumentStatus;
+use App\Enums\BusinessDocumentType;
+use App\Enums\CompanyJurisdiction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Invoicing\EphemeralBusinessDocumentBtcpayRequest;
-use App\Http\Requests\Invoicing\EphemeralBusinessDocumentBulkRequest;
+use App\Http\Requests\Invoicing\EphemeralBusinessDocumentBulkPdfRenderRequest;
 use App\Http\Requests\Invoicing\EphemeralBusinessDocumentEfakturaRequest;
 use App\Http\Requests\Invoicing\EphemeralBusinessDocumentEmailRequest;
+use App\Http\Requests\Invoicing\EphemeralBusinessDocumentPdfRenderRequest;
 use App\Http\Requests\Invoicing\EphemeralBusinessDocumentPdfRequest;
 use App\Http\Requests\Invoicing\EphemeralCompanyEmailSmtpTestRequest;
 use App\Http\Requests\Invoicing\TestEfakturaConnectionRequest;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
+use App\Models\BusinessDocumentLine;
 use App\Models\Company;
 use App\Models\EphemeralBtcpayCheckout;
 use App\Models\Store;
@@ -22,15 +26,19 @@ use App\Services\Invoicing\BusinessDocumentEmailService;
 use App\Services\Invoicing\BusinessDocumentIsdocService;
 use App\Services\Invoicing\BusinessDocumentPdfService;
 use App\Services\Invoicing\BusinessDocumentUblService;
+use App\Services\Invoicing\CanonicalInvoiceBuilder;
 use App\Services\Invoicing\CompanyEmailSettingsService;
 use App\Services\Invoicing\CompanyPdfFilenameBuilder;
 use App\Services\Invoicing\Efaktura\EfakturaConnectionTester;
 use App\Services\Invoicing\Efaktura\EphemeralEfakturaSubmissionService;
 use App\Services\Invoicing\EphemeralBtcpayCheckoutService;
 use App\Services\Invoicing\EphemeralDocumentFactory;
+use App\Support\Invoicing\JurisdictionRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -39,6 +47,10 @@ use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class EphemeralBusinessDocumentController extends Controller
 {
+    private const MAX_PDF_AMOUNT = 999_999_999_999.99;
+
+    private const MAX_PDF_QUANTITY = 9_999_999_999.9999;
+
     public function __construct(
         protected EphemeralDocumentFactory $factory,
         protected BusinessDocumentPdfService $pdfService,
@@ -50,16 +62,17 @@ class EphemeralBusinessDocumentController extends Controller
         protected BusinessDocumentEmailService $emailService,
         protected EphemeralEfakturaSubmissionService $efakturaService,
         protected CompanyEmailSettingsService $emailSettingsService,
+        protected CanonicalInvoiceBuilder $canonicalBuilder,
     ) {}
 
-    public function pdf(EphemeralBusinessDocumentPdfRequest $request, Company $company): Response
+    public function pdf(EphemeralBusinessDocumentPdfRenderRequest $request, Company $company): Response
     {
         $snapshotCompany = $this->factory->snapshotCompany($company, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithPdf($request, $snapshotCompany, $company);
     }
 
-    public function pdfWithoutCompany(EphemeralBusinessDocumentPdfRequest $request): Response
+    public function pdfWithoutCompany(EphemeralBusinessDocumentPdfRenderRequest $request): Response
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
@@ -309,7 +322,7 @@ class EphemeralBusinessDocumentController extends Controller
         return $this->respondWithEfakturaRefresh($request);
     }
 
-    public function bulkPdfZipWithoutCompany(EphemeralBusinessDocumentBulkRequest $request): Response
+    public function bulkPdfZipWithoutCompany(EphemeralBusinessDocumentBulkPdfRenderRequest $request): Response
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
@@ -318,14 +331,14 @@ class EphemeralBusinessDocumentController extends Controller
         return $this->respondWithBulkPdfZip($request, $snapshotCompany);
     }
 
-    public function bulkPdfZip(EphemeralBusinessDocumentBulkRequest $request, Company $company): Response
+    public function bulkPdfZip(EphemeralBusinessDocumentBulkPdfRenderRequest $request, Company $company): Response
     {
         $snapshotCompany = $this->factory->snapshotCompany($company, (array) ($request->validated()['company'] ?? []));
 
         return $this->respondWithBulkPdfZip($request, $snapshotCompany, $company);
     }
 
-    public function bulkPdfMergeWithoutCompany(EphemeralBusinessDocumentBulkRequest $request): Response
+    public function bulkPdfMergeWithoutCompany(EphemeralBusinessDocumentBulkPdfRenderRequest $request): Response
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
@@ -334,7 +347,7 @@ class EphemeralBusinessDocumentController extends Controller
         return $this->respondWithBulkPdfMerge($request, $snapshotCompany);
     }
 
-    public function bulkPdfMerge(EphemeralBusinessDocumentBulkRequest $request, Company $company): Response
+    public function bulkPdfMerge(EphemeralBusinessDocumentBulkPdfRenderRequest $request, Company $company): Response
     {
         $snapshotCompany = $this->factory->snapshotCompany($company, (array) ($request->validated()['company'] ?? []));
 
@@ -367,11 +380,11 @@ class EphemeralBusinessDocumentController extends Controller
     }
 
     protected function respondWithPdf(
-        EphemeralBusinessDocumentPdfRequest $request,
+        EphemeralBusinessDocumentPdfRenderRequest $request,
         Company $snapshotCompany,
         ?Company $auditCompany = null,
     ): Response {
-        $document = $this->factory->document($snapshotCompany, $request->validated());
+        $document = $this->documentForPdf($snapshotCompany, $request->validated(), 'lines');
         $filename = $this->pdfFilenameBuilder->build($document);
         [$auditType, $auditId] = $this->auditTarget($request->user(), $auditCompany, $snapshotCompany);
 
@@ -661,11 +674,11 @@ class EphemeralBusinessDocumentController extends Controller
     }
 
     protected function respondWithBulkPdfZip(
-        EphemeralBusinessDocumentBulkRequest $request,
+        EphemeralBusinessDocumentBulkPdfRenderRequest $request,
         Company $snapshotCompany,
         ?Company $auditCompany = null,
     ): Response {
-        $documents = $this->factory->documentsFromBulk($snapshotCompany, $request->validated());
+        $documents = $this->documentsForBulkPdf($snapshotCompany, $request->validated());
         $issued = $documents->filter(fn (BusinessDocument $document) => $document->status !== BusinessDocumentStatus::Draft);
 
         if ($issued->isEmpty()) {
@@ -690,11 +703,11 @@ class EphemeralBusinessDocumentController extends Controller
     }
 
     protected function respondWithBulkPdfMerge(
-        EphemeralBusinessDocumentBulkRequest $request,
+        EphemeralBusinessDocumentBulkPdfRenderRequest $request,
         Company $snapshotCompany,
         ?Company $auditCompany = null,
     ): Response {
-        $documents = $this->factory->documentsFromBulk($snapshotCompany, $request->validated());
+        $documents = $this->documentsForBulkPdf($snapshotCompany, $request->validated());
         $issued = $documents->filter(fn (BusinessDocument $document) => $document->status !== BusinessDocumentStatus::Draft);
 
         if ($issued->isEmpty()) {
@@ -716,6 +729,98 @@ class EphemeralBusinessDocumentController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="invoices-merged.pdf"',
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return Collection<int, BusinessDocument>
+     */
+    private function documentsForBulkPdf(Company $company, array $payload): Collection
+    {
+        /** @var array<int, array<string, mixed>> $items */
+        $items = array_values((array) $payload['documents']);
+
+        return collect($items)->map(
+            fn (array $snapshot, int $index): BusinessDocument => $this->documentForPdf(
+                $company,
+                Arr::only($snapshot, ['contact', 'document', 'lines', 'source_totals']),
+                "documents.{$index}.lines",
+            ),
+        );
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function documentForPdf(Company $company, array $payload, string $linesPath): BusinessDocument
+    {
+        /** @var array<int, array<string, mixed>> $linePayloads */
+        $linePayloads = (array) $payload['lines'];
+        $lines = collect($linePayloads);
+        if (! $lines->contains(fn (array $line): bool => (float) $line['unit_price'] < 0)) {
+            return $this->factory->document($company, $payload);
+        }
+
+        $snapshot = $payload['document'];
+        // SK/CZ ephemeral PDFs are visual documents. Other renderers can generate
+        // structured e-invoices or request external sales tax calculations.
+        $jurisdiction = JurisdictionRules::normalizeValue($company->jurisdiction);
+        if (! in_array($jurisdiction, [CompanyJurisdiction::EuSk->value, CompanyJurisdiction::EuCz->value], true)
+            || $snapshot['type'] !== BusinessDocumentType::Invoice->value
+            || ! in_array($snapshot['status'] ?? null, [BusinessDocumentStatus::Issued->value, BusinessDocumentStatus::Paid->value], true)
+            || (bool) ($snapshot['payment_bank_enabled'] ?? true)
+            || (bool) ($snapshot['payment_btc_enabled'] ?? false)
+            || ! empty($payload['store_id'])
+            || ! empty($payload['btcpay_checkout_link'])
+        ) {
+            throw ValidationException::withMessages([
+                $linesPath => ['Negative items are supported for issued or paid Slovak and Czech invoice PDFs with payments disabled.'],
+            ]);
+        }
+
+        $amountPaid = (float) ($snapshot['amount_paid'] ?? 0);
+        if (! is_finite($amountPaid) || $amountPaid > self::MAX_PDF_AMOUNT
+            || $lines->contains(function (array $line): bool {
+                $quantity = (float) $line['quantity'];
+                $price = (float) $line['unit_price'];
+
+                return ! is_finite($quantity) || ! is_finite($price)
+                    || $quantity > self::MAX_PDF_QUANTITY || abs($price) > self::MAX_PDF_AMOUNT
+                    || abs($quantity * $price) > self::MAX_PDF_AMOUNT;
+            })
+        ) {
+            throw ValidationException::withMessages([$linesPath => ['Invoice amounts exceed the supported range.']]);
+        }
+
+        $document = $this->factory->document($company, $payload);
+        $canonical = $this->canonicalBuilder->fromDocument($document);
+        /** @var Collection<int, BusinessDocumentLine> $lineModels */
+        $lineModels = $document->lines;
+        $sourceTotals = (array) ($payload['source_totals'] ?? []);
+        $sourceLineTotals = (array) ($sourceTotals['line_totals'] ?? []);
+
+        // The renderer recalculates VAT from the decimal-cast line models.
+        // Require agreement with the calculated amounts and the archived totals.
+        if ($canonical->subtotal !== (string) $document->subtotal || $canonical->taxTotal !== (string) $document->tax_total
+            || $canonical->total !== (string) $document->total
+            || $canonical->subtotal !== ($sourceTotals['subtotal'] ?? null)
+            || $canonical->taxTotal !== ($sourceTotals['tax_total'] ?? null)
+            || $canonical->total !== ($sourceTotals['total'] ?? null)
+            || count($canonical->lines) !== count($sourceLineTotals)
+            || (float) $canonical->subtotal <= 0
+            || (float) $canonical->taxTotal < 0 || (float) $canonical->total <= 0
+            || (float) $canonical->total > self::MAX_PDF_AMOUNT || $amountPaid > (float) $canonical->total
+            || collect($canonical->taxBreakdown)->contains(
+                fn ($row): bool => (float) $row->taxableAmount < 0 || (float) $row->taxAmount < 0,
+            )
+            || collect($canonical->lines)->contains(
+                fn ($line): bool => abs((float) $line->grossAmount) > self::MAX_PDF_AMOUNT
+                    || $line->grossAmount !== (string) $lineModels[$line->sortOrder]->line_total
+                    || $line->grossAmount !== ($sourceLineTotals[$line->sortOrder] ?? null),
+            )
+        ) {
+            throw ValidationException::withMessages([$linesPath => ['Invoice amounts with negative items could not be verified for PDF.']]);
+        }
+
+        return $document;
     }
 
     protected function respondWithEfakturaSend(

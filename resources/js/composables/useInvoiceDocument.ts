@@ -211,6 +211,12 @@ export function useInvoiceDocument() {
     lines: [] as InvoiceLineForm[],
   });
 
+  const storedSignedDocument = computed(() =>
+    local && documentId.value && form.lines.some(line => line.unit_price < 0)
+      ? local.documentApi(documentId.value as DocumentId)
+      : null,
+  );
+
   const selectedContact = computed(
     () => contacts.value.find((c) => c.id === form.company_contact_id) ?? null
   );
@@ -296,6 +302,14 @@ export function useInvoiceDocument() {
   }
 
   const previewTotals = computed(() => {
+    if (storedSignedDocument.value) {
+      const document = storedSignedDocument.value;
+      return {
+        subtotal: Number(document.subtotal),
+        tax: Number(document.tax_total),
+        total: Number(document.total),
+      };
+    }
     if (serverTotals.value) {
       return {
         subtotal: serverTotals.value.subtotal,
@@ -315,7 +329,7 @@ export function useInvoiceDocument() {
   }
 
   async function refreshUsSalesTaxPreview() {
-    if (!usesStripeUsTax.value || !companyId.value || form.lines.length === 0) {
+    if (!usesStripeUsTax.value || !companyId.value || form.lines.length === 0 || storedSignedDocument.value) {
       serverTotals.value = null;
       return;
     }
@@ -392,6 +406,7 @@ export function useInvoiceDocument() {
   }
 
   watch([selectedContact, () => company.value?.vat_status], () => {
+    if (storedSignedDocument.value) return;
     const rate = vatPolicy.resolveLineTaxRate(company.value, selectedContact.value, defaultVat.value);
     for (const line of form.lines) {
       line.tax_rate = rate;
@@ -553,6 +568,7 @@ export function useInvoiceDocument() {
     amountPaid.value = parseDocumentAmountPaid(d.amount_paid);
     bankMatch.value = d.bank_match ?? null;
     tagsInput.value = (d.tags || []).join(', ');
+    const hasDeductions = (d.lines || []).some((line: { unit_price: string }) => Number(line.unit_price) < 0);
     Object.assign(form, {
       title: d.title || '',
       company_contact_id: d.company_contact_id || '',
@@ -581,7 +597,8 @@ export function useInvoiceDocument() {
         unit: l.unit || DEFAULT_INVOICE_LINE_UNIT,
         unit_price: parseFloat(l.unit_price),
         line_discount_percent: parseFloat(l.line_discount_percent) || 0,
-        tax_rate: parseFloat(l.tax_rate) || defaultVat.value,
+        tax_rate: hasDeductions ? Number(l.tax_rate) : parseFloat(l.tax_rate) || defaultVat.value,
+        ...(hasDeductions ? { historical_line_total: Number(l.line_total) } : {}),
         company_stock_item_id: l.company_stock_item_id || null,
         company_warehouse_id: l.company_warehouse_id ?? null,
         stock_quantity_hint: null,
@@ -720,6 +737,7 @@ export function useInvoiceDocument() {
   }
 
   function applyPaymentDefaults() {
+    if (storedSignedDocument.value) return;
     const stores = linkedStores.value;
     if (stores.length === 0) {
       return;
@@ -865,7 +883,8 @@ export function useInvoiceDocument() {
   }
 
   function buildCurrentEphemeralSnapshot() {
-    const p = payload();
+    const storedDocument = storedSignedDocument.value;
+    const p = storedDocument ? payloadFromApiDocument(storedDocument) : payload();
     // Snapshot payloads are loose records (frozen snapshots override with
     // partial data); buildEphemeralSnapshot takes Record<string, unknown>.
     let companyForSnapshot: Record<string, unknown> | null = company.value;
@@ -912,16 +931,20 @@ export function useInvoiceDocument() {
         pdf_bank_qr: form.pdf_bank_qr === 'auto' ? null : form.pdf_bank_qr,
         pdf_show_signature: form.pdf_show_signature,
         pdf_show_payment_info: form.pdf_show_payment_info,
-        payment_bank_enabled: form.payment_bank_enabled,
-        payment_btc_enabled: form.payment_btc_enabled,
-        discount_percent: form.discount_percent,
+        payment_bank_enabled: p.payment_bank_enabled,
+        payment_btc_enabled: p.payment_btc_enabled,
+        discount_percent: p.discount_percent,
         amount_paid: amountPaid.value,
+        subtotal: storedDocument?.subtotal,
+        tax_total: storedDocument?.tax_total,
+        total: storedDocument?.total,
+        lines: storedDocument?.lines,
       },
       p.lines,
       {
-        storeId: form.store_id || null,
+        storeId: p.store_id || null,
         evoluDocumentId: documentId.value || null,
-        btcpayCheckoutLink: localBtcpayCheckoutLink.value || null,
+        btcpayCheckoutLink: storedDocument ? null : (localBtcpayCheckoutLink.value || null),
       },
     );
   }

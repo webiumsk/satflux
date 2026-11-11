@@ -84,7 +84,9 @@ function sanitizeRow(table: InvoicingTable, row: Record<string, unknown>): Recor
 export function sanitizeSnapshotRowsForUpsert(snapshot: InvoicingDataSnapshot): InvoicingDataSnapshot {
     const out = {} as InvoicingDataSnapshot;
     for (const table of Object.keys(snapshot) as InvoicingTable[]) {
-        out[table] = snapshot[table].map((row) => sanitizeRow(table, row as Record<string, unknown>));
+        const rows = snapshot[table];
+        if (rows === undefined) continue;
+        out[table] = rows.map((row) => sanitizeRow(table, row as Record<string, unknown>));
     }
     return out;
 }
@@ -93,7 +95,9 @@ export function sanitizeSnapshotRowsForUpsert(snapshot: InvoicingDataSnapshot): 
 export function dropRowsWithoutId(snapshot: InvoicingDataSnapshot): InvoicingDataSnapshot {
     const out = {} as InvoicingDataSnapshot;
     for (const table of Object.keys(snapshot) as InvoicingTable[]) {
-        out[table] = snapshot[table].filter((row) => emptyToNull(row.id) != null);
+        const rows = snapshot[table];
+        if (rows === undefined) continue;
+        out[table] = rows.filter((row) => emptyToNull(row.id) != null);
     }
     return out;
 }

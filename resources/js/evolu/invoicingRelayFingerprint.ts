@@ -20,6 +20,7 @@ import {
 } from "./client";
 import type { InvoicingLocalSchema } from "./schema";
 import { snapshotInvoicingData } from "./invoicingSnapshot";
+import { EVOLU_QUERY_LOAD_TIMEOUT_MS, loadEvoluQueryWithTimeout } from "./queryLoad";
 import {
     filterInvoicingSnapshotByCompany,
     fingerprintInvoicingSnapshot,
@@ -53,15 +54,20 @@ const INVOICING_RELAY_QUERY_LIST = [
 /** Reload every local-first invoicing query (picks up relay merges in SQLite). */
 export async function refreshAllInvoicingLocalQueries(
     evolu: Evolu<InvoicingLocalSchema>,
+    timeoutMs = EVOLU_QUERY_LOAD_TIMEOUT_MS,
 ): Promise<void> {
-    await Promise.all(INVOICING_RELAY_QUERY_LIST.map((query) => evolu.loadQuery(query)));
+    await Promise.all(INVOICING_RELAY_QUERY_LIST.map((query) => loadEvoluQueryWithTimeout(evolu, query, timeoutMs)));
 }
 
 export async function loadInvoicingRelayFingerprint(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId?: string,
+    timeoutMs = EVOLU_QUERY_LOAD_TIMEOUT_MS,
 ): Promise<string> {
-    const snapshot = await snapshotInvoicingData(evolu);
+    const snapshot = await snapshotInvoicingData(evolu, {
+        includeMigrationOriginals: false,
+        queryTimeoutMs: timeoutMs,
+    });
     const scoped = companyId
         ? filterInvoicingSnapshotByCompany(snapshot, companyId)
         : snapshot;

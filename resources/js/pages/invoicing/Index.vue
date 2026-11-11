@@ -353,6 +353,15 @@ function openRelaySyncModal(): void {
   void probeNow();
 }
 
+watch(() => route.query.sync, (value) => {
+  if (localFirst && value === '1') {
+    // A deliberate diagnostic deep link opens the existing controls; it never
+    // pushes local data or starts a destructive recovery operation.
+    openRelaySyncModal();
+    void router.replace({ query: { ...route.query, sync: undefined } });
+  }
+}, { immediate: true });
+
 const relaySyncStatusTitle = computed((): string | null => {
   if (syncState.value === 'ok' && lastExchangeAt.value) {
     return t('invoicing.relay_sync_last_exchange_at', {

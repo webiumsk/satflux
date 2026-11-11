@@ -110,6 +110,7 @@ const displayCompanyLabel = computed(() => props.companyLabel || summaryCompanyN
 
 const visibleMainNav = computed(() => {
   const items: { id: InvoicingMainSection; labelKey: string }[] = [
+    { id: 'attention', labelKey: 'invoicing.action_center.title' },
     { id: 'documents', labelKey: 'invoicing.main_nav_documents' },
     { id: 'expenses', labelKey: 'invoicing.main_nav_expenses' },
   ];
@@ -141,7 +142,8 @@ watch(
 );
 
 function mainIcon(id: InvoicingMainSection) {
-  const map: Record<InvoicingMainSection, 'documents' | 'expenses' | 'payments' | 'contacts' | 'stock' | 'tools'> = {
+  const map: Record<InvoicingMainSection, 'attention' | 'documents' | 'expenses' | 'payments' | 'contacts' | 'stock' | 'tools'> = {
+    attention: 'attention',
     documents: 'documents',
     expenses: 'expenses',
     payments: 'payments',

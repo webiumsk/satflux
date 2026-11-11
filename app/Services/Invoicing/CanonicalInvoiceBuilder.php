@@ -213,6 +213,10 @@ class CanonicalInvoiceBuilder
         $subtotal = 0.0;
         $taxTotal = 0.0;
         $breakdownBuckets = [];
+        $calculatesVat = $this->vatPolicy->calculatesVatAmounts($company, $contact);
+        $includesDeductions = $calculatesVat && collect($lines)->contains(
+            fn (CanonicalInvoiceLine $line): bool => $line->unitPrice < 0,
+        );
 
         foreach ($lines as $line) {
             $net = (float) $line->netAmount;
@@ -220,7 +224,7 @@ class CanonicalInvoiceBuilder
             $subtotal += $net;
             $taxTotal += $tax;
 
-            if ($this->vatPolicy->calculatesVatAmounts($company, $contact) && $tax > 0) {
+            if ($calculatesVat && ($tax > 0 || $includesDeductions)) {
                 $key = $this->taxRateKey($line->taxRate);
                 if (! isset($breakdownBuckets[$key])) {
                     $breakdownBuckets[$key] = ['rate' => $line->taxRate, 'net' => 0.0, 'tax' => 0.0];

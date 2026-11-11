@@ -848,13 +848,13 @@ const loading = bank.loading;
 const transactions = bank.transactions;
 const summary = bank.summary;
 const batches = bank.batches;
-const matchFilter = ref("all");
+const matchFilter = ref(route.query?.match_status === "unmatched" ? "unmatched" : "all");
 const wiseStatus = computed(() => bank.wiseStatus.value);
 const wiseBridgeMissing = computed(() => bank.wiseBridgeMissing.value);
 const bridgeLookupFailed = computed(() => bank.bridgeLookupFailed.value);
 const wiseStatusFailed = computed(() => bank.wiseStatusFailed.value);
 const wiseConnectionCheckFailed = computed(() => bridgeLookupFailed.value || wiseStatusFailed.value);
-const activeTab = ref<"transactions" | "import">("transactions");
+const activeTab = ref<"transactions" | "import">(route.query?.tab === "import" ? "import" : "transactions");
 const importFile = ref<File | null>(null);
 const importFormat = ref("");
 const importing = ref(false);
@@ -1004,6 +1004,18 @@ watch(bank.bridgeRoutingKey, () => {
 
 watch(activeTab, (tab) => {
   if (tab === "transactions") load();
+});
+
+watch(() => route.query?.match_status, (value) => {
+  const next = value === "unmatched" ? "unmatched" : "all";
+  if (next !== matchFilter.value) {
+    matchFilter.value = next;
+    void load();
+  }
+});
+
+watch(() => route.query?.tab, (value) => {
+  activeTab.value = value === "import" ? "import" : "transactions";
 });
 
 function linkedDocument(tx: BankTx): LinkedDocument | null {

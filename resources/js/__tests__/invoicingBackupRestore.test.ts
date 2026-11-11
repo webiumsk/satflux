@@ -18,7 +18,7 @@ vi.mock("@/evolu/client", async () => {
         "allDocumentSnapshotsQuery",
         "allDocumentsQuery",
         "allExpensesQuery",
-        "allExpenseAttachmentsQuery",
+        "allExpenseAttachmentsQuery", "allMigrationSourcesBackupQuery", "allMigrationChunksQuery",
         "allNumberSeriesQuery",
         "allRecurringProfileLinesQuery",
         "allRecurringProfilesQuery",

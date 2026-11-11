@@ -73,6 +73,130 @@ class EphemeralBusinessDocumentPdfTest extends TestCase
     }
 
     #[Test]
+    public function historical_invoice_with_deduction_renders_without_persisting_or_creating_a_checkout(): void
+    {
+        [$user, $company] = $this->createProUserWithCompany();
+
+        foreach (['/api/invoicing/ephemeral/pdf', "/api/invoicing/companies/{$company->id}/documents/ephemeral/pdf"] as $url) {
+            $response = $this->actingAs($user)->postJson($url, $this->deductionPayload());
+
+            $response->assertOk()->assertHeader('content-type', 'application/pdf');
+            $this->assertStringStartsWith('%PDF', $response->getContent());
+        }
+
+        $this->assertDatabaseCount('business_documents', 0);
+        $this->assertDatabaseCount('business_document_lines', 0);
+        $this->assertDatabaseCount('ephemeral_btcpay_checkouts', 0);
+    }
+
+    #[Test]
+    public function pdf_rejects_unsafe_or_inconsistent_signed_snapshots(): void
+    {
+        [$user] = $this->createProUserWithCompany();
+        $this->actingAs($user);
+        $url = '/api/invoicing/ephemeral/pdf';
+
+        foreach ([
+            ['document' => ['payment_btc_enabled' => true]],
+            ['document' => ['payment_bank_enabled' => true]],
+            ['document' => ['status' => 'draft']],
+            ['company' => ['jurisdiction' => 'us', 'app_settings' => ['us_sales_tax_provider' => 'stripe_tax']]],
+            ['company' => ['jurisdiction' => 'eu_de']],
+            [
+                'lines' => [1 => ['unit_price' => -100]],
+                'source_totals' => [
+                    'subtotal' => '0.00',
+                    'tax_total' => '0.00',
+                    'total' => '0.00',
+                    'line_totals' => ['123.00', '-123.00'],
+                ],
+                'document' => ['amount_paid' => 0],
+            ],
+            ['lines' => [1 => ['unit_price' => -1, 'quantity' => '1e20']]],
+            [
+                'lines' => [1 => ['unit_price' => -20, 'tax_rate' => 10]],
+                'source_totals' => ['tax_total' => '21.00', 'total' => '101.00', 'line_totals' => ['123.00', '-22.00']],
+            ],
+            [
+                'lines' => [1 => ['unit_price' => '-20.0049', 'quantity' => 2]],
+                'source_totals' => [
+                    'subtotal' => '59.99',
+                    'tax_total' => '13.80',
+                    'total' => '73.79',
+                    'line_totals' => ['123.00', '-49.21'],
+                ],
+                'document' => ['amount_paid' => 0],
+            ],
+        ] as $override) {
+            $this->postJson($url, array_replace_recursive($this->deductionPayload(), $override))
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('lines');
+        }
+
+        $this->assertDatabaseCount('ephemeral_btcpay_checkouts', 0);
+    }
+
+    #[Test]
+    public function signed_pdf_requires_original_totals_and_rejects_a_changed_vat_profile(): void
+    {
+        [$user] = $this->createProUserWithCompany();
+        $this->actingAs($user);
+        $url = '/api/invoicing/ephemeral/pdf';
+        $payload = $this->deductionPayload();
+        $payload['document']['status'] = 'issued';
+        $payload['document']['amount_paid'] = '0.00';
+        $payload['company']['vat_payer'] = false;
+
+        $this->postJson($url, $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('lines');
+
+        $payload['company']['vat_payer'] = true;
+        unset($payload['source_totals']);
+        $this->postJson($url, $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('lines');
+    }
+
+    #[Test]
+    public function signed_pdf_checks_line_totals_even_when_vat_changes_offset_in_the_aggregate(): void
+    {
+        [$user] = $this->createProUserWithCompany();
+        $this->actingAs($user);
+        $url = '/api/invoicing/ephemeral/pdf';
+        $payload = $this->deductionPayload();
+        $payload['document']['amount_paid'] = '100.00';
+        $payload['lines'][1]['unit_price'] = -100;
+        $payload['lines'][] = ['name' => 'Non-taxable item', 'quantity' => 1, 'unit_price' => 100, 'tax_rate' => 0];
+        $payload['source_totals'] = [
+            'subtotal' => '100.00',
+            'tax_total' => '0.00',
+            'total' => '100.00',
+            'line_totals' => ['123.00', '-123.00', '100.00'],
+        ];
+
+        $this->postJson($url, $payload)->assertOk();
+
+        $payload['company']['vat_payer'] = false;
+        $this->postJson($url, $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('lines');
+    }
+
+    #[Test]
+    public function signed_unit_prices_are_still_rejected_by_non_pdf_snapshot_routes(): void
+    {
+        [$user] = $this->createProUserWithCompany();
+        $this->actingAs($user);
+
+        foreach (['email-preview', 'send-email', 'isdoc', 'ubl', 'btcpay-checkout', 'efaktura/send'] as $action) {
+            $this->postJson("/api/invoicing/ephemeral/{$action}", $this->deductionPayload())
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('lines.1.unit_price');
+        }
+    }
+
+    #[Test]
     public function ephemeral_pdf_accepts_contact_country_name_and_normalizes_to_iso_code(): void
     {
         [$user, $company] = $this->createProUserWithCompany();
@@ -347,5 +471,30 @@ class EphemeralBusinessDocumentPdfTest extends TestCase
                 ],
             ],
         ];
+    }
+
+    /** @return array<string, mixed> */
+    private function deductionPayload(): array
+    {
+        return array_replace_recursive($this->ephemeralPayload(), [
+            'company' => ['jurisdiction' => 'eu_sk', 'vat_payer' => true],
+            'contact' => ['country' => 'SK'],
+            'document' => [
+                'status' => 'paid',
+                'amount_paid' => '98.40',
+                'payment_bank_enabled' => false,
+                'payment_btc_enabled' => false,
+            ],
+            'source_totals' => [
+                'subtotal' => '80.00',
+                'tax_total' => '18.40',
+                'total' => '98.40',
+                'line_totals' => ['123.00', '-24.60'],
+            ],
+            'lines' => [
+                ['tax_rate' => 23],
+                ['name' => 'Service deduction', 'quantity' => 1, 'unit_price' => -20, 'tax_rate' => 23],
+            ],
+        ]);
     }
 }

@@ -76,11 +76,11 @@
               <button
                 type="button"
                 class="text-xs font-medium text-indigo-300 hover:text-indigo-200 disabled:opacity-50"
-                :disabled="evoluStatsLoading"
-                @click="refreshEvoluStats"
+                :disabled="evoluStatsLoading || evoluStatsExporting"
+                @click="refreshEvoluStats(true)"
               >
                 {{
-                  evoluStatsLoading
+                  evoluStatsLoading || evoluStatsExporting
                     ? t("account.evolu_stats_loading")
                     : t("account.evolu_stats_refresh")
                 }}
@@ -194,6 +194,9 @@
             </p>
             <p v-else-if="evoluStatsNeedPhrase" class="text-xs text-amber-300">
               {{ t("account.evolu_stats_need_phrase") }}
+            </p>
+            <p v-else-if="evoluStatsFailed" class="text-xs text-amber-300" role="alert">
+              {{ t("errors.generic") }}
             </p>
 
             <InvoicingBackupCard
@@ -1600,6 +1603,8 @@ import { getEvoluRelayRuntimeInfo } from "../../services/evoluRelayPreference";
 import { pauseEvoluRelayPreference } from "../../evolu/relayPreferenceLifecycle";
 import { ensureEvoluBoundToAccountSeed, resetEvoluBootstrapForRetry } from "../../evolu/bootstrap";
 import { allowEvoluPageReload } from "../../evolu/reloadGuard";
+import { withTimeout } from "../../evolu/asyncTimeout";
+import { EVOLU_QUERY_LOAD_TIMEOUT_MS } from "../../evolu/queryLoad";
 import {
   formatByteSize,
   loadInvoicingLocalStats,
@@ -2129,7 +2134,25 @@ const activeRelayUrl = computed(() => getEvoluRelayRuntimeInfo().url);
 const evoluLocalStats = ref<InvoicingLocalStats | null>(null);
 const evoluRelayUsage = ref<EvoluRelayUsageResponse | null>(null);
 const evoluStatsLoading = ref(false);
+const evoluStatsExporting = ref(false);
+const evoluStatsFailed = ref(false);
 const evoluRelayUsageChecked = ref(false);
+let evoluStatsGeneration = 0;
+let evoluStatsDisposed = false;
+
+watch(() => authStore.user?.id, () => {
+  evoluStatsGeneration++;
+  evoluLocalStats.value = null;
+  evoluRelayUsage.value = null;
+  evoluRelayUsageChecked.value = false;
+  evoluStatsLoading.value = false;
+  evoluStatsExporting.value = false;
+  evoluStatsFailed.value = false;
+}, { flush: "sync" });
+onUnmounted(() => {
+  evoluStatsDisposed = true;
+  evoluStatsGeneration++;
+});
 const evoluStatsNeedPhrase = computed(
   () => localFirst && !getStoredAccountMnemonic(),
 );
@@ -2673,35 +2696,74 @@ function formatStatsIso(iso: string): string {
   }
 }
 
-async function refreshEvoluStats(): Promise<void> {
-  if (!localFirst || evoluStatsNeedPhrase.value) {
+async function refreshEvoluStats(includeDbExport = false): Promise<void> {
+  if (evoluStatsDisposed) return;
+  const generation = ++evoluStatsGeneration;
+  const accountId = authStore.user?.id;
+  const isCurrent = () => !evoluStatsDisposed && generation === evoluStatsGeneration
+    && authStore.user?.id === accountId;
+  if (!localFirst || evoluStatsNeedPhrase.value || accountId == null) {
     evoluLocalStats.value = null;
     evoluRelayUsage.value = null;
     evoluRelayUsageChecked.value = false;
+    evoluStatsLoading.value = false;
+    evoluStatsExporting.value = false;
+    evoluStatsFailed.value = false;
     return;
   }
 
   evoluStatsLoading.value = true;
+  evoluStatsExporting.value = false;
+  evoluStatsFailed.value = false;
+  evoluRelayUsage.value = null;
   evoluRelayUsageChecked.value = false;
   try {
     await ensureEvoluBoundToAccountSeed();
+    if (!isCurrent()) return;
     const { evolu } = await import("@/evolu/client");
-    const stats = await loadInvoicingLocalStats(evolu, { includeDbExport: true });
+    if (!isCurrent()) return;
+    const stats = await loadInvoicingLocalStats(evolu);
+    if (!isCurrent()) return;
     evoluLocalStats.value = stats;
+    evoluStatsLoading.value = false;
 
+    if (!isCurrent()) return;
     const relayUrl = activeRelayUrl.value;
     if (relayUrl && stats.ownerId) {
-      evoluRelayUsage.value = await fetchEvoluRelayUsage(relayUrl, stats.ownerId);
+      void fetchEvoluRelayUsage(relayUrl, stats.ownerId).then(usage => {
+        if (!isCurrent() || activeRelayUrl.value !== relayUrl) return;
+        evoluRelayUsage.value = usage;
+        evoluRelayUsageChecked.value = true;
+      }).catch(() => {
+        if (isCurrent() && activeRelayUrl.value === relayUrl) evoluRelayUsageChecked.value = true;
+      });
     } else {
-      evoluRelayUsage.value = null;
+      evoluRelayUsageChecked.value = true;
     }
-    evoluRelayUsageChecked.value = true;
+
+    if (includeDbExport && isCurrent()) {
+      evoluStatsExporting.value = true;
+      try {
+        const exported = await withTimeout(
+          evolu.exportDatabase(),
+          EVOLU_QUERY_LOAD_TIMEOUT_MS,
+          "evolu_stats_export_timeout",
+        );
+        if (isCurrent()) evoluLocalStats.value = { ...stats, localDbBytes: exported.byteLength };
+      } catch {
+        // Counts are already available. An optional size calculation can fail independently.
+      } finally {
+        if (isCurrent()) evoluStatsExporting.value = false;
+      }
+    }
   } catch {
+    if (!isCurrent()) return;
     evoluLocalStats.value = null;
     evoluRelayUsage.value = null;
     evoluRelayUsageChecked.value = true;
+    evoluStatsFailed.value = true;
   } finally {
-    evoluStatsLoading.value = false;
+    if (isCurrent()) evoluStatsLoading.value = false;
   }
 }
 

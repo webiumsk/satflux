@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "provider": "zaprite",
+  "pages": [
+    {
+      "items": [
+        {
+          "id": "od_synthetic",
+          "orgId": "org_synthetic",
+          "orderType": "invoice",
+          "totalAmount": 29900,
+          "currency": "EUR",
+          "externalUniqId": null,
+          "status": "UNDERPAID",
+          "paidAt": null,
+          "expiresAt": null,
+          "countdownToExpiry": false,
+          "redirectUrl": null,
+          "label": null,
+          "checkoutUrl": "https://example.invalid/checkout",
+          "receiptPdfUrl": null,
+          "customCheckoutId": null,
+          "contact": {
+            "id": "ct_synthetic",
+            "legalName": "Synthetic Buyer",
+            "contactName": null,
+            "displayName": "Buyer",
+            "email": null,
+            "taxId": null,
+            "defaultCurrency": "EUR",
+            "billingAddress": {
+              "line1": null,
+              "line2": null,
+              "zipCode": null,
+              "city": null,
+              "state": null,
+              "countryCode": null
+            },
+            "paymentProfiles": []
+          },
+          "invoice": {
+            "id": "inv_synthetic",
+            "number": "SYNTHETIC-EUR-001",
+            "title": null,
+            "orgId": "org_synthetic",
+            "status": "UNDERPAID",
+            "footerNote": null,
+            "daysToPay": 14,
+            "date": "2026-11-01",
+            "purchaseOrderNumber": null,
+            "hideOrgAddress": false,
+            "hideOrgEmail": false,
+            "hideOrgName": false,
+            "sentAt": "2026-11-01T12:00:00.000Z",
+            "voidedAt": null,
+            "publicUrl": "https://example.invalid/invoice",
+            "customer": {
+              "id": "ct_synthetic",
+              "legalName": "Synthetic Buyer",
+              "contactName": null,
+              "displayName": "Buyer",
+              "email": null,
+              "taxId": null,
+              "defaultCurrency": "EUR",
+              "billingAddress": {
+                "line1": null,
+                "line2": null,
+                "zipCode": null,
+                "city": null,
+                "state": null,
+                "countryCode": null
+              },
+              "paymentProfiles": []
+            },
+            "lineItems": [
+              {
+                "id": "li_synthetic_1",
+                "name": "Consulting",
+                "description": null,
+                "unitPrice": 10000,
+                "quantity": 2,
+                "taxRateBips": 0,
+                "taxAmount": 0,
+                "discountRateBips": 0,
+                "discountAmount": 0
+              },
+              {
+                "id": "li_synthetic_2",
+                "name": "Hosting",
+                "description": null,
+                "unitPrice": 9900,
+                "quantity": 1,
+                "taxRateBips": 0,
+                "taxAmount": 0,
+                "discountRateBips": 0,
+                "discountAmount": 0
+              }
+            ]
+          },
+          "paymentLink": null,
+          "transactions": [
+            {
+              "id": "tx_synthetic",
+              "date": "2026-11-11T14:25:00.000Z",
+              "amount": 5000,
+              "currency": "EUR",
+              "amountInOrderCurrency": null,
+              "discountsInOrderCurrency": [],
+              "orderCurrency": null,
+              "amountInAccountingCurrency": null,
+              "accountingCurrency": null,
+              "method": "BANK",
+              "externalRef": null,
+              "status": "CONFIRMED"
+            }
+          ],
+          "customerData": {
+            "email": null,
+            "name": null,
+            "phone": null,
+            "address": null,
+            "note": null,
+            "company": null
+          },
+          "customerFields": {},
+          "metadata": {},
+          "tags": [],
+          "allowSavePaymentProfile": false,
+          "eventTickets": [],
+          "orderItems": [],
+          "promo": null,
+          "coupons": [],
+          "customerPiiClearedAt": null
+        }
+      ],
+      "meta": {
+        "itemsCount": 1,
+        "pagesCount": 1,
+        "page": 1,
+        "perPage": 100
+      }
+    }
+  ]
+}

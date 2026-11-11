@@ -76,6 +76,9 @@ class BusinessDocument extends Model
         'can_unmark_paid',
     ];
 
+    /** Failure evidence is exposed only through the scoped action-center projection. */
+    protected $hidden = ['email_failed_at', 'email_failure_code'];
+
     protected function casts(): array
     {
         return [
@@ -93,6 +96,7 @@ class BusinessDocument extends Model
             'pdf_show_payment_info' => 'boolean',
             'paid_at' => 'datetime',
             'email_sent_at' => 'datetime',
+            'email_failed_at' => 'datetime',
             'btcpay_checkout_created_at' => 'datetime',
             'amount_paid' => 'decimal:2',
             'subtotal' => 'decimal:2',

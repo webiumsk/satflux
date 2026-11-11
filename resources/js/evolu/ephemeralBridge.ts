@@ -33,6 +33,12 @@ export type EphemeralSnapshotPayload = {
     store_id?: string;
     evolu_document_id?: string;
     btcpay_checkout_link?: string;
+    source_totals?: {
+        subtotal: string;
+        tax_total: string;
+        total: string;
+        line_totals: string[];
+    };
 };
 
 export type EphemeralSnapshotOptions = {
@@ -316,6 +322,17 @@ export function buildEphemeralSnapshot(
 
     const amountPaid = resolveEphemeralAmountPaid(document.amount_paid);
     const emailSettings = emailSettingsForEphemeralSnapshot(company);
+    const { subtotal, tax_total, total } = document;
+    let sourceTotals: EphemeralSnapshotPayload["source_totals"];
+    if (lines.some(line => line.unit_price < 0)
+        && typeof subtotal === "string" && typeof tax_total === "string" && typeof total === "string"
+        && Array.isArray(document.lines)
+    ) {
+        const lineTotals: unknown[] = document.lines.map(line => line?.line_total);
+        if (lineTotals.length === lines.length && lineTotals.every(value => typeof value === "string")) {
+            sourceTotals = { subtotal, tax_total, total, line_totals: lineTotals };
+        }
+    }
 
     return {
         company: {
@@ -402,6 +419,7 @@ export function buildEphemeralSnapshot(
             line_discount_percent: line.line_discount_percent,
             tax_rate: line.tax_rate,
         })),
+        ...(sourceTotals ? { source_totals: sourceTotals } : {}),
         ...(options.storeId ? { store_id: options.storeId } : {}),
         ...(options.evoluDocumentId ? { evolu_document_id: options.evoluDocumentId } : {}),
         ...(options.btcpayCheckoutLink ? { btcpay_checkout_link: options.btcpayCheckoutLink } : {}),
@@ -883,6 +901,7 @@ export async function buildBulkEphemeralRequest(
             contact: snapshot.contact,
             document: snapshot.document,
             lines: snapshot.lines,
+            ...(snapshot.source_totals ? { source_totals: snapshot.source_totals } : {}),
         });
     }
 
@@ -937,6 +956,10 @@ export function buildEphemeralSnapshotFromApiDocument(
         payment_btc_enabled: doc.payment_btc_enabled,
         discount_percent: doc.discount_percent,
         amount_paid: doc.amount_paid,
+        subtotal: doc.subtotal,
+        tax_total: doc.tax_total,
+        total: doc.total,
+        lines: doc.lines,
     }, lines, {
         storeId: typeof doc.store_id === 'string' ? doc.store_id : null,
         // Without the evolu id the server cannot find the document's
@@ -1019,6 +1042,7 @@ function renderInputsFromFrozen(
         contact: frozen.contact ? { ...frozen.contact } : null,
         document: {
             ...frozen.document,
+            lines: frozen.lines,
             status: liveDoc.status,
             amount_paid: liveDoc.amount_paid,
             // Operational payment routing, deliberately NOT frozen content:

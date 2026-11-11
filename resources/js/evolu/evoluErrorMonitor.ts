@@ -45,7 +45,7 @@ function describeEvoluError(error: unknown): string {
 
 /** True when the error looks like a storage-quota failure (phase 5 banner). */
 export function isQuotaLikeEvoluError(description: string | null): boolean {
-    if (!description) return false;
+    if (!description || description === "ProtocolQuotaError") return false;
     return /quota|storage|disk/i.test(description);
 }
 

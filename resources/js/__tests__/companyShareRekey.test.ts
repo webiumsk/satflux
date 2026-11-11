@@ -19,6 +19,8 @@ const Q = vi.hoisted(() => {
         allDocumentSnapshotsQuery: token('documentSnapshot'),
         allExpensesQuery: token('expense'),
         allExpenseAttachmentsQuery: token('expenseAttachment'),
+        allMigrationSourcesBackupQuery: token('migrationSource'),
+        allMigrationChunksQuery: token('migrationChunk'),
         allRecurringProfilesQuery: token('recurringProfile'),
         allRecurringProfileLinesQuery: token('recurringProfileLine'),
         allBankImportBatchesQuery: token('bankImportBatch'),

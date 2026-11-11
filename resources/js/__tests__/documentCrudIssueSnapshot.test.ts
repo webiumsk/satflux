@@ -78,6 +78,7 @@ function fakeEvolu() {
     const calls: Call[] = [];
     return {
         calls,
+        getQueryRows: vi.fn(() => []),
         insert: vi.fn((table: string, row: Record<string, unknown>): MutationResult => {
             calls.push({ table, row });
             return { ok: true, value: { id: `${table}-id` } };
@@ -98,6 +99,19 @@ beforeEach(() => {
 });
 
 describe("applyReservedNumberToLocalDocument snapshot invariant", () => {
+    it("cannot apply an ordinary number to a pending migration or signed line", async () => {
+        const { applyReservedNumberToLocalDocument } = await import("@/evolu/documentCrud");
+        const evolu = fakeEvolu();
+        const pending = { ...draft, migrationFingerprint: "pending", migrationCompletedAt: null };
+        const apply = (doc: EvoluDocumentRow, lines: EvoluDocumentLineRow[]) => applyReservedNumberToLocalDocument(
+            evolu as never, documentId, companyId, "invoice", "20260071", series, null,
+            { company, doc, allDocuments: [doc], lines, contact: null },
+        );
+        expect(apply(pending, [])).toEqual({ ok: false, error: "migration_pending" });
+        expect(apply(draft, [{ ...line, unitPrice: "-20.00" }])).toEqual({ ok: false, error: "negative_line_price" });
+        expect(evolu.calls).toEqual([]);
+    });
+
     it("fails without issuing or advancing the series counter when the snapshot insert fails", async () => {
         const { applyReservedNumberToLocalDocument } = await import("@/evolu/documentCrud");
         const evolu = fakeEvolu();
@@ -235,6 +249,18 @@ describe("saveLocalDocument re-freeze", () => {
         lineTaxRate: (l: { tax_rate: number }) => l.tax_rate,
         existingLines: [] as EvoluDocumentLineRow[],
     };
+
+    it("blocks ordinary saves of signed lines and edits to a persisted pending migration", async () => {
+        const { saveLocalDocument } = await import("@/evolu/documentCrud");
+        const evolu = fakeEvolu();
+        const signed = { ...savePayload, lines: [{ ...savePayload.lines[0], unit_price: -20 }] };
+        expect(saveLocalDocument(evolu as never, companyId, signed, taxOptions))
+            .toEqual({ ok: false, error: "negative_line_price" });
+        evolu.getQueryRows.mockReturnValue([{ ...draft, migrationFingerprint: "pending", migrationCompletedAt: null }] as never);
+        expect(saveLocalDocument(evolu as never, companyId, savePayload, { ...taxOptions, documentId }))
+            .toEqual({ ok: false, error: "migration_pending" });
+        expect(evolu.calls).toEqual([]);
+    });
 
     it("appends a new snapshot version when an issued document is saved", async () => {
         const { saveLocalDocument } = await import("@/evolu/documentCrud");

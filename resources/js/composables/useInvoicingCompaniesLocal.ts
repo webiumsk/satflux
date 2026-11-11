@@ -1,4 +1,4 @@
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, ref } from "vue";
 import { useQuery } from "@evolu/vue";
 import {
     allCompaniesQuery,
@@ -64,6 +64,10 @@ export function useLocalInvoicingCompanies(): UseInvoicingCompaniesResult {
     const forbidden = ref(false);
     const loadError = ref(false);
     const multiTabBlocked = ref(false);
+    let generation = 0;
+    let disposed = false;
+    const isCurrent = (version: number) => !disposed && version === generation;
+    onBeforeUnmount(() => { disposed = true; generation++; });
 
     const companiesPromise = loadEvoluQueryWithTimeout(evolu, allCompaniesQuery);
     const documentsPromise = loadEvoluQueryWithTimeout(evolu, allDocumentsQuery);
@@ -72,6 +76,7 @@ export function useLocalInvoicingCompanies(): UseInvoicingCompaniesResult {
     const documentRows = useQuery(allDocumentsQuery, { promise: documentsPromise });
 
     void (async () => {
+        const version = ++generation;
         let done = false;
 
         // Watchdog: if the local queries are still pending after a short grace
@@ -79,8 +84,8 @@ export function useLocalInvoicingCompanies(): UseInvoicingCompaniesResult {
         // actionable message instead of an indefinite spinner.
         void (async () => {
             await sleep(MULTI_TAB_WATCHDOG_MS);
-            if (done || !loading.value) return;
-            if (await detectEvoluMultiTabContention()) {
+            if (done || !loading.value || !isCurrent(version)) return;
+            if (await detectEvoluMultiTabContention() && isCurrent(version)) {
                 multiTabBlocked.value = true;
                 loadError.value = true;
                 loading.value = false;
@@ -88,21 +93,24 @@ export function useLocalInvoicingCompanies(): UseInvoicingCompaniesResult {
         })();
 
         try {
-            await Promise.all([companiesPromise, documentsPromise]);
+            const [loadedCompanies] = await Promise.all([companiesPromise, documentsPromise]);
+            if (!isCurrent(version)) return;
             if (isEvoluRelaySyncPending()) {
                 await waitForInvoicingRelaySync(evolu);
-            } else {
+            } else if (loadedCompanies.length === 0) {
                 await pullInvoicingFromRelay(evolu, { timeoutMs: 20_000 });
             }
+            if (!isCurrent(version)) return;
             await loadCompanyQueries(evolu);
+            if (!isCurrent(version)) return;
             // Recovered (e.g. the other tab closed) - clear any watchdog state.
             multiTabBlocked.value = false;
             loadError.value = false;
         } catch {
-            loadError.value = true;
+            if (isCurrent(version)) loadError.value = true;
         } finally {
             done = true;
-            loading.value = false;
+            if (isCurrent(version)) loading.value = false;
         }
     })();
 
@@ -111,23 +119,33 @@ export function useLocalInvoicingCompanies(): UseInvoicingCompaniesResult {
     );
 
     async function refresh(): Promise<void> {
+        const version = ++generation;
         loading.value = true;
         loadError.value = false;
         multiTabBlocked.value = false;
         try {
+            const [loadedCompanies] = await Promise.all([
+                loadEvoluQueryWithTimeout(evolu, allCompaniesQuery),
+                loadEvoluQueryWithTimeout(evolu, allDocumentsQuery),
+            ]);
+            if (!isCurrent(version)) return;
             if (isEvoluRelaySyncPending()) {
                 await waitForInvoicingRelaySync(evolu);
-            } else {
+                if (!isCurrent(version)) return;
+                await loadCompanyQueries(evolu);
+            } else if (loadedCompanies.length === 0) {
                 await pullInvoicingFromRelay(evolu, { timeoutMs: 15_000 });
+                if (!isCurrent(version)) return;
+                await loadCompanyQueries(evolu);
             }
-            await loadCompanyQueries(evolu);
         } catch {
-            if (await detectEvoluMultiTabContention()) {
+            if (!isCurrent(version)) return;
+            if (await detectEvoluMultiTabContention() && isCurrent(version)) {
                 multiTabBlocked.value = true;
             }
-            loadError.value = true;
+            if (isCurrent(version)) loadError.value = true;
         } finally {
-            loading.value = false;
+            if (isCurrent(version)) loading.value = false;
         }
     }
 
