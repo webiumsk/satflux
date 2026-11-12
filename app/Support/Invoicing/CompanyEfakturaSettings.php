@@ -177,7 +177,7 @@ final class CompanyEfakturaSettings
             $merged['efaktura_sapi_base_url'] = $url !== '' ? rtrim($url, '/') : null;
         }
 
-        if (! array_key_exists('efaktura_sapi_client_secret', $incoming) && ((array_key_exists('efaktura_sapi_base_url', $incoming) && rtrim((string) ($merged['efaktura_sapi_base_url'] ?? ''), '/') !== rtrim((string) ($current['efaktura_sapi_base_url'] ?? ''), '/')) || (array_key_exists('efaktura_sapi_client_id', $incoming) && ($merged['efaktura_sapi_client_id'] ?? null) !== ($current['efaktura_sapi_client_id'] ?? null)))) {
+        if (! array_key_exists('efaktura_sapi_client_secret', $incoming) && ((array_key_exists('efaktura_sapi_base_url', $incoming) && (new self($merged))->sapiBaseUrl() !== (new self($current))->sapiBaseUrl()) || (array_key_exists('efaktura_sapi_client_id', $incoming) && ($merged['efaktura_sapi_client_id'] ?? null) !== ($current['efaktura_sapi_client_id'] ?? null)))) {
             $merged['efaktura_sapi_client_secret_encrypted'] = null;
             unset($merged['efaktura_sapi_client_secret']);
         }

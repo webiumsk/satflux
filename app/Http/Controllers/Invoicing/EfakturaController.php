@@ -167,20 +167,21 @@ class EfakturaController extends Controller
 
         $testedAt = null;
         if ($result['ok']) {
-            $testedAt = Carbon::now()->toIso8601String();
-            DB::transaction(function () use ($company, $baseUrl, $clientId, $clientSecret, $testedAt) {
+            $testedAt = DB::transaction(function () use ($company, $baseUrl, $clientId, $clientSecret): ?string {
                 $fresh = Company::query()->whereKey($company->id)->lockForUpdate()->first();
                 if ($fresh === null || ! app(CompanyEfakturaEligibility::class)->supportsAny($fresh)) {
-                    return;
+                    return null;
                 }
                 $current = CompanyEfakturaSettings::fromCompany($fresh);
                 if ($current->sapiBaseUrl() !== $baseUrl || $current->sapiClientId() !== $clientId || ! hash_equals((string) $current->sapiClientSecret(), (string) $clientSecret)) {
-                    return;
+                    return null;
                 }
+                $timestamp = Carbon::now()->toIso8601String();
                 $rawSettings = $fresh->getAttribute('app_settings');
                 $settings = is_array($rawSettings) ? $rawSettings : [];
-                $settings['efaktura_connection_tested_at'] = $testedAt;
-                $fresh->update(['app_settings' => $settings]);
+                $settings['efaktura_connection_tested_at'] = $timestamp;
+
+                return $fresh->update(['app_settings' => $settings]) ? $timestamp : null;
             });
         }
 

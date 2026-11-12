@@ -184,13 +184,22 @@ class EpostmanSandboxProbeTest extends TestCase
 
     public function test_repeated_cursor_is_a_failure_with_bounded_requests(): void
     {
-        Http::fake(fn ($request) => str_ends_with($request->url(), '/auth/token')
-            ? Http::response(['access_token' => 'synthetic-access-token', 'token_type' => 'Bearer', 'expires_in' => 900, 'refresh_token' => null])
-            : Http::response(['documents' => [], 'totalCount' => 0, 'nextPageToken' => 'same']));
+        Http::fake(function ($request) {
+            if (str_ends_with($request->url(), '/auth/token')) {
+                return Http::response(['access_token' => 'synthetic-access-token', 'token_type' => 'Bearer', 'expires_in' => 900, 'refresh_token' => null]);
+            }
+            if (str_ends_with($request->url(), '/receive/synthetic-document')) {
+                return Http::response(['metadata' => $this->metadata('synthetic-document'), 'payload' => '<Invoice/>', 'payloadFormat' => 'XML', 'status' => 'RECEIVED']);
+            }
+
+            return Http::response(['documents' => [$this->metadata('synthetic-document')], 'totalCount' => 1, 'nextPageToken' => 'same']);
+        });
         $result = $this->probe($this->credentials());
         $this->assertSame(1, $result['exit']);
         $this->assertSame(2, $result['data']['pages']);
-        Http::assertSentCount(3);
+        $this->assertSame(2, $result['data']['details_retrieved']);
+        $this->assertSame('pagination', $result['data']['stage']);
+        Http::assertSentCount(5);
     }
 
     public function test_symlinked_parent_directory_is_refused_without_network(): void

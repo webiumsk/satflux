@@ -13,6 +13,7 @@ use App\Support\Invoicing\CompanyEfakturaEligibility;
 use App\Support\Invoicing\CompanyEfakturaSettings;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -97,6 +98,7 @@ class EfakturaInboundService
         $baseUrl = (string) $settings->sapiBaseUrl();
         $clientId = (string) $settings->sapiClientId();
         $secret = (string) $settings->sapiClientSecret();
+        $fingerprint = $settings->connectionFingerprint();
         $started = microtime(true);
 
         try {
@@ -167,14 +169,27 @@ class EfakturaInboundService
                             if ($this->client->isEpostman($baseUrl)) {
                                 $this->assertEpostmanOriginal($ubl, $participantId);
                             }
-                            $receipt = $this->importInboundDocument($company, $externalId, $ubl, $detail, $receipt, $connectionKey, $origin, $participantId);
-                        }
-                        if (! $this->receiptHasContent($receipt)) {
-                            throw new \RuntimeException('Inbound original custody is not established.');
+                            // Commit custody before any provider ACK; a stale poll may
+                            // not import after settings or credentials are revoked.
+                            $receipt = DB::transaction(function () use ($company, $fingerprint, $externalId, $ubl, $detail, $receipt, $connectionKey, $origin, $participantId) {
+                                $fresh = $this->lockMatchingCompany($company, $fingerprint);
+
+                                return $this->importInboundDocument($fresh, $externalId, $ubl, $detail, $receipt, $connectionKey, $origin, $participantId);
+                            });
                         }
 
-                        $call(fn (string $token) => $this->client->acknowledgeReceived($token, $participantId, $externalId, $baseUrl));
-                        $receipt->update(['status' => 'acknowledged', 'acknowledged_at' => now()]);
+                        // A separate transaction preserves the committed original on
+                        // ACK failure. Hold the settings lock across the remote ACK
+                        // so settings updates serialize before or after this call.
+                        DB::transaction(function () use ($company, $fingerprint, $receipt, $call, $participantId, $externalId, $baseUrl) {
+                            $this->lockMatchingCompany($company, $fingerprint);
+                            $lockedReceipt = EfakturaInboundReceipt::query()->whereKey($receipt->id)->lockForUpdate()->firstOrFail();
+                            if (! $this->receiptHasContent($lockedReceipt)) {
+                                throw new \RuntimeException('Inbound original custody is not established.');
+                            }
+                            $call(fn (string $token) => $this->client->acknowledgeReceived($token, $participantId, $externalId, $baseUrl));
+                            $lockedReceipt->update(['status' => 'acknowledged', 'acknowledged_at' => now()]);
+                        });
                         if ($newContent) {
                             $stats['imported']++;
                             AuditLog::log(
@@ -213,6 +228,18 @@ class EfakturaInboundService
         $this->persistInboundPollMeta($company, $stats);
 
         return $stats;
+    }
+
+    /** Settings and credential generations share this server-only fingerprint. */
+    protected function lockMatchingCompany(Company $company, string $fingerprint): Company
+    {
+        $fresh = Company::query()->whereKey($company->id)->lockForUpdate()->first();
+        if ($fresh === null || ! config('efaktura.enabled') || ! app(CompanyEfakturaEligibility::class)->supportsInbound($fresh)
+            || ! hash_equals($fingerprint, CompanyEfakturaSettings::fromCompany($fresh)->connectionFingerprint())) {
+            throw new \RuntimeException('Inbound connection settings changed during polling.');
+        }
+
+        return $fresh;
     }
 
     protected function logFailure(Company $company, \Throwable $exception): void
@@ -320,7 +347,8 @@ class EfakturaInboundService
         try {
             return DB::transaction(function () use ($company, $externalId, $ubl, $detail, $existingReceipt, $provenance, &$attachment) {
                 $draft = $this->parser->parse($ubl);
-                $expense = $this->expenseService->create($company, $draft);
+                $expense = BusinessExpense::query()->whereKey($existingReceipt?->business_expense_id)->where('company_id', $company->id)->first()
+                    ?? $this->expenseService->create($company, $draft);
                 $attachment = $this->storeUblAttachment($expense, $ubl, $externalId);
 
                 $attributes = array_merge($provenance, [
@@ -363,18 +391,41 @@ class EfakturaInboundService
     }
 
     /**
-     * A receipt still "has content" when its server expense exists or when it
-     * has a staged original or a verified completed client import.
+     * ACK retries require readable retained bytes, not metadata or a historical
+     * client handoff whose original availability the server cannot inspect.
      * Missing custody is recovered from the provider before acknowledging.
      */
     protected function receiptHasContent(EfakturaInboundReceipt $receipt): bool
     {
-        if ($receipt->business_expense_id !== null && $receipt->expense()->exists()) {
-            return true;
-        }
+        try {
+            if ($receipt->business_expense_id !== null && $receipt->expense()->where('company_id', $receipt->company_id)->exists()
+                && is_string($receipt->attachment_disk) && is_string($receipt->attachment_path)
+                && Storage::disk($receipt->attachment_disk)->exists($receipt->attachment_path)) {
+                $ubl = Storage::disk($receipt->attachment_disk)->get($receipt->attachment_path);
+            } elseif ($receipt->evolu_expense_id !== null && is_string($receipt->ubl_encrypted)) {
+                $ubl = Crypt::decryptString($receipt->ubl_encrypted);
+            } else {
+                return false;
+            }
+            if (! is_string($ubl) || trim($ubl) === '' || strlen($ubl) > 10 * 1024 * 1024
+                || (is_string($receipt->original_sha256) && ! hash_equals($receipt->original_sha256, hash('sha256', $ubl)))
+                || preg_match('/<!\s*(DOCTYPE|ENTITY)\b/i', $ubl)) {
+                return false;
+            }
+            if ($this->client->isEpostman($receipt->connection_origin)) {
+                $this->assertEpostmanOriginal($ubl, (string) $receipt->receiver_participant_id);
+            } else {
+                $root = XmlParser::loadString($ubl, 'retained inbound UBL');
+                if (! in_array($root->getName(), ['Invoice', 'CreditNote'], true)) {
+                    return false;
+                }
+                $this->parser->parse($ubl);
+            }
 
-        // Inbox items always carry a stable Evolu id, whatever their inbox state.
-        return $receipt->evolu_expense_id !== null && ($receipt->ubl_encrypted !== null || $receipt->inbox_status === EfakturaInboundReceipt::INBOX_IMPORTED);
+            return true;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**
@@ -390,9 +441,10 @@ class EfakturaInboundService
             throw new \RuntimeException("Failed to store inbound UBL attachment at [{$path}].");
         }
 
-        $expense->attachments()->create([
+        $expense->attachments()->updateOrCreate([
             'disk' => $disk,
             'path' => $path,
+        ], [
             'original_filename' => $filename,
             'mime' => 'application/xml',
             'size_bytes' => strlen($ubl),

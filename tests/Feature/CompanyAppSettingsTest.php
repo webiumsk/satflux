@@ -98,6 +98,22 @@ class CompanyAppSettingsTest extends TestCase
     }
 
     #[Test]
+    public function explicitly_saving_the_effective_global_url_keeps_its_existing_secret(): void
+    {
+        config(['efaktura.providers.sapi_sk.base_url' => 'https://testpostman.slovakodata.com/']);
+        $ciphertext = Crypt::encryptString('synthetic-fallback-secret');
+        $this->company->update(['app_settings' => [
+            'efaktura_sapi_client_id' => 'synthetic-fallback-client',
+            'efaktura_sapi_client_secret_encrypted' => $ciphertext,
+        ]]);
+        $this->actingAs($this->proUser)->patchJson("/api/invoicing/companies/{$this->company->id}/app-settings", [
+            'efaktura_sapi_base_url' => 'https://testpostman.slovakodata.com',
+            'efaktura_sapi_client_id' => 'synthetic-fallback-client',
+        ])->assertOk()->assertJsonPath('data.app_settings.efaktura_sapi_client_secret_set', true);
+        $this->assertSame($ciphertext, $this->company->fresh()->app_settings['efaktura_sapi_client_secret_encrypted']);
+    }
+
+    #[Test]
     public function company_show_includes_resolved_app_settings_defaults(): void
     {
         $response = $this->actingAs($this->proUser)

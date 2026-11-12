@@ -66,6 +66,7 @@ class EpostmanSandboxProbeCommand extends Command
                     }
                 }
 
+                $result['stage'] = 'pagination';
                 $cursor = $listing['nextPageToken'] ?? null;
                 if ($cursor === null || $cursor === '') {
                     $result['stage'] = 'complete';

@@ -178,12 +178,18 @@ class SapiSkClient
             ->withHeaders(['X-Peppol-Participant-Id' => $receiverParticipantId])
             ->get($this->url($path, $baseUrl));
 
-        $json = $this->jsonResponse($response);
-        if ($this->isEpostman($baseUrl)) {
-            $metadata = $json['metadata'] ?? null;
-            if (! is_array($metadata) || ($metadata['documentId'] ?? null) !== $documentId || ($metadata['receiverParticipantId'] ?? null) !== $receiverParticipantId || ! is_string($json['payload'] ?? null) || $json['payload'] === '' || ($json['payloadFormat'] ?? null) !== 'XML' || ! in_array($json['status'] ?? null, ['RECEIVED', 'ACKNOWLEDGED'], true)) {
-                throw new \RuntimeException('Invalid ePostman received document or receiver.');
+        if (! $this->isEpostman($baseUrl)) {
+            $response->throw();
+            if (! $response->successful()) {
+                throw new \RuntimeException('SAPI-SK response was not successful.');
             }
+
+            return is_array($response->json()) ? $response->json() : ['payload' => $response->body()];
+        }
+        $json = $this->jsonResponse($response);
+        $metadata = $json['metadata'] ?? null;
+        if (! is_array($metadata) || ($metadata['documentId'] ?? null) !== $documentId || ($metadata['receiverParticipantId'] ?? null) !== $receiverParticipantId || ! is_string($json['payload'] ?? null) || $json['payload'] === '' || ($json['payloadFormat'] ?? null) !== 'XML' || ! in_array($json['status'] ?? null, ['RECEIVED', 'ACKNOWLEDGED'], true)) {
+            throw new \RuntimeException('Invalid ePostman received document or receiver.');
         }
 
         return $json;
@@ -209,8 +215,16 @@ class SapiSkClient
             ->withHeaders(['X-Peppol-Participant-Id' => $receiverParticipantId])
             ->post($this->url($path, $baseUrl));
 
+        if (! $this->isEpostman($baseUrl)) {
+            $response->throw();
+            if (! $response->successful()) {
+                throw new \RuntimeException('SAPI-SK response was not successful.');
+            }
+
+            return is_array($response->json()) ? $response->json() : ['status' => 'acknowledged'];
+        }
         $json = $this->jsonResponse($response);
-        if ($this->isEpostman($baseUrl) && (($json['documentId'] ?? null) !== $documentId || ($json['status'] ?? null) !== 'ACKNOWLEDGED')) {
+        if (($json['documentId'] ?? null) !== $documentId || ($json['status'] ?? null) !== 'ACKNOWLEDGED') {
             throw new \RuntimeException('Invalid ePostman acknowledgement response.');
         }
 
