@@ -12,6 +12,10 @@ use Illuminate\Support\Carbon;
  *
  * @property ComplianceSubmissionStatus $status
  * @property Carbon $retry_until
+ * @property ?Carbon $status_last_attempt_at
+ * @property ?Carbon $status_next_check_at
+ * @property bool $status_complete
+ * @property int $status_failures
  * @property array<string, mixed>|null $response_payload
  */
 class EfakturaOutboundAttempt extends Model
@@ -20,10 +24,10 @@ class EfakturaOutboundAttempt extends Model
 
     protected $guarded = [];
 
-    protected $hidden = ['connection_fingerprint', 'content_sha256', 'request_encrypted'];
+    protected $hidden = ['connection_fingerprint', 'content_sha256', 'request_encrypted', 'status_binding_encrypted', 'status_failures'];
 
     protected function casts(): array
     {
-        return ['status' => ComplianceSubmissionStatus::class, 'response_payload' => 'array', 'retry_until' => 'datetime'];
+        return ['status' => ComplianceSubmissionStatus::class, 'response_payload' => 'array', 'retry_until' => 'datetime', 'status_last_attempt_at' => 'datetime', 'status_next_check_at' => 'datetime', 'status_complete' => 'boolean', 'status_failures' => 'integer'];
     }
 }

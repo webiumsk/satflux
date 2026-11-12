@@ -246,3 +246,106 @@ describe('manual ePostman outbound panel', () => {
     pending.resolve({}); await flushPromises();
   });
 });
+
+describe('automatic ePostman observations', () => {
+  const statusRow = (extra: Record<string, unknown> = {}) => row({ delivery_status_available: true,
+    enterprise_status: { status: 'UNCONFIRMED', mls_c3_status: 'TIMEOUT', mls_c5_status: 'OK',
+      checked_at: '2026-11-12T12:00:00Z', error_code: null, ...extra } });
+  const keyedCompany = () => {
+    const value = company(); Object.assign(value.app_settings, { efaktura_epostman_api_key_set: true }); return value;
+  };
+  it('keeps SAPI acceptance separate from unconfirmed delivery, C3 timeout, and C5 OK', async () => {
+    state.compliance.mockResolvedValue([statusRow()]);
+    const wrapper = mountPanel({ company: keyedCompany() }); await flushPromises();
+    expect(wrapper.text()).toContain('efaktura_panel_status_accepted');
+    expect(wrapper.get('[data-testid="epostman-enterprise-status"]').text()).toContain('efaktura_status_value_UNCONFIRMED');
+    expect(wrapper.text()).toContain('efaktura_status_value_TIMEOUT');
+    expect(wrapper.text()).toContain('efaktura_status_value_OK');
+    expect(wrapper.text()).toContain('efaktura_status_scope');
+    await button(wrapper, 'efaktura_panel_refresh_status')!.trigger('click'); await flushPromises();
+    expect(state.refresh).toHaveBeenCalledExactlyOnceWith('company-a', 'document-a');
+    expect(state.send).not.toHaveBeenCalled();
+  });
+
+  it('keeps previous observations and uses finite status/error labels for unfamiliar provider data', async () => {
+    state.compliance.mockResolvedValue([statusRow({ status: '<untrusted-provider-status>', error_code: '<untrusted-provider-error>' })]);
+    const wrapper = mountPanel({ company: keyedCompany() }); await flushPromises();
+    expect(wrapper.text()).toContain('efaktura_status_value_OTHER');
+    expect(wrapper.text()).toContain('efaktura_status_error_check_failed');
+    expect(wrapper.text()).toContain('efaktura_status_previous_observation');
+    expect(wrapper.text()).not.toContain('<untrusted-provider-');
+  });
+
+  it('uses the portal fallback for an old submission without binding and never offers another send', async () => {
+    state.compliance.mockResolvedValue([row({ enterprise_status: { error_code: 'binding_unavailable' } })]);
+    const wrapper = mountPanel({ company: keyedCompany() }); await flushPromises();
+    expect(wrapper.text()).toContain('efaktura_status_error_binding_unavailable');
+    expect(button(wrapper, 'efaktura_panel_refresh_status')).toBeUndefined();
+    expect(button(wrapper, 'efaktura_panel_send')).toBeUndefined();
+  });
+
+  it('only reads the cache periodically and stops/fences on hidden tab, connection change and unmount', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    state.compliance.mockResolvedValue([statusRow()]);
+    const wrapper = mountPanel({ company: keyedCompany() }); await flushPromises();
+    await vi.advanceTimersByTimeAsync(30001); await flushPromises();
+    expect(state.compliance).toHaveBeenCalledTimes(2);
+    expect(state.refresh).not.toHaveBeenCalled(); expect(state.send).not.toHaveBeenCalled();
+    visibility.mockReturnValue('hidden'); document.dispatchEvent(new Event('visibilitychange'));
+    await vi.advanceTimersByTimeAsync(60000); expect(state.compliance).toHaveBeenCalledTimes(2);
+    visibility.mockReturnValue('visible'); document.dispatchEvent(new Event('visibilitychange'));
+    const delayed = deferred<unknown[]>(); state.compliance.mockReturnValueOnce(delayed.promise);
+    await vi.advanceTimersByTimeAsync(30001);
+    state.compliance.mockResolvedValue([]);
+    await wrapper.setProps({ companyId: 'company-b', documentId: 'document-b', company: company('company-b') }); await flushPromises();
+    delayed.resolve([statusRow()]); await flushPromises();
+    expect(wrapper.find('[data-testid="epostman-enterprise-status"]').exists()).toBe(false);
+    wrapper.unmount();
+    const count = state.compliance.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(60000); expect(state.compliance).toHaveBeenCalledTimes(count);
+  });
+
+  it('retains displayed cache data after a background cache GET fails', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    state.compliance.mockResolvedValueOnce([statusRow()]).mockRejectedValueOnce(new Error('synthetic cache failure'));
+    const wrapper = mountPanel({ company: keyedCompany() }); await flushPromises();
+    await vi.advanceTimersByTimeAsync(30001); await flushPromises();
+    expect(wrapper.text()).toContain('efaktura_status_value_UNCONFIRMED');
+    expect(wrapper.text()).toContain('efaktura_status_cache_unavailable');
+    expect(state.send).not.toHaveBeenCalled();
+  });
+  it('does not overwrite a manual local refresh with a cache GET started earlier', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    const delayed = deferred<unknown[]>();
+    state.localStatus.mockResolvedValueOnce([statusRow()]).mockReturnValueOnce(delayed.promise);
+    state.localRefresh.mockResolvedValue([statusRow({ status: 'DELIVERED' })]);
+    const wrapper = mountPanel({ localFirst: true, evoluDocumentId: 'local-document-a', company: keyedCompany() }); await flushPromises();
+    await vi.advanceTimersByTimeAsync(30001);
+    await button(wrapper, 'efaktura_panel_refresh_status')!.trigger('click'); await flushPromises();
+    delayed.resolve([statusRow()]); await flushPromises();
+    expect(wrapper.text()).toContain('efaktura_status_value_DELIVERED');
+    expect(wrapper.text()).not.toContain('efaktura_status_value_UNCONFIRMED');
+    expect(state.localSend).not.toHaveBeenCalled();
+  });
+
+  it('reads and refreshes a bound historical ePostman status with independent Enterprise credentials after SAPI/contact changes', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    state.compliance.mockResolvedValue([statusRow()]);
+    const value = keyedCompany();
+    Object.assign(value.app_settings, { efaktura_sapi_client_id: '', efaktura_sapi_client_secret_set: false });
+    const wrapper = mountPanel({ company: value, selectedContact: { country: 'US' } }); await flushPromises();
+    expect(wrapper.text()).toContain('efaktura_status_value_UNCONFIRMED');
+    expect(button(wrapper, 'efaktura_panel_send')).toBeUndefined();
+    await button(wrapper, 'efaktura_panel_refresh_status')!.trigger('click'); await flushPromises();
+    expect(state.refresh).toHaveBeenCalledExactlyOnceWith('company-a', 'document-a');
+    const reads = state.compliance.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(30001); await flushPromises();
+    expect(state.compliance).toHaveBeenCalledTimes(reads + 1);
+    expect(state.send).not.toHaveBeenCalled();
+  });
+
+});

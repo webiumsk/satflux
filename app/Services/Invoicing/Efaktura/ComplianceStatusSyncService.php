@@ -79,8 +79,9 @@ class ComplianceStatusSyncService
         $payload = $row->response_payload;
         $outboundPayload = $row->getAttribute('response_payload');
         if (is_array($outboundPayload) && isset($outboundPayload['epostman'])) {
-            // SAPI acceptance is a queue receipt, not delivery or MLS approval.
-            return null;
+            app(EpostmanStatusSyncService::class)->refreshServer($row);
+
+            return $row->fresh();
         }
         $mapped = SapiSkDocumentStatusMapper::fromProviderPayload(is_array($payload) ? $payload : null);
 

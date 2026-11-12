@@ -1,3 +1,4 @@
+import { withoutLocalEpostmanSecrets } from "../utils/epostmanStatus";
 import { checkpointExpenseMutations, commitExpenseMutation, withExpenseMaintenance } from "./expenseReconciliation";
 import { sqliteTrue } from "@evolu/common";
 import type { Evolu } from "@evolu/common/local-first";
@@ -113,7 +114,13 @@ export function rowForSharedUpsert(row: Row): Record<string, unknown> {
     const out: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(row)) {
         if (!STRIP_KEYS.has(key)) {
-            out[key] = value;
+            if (key === "appSettingsJson" && typeof value === "string") {
+                try {
+                    const settings = JSON.parse(value);
+                    out[key] = settings && typeof settings === "object" && !Array.isArray(settings)
+                        ? JSON.stringify(withoutLocalEpostmanSecrets(settings)) : null;
+                } catch { out[key] = null; }
+            } else out[key] = value;
         }
     }
     return out;

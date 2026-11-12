@@ -45,8 +45,18 @@ Esta primera versión de envío rechaza documentos con descuentos por línea o f
 
 Para una empresa eslovaca elegible con registro completo de IVA, abra una factura B2B nacional emitida o una nota de crédito y seleccione **Enviar factura electrónica**. Guarde primero la conexión correcta de la empresa. El emisor y las credenciales deben pertenecer a la misma empresa. El envío automático mediante ePostman permanece desactivado.
 
-Un envío correcto significa **aceptado para procesamiento**, no entregado ni aceptado por la autoridad fiscal. Compruebe la entrega y las comunicaciones mediante el enlace al portal ePostman en el mismo entorno de producción o pruebas. Las credenciales SAPI no pueden consultar esos estados; su seguimiento automático requiere una integración independiente.
+Un envío correcto significa **aceptado para su procesamiento**. La entrega y la comunicación tributaria se muestran por separado cuando se configura una clave de la API Enterprise. El enlace al portal de ePostman sigue disponible en el entorno de producción o pruebas correspondiente.
 
 Si el resultado es incierto, repita el intento solo cuando Satflux lo permita. El reintento utiliza la solicitud y el identificador originales dentro del plazo del proveedor. Tras vencer el plazo o cambiar el documento o la conexión, confirme primero el resultado con el proveedor. No cree una nueva factura únicamente para repetir un envío incierto.
+
+## Estado de entrega automático
+
+En la configuración de facturación electrónica de la misma empresa, introduzca una **clave API de ePostman** de **Configuración > Claves API** del portal de producción o pruebas correspondiente y guarde. Es independiente del SAPI Client ID y Client Secret. Satflux guarda esta clave cifrada en su servidor y no la incluye en los datos compartidos de la empresa. Manténgala privada. Eliminar la clave API desactiva las comprobaciones automáticas de estado; la recepción y el envío SAPI usan sus credenciales existentes.
+
+Satflux comprueba periódicamente los documentos enviados, incluso con el navegador cerrado. El panel del documento muestra por separado la entrega, la confirmación **C3 MLS** del destinatario y la confirmación **C5** de la comunicación tributaria. En documentos compatibles puede usar **Actualizar estado**, respetando una breve espera entre comprobaciones. Un panel abierto y visible también recarga los resultados guardados.
+
+**UNCONFIRMED / TIMEOUT** significa que el punto de acceso receptor recibió el mensaje, pero la confirmación MLS final no llegó a tiempo. Por sí solo, no significa que el envío fallara. Un C5 positivo es una confirmación tributaria comunicada por el proveedor, no la aprobación comercial del destinatario. Si una comprobación falla, el último resultado válido sigue visible junto con el error. Sustituya las claves API caducadas o revocadas en la configuración de la empresa.
+
+Las comprobaciones automáticas pueden no estar disponibles para envíos anteriores. Consulte esos documentos en el portal del proveedor. No vuelva a enviar una factura existente solo para obtener su estado.
 
 Confirme las obligaciones y los plazos concretos con la Administración Financiera eslovaca o con su asesor contable. Una conexión operativa por sí sola no confirma el cumplimiento de todas las obligaciones de envío y comunicación de datos.

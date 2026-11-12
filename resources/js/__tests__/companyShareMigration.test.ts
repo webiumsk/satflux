@@ -322,3 +322,24 @@ describe('convertCompanyToShared', () => {
         expect(await convertCompanyToShared(fresh, 'c1')).toEqual({ ok: false, error: 'bridge_unavailable' });
     });
 });
+
+
+describe('Enterprise credential sharing exclusion', () => {
+    it('drops only Enterprise secret and internal fields before converting private data to SharedOwner', () => {
+        const out = rowForSharedUpsert({ id: 'synthetic-company', appSettingsJson: JSON.stringify({
+            efaktura_epostman_api_key: 'synthetic-enterprise-key',
+            efaktura_epostman_api_key_encrypted: 'synthetic-enterprise-ciphertext',
+            efaktura_epostman_key_identity: 'synthetic-old-binding',
+            efaktura_epostman_status_generation: 'synthetic-generation',
+            efaktura_epostman_api_key_set: true,
+            efaktura_sapi_client_secret: 'synthetic-existing-sapi',
+            show_pay_by_square: false,
+        }) });
+        expect(JSON.parse(String(out.appSettingsJson))).toEqual({
+            efaktura_epostman_api_key_set: true, efaktura_sapi_client_secret: 'synthetic-existing-sapi', show_pay_by_square: false,
+        });
+    });
+    it.each(['{"efaktura_epostman_api_key":"synthetic-secret"', '["synthetic-secret"]', '"synthetic-secret"'])('fails closed for malformed/non-object settings (%s)', (appSettingsJson) => {
+        expect(rowForSharedUpsert({ id: 'synthetic-company', appSettingsJson }).appSettingsJson).toBeNull();
+    });
+});

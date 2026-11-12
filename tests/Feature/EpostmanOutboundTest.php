@@ -116,6 +116,11 @@ class EpostmanOutboundTest extends TestCase
         $this->assertFalse($result->responsePayload['epostman']['retry_allowed']);
         $this->assertFalse($result->responsePayload['epostman']['delivery_status_available']);
         $this->assertNull(EfakturaOutboundAttempt::firstOrFail()->request_encrypted);
+        $binding = json_decode(Crypt::decryptString(EfakturaOutboundAttempt::firstOrFail()->status_binding_encrypted), true);
+        $this->assertSame(self::ORIGIN, $binding['origin']);
+        $this->assertSame(EfakturaOutboundAttempt::firstOrFail()->id, $binding['metadata']['documentId']);
+        $this->assertSame('0245:9999999999', $binding['metadata']['receiverParticipantId']);
+        $this->assertArrayNotHasKey('payload', $binding);
         $this->assertSame($result->externalId, $service->submitNow($document)->externalId);
         Http::assertSentCount(2);
         $row = $document->complianceSubmissions()->firstOrFail();

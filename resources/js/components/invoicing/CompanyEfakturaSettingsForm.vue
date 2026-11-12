@@ -151,6 +151,17 @@
         </p>
       </section>
 
+      <section v-if="isEpostman && !inboundOnly" class="rounded-lg border border-gray-200 p-4 space-y-3">
+        <h3 class="text-sm font-semibold text-gray-800">{{ t('invoicing.efaktura_epostman_api_key_title') }}</h3>
+        <p class="text-xs text-gray-600">{{ t('invoicing.efaktura_epostman_api_key_description') }}</p>
+        <label for="efaktura-epostman-api-key" class="invoicing-sf-label">{{ t('invoicing.efaktura_epostman_api_key_label') }}</label>
+        <input id="efaktura-epostman-api-key" v-model="form.efaktura_epostman_api_key" type="password" autocomplete="new-password" maxlength="4096" class="invoicing-sf-input font-mono text-sm" />
+        <p v-if="apiKeySet && !apiKeyConnectionChanged && !apiKeyDiscarded && form.efaktura_epostman_api_key !== null" class="text-xs text-gray-600">{{ t('invoicing.efaktura_epostman_api_key_saved') }}</p>
+        <button v-if="apiKeySet || form.efaktura_epostman_api_key || props.company?.app_settings?.efaktura_epostman_key_save_pending === true" type="button" class="invoicing-btn-secondary text-sm" @click="form.efaktura_epostman_api_key = null">{{ t('invoicing.efaktura_epostman_api_key_remove') }}</button>
+        <p v-if="props.company?.app_settings?.efaktura_epostman_key_save_pending === true && !form.efaktura_epostman_api_key" class="text-xs text-amber-900">{{ t('invoicing.efaktura_epostman_api_key_reenter') }}</p>
+        <p v-if="form.efaktura_epostman_api_key === null" class="text-xs text-gray-600">{{ t('invoicing.efaktura_epostman_api_key_removing') }}</p>
+      </section>
+
       <!-- Step 3: options -->
       <section class="rounded-lg border border-gray-200 p-4 space-y-3">
         <h3 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
@@ -260,6 +271,7 @@
 </template>
 
 <script setup lang="ts">
+import { epostmanConnectionIdentity, epostmanKeyIsSet, isValidEpostmanReplacementKey } from '../../utils/epostmanStatus';
 import { asApiError } from "../../utils/apiError";
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -323,6 +335,10 @@ const cpdsPresets = computed(() => [
 const saving = ref(false);
 const saveError = ref('');
 const secretSet = ref(false);
+const apiKeySet = ref(false);
+const apiKeyDiscarded = ref(false);
+const savedApiKeyIdentity = ref('');
+const apiKeyConnectionChanged = computed(() => epostmanConnectionIdentity(props.company, { ...form }) !== savedApiKeyIdentity.value);
 const pollingInbound = ref(false);
 const pollMessage = ref('');
 const pollError = ref(false);
@@ -362,7 +378,9 @@ const hasUnsavedSettings = computed(() => {
     || normalizeBaseUrl(form.efaktura_sapi_base_url) !== normalizeBaseUrl(saved.efaktura_sapi_base_url)
     || form.efaktura_sapi_client_id.trim() !== saved.efaktura_sapi_client_id.trim()
     || form.efaktura_peppol_participant_id !== saved.efaktura_peppol_participant_id
-    || form.efaktura_sapi_client_secret !== '' || credentialsDiscarded.value;
+    || form.efaktura_sapi_client_secret !== '' || credentialsDiscarded.value
+    || Boolean(form.efaktura_epostman_api_key) || form.efaktura_epostman_api_key === null
+    || apiKeyDiscarded.value || (apiKeySet.value && apiKeyConnectionChanged.value);
 });
 const hasSavedConnection = computed(() => savedSettings.value.efaktura_enabled
   && savedSettings.value.efaktura_inbound_enabled
@@ -427,6 +445,9 @@ watch(
     pollMessage.value = '';
     pollError.value = false;
     secretSet.value = efakturaSecretIsSet(company);
+    apiKeySet.value = epostmanKeyIsSet(company);
+    savedApiKeyIdentity.value = epostmanConnectionIdentity(company);
+    apiKeyDiscarded.value = false;
     bridgeSaveFailed.value = company?.app_settings?.efaktura_inbound_bridge_sync_pending === true;
     syncSelectedPreset();
   },
@@ -434,6 +455,7 @@ watch(
 );
 
 watch(() => props.companyId, () => {
+  form.efaktura_epostman_api_key = '';
   saveRequestId++;
   pollRequestId++;
   testRequestId++;
@@ -502,6 +524,8 @@ function handleBaseUrlInput() {
   if (next !== credentialBaseUrl.value) {
     form.efaktura_sapi_client_id = '';
     form.efaktura_sapi_client_secret = '';
+    form.efaktura_epostman_api_key = '';
+    apiKeyDiscarded.value = true;
     secretSet.value = false;
     credentialsDiscarded.value = true;
     form.efaktura_inbound_last_poll_at = null;
@@ -561,6 +585,10 @@ function buildPayload(): Partial<CompanyEfakturaSettingsState> {
   delete payload.efaktura_connection_tested_at;
   if (!payload.efaktura_sapi_client_secret) {
     delete payload.efaktura_sapi_client_secret;
+  }
+  if (payload.efaktura_epostman_api_key === '') {
+    if (apiKeyDiscarded.value || apiKeyConnectionChanged.value) payload.efaktura_epostman_api_key = null;
+    else delete payload.efaktura_epostman_api_key;
   }
   return payload;
 }
@@ -659,22 +687,29 @@ async function resolveBridgeCompanyIdOrFail(companyId = props.companyId): Promis
   return bridge.bridgeCompanyId;
 }
 
-/** Push the inbound-relevant subset of the settings to the bridge company. */
+/** Mirror settings and transient Enterprise credentials to the selected bridge company. */
 type ReceivingCompanyIdentity = {
   legal_name: string; registration_number: string | null; tax_id: string | null;
   jurisdiction: string | null; country: string | null;
 };
 
-async function syncInboundSettingsToBridge(payload: Partial<CompanyEfakturaSettingsState>, companyId: string, secret: string, identity: ReceivingCompanyIdentity): Promise<void> {
+async function syncInboundSettingsToBridge(payload: Partial<CompanyEfakturaSettingsState>, companyId: string, secret: string, identity: ReceivingCompanyIdentity, apiKey: string | null | undefined, canSync: () => Promise<boolean>): Promise<Record<string, unknown> | null> {
   const bridgeCompanyId = await resolveBridgeCompanyIdOrFail(companyId);
-  const inboundOn = Boolean(payload.efaktura_enabled) && Boolean(payload.efaktura_inbound_enabled);
+  if (!await canSync()) return null;
+  const moduleOn = Boolean(payload.efaktura_enabled);
+  const inboundOn = moduleOn && Boolean(payload.efaktura_inbound_enabled);
   const bridgePayload: Record<string, unknown> = {
-    efaktura_enabled: inboundOn,
+    efaktura_enabled: moduleOn,
     efaktura_inbound_enabled: inboundOn,
-    // Issuing never runs through the bridge - documents live in Evolu.
+    // Documents stay in Evolu; manual issuing and status use this selected bridge.
     efaktura_auto_send: false,
   };
-  if (inboundOn) {
+  if (apiKey !== undefined) bridgePayload.efaktura_epostman_api_key = apiKey;
+  bridgePayload.efaktura_sapi_base_url = payload.efaktura_sapi_base_url || null;
+  bridgePayload.efaktura_sapi_client_id = payload.efaktura_sapi_client_id || null;
+  bridgePayload.efaktura_peppol_participant_id = payload.efaktura_peppol_participant_id || '';
+  // Disabling or removing a key must remain possible after local identity edits.
+  if (moduleOn || typeof apiKey === 'string') {
     // Bridge creation only carries numbering identity. Receiving also needs the
     // local tax identity before a derived participant can replace an override.
     const participant = formatPeppolEndpoint(resolvePeppolEndpoint(identity));
@@ -690,6 +725,7 @@ async function syncInboundSettingsToBridge(payload: Partial<CompanyEfakturaSetti
         || formatPeppolEndpoint(resolvePeppolEndpoint({ tax_id: identity.tax_id,
           country: typeof bridge.country === 'string' ? bridge.country : null,
           jurisdiction: bridge.jurisdiction })) !== participant) throw new Error(t('invoicing.efaktura_inbound_bridge_failed'));
+      if (!await canSync()) return null;
       const updated = await invoicingApi.companies.update<Record<string, unknown>>(bridgeCompanyId, { tax_id: identity.tax_id });
       if (!matchesIdentity(updated) || formatPeppolEndpoint(resolvePeppolEndpoint({
         tax_id: typeof updated.tax_id === 'string' ? updated.tax_id : null,
@@ -697,14 +733,12 @@ async function syncInboundSettingsToBridge(payload: Partial<CompanyEfakturaSetti
         jurisdiction: typeof updated.jurisdiction === 'string' ? updated.jurisdiction : null,
       })) !== participant) throw new Error(t('invoicing.efaktura_inbound_bridge_failed'));
     }
-    bridgePayload.efaktura_sapi_base_url = payload.efaktura_sapi_base_url || null;
-    bridgePayload.efaktura_sapi_client_id = payload.efaktura_sapi_client_id || null;
-    bridgePayload.efaktura_peppol_participant_id = payload.efaktura_peppol_participant_id || '';
     if (secret) {
       bridgePayload.efaktura_sapi_client_secret = secret;
     }
   }
-  await invoicingApi.companies.updateAppSettings(bridgeCompanyId, bridgePayload);
+  if (!await canSync()) return null;
+  return await invoicingApi.companies.updateAppSettings<Record<string, unknown>>(bridgeCompanyId, bridgePayload);
 }
 
 /** Compare only receiving/identity fields, leaving unrelated newer settings intact. */
@@ -723,7 +757,8 @@ async function localBridgeSyncSnapshot(companyId: string, attemptId: string): Pr
     ...['efaktura_enabled', 'efaktura_inbound_enabled', 'efaktura_auto_send',
       'efaktura_sapi_base_url', 'efaktura_sapi_client_id', 'efaktura_peppol_participant_id',
       'efaktura_sapi_client_secret', 'efaktura_sapi_client_secret_encrypted',
-      'efaktura_sapi_client_secret_set'].map((key) => settings[key] ?? null),
+      'efaktura_sapi_client_secret_set', 'efaktura_epostman_api_key_set',
+      'efaktura_epostman_key_save_pending'].map((key) => settings[key] ?? null),
   ]);
 }
 
@@ -789,7 +824,8 @@ async function save() {
   saving.value = true;
   saveError.value = '';
   try {
-    if (!isValidEfakturaReplacementSecret(form.efaktura_sapi_client_secret)) {
+    if (!isValidEfakturaReplacementSecret(form.efaktura_sapi_client_secret)
+      || !isValidEpostmanReplacementKey(form.efaktura_epostman_api_key)) {
       saveError.value = t('invoicing.company_save_validation_error');
       return;
     }
@@ -811,8 +847,11 @@ async function save() {
       const syncAttemptId = crypto.randomUUID();
       // Retain an encrypted local retry marker across reloads and interruption.
       // This metadata belongs to local custody and is never sent to the provider.
+      const { efaktura_epostman_api_key: transientKey, ...localSettings } = payload;
+      const needsKey = props.company?.app_settings?.efaktura_epostman_key_save_pending === true;
       const localPayload = {
-        ...payload,
+        ...localSettings,
+        efaktura_epostman_key_save_pending: typeof transientKey === 'string' || (needsKey && transientKey !== null),
         efaktura_connection_tested_at: form.efaktura_connection_tested_at,
         efaktura_inbound_last_poll_at: form.efaktura_inbound_last_poll_at,
         efaktura_inbound_last_poll_stats: form.efaktura_inbound_last_poll_stats,
@@ -824,17 +863,26 @@ async function save() {
         saveError.value = t('invoicing.company_save_validation_error');
         return;
       }
-      // Receiving needs the server poller - mirror the inbound settings to
-      // the bridge company (only these; issuing stays local). A bridge
-      // failure must not undo the local save, so it reports separately.
+      // Mirror configuration to the server poller and manual issuing bridge.
+      // The Enterprise replacement remains in memory until confirmed there;
+      // a bridge failure keeps the local settings and their retry marker.
       try {
         const submittedSnapshot = await localBridgeSyncSnapshot(companyId, syncAttemptId);
         if (submittedSnapshot === null) return;
-        await syncInboundSettingsToBridge(payload, companyId, secret, localIdentity);
+        if (needsKey && transientKey === undefined && payload.efaktura_enabled) {
+          if (isCurrent()) { bridgeSaveFailed.value = true; saveError.value = t('invoicing.efaktura_epostman_api_key_reenter'); }
+          return;
+        }
+        const bridgeResponse = await syncInboundSettingsToBridge(payload, companyId, secret, localIdentity, transientKey,
+          async () => await localBridgeSyncSnapshot(companyId, syncAttemptId) === submittedSnapshot);
+        if (bridgeResponse === null) return;
         // This completion belongs to the captured company, even after navigation.
         // A newer save or identity/credential change must retain its own marker.
         if (await localBridgeSyncSnapshot(companyId, syncAttemptId) !== submittedSnapshot) return;
         const completedPayload = {
+          efaktura_epostman_api_key_set: epostmanKeyIsSet(bridgeResponse),
+          // A disable may succeed while a previous replacement still needs re-entry.
+          efaktura_epostman_key_save_pending: needsKey && transientKey === undefined,
           efaktura_inbound_bridge_sync_pending: false,
           efaktura_inbound_bridge_sync_id: null,
         };
@@ -855,11 +903,15 @@ async function save() {
       await reloadEfakturaInboxLive();
       if (!isCurrent()) return;
       form.efaktura_sapi_client_secret = '';
+      form.efaktura_epostman_api_key = '';
+      apiKeyDiscarded.value = false;
+      savedApiKeyIdentity.value = epostmanConnectionIdentity(props.company, { ...form });
       credentialsDiscarded.value = false;
       savedSettings.value = { ...form };
       emitUpdatedFromEvoluRow();
       const row = evolu.getQueryRows(allCompaniesDetailQuery).find((c) => c.id === props.companyId);
       if (row) {
+        apiKeySet.value = epostmanKeyIsSet(evoluCompanyToApi(row as EvoluCompanyRow));
         secretSet.value = efakturaSecretIsSet(
           evoluCompanyToApi(row as EvoluCompanyRow, (storeId) => {
             const store = storesStore.stores.find((s) => s.id === storeId);
@@ -884,6 +936,10 @@ async function save() {
     savedSettings.value = efakturaSettingsFromCompany(updated);
     emit('updated', updated);
     form.efaktura_sapi_client_secret = '';
+    form.efaktura_epostman_api_key = '';
+    apiKeyDiscarded.value = false;
+    savedApiKeyIdentity.value = epostmanConnectionIdentity(updated);
+    apiKeySet.value = epostmanKeyIsSet(updated);
     secretSet.value = efakturaSecretIsSet(updated);
     notifySaved();
   } catch (rawError) {

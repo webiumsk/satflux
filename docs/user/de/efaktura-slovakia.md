@@ -45,8 +45,18 @@ Diese erste Versandversion lehnt Dokumente mit Positions- oder Rechnungsrabatten
 
 Öffnen Sie für ein berechtigtes slowakisches Unternehmen mit voller Umsatzsteuerregistrierung eine ausgestellte inländische B2B-Rechnung oder Gutschrift und wählen Sie **E-Rechnung senden**. Speichern Sie zuerst die richtige Unternehmensverbindung. Aussteller und Zugangsdaten müssen zum selben Unternehmen gehören. Automatischer Versand über ePostman bleibt deaktiviert.
 
-Eine erfolgreiche Übermittlung bedeutet **zur Verarbeitung angenommen**, nicht zugestellt oder von der Finanzverwaltung angenommen. Prüfen Sie Zustellung und Meldungen über den Link zum ePostman-Portal in derselben Produktiv- oder Testumgebung. SAPI-Zugangsdaten können diese Zustände nicht lesen; automatische Statusverfolgung benötigt eine separate Integration.
+Eine erfolgreiche Übermittlung bedeutet **zur Verarbeitung angenommen**. Zustellung und Steuermeldung werden bei eingerichtetem Enterprise-API-Schlüssel getrennt angezeigt. Der Link zum ePostman-Portal bleibt für die passende Produktiv- oder Testumgebung verfügbar.
 
 Bei ungewissem Ergebnis wiederholen Sie den Versuch nur, wenn Satflux dies anbietet. Dabei werden die ursprüngliche Anfrage und Kennung innerhalb des Zeitfensters des Anbieters verwendet. Nach Ablauf oder Änderungen an Dokument bzw. Verbindung klären Sie zuerst das Ergebnis mit dem Anbieter. Erstellen Sie keine neue Rechnung allein zur Wiederholung einer ungewissen Übermittlung.
+
+## Automatischer Zustellstatus
+
+Tragen Sie in den E-Rechnungseinstellungen desselben Unternehmens einen **ePostman-API-Schlüssel** aus **Einstellungen > API-Schlüssel** des passenden Produktiv- oder Testportals ein und speichern Sie. Er ist von SAPI Client ID und Client Secret getrennt. Satflux speichert diesen Schlüssel verschlüsselt auf seinem Server und nimmt ihn nicht in die geteilten Unternehmensdaten auf. Bewahren Sie ihn vertraulich auf. Das Entfernen des API-Schlüssels deaktiviert automatische Statusprüfungen; SAPI-Empfang und -Versand verwenden ihre bisherigen Zugangsdaten.
+
+Satflux prüft versendete Dokumente regelmäßig, auch bei geschlossenem Browser. Das Dokumentpanel zeigt Zustellung, die **C3-MLS**-Bestätigung des Empfängers und die **C5**-Bestätigung zur Steuermeldung getrennt. Bei unterstützten Dokumenten können Sie **Status aktualisieren** verwenden; zwischen Prüfungen gilt eine kurze Wartezeit. Ein geöffnetes sichtbares Panel lädt außerdem gespeicherte Ergebnisse nach.
+
+**UNCONFIRMED / TIMEOUT** bedeutet, dass der empfangende Zugangspunkt die Nachricht übernommen hat, die abschließende MLS-Bestätigung aber nicht rechtzeitig einging. Das allein bedeutet keinen fehlgeschlagenen Versand. Ein positives C5 ist eine vom Anbieter gemeldete Steuerbestätigung, keine geschäftliche Freigabe durch den Empfänger. Bei einem Prüffehler bleibt die letzte gültige Beobachtung zusammen mit dem Fehler sichtbar. Ersetzen Sie abgelaufene oder widerrufene API-Schlüssel in den Unternehmenseinstellungen.
+
+Für ältere Übermittlungen sind automatische Prüfungen möglicherweise nicht verfügbar. Prüfen Sie diese Dokumente im Anbieterportal. Senden Sie eine bestehende Rechnung nicht erneut, nur um einen Status zu erhalten.
 
 Klären Sie die konkreten Pflichten und Fristen mit der slowakischen Finanzverwaltung oder Ihrer Steuerberatung. Eine funktionierende Verbindung allein bestätigt nicht die Erfüllung aller Versand- und Meldepflichten.

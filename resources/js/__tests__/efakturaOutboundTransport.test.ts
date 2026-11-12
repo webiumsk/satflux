@@ -4,7 +4,7 @@ const state = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 vi.mock('@/services/api', () => ({ default: state, invoicingApi: { companies: { list: vi.fn() } } }));
 vi.mock('@/evolu/client', () => ({ allDocumentSnapshotsQuery: 'synthetic-query' }));
 import { fetchEphemeralEfakturaStatus, sendEphemeralEfaktura, refreshEphemeralEfakturaStatus,
-  type EphemeralSnapshotPayload } from '../evolu/ephemeralBridge';
+  testEphemeralEmailSmtp, downloadEphemeralPdf, type EphemeralSnapshotPayload } from '../evolu/ephemeralBridge';
 const snapshot: EphemeralSnapshotPayload = { company: { legal_name: 'Synthetic issuer' }, contact: null,
   document: { type: 'invoice', status: 'issued' }, lines: [] };
 const accepted = { id: 'synthetic-submission', provider: 'peppol', status: 'submitted', external_id: 'synthetic-provider-id', submitted_at: null };
@@ -79,5 +79,31 @@ describe('company-bound ephemeral outbound transport', () => {
     await expect(refreshEphemeralEfakturaStatus('local-document', 'bridge-company')).resolves.toEqual([accepted]);
     expect(state.post).toHaveBeenCalledExactlyOnceWith('/invoicing/ephemeral/efaktura/refresh',
       { evolu_document_id: 'local-document', bridge_company_id: 'bridge-company' }, undefined);
+  });
+});
+
+
+describe('Enterprise key document exclusion', () => {
+  const withSecrets = () => ({ ...snapshot, company: { ...snapshot.company, app_settings: {
+    efaktura_epostman_api_key: 'synthetic-enterprise-key',
+    efaktura_epostman_api_key_encrypted: 'synthetic-enterprise-ciphertext',
+    efaktura_epostman_status_generation: 'synthetic-internal-generation',
+    show_pay_by_square: true,
+  } } });
+  it('strips Enterprise credentials from direct company-bound submission without modifying the input', async () => {
+    const input = withSecrets(); state.post.mockResolvedValue({ data: { data: accepted } });
+    await sendEphemeralEfaktura(input, 'local-document', 'bridge-company', { requireBridge: true });
+    expect(JSON.stringify(state.post.mock.calls[0][1])).not.toContain('synthetic-enterprise-');
+    expect(input.company.app_settings.efaktura_epostman_api_key).toBe('synthetic-enterprise-key');
+  });
+  it('strips raw company Enterprise credentials from SMTP tests', async () => {
+    state.post.mockResolvedValue({ data: {} });
+    await testEphemeralEmailSmtp(withSecrets().company, {}, 'synthetic@example.test', 'bridge-company');
+    expect(state.post.mock.calls[0][1].company.app_settings).toEqual({ show_pay_by_square: true });
+  });
+  it('strips Enterprise credentials before PDF requests', async () => {
+    state.post.mockRejectedValue(new Error('synthetic stop before browser download'));
+    await expect(downloadEphemeralPdf(withSecrets(), 'synthetic.pdf')).rejects.toThrow('synthetic stop');
+    expect(state.post.mock.calls[0][1].company.app_settings).toEqual({ show_pay_by_square: true });
   });
 });

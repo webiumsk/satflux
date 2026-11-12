@@ -4,14 +4,14 @@
       {{ t('invoicing.efaktura_panel_title') }}
     </h3>
 
-    <p v-if="!configured" class="text-xs text-gray-700">
+    <p v-if="!canReadHistory" class="text-xs text-gray-700">
       {{ t('invoicing.efaktura_panel_not_configured') }}
       <RouterLink v-if="settingsTo" :to="settingsTo" class="text-indigo-700 hover:text-indigo-900 underline">
         {{ t('invoicing.efaktura_panel_configure_link') }}
       </RouterLink>
     </p>
 
-    <p v-else-if="!eligibleContact" class="text-xs text-gray-600">
+    <p v-else-if="!eligibleContact && !isEpostman" class="text-xs text-gray-600">
       {{ t('invoicing.efaktura_panel_not_eligible') }}
     </p>
 
@@ -48,7 +48,17 @@
         <p v-else-if="epostmanState?.submission_state === 'uncertain'" class="text-amber-900">{{ t('invoicing.efaktura_panel_submission_uncertain') }}</p>
         <p v-else-if="peppolRow.status === 'submitted'">{{ t('invoicing.efaktura_panel_epostman_accepted') }}</p>
         <p v-if="epostmanState?.submission_state === 'uncertain' && canSend && typeof epostmanState.retry_until === 'string'">{{ t('invoicing.efaktura_panel_retry_until', { date: formatDate(epostmanState.retry_until) }) }}</p>
-        <p>{{ t('invoicing.efaktura_panel_epostman_portal_status') }}</p>
+        <div v-if="enterpriseStatus" data-testid="epostman-enterprise-status" class="space-y-1">
+          <p>{{ t('invoicing.efaktura_status_delivery') }}: {{ t(`invoicing.efaktura_status_value_${enterpriseStatus.status}`) }}</p>
+          <p>{{ t('invoicing.efaktura_status_c3') }}: {{ t(`invoicing.efaktura_status_value_${enterpriseStatus.c3}`) }}</p>
+          <p>{{ t('invoicing.efaktura_status_c5') }}: {{ t(`invoicing.efaktura_status_value_${enterpriseStatus.c5}`) }}</p>
+          <p v-if="enterpriseStatus.checkedAt">{{ t('invoicing.efaktura_status_last_checked', { date: formatDate(enterpriseStatus.checkedAt) }) }}</p>
+          <p v-if="enterpriseStatus.error" class="text-amber-900">{{ t(`invoicing.efaktura_status_error_${enterpriseStatus.error}`) }}</p>
+          <p v-if="enterpriseStatus.error && enterpriseStatus.checkedAt" class="text-amber-900">{{ t('invoicing.efaktura_status_previous_observation') }}</p>
+          <p>{{ t('invoicing.efaktura_status_scope') }}</p>
+        </div>
+        <p v-else-if="epostmanState?.delivery_status_available !== true">{{ t('invoicing.efaktura_panel_epostman_portal_status') }}</p>
+        <p v-if="cacheUnavailable" class="text-amber-900">{{ t('invoicing.efaktura_status_cache_unavailable') }}</p>
         <a :href="epostmanPortalUrl ?? undefined" target="_blank" rel="noopener noreferrer" class="inline-block text-indigo-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">{{ t('invoicing.efaktura_epostman_open_portal') }}</a>
       </div>
 
@@ -91,6 +101,7 @@
 <script setup lang="ts">
 import { asApiError } from "../../utils/apiError";
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { enterpriseStatusFromRaw, epostmanKeyIsSet } from '../../utils/epostmanStatus';
 import { useI18n } from 'vue-i18n';
 import {
   isEfakturaConfigured,
@@ -143,11 +154,16 @@ let contextGeneration = 0;
 let loadRequestId = 0;
 let active = true;
 let retryTimer: ReturnType<typeof setTimeout> | undefined;
+let cacheTimer: ReturnType<typeof setTimeout> | undefined;
+let cacheLoading = false;
+const cacheUnavailable = ref(false);
 const now = ref(Date.now());
 onBeforeUnmount(() => {
   active = false;
   contextGeneration++;
   clearTimeout(retryTimer);
+  clearTimeout(cacheTimer);
+  document.removeEventListener('visibilitychange', visibilityChanged);
 });
 
 const configured = computed(() => props.company?.id === props.companyId && isEfakturaConfigured(props.company));
@@ -168,6 +184,9 @@ const epostmanPortalUrl = computed(() => {
   } catch { return null; }
 });
 const isEpostman = computed(() => epostmanPortalUrl.value !== null);
+const moduleEnabled = computed(() => props.company?.id === props.companyId
+  && (props.company.app_settings as Record<string, unknown> | undefined)?.efaktura_enabled === true);
+const canReadHistory = computed(() => configured.value || (isEpostman.value && moduleEnabled.value));
 const eligibleContact = computed(() => isSkDomesticContact(props.selectedContact));
 const preflightMissingIds = computed(() => props.selectedContact !== null
   && resolvePeppolEndpoint({
@@ -183,6 +202,7 @@ const epostmanState = computed(() => {
   const state = peppolRow.value?.response_payload?.epostman;
   return state && typeof state === 'object' && !Array.isArray(state) ? state as Record<string, unknown> : null;
 });
+const enterpriseStatus = computed(() => enterpriseStatusFromRaw(epostmanState.value?.enterprise_status));
 const epostmanNeedsReconciliation = computed(() => {
   const state = epostmanState.value;
   if (state?.reconciliation_required === true) return true;
@@ -220,8 +240,12 @@ const statusBadgeClass = computed(() => {
     default: return 'bg-amber-100 text-amber-900';
   }
 });
-const canRefreshStatus = computed(() => !isEpostman.value && !loading.value
-  && configured.value && eligibleContact.value && peppolRow.value?.status === 'submitted');
+const canRefreshStatus = computed(() => {
+  if (loading.value || bridgeSyncPending.value || peppolRow.value?.status !== 'submitted') return false;
+  if (isEpostman.value) return moduleEnabled.value && epostmanKeyIsSet(props.company)
+    && epostmanState.value?.submission_state === 'accepted' && epostmanState.value.delivery_status_available === true;
+  return configured.value && eligibleContact.value;
+});
 const canSend = computed(() => {
   if (!configured.value || !eligibleContact.value || loading.value || statusUnavailable.value || bridgeSyncPending.value
     || (props.localFirst && !resolvedBridgeCompanyId.value)) return false;
@@ -261,6 +285,8 @@ watch(
   contextKey,
   () => {
     contextGeneration++;
+    clearTimeout(cacheTimer);
+    cacheUnavailable.value = false;
     loadRequestId++;
     rows.value = [];
     resolvedBridgeCompanyId.value = null;
@@ -275,7 +301,7 @@ watch(
 );
 
 async function bootstrap(context: PanelContext) {
-  if (!context.documentId || !configured.value) {
+  if (!context.documentId || !canReadHistory.value) {
     if (context.isCurrent()) loading.value = false;
     return;
   }
@@ -305,11 +331,11 @@ function retryLoad() {
   void bootstrap(captureContext());
 }
 
-async function loadCompliance(context: PanelContext) {
+async function loadCompliance(context: PanelContext, cacheOnly = false) {
   if (!context.isCurrent()) return;
   const requestId = ++loadRequestId;
   const isCurrent = () => context.isCurrent() && requestId === loadRequestId;
-  loading.value = true;
+  if (!cacheOnly) loading.value = true;
   try {
     if (context.localFirst) {
       if (!context.evoluDocumentId || !context.bridgeCompanyId) throw new Error('Missing local document bridge');
@@ -319,20 +345,41 @@ async function loadCompliance(context: PanelContext) {
       const fetched = await invoicingApi.documents.efaktura.compliance<ComplianceRow>(context.companyId, context.documentId);
       if (isCurrent()) rows.value = fetched;
     }
-    if (isCurrent()) statusUnavailable.value = false;
+    if (isCurrent()) { statusUnavailable.value = false; cacheUnavailable.value = false; }
   } catch {
-    if (isCurrent()) {
+    if (isCurrent() && cacheOnly) cacheUnavailable.value = true;
+    if (isCurrent() && !cacheOnly) {
       statusUnavailable.value = true;
       if (!panelError.value) panelError.value = t('invoicing.efaktura_panel_status_unavailable');
     }
   } finally {
-    if (isCurrent()) loading.value = false;
+    if (isCurrent()) { loading.value = false; scheduleCacheRead(); }
   }
 }
+
+/** Only reads Satflux's cache. Remote polling belongs to the server scheduler. */
+function scheduleCacheRead() {
+  clearTimeout(cacheTimer);
+  if (!active || document.visibilityState === 'hidden' || !isEpostman.value
+    || !canReadHistory.value || bridgeSyncPending.value || peppolRow.value?.status !== 'submitted') return;
+  const context = captureContext();
+  cacheTimer = setTimeout(async () => {
+    if (!context.isCurrent() || busy.value || cacheLoading || document.visibilityState === 'hidden') {
+      scheduleCacheRead();
+      return;
+    }
+    cacheLoading = true;
+    try { await loadCompliance(context, true); } finally { cacheLoading = false; }
+  }, 30000);
+}
+function visibilityChanged() { scheduleCacheRead(); }
+document.addEventListener('visibilitychange', visibilityChanged);
 
 async function refreshStatus() {
   if (!canRefreshStatus.value || busy.value) return;
   const context = captureContext();
+  loadRequestId++;
+  clearTimeout(cacheTimer);
   busy.value = true;
   panelError.value = '';
   panelSuccess.value = '';
@@ -349,15 +396,18 @@ async function refreshStatus() {
     }
     if (context.isCurrent() && !statusUnavailable.value) panelSuccess.value = t('invoicing.efaktura_panel_refresh_success');
   } catch (rawError) {
-    if (context.isCurrent()) panelError.value = extractError(rawError);
+    if (context.isCurrent()) panelError.value = context.isEpostman
+      ? t('invoicing.efaktura_status_check_failed') : extractError(rawError);
   } finally {
-    if (context.isCurrent()) busy.value = false;
+    if (context.isCurrent()) { busy.value = false; scheduleCacheRead(); }
   }
 }
 
 async function send() {
   if (!canSend.value || preflightMissingIds.value || busy.value) return;
   const context = captureContext();
+  loadRequestId++;
+  clearTimeout(cacheTimer);
   busy.value = true;
   panelError.value = '';
   panelSuccess.value = '';
@@ -384,7 +434,7 @@ async function send() {
     panelError.value = extractError(rawError);
     await loadCompliance(context);
   } finally {
-    if (context.isCurrent()) busy.value = false;
+    if (context.isCurrent()) { busy.value = false; scheduleCacheRead(); }
   }
 }
 

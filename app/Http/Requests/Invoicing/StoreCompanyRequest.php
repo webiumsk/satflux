@@ -16,6 +16,10 @@ class StoreCompanyRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'app_settings.efaktura_epostman_api_key' => ['missing'],
+            'app_settings.efaktura_epostman_api_key_encrypted' => ['missing'],
+            'app_settings.efaktura_epostman_status_generation' => ['missing'],
+            'app_settings.efaktura_epostman_status_last_scan_at' => ['missing'],
             'legal_name' => ['required', 'string', 'max:255'],
             'trade_name' => ['nullable', 'string', 'max:255'],
             'registration_number' => ['nullable', 'string', 'max:64'],

@@ -45,8 +45,18 @@ This first sending version rejects documents with line or invoice discounts, pri
 
 For an eligible Slovak full VAT payer, open an issued domestic B2B invoice or credit note and choose **Send e-invoice**. Save the correct company connection first. The issuer and credentials must belong to the same company. Automatic sending through ePostman remains disabled.
 
-A successful submission means **accepted for processing**, not delivered or accepted by the tax authority. Open the linked ePostman portal in the same production/test environment to check delivery and reporting. SAPI credentials cannot read those states; automatic status tracking requires a separate integration.
+A successful submission means **accepted for processing**. Delivery and tax reporting are shown separately when an Enterprise API key is configured. The linked ePostman portal remains available in the matching production/test environment.
 
 If the result is uncertain, retry only when Satflux offers it. The retry uses the original request and identifier within the provider's retry window. After that window, or after a connection/document change, reconcile the result with the provider before sending again. Do not create a new invoice merely to retry an uncertain submission.
+
+## Automatic delivery status
+
+In the same company's e-invoicing settings, enter an **ePostman API key** from **Settings > API Keys** in the matching production or test portal, then save. This is separate from the SAPI Client ID and Client Secret. Satflux stores this key encrypted on its server and does not include it in shared company data. Keep it private. Removing the API key disables automatic status checks; SAPI receiving and sending use their existing credentials.
+
+Satflux periodically checks sent documents, including while the browser is closed. The document panel shows delivery, the recipient's **C3 MLS** confirmation, and the **C5** tax-report confirmation separately. Use **Refresh status** for an eligible document to request a check, subject to a short cooldown. An open visible panel also reloads cached results.
+
+**UNCONFIRMED / TIMEOUT** means the receiving access point took the message but the final MLS confirmation did not arrive in time. It does not by itself mean sending failed. A positive C5 value is a provider-reported tax confirmation, not the recipient's business approval. On a failed check, the last valid observation remains visible with the check error. Replace an expired or revoked API key in the company settings.
+
+Automatic checks may be unavailable for older submissions. Use the provider portal for those documents. Do not resend an existing invoice just to obtain a status.
 
 Confirm your company's specific obligations and deadlines with the Financial Administration or your accountant. A working connection alone does not establish that all sending and reporting obligations are met.

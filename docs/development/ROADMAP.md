@@ -1,5 +1,28 @@
 # Development roadmap
 
+## Automatic ePostman status integration - 2026-11-12
+
+- [x] Add optional server-only encrypted Enterprise credentials with explicit
+  removal, safe local bridge retries and independent status generations.
+- [x] Bind new attempts immutably; keep unbound legacy submissions portal-only
+  without backfill, duplicate sends or altered retry UUID/body.
+- [x] Implement fixed-origin GETs, separate delivery/C3/C5, atomic projections,
+  Enterprise-only historical refresh, five-minute scheduling and bounded backoff.
+- [x] Implement five-language setup/display and thirty-second visible cached reads.
+- [x] Independently accept QA/security and resolve revocation, sharing, migration
+  recovery and non-Peppol completion findings; preserve existing previews/data.
+- [x] Main actual app reads exactly two retained TEST receipts, both UNCONFIRMED,
+  C3 TIMEOUT, C5 OK; both projection modes and immediate cooldown replay pass.
+- [x] Pass scoped PHP, actual PostgreSQL races/migration, final build, static,
+  type/locale/API checks; retain inherited lint/deprecation limits explicitly.
+- [x] Finish full frontend verification: 3,019 tests / 236 files pass.
+- [ ] Prepare separate outbound publication/changelog and release readiness.
+- [ ] Confirm production activation/contracts/archive/export and approve deployment;
+  authenticated public webhooks and another provider are separate milestones.
+
+No production/provider mutation, new document, owner-preview change, push, merge
+or deployment is part of this local milestone. See the automatic-status note.
+
 ## Enterprise status preflight - 2026-11-12
 
 - [x] Prepare and independently review hidden TEST-key capture with separate

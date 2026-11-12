@@ -33,6 +33,7 @@ use App\Services\Invoicing\Efaktura\EfakturaConnectionTester;
 use App\Services\Invoicing\Efaktura\EphemeralEfakturaSubmissionService;
 use App\Services\Invoicing\EphemeralBtcpayCheckoutService;
 use App\Services\Invoicing\EphemeralDocumentFactory;
+use App\Support\Invoicing\CompanyEfakturaSettings;
 use App\Support\Invoicing\JurisdictionRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -312,7 +313,9 @@ class EphemeralBusinessDocumentController extends Controller
 
     public function efakturaRefresh(Request $request, Company $company): JsonResponse
     {
-        $this->efakturaService->assertCompanyConfigured($company);
+        if (! config('efaktura.enabled') || ! CompanyEfakturaSettings::fromCompany($company)->enterpriseConfigured()) {
+            $this->efakturaService->assertCompanyConfigured($company);
+        }
 
         return $this->respondWithEfakturaRefresh($request, $company->id);
     }
@@ -321,7 +324,16 @@ class EphemeralBusinessDocumentController extends Controller
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
-        $this->efakturaService->assertBridgeCompany($user);
+        $validated = $request->validate([
+            'evolu_document_id' => ['required', 'string', 'max:64'],
+            'bridge_company_id' => ['sometimes', 'nullable', 'uuid'],
+        ]);
+        $row = $this->efakturaService->latestForDocument($user, $validated['evolu_document_id'], $validated['bridge_company_id'] ?? null);
+        $bridge = $row?->bridgeCompany()->first();
+        if (! config('efaktura.enabled') || ! $bridge instanceof Company || $bridge->user_id !== $user->id
+            || ! CompanyEfakturaSettings::fromCompany($bridge)->enterpriseConfigured()) {
+            $this->efakturaService->assertBridgeCompany($user);
+        }
 
         return $this->respondWithEfakturaRefresh($request);
     }

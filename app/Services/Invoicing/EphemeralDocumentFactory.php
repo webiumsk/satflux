@@ -9,6 +9,7 @@ use App\Models\BusinessDocumentLine;
 use App\Models\Company;
 use App\Models\User;
 use App\Support\Invoicing\BuyerSnapshot;
+use App\Support\Invoicing\CompanyEfakturaSettings;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -221,12 +222,11 @@ class EphemeralDocumentFactory
      */
     protected function mergeSnapshotAppSettings(Company $company, array $payload): void
     {
-        if (! isset($payload['app_settings']) || ! is_array($payload['app_settings'])) {
-            return;
-        }
-
-        $current = is_array($company->app_settings) ? $company->app_settings : [];
-        $company->app_settings = array_merge($current, $payload['app_settings']);
+        $current = $company->getAttribute('app_settings');
+        $incoming = $payload['app_settings'] ?? null;
+        $company->setAttribute('app_settings', CompanyEfakturaSettings::withoutEnterpriseSecrets(array_merge(
+            is_array($current) ? $current : [], is_array($incoming) ? $incoming : [],
+        )));
     }
 
     /**

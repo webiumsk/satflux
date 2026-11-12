@@ -60,7 +60,7 @@ class EpostmanOutboundSubmissionService
 
         // Keep the invoice's legal snapshot, but never accept snapshot credentials.
         $issuer = clone $snapshot;
-        $issuer->app_settings = $company->app_settings;
+        $issuer->setAttribute('app_settings', CompanyEfakturaSettings::withoutEnterpriseSecrets($company->getAttribute('app_settings') ?? []));
         $document->setRelation('company', $issuer);
         if ($document->issue_date === null) {
             $this->invalid('An issued invoice date is required for a stable submission.');
@@ -104,6 +104,7 @@ class EpostmanOutboundSubmissionService
                 'source_kind' => $sourceKind, 'source_document_id' => $sourceId,
                 'connection_fingerprint' => $expected, 'content_sha256' => $contentHash,
                 'request_encrypted' => Crypt::encryptString(json_encode($body, JSON_THROW_ON_ERROR)),
+                'status_binding_encrypted' => Crypt::encryptString(json_encode(['origin' => CompanyEfakturaSettings::fromCompany($locked)->enterpriseOrigin(), 'identity' => CompanyEfakturaSettings::fromCompany($locked)->enterpriseIdentityFingerprint(), 'metadata' => array_intersect_key($body['metadata'], array_flip(['documentId', 'senderParticipantId', 'receiverParticipantId', 'documentTypeId', 'processId']))], JSON_THROW_ON_ERROR)),
                 'status' => ComplianceSubmissionStatus::Submitted,
                 'response_payload' => ['epostman' => ['submission_state' => 'uncertain']],
                 // Conservative margin below the provider's 24-hour retention.
@@ -173,7 +174,10 @@ class EpostmanOutboundSubmissionService
             'retry_allowed' => $attempt->external_id === null && ! $expired,
             'retry_until' => $attempt->retry_until->toIso8601String(),
             'reconciliation_required' => $attempt->external_id === null && $expired,
-            'delivery_status_available' => false,
+            'delivery_status_available' => $attempt->status_binding_encrypted !== null
+                && (($company = Company::query()->find($attempt->company_id)) !== null)
+                && $company->user_id === $attempt->user_id
+                && app(EpostmanStatusSyncService::class)->available($attempt, $company),
         ]);
 
         return new ComplianceSubmissionResult(status: $attempt->status, externalId: $attempt->external_id, responsePayload: $payload, message: $attempt->message);

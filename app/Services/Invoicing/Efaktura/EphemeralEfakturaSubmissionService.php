@@ -154,7 +154,7 @@ class EphemeralEfakturaSubmissionService
             $credentialsCompany = clone $snapshotCompany;
             $credentialsCompany->id = $bridgeCompany->id;
             $credentialsCompany->user_id = $bridgeCompany->user_id;
-            $credentialsCompany->app_settings = $bridgeCompany->app_settings;
+            $credentialsCompany->setAttribute('app_settings', CompanyEfakturaSettings::withoutEnterpriseSecrets($bridgeCompany->getAttribute('app_settings') ?? []));
             $document->setRelation('company', $credentialsCompany);
             if (! $this->gateway->supports($document)) {
                 throw ValidationException::withMessages(['document' => ['Document is not eligible for e-faktura.']]);
@@ -255,7 +255,9 @@ class EphemeralEfakturaSubmissionService
     {
         $row = $this->latestForDocument($user, $evoluDocumentId, $companyId);
         if ($row !== null && isset($row->getAttribute('response_payload')['epostman'])) {
-            return $row;
+            app(EpostmanStatusSyncService::class)->refreshLocal($row);
+
+            return $row->fresh();
         }
         if (! $row || $row->status !== ComplianceSubmissionStatus::Submitted) {
             return $row;

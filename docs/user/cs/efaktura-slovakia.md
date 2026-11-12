@@ -45,8 +45,18 @@ Tato první verze odesílání odmítne doklady se slevou na položce nebo faktu
 
 U oprávněné slovenské firmy, která je plným plátcem DPH, otevřete vystavenou tuzemskou B2B fakturu nebo dobropis a zvolte **Odeslat e-fakturu**. Nejprve uložte správné firemní propojení. Vystavitel i přístupové údaje musí patřit stejné firmě. Automatické odesílání přes ePostman zůstává vypnuté.
 
-Úspěšné podání znamená **přijetí ke zpracování**, nikoli doručení nebo přijetí finanční správou. Doručení a hlášení zkontrolujte odkazem do portálu ePostman ve stejném produkčním nebo testovacím prostředí. Přístupové údaje SAPI tyto stavy neumí číst; automatické sledování vyžaduje samostatnou integraci.
+Úspěšné podání znamená **přijetí ke zpracování**. Doručení a daňové hlášení se zobrazují odděleně, pokud je nastaven Enterprise API klíč. Odkaz do portálu ePostman zůstává dostupný pro stejné produkční nebo testovací prostředí.
 
 Při nejistém výsledku opakujte pokus pouze tehdy, když jej Satflux nabídne. Opakování používá původní požadavek a identifikátor v časovém limitu poskytovatele. Po jeho uplynutí nebo změně dokladu či propojení nejprve ověřte výsledek u poskytovatele. Nevytvářejte novou fakturu pouze pro zopakování nejistého podání.
+
+## Automatické stavy doručení
+
+V nastavení e-fakturace stejné firmy zadejte **ePostman API klíč** z **Nastavení > API Klíče** příslušného produkčního nebo testovacího portálu a nastavení uložte. Je oddělený od SAPI Client ID a Client Secret. Satflux ho uchovává šifrovaně na serveru a nezahrnuje ho do sdílených firemních dat. Uchovávejte ho v soukromí. Odstranění API klíče vypne automatické kontroly stavů; příjem a odesílání přes SAPI používají původní přístupové údaje.
+
+Satflux pravidelně kontroluje odeslané doklady i při zavřeném prohlížeči. Panel dokladu zobrazuje doručení, potvrzení **C3 MLS** od příjemce a potvrzení daňového hlášení **C5** odděleně. U podporovaného dokladu můžete použít **Obnovit stav**, s krátkým odstupem mezi kontrolami. Otevřený viditelný panel průběžně načítá také uložené výsledky.
+
+**UNCONFIRMED / TIMEOUT** znamená, že přístupový bod příjemce zprávu převzal, ale konečné MLS potvrzení nepřišlo včas. Samotný tento stav neznamená neúspěšné odeslání. Kladné C5 je potvrzení daňového hlášení podle údajů poskytovatele, nikoli obchodní schválení příjemcem. Při chybě kontroly zůstane viditelný poslední platný výsledek spolu s chybou kontroly. Expirovaný nebo odvolaný API klíč nahraďte v nastavení firmy.
+
+U starších podání nemusí být automatická kontrola dostupná. Takové doklady zkontrolujte v portálu poskytovatele. Existující fakturu neposílejte znovu pouze kvůli získání stavu.
 
 Konkrétní povinnosti a termíny firmy si potvrďte u slovenské finanční správy nebo účetního. Samotné funkční propojení nepotvrzuje splnění všech povinností odesílání a hlášení.

@@ -87,6 +87,9 @@ class Company extends Model
         unset($settings[CompanyAppSettings::LEGACY_STRIPE_TAX_SECRET_KEY]);
         unset($settings['stripe_tax_secret_key_encrypted']);
         unset($settings['efaktura_sapi_client_secret_encrypted']);
+        foreach (CompanyEfakturaSettings::ENTERPRISE_PRIVATE_FIELDS as $field) {
+            unset($settings[$field]);
+        }
 
         return array_merge(
             $settings,

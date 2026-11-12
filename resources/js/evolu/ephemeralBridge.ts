@@ -143,12 +143,22 @@ export async function parseAxiosBlobError(error: unknown): Promise<string | null
     return data.message || firstFieldError || null;
 }
 
+/** Enterprise credentials are for settings synchronization only, never document transport. */
+function withoutEpostmanCredentials(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map(withoutEpostmanCredentials);
+    if (!value || typeof value !== "object") return value;
+    return Object.fromEntries(Object.entries(value)
+        .filter(([key]) => !key.startsWith("efaktura_epostman_"))
+        .map(([key, nested]) => [key, withoutEpostmanCredentials(nested)]));
+}
+
 async function postWithCompanyScopedFallback<T>(
     companyLessPath: string,
     companyScopedPath: string | null,
     body: unknown,
     config?: { responseType?: "blob"; signal?: AbortSignal },
 ): Promise<AxiosResponse<T>> {
+    body = withoutEpostmanCredentials(body);
     try {
         return await api.post<T>(companyLessPath, body, config);
     } catch (error: unknown) {
@@ -515,7 +525,7 @@ export async function fetchExistingEphemeralBtcpayCheckout(
     try {
         const res = await api.post<{ data: EphemeralBtcpayCheckoutResult | null }>(
             `${EPHEMERAL_BTCPAY_CHECKOUT_PATH}/existing`,
-            body,
+            withoutEpostmanCredentials(body),
         );
         return res.data.data ?? null;
     } catch (error: unknown) {
@@ -715,7 +725,7 @@ export async function sendEphemeralEfaktura(
     // ePostman always targets the verified issuer bridge. Never fall back to
     // an account-default company after an ambiguous submission response.
     if (options.requireBridge && bridgeCompanyId) {
-        const res = await api.post<{ data: EphemeralEfakturaComplianceRow }>(companyScopedEphemeralEfakturaSendPath(bridgeCompanyId), body);
+        const res = await api.post<{ data: EphemeralEfakturaComplianceRow }>(companyScopedEphemeralEfakturaSendPath(bridgeCompanyId), withoutEpostmanCredentials(body));
         if (!isEfakturaComplianceRow(res.data?.data)) {
             throw new Error("Invalid e-invoice submission response. Check submission history before retrying.");
         }

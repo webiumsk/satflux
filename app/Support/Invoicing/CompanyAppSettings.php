@@ -59,6 +59,7 @@ final class CompanyAppSettings
         'efaktura_sapi_base_url' => null,
         'efaktura_sapi_client_id' => null,
         'efaktura_sapi_client_secret_encrypted' => null,
+        'efaktura_epostman_api_key_encrypted' => null,
     ];
 
     /**

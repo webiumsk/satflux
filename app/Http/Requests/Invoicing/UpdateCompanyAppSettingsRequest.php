@@ -3,12 +3,31 @@
 namespace App\Http\Requests\Invoicing;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class UpdateCompanyAppSettingsRequest extends FormRequest
 {
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        // Middleware normalizes empty strings. Preserve this write-only field's
+        // exact JSON/form value so empty input cannot masquerade as explicit null.
+        $raw = null;
+        if ($this->isJson()) {
+            $raw = json_decode($this->getContent(), true);
+        } elseif (str_contains((string) $this->header('Content-Type'), 'application/x-www-form-urlencoded')) {
+            parse_str($this->getContent(), $raw);
+        } elseif ($this->exists('efaktura_epostman_api_key')) {
+            throw ValidationException::withMessages(['efaktura_epostman_api_key' => ['Use JSON to update the Enterprise API key.']]);
+        }
+        if (is_array($raw) && array_key_exists('efaktura_epostman_api_key', $raw)) {
+            $this->merge(['efaktura_epostman_api_key' => $raw['efaktura_epostman_api_key']]);
+        }
     }
 
     public function rules(): array
@@ -55,6 +74,11 @@ class UpdateCompanyAppSettingsRequest extends FormRequest
             'efaktura_peppol_participant_id' => ['nullable', 'string', 'max:64', 'regex:/^\d{4}:\S+$/'],
             'efaktura_sapi_client_id' => ['nullable', 'string', 'max:128'],
             'efaktura_sapi_client_secret' => ['nullable', 'string', 'max:255'],
+            'efaktura_epostman_api_key' => ['sometimes', 'nullable', Rule::requiredIf($this->exists('efaktura_epostman_api_key') && $this->input('efaktura_epostman_api_key') !== null), 'string', 'max:4096', 'regex:/^[\x21-\x7E]+$/D'],
+            'efaktura_epostman_api_key_encrypted' => ['missing'],
+            'efaktura_epostman_api_key_set' => ['missing'],
+            'efaktura_epostman_status_generation' => ['missing'],
+            'efaktura_epostman_status_last_scan_at' => ['missing'],
         ];
     }
 

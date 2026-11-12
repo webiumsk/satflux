@@ -1,5 +1,46 @@
 # Project state
 
+## Automatic ePostman delivery observations implemented - 2026-11-12
+
+The authorized feature is implemented on feat/efaktura-epostman-outbound over
+baseline d4778fb2 and accepted by independent QA/security. Optional Enterprise
+API keys remain encrypted on the server in both application modes; local/shared
+company rows contain only public flags and pending markers. Separate immutable
+attempt bindings and credential generations preserve the existing send retry
+UUID/body. Legacy attempts without binding retain portal-only status access.
+Manual refresh and a bounded five-minute scheduler cover server and local-first
+sources; delivery, C3 and C5 remain observations alongside Submitted acceptance.
+
+Main's independently reviewed actual-service harness prepares a new isolated
+SQLite fixture with zero HTTP, then performs exactly two fixed existing-receipt
+TEST GETs. Server Invoice and local CreditNote both report UNCONFIRMED, C3 TIMEOUT
+and C5 OK. Canonical/projection states match, submission stays Submitted and
+immediate repeated reads perform no HTTP. Only credential/binding fields and
+captured evidence are encrypted; SQLite itself is not SQLCipher. Earlier owner
+previews, accounts, original attempts and captures remain preserved.
+
+Independent QA passes 117 PHP / 765 assertions, final status/migration 22 / 193,
+four helper cases, two mounted Vue cases and final build 7,660 modules. Independent
+security passes nine actual PostgreSQL lock scenarios, sixteen PG migration
+checks, API 3 / 31 and twenty-six sharing checks. Main's receiving/generic-provider
+regression passes 97 / 717. Counts overlap; do not combine them. Shared-key
+exposure, invalid-identity and interrupted-key disable, rollback/reapply and
+non-Peppol completion findings are fixed and independently accepted. The suggested
+hidden pending-removal control is skipped because the current button handles it.
+
+Pint/PHPStan, unchanged typecheck baseline (110 inherited, no new), locale parity,
+three OpenAPI documents and isolated API-export freshness pass. Full lint retains
+one unchanged peppolEndpoint control-regex error and 46 warnings; no ratchet is
+raised. One inherited PHPUnit deprecation remains. Final full frontend passes
+3,019 tests / 236 files. The first sandbox run ended SIGTERM without a result;
+the successful final retry is counted, without an inferred pass for the first run.
+
+Evidence: EPOSTMAN_AUTOMATIC_STATUS_IMPLEMENTATION.md and private automatic-status
+review records. No production call, new document, ACK, webhook, owner-preview
+change, push, merge or deployment. Next: separate outbound publication/release
+readiness, backend-first additive migration rollout and explicit deployment gates;
+public webhooks, production contracts and the next provider remain separate.
+
 ## Enterprise API read access verified - 2026-11-12
 
 The owner saves a separate TEST API key through the new hidden local capture.

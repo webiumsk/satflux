@@ -1,5 +1,35 @@
 # Development decision log
 
+## 2026-11-12 - Keep Enterprise credentials server-only and delivery states separate
+
+After verified read-only API access the owner authorizes automatic status setup,
+reading and display. Use a separate optional per-company Enterprise key and
+fixed-origin polling rather than expose a new public callback in localhost work.
+Never infer delivery, business approval or statutory acceptance from SAPI202 or
+merge C3/C5 into Submitted. Preserve exact-send recovery with an independent
+status generation and a minimal encrypted historical binding. Missing legacy
+binding means portal access without automatic backfill or resend.
+
+Independent security reproduces shared-key disclosure in an initial Evolu draft:
+company settings follow the shared owner namespace. Store the new credential only
+on the server; local rows and sharing copies retain public flags/markers only.
+Failed replacements remain transient until bound bridge success; after reload
+require re-entry. Disabling and explicit removal must remain possible despite
+invalid local identity or an unfinished replacement. Preserve unsaved-key pending
+state after successful disable, blocking later enable until re-entry or removal.
+
+Serialize fresh company/settings, attempt and projection reads through the bounded
+provider GET. Preserve last valid observations on fixed safe errors, rotate bounded
+company scans and stop completed non-Peppol status on positive C5 without inventing
+C3. Retain migration evidence on rollback and guard each schema part on reapply.
+QA/security accept the implementation after actual PostgreSQL lock/reapply proof,
+API boundaries and independent mounted-form checks. Main's isolated actual app
+reads both retained TEST documents with two GETs: UNCONFIRMED/C3 TIMEOUT/C5 OK,
+matching server/local projections and zero additional cooldown HTTP. No duplicate
+send or owner preview/database mutation occurs. Final full frontend verification
+passes 3,019 tests / 236 files; publication, production contracts and deployment
+stay separate.
+
 ## 2026-11-12 - Verify Enterprise read access before automatic status integration
 
 The owner creates a TEST API key and enters it through a separately reviewed
