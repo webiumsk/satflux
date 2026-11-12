@@ -18,12 +18,38 @@
 - [x] Privacy/evidence binding accepts all 20 files; push source commit `c42aa652`
   and verify the remote feature branch.
 - [x] Owner opens [PR #439](https://github.com/webiumsk/satflux/pull/439).
-- [ ] Add the canonical changelog source before merge.
+- [x] Verify owner merge of PR #439 at `bae0295f` (deployment unverified).
+- [ ] Add the omitted canonical changelog source for PR #439 as follow-up.
 
 The local preview supports verified unpaid, partially paid and fully paid native
 invoices. Unsupported/inconsistent finance fails
 explicitly before writes. See
 [FAKTUROID_MIGRATION.md](FAKTUROID_MIGRATION.md).
+
+## iDoklad XLSX + original PDF adapter - 2026-11-12
+
+- [x] Start `feat/invoicing-idoklad-migration` from merged master `bae0295f`.
+- [x] Inspect both workbook profiles read-only; require the updated 22 columns.
+- [x] Confirm owner has XLSX/CSV only; inspect all four original Slovak PDFs.
+- [x] Prove native text, five original lines, identities, VAT and payment semantics.
+- [x] Implement strict XLSX, bounded PDF worker, exact join and immutable custody.
+- [x] Enable local iDoklad source card with official static logo and five locales.
+- [x] Correct physical-coordinate and active-worksheet relationship omission paths.
+- [x] Pass final integrated 474-test regression, full lint and five-locale parity.
+- [x] Complete independent security and synthetic browser/restart acceptance.
+- [x] Complete final typecheck and production build after the corrections.
+- [ ] Owner verifies the import in the local preview.
+- [x] Owner authorizes branch push; PR creation remains with the owner.
+- [x] Push source commit `1e44995a` and verify the remote feature branch.
+- [x] Owner opens [PR #440](https://github.com/webiumsk/satflux/pull/440).
+- [x] Correct all four verified review findings and pass scoped/local browser gates.
+- [x] Complete final independent core/harness review with no open C/H/M findings.
+- [ ] Inspect fresh PR CI/review findings before merge.
+- [ ] Add the canonical PR-linked iDoklad changelog source before merge.
+
+V1 supports the verified company-invoice XLSX/native-PDF profile. Every original
+must match; no zero-tax summary discards the source VAT. CSV and other templates
+remain unsupported. See [IDOKLAD_MIGRATION.md](IDOKLAD_MIGRATION.md).
 
 ## Feature published for GitHub review - 2026-11-11
 

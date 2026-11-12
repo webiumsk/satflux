@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { webcrypto } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { createIdFromString } from "@evolu/common";
 import { CompanyId, InvoicingLocalSchema } from "@/evolu/schema";
 vi.mock("@/evolu/client", () => ({ migrationSourceProofQuery: "source", migrationChunkProofQuery: () => "chunk", migrationDocumentTargetsQuery: "targets", allCompaniesDetailQuery: "companies", allContactsQuery: "contacts", allDocumentLinesQuery: "lines", allNumberSeriesQuery: "series" }));
 vi.mock("@/evolu/migrationSchema", () => ({ assertMigrationSchemaReady: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/evolu/migrationIsdocPdf", () => ({ readMigrationIsdocEvidence: vi.fn() }));
+vi.mock("@/evolu/migrationIdokladPdf", () => ({ readIdokladPdfEvidence: vi.fn() }));
 vi.mock("@/evolu/documentImportLocal", () => ({
     ContactImportWriteError: class ContactImportWriteError extends Error {},
     resolveLocalContact: vi.fn(() => ({ contactId: null, created: false, linked: false })),
@@ -28,6 +30,7 @@ import { assertMigrationSchemaReady } from "@/evolu/migrationSchema";
 import { logDocumentEvent } from "@/evolu/documentEventLog";
 import { ContactImportWriteError, resolveLocalContact } from "@/evolu/documentImportLocal";
 import { readMigrationIsdocEvidence } from "@/evolu/migrationIsdocPdf";
+import { readIdokladPdfEvidence, type IdokladPdfInvoice } from "@/evolu/migrationIdokladPdf";
 import type { MigrationStructuredInvoice } from "@/evolu/migrationIsdoc";
 import { buildMigrationPreview, buildPreparedMigrationPreview } from "@/evolu/migrationValidation";
 import { parseFakturoidMigrationExport } from "@/evolu/migrationFakturoid";
@@ -79,6 +82,7 @@ function fixture() {
 beforeEach(() => {
     vi.stubGlobal("crypto", webcrypto);
     vi.mocked(readMigrationIsdocEvidence).mockReset().mockResolvedValue(null);
+    vi.mocked(readIdokladPdfEvidence).mockReset().mockResolvedValue([]);
     vi.mocked(assertMigrationSchemaReady).mockReset().mockResolvedValue(undefined);
     vi.mocked(logDocumentEvent).mockReset().mockReturnValue({ ok: true } as never);
     vi.mocked(resolveLocalContact).mockReset().mockReturnValue({ contactId: null, created: false, linked: false });
@@ -453,5 +457,104 @@ describe("Fakturoid source binding and immutable custody", () => {
         const xml = fakturoidFixture.replace("<paid_amount>0.0</paid_amount>", "<paid_amount>150.0</paid_amount>");
         await expect(importMigrationFile(f.evolu as never, fakturoidInput(f, xml))).rejects.toThrow("preview_blocked");
         expect(f.writes).toEqual([]);
+    });
+});
+
+function idokladFixture(f: ReturnType<typeof fixture>) {
+    const bytes = new Uint8Array(readFileSync("resources/js/__tests__/fixtures/migration-idoklad/export-payments.xlsx"));
+    const details: IdokladPdfInvoice[] = [1, 2, 3, 4].map(index => ({
+        dueDate: "2026-10-15", deliveryDate: "2026-10-01", invoice: {
+            documentNumber: `ID-TEST-${index}`, issueDate: "2026-10-01", currency: "EUR",
+            supplierRegistrationNumber: "00012345", buyerRegistrationNumber: "00054321", buyerName: "Synthetic buyer",
+            subtotal: `${index * 100}.00`, taxTotal: `${index * 23}.00`, total: `${index * 123}.00`,
+            lines: Array.from({ length: index === 2 ? 2 : 1 }, () => ({ name: "Synthetic service", description: null,
+                quantity: `${index === 2 ? 1 : index}.0000`, unit: null, unitPrice: "100.0000",
+                lineDiscountPercent: "0.00", taxRate: "23.00", lineTotal: `${index === 2 ? 123 : index * 123}.00` })),
+        },
+    }));
+    const originals = details.map((_, index) => {
+        const data = new TextEncoder().encode(`%PDF-Synthetic-original-${index + 1}`);
+        return { file: { name: `original-${index + 1}.pdf`, type: "application/pdf", size: data.length } as File, bytes: data };
+    });
+    vi.mocked(readIdokladPdfEvidence).mockImplementation(async name => {
+        const index = originals.findIndex(original => original.file.name === name);
+        return index < 0 ? [] : [details[index]];
+    });
+    const input = { ...f.input, sourceKind: "idoklad", bytes, originals, rows: [] as string[][], mapping: {},
+        file: { name: "idoklad-export.xlsx", type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", size: bytes.length } as File };
+    return { input, details };
+}
+
+describe("iDoklad complete native source commit", () => {
+    it("preserves four records, five VAT lines and exact full/partial payment evidence", async () => {
+        const f = fixture(); const { input } = idokladFixture(f);
+        const result = await importMigrationFile(f.evolu as never, input);
+        expect(result.imported).toBe(4); expect(f.rejected).toEqual([]);
+        expect(f.tables.document).toHaveLength(4); expect(f.tables.documentLine).toHaveLength(5);
+        expect(f.tables.document.find(doc => doc.number === "ID-TEST-1")).toMatchObject({
+            subtotal: "100.00", taxTotal: "23.00", total: "123.00", amountPaid: "123.00", status: "paid", paidAt: "2026-10-16",
+        });
+        expect(f.tables.document.find(doc => doc.number === "ID-TEST-2")).toMatchObject({
+            subtotal: "200.00", taxTotal: "46.00", total: "246.00", amountPaid: "50.00", status: "issued", paidAt: null,
+        });
+        expect(f.tables.migrationSource).toHaveLength(5);
+        const { readMigrationOriginal } = await import("@/evolu/migrationArchive");
+        const original = await readMigrationOriginal(f.evolu as never, companyId, "owner-a", result.source.id);
+        expect(original.source.sourceKind).toBe("idoklad"); expect(Array.from(original.bytes)).toEqual(Array.from(input.bytes));
+        await expect(importMigrationFile(f.evolu as never, input)).rejects.toThrow("nothing_to_import");
+        expect(f.tables.document).toHaveLength(4); expect(f.tables.documentLine).toHaveLength(5); expect(f.tables.migrationSource).toHaveLength(5);
+    });
+    it("blocks missing PDF even when summary fallback was requested", async () => {
+        const f = fixture(); const { input } = idokladFixture(f); input.originals = input.originals.slice(0, 3);
+        await expect(importMigrationFile(f.evolu as never, { ...input, allowSummary: true })).rejects.toThrow("preview_blocked");
+        expect(f.writes).toEqual([]);
+    });
+    it("blocks unreadable originals rather than silently excluding one", async () => {
+        const f = fixture(); const { input } = idokladFixture(f);
+        vi.mocked(readIdokladPdfEvidence).mockRejectedValue(new Error("idoklad_pdf_unsupported"));
+        await expect(importMigrationFile(f.evolu as never, input)).rejects.toThrow("preview_blocked");
+        expect(f.writes).toEqual([]);
+    });
+    it.each(["wrong_issuer", "net_tax_mismatch", "extra_invoice"])("blocks %s before custody", async reason => {
+        const f = fixture(); const { input, details } = idokladFixture(f);
+        if (reason === "wrong_issuer") f.tables.company[0].registrationNumber = "00012346";
+        if (reason === "net_tax_mismatch") { details[0].invoice.subtotal = "90.00"; details[0].invoice.taxTotal = "33.00"; }
+        if (reason === "extra_invoice") vi.mocked(readIdokladPdfEvidence).mockImplementation(async name => {
+            const index = input.originals.findIndex(original => original.file.name === name);
+            return index < 0 ? [] : [details[index], ...(index === 0
+                ? [{ ...details[0], invoice: { ...details[0].invoice, documentNumber: "EXTRA" } }] : [])];
+        });
+        await expect(importMigrationFile(f.evolu as never, input)).rejects.toThrow("preview_blocked");
+        expect(f.writes).toEqual([]);
+    });
+    it("copies XLSX and every PDF before callbacks and ignores injected caller rows", async () => {
+        const f = fixture(); const { input, details } = idokladFixture(f);
+        const source = new Uint8Array(input.bytes), originals = input.originals.map(item => new Uint8Array(item.bytes));
+        input.rows = [row("INJECTED", "999")];
+        input.assertCurrent = () => { input.bytes.fill(0); input.originals.forEach(item => item.bytes.fill(0)); };
+        vi.mocked(readIdokladPdfEvidence).mockImplementation(async (name, bytes) => {
+            const index = input.originals.findIndex(item => item.file.name === name);
+            expect(Array.from(bytes)).toEqual(Array.from(originals[index]));
+            return [details[index]];
+        });
+        const result = await importMigrationFile(f.evolu as never, input);
+        expect(result.imported).toBe(4); expect(f.tables.document.some(doc => doc.number === "INJECTED")).toBe(false);
+        const { readMigrationOriginal } = await import("@/evolu/migrationArchive");
+        const original = await readMigrationOriginal(f.evolu as never, companyId, "owner-a", result.source.id);
+        expect(Array.from(original.bytes)).toEqual(Array.from(source));
+        for (const [index, record] of f.tables.migrationSource.filter(item => item.sourceKind === "original").entries()) {
+            const retained = await readMigrationOriginal(f.evolu as never, companyId, "owner-a", String(record.id));
+            expect(Array.from(retained.bytes)).toEqual(Array.from(originals[index]));
+        }
+    });
+    it("revalidates issuer changes after archive and safely resumes the source", async () => {
+        const f = fixture(); const { input } = idokladFixture(f);
+        await expect(importMigrationFile(f.evolu as never, { ...input,
+            onArchiveProgress: () => { f.tables.company[0].registrationNumber = "00012346"; },
+        })).rejects.toThrow("preview_changed");
+        expect(f.tables.document).toHaveLength(0); expect(f.tables.migrationSource).toHaveLength(1);
+        f.tables.company[0].registrationNumber = "00012345";
+        expect((await importMigrationFile(f.evolu as never, input)).imported).toBe(4);
+        expect(f.tables.migrationSource).toHaveLength(5);
     });
 });

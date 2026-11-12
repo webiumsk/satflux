@@ -80,6 +80,14 @@
             class="h-auto w-[7.5rem] max-w-full"
           />
           <img
+            v-else-if="src.id === 'idoklad'"
+            src="/img/idoklad.svg"
+            :alt="t(src.labelKey)"
+            width="240"
+            height="49"
+            class="h-auto w-[7.5rem] max-w-full"
+          />
+          <img
             v-else-if="src.id === 'zaprite'"
             src="/img/zaprite.svg"
             :alt="t(src.labelKey)"
@@ -147,6 +155,24 @@
           <label for="fakturoid-original-files" class="invoicing-sf-label">{{ t("invoicing.migration.originals_title") }}</label>
           <input id="fakturoid-original-files" type="file" multiple accept=".pdf,.xml,.isdoc" @change="pickOriginals" />
           <p class="text-xs text-slate-600">{{ t("invoicing.migration.fakturoid_originals", { max: MIGRATION_MAX_ORIGINALS }) }}</p>
+          <ul class="max-h-40 overflow-auto text-sm"><li v-for="(file, index) in originalFiles" :key="index" class="break-all">{{ file.name }}</li></ul>
+        </div>
+        <label class="flex items-center gap-2 text-sm text-slate-700">
+          <input v-model="createContacts" type="checkbox" />{{ t("invoicing.import_create_contacts") }}
+        </label>
+      </div>
+      <div v-else-if="selectedSource === 'idoklad'" class="invoicing-card-pad space-y-4">
+        <h2 class="font-semibold">{{ t("invoicing.migration.idoklad_title") }}</h2>
+        <p class="text-sm text-slate-600">{{ t("invoicing.migration.idoklad_hint") }}</p>
+        <label for="idoklad-export-file" class="invoicing-sf-label">{{ t("invoicing.migration.idoklad_file") }}</label>
+        <input id="idoklad-export-file" type="file" accept=".xlsx" @change="onFileChange" />
+        <p v-if="selectedFile" class="text-sm break-all">{{ selectedFile.name }}</p>
+        <p class="text-sm text-slate-600">{{ t("invoicing.migration.idoklad_scope") }}</p>
+        <p v-if="idokladInfo" class="text-sm" role="status">{{ t("invoicing.migration.idoklad_loaded", { count: idokladInfo.invoiceCount }) }}</p>
+        <div class="space-y-2 rounded-lg border border-slate-200 p-4">
+          <label for="idoklad-original-files" class="invoicing-sf-label">{{ t("invoicing.migration.idoklad_originals_title") }}</label>
+          <input id="idoklad-original-files" type="file" multiple accept=".pdf" @change="pickOriginals" />
+          <p class="text-xs text-slate-600">{{ t("invoicing.migration.idoklad_originals", { max: MIGRATION_MAX_ORIGINALS }) }}</p>
           <ul class="max-h-40 overflow-auto text-sm"><li v-for="(file, index) in originalFiles" :key="index" class="break-all">{{ file.name }}</li></ul>
         </div>
         <label class="flex items-center gap-2 text-sm text-slate-700">
@@ -580,6 +606,9 @@ import type { EvoluDocumentRow, EvoluDocumentLineRow } from "../../evolu/documen
 import { buildPreparedMigrationPreview, buildMigrationPreview, type MigrationPreview } from "../../evolu/migrationValidation";
 import { fetchZapriteMigrationExport } from "../../services/zapriteMigration";
 import { parseFakturoidMigrationExport } from "../../evolu/migrationFakturoid";
+import { parseIdokladSpreadsheet } from "../../evolu/migrationIdoklad";
+import { joinIdokladMigrationEvidence } from "../../evolu/migrationIdokladEvidence";
+import type { IdokladPdfInvoice } from "../../evolu/migrationIdokladPdf";
 import { parseZapriteMigrationExport } from "../../evolu/migrationZaprite";
 import { importMigrationFile, MigrationImportStorageError } from "../../evolu/migrationImport";
 import { assertMigrationSchemaReady } from "../../evolu/migrationSchema";
@@ -642,7 +671,8 @@ const stepLabels = computed(() => [
   t("invoicing.import_step3"),
 ]);
 
-const mappingReady = computed(() => selectedSource.value === "fakturoid" ? !!fakturoidInfo.value
+const mappingReady = computed(() => selectedSource.value === "idoklad" ? !!idokladInfo.value
+  : selectedSource.value === "fakturoid" ? !!fakturoidInfo.value
   : selectedSource.value === "zaprite" ? !!zapriteInfo.value :
   REQUIRED_DOCUMENT_IMPORT_FIELDS.every(
     (field) => mapping[field] !== null && mapping[field] !== undefined,
@@ -688,7 +718,7 @@ function selectSource(src: (typeof DOCUMENT_IMPORT_SOURCES)[number]) {
   if (!src.enabled || importing.value) return;
   if (selectedSource.value !== src.id) {
     cancelZaprite(); fileReadVersion++;
-    selectedFile.value = null; headers.value = []; csvRows.value = []; originalFiles.value = []; zapriteInfo.value = null; fakturoidInfo.value = null;
+    selectedFile.value = null; headers.value = []; csvRows.value = []; originalFiles.value = []; zapriteInfo.value = null; fakturoidInfo.value = null; idokladInfo.value = null;
   }
   selectedSource.value = src.id;
 }
@@ -723,9 +753,11 @@ async function ensureLocalQueriesLoaded() {
 
 function pickFile(file: File | undefined) {
   if (!file || importing.value) return;
+  originalReadController?.abort();
+  originalScanProgress.value = null;
   sourceSelectionRevision.value++;
   selectedFile.value = file;
-  zapriteInfo.value = null; fakturoidInfo.value = null;
+  zapriteInfo.value = null; fakturoidInfo.value = null; idokladInfo.value = null;
   csvRows.value = [];
   headers.value = [];
   previewRows.value = [];
@@ -779,6 +811,12 @@ async function loadPreview() {
         headers.value = [];
         rowCount.value = 0;
         csvRows.value = [];
+        return;
+      }
+      if (source === "idoklad") {
+        const parsed = await parseIdokladSpreadsheet(new Uint8Array(await file.arrayBuffer()), file.name);
+        if (!isCurrent()) return;
+        idokladInfo.value = parsed; rowCount.value = parsed.invoiceCount;
         return;
       }
       if (source === "fakturoid") {
@@ -847,10 +885,15 @@ async function goToConfirm() {
       await assertMigrationSchemaReady(evolu!);
       const context = await migrationContext();
       if (!isCurrent()) return;
-      const evidence = await scanOriginals(key);
+      const evidence = await scanOriginals(key, operation);
       if (!isCurrent()) return;
       const company = localCompanyApi();
-      const provider = selectedSource.value === "fakturoid"
+      const idoklad = selectedSource.value === "idoklad"
+        ? await parseIdokladSpreadsheet(new Uint8Array(await file.arrayBuffer()), file.name) : null;
+      if (!isCurrent()) return;
+      const provider = idoklad ? { rows: joinIdokladMigrationEvidence(idoklad, evidence.idokladInvoices, {
+        companyRegistrationNumber: context.registrationNumber, originalErrors: evidence.issues.length > 0,
+      }) } : selectedSource.value === "fakturoid"
         ? parseFakturoidMigrationExport(new Uint8Array(await file.arrayBuffer()), { companyRegistrationNumber: context.registrationNumber })
         : selectedSource.value === "zaprite" ? parseZapriteMigrationExport(new Uint8Array(await file.arrayBuffer()), { excludeUnsupportedCurrencies: excludeUnsupportedCurrencies.value }) : null;
       const currentRows = toAppRows<EvoluDocumentRow & { ownerId?: string }>(await evolu!.loadQuery(allDocumentsQuery));
@@ -998,7 +1041,7 @@ const originalScanProgress = ref<{ done: number; total: number } | null>(null);
 type OriginalScanIssue = { index: number; filename: string; code: string; reason?: MigrationIsdocRejection };
 const originalScanIssues = ref<OriginalScanIssue[]>([]);
 const allowSummary = ref(false);
-const reviewOriginalItems = computed(() => selectedSource.value === "fakturoid" || selectedSource.value === "zaprite" || (selectedSource.value === "superfaktura" && originalFiles.value.length > 0));
+const reviewOriginalItems = computed(() => selectedSource.value === "idoklad" || selectedSource.value === "fakturoid" || selectedSource.value === "zaprite" || (selectedSource.value === "superfaktura" && originalFiles.value.length > 0));
 const summaryRows = computed(() => reviewOriginalItems.value
   ? (migrationPreview.value?.rows.filter(row => row.kind === "ready" && !row.invoice?.structured).length ?? 0)
   : 0);
@@ -1008,7 +1051,7 @@ const archiveError = ref("");
 const downloadingSource = ref("");
 const availableSources = computed(() => localFirst
   ? DOCUMENT_IMPORT_SOURCES.filter(source => source.enabled)
-  : DOCUMENT_IMPORT_SOURCES.filter(source => !["superfaktura", "zaprite", "fakturoid"].includes(source.id)));
+  : DOCUMENT_IMPORT_SOURCES.filter(source => !["superfaktura", "zaprite", "fakturoid", "idoklad"].includes(source.id)));
 const visibleFields = computed(() => localFirst ? DOCUMENT_IMPORT_FIELD_KEYS
   : DOCUMENT_IMPORT_FIELD_KEYS.filter(field => !["amount_paid", "payment_status", "payment_currency"].includes(field)));
 const formKey = computed(() => JSON.stringify([companyId.value, companyShareRoutingKey(companyId.value), auth.user?.id, selectedSource.value,
@@ -1023,6 +1066,8 @@ let loadingVersion = 0;
 let archiveVersion = 0;
 const waiting = new Set<AbortController>();
 const fakturoidInfo = ref<ReturnType<typeof parseFakturoidMigrationExport> | null>(null);
+const idokladInfo = ref<Awaited<ReturnType<typeof parseIdokladSpreadsheet>> | null>(null);
+let originalReadController: AbortController | null = null;
 const zapriteApiKey = ref("");
 const excludeUnsupportedCurrencies = ref(false);
 const zapriteInfo = ref<ReturnType<typeof parseZapriteMigrationExport> | null>(null);
@@ -1031,15 +1076,18 @@ const zapriteExcluded = computed(() => zapriteInfo.value?.excludedCurrencies.map
 let zapriteRequest: AbortController | null = null;
 let zapriteGeneration = 0;
 function cancelZaprite() {
-  zapriteGeneration++; loadingVersion++;
+  zapriteGeneration++; loadingVersion++; originalReadController?.abort();
+  originalScanProgress.value = null;
   zapriteRequest?.abort(); zapriteRequest = null; zapriteApiKey.value = ""; zapriteProgress.value = null; loading.value = false;
 }
 function importFileInvalidMessage() {
+  if (selectedSource.value === "idoklad") return t("invoicing.migration.error_idoklad_invalid_export");
   if (selectedSource.value === "fakturoid") return t("invoicing.migration.error_fakturoid_invalid_export");
   if (selectedSource.value === "zaprite") return t("invoicing.migration.error_zaprite_invalid_export");
   return t("invoicing.import_file_invalid");
 }
 function isSelectedImportFile(file: File) {
+  if (selectedSource.value === "idoklad") return /\.xlsx$/i.test(file.name) && file.size > 0 && file.size <= 10 * 1024 * 1024;
   if (selectedSource.value === "fakturoid") return /\.xml$/i.test(file.name) && file.size > 0 && file.size <= 10 * 1024 * 1024;
   return selectedSource.value === "zaprite" ? /\.json$/i.test(file.name) && file.size <= 10 * 1024 * 1024 : isDocumentImportSpreadsheetFile(file);
 }
@@ -1074,12 +1122,13 @@ async function loadZaprite() {
 watch(excludeUnsupportedCurrencies, () => { if (selectedSource.value === "zaprite" && selectedFile.value) void loadPreview(); });
 watch(() => auth.user?.id, () => {
   cancelZaprite(); fileReadVersion++; archiveVersion++;
-  selectedFile.value = null; zapriteInfo.value = null; fakturoidInfo.value = null; loading.value = false;
+  selectedFile.value = null; zapriteInfo.value = null; fakturoidInfo.value = null; idokladInfo.value = null; loading.value = false;
   archives.value = []; archiveError.value = ""; headers.value = []; csvRows.value = []; originalFiles.value = []; step.value = 1;
 }, { flush: "sync" });
 
 function pickOriginals(event: Event) {
   if (importing.value) return;
+  originalReadController?.abort();
   originalFiles.value = Array.from((event.target as HTMLInputElement).files ?? []);
   originalSelectionRevision.value++;
   error.value = "";
@@ -1088,31 +1137,56 @@ function pickOriginals(event: Event) {
     catch (failure) { error.value = migrationMessage(failure instanceof Error ? failure.message : "failed"); }
   }
 }
-async function scanOriginals(key: string): Promise<{ invoices: MigrationStructuredInvoice[]; issues: OriginalScanIssue[] }> {
+async function scanOriginals(key: string, operation: number): Promise<{
+  invoices: MigrationStructuredInvoice[]; idokladInvoices: IdokladPdfInvoice[]; issues: OriginalScanIssue[];
+}> {
   const invoices: MigrationStructuredInvoice[] = [];
+  const idokladInvoices: IdokladPdfInvoice[] = [];
   const issues: OriginalScanIssue[] = [];
-  if (selectedSource.value !== "superfaktura" || !reviewOriginalItems.value) return { invoices, issues };
+  const source = selectedSource.value;
+  if (!["superfaktura", "idoklad"].includes(source ?? "") || !reviewOriginalItems.value) return { invoices, idokladInvoices, issues };
   const files = [...originalFiles.value];
-  const { readMigrationIsdocEvidence } = await import("../../evolu/migrationIsdocPdf");
-  originalScanProgress.value = { done: 0, total: files.length };
-  for (const [index, file] of files.entries()) {
-    if (disposed || formKey.value !== key) throw new Error("preview_changed");
-    try {
-      const invoice = await readMigrationIsdocEvidence(file.name, new Uint8Array(await file.arrayBuffer()));
-      if (invoice) invoices.push(invoice);
-      else issues.push({ index, filename: file.name, code: "migration_isdoc_missing" });
-    } catch (failure) {
-      const known = failure instanceof MigrationIsdocError;
-      issues.push({
-        index, filename: file.name,
-        code: known ? failure.message : "migration_isdoc_unreadable",
-        reason: known ? failure.reason : undefined,
-      });
+  const controller = new AbortController(); originalReadController = controller; waiting.add(controller);
+  const current = () => !disposed && !controller.signal.aborted && formKey.value === key && loadingVersion === operation;
+  try {
+    const idokladReader = source === "idoklad" ? (await import("../../evolu/migrationIdokladPdf")).readIdokladPdfEvidence : null;
+    const isdocReader = source === "superfaktura" ? (await import("../../evolu/migrationIsdocPdf")).readMigrationIsdocEvidence : null;
+    if (!current()) throw new Error("preview_changed");
+    originalScanProgress.value = { done: 0, total: files.length };
+    for (const [index, file] of files.entries()) {
+      if (!current()) throw new Error("preview_changed");
+      try {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        if (!current()) throw new Error("preview_changed");
+        if (idokladReader) {
+          const parsed = await idokladReader(file.name, bytes, { signal: controller.signal });
+          if (!current()) throw new Error("preview_changed");
+          idokladInvoices.push(...parsed);
+        } else if (isdocReader) {
+          const invoice = await isdocReader(file.name, bytes);
+          if (!current()) throw new Error("preview_changed");
+          if (invoice) invoices.push(invoice);
+          else issues.push({ index, filename: file.name, code: "migration_isdoc_missing" });
+        }
+      } catch (failure) {
+        if (!current()) throw new Error("preview_changed");
+        const known = failure instanceof MigrationIsdocError;
+        issues.push({ index, filename: file.name,
+          code: source === "idoklad" ? (failure instanceof Error ? failure.message : "idoklad_pdf_unreadable")
+            : known ? failure.message : "migration_isdoc_unreadable",
+          reason: known ? failure.reason : undefined,
+        });
+      }
+      if (!current()) throw new Error("preview_changed");
+      originalScanProgress.value = { done: index + 1, total: files.length };
     }
-    originalScanProgress.value = { done: index + 1, total: files.length };
+    return { invoices, idokladInvoices, issues };
+  } finally {
+    waiting.delete(controller);
+    if (originalReadController === controller) originalReadController = null;
   }
-  return { invoices, issues };
 }
+
 function fieldLabel(field: DocumentImportFieldKey) {
   return ["amount_paid", "payment_status", "payment_currency"].includes(field)
     ? t(`invoicing.migration.field_${field}`) : t(`invoicing.import_field_${field}`);
@@ -1134,6 +1208,7 @@ function migrationMessage(code: string) {
     "unsupported_status", "missing_payment_evidence", "payment_currency_mismatch", "contradictory_payment", "too_many_rows", "too_many_columns", "file_too_large",
     "invalid_csv", "invalid_original", "archive_unverified", "preview_changed", "preview_blocked", "access_unavailable", "nothing_to_import",
     "bank_reconciliation_outcome_unknown", "migration_schema_outdated", "contact_write_failed", "document_readback_failed", "document_write_failed", "structured_conflict", "summary_confirmation_required",
+    "idoklad_invalid_export", "idoklad_limit_exceeded", "idoklad_unsupported", "idoklad_invalid_invoice", "idoklad_totals", "idoklad_payment_evidence", "idoklad_unsupported_currency", "idoklad_original_missing", "idoklad_original_unreadable", "idoklad_original_mismatch", "idoklad_company_mismatch", "idoklad_pdf_invalid", "idoklad_pdf_unsupported", "idoklad_pdf_totals", "idoklad_pdf_limit_exceeded", "idoklad_pdf_unreadable",
     "fakturoid_invalid_export", "fakturoid_invalid_invoice", "fakturoid_totals", "fakturoid_payment_evidence", "fakturoid_unsupported", "fakturoid_company_mismatch", "fakturoid_unsupported_currency", "fakturoid_limit_exceeded",
     "zaprite_invalid_input", "zaprite_auth_failed", "zaprite_rate_limited", "zaprite_unavailable", "zaprite_response_invalid", "zaprite_limit_exceeded",
     "zaprite_cancelled", "zaprite_invalid_export", "zaprite_unsupported_currency", "zaprite_payment_evidence", "zaprite_totals", "zaprite_unsupported_status", "zaprite_invalid_invoice", "zaprite_incomplete_export",
@@ -1195,7 +1270,7 @@ watch(formKey, () => {
   if (step.value === 3 && !importing.value) step.value = 2;
 }, { flush: "sync" });
 watch(() => [companyId.value, companyShareRoutingKey(companyId.value)], () => {
-  cancelZaprite(); loading.value = false; zapriteInfo.value = null; fakturoidInfo.value = null;
+  cancelZaprite(); loading.value = false; zapriteInfo.value = null; fakturoidInfo.value = null; idokladInfo.value = null;
   fileReadVersion++; archiveVersion++; archives.value = []; migrationPreview.value = null;
   selectedFile.value = null; originalFiles.value = []; headers.value = []; csvRows.value = []; step.value = 1; importResult.value = null;
   if (localFirst) void refreshArchives();
