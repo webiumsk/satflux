@@ -1,5 +1,23 @@
 # Project state
 
+## iDoklad branch pushed for owner PR - 2026-11-12
+
+The owner authorizes pushing `feat/invoicing-idoklad-migration` to the owned
+Satflux repository. Source commit `1e44995a83f0b4ee315bb54d730f7d6a4fd159c9`
+is pushed and verified on the remote feature branch. Fresh remote master remains
+`bae0295f`, the implementation base. The owner retains PR creation; no PR,
+merge or deployment was performed. Remote CI results have not been inspected.
+
+The source commit contains exactly 28 reviewed paths. All bytes match the final
+security/QA candidate except the official SVG's CRLF-to-LF normalization, whose
+canonical XML content is identical. Staged whitespace validation passes. Prior
+474-test, lint/typecheck/build/locale and independent security/browser evidence
+remains applicable; product tests were not repeated for line endings or this
+publication record. Local preview settings, dependency links, private source
+files and unrelated primary-checkout edits remain excluded.
+
+Next step: owner opens the PR; inspect fresh CI/review findings before merge.
+
 ## iDoklad XLSX + original PDF available in local preview - 2026-11-12
 
 The owner supplied all four matching native Slovak PDFs and the official logo.

@@ -1,5 +1,17 @@
 # Development decision log
 
+## 2026-11-12 - Publish the reviewed iDoklad branch for owner PR
+
+The owner requests a push. Publish only the reviewed 28-path adapter candidate
+and the publication record to owned `webiumsk/satflux`, preserving local preview
+settings, private originals and unrelated primary work. Commit `1e44995a` is
+pushed and independently read back from the remote feature ref. Master remains
+`bae0295f`. The sole post-review asset delta normalizes SVG line endings; canonical
+XML equality and staged whitespace checks pass, without a product-test rerun.
+
+Retain the owner's PR-creation preference. No PR creation, merge, deployment,
+new external review upload or fresh CI success is implied by this source push.
+
 ## 2026-11-12 - Reconcile iDoklad XLSX payments with bounded native PDF items
 
 The owner supplied all four matching original Slovak PDFs. They contain native

@@ -39,7 +39,9 @@ explicitly before writes. See
 - [x] Complete independent security and synthetic browser/restart acceptance.
 - [x] Complete final typecheck and production build after the corrections.
 - [ ] Owner verifies the import in the local preview.
-- [ ] Publish only after applicable owner instruction; no deployment is approved.
+- [x] Owner authorizes branch push; PR creation remains with the owner.
+- [x] Push source commit `1e44995a` and verify the remote feature branch.
+- [ ] Owner opens the PR; inspect fresh CI/review findings before merge.
 
 V1 supports the verified company-invoice XLSX/native-PDF profile. Every original
 must match; no zero-tax summary discards the source VAT. CSV and other templates

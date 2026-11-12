@@ -4,7 +4,8 @@ Date: 2026-11-12. Owner-authorized continuation of the migration initiative.
 Branch: `feat/invoicing-idoklad-migration`, based on freshly fetched master
 `bae0295f9c071f37eb219b65129bd45ed4b0b080` after owner-merged PR #439.
 The existing local preview and unrelated primary-checkout changes are preserved.
-This is local implementation evidence; no publication or deployment is claimed.
+The implementation evidence below records local acceptance. Publication status is
+recorded at the end; no deployment is claimed.
 
 ## Verified source and supported scope
 
@@ -117,6 +118,18 @@ The generic importer is unchanged and no baseline is expanded.
 
 Primary Graphify was queried. No graph exists in the feature checkout; none was
 installed or rebuilt. Owner source inspection stayed private and read-only.
-No provider mutation, production test, real payment, source push or deployment
-was performed. The next gate is local owner acceptance; publication requires the owner's
-applicable instruction.
+No provider mutation, production test, real payment or deployment was performed.
+Owner acceptance and PR review remain separate from the verified local checks.
+
+## Owner-authorized source publication - 2026-11-12
+
+The owner requested a push. Source commit `1e44995a` is published and verified on
+`feat/invoicing-idoklad-migration` in owned `webiumsk/satflux`, based on master
+`bae0295f`. Exactly 28 candidate files are included; local settings and private
+sources are excluded. The only post-review source delta is CRLF-to-LF conversion
+in the static SVG, with identical canonical XML. No product-test rerun is claimed
+for that asset normalization or the subsequent documentary handoff.
+
+The owner retains PR creation. Remote CI, merge and deployment remain unverified;
+no PR was created by the agent. Add a canonical PR-linked changelog entry when
+the owner opens the PR.
