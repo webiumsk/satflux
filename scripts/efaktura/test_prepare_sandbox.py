@@ -122,6 +122,15 @@ class CaptureTests(unittest.TestCase):
             self.capture()
         self.assertFalse(self.target.exists())
 
+    def test_failed_directory_sync_removes_new_file_and_allows_retry(self):
+        with patch.object(helper.os, "fsync", side_effect=[None, OSError("Synthetic directory sync failure")]) as sync, self.assertRaises(OSError):
+            self.capture()
+        self.assertEqual(sync.call_count, 2)
+        self.assertFalse(self.target.exists())
+
+        self.capture()
+        self.assertTrue(self.target.is_file())
+
 
 if __name__ == "__main__":
     unittest.main()

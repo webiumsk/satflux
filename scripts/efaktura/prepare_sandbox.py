@@ -83,10 +83,10 @@ def capture(root: Path, read_secret=getpass.getpass) -> None:
                 stream.write(serialized)
                 stream.flush()
                 os.fsync(stream.fileno())
+            os.fsync(descriptor)
         except BaseException:
             os.unlink(FILENAME, dir_fd=descriptor)
             raise
-        os.fsync(descriptor)
     finally:
         os.close(descriptor)
 
