@@ -110,6 +110,12 @@
       "sourceSha": "bae0295f9c071f37eb219b65129bd45ed4b0b080",
       "phase": "published",
       "entryId": "cl_V7zfV3jeUkaEFdaXcA4k2"
+    },
+    "epostman-receiving-and-guided-setup": {
+      "hash": "f601f51b590aca8cc2f153d2ab1f546edd3cb45ea107e8bc2705db9eba895a4c",
+      "source": "https://github.com/webiumsk/satflux/pull/441",
+      "sourceSha": "d58f9eb0539b0bfd7110999b0faa83f499abc288",
+      "phase": "create_pending"
     }
   },
   "deploymentSha": "9dfc4166a6fd52575b831bf1fd0d31fabbb4a9a5"
