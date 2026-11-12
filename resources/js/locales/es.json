@@ -4798,7 +4798,7 @@
       "idoklad_loaded": "Facturas de origen: {count}. Cada factura y su PDF se comprobarán antes de importar.",
       "idoklad_originals_title": "PDF originales de las facturas (obligatorios)",
       "idoklad_originals": "Añada el PDF original de cada factura del XLSX. Máximo {max} archivos, 10 MiB por archivo y 20 MiB incluida la exportación. Los PDF se procesan localmente y se conservan con el lote.",
-      "error_idoklad_invalid_export": "Seleccione la lista completa de facturas emitidas exportada desde iDoklad a XLSX con todas las columnas. CSV todavía no se admite para iDoklad.",
+      "error_idoklad_invalid_export": "Seleccione la lista completa de facturas emitidas exportada desde iDoklad a XLSX con todas las columnas. No vuelva a guardar el archivo XLSX de iDoklad en Excel antes de importarlo. CSV todavía no se admite para iDoklad.",
       "error_idoklad_limit_exceeded": "La exportación supera los límites admitidos de tamaño, registros o estructura. Seleccione una exportación más pequeña.",
       "error_idoklad_unsupported": "Este formato de exportación, tipo de documento o navegador no se admite. Utilice el XLSX original de iDoklad en un navegador actualizado.",
       "error_idoklad_invalid_invoice": "Faltan datos obligatorios de la factura o no son válidos. Compruebe la factura en el XLSX exportado.",

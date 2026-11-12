@@ -1757,7 +1757,7 @@
       "idoklad_loaded": "Zdrojové faktúry: {count}. Každá faktúra a jej PDF sa skontrolujú pred importom.",
       "idoklad_originals_title": "Pôvodné PDF faktúr (povinné)",
       "idoklad_originals": "Pridajte pôvodné PDF každej faktúry z XLSX. Najviac {max} súborov, 10 MiB na súbor a spolu 20 MiB vrátane exportu. PDF sa spracujú lokálne a zachovajú pri dávke.",
-      "error_idoklad_invalid_export": "Vyberte úplný zoznam vystavených faktúr exportovaný z iDokladu do XLSX so všetkými stĺpcami. CSV zatiaľ nie je pre iDoklad podporované.",
+      "error_idoklad_invalid_export": "Vyberte úplný zoznam vystavených faktúr exportovaný z iDokladu do XLSX so všetkými stĺpcami. Pred importom tento XLSX súbor z iDokladu znovu neukladajte v Exceli. CSV zatiaľ nie je pre iDoklad podporované.",
       "error_idoklad_limit_exceeded": "Export prekračuje podporovanú veľkosť, počet záznamov alebo limity štruktúry. Vyberte menší export.",
       "error_idoklad_unsupported": "Tento formát exportu, typ dokladu alebo prehliadač nie je podporovaný. Použite pôvodný XLSX z iDokladu v aktuálnom prehliadači.",
       "error_idoklad_invalid_invoice": "Povinné údaje faktúry chýbajú alebo sú neplatné. Skontrolujte faktúru v XLSX exporte.",

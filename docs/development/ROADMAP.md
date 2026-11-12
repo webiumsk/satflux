@@ -41,7 +41,11 @@ explicitly before writes. See
 - [ ] Owner verifies the import in the local preview.
 - [x] Owner authorizes branch push; PR creation remains with the owner.
 - [x] Push source commit `1e44995a` and verify the remote feature branch.
-- [ ] Owner opens the PR; inspect fresh CI/review findings before merge.
+- [x] Owner opens [PR #440](https://github.com/webiumsk/satflux/pull/440).
+- [x] Correct all four verified review findings and pass scoped/local browser gates.
+- [x] Complete final independent core/harness review with no open C/H/M findings.
+- [ ] Inspect fresh PR CI/review findings before merge.
+- [ ] Add the canonical PR-linked iDoklad changelog source before merge.
 
 V1 supports the verified company-invoice XLSX/native-PDF profile. Every original
 must match; no zero-tax summary discards the source VAT. CSV and other templates

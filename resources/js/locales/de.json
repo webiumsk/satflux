@@ -1757,7 +1757,7 @@
       "idoklad_loaded": "Quellrechnungen: {count}. Jede Rechnung und ihre PDF werden vor dem Import geprüft.",
       "idoklad_originals_title": "Original-PDFs der Rechnungen (erforderlich)",
       "idoklad_originals": "Fügen Sie die Original-PDF jeder Rechnung aus XLSX hinzu. Höchstens {max} Dateien, 10 MiB pro Datei und insgesamt 20 MiB einschließlich Export. PDFs werden lokal verarbeitet und mit dem Stapel aufbewahrt.",
-      "error_idoklad_invalid_export": "Wählen Sie die vollständige Liste der ausgestellten Rechnungen, die aus iDoklad als XLSX mit allen Spalten exportiert wurde. CSV wird für iDoklad noch nicht unterstützt.",
+      "error_idoklad_invalid_export": "Wählen Sie die vollständige Liste der ausgestellten Rechnungen, die aus iDoklad als XLSX mit allen Spalten exportiert wurde. Speichern Sie die iDoklad-XLSX-Datei vor dem Import nicht erneut in Excel. CSV wird für iDoklad noch nicht unterstützt.",
       "error_idoklad_limit_exceeded": "Der Export überschreitet die unterstützten Größen-, Datensatz- oder Strukturgrenzen. Wählen Sie einen kleineren Export.",
       "error_idoklad_unsupported": "Dieses Exportformat, dieser Belegtyp oder dieser Browser wird nicht unterstützt. Verwenden Sie die ursprüngliche XLSX-Datei aus iDoklad in einem aktuellen Browser.",
       "error_idoklad_invalid_invoice": "Erforderliche Rechnungsdaten fehlen oder sind ungültig. Prüfen Sie die Rechnung im XLSX-Export.",

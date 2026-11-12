@@ -1,5 +1,22 @@
 # Project state
 
+## PR #440 review corrections - 2026-11-12
+
+GitHub verifies open PR #440 against master `bae0295f`, reviewed head `b19e8fc4`.
+All four supplied findings remain valid: clarify original XLSX handling in five
+locales, clear canceled scan progress in `pickFile`, isolate the extra-original
+mock, and commit a standalone real PDF.js byte-to-invoice browser regression.
+XLSX validation, financial import, authority and encryption code are unchanged.
+
+Local validation: 156 focused tests, two real-worker browser cases, scoped lint,
+five-locale parity, full typecheck (unchanged 110 baseline) and production build
+pass. The corrected extra-original test independently fails when its intended
+guard alone is removed in a private mutation. Independent core and harness
+reviews pass with no open Critical/High/Medium findings. The real-worker test
+also fails under private reader/parser mutations. Next: inspect fresh PR CI/review
+results on the existing authorized feature branch; no merge or deployment is
+authorized.
+
 ## iDoklad branch pushed for owner PR - 2026-11-12
 
 The owner authorizes pushing `feat/invoicing-idoklad-migration` to the owned

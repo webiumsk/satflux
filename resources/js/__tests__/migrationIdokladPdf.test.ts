@@ -3,6 +3,8 @@ import { IdokladPdfError, parseIdokladPdfText, readIdokladPdfEvidence } from "@/
 import { readMigrationPdfTextPages } from "@/evolu/migrationIsdocPdf";
 import type { MigrationPdfTextItem, MigrationPdfTextPage } from "@/evolu/migrationIsdocPdf";
 import { syntheticIdokladPage, textItem } from "./fixtures/migration-idoklad-pdf/textPage";
+// Real PDF bytes and the owned PDF.js worker are covered by
+// integration/pdf/migrationIdokladPdf.spec.ts.
 vi.mock("@/evolu/migrationIsdocPdf", () => ({ readMigrationPdfTextPages: vi.fn() }));
 const read = (page = syntheticIdokladPage()) => parseIdokladPdfText([page]);
 function edit(change: (items: MigrationPdfTextItem[]) => void): MigrationPdfTextPage {

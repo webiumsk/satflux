@@ -754,6 +754,7 @@ async function ensureLocalQueriesLoaded() {
 function pickFile(file: File | undefined) {
   if (!file || importing.value) return;
   originalReadController?.abort();
+  originalScanProgress.value = null;
   sourceSelectionRevision.value++;
   selectedFile.value = file;
   zapriteInfo.value = null; fakturoidInfo.value = null; idokladInfo.value = null;

@@ -1757,7 +1757,7 @@
       "idoklad_loaded": "Source invoices: {count}. Every invoice and its PDF will be checked before import.",
       "idoklad_originals_title": "Original invoice PDFs (required)",
       "idoklad_originals": "Add the original PDF for every invoice in the XLSX. Maximum {max} files, 10 MiB per file and 20 MiB including the export. PDFs are processed locally and retained with the batch.",
-      "error_idoklad_invalid_export": "Select the complete issued invoice list exported from iDoklad to XLSX with all columns. CSV is not yet supported for iDoklad.",
+      "error_idoklad_invalid_export": "Select the complete issued invoice list exported from iDoklad to XLSX with all columns. Do not re-save the iDoklad XLSX file in Excel before importing. CSV is not yet supported for iDoklad.",
       "error_idoklad_limit_exceeded": "The export exceeds the supported size, record or structure limits. Select a smaller export.",
       "error_idoklad_unsupported": "This export format, document type or browser is not supported. Use the original iDoklad XLSX in an up-to-date browser.",
       "error_idoklad_invalid_invoice": "Required invoice data is missing or invalid. Check the invoice in the XLSX export.",

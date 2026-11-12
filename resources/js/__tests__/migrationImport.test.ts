@@ -519,9 +519,11 @@ describe("iDoklad complete native source commit", () => {
         const f = fixture(); const { input, details } = idokladFixture(f);
         if (reason === "wrong_issuer") f.tables.company[0].registrationNumber = "00012346";
         if (reason === "net_tax_mismatch") { details[0].invoice.subtotal = "90.00"; details[0].invoice.taxTotal = "33.00"; }
-        if (reason === "extra_invoice") vi.mocked(readIdokladPdfEvidence).mockResolvedValue([
-            ...details, { ...details[0], invoice: { ...details[0].invoice, documentNumber: "EXTRA" } },
-        ]);
+        if (reason === "extra_invoice") vi.mocked(readIdokladPdfEvidence).mockImplementation(async name => {
+            const index = input.originals.findIndex(original => original.file.name === name);
+            return index < 0 ? [] : [details[index], ...(index === 0
+                ? [{ ...details[0], invoice: { ...details[0].invoice, documentNumber: "EXTRA" } }] : [])];
+        });
         await expect(importMigrationFile(f.evolu as never, input)).rejects.toThrow("preview_blocked");
         expect(f.writes).toEqual([]);
     });

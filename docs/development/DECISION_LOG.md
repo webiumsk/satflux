@@ -1,5 +1,19 @@
 # Development decision log
 
+## 2026-11-12 - Correct verified PR #440 findings without changing validation
+
+Verify each supplied finding against head `b19e8fc4`. All four apply. Keep XLSX
+validation unchanged and explain in five locales that the native export must not
+be re-saved in Excel. Reset only the canceled scan label in `pickFile`, retaining
+abort/loading ownership. Give each PDF mock one matching invoice and add EXTRA
+once, so the unmatched-original guard is tested independently of duplicates.
+
+Add a dedicated synthetic browser suite for generated PDF bytes, the unmocked
+production reader/real owned worker and invoice parser. Its temporary loopback
+server has no application environment, auth/backend or external network access.
+Retain local test/review evidence and publish only scoped corrections on the
+existing authorized feature branch; no merge or deployment is included.
+
 ## 2026-11-12 - Publish the reviewed iDoklad branch for owner PR
 
 The owner requests a push. Publish only the reviewed 28-path adapter candidate
