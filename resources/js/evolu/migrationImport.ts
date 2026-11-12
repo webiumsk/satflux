@@ -11,6 +11,9 @@ import { retainMigrationOriginal, validateMigrationOriginalFiles, type Migration
 import { buildPreparedMigrationPreview, buildMigrationPreview, migrationFingerprint, migrationLineMatches, migrationNumberKey, sameMigrationPreview, type MigrationPreview } from "./migrationValidation";
 import { migrationStructuredLinePatches, migrationStructuredLinesMatch } from "./migrationItemEvidence";
 import { parseFakturoidMigrationExport } from "./migrationFakturoid";
+import { parseIdokladSpreadsheet } from "./migrationIdoklad";
+import { joinIdokladMigrationEvidence } from "./migrationIdokladEvidence";
+import type { IdokladPdfInvoice } from "./migrationIdokladPdf";
 import { parseZapriteMigrationExport } from "./migrationZaprite";
 import type { MigrationStructuredInvoice } from "./migrationIsdoc";
 import { DocumentId, DocumentLineId, type CompanyId, type InvoicingLocalSchema } from "./schema";
@@ -46,10 +49,17 @@ export async function importMigrationFile(evolu: Evolu<InvoicingLocalSchema>, in
     running.add(evolu);
     let phase: MigrationImportPhase = "preflight";
     try {
-        if (input.sourceKind === "zaprite" || input.sourceKind === "fakturoid") {
+        if (["zaprite", "fakturoid", "idoklad"].includes(input.sourceKind)) {
             // Parsing and custody share one private byte snapshot across all awaits.
             if (input.bytes.byteLength !== input.file.size || input.bytes.byteLength > 10 * 1024 * 1024) throw new Error("invalid_original");
             input = { ...input, bytes: new Uint8Array(input.bytes) };
+        }
+        if (input.sourceKind === "idoklad") {
+            // Snapshot every PDF before the first await and before caller callbacks.
+            input = { ...input, originals: (input.originals ?? []).map(original => {
+                if (original.bytes.byteLength !== original.file.size || original.bytes.byteLength > 10 * 1024 * 1024) throw new Error("invalid_original");
+                return { file: original.file, bytes: new Uint8Array(original.bytes) };
+            }) };
         }
         input.assertCurrent();
         await assertMigrationSchemaReady(evolu);
@@ -58,6 +68,9 @@ export async function importMigrationFile(evolu: Evolu<InvoicingLocalSchema>, in
         // Provider evidence is reconstructed from the exact bytes retained below.
         const zaprite = input.sourceKind === "zaprite"
             ? parseZapriteMigrationExport(input.bytes, { excludeUnsupportedCurrencies: input.excludeUnsupportedCurrencies }) : null;
+        const idoklad = input.sourceKind === "idoklad"
+            ? await parseIdokladSpreadsheet(input.bytes, input.file.name) : null;
+        input.assertCurrent();
         const extractItems = input.sourceKind === "superfaktura" && Boolean(input.originals?.length);
         const structuredInvoices: MigrationStructuredInvoice[] = [];
         const originals = extractItems ? input.originals!.map(original => {
@@ -65,6 +78,17 @@ export async function importMigrationFile(evolu: Evolu<InvoicingLocalSchema>, in
             // Evidence and custody must use the same bytes throughout the import.
             return { file: original.file, bytes: new Uint8Array(original.bytes) };
         }) : input.originals ?? [];
+        const idokladOriginals: IdokladPdfInvoice[] = [];
+        let idokladOriginalErrors = false;
+        if (idoklad) {
+            const { readIdokladPdfEvidence } = await import("./migrationIdokladPdf");
+            for (const original of originals) {
+                input.assertCurrent();
+                try { idokladOriginals.push(...await readIdokladPdfEvidence(original.file.name, original.bytes)); }
+                catch { idokladOriginalErrors = true; }
+                input.assertCurrent();
+            }
+        }
         if (extractItems) {
             // Browser parsing does not hold the origin's financial mutation lock.
             const { readMigrationIsdocEvidence } = await import("./migrationIsdocPdf");
@@ -89,16 +113,18 @@ export async function importMigrationFile(evolu: Evolu<InvoicingLocalSchema>, in
                     .filter(company => company.id === input.companyId && Reflect.get(company, "ownerId") === input.ownerId);
                 return companies.length === 1 ? companies[0].registrationNumber ?? null : null;
             };
-            const requiresIssuer = structuredInvoices.length > 0 || input.sourceKind === "fakturoid";
+            const requiresIssuer = structuredInvoices.length > 0 || input.sourceKind === "fakturoid" || input.sourceKind === "idoklad";
             const companyRegistrationNumber = requiresIssuer ? currentRegistration() : null;
             const assertTarget = () => {
                 input.assertCurrent();
                 assertExpenseCompanyOwner(scope, input.companyId, input.ownerId);
                 if (requiresIssuer && currentRegistration() !== companyRegistrationNumber) throw new Error("preview_changed");
             };
-            // Reparse the private source snapshot at commit against the current
-            // issuer. Subsequent writes revalidate that binding through assertTarget.
-            const providerRows = input.sourceKind === "fakturoid"
+            // Bind freshly parsed provider evidence to the current issuer in the
+            // lease. Subsequent writes revalidate that binding through assertTarget.
+            const providerRows = idoklad ? joinIdokladMigrationEvidence(idoklad, idokladOriginals, {
+                companyRegistrationNumber, originalErrors: idokladOriginalErrors,
+            }) : input.sourceKind === "fakturoid"
                 ? parseFakturoidMigrationExport(input.bytes, { companyRegistrationNumber }).rows : zaprite?.rows;
             const freshPreview = () => {
                 const options = { ...input, existing: scope.context.documents,

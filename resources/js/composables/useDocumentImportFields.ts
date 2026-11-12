@@ -45,13 +45,13 @@ export const DOCUMENT_IMPORT_SOURCES: {
   labelKey: string;
 }[] = [
   { id: 'superfaktura', enabled: true, labelKey: 'invoicing.migration.source_superfaktura' },
+  { id: 'idoklad', enabled: true, labelKey: 'invoicing.migration.source_idoklad' },
   { id: 'fakturoid', enabled: true, labelKey: 'invoicing.migration.source_fakturoid' },
   { id: 'zaprite', enabled: true, labelKey: 'invoicing.migration.source_zaprite' },
   { id: 'excel', enabled: true, labelKey: 'invoicing.import_source_excel' },
   { id: 'money', enabled: false, labelKey: 'invoicing.import_source_money' },
   { id: 'pohoda', enabled: false, labelKey: 'invoicing.import_source_pohoda' },
   { id: 'isdoc', enabled: false, labelKey: 'invoicing.import_source_isdoc' },
-  { id: 'idoklad', enabled: false, labelKey: 'invoicing.import_source_idoklad' },
 ];
 
 export type DocumentImportMapping = Partial<Record<DocumentImportFieldKey, number | null>>;

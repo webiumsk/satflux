@@ -1,5 +1,67 @@
 # Development decision log
 
+## 2026-11-12 - Reconcile iDoklad XLSX payments with bounded native PDF items
+
+The owner supplied all four matching original Slovak PDFs. They contain native
+text with five lines and no embedded ISDOC. Implement a bounded native-text
+profile instead of requiring unavailable XML. Require exact XLSX/PDF identity,
+dates, currency and net/VAT/gross; keep all originals and reject the whole batch
+for absent, duplicate, unreadable or inconsistent documents. V1 requires supplier
+and buyer company registration identifiers and a complete invoice on each page.
+
+Use original per-line rounding and summed printed VAT buckets. Re-rounding raw
+aggregate tax rejects valid iDoklad invoices. PDF amount-due labels repeat gross
+even after payments, so explicit XLSX payment amounts/dates remain authoritative;
+unknown partial dates stay unknown. Never manufacture zero-tax summary lines.
+
+Rebuild from immutable source/PDF bytes at commit and bind to fresh owner/company
+authority under the existing financial lease, with custody before fiscal writes.
+Reuse encrypted generic migration/backup tables without a schema/version change.
+Keep CSV and unsupported PDF profiles out of V1. The local card/logo is enabled. Bind worksheet validation to the actual package
+relationship and effective content types; missing optional dimensions remain
+valid, while declared ranges cannot hide physical rows. Independent security and
+browser acceptance pass, including exact originals after full restart. Final
+static gates pass with unchanged warning/typecheck ratchets; local owner
+acceptance remains. This continuation
+authorizes neither source publication nor deployment.
+
+## 2026-11-12 - Accept updated iDoklad payment evidence without inventing VAT lines
+
+The updated 22-column workbook supplies actual paid amounts, buyer identifiers,
+full-paid date and exact net/VAT/gross for four records. Preserve unknown partial
+payment dates. This resolves the initial payment evidence gap; it does not supply
+original items or VAT rates. Keep the existing fiscal-line constraints and request
+a detailed source instead of inferring a single tax rate or zero-tax summary.
+No runtime adapter is enabled by this read-only assessment.
+
+The owner reports only XLSX/CSV export. Inspect one original PDF for the embedded
+ISDOC documented by the Czech provider before choosing an XLSX + PDF evidence
+route; do not assume that announcement proves the actual Slovak PDF contract.
+No API credentials, subscription change or plain-text source upload is needed
+for this source assessment.
+
+## 2026-11-12 - Preserve iDoklad net/VAT and require actual partial-payment evidence
+
+The supplied invoice-list workbook establishes its row-5 heading profile and
+native Excel dates, but contains no original lines, tax rates or paid amounts.
+Do not enable iDoklad by adding aliases alone: generic summary fallback would
+turn known net/gross evidence into zero VAT, and partial status cannot establish
+the amount paid. Request matching native Pohoda XML and inspect its contract
+before implementation. Begin the source branch from fresh master `bae0295f`;
+preserve the existing preview and unrelated work. Workbook and merchant values
+remain private and read-only; only source schema and sanitized conclusions enter
+development documentation.
+
+## 2026-11-12 - Close verified Fakturoid merge and propose evidence-led iDoklad work
+
+Owner-merged PR #439 is verified at `bae0295f`; deployment remains unverified.
+Keep the omitted PR-linked changelog task open. iDoklad is the remaining agreed
+migration source. Official help documents invoice-list XLSX/CSV and direct
+Pohoda XML exports; inspect matching real-format synthetic samples before
+asserting item or payment coverage. Prefer existing preview/custody/recovery
+contracts, and start implementation from freshly fetched master. This planning
+step creates no provider account/access, parser, source publication or deployment.
+
 ## 2026-11-12 - Publish the accepted Fakturoid branch without creating a PR
 
 The owner explicitly requests a source push and retains PR creation. Publish only

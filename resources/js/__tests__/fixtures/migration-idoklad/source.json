@@ -1,0 +1,9 @@
+{
+  "headers": ["Číslo dokladu", "Popis", "Číslo objednávky", "Rad", "Názov/Meno", "IČO", "IČ DPH", "DIČ", "Vystavenie", "Splatnosť", "Dodané", "Dátum platby", "Cena s DPH", "Spolu bez DPH", "DPH", "Mena", "Stav úhrady", "Uhradená suma", "Variabilný symbol", "Exportované", "Odoslané odberateľovi", "Odoslanie účtovníkovi"],
+  "rows": [
+    ["ID-TEST-1", "Synthetic service", "", "2026", "Synthetic Buyer One", "00054321", "SK0000000001", "0000000001", "2026-10-01", "2026-10-15", "2026-10-01", "2026-10-16", 123, 100, 23, "EUR", "Uhradené", 123, "00000001", "", "", ""],
+    ["ID-TEST-2", "Synthetic service", "", "2026", "Synthetic Buyer Two", "00054321", "SK0000000001", "0000000001", "2026-10-01", "2026-10-15", "2026-10-01", "", 246, 200, 46, "EUR", "Čiastočne uhradené", 50, "00000002", "", "", ""],
+    ["ID-TEST-3", "Synthetic service", "", "2026", "Synthetic Buyer Three", "00054321", "SK0000000001", "0000000001", "2026-10-01", "2026-10-15", "2026-10-01", "", 369, 300, 69, "EUR", "Neuhradené", 0, "00000003", "", "", ""],
+    ["ID-TEST-4", "Synthetic service", "", "2026", "Synthetic Buyer Four", "00054321", "SK0000000001", "0000000001", "2026-10-01", "2026-10-15", "2026-10-01", "", 492, 400, 92, "EUR", "Neuhradené a po splatnosti", 0, "00000004", "", "", ""]
+  ]
+}

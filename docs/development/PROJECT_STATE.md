@@ -1,5 +1,78 @@
 # Project state
 
+## iDoklad XLSX + original PDF available in local preview - 2026-11-12
+
+The owner supplied all four matching native Slovak PDFs and the official logo.
+Read-only source proof now reconciles four XLSX records with five original lines,
+including nonzero VAT, full payment and a partial payment with unknown date.
+The PDFs contain native text rather than embedded ISDOC. The dedicated iDoklad
+card is enabled in the existing local preview on `feat/invoicing-idoklad-migration`,
+based on merged master `bae0295f`; no owner invoices were imported by the agent.
+
+The bounded XLSX/native-PDF adapter preserves exact net/VAT/gross, per-line
+rounding, original bytes and fresh company authority at commit. Missing or
+inconsistent originals block the batch; no summary fallback invents VAT lines.
+The supported profile requires company buyer registration and complete native
+single-page invoices. CSV and other PDF templates remain outside V1.
+
+Final integrated regression passes 474 tests; independent security passes 430
+tests with no open Critical/High/Medium findings. Isolated browser QA verifies
+exact originals after reload/full restart, payment semantics, retries, rejection
+and account/company/source cancellation. The worksheet dimension/relationship
+omission paths and canceled-scan progress label are corrected and rechecked.
+Full lint and five-locale parity pass. Final typecheck passes the unchanged
+110-error baseline and production build passes after all corrections.
+Earlier source-assessment entries below are historical. No source publication or deployment is claimed. See
+[IDOKLAD_MIGRATION.md](IDOKLAD_MIGRATION.md).
+
+## Updated iDoklad workbook proves payment fields; item evidence pending - 2026-11-12
+
+The owner supplies a second XLSX with 22 columns and four records, including
+actual paid amounts and a full-paid payment date. Read-only checks confirm full,
+partial, unpaid and overdue-unpaid cases, valid dates, bounded paid amounts and
+exact net + VAT = gross; all four records have nonzero VAT. Partial payment date
+remains unknown. Buyer identifiers are now present. Original item details and
+VAT rates remain absent. The source card stays disabled pending detailed source
+evidence. The owner confirms only XLSX/CSV export is available. Official Czech
+documentation advertises embedded ISDOC in original PDF invoices; one actual
+provider-generated PDF has been requested to verify the Slovak-account format.
+
+No product code, financial writes, provider access or publication occurred.
+The prepared `feat/invoicing-idoklad-migration` branch still starts at fresh
+master `bae0295f`. See [IDOKLAD_MIGRATION.md](IDOKLAD_MIGRATION.md).
+
+## iDoklad workbook inspected; detailed evidence pending - 2026-11-12
+
+The owner supplied an XLSX invoice-list export. Main read-only inspection finds
+three records (unpaid, partial and overdue unpaid), with native Excel dates and
+a row-5 header. Gross/net totals are present; original items, VAT rates, actual
+paid amounts and payment dates are absent. A generic summary import would lose
+the known net/VAT distinction, so the iDoklad card remains disabled. Matching
+Pohoda XML has been requested; no payment amount or item breakdown is invented.
+
+New branch `feat/invoicing-idoklad-migration` starts from freshly fetched master
+`bae0295f`, preserving existing preview settings and prior documentary notes.
+An independent read-only explorer confirms header/date and preview/commit
+extension points. No product code, owner invoice, provider access, publication or
+deployment changed. See [IDOKLAD_MIGRATION.md](IDOKLAD_MIGRATION.md).
+
+## Fakturoid merge verified; next adapter proposed - 2026-11-12
+
+GitHub confirms owner-merged PR #439 at
+`bae0295f9c071f37eb219b65129bd45ed4b0b080`, with feature head `dfe7c419`.
+This verifies the merge only, not a production deployment. The local preview
+checkout remains on the retained feature branch; unrelated primary work and
+local-only preview files are preserved. The PR-linked Fakturoid changelog entry
+remains outstanding follow-up work.
+
+iDoklad is the remaining agreed source after SuperFaktura, Zaprite and Fakturoid.
+Read-only official-source research identifies XLSX/CSV list exports and direct
+Pohoda XML export. Propose testing both from the same synthetic unpaid/partial/
+paid invoices before choosing the source/payment contract. No iDoklad account,
+export sample, parser implementation, API access or deployment is claimed.
+Start any implementation branch from freshly fetched master after confirming
+scope and obtaining authoritative sample evidence.
+
 ## Fakturoid branch published for owner PR - 2026-11-12
 
 The owner confirms the import works, accepts the local official logo and asks for

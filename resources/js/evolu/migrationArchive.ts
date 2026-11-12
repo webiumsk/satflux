@@ -64,7 +64,7 @@ export async function retainMigrationOriginal(scope: ExpenseReconciliationScope,
 }): Promise<MigrationSource> {
     const { companyId, ownerId, file, bytes } = input;
     if (bytes.length < 1 || bytes.length > MIGRATION_MAX_FILE_BYTES || bytes.length !== file.size || !file.name || file.name.length > 255
-        || (file.name.includes("/") || file.name.includes("\\") || Array.from(file.name).some(char => char.charCodeAt(0) < 32)) || file.type.length > 128 || !["excel", "superfaktura", "zaprite", "fakturoid", "original"].includes(input.sourceKind)) throw new Error("invalid_original");
+        || (file.name.includes("/") || file.name.includes("\\") || Array.from(file.name).some(char => char.charCodeAt(0) < 32)) || file.type.length > 128 || !["excel", "superfaktura", "zaprite", "fakturoid", "idoklad", "original"].includes(input.sourceKind)) throw new Error("invalid_original");
     if (input.sourceKind === "original" && !input.relatedExportId) throw new Error("invalid_original");
     const checksum = await migrationSha256(bytes);
     const chunkCount = Math.ceil(bytes.length / MIGRATION_CHUNK_BYTES);
