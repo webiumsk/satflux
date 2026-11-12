@@ -1,5 +1,26 @@
 # Project state
 
+## Enterprise API read access verified - 2026-11-12
+
+The owner saves a separate TEST API key through the new hidden local capture.
+Main's isolated offline check passes with two bound RCMD documents and zero HTTP.
+Exactly two authenticated TEST GETs then return HTTP200 direct Invoice objects,
+matching retained receipt/client-document/party/process/type identities. Both
+report UNCONFIRMED and C5 OK; independent offline exact-token classification
+confirms C3 TIMEOUT, initially sanitized as OTHER by the frozen probe.
+Actual receiver UI arrival remains owner-confirmed. No new document, ACK, webhook,
+application setting/database or production change occurs.
+
+Capture helper and synthetic tests are independently accepted: main/QA 16 cases,
+security 7 additional checks including real PTY no-echo. The separate private
+GET-only probe passes 136 synthetic checks; QA adds 4 full-schema cases and
+security 10 adversarial cases. These overlap and are not a combined count.
+Original captures/keys and running owner previews remain preserved. Automatic
+delivery-status synchronization is still to be implemented after this verified
+access prerequisite; SAPI processing, AS4/MLS and tax-report states stay separate.
+Evidence: EPOSTMAN_ENTERPRISE_STATUS_PREFLIGHT.md and private review records.
+No push, merge or deployment.
+
 ## Recommand cross-AP arrival confirmed - 2026-11-12
 
 The owner registered the previously unpublished replacement test DIČ. Fresh

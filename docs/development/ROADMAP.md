@@ -1,5 +1,20 @@
 # Development roadmap
 
+## Enterprise status preflight - 2026-11-12
+
+- [x] Prepare and independently review hidden TEST-key capture with separate
+  owner-only storage, no echo/overwrite/network and durable cleanup.
+- [x] Owner saves the key; offline bound-input check passes with zero HTTP.
+- [x] Independently review fixed GET-only private probe and synthetic tests.
+- [x] Read exactly the two existing RCMD receipts: HTTP200 and exact binding pass;
+  UNCONFIRMED, offline-classified C3 TIMEOUT and C5 OK remain separate from
+  confirmed recipient UI arrival.
+- [ ] Implement per-company encrypted Enterprise-key setup and status reading
+  without treating SAPI202 processing as delivery, MLS or tax approval.
+- [ ] Verify authenticated webhooks separately when a public HTTPS callback exists.
+
+No new provider documents/ACKs/webhooks or application/production changes.
+
 ## Replacement Recommand test-network route - 2026-11-12
 
 - [x] Owner registers the replacement test-only DIČ; independently verify fresh

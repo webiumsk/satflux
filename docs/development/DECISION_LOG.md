@@ -1,5 +1,24 @@
 # Development decision log
 
+## 2026-11-12 - Verify Enterprise read access before automatic status integration
+
+The owner creates a TEST API key and enters it through a separately reviewed
+hidden local capture. It must remain separate from existing SAPI credentials,
+use private exclusive storage, and produce no network traffic. After a zero-HTTP
+bound-input check, main alone performs exactly two fixed TEST GETs for retained
+RCMD receipts. Direct Invoice replies must match the authenticated original
+receipt/client-document/party/process/type bindings before reporting finite
+status and MLS fields. Preserve unknown raw values only in encrypted evidence.
+
+Both actual HTTP200 replies report UNCONFIRMED, C3 TIMEOUT (independently classified
+offline from encrypted evidence) and C5 OK. The known recipient UI
+arrival is not contradicted by a missing final MLS receipt. Do not map these
+independent states into automatic tax/business approval. Tests/reviews accept
+capture 16 plus security 7, probe 136 plus QA 4 and security 10; counts overlap.
+This proves read access only. Per-company configuration, synchronization and
+authenticated webhooks remain the next bounded implementation, without new
+invoices, provider registrations, app-data changes or deployment in this preflight.
+
 ## 2026-11-12 - Verify replacement AS4 routing before another sandbox send
 
 The owner registers the replacement synthetic DIČ after authoritative TEST DNS
