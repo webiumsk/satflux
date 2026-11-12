@@ -72,6 +72,14 @@
             class="h-auto w-[7.5rem] max-w-full"
           />
           <img
+            v-else-if="src.id === 'fakturoid'"
+            src="/img/fakturoid.svg"
+            :alt="t(src.labelKey)"
+            width="844"
+            height="226"
+            class="h-auto w-[7.5rem] max-w-full"
+          />
+          <img
             v-else-if="src.id === 'zaprite'"
             src="/img/zaprite.svg"
             :alt="t(src.labelKey)"
@@ -123,6 +131,24 @@
         </label>
         <p v-if="zapriteInfo" class="text-sm" role="status">{{ t("invoicing.migration.zaprite_loaded", { count: zapriteInfo.invoiceCount, ignored: zapriteInfo.ignoredOrders }) }}</p>
         <p v-if="zapriteExcluded" class="text-sm text-amber-900" role="status">{{ t("invoicing.migration.zaprite_excluded", { currencies: zapriteExcluded }) }}</p>
+        <label class="flex items-center gap-2 text-sm text-slate-700">
+          <input v-model="createContacts" type="checkbox" />{{ t("invoicing.import_create_contacts") }}
+        </label>
+      </div>
+      <div v-else-if="selectedSource === 'fakturoid'" class="invoicing-card-pad space-y-4">
+        <h2 class="font-semibold">{{ t("invoicing.migration.fakturoid_title") }}</h2>
+        <p class="text-sm text-slate-600">{{ t("invoicing.migration.fakturoid_hint") }}</p>
+        <label for="fakturoid-export-file" class="invoicing-sf-label">{{ t("invoicing.migration.fakturoid_xml") }}</label>
+        <input id="fakturoid-export-file" type="file" accept=".xml" :disabled="loading" @change="onFileChange" />
+        <p v-if="selectedFile" class="text-sm break-all">{{ selectedFile.name }}</p>
+        <p class="text-sm text-slate-600">{{ t("invoicing.migration.fakturoid_scope") }}</p>
+        <p v-if="fakturoidInfo" class="text-sm" role="status">{{ t("invoicing.migration.fakturoid_loaded", { count: fakturoidInfo.invoiceCount }) }}</p>
+        <div class="space-y-2 rounded-lg border border-slate-200 p-4">
+          <label for="fakturoid-original-files" class="invoicing-sf-label">{{ t("invoicing.migration.originals_title") }}</label>
+          <input id="fakturoid-original-files" type="file" multiple accept=".pdf,.xml,.isdoc" @change="pickOriginals" />
+          <p class="text-xs text-slate-600">{{ t("invoicing.migration.fakturoid_originals", { max: MIGRATION_MAX_ORIGINALS }) }}</p>
+          <ul class="max-h-40 overflow-auto text-sm"><li v-for="(file, index) in originalFiles" :key="index" class="break-all">{{ file.name }}</li></ul>
+        </div>
         <label class="flex items-center gap-2 text-sm text-slate-700">
           <input v-model="createContacts" type="checkbox" />{{ t("invoicing.import_create_contacts") }}
         </label>
@@ -317,7 +343,7 @@
               <caption class="text-left p-2">{{ t("invoicing.migration.all_rows") }}</caption>
               <thead class="sticky top-0 bg-slate-50"><tr><th class="p-2">#</th><th class="p-2">{{ t("invoicing.col_number") }}</th><th class="p-2">{{ t("invoicing.col_total") }}</th><th class="p-2">{{ t("invoicing.migration.paid") }}</th><th class="p-2">{{ t("invoicing.migration.balance") }}</th><th class="p-2">{{ t("invoicing.import_preview_status") }}</th><th v-if="reviewOriginalItems" class="p-2">{{ t("invoicing.migration.items") }}</th></tr></thead>
               <tbody><tr v-for="entry in migrationPreview.rows" :key="entry.row" class="border-t border-slate-100">
-                <td class="p-2">{{ entry.row }}</td><td class="p-2">{{ entry.invoice_number || '-' }}</td>
+                <td class="p-2">{{ entry.row }}</td><td class="p-2">{{ entry.invoice_number || '-' }}<small v-if="selectedSource === 'fakturoid' && entry.invoice" class="block text-slate-600">{{ entry.invoice.client_name }}</small></td>
                 <td class="p-2 whitespace-nowrap">{{ entry.invoice?.total }} {{ entry.invoice?.currency }}</td>
                 <td class="p-2">{{ entry.invoice?.amount_paid }}</td><td class="p-2">{{ entry.invoice?.balance }}</td>
                 <td class="p-2">
@@ -553,6 +579,7 @@ import { invoicingApi } from "../../services/api";
 import type { EvoluDocumentRow, EvoluDocumentLineRow } from "../../evolu/documentMap";
 import { buildPreparedMigrationPreview, buildMigrationPreview, type MigrationPreview } from "../../evolu/migrationValidation";
 import { fetchZapriteMigrationExport } from "../../services/zapriteMigration";
+import { parseFakturoidMigrationExport } from "../../evolu/migrationFakturoid";
 import { parseZapriteMigrationExport } from "../../evolu/migrationZaprite";
 import { importMigrationFile, MigrationImportStorageError } from "../../evolu/migrationImport";
 import { assertMigrationSchemaReady } from "../../evolu/migrationSchema";
@@ -615,7 +642,8 @@ const stepLabels = computed(() => [
   t("invoicing.import_step3"),
 ]);
 
-const mappingReady = computed(() => selectedSource.value === "zaprite" ? !!zapriteInfo.value :
+const mappingReady = computed(() => selectedSource.value === "fakturoid" ? !!fakturoidInfo.value
+  : selectedSource.value === "zaprite" ? !!zapriteInfo.value :
   REQUIRED_DOCUMENT_IMPORT_FIELDS.every(
     (field) => mapping[field] !== null && mapping[field] !== undefined,
   ),
@@ -651,6 +679,7 @@ function sourceIcon(id: DocumentImportSource) {
     isdoc: "ID",
     idoklad: "iD",
     zaprite: "Z",
+    fakturoid: "F",
   };
   return icons[id];
 }
@@ -658,8 +687,8 @@ function sourceIcon(id: DocumentImportSource) {
 function selectSource(src: (typeof DOCUMENT_IMPORT_SOURCES)[number]) {
   if (!src.enabled || importing.value) return;
   if (selectedSource.value !== src.id) {
-    cancelZaprite();
-    selectedFile.value = null; headers.value = []; csvRows.value = []; originalFiles.value = []; zapriteInfo.value = null;
+    cancelZaprite(); fileReadVersion++;
+    selectedFile.value = null; headers.value = []; csvRows.value = []; originalFiles.value = []; zapriteInfo.value = null; fakturoidInfo.value = null;
   }
   selectedSource.value = src.id;
 }
@@ -696,6 +725,7 @@ function pickFile(file: File | undefined) {
   if (!file || importing.value) return;
   sourceSelectionRevision.value++;
   selectedFile.value = file;
+  zapriteInfo.value = null; fakturoidInfo.value = null;
   csvRows.value = [];
   headers.value = [];
   previewRows.value = [];
@@ -732,28 +762,43 @@ function buildFormData(includeMapping: boolean) {
 
 async function loadPreview() {
   if (!selectedFile.value) return;
+  const file = selectedFile.value;
+  const target = companyId.value;
+  const account = auth.user?.id;
+  const source = selectedSource.value;
+  const version = ++fileReadVersion;
+  const operation = ++loadingVersion;
+  const isCurrent = () => !disposed && version === fileReadVersion && file === selectedFile.value
+    && target === companyId.value && account === auth.user?.id && source === selectedSource.value;
   loading.value = true;
   error.value = "";
   try {
     if (localFirst) {
       if (!isSelectedImportFile(selectedFile.value)) {
-        error.value = t("invoicing.import_file_invalid");
+        error.value = importFileInvalidMessage();
         headers.value = [];
         rowCount.value = 0;
         csvRows.value = [];
         return;
       }
-      const file = selectedFile.value;
-      const target = companyId.value;
-      const version = ++fileReadVersion;
-      if (selectedSource.value === "zaprite") {
+      if (source === "fakturoid") {
+        const context = await migrationContext();
+        if (!isCurrent()) return;
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        if (!isCurrent()) return;
+        const parsed = parseFakturoidMigrationExport(bytes, { companyRegistrationNumber: context.registrationNumber });
+        if (!isCurrent()) return;
+        fakturoidInfo.value = parsed; rowCount.value = parsed.rows.length;
+        return;
+      }
+      if (source === "zaprite") {
         const parsed = parseZapriteMigrationExport(new Uint8Array(await file.arrayBuffer()), { excludeUnsupportedCurrencies: excludeUnsupportedCurrencies.value });
-        if (disposed || version !== fileReadVersion || file !== selectedFile.value || target !== companyId.value) return;
+        if (!isCurrent()) return;
         zapriteInfo.value = parsed; rowCount.value = parsed.rows.length;
         return;
       }
       const parsed = await parseDocumentImportFile(file);
-      if (disposed || version !== fileReadVersion || file !== selectedFile.value || target !== companyId.value) return;
+      if (!isCurrent()) return;
       csvRows.value = parsed.rows;
       headers.value = parsed.headers;
       rowCount.value = parsed.rows.length;
@@ -767,6 +812,7 @@ async function loadPreview() {
       row_count?: number;
       suggested_mapping?: Record<string, number | null>;
     }>(companyId.value, buildFormData(false));
+    if (!isCurrent()) return;
     headers.value = data.headers ?? [];
     rowCount.value = data.row_count ?? 0;
     const suggested = data.suggested_mapping ?? {};
@@ -774,36 +820,42 @@ async function loadPreview() {
       mapping[field] = suggested[field] ?? null;
     }
   } catch (rawError) {
+    if (!isCurrent()) return;
     const e = asApiError(rawError);
     error.value = localFirst ? migrationFailureMessage(rawError) : e?.response?.data?.message || t("errors.generic");
     headers.value = [];
   } finally {
-    loading.value = false;
+    if (operation === loadingVersion && isCurrent()) loading.value = false;
   }
 }
 
 async function goToConfirm() {
   if (!selectedFile.value || !mappingReady.value || loading.value) return;
+  const file = selectedFile.value;
+  const key = formKey.value;
+  const operation = ++loadingVersion;
+  const isCurrent = () => !disposed && file === selectedFile.value && formKey.value === key;
   loading.value = true;
   error.value = "";
   try {
     if (localFirst) {
       if (!isSelectedImportFile(selectedFile.value)) {
-        error.value = t("invoicing.import_file_invalid");
+        error.value = importFileInvalidMessage();
         return;
       }
       validateMigrationOriginalFiles(selectedFile.value, originalFiles.value);
       await assertMigrationSchemaReady(evolu!);
-      const key = formKey.value;
       const context = await migrationContext();
-      if (disposed || formKey.value !== key) return;
+      if (!isCurrent()) return;
       const evidence = await scanOriginals(key);
-      if (disposed || formKey.value !== key) return;
+      if (!isCurrent()) return;
       const company = localCompanyApi();
-      const zaprite = selectedSource.value === "zaprite" ? parseZapriteMigrationExport(new Uint8Array(await selectedFile.value.arrayBuffer()), { excludeUnsupportedCurrencies: excludeUnsupportedCurrencies.value }) : null;
+      const provider = selectedSource.value === "fakturoid"
+        ? parseFakturoidMigrationExport(new Uint8Array(await file.arrayBuffer()), { companyRegistrationNumber: context.registrationNumber })
+        : selectedSource.value === "zaprite" ? parseZapriteMigrationExport(new Uint8Array(await file.arrayBuffer()), { excludeUnsupportedCurrencies: excludeUnsupportedCurrencies.value }) : null;
       const currentRows = toAppRows<EvoluDocumentRow & { ownerId?: string }>(await evolu!.loadQuery(allDocumentsQuery));
       const currentLines = toAppRows<EvoluDocumentLineRow & { ownerId?: string }>(await evolu!.loadQuery(allDocumentLinesQuery));
-      const preview = zaprite ? buildPreparedMigrationPreview(zaprite.rows, {
+      const preview = provider ? buildPreparedMigrationPreview(provider.rows, {
         companyId: companyId.value, ownerId: context.ownerId, existing: currentRows, lines: currentLines,
       }) : buildMigrationPreview(csvRows.value, { ...mapping }, {
         companyId: companyId.value, ownerId: context.ownerId,
@@ -813,7 +865,7 @@ async function goToConfirm() {
         existing: currentRows,
         lines: currentLines,
       });
-      if (disposed || formKey.value !== key) return;
+      if (!isCurrent()) return;
       migrationPreview.value = preview;
       originalScanIssues.value = evidence.issues;
       allowSummary.value = false;
@@ -828,15 +880,16 @@ async function goToConfirm() {
       preview?: typeof previewRows.value;
       row_count?: number;
     }>(companyId.value, buildFormData(true));
+    if (!isCurrent()) return;
     previewRows.value = data.preview ?? [];
     rowCount.value = data.row_count ?? 0;
     step.value = 3;
   } catch (rawError) {
+    if (!isCurrent()) return;
     const e = asApiError(rawError);
     error.value = localFirst ? migrationFailureMessage(rawError) : e?.response?.data?.message || t("errors.generic");
   } finally {
-    originalScanProgress.value = null;
-    loading.value = false;
+    if (operation === loadingVersion) { originalScanProgress.value = null; loading.value = false; }
   }
 }
 
@@ -848,7 +901,7 @@ async function runImport() {
   try {
     if (localFirst && evolu) {
       if (!isSelectedImportFile(selectedFile.value)) {
-        error.value = t("invoicing.import_file_invalid");
+        error.value = importFileInvalidMessage();
         return;
       }
       const key = previewKey;
@@ -945,7 +998,7 @@ const originalScanProgress = ref<{ done: number; total: number } | null>(null);
 type OriginalScanIssue = { index: number; filename: string; code: string; reason?: MigrationIsdocRejection };
 const originalScanIssues = ref<OriginalScanIssue[]>([]);
 const allowSummary = ref(false);
-const reviewOriginalItems = computed(() => selectedSource.value === "zaprite" || (selectedSource.value === "superfaktura" && originalFiles.value.length > 0));
+const reviewOriginalItems = computed(() => selectedSource.value === "fakturoid" || selectedSource.value === "zaprite" || (selectedSource.value === "superfaktura" && originalFiles.value.length > 0));
 const summaryRows = computed(() => reviewOriginalItems.value
   ? (migrationPreview.value?.rows.filter(row => row.kind === "ready" && !row.invoice?.structured).length ?? 0)
   : 0);
@@ -955,7 +1008,7 @@ const archiveError = ref("");
 const downloadingSource = ref("");
 const availableSources = computed(() => localFirst
   ? DOCUMENT_IMPORT_SOURCES.filter(source => source.enabled)
-  : DOCUMENT_IMPORT_SOURCES.filter(source => !["superfaktura", "zaprite"].includes(source.id)));
+  : DOCUMENT_IMPORT_SOURCES.filter(source => !["superfaktura", "zaprite", "fakturoid"].includes(source.id)));
 const visibleFields = computed(() => localFirst ? DOCUMENT_IMPORT_FIELD_KEYS
   : DOCUMENT_IMPORT_FIELD_KEYS.filter(field => !["amount_paid", "payment_status", "payment_currency"].includes(field)));
 const formKey = computed(() => JSON.stringify([companyId.value, companyShareRoutingKey(companyId.value), auth.user?.id, selectedSource.value,
@@ -966,8 +1019,10 @@ let previewKey = "";
 let previewOwnerId = "";
 let disposed = false;
 let fileReadVersion = 0;
+let loadingVersion = 0;
 let archiveVersion = 0;
 const waiting = new Set<AbortController>();
+const fakturoidInfo = ref<ReturnType<typeof parseFakturoidMigrationExport> | null>(null);
 const zapriteApiKey = ref("");
 const excludeUnsupportedCurrencies = ref(false);
 const zapriteInfo = ref<ReturnType<typeof parseZapriteMigrationExport> | null>(null);
@@ -976,10 +1031,16 @@ const zapriteExcluded = computed(() => zapriteInfo.value?.excludedCurrencies.map
 let zapriteRequest: AbortController | null = null;
 let zapriteGeneration = 0;
 function cancelZaprite() {
-  zapriteGeneration++;
+  zapriteGeneration++; loadingVersion++;
   zapriteRequest?.abort(); zapriteRequest = null; zapriteApiKey.value = ""; zapriteProgress.value = null; loading.value = false;
 }
+function importFileInvalidMessage() {
+  if (selectedSource.value === "fakturoid") return t("invoicing.migration.error_fakturoid_invalid_export");
+  if (selectedSource.value === "zaprite") return t("invoicing.migration.error_zaprite_invalid_export");
+  return t("invoicing.import_file_invalid");
+}
 function isSelectedImportFile(file: File) {
+  if (selectedSource.value === "fakturoid") return /\.xml$/i.test(file.name) && file.size > 0 && file.size <= 10 * 1024 * 1024;
   return selectedSource.value === "zaprite" ? /\.json$/i.test(file.name) && file.size <= 10 * 1024 * 1024 : isDocumentImportSpreadsheetFile(file);
 }
 async function loadZaprite() {
@@ -1013,7 +1074,7 @@ async function loadZaprite() {
 watch(excludeUnsupportedCurrencies, () => { if (selectedSource.value === "zaprite" && selectedFile.value) void loadPreview(); });
 watch(() => auth.user?.id, () => {
   cancelZaprite(); fileReadVersion++; archiveVersion++;
-  selectedFile.value = null; zapriteInfo.value = null; loading.value = false;
+  selectedFile.value = null; zapriteInfo.value = null; fakturoidInfo.value = null; loading.value = false;
   archives.value = []; archiveError.value = ""; headers.value = []; csvRows.value = []; originalFiles.value = []; step.value = 1;
 }, { flush: "sync" });
 
@@ -1073,6 +1134,7 @@ function migrationMessage(code: string) {
     "unsupported_status", "missing_payment_evidence", "payment_currency_mismatch", "contradictory_payment", "too_many_rows", "too_many_columns", "file_too_large",
     "invalid_csv", "invalid_original", "archive_unverified", "preview_changed", "preview_blocked", "access_unavailable", "nothing_to_import",
     "bank_reconciliation_outcome_unknown", "migration_schema_outdated", "contact_write_failed", "document_readback_failed", "document_write_failed", "structured_conflict", "summary_confirmation_required",
+    "fakturoid_invalid_export", "fakturoid_invalid_invoice", "fakturoid_totals", "fakturoid_payment_evidence", "fakturoid_unsupported", "fakturoid_company_mismatch", "fakturoid_unsupported_currency", "fakturoid_limit_exceeded",
     "zaprite_invalid_input", "zaprite_auth_failed", "zaprite_rate_limited", "zaprite_unavailable", "zaprite_response_invalid", "zaprite_limit_exceeded",
     "zaprite_cancelled", "zaprite_invalid_export", "zaprite_unsupported_currency", "zaprite_payment_evidence", "zaprite_totals", "zaprite_unsupported_status", "zaprite_invalid_invoice", "zaprite_incomplete_export",
     "migration_isdoc_missing", "migration_isdoc_invalid", "migration_isdoc_unsupported", "migration_isdoc_ambiguous", "migration_isdoc_unreadable"];
@@ -1133,7 +1195,7 @@ watch(formKey, () => {
   if (step.value === 3 && !importing.value) step.value = 2;
 }, { flush: "sync" });
 watch(() => [companyId.value, companyShareRoutingKey(companyId.value)], () => {
-  cancelZaprite(); loading.value = false; zapriteInfo.value = null;
+  cancelZaprite(); loading.value = false; zapriteInfo.value = null; fakturoidInfo.value = null;
   fileReadVersion++; archiveVersion++; archives.value = []; migrationPreview.value = null;
   selectedFile.value = null; originalFiles.value = []; headers.value = []; csvRows.value = []; step.value = 1; importResult.value = null;
   if (localFirst) void refreshArchives();

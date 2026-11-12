@@ -21,13 +21,16 @@ vi.mock("@/evolu/bankReconciliation", async importOriginal => ({
     awaitWorkerOutcome: (_evolu: unknown, start: (complete: (value: unknown) => void, unknown: (e?: unknown) => void) => void) => new Promise((resolve, reject) => start(resolve, reject)),
     awaitBankMutation: async (_evolu: unknown, mutate: (done: () => void) => { ok: boolean }) => new Promise<boolean>(resolve => { const result = mutate(() => resolve(true)); if (!result.ok) resolve(false); }),
 }));
+import fakturoidFixture from "./fixtures/migration-fakturoid/export-unpaid.xml?raw";
+import fakturoidPaymentsFixture from "./fixtures/migration-fakturoid/export-payments.xml?raw";
 import { importMigrationFile } from "@/evolu/migrationImport";
 import { assertMigrationSchemaReady } from "@/evolu/migrationSchema";
 import { logDocumentEvent } from "@/evolu/documentEventLog";
 import { ContactImportWriteError, resolveLocalContact } from "@/evolu/documentImportLocal";
 import { readMigrationIsdocEvidence } from "@/evolu/migrationIsdocPdf";
 import type { MigrationStructuredInvoice } from "@/evolu/migrationIsdoc";
-import { buildMigrationPreview } from "@/evolu/migrationValidation";
+import { buildMigrationPreview, buildPreparedMigrationPreview } from "@/evolu/migrationValidation";
+import { parseFakturoidMigrationExport } from "@/evolu/migrationFakturoid";
 const companyId = CompanyId.orThrow(createIdFromString("migration-import-test-company"));
 const mapping = { invoice_number: 0, client_name: 1, issue_date: 2, due_date: 3, amount: 4, currency: 5, paid_at: 6, amount_paid: 7, payment_status: 8 };
 const row = (number: string, paid = "0", state = "unpaid") => [number, "Example Customer", "2025-01-01", "2025-01-15", "100.00", "EUR", "", paid, state];
@@ -346,5 +349,109 @@ describe("Zaprite migration custody and commit", () => {
         await importMigrationFile(f.evolu as never, input);
         await expect(importMigrationFile(f.evolu as never, input)).rejects.toThrow("nothing_to_import");
         expect(f.tables.document).toHaveLength(2); expect(f.tables.documentLine).toHaveLength(4); expect(f.tables.migrationSource).toHaveLength(1);
+    });
+});
+
+
+function fakturoidInput(f: ReturnType<typeof fixture>, xml = fakturoidFixture) {
+    const bytes = new TextEncoder().encode(xml);
+    return { ...f.input, sourceKind: "fakturoid", bytes,
+        file: { name: "fakturoid-export.xml", type: "application/xml", size: bytes.length } as File,
+        rows: [] as string[][], mapping: {} };
+}
+describe("Fakturoid source binding and immutable custody", () => {
+    it("imports verified detailed unpaid rows and retains exactly the source XML", async () => {
+        const f = fixture(); const input = fakturoidInput(f);
+        const result = await importMigrationFile(f.evolu as never, input);
+        expect(result.imported).toBe(2); expect(f.rejected).toEqual([]);
+        expect(f.tables.document).toHaveLength(2); expect(f.tables.documentLine).toHaveLength(3);
+        expect(f.tables.document[0]).toMatchObject({ number: "FKT-TEST-1", subtotal: "100.00", taxTotal: "23.00", total: "123.00", amountPaid: "0.00", status: "issued", paidAt: null });
+        expect(f.tables.document[1]).toMatchObject({ subtotal: "120.00", taxTotal: "25.00", total: "145.00" });
+        const { readMigrationOriginal } = await import("@/evolu/migrationArchive");
+        const original = await readMigrationOriginal(f.evolu as never, companyId, "owner-a", result.source.id);
+        expect(original.source.sourceKind).toBe("fakturoid");
+        expect(Array.from(original.bytes)).toEqual(Array.from(input.bytes));
+    });
+    it("refuses another issuer or a missing destination registration before any custody or invoice write", async () => {
+        for (const registration of ["00012346", null]) {
+            const f = fixture(); f.tables.company[0].registrationNumber = registration;
+            await expect(importMigrationFile(f.evolu as never, fakturoidInput(f))).rejects.toThrow("preview_blocked");
+            expect(f.writes).toEqual([]);
+        }
+    });
+    it("stops when the issuer binding changes after archival and resumes without duplicating the archive", async () => {
+        const f = fixture();
+        const input = { ...fakturoidInput(f), onArchiveProgress: () => { f.tables.company[0].registrationNumber = "00012346"; } };
+        await expect(importMigrationFile(f.evolu as never, input)).rejects.toThrow("preview_changed");
+        expect(f.tables.document).toHaveLength(0); expect(f.tables.migrationSource).toHaveLength(1);
+        f.tables.company[0].registrationNumber = "00012345";
+        const result = await importMigrationFile(f.evolu as never, fakturoidInput(f));
+        expect(result.imported).toBe(2); expect(f.tables.migrationSource).toHaveLength(1);
+    });
+    it("ignores injected caller rows and snapshots the source before an asynchronous caller mutation", async () => {
+        const f = fixture(); const input = fakturoidInput(f); const expected = new Uint8Array(input.bytes);
+        input.rows = [row("INJECTED", "999")]; input.assertCurrent = () => { input.bytes.fill(0); };
+        const result = await importMigrationFile(f.evolu as never, input);
+        expect(result.imported).toBe(2); expect(f.tables.document.some(doc => doc.number === "INJECTED")).toBe(false);
+        const { readMigrationOriginal } = await import("@/evolu/migrationArchive");
+        const original = await readMigrationOriginal(f.evolu as never, companyId, "owner-a", result.source.id);
+        expect(Array.from(original.bytes)).toEqual(Array.from(expected));
+    });
+    it("leaves private tokens and notes in exact custody rather than invoice or preview projections", async () => {
+        const f = fixture();
+        const sentinel = "SYNTHETIC-PRIVATE-WEBINVOICE-TOKEN";
+        const xml = fakturoidFixture.replace("<token />", `<token>${sentinel}</token>`)
+            .replace("<private_note />", `<private_note>${sentinel}</private_note>`);
+        expect(xml).toContain(sentinel);
+        const input = fakturoidInput(f, xml);
+        const result = await importMigrationFile(f.evolu as never, input);
+        expect(JSON.stringify(result.preview)).not.toContain(sentinel);
+        expect(JSON.stringify(f.tables.document)).not.toContain(sentinel);
+        expect(JSON.stringify(f.tables.documentLine)).not.toContain(sentinel);
+        const { readMigrationOriginal } = await import("@/evolu/migrationArchive");
+        const original = await readMigrationOriginal(f.evolu as never, companyId, "owner-a", result.source.id);
+        expect(new TextDecoder().decode(original.bytes)).toBe(xml);
+    });
+    it("does not write duplicate records on a repeated native export", async () => {
+        const f = fixture(); const input = fakturoidInput(f);
+        await importMigrationFile(f.evolu as never, input);
+        await expect(importMigrationFile(f.evolu as never, input)).rejects.toThrow("nothing_to_import");
+        expect(f.tables.document).toHaveLength(2); expect(f.tables.documentLine).toHaveLength(3); expect(f.tables.migrationSource).toHaveLength(1);
+    });
+    it("preserves genuine partial/full payment semantics, unknown dates and exact original custody", async () => {
+        const f = fixture(); const input = fakturoidInput(f, fakturoidPaymentsFixture);
+        const parsed = parseFakturoidMigrationExport(input.bytes, { companyRegistrationNumber: "00012345" });
+        const preview = buildPreparedMigrationPreview(parsed.rows, { companyId, ownerId: "owner-a", existing: [] });
+        expect(preview.totals).toEqual([{ currency: "EUR", count: 4, total: "514.00", paid: "173.00", balance: "341.00" }]);
+        const result = await importMigrationFile(f.evolu as never, { ...input, expectedPreview: preview });
+        expect(result.imported).toBe(4); expect(f.rejected).toEqual([]);
+        expect(f.tables.document).toHaveLength(4); expect(f.tables.documentLine).toHaveLength(5);
+        expect(f.tables.document.find(doc => doc.number === "FKT-TEST-3")).toMatchObject({
+            total: "123.00", amountPaid: "50.00", status: "issued", paidAt: null,
+        });
+        expect(f.tables.document.find(doc => doc.number === "FKT-TEST-4")).toMatchObject({
+            total: "123.00", amountPaid: "123.00", status: "paid", paidAt: "2026-10-16",
+        });
+        const { readMigrationOriginal } = await import("@/evolu/migrationArchive");
+        const original = await readMigrationOriginal(f.evolu as never, companyId, "owner-a", result.source.id);
+        expect(Array.from(original.bytes)).toEqual(Array.from(input.bytes));
+        await expect(importMigrationFile(f.evolu as never, input)).rejects.toThrow("nothing_to_import");
+        expect(f.tables.document).toHaveLength(4); expect(f.tables.documentLine).toHaveLength(5); expect(f.tables.migrationSource).toHaveLength(1);
+    });
+    it("conflicts on changed payment evidence for a completed import without overwriting it", async () => {
+        const f = fixture();
+        await importMigrationFile(f.evolu as never, fakturoidInput(f));
+        const writes = f.writes.length;
+        const xml = fakturoidFixture.replace("<paid_amount>0.0</paid_amount>", "<paid_amount>50.0</paid_amount>");
+        await expect(importMigrationFile(f.evolu as never, fakturoidInput(f, xml))).rejects.toThrow("preview_blocked");
+        expect(f.writes).toHaveLength(writes);
+        expect(f.tables.document[0]).toMatchObject({ amountPaid: "0.00", status: "issued", paidAt: null });
+        expect(f.tables.migrationSource).toHaveLength(1);
+    });
+    it("blocks the whole batch when any native payment evidence is unsupported", async () => {
+        const f = fixture();
+        const xml = fakturoidFixture.replace("<paid_amount>0.0</paid_amount>", "<paid_amount>150.0</paid_amount>");
+        await expect(importMigrationFile(f.evolu as never, fakturoidInput(f, xml))).rejects.toThrow("preview_blocked");
+        expect(f.writes).toEqual([]);
     });
 });

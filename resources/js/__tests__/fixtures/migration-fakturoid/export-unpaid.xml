@@ -1,0 +1,173 @@
+<?xml version='1.0' encoding='utf-8'?>
+<invoices>
+  <invoice>
+    <id>1001</id>
+    <proforma>false</proforma>
+    <partial_proforma>false</partial_proforma>
+    <tax_document>false</tax_document>
+    <number>FKT-TEST-1</number>
+    <variable_symbol>2026001</variable_symbol>
+    <your_name>Synthetic Exporter s.r.o.</your_name>
+    <your_street>Example street 1</your_street>
+    <your_street2 />
+    <your_city>Example City</your_city>
+    <your_zip>00000</your_zip>
+    <your_country>SK</your_country>
+    <your_registration_no>00012345</your_registration_no>
+    <your_vat_no>SK0000000000</your_vat_no>
+    <client_name>Synthetic Buyer 1</client_name>
+    <client_street>Example lane 2</client_street>
+    <client_street2 />
+    <client_city>Example Town</client_city>
+    <client_zip>00001</client_zip>
+    <client_country>SK</client_country>
+    <client_registration_no>00054321</client_registration_no>
+    <client_vat_no>SK0000000001</client_vat_no>
+    <subject_custom_id />
+    <subject_id>2001</subject_id>
+    <generator_id />
+    <related_id />
+    <correction>false</correction>
+    <correction_id />
+    <token />
+    <status>open</status>
+    <order_number />
+    <issued_on>2026-10-01</issued_on>
+    <taxable_fulfillment_due>2026-10-01</taxable_fulfillment_due>
+    <due>14</due>
+    <due_on>2026-10-15</due_on>
+    <sent_at />
+    <paid_on />
+    <reminder_sent_at />
+    <accepted_at />
+    <cancelled_at />
+    <note />
+    <footer_note />
+    <private_note />
+    <tags />
+    <bank_account />
+    <iban />
+    <swift_bic />
+    <payment_method>bank</payment_method>
+    <payment_method_human>Bank transfer</payment_method_human>
+    <currency>EUR</currency>
+    <exchange_rate>1.0</exchange_rate>
+    <language>sk</language>
+    <transferred_tax_liability>false</transferred_tax_liability>
+    <eu_electronic_service>false</eu_electronic_service>
+    <vat_price_mode>without_vat</vat_price_mode>
+    <supply_code />
+    <subtotal>100.0</subtotal>
+    <total>123.0</total>
+    <rounding_adjustment>0.0</rounding_adjustment>
+    <native_subtotal>100.0</native_subtotal>
+    <native_total>123.0</native_total>
+    <remaining_amount>123.0</remaining_amount>
+    <remaining_native_amount>123.0</remaining_native_amount>
+    <paid_amount>0.0</paid_amount>
+    <lines>
+      <line>
+        <id>3011</id>
+        <name>Synthetic service 1</name>
+        <quantity>1.0</quantity>
+        <unit_name>h</unit_name>
+        <unit_price>100.0</unit_price>
+        <vat_rate>23</vat_rate>
+        <unit_price_without_vat>100.0</unit_price_without_vat>
+        <unit_price_with_vat>123.0</unit_price_with_vat>
+      </line>
+    </lines>
+    <created_at>2026-10-01T10:00:00+02:00</created_at>
+    <updated_at>2026-10-01T10:00:00+02:00</updated_at>
+  </invoice>
+  <invoice>
+    <id>1002</id>
+    <proforma>false</proforma>
+    <partial_proforma>false</partial_proforma>
+    <tax_document>false</tax_document>
+    <number>FKT-TEST-2</number>
+    <variable_symbol>2026002</variable_symbol>
+    <your_name>Synthetic Exporter s.r.o.</your_name>
+    <your_street>Example street 1</your_street>
+    <your_street2 />
+    <your_city>Example City</your_city>
+    <your_zip>00000</your_zip>
+    <your_country>SK</your_country>
+    <your_registration_no>00012345</your_registration_no>
+    <your_vat_no>SK0000000000</your_vat_no>
+    <client_name>Synthetic Buyer 2</client_name>
+    <client_street>Example lane 2</client_street>
+    <client_street2 />
+    <client_city>Example Town</client_city>
+    <client_zip>00001</client_zip>
+    <client_country>SK</client_country>
+    <client_registration_no>00054321</client_registration_no>
+    <client_vat_no>SK0000000001</client_vat_no>
+    <subject_custom_id />
+    <subject_id>2002</subject_id>
+    <generator_id />
+    <related_id />
+    <correction>false</correction>
+    <correction_id />
+    <token />
+    <status>overdue</status>
+    <order_number />
+    <issued_on>2026-10-01</issued_on>
+    <taxable_fulfillment_due>2026-10-01</taxable_fulfillment_due>
+    <due>14</due>
+    <due_on>2026-10-15</due_on>
+    <sent_at />
+    <paid_on />
+    <reminder_sent_at />
+    <accepted_at />
+    <cancelled_at />
+    <note />
+    <footer_note />
+    <private_note />
+    <tags />
+    <bank_account />
+    <iban />
+    <swift_bic />
+    <payment_method>bank</payment_method>
+    <payment_method_human>Bank transfer</payment_method_human>
+    <currency>EUR</currency>
+    <exchange_rate>1.0</exchange_rate>
+    <language>sk</language>
+    <transferred_tax_liability>false</transferred_tax_liability>
+    <eu_electronic_service>false</eu_electronic_service>
+    <vat_price_mode>without_vat</vat_price_mode>
+    <supply_code />
+    <subtotal>120.0</subtotal>
+    <total>145.0</total>
+    <rounding_adjustment>0.0</rounding_adjustment>
+    <native_subtotal>120.0</native_subtotal>
+    <native_total>145.0</native_total>
+    <remaining_amount>145.0</remaining_amount>
+    <remaining_native_amount>145.0</remaining_native_amount>
+    <paid_amount>0.0</paid_amount>
+    <lines>
+      <line>
+        <id>3021</id>
+        <name>Synthetic service 1</name>
+        <quantity>2.0</quantity>
+        <unit_name>h</unit_name>
+        <unit_price>50.0</unit_price>
+        <vat_rate>23</vat_rate>
+        <unit_price_without_vat>50.0</unit_price_without_vat>
+        <unit_price_with_vat>61.5</unit_price_with_vat>
+      </line>
+      <line>
+        <id>3022</id>
+        <name>Synthetic service 2</name>
+        <quantity>1.0</quantity>
+        <unit_name>h</unit_name>
+        <unit_price>20.0</unit_price>
+        <vat_rate>10</vat_rate>
+        <unit_price_without_vat>20.0</unit_price_without_vat>
+        <unit_price_with_vat>22.0</unit_price_with_vat>
+      </line>
+    </lines>
+    <created_at>2026-10-01T10:00:00+02:00</created_at>
+    <updated_at>2026-10-01T10:00:00+02:00</updated_at>
+  </invoice>
+</invoices>

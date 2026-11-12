@@ -10,9 +10,11 @@ import { logDocumentEvent } from "./documentEventLog";
 import { retainMigrationOriginal, validateMigrationOriginalFiles, type MigrationSource } from "./migrationArchive";
 import { buildPreparedMigrationPreview, buildMigrationPreview, migrationFingerprint, migrationLineMatches, migrationNumberKey, sameMigrationPreview, type MigrationPreview } from "./migrationValidation";
 import { migrationStructuredLinePatches, migrationStructuredLinesMatch } from "./migrationItemEvidence";
+import { parseFakturoidMigrationExport } from "./migrationFakturoid";
 import { parseZapriteMigrationExport } from "./migrationZaprite";
 import type { MigrationStructuredInvoice } from "./migrationIsdoc";
 import { DocumentId, DocumentLineId, type CompanyId, type InvoicingLocalSchema } from "./schema";
+import type { EvoluDocumentLineRow } from "./documentMap";
 import type { EvoluContactRow } from "./contactMap";
 import { syncNumberSeriesCounterFromDocuments } from "./numberSeriesCrud";
 import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
@@ -44,7 +46,7 @@ export async function importMigrationFile(evolu: Evolu<InvoicingLocalSchema>, in
     running.add(evolu);
     let phase: MigrationImportPhase = "preflight";
     try {
-        if (input.sourceKind === "zaprite") {
+        if (input.sourceKind === "zaprite" || input.sourceKind === "fakturoid") {
             // Parsing and custody share one private byte snapshot across all awaits.
             if (input.bytes.byteLength !== input.file.size || input.bytes.byteLength > 10 * 1024 * 1024) throw new Error("invalid_original");
             input = { ...input, bytes: new Uint8Array(input.bytes) };
@@ -87,18 +89,23 @@ export async function importMigrationFile(evolu: Evolu<InvoicingLocalSchema>, in
                     .filter(company => company.id === input.companyId && Reflect.get(company, "ownerId") === input.ownerId);
                 return companies.length === 1 ? companies[0].registrationNumber ?? null : null;
             };
-            const companyRegistrationNumber = structuredInvoices.length ? currentRegistration() : null;
+            const requiresIssuer = structuredInvoices.length > 0 || input.sourceKind === "fakturoid";
+            const companyRegistrationNumber = requiresIssuer ? currentRegistration() : null;
             const assertTarget = () => {
                 input.assertCurrent();
                 assertExpenseCompanyOwner(scope, input.companyId, input.ownerId);
-                if (structuredInvoices.length && currentRegistration() !== companyRegistrationNumber) throw new Error("preview_changed");
+                if (requiresIssuer && currentRegistration() !== companyRegistrationNumber) throw new Error("preview_changed");
             };
-            const freshPreview = () => zaprite ? buildPreparedMigrationPreview(zaprite.rows, {
-                ...input, existing: scope.context.documents, lines: toAppRows(guarded.getQueryRows(allDocumentLinesQuery)),
-            }) : buildMigrationPreview(input.rows, input.mapping, {
-                ...input, companyRegistrationNumber, structuredInvoices, existing: scope.context.documents,
-                lines: toAppRows(guarded.getQueryRows(allDocumentLinesQuery)),
-            });
+            // Reparse the private source snapshot at commit against the current
+            // issuer. Subsequent writes revalidate that binding through assertTarget.
+            const providerRows = input.sourceKind === "fakturoid"
+                ? parseFakturoidMigrationExport(input.bytes, { companyRegistrationNumber }).rows : zaprite?.rows;
+            const freshPreview = () => {
+                const options = { ...input, existing: scope.context.documents,
+                    lines: toAppRows<EvoluDocumentLineRow & { ownerId?: string }>(guarded.getQueryRows(allDocumentLinesQuery)) };
+                return providerRows ? buildPreparedMigrationPreview(providerRows, options)
+                    : buildMigrationPreview(input.rows, input.mapping, { ...options, companyRegistrationNumber, structuredInvoices });
+            };
             let preview = freshPreview();
             if (input.expectedPreview && !sameMigrationPreview(input.expectedPreview, preview)) throw new Error("preview_changed");
             if (preview.invalid || preview.conflict) throw new Error("preview_blocked");

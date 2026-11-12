@@ -37,7 +37,7 @@ export const REQUIRED_DOCUMENT_IMPORT_FIELDS: DocumentImportFieldKey[] = [
   'amount',
 ];
 
-export type DocumentImportSource = 'superfaktura' | 'excel' | 'money' | 'pohoda' | 'isdoc' | 'idoklad' | 'zaprite';
+export type DocumentImportSource = 'superfaktura' | 'excel' | 'money' | 'pohoda' | 'isdoc' | 'idoklad' | 'zaprite' | 'fakturoid';
 
 export const DOCUMENT_IMPORT_SOURCES: {
   id: DocumentImportSource;
@@ -45,6 +45,7 @@ export const DOCUMENT_IMPORT_SOURCES: {
   labelKey: string;
 }[] = [
   { id: 'superfaktura', enabled: true, labelKey: 'invoicing.migration.source_superfaktura' },
+  { id: 'fakturoid', enabled: true, labelKey: 'invoicing.migration.source_fakturoid' },
   { id: 'zaprite', enabled: true, labelKey: 'invoicing.migration.source_zaprite' },
   { id: 'excel', enabled: true, labelKey: 'invoicing.import_source_excel' },
   { id: 'money', enabled: false, labelKey: 'invoicing.import_source_money' },
