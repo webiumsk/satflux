@@ -23,7 +23,7 @@ shared original-custody safeguards.
   `https://testpostman.slovakodata.com`; never send credentials through redirects.
   JSON client-credentials authentication and `/sapi` paths follow the current
   [public OpenAPI](https://postman.slovakodata.com/openapi/sapi.json), fetched on
-  the evidence date. No provider operation or demo credential is used for tests.
+  the evidence date. Initial contract tests use synthetic provider replies.
 - Bind receipt identity to company, provider origin/environment and participant.
   A switch cannot rebind old receipt identifiers; concurrent polls cannot duplicate
   expenses. Pagination must finish or fail visibly, not silently lose later pages.
@@ -61,8 +61,9 @@ shared original-custody safeguards.
 No other repository is changed. No new dependency is added. The original local
 vendor directory was older than the committed lock, so a separate test copy was
 installed from that lock; existing application dependencies were not modified.
-No real funds, production database, customer credential or provider account is
-used. PHP tests use a network-disabled container, SQLite in-memory, per-container
+Initial local checks used synthetic identities and network-disabled provider
+replies; actual sandbox operations are recorded below. PHP regression tests use a
+network-disabled container, SQLite in-memory, per-container
 temporary storage and isolated test settings. Frontend tests use synthetic data.
 
 ## Production handoff gates
@@ -110,7 +111,175 @@ problem is resolved. Do not promise unlimited local document sizes or automatic
 expiry of unresolved originals. The separate provider archive does not constitute
 proof that this copy is recoverable until actual account terms/export are verified.
 
+## Manual localhost preview
+
+The isolated preview runs at `http://127.0.0.1:8082`. Its own PHP/nginx/Vite project,
+SQLite database, application key, sessions and browser origin are independent of
+the migration preview on `localhost:8080`. Vite is internal and same-origin proxied;
+relay sync is disabled. This preview uses the local feature worktree with the
+reviewed signed-total and receiving-settings projection fixes.
+
+From the main checkout, retrieve the synthetic account credentials in your local
+terminal with `bash storage/app/private/.env.efaktura-local/show-login.sh`. The
+helper reads an owner-only file; password values do not belong in this runbook.
+Use the normal legacy-account login and complete the recovery-phrase enrollment.
+The normal account then uses its phrase for future sign-in or device unlocking.
+Import the server company through **Import from server** on Invoicing, select
+**eFaktura sandbox**, then open **Expenses > Incoming e-invoices**. Review/download
+the originals and choose **Import to expenses**. Two recovered copies of the
+owner's earlier actually received Invoice/CreditNote are initially pending for
+this separate browser handoff; their provider ACK provenance is retained.
+
+For a fresh Recommand TEST document, use company settings > eFaktura > **Download
+incoming now** to poll the provider, then refresh the Expenses inbox. The inbox
+refresh button only reloads staged items. This manual preview has no scheduler.
+The sandbox connection is already configured from the protected local input.
+
+The private lifecycle helper is
+`bash storage/app/private/.env.efaktura-local/infrastructure/preview.sh start`
+or `stop`. Seed tooling is exclusive to a fresh preview database. Configuration,
+the pristine pre-QA snapshot and private evidence live under
+`storage/app/private/.env.efaktura-local`; keys, fixtures and login input use
+owner-only `.env.*` files. Normal-UI QA and the pristine human handoff are recorded
+below.
+
 ## Verification record
+
+### Normal localhost UI and inbox projection correction - 2026-11-12
+
+Independent QA exercised the actual loopback application without API mocks.
+Normal consent, password login and recovery enrollment succeeded. Continuation
+used the existing authenticated profile and ordinary phrase unlock, then normal
+server-company import. Two pending recovered originals were viewed/downloaded and
+imported through actual HTTP routes. Digests, signed totals and currency matched
+the independent recovery manifest. Two expenses and attachments retained exact
+original bytes after reload. Guest 401, missing-CSRF 419, foreign-company 403/404 and
+duplicate confirmations passed. The accepted run recorded zero page errors and
+zero blocked external requests. Full Chrome restart was not repeated in this run
+and requires normal phrase unlock; earlier custody restart evidence is separate.
+Backend network traffic was not captured and provider polling was not invoked.
+
+The inbox initializer used allCompaniesQuery, whose intended lightweight
+projection excludes appSettingsJson. The two-line fix reuses the existing
+allCompaniesDetailQuery. Global list projection, ownership, company selection and
+generation guards are retained. A realistic summary/detail regression fails on
+old source. All 41 tests in 5 files, scoped lint, typecheck ratchet (110 inherited, no new errors),
+five-locale parity, widget check and isolated-output production build pass.
+Independent security accepts runtime SHA256
+`98d72bd17dc6ffc47389d8f0bcefa34b491b117090a9b7bdc3eaf792eb64c03c`
+and test SHA256
+`c1a0c1ae1adc8e338b3be48fac10ff61d2806b43adee53f998aef472dd87236c`.
+
+Preview config reuses the project's Vue absolute-image handling and narrowly maps
+observed public font/SQLite assets to existing allowed dependency paths. Private
+paths remain blocked. Independent security accepts startup/seed/configuration
+and normal-UI helpers. The seed requires the exact empty preview database and
+runs without networking. After QA, its post-test database was retained, only
+preview PHP stopped, the pristine snapshot restored, own sessions/cache cleared
+and PHP restarted. Human handoff again has two pending originals and needs its
+own recovery enrollment. Private evidence is under coordinator
+`storage/app/private/.env.efaktura-local/state`.
+
+### Actual cross-AP CreditNote and signed-total fix - 2026-11-12
+
+The owner's Recommand TEST CreditNote passed actual SAPI listing/detail/XML and
+the real poller in a fresh persistent isolated database: imported1, acknowledged1,
+failed0. Before ACK, the reviewed guard independently verified the CreditNote root,
+namespace and signed amount inversion from direct root PayableAmount, together
+with committed encrypted custody and synchronized recovery bytes. Its original
+BillingReference exactly matches the prior test invoice. The reference remains
+in XML; structured expense linking is not implemented.
+
+Independent Python Decimal/XML expectations verified a negative local expense.
+Actual Chrome/Evolu import, interrupted confirmation/retry, reload and full browser
+restart preserved one expense, one attachment and identical original XML bytes.
+The actual backend markImported transition passed twice after protected digest
+and negative-total proof, leaving one imported receipt and cleared staging. Browser
+HTTP was intercepted; provider and backend service transitions were actual.
+
+Inspection found that negative-valued CreditNotes were incorrectly forced to
+negative expenses. The one-line parser fix now subtracts the signed source amount
+from zero. Six literal regression cases cover positive/negative/zero CreditNotes,
+negative invoices and positive/negative TaxInclusive fallback. Author parser plus
+existing ePostman tests pass26tests/174assertions; scoped Pint/PHPStan and whitespace
+pass. Independent QA passes11tests/25assertions and independently reproduces the
+two old negative-CreditNote failures. Security separately accepts six synthetic
+parser cases. Reparse of the actual CreditNote with corrected source also passes.
+[Peppol BIS Billing sections5.6 and5.6.1](https://docs.peppol.eu/poacc/billing/3.0/bis/)
+
+Reviewed parser SHA256 is
+`83334960f4b0433677ed1e565d3433267b03b497084f45e80eceb6a70d32e3e2`;
+regression test SHA256 is
+`7c79a97b5a59c74b32169f9a762f9a0ae0c6ef3fd3ca5d3425e6b393cbb89499`.
+The QA-tested pre-Pint test differs only in one brace/newline formatting change,
+independently reconstructed and accepted. The feature worktree has no Graphify
+graph; the primary graph was queried and no unrelated graph was rebuilt.
+
+Private anonymous evidence, encrypted original recovery bytes, separate test key
+and a private actual-browser profile archive are retained in coordinator
+`storage/app/private/reviews/epostman-inbound/live-creditnote`. The plaintext detail
+fixture was removed after verification; dedicated Vite stopped. The same bounded
+background browser diagnostics from the invoice test remain recorded by QA.
+Source is local `f01f7d5b` plus the two-file signed-total correction and this runbook.
+Provider archive/export/contract, production activation and deployment remain
+outstanding. Existing normal localhost preview and production were untouched.
+
+### Actual cross-AP sandbox invoice and local handoff - 2026-11-12
+
+The owner created a Recommand playground explicitly connected to Peppol Test
+Network and sent one synthetic Invoice to the existing ePostman participant.
+The actual SapiSkClient listed one receipt and retrieved its original XML. The
+unchanged EfakturaInboundService then received it into isolated persistent SQLite:
+imported=1, acknowledged=1, failed=0. Before the real provider ACK, reviewed test
+middleware verified encrypted custody through an independent SQLite connection
+and synchronized an encrypted recovery copy. A new backend process confirmed
+the pending receipt and encrypted original remained available.
+
+Independent actual Chrome/Evolu QA imported that original with matching amount
+and currency, one expense and one attachment. An intercepted first confirmation
+returned503; retry preserved stable identities without duplicates. Exact original
+bytes survived reload and full Chrome restart, with six OPFS files observed.
+After the protected browser proof matched the receipt digest, the actual backend
+markImported service succeeded twice, leaving one imported receipt, zero pending
+items and cleared server staging. Browser HTTP transport was intercepted; real
+provider operations and backend service transitions were exercised separately.
+Existing accepted tests supply authenticated API/CSRF/tenant-route coverage.
+
+Browser QA also recorded six background error events reproduced with synthetic
+data: three optional classic OPFS proxy NetworkErrors and three empty-source
+events that remain unclassified. Three external requests were blocked without
+retaining their URLs. Every required SAHPool persistence assertion passed. These
+diagnostics remain recorded separately from the bounded receiving/import result.
+The dedicated Vite server was stopped, a private browser-profile recovery archive
+was retained with encrypted original recovery bytes and the separate test key,
+and the temporary plaintext detail fixture was removed after verification.
+
+Independent security accepted the helpers after owner-only `.env.*` sensitive
+artifact naming and key/directory synchronization corrections. Persistent test
+SQLite uses synchronous=FULL, a separate retained key, readonly source/vendor
+mounts, null logging and a fixed sandbox HTTP allowlist. Credentials, original
+content, participant/document IDs and browser owner material are absent from
+anonymous reports. Private evidence is retained in the coordinator checkout at
+`storage/app/private/reviews/epostman-inbound/live-sandbox`.
+
+This invoice test used local `f01f7d5b`; no product code, existing localhost preview,
+Git publication or deployment changed during that test. One actual Invoice was
+verified. The subsequent CreditNote test and parser correction are recorded above;
+provider archive/export/contract and production activation remain outstanding.
+The earlier direct DNS NXDOMAIN observations below did not establish the cause
+of the initial failure and are superseded by actual cross-AP delivery.
+
+### Earlier discovery observations
+
+On 2026-11-12 the existing isolated read-only probe again authenticated and listed
+one empty page. After the owner's Recommand send returned recipient-not-found,
+direct standard Peppol TEST SMK DNS checks returned NXDOMAIN for both the legacy
+MD5/CNAME and current SHA-256/base32/NAPTR participant encodings. The test-zone SOA
+control succeeded. No identifiers or credentials are retained in this record.
+External TEST discovery must be investigated with the sandbox Peppol registration;
+the provider's internal state and Recommand playground network selection remain
+unverified. No provider registration, sending, ACK or import was performed by the
+agent during these checks.
 
 Actual read-only ePostman sandbox probe on 2026-11-10: authentication succeeded
 and the real receive listing returned one page with zero documents. No XML detail,
@@ -160,6 +329,7 @@ isolated worktree has no graph of its own. No graph was silently rebuilt or
 updated against unrelated primary source.
 
 Private manifests, reviewer reports and logs are retained under the coordinator
-checkout's `storage/app/private/reviews/epostman-inbound`. Actual cross-AP sandbox,
-provider activation/archive verification and production remain unexecuted. No live
-readiness or signing of provider terms is claimed by this document.
+checkout's `storage/app/private/reviews/epostman-inbound`. The 2026-11-12 records
+above verify one cross-AP test Invoice and CreditNote with isolated local handoff.
+Provider activation/archive verification and production remain unexecuted.
+No production readiness or signing of provider terms is claimed.
