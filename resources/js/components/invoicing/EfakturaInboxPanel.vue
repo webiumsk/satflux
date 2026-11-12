@@ -158,7 +158,13 @@ function currentAction(companyId: string, bridgeId: string, startedGeneration: n
 
 function draftDate(key: string): string {
   const value = selectedDetail.value?.draft?.[key];
-  return typeof value === 'string' && value !== '' ? formatDate(value) : '-';
+  if (typeof value !== 'string' || value === '') return '-';
+  // Calendar dates have no local timezone, including historically skipped days.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const date = new Date(`${value}T00:00:00Z`);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(locale.value, { timeZone: 'UTC' });
+  }
+  return formatDate(value);
 }
 
 function formatDate(iso: string): string {

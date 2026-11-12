@@ -51,17 +51,18 @@ function bridgeTransport(hang: "detail" | "ack" | "none", retryStatus = 200,
 beforeEach(() => { flash.errorKey.mockClear(); vi.useFakeTimers(); installBankLocks(); vi.stubGlobal('crypto', webcrypto); });
 afterEach(() => { api.defaults.adapter = originalAdapter; clearRowOwnerIndex(); clearCompanyShares(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
-it("bounds inbox detail below the gate wait, writes no expense and releases the gate after timeout", async () => {
+it("bounds inbox detail HTTP without retaining the financial gate and writes no expense after timeout", async () => {
     const locks = installBankLocks(); const requests = bridgeTransport("detail");
     const { evolu, state } = createExpenseWriterTestAdapter();
     const outcome = importEfakturaInboxEntry(evolu as never, "company-a", "synthetic-bridge", entry).catch((error) => error);
-    await vi.advanceTimersByTimeAsync(0);
+    await vi.waitFor(() => expect(requests).toHaveLength(1));
     expect(requests).toHaveLength(1);
     expect(requests[0]).toMatchObject({ method: "get", timeout: 10_000, withCredentials: true,
         url: "/invoicing/companies/synthetic-bridge/efaktura/inbox/synthetic-receipt" });
     const next = withExpenseReconciliation(evolu as never, () => true);
+    expect(await next).toBe(true);
     await vi.advanceTimersByTimeAsync(9_999);
-    expect(locks.held).toBe(1); expect(state.expense).toHaveLength(0);
+    expect(locks.held).toBe(0); expect(state.expense).toHaveLength(0);
     await vi.advanceTimersByTimeAsync(1);
     expect(await outcome).toMatchObject({ code: "ECONNABORTED" });
     expect(await next).toBe(true);
@@ -84,6 +85,8 @@ it("preserves one complete stable expense after an ACK timeout and a successful 
     expect(JSON.parse(requests[1].data)).toEqual({ original_sha256: originalSha256 });
     const saved = structuredClone(state.expense[0]);
     const next = withExpenseReconciliation(evolu as never, () => true);
+    expect(await next).toBe(true);
+    expect(locks.held).toBe(0);
     await vi.advanceTimersByTimeAsync(10_000);
     expect(await outcome).toMatchObject({ code: "ECONNABORTED" });
     expect(await next).toBe(true); expect(locks.held).toBe(0);

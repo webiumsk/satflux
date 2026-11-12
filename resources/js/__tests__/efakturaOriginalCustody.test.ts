@@ -7,6 +7,7 @@ import {
 } from "@/evolu/efakturaInboxImport";
 import { createExpenseWriterTestAdapter } from "./expenseReconciliationTestSupport";
 import { installBankLocks } from "./bankReconciliationTestSupport";
+import { withExpenseReconciliation } from "@/evolu/expenseReconciliation";
 import { clearRowOwnerIndex } from "@/evolu/ownerScope";
 import { clearCompanyShares } from "@/evolu/companyShareRegistry";
 
@@ -137,5 +138,79 @@ describe("received original custody", () => {
         state.expenseAttachment = [{ id: attachmentId, expenseId, ownerId: "app-owner", contentBase64: utf8ToBase64(xml) }];
         expect(await reconcileEfakturaInboxWithLocalExpenses(evolu as never, "company-a", "bridge-a", [entry])).toEqual([]);
         expect(imported).toHaveBeenCalledExactlyOnceWith("bridge-a", entry.inbox_id, digest(xml));
+    });
+});
+
+describe("financial lock and bridge separation", () => {
+    it("releases the lock before detail and confirmation HTTP while retaining locked local writes", async () => {
+        const manager = installBankLocks();
+        const { evolu, detail, imported } = setup();
+        const upsert = evolu.upsert.getMockImplementation()!;
+        evolu.upsert.mockImplementation((table, props, options) => {
+            if (table === "expense" || table === "expenseAttachment") expect(manager.held).toBe(1);
+            return upsert(table, props, options);
+        });
+        detail.mockImplementation(async () => {
+            expect(manager.held).toBe(0);
+            await withExpenseReconciliation(evolu as never, () => expect(manager.held).toBe(1));
+            return { ...entry, ubl: xml, original_sha256: digest(xml) };
+        });
+        imported.mockImplementation(async () => {
+            expect(manager.held).toBe(0);
+            await withExpenseReconciliation(evolu as never, () => expect(manager.held).toBe(1));
+        });
+        expect(await importEfakturaInboxEntry(evolu as never, "company-a", "bridge-a", entry)).toMatchObject({ ok: true });
+        expect(detail).toHaveBeenCalledOnce();
+        expect(imported).toHaveBeenCalledOnce();
+    });
+
+    it("fails closed before bridge HTTP when a company-context digest cannot be produced", async () => {
+        const { evolu, state, detail, imported } = setup();
+        vi.spyOn(webcrypto.subtle, "digest").mockRejectedValue(new Error("synthetic digest unavailable"));
+        await expect(importEfakturaInboxEntry(evolu as never, "company-a", "bridge-a", entry))
+            .rejects.toThrow("expense_reconciliation_state_changed");
+        expect(detail).not.toHaveBeenCalled();
+        expect(imported).not.toHaveBeenCalled();
+        expect(state.expense).toHaveLength(0);
+    });
+
+    it("rechecks company identity and connection after detail retrieval before making local changes", async () => {
+        const { evolu, state, detail, imported } = setup();
+        detail.mockImplementation(async () => {
+            state.company[0].taxId = "0000000000";
+            return { ...entry, ubl: xml, original_sha256: digest(xml) };
+        });
+        await expect(importEfakturaInboxEntry(evolu as never, "company-a", "bridge-a", entry))
+            .rejects.toThrow("expense_reconciliation_state_changed");
+        expect(state.expense).toHaveLength(0);
+        expect(imported).not.toHaveBeenCalled();
+    });
+
+    it("does not report success if original proof disappears during confirmation HTTP", async () => {
+        const manager = installBankLocks();
+        const { evolu, state, imported } = setup();
+        imported.mockImplementation(async () => { expect(manager.held).toBe(0); state.expenseAttachment = []; });
+        expect(await importEfakturaInboxEntry(evolu as never, "company-a", "bridge-a", entry))
+            .toEqual({ ok: false, error: "original_storage_failed" });
+    });
+
+    it("releases reconciliation locks for both detail and confirmation HTTP and rechecks proof afterward", async () => {
+        const manager = installBankLocks();
+        const { evolu, state, detail, imported } = setup(true);
+        const missingDigest = { ...entry, original_sha256: null };
+        state.expenseAttachment = [{ id: attachmentId, expenseId, ownerId: "app-owner", contentBase64: utf8ToBase64(xml) }];
+        detail.mockImplementation(async () => {
+            expect(manager.held).toBe(0);
+            await withExpenseReconciliation(evolu as never, () => undefined);
+            return { ...entry, ubl: xml, original_sha256: digest(xml) };
+        });
+        imported.mockImplementation(async () => {
+            expect(manager.held).toBe(0);
+            await withExpenseReconciliation(evolu as never, () => undefined);
+            state.expenseAttachment = [];
+        });
+        expect(await reconcileEfakturaInboxWithLocalExpenses(evolu as never, "company-a", "bridge-a", [missingDigest])).toEqual([missingDigest]);
+        expect(detail).toHaveBeenCalledOnce();
+        expect(imported).toHaveBeenCalledOnce();
     });
 });

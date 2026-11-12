@@ -50,6 +50,7 @@ let lastRefreshAt = 0;
 let listenersInstalled = false;
 /** Bumped on every company switch / settings reload; stale async results are discarded. */
 let generation = 0;
+let refreshRequestId = 0;
 
 type CompanyRowSlice = { id: string; appSettingsJson: string | null };
 
@@ -110,29 +111,44 @@ export async function refreshEfakturaInboxLive(
     }
     const myGeneration = generation;
     const myCompanyId = companyId;
+    const requestId = ++refreshRequestId;
+    const isCurrent = () => requestId === refreshRequestId && myGeneration === generation
+        && myCompanyId === companyId && bridgeCompanyIdRef.value === bridgeId;
     refreshing = true;
+    let inboxFailed = false;
     try {
         const { evolu } = await import("./client");
-        const [fetched, inboundHealth] = await Promise.all([
-            fetchEfakturaInbox(bridgeId), invoicingApi.efaktura.inboundHealth(bridgeId),
-        ]);
-        if (myGeneration !== generation) return;
-        health.value = parseInboundHealth(inboundHealth);
+        if (!isCurrent()) return;
+        // Health is independent: a slow or failed status call cannot hide fetched documents.
+        const healthRequest = Promise.resolve().then(() => invoicingApi.efaktura.inboundHealth(bridgeId))
+            .then((value) => { if (isCurrent() && !inboxFailed) health.value = parseInboundHealth(value); return { ok: true as const }; })
+            .catch((error: unknown) => {
+                if (isCurrent()) health.value = { state: "unavailable", last_poll_at: health.value?.last_poll_at ?? null, failed: 0 };
+                return { ok: false as const, error: error ?? new Error("inbound_health_unavailable") };
+            });
+        const fetched = await fetchEfakturaInbox(bridgeId);
+        if (!isCurrent()) return;
         const remaining = await reconcileEfakturaInboxWithLocalExpenses(evolu, myCompanyId, bridgeId, fetched);
-        if (myGeneration !== generation || bridgeCompanyIdRef.value !== bridgeId) return;
+        if (!isCurrent()) return;
         entries.value = remaining;
         lastRefreshAt = Date.now();
-    } catch (error) {
-        if (myGeneration !== generation || bridgeCompanyIdRef.value !== bridgeId) return;
-        health.value = { state: "unavailable", last_poll_at: health.value?.last_poll_at ?? null, failed: 0 };
-        if (options.throwOnError) {
-            throw error;
-        }
-        // Background failures remain visible through shared health, even with no documents.
-    } finally {
         refreshing = false;
-        // A previous company's in-flight request must not delay the new inbox until the next timer tick.
-        if (myGeneration !== generation && enabled) void refreshEfakturaInboxLive(true);
+        if (options.throwOnError) {
+            const result = await healthRequest;
+            if (isCurrent() && !result.ok) throw result.error;
+        }
+    } catch (error) {
+        inboxFailed = true;
+        if (!isCurrent()) return;
+        health.value = { state: "unavailable", last_poll_at: health.value?.last_poll_at ?? null, failed: 0 };
+        if (options.throwOnError) throw error;
+        // Background failures remain visible through shared health, even with documents.
+    } finally {
+        if (requestId === refreshRequestId) {
+            refreshing = false;
+            // A previous company must not delay the new inbox until the next timer tick.
+            if (myGeneration !== generation && enabled) void refreshEfakturaInboxLive(true);
+        }
     }
 }
 

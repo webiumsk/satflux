@@ -61,7 +61,7 @@ vi.mock('../services/api', () => ({
       testConnectionEphemeral: vi.fn(async (payload) => { state.testCalls.push(payload); return state.testResult; }),
       pollInbound: vi.fn(),
     },
-    companies: { updateAppSettings: vi.fn() },
+    companies: { updateAppSettings: vi.fn(), get: vi.fn(), update: vi.fn() },
   },
 }));
 
@@ -72,6 +72,7 @@ import { updateLocalEfakturaSettings } from '../evolu/companySettingsCrud';
 function skCompany(appSettings: Record<string, unknown> = {}): TestCompany {
   return {
     id: 'company-1',
+    legal_name: 'Synthetic company',
     jurisdiction: 'eu_sk',
     tax_id: '2023980035',
     registration_number: '47615681',
@@ -88,6 +89,94 @@ function mountForm(company: Record<string, unknown>, mode: 'full' | 'inbound_onl
 }
 
 describe('eFaktura settings wizard', () => {
+  it('does not resurrect a disabled changed connection secret after the actual local settings merge and remount', async () => {
+    state.localFirst = true;
+    state.localRows = [skCompany({ ...connectedSettings(), efaktura_sapi_client_secret: 'synthetic-stored-secret' })];
+    const real = await vi.importActual<typeof import('../evolu/companySettingsCrud')>('../evolu/companySettingsCrud');
+    const client = {
+      getQueryRows: () => state.localRows.map((row) => ({ ...row, appSettingsJson: JSON.stringify(row.app_settings) })),
+      update: (_table: string, patch: { id: string; appSettingsJson: string }) => {
+        state.localRows.find((row) => row.id === patch.id)!.app_settings = JSON.parse(patch.appSettingsJson);
+        return { ok: true };
+      },
+    };
+    const persist = (_evolu: unknown, id: string, payload: Parameters<typeof real.updateLocalEfakturaSettings>[2]) =>
+      real.updateLocalEfakturaSettings(client as never, id as never, payload);
+    vi.mocked(updateLocalEfakturaSettings).mockImplementationOnce(persist as never).mockImplementationOnce(persist as never);
+    let wrapper = mountForm(state.localRows[0]);
+    await wrapper.get('#efaktura-cpds-preset').setValue('epostman-test');
+    await wrapper.get('#efaktura-client-id').setValue('synthetic-new-client');
+    await wrapper.find('input[type="checkbox"]').setValue(false);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(state.localRows[0].app_settings).not.toHaveProperty('efaktura_sapi_client_secret');
+    expect(state.localRows[0].app_settings.efaktura_sapi_client_secret_set).toBe(false);
+    wrapper.unmount();
+    wrapper = mountForm(state.localRows[0]);
+    await wrapper.find('input[type="checkbox"]').setValue(true);
+    await testButton(wrapper).trigger('click'); await flushPromises();
+    expect(state.testCalls).toHaveLength(1);
+    expect(state.testCalls[0].efaktura_sapi_client_secret).toBeNull();
+    wrapper.unmount();
+  });
+
+  it('shows persistent bridge retry guidance while receiving remains enabled', () => {
+    const wrapper = mountForm(skCompany({ ...connectedSettings(), efaktura_inbound_bridge_sync_pending: true }));
+    expect(wrapper.get('[data-testid="efaktura-sync-retry-alert"]').text()).toContain('efaktura_epostman_bridge_save_failed');
+    wrapper.unmount();
+  });
+
+  it('blocks server save until the asynchronously loaded company matches the selected company', async () => {
+    const wrapper = mountForm(skCompany(connectedSettings()));
+    await wrapper.setProps({ companyId: 'company-2' });
+    expect(wrapper.get('fieldset').attributes('disabled')).toBeDefined();
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    await wrapper.setProps({ company: { ...skCompany(connectedSettings()), id: 'company-2' } });
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith('company-2', expect.anything());
+    wrapper.unmount();
+  });
+
+  it('resynchronizes server form values when company details arrive before the selected id changes', async () => {
+    const wrapper = mountForm(skCompany(connectedSettings()));
+    const companyB = { ...skCompany({ ...connectedSettings(), efaktura_sapi_client_id: 'synthetic-company-b-client' }), id: 'company-2' };
+    await wrapper.setProps({ company: companyB });
+    expect(wrapper.get('fieldset').attributes('disabled')).toBeDefined();
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    await wrapper.setProps({ companyId: 'company-2' });
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith('company-2', expect.objectContaining({ efaktura_sapi_client_id: 'synthetic-company-b-client' }));
+    wrapper.unmount();
+  });
+
+  it('synchronizes and validates the local DIČ before clearing the bridge participant override', async () => {
+    state.localFirst = true;
+    state.localRows = [skCompany({ ...connectedSettings(), efaktura_sapi_client_secret: 'synthetic-stored-secret',
+      efaktura_peppol_participant_id_derived: '0245:0000000000' })];
+    const wrapper = mountForm(state.localRows[0]);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.update).toHaveBeenCalledExactlyOnceWith('bridge-1', { tax_id: state.localRows[0].tax_id });
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith('bridge-1', expect.objectContaining({ efaktura_peppol_participant_id: '' }));
+    expect(vi.mocked(invoicingApi.companies.update).mock.invocationCallOrder[0])
+      .toBeLessThan(vi.mocked(invoicingApi.companies.updateAppSettings).mock.invocationCallOrder[0]);
+    wrapper.unmount();
+  });
+
+  it.each(['foreign-jurisdiction', 'different-company', 'wrong-tax-response'])('does not enable a bridge with mismatched receiving identity: %s', async (kind) => {
+    state.localFirst = true;
+    state.localRows = [skCompany({ ...connectedSettings(), efaktura_sapi_client_secret: 'synthetic-stored-secret' })];
+    if (kind === 'foreign-jurisdiction') vi.mocked(invoicingApi.companies.get).mockResolvedValue({ ...skCompany(), id: 'bridge-1', jurisdiction: 'us_wy', country: 'US' });
+    if (kind === 'different-company') vi.mocked(invoicingApi.companies.get).mockResolvedValue({ ...skCompany(), id: 'bridge-1', legal_name: 'Unrelated synthetic company' });
+    if (kind === 'wrong-tax-response') vi.mocked(invoicingApi.companies.update).mockResolvedValue({ ...skCompany(), id: 'bridge-1', tax_id: '0000000000' });
+    const wrapper = mountForm(state.localRows[0]);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    if (kind !== 'wrong-tax-response') expect(invoicingApi.companies.update).not.toHaveBeenCalled();
+    expect(status(wrapper)).toContain('status_save_failed');
+    wrapper.unmount();
+  });
+
   afterEach(() => vi.restoreAllMocks());
   beforeEach(() => {
     state.presets = [];
@@ -98,6 +187,8 @@ describe('eFaktura settings wizard', () => {
     state.onLocalUpdate = null;
     state.notifySaved.mockClear();
     invoicingApi.companies.updateAppSettings = vi.fn(async (_id, payload) => skCompany({ ...payload, efaktura_sapi_client_secret_set: true })) as typeof invoicingApi.companies.updateAppSettings;
+    vi.mocked(invoicingApi.companies.get).mockReset().mockResolvedValue({ ...skCompany(), id: 'bridge-1', tax_id: null });
+    vi.mocked(invoicingApi.companies.update).mockReset().mockImplementation(async (id, payload) => ({ ...skCompany(), ...payload, id }));
     vi.mocked(invoicingApi.efaktura.pollInbound).mockReset();
     vi.mocked(updateLocalEfakturaSettings).mockClear();
   });

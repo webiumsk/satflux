@@ -100,3 +100,32 @@ describe('received document panel', () => {
     wrapper.unmount();
   });
 });
+
+it('formats calendar-only draft dates in UTC and keeps timestamp parsing separate', async () => {
+  const RealDate = Date;
+  const calls: unknown[][] = [];
+  const format = vi.spyOn(RealDate.prototype, 'toLocaleDateString');
+  vi.stubGlobal('Date', new Proxy(RealDate, { construct(target, args) {
+    calls.push(args);
+    return Reflect.construct(target, args);
+  } }));
+  try {
+    const wrapper = mount(Panel, { props: { companyId: 'company-a' } });
+    await button(wrapper, 'efaktura_inbox_view').trigger('click'); await flushPromises();
+    expect(calls).toContainEqual(['2026-11-10T00:00:00Z']);
+    expect(calls).toContainEqual(['2026-11-24T00:00:00Z']);
+    expect(format).toHaveBeenCalledWith('en', { timeZone: 'UTC' });
+    expect(wrapper.text()).toContain('11/10/2026');
+    expect(calls).toContainEqual(['2026-11-10T10:00:00Z']);
+    wrapper.unmount();
+  } finally { vi.unstubAllGlobals(); }
+});
+
+it('preserves a skipped local calendar day and a year below 100 without constructor reinterpretation', async () => {
+  state.detail.mockResolvedValue({ ...detail(), draft: { issue_date: '2011-12-30', due_date: '0099-01-01' } });
+  const wrapper = mount(Panel, { props: { companyId: 'company-a' } });
+  await button(wrapper, 'efaktura_inbox_view').trigger('click'); await flushPromises();
+  expect(wrapper.text()).toContain('12/30/2011');
+  expect(wrapper.text()).toContain('1/1/99');
+  wrapper.unmount();
+});

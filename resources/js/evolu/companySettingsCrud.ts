@@ -117,15 +117,29 @@ function mergeEfakturaSettings(
 ): Record<string, unknown> {
     const merged: Record<string, unknown> = { ...existing, ...partial };
 
+    const normalizeUrl = (value: unknown): string => {
+        const text = String(value ?? "").trim().replace(/\/+$/, "");
+        try { return new URL(text).href.replace(/\/+$/, ""); } catch { return text; }
+    };
+    const changedConnection = (partial.efaktura_sapi_base_url !== undefined
+        && normalizeUrl(partial.efaktura_sapi_base_url) !== normalizeUrl(existing.efaktura_sapi_base_url))
+        || (partial.efaktura_sapi_client_id !== undefined
+            && partial.efaktura_sapi_client_id.trim() !== String(existing.efaktura_sapi_client_id ?? "").trim());
+    if (changedConnection) {
+        delete merged.efaktura_sapi_client_secret;
+        delete merged.efaktura_sapi_client_secret_encrypted;
+        merged.efaktura_sapi_client_secret_set = false;
+    }
     const incomingSecret = partial.efaktura_sapi_client_secret;
     if (incomingSecret === undefined || incomingSecret === "") {
-        if (existing.efaktura_sapi_client_secret) {
+        if (!changedConnection && existing.efaktura_sapi_client_secret) {
             merged.efaktura_sapi_client_secret = existing.efaktura_sapi_client_secret;
         } else {
             delete merged.efaktura_sapi_client_secret;
         }
     }
 
+    if (incomingSecret) merged.efaktura_sapi_client_secret = incomingSecret;
     if (merged.efaktura_sapi_client_secret) {
         merged.efaktura_sapi_client_secret_set = true;
     }

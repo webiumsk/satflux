@@ -1,6 +1,6 @@
 <template>
   <form class="space-y-6 max-w-2xl" @submit.prevent="save">
-    <fieldset :disabled="saving || pollingInbound" class="space-y-6 min-w-0">
+    <fieldset :disabled="saving || pollingInbound || !loadedCompanyMatches" class="space-y-6 min-w-0">
     <div
       class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 space-y-2"
       role="status"
@@ -25,7 +25,7 @@
       <span>{{ t('invoicing.efaktura_enabled') }}</span>
     </label>
 
-    <p v-if="bridgeSaveFailed && !form.efaktura_enabled" role="alert" data-testid="efaktura-sync-retry-alert" class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+    <p v-if="bridgeSaveFailed" role="alert" data-testid="efaktura-sync-retry-alert" class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
       {{ t('invoicing.efaktura_epostman_bridge_save_failed') }}
     </p>
 
@@ -272,6 +272,7 @@ import { useEfakturaFeature } from '../../composables/useEfakturaFeature';
 import { allCompaniesDetailQuery, useInvoicingEvolu } from '../../evolu/client';
 import { evoluCompanyToApi, type EvoluCompanyRow } from '../../evolu/companyMap';
 import { updateLocalEfakturaSettings } from '../../evolu/companySettingsCrud';
+import { matchCompanyByIdentity } from '../../evolu/duplicateCompanies';
 import { ensureBridgeCompanyIdForLocalCompany } from '../../evolu/bridgeCompanyEnsure';
 import { refreshEfakturaInboxLive, reloadEfakturaInboxLive } from '../../evolu/efakturaInboxLive';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
@@ -338,9 +339,11 @@ let connectionGeneration = 0;
 let saveRequestId = 0;
 let pollRequestId = 0;
 let testRequestId = 0;
-let synchronizedCompanyId = props.companyId;
+const synchronizedCompanyId = ref(props.companyId);
 let active = true;
 onBeforeUnmount(() => { active = false; connectionGeneration++; });
+const loadedCompanyMatches = computed(() => localFirst
+  || (props.company?.id === props.companyId && synchronizedCompanyId.value === props.companyId));
 const inboundOnly = computed(() => props.mode === 'inbound_only');
 const isEpostman = computed(() => ['https://postman.slovakodata.com', 'https://testpostman.slovakodata.com']
   .includes(normalizeBaseUrl(form.efaktura_sapi_base_url)));
@@ -407,12 +410,13 @@ const derivedParticipantId = computed(() => {
 });
 
 watch(
-  () => props.company,
-  (company) => {
+  () => [props.company, props.companyId] as const,
+  ([company]) => {
+    if (!localFirst && company?.id !== props.companyId) return;
     // Local persistence updates parent props before the bridge request finishes.
     // Keep the submitted form stable until that request has a result.
-    if (saving.value && synchronizedCompanyId === props.companyId) return;
-    synchronizedCompanyId = props.companyId;
+    if (saving.value && synchronizedCompanyId.value === props.companyId) return;
+    synchronizedCompanyId.value = props.companyId;
     connectionGeneration++;
     testMessage.value = '';
     testingConnection.value = false;
@@ -656,7 +660,12 @@ async function resolveBridgeCompanyIdOrFail(companyId = props.companyId): Promis
 }
 
 /** Push the inbound-relevant subset of the settings to the bridge company. */
-async function syncInboundSettingsToBridge(payload: Partial<CompanyEfakturaSettingsState>, companyId: string, secret: string): Promise<void> {
+type ReceivingCompanyIdentity = {
+  legal_name: string; registration_number: string | null; tax_id: string | null;
+  jurisdiction: string | null; country: string | null;
+};
+
+async function syncInboundSettingsToBridge(payload: Partial<CompanyEfakturaSettingsState>, companyId: string, secret: string, identity: ReceivingCompanyIdentity): Promise<void> {
   const bridgeCompanyId = await resolveBridgeCompanyIdOrFail(companyId);
   const inboundOn = Boolean(payload.efaktura_enabled) && Boolean(payload.efaktura_inbound_enabled);
   const bridgePayload: Record<string, unknown> = {
@@ -666,6 +675,28 @@ async function syncInboundSettingsToBridge(payload: Partial<CompanyEfakturaSetti
     efaktura_auto_send: false,
   };
   if (inboundOn) {
+    // Bridge creation only carries numbering identity. Receiving also needs the
+    // local tax identity before a derived participant can replace an override.
+    const participant = formatPeppolEndpoint(resolvePeppolEndpoint(identity));
+    const epostman = ['https://postman.slovakodata.com', 'https://testpostman.slovakodata.com']
+      .includes(normalizeBaseUrl(payload.efaktura_sapi_base_url ?? ''));
+    if (epostman && !/^0245:\d{10}$/.test(participant ?? '')) throw new Error(t('invoicing.efaktura_epostman_missing_identity'));
+    if (!payload.efaktura_peppol_participant_id && /^0245:\d{10}$/.test(participant ?? '')) {
+      const bridge = await invoicingApi.companies.get<Record<string, unknown>>(bridgeCompanyId);
+      const matchesIdentity = (candidate: Record<string, unknown>) => candidate.id === bridgeCompanyId
+        && matchCompanyByIdentity([{ id: String(candidate.id), legal_name: String(candidate.legal_name ?? ''),
+          registration_number: typeof candidate.registration_number === 'string' ? candidate.registration_number : null }], identity) !== null;
+      if (!matchesIdentity(bridge) || bridge.jurisdiction !== 'eu_sk'
+        || formatPeppolEndpoint(resolvePeppolEndpoint({ tax_id: identity.tax_id,
+          country: typeof bridge.country === 'string' ? bridge.country : null,
+          jurisdiction: bridge.jurisdiction })) !== participant) throw new Error(t('invoicing.efaktura_inbound_bridge_failed'));
+      const updated = await invoicingApi.companies.update<Record<string, unknown>>(bridgeCompanyId, { tax_id: identity.tax_id });
+      if (!matchesIdentity(updated) || formatPeppolEndpoint(resolvePeppolEndpoint({
+        tax_id: typeof updated.tax_id === 'string' ? updated.tax_id : null,
+        country: typeof updated.country === 'string' ? updated.country : null,
+        jurisdiction: typeof updated.jurisdiction === 'string' ? updated.jurisdiction : null,
+      })) !== participant) throw new Error(t('invoicing.efaktura_inbound_bridge_failed'));
+    }
     bridgePayload.efaktura_sapi_base_url = payload.efaktura_sapi_base_url || null;
     bridgePayload.efaktura_sapi_client_id = payload.efaktura_sapi_client_id || null;
     bridgePayload.efaktura_peppol_participant_id = payload.efaktura_peppol_participant_id || '';
@@ -731,6 +762,7 @@ async function pollInboundNow() {
 }
 
 async function save() {
+  if (!loadedCompanyMatches.value) return;
   const generation = connectionGeneration;
   const requestId = ++saveRequestId;
   const companyId = props.companyId;
@@ -744,6 +776,13 @@ async function save() {
     }
     const payload = buildPayload();
     const secret = payload.efaktura_sapi_client_secret || storedLocalSecret();
+    const localIdentity = {
+      legal_name: String(props.company?.legal_name ?? ''),
+      registration_number: typeof props.company?.registration_number === 'string' ? props.company.registration_number : null,
+      tax_id: typeof props.company?.tax_id === 'string' ? props.company.tax_id : null,
+      jurisdiction: typeof props.company?.jurisdiction === 'string' ? props.company.jurisdiction : null,
+      country: typeof props.company?.country === 'string' ? props.company.country : null,
+    };
 
     if (localFirst && evolu) {
       // Retain an encrypted local retry marker across reloads and interruption.
@@ -764,7 +803,7 @@ async function save() {
       // the bridge company (only these; issuing stays local). A bridge
       // failure must not undo the local save, so it reports separately.
       try {
-        await syncInboundSettingsToBridge(payload, companyId, secret);
+        await syncInboundSettingsToBridge(payload, companyId, secret, localIdentity);
         if (!isCurrent()) return;
         const completedPayload = { ...localPayload, efaktura_inbound_bridge_sync_pending: false };
         const completed = updateLocalEfakturaSettings(evolu, asCompanyId(companyId), completedPayload);

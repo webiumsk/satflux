@@ -73,3 +73,42 @@ it('rejects unknown status shapes instead of considering them healthy', async ()
   expect(() => live.parseInboundHealth({ state: 'approved' })).toThrow('invalid_inbound_health');
   expect(() => live.parseInboundHealth(null)).toThrow('invalid_inbound_health');
 });
+
+it.each([new Error('synthetic health failure'), undefined])('retains successful inbox documents when health fails: %s', async (reason) => {
+  const document = { inbox_id: 'synthetic-document' };
+  mocks.list.mockResolvedValue([document]);
+  mocks.health.mockRejectedValue(reason);
+  const live = await import('@/evolu/efakturaInboxLive');
+  live.initEfakturaInboxLive(ref('company-a'));
+  await vi.waitFor(() => expect(live.useEfakturaInboxLive().entries.value).toEqual([document]));
+  expect(live.useEfakturaInboxLive().health.value?.state).toBe('unavailable');
+  await expect(live.refreshEfakturaInboxLive(true, { throwOnError: true })).rejects.toBeDefined();
+  expect(live.useEfakturaInboxLive().entries.value).toEqual([document]);
+});
+
+it('keeps fetched documents visible when the health response is malformed', async () => {
+  const document = { inbox_id: 'synthetic-malformed-health-document' };
+  mocks.list.mockResolvedValue([document]);
+  mocks.health.mockResolvedValue({ state: 'unexpected' });
+  const live = await import('@/evolu/efakturaInboxLive');
+  live.initEfakturaInboxLive(ref('company-a'));
+  await vi.waitFor(() => expect(live.useEfakturaInboxLive().entries.value).toEqual([document]));
+  expect(live.useEfakturaInboxLive().health.value?.state).toBe('unavailable');
+});
+
+it('publishes documents before slow health completes and ignores an obsolete health failure after a newer refresh', async () => {
+  let rejectOld!: (error: unknown) => void;
+  mocks.health.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectOld = reject; }));
+  const document = { inbox_id: 'synthetic-pending-health-document' };
+  mocks.list.mockResolvedValue([document]);
+  const live = await import('@/evolu/efakturaInboxLive');
+  live.initEfakturaInboxLive(ref('company-a'));
+  await vi.waitFor(() => expect(live.useEfakturaInboxLive().entries.value).toEqual([document]));
+  await live.refreshEfakturaInboxLive(true, { throwOnError: true });
+  expect(live.useEfakturaInboxLive().health.value?.state).toBe('ok');
+  rejectOld(new Error('obsolete health failure'));
+  await vi.waitFor(() => expect(mocks.health).toHaveBeenCalledTimes(2));
+  await Promise.resolve(); await Promise.resolve();
+  expect(live.useEfakturaInboxLive().health.value?.state).toBe('ok');
+  expect(live.useEfakturaInboxLive().entries.value).toEqual([document]);
+});
