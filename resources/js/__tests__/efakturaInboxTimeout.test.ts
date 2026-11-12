@@ -16,9 +16,10 @@ vi.mock("@/store/flash", () => ({ useFlashStore: () => flash }));
 const originalAdapter = api.defaults.adapter;
 const originalXml = '<Invoice><Name>Synthetic supplier</Name></Invoice>';
 const originalSha256 = createHash('sha256').update(originalXml).digest('hex');
+const custodyToken = btoa('synthetic custody completion token');
 const entry: EfakturaInboxEntry = {
     inbox_id: "synthetic-receipt", evolu_expense_id: "0192a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b", external_document_id: "synthetic-document",
-    inbox_status: "pending", created_at: "2026-11-04T10:00:00Z",
+    custody_protocol: "post_ack_proof_v1", inbox_status: "pending", created_at: "2026-11-04T10:00:00Z",
     draft: { title: "Synthetic supplier", issue_date: "2026-11-04", total: "19.00", currency: "EUR" },
     summary: { supplier_name: "Synthetic supplier", external_number: "INV-19", total: "19.00", currency: "EUR" },
 };
@@ -29,7 +30,8 @@ function bridgeTransport(hang: "detail" | "ack" | "none", retryStatus = 200,
     let acknowledgements = 0;
     const adapter: AxiosAdapter = (config) => {
         requests.push(config);
-        const isAck = config.url?.endsWith("/imported");
+        const isAck = config.url?.endsWith("/prepare-import");
+        const isComplete = config.url?.endsWith("/imported");
         if (isAck) acknowledgements++;
         const blocked = hang === "detail" && !isAck || hang === "ack" && isAck && acknowledgements === 1;
         if (blocked) {
@@ -39,8 +41,8 @@ function bridgeTransport(hang: "detail" | "ack" | "none", retryStatus = 200,
                 if (config.timeout) setTimeout(() => reject(new AxiosError("synthetic_timeout", "ECONNABORTED", config)), config.timeout);
             });
         }
-        const response = { config, status: isAck ? retryStatus : 200, statusText: "Synthetic", headers: {},
-            data: isAck && retryStatus >= 400 ? errorData : { data: config.url?.endsWith("/inbox") ? [] : { ...entry, ubl: originalXml, original_sha256: originalSha256 } } };
+        const response = { config, status: isComplete ? 204 : isAck ? retryStatus : 200, statusText: "Synthetic", headers: {},
+            data: isAck && retryStatus >= 400 ? errorData : { data: isAck ? { custody_protocol: "post_ack_proof_v1", custody_token: custodyToken } : isComplete ? undefined : config.url?.endsWith("/inbox") ? [] : { ...entry, ubl: originalXml, original_sha256: originalSha256 } } };
         if (isAck && retryStatus >= 400) return Promise.reject(new AxiosError("synthetic_ack_failure", "ERR_BAD_REQUEST", config, undefined, response));
         return Promise.resolve(response);
     };
@@ -78,7 +80,7 @@ it("preserves one complete stable expense after an ACK timeout and a successful 
     await vi.waitFor(() => expect(requests).toHaveLength(2));
     expect(requests).toHaveLength(2);
     expect(requests[1]).toMatchObject({ method: "post", timeout: 10_000, withCredentials: true,
-        url: "/invoicing/companies/synthetic-bridge/efaktura/inbox/synthetic-receipt/imported" });
+        url: "/invoicing/companies/synthetic-bridge/efaktura/inbox/synthetic-receipt/prepare-import" });
     expect(state.expense).toHaveLength(1);
     expect(state.expense[0].id).toBe(stableExpenseIdFromInboxUuid(entry.evolu_expense_id));
     expect(state.expenseAttachment).toHaveLength(1);
@@ -132,6 +134,41 @@ it("does not treat a terminal conflict as import proof even after the complete l
     expect(state.expense).toEqual(saved);
     expect(requests.filter((request) => request.method === "get")).toHaveLength(2);
     expect(evolu.upsert.mock.calls.filter(([table]) => table === "expense")).toHaveLength(1);
+});
+
+it.each([
+    { kind: 'absent endpoint', status: 404, body: {} },
+    { kind: 'missing protocol', status: 200, body: { custody_token: custodyToken } },
+    { kind: 'wrong protocol', status: 200, body: { custody_protocol: 'legacy', custody_token: custodyToken } },
+    { kind: 'missing token', status: 200, body: { custody_protocol: 'post_ack_proof_v1' } },
+    { kind: 'malformed token', status: 200, body: { custody_protocol: 'post_ack_proof_v1', custody_token: 'bad token' } },
+    { kind: 'unexpected status', status: 202, body: { custody_protocol: 'post_ack_proof_v1', custody_token: custodyToken } },
+])('rejects $kind without falling back to legacy imported', async ({ status, body }) => {
+    const requests: InternalAxiosRequestConfig[] = [];
+    api.defaults.adapter = async (config) => {
+        requests.push(config);
+        const response = { config, status, statusText: 'Synthetic', headers: {}, data: { data: body } };
+        if (status >= 400) throw new AxiosError('synthetic preparation failure', 'ERR_BAD_REQUEST', config, undefined, response);
+        return response;
+    };
+    await expect(invoicingApi.efaktura.inboxPrepareImported('synthetic-company', 'synthetic-receipt', originalSha256)).rejects.toBeDefined();
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({ method: 'post', timeout: 10_000,
+        url: '/invoicing/companies/synthetic-company/efaktura/inbox/synthetic-receipt/prepare-import' });
+});
+
+it('sends the prepared token and requires a real 204 cleanup response', async () => {
+    const requests: InternalAxiosRequestConfig[] = [];
+    api.defaults.adapter = async (config) => {
+        requests.push(config);
+        return { config, status: 200, statusText: 'Synthetic', headers: {},
+            data: { data: { custody_protocol: 'post_ack_proof_v1', custody_token: custodyToken } } };
+    };
+    expect(await invoicingApi.efaktura.inboxPrepareImported('synthetic-company', 'synthetic-receipt', originalSha256)).toBe(custodyToken);
+    await expect(invoicingApi.efaktura.inboxImported('synthetic-company', 'synthetic-receipt', originalSha256, custodyToken))
+        .rejects.toThrow('efaktura_custody_completion_unconfirmed');
+    expect(requests).toHaveLength(2);
+    expect(JSON.parse(requests[1].data)).toEqual({ original_sha256: originalSha256, custody_token: custodyToken });
 });
 
 it.each([

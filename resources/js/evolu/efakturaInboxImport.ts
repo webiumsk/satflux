@@ -29,6 +29,7 @@ export type EfakturaInboxEntry = {
     inbox_status: string;
     created_at: string | null;
     original_sha256?: string | null;
+    custody_protocol?: string;
     draft: Record<string, unknown> | null;
     summary: {
         supplier_name: string | null;
@@ -98,8 +99,17 @@ export async function fetchEfakturaInboxDetail(bridgeCompanyId: string, inboxId:
     return invoicingApi.efaktura.inboxDetail<EfakturaInboxEntryDetail>(bridgeCompanyId, inboxId);
 }
 
-export async function markEfakturaInboxImported(bridgeCompanyId: string, inboxId: string, originalSha256: string): Promise<void> {
-    await invoicingApi.efaktura.inboxImported(bridgeCompanyId, inboxId, originalSha256);
+export async function prepareEfakturaInboxImported(bridgeCompanyId: string, inboxId: string, originalSha256: string): Promise<string> {
+    const token = await invoicingApi.efaktura.inboxPrepareImported(bridgeCompanyId, inboxId, originalSha256);
+    if (typeof token !== "string" || token.length < 32 || token.length > 8192
+        || token.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(token)) {
+        throw new Error("efaktura_custody_protocol_unavailable");
+    }
+    return token;
+}
+
+export async function markEfakturaInboxImported(bridgeCompanyId: string, inboxId: string, originalSha256: string, custodyToken: string): Promise<void> {
+    await invoicingApi.efaktura.inboxImported(bridgeCompanyId, inboxId, originalSha256, custodyToken);
 }
 
 export async function dismissEfakturaInboxItem(bridgeCompanyId: string, inboxId: string): Promise<void> {
@@ -122,14 +132,19 @@ export async function reconcileEfakturaInboxWithLocalExpenses(
         if (!admitted.candidates.includes(entry)) { remaining.push(entry); continue; }
         try {
             // No financial lock is retained while waiting for the bridge.
-            const detail = entry.original_sha256 ? entry : await fetchEfakturaInboxDetail(bridgeCompanyId, entry.inbox_id);
+            const detail = entry.original_sha256 && entry.custody_protocol === "post_ack_proof_v1"
+                ? entry : await fetchEfakturaInboxDetail(bridgeCompanyId, entry.inbox_id);
             const digest = normalizeOriginalDigest(detail.original_sha256);
+            if (detail.custody_protocol !== "post_ack_proof_v1") { remaining.push(entry); continue; }
             const verify = () => withExpenseReconciliation(evolu, async (scope) => {
                 await assertCompanyImportContext(scope, companyId, admitted.context);
                 return digest !== null && await hasVerifiedOriginal(scope.evolu, companyId, entry, digest);
             }, undefined, ["allExpenseAttachmentsQuery"]);
             if (!await verify()) { remaining.push(entry); continue; }
-            await markEfakturaInboxImported(bridgeCompanyId, entry.inbox_id, digest!);
+            const token = await prepareEfakturaInboxImported(bridgeCompanyId, entry.inbox_id, digest!);
+            // The server retains its original until this post-response proof succeeds.
+            if (!await verify()) { remaining.push(entry); continue; }
+            await markEfakturaInboxImported(bridgeCompanyId, entry.inbox_id, digest!, token);
             // A concurrent owner/proof change must keep this item visible.
             if (!await verify()) remaining.push(entry);
         } catch {
@@ -228,7 +243,7 @@ export async function importEfakturaInboxEntry(
     if (admitted.invalid) return { ok: false, error: "expense_insert_failed" };
     const detail = await fetchEfakturaInboxDetail(bridgeCompanyId, entry.inbox_id);
     const digest = normalizeOriginalDigest(detail.original_sha256);
-    if (!digest) return { ok: false, error: "original_unavailable" };
+    if (!digest || detail.custody_protocol !== "post_ack_proof_v1") return { ok: false, error: "original_unavailable" };
     const result = await withExpenseReconciliation<EfakturaInboxImportResult>(evolu, async (scope) => {
         await assertCompanyImportContext(scope, companyId, admitted.context);
         const client = scope.evolu;
@@ -266,12 +281,14 @@ export async function importEfakturaInboxEntry(
     }, undefined, ["allExpenseAttachmentsQuery"]);
     if (!result.ok) return result;
     // The bridge wait never holds the origin's financial lock or a scoped facade.
-    await markEfakturaInboxImported(bridgeCompanyId, entry.inbox_id, digest);
-    const stillVerified = await withExpenseReconciliation(evolu, async (scope) => {
+    const verify = () => withExpenseReconciliation(evolu, async (scope) => {
         await assertCompanyImportContext(scope, companyId, admitted.context);
         return hasVerifiedOriginal(scope.evolu, companyId, entry, digest);
     }, undefined, ["allExpenseAttachmentsQuery"]);
-    return stillVerified ? result : { ok: false, error: "original_storage_failed" };
+    const token = await prepareEfakturaInboxImported(bridgeCompanyId, entry.inbox_id, digest);
+    if (!await verify()) return { ok: false, error: "original_storage_failed" };
+    await markEfakturaInboxImported(bridgeCompanyId, entry.inbox_id, digest, token);
+    return await verify() ? result : { ok: false, error: "original_storage_failed" };
 }
 
 export function utf8ToBase64(text: string): string {

@@ -27,10 +27,12 @@ vi.mock('../composables/useInvoicingSaveFeedback', () => ({
 vi.mock('../evolu/flags', () => ({ isInvoicingLocalFirst: () => state.localFirst }));
 vi.mock('../evolu/client', () => ({
   allCompaniesDetailQuery: {},
-  useInvoicingEvolu: () => ({ getQueryRows: () => state.localRows }),
+  useInvoicingEvolu: () => ({ getQueryRows: () => state.localRows, loadQuery: async () => state.localRows }),
 }));
 vi.mock('../evolu/companyMap', () => ({ evoluCompanyToApi: (row: unknown) => row }));
-vi.mock('../evolu/companySettingsCrud', () => ({ updateLocalEfakturaSettings: vi.fn((_evolu, id, payload) => {
+vi.mock('../evolu/companySettingsCrud', async () => ({
+  isValidEfakturaReplacementSecret: (await vi.importActual<typeof import('../evolu/companySettingsCrud')>('../evolu/companySettingsCrud')).isValidEfakturaReplacementSecret,
+  updateLocalEfakturaSettings: vi.fn((_evolu, id, payload) => {
   const row = state.localRows.find((company) => company.id === id);
   if (row) {
     row.app_settings = { ...row.app_settings, ...payload };
@@ -72,6 +74,7 @@ import { updateLocalEfakturaSettings } from '../evolu/companySettingsCrud';
 function skCompany(appSettings: Record<string, unknown> = {}): TestCompany {
   return {
     id: 'company-1',
+    ownerId: 'synthetic-owner',
     legal_name: 'Synthetic company',
     jurisdiction: 'eu_sk',
     tax_id: '2023980035',
@@ -89,6 +92,83 @@ function mountForm(company: Record<string, unknown>, mode: 'full' | 'inbound_onl
 }
 
 describe('eFaktura settings wizard', () => {
+  it.each(['   ', '\t\n'])('rejects whitespace-only replacement before local or bridge writes: %j', async (secret) => {
+    state.localFirst = true;
+    state.localRows = [skCompany(connectedSettings())];
+    const wrapper = mountForm(state.localRows[0]);
+    await wrapper.get('#efaktura-client-secret').setValue(secret);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(updateLocalEfakturaSettings).not.toHaveBeenCalled();
+    expect(invoicingApi.companies.get).not.toHaveBeenCalled();
+    expect(invoicingApi.companies.update).not.toHaveBeenCalled();
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain('company_save_validation_error');
+    wrapper.unmount();
+  });
+
+  it.each(['navigate', 'unmount'])('completes the captured company marker after %s without rewriting newer unrelated settings', async (action) => {
+    state.localFirst = true;
+    const companyA = skCompany({ ...connectedSettings(), efaktura_sapi_client_secret: 'synthetic-stored-secret' });
+    const companyB = { ...skCompany(connectedSettings()), id: 'company-2' };
+    state.localRows = [companyA, companyB];
+    let finish!: (value: Record<string, unknown>) => void;
+    vi.mocked(invoicingApi.companies.updateAppSettings).mockImplementationOnce(() => new Promise((done) => { finish = done; }) as never);
+    const wrapper = mountForm(companyA);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(companyA.app_settings.efaktura_inbound_bridge_sync_pending).toBe(true);
+    companyA.app_settings.unrelated_setting = 'newer synthetic preference';
+    if (action === 'navigate') await wrapper.setProps({ companyId: 'company-2', company: companyB });
+    else wrapper.unmount();
+    finish({}); await flushPromises();
+    expect(companyA.app_settings.efaktura_inbound_bridge_sync_pending).toBe(false);
+    expect(companyA.app_settings.efaktura_inbound_bridge_sync_id).toBeNull();
+    expect(companyA.app_settings.unrelated_setting).toBe('newer synthetic preference');
+    expect(companyB.app_settings).not.toHaveProperty('efaktura_inbound_bridge_sync_pending');
+    expect(state.notifySaved).not.toHaveBeenCalled();
+    expect(wrapper.emitted('updated')).toBeUndefined();
+    if (action === 'navigate') wrapper.unmount();
+  });
+
+  it('does not clear a newer save marker when an older bridge response arrives', async () => {
+    state.localFirst = true;
+    const company = skCompany({ ...connectedSettings(), efaktura_sapi_client_secret: 'synthetic-stored-secret' });
+    state.localRows = [company];
+    let finishFirst!: (value: Record<string, unknown>) => void;
+    let finishSecond!: (value: Record<string, unknown>) => void;
+    vi.mocked(invoicingApi.companies.updateAppSettings)
+      .mockImplementationOnce(() => new Promise((done) => { finishFirst = done; }) as never)
+      .mockImplementationOnce(() => new Promise((done) => { finishSecond = done; }) as never);
+    const first = mountForm(company);
+    await first.get('form').trigger('submit.prevent'); await flushPromises();
+    const firstId = company.app_settings.efaktura_inbound_bridge_sync_id;
+    const second = mountForm(company);
+    await second.get('form').trigger('submit.prevent'); await flushPromises();
+    const secondId = company.app_settings.efaktura_inbound_bridge_sync_id;
+    expect(firstId).not.toBe(secondId);
+    finishFirst({}); await flushPromises();
+    expect(company.app_settings.efaktura_inbound_bridge_sync_pending).toBe(true);
+    expect(company.app_settings.efaktura_inbound_bridge_sync_id).toBe(secondId);
+    finishSecond({}); await flushPromises();
+    expect(company.app_settings.efaktura_inbound_bridge_sync_pending).toBe(false);
+    expect(state.notifySaved).toHaveBeenCalledTimes(1);
+    first.unmount(); second.unmount();
+  });
+
+  it('retains the pending marker after an owner change during a bridge request', async () => {
+    state.localFirst = true;
+    const company = skCompany({ ...connectedSettings(), efaktura_sapi_client_secret: 'synthetic-stored-secret' });
+    state.localRows = [company];
+    let finish!: (value: Record<string, unknown>) => void;
+    vi.mocked(invoicingApi.companies.updateAppSettings).mockImplementationOnce(() => new Promise((done) => { finish = done; }) as never);
+    const wrapper = mountForm(company);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    company.ownerId = 'synthetic-other-owner';
+    finish({}); await flushPromises();
+    expect(company.app_settings.efaktura_inbound_bridge_sync_pending).toBe(true);
+    expect(state.notifySaved).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
   it('does not resurrect a disabled changed connection secret after the actual local settings merge and remount', async () => {
     state.localFirst = true;
     state.localRows = [skCompany({ ...connectedSettings(), efaktura_sapi_client_secret: 'synthetic-stored-secret' })];

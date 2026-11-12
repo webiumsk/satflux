@@ -271,7 +271,7 @@ import { asCompanyId } from '../../composables/useInvoicingCompany';
 import { useEfakturaFeature } from '../../composables/useEfakturaFeature';
 import { allCompaniesDetailQuery, useInvoicingEvolu } from '../../evolu/client';
 import { evoluCompanyToApi, type EvoluCompanyRow } from '../../evolu/companyMap';
-import { updateLocalEfakturaSettings } from '../../evolu/companySettingsCrud';
+import { isValidEfakturaReplacementSecret, updateLocalEfakturaSettings } from '../../evolu/companySettingsCrud';
 import { matchCompanyByIdentity } from '../../evolu/duplicateCompanies';
 import { ensureBridgeCompanyIdForLocalCompany } from '../../evolu/bridgeCompanyEnsure';
 import { refreshEfakturaInboxLive, reloadEfakturaInboxLive } from '../../evolu/efakturaInboxLive';
@@ -705,7 +705,26 @@ async function syncInboundSettingsToBridge(payload: Partial<CompanyEfakturaSetti
     }
   }
   await invoicingApi.companies.updateAppSettings(bridgeCompanyId, bridgePayload);
-  await reloadEfakturaInboxLive();
+}
+
+/** Compare only receiving/identity fields, leaving unrelated newer settings intact. */
+async function localBridgeSyncSnapshot(companyId: string, attemptId: string): Promise<string | null> {
+  if (!evolu) return null;
+  const rows = await evolu.loadQuery(allCompaniesDetailQuery);
+  const row = rows.find((candidate) => candidate.id === companyId);
+  if (!row) return null;
+  const company = evoluCompanyToApi(row as EvoluCompanyRow);
+  const settings = company.app_settings;
+  if (settings.efaktura_inbound_bridge_sync_pending !== true
+    || settings.efaktura_inbound_bridge_sync_id !== attemptId) return null;
+  return JSON.stringify([
+    Reflect.get(row, 'ownerId'), company.id, company.legal_name, company.registration_number,
+    company.tax_id, company.jurisdiction, company.country,
+    ...['efaktura_enabled', 'efaktura_inbound_enabled', 'efaktura_auto_send',
+      'efaktura_sapi_base_url', 'efaktura_sapi_client_id', 'efaktura_peppol_participant_id',
+      'efaktura_sapi_client_secret', 'efaktura_sapi_client_secret_encrypted',
+      'efaktura_sapi_client_secret_set'].map((key) => settings[key] ?? null),
+  ]);
 }
 
 async function pollInboundNow() {
@@ -770,6 +789,10 @@ async function save() {
   saving.value = true;
   saveError.value = '';
   try {
+    if (!isValidEfakturaReplacementSecret(form.efaktura_sapi_client_secret)) {
+      saveError.value = t('invoicing.company_save_validation_error');
+      return;
+    }
     if (form.efaktura_enabled && (connectionChanged.value || credentialsDiscarded.value) && !form.efaktura_sapi_client_secret) {
       saveError.value = t('invoicing.efaktura_connection_new_credentials');
       return;
@@ -785,6 +808,7 @@ async function save() {
     };
 
     if (localFirst && evolu) {
+      const syncAttemptId = crypto.randomUUID();
       // Retain an encrypted local retry marker across reloads and interruption.
       // This metadata belongs to local custody and is never sent to the provider.
       const localPayload = {
@@ -793,6 +817,7 @@ async function save() {
         efaktura_inbound_last_poll_at: form.efaktura_inbound_last_poll_at,
         efaktura_inbound_last_poll_stats: form.efaktura_inbound_last_poll_stats,
         efaktura_inbound_bridge_sync_pending: true,
+        efaktura_inbound_bridge_sync_id: syncAttemptId,
       };
       const result = updateLocalEfakturaSettings(evolu, asCompanyId(companyId), localPayload);
       if (!result.ok) {
@@ -803,10 +828,18 @@ async function save() {
       // the bridge company (only these; issuing stays local). A bridge
       // failure must not undo the local save, so it reports separately.
       try {
+        const submittedSnapshot = await localBridgeSyncSnapshot(companyId, syncAttemptId);
+        if (submittedSnapshot === null) return;
         await syncInboundSettingsToBridge(payload, companyId, secret, localIdentity);
-        if (!isCurrent()) return;
-        const completedPayload = { ...localPayload, efaktura_inbound_bridge_sync_pending: false };
+        // This completion belongs to the captured company, even after navigation.
+        // A newer save or identity/credential change must retain its own marker.
+        if (await localBridgeSyncSnapshot(companyId, syncAttemptId) !== submittedSnapshot) return;
+        const completedPayload = {
+          efaktura_inbound_bridge_sync_pending: false,
+          efaktura_inbound_bridge_sync_id: null,
+        };
         const completed = updateLocalEfakturaSettings(evolu, asCompanyId(companyId), completedPayload);
+        if (!isCurrent()) return;
         if (!completed.ok) {
           bridgeSaveFailed.value = true;
           saveError.value = t('invoicing.efaktura_epostman_bridge_save_failed');
@@ -819,6 +852,8 @@ async function save() {
         saveError.value = t('invoicing.efaktura_epostman_bridge_save_failed');
         return;
       }
+      await reloadEfakturaInboxLive();
+      if (!isCurrent()) return;
       form.efaktura_sapi_client_secret = '';
       credentialsDiscarded.value = false;
       savedSettings.value = { ...form };

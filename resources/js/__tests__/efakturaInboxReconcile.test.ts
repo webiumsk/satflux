@@ -22,16 +22,18 @@ vi.mock("@/evolu/reloadGuard", () => ({
     }),
 }));
 
+const custodyToken = btoa("synthetic custody completion token");
+
 /** Build a distinct parked receipt whose stable expense identity can be seeded independently. */
 function entry(inboxId: string, uuid: string): EfakturaInboxEntry {
     return {
         inbox_id: inboxId, evolu_expense_id: uuid, external_document_id: inboxId,
-        inbox_status: "pending", created_at: "2026-11-04T10:00:00Z", draft: null,
+        custody_protocol: "post_ack_proof_v1", inbox_status: "pending", created_at: "2026-11-04T10:00:00Z", draft: null,
         summary: { supplier_name: "Synthetic supplier", external_number: inboxId, total: "19.00", currency: "EUR" },
     };
 }
 
-beforeEach(() => { installBankLocks(); vi.stubGlobal('crypto', webcrypto); });
+beforeEach(() => { installBankLocks(); vi.stubGlobal('crypto', webcrypto); vi.spyOn(invoicingApi.efaktura, "inboxPrepareImported").mockResolvedValue(custodyToken); });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); clearRowOwnerIndex(); clearCompanyShares(); });
 
 it("keeps a deleted stable-ID receipt pending through the real expense query while acknowledging a live control", async () => {
@@ -54,7 +56,7 @@ it("keeps a deleted stable-ID receipt pending through the real expense query whi
     );
 
     expect(remaining).toEqual([deleted]);
-    expect(acknowledge).toHaveBeenCalledExactlyOnceWith("synthetic-bridge", live.inbox_id, digest);
+    expect(acknowledge).toHaveBeenCalledExactlyOnceWith("synthetic-bridge", live.inbox_id, digest, custodyToken);
     expect(probe.financialMutations()).toHaveLength(0);
 });
 
@@ -77,5 +79,5 @@ it.each([false, true])('persists a complete credit-note import through real Evol
     });
     const imported = await importEfakturaInboxEntry(probe.evolu, probe.candidate.companyId, 'synthetic-bridge', received);
     expect(imported).toMatchObject({ ok: true, attachmentSkipped: false });
-    expect(acknowledge).toHaveBeenCalledExactlyOnceWith('synthetic-bridge', received.inbox_id, digest);
+    expect(acknowledge).toHaveBeenCalledExactlyOnceWith('synthetic-bridge', received.inbox_id, digest, custodyToken);
 });

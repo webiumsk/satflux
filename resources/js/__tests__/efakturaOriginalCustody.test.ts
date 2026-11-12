@@ -17,25 +17,88 @@ const xml = "\uFEFF<Invoice><Name>Dodávateľ ľščťž</Name></Invoice>";
 const digest = (body: string) => createHash("sha256").update(body, "utf8").digest("hex");
 const entry: EfakturaInboxEntry = {
     inbox_id: "synthetic-receipt", evolu_expense_id: "0192a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b", external_document_id: "synthetic-document",
-    inbox_status: "pending", created_at: "2026-11-10T10:00:00Z", original_sha256: digest(xml),
+    custody_protocol: "post_ack_proof_v1", inbox_status: "pending", created_at: "2026-11-10T10:00:00Z", original_sha256: digest(xml),
     draft: { title: "Synthetic supplier", issue_date: "2026-11-10", total: "19.00", currency: "EUR" },
     summary: { supplier_name: "Synthetic supplier", external_number: "INV-19", total: "19.00", currency: "EUR" },
 };
+const custodyToken = btoa("synthetic custody completion token");
 const expenseId = stableExpenseIdFromInboxUuid(entry.evolu_expense_id)!;
 const attachmentId = stableAttachmentIdFromInboxUuid(entry.evolu_expense_id)!;
 
 function setup(existing = false, body = xml) {
     const adapter = createExpenseWriterTestAdapter(existing
         ? [{ id: expenseId, companyId: "company-a", total: "19.00", status: "paid", internalNumber: "EXP-1" }] : []);
-    const detail = vi.spyOn(invoicingApi.efaktura, "inboxDetail").mockResolvedValue({ ...entry, ubl: body, original_sha256: digest(body) });
-    const imported = vi.spyOn(invoicingApi.efaktura, "inboxImported").mockResolvedValue(undefined);
-    return { ...adapter, detail, imported };
+    const serverCopy = { original: body as string | null };
+    const detail = vi.spyOn(invoicingApi.efaktura, "inboxDetail").mockImplementation(async () => ({ ...entry, ubl: serverCopy.original, original_sha256: digest(body) }));
+    const prepared = vi.spyOn(invoicingApi.efaktura, "inboxPrepareImported").mockResolvedValue(custodyToken);
+    const imported = vi.spyOn(invoicingApi.efaktura, "inboxImported").mockImplementation(async () => { serverCopy.original = null; });
+    return { ...adapter, detail, prepared, imported, serverCopy };
 }
 
 beforeEach(() => { installBankLocks(); vi.stubGlobal("crypto", webcrypto); });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); clearRowOwnerIndex(); clearCompanyShares(); });
 
 describe("received original custody", () => {
+    it.each([false, true])("retains the server original when local attachment removal occurs during prepare, reconcile %s", async (reconcile) => {
+        const locks = installBankLocks();
+        const { evolu, state, prepared, imported, serverCopy } = setup(reconcile);
+        if (reconcile) state.expenseAttachment = [{ id: attachmentId, expenseId, ownerId: "app-owner", contentBase64: utf8ToBase64(xml) }];
+        prepared.mockImplementation(async () => {
+            expect(locks.held).toBe(0);
+            expect(serverCopy.original).toBe(xml);
+            state.expenseAttachment = [];
+            return custodyToken;
+        });
+        if (reconcile) expect(await reconcileEfakturaInboxWithLocalExpenses(evolu as never, "company-a", "bridge-a", [entry])).toEqual([entry]);
+        else expect(await importEfakturaInboxEntry(evolu as never, "company-a", "bridge-a", entry)).toEqual({ ok: false, error: "original_storage_failed" });
+        expect(imported).not.toHaveBeenCalled();
+        expect(serverCopy.original).toBe(xml);
+        prepared.mockResolvedValue(custodyToken);
+        expect(await importEfakturaInboxEntry(evolu as never, "company-a", "bridge-a", entry)).toMatchObject({ ok: true, alreadyImported: true });
+        expect(state.expense).toHaveLength(1);
+        expect(imported).toHaveBeenCalledExactlyOnceWith("bridge-a", entry.inbox_id, digest(xml), custodyToken);
+        expect(serverCopy.original).toBeNull();
+    });
+
+    it("fails closed against an old server before making any imported request", async () => {
+        const { evolu, state, detail, prepared, imported } = setup();
+        detail.mockResolvedValue({ ...entry, custody_protocol: undefined, ubl: xml, original_sha256: digest(xml) });
+        expect(await importEfakturaInboxEntry(evolu as never, "company-a", "bridge-a", entry)).toEqual({ ok: false, error: "original_unavailable" });
+        expect(prepared).not.toHaveBeenCalled(); expect(imported).not.toHaveBeenCalled();
+        expect(state.expense).toHaveLength(0);
+    });
+
+    it("does not fall back to legacy cleanup if a cached advertisement reaches an old server", async () => {
+        const { evolu, prepared, imported, serverCopy } = setup();
+        prepared.mockRejectedValue({ response: { status: 404 } });
+        await expect(importEfakturaInboxEntry(evolu as never, "company-a", "bridge-a", entry)).rejects.toMatchObject({ response: { status: 404 } });
+        expect(imported).not.toHaveBeenCalled(); expect(serverCopy.original).toBe(xml);
+    });
+
+    it.each([undefined, "", "malformed token", "x".repeat(8196)])("never completes custody with malformed preparation evidence: %s", async (token) => {
+        const { evolu, prepared, imported, serverCopy } = setup();
+        prepared.mockResolvedValue(token as never);
+        await expect(importEfakturaInboxEntry(evolu as never, "company-a", "bridge-a", entry)).rejects.toThrow("efaktura_custody_protocol_unavailable");
+        expect(imported).not.toHaveBeenCalled(); expect(serverCopy.original).toBe(xml);
+    });
+
+    it("retries a lost prepare response without duplicating expenses or losing the server original", async () => {
+        const { evolu, state, prepared, imported, serverCopy } = setup();
+        prepared.mockRejectedValueOnce(new Error("synthetic lost prepare response"));
+        await expect(importEfakturaInboxEntry(evolu as never, "company-a", "bridge-a", entry)).rejects.toThrow("synthetic lost prepare response");
+        expect(serverCopy.original).toBe(xml); expect(imported).not.toHaveBeenCalled();
+        expect(await importEfakturaInboxEntry(evolu as never, "company-a", "bridge-a", entry)).toMatchObject({ ok: true, alreadyImported: true });
+        expect(state.expense).toHaveLength(1); expect(state.expenseAttachment).toHaveLength(1);
+    });
+
+    it("retries a lost completion response using already persisted local bytes", async () => {
+        const { evolu, state, imported, serverCopy } = setup();
+        imported.mockImplementationOnce(async () => { serverCopy.original = null; throw new Error("synthetic lost completion response"); });
+        await expect(importEfakturaInboxEntry(evolu as never, "company-a", "bridge-a", entry)).rejects.toThrow("synthetic lost completion response");
+        expect(serverCopy.original).toBeNull();
+        expect(await importEfakturaInboxEntry(evolu as never, "company-a", "bridge-a", entry)).toMatchObject({ ok: true, alreadyImported: true });
+        expect(state.expense).toHaveLength(1); expect(state.expenseAttachment).toHaveLength(1);
+    });
     it("reads back BOM and non-ASCII XML before handing off custody, preserving exact original bytes", async () => {
         const { evolu, state, imported } = setup();
         imported.mockImplementation(async (_bridge, _receipt, hash) => {
@@ -46,7 +109,7 @@ describe("received original custody", () => {
         });
         expect(await importEfakturaInboxEntry(evolu as never, "company-a", "bridge-a", entry))
             .toMatchObject({ ok: true, attachmentSkipped: false, alreadyImported: false });
-        expect(imported).toHaveBeenCalledExactlyOnceWith("bridge-a", entry.inbox_id, digest(xml));
+        expect(imported).toHaveBeenCalledExactlyOnceWith("bridge-a", entry.inbox_id, digest(xml), custodyToken);
     });
 
     it("repairs an existing expense without duplicating it or replacing its financial status", async () => {
@@ -137,7 +200,7 @@ describe("received original custody", () => {
         const { evolu, state, imported } = setup(true);
         state.expenseAttachment = [{ id: attachmentId, expenseId, ownerId: "app-owner", contentBase64: utf8ToBase64(xml) }];
         expect(await reconcileEfakturaInboxWithLocalExpenses(evolu as never, "company-a", "bridge-a", [entry])).toEqual([]);
-        expect(imported).toHaveBeenCalledExactlyOnceWith("bridge-a", entry.inbox_id, digest(xml));
+        expect(imported).toHaveBeenCalledExactlyOnceWith("bridge-a", entry.inbox_id, digest(xml), custodyToken);
     });
 });
 
