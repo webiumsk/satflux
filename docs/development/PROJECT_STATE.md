@@ -2,8 +2,9 @@
 
 ## ePostman publication prepared against current master - 2026-11-12
 
-The owner authorizes publishing reviewed receiving and customer onboarding to
-owned GitHub. An isolated publication worktree on
+The owner-authorized receiving and customer onboarding branch is published as
+[draft PR441](https://github.com/webiumsk/satflux/pull/441). Exact-head CI remains
+pending; publication does not activate production. An isolated publication worktree on
 `feat/efaktura-epostman-receiving` integrates `origin/master` at `07c1af23`.
 Only the three shared state documents conflict; both histories are retained.
 The existing `feat/efaktura-epostman-inbound` checkout and manual localhost account

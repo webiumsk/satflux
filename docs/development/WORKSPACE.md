@@ -7,6 +7,8 @@ in `storage/app/private/worktrees/efaktura-epostman-publication`, integrated wit
 owned master `07c1af23`. Existing reviewed implementation is committed through
 `bb31eb21` on `feat/efaktura-epostman-inbound`; its separate manual localhost
 checkout/account/origin and encrypted recovery artifacts remain preserved.
+[Draft PR441](https://github.com/webiumsk/satflux/pull/441) publishes this branch;
+exact-head CI and production gates remain separate.
 The publication checkout reuses existing locked development dependencies and
 never starts a web service, scheduler or provider operation. Private evidence
 stays in the coordinator checkout. PR/CI status is separate from production and

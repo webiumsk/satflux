@@ -23,7 +23,8 @@ Main full lint passes with 46/52 warnings, typecheck with 110 inherited/no new
 errors, locale parity and widget provenance pass, and isolated production build
 passes with 7,659 transformed modules. Additional full frontend tests and remote
 exact-head CI are tracked separately from these completed targeted checks.
-A PR-linked receiving-only changelog note will accompany the published PR.
+[Draft PR441](https://github.com/webiumsk/satflux/pull/441) contains the published
+branch and its receiving-only changelog note. Exact-head CI is recorded separately.
 Provider archive/export/contract and production activation remain outstanding.
 
 ## Product and authority

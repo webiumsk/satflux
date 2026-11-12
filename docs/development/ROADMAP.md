@@ -5,7 +5,8 @@
 - [x] Owner authorizes publication of reviewed receiving and guided setup.
 - [x] Preserve the existing manual preview and prepare an isolated current-master
   publication branch; retain both histories in shared state documents.
-- [ ] Push `feat/efaktura-epostman-receiving`, create a PR and add its changelog note.
+- [x] Push `feat/efaktura-epostman-receiving`, create [draft PR441](https://github.com/webiumsk/satflux/pull/441)
+  and add its reviewed receiving-only changelog note.
 - [ ] Verify exact published-head CI; keep production/archive gates explicit.
 
 ## Guided ePostman customer onboarding - 2026-11-12

@@ -1,0 +1,10 @@
+{
+  "id": "epostman-receiving-and-guided-setup",
+  "source": "https://github.com/webiumsk/satflux/pull/441",
+  "title": "Receive e-invoices with ePostman",
+  "body": "Connect each Slovak company's ePostman account using guided setup. Review incoming invoices and credit notes in Expenses, download their originals and import them into encrypted Satflux data. Failed connection updates remain visible after reopening settings. This receiving-only integration has been verified in the Peppol test network. Confirm production activation, API access and archive terms with the provider before production use.",
+  "labels": [
+    "invoicing",
+    "feature"
+  ]
+}
