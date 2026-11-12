@@ -3,6 +3,84 @@
 Date: 2026-11-12. Receiving base: `d7e2063e` (PR441, not assumed merged or deployed).
 Branch: `feat/efaktura-epostman-outbound`.
 
+## Actual sandbox follow-up - 2026-11-12
+
+This follow-up supersedes the initial local-only evidence below. The owner
+authorized actual test-network Invoice/CreditNote sending to a receiving
+Recommand Peppol Test Network Playground. Production and active owner previews
+remain untouched; no merge or deployment has occurred.
+
+Preflight reproduced and corrected three existing export defects: explicit
+alphanumeric participant IDs were reduced to digits, Slovak IČO used Belgian
+scheme 0208 instead of 0158, and mandatory legal names disappeared when an
+optional registration number was absent. Preserve literal qualified identifiers
+and non-SK legacy derivation; emit PartyLegalEntity/RegistrationName for both
+parties independently of CompanyID. Full official OASIS schemas pass for both
+document types. This does not establish all national business rules.
+
+The first actual run verified HTTP202 processing, identical bytes/UUID/provider
+receipt after a controlled response loss, and zero-HTTP cached replays. The owner
+then confirmed both documents were rejected by national validation: a Slovak
+buyer's electronic address must use 0245 and its DIČ. The omitted rule code is
+not inferred. Missing IČO/legal-form entries were warnings, not the reported
+blocking error. The original rejected attempts and encrypted evidence remain
+intact; changed documents never reuse those UUIDs.
+
+The domestic ePostman service now requires both actual party countries to be SK
+and both participants to equal 0245 plus that party's ten-digit DIČ. It repeats
+the check when reloading the locked server document. Alternative schemes,
+missing/mismatched DIČ and changed countries fail before provider HTTP. Generic
+qualified identifiers remain valid at the builder layer; no silent rerouting or
+country substitution is introduced.
+
+The owner registered a separate synthetic DIČ recipient in the test network.
+Recommand's enterprise scheme selector ends at 0240, while its country mapping
+defaults Slovakia to 0245. Saving the ten-digit enterprise number with no
+explicit scheme allowed the owner to register the required address. This is not
+a migration of the existing real-company registration. Sources:
+[country defaults](https://github.com/recommand/recommand-peppol/blob/4f15848213adad86c07ed60cad271387208d108a/utils/countries.ts),
+[selector list](https://github.com/recommand/recommand-peppol/blob/4f15848213adad86c07ed60cad271387208d108a/utils/iso-icd-scheme-identifiers.ts)
+and [Slovak number rules](https://github.com/recommand/recommand-peppol/blob/4f15848213adad86c07ed60cad271387208d108a/utils/identifiers/countries/slovakia.ts).
+
+A separately reviewed harness, key, SQLite database and encrypted fixtures retain
+the previous run unchanged. Offline preparation passes both full XSDs with zero
+attempts/HTTP. Main then sends two new business documents: Invoice and CreditNote,
+each EUR1.23. The Invoice's real HTTP202 is followed by a controlled response
+loss; a new process replays the exact wire body and UUID and receives the same
+provider receipt. The CreditNote also receives HTTP202. Both cached replays run
+with networking disabled and make zero HTTP requests. Exactly two attempts and
+two distinct provider receipts remain, with accepted request staging cleared.
+The owner reports Delivered in ePostman but no documents in the same Recommand
+playground after removing filters and refreshing. Screenshots confirm C3 OK and
+test tax-report acceptance. These do not establish arrival in Recommand.
+
+An unauthenticated public-routing diagnostic at 20:53 UTC finds the synthetic
+0245 address registered at a Slovak test SMP. Both Invoice and CreditNote service
+metadata advertise Flowis G3 Test at https://test.postarflowis.sk/as4. The same
+company's displayed 9950 address has no authoritative TEST NAPTR record. An
+existing test-identity collision or unpublished Recommand registration is an
+inference; no provider-internal logs or cryptographic verification of the SMP
+signature were obtained. Do not infer successful arrival at either portal from
+this routing observation alone. A new checksum-valid test-only DIČ is confirmed
+absent in authoritative TEST DNS and awaits owner registration. Verify the new
+published AS4 route before any further send; retain all previous evidence.
+
+Sources: [public service group](https://t-sml.peppol-smp.sk/iso6523-actorid-upis%3A%3A0245%3A9999900009),
+[current SML zones](https://openpeppol.atlassian.net/wiki/spaces/PTPUB/pages/5059608580/SML%2BInsourcing)
+and [OpenPeppol NAPTR migration specification](https://docs.peppol.eu/edelivery/changelog/2025-04/Peppol%20CNAME%20to%20NAPTR%20Migration%20Process%20v1.0.0%202025-04-17.pdf).
+
+Independent QA passes 69 PHP tests / 324 assertions, 14 DIČ/country boundary
+cases, 26 read-only prepared-state checks and 59 actual captured-live checks.
+Security passes 9 independent
+profile cases / 20 assertions, including the reproduced foreign-country gap.
+Main final regression passes 81 PHP tests / 383 assertions, Pint 8 files and
+PHPStan 4 classes. Earlier follow-up checks pass 105 PHP / 784 assertions,
+66 frontend tests / 4 files, unchanged typecheck 110 inherited / no new, scoped
+ESLint, API export and build 7,659 modules in 3m59s. Counts overlap. The inherited
+RaffleApiTest metadata deprecation and existing build warnings remain unchanged.
+No credentials, original XML, provider receipt IDs or machine-specific paths are
+included in this record. Actual captures remain private and encrypted.
+
 ## Authorization and bounded milestone
 
 The owner authorizes proceeding sequentially after the provider comparison. Start

@@ -11,8 +11,11 @@ SAPI tokens cannot call the Enterprise delivery-status API; check delivery and
 reporting in the matching ePostman portal. Automatic status synchronization needs
 a separate Enterprise credential or authenticated webhook integration.
 
-Receiving has actual test-network evidence; this new sending implementation still
-requires independent review and a separate authorized real-network verification.
+Receiving has actual test-network evidence. Manual sending has independent review,
+actual sandbox processing and identical-request retry evidence; confirmation of
+delivery to the new test receiver is pending. An earlier attempt was rejected by
+national validation, so HTTP202 must not be reported as delivery. Domestic ePostman
+sending requires both SK parties' actual DIČ under scheme 0245.
 No merge or production deployment is implied. See
 [the outbound contract and verification record](development/EPOSTMAN_OUTBOUND_IMPLEMENTATION.md).
 
@@ -44,14 +47,14 @@ Rozsah povinností zákona sa pritom líši: **vystavovať** e-faktúry musia od
 
 - **UBL** export (Peppol BIS 3.0) - `GET .../documents/{id}/ubl`
 - **ISDOC** export a embed do EU PDF
-- **SK CIUS** polia v UBL: Peppol scheme `0208` (IČO), `0245` (DIČ), `PartyLegalEntity`, `PaymentMeans`/IBAN, UN/ECE unit codes
+- **SK CIUS** polia v UBL: Peppol scheme `0158` (IČO), `0245` (DIČ), `PartyLegalEntity`, `PaymentMeans`/IBAN, UN/ECE unit codes
 - Per-company nastavenia v `app_settings` (credentials merchanta)
 - Async odoslanie cez `SubmitBusinessDocumentCompliance` job (za `EFAKTURA_ENABLED=true`)
 - SAPI-SK JSON `document/send` (metadata + UBL payload) podľa špecifikácie CPDS
 - Inbound polling `efaktura:poll-inbound` - import UBL do **nákladov** + acknowledge
 - API: `POST .../efaktura/send`, `POST .../efaktura/poll-inbound`, `GET .../efaktura/compliance`, `POST .../efaktura/compliance/refresh`, `POST .../efaktura/test-connection`, `POST .../efaktura/compliance-bulk` (+ ephemeral varianty pre local-first)
 - Voliteľný scheduler `efaktura:sync-compliance-status` (globálny `EFAKTURA_SAPI_SEND_DETAIL_PATH` alebo per-preset detail path)
-- **Derivované Peppol ID**: sender ID sa automaticky odvodí z DIČ (`0245`) alebo IČO (`0208`) firmy; explicitná hodnota v nastaveniach ho prebije
+- **Derivované Peppol ID**: sender ID sa automaticky odvodí z DIČ (`0245`) alebo IČO (`0158`) firmy; explicitná hodnota v nastaveniach ho prebije. Tuzemské odosielanie cez ePostman vyžaduje `0245` a skutočné desaťmiestne DIČ oboch strán; IČO ani IČ DPH ho nenahrádzajú.
 - **Presety poštárov (CPDS)**: admin ich spravuje na `/admin/efaktura-cpds`; aktívne presety predvypĺňajú base URL v sprievodcovi a ich hosty sú dôveryhodné pre SSRF kontrolu
 - **Viditeľnosť**: indikátor "Odošle sa ako eFaktúra" na formulári faktúry, "e" badge so stavom v zozname, preflight kontrola odberateľa pred odoslaním, readiness checklist pre SK platiteľov (aj pred globálnym zapnutím)
 

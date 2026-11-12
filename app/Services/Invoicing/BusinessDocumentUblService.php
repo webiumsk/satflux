@@ -316,17 +316,19 @@ class BusinessDocumentUblService
         $legalEntity = $this->xrechnung
             ? DeXRechnungProfile::legalEntityId($entity)
             : SkUblProfile::resolveLegalEntityId($entity);
+        // BT-27/BT-44 legal names are mandatory independently of whether
+        // an optional legal registration identifier is available.
+        $writer->startElementNs('cac', 'PartyLegalEntity', null);
+        $this->element($writer, 'cbc', 'RegistrationName', SkUblProfile::partyDisplayName($entity));
         if ($legalEntity !== null) {
-            $writer->startElementNs('cac', 'PartyLegalEntity', null);
-            $this->element($writer, 'cbc', 'RegistrationName', SkUblProfile::partyDisplayName($entity));
             $writer->startElementNs('cbc', 'CompanyID', null);
             if ($legalEntity['scheme'] !== null) {
                 $writer->writeAttribute('schemeID', $legalEntity['scheme']);
             }
             $writer->text($legalEntity['id']);
             $writer->endElement();
-            $writer->endElement();
         }
+        $writer->endElement();
 
         // BG-6 seller contact - required by XRechnung (BR-DE-2/5/6).
         if ($this->xrechnung && $wrapper === 'AccountingSupplierParty' && $entity instanceof Company) {

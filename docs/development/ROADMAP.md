@@ -1,5 +1,27 @@
 # Development roadmap
 
+## Actual ePostman outbound test-network follow-up - 2026-11-12
+
+- [x] Correct literal participant parsing, SK ICO 0158 and legal-name export.
+- [x] Require actual SK parties and matching 0245:DIC before provider HTTP and
+  during fresh locked server-document validation; preserve generic providers.
+- [x] Preserve the initially rejected run; register a separate synthetic receiver
+  in the owner's real Peppol Test Network Playground without moving the real ID.
+- [x] Send new Invoice/CreditNote; verify real HTTP202, identical-wire/UUID/provider
+  receipt replay after controlled response loss and zero-HTTP cached results.
+- [x] Independent QA 69 / 324 plus 14 / 26 / 59 private checks, security 9 / 20, main 81 / 383,
+  scoped Pint/PHPStan and prior frontend/type/build/API checks pass.
+- [x] Verify owner-reported C3 OK and public TEST route advertising Flowis G3 Test;
+  the intended Recommand inbox remains empty. Preserve this diagnostic boundary.
+- [ ] Register the new test-only DIČ verified absent in authoritative TEST DNS;
+  confirm its AS4 route before sending and verify intended receiver arrival.
+- [ ] Publish separate outbound PR/changelog after the bounded evidence handoff.
+- [ ] Verify Enterprise or authenticated webhook status tracking separately.
+- [ ] Production activation, contracts/archive/export and deployment approval.
+
+All new sends use sandbox credentials and separate private state. No owner
+preview/database changes, production requests, merge or deployment.
+
 ## Manual ePostman outbound milestone - 2026-11-12
 
 - [x] Implement manual SAPI Invoice/CreditNote sending on the separate outbound

@@ -2,11 +2,13 @@
  * Client-side mirror of SkUblProfile::resolveEndpoint (PHP) - the single
  * source of truth for how a Peppol participant ID derives from company or
  * contact registration data. Keep the ordering in sync with the server:
- * explicit ID > SK DIČ (0245) > IČO (0208); non-SK entities always 0208.
+ * explicit ID > SK DIČ (0245) > SK IČO (0158). Non-SK legacy derivation
+ * remains unchanged pending a separate country-specific audit.
  */
 
-export const PEPPOL_SCHEME_ICO = '0208';
+export const PEPPOL_SCHEME_ICO = '0158';
 export const PEPPOL_SCHEME_DIC = '0245';
+const LEGACY_NON_SK_SCHEME = '0208';
 
 export type PeppolEntity = {
   peppol_participant_id?: string | null;
@@ -26,16 +28,18 @@ function digitsOnly(value: string | null | undefined): string | null {
 }
 
 function parseParticipantId(value: string): PeppolEndpoint | null {
+  if (/[\x00-\x1F\x7F]/.test(value)) return null;
   const trimmed = value.trim();
   if (trimmed === '') return null;
 
   if (trimmed.includes(':')) {
     const [schemeRaw, idRaw] = trimmed.split(/:(.*)/s);
     const scheme = schemeRaw.trim();
-    const id = digitsOnly(idRaw);
-    if (scheme !== '' && id !== null) {
+    const id = idRaw.trim();
+    if (/^[0-9]{4}$/.test(scheme) && /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(id)) {
       return { scheme, id };
     }
+    return null;
   }
 
   const digits = digitsOnly(trimmed);
@@ -64,7 +68,7 @@ export function resolvePeppolEndpoint(entity: PeppolEntity | null | undefined): 
 
   if (countryCode(entity) !== 'SK') {
     const id = digitsOnly(entity.registration_number) ?? digitsOnly(entity.tax_id);
-    return id !== null ? { scheme: PEPPOL_SCHEME_ICO, id } : null;
+    return id !== null ? { scheme: LEGACY_NON_SK_SCHEME, id } : null;
   }
 
   const dic = digitsOnly(entity.tax_id);

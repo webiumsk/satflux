@@ -95,11 +95,32 @@ class EpostmanOutboundUblTest extends TestCase
         }
     }
 
-    private function render(string $type, float $amountPaid = 0): string
+    #[DataProvider('documentTypes')]
+    public function test_party_legal_names_do_not_require_a_registration_identifier(string $type, string $root, string $codeElement, string $code): void
+    {
+        $dom = new DOMDocument;
+        $this->assertTrue($dom->loadXML($this->render($type, 0, false), LIBXML_NONET));
+        $xpath = new DOMXPath($dom);
+        $xpath->registerNamespace('cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
+        $xpath->registerNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
+        // Peppol BR-06/BR-07 use RegistrationName; PartyName is a trading name.
+        $seller = '/*/cac:AccountingSupplierParty/cac:Party/cac:PartyLegalEntity';
+        $buyer = '/*/cac:AccountingCustomerParty/cac:Party/cac:PartyLegalEntity';
+        $this->assertSame('Synthetic issuer', $xpath->evaluate('string('.$seller.'/cbc:RegistrationName)'));
+        $this->assertSame('Synthetic buyer', $xpath->evaluate('string('.$buyer.'/cbc:RegistrationName)'));
+        $this->assertSame(0.0, $xpath->evaluate('count('.$seller.'/cbc:CompanyID)'));
+        $this->assertSame(0.0, $xpath->evaluate('count('.$buyer.'/cbc:CompanyID)'));
+        $schemaDirectory = getenv('EPOSTMAN_TEST_UBL_SCHEMA_DIR');
+        if (is_string($schemaDirectory) && $schemaDirectory !== '') {
+            $this->assertTrue($dom->schemaValidate($schemaDirectory.'/maindoc/UBL-'.$root.'-2.1.xsd'));
+        }
+    }
+
+    private function render(string $type, float $amountPaid = 0, bool $withRegistrationNumber = true): string
     {
         $company = new Company([
             'legal_name' => 'Synthetic issuer', 'jurisdiction' => CompanyJurisdiction::EuSk,
-            'default_currency' => 'EUR', 'registration_number' => '12345678',
+            'default_currency' => 'EUR', 'registration_number' => $withRegistrationNumber ? '12345679' : null,
             'tax_id' => '1234567890', 'vat_number' => 'SK1234567890',
             'country' => 'SK', 'street' => 'Test 1', 'city' => 'Test', 'postal_code' => '00000',
             'vat_payer' => true, 'vat_status' => 'payer', 'vat_rate_default' => 23, 'app_settings' => [],

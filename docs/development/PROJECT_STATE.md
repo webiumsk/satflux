@@ -1,5 +1,39 @@
 # Project state
 
+## ePostman sandbox processing and retry verified - 2026-11-12
+
+The separate outbound branch remains based on local implementation 03b062cc.
+New bounded corrections are local and reviewed; no push, merge or deployment.
+Both running owner previews and their accounts/databases remain preserved.
+
+Actual sandbox Invoice/CreditNote processing and exact-request retry are verified.
+The first recipient scheme caused national rejection after HTTP202; preserve that
+run and its evidence. The owner registered a separate synthetic 0245 recipient in
+a Recommand Peppol Test Network Playground. A new isolated harness/state sends
+two EUR1.23 documents. After controlled loss of the Invoice's real HTTP202 response,
+identical raw bytes/UUID replay returns the same provider receipt. Both cached
+replays perform zero HTTP; two durable attempts and distinct receipts remain.
+The owner reports Delivered in ePostman but no documents in Recommand even after
+checking the same playground without filters. Screenshots show C3 OK. Public
+authoritative TEST DNS/SMP diagnostics advertise Flowis G3 Test for both document
+types at that synthetic address; the displayed 9950 address is unpublished.
+Test-identity collision or unpublished Recommand registration remains an
+inference. A new valid test DIČ is verified absent in authoritative TEST DNS and
+awaits owner registration; verify its AS4 route before any further send.
+Arrival in the intended Recommand inbox remains unconfirmed.
+
+Correct literal participant preservation, SK ICO scheme 0158 and mandatory legal
+names without registration numbers. The domestic service requires both actual
+countries SK and matching 0245:ten-digit-DIC, including its fresh locked recheck.
+Independent QA: 69 PHP / 324 assertions, 14 boundary, 26 prepared-state and 59 actual
+captured-live checks pass. Security: 9 profile cases / 20 assertions pass. Main:
+81 PHP / 383, Pint 8, PHPStan 4; prior 66 frontend / 4, type 110 inherited / no new, API and
+build 7,659 pass. Counts overlap; no ratchet change. The source service is frozen
+at a0130288; private harness/captures and reviewer reports remain uncommitted.
+Evidence: EPOSTMAN_OUTBOUND_IMPLEMENTATION.md and private sandbox review records.
+Next: resolve sender Delivered versus empty receiver inbox, then outbound
+publication/changelog and separately Enterprise/webhook status tracking.
+
 ## Manual ePostman sending accepted locally - 2026-11-12
 
 The owner authorizes sequential progress; the first milestone is implemented on

@@ -15,9 +15,13 @@ use App\Models\EfakturaOutboundAttempt;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Services\Invoicing\BusinessDocumentUblService;
 use App\Services\Invoicing\Efaktura\ComplianceStatusSyncService;
 use App\Services\Invoicing\Efaktura\ComplianceSubmissionService;
+use App\Services\Invoicing\Efaktura\EpostmanOutboundSubmissionService;
 use App\Services\Invoicing\Efaktura\SapiSkClient;
+use App\Support\Invoicing\Efaktura\PeppolParticipantId;
+use App\Support\Invoicing\Efaktura\SapiSkSendPayload;
 use Illuminate\Database\Events\TransactionCommitted;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Bus;
@@ -295,6 +299,132 @@ class EpostmanOutboundTest extends TestCase
         Http::assertSentCount(2);
         $this->actingAs($user)->postJson('/api/invoicing/ephemeral/efaktura/refresh', ['evolu_document_id' => 'synthetic-local-id', 'bridge_company_id' => $company->id])->assertOk()->assertJsonPath('data.0.status', 'submitted');
         Http::assertSentCount(2);
+    }
+
+    public function test_explicit_alphanumeric_receiver_is_preserved_by_ubl_and_payload_builders(): void
+    {
+        $receiver = '9950:sk1234567890';
+        Http::preventStrayRequests();
+        $document = $this->document();
+        $document->contact->update(['peppol_participant_id' => $receiver]);
+        $document = $document->fresh(['company', 'contact', 'lines']);
+        $resolved = PeppolParticipantId::fromContact($document->contact);
+        $xml = app(BusinessDocumentUblService::class)->xml($document, auditDownload: false);
+        $payload = SapiSkSendPayload::buildEpostman($document, '0245:1234567890', $resolved, $xml, $document->id);
+        $this->assertSame($receiver, $payload['metadata']['receiverParticipantId']);
+        $dom = new \DOMDocument;
+        $this->assertTrue($dom->loadXML($xml, LIBXML_NONET));
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
+        $xpath->registerNamespace('cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
+        $endpoint = '/*/cac:AccountingCustomerParty/cac:Party/cbc:EndpointID';
+        $this->assertSame('9950', $xpath->evaluate('string('.$endpoint.'/@schemeID)'));
+        $this->assertSame('sk1234567890', $xpath->evaluate('string('.$endpoint.')'));
+        $this->assertSame('0158', $xpath->evaluate('string(/*/cac:AccountingSupplierParty/cac:Party/cac:PartyLegalEntity/cbc:CompanyID/@schemeID)'));
+        Http::assertNothingSent();
+    }
+
+    public static function invalidDomesticParticipants(): array
+    {
+        return [
+            'VAT endpoint instead of DIC' => ['9950:sk9999999999', '9999999999', null],
+            'endpoint DIC differs from buyer' => ['0245:8888888888', '9999999999', null],
+            'buyer DIC missing' => ['0245:9999999999', null, null],
+            'sender VAT endpoint' => [null, '9999999999', '9950:sk1234567890'],
+            'sender endpoint differs from issuer' => [null, '9999999999', '0245:8888888888'],
+        ];
+    }
+
+    #[DataProvider('invalidDomesticParticipants')]
+    public function test_invalid_domestic_participants_are_rejected_before_provider_calls(?string $receiver, ?string $taxId, ?string $sender): void
+    {
+        $this->fakeProvider();
+        $document = $this->document();
+        $document->contact->update(['peppol_participant_id' => $receiver, 'tax_id' => $taxId]);
+        if ($sender !== null) {
+            $settings = $document->company->app_settings;
+            $settings['efaktura_peppol_participant_id'] = $sender;
+            $document->company->update(['app_settings' => $settings]);
+        }
+        $this->expectException(ValidationException::class);
+        try {
+            app(ComplianceSubmissionService::class)->submitNow($document->fresh(['company', 'contact', 'lines']));
+        } finally {
+            Http::assertNothingSent();
+            $this->assertDatabaseCount('efaktura_outbound_attempts', 0);
+        }
+    }
+
+    public function test_changed_buyer_dic_with_an_unchanged_explicit_endpoint_is_fenced_before_http(): void
+    {
+        $this->fakeProvider();
+        $document = $this->document();
+        $document->contact->update(['peppol_participant_id' => '0245:9999999999']);
+        $contactId = $document->company_contact_id;
+        $changed = false;
+        Event::listen(TransactionCommitted::class, function () use ($contactId, &$changed): void {
+            if (! $changed && EfakturaOutboundAttempt::count() === 1 && DB::transactionLevel() === 0) {
+                $changed = true;
+                DB::table('company_contacts')->where('id', $contactId)->update(['tax_id' => '8888888888']);
+            }
+        });
+        $this->expectException(ValidationException::class);
+        try {
+            app(ComplianceSubmissionService::class)->submitNow($document->fresh(['company', 'contact', 'lines']));
+        } finally {
+            $this->assertTrue($changed);
+            Http::assertNothingSent();
+            $this->assertDatabaseCount('efaktura_outbound_attempts', 1);
+        }
+    }
+
+    public static function foreignDomesticParties(): array
+    {
+        return ['foreign issuer with SK jurisdiction' => ['sender'], 'foreign buyer with SK endpoint' => ['recipient']];
+    }
+
+    #[DataProvider('foreignDomesticParties')]
+    public function test_domestic_service_rejects_foreign_party_countries_before_reservation(string $party): void
+    {
+        $this->fakeProvider();
+        $document = $this->document();
+        if ($party === 'sender') {
+            $settings = $document->company->app_settings;
+            $settings['efaktura_peppol_participant_id'] = '0245:1234567890';
+            $document->company->update(['country' => 'CZ', 'app_settings' => $settings]);
+        } else {
+            $document->contact->update(['country' => 'CZ', 'peppol_participant_id' => '0245:9999999999']);
+        }
+        $this->expectException(ValidationException::class);
+        try {
+            app(EpostmanOutboundSubmissionService::class)->submit($document->fresh(['company', 'contact', 'lines']));
+        } finally {
+            Http::assertNothingSent();
+            $this->assertDatabaseCount('efaktura_outbound_attempts', 0);
+        }
+    }
+
+    public function test_buyer_country_change_after_reservation_is_fenced_before_http(): void
+    {
+        $this->fakeProvider();
+        $document = $this->document();
+        $document->contact->update(['peppol_participant_id' => '0245:9999999999']);
+        $contactId = $document->company_contact_id;
+        $changed = false;
+        Event::listen(TransactionCommitted::class, function () use ($contactId, &$changed): void {
+            if (! $changed && EfakturaOutboundAttempt::count() === 1 && DB::transactionLevel() === 0) {
+                $changed = true;
+                DB::table('company_contacts')->where('id', $contactId)->update(['country' => 'CZ']);
+            }
+        });
+        $this->expectException(ValidationException::class);
+        try {
+            app(EpostmanOutboundSubmissionService::class)->submit($document->fresh(['company', 'contact', 'lines']));
+        } finally {
+            $this->assertTrue($changed);
+            Http::assertNothingSent();
+            $this->assertDatabaseCount('efaktura_outbound_attempts', 1);
+        }
     }
 
     public function test_local_first_issuer_spoof_and_foreign_company_are_rejected(): void

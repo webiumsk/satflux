@@ -55,7 +55,7 @@ final class CompanyEfakturaSettings
         return $id !== '' ? $id : null;
     }
 
-    /** Auto-derived from the company DIČ (0245) or IČO (0208) - see SkUblProfile. */
+    /** Auto-derived from the company DIČ (0245) or Slovak IČO (0158). */
     public function derivedPeppolParticipantId(): ?string
     {
         return $this->derivedPeppolParticipantId;

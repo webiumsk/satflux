@@ -70,6 +70,7 @@ class EpostmanOutboundSubmissionService
             $this->invalid('The recipient Peppol participant ID is missing.');
         }
         $sender = (string) $settings->peppolParticipantId();
+        $this->assertDomesticParticipants($document, $sender, $receiver);
         $this->assertSupportedAmounts($document);
         $xml = $this->ublService->xml($document, auditDownload: false);
         $prototype = SapiSkSendPayload::buildEpostman($document, $sender, $receiver, $xml, '00000000-0000-4000-8000-000000000000');
@@ -233,7 +234,9 @@ class EpostmanOutboundSubmissionService
         if ($receiver === null) {
             $this->invalid('The invoice recipient changed. Reload it before sending.');
         }
-        $body = SapiSkSendPayload::buildEpostman($document, (string) CompanyEfakturaSettings::fromCompany($company)->peppolParticipantId(), $receiver, $this->ublService->xml($document, auditDownload: false), '00000000-0000-4000-8000-000000000000');
+        $sender = (string) CompanyEfakturaSettings::fromCompany($company)->peppolParticipantId();
+        $this->assertDomesticParticipants($document, $sender, $receiver);
+        $body = SapiSkSendPayload::buildEpostman($document, $sender, $receiver, $this->ublService->xml($document, auditDownload: false), '00000000-0000-4000-8000-000000000000');
         if (! hash_equals($contentHash, hash('sha256', json_encode($body, JSON_THROW_ON_ERROR)))) {
             $this->invalid('The invoice content changed. Reload it before sending.');
         }
@@ -250,6 +253,32 @@ class EpostmanOutboundSubmissionService
     {
         if ($company->user_id !== $ownerId) {
             $this->invalid('The connected company ownership changed. Reload before sending.');
+        }
+    }
+
+    /** The Slovak domestic CIUS requires both endpoints to use SK:DIC. */
+    protected function assertDomesticParticipants(BusinessDocument $document, string $sender, string $receiver): void
+    {
+        $company = $document->company;
+        $buyer = $document->resolvedBuyer();
+        if (! $company instanceof Company || $buyer === null) {
+            $this->invalid('The domestic invoice parties are unavailable.');
+        }
+        if (strtoupper(trim((string) $company->getAttribute('country'))) !== 'SK'
+            || strtoupper(trim((string) $buyer->getAttribute('country'))) !== 'SK') {
+            $this->invalid('Slovak ePostman sending requires both the sender and recipient country to be SK. Check the company and contact countries.');
+        }
+
+        foreach ([
+            ['sender', $sender, (string) $company->getAttribute('tax_id')],
+            ['recipient', $receiver, (string) $buyer->getAttribute('tax_id')],
+        ] as [$party, $participant, $taxId]) {
+            // Normalize formatting only; never invent a DIČ from a VAT number,
+            // another participant scheme or a registration identifier.
+            $normalized = preg_replace('/\s+/', '', trim($taxId)) ?? '';
+            if (! preg_match('/^[0-9]{10}$/D', $normalized) || $participant !== '0245:'.$normalized) {
+                $this->invalid('Slovak ePostman sending requires the '.$party.' participant to be 0245 followed by that party\'s ten-digit DIČ. Check the company and contact tax identifiers.');
+            }
         }
     }
 

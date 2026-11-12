@@ -1,5 +1,33 @@
 # Development decision log
 
+## 2026-11-12 - Separate processing proof from receiver delivery
+
+Actual ePostman HTTP202 and same-key replay prove processing and idempotence,
+not recipient receipt. The first two test documents were later rejected because
+the Slovak buyer used 9950 rather than 0245:DIC. Preserve those attempts and encrypted
+evidence. New documents use a separately registered synthetic 0245 test receiver,
+new identities and isolated state; never reuse an old UUID for changed XML.
+
+Reject non-SK actual parties, missing/mismatched DIC and alternative endpoints
+before authentication/reservation and during the fresh locked server check.
+Preserve generic literal qualified IDs, correct SK ICO to 0158 without broad
+non-SK changes, and export mandatory legal names independently of optional ICO.
+The Recommand scheme selector omits 0245; its SK default allows the required
+registration when enterpriseNumber is saved with no explicit scheme. Owner
+confirmed registration. No real-company recipient migration was performed.
+
+New actual Invoice/CreditNote requests and controlled-loss replay pass, with
+zero-HTTP cached replays and two durable receipts. The owner reports Delivered
+in ePostman but an empty Recommand inbox. C3 is OK; public authoritative TEST
+routing advertises Flowis G3 Test for this synthetic address. A collision or
+unpublished Recommand registration remains an inference, not a provider fault
+diagnosis. Keep intended recipient arrival unconfirmed. Verify an unused test
+DIČ, ask the owner to register it, then verify its published AS4 route before
+any further send. QA 69 / 324 and
+14/26/59 private checks, security 9 / 20, main 81 / 383 and static checks pass. These
+overlap, and provider lifecycle evidence remains separate from code validation.
+No production activation, publication, merge or deployment follows automatically.
+
 ## 2026-11-12 - Implement manual ePostman sending with durable recovery
 
 After the provider comparison the owner authorizes sequential implementation.
