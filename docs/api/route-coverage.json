@@ -4013,6 +4013,20 @@
             "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."
         },
         {
+            "route": "POST api/invoicing/companies/{company}/efaktura/inbox/{receipt}/prepare-import",
+            "action": "App\\Http\\Controllers\\Invoicing\\EfakturaInboundInboxController@prepareImport",
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "App\\Http\\Middleware\\RequireVerifiedEmail",
+                "throttle:api-user",
+                "App\\Http\\Middleware\\EnsurePlanAllowsBusinessInvoicing",
+                "App\\Http\\Middleware\\EnsureCompanyOwnership"
+            ],
+            "status": "excluded",
+            "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."
+        },
+        {
             "route": "POST api/invoicing/companies/{company}/efaktura/poll-inbound",
             "action": "App\\Http\\Controllers\\Invoicing\\EfakturaController@pollInbound",
             "middleware": [

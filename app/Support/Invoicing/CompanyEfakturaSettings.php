@@ -115,7 +115,7 @@ final class CompanyEfakturaSettings
         return hash('sha256', serialize([
             $this->enabled(), $this->inboundEnabled(), $this->provider(),
             $this->sapiBaseUrl(), $this->sapiClientId(), $this->sapiClientSecret(),
-            $this->peppolParticipantId(),
+            $this->peppolParticipantId(), $this->derivedPeppolParticipantId(),
         ]));
     }
 

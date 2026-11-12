@@ -171,13 +171,110 @@ class EpostmanInboundTest extends TestCase
         app(EfakturaInboundService::class)->pollCompany($company);
         $receipt = EfakturaInboundReceipt::firstOrFail();
         $localId = $receipt->evolu_expense_id;
-        app(EfakturaInboundInboxService::class)->markImported($receipt, $company, hash('sha256', $this->xml()));
+        $service = app(EfakturaInboundInboxService::class);
+        $digest = hash('sha256', $this->xml());
+        $token = $service->prepareImport($receipt, $company, $digest);
+        $service->markImported($receipt, $company, $digest, $token);
         $this->assertNull($receipt->fresh()->ubl_encrypted);
         $this->fakeProvider();
         $this->assertSame(1, app(EfakturaInboundService::class)->pollCompany($company->fresh())['acknowledged']);
         Http::assertSent(fn ($request) => str_ends_with($request->url(), '/receive/doc-1'));
         $this->assertSame($localId, $receipt->fresh()->evolu_expense_id);
         $this->assertSame($this->xml(), Crypt::decryptString($receipt->fresh()->ubl_encrypted));
+    }
+
+    public function test_recovery_cannot_replace_an_established_original_with_changed_provider_bytes(): void
+    {
+        $company = $this->company();
+        $this->fakeProvider(ackFails: true);
+        app(EfakturaInboundService::class)->pollCompany($company);
+        $receipt = EfakturaInboundReceipt::firstOrFail();
+        $receipt->update(['ubl_encrypted' => 'synthetic-unreadable-ciphertext']);
+        $before = $receipt->fresh()->getAttributes();
+
+        $changedXml = str_replace('SYNTHETIC-001', 'SYNTHETIC-CHANGED', $this->xml());
+        $this->fakeProvider($changedXml);
+        $stats = app(EfakturaInboundService::class)->pollCompany($company->fresh());
+        $this->assertSame(0, $stats['imported']);
+        $this->assertSame(0, $stats['acknowledged']);
+        $this->assertGreaterThan(0, $stats['failed']);
+        $this->assertSame($before, $receipt->fresh()->getAttributes());
+        Http::assertNotSent(fn ($request) => str_ends_with($request->url(), '/acknowledge'));
+
+        $this->fakeProvider();
+        $this->assertSame(1, app(EfakturaInboundService::class)->pollCompany($company->fresh())['acknowledged']);
+        $this->assertSame(hash('sha256', $this->xml()), $receipt->fresh()->original_sha256);
+        $this->assertSame($this->xml(), Crypt::decryptString($receipt->fresh()->ubl_encrypted));
+    }
+
+    public function test_tax_identity_change_invalidates_an_inflight_poll_with_an_unchanged_explicit_participant(): void
+    {
+        $company = $this->company();
+        $company->update(['app_settings' => array_merge($company->app_settings, [
+            'efaktura_peppol_participant_id' => self::PARTICIPANT,
+        ])]);
+        $before = CompanyEfakturaSettings::fromCompany($company);
+        Http::fake(function ($request) use ($company) {
+            if (str_ends_with($request->url(), '/sapi/auth/token')) {
+                return Http::response(['access_token' => 'synthetic-token', 'expires_in' => 900, 'token_type' => 'Bearer']);
+            }
+            if (str_ends_with($request->url(), '/receive/doc-1')) {
+                $company->fresh()->update(['tax_id' => '0987654321']);
+
+                return Http::response(['metadata' => $this->metadata('doc-1'), 'payload' => $this->xml(), 'payloadFormat' => 'XML', 'status' => 'RECEIVED']);
+            }
+            if (str_ends_with($request->url(), '/acknowledge')) {
+                return Http::response(['documentId' => 'doc-1', 'status' => 'ACKNOWLEDGED']);
+            }
+
+            return Http::response(['documents' => [$this->metadata('doc-1')]]);
+        });
+
+        $stats = app(EfakturaInboundService::class)->pollCompany($company);
+        $after = CompanyEfakturaSettings::fromCompany($company->fresh());
+        $this->assertSame($before->peppolParticipantId(), $after->peppolParticipantId());
+        $this->assertNotSame($before->connectionFingerprint(), $after->connectionFingerprint());
+        $this->assertSame(0, $stats['imported']);
+        $this->assertSame(0, $stats['acknowledged']);
+        $this->assertGreaterThan(0, $stats['failed']);
+        $this->assertDatabaseCount('efaktura_inbound_receipts', 0);
+        Http::assertNotSent(fn ($request) => str_ends_with($request->url(), '/acknowledge'));
+    }
+
+    public function test_recovery_respects_an_original_digest_pinned_while_detail_is_pending(): void
+    {
+        $company = $this->company();
+        $this->fakeProvider(ackFails: true);
+        app(EfakturaInboundService::class)->pollCompany($company);
+        $receipt = EfakturaInboundReceipt::firstOrFail();
+        $receipt->update(['ubl_encrypted' => 'synthetic-unreadable-ciphertext', 'original_sha256' => null]);
+        $pinned = null;
+        Http::swap(new Factory);
+        Http::preventStrayRequests();
+        Http::fake(function ($request) use ($receipt, &$pinned) {
+            if (str_ends_with($request->url(), '/sapi/auth/token')) {
+                return Http::response(['access_token' => 'synthetic-token', 'expires_in' => 900, 'token_type' => 'Bearer']);
+            }
+            if (str_ends_with($request->url(), '/receive/doc-1')) {
+                $receipt->fresh()->update(['original_sha256' => hash('sha256', $this->xml())]);
+                $pinned = $receipt->fresh()->getAttributes();
+
+                return Http::response(['metadata' => $this->metadata('doc-1'), 'payload' => str_replace('SYNTHETIC-001', 'SYNTHETIC-CHANGED', $this->xml()), 'payloadFormat' => 'XML', 'status' => 'RECEIVED']);
+            }
+            if (str_ends_with($request->url(), '/acknowledge')) {
+                return Http::response(['documentId' => 'doc-1', 'status' => 'ACKNOWLEDGED']);
+            }
+
+            return Http::response(['documents' => [$this->metadata('doc-1')]]);
+        });
+
+        $stats = app(EfakturaInboundService::class)->pollCompany($company->fresh());
+        $this->assertSame(0, $stats['imported']);
+        $this->assertSame(0, $stats['acknowledged']);
+        $this->assertGreaterThan(0, $stats['failed']);
+        $this->assertNotNull($pinned);
+        $this->assertSame($pinned, $receipt->fresh()->getAttributes());
+        Http::assertNotSent(fn ($request) => str_ends_with($request->url(), '/acknowledge'));
     }
 
     public function test_missing_server_original_is_recovered_without_duplicating_its_expense(): void
@@ -356,8 +453,10 @@ class EpostmanInboundTest extends TestCase
             }
         }
         $hash = hash('sha256', $this->xml());
-        $service->markImported($receipt, $company, $hash);
-        $service->markImported($receipt, $company, $hash);
+        $token = $service->prepareImport($receipt, $company, $hash);
+        $this->assertNotNull($receipt->fresh()->ubl_encrypted);
+        $service->markImported($receipt, $company, $hash, $token);
+        $service->markImported($receipt, $company, $hash, $token);
         $this->assertNull($receipt->fresh()->ubl_encrypted);
         $this->assertSame($hash, $service->detail($company->user, $company, $receipt->fresh())['original_sha256']);
     }

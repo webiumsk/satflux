@@ -687,6 +687,8 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
                 ->middleware(EnsureCompanyOwnership::class);
             Route::get('/companies/{company}/efaktura/inbox/{receipt}', [EfakturaInboundInboxController::class, 'show'])
                 ->middleware(EnsureCompanyOwnership::class);
+            Route::post('/companies/{company}/efaktura/inbox/{receipt}/prepare-import', [EfakturaInboundInboxController::class, 'prepareImport'])
+                ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/efaktura/inbox/{receipt}/imported', [EfakturaInboundInboxController::class, 'markImported'])
                 ->middleware(EnsureCompanyOwnership::class);
             Route::post('/companies/{company}/efaktura/inbox/{receipt}/dismiss', [EfakturaInboundInboxController::class, 'dismiss'])

@@ -173,8 +173,12 @@ class EfakturaInboundService
                             // not import after settings or credentials are revoked.
                             $receipt = DB::transaction(function () use ($company, $fingerprint, $externalId, $ubl, $detail, $receipt, $connectionKey, $origin, $participantId) {
                                 $fresh = $this->lockMatchingCompany($company, $fingerprint);
+                                $retained = $receipt === null ? null : EfakturaInboundReceipt::query()->whereKey($receipt->id)->where('company_id', $company->id)->lockForUpdate()->firstOrFail();
+                                if ($retained?->original_sha256 !== null && ! hash_equals($retained->original_sha256, hash('sha256', $ubl))) {
+                                    throw new \RuntimeException('Recovered inbound original does not match retained identity.');
+                                }
 
-                                return $this->importInboundDocument($fresh, $externalId, $ubl, $detail, $receipt, $connectionKey, $origin, $participantId);
+                                return $this->importInboundDocument($fresh, $externalId, $ubl, $detail, $retained, $connectionKey, $origin, $participantId);
                             });
                         }
 

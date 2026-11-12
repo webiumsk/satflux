@@ -42,14 +42,32 @@ class EfakturaInboundInboxController extends Controller
         return response()->json(['data' => $this->inboxService->detail($user, $company, $receipt)]);
     }
 
-    public function markImported(Request $request, Company $company, EfakturaInboundReceipt $receipt): Response
+    public function prepareImport(Request $request, Company $company, EfakturaInboundReceipt $receipt): JsonResponse
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
         $this->inboxService->assertCompanyAccess($user, $company);
         abort_unless($receipt->company_id === $company->id, 404);
         $validated = $request->validate(['original_sha256' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/D']]);
-        $this->inboxService->markImported($receipt, $company, $validated['original_sha256']);
+        $token = $this->inboxService->prepareImport($receipt, $company, $validated['original_sha256']);
+
+        return response()->json(['data' => ['custody_protocol' => EfakturaInboundInboxService::CUSTODY_PROTOCOL, 'custody_token' => $token]]);
+    }
+
+    public function markImported(Request $request, Company $company, EfakturaInboundReceipt $receipt): Response|JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+        $this->inboxService->assertCompanyAccess($user, $company);
+        abort_unless($receipt->company_id === $company->id, 404);
+        $validated = $request->validate([
+            'original_sha256' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/D'],
+            'custody_token' => ['sometimes', 'required', 'string', 'max:8192'],
+        ]);
+        $token = $this->inboxService->markImported($receipt, $company, $validated['original_sha256'], $validated['custody_token'] ?? null);
+        if ($token !== null) {
+            return response()->json(['data' => ['custody_protocol' => EfakturaInboundInboxService::CUSTODY_PROTOCOL, 'custody_token' => $token]]);
+        }
 
         return response()->noContent();
     }

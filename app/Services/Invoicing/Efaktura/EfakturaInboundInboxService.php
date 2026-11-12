@@ -18,12 +18,14 @@ use Illuminate\Validation\ValidationException;
  * Inbox for e-invoices received on behalf of a local-first company. The
  * poller (EfakturaInboundService) parks each document as a pending receipt
  * with the parsed expense draft and the UBL encrypted at rest; the client
- * imports it into Evolu (stable id from evolu_expense_id) and reports back,
- * which drops the payload. Mirrors IntegrationDocumentInboxService for
- * WooCommerce orders.
+ * imports it into Evolu (stable id from evolu_expense_id), prepares a custody
+ * acknowledgement, then proves the local original again before completing
+ * handoff. Preparation never drops the retained server payload.
  */
 class EfakturaInboundInboxService
 {
+    public const CUSTODY_PROTOCOL = 'post_ack_proof_v1';
+
     /**
      * @param  array<string, mixed>  $draft
      * @param  array<string, mixed>  $detail
@@ -120,18 +122,43 @@ class EfakturaInboundInboxService
         return ['state' => $state, 'last_poll_at' => $last, 'failed' => $failed];
     }
 
-    public function markImported(EfakturaInboundReceipt $receipt, Company $company, ?string $originalSha256 = null): void
+    public function prepareImport(EfakturaInboundReceipt $receipt, Company $company, ?string $originalSha256 = null): string
     {
         $this->assertReceiptBelongsToCompany($receipt, $company);
-        DB::transaction(function () use ($receipt, $originalSha256) {
-            $locked = EfakturaInboundReceipt::query()->whereKey($receipt->id)->lockForUpdate()->firstOrFail();
+
+        return DB::transaction(function () use ($receipt, $company, $originalSha256): string {
+            $locked = EfakturaInboundReceipt::query()->whereKey($receipt->id)->where('company_id', $company->id)->lockForUpdate()->firstOrFail();
             $receipt->setRawAttributes($locked->getAttributes(), true);
-            $expected = $receipt->original_sha256;
-            if ($expected === null && $receipt->ubl_encrypted !== null) {
-                $expected = hash('sha256', Crypt::decryptString($receipt->ubl_encrypted));
+            $expected = $this->validatedCustodyDigest($receipt, $originalSha256);
+            if ($receipt->original_sha256 === null) {
+                $receipt->update(['original_sha256' => $expected]);
             }
-            if (! is_string($originalSha256) || ! preg_match('/^[a-f0-9]{64}$/D', $originalSha256) || ! is_string($expected) || ! hash_equals($expected, $originalSha256)) {
-                throw ValidationException::withMessages(['original_sha256' => ['Confirm the saved original document before completing import.']]);
+
+            return Crypt::encryptString(json_encode($this->custodyClaims($receipt, $expected), JSON_THROW_ON_ERROR));
+        });
+    }
+
+    public function markImported(EfakturaInboundReceipt $receipt, Company $company, ?string $originalSha256 = null, ?string $custodyToken = null): ?string
+    {
+        // Old clients only perform preparation and cannot clear the original.
+        if ($custodyToken === null) {
+            return $this->prepareImport($receipt, $company, $originalSha256);
+        }
+        $this->assertReceiptBelongsToCompany($receipt, $company);
+        DB::transaction(function () use ($receipt, $company, $originalSha256, $custodyToken): void {
+            $locked = EfakturaInboundReceipt::query()->whereKey($receipt->id)->where('company_id', $company->id)->lockForUpdate()->firstOrFail();
+            $receipt->setRawAttributes($locked->getAttributes(), true);
+            $expected = $this->validatedCustodyDigest($receipt, $originalSha256);
+            try {
+                if ($custodyToken === '' || strlen($custodyToken) > 8192) {
+                    throw new \RuntimeException('Invalid custody confirmation.');
+                }
+                $claims = json_decode(Crypt::decryptString($custodyToken), true, 16, JSON_THROW_ON_ERROR);
+                if ($claims !== $this->custodyClaims($receipt, $expected)) {
+                    throw new \RuntimeException('Invalid custody confirmation.');
+                }
+            } catch (\Throwable) {
+                throw ValidationException::withMessages(['custody_token' => ['Repeat custody preparation before completing import.']]);
             }
             if ($receipt->inbox_status === EfakturaInboundReceipt::INBOX_IMPORTED) {
                 return;
@@ -139,6 +166,43 @@ class EfakturaInboundInboxService
             $receipt->update(['original_sha256' => $expected]);
             $this->resolvePending($receipt, EfakturaInboundReceipt::INBOX_IMPORTED);
         });
+
+        return null;
+    }
+
+    private function validatedCustodyDigest(EfakturaInboundReceipt $receipt, ?string $originalSha256): string
+    {
+        $expected = $receipt->original_sha256;
+        if ($receipt->inbox_status === EfakturaInboundReceipt::INBOX_PENDING) {
+            try {
+                $original = $receipt->ubl_encrypted !== null ? Crypt::decryptString($receipt->ubl_encrypted) : '';
+                if ($original === '' || ($expected !== null && ! hash_equals($expected, hash('sha256', $original)))) {
+                    throw new \RuntimeException('Retained original is unavailable.');
+                }
+                $expected ??= hash('sha256', $original);
+            } catch (\Throwable) {
+                throw ValidationException::withMessages(['original_sha256' => ['The retained original must be recoverable before completing import.']]);
+            }
+        } elseif ($receipt->inbox_status !== EfakturaInboundReceipt::INBOX_IMPORTED) {
+            throw ValidationException::withMessages(['inbox' => ['Inbox item is not pending.']]);
+        }
+        if (! is_string($originalSha256) || ! preg_match('/^[a-f0-9]{64}$/D', $originalSha256)
+            || ! is_string($expected) || ! preg_match('/^[a-f0-9]{64}$/D', $expected) || ! hash_equals($expected, $originalSha256)) {
+            throw ValidationException::withMessages(['original_sha256' => ['Confirm the saved original document before completing import.']]);
+        }
+
+        return $expected;
+    }
+
+    /** @return array<string, int|string|null> */
+    private function custodyClaims(EfakturaInboundReceipt $receipt, string $digest): array
+    {
+        return [
+            'purpose' => 'efaktura_inbox_custody', 'version' => 1,
+            'company_id' => $receipt->company_id, 'receipt_id' => $receipt->id,
+            'connection_key' => $receipt->connection_key, 'original_sha256' => $digest,
+            'evolu_expense_id' => $receipt->evolu_expense_id,
+        ];
     }
 
     public function dismiss(EfakturaInboundReceipt $receipt, Company $company): void
@@ -193,6 +257,7 @@ class EfakturaInboundInboxService
     protected function serialize(EfakturaInboundReceipt $receipt, bool $withUbl = false): array
     {
         $row = [
+            'custody_protocol' => self::CUSTODY_PROTOCOL,
             'inbox_id' => $receipt->id,
             'evolu_expense_id' => $receipt->evolu_expense_id,
             'external_document_id' => $receipt->external_document_id,
