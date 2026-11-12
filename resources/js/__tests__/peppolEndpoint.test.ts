@@ -74,4 +74,11 @@ describe('resolvePeppolEndpoint', () => {
   it.each(['bad:12345', '245:12345', '0245:', '9950:sk12:34', '9950:sk12 34', '9950:sk12\t34', '9950:sk12/34', `9950:${'a'.repeat(129)}`])('rejects malformed explicit address %s instead of deriving another address', (value) => {
     expect(resolvePeppolEndpoint({ peppol_participant_id: value, tax_id: '9999999999', country: 'SK' })).toBeNull();
   });
+
+  it.each([...Array.from({ length: 32 }, (_, code) => code), 127])('rejects ASCII control code %i even at a trimmed boundary', (code) => {
+    const control = String.fromCharCode(code);
+    for (const value of [`${control}9950:sk1234567890`, `9950:sk1234567890${control}`, `9950:sk12${control}34567890`]) {
+      expect(resolvePeppolEndpoint({ peppol_participant_id: value, tax_id: '9999999999', country: 'SK' })).toBeNull();
+    }
+  });
 });

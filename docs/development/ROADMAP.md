@@ -1,5 +1,15 @@
 # Development roadmap
 
+## PR442 Node CI correction - 2026-11-13
+
+- [x] Verify actual failed Node Lint log and fix the equivalent ASCII guard.
+- [x] Cover all 33 rejected control codes at boundaries and inside an address;
+  preserve fallback, opaque identifiers and unchanged lint/type ratchets.
+- [x] Pass full lint, targeted 176 / 4, typecheck and independent parser QA.
+- [ ] Push the reviewed correction and verify Node on the new PR head.
+
+No backend/provider/credential/preview changes or deployment in this repair.
+
 ## Automatic ePostman status integration - 2026-11-12
 
 - [x] Add optional server-only encrypted Enterprise credentials with explicit

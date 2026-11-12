@@ -1,5 +1,18 @@
 # Project state
 
+## PR442 Node lint repair - 2026-11-13
+
+CI run 43325166171, Node job 131555682103 fails at Lint on
+peppolEndpoint.ts:31 (no-control-regex). PR442 is open against master at head
+54acde0a. Replace only the ASCII control-character regex with an equivalent
+character-code check before trimming; keep codes 0-31 and 127 rejected and do
+not change derivation, ESLint rules or the 52-warning limit. Main passes full
+lint (0 errors / 46 warnings), 176 targeted tests / 4 files and typecheck
+(110 inherited / no new). Independent QA passes 52 helper tests and 196,668
+baseline/current parser comparisons including every UTF-16 unit and surrogate
+cases. Graph unavailable in the target checkout; known files are read directly.
+New-head CI remains to be verified after the corrective push; no merge or deploy.
+
 ## Automatic ePostman delivery observations implemented - 2026-11-12
 
 The authorized feature is implemented on feat/efaktura-epostman-outbound over

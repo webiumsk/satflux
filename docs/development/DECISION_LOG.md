@@ -1,5 +1,17 @@
 # Development decision log
 
+## 2026-11-13 - Fix the Peppol guard instead of suppressing the Node lint failure
+
+User reports PR442 Node failure. The actual job fails on the known
+no-control-regex violation before later Node checks execute. Preserve the
+existing guard against ASCII codes 0-31 and 127 before trim or identity fallback;
+use direct character-code comparisons without regex controls. Keep dependency
+locks, ESLint rules and warning/type baselines unchanged. Add boundary/interior
+regressions; independently compare old/new parser behavior including Unicode
+and legacy derivation. Main's local lint/type/targeted checks and independent QA
+pass. Push only this correction on the existing owner-created PR; new-head CI
+must be observed separately before claiming success. No merge or deployment.
+
 ## 2026-11-12 - Keep Enterprise credentials server-only and delivery states separate
 
 After verified read-only API access the owner authorizes automatic status setup,

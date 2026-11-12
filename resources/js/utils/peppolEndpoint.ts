@@ -28,7 +28,10 @@ function digitsOnly(value: string | null | undefined): string | null {
 }
 
 function parseParticipantId(value: string): PeppolEndpoint | null {
-  if (/[\x00-\x1F\x7F]/.test(value)) return null;
+  if (Array.from(value).some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 0x1f || code === 0x7f;
+  })) return null;
   const trimmed = value.trim();
   if (trimmed === '') return null;
 
