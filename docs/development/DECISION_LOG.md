@@ -17,9 +17,9 @@ context digests fail closed. Health failures cannot hide received documents.
 Directory-sync failure removes only the new credential file and permits retry.
 No API/schema/locale expansion, billing change or owner preview reset is needed.
 
-Independent QA/security accept final24runtime/test files and all14 corrections;
-PHP84/725, frontend113/8, Python15, PostgreSQL2 and static/API/date checks pass.
-Final full frontend2,872/233 and isolated build7,659modules pass. Record same-PR
+Independent QA/security accept final 24 runtime/test files and all 14 corrections;
+PHP 84/725, frontend 113/8, Python 15, PostgreSQL 2 and static/API/date checks pass.
+Final full frontend 2,872/233 and isolated build 7,659 modules pass. Record same-PR
 publication and exact-head CI separately from production.
 The optional local CLI review did not complete and does not replace independent review.
 

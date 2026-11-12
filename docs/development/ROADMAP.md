@@ -2,13 +2,13 @@
 
 ## PR441 verified review corrections - 2026-11-12
 
-- [x] Verify all14 findings; no skips. Apply minimal backend/frontend/Python fixes.
-- [x] Independently validate PHP84/725, frontend113/8, Python15, PostgreSQL2, date
-  zones and API contracts; final security24file scope accepted (`e862291c`).
+- [x] Verify all 14 findings; no skips. Apply minimal backend/frontend/Python fixes.
+- [x] Independently validate PHP 84/725, frontend 113/8, Python 15, PostgreSQL 2, date
+  zones and API contracts; final security 24 file scope accepted (`e862291c`).
 - [x] Retain settings generation/committed original/tenant/credential/financial-lock
   guarantees and preserve the original manual preview/account.
 - [x] Main type/lint/Pint/PHPStan/locale/widget checks pass without ratchet changes.
-- [x] Complete final full frontend2,872tests/233files and isolated build7,659modules.
+- [x] Complete final full frontend 2,872 tests/233 files and isolated build 7,659 modules.
 - [ ] Publish corrective commits on existing PR441 and verify corrected exact-head CI.
 
 Provider archive/contract and production activation remain separate. Evidence:
