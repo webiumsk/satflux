@@ -3,6 +3,39 @@
 Date: 2026-11-12. Receiving base: `d7e2063e` (PR441, not assumed merged or deployed).
 Branch: `feat/efaktura-epostman-outbound`.
 
+## Replacement Recommand receiver - 2026-11-12
+
+After the earlier routing mismatch, the owner registers a new synthetic DIČ
+previously confirmed unpublished in authoritative TEST DNS. At 20:56 UTC, fresh
+authoritative NAPTR points to https://test-smp.net.recommand.com. Public metadata
+for both Invoice and CreditNote advertises https://test-ap.net.recommand.com/as4,
+Recommand AS4 Service, the exact participant, full BIS Billing 3.0 document types
+and the billing process. Coordinator independently checks DNS and the public XML
+before any new send. XML-signature/PKI verification is not claimed.
+[Public registration](https://test-smp.net.recommand.com/iso6523-actorid-upis%3A%3A0245%3A9384726109).
+
+A third private harness has its own key, database, fixture/source IDs and
+SFX-SBX-RCMD document-number namespace. Existing harnesses and all prior evidence
+remain intact. Runtime stays unchanged at ee5bc3b8; only this harness's literal
+recipient, assertions, fresh namespace and private mounts differ from the
+previous reviewed run. Independent security accepts the frozen two-file scope.
+Offline preparation and independent 26-check state audit pass with zero HTTP
+and attempts; both actual XMLs pass the full official OASIS schemas.
+
+Coordinator sends an Invoice and CreditNote, each EUR1.23, to the replacement
+recipient. Both receive actual HTTP202. The controlled Invoice response loss
+retains the uncertain request; a new process replays identical wire bytes and
+UUID and receives the same provider receipt. Each accepted cached replay runs
+with networking disabled and performs zero HTTP. Final state has two durable
+attempts, two projections and two distinct receipts with accepted request staging
+cleared. Independent read-only capture audit passes 59 checks, with no SAPI
+credential mount or provider operations by QA. Unchanged product suites are not
+rerun; their earlier evidence remains separately attributed.
+
+Owner confirmation of both new RCMD documents in the matching Recommand inbox is
+pending. Public routing and HTTP202 do not establish receiver arrival. No owner
+preview/database change, production request, push, merge or deployment occurs.
+
 ## Actual sandbox follow-up - 2026-11-12
 
 This follow-up supersedes the initial local-only evidence below. The owner

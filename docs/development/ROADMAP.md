@@ -1,5 +1,21 @@
 # Development roadmap
 
+## Replacement Recommand test-network route - 2026-11-12
+
+- [x] Owner registers the replacement test-only DIČ; independently verify fresh
+  authoritative TEST DNS and both Recommand AS4 document registrations before send.
+- [x] Preserve prior state; prepare a separate private RCMD fixture/key/database.
+- [x] Independent narrow QA/security accept frozen harness; offline 26 checks pass.
+- [x] Actual new Invoice/CreditNote HTTP202 and exact-request/UUID/provider-receipt
+  recovery pass, followed by two zero-HTTP cached replays.
+- [x] Independent actual-capture audit passes 59 checks on unchanged ee5bc3b8.
+- [ ] Owner confirms both new RCMD documents in the intended Recommand inbox.
+- [ ] Separate outbound PR/changelog; automatic status requires verified
+  Enterprise access or authenticated webhooks. Production gates remain separate.
+
+No new runtime edits or product-suite reruns in this follow-up. Existing owner
+previews and old sandbox evidence remain preserved; no push, merge or deployment.
+
 ## Actual ePostman outbound test-network follow-up - 2026-11-12
 
 - [x] Correct literal participant parsing, SK ICO 0158 and legal-name export.

@@ -1,5 +1,29 @@
 # Project state
 
+## Replacement Recommand route and sandbox submission verified - 2026-11-12
+
+The owner registered the previously unpublished replacement test DIČ. Fresh
+authoritative TEST DNS points to Recommand SMP; both Invoice and CreditNote
+metadata advertise https://test-ap.net.recommand.com/as4, BIS Billing 3.0 and the
+correct billing process. Coordinator independently confirms the DNS and supplied
+public XML. XML-signature/PKI verification is not claimed. Earlier Flowis routing
+and all previous attempts/evidence remain preserved.
+
+A third, separately reviewed private harness/key/SQLite/fixture uses new RCMD
+document numbers and the replacement recipient. Coordinator completes actual
+sandbox Invoice/CreditNote HTTP202, a controlled Invoice response loss and exact
+wire-body/UUID/provider-receipt replay, plus two zero-HTTP cached replays. Exactly
+two attempts, two projections and two distinct receipts remain. Independent QA
+passes 26 prepared-state and 59 captured-live checks; independent security accepts
+the frozen two-file harness scope. Runtime remains unchanged at ee5bc3b8 with
+service hash a0130288; prior product tests are not represented as rerun.
+
+The owner is asked to confirm the two new RCMD documents in the matching Recommand
+test-company inbox. Recipient arrival is pending; neither public routing nor
+HTTP202 establishes it. No production request, owner preview/database change,
+push, merge or deployment. Next: confirm intended receiver arrival, then complete
+the separate outbound publication and Enterprise/webhook status milestones.
+
 ## ePostman sandbox processing and retry verified - 2026-11-12
 
 The separate outbound branch remains based on local implementation 03b062cc.

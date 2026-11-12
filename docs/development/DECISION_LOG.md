@@ -1,5 +1,23 @@
 # Development decision log
 
+## 2026-11-12 - Verify replacement AS4 routing before another sandbox send
+
+The owner registers the replacement synthetic DIČ after authoritative TEST DNS
+confirmed it unpublished. Before sending, verify its new authoritative NAPTR and
+both public SMP document registrations: they name Recommand SMP/AS4, the exact
+participant, BIS Billing 3.0 and billing process. An address displayed in a
+provider's company form alone does not establish published receiving. Preserve
+the earlier Flowis diagnostic and do not transfer or remove that registration.
+
+Use fresh fixture identities and private state rather than alter earlier
+submitted documents or reuse their UUIDs. On unchanged runtime ee5bc3b8, the new
+actual Invoice/CreditNote processing and identical-request recovery pass. QA
+independently verifies 26 prepared-state and 59 captured-live checks; security
+accepts the frozen harness. Previous product-test evidence stays attributed,
+without an unnecessary rerun. Receiver arrival still requires owner confirmation;
+the absence of a SAPI delivery endpoint is not bridged by invented status polling.
+No production activation, publication, merge or deployment follows automatically.
+
 ## 2026-11-12 - Separate processing proof from receiver delivery
 
 Actual ePostman HTTP202 and same-key replay prove processing and idempotence,
