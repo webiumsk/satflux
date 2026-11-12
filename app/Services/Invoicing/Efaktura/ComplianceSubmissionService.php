@@ -27,6 +27,9 @@ class ComplianceSubmissionService
         }
 
         $settings = CompanyEfakturaSettings::fromCompany($document->company);
+        if (app(SapiSkClient::class)->isEpostman($settings->sapiBaseUrl())) {
+            return;
+        }
         if (! $settings->autoSend()) {
             return;
         }
@@ -41,10 +44,11 @@ class ComplianceSubmissionService
     public function submitNow(BusinessDocument $document): ComplianceSubmissionResult
     {
         $result = $this->gateway->submit($document);
-        $row = $this->persist($document, $result);
-        $this->auditSubmission($document, $result, $row);
 
-        return $result;
+        return app(EpostmanOutboundSubmissionService::class)->withLatestResult($document, $result, function (ComplianceSubmissionResult $current) use ($document): void {
+            $row = $this->persist($document, $current);
+            $this->auditSubmission($document, $current, $row);
+        });
     }
 
     public function submitEphemeral(BusinessDocument $document): ComplianceSubmissionResult

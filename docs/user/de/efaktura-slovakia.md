@@ -1,14 +1,14 @@
 ---
-title: Slowakische E-Rechnungen - Empfang mit ePostman
+title: Slowakische E-Rechnungen - ePostman-Anbindung
 category: invoicing
 order: 6
 meta_description: Verbinden Sie das ePostman-Konto Ihres Unternehmens, empfangen Sie E-Rechnungen und importieren Sie Originale als Ausgaben in Satflux.
 updated: 2026-11-12
 ---
 
-# Slowakische E-Rechnungen - Empfang mit ePostman
+# Slowakische E-Rechnungen - ePostman-Anbindung
 
-Die ePostman-Anbindung unterstützt den **Empfang**. Empfang und Import einer Rechnung und einer Gutschrift wurden im Peppol-Testnetz verifiziert. Produktivaktivierung, gesetzliche Meldungen und die Archivbedingungen des Anbieters müssen separat bestätigt werden. Satflux wird derzeit nicht als vollständige Lösung für die verpflichtende slowakische E-Rechnung angeboten.
+Die Anbindung unterstützt **Empfang und manuellen Versand**. Empfang und Import einer Rechnung und einer Gutschrift wurden im Peppol-Testnetz verifiziert. Der manuelle Versand benötigt noch eine separate Prüfung im tatsächlichen Testnetz. Produktivaktivierung, gesetzliche Meldungen und Archivbedingungen müssen separat bestätigt werden. Satflux wird nicht als vollständige Lösung für die verpflichtende slowakische E-Rechnung angeboten.
 
 ## Unternehmen verbinden
 
@@ -37,8 +37,14 @@ Bis zum verifizierten lokalen Import bleibt das Original auf dem Server mit serv
 
 Ein Anbieterkonto kann gesonderte API-Gebühren oder Nutzungsbedingungen haben. Ein kostenloses Webpostfach umfasst nicht unbedingt den Zugriff aus Satflux. Bestätigen Sie vor dem Produktivbetrieb den passenden Tarif, den SAPI-Zugang und die Archivbedingungen mit ePostman.
 
-## Versand und gesetzliche Pflichten
+## Manueller Versand und gesetzliche Pflichten
 
-Dieser ePostman-Konnektor aktiviert weder Versand noch automatischen Versand. Satflux kann **UBL/XML** exportieren; das Herunterladen einer Datei stellt sie jedoch nicht dem Empfänger zu. Ein manueller Upload kommt nur infrage, wenn der gewählte Anbieter diesen vollständigen Ablauf unterstützt und verifiziert.
+Diese erste Versandversion lehnt Dokumente mit Positions- oder Rechnungsrabatten, Präzisionsverlust bei Preisen oder vom ausgestellten Dokument abweichenden Beträgen ab. Für solche Dokumente muss zuerst der Export erweitert werden. Teilzahlungen werden im XML-Restbetrag berücksichtigt.
 
-Klären Sie die konkreten Pflichten und Fristen Ihres Unternehmens mit der slowakischen Finanzverwaltung oder Ihrer Steuerberatung. Ein funktionierender Empfang allein bestätigt nicht die Erfüllung aller Versand- und Meldepflichten.
+Öffnen Sie für ein berechtigtes slowakisches Unternehmen mit voller Umsatzsteuerregistrierung eine ausgestellte inländische B2B-Rechnung oder Gutschrift und wählen Sie **E-Rechnung senden**. Speichern Sie zuerst die richtige Unternehmensverbindung. Aussteller und Zugangsdaten müssen zum selben Unternehmen gehören. Automatischer Versand über ePostman bleibt deaktiviert.
+
+Eine erfolgreiche Übermittlung bedeutet **zur Verarbeitung angenommen**, nicht zugestellt oder von der Finanzverwaltung angenommen. Prüfen Sie Zustellung und Meldungen über den Link zum ePostman-Portal in derselben Produktiv- oder Testumgebung. SAPI-Zugangsdaten können diese Zustände nicht lesen; automatische Statusverfolgung benötigt eine separate Integration.
+
+Bei ungewissem Ergebnis wiederholen Sie den Versuch nur, wenn Satflux dies anbietet. Dabei werden die ursprüngliche Anfrage und Kennung innerhalb des Zeitfensters des Anbieters verwendet. Nach Ablauf oder Änderungen an Dokument bzw. Verbindung klären Sie zuerst das Ergebnis mit dem Anbieter. Erstellen Sie keine neue Rechnung allein zur Wiederholung einer ungewissen Übermittlung.
+
+Klären Sie die konkreten Pflichten und Fristen mit der slowakischen Finanzverwaltung oder Ihrer Steuerberatung. Eine funktionierende Verbindung allein bestätigt nicht die Erfüllung aller Versand- und Meldepflichten.

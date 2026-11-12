@@ -1,5 +1,32 @@
 # Project state
 
+## Manual ePostman sending accepted locally - 2026-11-12
+
+The owner authorizes sequential progress; the first milestone is implemented on
+`feat/efaktura-epostman-outbound`, based on receiving PR441 head `d7e2063e`.
+Manual issued SK B2B Invoice/CreditNote submission uses committed encrypted retry
+staging, a pinned UUID/body and fresh owner/company/document/settings fences.
+Uncertain attempts retain recovery; accepted provider receipts clear request
+ciphertext. Auto-send remains disabled. SAPI cannot read Enterprise delivery
+states, so processing acceptance stays Submitted with a matching portal link.
+
+Independent QA/security accept 27 implementation/test/locale paths with no open
+blocker. QA: 104 PHP / 800 assertions plus final 43 / 215, 129 frontend / 7 suites,
+3 malformed-response and 8 financial cases. Security: 11 actual PostgreSQL cases
+with simulated provider HTTP, 8 amount / 38 and 2 compatibility / 9 assertions.
+Main: full frontend 2,953 / 235, official full-XSD UBL 15 / 67, unchanged typecheck
+110 inherited / no new, lint 46 / 52, build 7,659 modules and API/locale/style/static
+checks pass. These are overlapping counts, not a combined test total.
+
+Corrected UBL sequence/prepaid balance and reject unsupported discounts,
+negative prices, lossy numeric precision and issued/export amount divergence.
+The original receiving preview/account and publication checkout stay preserved.
+No live provider send, production activation, merge or deployment occurs. Next:
+authorized actual sandbox sending; delivery/tax tracking requires a separate
+Enterprise credential or authenticated webhook milestone. Publication/changelog
+remain separate. Evidence: EPOSTMAN_OUTBOUND_IMPLEMENTATION.md and private
+`reviews/epostman-outbound`.
+
 ## PR441 review corrections accepted - 2026-11-12
 
 All fourteen owner-supplied findings are verified against published base `f29c272f`

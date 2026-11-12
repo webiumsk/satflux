@@ -96,6 +96,10 @@ class SapiSkComplianceGateway implements ComplianceSubmissionGateway
             );
         }
 
+        if ($this->client->isEpostman($settings->sapiBaseUrl())) {
+            return app(EpostmanOutboundSubmissionService::class)->submit($document);
+        }
+
         try {
             $ubl = $this->ublService->xml($document, auditDownload: false);
             $baseUrl = (string) $settings->sapiBaseUrl();

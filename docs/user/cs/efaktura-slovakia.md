@@ -1,14 +1,14 @@
 ---
-title: Slovenská e-fakturace - příjem přes ePostman
+title: Slovenská e-fakturace - propojení ePostman
 category: invoicing
 order: 6
 meta_description: Propojte firemní účet ePostman, přijímejte e-faktury a importujte jejich originály do nákladů v Satfluxu.
 updated: 2026-11-12
 ---
 
-# Slovenská e-fakturace - příjem přes ePostman
+# Slovenská e-fakturace - propojení ePostman
 
-Propojení ePostman podporuje **příjem**. Příjem a import faktury i dobropisu byly ověřeny v testovací síti Peppol. Produkční aktivaci, zákonné hlášení a podmínky archivu poskytovatele je třeba potvrdit samostatně. Satflux zatím neprezentujeme jako kompletní řešení povinné slovenské e-fakturace.
+Propojení podporuje **příjem a ruční odesílání**. Příjem a import faktury i dobropisu byly ověřeny v testovací síti Peppol. Ruční odesílání ještě vyžaduje samostatné ověření ve skutečné testovací síti. Produkční aktivaci, zákonné hlášení a podmínky archivu poskytovatele je třeba potvrdit samostatně. Satflux neprezentujeme jako kompletní řešení povinné slovenské e-fakturace.
 
 ## Propojení firmy
 
@@ -37,8 +37,14 @@ Dokud se lokální import ověřeně nedokončí, originál je na serveru šifro
 
 Účet poskytovatele může mít zvláštní poplatky za API nebo podmínky používání. Bezplatná webová schránka nemusí zahrnovat přístup ze Satfluxu. Před používáním produkčního propojení si v ePostman potvrďte příslušný balíček, přístup SAPI a podmínky archivu.
 
-## Odesílání a zákonné povinnosti
+## Ruční odesílání a zákonné povinnosti
 
-Tento konektor ePostman nezapíná odesílání ani automatické odesílání. Satflux umí exportovat **UBL/XML**, ale stažení souboru ho nedoručí odběrateli. Ruční nahrání je možností pouze tehdy, pokud ho vybraný poskytovatel podporuje a ověří celý postup.
+Tato první verze odesílání odmítne doklady se slevou na položce nebo faktuře, cenami se ztrátou přesnosti při exportu nebo částkami odlišnými od vystaveného dokladu. Tyto doklady bude možné odeslat až po doplnění příslušného exportu. Částečná úhrada se započítá do zůstatku v XML.
 
-Konkrétní povinnosti a termíny vaší firmy si potvrďte u slovenské Finanční správy nebo účetního. Samotný funkční příjem nepotvrzuje splnění všech povinností odesílání a hlášení.
+U oprávněné slovenské firmy, která je plným plátcem DPH, otevřete vystavenou tuzemskou B2B fakturu nebo dobropis a zvolte **Odeslat e-fakturu**. Nejprve uložte správné firemní propojení. Vystavitel i přístupové údaje musí patřit stejné firmě. Automatické odesílání přes ePostman zůstává vypnuté.
+
+Úspěšné podání znamená **přijetí ke zpracování**, nikoli doručení nebo přijetí finanční správou. Doručení a hlášení zkontrolujte odkazem do portálu ePostman ve stejném produkčním nebo testovacím prostředí. Přístupové údaje SAPI tyto stavy neumí číst; automatické sledování vyžaduje samostatnou integraci.
+
+Při nejistém výsledku opakujte pokus pouze tehdy, když jej Satflux nabídne. Opakování používá původní požadavek a identifikátor v časovém limitu poskytovatele. Po jeho uplynutí nebo změně dokladu či propojení nejprve ověřte výsledek u poskytovatele. Nevytvářejte novou fakturu pouze pro zopakování nejistého podání.
+
+Konkrétní povinnosti a termíny firmy si potvrďte u slovenské finanční správy nebo účetního. Samotné funkční propojení nepotvrzuje splnění všech povinností odesílání a hlášení.

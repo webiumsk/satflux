@@ -43,9 +43,44 @@ class EphemeralEfakturaSubmissionService
             });
     }
 
-    public function assertBridgeCompany(User $user): Company
+    public function assertBridgeCompany(User $user, ?Company $issuer = null, ?string $companyId = null): Company
     {
+        if ($companyId !== null) {
+            $company = Company::query()->where('user_id', $user->id)->find($companyId);
+            abort_unless($company !== null, 404);
+            $this->assertCompanyConfigured($company);
+
+            return $company;
+        }
+        $issuerSettings = $issuer !== null ? CompanyEfakturaSettings::fromCompany($issuer) : null;
+        $explicitUrl = $issuerSettings?->values['efaktura_sapi_base_url'] ?? null;
+        $customConnection = is_string($explicitUrl) && trim($explicitUrl) !== '' && ! $this->client->isEpostman($explicitUrl);
+        if ($issuer !== null && ! $customConnection) {
+            $issuerSettings = CompanyEfakturaSettings::fromCompany($issuer);
+            $matches = Company::query()->where('user_id', $user->id)->get()->filter(function (Company $candidate) use ($issuer): bool {
+                $settings = CompanyEfakturaSettings::fromCompany($candidate);
+                if (! $settings->configured() || ! $this->client->isEpostman($settings->sapiBaseUrl())) {
+                    return false;
+                }
+                try {
+                    app(EpostmanOutboundSubmissionService::class)->assertIssuerMatches($issuer, $candidate);
+
+                    return true;
+                } catch (ValidationException) {
+                    return false;
+                }
+            });
+            if ($matches->count() === 1) {
+                return $matches->first();
+            }
+            if ($matches->count() > 1 || $this->client->isEpostman($issuerSettings->sapiBaseUrl())) {
+                throw ValidationException::withMessages(['bridge_company_id' => ['Select the connected company matching this invoice issuer.']]);
+            }
+        }
         $company = $this->resolveBridgeCompany($user);
+        if ($issuer !== null && $company !== null && $this->client->isEpostman(CompanyEfakturaSettings::fromCompany($company)->sapiBaseUrl())) {
+            throw ValidationException::withMessages(['bridge_company_id' => ['No unique connected company matches this invoice issuer.']]);
+        }
         if (! $company) {
             throw ValidationException::withMessages([
                 'efaktura' => ['E-faktura credentials require a server company with SAPI-SK configured on your account.'],
@@ -104,6 +139,29 @@ class EphemeralEfakturaSubmissionService
         }
 
         $snapshotCompany = $document->company;
+        if ($this->client->isEpostman(CompanyEfakturaSettings::fromCompany($bridgeCompany)->sapiBaseUrl()) || $this->client->isEpostman(CompanyEfakturaSettings::fromCompany($snapshotCompany)->sapiBaseUrl())) {
+            $bridgeCompany = $bridgeCompany->fresh() ?? $bridgeCompany;
+            app(EpostmanOutboundSubmissionService::class)->assertIssuerMatches($snapshotCompany, $bridgeCompany);
+            $stored = CompanyEfakturaSettings::fromCompany($bridgeCompany);
+            $snapshot = CompanyEfakturaSettings::fromCompany($snapshotCompany);
+            foreach (['efaktura_sapi_base_url' => $stored->sapiBaseUrl(), 'efaktura_sapi_client_id' => $stored->sapiClientId(), 'efaktura_peppol_participant_id' => $stored->peppolParticipantId()] as $key => $expected) {
+                $incoming = $snapshot->values[$key] ?? null;
+                if (is_string($incoming) && trim($incoming) !== '' && rtrim(trim($incoming), '/') !== $expected) {
+                    throw ValidationException::withMessages(['efaktura' => ['The invoice connection differs from its connected company. Synchronize settings first.']]);
+                }
+            }
+            $this->assertCompanyConfigured($bridgeCompany);
+            $credentialsCompany = clone $snapshotCompany;
+            $credentialsCompany->id = $bridgeCompany->id;
+            $credentialsCompany->user_id = $bridgeCompany->user_id;
+            $credentialsCompany->app_settings = $bridgeCompany->app_settings;
+            $document->setRelation('company', $credentialsCompany);
+            if (! $this->gateway->supports($document)) {
+                throw ValidationException::withMessages(['document' => ['Document is not eligible for e-faktura.']]);
+            }
+
+            return;
+        }
         $credentialsCompany = $bridgeCompany->replicate();
         $credentialsCompany->exists = false;
         $credentialsCompany->id = $bridgeCompany->id;
@@ -148,24 +206,24 @@ class EphemeralEfakturaSubmissionService
 
         $result = $this->submissionService->submitEphemeral($document);
 
-        $this->persistSubmission($user, $bridgeCompany, $evoluDocumentId, $result);
-
-        AuditLog::log('business_document.ephemeral_efaktura_submitted', 'company', (string) $bridgeCompany->id, [
-            'bridge_company_id' => $bridgeCompany->id,
-            'evolu_document_id' => $evoluDocumentId,
-            'status' => $result->status->value,
-            'external_id' => $result->externalId,
-            'message' => $result->message,
-        ], $user->id);
-
-        return $result;
+        return app(EpostmanOutboundSubmissionService::class)->withLatestResult($document, $result, function (ComplianceSubmissionResult $current) use ($user, $bridgeCompany, $evoluDocumentId): void {
+            $this->persistSubmission($user, $bridgeCompany, $evoluDocumentId, $current);
+            AuditLog::log('business_document.ephemeral_efaktura_submitted', 'company', (string) $bridgeCompany->id, [
+                'bridge_company_id' => $bridgeCompany->id,
+                'evolu_document_id' => $evoluDocumentId,
+                'status' => $current->status->value,
+                'external_id' => $current->externalId,
+                'message' => $current->message,
+            ], $user->id);
+        });
     }
 
-    public function latestForDocument(User $user, string $evoluDocumentId): ?EphemeralEfakturaSubmission
+    public function latestForDocument(User $user, string $evoluDocumentId, ?string $companyId = null): ?EphemeralEfakturaSubmission
     {
         return EphemeralEfakturaSubmission::query()
             ->where('user_id', $user->id)
             ->where('evolu_document_id', $evoluDocumentId)
+            ->when($companyId !== null, fn ($query) => $query->where('bridge_company_id', $companyId))
             ->orderByDesc('updated_at')
             ->first();
     }
@@ -193,9 +251,12 @@ class EphemeralEfakturaSubmissionService
         return $latest;
     }
 
-    public function refresh(User $user, string $evoluDocumentId): ?EphemeralEfakturaSubmission
+    public function refresh(User $user, string $evoluDocumentId, ?string $companyId = null): ?EphemeralEfakturaSubmission
     {
-        $row = $this->latestForDocument($user, $evoluDocumentId);
+        $row = $this->latestForDocument($user, $evoluDocumentId, $companyId);
+        if ($row !== null && isset($row->getAttribute('response_payload')['epostman'])) {
+            return $row;
+        }
         if (! $row || $row->status !== ComplianceSubmissionStatus::Submitted) {
             return $row;
         }

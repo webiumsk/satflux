@@ -177,7 +177,7 @@
             />
             <span>{{ t('invoicing.efaktura_auto_send') }}</span>
           </label>
-          <p v-if="isEpostman" data-testid="epostman-receiving-only" class="text-xs text-amber-900">{{ t('invoicing.efaktura_epostman_receiving_only') }}</p>
+          <p v-if="isEpostman" data-testid="epostman-manual-sending" class="text-xs text-amber-900">{{ t(inboundOnly ? 'invoicing.efaktura_epostman_inbound_only' : 'invoicing.efaktura_epostman_manual_sending') }}</p>
           <label class="flex items-start gap-2 text-sm text-gray-700">
             <input
               v-model="form.efaktura_inbound_enabled"

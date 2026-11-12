@@ -8,6 +8,7 @@ class EphemeralBusinessDocumentEfakturaRequest extends EphemeralBusinessDocument
     {
         return array_merge(parent::rules(), [
             'evolu_document_id' => ['required', 'string', 'max:64'],
+            'bridge_company_id' => ['sometimes', 'nullable', 'uuid'],
         ]);
     }
 }

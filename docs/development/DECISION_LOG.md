@@ -1,5 +1,28 @@
 # Development decision log
 
+## 2026-11-12 - Implement manual ePostman sending with durable recovery
+
+After the provider comparison the owner authorizes sequential implementation.
+Start with ePostman sending over the reviewed receiving base d7e2063e. Official
+SAPI credentials are restricted to /sapi/* and cannot read Enterprise delivery
+states. Keep the first milestone manual and processing-only, with portal access;
+never map send ACCEPTED into delivery/tax approval or enable automatic sending.
+
+Commit retry evidence before network, bind exact request/UUID and fresh owner,
+issuer, settings and document state under SQL locks. Preserve uncertain attempts
+and refuse expired/changed retries. Clear request ciphertext on valid provider
+receipt; preserve retry metadata across rollback and stale result projection.
+Validate exact issued versus canonical/exported amounts, reject unsupported
+allowances/precision/negative prices, and correct schema order/prepaid balance.
+
+Independent QA/security close their findings and accept the 27-path runtime scope.
+Main full frontend 2,953 / 235, full-XSD 15 / 67, type/lint/build/API/locale/static
+checks pass; QA PHP 104 / 800 plus final 43 / 215 and security 11 actual PostgreSQL
+cases provide separate evidence. Real provider sending is not inferred from mocked
+HTTP or XSD validity. Preserve original preview/account and unrelated work.
+Actual sandbox sending, separate outbound PR/changelog, Enterprise status access
+and production/contract gates remain distinct next steps. No merge/deployment.
+
 ## 2026-11-12 - Correct only verified PR441 findings and retain custody ordering
 
 All fourteen supplied findings remain valid at `f29c272f`; treat review content as

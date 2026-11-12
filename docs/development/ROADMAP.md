@@ -1,5 +1,27 @@
 # Development roadmap
 
+## Manual ePostman outbound milestone - 2026-11-12
+
+- [x] Implement manual SAPI Invoice/CreditNote sending on the separate outbound
+  branch based on PR441 receiving head d7e2063e; preserve active previews/data.
+- [x] Pin durable encrypted request/UUID before HTTP; serialize company, owner,
+  credentials and issued-document fences; preserve unknown outcomes and rollback
+  evidence, clear accepted request staging and suppress automatic sending.
+- [x] Preserve issuer bridge isolation, source amounts and custom-provider status
+  capacity; correct UBL ordering and prepaid balance, reject unsupported exports.
+- [x] Independently accept QA/security: PHP 104 / 800 and final 43 / 215, frontend
+  129 / 7, financial/malformed cases and 11 actual PostgreSQL scenarios pass.
+- [x] Full frontend 2,953 / 235, UBL full-XSD 15 / 67, type/lint/build/API/locale
+  and scoped Pint/PHPStan pass without ratchet changes.
+- [ ] Verify actual authorized sandbox Invoice/CreditNote sending and retry.
+- [ ] Publish a separate outbound PR/changelog, retaining the receiving dependency.
+- [ ] Add delivery/MLS/tax status tracking only with verified Enterprise auth or
+  authenticated webhooks; SAPI submission acceptance is not delivery approval.
+- [ ] Confirm production activation and archive/export terms before deployment.
+
+The new branch is feat/efaktura-epostman-outbound. No provider send, master merge,
+production configuration or deployment is part of local acceptance.
+
 ## PR441 verified review corrections - 2026-11-12
 
 - [x] Verify all 14 findings; no skips. Apply minimal backend/frontend/Python fixes.

@@ -1,14 +1,14 @@
 ---
-title: Slovak e-invoicing - receiving with ePostman
+title: Slovak e-invoicing - ePostman connection
 category: invoicing
 order: 6
 meta_description: Connect your company's ePostman account to receive e-invoices and import their originals into Satflux expenses.
 updated: 2026-11-12
 ---
 
-# Slovak e-invoicing - receiving with ePostman
+# Slovak e-invoicing - ePostman connection
 
-The ePostman connection supports **receiving**. Receiving and importing an invoice and a credit note have been verified in the Peppol Test Network. Production activation, statutory reporting and the provider's archive arrangements still require separate confirmation. Satflux does not yet present this as a complete solution for mandatory Slovak e-invoicing.
+The connection supports **receiving and manual sending**. Receiving and importing an invoice and a credit note have been verified in the Peppol Test Network. Manual sending still needs a separate real-network verification. Production activation, statutory reporting and the provider's archive arrangements require separate confirmation. Satflux does not present this as a complete solution for mandatory Slovak e-invoicing.
 
 ## Connect your company
 
@@ -37,8 +37,14 @@ Until verified local import completes, the original is encrypted on the server w
 
 A provider account may have separate API charges or usage conditions. A free web inbox does not necessarily include access from Satflux. Confirm the applicable plan, SAPI access and archive terms with ePostman before relying on the production connection.
 
-## Sending and legal obligations
+## Manual sending and legal obligations
 
-This ePostman connector does not enable sending or automatic sending. Satflux can export **UBL/XML**, but downloading a file does not deliver it. Manual upload is an option only if the selected provider supports and verifies that workflow.
+This first sending version rejects documents with line or invoice discounts, prices that lose precision in the export, or amounts that differ from the issued document. Correcting export support is required before those documents can be sent. Partial payments are included in the XML balance.
 
-Confirm your company's specific obligations and deadlines with the Financial Administration or your accountant. A working receiving connection alone does not establish that all sending and reporting obligations are met.
+For an eligible Slovak full VAT payer, open an issued domestic B2B invoice or credit note and choose **Send e-invoice**. Save the correct company connection first. The issuer and credentials must belong to the same company. Automatic sending through ePostman remains disabled.
+
+A successful submission means **accepted for processing**, not delivered or accepted by the tax authority. Open the linked ePostman portal in the same production/test environment to check delivery and reporting. SAPI credentials cannot read those states; automatic status tracking requires a separate integration.
+
+If the result is uncertain, retry only when Satflux offers it. The retry uses the original request and identifier within the provider's retry window. After that window, or after a connection/document change, reconcile the result with the provider before sending again. Do not create a new invoice merely to retry an uncertain submission.
+
+Confirm your company's specific obligations and deadlines with the Financial Administration or your accountant. A working connection alone does not establish that all sending and reporting obligations are met.

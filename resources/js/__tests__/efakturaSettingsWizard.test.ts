@@ -383,7 +383,7 @@ describe('eFaktura settings wizard', () => {
     expect((receiving?.element as HTMLInputElement).checked).toBe(true);
   });
 
-  it('offers fixed ePostman production and test choices and suppresses unsupported sending', async () => {
+  it('offers fixed ePostman production and test choices and keeps automatic sending disabled', async () => {
     state.presets = [
       { id: 'epostman-production', name: 'ePostman', base_url: 'https://postman.slovakodata.com' },
       { id: 'epostman-test', name: 'ePostman test', base_url: 'https://testpostman.slovakodata.com' },
@@ -392,7 +392,7 @@ describe('eFaktura settings wizard', () => {
     await wrapper.find('#efaktura-cpds-preset').setValue('epostman-production');
     expect(wrapper.find('#efaktura-base-url').exists()).toBe(false);
     expect(wrapper.find('[data-testid="epostman-setup"]').exists()).toBe(true);
-    expect(wrapper.text()).toContain('efaktura_epostman_receiving_only');
+    expect(wrapper.text()).toContain('efaktura_epostman_manual_sending');
     expect(wrapper.findAll('label').some((label) => label.text().includes('efaktura_auto_send'))).toBe(false);
     expect(wrapper.text()).not.toContain('efaktura_epostman_test_notice');
     await wrapper.find('#efaktura-cpds-preset').setValue('epostman-test');
@@ -416,12 +416,20 @@ describe('eFaktura settings wizard', () => {
     wrapper.unmount();
   });
 
-  it.each(['https://postman.slovakodata.com:443', 'https://POSTMAN.SLOVAKODATA.COM/'])('recognizes the canonical ePostman origin without enabling sending: %s', async (baseUrl) => {
+  it('keeps the receiving-only company mode clear after manual sending is added', async () => {
+    const wrapper = mountForm(skCompany(connectedSettings()), 'inbound_only');
+    expect(wrapper.text()).toContain('efaktura_epostman_inbound_only');
+    expect(wrapper.text()).not.toContain('efaktura_epostman_manual_sending');
+    expect(wrapper.findAll('label').some((label) => label.text().includes('efaktura_auto_send'))).toBe(false);
+    wrapper.unmount();
+  });
+
+  it.each(['https://postman.slovakodata.com:443', 'https://POSTMAN.SLOVAKODATA.COM/'])('recognizes the canonical ePostman origin without enabling automatic sending: %s', async (baseUrl) => {
     state.presets = [{ id: 'epostman-production', name: 'ePostman', base_url: 'https://postman.slovakodata.com' }];
     const wrapper = mountForm(skCompany({ efaktura_sapi_base_url: baseUrl, efaktura_auto_send: true }));
     await nextTick();
     expect((wrapper.find('#efaktura-cpds-preset').element as HTMLSelectElement).value).toBe('epostman-production');
-    expect(wrapper.find('[data-testid="epostman-receiving-only"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="epostman-manual-sending"]').exists()).toBe(true);
     expect(wrapper.findAll('label').some((label) => label.text().includes('efaktura_auto_send'))).toBe(false);
     expect(wrapper.find('#efaktura-peppol-id').exists()).toBe(false);
     wrapper.unmount();

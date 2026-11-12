@@ -1,5 +1,22 @@
 # Slovak eFaktura - implementation reference and current limitations
 
+## Manual ePostman sending milestone - 2026-11-12
+
+The separate outbound branch extends the receiving PR441 with manual submission
+of issued eligible domestic B2B invoices and credit notes. It adds durable,
+encrypted retry staging and a pinned request UUID/body, preserving uncertain
+outcomes across process failure. Automatic ePostman sending remains disabled.
+Submission HTTP202 means accepted for processing, not delivered or tax-approved.
+SAPI tokens cannot call the Enterprise delivery-status API; check delivery and
+reporting in the matching ePostman portal. Automatic status synchronization needs
+a separate Enterprise credential or authenticated webhook integration.
+
+Receiving has actual test-network evidence; this new sending implementation still
+requires independent review and a separate authorized real-network verification.
+No merge or production deployment is implied. See
+[the outbound contract and verification record](development/EPOSTMAN_OUTBOUND_IMPLEMENTATION.md).
+
+
 > Current ePostman receiving implementation and activation gates: [runbook](development/EPOSTMAN_INBOUND_IMPLEMENTATION.md). The overview below also describes legacy generic SAPI functionality; it is not evidence of a verified provider integration. ePostman outgoing is unavailable in this receiving scope.
 
 
@@ -44,7 +61,7 @@ Záložka **E-faktúra** v nastaveniach firmy (`eu_sk`; platitelia DPH vidia pln
 
 1. **Choose the provider** - built-in ePostman production/test choices fill the fixed endpoint without an administrator preset. Registered custom providers and manual URLs remain available. Výber na [portáli Finančnej správy](https://www.financnasprava.sk) ostáva na merchantovi.
 2. **Prepojte svoj účet** - `client_id` + `client_secret` od poštára a tlačidlo **Otestovať pripojenie** (jednorazový OAuth pokus, úspech sa uloží ako `efaktura_connection_tested_at`).
-3. **Receiving settings** - save the selected connection after testing; local-first bridge synchronization failures remain visible across reload, including failed disabling. Manual polling requires successfully saved settings. Outgoing is unavailable for ePostman and optional only for separately supported providers. Peppol participant ID je v "Rozšírené" - bežný merchant ho nerieši, derivuje sa z DIČ/IČO.
+3. **Receiving settings** - save the selected connection after testing; local-first bridge synchronization failures remain visible across reload, including failed disabling. Manual polling requires successfully saved settings. Manual outgoing is available for ePostman on the outbound branch; automatic outgoing remains disabled there. Other providers retain their separately verified capabilities. Peppol participant ID je v "Rozšírené" - bežný merchant ho nerieši, derivuje sa z DIČ/IČO.
 
 Serverový test pripojenia firmy je vyhradený vlastníkovi (support/admin zachovávajú existujúci privilegovaný prístup). Uložený `client_secret` sa doplní len pri nezmenenej URL poskytovateľa a `client_id`; pri ich zmene treba secret zadať znova. Local-first test bez firemnej routy používa iba credentials dodané klientom, nikdy nedopĺňa uložené credentials zdieľanej firmy.
 

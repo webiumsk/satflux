@@ -43,4 +43,18 @@ final class SapiSkSendPayload
             default => 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice',
         };
     }
+
+    /**
+     * The ePostman profile requires the full Peppol BIS document identifier.
+     *
+     * @return array<string, mixed>
+     */
+    public static function buildEpostman(BusinessDocument $document, string $sender, string $receiver, string $ubl, string $requestId): array
+    {
+        $body = self::build($document, $sender, $receiver, $ubl);
+        $body['metadata']['documentId'] = $requestId;
+        $body['metadata']['documentTypeId'] .= '##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1';
+
+        return $body;
+    }
 }
