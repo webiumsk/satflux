@@ -1,5 +1,82 @@
 # Development roadmap
 
+## PR441 verified review corrections - 2026-11-12
+
+- [x] Verify all 14 findings; no skips. Apply minimal backend/frontend/Python fixes.
+- [x] Independently validate PHP 84/725, frontend 113/8, Python 15, PostgreSQL 2, date
+  zones and API contracts; final security 24 file scope accepted (`e862291c`).
+- [x] Retain settings generation/committed original/tenant/credential/financial-lock
+  guarantees and preserve the original manual preview/account.
+- [x] Main type/lint/Pint/PHPStan/locale/widget checks pass without ratchet changes.
+- [x] Complete final full frontend 2,872 tests/233 files and isolated build 7,659 modules.
+- [ ] Publish corrective commits on existing PR441 and verify corrected exact-head CI.
+
+Provider archive/contract and production activation remain separate. Evidence:
+`EPOSTMAN_PR441_REVIEW_FIXES.md`; no new provider operation or master merge.
+
+## ePostman GitHub handoff - 2026-11-12
+
+- [x] Owner authorizes publication of reviewed receiving and guided setup.
+- [x] Preserve the existing manual preview and prepare an isolated current-master
+  publication branch; retain both histories in shared state documents.
+- [x] Push `feat/efaktura-epostman-receiving`, create [draft PR441](https://github.com/webiumsk/satflux/pull/441)
+  and add its reviewed receiving-only changelog note.
+- [ ] Verify exact published-head CI; keep production/archive gates explicit.
+
+## Guided ePostman customer onboarding - 2026-11-12
+
+- [x] Owner confirms the local connection and authorizes a guided customer setup.
+- [x] Add built-in fixed production/test choices, SAPI-client guide, identity and
+  receiving status, and Expenses link with five-locale UI/user-guide parity.
+- [x] Preserve per-company credentials, discard them on host switches, and retain
+  encrypted synchronization retry evidence across reload and failed disabling.
+- [x] Independent QA/security accept the twelve-file scope: QA76tests/6files,
+  wizard35 final repeat, Chrome24 simulated-boundary UI checks, security6 and
+  independent serializer/remount2 pass. Full lint/typecheck ratchets, parity,
+  widget check and final isolated build pass.
+- [ ] Owner reviews the updated existing localhost preview; preserve their data.
+- [ ] Provider archive/export/contract verification and production activation.
+- [ ] Confirm provider-supported delegated onboarding before offering one-click login.
+
+See the feature worktree's `EPOSTMAN_CUSTOMER_ONBOARDING.md`. No publication or
+production deployment follows from local acceptance. Preview still uses manual polling.
+
+## Manual eFaktura localhost preview - 2026-11-12
+
+- [x] Serve normal Laravel/Sanctum/Vue on isolated `127.0.0.1:8082` with own account,
+  database/key, sessions and recovered originals.
+- [x] Fix the actual inbox settings projection and prove the old regression.
+  All 41 tests in 5 files, scoped lint, typecheck ratchet, locale parity and build pass.
+- [x] Independent security and no-mock browser login/recovery/company migration,
+  real imports/originals/signs/API guards/idempotency/reload pass.
+- [x] Restore pristine human state with two pending originals and protected local
+  login retrieval. Existing migration work retains its own `localhost:8080` origin.
+- [ ] Owner manually tests the preview. New TEST documents can be polled through
+  company eFaktura settings > Download incoming now, then inbox refresh.
+
+The manual preview has no scheduler. Earlier cross-AP transport and isolated
+full-browser restart evidence remain separate from the normal-UI run.
+
+## Actual Recommand TEST to ePostman receiving verified - 2026-11-12
+
+- [x] Owner sends one synthetic invoice from a new Peppol Test Network playground.
+- [x] Actual Satflux client retrieves one incoming listing/detail/XML.
+- [x] Actual poller establishes encrypted persistent custody before real ACK;
+  one receipt, one ACK, zero failures, preserved after new backend process.
+- [x] Independent Chrome/Evolu actual-original import/retry/amount/currency and
+  exact-byte checks after reload/full restart; one expense and attachment.
+- [x] Actual backend markImported twice after protected browser proof, one imported
+  receipt and staging cleared. Browser HTTP interception is explicitly bounded.
+- [x] Repeat actual receiving, durable custody/ACK, negative expense, original-byte
+  browser restart/retry and backend handoff with one CreditNote. Its original XML
+  references the previous test invoice; structured expense linking is absent.
+- [x] Correct signed negative-valued CreditNote inversion with six regression cases
+  and independent QA/security. Author26/174, independent QA11/25 and security6
+  synthetic cases pass; corrected parser also validates the actual test original.
+- [ ] Verify provider archive/export/contract and production activation separately.
+
+The historical DNS lookup observations below are superseded by actual delivery.
+
 ## Fakturoid adapter from merged master - 2026-11-11
 
 - [x] Verify PR #438 merge and freshly fetch master base `007b9c02`.
@@ -111,6 +188,47 @@ wizard. Signed ISDOC deductions are preserved when line amounts, VAT and totals
 reconcile. The next step is owner review of the local preview. The confirmed
 source order after SuperFaktura remains Fakturoid, iDoklad and Zaprite. See
 [ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
+## First real sandbox transport check passed - 2026-11-10
+
+- [x] Authenticate with actual owner-configured ePostman sandbox credentials.
+- [x] Fetch actual receive listing: one page, empty inbox, no provider ACK/send.
+- [ ] Obtain a synthetic incoming invoice/credit note and verify actual detail,
+  XML identity, durable custody and local import in an isolated persistent test app.
+- [ ] Verify cross-AP and archive/production gates separately.
+
+Successful authentication and an empty inbox do not complete receiving validation.
+
+## ePostman read-only sandbox verification prepared - 2026-11-10
+
+- [x] Prepare hidden local credential capture and isolated fixed-host auth/list/detail
+  diagnostic with no sending, acknowledgement, import or persistence.
+- [x] Security accepts the five-file diagnostic snapshot; offline helper/probe
+  regressions cover echo fallback, permissions, isolation, bounds and redaction.
+- [ ] Owner rotates the previously shared test secret and captures new SAPI values
+  locally; do not copy credentials into chat/tool arguments or source.
+- [ ] Execute the authorized read-only probe once private input is configured.
+- [ ] Obtain a synthetic incoming invoice/credit note, then verify full durable
+  Satflux import separately. Empty listing/authentication alone is not receiving proof.
+
+## ePostman receiving implementation accepted locally - 2026-11-10
+
+- [x] Implement fixed test/production receiving with company/XML validation,
+  provenance, pagination/retry, safe custody and observable connection health.
+- [x] Verify exact local original before server handoff; repair partial imports,
+  preserve pending originals and provide readable view/download in five locales.
+- [x] Independent security/QA accept36 runtime/test paths (`b8296faf`); targeted
+  lockedPHP104/554, independent67/424, fullUI2325/209/finalwizard19, build/static/API
+  checks pass. BroadPHP61 failures exactly reproduce on unchanged base/minimalenv.
+- [ ] Verify actual cross-AP sandbox with securely supplied test credentials and
+  provider archive/export/contract terms; no network interoperability is claimed.
+- [ ] Resolve supported handling of originals above384KiB before claiming complete
+  local handoff for all allowed provider document sizes; currently safe/pending.
+- [ ] Obtain separate production approval, deploy frontend/backend/migration
+  together, activate the correct SK participant and monitor the first receipt.
+
+See the feature runbook. No paid plans, billing/entitlements, external repository,
+production or readiness-claim changes. Existing primary work remains preserved.
 
 ## Slovak eFaktura delivery work paused; truthful public copy prepared - 2026-11-09
 

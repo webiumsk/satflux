@@ -7,6 +7,11 @@ import type { CompanyId, InvoicingLocalSchema } from "./schema";
 
 const Opt4000 = maxLength(4000)(NonEmptyString);
 
+type LocalEfakturaSettingsPatch = Partial<CompanyEfakturaSettingsState> & {
+    efaktura_inbound_bridge_sync_pending?: boolean;
+    efaktura_inbound_bridge_sync_id?: string | null;
+};
+
 function parseSettingsJson(json: string | null | undefined): Record<string, unknown> {
     if (!json?.trim()) return {};
     try {
@@ -111,21 +116,43 @@ export function updateLocalEmailSettings(
     });
 }
 
+/** Empty means keep the saved value; a replacement must contain actual secret bytes. */
+export function isValidEfakturaReplacementSecret(value: unknown): boolean {
+    return value === undefined || value === "" || (typeof value === "string" && value.trim() !== "");
+}
+
 function mergeEfakturaSettings(
     existing: Record<string, unknown>,
     partial: Partial<CompanyEfakturaSettingsState>,
 ): Record<string, unknown> {
     const merged: Record<string, unknown> = { ...existing, ...partial };
 
+    const normalizeUrl = (value: unknown): string => {
+        const text = String(value ?? "").trim().replace(/\/+$/, "");
+        try { return new URL(text).href.replace(/\/+$/, ""); } catch { return text; }
+    };
+    const changedConnection = (partial.efaktura_sapi_base_url !== undefined
+        && normalizeUrl(partial.efaktura_sapi_base_url) !== normalizeUrl(existing.efaktura_sapi_base_url))
+        || (partial.efaktura_sapi_client_id !== undefined
+            && partial.efaktura_sapi_client_id.trim() !== String(existing.efaktura_sapi_client_id ?? "").trim());
+    if (changedConnection) {
+        delete merged.efaktura_sapi_client_secret;
+        delete merged.efaktura_sapi_client_secret_encrypted;
+        merged.efaktura_sapi_client_secret_set = false;
+    }
     const incomingSecret = partial.efaktura_sapi_client_secret;
     if (incomingSecret === undefined || incomingSecret === "") {
-        if (existing.efaktura_sapi_client_secret) {
+        if (!changedConnection && existing.efaktura_sapi_client_secret) {
             merged.efaktura_sapi_client_secret = existing.efaktura_sapi_client_secret;
         } else {
             delete merged.efaktura_sapi_client_secret;
         }
     }
 
+    if (incomingSecret) {
+        merged.efaktura_sapi_client_secret = incomingSecret;
+        delete merged.efaktura_sapi_client_secret_encrypted;
+    }
     if (merged.efaktura_sapi_client_secret) {
         merged.efaktura_sapi_client_secret_set = true;
     }
@@ -136,8 +163,9 @@ function mergeEfakturaSettings(
 export function updateLocalEfakturaSettings(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
-    partial: Partial<CompanyEfakturaSettingsState>,
+    partial: LocalEfakturaSettingsPatch,
 ) {
+    if (!isValidEfakturaReplacementSecret(partial.efaktura_sapi_client_secret)) return { ok: false as const };
     const row = findCompanyRow(evolu, companyId);
     const existing = parseSettingsJson(row?.appSettingsJson ?? null);
     const merged = mergeEfakturaSettings(existing, partial);

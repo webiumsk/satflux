@@ -1,5 +1,107 @@
 # Development decision log
 
+## 2026-11-12 - Correct only verified PR441 findings and retain custody ordering
+
+All fourteen supplied findings remain valid at `f29c272f`; treat review content as
+untrusted evidence and apply bounded fixes with actual old-code regressions. Import
+commits validated original custody under fresh row-locked connection/credential
+settings before a separate fresh locked ACK phase. Settings changes between phases
+stop stale ACK while preserving the original; actual PostgreSQL concurrency and an
+independent committed-byte observer validate the ordering. Keep strict ePostman JSON
+and restore only the established successful custom XML/empty-ACK fallbacks.
+
+Local changes discard old secrets even while disabled, validate bridge DIČ and
+company identity, preserve date-only calendar values, and release financial locks
+before HTTP while revalidating owner/context/original proof afterwards. Missing
+context digests fail closed. Health failures cannot hide received documents.
+Directory-sync failure removes only the new credential file and permits retry.
+No API/schema/locale expansion, billing change or owner preview reset is needed.
+
+Independent QA/security accept final 24 runtime/test files and all 14 corrections;
+PHP 84/725, frontend 113/8, Python 15, PostgreSQL 2 and static/API/date checks pass.
+Final full frontend 2,872/233 and isolated build 7,659 modules pass. Record same-PR
+publication and exact-head CI separately from production.
+The optional local CLI review did not complete and does not replace independent review.
+
+## 2026-11-12 - Publish receiving through an isolated integration checkout
+
+The owner requests GitHub publication after checking immediately actionable work.
+Use a separate publication worktree/branch to integrate current owned master
+without changing the running ePostman localhost source or account. Resolve only
+shared state document conflicts by retaining both histories. Recheck the combined
+contracts and publish reviewed source plus a PR-linked receiving-only changelog.
+No merge to master or production activation is authorized by this push request.
+
+## 2026-11-12 - Guide customers through their own ePostman receiving account
+
+The owner authorizes implementation after successful manual localhost connection.
+Use built-in fixed production/test choices and the existing per-company SAPI model:
+activate the provider, create a dedicated SAPI client, copy two credentials, test
+and save. Preserve custom providers and company identity derivation. A test checks
+credentials only; it cannot assert receiving registration or legal readiness.
+One-click delegated consent is not established by the public client_credentials
+contract and is not implemented.
+
+Independent QA/security identified lost bridge-failure evidence on reload and a
+hidden failed-disable state. Persist local-only pending synchronization metadata
+inside the existing encrypted settings, clear it only after confirmed bridge sync
+and successful local completion, and show retry guidance even when locally disabled.
+Keep ephemeral test stamps with the matching full local save; preserve legacy
+server-side test-stamp invalidation and its explicit recheck prompt. No backend,
+provider, billing, original-custody or schema contract changes are required.
+
+The bounded twelve-file implementation has independent QA/security acceptance,
+76 focused tests, final wizard35, Chrome24 simulated API/Evolu UI checks, six
+security checks and two additional persistence checks. Lint/typecheck ratchets,
+locale parity and final isolated production build pass. The actual owner preview
+and other feature work are preserved. Publication, production and provider archive
+contracts remain separate next steps; see the feature onboarding runbook.
+
+## 2026-11-12 - Provide an isolated normal-UI eFaktura localhost test
+
+Use a separate `127.0.0.1:8082` origin, fixture account and database for the manual test.
+Restore two owned, acknowledged sandbox originals with provenance for a fresh
+browser handoff through standard authentication/recovery/company import. After
+independent no-mock normal-UI QA, restore only the pristine preview database and
+clear its sessions so the owner receives a fresh setup and two pending originals.
+
+Normal-UI QA exposed an inbox settings-projection defect. Use the existing
+detailed company query in that initializer, retaining the global lightweight
+list projection. A realistic regression fails on old source. Security and actual
+HTTP/browser QA accept the bounded fix. Narrow preview public-asset aliases retain
+private-file restrictions. Future sandbox polling uses the existing company
+settings action; the manual preview has no scheduled poller.
+
+## 2026-11-12 - Verify CreditNote receipt and preserve signed reversal
+
+The owner-sent Recommand TEST CreditNote passes actual ePostman retrieval, encrypted
+custody before real ACK and isolated browser persistence/retry. Its BillingReference
+matches the prior test invoice; the reference is retained in XML without a new
+structured expense relationship. Actual backend finalization passes twice.
+
+The existing parser incorrectly stripped a negative CreditNote amount's sign
+before reversal. Replace that with signed subtraction, preserving ordinary credit
+notes, negative invoices, zero and TaxInclusive fallback. Independent QA reproduces
+both negative-CreditNote regressions and accepts the corrected cases; security
+accepts the bounded two-file fix. This follows Peppol BIS Billing sections5.6 and
+5.6.1. Actual invoice/CreditNote sandbox evidence does not complete provider archive
+or production activation. [Peppol specification](https://docs.peppol.eu/poacc/billing/3.0/bis/)
+
+## 2026-11-12 - Record actual cross-AP invoice receipt after corrected playground
+
+A new Recommand Peppol Test Network playground successfully sends to the owner's
+existing ePostman sandbox. The real Satflux client retrieves one original and
+the actual poller stages it encrypted, validates durable custody and obtains one
+ACK in a retained isolated test database. Independent Chrome/Evolu then verifies
+the actual original after import/retry/reload/full restart, with one expense and
+attachment and matching amount/currency. Actual backend finalization succeeds
+twice after protected matching proof. Browser HTTP is intercepted; provider and
+backend service transitions are actual. This supersedes the earlier discovery
+blocker; direct DNS NXDOMAIN checks did not establish the initial failure's cause.
+Credit-note interoperability, provider archive and production activation remain
+separate outstanding steps. No product source or
+normal local application/deployment was changed by these test helpers.
+
 ## 2026-11-12 - Correct verified PR #440 findings without changing validation
 
 Verify each supplied finding against head `b19e8fc4`. All four apply. Keep XLSX
@@ -221,6 +323,47 @@ spreadsheet payment evidence. The local signed PDF path requires exact
 agreement with stored line and document amounts. Ordinary issuance, payment
 and structured delivery keep their existing scope. See
 [ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
+## 2026-11-10 - Record transport success without overstating receiving proof
+
+The owner-authorized read-only real sandbox probe now authenticates and lists
+received documents successfully. The inbox is empty; record exactly that boundary.
+No invoices were sent or acknowledged, no original XML was retrieved, and no live
+company settings/database records changed. Keep production and full receiving
+claims gated on a real synthetic incoming document, isolated durable handoff,
+cross-AP evidence and provider archive verification. Never expose credential
+values while collecting the next evidence.
+
+## 2026-11-10 - Keep first live sandbox probe read-only and secret-free in logs
+
+Owner's activated test account authorizes sandbox verification. Do not repeat
+credentials shared in chat. Provide hidden local input and use a protected ignored
+file instead of embedding secret values in commands. Fail closed on terminal echo
+fallback, symlinks, existing files, unsafe modes and oversized input. The real
+SapiSkClient diagnostic fixes the sandbox origin and checks resolved isolated
+configuration before credential access. Auth/list/bounded detail GETs are allowed;
+no ACK/send/import/migrations/model writes. Anonymous status/count output alone
+cannot certify cross-AP receiving, original handoff, archive or production readiness.
+
+## 2026-11-10 - Accept bounded receiving with verified original handoff
+
+Accept the independently reviewed ePostman receiving source (`b8296faf`,36 paths)
+for local handoff, not production activation. Bind identity/provenance to the exact
+company and fixed environment; unknown historical receipt provenance fails closed.
+Require fresh row-locked settings and connection/credential generation matching so
+old polls/authentication tests cannot undo revocation or stamp a new connection as
+healthy. Named ePostman sending remains unavailable.
+
+Retain the owner-selected local encrypted data/provider archive model. Pending
+server originals cannot be purged/dismissed while they are the only established
+copy. A client digest is an integrity confirmation, not server attestation of
+browser persistence; local checkpoint/read-back is required. Oversize originals
+remain visible/recoverable under the existing384KiB local cap. Deploy client/server
+handoff together; rollback cannot restore destructive old cleanup against new data.
+
+Record globalPHP failures honestly: all61 error/failure cases reproduce on the
+unchanged base under the same minimal environment; do not modify unrelated product
+logic or weaken tests. Actual network/archival/production evidence is a separate gate.
 
 ## 2026-11-09 - Withdraw unverified Slovak eFaktura readiness claims
 

@@ -1,5 +1,139 @@
 # Project state
 
+## PR441 review corrections accepted - 2026-11-12
+
+All fourteen owner-supplied findings are verified against published base `f29c272f`
+and corrected in the existing receiving publication checkout. No finding is skipped.
+The base has successful exact-head CI 43230739651 and full frontend 2849/232 evidence.
+Corrections cover pagination/test timestamps, usable retained originals, separate
+row-locked import/ACK fences, custom provider fallbacks, effective URL secret
+preservation, local credential/bridge/company guards, stable date-only display,
+financial-lock-free HTTP and independent inbox health, plus fsync cleanup.
+
+Independent final QA passes PHP 84/725, frontend 113/8, Python 15, actual PostgreSQL 2,
+Apia/LosAngeles date cases, API export and three OpenAPI validators. PostgreSQL
+updaters wait on the company row while ACK holds it; an independent connection
+already sees the committed original. Provider HTTP remains simulated. Security
+accepts final 24 source/test files (`e862291c`), with independent JS 11/Python 15 and
+old-source regression failures. Main final typecheck 110/no new, lint 46/52,
+Pint 11/PHPStan 5 and locale/widget/whitespace checks pass. The final full frontend
+run passes 2,872 tests/233 files and isolated build passes 7,659 modules. Corrected-head
+CI is recorded separately in the publication handoff.
+
+See `EPOSTMAN_PR441_REVIEW_FIXES.md`. Existing runtime APIs/schema/locale keys and
+owner preview/account remain preserved; publication continues on PR441 without
+master merge or production activation. The optional CodeRabbit CLI review did not complete; independent QA/security
+provide the review evidence.
+
+## ePostman publication prepared against current master - 2026-11-12
+
+The owner-authorized receiving and customer onboarding branch is published as
+[draft PR441](https://github.com/webiumsk/satflux/pull/441). Exact-head CI remains
+pending; publication does not activate production. An isolated publication worktree on
+`feat/efaktura-epostman-receiving` integrates `origin/master` at `07c1af23`.
+Only the three shared state documents conflict; both histories are retained.
+The existing `feat/efaktura-epostman-inbound` checkout and manual localhost account
+remain preserved. Publication and exact-head CI are tracked separately from
+production activation; provider archive/export/contract remain outstanding.
+
+## Guided ePostman customer onboarding accepted locally - 2026-11-12
+
+Owner confirms the localhost connection works and authorizes guided customer
+setup. The existing feature worktree now offers built-in production/test choices,
+fixed endpoints, activation and SAPI-client instructions, derived identity guidance,
+truthful saved/unsaved/check/poll status and Expenses navigation in all five locales.
+Each company keeps its own provider account and credentials; delegated one-click
+consent remains unconfirmed. Sending and backend/billing contracts are unchanged.
+
+Independent QA/security accept the twelve-file onboarding scope. Failed/interrupted
+bridge synchronization persists in encrypted local settings and remains visible
+after reload, including a failed disable. Credential host switches discard old
+inputs and late responses cannot alter another company's view. QA76tests/6files,
+final wizard35, two independent persistence cases and Chrome24 synthetic UI checks
+pass. Browser API/Evolu boundaries are simulated; earlier actual transport/custody
+proof remains separate. Full lint46/52, typecheck110 inherited/no new, locale parity,
+widget provenance and final isolated production build7,636modules pass.
+
+Source remains local feature `f01f7d5b` plus reviewed earlier parser/inbox fixes and
+this onboarding work. Security manifest `13d17b52` matches all twelve files. See
+`EPOSTMAN_CUSTOMER_ONBOARDING.md` in the feature worktree for exact hashes/evidence.
+The owner's existing localhost account/data remain preserved and preview is running;
+only the separate QA harness was stopped. Manual preview polling remains necessary
+because it has no scheduler. No commit, push, deployment or new provider operation.
+Production activation and provider archive/export/contract remain outstanding.
+
+## Manual eFaktura localhost preview ready - 2026-11-12
+
+Owner requested a usable localhost test. The separate normal application preview
+at `http://127.0.0.1:8082` uses the ePostman worktree, its own SQLite/key/sessions
+and a synthetic Pro account. Two recovered copies of the owner's acknowledged
+test Invoice/CreditNote are pending for a new local handoff, with original XML,
+digests and provider provenance retained. Retrieve the test login locally with
+`bash storage/app/private/.env.efaktura-local/show-login.sh`.
+
+Independent no-mock browser QA passed normal consent/login/recovery/phrase unlock,
+server-company import, two actual HTTP inbox imports, original download/digest and
+signed totals, guest 401, missing-CSRF 419, foreign-company denial, duplicate confirmation and
+reload persistence. The accepted run has zero page errors or blocked external
+requests. Full Chrome restart was not repeated here; earlier isolated custody
+restart evidence remains separate. Provider polling was not invoked during QA.
+
+QA found a real inbox projection defect hidden by previous settings-bearing list
+mocks. Reusing the existing detailed company query fixes it. The regression fails
+on old source. All 41 tests in 5 files, scoped lint, typecheck within the inherited
+110-error ratchet, locale parity and an isolated build pass. Security accepts the
+exact runtime/test pair and private preview configuration.
+After QA, only preview PHP was stopped to retain post-QA evidence and restore its
+pristine snapshot. Own sessions/cache were cleared and PHP restarted. Human
+handoff again has two pending originals and no QA recovery key. Existing
+`localhost:8080` uses its separate migration preview. Source remains local `f01f7d5b` plus the reviewed
+parser and inbox-query corrections. Archive/contract and production remain pending.
+
+## Actual cross-AP CreditNote and signed-total correction verified - 2026-11-12
+
+The owner's Recommand TEST CreditNote was retrieved through the actual ePostman
+client and staged encrypted before real ACK in a fresh isolated persistent
+database: imported1, acknowledged1, failed0. Independent XML amount inversion
+verified a negative local expense; retry, reload and full Chrome restart preserved
+one expense/attachment and identical original bytes. BillingReference matches the
+previous test invoice exactly and remains in the original XML; structured expense
+linking is not implemented. Actual backend markImported passed twice, then staging
+was cleared. Browser HTTP was intercepted as in the earlier invoice test.
+
+Inspection also found a valid negative-valued CreditNote sign defect. The bounded
+one-line parser correction preserves the source sign before inversion, with six
+regression cases. Author26tests/174assertions plus scoped Pint/PHPStan pass;
+independent QA11tests/25assertions pass and independently reproduce two original
+failures. Independent security accepts the exact two-file fix and six additional
+synthetic parser cases. The corrected parser also reparses the actual CreditNote
+successfully. Feature source is local `f01f7d5b` plus this uncommitted correction;
+primary work and the other localhost preview remain preserved. Private evidence
+is under `storage/app/private/reviews/epostman-inbound/live-creditnote`.
+Provider archive/export/contract and production activation remain unverified.
+
+## Actual cross-AP sandbox invoice received - 2026-11-12
+
+The owner created a new Recommand playground explicitly using Peppol Test Network
+and sent a synthetic invoice to the existing ePostman sandbox participant. The
+real Satflux SAPI client listed one document and retrieved its original XML.
+The unchanged feature poller then staged the original encrypted in a separate
+persistent SQLite database and received one actual provider ACK, with zero
+failures. A separate SQLite connection validated committed original bytes before
+ACK; encrypted recovery bytes and the test key remain private and durable. A new
+container confirmed one pending receipt and preserved staging. Independent actual
+Chrome/Evolu QA imported that XML with one expense/attachment, matching amount and
+currency, first-confirmation failure/retry without duplicates, exact bytes after
+reload and full Chrome restart. The actual backend markImported transition then
+passed twice with the protected matching digest, leaving one imported receipt and
+cleared staging. Browser HTTP was intercepted; real provider and final backend
+service transitions were tested separately. Main localhost preview and production
+are unchanged. Earlier direct DNS NXDOMAIN observations did not
+establish the cause of the initial failure; actual cross-AP delivery supersedes
+the discovery blocker below. Source remains local feature `f01f7d5b`. Independent
+security accepted the isolated helpers after filename/durability hardening. Private
+evidence is under `storage/app/private/reviews/epostman-inbound/live-sandbox`.
+Credit-note interoperability, provider archive and production remain unverified.
+
 ## PR #440 review corrections - 2026-11-12
 
 GitHub verifies open PR #440 against master `bae0295f`, reviewed head `b19e8fc4`.
@@ -271,6 +405,58 @@ SK/CZ visual PDF generation verifies stored line gross, subtotal, VAT and total
 and requires disabled payment routing. Evidence and scope are recorded in
 [ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
 Owner preview is available on localhost. No publication or deployment occurred.
+
+## Real ePostman sandbox authentication/listing verified - 2026-11-10
+
+Owner re-entered distinct sandbox credentials through hidden local prompts. The
+reviewed read-only probe completed successfully against the fixed test origin:
+authenticated=true, one receive page, zero documents. No detail/XML retrieval,
+ACK, invoice sending, import or company/database write occurred. This verifies
+actual sandbox authentication and receive-list access, not document delivery,
+provider/archive guarantees, cross-AP interoperability or production readiness.
+Next receiving evidence requires a synthetic incoming invoice/credit note in the
+test inbox, followed by isolated durable import verification. Secret values remain
+in the owner-only local file and were not printed or copied into reports.
+
+## ePostman sandbox account ready; protected probe prepared - 2026-11-10
+
+Owner reports an activated sandbox account and asks for live testing. Credentials
+were shared in chat; no values were copied into tools, source, reports or agents.
+Rotate that test secret and enter replacements only through local hidden prompts.
+A read-only sandbox probe is prepared: fixed test origin, isolated uncached testing
+configuration, protected JSON input and anonymous output, no send/ACK/import or
+model/database writes. Live authentication has not run; the private credential
+file is not yet configured. A missing-file launch reached the credentials stage
+and stopped safely before authentication. Production state remains unchanged.
+
+## ePostman receiving accepted locally - 2026-11-10
+
+Owner-authorized receiving-first implementation is ready on
+`feat/efaktura-epostman-inbound`, base `6e6c0587`, in durable worktree
+`storage/app/private/worktrees/efaktura-epostman-inbound`. Fixed test/production
+profiles support JSON /sapi receiving, complete pagination, validated company/XML
+identity, immutable receipt provenance, safe original custody, visible poll health
+and protected credential/settings changes. ePostman outgoing is explicitly blocked.
+Local original read-back/digest confirmation and partial-import recovery preserve
+Evolu encryption; no destructive pending expiry/dismiss or new permanent server
+archive. Owner's separate LLC and existing generic provider behavior remain isolated.
+
+Independent security/QA accept36 runtime/test paths, manifest SHA256
+`b8296fafe97a6d7a77c57eecc9a1e83165335a8a19e6a24732e5268a4051b75f`.
+Real Chrome verifies exact original bytes after reload and full browser restart,
+including failed-confirmation retry without duplicates.
+Locked PHP104/554 and independent67/424, frontend2325/209 plus finalwizard19,
+Pint19/PHPStan/API checks, final build/type110/lint48/parity/changelog14 pass.
+Full PHP is not green:3216 tests,33 errors/28 failures/69 skips; all61 failing
+identities/classifications/diagnostics reproduce on unchanged base in the identical
+minimal environment, independently checked by QA. No unrelated fixes or exclusions.
+
+Evidence: feature `docs/development/EPOSTMAN_INBOUND_IMPLEMENTATION.md`; private
+review material under `storage/app/private/reviews/epostman-inbound` in coordinator
+checkout. Actual cross-AP receiving, provider archive/activation and production
+remain unverified. Originals above384KiB stay pending/downloadable; local handoff
+cannot finish for them. No provider account, paid contract, production credential,
+push/PR, merge or deployment occurred. Primary unrelated dirty work is preserved.
 
 ## Slovak eFaktura public claims withdrawn locally - 2026-11-09
 

@@ -1223,6 +1223,12 @@ export const invoicingApi = {
         },
     },
     efaktura: {
+        async inboundHealth<T = unknown>(companyId: string): Promise<T> {
+            const { data } = await api.get<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/efaktura/inbound-health`, {
+                timeout: EFAKTURA_INBOX_REQUEST_TIMEOUT_MS,
+            });
+            return data.data;
+        },
         async pollInbound<T = unknown>(companyId: string): Promise<T> {
             const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/efaktura/poll-inbound`);
             return data.data ?? ({} as T);
@@ -1256,11 +1262,29 @@ export const invoicingApi = {
             });
             return data.data;
         },
-        /** Acknowledges an existing local copy; timeout does not establish whether the server accepted the acknowledgment. */
-        async inboxImported(companyId: string, receiptId: string): Promise<void> {
-            await api.post(`/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}/imported`, undefined, {
+        /** Non-destructive phase: an absent endpoint must never fall back to legacy cleanup. */
+        async inboxPrepareImported(companyId: string, receiptId: string, originalSha256: string): Promise<string> {
+            const response = await api.post<ApiEnvelope<{ custody_protocol?: unknown; custody_token?: unknown }>>(
+                `/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}/prepare-import`,
+                { original_sha256: originalSha256 }, { timeout: EFAKTURA_INBOX_REQUEST_TIMEOUT_MS },
+            );
+            const reply = response.data.data;
+            const token = reply?.custody_token;
+            if (response.status !== 200 || reply?.custody_protocol !== 'post_ack_proof_v1' || typeof token !== 'string'
+                || token.length < 32 || token.length > 8192 || token.length % 4 !== 0
+                || !/^[A-Za-z0-9+/]+={0,2}$/.test(token)) {
+                throw new Error('efaktura_custody_protocol_unavailable');
+            }
+            return token;
+        },
+        /** Completes custody only after fresh local proof following the prepare response. */
+        async inboxImported(companyId: string, receiptId: string, originalSha256: string, custodyToken: string): Promise<void> {
+            const response = await api.post(`/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}/imported`, {
+                original_sha256: originalSha256, custody_token: custodyToken,
+            }, {
                 timeout: EFAKTURA_INBOX_REQUEST_TIMEOUT_MS,
             });
+            if (response.status !== 204) throw new Error('efaktura_custody_completion_unconfirmed');
         },
         async inboxDismiss(companyId: string, receiptId: string): Promise<void> {
             await api.post(`/invoicing/companies/${companyId}/efaktura/inbox/${receiptId}/dismiss`);

@@ -19,6 +19,10 @@ class EfakturaInboundReceipt extends Model
 
     protected $fillable = [
         'company_id',
+        'connection_key',
+        'connection_origin',
+        'receiver_participant_id',
+        'original_sha256',
         'external_document_id',
         'business_expense_id',
         'status',

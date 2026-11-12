@@ -1,31 +1,44 @@
 ---
-title: Slowakische E-Rechnungen - aktuelle Einschränkungen
+title: Slowakische E-Rechnungen - Empfang mit ePostman
 category: invoicing
 order: 6
-meta_description: Aktueller Stand und Einschränkungen der slowakischen eFaktura-Anbindung in Satflux.
-updated: 2026-11-09
+meta_description: Verbinden Sie das ePostman-Konto Ihres Unternehmens, empfangen Sie E-Rechnungen und importieren Sie Originale als Ausgaben in Satflux.
+updated: 2026-11-12
 ---
 
-# Slowakische E-Rechnungen - aktuelle Einschränkungen
+# Slowakische E-Rechnungen - Empfang mit ePostman
 
-**Eine vollständige Anbindung von Satflux an einen Anbieter für die slowakische eFaktura wurde bisher nicht verifiziert. Wir stellen Satflux derzeit nicht als einsatzbereite Lösung für die verpflichtende slowakische E-Rechnung dar.** Die weitere Entwicklung dieser Anbindung ist ausgesetzt, während über ihre Zukunft entschieden wird. Ein Fertigstellungstermin ist nicht zugesagt.
+Die ePostman-Anbindung unterstützt den **Empfang**. Empfang und Import einer Rechnung und einer Gutschrift wurden im Peppol-Testnetz verifiziert. Produktivaktivierung, gesetzliche Meldungen und die Archivbedingungen des Anbieters müssen separat bestätigt werden. Satflux wird derzeit nicht als vollständige Lösung für die verpflichtende slowakische E-Rechnung angeboten.
 
-## Export und Zustellung
+## Unternehmen verbinden
 
-Satflux kann Rechnungen als **UBL/XML** exportieren. Das Herunterladen dieser Datei stellt die Rechnung weder dem Empfänger zu noch bestätigt es die Erfüllung gesetzlicher Pflichten. Ein Anbieter muss das Dokument annehmen und die erforderliche Zustellung übernehmen. Ein manueller Upload kommt nur infrage, wenn der gewählte Anbieter ihn unterstützt; dieser vollständige Ablauf wurde in Satflux bisher nicht verifiziert.
+Richten Sie die Verbindung für jedes Unternehmen separat ein. Die Empfangsaktivierung eines slowakischen Unternehmens aktiviert keine ausländische LLC.
 
-## Anbieterkonto und Kosten
+1. Öffnen Sie die **E-Rechnungseinstellungen** des richtigen Unternehmens und aktivieren Sie E-Rechnungen. Wählen Sie **ePostman** und die passende Umgebung. Produktiv- und Testkonten haben getrennte Zugangsdaten; bei einem Umgebungswechsel benötigen Sie die Zugangsdaten der neuen Umgebung. Satflux trägt die Serveradresse für ePostman ein.
+2. Schließen Sie die Unternehmensaktivierung bei ePostman ab. Folgen Sie für den Produktivbetrieb der [Aktivierungsanleitung des Anbieters](https://postman.slovakodata.com/help/zaciname/onboarding/) und bestätigen Sie die Empfangsregistrierung. Die Anbieterauswahl in Satflux registriert Ihr Unternehmen weder beim Anbieter noch bei der slowakischen Finanzverwaltung. Verwenden Sie für Tests ausschließlich das Testportal und Testzugangsdaten.
+3. Öffnen Sie im ePostman-Portal **Nastavenia > SAPI klienti** und erstellen Sie einen eigenen Client für Satflux. Kopieren Sie dessen **Client ID** und **Client Secret** nach Satflux. Dies sind SAPI-Client-Zugangsdaten, kein REST-API-Schlüssel. Der Anbieter zeigt das Secret nur bei der Erstellung an; bewahren Sie es vertraulich auf. Siehe die [Einstellungsanleitung des Anbieters](https://postman.slovakodata.com/help/portal/nastavenia/).
+4. Prüfen Sie die in Satflux angezeigte Unternehmensidentität. Die Empfangskennung wird aus den Unternehmensdaten abgeleitet. Meldet der Assistent eine fehlende DIČ, ergänzen Sie zuerst die korrekte slowakische Steuernummer in den Unternehmensdaten. Verwenden Sie Zugangsdaten dieses Unternehmens.
+5. Wählen Sie **Verbindung testen**. Der Test prüft nur die Zugangsdaten. Er bestätigt weder die Empfangsregistrierung noch eine Dokumentzustellung oder die Erfüllung gesetzlicher Pflichten. Beheben Sie Fehler, bevor Sie fortfahren.
+6. Lassen Sie den Empfang aktiviert und **speichern** Sie die Einstellungen. Ein erfolgreicher Test allein speichert nicht die vollständige Empfangskonfiguration. Beheben Sie Speicher- oder Synchronisierungsfehler. Nach erfolgreichem Speichern kann Satflux eingehende Dokumente im Hintergrund abrufen, auch bei geschlossenem Browser. Fordert das Formular nach dem Speichern einer geänderten Verbindung einen neuen Test an, wiederholen Sie ihn, um die gespeicherten Zugangsdaten zu prüfen.
 
-Ein Anbieter kann ein eigenes Konto und einen gesondert kostenpflichtigen API-Zugang voraussetzen. Ein kostenloses Webpostfach umfasst nicht unbedingt eine Anbindung aus Satflux. Bestätigen Sie Preis, Nutzungsbedingungen und Kompatibilität mit Satflux, bevor Sie einen Anbieter bezahlen oder sich auf ihn verlassen. Die Auswahl im Portal der slowakischen Finanzverwaltung erzeugt nicht automatisch funktionierende Zugangsdaten in Satflux.
+Ist für dieselbe Verbindung bereits ein Secret gespeichert, lassen Sie das Feld leer. Geben Sie bei einem Anbieter- oder Umgebungswechsel die neuen Zugangsdaten ein und testen Sie erneut.
 
-## Bestehende Einstellungen und Dokumente
+## Empfangene Dokumente finden und importieren
 
-Bestehende Einstellungen, der Dokumentverlauf und die Bedienelemente der Anbindung bleiben erhalten. Wenn Sie die Verbindung bereits nutzen, öffnen Sie die **E-Rechnungseinstellungen** Ihres Unternehmens, um den gespeicherten Anbieter sowie die Versand- und Empfangsoptionen zu prüfen. Bewahren Sie Ihre Zugangsdaten vertraulich auf.
+Öffnen Sie beim selben Unternehmen **Ausgaben > Empfangene E-Rechnungen**. Prüfen Sie das Dokument oder laden Sie das ursprüngliche XML herunter und importieren Sie es anschließend als Ausgabe. Gutschriften werden als Korrekturen mit dem entsprechenden Vorzeichen importiert. Ein erfolgreicher leerer Abruf bedeutet, dass keine neuen Dokumente abgerufen wurden; er bestätigt keine Zustellung einer Testrechnung.
 
-**Verbindung testen** prüft die Authentifizierung. Ein erfolgreicher Test oder eine abgeschlossene Checkliste belegt weder die Annahme oder Zustellung einer Rechnung durch den Anbieter noch einen funktionierenden Empfang oder die erforderliche Meldung. Prüfen Sie Status und Nachweise bei Ihrem Anbieter.
+Starten Sie einen manuellen Abruf über **Eingehende jetzt abrufen** in den E-Rechnungseinstellungen des Unternehmens. Aktualisieren Sie anschließend den Posteingang unter Ausgaben. Das Aktualisieren des Posteingangs zeigt Dokumente, die Satflux bereits abgerufen hat.
 
-Soweit verfügbar, zeigt die Dokumentansicht den Übergabestatus und die Dokumentreferenz des Anbieters. Im Rechnungseingang können Sie empfangene Dokumente prüfen und als Ausgaben importieren. Diese Bedienelemente beschreiben bestehende Funktionen; ihre Verfügbarkeit bestätigt keine verifizierte vollständige Anbieteranbindung.
+Der Import speichert das Original in Ihren verschlüsselten lokalen Daten. Schlägt der Import fehl oder ist das Original zu groß für einen lokalen Anhang, bleibt der Eintrag zur Wiederherstellung und zum Herunterladen des Originals verfügbar. Eine vorhandene Ausgabe allein schließt den Import nicht ab.
 
-## Planung Ihrer Rechnungsstellung
+## Originale und Anbieterkosten
 
-Verwenden Sie bis zur Verifizierung Ihres Ablaufs einen Dienst, der den benötigten Versand und Empfang nachweisen kann. Klären Sie Ihre konkreten Pflichten und Fristen mit der slowakischen Finanzverwaltung oder Ihrer Steuerberatung.
+Bis zum verifizierten lokalen Import bleibt das Original auf dem Server mit serverseitigen Schlüsseln verschlüsselt. Dort werden auch Anbieterzugangsdaten und die ausgelesene Dokumentzusammenfassung verarbeitet. Ausstehende Originale werden nicht automatisch altersbedingt gelöscht. Nach der verifizierten lokalen Übernahme werden temporäre Serverinhalte entfernt. Dies ist kein langfristiges Satflux-Serverarchiv. Klären Sie Archivzugriff, Aufbewahrung und Export mit dem Anbieter, auch nach einer Kündigung.
+
+Ein Anbieterkonto kann gesonderte API-Gebühren oder Nutzungsbedingungen haben. Ein kostenloses Webpostfach umfasst nicht unbedingt den Zugriff aus Satflux. Bestätigen Sie vor dem Produktivbetrieb den passenden Tarif, den SAPI-Zugang und die Archivbedingungen mit ePostman.
+
+## Versand und gesetzliche Pflichten
+
+Dieser ePostman-Konnektor aktiviert weder Versand noch automatischen Versand. Satflux kann **UBL/XML** exportieren; das Herunterladen einer Datei stellt sie jedoch nicht dem Empfänger zu. Ein manueller Upload kommt nur infrage, wenn der gewählte Anbieter diesen vollständigen Ablauf unterstützt und verifiziert.
+
+Klären Sie die konkreten Pflichten und Fristen Ihres Unternehmens mit der slowakischen Finanzverwaltung oder Ihrer Steuerberatung. Ein funktionierender Empfang allein bestätigt nicht die Erfüllung aller Versand- und Meldepflichten.

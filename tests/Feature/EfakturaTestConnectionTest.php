@@ -12,6 +12,7 @@ use App\Models\CompanyMember;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Support\Invoicing\CompanyEfakturaSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
@@ -65,6 +66,46 @@ class EfakturaTestConnectionTest extends TestCase
         ], $companyAttributes));
 
         return [$user, $company];
+    }
+
+    #[Test]
+    public function completed_authentication_cannot_restore_concurrently_changed_company_settings(): void
+    {
+        config(['efaktura.enabled' => true, 'efaktura.allowed_sapi_hosts' => ['sapi.test']]);
+        [$owner, $company] = $this->skUserWithCompany();
+        Http::fake(function () use ($company) {
+            $fresh = $company->fresh();
+            $fresh->update(['app_settings' => CompanyEfakturaSettings::mergeIncoming($fresh->app_settings, [
+                'efaktura_sapi_client_id' => 'synthetic-new-client',
+                'efaktura_sapi_client_secret' => 'synthetic-new-secret',
+                'efaktura_inbound_enabled' => false,
+            ])]);
+
+            return Http::response(['access_token' => 'synthetic-token', 'expires_in' => 900]);
+        });
+        $this->actingAs($owner)->postJson("/api/invoicing/companies/{$company->id}/efaktura/test-connection")
+            ->assertOk()->assertJsonPath('data.ok', true)->assertJsonPath('data.tested_at', null);
+        $fresh = $company->fresh();
+        $this->assertSame('synthetic-new-client', $fresh->app_settings['efaktura_sapi_client_id']);
+        $this->assertSame('synthetic-new-secret', CompanyEfakturaSettings::fromCompany($fresh)->sapiClientSecret());
+        $this->assertFalse($fresh->app_settings['efaktura_inbound_enabled']);
+        $this->assertNull($fresh->app_settings['efaktura_connection_tested_at'] ?? null);
+    }
+
+    #[Test]
+    public function cancelled_settings_update_does_not_return_a_tested_timestamp(): void
+    {
+        config(['efaktura.enabled' => true, 'efaktura.allowed_sapi_hosts' => ['sapi.test']]);
+        [$owner, $company] = $this->skUserWithCompany();
+        Http::fake(['https://sapi.test/sapi/v1/auth/token' => Http::response(['access_token' => 'synthetic-token'])]);
+        Company::updating(fn () => false);
+        try {
+            $this->actingAs($owner)->postJson("/api/invoicing/companies/{$company->id}/efaktura/test-connection")
+                ->assertOk()->assertJsonPath('data.ok', true)->assertJsonPath('data.tested_at', null);
+        } finally {
+            Company::flushEventListeners();
+        }
+        $this->assertNull($company->fresh()->app_settings['efaktura_connection_tested_at'] ?? null);
     }
 
     #[Test]
@@ -122,7 +163,8 @@ class EfakturaTestConnectionTest extends TestCase
                 'efaktura_sapi_client_secret' => 'other-secret',
             ])
             ->assertOk()
-            ->assertJsonPath('data.ok', true);
+            ->assertJsonPath('data.ok', true)
+            ->assertJsonPath('data.tested_at', null);
 
         Http::assertSent(function ($request) {
             return str_starts_with($request->url(), 'https://other.test/')

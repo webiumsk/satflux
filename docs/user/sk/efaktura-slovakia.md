@@ -1,31 +1,44 @@
 ---
-title: Slovenská e-fakturácia - aktuálne obmedzenia
+title: Slovenská e-fakturácia - prijímanie cez ePostman
 category: invoicing
 order: 6
-meta_description: Aktuálny stav a obmedzenia prepojenia slovenskej eFaktúry v Satfluxe.
-updated: 2026-11-09
+meta_description: Prepojte firemný účet ePostman, prijímajte e-faktúry a importujte ich originály do nákladov v Satfluxe.
+updated: 2026-11-12
 ---
 
-# Slovenská e-fakturácia - aktuálne obmedzenia
+# Slovenská e-fakturácia - prijímanie cez ePostman
 
-**Kompletné napojenie Satfluxu na poskytovateľa slovenskej eFaktúry zatiaľ nie je overené. Satflux aktuálne neprezentujeme ako hotové riešenie povinnej slovenskej e-fakturácie.** Ďalší vývoj tohto prepojenia je pozastavený, kým sa posúdi jeho budúcnosť. Termín dokončenia nie je prisľúbený.
+Prepojenie ePostman podporuje **prijímanie**. Príjem a import faktúry aj dobropisu boli overené v testovacej sieti Peppol. Produkčnú aktiváciu, zákonné hlásenie a podmienky archívu poštára treba potvrdiť samostatne. Satflux zatiaľ neprezentujeme ako kompletné riešenie povinnej slovenskej e-fakturácie.
 
-## Export a doručenie
+## Prepojenie firmy
 
-Satflux dokáže exportovať faktúry ako **UBL/XML**. Stiahnutie súboru nedoručí faktúru odberateľovi ani nepotvrdzuje splnenie zákonných povinností. Poskytovateľ musí doklad prijať a zabezpečiť požadované doručenie. Manuálne nahratie je možnosťou len vtedy, ak ho vybraný poskytovateľ podporuje; tento kompletný postup zatiaľ v Satfluxe nie je overený.
+Každú firmu pripojte samostatne. Zapnutie prijímania slovenskej firmy ho nezapne pre zahraničnú LLC.
 
-## Účet u poskytovateľa a náklady
+1. Otvorte nastavenia **e-fakturácie** správnej firmy a zapnite e-fakturáciu. Vyberte **ePostman** a príslušné prostredie. Produkčné a testovacie účty majú oddelené prístupové údaje; pri zmene prostredia potrebujete údaje daného prostredia. Adresu servera ePostman vyplní Satflux.
+2. Dokončite aktiváciu firmy v ePostman. Pre produkciu postupujte podľa [návodu poštára na aktiváciu](https://postman.slovakodata.com/help/zaciname/onboarding/) a potvrďte registráciu na prijímanie. Výber poštára v Satfluxe nezaregistruje firmu u poštára ani na Finančnej správe. Pri testovaní používajte výhradne testovací portál a testovacie údaje.
+3. V portáli ePostman otvorte **Nastavenia > SAPI klienti** a vytvorte samostatného klienta pre Satflux. Jeho **Client ID** a **Client Secret** skopírujte do Satfluxu. Ide o údaje SAPI klienta, nie o REST API kľúč. Poštár zobrazí secret iba pri vytvorení; uchovávajte ho v súkromí. Pozrite si [návod na nastavenia poštára](https://postman.slovakodata.com/help/portal/nastavenia/).
+4. Skontrolujte identitu firmy zobrazenú v Satfluxe. Identifikátor na prijímanie sa odvodzuje z firemných údajov. Ak sprievodca hlási chýbajúce DIČ, najskôr doplňte správne slovenské DIČ v údajoch firmy. Použite prístupové údaje patriace tejto firme.
+5. Vyberte **Otestovať pripojenie**. Test overuje iba prístupové údaje. Nepotvrdzuje registráciu na prijímanie, doručenie dokladu ani splnenie zákonných povinností. Pred pokračovaním opravte prípadnú chybu.
+6. Nechajte prijímanie zapnuté a nastavenia **uložte**. Samotný úspešný test neuloží celé nastavenie prijímania. Vyriešte prípadnú chybu uloženia alebo synchronizácie. Po úspešnom uložení môže Satflux sťahovať prichádzajúce doklady na pozadí aj pri zatvorenom prehliadači. Ak formulár po uložení zmeneného pripojenia žiada nový test, zopakujte ho na overenie uložených prístupových údajov.
 
-Poskytovateľ môže vyžadovať vlastný účet a osobitne platený API prístup. Bezplatná webová schránka nemusí zahŕňať prepojenie so Satfluxom. Pred zaplatením alebo používaním poskytovateľa si potvrďte cenu, podmienky používania a kompatibilitu so Satfluxom. Výber poskytovateľa na portáli Finančnej správy automaticky nevytvorí funkčné prístupové údaje v Satfluxe.
+Ak je secret už uložený pre rovnaké pripojenie, jeho pole nechajte prázdne. Pri zmene poštára alebo prostredia zadajte údaje nového pripojenia a test zopakujte.
 
-## Existujúce nastavenia a doklady
+## Kde nájsť a importovať doklady
 
-Existujúce nastavenia, história dokladov a ovládacie prvky prepojenia zostávajú zachované. Ak prepojenie už používate, v nastaveniach **e-fakturácie** firmy si môžete skontrolovať uloženého poskytovateľa a možnosti odosielania alebo prijímania. Prístupové údaje uchovávajte v súkromí.
+V rovnakej firme otvorte **Náklady > Prijaté e-faktúry**. Doklad skontrolujte alebo stiahnite pôvodné XML a potom ho importujte do nákladov. Dobropisy sa importujú ako opravy so zodpovedajúcim znamienkom sumy. Úspešné prázdne stiahnutie znamená, že sa nestiahli nové doklady; nepotvrdzuje doručenie testovacej faktúry.
 
-**Otestovať pripojenie** overuje prihlásenie. Úspešný výsledok ani dokončený kontrolný zoznam nedokazuje, že poskytovateľ faktúru prijal alebo doručil, že funguje príjem, ani že prebehlo požadované hlásenie. Stav a dôkazy si overte u poskytovateľa.
+Manuálne stiahnutie spustíte cez **Stiahnuť prichádzajúce teraz** v nastaveniach e-fakturácie firmy. Následne obnovte inbox na stránke Náklady. Obnovenie inboxu zobrazí doklady, ktoré už Satflux stiahol.
 
-Ak je panel dokladu dostupný, zobrazuje stav odovzdania a referenciu dokladu u poskytovateľa. Inbox prijatých faktúr umožňuje skontrolovať prijaté doklady a importovať ich ako náklady. Tieto prvky opisujú existujúce funkcie; ich prítomnosť nepotvrdzuje overené kompletné napojenie na poskytovateľa.
+Import uloží originál do vašich šifrovaných lokálnych dát. Ak import zlyhá alebo je originál príliš veľký na lokálnu prílohu, položka zostane dostupná na obnovu a stiahnutie originálu. Samotná existencia nákladu import nedokončí.
 
-## Plánovanie fakturácie
+## Uchovanie originálov a náklady poštára
 
-Kým nemáte overený postup, používajte službu, ktorá vie preukázať potrebné odosielanie a prijímanie. Svoje konkrétne povinnosti a termíny si potvrďte na Finančnej správe alebo u účtovníka.
+Kým sa lokálny import overene nedokončí, originál je na serveri šifrovaný kľúčmi servera. Spracúvajú sa tam aj prístupové údaje poštára a rozparsovaný súhrn dokladu. Čakajúce originály sa automaticky nemažú podľa veku. Po overenom lokálnom prevzatí sa dočasný obsah servera odstráni. Nejde o dlhodobý serverový archív Satfluxu. Prístup do archívu, dobu uchovania a export si potvrďte s poštárom aj pre prípad zrušenia účtu.
+
+Účet poštára môže mať osobitné poplatky za API alebo podmienky používania. Bezplatná webová schránka nemusí zahŕňať prístup zo Satfluxu. Pred používaním produkčného prepojenia si v ePostman potvrďte príslušný balík, SAPI prístup a podmienky archívu.
+
+## Odosielanie a zákonné povinnosti
+
+Tento konektor ePostman nezapína odosielanie ani automatické odosielanie. Satflux dokáže exportovať **UBL/XML**, ale stiahnutie súboru ho nedoručí odberateľovi. Manuálne nahratie je možnosťou iba vtedy, ak ho vybraný poštár podporuje a overí celý postup.
+
+Konkrétne povinnosti a termíny vašej firmy si potvrďte na Finančnej správe alebo u účtovníka. Samotné funkčné prijímanie nepotvrdzuje splnenie všetkých povinností odosielania a hlásenia.

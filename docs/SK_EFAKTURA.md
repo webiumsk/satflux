@@ -1,6 +1,9 @@
 # Slovak eFaktura - implementation reference and current limitations
 
-> **Product status - 2026-11-09:** A complete Slovak eFaktura provider integration has not been verified. Satflux is currently not presented as a ready solution for mandatory Slovak e-invoicing. UBL export alone does not deliver an invoice, and a successful OAuth connection test does not prove document acceptance, delivery, receiving or reporting. Provider compatibility, API access and any separate fees must be verified for the selected service. Further SK eFaktura development is paused pending Product Owner direction, provider terms and complete integration verification; no completion date is promised. Existing code, configuration, credentials, document history and safeguards are retained. The implementation and runbook below are technical reference, not evidence of production readiness or authorization to activate a provider.
+> Current ePostman receiving implementation and activation gates: [runbook](development/EPOSTMAN_INBOUND_IMPLEMENTATION.md). The overview below also describes legacy generic SAPI functionality; it is not evidence of a verified provider integration. ePostman outgoing is unavailable in this receiving scope.
+
+
+> **Product status - 2026-11-12:** ePostman receiving of an Invoice and CreditNote has been verified in the actual Peppol Test Network, including encrypted original custody and local import. Guided per-company setup is documented in the [customer onboarding runbook](development/EPOSTMAN_CUSTOMER_ONBOARDING.md). A complete production Slovak eFaktura integration has not been verified. Satflux is currently not presented as a ready solution for mandatory Slovak e-invoicing. UBL export alone does not deliver an invoice, and a successful OAuth connection test does not prove document acceptance, delivery, receiving or reporting. Provider compatibility, API access and any separate fees must be verified for the selected service. Receiving-first ePostman implementation is authorized; production activation remains unverified pending Product Owner direction, provider terms and complete integration verification; no completion date is promised. Existing code, configuration, credentials, document history and safeguards are retained. The implementation and runbook below are technical reference, not evidence of production readiness or authorization to activate a provider.
 
 Od **1. januára 2027** platí pre tuzemské B2B transakcie na Slovensku povinná štruktúrovaná elektronická fakturácia (zákon č. 385/2025 Z. z.). Dokumenty idú cez sieť **Peppol** a certifikovaného **digitálneho poštára** (CPDS). Finančná správa SR spravuje výber poskytovateľa a národné pravidlá (SK CIUS).
 
@@ -39,9 +42,9 @@ Rozsah povinností zákona sa pritom líši: **vystavovať** e-faktúry musia od
 
 Záložka **E-faktúra** v nastaveniach firmy (`eu_sk`; platitelia DPH vidia plný sprievodcu, neplatitelia a §7 / §7a variant „iba príjem" bez kroku auto-send a bez Peppol sender ID) je 3-krokový sprievodca:
 
-1. **Vyberte digitálneho poštára** - dropdown s presetmi (spravuje admin) alebo "Iný (zadať URL)". Výber na [portáli Finančnej správy](https://www.financnasprava.sk) ostáva na merchantovi.
+1. **Choose the provider** - built-in ePostman production/test choices fill the fixed endpoint without an administrator preset. Registered custom providers and manual URLs remain available. Výber na [portáli Finančnej správy](https://www.financnasprava.sk) ostáva na merchantovi.
 2. **Prepojte svoj účet** - `client_id` + `client_secret` od poštára a tlačidlo **Otestovať pripojenie** (jednorazový OAuth pokus, úspech sa uloží ako `efaktura_connection_tested_at`).
-3. **Možnosti** - auto-send (pri prvom zapnutí modulu predvolene zaškrtnutý), inbound. Peppol participant ID je v "Rozšírené" - bežný merchant ho nerieši, derivuje sa z DIČ/IČO.
+3. **Receiving settings** - save the selected connection after testing; local-first bridge synchronization failures remain visible across reload, including failed disabling. Manual polling requires successfully saved settings. Outgoing is unavailable for ePostman and optional only for separately supported providers. Peppol participant ID je v "Rozšírené" - bežný merchant ho nerieši, derivuje sa z DIČ/IČO.
 
 Serverový test pripojenia firmy je vyhradený vlastníkovi (support/admin zachovávajú existujúci privilegovaný prístup). Uložený `client_secret` sa doplní len pri nezmenenej URL poskytovateľa a `client_id`; pri ich zmene treba secret zadať znova. Local-first test bez firemnej routy používa iba credentials dodané klientom, nikdy nedopĺňa uložené credentials zdieľanej firmy.
 
@@ -71,14 +74,14 @@ Po zmene `.env`: `php artisan optimize:clear`
 
 ### Sandbox E2E checklist (manuálne, pred produkčným zapnutím)
 
-Všetky CPDS volania sú zatiaľ overené len cez `Http::fake` - proti reálnemu sandboxu poštára treba ručne overiť:
+The ePostman token grant and actual cross-AP list/detail/XML/ACK for an Invoice and CreditNote have been verified in the test network; see the receiving runbook for exact transport and browser proof boundaries. Generic provider sending and production reporting remain separate verification requirements:
 
-- [ ] token grant (`efaktura:doctor --live`)
+- [x] ePostman sandbox token grant through the isolated real client
 - [ ] `document/send` happy path + akceptácia UBL validátorom poštára
 - [ ] 422 recipient-not-found mapovanie ("Recipient is not registered in the Peppol network.")
 - [ ] idempotency-key retry (opakovaný send toho istého dokumentu)
 - [ ] status detail (`send_detail_path` daného CPDS) + `efaktura:sync-compliance-status`
-- [ ] inbound list/detail/acknowledge + import do nákladov
+- [x] ePostman sandbox inbound list/detail/acknowledge and verified original import (Invoice and CreditNote)
 
 ## Architektúra
 
@@ -107,7 +110,7 @@ efaktura:poll-inbound (scheduler každých 15 min, ak EFAKTURA_ENABLED)
   -> server mode:   BusinessExpense + UBL príloha na disku
   -> local-first:   efaktura_inbound_receipts ako INBOX položka
                     (inbox_status=pending, draft_json, ubl_encrypted, evolu_expense_id)
-  -> efaktura_inbound_receipts (dedup podľa providerDocumentId)
+  -> efaktura_inbound_receipts (dedup by company + immutable connection provenance + provider document ID)
 ```
 
 ### Inbox pre local-first firmy
@@ -120,14 +123,14 @@ Endpointy (`EnsureCompanyOwnership`, `{company}` = bridge firma):
 |---|---|---|
 | `GET` | `/companies/{company}/efaktura/inbox` | pending položky (súhrn + draft, bez UBL) |
 | `GET` | `/companies/{company}/efaktura/inbox/{receipt}` | detail vrátane dešifrovaného UBL (pre prílohu) |
-| `POST` | `/companies/{company}/efaktura/inbox/{receipt}/imported` | klient importoval do Evolu - draft aj UBL sa zo servera zmažú |
-| `POST` | `/companies/{company}/efaktura/inbox/{receipt}/dismiss` | zahodiť |
+| `POST` | `/companies/{company}/efaktura/inbox/{receipt}/imported` | Confirm successful local original handoff with matching `original_sha256`; temporary server draft/XML are then cleared |
+| `POST` | `/companies/{company}/efaktura/inbox/{receipt}/dismiss` | Reject dismissal while a staged original would be lost |
 
 Credentials pre inbound si local-first klient uloží na bridge firmu cez existujúci `PATCH /companies/{company}/app-settings` (`efaktura_enabled`, `efaktura_inbound_enabled=true`, `efaktura_auto_send=false`, base URL, client id/secret) - žiadny samostatný subscription endpoint. Ručný poll: `POST /companies/{bridge}/efaktura/poll-inbound`.
 
-**Klient (A3):** `CompanyEfakturaSettingsForm` pri local-first uložení zrkadlí inbound podmnožinu nastavení na bridge firmu (`syncInboundSettingsToBridge`, bridge cez `ensureBridgeCompanyIdForLocalCompany`; chyba mostu neruší lokálne uloženie, len sa zobrazí) a tlačidlo „Stiahnuť teraz“ polluje bridge. `evolu/efakturaInboxLive.ts` (singleton, init v `InvoicingAppHeader` ako WooCommerce inbox) periodicky sťahuje pending položky a `reconcileEfakturaInboxWithLocalExpenses` skryje/vyčistí tie, ktoré už lokálne existujú (import na inom zariadení). `EfakturaInboxPanel.vue` na stránke Náklady: Import = `importEfakturaInboxEntry` → náklad pod stabilným id (`createIdFromString("satflux.efaktura-expense.v1." + evolu_expense_id)`, upsert = idempotentné) + UBL ako XML príloha (nad 384 KB sa preskočí s upozornením) → `imported` na serveri; Zahodiť = `dismiss`. Vitest: `__tests__/efakturaInboxImport.test.ts`.
+**Local-first client:** inbound settings are mirrored to the company bridge for scheduled receiving. The live inbox lists pending documents; reconciliation must verify the exact original attachment and its company, not merely find an expense. Import uses stable expense/attachment identifiers, checkpoints and reads back the original bytes before confirming the original digest to the server. An oversized or failed attachment remains pending and downloadable. Destructive dismissal is unavailable while the only original is staged. See `efakturaInboxImport.ts` and its regression tests.
 
-**Poctivé konštatovanie:** pre local-first firmy s inboundom sú CPDS credentials a dočasné prijaté UBL na serveri (šifrované), kým ich klient neimportuje alebo kým ich nezahodí `efaktura:purge-inbound-inbox` (denne, `EFAKTURA_INBOUND_INBOX_RETENTION_DAYS`, default 60 - riadok ostáva kvôli dedup, obsah sa zmaže). `efaktura:doctor` vypisuje počet pending položiek per firma.
+**Privacy and custody:** inbound credentials and temporary originals are processed server-side with server-held encryption keys; parsed summaries are not end-to-end encrypted. Pending originals are retained until verified local handoff, rather than deleted after the historical 60-day window. After successful import, encrypted local Evolu data and the provider archive hold the document; this does not add a permanent Satflux server archive. Provider archive retention/export and actual network receiving must be verified separately.
 
 Peppol SMP lookup pred odoslaním rieši CPDS pri `POST /document/send` (422 ak príjemca nie je v sieti). Lokálna preflight kontrola overí, že kontakt má Peppol ID (IČO/DIČ/`peppol_participant_id`).
 
@@ -142,3 +145,19 @@ Peppol SMP lookup pred odoslaním rieši CPDS pri `POST /document/send` (422 ak 
 - [BUSINESS_INVOICING.md](BUSINESS_INVOICING.md)
 - [OpenPeppol Slovakia](https://peppol.org/learn-more/country-profiles/slovakia/)
 - SAPI-SK špecifikácia: sapi-sk.sk (dobrovoľný štandard pre CPDS)
+
+## Browser original custody handoff
+
+The receiving inbox advertises `custody_protocol: post_ack_proof_v1`. A client
+uses `POST .../efaktura/inbox/{receipt}/prepare-import` with `original_sha256`,
+then verifies fresh local original bytes after that response before sending
+`original_sha256` and the returned `custody_token` to `/imported` for completion.
+Both requests preserve the existing company authorization and CSRF boundaries.
+Without a token, `/imported` is a non-destructive legacy preparation. New clients
+reject old/missing preparation rather than invoking destructive legacy behavior.
+
+Staging is retained through preparation and until post-response proof permits
+completion. Later intentional deletion after that custody transfer is the client's
+responsibility. The token does not attest remote browser persistence. See the
+[second-review contract](development/EPOSTMAN_PR441_REVIEW_ROUND2.md) for replay,
+rollback, compatibility and test boundaries.

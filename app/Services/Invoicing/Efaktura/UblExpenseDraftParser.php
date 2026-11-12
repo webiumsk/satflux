@@ -27,8 +27,13 @@ class UblExpenseDraftParser
             ?: '0',
         );
         $paymentId = $this->xpathString($root, '//cbc:BuyerReference');
+        $creditNote = $root->getName() === 'CreditNote';
+        if ($creditNote) {
+            $total = bcsub('0', $total, 2);
+        }
 
         return [
+            'document_type' => $creditNote ? 'credit_note' : 'invoice',
             'external_number' => $invoiceNumber !== '' ? $invoiceNumber : null,
             'title' => $supplierName !== '' ? $supplierName : 'Prijatá e-faktúra',
             'variable_symbol' => $paymentId !== '' ? preg_replace('/\D/', '', $paymentId) : null,
@@ -37,7 +42,7 @@ class UblExpenseDraftParser
             'due_date' => $dueDate,
             'total' => $total,
             'currency' => $currency,
-            'internal_note' => 'Importované z Peppol (SAPI-SK).',
+            'internal_note' => $creditNote ? 'Dobropis prijatý z Peppol (SAPI-SK).' : 'Importované z Peppol (SAPI-SK).',
         ];
     }
 

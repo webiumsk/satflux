@@ -109,6 +109,16 @@ final class CompanyEfakturaSettings
         }
     }
 
+    /** Server-only comparison; never expose or log this credential fingerprint. */
+    public function connectionFingerprint(): string
+    {
+        return hash('sha256', serialize([
+            $this->enabled(), $this->inboundEnabled(), $this->provider(),
+            $this->sapiBaseUrl(), $this->sapiClientId(), $this->sapiClientSecret(),
+            $this->peppolParticipantId(), $this->derivedPeppolParticipantId(),
+        ]));
+    }
+
     public function configured(): bool
     {
         return $this->enabled()
@@ -147,7 +157,7 @@ final class CompanyEfakturaSettings
      */
     public static function mergeIncoming(array $current, array $incoming): array
     {
-        $merged = $current;
+        $merged = array_merge($current, $incoming);
 
         foreach ([
             'efaktura_enabled',
@@ -167,6 +177,11 @@ final class CompanyEfakturaSettings
             $merged['efaktura_sapi_base_url'] = $url !== '' ? rtrim($url, '/') : null;
         }
 
+        if (! array_key_exists('efaktura_sapi_client_secret', $incoming) && ((array_key_exists('efaktura_sapi_base_url', $incoming) && (new self($merged))->sapiBaseUrl() !== (new self($current))->sapiBaseUrl()) || (array_key_exists('efaktura_sapi_client_id', $incoming) && ($merged['efaktura_sapi_client_id'] ?? null) !== ($current['efaktura_sapi_client_id'] ?? null)))) {
+            $merged['efaktura_sapi_client_secret_encrypted'] = null;
+            unset($merged['efaktura_sapi_client_secret']);
+        }
+
         if (array_key_exists('efaktura_sapi_client_secret', $incoming)) {
             $secret = is_string($incoming['efaktura_sapi_client_secret'])
                 ? trim($incoming['efaktura_sapi_client_secret'])
@@ -177,6 +192,17 @@ final class CompanyEfakturaSettings
                 $merged['efaktura_sapi_client_secret_encrypted'] = Crypt::encryptString((string) $secret);
             }
         }
+
+        foreach (['efaktura_sapi_base_url', 'efaktura_sapi_client_id', 'efaktura_peppol_participant_id', 'efaktura_enabled', 'efaktura_inbound_enabled'] as $connectionField) {
+            if (array_key_exists($connectionField, $incoming) && ($merged[$connectionField] ?? null) !== ($current[$connectionField] ?? null)) {
+                unset($merged['efaktura_inbound_last_poll_at'], $merged['efaktura_inbound_last_poll_stats'], $merged['efaktura_connection_tested_at']);
+            }
+        }
+        if (array_key_exists('efaktura_sapi_client_secret', $incoming)) {
+            unset($merged['efaktura_inbound_last_poll_at'], $merged['efaktura_inbound_last_poll_stats'], $merged['efaktura_connection_tested_at']);
+        }
+
+        unset($merged['efaktura_sapi_client_secret']);
 
         return $merged;
     }

@@ -1,5 +1,45 @@
 # Local workspace
 
+## ePostman publication and preserved manual preview - 2026-11-12
+
+Owner-authorized publication is prepared on `feat/efaktura-epostman-receiving`
+in `storage/app/private/worktrees/efaktura-epostman-publication`, integrated with
+owned master `07c1af23`. Existing reviewed implementation is committed through
+`bb31eb21` on `feat/efaktura-epostman-inbound`; its separate manual localhost
+checkout/account/origin and encrypted recovery artifacts remain preserved.
+[Draft PR441](https://github.com/webiumsk/satflux/pull/441) publishes this branch;
+exact-head CI and production gates remain separate.
+The publication checkout reuses existing locked development dependencies and
+never starts a web service, scheduler or provider operation. Private evidence
+stays in the coordinator checkout. PR/CI status is separate from production and
+provider archive/contract verification; see the receiving and onboarding runbooks.
+
+## ePostman sandbox probe waiting for private input - 2026-11-10
+
+Feature remains in `storage/app/private/worktrees/efaktura-epostman-inbound`.
+Owner reports an active test account. Hidden capture helper is
+`scripts/efaktura/prepare_sandbox.py` in that feature; run from coordinator checkout
+so private input lands at `storage/app/private/epostman-sandbox/.env.credentials.json`.
+Never print/read that file into model output. Once owner confirms it is saved,
+read-only sandbox auth/list/detail testing is authorized; no repeated permission
+is needed. Check owner/mode and isolate synthetic dotenv/configuration first.
+Reviewed disposable launcher is retained for this session separately from source;
+production configuration, provider sends/ACK and billing remain outside scope.
+
+## ePostman receiving retained for handoff - 2026-11-10
+
+`feat/efaktura-epostman-inbound` from `6e6c0587` is retained in durable worktree
+`storage/app/private/worktrees/efaktura-epostman-inbound`. Independent QA/security
+accept36 runtime/test paths (`b8296faf`). Runbook and private review evidence record
+exact source, locked dependencies, passing targeted/browser checks and baseline
+reproduction of broad PHP failures. No public Git publication or deployment yet.
+
+Primary checkout remains on `fix/sepa-confirmation-isolation` with unrelated dirty
+work intact. Existing vendor/node dependencies are not changed; a separate locked
+vendor copy and disposable per-container storage support PHP verification. Synthetic
+browser profiles and base snapshots are disposable test artifacts, not the sole
+copy of implementation. No production data or provider credentials were used.
+
 ## Per-relay protocol status and Freedomrelay defaults - 2026-11-07
 
 Owner requests separate connection/synchronization status and chooses Satflux plus
