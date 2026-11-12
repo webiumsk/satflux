@@ -74,8 +74,8 @@ async function deriveCompanyParams(nextCompanyId: string): Promise<void> {
     bridgeCompanyIdRef.value = null;
     entries.value = [];
 
-    const { evolu, allCompaniesQuery } = await import("./client");
-    const rows = toAppRows<CompanyRowSlice>(await evolu.loadQuery(allCompaniesQuery));
+    const { evolu, allCompaniesDetailQuery } = await import("./client");
+    const rows = toAppRows<CompanyRowSlice>(await evolu.loadQuery(allCompaniesDetailQuery));
     if (myGeneration !== generation) return;
     const row = rows.find((r) => String(r.id) === nextCompanyId) ?? null;
     if (row == null || !inboundEnabledFromSettingsJson(row.appSettingsJson)) {
