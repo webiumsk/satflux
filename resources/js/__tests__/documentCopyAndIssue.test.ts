@@ -73,16 +73,17 @@ const line = {
 
 type Call = { table: string; row: Record<string, unknown> };
 
-function fakeEvolu(documents: EvoluDocumentRow[]) {
+function fakeEvolu(documents: EvoluDocumentRow[], lines = [line]) {
     const calls: Call[] = [];
     const rowsFor: Record<string, unknown[]> = {
         allDocumentsQuery: documents,
         allNumberSeriesQuery: series,
-        allDocumentLinesQuery: [line],
+        allDocumentLinesQuery: lines,
         allContactsQuery: [],
     };
     return {
         calls,
+        getQueryRows: vi.fn((query: string) => rowsFor[query] ?? []),
         loadQuery: vi.fn(async (query: string) => rowsFor[query] ?? []),
         insert: vi.fn((table: string, row: Record<string, unknown>) => {
             calls.push({ table, row });
@@ -187,6 +188,19 @@ describe("conversion guards", () => {
 });
 
 describe("issueLocalDocumentAsync", () => {
+    it("does not reserve a new number for a pending migration or an ordinary signed draft", async () => {
+        const { issueLocalDocumentAsync } = await import("@/evolu/documentCrud");
+        const pending = fakeEvolu([doc({ migrationFingerprint: "pending", migrationCompletedAt: null })], []);
+        const signed = fakeEvolu([doc({})], [{ ...line, unitPrice: "-10.0000" }]);
+        expect(await issueLocalDocumentAsync(pending as never, "doc-1" as DocumentId, company))
+            .toEqual({ ok: false, error: "migration_pending" });
+        expect(await issueLocalDocumentAsync(signed as never, "doc-1" as DocumentId, company))
+            .toEqual({ ok: false, error: "negative_line_price" });
+        expect(reserveMock).not.toHaveBeenCalled();
+        expect(pending.calls).toEqual([]);
+        expect(signed.calls).toEqual([]);
+    });
+
     it("formats a retried reservation in its own period, not today's", async () => {
         const { issueLocalDocumentAsync } = await import("@/evolu/documentCrud");
         const draft = doc({});

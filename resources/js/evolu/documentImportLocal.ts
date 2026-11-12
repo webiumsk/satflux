@@ -7,6 +7,7 @@ import {
     REQUIRED_DOCUMENT_IMPORT_FIELDS,
     type DocumentImportFieldKey,
     type DocumentImportMapping,
+    type DocumentImportSource,
 } from "@/composables/useDocumentImportFields";
 import { useCompanyVatPolicy, type VatPolicyCompany, type VatPolicyContact } from "@/composables/useCompanyVatPolicy";
 import {
@@ -58,6 +59,8 @@ export const DOCUMENT_IMPORT_EXAMPLE_HEADERS = [
     "Suma",
     "Fakturačná mena (kód ISO)",
     "Dátum úhrady",
+    "Uhradené",
+    "Stav úhrady",
 ] as const;
 
 export type DocumentImportPreviewRow = {
@@ -141,6 +144,9 @@ const HEADER_ALIASES: Record<DocumentImportFieldKey, string[]> = {
     amount: ["suma", "amount", "total", "cena"],
     currency: ["fakturacna mena (kod iso)", "mena", "currency"],
     paid_at: ["datum uhrady", "paid at", "payment date"],
+    amount_paid: ["uhradene", "uhradena suma", "suma uhrady", "amount paid", "paid amount"],
+    payment_status: ["stav uhrady", "stav", "payment status", "status"],
+    payment_currency: ["mena uhrady", "payment currency"],
     payment_method: ["forma uhrady", "payment method"],
 };
 
@@ -165,17 +171,30 @@ function buildAliasLookup(): Map<string, DocumentImportFieldKey> {
 
 const ALIAS_LOOKUP = buildAliasLookup();
 
-export function suggestDocumentMapping(headers: string[]): DocumentImportMapping {
+const SUPERFAKTURA_BUYER_HEADERS = new Map<string, DocumentImportFieldKey>([
+    ["odberatel", "client_name"],
+    ["odberatel ico", "client_registration_number"],
+    ["odberatel dic", "client_tax_id"],
+    ["odberatel ic dph", "client_vat_id"],
+    ["odberatel telefon", "client_phone"],
+    ["odberatel email", "client_email"],
+    ["odberatel adresa", "client_street"],
+    ["krajina odberatela", "client_country"],
+]);
+
+export function suggestDocumentMapping(headers: string[], source?: DocumentImportSource): DocumentImportMapping {
     const mapping: DocumentImportMapping = {};
     for (const field of DOCUMENT_IMPORT_FIELD_KEYS) {
         mapping[field] = null;
     }
 
-    for (const [index, header] of headers.entries()) {
-        if (!header.trim()) continue;
-        const field = ALIAS_LOOKUP.get(normalizeHeader(header));
-        if (field != null && mapping[field] == null) {
-            mapping[field] = index;
+    const normalizedHeaders = headers.map(normalizeHeader);
+    // Buyer-qualified headers take priority over a generic IČO or address column.
+    const lookups = source === "superfaktura" ? [SUPERFAKTURA_BUYER_HEADERS, ALIAS_LOOKUP] : [ALIAS_LOOKUP];
+    for (const lookup of lookups) {
+        for (const [index, header] of normalizedHeaders.entries()) {
+            const field = lookup.get(header);
+            if (field != null && mapping[field] == null) mapping[field] = index;
         }
     }
 
@@ -216,7 +235,7 @@ export function isDocumentImportCsvFile(file: File): boolean {
 }
 
 export async function parseDocumentImportFile(file: File): Promise<{ headers: string[]; rows: string[][] }> {
-    const parsed = await parseSpreadsheetFile(file);
+    const parsed = await parseSpreadsheetFile(file, { maxRows: MAX_ROWS, maxColumns: 256, maxFileBytes: 10 * 1024 * 1024 });
     return { headers: parsed.headers, rows: parsed.rows };
 }
 
@@ -342,7 +361,7 @@ function parseAmount(value: string | null): number | null {
     return Math.round(Number.parseFloat(normalized) * 100) / 100;
 }
 
-type ParsedInvoiceRow = {
+export type ParsedInvoiceRow = {
     invoice_number: string;
     variable_symbol: string;
     constant_symbol: string | null;
@@ -535,7 +554,14 @@ type ResolveContactResult = {
     linked: boolean;
 };
 
-function resolveLocalContact(
+export class ContactImportWriteError extends Error {
+    constructor() {
+        super("contact_write_failed");
+        this.name = "ContactImportWriteError";
+    }
+}
+
+export function resolveLocalContact(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
     contacts: EvoluContactRow[],
@@ -557,7 +583,8 @@ function resolveLocalContact(
             || merged.delivery_city.trim()
             || merged.delivery_country.trim(),
         );
-        updateLocalContactFromForm(evolu, existing.id, merged, includeDelivery);
+        const updated = updateLocalContactFromForm(evolu, existing.id, merged, includeDelivery);
+        if (!updated.ok) throw new ContactImportWriteError();
         return { contactId: existing.id, created: false, linked: true };
     }
 
@@ -568,7 +595,7 @@ function resolveLocalContact(
     const form = contactFormFromAttributes(attrs);
     const result = insertLocalContactFromForm(evolu, companyId, form, false);
     if (!result.ok) {
-        throw new Error(typeof result.error === "string" ? result.error : "Could not create contact.");
+        throw new ContactImportWriteError();
     }
 
     return { contactId: result.value.id, created: true, linked: false };
@@ -985,6 +1012,8 @@ export function buildDocumentImportExampleCsvBlob(): Blob {
             "120.00",
             "EUR",
             "",
+            "0.00",
+            "unpaid",
         ],
         [
             "20240002",
@@ -1001,6 +1030,8 @@ export function buildDocumentImportExampleCsvBlob(): Blob {
             "250.50",
             "EUR",
             "2024-02-10",
+            "250.50",
+            "paid",
         ],
     ];
 

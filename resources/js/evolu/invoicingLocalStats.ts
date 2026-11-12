@@ -3,6 +3,8 @@ import { allCompaniesQuery, allDocumentsQuery } from "./client";
 import { countCompanyInvoicesForList } from "./companyInvoiceCount";
 import type { CompanyId, InvoicingLocalSchema } from "./schema";
 import { snapshotInvoicingData } from "./invoicingSnapshot";
+import { withTimeout } from "./asyncTimeout";
+import { EVOLU_QUERY_LOAD_TIMEOUT_MS, loadEvoluQueryWithTimeout } from "./queryLoad";
 
 const RELAY_PUSH_AT_KEY = "satfluxRelayPushAt";
 const FORCE_PUSH_AT_KEY = "satfluxForceRelayPushAt";
@@ -65,7 +67,7 @@ function maxTimestamp(current: number | null, next: number | null): number | nul
 
 export function formatByteSize(bytes: number | null): string {
     if (bytes == null || !Number.isFinite(bytes)) {
-        return "—";
+        return "-";
     }
     if (bytes < 1024) {
         return `${bytes} B`;
@@ -88,12 +90,15 @@ export function formatRelayError(error: unknown): string | null {
 
 export async function loadInvoicingLocalStats(
     evolu: Evolu<InvoicingLocalSchema>,
-    options?: { includeDbExport?: boolean },
+    options?: { includeDbExport?: boolean; timeoutMs?: number },
 ): Promise<InvoicingLocalStats> {
-    const owner = await evolu.appOwner;
-    const snapshot = await snapshotInvoicingData(evolu);
-    const companies = await evolu.loadQuery(allCompaniesQuery);
-    const documents = await evolu.loadQuery(allDocumentsQuery);
+    const timeoutMs = options?.timeoutMs ?? EVOLU_QUERY_LOAD_TIMEOUT_MS;
+    const [owner, snapshot, companies, documents] = await Promise.all([
+        withTimeout(evolu.appOwner, timeoutMs, "evolu_stats_owner_timeout"),
+        snapshotInvoicingData(evolu, { includeMigrationOriginals: false, queryTimeoutMs: timeoutMs }),
+        loadEvoluQueryWithTimeout(evolu, allCompaniesQuery, timeoutMs),
+        loadEvoluQueryWithTimeout(evolu, allDocumentsQuery, timeoutMs),
+    ]);
 
     const documentByType: Record<string, number> = {};
     for (const doc of documents) {
@@ -131,7 +136,7 @@ export async function loadInvoicingLocalStats(
     let localDbBytes: number | null = null;
     if (options?.includeDbExport) {
         try {
-            const exported = await evolu.exportDatabase();
+            const exported = await withTimeout(evolu.exportDatabase(), timeoutMs, "evolu_stats_export_timeout");
             localDbBytes = exported.byteLength;
         } catch {
             localDbBytes = null;

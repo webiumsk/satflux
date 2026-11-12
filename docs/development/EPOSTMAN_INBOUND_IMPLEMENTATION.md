@@ -3,6 +3,29 @@
 Date: 2026-11-10. Base: `6e6c0587`. Branch: `feat/efaktura-epostman-inbound`.
 Implementation is owner-authorized; production activation is not performed.
 
+## Publication integration - 2026-11-12
+
+The owner authorizes GitHub publication. The separate
+`feat/efaktura-epostman-receiving` checkout integrates owned master `07c1af23`
+without changing the original manual preview at `bb31eb21`. Only the three state
+logs needed conflict resolution; both added histories are retained. All ePostman
+runtime and test files remain the previously accepted bytes. The merged locale
+catalogs preserve all 174 existing eFaktura messages per language and add only
+already-reviewed master migration content. Existing route ownership/auth and
+receiving-only controls remain intact.
+
+Independent integrated QA passes 76 tests in six wizard/inbox suites, three
+OpenAPI validators and the actual `api-docs:export --check` command in a verified
+network-disabled, read-only-source disposable PHP environment. No generated
+contract update is required. Reused dependencies match the current master lock;
+no dependency installation or existing preview data change is performed.
+Main full lint passes with 46/52 warnings, typecheck with 110 inherited/no new
+errors, locale parity and widget provenance pass, and isolated production build
+passes with 7,659 transformed modules. Additional full frontend tests and remote
+exact-head CI are tracked separately from these completed targeted checks.
+A PR-linked receiving-only changelog note will accompany the published PR.
+Provider archive/export/contract and production activation remain outstanding.
+
 ## Product and authority
 
 Receiving is baseline functionality for a Slovak company using Satflux without

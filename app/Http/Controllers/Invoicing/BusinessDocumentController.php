@@ -530,8 +530,15 @@ class BusinessDocumentController extends Controller
                 $request->input('body'),
             );
         } catch (TransportExceptionInterface $e) {
-            return response()->json(['message' => 'Email could not be sent: '.$e->getMessage()], 422);
+            $businessDocument->forceFill([
+                'email_failed_at' => now(),
+                'email_failure_code' => 'transport_error',
+            ])->save();
+
+            return response()->json(['message' => 'Email could not be sent.'], 422);
         }
+
+        $businessDocument->forceFill(['email_failed_at' => null, 'email_failure_code' => null])->save();
 
         return response()->json([
             'message' => 'Email sent.',

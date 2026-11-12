@@ -21,6 +21,9 @@ export const DOCUMENT_IMPORT_FIELD_KEYS = [
   'amount',
   'currency',
   'paid_at',
+  'amount_paid',
+  'payment_status',
+  'payment_currency',
   'payment_method',
 ] as const;
 
@@ -34,18 +37,21 @@ export const REQUIRED_DOCUMENT_IMPORT_FIELDS: DocumentImportFieldKey[] = [
   'amount',
 ];
 
-export type DocumentImportSource = 'excel' | 'money' | 'pohoda' | 'isdoc' | 'idoklad';
+export type DocumentImportSource = 'superfaktura' | 'excel' | 'money' | 'pohoda' | 'isdoc' | 'idoklad' | 'zaprite' | 'fakturoid';
 
 export const DOCUMENT_IMPORT_SOURCES: {
   id: DocumentImportSource;
   enabled: boolean;
   labelKey: string;
 }[] = [
+  { id: 'superfaktura', enabled: true, labelKey: 'invoicing.migration.source_superfaktura' },
+  { id: 'idoklad', enabled: true, labelKey: 'invoicing.migration.source_idoklad' },
+  { id: 'fakturoid', enabled: true, labelKey: 'invoicing.migration.source_fakturoid' },
+  { id: 'zaprite', enabled: true, labelKey: 'invoicing.migration.source_zaprite' },
   { id: 'excel', enabled: true, labelKey: 'invoicing.import_source_excel' },
   { id: 'money', enabled: false, labelKey: 'invoicing.import_source_money' },
   { id: 'pohoda', enabled: false, labelKey: 'invoicing.import_source_pohoda' },
   { id: 'isdoc', enabled: false, labelKey: 'invoicing.import_source_isdoc' },
-  { id: 'idoklad', enabled: false, labelKey: 'invoicing.import_source_idoklad' },
 ];
 
 export type DocumentImportMapping = Partial<Record<DocumentImportFieldKey, number | null>>;

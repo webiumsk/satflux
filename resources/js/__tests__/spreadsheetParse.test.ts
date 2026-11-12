@@ -103,4 +103,19 @@ describe("shared spreadsheet import parsing", () => {
         await expect(parseSpreadsheetFile(workbookFile(sheet), { maxRows: 0, maxColumns: 256 }))
             .rejects.toThrow("too_many_rows");
     });
+
+    it("keeps the default result shape while opting into an absolute provider header and physical rows", async () => {
+        const sheet = XLSX.utils.aoa_to_sheet([[], ["Synthetic title"], ["Metadata"], [], ["Number", "Amount"], ["0001", 12], [], ["0002", 13]]);
+        const file = workbookFile(sheet);
+        const ordinary = await parseSpreadsheetFile(file);
+        expect(ordinary.headers).toEqual(["", ""]);
+        expect(ordinary.rows[0]).toEqual(["Synthetic title", ""]);
+        expect(Object.keys(ordinary).sort()).toEqual(["headers", "rows"]);
+        const provider = await parseSpreadsheetFile(file, { headerRowIndex: 4, maxRows: 3, maxColumns: 2, singleSheet: true });
+        expect(provider.headers).toEqual(["Number", "Amount"]);
+        expect(provider.rows).toEqual([["0001", "12"], ["0002", "13"]]);
+        expect(provider.rowNumbers).toEqual([6, 8]);
+        expect(provider.cellTypes).toEqual([["s", "n"], ["s", "n"]]);
+        expect(provider.preambleRows?.[1]).toEqual(["Synthetic title", ""]);
+    });
 });

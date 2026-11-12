@@ -118,3 +118,12 @@ Only the separate QA harness was stopped; the owner's preview remains running.
 Its scheduler remains absent: use the existing manual download action there.
 Production activation, provider archive/export/contract and delegated customer
 onboarding remain separate outstanding work.
+
+## Publication compatibility
+
+The separate receiving publication checkout integrates owned master `07c1af23`.
+Component and wizard bytes remain the accepted hashes above. Full locale catalogs
+also contain master migration messages; all eFaktura messages are unchanged.
+Independent combined wizard/inbox tests and PHP API export check pass; the
+integrated production build passes with 7,659 modules. The original manual
+preview stays on its preserved source and account.

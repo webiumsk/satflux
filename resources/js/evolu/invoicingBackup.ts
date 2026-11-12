@@ -23,10 +23,12 @@ import { setLastExportMeta, type LastExportMeta } from "@/services/backupState";
 
 export const INVOICING_BACKUP_FORMAT = "satflux-invoicing-backup";
 export const INVOICING_BACKUP_VERSION = 1;
+/** Older readers must reject backups whose original-file tables they would omit. */
+export const INVOICING_ARCHIVE_BACKUP_VERSION = 2;
 
 export type InvoicingBackupEnvelope = {
     format: typeof INVOICING_BACKUP_FORMAT;
-    version: typeof INVOICING_BACKUP_VERSION;
+    version: typeof INVOICING_BACKUP_VERSION | typeof INVOICING_ARCHIVE_BACKUP_VERSION;
     created_at: string;
     app_version: string | null;
     /** Null only when the backup was made without a known owner id. */
@@ -70,7 +72,8 @@ export async function buildBackupEnvelopeFromSnapshot(
     }
     return {
         format: INVOICING_BACKUP_FORMAT,
-        version: INVOICING_BACKUP_VERSION,
+        version: (snapshot.migrationSource?.length ?? 0) > 0 || (snapshot.migrationChunk?.length ?? 0) > 0
+            ? INVOICING_ARCHIVE_BACKUP_VERSION : INVOICING_BACKUP_VERSION,
         created_at: now.toISOString(),
         app_version: appVersion(),
         owner_id_hash: ownerIdHash,

@@ -37,7 +37,7 @@
         "app/Http/Middleware/EnsureStoreOwnership.php": "80e69ff001736b77345b8d9805bb2c440093ac231db3d52d57d0fec1acc20b72",
         "app/Services/StoreResponseFormatter.php": "ad6aa7a44546342644813a3a81ff48ce8061dd09244da50466b8b284ed1e5e3b",
         "app/Models/CompanyContact.php": "65e0ddae6c38852ef8277e1a3c8168b36e14230b32dc636814ccf6a12d869b47",
-        "app/Models/BusinessDocument.php": "560b6a2aeb66b153fd0757cfc7dd7df3ee2aab289cca5af866cc06fa8cbd3c48",
+        "app/Models/BusinessDocument.php": "15e2b85c41c61854ef8a0f65d84fd6f420e24da737463cb3607e82411e2cab4e",
         "app/Models/User.php": "dae6d9cc8955b360d143a0951d396f0c84c51718f48ece527c16e0fb07c67178",
         "app/Http/Middleware/RequireVerifiedEmail.php": "20bab2724fce39b66e34e9e1e1bf9f641b018c88d95e5139237866cc39d7d332"
     },
@@ -1097,6 +1097,20 @@
         {
             "route": "GET api/invoicing/companies/{company}/accountant-export",
             "action": "App\\Http\\Controllers\\Invoicing\\AccountantExportController@download",
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "App\\Http\\Middleware\\RequireVerifiedEmail",
+                "throttle:api-user",
+                "App\\Http\\Middleware\\EnsurePlanAllowsBusinessInvoicing",
+                "App\\Http\\Middleware\\EnsureCompanyOwnership"
+            ],
+            "status": "excluded",
+            "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."
+        },
+        {
+            "route": "GET api/invoicing/companies/{company}/action-center",
+            "action": "App\\Http\\Controllers\\Invoicing\\CompanyActionCenterController",
             "middleware": [
                 "api",
                 "auth:sanctum",
@@ -4745,6 +4759,20 @@
                 "App\\Http\\Middleware\\RequireVerifiedEmail",
                 "throttle:api-user",
                 "App\\Http\\Middleware\\EnsurePlanAllowsBusinessInvoicing"
+            ],
+            "status": "excluded",
+            "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."
+        },
+        {
+            "route": "POST api/invoicing/ephemeral/migration/zaprite",
+            "action": "App\\Http\\Controllers\\Invoicing\\ZapriteMigrationController",
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "App\\Http\\Middleware\\RequireVerifiedEmail",
+                "throttle:api-user",
+                "App\\Http\\Middleware\\EnsurePlanAllowsBusinessInvoicing",
+                "throttle:30,1"
             ],
             "status": "excluded",
             "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."

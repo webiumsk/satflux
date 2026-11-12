@@ -371,6 +371,7 @@ export type InvoiceLineForm = {
   unit_price: number;
   line_discount_percent: number;
   tax_rate: number;
+  historical_line_total?: number;
   company_stock_item_id?: string | null;
   company_warehouse_id?: string | null;
   stock_quantity_hint?: number | null;
@@ -424,8 +425,11 @@ const vatPolicy = useCompanyVatPolicy();
 const isUsCompany = computed(() => props.company?.jurisdiction === "us");
 // §4 payer / US: always; non-payer: never; §7a: only EU counterparties
 // (VAT 0 next to the reverse-charge note).
+const hasHistoricalAmounts = computed(() =>
+  props.form.lines.some(line => line.historical_line_total !== undefined),
+);
 const showTaxSummary = computed(() =>
-  vatPolicy.showsVatSummary(props.company, props.selectedContact),
+  hasHistoricalAmounts.value ? props.totals.tax > 0 : vatPolicy.showsVatSummary(props.company, props.selectedContact),
 );
 const isDeCompany = computed(() => vatPolicy.isDeCompany(props.company));
 // DE Geschaeftsbrief corporate footer - statutory German labels on purpose.
@@ -448,6 +452,7 @@ const corporateFooterLine = computed(() => {
 // Statutory clause (mirrors the server taxClause): DE texts stay German
 // regardless of the UI locale; custom company notes win over defaults.
 const reverseChargeNote = computed(() => {
+  if (hasHistoricalAmounts.value) return null;
   const settings = appSettingsFromCompany(props.company);
   const kind = vatPolicy.taxClauseKind(props.company, props.selectedContact, settings);
   if (!kind) return null;
@@ -519,6 +524,7 @@ const websiteHref = computed(() => {
 });
 
 function lineTotal(line: InvoiceLineForm) {
+  if (line.historical_line_total !== undefined) return line.historical_line_total;
   const net =
     (line.quantity || 0) *
     (line.unit_price || 0) *

@@ -2,6 +2,7 @@
 defineProps<{
   name:
     | 'menu'
+    | 'attention'
     | 'documents'
     | 'expenses'
     | 'payments'
@@ -29,6 +30,13 @@ defineProps<{
     viewBox="0 0 24 24"
     aria-hidden="true"
   >
+    <path
+      v-if="name === 'attention'"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M9 5h11M9 12h11M9 19h11M3 5l1 1 2-2M3 12l1 1 2-2M3 19l1 1 2-2"
+    />
     <path
       v-if="name === 'menu'"
       stroke-linecap="round"

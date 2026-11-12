@@ -1,5 +1,306 @@
 # Development decision log
 
+## 2026-11-12 - Publish receiving through an isolated integration checkout
+
+The owner requests GitHub publication after checking immediately actionable work.
+Use a separate publication worktree/branch to integrate current owned master
+without changing the running ePostman localhost source or account. Resolve only
+shared state document conflicts by retaining both histories. Recheck the combined
+contracts and publish reviewed source plus a PR-linked receiving-only changelog.
+No merge to master or production activation is authorized by this push request.
+
+## 2026-11-12 - Guide customers through their own ePostman receiving account
+
+The owner authorizes implementation after successful manual localhost connection.
+Use built-in fixed production/test choices and the existing per-company SAPI model:
+activate the provider, create a dedicated SAPI client, copy two credentials, test
+and save. Preserve custom providers and company identity derivation. A test checks
+credentials only; it cannot assert receiving registration or legal readiness.
+One-click delegated consent is not established by the public client_credentials
+contract and is not implemented.
+
+Independent QA/security identified lost bridge-failure evidence on reload and a
+hidden failed-disable state. Persist local-only pending synchronization metadata
+inside the existing encrypted settings, clear it only after confirmed bridge sync
+and successful local completion, and show retry guidance even when locally disabled.
+Keep ephemeral test stamps with the matching full local save; preserve legacy
+server-side test-stamp invalidation and its explicit recheck prompt. No backend,
+provider, billing, original-custody or schema contract changes are required.
+
+The bounded twelve-file implementation has independent QA/security acceptance,
+76 focused tests, final wizard35, Chrome24 simulated API/Evolu UI checks, six
+security checks and two additional persistence checks. Lint/typecheck ratchets,
+locale parity and final isolated production build pass. The actual owner preview
+and other feature work are preserved. Publication, production and provider archive
+contracts remain separate next steps; see the feature onboarding runbook.
+
+## 2026-11-12 - Provide an isolated normal-UI eFaktura localhost test
+
+Use a separate `127.0.0.1:8082` origin, fixture account and database for the manual test.
+Restore two owned, acknowledged sandbox originals with provenance for a fresh
+browser handoff through standard authentication/recovery/company import. After
+independent no-mock normal-UI QA, restore only the pristine preview database and
+clear its sessions so the owner receives a fresh setup and two pending originals.
+
+Normal-UI QA exposed an inbox settings-projection defect. Use the existing
+detailed company query in that initializer, retaining the global lightweight
+list projection. A realistic regression fails on old source. Security and actual
+HTTP/browser QA accept the bounded fix. Narrow preview public-asset aliases retain
+private-file restrictions. Future sandbox polling uses the existing company
+settings action; the manual preview has no scheduled poller.
+
+## 2026-11-12 - Verify CreditNote receipt and preserve signed reversal
+
+The owner-sent Recommand TEST CreditNote passes actual ePostman retrieval, encrypted
+custody before real ACK and isolated browser persistence/retry. Its BillingReference
+matches the prior test invoice; the reference is retained in XML without a new
+structured expense relationship. Actual backend finalization passes twice.
+
+The existing parser incorrectly stripped a negative CreditNote amount's sign
+before reversal. Replace that with signed subtraction, preserving ordinary credit
+notes, negative invoices, zero and TaxInclusive fallback. Independent QA reproduces
+both negative-CreditNote regressions and accepts the corrected cases; security
+accepts the bounded two-file fix. This follows Peppol BIS Billing sections5.6 and
+5.6.1. Actual invoice/CreditNote sandbox evidence does not complete provider archive
+or production activation. [Peppol specification](https://docs.peppol.eu/poacc/billing/3.0/bis/)
+
+## 2026-11-12 - Record actual cross-AP invoice receipt after corrected playground
+
+A new Recommand Peppol Test Network playground successfully sends to the owner's
+existing ePostman sandbox. The real Satflux client retrieves one original and
+the actual poller stages it encrypted, validates durable custody and obtains one
+ACK in a retained isolated test database. Independent Chrome/Evolu then verifies
+the actual original after import/retry/reload/full restart, with one expense and
+attachment and matching amount/currency. Actual backend finalization succeeds
+twice after protected matching proof. Browser HTTP is intercepted; provider and
+backend service transitions are actual. This supersedes the earlier discovery
+blocker; direct DNS NXDOMAIN checks did not establish the initial failure's cause.
+Credit-note interoperability, provider archive and production activation remain
+separate outstanding steps. No product source or
+normal local application/deployment was changed by these test helpers.
+
+## 2026-11-12 - Correct verified PR #440 findings without changing validation
+
+Verify each supplied finding against head `b19e8fc4`. All four apply. Keep XLSX
+validation unchanged and explain in five locales that the native export must not
+be re-saved in Excel. Reset only the canceled scan label in `pickFile`, retaining
+abort/loading ownership. Give each PDF mock one matching invoice and add EXTRA
+once, so the unmatched-original guard is tested independently of duplicates.
+
+Add a dedicated synthetic browser suite for generated PDF bytes, the unmocked
+production reader/real owned worker and invoice parser. Its temporary loopback
+server has no application environment, auth/backend or external network access.
+Retain local test/review evidence and publish only scoped corrections on the
+existing authorized feature branch; no merge or deployment is included.
+
+## 2026-11-12 - Publish the reviewed iDoklad branch for owner PR
+
+The owner requests a push. Publish only the reviewed 28-path adapter candidate
+and the publication record to owned `webiumsk/satflux`, preserving local preview
+settings, private originals and unrelated primary work. Commit `1e44995a` is
+pushed and independently read back from the remote feature ref. Master remains
+`bae0295f`. The sole post-review asset delta normalizes SVG line endings; canonical
+XML equality and staged whitespace checks pass, without a product-test rerun.
+
+Retain the owner's PR-creation preference. No PR creation, merge, deployment,
+new external review upload or fresh CI success is implied by this source push.
+
+## 2026-11-12 - Reconcile iDoklad XLSX payments with bounded native PDF items
+
+The owner supplied all four matching original Slovak PDFs. They contain native
+text with five lines and no embedded ISDOC. Implement a bounded native-text
+profile instead of requiring unavailable XML. Require exact XLSX/PDF identity,
+dates, currency and net/VAT/gross; keep all originals and reject the whole batch
+for absent, duplicate, unreadable or inconsistent documents. V1 requires supplier
+and buyer company registration identifiers and a complete invoice on each page.
+
+Use original per-line rounding and summed printed VAT buckets. Re-rounding raw
+aggregate tax rejects valid iDoklad invoices. PDF amount-due labels repeat gross
+even after payments, so explicit XLSX payment amounts/dates remain authoritative;
+unknown partial dates stay unknown. Never manufacture zero-tax summary lines.
+
+Rebuild from immutable source/PDF bytes at commit and bind to fresh owner/company
+authority under the existing financial lease, with custody before fiscal writes.
+Reuse encrypted generic migration/backup tables without a schema/version change.
+Keep CSV and unsupported PDF profiles out of V1. The local card/logo is enabled. Bind worksheet validation to the actual package
+relationship and effective content types; missing optional dimensions remain
+valid, while declared ranges cannot hide physical rows. Independent security and
+browser acceptance pass, including exact originals after full restart. Final
+static gates pass with unchanged warning/typecheck ratchets; local owner
+acceptance remains. This continuation
+authorizes neither source publication nor deployment.
+
+## 2026-11-12 - Accept updated iDoklad payment evidence without inventing VAT lines
+
+The updated 22-column workbook supplies actual paid amounts, buyer identifiers,
+full-paid date and exact net/VAT/gross for four records. Preserve unknown partial
+payment dates. This resolves the initial payment evidence gap; it does not supply
+original items or VAT rates. Keep the existing fiscal-line constraints and request
+a detailed source instead of inferring a single tax rate or zero-tax summary.
+No runtime adapter is enabled by this read-only assessment.
+
+The owner reports only XLSX/CSV export. Inspect one original PDF for the embedded
+ISDOC documented by the Czech provider before choosing an XLSX + PDF evidence
+route; do not assume that announcement proves the actual Slovak PDF contract.
+No API credentials, subscription change or plain-text source upload is needed
+for this source assessment.
+
+## 2026-11-12 - Preserve iDoklad net/VAT and require actual partial-payment evidence
+
+The supplied invoice-list workbook establishes its row-5 heading profile and
+native Excel dates, but contains no original lines, tax rates or paid amounts.
+Do not enable iDoklad by adding aliases alone: generic summary fallback would
+turn known net/gross evidence into zero VAT, and partial status cannot establish
+the amount paid. Request matching native Pohoda XML and inspect its contract
+before implementation. Begin the source branch from fresh master `bae0295f`;
+preserve the existing preview and unrelated work. Workbook and merchant values
+remain private and read-only; only source schema and sanitized conclusions enter
+development documentation.
+
+## 2026-11-12 - Close verified Fakturoid merge and propose evidence-led iDoklad work
+
+Owner-merged PR #439 is verified at `bae0295f`; deployment remains unverified.
+Keep the omitted PR-linked changelog task open. iDoklad is the remaining agreed
+migration source. Official help documents invoice-list XLSX/CSV and direct
+Pohoda XML exports; inspect matching real-format synthetic samples before
+asserting item or payment coverage. Prefer existing preview/custody/recovery
+contracts, and start implementation from freshly fetched master. This planning
+step creates no provider account/access, parser, source publication or deployment.
+
+## 2026-11-12 - Publish the accepted Fakturoid branch without creating a PR
+
+The owner explicitly requests a source push and retains PR creation. Publish only
+the bounded 20-path Fakturoid implementation, local static logo, synthetic tests,
+five-locale copy and development evidence. Preserve unrelated primary work and
+exclude local preview settings and private source/browser artifacts. Existing
+security/QA evidence is bound to the candidate before commit; no financial
+regression rerun is claimed for the later static logo-only change. No merge or
+deployment is included. Add the user-facing changelog entry after the owner opens
+the actual PR, because its schema requires the canonical PR URL.
+
+Source commit `c42aa652` is pushed and verified on the remote feature branch.
+Independent privacy and QA binding accept the exact 20-file candidate. No PR,
+merge or deployment was performed.
+
+## 2026-11-11 - Preserve verified native Fakturoid payment amounts and dates
+
+The owner updated the same native export with partial and fully paid documents.
+Both retain coverage fields equal to document totals, while `paid_amount` holds
+actual paid value. Under the existing FX1/native-total checks, require an exact
+paid amount from zero through total. Partial open/sent/overdue records preserve
+empty `paid_on` as unknown; a full amount requires paid status and a valid actual
+date. Reject contradictory/overpaid evidence and unproved date variants. Derive
+balance from total minus paid amount, never coverage. Preserve existing financial
+leases, source custody and completed-import conflict behavior without fabricated
+payment events. Extend sanitized fixtures and independent reviews for this bounded
+matrix; earlier unpaid gates remain separately attributed.
+
+## 2026-11-11 - Enable only the native Fakturoid subset proved by source evidence
+
+The owner supplied genuine XML after source discovery. Implement its ordinary
+unpaid invoice structure with exact line/rate/document math and fresh supplier
+registration binding. Preserve source bytes before awaits, reparse them at commit,
+archive before financial writes and reuse existing duplicate/recovery contracts.
+Project approved fields explicitly; token/private-note content stays in raw source
+custody only. Native payment representation remains unproved, so positive/partial
+payments and paid status are blocked pending authentic test exports. API or Excel
+field similarity cannot establish their monetary meaning. Tests use synthetic
+records, and the owner's export is inspected read-only without financial writes.
+
+## 2026-11-11 - Resume Fakturoid from the verified merged feature
+
+Start `feat/invoicing-fakturoid-migration` at freshly fetched master `007b9c02`,
+which contains the merged action-center/SF/Zaprite work. Reuse the already mounted
+clean preview checkout and preserve local settings and unrelated primary work.
+Investigate native Fakturoid export evidence before implementation, including
+public demonstration access because the owner has no account/export. Do not
+infer a native XML grammar from API JSON or a third-party converter. Respect
+Fakturoid's documented Authorization Code requirement for multi-tenant API apps.
+
+## 2026-11-11 - Publish the reviewed invoicing feature for GitHub review
+
+The owner explicitly authorizes the existing feature source push. Publish only
+the reviewed action center, SF/Zaprite migration and their storage/recovery
+fixes, tests, assets and documentation. Exclude local preview settings, dependency
+recovery links and all private source data. Keep unrelated primary-checkout work.
+Open a draft PR to run CI without merging or deploying. Add the user-facing
+changelog fragment once the actual canonical PR URL exists, as its schema
+requires. Preserve the existing type/lint baselines and label local evidence
+separately from future GitHub CI results.
+The initial source commit is `ed683ff9`; draft PR #438 now exists and supplies
+the canonical changelog source. No merge or deployment was performed.
+
+## 2026-11-11 - Migrate Zaprite through a transient read and complete source custody
+
+Use an authenticated account-scoped ephemeral bridge for fixed-host HTTPS GETs,
+keeping the provider key out of persistence, URLs, raw errors and archived data.
+Destination authority remains the existing current company/owner/share gate at
+commit. Fetch all coherent pages, including pending invoice/apiInvoice orders,
+and convert locally rather than store a server plaintext invoice archive.
+
+Require exact per-line, per-rate and document net/VAT/gross reconciliation and
+unique confirmed-payment evidence. Same-currency transactions may use their
+native amount when conversion fields are null; cross-currency payments need an
+explicit amount in the invoice currency. Manual status alone is not payment.
+Preserve source identities in the fingerprint and existing number conflicts.
+
+Keep the current two-decimal financial contract. Unsupported currencies block
+until explicitly excluded, and the complete JSON remains archived. BTC precision
+across invoicing needs separate work. Copy source bytes before asynchronous
+processing and reparse that copy at commit. Independent security/QA accept the
+local implementation; no provider writes, owner-company import, publication or
+deployment were performed. Evidence is in the feature runbook.
+The owner later confirmed that API import works. Saved-file copy distinguishes
+Zaprite data from the JSON file produced by this wizard, without broadening
+the accepted import format.
+
+## 2026-11-11 - Keep complete snapshots as the default and narrow passive view reads
+
+Fingerprinting and Profile statistics do not consume migration originals.
+Give these two callers an explicit archive opt-out and bounded passive reads.
+Preserve complete snapshots for backups and recovery. Publish verified nonempty
+local company lists outside the pending recovery gate without a forced relay
+pull. Keep empty-list recovery and account binding checks.
+
+Profile local counts publish before optional relay usage or database export.
+The Refresh action can calculate database size. Account generations and unmount
+checks prevent stale results and requests after an account change. See
+[ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
+## 2026-11-11 - Separate relay quota refusal from local mutation outcome
+
+The installed SDK's exact `ProtocolQuotaError` indicates that the relay
+refuses synchronization due to storage or billing quota. A local mutation can
+still commit and produce its own receipt. Exclude only this discriminator from
+the local completion observer while retaining receipts, readback and quarantine
+for all other failures. Keep the relay failure visible using the existing
+synchronization explanation, and reserve browser-pressure wording for measured
+local pressure. See
+[ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
+## 2026-11-11 - Check migration schema on the existing worker before writes
+
+Use fixed SQLite schema metadata and the existing bounded query helper before
+archive queries, preview and import admission. Keep the current browser
+database identity and shared-worker coordination. If an older tab holds the
+previous schema, offer a localized close-all-tabs and reopen action.
+
+Treat rejected contact and audit-event results as known validation failures.
+Retain quarantine for genuinely uncertain writes and record only closed phase
+and reason codes for diagnosis. Independent synthetic Chrome testing covers
+the 30-second discarded-receipt mechanism and same-profile recovery.
+See [ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
+## 2026-11-11 - Preserve signed deductions during SuperFaktura migration
+
+A verified ISDOC invoice may carry a negative unit price with a positive
+quantity. Preserve the deduction as a separate historical line when the signed
+amounts, VAT buckets and total reconcile. Keep the archived original and use
+spreadsheet payment evidence. The local signed PDF path requires exact
+agreement with stored line and document amounts. Ordinary issuance, payment
+and structured delivery keep their existing scope. See
+[ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
 ## 2026-11-10 - Record transport success without overstating receiving proof
 
 The owner-authorized read-only real sandbox probe now authenticates and lists

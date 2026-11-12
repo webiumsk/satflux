@@ -1,5 +1,19 @@
 # Browser tests
 
+## Standalone native PDF reader
+
+```sh
+npx playwright test --config=playwright.pdf.config.ts
+```
+
+This suite generates synthetic iDoklad PDFs and exercises the production text
+reader, real PDF.js worker and invoice parser together. Its dedicated config uses
+an isolated loopback Vite server and a fresh browser context, without application
+environment files, authentication setup, database or backend. It requires an
+already installed compatible browser and does not install one automatically.
+
+## Application browser tests
+
 The Playwright setup project signs into `E2eTestSeeder`'s shared account once.
 Most specs reuse its storage state. Local-first checkout gets a separate ordinary
 PRO fixture and one setup login when the stub/local-first flags are enabled; its

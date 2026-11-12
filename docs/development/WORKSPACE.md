@@ -1,5 +1,17 @@
 # Local workspace
 
+## ePostman publication and preserved manual preview - 2026-11-12
+
+Owner-authorized publication is prepared on `feat/efaktura-epostman-receiving`
+in `storage/app/private/worktrees/efaktura-epostman-publication`, integrated with
+owned master `07c1af23`. Existing reviewed implementation is committed through
+`bb31eb21` on `feat/efaktura-epostman-inbound`; its separate manual localhost
+checkout/account/origin and encrypted recovery artifacts remain preserved.
+The publication checkout reuses existing locked development dependencies and
+never starts a web service, scheduler or provider operation. Private evidence
+stays in the coordinator checkout. PR/CI status is separate from production and
+provider archive/contract verification; see the receiving and onboarding runbooks.
+
 ## ePostman sandbox probe waiting for private input - 2026-11-10
 
 Feature remains in `storage/app/private/worktrees/efaktura-epostman-inbound`.

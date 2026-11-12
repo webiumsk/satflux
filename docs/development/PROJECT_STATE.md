@@ -1,5 +1,385 @@
 # Project state
 
+## ePostman publication prepared against current master - 2026-11-12
+
+The owner authorizes publishing reviewed receiving and customer onboarding to
+owned GitHub. An isolated publication worktree on
+`feat/efaktura-epostman-receiving` integrates `origin/master` at `07c1af23`.
+Only the three shared state documents conflict; both histories are retained.
+The existing `feat/efaktura-epostman-inbound` checkout and manual localhost account
+remain preserved. Publication and exact-head CI are tracked separately from
+production activation; provider archive/export/contract remain outstanding.
+
+## Guided ePostman customer onboarding accepted locally - 2026-11-12
+
+Owner confirms the localhost connection works and authorizes guided customer
+setup. The existing feature worktree now offers built-in production/test choices,
+fixed endpoints, activation and SAPI-client instructions, derived identity guidance,
+truthful saved/unsaved/check/poll status and Expenses navigation in all five locales.
+Each company keeps its own provider account and credentials; delegated one-click
+consent remains unconfirmed. Sending and backend/billing contracts are unchanged.
+
+Independent QA/security accept the twelve-file onboarding scope. Failed/interrupted
+bridge synchronization persists in encrypted local settings and remains visible
+after reload, including a failed disable. Credential host switches discard old
+inputs and late responses cannot alter another company's view. QA76tests/6files,
+final wizard35, two independent persistence cases and Chrome24 synthetic UI checks
+pass. Browser API/Evolu boundaries are simulated; earlier actual transport/custody
+proof remains separate. Full lint46/52, typecheck110 inherited/no new, locale parity,
+widget provenance and final isolated production build7,636modules pass.
+
+Source remains local feature `f01f7d5b` plus reviewed earlier parser/inbox fixes and
+this onboarding work. Security manifest `13d17b52` matches all twelve files. See
+`EPOSTMAN_CUSTOMER_ONBOARDING.md` in the feature worktree for exact hashes/evidence.
+The owner's existing localhost account/data remain preserved and preview is running;
+only the separate QA harness was stopped. Manual preview polling remains necessary
+because it has no scheduler. No commit, push, deployment or new provider operation.
+Production activation and provider archive/export/contract remain outstanding.
+
+## Manual eFaktura localhost preview ready - 2026-11-12
+
+Owner requested a usable localhost test. The separate normal application preview
+at `http://127.0.0.1:8082` uses the ePostman worktree, its own SQLite/key/sessions
+and a synthetic Pro account. Two recovered copies of the owner's acknowledged
+test Invoice/CreditNote are pending for a new local handoff, with original XML,
+digests and provider provenance retained. Retrieve the test login locally with
+`bash storage/app/private/.env.efaktura-local/show-login.sh`.
+
+Independent no-mock browser QA passed normal consent/login/recovery/phrase unlock,
+server-company import, two actual HTTP inbox imports, original download/digest and
+signed totals, guest 401, missing-CSRF 419, foreign-company denial, duplicate confirmation and
+reload persistence. The accepted run has zero page errors or blocked external
+requests. Full Chrome restart was not repeated here; earlier isolated custody
+restart evidence remains separate. Provider polling was not invoked during QA.
+
+QA found a real inbox projection defect hidden by previous settings-bearing list
+mocks. Reusing the existing detailed company query fixes it. The regression fails
+on old source. All 41 tests in 5 files, scoped lint, typecheck within the inherited
+110-error ratchet, locale parity and an isolated build pass. Security accepts the
+exact runtime/test pair and private preview configuration.
+After QA, only preview PHP was stopped to retain post-QA evidence and restore its
+pristine snapshot. Own sessions/cache were cleared and PHP restarted. Human
+handoff again has two pending originals and no QA recovery key. Existing
+`localhost:8080` uses its separate migration preview. Source remains local `f01f7d5b` plus the reviewed
+parser and inbox-query corrections. Archive/contract and production remain pending.
+
+## Actual cross-AP CreditNote and signed-total correction verified - 2026-11-12
+
+The owner's Recommand TEST CreditNote was retrieved through the actual ePostman
+client and staged encrypted before real ACK in a fresh isolated persistent
+database: imported1, acknowledged1, failed0. Independent XML amount inversion
+verified a negative local expense; retry, reload and full Chrome restart preserved
+one expense/attachment and identical original bytes. BillingReference matches the
+previous test invoice exactly and remains in the original XML; structured expense
+linking is not implemented. Actual backend markImported passed twice, then staging
+was cleared. Browser HTTP was intercepted as in the earlier invoice test.
+
+Inspection also found a valid negative-valued CreditNote sign defect. The bounded
+one-line parser correction preserves the source sign before inversion, with six
+regression cases. Author26tests/174assertions plus scoped Pint/PHPStan pass;
+independent QA11tests/25assertions pass and independently reproduce two original
+failures. Independent security accepts the exact two-file fix and six additional
+synthetic parser cases. The corrected parser also reparses the actual CreditNote
+successfully. Feature source is local `f01f7d5b` plus this uncommitted correction;
+primary work and the other localhost preview remain preserved. Private evidence
+is under `storage/app/private/reviews/epostman-inbound/live-creditnote`.
+Provider archive/export/contract and production activation remain unverified.
+
+## Actual cross-AP sandbox invoice received - 2026-11-12
+
+The owner created a new Recommand playground explicitly using Peppol Test Network
+and sent a synthetic invoice to the existing ePostman sandbox participant. The
+real Satflux SAPI client listed one document and retrieved its original XML.
+The unchanged feature poller then staged the original encrypted in a separate
+persistent SQLite database and received one actual provider ACK, with zero
+failures. A separate SQLite connection validated committed original bytes before
+ACK; encrypted recovery bytes and the test key remain private and durable. A new
+container confirmed one pending receipt and preserved staging. Independent actual
+Chrome/Evolu QA imported that XML with one expense/attachment, matching amount and
+currency, first-confirmation failure/retry without duplicates, exact bytes after
+reload and full Chrome restart. The actual backend markImported transition then
+passed twice with the protected matching digest, leaving one imported receipt and
+cleared staging. Browser HTTP was intercepted; real provider and final backend
+service transitions were tested separately. Main localhost preview and production
+are unchanged. Earlier direct DNS NXDOMAIN observations did not
+establish the cause of the initial failure; actual cross-AP delivery supersedes
+the discovery blocker below. Source remains local feature `f01f7d5b`. Independent
+security accepted the isolated helpers after filename/durability hardening. Private
+evidence is under `storage/app/private/reviews/epostman-inbound/live-sandbox`.
+Credit-note interoperability, provider archive and production remain unverified.
+
+## PR #440 review corrections - 2026-11-12
+
+GitHub verifies open PR #440 against master `bae0295f`, reviewed head `b19e8fc4`.
+All four supplied findings remain valid: clarify original XLSX handling in five
+locales, clear canceled scan progress in `pickFile`, isolate the extra-original
+mock, and commit a standalone real PDF.js byte-to-invoice browser regression.
+XLSX validation, financial import, authority and encryption code are unchanged.
+
+Local validation: 156 focused tests, two real-worker browser cases, scoped lint,
+five-locale parity, full typecheck (unchanged 110 baseline) and production build
+pass. The corrected extra-original test independently fails when its intended
+guard alone is removed in a private mutation. Independent core and harness
+reviews pass with no open Critical/High/Medium findings. The real-worker test
+also fails under private reader/parser mutations. Next: inspect fresh PR CI/review
+results on the existing authorized feature branch; no merge or deployment is
+authorized.
+
+## iDoklad branch pushed for owner PR - 2026-11-12
+
+The owner authorizes pushing `feat/invoicing-idoklad-migration` to the owned
+Satflux repository. Source commit `1e44995a83f0b4ee315bb54d730f7d6a4fd159c9`
+is pushed and verified on the remote feature branch. Fresh remote master remains
+`bae0295f`, the implementation base. The owner retains PR creation; no PR,
+merge or deployment was performed. Remote CI results have not been inspected.
+
+The source commit contains exactly 28 reviewed paths. All bytes match the final
+security/QA candidate except the official SVG's CRLF-to-LF normalization, whose
+canonical XML content is identical. Staged whitespace validation passes. Prior
+474-test, lint/typecheck/build/locale and independent security/browser evidence
+remains applicable; product tests were not repeated for line endings or this
+publication record. Local preview settings, dependency links, private source
+files and unrelated primary-checkout edits remain excluded.
+
+Next step: owner opens the PR; inspect fresh CI/review findings before merge.
+
+## iDoklad XLSX + original PDF available in local preview - 2026-11-12
+
+The owner supplied all four matching native Slovak PDFs and the official logo.
+Read-only source proof now reconciles four XLSX records with five original lines,
+including nonzero VAT, full payment and a partial payment with unknown date.
+The PDFs contain native text rather than embedded ISDOC. The dedicated iDoklad
+card is enabled in the existing local preview on `feat/invoicing-idoklad-migration`,
+based on merged master `bae0295f`; no owner invoices were imported by the agent.
+
+The bounded XLSX/native-PDF adapter preserves exact net/VAT/gross, per-line
+rounding, original bytes and fresh company authority at commit. Missing or
+inconsistent originals block the batch; no summary fallback invents VAT lines.
+The supported profile requires company buyer registration and complete native
+single-page invoices. CSV and other PDF templates remain outside V1.
+
+Final integrated regression passes 474 tests; independent security passes 430
+tests with no open Critical/High/Medium findings. Isolated browser QA verifies
+exact originals after reload/full restart, payment semantics, retries, rejection
+and account/company/source cancellation. The worksheet dimension/relationship
+omission paths and canceled-scan progress label are corrected and rechecked.
+Full lint and five-locale parity pass. Final typecheck passes the unchanged
+110-error baseline and production build passes after all corrections.
+Earlier source-assessment entries below are historical. No source publication or deployment is claimed. See
+[IDOKLAD_MIGRATION.md](IDOKLAD_MIGRATION.md).
+
+## Updated iDoklad workbook proves payment fields; item evidence pending - 2026-11-12
+
+The owner supplies a second XLSX with 22 columns and four records, including
+actual paid amounts and a full-paid payment date. Read-only checks confirm full,
+partial, unpaid and overdue-unpaid cases, valid dates, bounded paid amounts and
+exact net + VAT = gross; all four records have nonzero VAT. Partial payment date
+remains unknown. Buyer identifiers are now present. Original item details and
+VAT rates remain absent. The source card stays disabled pending detailed source
+evidence. The owner confirms only XLSX/CSV export is available. Official Czech
+documentation advertises embedded ISDOC in original PDF invoices; one actual
+provider-generated PDF has been requested to verify the Slovak-account format.
+
+No product code, financial writes, provider access or publication occurred.
+The prepared `feat/invoicing-idoklad-migration` branch still starts at fresh
+master `bae0295f`. See [IDOKLAD_MIGRATION.md](IDOKLAD_MIGRATION.md).
+
+## iDoklad workbook inspected; detailed evidence pending - 2026-11-12
+
+The owner supplied an XLSX invoice-list export. Main read-only inspection finds
+three records (unpaid, partial and overdue unpaid), with native Excel dates and
+a row-5 header. Gross/net totals are present; original items, VAT rates, actual
+paid amounts and payment dates are absent. A generic summary import would lose
+the known net/VAT distinction, so the iDoklad card remains disabled. Matching
+Pohoda XML has been requested; no payment amount or item breakdown is invented.
+
+New branch `feat/invoicing-idoklad-migration` starts from freshly fetched master
+`bae0295f`, preserving existing preview settings and prior documentary notes.
+An independent read-only explorer confirms header/date and preview/commit
+extension points. No product code, owner invoice, provider access, publication or
+deployment changed. See [IDOKLAD_MIGRATION.md](IDOKLAD_MIGRATION.md).
+
+## Fakturoid merge verified; next adapter proposed - 2026-11-12
+
+GitHub confirms owner-merged PR #439 at
+`bae0295f9c071f37eb219b65129bd45ed4b0b080`, with feature head `dfe7c419`.
+This verifies the merge only, not a production deployment. The local preview
+checkout remains on the retained feature branch; unrelated primary work and
+local-only preview files are preserved. The PR-linked Fakturoid changelog entry
+remains outstanding follow-up work.
+
+iDoklad is the remaining agreed source after SuperFaktura, Zaprite and Fakturoid.
+Read-only official-source research identifies XLSX/CSV list exports and direct
+Pohoda XML export. Propose testing both from the same synthetic unpaid/partial/
+paid invoices before choosing the source/payment contract. No iDoklad account,
+export sample, parser implementation, API access or deployment is claimed.
+Start any implementation branch from freshly fetched master after confirming
+scope and obtaining authoritative sample evidence.
+
+## Fakturoid branch published for owner PR - 2026-11-12
+
+The owner confirms the import works, accepts the local official logo and asks for
+`feat/invoicing-fakturoid-migration` to be pushed to the owned Satflux repository.
+The owner will create the PR. No PR creation, merge or deployment is authorized
+for this handoff. Fresh remote master remains `007b9c02`, the exact feature base.
+
+The candidate contains 20 explicit feature paths: native XML adapter, shared
+import integration, source picker/logo, synthetic fixtures/tests, five locales
+and four development documents. Local preview configuration, a dependency
+recovery link, private owner exports and browser state are excluded. Existing
+313-test regression, independent security/browser and static evidence below
+remain attributed to the tested revisions. The later logo-only delta passes
+scoped ESLint, Vue template compilation and isolated source-card image rendering.
+Independent privacy and QA evidence binding accept the exact candidate. Source
+commit `c42aa65234daa34be76f5dc032a75205883a5fc7` is pushed and verified on
+`origin/feat/invoicing-fakturoid-migration`. No PR was created. GitHub CI and
+merge/deployment remain separate from these local checks and this branch push.
+
+## Fakturoid migration resumed from merged master - 2026-11-11
+
+GitHub confirms PR #438 merged at `007b9c027c7887d59300a781e861ad09ecb94e06`.
+The owner authorizes continuing with Fakturoid. New branch
+`feat/invoicing-fakturoid-migration` starts from that freshly fetched master in
+the existing clean preview checkout, preserving its local-only settings and the
+primary checkout's unrelated work. Merge evidence is not a deployment claim.
+
+The owner subsequently supplied genuine native XML. Read-only inspection verifies
+the initial two unpaid invoices and three items, then an updated four-invoice/
+five-item sample with actual partial and full payment fields. The local preview now offers a
+Fakturoid XML adapter with exact finance, fresh issuer binding, shared duplicate
+checks and immutable original custody. The verified payment expansion uses exact
+`paid_amount` with a null partial date and actual full date; coverage fields never
+become balances. Final payment-specific regression/security/static and isolated browser gates pass.
+
+Final 13 migration/import/backup suites pass (313 tests), plus separate independent
+payment security review (232 tests, no open Critical/High/Medium). Full typecheck adds no errors to
+the 110 baseline, full lint passes with 48 inherited warnings, and locale parity
+and production build pass. Independent browser QA passes unpaid detailed import,
+unsupported/company rejection, duplicates/conflicts, six load/confirm ABA races
+and delayed-error suppression. Reload/full restart preserve exact XML/PDF
+downloads and records, with zero page errors/backend business writes. A separate
+paid browser follow-up verifies four invoices/five lines, exact partial/full
+amounts/dates, overpayment blocking, changed completed amount/date conflicts and
+exact XML custody after a full restart. No owner invoices
+were written by the agent. No new feature publication or deployment is claimed.
+See [FAKTUROID_MIGRATION.md](FAKTUROID_MIGRATION.md).
+
+## Feature published for GitHub review - 2026-11-11
+
+The owner explicitly authorizes pushing `feat/invoicing-action-center-migration`
+to the owned Satflux repository. Freshly fetched master remains `6e6c0587`, the
+feature base. The initial published commit `ed683ff9` contains 124 feature files, excluding
+local preview configuration and a local dependency recovery link. The primary
+checkout's unrelated work is preserved.
+
+Final complete frontend verification passes 2,540 tests / 225 files, with zero
+failures, skipped tests or todos. Combined backend verification passes 80 tests /
+665 assertions across seven suites in guarded disposable SQLite with the
+configured dompdf driver. Pint passes 17 PHP paths, scoped PHPStan passes 11
+runtime paths, and API contract/inventory freshness passes. Final full typecheck
+passes the unchanged 110 baseline and the production build passes. Full lint
+passes with zero errors and 48 warnings within the unchanged limit of 52. Changelog
+71 tests, FAQ/catalog, OpenAPI validation, production critical-audit gate and
+locale parity pass. The new dependency nodes have no reported advisory;
+existing dependency advisories remain attributed in the private review.
+
+Independent publication privacy review accepts the exact 124-file allowlist.
+Earlier independent browser/Evolu custody and 74-path security evidence remain
+linked in the feature runbook. The feature branch is pushed and
+[draft PR #438](https://github.com/webiumsk/satflux/pull/438) targets master.
+The reviewed user-facing changelog uses that canonical PR URL. GitHub CI is
+pending observation; merge and deployment remain separate owner decisions.
+
+## Zaprite migration accepted in the local feature preview - 2026-11-11
+
+Owner authorized continuing with Zaprite and supplied a read-only Sandbox key.
+The existing migration wizard now offers Zaprite API/JSON, detailed item and
+payment preview, exact fiat totals, common duplicate/conflict protection and
+complete encrypted JSON custody. An ephemeral authenticated fixed-host GET
+bridge does not retain credentials or mutate Zaprite. Source bytes are parsed
+again at commit before the existing company/owner, receipt and readback gates.
+BTC/LBTC and unsupported currencies block by default; explicit exclusion retains
+the complete source JSON without importing excluded invoices.
+
+The actual isolated PHP client read three Sandbox invoices successfully without
+financial writes. The converter matched two supported fiat invoices, preserving
+the partial payment and two items each. Main regression passes 218 tests / 13
+suites; final converter passes 53. Backend passes 31 tests / 151 assertions.
+Typecheck passes the unchanged 110 baseline; scoped lint, Pint, build, locale
+parity and API inventory checks pass. Independent security accepts 74 paths,
+manifest `1fa38f5159491a672c76f0f88dfcd7d54a779db5858a7710933a880c75ba571d`.
+Independent Chrome/Evolu QA verifies explicit exclusions, API pagination,
+ABA cancellation, duplicates/conflicts and exact source/item/payment persistence
+after reload and full browser restart. See the feature runbook for evidence.
+Status remains localhost preview on `feat/invoicing-action-center-migration`.
+The owner subsequently confirmed that API import works. The saved-JSON label
+now identifies Zaprite as the data source and this wizard as the file producer.
+This is copy clarification only; the accepted JSON envelope is unchanged.
+The agent did not import into the owner's company, publish or deploy during
+local acceptance.
+The owner-supplied Zaprite logo is bundled locally. Final bounded QA passes
+57 parser/date tests and a separate fresh accessible source-card browser check.
+
+## Local company and Profile loading corrected in the feature preview - 2026-11-11
+
+Normal browser entry reproduced a blocked company list and Profile statistics
+despite answered local company queries. Passive fingerprint/statistics reads
+now explicitly omit migration originals while complete snapshots remain the
+default. Nonempty local company lists are available before optional relay
+work outside pending recovery. Profile publishes counts before relay usage
+and calculates database size on explicit refresh, with stale-account guards.
+
+Integrated regression passes 109 tests across 12 suites. Typecheck passes
+the 110-finding baseline, scoped lint/parity/build pass. Independent security
+accepts the source and independently passes 45 tests. Normal-entry Chrome QA
+confirms the local screens load with quota refusal and withheld archives,
+then verifies complete snapshot archive digests and manual database export.
+See [ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+Current status is localhost feature preview.
+
+## Relay quota is distinguished from local storage failure - 2026-11-11
+
+A browser-storage warning exposed two coupled errors. A relay-generated
+`ProtocolQuotaError` was classified as browser storage pressure and rejected
+local receipt observation despite an independently committed local write.
+The local observer now excludes only that exact relay discriminator and still
+requires a positive receipt and post-handler readback. Local worker errors,
+missing receipts and quarantine remain enforced. The banner shows the relay
+limit and its synchronization explanation.
+
+Focused regression passes 295 tests across 15 suites. Typecheck passes the
+110-finding baseline, scoped lint and locale parity pass. Independent security
+accepts the source with 59 tests. Current status is the local feature preview.
+See [ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
+## Migration storage readiness and rejected-write recovery prepared locally - 2026-11-11
+
+The owner reported an unknown storage result after about 30 seconds. Two
+independent synthetic Chrome reproductions cover an older tab holding the
+previous database schema and an ignored contact validation failure discarding
+the completion callback. The importer now checks schema metadata before writes
+and handles known contact and audit-event rejections explicitly. Unknown
+storage results carry finite phase/reason diagnostics and require reopening
+the browser clients before another attempt. The exact cause of the owner's
+original attempt remains unverified.
+
+Focused regression passes 150 tests across 12 suites. Typecheck passes the
+110-finding baseline, scoped lint and locale parity pass, and the application
+build passes. Current status is local preview on the existing feature branch.
+See [ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+
+## Signed SuperFaktura deductions verified on the local migration branch - 2026-11-11
+
+The local `feat/invoicing-action-center-migration` worktree preserves negative
+unit prices as separate historical lines when ISDOC amounts reconcile.
+The localhost worker read 33 originals and matched all 32 supplied workbook
+rows, including six signed invoices, with no invoice writes. Independent
+Chrome/Evolu QA verified custody and retry with synthetic documents. Signed
+SK/CZ visual PDF generation verifies stored line gross, subtotal, VAT and total
+and requires disabled payment routing. Evidence and scope are recorded in
+[ACTION_CENTER_AND_MIGRATION.md](ACTION_CENTER_AND_MIGRATION.md).
+Owner preview is available on localhost. No publication or deployment occurred.
+
 ## Real ePostman sandbox authentication/listing verified - 2026-11-10
 
 Owner re-entered distinct sandbox credentials through hidden local prompts. The

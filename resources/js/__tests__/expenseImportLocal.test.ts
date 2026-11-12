@@ -9,7 +9,7 @@ vi.mock("@/evolu/client", async () => {
         "allCompaniesDetailQuery", "allCompaniesQuery", "allCompanyStockBalancesQuery",
         "allCompanyStockItemsQuery", "allCompanyStockMovementsQuery", "allCompanyWarehousesQuery",
         "allContactsQuery", "allDocumentEventsQuery", "allDocumentLinesQuery", "allDocumentSnapshotsQuery",
-        "allDocumentsQuery", "allExpensesQuery", "allExpenseAttachmentsQuery", "allNumberSeriesQuery",
+        "allDocumentsQuery", "allExpensesQuery", "allExpenseAttachmentsQuery", "allMigrationSourcesBackupQuery", "allMigrationChunksQuery", "allNumberSeriesQuery",
         "allRecurringProfileLinesQuery", "allRecurringProfilesQuery",
     ];
     return { ...Object.fromEntries(tokens.map((token) => [token, token])),

@@ -17,10 +17,14 @@ import {
     allExpensesQuery,
     allExpenseAttachmentsQuery,
     allNumberSeriesQuery,
+    allMigrationSourcesBackupQuery,
+    allMigrationChunksQuery,
     allRecurringProfileLinesQuery,
     allRecurringProfilesQuery,
 } from "./client";
 import type { InvoicingLocalSchema } from "./schema";
+import { validateMigrationSnapshot } from "./migrationSnapshot";
+import { loadEvoluQueryWithTimeout } from "./queryLoad";
 import { withExpenseMaintenance, commitExpenseMutation } from "./expenseReconciliation";
 
 // `companyShare` holds SharedOwner secrets and is deliberately outside the
@@ -50,6 +54,8 @@ export type InvoicingDataSnapshot = {
     invoiceTemplate: ReadonlyArray<Record<string, unknown>>;
     expense: ReadonlyArray<Record<string, unknown>>;
     expenseAttachment: ReadonlyArray<Record<string, unknown>>;
+    migrationSource?: ReadonlyArray<Record<string, unknown>>;
+    migrationChunk?: ReadonlyArray<Record<string, unknown>>;
     recurringProfile: ReadonlyArray<Record<string, unknown>>;
     recurringProfileLine: ReadonlyArray<Record<string, unknown>>;
     companyWarehouse: ReadonlyArray<Record<string, unknown>>;
@@ -72,6 +78,8 @@ export const EMPTY_INVOICING_SNAPSHOT: InvoicingDataSnapshot = {
     invoiceTemplate: [],
     expense: [],
     expenseAttachment: [],
+    migrationSource: [],
+    migrationChunk: [],
     recurringProfile: [],
     recurringProfileLine: [],
     companyWarehouse: [],
@@ -94,6 +102,8 @@ const UPSERT_ORDER: InvoicingTable[] = [
     "invoiceTemplate",
     "expense",
     "expenseAttachment",
+    "migrationSource",
+    "migrationChunk",
     "recurringProfile",
     "recurringProfileLine",
     "companyWarehouse",
@@ -107,7 +117,12 @@ const UPSERT_ORDER: InvoicingTable[] = [
 
 export async function snapshotInvoicingData(
     evolu: Evolu<InvoicingLocalSchema>,
+    options?: { includeMigrationOriginals?: boolean; queryTimeoutMs?: number },
 ): Promise<InvoicingDataSnapshot> {
+    const includeOriginals = options?.includeMigrationOriginals !== false;
+    const load: typeof evolu.loadQuery = query => options?.queryTimeoutMs === undefined
+        ? evolu.loadQuery(query)
+        : loadEvoluQueryWithTimeout(evolu, query, options.queryTimeoutMs);
     const [
         company,
         contact,
@@ -119,6 +134,8 @@ export async function snapshotInvoicingData(
         invoiceTemplate,
         expense,
         expenseAttachment,
+        migrationSource,
+        migrationChunk,
         recurringProfile,
         recurringProfileLine,
         companyWarehouse,
@@ -129,25 +146,27 @@ export async function snapshotInvoicingData(
         bankTransaction,
         bankTransactionMatch,
     ] = await Promise.all([
-        evolu.loadQuery(allCompaniesDetailQuery),
-        evolu.loadQuery(allContactsQuery),
-        evolu.loadQuery(allNumberSeriesQuery),
-        evolu.loadQuery(allDocumentsQuery),
-        evolu.loadQuery(allDocumentLinesQuery),
-        evolu.loadQuery(allDocumentEventsQuery),
-        evolu.loadQuery(allDocumentSnapshotsQuery),
-        evolu.loadQuery(allInvoiceTemplatesQuery),
-        evolu.loadQuery(allExpensesQuery),
-        evolu.loadQuery(allExpenseAttachmentsQuery),
-        evolu.loadQuery(allRecurringProfilesQuery),
-        evolu.loadQuery(allRecurringProfileLinesQuery),
-        evolu.loadQuery(allCompanyWarehousesQuery),
-        evolu.loadQuery(allCompanyStockItemsQuery),
-        evolu.loadQuery(allCompanyStockBalancesQuery),
-        evolu.loadQuery(allCompanyStockMovementsQuery),
-        evolu.loadQuery(allBankImportBatchesQuery),
-        evolu.loadQuery(allBankTransactionsQuery),
-        evolu.loadQuery(allBankTransactionMatchesQuery),
+        load(allCompaniesDetailQuery),
+        load(allContactsQuery),
+        load(allNumberSeriesQuery),
+        load(allDocumentsQuery),
+        load(allDocumentLinesQuery),
+        load(allDocumentEventsQuery),
+        load(allDocumentSnapshotsQuery),
+        load(allInvoiceTemplatesQuery),
+        load(allExpensesQuery),
+        load(allExpenseAttachmentsQuery),
+        includeOriginals ? load(allMigrationSourcesBackupQuery) : Promise.resolve([]),
+        includeOriginals ? load(allMigrationChunksQuery) : Promise.resolve([]),
+        load(allRecurringProfilesQuery),
+        load(allRecurringProfileLinesQuery),
+        load(allCompanyWarehousesQuery),
+        load(allCompanyStockItemsQuery),
+        load(allCompanyStockBalancesQuery),
+        load(allCompanyStockMovementsQuery),
+        load(allBankImportBatchesQuery),
+        load(allBankTransactionsQuery),
+        load(allBankTransactionMatchesQuery),
     ]);
 
     return {
@@ -161,6 +180,8 @@ export async function snapshotInvoicingData(
         invoiceTemplate: invoiceTemplate as ReadonlyArray<Record<string, unknown>>,
         expense: expense as ReadonlyArray<Record<string, unknown>>,
         expenseAttachment: expenseAttachment as ReadonlyArray<Record<string, unknown>>,
+        migrationSource: migrationSource as ReadonlyArray<Record<string, unknown>>,
+        migrationChunk: migrationChunk as ReadonlyArray<Record<string, unknown>>,
         recurringProfile: recurringProfile as ReadonlyArray<Record<string, unknown>>,
         recurringProfileLine: recurringProfileLine as ReadonlyArray<Record<string, unknown>>,
         companyWarehouse: companyWarehouse as ReadonlyArray<Record<string, unknown>>,
@@ -233,6 +254,8 @@ export async function restoreInvoicingSnapshotDetailedAsync(
     function assertCurrent(): void {
         if (isCurrent && !isCurrent()) throw new Error("recovery_context_changed");
     }
+    assertCurrent();
+    await validateMigrationSnapshot(snapshot);
     assertCurrent();
     return withExpenseMaintenance(evolu, async (scope) => {
     assertCurrent();

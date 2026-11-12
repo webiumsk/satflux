@@ -33,6 +33,11 @@ export const ExpenseReconciliationId = id("ExpenseReconciliation");
 export const ExpenseAttachmentId = id("ExpenseAttachment");
 export type ExpenseAttachmentId = typeof ExpenseAttachmentId.Type;
 
+export const MigrationSourceId = id("MigrationSource");
+export type MigrationSourceId = typeof MigrationSourceId.Type;
+export const MigrationChunkId = id("MigrationChunk");
+export type MigrationChunkId = typeof MigrationChunkId.Type;
+
 export const RecurringProfileId = id("RecurringProfile");
 export type RecurringProfileId = typeof RecurringProfileId.Type;
 
@@ -262,6 +267,9 @@ export const InvoicingLocalSchema = {
         title: DocumentTitle,
         number: OptionalString64,
         sourceDocumentId: nullOr(DocumentId),
+        migrationSourceId: nullOr(MigrationSourceId),
+        migrationFingerprint: OptionalString64,
+        migrationCompletedAt: OptionalString32,
         issueDate: OptionalString32,
         deliveryDate: OptionalString32,
         dueDate: OptionalString32,
@@ -368,6 +376,26 @@ export const InvoicingLocalSchema = {
         originalFilename: OptionalString255,
         mimeType: OptionalString128,
         sizeBytes: OptionalString32,
+        contentBase64: OptionalAttachmentContent,
+    },
+    /** Original migration export, retained once and shared only under its company owner. */
+    migrationSource: {
+        id: MigrationSourceId,
+        companyId: CompanyId,
+        sourceKind: OptionalString32,
+        relatedExportId: nullOr(MigrationSourceId),
+        originalFilename: OptionalString255,
+        mimeType: OptionalString128,
+        sizeBytes: OptionalString32,
+        checksum: OptionalString64,
+        chunkCount: OptionalString16,
+        savedAt: OptionalString32,
+    },
+    migrationChunk: {
+        id: MigrationChunkId,
+        companyId: CompanyId,
+        sourceId: MigrationSourceId,
+        chunkIndex: OptionalString16,
         contentBase64: OptionalAttachmentContent,
     },
     recurringProfile: {

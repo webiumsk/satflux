@@ -8,12 +8,20 @@ function stripUtf8Bom(text: string): string {
 export type ParsedSpreadsheet = {
     headers: string[];
     rows: string[][];
+    /** Present only for an explicit XLSX header position, using physical one-based rows. */
+    rowNumbers?: number[];
+    preambleRows?: string[][];
+    /** Raw SheetJS cell types; formulas are explicitly marked instead of using cached values. */
+    cellTypes?: string[][];
 };
 
 export type SpreadsheetLimits = {
     maxRows?: number;
     maxColumns?: number;
     maxFileBytes?: number;
+    /** Provider-specific absolute zero-based XLSX header row; no header detection. */
+    headerRowIndex?: number;
+    singleSheet?: boolean;
 };
 
 function parseCsvRows(text: string, limits: SpreadsheetLimits): string[][] {
@@ -130,17 +138,17 @@ function sheetToMatrix(sheet: XLSX.WorkSheet, limits: SpreadsheetLimits): string
     }
 
     const range = XLSX.utils.decode_range(ref);
-    if (limits.maxRows != null && range.e.r - range.s.r > limits.maxRows) {
+    if (limits.maxRows != null && range.e.r - (limits.headerRowIndex ?? range.s.r) > limits.maxRows) {
         throw new Error("too_many_rows");
     }
-    if (limits.maxColumns != null && range.e.c - range.s.c + 1 > limits.maxColumns) {
+    if (limits.maxColumns != null && range.e.c - (limits.headerRowIndex == null ? range.s.c : 0) + 1 > limits.maxColumns) {
         throw new Error("too_many_columns");
     }
     const matrix: string[][] = [];
 
-    for (let row = range.s.r; row <= range.e.r; row += 1) {
+    for (let row = limits.headerRowIndex == null ? range.s.r : 0; row <= range.e.r; row += 1) {
         const values: string[] = [];
-        for (let column = range.s.c; column <= range.e.c; column += 1) {
+        for (let column = limits.headerRowIndex == null ? range.s.c : 0; column <= range.e.c; column += 1) {
             values.push(readWorksheetCell(sheet, row, column));
         }
         matrix.push(values);
@@ -149,7 +157,16 @@ function sheetToMatrix(sheet: XLSX.WorkSheet, limits: SpreadsheetLimits): string
     return matrix;
 }
 
-function rowsFromMatrix(matrix: string[][]): ParsedSpreadsheet {
+function rowsFromMatrix(matrix: string[][], headerRowIndex?: number): ParsedSpreadsheet {
+    if (headerRowIndex != null) {
+        if (!Number.isInteger(headerRowIndex) || headerRowIndex < 0 || headerRowIndex > 100
+            || matrix.length < headerRowIndex + 2) throw new Error("no_data_rows");
+        const retained = matrix.slice(headerRowIndex + 1)
+            .map((row, index) => ({ row, number: headerRowIndex + index + 2 }))
+            .filter(({ row }) => row.some(cell => cell.trim() !== ""));
+        return { headers: matrix[headerRowIndex].map(cell => cell.trim()), rows: retained.map(({ row }) => row),
+            rowNumbers: retained.map(({ number }) => number), preambleRows: matrix.slice(0, headerRowIndex) };
+    }
     if (matrix.length < 2) {
         throw new Error("no_data_rows");
     }
@@ -164,12 +181,15 @@ export async function parseSpreadsheetFile(
     file: File,
     limits: SpreadsheetLimits = {},
 ): Promise<ParsedSpreadsheet> {
+    if (limits.headerRowIndex != null && (!Number.isInteger(limits.headerRowIndex)
+        || limits.headerRowIndex < 0 || limits.headerRowIndex > 100)) throw new Error("unsupported_file");
     if (limits.maxFileBytes != null && file.size > limits.maxFileBytes) {
         throw new Error("file_too_large");
     }
     const lower = file.name.toLowerCase();
 
     if (lower.endsWith(".csv")) {
+        if (limits.headerRowIndex != null || limits.singleSheet) throw new Error("unsupported_file");
         const text = stripUtf8Bom(await file.text());
         const allRows = parseCsvRows(text, limits);
         if (allRows.length < 2) throw new Error("no_data_rows");
@@ -189,9 +209,17 @@ export async function parseSpreadsheetFile(
     if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) {
         const buffer = await file.arrayBuffer();
         const workbook = XLSX.read(buffer, { type: "array", cellDates: true, cellNF: true });
+        if (limits.singleSheet && workbook.SheetNames.length !== 1) throw new Error("unsupported_file");
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         if (!sheet) throw new Error("no_data_rows");
-        return rowsFromMatrix(sheetToMatrix(sheet, limits));
+        const result = rowsFromMatrix(sheetToMatrix(sheet, limits), limits.headerRowIndex);
+        if (limits.headerRowIndex != null) {
+            result.cellTypes = result.rowNumbers!.map(row => result.headers.map((_, column) => {
+                const cell = sheet[XLSX.utils.encode_cell({ r: row - 1, c: column })];
+                return cell?.f != null || cell?.F != null ? "formula" : cell?.t ?? "blank";
+            }));
+        }
+        return result;
     }
 
     throw new Error("unsupported_file");

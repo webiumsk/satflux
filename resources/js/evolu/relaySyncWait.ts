@@ -1,6 +1,8 @@
 import type { Evolu } from "@evolu/common/local-first";
 import { allCompaniesQuery, allDocumentsQuery } from "./client";
 import type { InvoicingLocalSchema } from "./schema";
+import { withTimeout } from "./asyncTimeout";
+import { EVOLU_QUERY_LOAD_TIMEOUT_MS, loadEvoluQueryWithTimeout } from "./queryLoad";
 import { getStoredAccountMnemonic } from "@/services/accountSeed";
 import { isTargetEvoluOwner } from "@/services/evoluOwner";
 import {
@@ -90,7 +92,7 @@ export async function checkInvoicingRelayOwner(
     if (!mnemonic) {
         return "no_phrase";
     }
-    const owner = await evolu.appOwner;
+    const owner = await withTimeout(evolu.appOwner, EVOLU_QUERY_LOAD_TIMEOUT_MS, "evolu_query_timeout");
     return isTargetEvoluOwner(owner.mnemonic, mnemonic) ? "ok" : "owner_mismatch";
 }
 
@@ -129,7 +131,7 @@ async function countDocumentsForCompany(
     evolu: Evolu<InvoicingLocalSchema>,
     options?: Pick<PullInvoicingFromRelayOptions, "companyId" | "documentType">,
 ): Promise<number> {
-    const docs = (await evolu.loadQuery(allDocumentsQuery)) as RelayDocumentRow[];
+    const docs = (await loadEvoluQueryWithTimeout(evolu, allDocumentsQuery)) as RelayDocumentRow[];
     return filterRelayDocuments(docs, options).length;
 }
 
@@ -137,7 +139,7 @@ async function loadDocumentListFingerprint(
     evolu: Evolu<InvoicingLocalSchema>,
     options?: Pick<PullInvoicingFromRelayOptions, "companyId" | "documentType">,
 ): Promise<string> {
-    const docs = (await evolu.loadQuery(allDocumentsQuery)) as RelayDocumentRow[];
+    const docs = (await loadEvoluQueryWithTimeout(evolu, allDocumentsQuery)) as RelayDocumentRow[];
     return filterRelayDocuments(docs, options)
         .map((row) => String(row.id))
         .sort()
@@ -311,7 +313,7 @@ export async function waitForInvoicingRelaySync(
             const elapsed = Date.now() - startedAt;
             if (stable >= stablePolls && elapsed >= minWaitMs) {
                 clearEvoluRelaySyncPending();
-                const companies = await evolu.loadQuery(allCompaniesQuery);
+                const companies = await loadEvoluQueryWithTimeout(evolu, allCompaniesQuery);
                 return companies.length > 0;
             }
         } else {
@@ -323,7 +325,7 @@ export async function waitForInvoicingRelaySync(
     }
 
     clearEvoluRelaySyncPending();
-    const companies = await evolu.loadQuery(allCompaniesQuery);
+    const companies = await loadEvoluQueryWithTimeout(evolu, allCompaniesQuery);
     return companies.length > 0;
 }
 

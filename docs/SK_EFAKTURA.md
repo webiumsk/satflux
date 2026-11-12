@@ -3,7 +3,7 @@
 > Current ePostman receiving implementation and activation gates: [runbook](development/EPOSTMAN_INBOUND_IMPLEMENTATION.md). The overview below also describes legacy generic SAPI functionality; it is not evidence of a verified provider integration. ePostman outgoing is unavailable in this receiving scope.
 
 
-> **Product status - 2026-11-10:** A complete Slovak eFaktura provider integration has not been verified. Satflux is currently not presented as a ready solution for mandatory Slovak e-invoicing. UBL export alone does not deliver an invoice, and a successful OAuth connection test does not prove document acceptance, delivery, receiving or reporting. Provider compatibility, API access and any separate fees must be verified for the selected service. Receiving-first ePostman implementation is authorized; production activation remains unverified pending Product Owner direction, provider terms and complete integration verification; no completion date is promised. Existing code, configuration, credentials, document history and safeguards are retained. The implementation and runbook below are technical reference, not evidence of production readiness or authorization to activate a provider.
+> **Product status - 2026-11-12:** ePostman receiving of an Invoice and CreditNote has been verified in the actual Peppol Test Network, including encrypted original custody and local import. Guided per-company setup is documented in the [customer onboarding runbook](development/EPOSTMAN_CUSTOMER_ONBOARDING.md). A complete production Slovak eFaktura integration has not been verified. Satflux is currently not presented as a ready solution for mandatory Slovak e-invoicing. UBL export alone does not deliver an invoice, and a successful OAuth connection test does not prove document acceptance, delivery, receiving or reporting. Provider compatibility, API access and any separate fees must be verified for the selected service. Receiving-first ePostman implementation is authorized; production activation remains unverified pending Product Owner direction, provider terms and complete integration verification; no completion date is promised. Existing code, configuration, credentials, document history and safeguards are retained. The implementation and runbook below are technical reference, not evidence of production readiness or authorization to activate a provider.
 
 Od **1. januára 2027** platí pre tuzemské B2B transakcie na Slovensku povinná štruktúrovaná elektronická fakturácia (zákon č. 385/2025 Z. z.). Dokumenty idú cez sieť **Peppol** a certifikovaného **digitálneho poštára** (CPDS). Finančná správa SR spravuje výber poskytovateľa a národné pravidlá (SK CIUS).
 
@@ -42,9 +42,9 @@ Rozsah povinností zákona sa pritom líši: **vystavovať** e-faktúry musia od
 
 Záložka **E-faktúra** v nastaveniach firmy (`eu_sk`; platitelia DPH vidia plný sprievodcu, neplatitelia a §7 / §7a variant „iba príjem" bez kroku auto-send a bez Peppol sender ID) je 3-krokový sprievodca:
 
-1. **Vyberte digitálneho poštára** - dropdown s presetmi (spravuje admin) alebo "Iný (zadať URL)". Výber na [portáli Finančnej správy](https://www.financnasprava.sk) ostáva na merchantovi.
+1. **Choose the provider** - built-in ePostman production/test choices fill the fixed endpoint without an administrator preset. Registered custom providers and manual URLs remain available. Výber na [portáli Finančnej správy](https://www.financnasprava.sk) ostáva na merchantovi.
 2. **Prepojte svoj účet** - `client_id` + `client_secret` od poštára a tlačidlo **Otestovať pripojenie** (jednorazový OAuth pokus, úspech sa uloží ako `efaktura_connection_tested_at`).
-3. **Možnosti** - receiving enabled by default; outgoing is unavailable for ePostman and optional only for separately supported providers. Peppol participant ID je v "Rozšírené" - bežný merchant ho nerieši, derivuje sa z DIČ/IČO.
+3. **Receiving settings** - save the selected connection after testing; local-first bridge synchronization failures remain visible across reload, including failed disabling. Manual polling requires successfully saved settings. Outgoing is unavailable for ePostman and optional only for separately supported providers. Peppol participant ID je v "Rozšírené" - bežný merchant ho nerieši, derivuje sa z DIČ/IČO.
 
 Serverový test pripojenia firmy je vyhradený vlastníkovi (support/admin zachovávajú existujúci privilegovaný prístup). Uložený `client_secret` sa doplní len pri nezmenenej URL poskytovateľa a `client_id`; pri ich zmene treba secret zadať znova. Local-first test bez firemnej routy používa iba credentials dodané klientom, nikdy nedopĺňa uložené credentials zdieľanej firmy.
 
@@ -74,14 +74,14 @@ Po zmene `.env`: `php artisan optimize:clear`
 
 ### Sandbox E2E checklist (manuálne, pred produkčným zapnutím)
 
-Všetky CPDS volania sú zatiaľ overené len cez `Http::fake` - proti reálnemu sandboxu poštára treba ručne overiť:
+The ePostman token grant and actual cross-AP list/detail/XML/ACK for an Invoice and CreditNote have been verified in the test network; see the receiving runbook for exact transport and browser proof boundaries. Generic provider sending and production reporting remain separate verification requirements:
 
-- [ ] token grant (`efaktura:doctor --live`)
+- [x] ePostman sandbox token grant through the isolated real client
 - [ ] `document/send` happy path + akceptácia UBL validátorom poštára
 - [ ] 422 recipient-not-found mapovanie ("Recipient is not registered in the Peppol network.")
 - [ ] idempotency-key retry (opakovaný send toho istého dokumentu)
 - [ ] status detail (`send_detail_path` daného CPDS) + `efaktura:sync-compliance-status`
-- [ ] inbound list/detail/acknowledge + import do nákladov
+- [x] ePostman sandbox inbound list/detail/acknowledge and verified original import (Invoice and CreditNote)
 
 ## Architektúra
 
