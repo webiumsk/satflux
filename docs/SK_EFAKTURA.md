@@ -145,3 +145,19 @@ Peppol SMP lookup pred odoslaním rieši CPDS pri `POST /document/send` (422 ak 
 - [BUSINESS_INVOICING.md](BUSINESS_INVOICING.md)
 - [OpenPeppol Slovakia](https://peppol.org/learn-more/country-profiles/slovakia/)
 - SAPI-SK špecifikácia: sapi-sk.sk (dobrovoľný štandard pre CPDS)
+
+## Browser original custody handoff
+
+The receiving inbox advertises `custody_protocol: post_ack_proof_v1`. A client
+uses `POST .../efaktura/inbox/{receipt}/prepare-import` with `original_sha256`,
+then verifies fresh local original bytes after that response before sending
+`original_sha256` and the returned `custody_token` to `/imported` for completion.
+Both requests preserve the existing company authorization and CSRF boundaries.
+Without a token, `/imported` is a non-destructive legacy preparation. New clients
+reject old/missing preparation rather than invoking destructive legacy behavior.
+
+Staging is retained through preparation and until post-response proof permits
+completion. Later intentional deletion after that custody transfer is the client's
+responsibility. The token does not attest remote browser persistence. See the
+[second-review contract](development/EPOSTMAN_PR441_REVIEW_ROUND2.md) for replay,
+rollback, compatibility and test boundaries.

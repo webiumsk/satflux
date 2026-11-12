@@ -3,6 +3,34 @@
 Date: 2026-11-10. Base: `6e6c0587`. Branch: `feat/efaktura-epostman-inbound`.
 Implementation is owner-authorized; production activation is not performed.
 
+## Post-acknowledgement custody protocol - 2026-11-12
+
+PR441's second review adds `post_ack_proof_v1` for browser import handoff. This is
+separate from the provider's SAPI acknowledgement: provider ACK still follows
+committed encrypted server custody before a browser ever imports the original.
+
+The list/detail advertise the protocol. A new client calls the dedicated
+`POST .../efaktura/inbox/{receipt}/prepare-import` with the original digest. The
+server retains the validated original and returns a company/receipt/connection/
+original/stable-expense-bound authenticated custody token. The client then reads
+back the exact local original again under its financial lock. Only successful
+fresh post-prepare-response proof permits `/imported` with that token to clear
+staging. HTTP waits occur outside the financial lock. Missing proof, prepare
+failure or browser closure before proof leaves server recovery available.
+
+The existing `/imported` call without a token is non-destructive, retaining pending
+originals for older clients. A new client never falls back from missing protocol,
+prepare 404 or invalid responses to the old destructive call. The dedicated route
+also protects against stale advertisements during a backend downgrade. Deploy the
+backend protocol before its new client. Do not restore destructive old cleanup.
+
+Successful post-prepare proof is the custody transfer boundary. Intentional local
+deletion after that proof is client responsibility, including while the later
+completion request is pending. The phase token is not remote browser-storage
+attestation and the protocol introduces no permanent server archive. Existing
+provider archive and production gates remain. Details and regressions are recorded
+in [the second review](EPOSTMAN_PR441_REVIEW_ROUND2.md).
+
 ## Publication integration - 2026-11-12
 
 The owner authorizes GitHub publication. The separate
