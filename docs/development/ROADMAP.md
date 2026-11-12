@@ -9,7 +9,8 @@
 - [x] Actual new Invoice/CreditNote HTTP202 and exact-request/UUID/provider-receipt
   recovery pass, followed by two zero-HTTP cached replays.
 - [x] Independent actual-capture audit passes 59 checks on unchanged ee5bc3b8.
-- [ ] Owner confirms both new RCMD documents in the intended Recommand inbox.
+- [x] Owner confirms both new RCMD documents in the intended Recommand inbox;
+  update five-language guides without claiming production or signed MLS proof.
 - [ ] Separate outbound PR/changelog; automatic status requires verified
   Enterprise access or authenticated webhooks. Production gates remain separate.
 
@@ -29,7 +30,7 @@ previews and old sandbox evidence remain preserved; no push, merge or deployment
   scoped Pint/PHPStan and prior frontend/type/build/API checks pass.
 - [x] Verify owner-reported C3 OK and public TEST route advertising Flowis G3 Test;
   the intended Recommand inbox remains empty. Preserve this diagnostic boundary.
-- [ ] Register the new test-only DIČ verified absent in authoritative TEST DNS;
+- [x] Register the new test-only DIČ verified absent in authoritative TEST DNS;
   confirm its AS4 route before sending and verify intended receiver arrival.
 - [ ] Publish separate outbound PR/changelog after the bounded evidence handoff.
 - [ ] Verify Enterprise or authenticated webhook status tracking separately.
@@ -51,7 +52,8 @@ preview/database changes, production requests, merge or deployment.
   129 / 7, financial/malformed cases and 11 actual PostgreSQL scenarios pass.
 - [x] Full frontend 2,953 / 235, UBL full-XSD 15 / 67, type/lint/build/API/locale
   and scoped Pint/PHPStan pass without ratchet changes.
-- [ ] Verify actual authorized sandbox Invoice/CreditNote sending and retry.
+- [x] Verify actual authorized sandbox Invoice/CreditNote sending and retry;
+  owner confirms both arrive in the intended Recommand test inbox.
 - [ ] Publish a separate outbound PR/changelog, retaining the receiving dependency.
 - [ ] Add delivery/MLS/tax status tracking only with verified Enterprise auth or
   authenticated webhooks; SAPI submission acceptance is not delivery approval.

@@ -8,7 +8,7 @@ updated: 2026-11-12
 
 # Facturación electrónica eslovaca - conexión ePostman
 
-La conexión admite **recepción y envío manual**. La recepción e importación de una factura y una nota de crédito se han verificado en la red de pruebas de Peppol. El envío manual todavía necesita una verificación independiente en la red de pruebas real. La activación en producción, las comunicaciones de datos exigidas y las condiciones del archivo requieren confirmación independiente. Satflux no se presenta como una solución completa para la facturación electrónica obligatoria eslovaca.
+La conexión admite **recepción y envío manual**. La recepción e importación de una factura y una nota de crédito se han verificado en la red de pruebas de Peppol. También se ha confirmado el envío manual de ambos tipos de documento a través de ePostman a Recommand en esa red de pruebas. La activación en producción, las comunicaciones de datos exigidas y las condiciones del archivo requieren confirmación independiente. Satflux no se presenta como una solución completa para la facturación electrónica obligatoria eslovaca.
 
 ## Conectar su empresa
 
@@ -38,6 +38,8 @@ Hasta completar la importación local verificada, el original permanece cifrado 
 La cuenta del proveedor puede tener tarifas de API o condiciones de uso independientes. Un buzón web gratuito no incluye necesariamente acceso desde Satflux. Antes de utilizar la conexión en producción, confirme con ePostman el plan aplicable, el acceso SAPI y las condiciones del archivo.
 
 ## Envío manual y obligaciones legales
+
+Para este envío nacional, ambas partes deben estar en Eslovaquia y usar `0245:<DIČ>` con su propio DIČ de diez dígitos.
 
 Esta primera versión de envío rechaza documentos con descuentos por línea o factura, pérdida de precisión en los precios o importes distintos del documento emitido. Es necesario ampliar el formato de exportación antes de enviar esos documentos. Los pagos parciales se incluyen en el saldo del XML.
 

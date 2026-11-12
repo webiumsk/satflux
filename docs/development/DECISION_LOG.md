@@ -14,8 +14,12 @@ submitted documents or reuse their UUIDs. On unchanged runtime ee5bc3b8, the new
 actual Invoice/CreditNote processing and identical-request recovery pass. QA
 independently verifies 26 prepared-state and 59 captured-live checks; security
 accepts the frozen harness. Previous product-test evidence stays attributed,
-without an unnecessary rerun. Receiver arrival still requires owner confirmation;
-the absence of a SAPI delivery endpoint is not bridged by invented status polling.
+without an unnecessary rerun. The owner now confirms both RCMD documents visible
+in the intended Recommand inbox. This completes the cross-AP test-network arrival
+gate by recipient UI observation; no recipient XML-digest comparison, signed MLS
+validation or production approval is implied. Reflect the verified milestone in
+all five user-guide languages. The absence of a SAPI delivery endpoint is not
+bridged by invented status polling.
 No production activation, publication, merge or deployment follows automatically.
 
 ## 2026-11-12 - Separate processing proof from receiver delivery

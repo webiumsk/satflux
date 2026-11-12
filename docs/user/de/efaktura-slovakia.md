@@ -8,7 +8,7 @@ updated: 2026-11-12
 
 # Slowakische E-Rechnungen - ePostman-Anbindung
 
-Die Anbindung unterstützt **Empfang und manuellen Versand**. Empfang und Import einer Rechnung und einer Gutschrift wurden im Peppol-Testnetz verifiziert. Der manuelle Versand benötigt noch eine separate Prüfung im tatsächlichen Testnetz. Produktivaktivierung, gesetzliche Meldungen und Archivbedingungen müssen separat bestätigt werden. Satflux wird nicht als vollständige Lösung für die verpflichtende slowakische E-Rechnung angeboten.
+Die Anbindung unterstützt **Empfang und manuellen Versand**. Empfang und Import einer Rechnung und einer Gutschrift wurden im Peppol-Testnetz verifiziert. Auch der manuelle Versand beider Dokumenttypen über ePostman an Recommand wurde in diesem Testnetz bestätigt. Produktivaktivierung, gesetzliche Meldungen und Archivbedingungen müssen separat bestätigt werden. Satflux wird nicht als vollständige Lösung für die verpflichtende slowakische E-Rechnung angeboten.
 
 ## Unternehmen verbinden
 
@@ -38,6 +38,8 @@ Bis zum verifizierten lokalen Import bleibt das Original auf dem Server mit serv
 Ein Anbieterkonto kann gesonderte API-Gebühren oder Nutzungsbedingungen haben. Ein kostenloses Webpostfach umfasst nicht unbedingt den Zugriff aus Satflux. Bestätigen Sie vor dem Produktivbetrieb den passenden Tarif, den SAPI-Zugang und die Archivbedingungen mit ePostman.
 
 ## Manueller Versand und gesetzliche Pflichten
+
+Für diesen Inlandsversand müssen beide Parteien in der Slowakei ansässig sein und `0245:<DIČ>` mit ihrer eigenen zehnstelligen DIČ verwenden.
 
 Diese erste Versandversion lehnt Dokumente mit Positions- oder Rechnungsrabatten, Präzisionsverlust bei Preisen oder vom ausgestellten Dokument abweichenden Beträgen ab. Für solche Dokumente muss zuerst der Export erweitert werden. Teilzahlungen werden im XML-Restbetrag berücksichtigt.
 

@@ -11,11 +11,13 @@ SAPI tokens cannot call the Enterprise delivery-status API; check delivery and
 reporting in the matching ePostman portal. Automatic status synchronization needs
 a separate Enterprise credential or authenticated webhook integration.
 
-Receiving has actual test-network evidence. Manual sending has independent review,
-actual sandbox processing and identical-request retry evidence; confirmation of
-delivery to the new test receiver is pending. An earlier attempt was rejected by
-national validation, so HTTP202 must not be reported as delivery. Domestic ePostman
-sending requires both SK parties' actual DIČ under scheme 0245.
+Receiving and manual Invoice/CreditNote sending have actual test-network evidence.
+The owner confirms both new documents arrived in Recommand after ePostman
+submission; independent audit also verifies identical-request retry and cached
+replays. This is recipient UI confirmation, not production or statutory-reporting
+approval. An earlier attempt was rejected by national validation, so HTTP202 must
+not be reported as delivery. Domestic ePostman sending requires both SK parties'
+actual DIČ under scheme 0245.
 No merge or production deployment is implied. See
 [the outbound contract and verification record](development/EPOSTMAN_OUTBOUND_IMPLEMENTATION.md).
 

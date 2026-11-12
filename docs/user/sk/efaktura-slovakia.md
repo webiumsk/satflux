@@ -8,7 +8,7 @@ updated: 2026-11-12
 
 # Slovenská e-fakturácia - prepojenie ePostman
 
-Prepojenie podporuje **prijímanie a manuálne odosielanie**. Príjem a import faktúry aj dobropisu boli overené v testovacej sieti Peppol. Manuálne odosielanie ešte vyžaduje samostatné overenie v skutočnej testovacej sieti. Produkčnú aktiváciu, zákonné hlásenie a podmienky archívu poštára treba potvrdiť samostatne. Satflux neprezentujeme ako kompletné riešenie povinnej slovenskej e-fakturácie.
+Prepojenie podporuje **prijímanie a manuálne odosielanie**. Príjem a import faktúry aj dobropisu boli overené v testovacej sieti Peppol. Manuálne odoslanie oboch typov cez ePostman do Recommandu bolo tiež potvrdené v tejto testovacej sieti. Produkčnú aktiváciu, zákonné hlásenie a podmienky archívu poštára treba potvrdiť samostatne. Satflux neprezentujeme ako kompletné riešenie povinnej slovenskej e-fakturácie.
 
 ## Prepojenie firmy
 
@@ -38,6 +38,8 @@ Kým sa lokálny import overene nedokončí, originál je na serveri šifrovaný
 Účet poštára môže mať osobitné poplatky za API alebo podmienky používania. Bezplatná webová schránka nemusí zahŕňať prístup zo Satfluxu. Pred používaním produkčného prepojenia si v ePostman potvrďte príslušný balík, SAPI prístup a podmienky archívu.
 
 ## Manuálne odosielanie a zákonné povinnosti
+
+Pri tomto tuzemskom odosielaní musia mať obe strany krajinu Slovensko a adresu `0245:<DIČ>` s vlastným desaťmiestnym DIČ.
 
 Táto prvá verzia odosielania odmietne doklady so zľavou na položke alebo faktúre, cenami so stratou presnosti pri exporte alebo sumami odlišnými od vystaveného dokladu. Tieto doklady bude možné odoslať až po doplnení príslušného exportu. Čiastočná úhrada sa započíta do zostatku v XML.
 

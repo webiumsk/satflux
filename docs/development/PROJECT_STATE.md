@@ -1,6 +1,6 @@
 # Project state
 
-## Replacement Recommand route and sandbox submission verified - 2026-11-12
+## Recommand cross-AP arrival confirmed - 2026-11-12
 
 The owner registered the previously unpublished replacement test DIČ. Fresh
 authoritative TEST DNS points to Recommand SMP; both Invoice and CreditNote
@@ -18,11 +18,18 @@ passes 26 prepared-state and 59 captured-live checks; independent security accep
 the frozen two-file harness scope. Runtime remains unchanged at ee5bc3b8 with
 service hash a0130288; prior product tests are not represented as rerun.
 
-The owner is asked to confirm the two new RCMD documents in the matching Recommand
-test-company inbox. Recipient arrival is pending; neither public routing nor
-HTTP202 establishes it. No production request, owner preview/database change,
-push, merge or deployment. Next: confirm intended receiver arrival, then complete
-the separate outbound publication and Enterprise/webhook status milestones.
+The owner confirms both new RCMD documents are visible in the matching Recommand
+test-company inbox. This completes intended Invoice/CreditNote cross-AP arrival
+in the test network. Recipient UI observation is owner-confirmed; no recipient
+original-digest comparison, cryptographic MLS validation or production approval
+is claimed. Neither public routing nor HTTP202 alone establishes arrival.
+Five-language user guides now reflect this evidence and actual domestic DIČ
+requirements. Independent QA accepts all 10 changed Markdown files. Locale parity,
+unchanged article front matter/headings and whitespace checks pass; no new
+runtime changes, product-suite reruns or provider calls in this docs follow-up.
+No production request, owner preview/database change, push, merge
+or deployment. Next: separate outbound publication and Enterprise/webhook status
+tracking; production activation and archive/export terms remain separate.
 
 ## ePostman sandbox processing and retry verified - 2026-11-12
 

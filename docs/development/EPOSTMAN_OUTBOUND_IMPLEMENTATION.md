@@ -32,9 +32,14 @@ cleared. Independent read-only capture audit passes 59 checks, with no SAPI
 credential mount or provider operations by QA. Unchanged product suites are not
 rerun; their earlier evidence remains separately attributed.
 
-Owner confirmation of both new RCMD documents in the matching Recommand inbox is
-pending. Public routing and HTTP202 do not establish receiver arrival. No owner
-preview/database change, production request, push, merge or deployment occurs.
+The owner now confirms both new RCMD documents are visible in the matching
+Recommand inbox, replying to the explicit Invoice-and-CreditNote arrival question.
+This completes the intended cross-AP test-network arrival check in addition to
+the independently audited submission/recovery evidence. Arrival is owner-observed
+in the recipient UI; no recipient-original digest comparison, cryptographic MLS
+validation or production approval is claimed. Public routing and HTTP202 alone
+still do not establish delivery. No owner preview/database change, production
+request, push, merge or deployment occurs.
 
 ## Actual sandbox follow-up - 2026-11-12
 
