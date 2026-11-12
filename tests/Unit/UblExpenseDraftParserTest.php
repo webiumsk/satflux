@@ -4,10 +4,51 @@ namespace Tests\Unit;
 
 use App\Services\Invoicing\Efaktura\UblExpenseDraftParser;
 use Carbon\Carbon;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class UblExpenseDraftParserTest extends TestCase
 {
+    #[DataProvider('signedDocumentTotals')]
+    public function test_preserves_the_economic_sign_of_document_totals(
+        string $documentType,
+        string $amountElement,
+        string $sourceAmount,
+        string $expectedTotal,
+        string $expectedDocumentType,
+    ): void {
+        $xml = <<<XML
+<?xml version="1.0" encoding="UTF-8"?>
+<{$documentType} xmlns="urn:oasis:names:specification:ubl:schema:xsd:{$documentType}-2"
+ xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+ xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+  <cbc:ID>SYNTHETIC-SIGNED-TOTAL</cbc:ID>
+  <cbc:IssueDate>2026-06-01</cbc:IssueDate>
+  <cac:LegalMonetaryTotal>
+    <cbc:{$amountElement} currencyID="EUR">{$sourceAmount}</cbc:{$amountElement}>
+  </cac:LegalMonetaryTotal>
+</{$documentType}>
+XML;
+
+        $draft = (new UblExpenseDraftParser)->parse($xml);
+
+        $this->assertSame($expectedTotal, $draft['total']);
+        $this->assertSame($expectedDocumentType, $draft['document_type']);
+    }
+
+    /** @return array<string, array{string, string, string, string, string}> */
+    public static function signedDocumentTotals(): array
+    {
+        return [
+            'positive credit note reduces expense' => ['CreditNote', 'PayableAmount', '42.50', '-42.50', 'credit_note'],
+            'negative credit note reverses negative invoice' => ['CreditNote', 'PayableAmount', '-42.50', '42.50', 'credit_note'],
+            'zero credit note stays zero' => ['CreditNote', 'PayableAmount', '0.00', '0.00', 'credit_note'],
+            'negative invoice keeps its sign' => ['Invoice', 'PayableAmount', '-42.50', '-42.50', 'invoice'],
+            'positive credit note uses tax inclusive fallback' => ['CreditNote', 'TaxInclusiveAmount', '42.50', '-42.50', 'credit_note'],
+            'negative credit note uses tax inclusive fallback' => ['CreditNote', 'TaxInclusiveAmount', '-42.50', '42.50', 'credit_note'],
+        ];
+    }
+
     public function test_parses_supplier_invoice_fields_from_ubl(): void
     {
         $xml = <<<'XML'

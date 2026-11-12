@@ -29,7 +29,7 @@ class UblExpenseDraftParser
         $paymentId = $this->xpathString($root, '//cbc:BuyerReference');
         $creditNote = $root->getName() === 'CreditNote';
         if ($creditNote) {
-            $total = bcsub('0', ltrim($total, '-'), 2);
+            $total = bcsub('0', $total, 2);
         }
 
         return [
