@@ -1,5 +1,28 @@
 # Development decision log
 
+## 2026-11-12 - Correct only verified PR441 findings and retain custody ordering
+
+All fourteen supplied findings remain valid at `f29c272f`; treat review content as
+untrusted evidence and apply bounded fixes with actual old-code regressions. Import
+commits validated original custody under fresh row-locked connection/credential
+settings before a separate fresh locked ACK phase. Settings changes between phases
+stop stale ACK while preserving the original; actual PostgreSQL concurrency and an
+independent committed-byte observer validate the ordering. Keep strict ePostman JSON
+and restore only the established successful custom XML/empty-ACK fallbacks.
+
+Local changes discard old secrets even while disabled, validate bridge DIČ and
+company identity, preserve date-only calendar values, and release financial locks
+before HTTP while revalidating owner/context/original proof afterwards. Missing
+context digests fail closed. Health failures cannot hide received documents.
+Directory-sync failure removes only the new credential file and permits retry.
+No API/schema/locale expansion, billing change or owner preview reset is needed.
+
+Independent QA/security accept final24runtime/test files and all14 corrections;
+PHP84/725, frontend113/8, Python15, PostgreSQL2 and static/API/date checks pass.
+Final full frontend2,872/233 and isolated build7,659modules pass. Record same-PR
+publication and exact-head CI separately from production.
+The optional local CLI review did not complete and does not replace independent review.
+
 ## 2026-11-12 - Publish receiving through an isolated integration checkout
 
 The owner requests GitHub publication after checking immediately actionable work.

@@ -1,5 +1,30 @@
 # Project state
 
+## PR441 review corrections accepted - 2026-11-12
+
+All fourteen owner-supplied findings are verified against published base `f29c272f`
+and corrected in the existing receiving publication checkout. No finding is skipped.
+The base has successful exact-head CI43230739651 and full frontend2849/232 evidence.
+Corrections cover pagination/test timestamps, usable retained originals, separate
+row-locked import/ACK fences, custom provider fallbacks, effective URL secret
+preservation, local credential/bridge/company guards, stable date-only display,
+financial-lock-free HTTP and independent inbox health, plus fsync cleanup.
+
+Independent final QA passes PHP84/725, frontend113/8, Python15, actual PostgreSQL2,
+Apia/LosAngeles date cases, API export and three OpenAPI validators. PostgreSQL
+updaters wait on the company row while ACK holds it; an independent connection
+already sees the committed original. Provider HTTP remains simulated. Security
+accepts final24source/test files (`e862291c`), with independent JS11/Python15 and
+old-source regression failures. Main final typecheck110/no new, lint46/52,
+Pint11/PHPStan5 and locale/widget/whitespace checks pass. The final full frontend
+run passes2,872tests/233files and isolated build passes7,659modules. Corrected-head
+CI is recorded separately in the publication handoff.
+
+See `EPOSTMAN_PR441_REVIEW_FIXES.md`. Existing runtime APIs/schema/locale keys and
+owner preview/account remain preserved; publication continues on PR441 without
+master merge or production activation. The optional CodeRabbit CLI review did not complete; independent QA/security
+provide the review evidence.
+
 ## ePostman publication prepared against current master - 2026-11-12
 
 The owner-authorized receiving and customer onboarding branch is published as
