@@ -49,3 +49,32 @@ form/settings helper; shared locale files require a clean merge check. Do not
 infer that PR443 is merged or that this repair is deployed. The live error is
 consistent with this reproduced defect, but live success still needs the owner
 to retry after the reviewed repair has been merged and deployed.
+
+## PR444 PHP audit correction - 2026-11-14
+
+At b60ed0bb, CI 43528695660 PHP job 132240725763 passes 3,372 tests / 18,404
+assertions / 31 skips, Pint 1,166 files and full PHPStan. Only the final Composer
+security audit fails: Laravel 12.69.3 is affected by GHSA-63hm-g96r-2m2q.
+The [reviewed advisory](https://github.com/advisories/GHSA-63hm-g96r-2m2q)
+identifies 12.71.0 as patched. This is a dependency finding, not evidence that
+Satflux reaches the vulnerable application pattern.
+
+Copy only the exact already-reviewed PR443 Laravel lock update: 12.69.3 to 12.71.0,
+source/dist 64dc24f5d965add4d402b4b8b64f59b561112af5. All other 167 package records,
+root lock metadata/content-hash, composer.json and CI gates remain unchanged.
+Lock SHA256: b08a4a25f392f42287eec9a6382079174bb5876e2063914b57e83deb21f06f17.
+No PR443 application change or review finding is included. PR444 is technically
+independent of that PR's unresolved application findings and merge ordering.
+
+All 168 existing isolated vendor versions/source/dist references match the lock.
+Fresh strict Composer validation and locked audit pass without ignores; runtime
+reports 12.71.0. Main passes 210 PHP tests / 1,637 assertions and full-project PHPStan.
+Independent QA passes 114 tests / 820 assertions for receiving/settings/auth/isolation;
+independent security accepts the exact lock and fresh empty audit. Counts overlap;
+one inherited PHPUnit deprecation remains. The first local harness run lacked
+its temporary testing directory; correcting only tmpfs setup makes the full
+selection pass. No source change or test suppression hides that harness error.
+
+Earlier frontend acceptance remains unchanged; it is not represented as rerun.
+Publication and exact new-head CI verification follow local acceptance. No merge,
+deployment, provider request, production operation or preview change occurs.
