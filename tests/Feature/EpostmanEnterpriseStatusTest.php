@@ -215,7 +215,7 @@ class EpostmanEnterpriseStatusTest extends TestCase
         foreach (['https://custom.example', self::ORIGIN.'/wrong', self::ORIGIN.':444', 'http://testpostman.slovakodata.com'] as $origin) {
             $this->assertSame('configuration_error', $client->invoice($origin, 'synthetic-key', (string) Str::uuid(), [])['error_code']);
         }
-        foreach (['../x', 'x?y=1', 'not-a-uuid'] as $id) {
+        foreach (['../x', 'x?y=1', 'bad.id', 'bad/id', 'bad%2Fid', 'bad#id', 'bad id', "bad\nid", 'ž', str_repeat('x', 129)] as $id) {
             $this->assertSame('configuration_error', $client->invoice(self::ORIGIN, 'synthetic-key', $id, [])['error_code']);
         }
         Http::assertNothingSent();
@@ -475,5 +475,72 @@ class EpostmanEnterpriseStatusTest extends TestCase
         $migration->up();
         $this->assertSame($retained, $retainedValues());
         $this->assertTrue(Schema::hasIndex('efaktura_outbound_attempts', 'efaktura_status_due_index'));
+    }
+
+    public function test_enterprise_only_server_refresh_keeps_outbound_company_eligibility(): void
+    {
+        [$company, $attempt, , $binding] = $this->fixture('server');
+        $this->pro($company);
+        $this->fake([self::ORIGIN.'/*' => Http::response($this->response($attempt, $binding))]);
+        foreach ([['vat_payer' => false, 'vat_status' => 'none'], ['jurisdiction' => 'eu_cz', 'vat_payer' => true, 'vat_status' => 'payer']] as $changed) {
+            $company->update($changed);
+            $this->postJson('/api/invoicing/companies/'.$company->id.'/documents/'.$attempt->source_document_id.'/efaktura/compliance/refresh')
+                ->assertUnprocessable()->assertJsonValidationErrors('efaktura');
+        }
+        Http::assertNothingSent();
+    }
+
+    public function test_delivery_capability_requires_accepted_submission_and_a_usable_receipt(): void
+    {
+        [$company, $attempt] = $this->fixture();
+        $service = app(EpostmanStatusSyncService::class);
+        foreach ([['accepted', null], ['accepted', ''], ['accepted', 'bad/id'], ['uncertain', (string) Str::uuid()], ['rejected', (string) Str::uuid()]] as [$state, $receipt]) {
+            $attempt->forceFill(['external_id' => $receipt, 'response_payload' => ['epostman' => ['submission_state' => $state]]]);
+            $this->assertFalse($service->available($attempt, $company));
+            $this->assertFalse(app(EpostmanOutboundSubmissionService::class)->result($attempt)->responsePayload['epostman']['delivery_status_available']);
+        }
+    }
+
+    public function test_surviving_enterprise_key_cannot_be_unpinned_by_clearing_the_url(): void
+    {
+        config(['efaktura.providers.sapi_sk.base_url' => self::ORIGIN]);
+        $company = $this->company();
+        $original = $company->app_settings;
+        $before = CompanyEfakturaSettings::fromCompany($company)->connectionFingerprint();
+        foreach ([null, '', '   '] as $empty) {
+            $merged = CompanyEfakturaSettings::mergeIncoming($original, ['efaktura_sapi_base_url' => $empty]);
+            $this->assertSame($before, (new CompanyEfakturaSettings($merged, '0245:1234567890'))->connectionFingerprint());
+            config(['efaktura.providers.sapi_sk.base_url' => 'https://postman.slovakodata.com']);
+            $this->assertSame(self::ORIGIN, (new CompanyEfakturaSettings($merged))->enterpriseOrigin());
+            $this->assertSame('synthetic-enterprise-key', (new CompanyEfakturaSettings($merged))->enterpriseApiKey());
+            config(['efaktura.providers.sapi_sk.base_url' => self::ORIGIN]);
+        }
+    }
+
+    public function test_clearing_equivalent_origin_preserves_the_pinned_sapi_connection(): void
+    {
+        config(['efaktura.providers.sapi_sk.base_url' => self::ORIGIN]);
+        $company = $this->company();
+        $current = array_merge($company->app_settings, ['efaktura_sapi_base_url' => 'https://TESTPOSTMAN.slovakodata.com:443/']);
+        $before = (new CompanyEfakturaSettings($current, '0245:1234567890'))->connectionFingerprint();
+        $merged = CompanyEfakturaSettings::mergeIncoming($current, ['efaktura_sapi_base_url' => null]);
+        $this->assertSame($before, (new CompanyEfakturaSettings($merged, '0245:1234567890'))->connectionFingerprint());
+        $this->assertSame($current['efaktura_sapi_client_secret_encrypted'], $merged['efaktura_sapi_client_secret_encrypted']);
+        config(['efaktura.providers.sapi_sk.base_url' => 'https://postman.slovakodata.com']);
+        $this->assertSame(self::ORIGIN, (new CompanyEfakturaSettings($merged))->enterpriseOrigin());
+    }
+
+    public function test_safe_opaque_receipt_is_looked_up_as_one_exact_bound_path_segment(): void
+    {
+        [$company, $attempt, , $binding] = $this->fixture();
+        $attempt->external_id = 'doc_AbC-123';
+        $this->fake([self::ORIGIN.'/api/v1/invoices/doc_AbC-123' => Http::response($this->response($attempt, $binding))]);
+        $this->assertTrue(app(EpostmanStatusSyncService::class)->available($attempt, $company));
+        $result = app(EpostmanEnterpriseClient::class)->invoice(self::ORIGIN, 'synthetic-key', $attempt->external_id, $binding);
+        $this->assertNull($result['error_code']);
+        $this->assertSame('UNCONFIRMED', $result['observation']['status']);
+        Http::assertSent(fn ($request) => $request->method() === 'GET'
+            && $request->url() === self::ORIGIN.'/api/v1/invoices/doc_AbC-123');
+        Http::assertSentCount(1);
     }
 }

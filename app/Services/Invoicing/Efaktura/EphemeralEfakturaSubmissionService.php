@@ -15,6 +15,7 @@ use App\Support\Invoicing\CompanyEfakturaEligibility;
 use App\Support\Invoicing\CompanyEfakturaSettings;
 use App\Support\Invoicing\ComplianceSubmissionResult;
 use App\Support\Invoicing\Efaktura\SapiSkDocumentStatusMapper;
+use GuzzleHttp\Psr7\Uri;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
@@ -28,19 +29,50 @@ class EphemeralEfakturaSubmissionService
         protected CompanyEfakturaEligibility $eligibility,
     ) {}
 
-    public function resolveBridgeCompany(User $user): ?Company
+    public function resolveBridgeCompany(User $user, ?string $baseUrl = null): ?Company
     {
         return Company::query()
             ->where('user_id', $user->id)
             ->orderBy('created_at')
             ->get()
-            ->first(function (Company $company) {
+            ->first(function (Company $company) use ($baseUrl) {
                 if (! $this->eligibility->supportsCompany($company)) {
                     return false;
                 }
 
-                return CompanyEfakturaSettings::fromCompany($company)->configured();
+                $settings = CompanyEfakturaSettings::fromCompany($company);
+
+                return $settings->configured() && ($baseUrl === null
+                    || $this->comparableProviderUrl($settings->sapiBaseUrl()) === $this->comparableProviderUrl($baseUrl));
             });
+    }
+
+    protected function comparableProviderUrl(?string $url): ?string
+    {
+        if ($url === null) {
+            return null;
+        }
+        try {
+            $uri = new Uri($url);
+            if ($uri->getScheme() === '' || $uri->getHost() === '') {
+                return $url;
+            }
+            // PSR-7 serialization omits explicit empty delimiters; keep those
+            // forms exact so they cannot alias another configured provider.
+            if (($uri->getQuery() === '' && str_contains(explode('#', $url, 2)[0], '?'))
+                || ($uri->getFragment() === '' && str_contains($url, '#'))) {
+                return $url;
+            }
+            // PSR-7 normalizes scheme/host/default port, preserving path case,
+            // query, userinfo and fragment. Keep the existing bare-base slash policy.
+            if ($uri->getQuery() === '' && $uri->getFragment() === '') {
+                $uri = $uri->withPath(rtrim($uri->getPath(), '/'));
+            }
+
+            return (string) $uri;
+        } catch (\InvalidArgumentException) {
+            return $url;
+        }
     }
 
     public function assertBridgeCompany(User $user, ?Company $issuer = null, ?string $companyId = null): Company
@@ -53,8 +85,8 @@ class EphemeralEfakturaSubmissionService
             return $company;
         }
         $issuerSettings = $issuer !== null ? CompanyEfakturaSettings::fromCompany($issuer) : null;
-        $explicitUrl = $issuerSettings?->values['efaktura_sapi_base_url'] ?? null;
-        $customConnection = is_string($explicitUrl) && trim($explicitUrl) !== '' && ! $this->client->isEpostman($explicitUrl);
+        $effectiveUrl = $issuerSettings?->sapiBaseUrl();
+        $customConnection = is_string($effectiveUrl) && $effectiveUrl !== '' && ! $this->client->isEpostman($effectiveUrl);
         if ($issuer !== null && ! $customConnection) {
             $issuerSettings = CompanyEfakturaSettings::fromCompany($issuer);
             $matches = Company::query()->where('user_id', $user->id)->get()->filter(function (Company $candidate) use ($issuer): bool {
@@ -77,7 +109,7 @@ class EphemeralEfakturaSubmissionService
                 throw ValidationException::withMessages(['bridge_company_id' => ['Select the connected company matching this invoice issuer.']]);
             }
         }
-        $company = $this->resolveBridgeCompany($user);
+        $company = $this->resolveBridgeCompany($user, $customConnection ? $effectiveUrl : null);
         if ($issuer !== null && $company !== null && $this->client->isEpostman(CompanyEfakturaSettings::fromCompany($company)->sapiBaseUrl())) {
             throw ValidationException::withMessages(['bridge_company_id' => ['No unique connected company matches this invoice issuer.']]);
         }

@@ -24,7 +24,9 @@ class EpostmanStatusSyncService
     {
         $settings = CompanyEfakturaSettings::fromCompany($company);
 
-        return $company->user_id === $attempt->user_id && $settings->enterpriseConfigured()
+        return $company->id === $attempt->company_id && $company->user_id === $attempt->user_id
+            && ($attempt->response_payload['epostman']['submission_state'] ?? null) === 'accepted'
+            && EpostmanEnterpriseClient::isUsableDocumentId($attempt->external_id) && $settings->enterpriseConfigured()
             && $this->binding($attempt, $settings) !== null;
     }
 
@@ -114,7 +116,7 @@ class EpostmanStatusSyncService
                 || ($observation !== null && $this->complete($observation));
             $delay = $observation === null ? min(86400, 300 * (2 ** min(8, $attempt->status_failures))) : 300;
             $attempt->status_next_check_at = $attempt->status_complete ? null : $now->copy()->addSeconds($delay);
-            $payload['epostman']['delivery_status_available'] = $binding !== null && $settings->enterpriseConfigured();
+            $payload['epostman']['delivery_status_available'] = $this->available($attempt, $company);
             $payload['epostman']['enterprise_status'] = [
                 'status' => $observation['status'] ?? $previous['status'] ?? null,
                 'mls_c3_status' => $observation !== null ? $observation['mls_c3_status'] : ($previous['mls_c3_status'] ?? null),

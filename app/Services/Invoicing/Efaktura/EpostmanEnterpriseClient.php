@@ -5,7 +5,6 @@ namespace App\Services\Invoicing\Efaktura;
 use GuzzleHttp\Psr7\FnStream;
 use GuzzleHttp\Psr7\Utils;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 
 /** Fixed-origin, read-only Enterprise access. Never report provider exceptions. */
 class EpostmanEnterpriseClient
@@ -16,10 +15,16 @@ class EpostmanEnterpriseClient
 
     public const MLS = ['AP', 'RE', 'AB', 'CA', 'IP', 'OK', 'NOK', 'ERROR', 'PENDING', 'ACCEPTED', 'REJECTED', 'DELIVERED', 'FAILED', 'SUCCESS', 'PROCESSED', 'TIMEOUT'];
 
+    /** Published IDs are opaque strings; permit a bounded single safe segment. */
+    public static function isUsableDocumentId(mixed $id): bool
+    {
+        return is_string($id) && preg_match('/^[A-Za-z0-9_-]{1,128}$/D', $id) === 1;
+    }
+
     /** @return array{observation: ?array, error_code: ?string} */
     public function invoice(string $origin, string $key, string $id, array $binding): array
     {
-        if (! in_array($origin, self::ORIGINS, true) || ! Str::isUuid($id)
+        if (! in_array($origin, self::ORIGINS, true) || ! self::isUsableDocumentId($id)
             || preg_match('/^[\x21-\x7E]{1,4096}$/D', $key) !== 1) {
             return ['observation' => null, 'error_code' => 'configuration_error'];
         }
@@ -35,7 +40,7 @@ class EpostmanEnterpriseClient
             $response = Http::acceptJson()->withHeaders(['X-Api-Key' => $key])
                 ->withUserAgent('Satflux-Epostman-Status/1.0')->connectTimeout(5)->timeout(10)
                 ->withoutRedirecting()->withOptions(['sink' => $sink, 'proxy' => '', 'verify' => true])
-                ->get($origin.'/api/v1/invoices/'.$id);
+                ->get($origin.'/api/v1/invoices/'.rawurlencode($id));
             if ($response->status() !== 200) {
                 $code = match ($response->status()) {
                     401, 403 => 'authentication_failed', 404 => 'not_found', 429 => 'rate_limited',

@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Services\Invoicing\BusinessDocumentUblService;
 use App\Services\Invoicing\Efaktura\ComplianceStatusSyncService;
 use App\Services\Invoicing\Efaktura\ComplianceSubmissionService;
+use App\Services\Invoicing\Efaktura\EphemeralEfakturaSubmissionService;
 use App\Services\Invoicing\Efaktura\EpostmanOutboundSubmissionService;
 use App\Services\Invoicing\Efaktura\SapiSkClient;
 use App\Support\Invoicing\Efaktura\PeppolParticipantId;
@@ -670,6 +671,33 @@ class EpostmanOutboundTest extends TestCase
         Http::assertSentCount(2);
     }
 
+    public function test_companyless_custom_connection_selects_custom_company_after_older_epostman(): void
+    {
+        config(['efaktura.allowed_sapi_hosts' => ['sapi.test', 'other-sapi.test']]);
+        Http::fake([
+            'https://sapi.test/sapi/v1/auth/token' => Http::response(['access_token' => 'synthetic-token', 'expires_in' => 900]),
+            'https://sapi.test/sapi/v1/document/send' => Http::response(['providerDocumentId' => 'synthetic-custom', 'status' => 'ACCEPTED'], 202),
+        ]);
+        $user = $this->proUser();
+        $first = $this->company($user);
+        $first->update(['created_at' => now()->subDays(2)]);
+        $unrelated = $this->company($user);
+        $unrelated->update(['app_settings' => array_merge($unrelated->app_settings, ['efaktura_sapi_base_url' => 'https://other-sapi.test']), 'created_at' => now()->subHours(36)]);
+        $custom = $this->company($user);
+        $settings = $custom->app_settings;
+        $settings['efaktura_sapi_base_url'] = 'https://sapi.test';
+        $custom->update(['app_settings' => $settings, 'created_at' => now()->subDay()]);
+        $payload = $this->localPayload($custom);
+        unset($payload['bridge_company_id']);
+        $payload['company']['app_settings'] = [
+            'efaktura_enabled' => true, 'efaktura_sapi_base_url' => 'https://sapi.test',
+            'efaktura_sapi_client_id' => 'synthetic-client', 'efaktura_sapi_client_secret' => 'synthetic-secret',
+        ];
+        $this->actingAs($user)->postJson('/api/invoicing/ephemeral/efaktura/send', $payload)->assertOk()->assertJsonPath('data.external_id', 'synthetic-custom')->assertJsonPath('data.status', 'approved');
+        $this->assertDatabaseCount('efaktura_outbound_attempts', 0);
+        Http::assertSentCount(2);
+    }
+
     public function test_epostman_processing_rows_do_not_starve_custom_status_scheduler(): void
     {
         config(['efaktura.allowed_sapi_hosts' => ['sapi.test'], 'efaktura.providers.sapi_sk.send_detail_path' => '/sapi/v1/document/send/{id}']);
@@ -702,6 +730,92 @@ class EpostmanOutboundTest extends TestCase
         Subscription::create(['user_id' => $user->id, 'plan_id' => $plan->id, 'status' => 'active', 'starts_at' => now(), 'expires_at' => now()->addYear()]);
 
         return $user;
+    }
+
+    public function test_implicit_custom_global_origin_does_not_resolve_an_epostman_or_other_provider(): void
+    {
+        config(['efaktura.providers.sapi_sk.base_url' => 'https://sapi.test']);
+        Http::fake();
+        $user = User::factory()->create();
+        $first = $this->company($user);
+        $first->update(['created_at' => now()->subDays(2)]);
+        $other = $this->company($user);
+        $other->update(['app_settings' => array_merge($other->app_settings, ['efaktura_sapi_base_url' => 'https://other-sapi.test']), 'created_at' => now()->subDay()]);
+        $custom = $this->company($user);
+        $custom->update(['app_settings' => array_merge($custom->app_settings, ['efaktura_sapi_base_url' => null])]);
+        $selected = app(EphemeralEfakturaSubmissionService::class)->assertBridgeCompany($user, $custom);
+        $this->assertSame($custom->id, $selected->id);
+        Http::assertNothingSent();
+    }
+
+    public function test_custom_company_resolution_compares_transport_equivalent_urls_without_collapsing_providers(): void
+    {
+        Http::fake();
+        $cases = [
+            ['https://sapi.test', 'https://SAPI.test/', true],
+            ['https://sapi.test', 'HTTPS://SAPI.test:443/', true],
+            ['https://sapi.test/Api', 'https://SAPI.test:443/Api/', true],
+            ['https://sapi.test:8443/Api', 'https://SAPI.test:8443/Api', true],
+            ['https://sapi.test/Api?tenant=A', 'https://SAPI.test:443/Api?tenant=A', true],
+            ['https://sapi.test/Api', 'https://sapi.test/api', false],
+            ['https://sapi.test:8443', 'https://sapi.test:443', false],
+            ['https://sapi.test/Api?tenant=A', 'https://sapi.test/Api?tenant=B', false],
+            ['https://sapi.test/Api/?tenant=A', 'https://sapi.test/Api?tenant=A', false],
+            ['https://sapi.test/Api', 'https://sapi.test/Api?', false],
+            ['https://sapi.test/Api', 'https://sapi.test/Api#', false],
+            ['https://sapi.test/Api?', 'https://sapi.test/Api#', false],
+            ['https://sapi.test/Api/?', 'https://sapi.test/Api?', false],
+            ['https://sapi.test/Api?', 'https://sapi.test/Api?', true],
+            ['https://sapi.test', 'https://other-sapi.test', false],
+            ['https://sapi.test', 'http://sapi.test', false],
+            ['https://user@sapi.test', 'https://other@sapi.test', false],
+            ['https://sapi.test#one', 'https://sapi.test#two', false],
+            ['https://sapi.test', 'https://sapi.test:99999', false],
+            ['legacy-invalid', 'legacy-invalid', true],
+            ['legacy-invalid', 'legacy-other', false],
+        ];
+        foreach ($cases as [$saved, $requested, $matches]) {
+            $user = User::factory()->create();
+            $epostman = $this->company($user);
+            $epostman->update(['created_at' => now()->subDay()]);
+            $custom = $this->company($user);
+            $custom->update(['app_settings' => array_merge($custom->app_settings, ['efaktura_sapi_base_url' => $saved])]);
+            $issuer = clone $custom;
+            $issuer->app_settings = array_merge($custom->app_settings, ['efaktura_sapi_base_url' => $requested]);
+            try {
+                $selected = app(EphemeralEfakturaSubmissionService::class)->assertBridgeCompany($user, $issuer);
+                $this->assertTrue($matches, 'Different provider URLs must not match.');
+                $this->assertSame($custom->id, $selected->id);
+            } catch (ValidationException $exception) {
+                $this->assertFalse($matches, 'Equivalent provider URLs must match.');
+            }
+        }
+        Http::assertNothingSent();
+    }
+
+    public static function unsafeReceiptIds(): array
+    {
+        return array_map(static fn ($id) => [$id], ['', '.', '..', 'bad/id', 'bad%2Fid', 'bad?id', 'bad#id', 'bad id', "bad\nid", 'ž', str_repeat('x', 129)]);
+    }
+
+    #[DataProvider('unsafeReceiptIds')]
+    public function test_unsafe_provider_receipt_retains_the_exact_request_as_uncertain(string $id): void
+    {
+        $wire = null;
+        $this->fakeProvider(function ($request) use ($id, &$wire) {
+            $wire = $request->data();
+
+            return Http::response(['providerDocumentId' => $id, 'status' => 'ACCEPTED'], 202);
+        });
+        $result = app(ComplianceSubmissionService::class)->submitNow($this->document());
+        $attempt = EfakturaOutboundAttempt::firstOrFail();
+        $this->assertSame(ComplianceSubmissionStatus::Submitted, $result->status);
+        $this->assertSame('uncertain', $result->responsePayload['epostman']['submission_state']);
+        $this->assertNull($attempt->external_id);
+        $this->assertNotNull($attempt->request_encrypted);
+        $this->assertSame($wire, json_decode(Crypt::decryptString($attempt->request_encrypted), true));
+        $this->assertFalse($result->responsePayload['epostman']['delivery_status_available']);
+        $this->assertDatabaseCount('efaktura_outbound_attempts', 1);
     }
 
     private function localPayload(Company $company): array

@@ -245,6 +245,17 @@ final class CompanyEfakturaSettings
             $merged['efaktura_sapi_base_url'] = $url !== '' ? rtrim($url, '/') : null;
         }
 
+        $savedEnterpriseKey = $current['efaktura_epostman_api_key_encrypted'] ?? null;
+        if (is_string($savedEnterpriseKey) && $savedEnterpriseKey !== ''
+            && (! array_key_exists('efaktura_epostman_api_key', $incoming) || $incoming['efaktura_epostman_api_key'] !== null)
+            && trim((string) ($merged['efaktura_sapi_base_url'] ?? '')) === ''
+            && (new self($current))->enterpriseOrigin() !== null
+            && (new self($current))->enterpriseOrigin() === (new self($merged))->enterpriseOrigin()) {
+            // Pin before comparing SAPI credentials too: equivalent host casing
+            // or :443 must not invalidate an existing send/retry fingerprint.
+            $merged['efaktura_sapi_base_url'] = (new self($current))->sapiBaseUrl();
+        }
+
         if (! array_key_exists('efaktura_sapi_client_secret', $incoming) && ((array_key_exists('efaktura_sapi_base_url', $incoming) && (new self($merged))->sapiBaseUrl() !== (new self($current))->sapiBaseUrl()) || (array_key_exists('efaktura_sapi_client_id', $incoming) && ($merged['efaktura_sapi_client_id'] ?? null) !== ($current['efaktura_sapi_client_id'] ?? null)))) {
             $merged['efaktura_sapi_client_secret_encrypted'] = null;
             unset($merged['efaktura_sapi_client_secret']);
@@ -288,6 +299,13 @@ final class CompanyEfakturaSettings
                 }
                 $merged['efaktura_epostman_api_key_encrypted'] = Crypt::encryptString($key);
             }
+        }
+        // A surviving key must stay tied to today's effective origin even if
+        // an equivalent explicit URL is cleared without replacing the key.
+        if (is_string($merged['efaktura_epostman_api_key_encrypted'] ?? null)
+            && $merged['efaktura_epostman_api_key_encrypted'] !== ''
+            && trim((string) ($merged['efaktura_sapi_base_url'] ?? '')) === '') {
+            $merged['efaktura_sapi_base_url'] = (new self($current))->sapiBaseUrl();
         }
         unset($merged['efaktura_sapi_client_secret'], $merged['efaktura_epostman_api_key']);
 

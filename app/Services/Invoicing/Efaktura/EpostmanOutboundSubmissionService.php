@@ -141,6 +141,9 @@ class EpostmanOutboundSubmissionService
                 $token = $this->client->accessToken((string) $settings->sapiClientId(), (string) $settings->sapiClientSecret(), $settings->sapiBaseUrl());
                 $sendStarted = true;
                 $response = $this->client->sendDocument($token, (string) $settings->peppolParticipantId(), $body, $attempt->id, $settings->sapiBaseUrl());
+                if (! EpostmanEnterpriseClient::isUsableDocumentId($response['providerDocumentId'] ?? null)) {
+                    throw new \RuntimeException('Invalid ePostman receipt identifier.');
+                }
                 $rejected = $response['status'] === 'REJECTED';
                 $attempt->fill([
                     'status' => $rejected ? ComplianceSubmissionStatus::Rejected : ComplianceSubmissionStatus::Submitted,
