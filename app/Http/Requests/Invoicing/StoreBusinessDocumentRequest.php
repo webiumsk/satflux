@@ -3,7 +3,12 @@
 namespace App\Http\Requests\Invoicing;
 
 use App\Enums\BusinessDocumentType;
+use App\Enums\CompanyJurisdiction;
+use App\Models\Company;
 use App\Support\Invoicing\BankSymbolNormalizer;
+use App\Support\Invoicing\CompanyAppSettings;
+use App\Support\Invoicing\InvoiceDeductionRules;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -23,6 +28,18 @@ class StoreBusinessDocumentRequest extends FormRequest
         }
     }
 
+    private function deductionPrecision(int $places, ?float $maximum = null): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail) use ($places, $maximum): void {
+            $hasDeduction = InvoiceDeductionRules::hasDeduction((array) $this->input('lines', []));
+            if ($hasDeduction && is_numeric($value)
+                && (! is_finite((float) $value) || ($maximum !== null && abs((float) $value) > $maximum)
+                    || abs((float) $value * (10 ** $places) - round((float) $value * (10 ** $places))) > 0.000001)) {
+                $fail('Invoice deductions require values within the supported decimal precision.');
+            }
+        };
+    }
+
     public function rules(): array
     {
         return [
@@ -40,7 +57,7 @@ class StoreBusinessDocumentRequest extends FormRequest
             'delivery_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
             'currency' => ['nullable', 'string', 'size:3'],
-            'discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100', $this->deductionPrecision(2)],
             'note_above_lines' => ['nullable', 'string', 'max:10000'],
             'note_footer' => ['nullable', 'string', 'max:10000'],
             'internal_note' => ['nullable', 'string', 'max:10000'],
@@ -55,11 +72,34 @@ class StoreBusinessDocumentRequest extends FormRequest
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.name' => ['required', 'string', 'max:255'],
             'lines.*.description' => ['nullable', 'string', 'max:5000'],
-            'lines.*.quantity' => ['required', 'numeric', 'min:0.0001'],
+            'lines.*.quantity' => ['required', 'numeric', InvoiceDeductionRules::quantityRule($this, 'type'), $this->deductionPrecision(4, 9_999_999_999.9999)],
             'lines.*.unit' => ['nullable', 'string', 'max:32'],
-            'lines.*.unit_price' => ['required', 'numeric', 'min:0'],
-            'lines.*.line_discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'lines.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'lines.*.unit_price' => ['required', 'numeric', function (string $attribute, mixed $value, Closure $fail): void {
+                $hasDeduction = InvoiceDeductionRules::hasDeduction((array) $this->input('lines', []));
+                if ($hasDeduction && is_numeric($value) && (! is_finite((float) $value) || abs((float) $value) > 999_999_999_999.99
+                    || abs((float) $value * 100 - round((float) $value * 100)) > 0.000001)) {
+                    $fail('Invoices with deductions require unit prices with at most two decimal places.');
+
+                    return;
+                }
+                if (! is_numeric($value) || (float) $value >= 0) {
+                    return;
+                }
+                $type = $this->input('type') ?? $this->route('businessDocument')?->type?->value;
+                if ($type !== BusinessDocumentType::Invoice->value) {
+                    $fail('Negative unit prices are supported only on invoices.');
+
+                    return;
+                }
+                $company = $this->route('company');
+                if ($company instanceof Company && ($company->getAttribute('jurisdiction') === CompanyJurisdiction::EuDe
+                    || ($company->getAttribute('jurisdiction') === CompanyJurisdiction::Us
+                        && ! in_array(CompanyAppSettings::from($company->getAttribute('app_settings'))->get('us_sales_tax_provider', 'manual'), ['manual', 'none'], true)))) {
+                    $fail('Negative unit prices are not supported by the configured electronic invoice or tax provider.');
+                }
+            }],
+            'lines.*.line_discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100', $this->deductionPrecision(2)],
+            'lines.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100', $this->deductionPrecision(2)],
             'lines.*.company_stock_item_id' => ['nullable', 'uuid'],
             'lines.*.company_warehouse_id' => ['nullable', 'uuid'],
         ];

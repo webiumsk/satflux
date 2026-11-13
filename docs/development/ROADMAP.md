@@ -1,5 +1,40 @@
 # Development roadmap
 
+## Negative-quantity deduction follow-up - 2026-11-13
+
+- [x] Accept `-1 x 15` manual deductions at positive prices/positive totals and
+  retain source precision, VAT, payment balances and stock fences.
+- [x] Preserve generated credit-note correction workflows and original invoices.
+- [x] Verify PDF/email/bulk/checkout and UBL/ISDOC/ePostman preparation, full official
+  UBL schemas and exact fake-provider retry/cache behavior.
+- [x] Independently accept QA/security at frozen 56-file fingerprint, update all
+  five guides and pass final frontend 3,133 / 240, backend regressions, static,
+  lint/type/build/locale gates without ratchet changes.
+- [ ] Owner reviews the retained uncommitted correction branch.
+- [ ] Separately authorize publication/deployment; retain earlier backend-first
+  payment-provenance migration. This quantity extension adds no new migration.
+
+No production provider/delivery or deployment claim. Details:
+[implementation report](INVOICING_CORRECTIONS.md).
+
+## Invoice deductions, payment methods and buyer details - 2026-11-13
+
+- [x] Fix negative-price invoice save/issue/PDF/email/checkout with canonical
+  positive totals, supported precision/VAT and explicit structured-export limits.
+- [x] Record confirmed payment source; remove enabled-BTCPay inference and keep
+  unknown historical methods unspecified without a guessed backfill.
+- [x] Show buyer identifiers from issued snapshots and preserve contact identifiers
+  on blank Woo input; document supported metadata and server/browser boundary.
+- [x] Independently accept QA/security, stale-state payment fixes and five-language
+  documentation; pass full frontend 3,110 / 239, backend regressions, full static
+  analysis, existing lint/type ratchets, build and locale parity.
+- [ ] Owner reviews the retained uncommitted correction branch.
+- [ ] Separately authorize publication/deployment; apply additive server migration
+  before updated backend code. No external plugin change or historical data repair.
+
+Source baseline `e2130aea`; no deployment inferred. See
+[implementation report](INVOICING_CORRECTIONS.md) for fingerprint and test limits.
+
 ## PR442 verified review fixes - 2026-11-13
 
 - [x] Verify all nine findings against 19b1987c; fix eight, skip the already-fixed

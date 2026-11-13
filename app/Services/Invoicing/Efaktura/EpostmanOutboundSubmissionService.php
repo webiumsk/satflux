@@ -8,6 +8,7 @@ use App\Enums\ComplianceSubmissionStatus;
 use App\Models\BusinessDocument;
 use App\Models\Company;
 use App\Models\EfakturaOutboundAttempt;
+use App\Services\Invoicing\BusinessDocumentIssueService;
 use App\Services\Invoicing\BusinessDocumentUblService;
 use App\Services\Invoicing\CanonicalInvoiceBuilder;
 use App\Support\Invoicing\CompanyEfakturaEligibility;
@@ -305,6 +306,9 @@ class EpostmanOutboundSubmissionService
                     $this->invalid("ePostman sending currently supports {$field} with at most {$precision} decimal places.");
                 }
             }
+        }
+        if ($document->lines->contains(fn ($line): bool => (float) ($line->getAttributes()['quantity'] ?? 0) < 0)) {
+            app(BusinessDocumentIssueService::class)->assertSignedInvoiceCanIssue($document);
         }
         $canonical = app(CanonicalInvoiceBuilder::class)->fromDocument($document);
         if ($canonical->subtotal !== (string) $document->getAttribute('subtotal') || $canonical->taxTotal !== (string) $document->getAttribute('tax_total') || $canonical->total !== (string) $document->getAttribute('total')) {

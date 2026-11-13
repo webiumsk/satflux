@@ -45,6 +45,9 @@ import {
     allNumberSeriesQuery,
 } from "./client";
 import type { LocalDocumentDeletionPolicy } from "./documentBulkLocal";
+import type { PaidPaymentMethod } from "./paidPaymentMethod";
+import { isSignedInvoiceLine, signedInvoiceError, signedLineAmounts, signedMoneyRound, supportsNegativeQuantity } from "./signedInvoiceLines";
+import { useCompanyVatPolicy } from "@/composables/useCompanyVatPolicy";
 
 export type DocumentLinePayload = {
     name: string;
@@ -99,21 +102,30 @@ export function calcDocumentTotals(
     defaultVat: number,
     lineTaxApplies: (line: DocumentLinePayload) => boolean,
     lineTaxRate: (line: DocumentLinePayload) => number,
+    signedRoundingMethod = "per_line",
 ) {
     let subtotal = 0;
     let tax = 0;
     const lineTotals: number[] = [];
 
+    const signed = lines.some(line => isSignedInvoiceLine(line.quantity, line.unit_price));
     for (const line of lines) {
-        const net =
+        let net =
             (line.quantity || 0)
             * (line.unit_price || 0)
             * (1 - (line.line_discount_percent || 0) / 100);
         const rate = lineTaxApplies(line) ? lineTaxRate(line) : 0;
-        const lineTax = net * (rate / 100);
+        let lineTax = net * (rate / 100);
+        let lineGross = net + lineTax;
+        if (signed) {
+            const canonical = signedLineAmounts({ quantity: line.quantity || 0, unitPrice: line.unit_price || 0, discount: line.line_discount_percent || 0, taxRate: rate }, signedRoundingMethod);
+            net = canonical.net;
+            lineTax = canonical.tax;
+            lineGross = canonical.gross;
+        }
         subtotal += net;
         tax += lineTax;
-        lineTotals.push(net + lineTax);
+        lineTotals.push(lineGross);
     }
 
     const gross = subtotal + tax;
@@ -122,15 +134,17 @@ export function calcDocumentTotals(
         const ratio = total / gross;
         subtotal *= ratio;
         tax *= ratio;
-        for (let i = 0; i < lineTotals.length; i++) {
-            lineTotals[i] *= ratio;
+        if (!signed) {
+            for (let i = 0; i < lineTotals.length; i++) {
+                lineTotals[i] *= ratio;
+            }
         }
     }
 
     return {
-        subtotal: fmtDec(subtotal),
-        taxTotal: fmtDec(tax),
-        total: fmtDec(total),
+        subtotal: fmtDec(signed ? signedMoneyRound(subtotal) : subtotal),
+        taxTotal: fmtDec(signed ? signedMoneyRound(tax) : tax),
+        total: fmtDec(signed ? signedMoneyRound(total) : total),
         lineTotals: lineTotals.map((v) => fmtDec(v)),
     };
 }
@@ -190,6 +204,7 @@ function buildDocumentFields(
             storeId: payload.store_id || null,
             tagsJson: payload.tags.length ? JSON.stringify(payload.tags) : null,
             paidAt: null,
+            paidPaymentMethod: null as PaidPaymentMethod | null,
             amountPaid: null,
         },
     };
@@ -298,10 +313,28 @@ function isPendingMigration(document: EvoluDocumentRow | null | undefined): bool
         && !Reflect.get(document, "migrationCompletedAt");
 }
 
-function ordinaryIssueError(documentId: DocumentId, draft: EvoluDocumentRow | null | undefined, lines: readonly EvoluDocumentLineRow[]) {
+function ordinaryIssueError(
+    documentId: DocumentId,
+    draft: EvoluDocumentRow | null | undefined,
+    lines: readonly EvoluDocumentLineRow[],
+    company?: EvoluCompanyRow,
+    contact?: EvoluContactRow | null,
+) {
     if (isPendingMigration(draft)) return "migration_pending" as const;
-    if (lines.some(line => line.documentId === documentId && Number(line.unitPrice) < 0)) return "negative_line_price" as const;
-    return null;
+    const documentLines = lines.filter(line => line.documentId === documentId);
+    if (documentLines.some(line => !Number.isFinite(Number(line.quantity)) || Number(line.quantity) === 0)) {
+        return !draft || supportsNegativeQuantity(draft.documentType) ? "nonzero_quantity_required" as const : "positive_quantity_required" as const;
+    }
+    if (draft && !supportsNegativeQuantity(draft.documentType) && documentLines.some(line => Number(line.quantity) < 0)) return "positive_quantity_required" as const;
+    const apiCompany = company ? evoluCompanyToApi(company) : null;
+    const apiContact = contact ? evoluContactToApi(contact) : null;
+    const policy = useCompanyVatPolicy();
+    return signedInvoiceError(draft?.documentType ?? "invoice", documentLines.map(line => ({
+        quantity: Number(line.quantity), unitPrice: Number(line.unitPrice), discount: Number(line.lineDiscountPercent ?? 0),
+        lineTotal: Number(line.lineTotal), stockItemId: line.companyStockItemId, warehouseId: line.companyWarehouseId,
+        taxRate: company?.jurisdiction === "us" ? Number(line.taxRate ?? 0)
+            : company ? policy.resolveLineTaxRate(apiCompany, apiContact, Number(line.taxRate ?? 0)) : Number(line.taxRate ?? 0),
+    })), apiCompany, draft ? { subtotal: draft.subtotal, taxTotal: draft.taxTotal, total: draft.total } : undefined, Number(draft?.discountPercent ?? 0));
 }
 
 export function saveLocalDocument(
@@ -357,9 +390,17 @@ export function saveLocalDocument(
     if (!payload.lines.length) {
         return { ok: false as const, error: "lines_required" };
     }
-    if (payload.lines.some(line => line.unit_price < 0)) {
-        return { ok: false as const, error: "negative_line_price" as const };
+
+    const signed = payload.lines.some(line => isSignedInvoiceLine(line.quantity, line.unit_price));
+    const signedLines = payload.lines.map(line => ({ quantity: line.quantity, unitPrice: line.unit_price, discount: line.line_discount_percent || 0, taxRate: options.lineTaxApplies(line) ? options.lineTaxRate(line) : 0, stockItemId: line.company_stock_item_id, warehouseId: line.company_warehouse_id }));
+    if (payload.lines.some(line => !Number.isFinite(Number(line.quantity)) || Number(line.quantity) === 0)) {
+        return { ok: false as const, error: supportsNegativeQuantity(payload.type) ? "nonzero_quantity_required" as const : "positive_quantity_required" as const };
     }
+    if (!supportsNegativeQuantity(payload.type) && payload.lines.some(line => Number(line.quantity) < 0)) {
+        return { ok: false as const, error: "positive_quantity_required" as const };
+    }
+    const signedSupportError = signedInvoiceError(payload.type, signedLines, options.refreezeContext?.company ?? null, undefined, payload.discount_percent);
+    if (signedSupportError) return { ok: false as const, error: signedSupportError };
 
     const totals = calcDocumentTotals(
         payload.lines,
@@ -367,7 +408,13 @@ export function saveLocalDocument(
         options.defaultVat,
         options.lineTaxApplies,
         options.lineTaxRate as (line: DocumentLinePayload) => number,
+        String((options.refreezeContext?.company?.app_settings as Record<string, unknown> | undefined)?.rounding_method ?? "per_line"),
     );
+
+    if (signed && existing && existing.status !== "draft") {
+        const signedError = signedInvoiceError(payload.type, signedLines, options.refreezeContext?.company ?? null, totals, payload.discount_percent);
+        if (signedError) return { ok: false as const, error: signedError };
+    }
 
     const statusForSave = existing?.status ?? "draft";
     const numberForSave = existing?.number ?? null;
@@ -388,6 +435,7 @@ export function saveLocalDocument(
 
     if (existing) {
         fields.value.paidAt = existing.paidAt;
+        fields.value.paidPaymentMethod = (existing.paidPaymentMethod ?? null) as PaidPaymentMethod | null;
         fields.value.amountPaid = existing.amountPaid;
     }
 
@@ -520,7 +568,7 @@ export async function issueLocalDocumentAsync(
             (toAppRows<EvoluContactRow>(contactRows).find((c) => c.id === draft.contactId)
                 ?? null),
     };
-    const issueError = ordinaryIssueError(documentId, draft, snapshotContext.lines);
+    const issueError = ordinaryIssueError(documentId, draft, snapshotContext.lines, company, snapshotContext.contact);
     if (issueError) return { ok: false as const, error: issueError };
 
     // Server number allocator (audit F3): the number is reserved atomically
@@ -659,6 +707,7 @@ function markFinalInvoicePaidFromProforma(
         id: draft.id,
         status: "paid",
         paidAt: proforma.paidAt ?? new Date().toISOString(),
+        paidPaymentMethod: proforma.paidPaymentMethod ?? null,
         amountPaid,
     });
     if (result.ok) {
@@ -688,8 +737,8 @@ export function applyReservedNumberToLocalDocument(
     const draft = toAppRows<EvoluDocumentRow>(evolu.getQueryRows(allDocumentsQuery))
         .find(row => row.id === documentId);
     const lines = toAppRows<EvoluDocumentLineRow>(evolu.getQueryRows(allDocumentLinesQuery));
-    const issueError = ordinaryIssueError(documentId, draft, lines)
-        ?? ordinaryIssueError(documentId, snapshotContext?.doc, snapshotContext?.lines ?? []);
+    const issueError = ordinaryIssueError(documentId, draft, lines, snapshotContext?.company, snapshotContext?.contact)
+        ?? ordinaryIssueError(documentId, snapshotContext?.doc, snapshotContext?.lines ?? [], snapshotContext?.company, snapshotContext?.contact);
     if (issueError) return { ok: false as const, error: issueError };
     const quoteStatus = documentType === "quote" ? "pending" : null;
 
@@ -897,11 +946,12 @@ export function markLocalDocumentPaid(
     evolu: Evolu<InvoicingLocalSchema>,
     documentId: DocumentId,
     documents: EvoluDocumentRow[],
+    method: PaidPaymentMethod | null = "manual",
 ) {
     const doc = documents.find((d) => d.id === documentId);
     if (!doc) return { ok: false as const, error: "not_found" };
     const total = parseFloat(doc.total || "0");
-    return markLocalDocumentPaidWithAmount(evolu, documentId, documents, total);
+    return markLocalDocumentPaidWithAmount(evolu, documentId, documents, total, 0.01, method);
 }
 
 export function markLocalDocumentPaidWithAmount(
@@ -910,8 +960,13 @@ export function markLocalDocumentPaidWithAmount(
     documents: EvoluDocumentRow[],
     amountPaid: number,
     tolerance = 0.01,
+    method: PaidPaymentMethod | null = "manual",
 ) {
-    const doc = documents.find((d) => d.id === documentId);
+    // A caller may still hold the pre-payment row after a newer local mutation.
+    const current = typeof evolu.getQueryRows === "function"
+        ? toAppRows<EvoluDocumentRow>(evolu.getQueryRows(allDocumentsQuery)).find(row => row.id === documentId)
+        : undefined;
+    const doc = current ?? documents.find((d) => d.id === documentId);
     if (!doc) return { ok: false as const, error: "not_found" };
     if (doc.status === "cancelled") {
         return { ok: false as const, error: "cancelled" };
@@ -929,11 +984,13 @@ export function markLocalDocumentPaidWithAmount(
         id: documentId,
         status: fullyPaid ? "paid" : "issued",
         paidAt: fullyPaid ? new Date().toISOString() : doc.paidAt,
+        paidPaymentMethod: fullyPaid ? method : (doc.paidPaymentMethod ?? null),
         amountPaid: amountPaid.toFixed(2),
     });
     if (result.ok) {
         logDocumentEvent(evolu, documentId, "business_document.marked_paid", {
             amount_paid: amountPaid,
+            paid_payment_method: fullyPaid ? method : null,
         });
     }
     return result;
@@ -944,6 +1001,7 @@ export function unmarkLocalDocumentPaid(evolu: Evolu<InvoicingLocalSchema>, docu
         id: documentId,
         status: "issued",
         paidAt: null,
+        paidPaymentMethod: null,
         amountPaid: null,
     });
     if (result.ok) {

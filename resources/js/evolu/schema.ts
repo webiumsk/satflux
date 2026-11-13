@@ -293,6 +293,7 @@ export const InvoicingLocalSchema = {
         storeId: OptionalString64,
         tagsJson: OptionalString1000,
         paidAt: OptionalString32,
+        paidPaymentMethod: OptionalString32,
         amountPaid: OptionalString32,
         emailSentAt: OptionalString32,
     },

@@ -23,6 +23,7 @@ class BusinessDocumentDuplicateService
             'payment_token',
             'btcpay_checkout_created_at',
             'paid_at',
+            'paid_payment_method',
             'amount_paid',
             // A copy is a new document: not sent yet, buyer frozen again at
             // issue (a stale snapshot drove VAT for the old buyer).

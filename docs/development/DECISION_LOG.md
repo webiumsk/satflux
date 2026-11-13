@@ -1,5 +1,58 @@
 # Development decision log
 
+## 2026-11-13 - Represent deductions with negative quantity and positive price
+
+The owner selects a manual `-1 x 15` line with a positive final invoice total.
+Use the actual signed quantity throughout storage, preview, source snapshots,
+PDF and structured export. Retain positive item prices for Peppol BR-27 and
+canonical VAT/source/payable agreement. The previous negative-price visual path
+retains its documented structured-export restriction.
+
+Require manual deduction lines without stock/warehouse associations. Normal input
+clears warehouse-only defaults; an actual stock item requires explicit disconnect.
+Validate raw associations and numeric precision before projection, numbering,
+issue/update and outbound preparation/locked retry. Preserve document-level totals
+and VAT bucket safeguards, encrypted retry bodies, content hashes and UUIDs.
+
+Extend the same quantity representation to credit notes so an invoice with a
+deduction remains correctable by the existing derived flow. Keep the original
+source unchanged. Extra percentage discounts remain unsupported in structured
+quantity-deduction exports until allowances are explicitly represented.
+
+Independent QA/security accept final 56-file fingerprint
+`bb61393f355a0a4c7a94787819c7b75fcdc31c38950ec9a152f4e841de9e8a75`.
+Main frozen-source full frontend 3,133 / 240 and backend/static/build/locale gates
+pass. Official schemas and fake-provider retries establish local compatibility;
+actual provider acceptance/delivery is not inferred. No new migration, commit,
+publication or deployment in this follow-up. Details:
+[implementation report](INVOICING_CORRECTIONS.md).
+
+## 2026-11-13 - Keep deduction totals, payment evidence and buyer identity consistent
+
+Represent ordinary invoice deductions with signed unit prices and positive
+quantities, preserving stock direction. Support SK/CZ/manual-US visual invoices
+only where canonical/source amounts, decimal precision and VAT bases agree.
+Reject unsupported structured export prices explicitly; do not silently emit
+invalid XML or change historical imported amounts.
+
+Store nullable confirmed payment provenance instead of deriving settlement from
+available checkout options. Preserve unknown legacy values without guessing.
+Refetch and lock current payment rows before state/amount decisions; defer Woo
+notification to outer commit and recheck the current paid state. Local mutations
+prefer current query rows, without claiming offline cross-device atomicity.
+
+Display saved issued buyer identities and escape identifiers. Blank Woo metadata
+must not erase known contact identifiers. Supported order metadata, browser-only
+contacts and already emailed PDFs remain distinct. External plugin edits and
+historical document repair are not part of this correction.
+
+Independent QA/security accept final source/config fingerprint
+`c6e80f7e13f711e416a4d5686b234b4909557e3f0c58c03f42e684fa80a7cb83`.
+Full frontend, focused backend and existing static/lint/type/build/locale gates
+pass. Exactly six obsolete PHPStan service entries are removed; no new ignores
+or raised ratchet. Retain the isolated branch uncommitted for owner review, with
+no publication or deployment. Details: [implementation report](INVOICING_CORRECTIONS.md).
+
 ## 2026-11-13 - Correct verified PR442 findings without weakening recovery or CI
 
 Treat review data as untrusted and verify current code. Eight findings remain

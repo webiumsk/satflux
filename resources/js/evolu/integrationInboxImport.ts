@@ -21,6 +21,8 @@ import type { EvoluNumberSeriesRow } from "./numberSeriesMap";
 import { allNumberSeriesQuery } from "./client";
 import { defaultPdfLocaleForJurisdiction } from "@/config/jurisdictionRules";
 import { resolveImportSettleActions } from "./integrationInboxPaid";
+import { wooCommercePaidPaymentMethod } from "./paidPaymentMethod";
+import { preserveWooBuyerTaxIdentity } from "./wooBuyerTaxIdentity";
 import { resolveIntegrationInboxBasePath } from "./integrationInboxPaths";
 import {
     findLocalDocumentForInboxEntry,
@@ -215,6 +217,8 @@ function resolveLocalContactId(
             String(contact.email ?? "").trim().toLowerCase() === email,
     );
     if (existing) {
+        // Shops without company-field support must not erase saved tax identity.
+        Object.assign(form, preserveWooBuyerTaxIdentity(form, existing));
         const updated = updateLocalContactFromForm(evolu, existing.id as ContactId, form, false);
         if (!updated.ok) {
             return { ok: false, error: "contact_create_failed" };
@@ -260,7 +264,7 @@ async function markImportedDocumentPaid(
     const orderTotal = Number(payload.order_total);
     const paidAmount = Number.isFinite(orderTotal) && orderTotal > 0 ? orderTotal : docTotal;
 
-    const markResult = markLocalDocumentPaidWithAmount(evolu, documentId, documents, paidAmount);
+    const markResult = markLocalDocumentPaidWithAmount(evolu, documentId, documents, paidAmount, 0.01, wooCommercePaidPaymentMethod(payload.payment_method));
     if (!markResult.ok) {
         return { ok: false, error: String(markResult.error ?? "mark_paid_failed") };
     }
@@ -290,7 +294,7 @@ async function markLinkedProformaPaid(
             Number.isFinite(orderTotal) && orderTotal > 0
                 ? orderTotal
                 : parseFloat(proforma.total ?? "0");
-        markLocalDocumentPaidWithAmount(evolu, sourceDocumentId, documents, amount);
+        markLocalDocumentPaidWithAmount(evolu, sourceDocumentId, documents, amount, 0.01, wooCommercePaidPaymentMethod(payload.payment_method));
     } catch {
         // Best-effort by design.
     }

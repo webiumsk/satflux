@@ -54,6 +54,7 @@ export type EvoluDocumentRow = {
     storeId: string | null;
     tagsJson: string | null;
     paidAt: string | null;
+    paidPaymentMethod?: string | null;
     amountPaid: string | null;
     emailSentAt: string | null;
 };
@@ -186,6 +187,7 @@ export function evoluDocumentToApi(
         payment_btc_enabled: sqliteBool(doc.paymentBtcEnabled, false),
         tags: parseTags(doc.tagsJson),
         paid_at: doc.paidAt,
+        paid_payment_method: doc.paidPaymentMethod ?? null,
         amount_paid: doc.amountPaid,
         email_sent_at: doc.emailSentAt,
         payment_token: null,

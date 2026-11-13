@@ -93,6 +93,16 @@
           <div v-if="selectedContact.postal_code || selectedContact.city">
             {{ selectedContact.postal_code }} {{ selectedContact.city }}
           </div>
+          <div v-if="selectedContact.registration_number">
+            {{ t("invoicing.registration_number") }}:
+            {{ selectedContact.registration_number }}
+          </div>
+          <div v-if="selectedContact.tax_id">
+            {{ t("invoicing.tax_id_dic") }}: {{ selectedContact.tax_id }}
+          </div>
+          <div v-if="selectedContact.vat_id">
+            {{ t("invoicing.vat_id") }}: {{ selectedContact.vat_id }}
+          </div>
           <div v-if="selectedContact.email">{{ selectedContact.email }}</div>
         </template>
         <div v-else class="text-gray-400">-</div>
@@ -361,6 +371,7 @@ import {
   useCompanyVatPolicy,
 } from "../../composables/useCompanyVatPolicy";
 import { appSettingsFromCompany } from "../../composables/useCompanyAppSettings";
+import { isSignedInvoiceLine, signedLineAmounts } from "../../evolu/signedInvoiceLines";
 import FooterContactIcon from "./FooterContactIcon.vue";
 
 export type InvoiceLineForm = {
@@ -536,6 +547,14 @@ function lineTotal(line: InvoiceLineForm) {
     props.selectedContact,
     line.tax_rate ?? null,
   );
+  if (props.form.lines.some(item => isSignedInvoiceLine(item.quantity, item.unit_price))) {
+    return signedLineAmounts({
+      quantity: line.quantity || 0,
+      unitPrice: line.unit_price || 0,
+      discount: line.line_discount_percent || 0,
+      taxRate: rate,
+    }, appSettingsFromCompany(props.company).rounding_method).gross;
+  }
   return net + net * (rate / 100);
 }
 

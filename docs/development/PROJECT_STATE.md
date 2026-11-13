@@ -1,5 +1,63 @@
 # Project state
 
+## Negative-quantity deductions and electronic export accepted locally - 2026-11-13
+
+The owner selects `-1 x 15` with positive unit price and positive invoice total.
+The retained correction branch now supports this representation through local
+and server save/issue/edit, PDF/email/bulk, aggregate checkout and UBL/ISDOC/ePostman
+preparation. Canonical VAT buckets include signed quantities; source totals and
+payable balances agree. Zero/tiny or double-negative inputs and stock/warehouse
+links reject. Normal manual entry clears warehouse-only defaults. Derived credit
+notes remain usable and preserve their original invoice/snapshots.
+
+Independent QA/security accept 56 source/config files at fingerprint
+`bb61393f355a0a4c7a94787819c7b75fcdc31c38950ec9a152f4e841de9e8a75`.
+Main final frontend passes 3,133 / 240, backend 289 / 1,631 and existing inventory
+16 / 100; UBL 16 / 107 overlaps backend. Full PHPStan, Pint 28, lint zero errors /
+46 inherited warnings, unchanged type baseline, build 7,664 and locale parity pass.
+Independent generated local snapshots pass authenticated fake-outbound Invoice
+and CreditNote schema/amount/retry tests. Counts overlap; one inherited PHPUnit
+deprecation remains. A run overlapping source edits was superseded by fresh focused
+and complete frozen-source passes.
+
+Existing payment/buyer fixes and primary unrelated edits remain preserved. No new
+migration for this quantity extension, actual provider delivery, PostgreSQL race,
+browser E2E or cross-device CRDT claim. Structured preceding-invoice references
+remain a separate existing gap. No commit, publication, existing-database migration
+or deployment; correction worktree remains on `fix/invoicing-lines-payment-identities`
+over `e2130aea`. Next: owner review and separately authorized publication/deployment.
+Evidence: [implementation report](INVOICING_CORRECTIONS.md), private source/review
+logs and unmodified official schemas under `reviews/invoicing-quantity`.
+
+## Invoice deductions, payment provenance and buyer identifiers accepted locally - 2026-11-13
+
+Source baseline is freshly fetched `origin/master` at `e2130aea`, which includes
+the PR442 merge; older open-PR entries below are historical observations, not
+current deployment evidence. The durable `invoicing-corrections` worktree holds
+uncommitted `fix/invoicing-lines-payment-identities` changes. Primary unrelated
+edits and owner previews are preserved.
+
+Ordinary SK/CZ/manual-US invoices accept negative prices with positive quantities
+and verified positive totals/VAT/source amounts through issue, edit, PDF, email
+and aggregate checkout. Unsupported structured exports reject explicitly.
+Confirmed payment provenance replaces the enabled-BTCPay inference; unknown history
+stays unspecified. Issued buyer previews use snapshots, display identifiers and
+preserve contact IDs on blank Woo input. External plugin checkout fields remain a
+read-only compatibility boundary. Server autoissued PDFs cannot read browser-only
+contact IDs before import; no old history/snapshot/PDF is rewritten.
+
+Independent QA/security accept 49 source/config files at fingerprint
+`c6e80f7e13f711e416a4d5686b234b4909557e3f0c58c03f42e684fa80a7cb83`.
+Review fixes include signed edit/export/rounding and stale payment state under
+row locks, with notification after commit. Main passes full frontend 3,110 / 239,
+backend 201 / 962 plus post-static-cleanup payment 34 / 146, full PHPStan, Pint,
+lint zero errors / 46 inherited warnings, unchanged type baseline, build 7,664
+and locale parity. Counts overlap; one inherited PHPUnit deprecation remains.
+No actual PostgreSQL race, browser E2E or production claim. No commit, publication,
+merge, existing-database migration or deployment. Next: owner review; backend-first
+additive migration and separate publication/deployment gates.
+Evidence: [implementation report](INVOICING_CORRECTIONS.md) and private review logs.
+
 ## PR442 review corrections accepted locally - 2026-11-13
 
 Eight current review findings are verified and fixed over 19b1987c; the Peppol

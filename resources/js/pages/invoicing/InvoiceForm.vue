@@ -272,13 +272,16 @@
                     </p>
                   </td>
                   <td class="px-2 py-2 align-middle">
-                    <input v-model.number="line.quantity" type="number" min="0.0001" step="any" class="invoicing-sf-input-table text-center" :disabled="isLocked" />
+                    <input v-model.number="line.quantity" @input="onLineQuantityInput(line, $event)" type="number" :min="supportsNegativeQuantity(documentType) ? undefined : 0.0001" step="any" class="invoicing-sf-input-table text-center" :disabled="isLocked" />
+                    <button v-if="supportsNegativeQuantity(documentType) && line.quantity < 0 && line.company_stock_item_id" type="button" class="text-xs text-amber-700 underline mt-1" :disabled="isLocked" @click="disconnectDeductionStock(line)">
+                      {{ t('invoicing.deduction_disconnect_stock') }}
+                    </button>
                   </td>
                   <td class="px-2 py-2 align-middle">
                     <InvoiceLineUnitSelect v-model="line.unit" :disabled="isLocked" />
                   </td>
                   <td class="px-2 py-2 align-middle">
-                    <input v-model.number="line.unit_price" type="number" min="0" step="0.01" class="invoicing-sf-input-table text-right" :disabled="isLocked" />
+                    <input v-model.number="line.unit_price" type="number" step="0.01" class="invoicing-sf-input-table text-right" :disabled="isLocked" />
                   </td>
                   <td v-if="showLineTaxColumn" class="px-2 py-2 align-middle">
                     <input v-model.number="line.tax_rate" type="number" min="0" max="100" class="invoicing-sf-input-table text-right" :disabled="isLocked" />
@@ -364,7 +367,10 @@
               <div class="grid grid-cols-2 gap-2">
                 <div>
                   <label class="text-xs text-gray-500">{{ t('invoicing.col_qty') }}</label>
-                  <input v-model.number="line.quantity" type="number" min="0.0001" step="any" class="invoicing-sf-input w-full" :disabled="isLocked" />
+                  <input v-model.number="line.quantity" @input="onLineQuantityInput(line, $event)" type="number" :min="supportsNegativeQuantity(documentType) ? undefined : 0.0001" step="any" class="invoicing-sf-input w-full" :disabled="isLocked" />
+                  <button v-if="supportsNegativeQuantity(documentType) && line.quantity < 0 && line.company_stock_item_id" type="button" class="text-xs text-amber-700 underline mt-1" :disabled="isLocked" @click="disconnectDeductionStock(line)">
+                    {{ t('invoicing.deduction_disconnect_stock') }}
+                  </button>
                 </div>
                 <div>
                   <label class="text-xs text-gray-500">{{ t('invoicing.col_unit') }}</label>
@@ -374,7 +380,7 @@
               <div class="grid grid-cols-2 gap-2">
                 <div>
                   <label class="text-xs text-gray-500">{{ t('invoicing.col_unit_price') }}</label>
-                  <input v-model.number="line.unit_price" type="number" min="0" step="0.01" class="invoicing-sf-input w-full" :disabled="isLocked" />
+                  <input v-model.number="line.unit_price" type="number" step="0.01" class="invoicing-sf-input w-full" :disabled="isLocked" />
                 </div>
                 <div v-if="showLineTaxColumn">
                   <label class="text-xs text-gray-500">{{ lineTaxColumnLabel }}%</label>
@@ -502,6 +508,7 @@
 </template>
 
 <script setup lang="ts">
+import { clearManualDeductionWarehouse, supportsNegativeQuantity } from "../../evolu/signedInvoiceLines";
 import { asApiError } from "../../utils/apiError";
 import { computed, onMounted, ref } from 'vue';
 import ContactCreateModal from '../../components/invoicing/ContactCreateModal.vue';
@@ -697,6 +704,18 @@ function syncLineStockHint(line: InvoiceLineForm) {
     const qty = line.stock_quantities_by_warehouse[warehouseId];
     line.stock_quantity_hint = qty != null ? Number(qty) : null;
   }
+}
+
+function onLineQuantityInput(line: InvoiceLineForm, event: Event) {
+  if (supportsNegativeQuantity(documentType.value)) {
+    clearManualDeductionWarehouse(line, Number((event.target as HTMLInputElement).value));
+  }
+}
+
+function disconnectDeductionStock(line: InvoiceLineForm) {
+  clearLineStockLink(line);
+  line.company_warehouse_id = null;
+  line.warehouse_deduct_on_issue = null;
 }
 
 function clearLineStockLink(line: InvoiceLineForm) {

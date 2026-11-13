@@ -5,6 +5,7 @@ namespace App\Http\Requests\Invoicing;
 use App\Enums\BusinessDocumentStatus;
 use App\Enums\BusinessDocumentType;
 use App\Enums\CompanyJurisdiction;
+use App\Support\Invoicing\InvoiceDeductionRules;
 use App\Support\Invoicing\IsoCountryCode;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -75,6 +76,8 @@ class EphemeralBusinessDocumentBulkRequest extends FormRequest
             'company.issuer_phone' => ['sometimes', 'nullable', 'string', 'max:100'],
             'company.issuer_email' => ['sometimes', 'nullable', 'email', 'max:255'],
             'company.website' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'company.app_settings.rounding_method' => ['sometimes', 'in:per_line,per_document,none'],
+            'company.app_settings.us_sales_tax_provider' => ['sometimes', 'string', 'max:64'],
             'company.logo_url' => ['sometimes', 'nullable', 'string', 'max:131072'],
             'company.signature_stamp_url' => ['sometimes', 'nullable', 'string', 'max:131072'],
             'documents' => ['required', 'array', 'min:1', 'max:50'],
@@ -118,7 +121,7 @@ class EphemeralBusinessDocumentBulkRequest extends FormRequest
             'documents.*.lines' => ['required', 'array', 'min:1'],
             'documents.*.lines.*.name' => ['required', 'string', 'max:500'],
             'documents.*.lines.*.description' => ['sometimes', 'nullable', 'string', 'max:2000'],
-            'documents.*.lines.*.quantity' => ['required', 'numeric', 'gt:0'],
+            'documents.*.lines.*.quantity' => ['required', 'numeric', InvoiceDeductionRules::quantityRule($this)],
             'documents.*.lines.*.unit' => ['sometimes', 'nullable', 'string', 'max:50'],
             'documents.*.lines.*.unit_price' => ['required', 'numeric', 'min:0'],
             'documents.*.lines.*.line_discount_percent' => ['sometimes', 'numeric', 'min:0', 'max:100'],

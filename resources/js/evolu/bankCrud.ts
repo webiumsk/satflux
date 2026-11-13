@@ -161,6 +161,7 @@ function applyMatch(
         ctx.documents,
         matchedAmount,
         AMOUNT_TOLERANCE,
+        "bank_transfer",
     );
 
     const docInCtx = ctx.documents.find((row) => row.id === document.id);
@@ -171,6 +172,7 @@ function applyMatch(
         docInCtx.amountPaid = matchedAmount.toFixed(2);
         if (fullyPaid) {
             docInCtx.paidAt = new Date().toISOString();
+            docInCtx.paidPaymentMethod = "bank_transfer";
         }
     }
 

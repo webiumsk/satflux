@@ -16,11 +16,13 @@ import {
 } from '../evolu/documentSnapshotCrud';
 import type { CompanyId, DocumentId } from '../evolu/schema';
 import type { DocumentSavePayload } from '../evolu/documentCrud';
-import { payloadFromApiDocument, markLocalDocumentPaid } from '../evolu/documentCrud';
+import { calcDocumentTotals, payloadFromApiDocument, markLocalDocumentPaid } from '../evolu/documentCrud';
+import { hasHistoricalSignedSource, isSignedInvoiceLine, signedLineAmounts } from '../evolu/signedInvoiceLines';
 import { localIsoDate } from '../evolu/numberSeriesFormat';
 import { resolveLocalEmailSettingsForBridge } from '../evolu/companySettingsCrud';
 import { documentVariableSymbol } from '../evolu/documentNumber';
 import { documentHistoryFromEvents, type DocumentHistoryEntry } from '../evolu/documentEventLog';
+import { resolveInvoicePreviewContact } from './invoicePreviewContact';
 import type { EvoluDocumentRow } from '../evolu/documentMap';
 import type { InvoicingCompanyRecord } from '../evolu/companyMap';
 import type { CompanyContactRow } from './useCompanyContact';
@@ -87,6 +89,8 @@ export function useInvoiceDocument() {
   const documentNumber = ref('');
   const nextNumberPreview = ref('');
   const paidAt = ref<string | null>(null);
+  const paidPaymentMethod = ref<string | null>(null);
+  const serverBuyerSnapshot = ref<Record<string, unknown> | null>(null);
   const amountPaid = ref<number | null>(null);
   const bankMatch = ref<{
     match_type?: string;
@@ -211,10 +215,14 @@ export function useInvoiceDocument() {
     lines: [] as InvoiceLineForm[],
   });
 
-  const storedSignedDocument = computed(() =>
-    local && documentId.value && form.lines.some(line => line.unit_price < 0)
+  const persistedSignedDocument = computed(() =>
+    local && documentId.value && form.lines.some(line => isSignedInvoiceLine(line.quantity, line.unit_price))
       ? local.documentApi(documentId.value as DocumentId)
       : null,
+  );
+  const storedSignedDocument = computed(() =>
+    hasHistoricalSignedSource(existingLocalDocument(), form.lines.some(line => isSignedInvoiceLine(line.quantity, line.unit_price)))
+      ? persistedSignedDocument.value : null,
   );
 
   const selectedContact = computed(
@@ -282,6 +290,13 @@ export function useInvoiceDocument() {
   }
 
   function calcTotals() {
+    if (form.lines.some(line => isSignedInvoiceLine(line.quantity, line.unit_price))) {
+      const totals = calcDocumentTotals(payload().lines, form.discount_percent, defaultVat.value,
+        () => lineTaxApplies(), line => lineTaxRate(line as InvoiceLineForm),
+        appSettingsFromCompany(company.value).rounding_method,
+      );
+      return { subtotal: Number(totals.subtotal), tax: Number(totals.taxTotal), total: Number(totals.total) };
+    }
     let subtotal = 0;
     let tax = 0;
     for (const line of form.lines) {
@@ -322,6 +337,12 @@ export function useInvoiceDocument() {
   });
 
   function lineTotalDisplay(line: InvoiceLineForm) {
+    if (form.lines.some(item => isSignedInvoiceLine(item.quantity, item.unit_price))) {
+      return signedLineAmounts({ quantity: line.quantity || 0, unitPrice: line.unit_price || 0,
+        discount: line.line_discount_percent || 0, taxRate: lineTaxApplies() ? lineTaxRate(line) : 0 },
+        appSettingsFromCompany(company.value).rounding_method,
+      ).gross;
+    }
     const net =
       (line.quantity || 0) * (line.unit_price || 0) * (1 - (line.line_discount_percent || 0) / 100);
     const lineTax = lineTaxApplies() ? net * (lineTaxRate(line) / 100) : 0;
@@ -438,7 +459,7 @@ export function useInvoiceDocument() {
         line_discount_percent: l.line_discount_percent || 0,
         tax_rate: l.tax_rate ?? defaultVat.value,
         company_stock_item_id: l.company_stock_item_id || null,
-        company_warehouse_id: l.company_warehouse_id || null,
+        company_warehouse_id: l.quantity < 0 && !l.company_stock_item_id ? null : l.company_warehouse_id || null,
       })),
     };
   }
@@ -463,6 +484,10 @@ export function useInvoiceDocument() {
 
   function extractError(rawError: unknown) {
     companyLimitBlocked.value = false;
+    const localMessage = asApiError(rawError).message;
+    if (localMessage && ["positive_total_required", "positive_quantity_required", "nonzero_quantity_required", "deduction_stock_not_supported", "unsupported_negative_lines"].includes(localMessage)) {
+      return t(`invoicing.issue_error_${localMessage}`);
+    }
     if (rawError instanceof Error && rawError.message && !KNOWN_ISSUE_ERROR_CODES.has(rawError.message)) {
       return rawError.message;
     }
@@ -565,10 +590,13 @@ export function useInvoiceDocument() {
     nextNumberPreview.value = '';
     paymentToken.value = d.payment_token ?? null;
     paidAt.value = d.paid_at;
+    paidPaymentMethod.value = d.paid_payment_method ?? null;
+    serverBuyerSnapshot.value = d.buyer_snapshot ?? null;
     amountPaid.value = parseDocumentAmountPaid(d.amount_paid);
     bankMatch.value = d.bank_match ?? null;
     tagsInput.value = (d.tags || []).join(', ');
-    const hasDeductions = (d.lines || []).some((line: { unit_price: string }) => Number(line.unit_price) < 0);
+    const hasDeductions = (d.lines || []).some((line: { quantity: unknown; unit_price: unknown }) => isSignedInvoiceLine(line.quantity, line.unit_price));
+    const preserveHistoricalLines = hasHistoricalSignedSource(existingLocalDocument(), hasDeductions);
     Object.assign(form, {
       title: d.title || '',
       company_contact_id: d.company_contact_id || '',
@@ -598,7 +626,7 @@ export function useInvoiceDocument() {
         unit_price: parseFloat(l.unit_price),
         line_discount_percent: parseFloat(l.line_discount_percent) || 0,
         tax_rate: hasDeductions ? Number(l.tax_rate) : parseFloat(l.tax_rate) || defaultVat.value,
-        ...(hasDeductions ? { historical_line_total: Number(l.line_total) } : {}),
+        ...(preserveHistoricalLines ? { historical_line_total: Number(l.line_total) } : {}),
         company_stock_item_id: l.company_stock_item_id || null,
         company_warehouse_id: l.company_warehouse_id ?? null,
         stock_quantity_hint: null,
@@ -662,6 +690,9 @@ export function useInvoiceDocument() {
     documentNumber.value = '';
     nextNumberPreview.value = '';
     paidAt.value = null;
+    paidPaymentMethod.value = null;
+    serverBuyerSnapshot.value = null;
+    frozenIssuedContent.value = null;
     amountPaid.value = null;
     bankMatch.value = null;
     paymentToken.value = null;
@@ -852,6 +883,9 @@ export function useInvoiceDocument() {
    * of the contact or company row cannot rewrite an issued document.
    */
   const frozenIssuedContent = ref<IssuedDocumentSnapshotV1 | null>(null);
+  const previewContact = computed(() => resolveInvoicePreviewContact<Record<string, unknown>>(
+    documentStatus.value, selectedContact.value, frozenIssuedContent.value, serverBuyerSnapshot.value,
+  ));
 
   async function refreshFrozenIssuedContent() {
     frozenIssuedContent.value = null;
@@ -883,7 +917,7 @@ export function useInvoiceDocument() {
   }
 
   function buildCurrentEphemeralSnapshot() {
-    const storedDocument = storedSignedDocument.value;
+    const storedDocument = persistedSignedDocument.value;
     const p = storedDocument ? payloadFromApiDocument(storedDocument) : payload();
     // Snapshot payloads are loose records (frozen snapshots override with
     // partial data); buildEphemeralSnapshot takes Record<string, unknown>.
@@ -1044,6 +1078,7 @@ export function useInvoiceDocument() {
         local.evolu,
         documentId.value as DocumentId,
         toAppRows<EvoluDocumentRow>(local.documentRows.value),
+        "btcpay",
       );
       await local.refreshAll();
       const apiDoc = local.documentApi(documentId.value as DocumentId);
@@ -1253,6 +1288,7 @@ export function useInvoiceDocument() {
     loadNextNumberPreview,
     initNewDraft,
     paidAt,
+    paidPaymentMethod,
     amountPaid,
     bankMatch,
     company,
@@ -1272,6 +1308,7 @@ export function useInvoiceDocument() {
     usesStripeUsTax,
     form,
     selectedContact,
+    previewContact,
     neighborIndex,
     pdfUrl,
     btcPayUrl,

@@ -99,7 +99,7 @@ beforeEach(() => {
 });
 
 describe("applyReservedNumberToLocalDocument snapshot invariant", () => {
-    it("cannot apply an ordinary number to a pending migration or signed line", async () => {
+    it("cannot apply an ordinary number to a pending migration", async () => {
         const { applyReservedNumberToLocalDocument } = await import("@/evolu/documentCrud");
         const evolu = fakeEvolu();
         const pending = { ...draft, migrationFingerprint: "pending", migrationCompletedAt: null };
@@ -108,7 +108,35 @@ describe("applyReservedNumberToLocalDocument snapshot invariant", () => {
             { company, doc, allDocuments: [doc], lines, contact: null },
         );
         expect(apply(pending, [])).toEqual({ ok: false, error: "migration_pending" });
-        expect(apply(draft, [{ ...line, unitPrice: "-20.00" }])).toEqual({ ok: false, error: "negative_line_price" });
+        expect(evolu.calls).toEqual([]);
+    });
+
+    it("issues and freezes a positive invoice with a deduction", async () => {
+        const { applyReservedNumberToLocalDocument } = await import("@/evolu/documentCrud");
+        const evolu = fakeEvolu();
+        const doc = { ...draft, subtotal: "80.00", taxTotal: "16.00", total: "96.00" };
+        const deduction = { ...line, id: "line-2" as DocumentLineId, sortOrder: "1", unitPrice: "-20.0000", lineTotal: "-24.00" };
+        const result = applyReservedNumberToLocalDocument(
+            evolu as never, documentId, companyId, "invoice", "20260071", series, null,
+            { company: { ...company, jurisdiction: "eu_sk", vatPayer: 1, vatStatus: "payer" }, doc, allDocuments: [doc], lines: [line, deduction], contact: null },
+        );
+        expect(result.ok).toBe(true);
+        const snapshot = evolu.calls.find(call => call.table === "documentSnapshot")?.row;
+        const payload = JSON.parse(String(snapshot?.payloadJson));
+        expect(payload.document.total).toBe("96.00");
+        expect(payload.lines[1].unit_price).toBe("-20.0000");
+        expect(evolu.calls.some(call => call.table === "document" && call.row.status === "issued")).toBe(true);
+    });
+
+    it.each(["0.00", "-1.00", "Infinity"])("does not issue a deduction with total %s", async total => {
+        const { applyReservedNumberToLocalDocument } = await import("@/evolu/documentCrud");
+        const evolu = fakeEvolu();
+        const doc = { ...draft, total };
+        const result = applyReservedNumberToLocalDocument(
+            evolu as never, documentId, companyId, "invoice", "20260071", series, null,
+            { company, doc, allDocuments: [doc], lines: [{ ...line, unitPrice: "-20.00" }], contact: null },
+        );
+        expect(result).toEqual({ ok: false, error: "positive_total_required" });
         expect(evolu.calls).toEqual([]);
     });
 
@@ -250,15 +278,36 @@ describe("saveLocalDocument re-freeze", () => {
         existingLines: [] as EvoluDocumentLineRow[],
     };
 
-    it("blocks ordinary saves of signed lines and edits to a persisted pending migration", async () => {
+    it("blocks edits to a persisted pending migration", async () => {
         const { saveLocalDocument } = await import("@/evolu/documentCrud");
         const evolu = fakeEvolu();
-        const signed = { ...savePayload, lines: [{ ...savePayload.lines[0], unit_price: -20 }] };
-        expect(saveLocalDocument(evolu as never, companyId, signed, taxOptions))
-            .toEqual({ ok: false, error: "negative_line_price" });
         evolu.getQueryRows.mockReturnValue([{ ...draft, migrationFingerprint: "pending", migrationCompletedAt: null }] as never);
         expect(saveLocalDocument(evolu as never, companyId, savePayload, { ...taxOptions, documentId }))
             .toEqual({ ok: false, error: "migration_pending" });
+        expect(evolu.calls).toEqual([]);
+    });
+
+    it("saves a deduction with reduced VAT while retaining payment options", async () => {
+        const { saveLocalDocument } = await import("@/evolu/documentCrud");
+        const evolu = fakeEvolu();
+        const signed = { ...savePayload, lines: [
+            { ...savePayload.lines[0], unit_price: 100 },
+            { ...savePayload.lines[0], name: "Deduction", unit_price: -20 },
+        ] };
+        const result = saveLocalDocument(evolu as never, companyId, signed, taxOptions);
+        expect(result.ok).toBe(true);
+        const document = evolu.calls.find(call => call.table === "document")?.row;
+        expect(document).toMatchObject({ subtotal: "80.00", taxTotal: "16.00", total: "96.00" });
+        const lines = evolu.calls.filter(call => call.table === "documentLine");
+        expect(lines[1].row).toMatchObject({ unitPrice: "-20.0000", lineTotal: "-24.00" });
+    });
+
+    it.each([[0, "nonzero_quantity_required"], [-1, "unsupported_negative_lines"], [Number.POSITIVE_INFINITY, "nonzero_quantity_required"]] as const)("rejects a deduction with invalid quantity %s", async (quantity, error) => {
+        const { saveLocalDocument } = await import("@/evolu/documentCrud");
+        const evolu = fakeEvolu();
+        const signed = { ...savePayload, lines: [{ ...savePayload.lines[0], unit_price: -20, quantity }] };
+        expect(saveLocalDocument(evolu as never, companyId, signed, taxOptions))
+            .toEqual({ ok: false, error });
         expect(evolu.calls).toEqual([]);
     });
 

@@ -215,7 +215,7 @@ class CanonicalInvoiceBuilder
         $breakdownBuckets = [];
         $calculatesVat = $this->vatPolicy->calculatesVatAmounts($company, $contact);
         $includesDeductions = $calculatesVat && collect($lines)->contains(
-            fn (CanonicalInvoiceLine $line): bool => $line->unitPrice < 0,
+            fn (CanonicalInvoiceLine $line): bool => ($line->unitPrice < 0 || $line->quantity < 0),
         );
 
         foreach ($lines as $line) {
