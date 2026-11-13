@@ -1,5 +1,28 @@
 # Project state
 
+## Invoice corrections implementation published - 2026-11-13
+
+The owner explicitly authorizes push. Reviewed implementation commit
+`165d315e2023836d43af59a3c1d7647b0b56d491` is published without force to
+`origin/fix/invoicing-lines-payment-identities` in the owned Satflux repository.
+A fresh remote-ref read confirms that implementation SHA before this
+documentation-only publication follow-up. The scoped worktree tracks the matching
+remote branch; the primary checkout and unrelated edits remain preserved.
+
+The commit includes exactly 56 reviewed source/config files and 11 related
+documentation files. Source fingerprint remains
+`bb61393f355a0a4c7a94787819c7b75fcdc31c38950ec9a152f4e841de9e8a75`.
+Only final newlines in five new guides were normalized during publication.
+Prior independent QA/security and local test results remain attributed below;
+product tests were not repeated for unchanged source bytes.
+
+No PR, merge, release, existing-database migration, deployment or provider
+operation. CI success is not inferred from push; the CI workflow targets
+main/master pushes and pull requests. Next: PR review and separate merge/deployment
+approval, preserving the additive backend-first payment-provenance migration.
+Evidence: [implementation commit](https://github.com/webiumsk/satflux/commit/165d315e2023836d43af59a3c1d7647b0b56d491)
+and [implementation report](INVOICING_CORRECTIONS.md).
+
 ## Negative-quantity deductions and electronic export accepted locally - 2026-11-13
 
 The owner selects `-1 x 15` with positive unit price and positive invoice total.

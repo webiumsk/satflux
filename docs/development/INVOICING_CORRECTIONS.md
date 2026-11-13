@@ -1,5 +1,19 @@
 # Invoice deductions, payment provenance and buyer identity
 
+## Publication - 2026-11-13
+
+The owner authorizes push. Implementation commit
+`165d315e2023836d43af59a3c1d7647b0b56d491` publishes the 67 scoped files to
+`fix/invoicing-lines-payment-identities` in the owned Satflux repository.
+A fresh remote-ref read verifies that implementation commit. The source/config
+fingerprint is unchanged; only final guide newlines were normalized. This
+documentation-only follow-up records publication. Earlier uncommitted/no-push
+statements below describe their dated local milestones.
+
+No PR, merge, release, existing-database migration or deployment. CI success is not
+claimed from this push. Local validation and independent acceptance remain as
+recorded below; PR/CI review and deployment approval are separate next steps.
+
 ## Approved follow-up: negative quantity deductions - 2026-11-13
 
 The owner accepts entering a manual deduction as `-1 x 15` with a positive
@@ -243,9 +257,10 @@ CRDT atomicity are not claimed by these synthetic tests.
 
 ## Handoff
 
-Changes are retained uncommitted on `fix/invoicing-lines-payment-identities`
-in the durable `invoicing-corrections` worktree. Main's unrelated checkout and
-all owner previews/accounts/data are preserved. Private logs and review summaries
-are retained under `reviews/invoicing-corrections`. No commit, push, PR, merge,
-existing-database migration or deployment occurred. Next is owner review and
-separately authorized publication/deployment with the additive migration first.
+Implementation `165d315e` is published on `fix/invoicing-lines-payment-identities`;
+the durable `invoicing-corrections` worktree tracks that branch. Main's unrelated
+checkout and all owner previews/accounts/data are preserved. Private logs and
+review summaries are retained under `reviews/invoicing-corrections` and
+`reviews/invoicing-quantity`. No PR, merge, existing-database migration or
+deployment occurred. Next is PR/CI review and separately authorized deployment
+with the additive migration first.

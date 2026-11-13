@@ -1,5 +1,16 @@
 # Development roadmap
 
+## Invoice correction publication - 2026-11-13
+
+- [x] Owner authorizes push of the complete reviewed correction branch.
+- [x] Verify all 56 source/config hashes and stage exactly 67 scoped files.
+- [x] Publish implementation `165d315e` without force and verify its remote SHA.
+- [x] Record publication separately from existing local tests and deployment.
+- [ ] PR review and exact-commit CI verification.
+- [ ] Separate merge/deployment approval and backend-first additive migration.
+
+No PR, merge, existing-database migration or deployment in this push-only step.
+
 ## Negative-quantity deduction follow-up - 2026-11-13
 
 - [x] Accept `-1 x 15` manual deductions at positive prices/positive totals and

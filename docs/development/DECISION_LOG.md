@@ -1,5 +1,20 @@
 # Development decision log
 
+## 2026-11-13 - Publish the independently reviewed invoice corrections
+
+Treat the owner's push instruction as authorization to commit and publish the
+prepared Satflux correction branch. Preserve independent repositories, primary
+checkout edits and the reviewed source fingerprint. Publish only the 56 verified
+source/config paths and 11 related documents; normalize five guide EOFs without
+changing runtime behavior or repeating product tests.
+
+Implementation `165d315e2023836d43af59a3c1d7647b0b56d491` is pushed normally to
+`fix/invoicing-lines-payment-identities`, and a fresh remote read confirms that
+SHA before this documentation follow-up. Main owns publication and keeps the
+branch tracking its matching remote. The owner has not authorized merge or deploy;
+no PR, release, existing-database migration or provider operation is performed.
+CI success remains a separate exact-commit observation after PR creation.
+
 ## 2026-11-13 - Represent deductions with negative quantity and positive price
 
 The owner selects a manual `-1 x 15` line with a positive final invoice total.
