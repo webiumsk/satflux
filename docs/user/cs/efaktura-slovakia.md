@@ -53,9 +53,9 @@ Při nejistém výsledku opakujte pokus pouze tehdy, když jej Satflux nabídne.
 
 V nastavení e-fakturace stejné firmy zadejte **ePostman API klíč** z **Nastavení > API Klíče** příslušného produkčního nebo testovacího portálu a nastavení uložte. Je oddělený od SAPI Client ID a Client Secret. Satflux ho uchovává šifrovaně na serveru a nezahrnuje ho do sdílených firemních dat. Uchovávejte ho v soukromí. Odstranění API klíče vypne automatické kontroly stavů; příjem a odesílání přes SAPI používají původní přístupové údaje.
 
-Satflux pravidelně kontroluje odeslané doklady i při zavřeném prohlížeči. Panel dokladu zobrazuje doručení, potvrzení **C3 MLS** od příjemce a potvrzení daňového hlášení **C5** odděleně. U podporovaného dokladu můžete použít **Obnovit stav**, s krátkým odstupem mezi kontrolami. Otevřený viditelný panel průběžně načítá také uložené výsledky.
+Satflux pravidelně kontroluje odeslané doklady i při zavřeném prohlížeči. Panel dokladu zobrazuje doručení, potvrzení **C3 MLS** od příjemce a technický stav **C5** podle údajů poskytovatele odděleně. U podporovaného dokladu můžete použít **Obnovit stav**, s krátkým odstupem mezi kontrolami. Otevřený viditelný panel průběžně načítá také uložené výsledky.
 
-**UNCONFIRMED / TIMEOUT** znamená, že přístupový bod příjemce zprávu převzal, ale konečné MLS potvrzení nepřišlo včas. Samotný tento stav neznamená neúspěšné odeslání. Kladné C5 je potvrzení daňového hlášení podle údajů poskytovatele, nikoli obchodní schválení příjemcem. Při chybě kontroly zůstane viditelný poslední platný výsledek spolu s chybou kontroly. Expirovaný nebo odvolaný API klíč nahraďte v nastavení firmy.
+**UNCONFIRMED / TIMEOUT** znamená, že přístupový bod příjemce zprávu převzal, ale konečné MLS potvrzení nepřišlo včas. Samotný tento stav neznamená neúspěšné odeslání. Kladné C5 je technický stav uvedený poskytovatelem. Nepotvrzuje daňové schválení ani obchodní schválení příjemcem. Při chybě kontroly zůstane viditelný poslední platný výsledek spolu s chybou kontroly. Expirovaný nebo odvolaný API klíč nahraďte v nastavení firmy.
 
 U starších podání nemusí být automatická kontrola dostupná. Takové doklady zkontrolujte v portálu poskytovatele. Existující fakturu neposílejte znovu pouze kvůli získání stavu.
 

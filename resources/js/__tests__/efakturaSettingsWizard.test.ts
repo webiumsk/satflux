@@ -707,6 +707,51 @@ describe('eFaktura settings wizard', () => {
     wrapper.unmount();
   });
 
+  it.each([
+    ['server', 'replace'], ['server', 'remove'], ['local', 'replace'], ['local', 'remove'],
+  ])('allows an enabled Enterprise-only %s %s through native form validation', async (mode, operation) => {
+    state.localFirst = mode === 'local';
+    const company = skCompany({ ...connectedSettings(), efaktura_sapi_client_id: '',
+      efaktura_sapi_client_secret_set: false, efaktura_epostman_api_key_set: true });
+    state.localRows = [company];
+    const wrapper = mountForm(company);
+    const clientId = wrapper.get('#efaktura-client-id').element as HTMLInputElement;
+    const form = wrapper.get('form').element as HTMLFormElement;
+    expect(clientId.validity.valueMissing).toBe(true);
+    if (operation === 'replace') await wrapper.get('#efaktura-epostman-api-key').setValue('synthetic-enterprise-replacement');
+    else await wrapper.findAll('button').find((b) => b.text() === 'invoicing.efaktura_epostman_api_key_remove')!.trigger('click');
+    expect(clientId.required).toBe(false);
+    expect(form.checkValidity()).toBe(true);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith(mode === 'local' ? 'bridge-1' : 'company-1', expect.objectContaining({
+      efaktura_enabled: true, efaktura_epostman_api_key: operation === 'replace' ? 'synthetic-enterprise-replacement' : null,
+    }));
+    expect(company.app_settings).not.toHaveProperty('efaktura_epostman_api_key');
+    wrapper.unmount();
+  });
+
+  it('allows Enterprise setup after changing the environment without requesting unused SAPI credentials', async () => {
+    const wrapper = mountForm(skCompany({ ...connectedSettings(), efaktura_sapi_client_id: '', efaktura_sapi_client_secret_set: false }));
+    await wrapper.get('#efaktura-cpds-preset').setValue('epostman-production');
+    await wrapper.get('#efaktura-epostman-api-key').setValue('synthetic-enterprise-replacement');
+    expect((wrapper.get('form').element as HTMLFormElement).checkValidity()).toBe(true);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith('company-1', expect.objectContaining({
+      efaktura_sapi_base_url: 'https://postman.slovakodata.com', efaktura_epostman_api_key: 'synthetic-enterprise-replacement',
+    }));
+    wrapper.unmount();
+  });
+
+  it('still requires a replacement SAPI secret when entering a client ID during an Enterprise update', async () => {
+    const wrapper = mountForm(skCompany({ ...connectedSettings(), efaktura_sapi_client_id: '', efaktura_sapi_client_secret_set: false }));
+    await wrapper.get('#efaktura-client-id').setValue('synthetic-new-client');
+    await wrapper.get('#efaktura-epostman-api-key').setValue('synthetic-enterprise-replacement');
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain('efaktura_connection_new_credentials');
+    wrapper.unmount();
+  });
+
   it('keeps Enterprise input blank, omits unchanged keys, and sends explicit removal', async () => {
     vi.mocked(invoicingApi.companies.updateAppSettings).mockResolvedValue(skCompany({ ...connectedSettings(), efaktura_epostman_api_key_set: true }));
     const wrapper = mountForm(skCompany({ ...connectedSettings(), efaktura_epostman_api_key_set: true }));

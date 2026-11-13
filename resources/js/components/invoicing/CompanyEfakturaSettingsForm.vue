@@ -112,7 +112,7 @@
             type="text"
             class="invoicing-sf-input font-mono text-sm"
             autocomplete="off"
-            required
+            :required="!enterpriseKeyUpdate"
             @input="invalidateConnectionTest"
           />
         </div>
@@ -364,6 +364,8 @@ const inboundOnly = computed(() => props.mode === 'inbound_only');
 const isEpostman = computed(() => ['https://postman.slovakodata.com', 'https://testpostman.slovakodata.com']
   .includes(normalizeBaseUrl(form.efaktura_sapi_base_url)));
 const isEpostmanTest = computed(() => normalizeBaseUrl(form.efaktura_sapi_base_url) === 'https://testpostman.slovakodata.com');
+const enterpriseKeyUpdate = computed(() => isEpostman.value && !inboundOnly.value
+  && (form.efaktura_epostman_api_key === null || Boolean(form.efaktura_epostman_api_key)));
 const connectionChanged = computed(() => normalizeBaseUrl(form.efaktura_sapi_base_url)
   !== normalizeBaseUrl(String(props.company?.app_settings?.efaktura_sapi_base_url ?? ''))
   || form.efaktura_sapi_client_id.trim() !== String(props.company?.app_settings?.efaktura_sapi_client_id ?? '').trim());
@@ -829,7 +831,9 @@ async function save() {
       saveError.value = t('invoicing.company_save_validation_error');
       return;
     }
-    if (form.efaktura_enabled && (connectionChanged.value || credentialsDiscarded.value) && !form.efaktura_sapi_client_secret) {
+    if (form.efaktura_enabled && (connectionChanged.value || credentialsDiscarded.value)
+      && !form.efaktura_sapi_client_secret
+      && (!enterpriseKeyUpdate.value || form.efaktura_sapi_client_id.trim() !== '')) {
       saveError.value = t('invoicing.efaktura_connection_new_credentials');
       return;
     }

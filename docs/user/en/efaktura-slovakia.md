@@ -53,9 +53,9 @@ If the result is uncertain, retry only when Satflux offers it. The retry uses th
 
 In the same company's e-invoicing settings, enter an **ePostman API key** from **Settings > API Keys** in the matching production or test portal, then save. This is separate from the SAPI Client ID and Client Secret. Satflux stores this key encrypted on its server and does not include it in shared company data. Keep it private. Removing the API key disables automatic status checks; SAPI receiving and sending use their existing credentials.
 
-Satflux periodically checks sent documents, including while the browser is closed. The document panel shows delivery, the recipient's **C3 MLS** confirmation, and the **C5** tax-report confirmation separately. Use **Refresh status** for an eligible document to request a check, subject to a short cooldown. An open visible panel also reloads cached results.
+Satflux periodically checks sent documents, including while the browser is closed. The document panel shows delivery, the recipient's **C3 MLS** confirmation, and the provider-reported **C5** technical status separately. Use **Refresh status** for an eligible document to request a check, subject to a short cooldown. An open visible panel also reloads cached results.
 
-**UNCONFIRMED / TIMEOUT** means the receiving access point took the message but the final MLS confirmation did not arrive in time. It does not by itself mean sending failed. A positive C5 value is a provider-reported tax confirmation, not the recipient's business approval. On a failed check, the last valid observation remains visible with the check error. Replace an expired or revoked API key in the company settings.
+**UNCONFIRMED / TIMEOUT** means the receiving access point took the message but the final MLS confirmation did not arrive in time. It does not by itself mean sending failed. A positive C5 value is a technical status reported by the provider. It does not confirm tax approval or the recipient's business approval. On a failed check, the last valid observation remains visible with the check error. Replace an expired or revoked API key in the company settings.
 
 Automatic checks may be unavailable for older submissions. Use the provider portal for those documents. Do not resend an existing invoice just to obtain a status.
 
