@@ -1,5 +1,16 @@
 # Development roadmap
 
+## PR443 Laravel audit repair - 2026-11-13
+
+- [x] Confirm all 3,412 PHP tests, Pint and PHPStan pass after API inventory repair.
+- [x] Verify the separate new Composer audit finding and official patched version.
+- [x] Update only Laravel 12.69.3 to 12.71.0, retaining constraints/other packages.
+- [x] Independently accept actual new-vendor security, API/auth/payment/inventory
+  checks, strict Composer validation, clean audit and unchanged artifacts.
+- [ ] Publish the dependency correction and verify all gates on the exact new head.
+
+No advisory ignores, shared-vendor changes, merge or deployment.
+
 ## PR443 API inventory freshness repair - 2026-11-13
 
 - [x] Verify PHP CI failed before PHPUnit at the generated API freshness gate.

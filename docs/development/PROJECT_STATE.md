@@ -1,5 +1,35 @@
 # Project state
 
+## PR443 Laravel security maintenance accepted locally - 2026-11-13
+
+Run `43504563522` on `b8b75fd0` confirms the API inventory repair and passes all
+3,412 PHP tests / 18,797 assertions (31 skipped), Pint 1,171 and PHPStan.
+Its final Composer audit fails on GHSA-63hm-g96r-2m2q / CVE-2026-128083, newly
+published to GitHub's advisory database on Nov 13. The other four jobs pass.
+This separate failure concerns inherited Laravel 12.69.3, not PHPUnit assertions.
+
+The minimal lock update changes only `laravel/framework` to 12.71.0, official
+source/dist `64dc24f5d965add4d402b4b8b64f59b561112af5`. Root `^12.60` constraint,
+`composer.json`, the other 167 packages, application source and API artifacts
+remain unchanged. Lock SHA256:
+`b08a4a25f392f42287eec9a6382079174bb5876e2063914b57e83deb21f06f17`.
+The upstream maintenance interval includes changes beyond the advisory patch.
+
+Independent QA/security accept the update against an actual fresh 12.71.0 vendor.
+QA passes 95 / 750 plus notification 3 / 10; security passes 81 / 344 and 15
+passive process-result authentication assertions. Counts overlap. Strict Composer
+validation and locked audit pass without ignores, as do main full PHPStan and
+API freshness; all three schemas remain valid. Existing vendors/previews and
+global settings are untouched. New fixture uses synthetic no-network memory DB.
+No application Concurrency API use was found; exploitability is not established.
+
+Publish this dependency-only correction on the existing PR and verify exact new
+head CI, including its audit. No merge, release, existing-database migration or
+deployment. Evidence:
+[previous PHP run](https://github.com/webiumsk/satflux/actions/runs/43504563522/job/132158694259),
+[advisory](https://github.com/advisories/GHSA-63hm-g96r-2m2q) and private
+`reviews/invoicing-pr443-laravel`.
+
 ## PR443 API freshness preflight corrected locally - 2026-11-13
 
 Fresh PR metadata confirms owner-created PR443 open/unmerged at head

@@ -1,5 +1,25 @@
 # Development decision log
 
+## 2026-11-13 - Resolve the new Laravel audit finding with a minimal lock update
+
+After the API preflight repair, PR443's PHP tests and static/style checks pass.
+Composer then reports GHSA-63hm-g96r-2m2q for the inherited Laravel 12.69.3 lock.
+The advisory database adds the finding on Nov 13 and identifies 12.71.0 as the
+first patched Laravel 12 release. Preserve the existing audit gate.
+
+Update only the framework package within the current `^12.60` constraint. Keep
+other versions, Composer configuration, application code and API artifacts intact.
+Install with scripts/plugins disabled into a new private test fixture, preserving
+shared vendor trees, owner previews and global credentials/settings.
+
+QA/security independently accept lock SHA256
+`b08a4a25f392f42287eec9a6382079174bb5876e2063914b57e83deb21f06f17`,
+official source/dist `64dc24f5d965add4d402b4b8b64f59b561112af5` and actual
+12.71.0 runtime tests, authenticated process-result checks, API freshness and clean
+audit. No app Concurrency use is found; do not infer an exploitable route from the
+affected version alone. Full new-head CI is the next publication gate.
+No production upgrade, merge or deployment is performed.
+
 ## 2026-11-13 - Refresh the reviewed API source inventory after invoice changes
 
 PR443 PHP job fails before tests because the invoice model and Woo contact service

@@ -1,5 +1,63 @@
 # Invoice deductions, payment provenance and buyer identity
 
+## Laravel audit maintenance follow-up - 2026-11-13
+
+After the API inventory correction, CI run `43504563522` at head `b8b75fd0`
+passes the export gate, all 3,412 PHP tests / 18,797 assertions (31 skipped),
+Pint (1,171 files) and PHPStan. The final `composer audit` step then fails on
+GHSA-63hm-g96r-2m2q / CVE-2026-128083, newly published to the GitHub advisory
+database on 2026-11-13. This is a dependency audit finding, not a failed test.
+The other four CI jobs pass.
+
+The lock contains Laravel 12.69.3; the existing root constraint is `^12.60`.
+The first patched Laravel 12 release is 12.71.0. Primary sources:
+[GitHub advisory](https://github.com/advisories/GHSA-63hm-g96r-2m2q) and
+[official release](https://github.com/laravel/framework/releases/tag/v12.71.0).
+The advisory requires specific application Concurrency API and task-output
+handling prerequisites; no exploitable Satflux route is inferred from its version.
+
+Acceptance contract:
+
+- Resolve a targeted Laravel 12.71.0 maintenance update in `composer.lock`, keeping
+  `composer.json` and unrelated package versions unchanged where resolution permits.
+- Retain the audit gate and ordinary security checks. No advisory ignores,
+  disabled checks, major upgrade or unrelated runtime implementation changes.
+- Reuse existing Composer/PHP tooling. Keep scripts/plugins disabled during
+  resolution/install, use only public package sources, and install into a new
+  private test vendor fixture. Existing shared vendors, previews, credentials,
+  global configuration and production data remain untouched.
+- Independently review upstream provenance, the complete lock delta and actual
+  installed version. Verify testing, uncached configuration, memory SQLite and
+  array stores before tests. API inventory/specs and reviewed application source
+  must remain consistent; run relevant API/invoice/auth/payment/stock checks.
+- Push only the reviewed correction on the existing PR443 and verify the final
+  PHP job, including the audit, for its exact new head. No merge or deployment.
+
+Ownership: backend specialist owns only the lock and new private vendor fixture;
+security and QA reviewers are independent/read-only; main owns test orchestration,
+shared state and Git publication. Upstream repositories remain read-only.
+
+The candidate changes exactly one of 168 packages. The lock's root metadata,
+content hash, `composer.json` and all other package entries are unchanged.
+Official framework source/dist is `64dc24f5d965add4d402b4b8b64f59b561112af5`;
+lock SHA256 is `b08a4a25f392f42287eec9a6382079174bb5876e2063914b57e83deb21f06f17`.
+The framework's own dev-requirement metadata changes do not change the project's
+installed PHPStan/Testbench dependencies. The maintenance interval includes other
+upstream changes, so package isolation is not a claim of a one-function patch.
+
+Independent actual-vendor acceptance: QA 95 PHP / 750 assertions and notification
+3 / 10; security 81 / 344 and 15 passive process-result authentication assertions.
+Strict Composer validation, locked audit, main full PHPStan, API freshness and
+three schema validations pass without added ignores. Application source and all
+four API artifacts are byte-identical to the preceding correction. Four existing
+vendor metadata hashes remain unchanged. Tests use verified synthetic, uncached
+memory SQLite and array drivers, with Laravel Cloud disabled.
+
+The fresh vendor and review evidence are retained privately under
+`reviews/invoicing-pr443-laravel`. Publication uses the same PR443, followed by
+fresh CI verification for its new head. No provider call, production dependency
+upgrade, merge or deployment occurs in this repair.
+
 ## PR443 PHP CI preflight repair - 2026-11-13
 
 Run `43502893971` at PR head `c71c4aed` fails before PHPUnit at
