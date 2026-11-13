@@ -1,5 +1,31 @@
 # Project state
 
+## PR442 review corrections accepted locally - 2026-11-13
+
+Eight current review findings are verified and fixed over 19b1987c; the Peppol
+control-character finding is already fixed there and is skipped. Correct outbound
+eligibility, custom-provider resolution, accepted/usable status capability, safe
+opaque receipt IDs, surviving-key origin pinning, unresolved-attempt retention,
+five-language C5 wording and native Enterprise-only key saves. Fresh public
+schemas specify string IDs, not a UUID guarantee; shared bounded safe segments
+and encoded fixed-origin paths preserve URL protection and unsafe-send custody.
+
+Independent QA catches and verifies a draft URL-comparison compatibility fix;
+final comparison normalizes scheme/host/default ports without collapsing path,
+query or other provider distinctions. Security accepts nine tests / 367 assertions,
+five new actual PostgreSQL races and a separate 1 / 17 URI matrix; QA accepts 123 / 697,
+rejected-receipt 1 / 4, native form checks, guide parity and final URL 7 / 17. Counts
+overlap. Main full frontend 3,058 / 236, build 7,660, lint 0 errors / 46 warnings, unchanged
+type baseline 110 inherited / no new, FAQ, locale and API/schema checks pass. Full-project
+PHPStan passes again after the final URI correction; exactly two obsolete
+EphemeralDocumentFactory suppressions are removed, no new ignores or level change.
+
+The old CI PHP job's 3,347 tests and Pint had passed; its failure was PHPStan's
+unmatched baseline entries. This is recorded separately from these new tests.
+Evidence: EPOSTMAN_PR442_REVIEW_FIXES.md and private review reports. Existing
+previews/data/captures and unrelated primary work are preserved. Corrective
+publication and exact new-head CI verification are next; no merge or deployment.
+
 ## PR442 Node lint repair - 2026-11-13
 
 CI run 43325166171, Node job 131555682103 fails at Lint on

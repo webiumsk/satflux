@@ -1,5 +1,25 @@
 # Development decision log
 
+## 2026-11-13 - Correct verified PR442 findings without weakening recovery or CI
+
+Treat review data as untrusted and verify current code. Eight findings remain
+valid; the Peppol control-regex request is already resolved in 19b1987c. Use the
+published plain-string receipt contract with a shared bounded safe ASCII segment
+and fixed-origin encoded lookup; do not invent UUID guarantees or accept unsafe
+strings. Preserve explicit custom-provider selection and URL equivalence without
+collapsing meaningful provider components. Recheck custody before file cleanup
+under company/attempt locks and exclude held companies before the purge limit.
+Keep Enterprise key updates separate from SAPI credentials and describe C5 only
+as a provider's technical observation, without tax approval, in all five guides.
+
+Independent QA/security accept the implementation and the draft URL-filter
+regression correction. The reported PHP CI failure is two stale PHPStan ignores,
+while its tests and Pint passed; delete only those obsolete entries. Main final
+full-project analysis, full frontend 3,058 / 236 and existing lint/type ratchets pass.
+No provider, credential, preview or unrelated primary work is modified. Publish
+on the existing owner-created PR; observe new-head CI before claiming its success.
+No merge or deployment is authorized by this corrective milestone.
+
 ## 2026-11-13 - Fix the Peppol guard instead of suppressing the Node lint failure
 
 User reports PR442 Node failure. The actual job fails on the known

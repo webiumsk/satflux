@@ -1,5 +1,21 @@
 # Development roadmap
 
+## PR442 verified review fixes - 2026-11-13
+
+- [x] Verify all nine findings against 19b1987c; fix eight, skip the already-fixed
+  Peppol character-code guard with its exact revision reason.
+- [x] Preserve Enterprise eligibility, custom-provider URL equivalence, safe
+  opaque-ID lookup and retry custody, accepted-only capability and key-origin pin.
+- [x] Hold unresolved companies before retention batching and locked cleanup;
+  clarify C5 in five guides and allow native Enterprise-only key updates.
+- [x] Independently accept QA/security, including five new PostgreSQL races and
+  the URL-comparison compatibility regression; full frontend 3,058 / 236 passes.
+- [x] Fix actual PHP CI blocker by deleting two obsolete baseline entries; final
+  full-project PHPStan, lint/type/build/API/locale/FAQ checks pass.
+- [ ] Push corrections on existing PR442 and verify exact-head Node and PHP CI.
+
+No authenticated provider operation, preview reset, merge or deployment.
+
 ## PR442 Node CI correction - 2026-11-13
 
 - [x] Verify actual failed Node Lint log and fix the equivalent ASCII guard.
