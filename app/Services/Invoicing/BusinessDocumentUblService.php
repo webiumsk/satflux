@@ -75,22 +75,24 @@ class BusinessDocumentUblService
         $this->element($writer, 'cbc', 'ProfileID', 'urn:fdc:peppol.eu:2017:poacc:billing:01:1.0');
         $this->element($writer, 'cbc', 'ID', (string) $document->number);
         $this->element($writer, 'cbc', 'IssueDate', $document->issue_date?->format('Y-m-d') ?? now()->format('Y-m-d'));
-        $this->element($writer, 'cbc', 'DueDate', $document->due_date?->format('Y-m-d'));
-        $this->element($writer, 'cbc', 'DocumentCurrencyCode', $canonical->currency);
-        // BT-10 is mandatory in XRechnung (BR-DE-15); Peppol keeps the
-        // optional variable-symbol behavior.
-        $this->element($writer, 'cbc', 'BuyerReference', $this->xrechnung
-            ? DeXRechnungProfile::buyerReference($document)
-            : $document->variable_symbol);
+        // UBL 2.1 CreditNote has no document-level DueDate. Both document
+        // types place their type code and notes before the currency/reference.
         if ($isCreditNote) {
             $this->element($writer, 'cbc', 'CreditNoteTypeCode', $this->invoiceTypeCode($document->type));
         } else {
+            $this->element($writer, 'cbc', 'DueDate', $document->due_date?->format('Y-m-d'));
             $this->element($writer, 'cbc', 'InvoiceTypeCode', $this->invoiceTypeCode($document->type));
         }
 
         if ($document->note_footer) {
             $this->element($writer, 'cbc', 'Note', $document->note_footer);
         }
+        $this->element($writer, 'cbc', 'DocumentCurrencyCode', $canonical->currency);
+        // BT-10 is mandatory in XRechnung (BR-DE-15); Peppol keeps the
+        // optional variable-symbol behavior.
+        $this->element($writer, 'cbc', 'BuyerReference', $this->xrechnung
+            ? DeXRechnungProfile::buyerReference($document)
+            : $document->variable_symbol);
 
         $this->party($writer, 'AccountingSupplierParty', $canonical->company);
         if ($canonical->contact) {
@@ -102,7 +104,7 @@ class BusinessDocumentUblService
         }
 
         $this->taxTotal($writer, $canonical);
-        $this->legalMonetaryTotal($writer, $canonical);
+        $this->legalMonetaryTotal($writer, $canonical, (float) ($document->amount_paid ?? 0));
 
         foreach ($canonical->lines as $index => $line) {
             $this->invoiceLine($writer, $line, $index + 1, $canonical, $isCreditNote);
@@ -197,12 +199,15 @@ class BusinessDocumentUblService
         $writer->endElement();
     }
 
-    protected function legalMonetaryTotal(XMLWriter $writer, CanonicalInvoice $canonical): void
+    protected function legalMonetaryTotal(XMLWriter $writer, CanonicalInvoice $canonical, float $prepaid = 0): void
     {
         $writer->startElementNs('cac', 'LegalMonetaryTotal', null);
         $this->amountElement($writer, 'cbc', 'LineExtensionAmount', $canonical->subtotal, $canonical->currency);
         $this->amountElement($writer, 'cbc', 'TaxExclusiveAmount', $canonical->subtotal, $canonical->currency);
         $this->amountElement($writer, 'cbc', 'TaxInclusiveAmount', $canonical->total, $canonical->currency);
+        if ($prepaid > 0) {
+            $this->amountElement($writer, 'cbc', 'PrepaidAmount', $this->formatMoney($prepaid), $canonical->currency);
+        }
         $this->amountElement($writer, 'cbc', 'PayableAmount', $canonical->amountDue, $canonical->currency);
         $writer->endElement();
     }
@@ -222,10 +227,10 @@ class BusinessDocumentUblService
         $this->amountElement($writer, 'cbc', 'LineExtensionAmount', $line->netAmount, $canonical->currency);
 
         $writer->startElementNs('cac', 'Item', null);
-        $this->element($writer, 'cbc', 'Name', $line->name);
         if ($line->description) {
             $this->element($writer, 'cbc', 'Description', $line->description);
         }
+        $this->element($writer, 'cbc', 'Name', $line->name);
         $writer->startElementNs('cac', 'ClassifiedTaxCategory', null);
         $this->element($writer, 'cbc', 'ID', $this->taxScenario['category'] ?? ((float) $line->taxRate > 0 ? 'S' : 'Z'));
         $this->element($writer, 'cbc', 'Percent', $this->formatRate($line->taxRate));
@@ -311,17 +316,19 @@ class BusinessDocumentUblService
         $legalEntity = $this->xrechnung
             ? DeXRechnungProfile::legalEntityId($entity)
             : SkUblProfile::resolveLegalEntityId($entity);
+        // BT-27/BT-44 legal names are mandatory independently of whether
+        // an optional legal registration identifier is available.
+        $writer->startElementNs('cac', 'PartyLegalEntity', null);
+        $this->element($writer, 'cbc', 'RegistrationName', SkUblProfile::partyDisplayName($entity));
         if ($legalEntity !== null) {
-            $writer->startElementNs('cac', 'PartyLegalEntity', null);
-            $this->element($writer, 'cbc', 'RegistrationName', SkUblProfile::partyDisplayName($entity));
             $writer->startElementNs('cbc', 'CompanyID', null);
             if ($legalEntity['scheme'] !== null) {
                 $writer->writeAttribute('schemeID', $legalEntity['scheme']);
             }
             $writer->text($legalEntity['id']);
             $writer->endElement();
-            $writer->endElement();
         }
+        $writer->endElement();
 
         // BG-6 seller contact - required by XRechnung (BR-DE-2/5/6).
         if ($this->xrechnung && $wrapper === 'AccountingSupplierParty' && $entity instanceof Company) {

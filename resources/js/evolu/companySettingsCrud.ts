@@ -5,11 +5,15 @@ import type { CompanyEfakturaSettingsState } from "@/composables/useCompanyEfakt
 import { allCompaniesDetailQuery } from "./client";
 import type { CompanyId, InvoicingLocalSchema } from "./schema";
 
+import { withoutLocalEpostmanSecrets } from "../utils/epostmanStatus";
+
 const Opt4000 = maxLength(4000)(NonEmptyString);
 
 type LocalEfakturaSettingsPatch = Partial<CompanyEfakturaSettingsState> & {
     efaktura_inbound_bridge_sync_pending?: boolean;
     efaktura_inbound_bridge_sync_id?: string | null;
+    efaktura_epostman_api_key_set?: boolean;
+    efaktura_epostman_key_save_pending?: boolean;
 };
 
 function parseSettingsJson(json: string | null | undefined): Record<string, unknown> {
@@ -157,7 +161,15 @@ function mergeEfakturaSettings(
         merged.efaktura_sapi_client_secret_set = true;
     }
 
-    return merged;
+    // Never place Enterprise credentials in a company row: shared owners can read it.
+    if (partial.efaktura_sapi_base_url !== undefined
+        && normalizeUrl(partial.efaktura_sapi_base_url) !== normalizeUrl(existing.efaktura_sapi_base_url)
+        || partial.efaktura_peppol_participant_id !== undefined
+        && partial.efaktura_peppol_participant_id !== existing.efaktura_peppol_participant_id) {
+        merged.efaktura_epostman_api_key_set = false;
+    }
+
+    return withoutLocalEpostmanSecrets(merged);
 }
 
 export function updateLocalEfakturaSettings(

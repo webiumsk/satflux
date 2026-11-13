@@ -383,7 +383,7 @@ describe('eFaktura settings wizard', () => {
     expect((receiving?.element as HTMLInputElement).checked).toBe(true);
   });
 
-  it('offers fixed ePostman production and test choices and suppresses unsupported sending', async () => {
+  it('offers fixed ePostman production and test choices and keeps automatic sending disabled', async () => {
     state.presets = [
       { id: 'epostman-production', name: 'ePostman', base_url: 'https://postman.slovakodata.com' },
       { id: 'epostman-test', name: 'ePostman test', base_url: 'https://testpostman.slovakodata.com' },
@@ -392,7 +392,7 @@ describe('eFaktura settings wizard', () => {
     await wrapper.find('#efaktura-cpds-preset').setValue('epostman-production');
     expect(wrapper.find('#efaktura-base-url').exists()).toBe(false);
     expect(wrapper.find('[data-testid="epostman-setup"]').exists()).toBe(true);
-    expect(wrapper.text()).toContain('efaktura_epostman_receiving_only');
+    expect(wrapper.text()).toContain('efaktura_epostman_manual_sending');
     expect(wrapper.findAll('label').some((label) => label.text().includes('efaktura_auto_send'))).toBe(false);
     expect(wrapper.text()).not.toContain('efaktura_epostman_test_notice');
     await wrapper.find('#efaktura-cpds-preset').setValue('epostman-test');
@@ -416,12 +416,20 @@ describe('eFaktura settings wizard', () => {
     wrapper.unmount();
   });
 
-  it.each(['https://postman.slovakodata.com:443', 'https://POSTMAN.SLOVAKODATA.COM/'])('recognizes the canonical ePostman origin without enabling sending: %s', async (baseUrl) => {
+  it('keeps the receiving-only company mode clear after manual sending is added', async () => {
+    const wrapper = mountForm(skCompany(connectedSettings()), 'inbound_only');
+    expect(wrapper.text()).toContain('efaktura_epostman_inbound_only');
+    expect(wrapper.text()).not.toContain('efaktura_epostman_manual_sending');
+    expect(wrapper.findAll('label').some((label) => label.text().includes('efaktura_auto_send'))).toBe(false);
+    wrapper.unmount();
+  });
+
+  it.each(['https://postman.slovakodata.com:443', 'https://POSTMAN.SLOVAKODATA.COM/'])('recognizes the canonical ePostman origin without enabling automatic sending: %s', async (baseUrl) => {
     state.presets = [{ id: 'epostman-production', name: 'ePostman', base_url: 'https://postman.slovakodata.com' }];
     const wrapper = mountForm(skCompany({ efaktura_sapi_base_url: baseUrl, efaktura_auto_send: true }));
     await nextTick();
     expect((wrapper.find('#efaktura-cpds-preset').element as HTMLSelectElement).value).toBe('epostman-production');
-    expect(wrapper.find('[data-testid="epostman-receiving-only"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="epostman-manual-sending"]').exists()).toBe(true);
     expect(wrapper.findAll('label').some((label) => label.text().includes('efaktura_auto_send'))).toBe(false);
     expect(wrapper.find('#efaktura-peppol-id').exists()).toBe(false);
     wrapper.unmount();
@@ -687,6 +695,190 @@ describe('eFaktura settings wizard', () => {
     expect(state.localRows[0].app_settings.efaktura_inbound_bridge_sync_pending).toBe(false);
     expect(vi.mocked(invoicingApi.companies.updateAppSettings).mock.lastCall?.[1]).toMatchObject({ efaktura_enabled: false, efaktura_inbound_enabled: false });
     expect(wrapper.find('[data-testid="efaktura-sync-retry-alert"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it.each([' ', ' key', 'key ', 'key value', 'á'])('rejects invalid Enterprise keys before any save (%j)', async (key) => {
+    const wrapper = mountForm(skCompany(connectedSettings()));
+    await wrapper.get('#efaktura-epostman-api-key').setValue(key);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    expect(updateLocalEfakturaSettings).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it.each([
+    ['server', 'replace'], ['server', 'remove'], ['local', 'replace'], ['local', 'remove'],
+  ])('allows an enabled Enterprise-only %s %s through native form validation', async (mode, operation) => {
+    state.localFirst = mode === 'local';
+    const company = skCompany({ ...connectedSettings(), efaktura_sapi_client_id: '',
+      efaktura_sapi_client_secret_set: false, efaktura_epostman_api_key_set: true });
+    state.localRows = [company];
+    const wrapper = mountForm(company);
+    const clientId = wrapper.get('#efaktura-client-id').element as HTMLInputElement;
+    const form = wrapper.get('form').element as HTMLFormElement;
+    expect(clientId.validity.valueMissing).toBe(true);
+    if (operation === 'replace') await wrapper.get('#efaktura-epostman-api-key').setValue('synthetic-enterprise-replacement');
+    else await wrapper.findAll('button').find((b) => b.text() === 'invoicing.efaktura_epostman_api_key_remove')!.trigger('click');
+    expect(clientId.required).toBe(false);
+    expect(form.checkValidity()).toBe(true);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith(mode === 'local' ? 'bridge-1' : 'company-1', expect.objectContaining({
+      efaktura_enabled: true, efaktura_epostman_api_key: operation === 'replace' ? 'synthetic-enterprise-replacement' : null,
+    }));
+    expect(company.app_settings).not.toHaveProperty('efaktura_epostman_api_key');
+    wrapper.unmount();
+  });
+
+  it('allows Enterprise setup after changing the environment without requesting unused SAPI credentials', async () => {
+    const wrapper = mountForm(skCompany({ ...connectedSettings(), efaktura_sapi_client_id: '', efaktura_sapi_client_secret_set: false }));
+    await wrapper.get('#efaktura-cpds-preset').setValue('epostman-production');
+    await wrapper.get('#efaktura-epostman-api-key').setValue('synthetic-enterprise-replacement');
+    expect((wrapper.get('form').element as HTMLFormElement).checkValidity()).toBe(true);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith('company-1', expect.objectContaining({
+      efaktura_sapi_base_url: 'https://postman.slovakodata.com', efaktura_epostman_api_key: 'synthetic-enterprise-replacement',
+    }));
+    wrapper.unmount();
+  });
+
+  it('still requires a replacement SAPI secret when entering a client ID during an Enterprise update', async () => {
+    const wrapper = mountForm(skCompany({ ...connectedSettings(), efaktura_sapi_client_id: '', efaktura_sapi_client_secret_set: false }));
+    await wrapper.get('#efaktura-client-id').setValue('synthetic-new-client');
+    await wrapper.get('#efaktura-epostman-api-key').setValue('synthetic-enterprise-replacement');
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain('efaktura_connection_new_credentials');
+    wrapper.unmount();
+  });
+
+  it('keeps Enterprise input blank, omits unchanged keys, and sends explicit removal', async () => {
+    vi.mocked(invoicingApi.companies.updateAppSettings).mockResolvedValue(skCompany({ ...connectedSettings(), efaktura_epostman_api_key_set: true }));
+    const wrapper = mountForm(skCompany({ ...connectedSettings(), efaktura_epostman_api_key_set: true }));
+    expect((wrapper.get('#efaktura-epostman-api-key').element as HTMLInputElement).value).toBe('');
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(vi.mocked(invoicingApi.companies.updateAppSettings).mock.calls[0][1]).not.toHaveProperty('efaktura_epostman_api_key');
+    await wrapper.findAll('button').find((b) => b.text() === 'invoicing.efaktura_epostman_api_key_remove')!.trigger('click');
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(vi.mocked(invoicingApi.companies.updateAppSettings).mock.calls[1][1]).toHaveProperty('efaktura_epostman_api_key', null);
+    wrapper.unmount();
+  });
+
+  it('mirrors an enabled module and transient Enterprise key even when receiving is off', async () => {
+    state.localFirst = true;
+    state.localRows = [skCompany({ ...connectedSettings(), efaktura_inbound_enabled: false,
+      efaktura_sapi_client_secret: 'synthetic-sapi-secret' })];
+    vi.mocked(invoicingApi.companies.updateAppSettings).mockResolvedValue(skCompany({ efaktura_epostman_api_key_set: true }));
+    const wrapper = mountForm(state.localRows[0]);
+    await wrapper.get('#efaktura-epostman-api-key').setValue('synthetic-enterprise-key');
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith('bridge-1', expect.objectContaining({
+      efaktura_enabled: true, efaktura_inbound_enabled: false,
+      efaktura_sapi_client_secret: 'synthetic-sapi-secret', efaktura_epostman_api_key: 'synthetic-enterprise-key',
+    }));
+    expect(state.localRows[0].app_settings).not.toHaveProperty('efaktura_epostman_api_key');
+    expect(state.localRows[0].app_settings.efaktura_epostman_api_key_set).toBe(true);
+    expect((wrapper.get('#efaktura-epostman-api-key').element as HTMLInputElement).value).toBe('');
+    expect(JSON.stringify(wrapper.emitted('updated'))).not.toContain('synthetic-enterprise-key');
+    wrapper.unmount();
+  });
+
+  it('keeps a failed key transient for same-view retry and requires re-entry after remount', async () => {
+    state.localFirst = true;
+    state.localRows = [skCompany({ ...connectedSettings(), efaktura_sapi_client_secret: 'synthetic-sapi-secret' })];
+    vi.mocked(invoicingApi.companies.updateAppSettings).mockRejectedValueOnce(new Error('synthetic bridge failure'));
+    let wrapper = mountForm(state.localRows[0]);
+    await wrapper.get('#efaktura-epostman-api-key').setValue('synthetic-enterprise-key');
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect((wrapper.get('#efaktura-epostman-api-key').element as HTMLInputElement).value).toBe('synthetic-enterprise-key');
+    expect(JSON.stringify(state.localRows[0].app_settings)).not.toContain('synthetic-enterprise-key');
+    expect(state.localRows[0].app_settings.efaktura_epostman_key_save_pending).toBe(true);
+    wrapper.unmount(); wrapper = mountForm(state.localRows[0]);
+    expect((wrapper.get('#efaktura-epostman-api-key').element as HTMLInputElement).value).toBe('');
+    expect(wrapper.text()).toContain('efaktura_epostman_api_key_reenter');
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledTimes(1);
+    expect(state.localRows[0].app_settings.efaktura_inbound_bridge_sync_pending).toBe(true);
+    await wrapper.get('#efaktura-epostman-api-key').setValue('synthetic-reentered-key');
+    vi.mocked(invoicingApi.companies.updateAppSettings).mockResolvedValue(skCompany({ efaktura_epostman_api_key_set: true }));
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(state.localRows[0].app_settings.efaktura_epostman_key_save_pending).toBe(false);
+    expect(state.localRows[0].app_settings.efaktura_epostman_api_key_set).toBe(true);
+    expect(JSON.stringify(state.localRows[0].app_settings)).not.toContain('synthetic-reentered-key');
+    wrapper.unmount();
+  });
+
+  it('discards a transient Enterprise replacement on company switch and fences the old server response', async () => {
+    let finish!: (value: Record<string, unknown>) => void;
+    vi.mocked(invoicingApi.companies.updateAppSettings).mockImplementationOnce(() => new Promise((done) => { finish = done; }) as never);
+    const wrapper = mountForm(skCompany(connectedSettings()));
+    await wrapper.get('#efaktura-epostman-api-key').setValue('synthetic-old-company-key');
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    await wrapper.setProps({ companyId: 'company-2', company: { ...skCompany(connectedSettings()), id: 'company-2' } });
+    expect((wrapper.get('#efaktura-epostman-api-key').element as HTMLInputElement).value).toBe('');
+    finish(skCompany({ efaktura_epostman_api_key_set: true })); await flushPromises();
+    expect(wrapper.text()).not.toContain('efaktura_epostman_api_key_saved');
+    expect(wrapper.emitted('updated')).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it('disables after an interrupted key replacement and retains re-entry before re-enabling', async () => {
+    state.localFirst = true;
+    const company = skCompany({ ...connectedSettings(), efaktura_epostman_api_key_set: true,
+      efaktura_epostman_key_save_pending: true, efaktura_inbound_bridge_sync_pending: true,
+      efaktura_sapi_client_secret: 'synthetic-stored-secret' });
+    state.localRows = [company];
+    const wrapper = mountForm(company);
+    await wrapper.get('input[type="checkbox"]').setValue(false);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith('bridge-1', expect.objectContaining({
+      efaktura_enabled: false, efaktura_inbound_enabled: false,
+    }));
+    expect(vi.mocked(invoicingApi.companies.updateAppSettings).mock.lastCall?.[1]).not.toHaveProperty('efaktura_epostman_api_key');
+    expect(company.app_settings.efaktura_inbound_bridge_sync_pending).toBe(false);
+    expect(company.app_settings.efaktura_epostman_key_save_pending).toBe(true);
+    await wrapper.get('input[type="checkbox"]').setValue(true);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledTimes(1);
+    expect(company.app_settings.efaktura_inbound_bridge_sync_pending).toBe(true);
+    expect(wrapper.text()).toContain('efaktura_epostman_api_key_reenter');
+    await wrapper.get('#efaktura-epostman-api-key').setValue('synthetic-reentered-key');
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledTimes(2);
+    expect(company.app_settings.efaktura_epostman_key_save_pending).toBe(false);
+    wrapper.unmount();
+  });
+
+  it.each([false, true])('disables a local bridge with invalid DIČ, including explicit key removal (%s)', async (removeKey) => {
+    state.localFirst = true;
+    const company = { ...skCompany({ ...connectedSettings(), efaktura_epostman_api_key_set: true,
+      efaktura_sapi_client_secret: 'synthetic-stored-secret' }), tax_id: null };
+    state.localRows = [company];
+    const wrapper = mountForm(company);
+    if (removeKey) {
+      await wrapper.findAll('button').find((b) => b.text() === 'invoicing.efaktura_epostman_api_key_remove')!.trigger('click');
+    }
+    await wrapper.get('input[type="checkbox"]').setValue(false);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.get).not.toHaveBeenCalled();
+    expect(invoicingApi.companies.update).not.toHaveBeenCalled();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith('bridge-1', expect.objectContaining({
+      efaktura_enabled: false, efaktura_inbound_enabled: false,
+      ...(removeKey ? { efaktura_epostman_api_key: null } : {}),
+    }));
+    expect(company.app_settings.efaktura_inbound_bridge_sync_pending).toBe(false);
+    expect(state.notifySaved).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
+
+  it('sends explicit Enterprise key removal for a disabled provider change', async () => {
+    const wrapper = mountForm(skCompany({ ...connectedSettings(), efaktura_epostman_api_key_set: true }));
+    await wrapper.get('#efaktura-cpds-preset').setValue('epostman-production');
+    await wrapper.find('input[type="checkbox"]').setValue(false);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith('company-1', expect.objectContaining({
+      efaktura_enabled: false, efaktura_epostman_api_key: null,
+    }));
     wrapper.unmount();
   });
 

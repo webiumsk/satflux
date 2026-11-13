@@ -3,7 +3,7 @@ import { formatPeppolEndpoint, resolvePeppolEndpoint } from '../utils/peppolEndp
 
 // Parity table with the PHP source of truth (SkUblProfile::resolveEndpoint,
 // covered by SkUblProfileTest + CompanyEfakturaSettingsTest) - the ordering
-// must stay identical: explicit ID > SK DIC (0245) > ICO (0208).
+// must stay identical: explicit ID > SK DIC (0245) > SK ICO (0158).
 describe('resolvePeppolEndpoint', () => {
   it('derives 0245 from the SK company DIC', () => {
     expect(
@@ -15,14 +15,14 @@ describe('resolvePeppolEndpoint', () => {
     ).toEqual({ scheme: '0245', id: '2023980035' });
   });
 
-  it('falls back to 0208 from the ICO without a DIC', () => {
+  it('falls back to 0158 from the Slovak ICO without a DIC', () => {
     expect(
       resolvePeppolEndpoint({
         tax_id: null,
         registration_number: '47615681',
         jurisdiction: 'eu_sk',
       }),
-    ).toEqual({ scheme: '0208', id: '47615681' });
+    ).toEqual({ scheme: '0158', id: '47615681' });
   });
 
   it('uses the jurisdiction as the company country fallback', () => {
@@ -65,5 +65,20 @@ describe('resolvePeppolEndpoint', () => {
   it('formats an endpoint as scheme:id', () => {
     expect(formatPeppolEndpoint({ scheme: '0245', id: '2023980035' })).toBe('0245:2023980035');
     expect(formatPeppolEndpoint(null)).toBeNull();
+  });
+
+  it.each(['9950:sk1234567890', '9950:SK1234567890', '0088:abc-123_456.789'])('preserves explicit opaque identifier %s', (value) => {
+    expect(formatPeppolEndpoint(resolvePeppolEndpoint({ peppol_participant_id: value, country: 'SK' }))).toBe(value);
+  });
+
+  it.each(['bad:12345', '245:12345', '0245:', '9950:sk12:34', '9950:sk12 34', '9950:sk12\t34', '9950:sk12/34', `9950:${'a'.repeat(129)}`])('rejects malformed explicit address %s instead of deriving another address', (value) => {
+    expect(resolvePeppolEndpoint({ peppol_participant_id: value, tax_id: '9999999999', country: 'SK' })).toBeNull();
+  });
+
+  it.each([...Array.from({ length: 32 }, (_, code) => code), 127])('rejects ASCII control code %i even at a trimmed boundary', (code) => {
+    const control = String.fromCharCode(code);
+    for (const value of [`${control}9950:sk1234567890`, `9950:sk1234567890${control}`, `9950:sk12${control}34567890`]) {
+      expect(resolvePeppolEndpoint({ peppol_participant_id: value, tax_id: '9999999999', country: 'SK' })).toBeNull();
+    }
   });
 });

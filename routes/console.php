@@ -95,6 +95,11 @@ if (config('regwatch.enabled')) {
 }
 
 if (config('efaktura.enabled')) {
+    Schedule::command('efaktura:sync-epostman-status')
+        ->everyFiveMinutes()
+        ->withoutOverlapping()
+        ->runInBackground();
+
     Schedule::command('efaktura:poll-inbound')
         ->everyFifteenMinutes()
         ->withoutOverlapping()

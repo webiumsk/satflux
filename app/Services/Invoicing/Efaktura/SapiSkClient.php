@@ -68,8 +68,8 @@ class SapiSkClient
         ?string $idempotencyKey = null,
         ?string $baseUrl = null,
     ): array {
-        if ($this->isEpostman($baseUrl)) {
-            throw new \RuntimeException('The ePostman connection supports receiving only.');
+        if ($this->isEpostman($baseUrl) && ! Str::isUuid($idempotencyKey ?? '')) {
+            throw new \RuntimeException('ePostman requires a stable UUID idempotency key.');
         }
 
         $response = $this->http()
@@ -78,7 +78,16 @@ class SapiSkClient
                 'X-Peppol-Participant-Id' => $senderParticipantId,
                 'Idempotency-Key' => $idempotencyKey ?? (string) Str::uuid(),
             ])
-            ->post($this->url(config('efaktura.providers.sapi_sk.send_path'), $baseUrl), $body);
+            ->post($this->url($this->path('send_path', $baseUrl), $baseUrl), $body);
+
+        if ($this->isEpostman($baseUrl)) {
+            $json = $this->jsonResponse($response);
+            if ($response->status() !== 202 || ! is_string($json['providerDocumentId'] ?? null) || trim($json['providerDocumentId']) === '' || strlen($json['providerDocumentId']) > 128 || preg_match('/[\x00-\x1F\x7F]/', $json['providerDocumentId']) || ! in_array($json['status'] ?? null, ['ACCEPTED', 'REJECTED'], true)) {
+                throw new \RuntimeException('Invalid ePostman submission response.');
+            }
+
+            return $json;
+        }
 
         if ($response->failed()) {
             $response->throw();
@@ -99,7 +108,7 @@ class SapiSkClient
         ?string $baseUrl = null,
     ): array {
         if ($this->isEpostman($baseUrl)) {
-            throw new \RuntimeException('The ePostman connection supports receiving only.');
+            throw new \RuntimeException('ePostman delivery status requires its portal; SAPI credentials cannot query Enterprise API.');
         }
         $pathTemplate = (string) $this->sentDocumentDetailPathTemplate($baseUrl);
         if ($pathTemplate === '') {
@@ -256,6 +265,7 @@ class SapiSkClient
         if ($this->isEpostman($baseUrl)) {
             return match ($key) {
                 'token_path' => '/sapi/auth/token',
+                'send_path' => '/sapi/document/send',
                 'receive_path' => '/sapi/document/receive',
                 'receive_detail_path' => '/sapi/document/receive/{id}',
                 'acknowledge_path' => '/sapi/document/receive/{id}/acknowledge',
@@ -299,6 +309,9 @@ class SapiSkClient
      */
     public function sentDocumentDetailPathTemplate(?string $baseUrl = null): ?string
     {
+        if ($this->isEpostman($baseUrl)) {
+            return null;
+        }
         $preset = EfakturaCpdsProvider::detailPathForBaseUrl(
             $baseUrl ?? (string) config('efaktura.providers.sapi_sk.base_url'),
         );

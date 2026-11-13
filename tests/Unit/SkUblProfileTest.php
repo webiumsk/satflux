@@ -47,4 +47,31 @@ class SkUblProfileTest extends TestCase
         $this->assertSame('HUR', SkUblProfile::resolveUnitCode(' hur '));
         $this->assertSame('HUR', SkUblProfile::resolveUnitCode('hur'));
     }
+
+    public function test_preserves_the_opaque_explicit_participant_identifier(): void
+    {
+        foreach (['9950:sk1234567890', '9950:SK1234567890', '0088:abc-123_456.789'] as $value) {
+            $contact = new CompanyContact(['country' => 'SK', 'peppol_participant_id' => $value]);
+            [$scheme, $id] = explode(':', $value, 2);
+            $this->assertSame(['scheme' => $scheme, 'id' => $id], SkUblProfile::resolveEndpoint($contact));
+        }
+    }
+
+    public function test_invalid_explicit_schemes_never_fall_back_to_a_different_address(): void
+    {
+        foreach (['bad:12345', '245:12345', '0245:', '9950:sk12:34', '9950:sk12 34', "9950:sk12\t34", '9950:sk12/34', '9950:'.str_repeat('a', 129)] as $value) {
+            $contact = new CompanyContact(['country' => 'SK', 'peppol_participant_id' => $value, 'tax_id' => '9999999999']);
+            $this->assertNull(SkUblProfile::resolveEndpoint($contact));
+        }
+    }
+
+    public function test_slovak_ico_uses_its_iso_6523_scheme(): void
+    {
+        $company = new Company(['country' => 'SK', 'registration_number' => '12345679']);
+        $this->assertSame(['scheme' => '0158', 'id' => '12345679'], SkUblProfile::resolveEndpoint($company));
+        $this->assertSame(['scheme' => '0158', 'id' => '12345679'], SkUblProfile::resolveLegalEntityId($company));
+        $company->country = 'CZ';
+        $this->assertSame(['scheme' => '0208', 'id' => '12345679'], SkUblProfile::resolveEndpoint($company));
+        $this->assertSame(['scheme' => '0208', 'id' => '12345679'], SkUblProfile::resolveLegalEntityId($company));
+    }
 }

@@ -143,12 +143,22 @@ export async function parseAxiosBlobError(error: unknown): Promise<string | null
     return data.message || firstFieldError || null;
 }
 
+/** Enterprise credentials are for settings synchronization only, never document transport. */
+function withoutEpostmanCredentials(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map(withoutEpostmanCredentials);
+    if (!value || typeof value !== "object") return value;
+    return Object.fromEntries(Object.entries(value)
+        .filter(([key]) => !key.startsWith("efaktura_epostman_"))
+        .map(([key, nested]) => [key, withoutEpostmanCredentials(nested)]));
+}
+
 async function postWithCompanyScopedFallback<T>(
     companyLessPath: string,
     companyScopedPath: string | null,
     body: unknown,
     config?: { responseType?: "blob"; signal?: AbortSignal },
 ): Promise<AxiosResponse<T>> {
+    body = withoutEpostmanCredentials(body);
     try {
         return await api.post<T>(companyLessPath, body, config);
     } catch (error: unknown) {
@@ -515,7 +525,7 @@ export async function fetchExistingEphemeralBtcpayCheckout(
     try {
         const res = await api.post<{ data: EphemeralBtcpayCheckoutResult | null }>(
             `${EPHEMERAL_BTCPAY_CHECKOUT_PATH}/existing`,
-            body,
+            withoutEpostmanCredentials(body),
         );
         return res.data.data ?? null;
     } catch (error: unknown) {
@@ -659,6 +669,14 @@ export type EphemeralEfakturaComplianceRow = {
     message?: string | null;
 };
 
+function isEfakturaComplianceRow(value: unknown): value is EphemeralEfakturaComplianceRow {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+    const row = value as Record<string, unknown>;
+    return ["id", "provider", "status"].every((key) => typeof row[key] === "string" && row[key] !== "")
+        && (row.external_id === null || typeof row.external_id === "string")
+        && (row.submitted_at === null || typeof row.submitted_at === "string");
+}
+
 export async function fetchEphemeralEfakturaBridge(): Promise<EphemeralEfakturaBridgeInfo> {
     const res = await api.get(EPHEMERAL_EFAKTURA_BRIDGE_PATH);
     return res.data.data;
@@ -666,10 +684,14 @@ export async function fetchEphemeralEfakturaBridge(): Promise<EphemeralEfakturaB
 
 export async function fetchEphemeralEfakturaStatus(
     evoluDocumentId: string,
+    bridgeCompanyId?: string | null,
 ): Promise<EphemeralEfakturaComplianceRow[]> {
     const res = await api.get(EPHEMERAL_EFAKTURA_STATUS_PATH, {
-        params: { evolu_document_id: evoluDocumentId },
+        params: { evolu_document_id: evoluDocumentId, ...(bridgeCompanyId ? { bridge_company_id: bridgeCompanyId } : {}) },
     });
+    if (bridgeCompanyId && (!Array.isArray(res.data?.data) || !res.data.data.every(isEfakturaComplianceRow))) {
+        throw new Error("Invalid e-invoice submission history response.");
+    }
     return Array.isArray(res.data?.data) ? res.data.data : [];
 }
 
@@ -691,11 +713,24 @@ export async function sendEphemeralEfaktura(
     snapshot: EphemeralSnapshotPayload,
     evoluDocumentId: string,
     bridgeCompanyId?: string | null,
+    options: { requireBridge?: boolean } = {},
 ): Promise<EphemeralEfakturaComplianceRow> {
+    if (options.requireBridge && !bridgeCompanyId) throw new Error("Missing company bridge for e-invoice submission.");
     const body = {
         ...snapshot,
         evolu_document_id: evoluDocumentId,
+        ...(bridgeCompanyId ? { bridge_company_id: bridgeCompanyId } : {}),
     };
+
+    // ePostman always targets the verified issuer bridge. Never fall back to
+    // an account-default company after an ambiguous submission response.
+    if (options.requireBridge && bridgeCompanyId) {
+        const res = await api.post<{ data: EphemeralEfakturaComplianceRow }>(companyScopedEphemeralEfakturaSendPath(bridgeCompanyId), withoutEpostmanCredentials(body));
+        if (!isEfakturaComplianceRow(res.data?.data)) {
+            throw new Error("Invalid e-invoice submission response. Check submission history before retrying.");
+        }
+        return res.data.data;
+    }
 
     const res = await postWithCompanyScopedFallback<{ data: EphemeralEfakturaComplianceRow }>(
         EPHEMERAL_EFAKTURA_SEND_PATH,
@@ -710,7 +745,7 @@ export async function refreshEphemeralEfakturaStatus(
     evoluDocumentId: string,
     bridgeCompanyId?: string | null,
 ): Promise<EphemeralEfakturaComplianceRow[]> {
-    const body = { evolu_document_id: evoluDocumentId };
+    const body = { evolu_document_id: evoluDocumentId, ...(bridgeCompanyId ? { bridge_company_id: bridgeCompanyId } : {}) };
 
     const res = await postWithCompanyScopedFallback<{ data: EphemeralEfakturaComplianceRow[] }>(
         EPHEMERAL_EFAKTURA_REFRESH_PATH,

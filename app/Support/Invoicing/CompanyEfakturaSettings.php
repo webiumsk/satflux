@@ -5,6 +5,8 @@ namespace App\Support\Invoicing;
 use App\Models\Company;
 use App\Support\Invoicing\Efaktura\PeppolParticipantId;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Per-company Slovak e-faktura / SAPI-SK credentials (stored in app_settings).
@@ -55,7 +57,7 @@ final class CompanyEfakturaSettings
         return $id !== '' ? $id : null;
     }
 
-    /** Auto-derived from the company DIČ (0245) or IČO (0208) - see SkUblProfile. */
+    /** Auto-derived from the company DIČ (0245) or Slovak IČO (0158). */
     public function derivedPeppolParticipantId(): ?string
     {
         return $this->derivedPeppolParticipantId;
@@ -119,6 +121,69 @@ final class CompanyEfakturaSettings
         ]));
     }
 
+    public const ENTERPRISE_PRIVATE_FIELDS = [
+        'efaktura_epostman_api_key', 'efaktura_epostman_api_key_encrypted',
+        'efaktura_epostman_status_generation', 'efaktura_epostman_status_last_scan_at',
+    ];
+
+    public static function withoutEnterpriseSecrets(array $settings): array
+    {
+        return array_diff_key($settings, array_flip(array_merge(self::ENTERPRISE_PRIVATE_FIELDS, ['efaktura_epostman_api_key_set'])));
+    }
+
+    public function enterpriseApiKey(): ?string
+    {
+        $encrypted = $this->values['efaktura_epostman_api_key_encrypted'] ?? null;
+        try {
+            return is_string($encrypted) && $encrypted !== '' ? Crypt::decryptString($encrypted) : null;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    public function enterpriseOrigin(): ?string
+    {
+        $parts = parse_url((string) $this->sapiBaseUrl());
+        if ($this->provider() !== 'sapi_sk' || ! is_array($parts)
+            || strtolower($parts['scheme'] ?? '') !== 'https'
+            || ! in_array(strtolower($parts['host'] ?? ''), ['postman.slovakodata.com', 'testpostman.slovakodata.com'], true)
+            || isset($parts['user']) || isset($parts['pass'])
+            || isset($parts['query']) || isset($parts['fragment']) || ! in_array($parts['port'] ?? 443, [443], true)
+            || ! in_array($parts['path'] ?? '', ['', '/'], true)) {
+            return null;
+        }
+
+        return 'https://'.strtolower($parts['host']);
+    }
+
+    public function enterpriseIdentityFingerprint(): string
+    {
+        return hash('sha256', serialize([$this->provider(), $this->enterpriseOrigin() ?? $this->sapiBaseUrl(),
+            $this->peppolParticipantId(), $this->derivedPeppolParticipantId()]));
+    }
+
+    /** Independent from the pinned send fingerprint; never serialized. */
+    public function enterpriseStatusFingerprint(): string
+    {
+        return hash('sha256', serialize([$this->enabled(), $this->enterpriseIdentityFingerprint(),
+            $this->values['efaktura_epostman_status_generation'] ?? null, $this->enterpriseApiKey()]));
+    }
+
+    public function enterpriseConfigured(): bool
+    {
+        return $this->enabled() && $this->enterpriseOrigin() !== null
+            && $this->peppolParticipantId() !== null && $this->enterpriseApiKey() !== null;
+    }
+
+    public static function clearEnterpriseKey(array $settings): array
+    {
+        unset($settings['efaktura_epostman_api_key']);
+        $settings['efaktura_epostman_api_key_encrypted'] = null;
+        $settings['efaktura_epostman_status_generation'] = (string) Str::uuid();
+
+        return $settings;
+    }
+
     public function configured(): bool
     {
         return $this->enabled()
@@ -134,6 +199,7 @@ final class CompanyEfakturaSettings
     public function publicPayload(): array
     {
         return [
+            'efaktura_epostman_api_key_set' => is_string($this->values['efaktura_epostman_api_key_encrypted'] ?? null) && $this->values['efaktura_epostman_api_key_encrypted'] !== '',
             'efaktura_enabled' => $this->enabled(),
             'efaktura_auto_send' => $this->autoSend(),
             'efaktura_inbound_enabled' => $this->inboundEnabled(),
@@ -155,8 +221,10 @@ final class CompanyEfakturaSettings
      * @param  array<string, mixed>  $incoming
      * @return array<string, mixed>
      */
-    public static function mergeIncoming(array $current, array $incoming): array
+    public static function mergeIncoming(array $current, array $incoming, ?string $derivedParticipantId = null): array
     {
+        // Only the write-only plaintext input may replace a stored credential.
+        unset($incoming['efaktura_epostman_api_key_encrypted'], $incoming['efaktura_epostman_status_generation'], $incoming['efaktura_epostman_status_last_scan_at'], $incoming['efaktura_epostman_api_key_set']);
         $merged = array_merge($current, $incoming);
 
         foreach ([
@@ -175,6 +243,17 @@ final class CompanyEfakturaSettings
         if (array_key_exists('efaktura_sapi_base_url', $incoming)) {
             $url = trim((string) $incoming['efaktura_sapi_base_url']);
             $merged['efaktura_sapi_base_url'] = $url !== '' ? rtrim($url, '/') : null;
+        }
+
+        $savedEnterpriseKey = $current['efaktura_epostman_api_key_encrypted'] ?? null;
+        if (is_string($savedEnterpriseKey) && $savedEnterpriseKey !== ''
+            && (! array_key_exists('efaktura_epostman_api_key', $incoming) || $incoming['efaktura_epostman_api_key'] !== null)
+            && trim((string) ($merged['efaktura_sapi_base_url'] ?? '')) === ''
+            && (new self($current))->enterpriseOrigin() !== null
+            && (new self($current))->enterpriseOrigin() === (new self($merged))->enterpriseOrigin()) {
+            // Pin before comparing SAPI credentials too: equivalent host casing
+            // or :443 must not invalidate an existing send/retry fingerprint.
+            $merged['efaktura_sapi_base_url'] = (new self($current))->sapiBaseUrl();
         }
 
         if (! array_key_exists('efaktura_sapi_client_secret', $incoming) && ((array_key_exists('efaktura_sapi_base_url', $incoming) && (new self($merged))->sapiBaseUrl() !== (new self($current))->sapiBaseUrl()) || (array_key_exists('efaktura_sapi_client_id', $incoming) && ($merged['efaktura_sapi_client_id'] ?? null) !== ($current['efaktura_sapi_client_id'] ?? null)))) {
@@ -202,7 +281,33 @@ final class CompanyEfakturaSettings
             unset($merged['efaktura_inbound_last_poll_at'], $merged['efaktura_inbound_last_poll_stats'], $merged['efaktura_connection_tested_at']);
         }
 
-        unset($merged['efaktura_sapi_client_secret']);
+        $identityChanged = (new self($current, $derivedParticipantId))->enterpriseIdentityFingerprint() !== (new self($merged, $derivedParticipantId))->enterpriseIdentityFingerprint();
+        if ($identityChanged) {
+            $merged = self::clearEnterpriseKey($merged);
+        }
+        if (array_key_exists('efaktura_epostman_api_key', $incoming)) {
+            $key = $incoming['efaktura_epostman_api_key'];
+            if ($key !== null && (! is_string($key) || preg_match('/^[\x21-\x7E]{1,4096}$/D', $key) !== 1)) {
+                throw ValidationException::withMessages(['efaktura_epostman_api_key' => ['Enter a valid Enterprise API key.']]);
+            }
+            $merged = self::clearEnterpriseKey($merged);
+            if ($key !== null) {
+                // Bind an implicit global origin explicitly when saving its key;
+                // a later global fallback change must never move that credential.
+                if (trim((string) ($merged['efaktura_sapi_base_url'] ?? '')) === '') {
+                    $merged['efaktura_sapi_base_url'] = (new self($merged))->sapiBaseUrl();
+                }
+                $merged['efaktura_epostman_api_key_encrypted'] = Crypt::encryptString($key);
+            }
+        }
+        // A surviving key must stay tied to today's effective origin even if
+        // an equivalent explicit URL is cleared without replacing the key.
+        if (is_string($merged['efaktura_epostman_api_key_encrypted'] ?? null)
+            && $merged['efaktura_epostman_api_key_encrypted'] !== ''
+            && trim((string) ($merged['efaktura_sapi_base_url'] ?? '')) === '') {
+            $merged['efaktura_sapi_base_url'] = (new self($current))->sapiBaseUrl();
+        }
+        unset($merged['efaktura_sapi_client_secret'], $merged['efaktura_epostman_api_key']);
 
         return $merged;
     }

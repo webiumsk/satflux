@@ -17,6 +17,7 @@ export type CompanyEfakturaSettingsState = {
   efaktura_peppol_participant_id: string;
   efaktura_sapi_client_id: string;
   efaktura_sapi_client_secret: string;
+  efaktura_epostman_api_key?: string | null;
   efaktura_connection_tested_at: string | null;
   efaktura_inbound_last_poll_at: string | null;
   efaktura_inbound_last_poll_stats: EfakturaInboundPollStats | null;
@@ -47,6 +48,7 @@ export function defaultEfakturaSettings(): CompanyEfakturaSettingsState {
     efaktura_peppol_participant_id: '',
     efaktura_sapi_client_id: '',
     efaktura_sapi_client_secret: '',
+    efaktura_epostman_api_key: '',
     efaktura_connection_tested_at: null,
     efaktura_inbound_last_poll_at: null,
     efaktura_inbound_last_poll_stats: null,
@@ -66,6 +68,7 @@ export function efakturaSettingsFromCompany(company: Record<string, unknown> | n
     efaktura_peppol_participant_id: String(raw.efaktura_peppol_participant_id ?? ''),
     efaktura_sapi_client_id: String(raw.efaktura_sapi_client_id ?? ''),
     efaktura_sapi_client_secret: '',
+    efaktura_epostman_api_key: '',
     efaktura_connection_tested_at: raw.efaktura_connection_tested_at
       ? String(raw.efaktura_connection_tested_at)
       : null,

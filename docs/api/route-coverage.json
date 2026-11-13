@@ -23,7 +23,7 @@
         "app/Support/Invoicing/ParsedBankTransaction.php": "2d961e8893991f6a58017df00ced15e6d7844c63d8d6707038be384e41761843",
         "app/Support/Invoicing/BankAccountIdentifier.php": "f394a0920c42b190dfcf9524c14b809d4c02b847d52a6995b217c3db0401a562",
         "app/Jobs/ProcessBankNotificationEmail.php": "789ea426817f4220c6de20319cd5ac4cc8b8cda138b5dfd2bd5eaac128a4cf65",
-        "bootstrap/app.php": "a96287a10883c45c677043fafdaa8c95cd06e0cc4f4b7a1fa1ee63ade5aff4f5",
+        "bootstrap/app.php": "f30eee6d1a0bd9f179cc85a8600ead6771f641f34ac7f5452fee0fca8dbb75ae",
         "config/bank_inbound.php": "87fc64b8bcc09e404ae2af2df13a11e3c2872270a1ba6ac6c43817dc6c9cc2c8",
         "config/bank_mail_capture.php": "107dab598f3acd319e42c751ef1a5d41e0c091c047b518720ee1d8ec8d6f35f5",
         "runtime/bank-mail-verifier/cli.mjs": "bfddc7a1a4c5f641a8682a088fa054dcaccc32051920dcbd3212ef8bf89ac4b0",

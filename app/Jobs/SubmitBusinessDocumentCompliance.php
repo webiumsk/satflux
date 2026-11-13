@@ -3,7 +3,10 @@
 namespace App\Jobs;
 
 use App\Models\BusinessDocument;
+use App\Models\Company;
 use App\Services\Invoicing\Efaktura\ComplianceSubmissionService;
+use App\Services\Invoicing\Efaktura\SapiSkClient;
+use App\Support\Invoicing\CompanyEfakturaSettings;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -26,6 +29,10 @@ class SubmitBusinessDocumentCompliance implements ShouldQueue
     {
         $document = BusinessDocument::query()->find($this->businessDocumentId);
         if (! $document) {
+            return;
+        }
+        $company = $document->company;
+        if ($company instanceof Company && app(SapiSkClient::class)->isEpostman(CompanyEfakturaSettings::fromCompany($company)->sapiBaseUrl())) {
             return;
         }
 

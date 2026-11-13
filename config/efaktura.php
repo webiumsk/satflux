@@ -19,6 +19,11 @@ return [
     'queue' => env('EFAKTURA_QUEUE', 'default'),
 
     // Bounds one scheduled run; later runs resume safely from provider state.
+    'status_poll_limit' => 20,
+    'status_company_limit' => 5,
+    'status_per_company_limit' => 3,
+    'status_manual_cooldown_seconds' => 60,
+
     'inbound_max_pages' => 100,
     'inbound_health_stale_minutes' => 45,
 

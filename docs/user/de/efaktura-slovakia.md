@@ -1,14 +1,14 @@
 ---
-title: Slowakische E-Rechnungen - Empfang mit ePostman
+title: Slowakische E-Rechnungen - ePostman-Anbindung
 category: invoicing
 order: 6
 meta_description: Verbinden Sie das ePostman-Konto Ihres Unternehmens, empfangen Sie E-Rechnungen und importieren Sie Originale als Ausgaben in Satflux.
 updated: 2026-11-12
 ---
 
-# Slowakische E-Rechnungen - Empfang mit ePostman
+# Slowakische E-Rechnungen - ePostman-Anbindung
 
-Die ePostman-Anbindung unterstützt den **Empfang**. Empfang und Import einer Rechnung und einer Gutschrift wurden im Peppol-Testnetz verifiziert. Produktivaktivierung, gesetzliche Meldungen und die Archivbedingungen des Anbieters müssen separat bestätigt werden. Satflux wird derzeit nicht als vollständige Lösung für die verpflichtende slowakische E-Rechnung angeboten.
+Die Anbindung unterstützt **Empfang und manuellen Versand**. Empfang und Import einer Rechnung und einer Gutschrift wurden im Peppol-Testnetz verifiziert. Auch der manuelle Versand beider Dokumenttypen über ePostman an Recommand wurde in diesem Testnetz bestätigt. Produktivaktivierung, gesetzliche Meldungen und Archivbedingungen müssen separat bestätigt werden. Satflux wird nicht als vollständige Lösung für die verpflichtende slowakische E-Rechnung angeboten.
 
 ## Unternehmen verbinden
 
@@ -37,8 +37,26 @@ Bis zum verifizierten lokalen Import bleibt das Original auf dem Server mit serv
 
 Ein Anbieterkonto kann gesonderte API-Gebühren oder Nutzungsbedingungen haben. Ein kostenloses Webpostfach umfasst nicht unbedingt den Zugriff aus Satflux. Bestätigen Sie vor dem Produktivbetrieb den passenden Tarif, den SAPI-Zugang und die Archivbedingungen mit ePostman.
 
-## Versand und gesetzliche Pflichten
+## Manueller Versand und gesetzliche Pflichten
 
-Dieser ePostman-Konnektor aktiviert weder Versand noch automatischen Versand. Satflux kann **UBL/XML** exportieren; das Herunterladen einer Datei stellt sie jedoch nicht dem Empfänger zu. Ein manueller Upload kommt nur infrage, wenn der gewählte Anbieter diesen vollständigen Ablauf unterstützt und verifiziert.
+Für diesen Inlandsversand müssen beide Parteien in der Slowakei ansässig sein und `0245:<DIČ>` mit ihrer eigenen zehnstelligen DIČ verwenden.
 
-Klären Sie die konkreten Pflichten und Fristen Ihres Unternehmens mit der slowakischen Finanzverwaltung oder Ihrer Steuerberatung. Ein funktionierender Empfang allein bestätigt nicht die Erfüllung aller Versand- und Meldepflichten.
+Diese erste Versandversion lehnt Dokumente mit Positions- oder Rechnungsrabatten, Präzisionsverlust bei Preisen oder vom ausgestellten Dokument abweichenden Beträgen ab. Für solche Dokumente muss zuerst der Export erweitert werden. Teilzahlungen werden im XML-Restbetrag berücksichtigt.
+
+Öffnen Sie für ein berechtigtes slowakisches Unternehmen mit voller Umsatzsteuerregistrierung eine ausgestellte inländische B2B-Rechnung oder Gutschrift und wählen Sie **E-Rechnung senden**. Speichern Sie zuerst die richtige Unternehmensverbindung. Aussteller und Zugangsdaten müssen zum selben Unternehmen gehören. Automatischer Versand über ePostman bleibt deaktiviert.
+
+Eine erfolgreiche Übermittlung bedeutet **zur Verarbeitung angenommen**. Zustellung und Steuermeldung werden bei eingerichtetem Enterprise-API-Schlüssel getrennt angezeigt. Der Link zum ePostman-Portal bleibt für die passende Produktiv- oder Testumgebung verfügbar.
+
+Bei ungewissem Ergebnis wiederholen Sie den Versuch nur, wenn Satflux dies anbietet. Dabei werden die ursprüngliche Anfrage und Kennung innerhalb des Zeitfensters des Anbieters verwendet. Nach Ablauf oder Änderungen an Dokument bzw. Verbindung klären Sie zuerst das Ergebnis mit dem Anbieter. Erstellen Sie keine neue Rechnung allein zur Wiederholung einer ungewissen Übermittlung.
+
+## Automatischer Zustellstatus
+
+Tragen Sie in den E-Rechnungseinstellungen desselben Unternehmens einen **ePostman-API-Schlüssel** aus **Einstellungen > API-Schlüssel** des passenden Produktiv- oder Testportals ein und speichern Sie. Er ist von SAPI Client ID und Client Secret getrennt. Satflux speichert diesen Schlüssel verschlüsselt auf seinem Server und nimmt ihn nicht in die geteilten Unternehmensdaten auf. Bewahren Sie ihn vertraulich auf. Das Entfernen des API-Schlüssels deaktiviert automatische Statusprüfungen; SAPI-Empfang und -Versand verwenden ihre bisherigen Zugangsdaten.
+
+Satflux prüft versendete Dokumente regelmäßig, auch bei geschlossenem Browser. Das Dokumentpanel zeigt Zustellung, die **C3-MLS**-Bestätigung des Empfängers und den vom Anbieter gemeldeten technischen **C5**-Status getrennt. Bei unterstützten Dokumenten können Sie **Status aktualisieren** verwenden; zwischen Prüfungen gilt eine kurze Wartezeit. Ein geöffnetes sichtbares Panel lädt außerdem gespeicherte Ergebnisse nach.
+
+**UNCONFIRMED / TIMEOUT** bedeutet, dass der empfangende Zugangspunkt die Nachricht übernommen hat, die abschließende MLS-Bestätigung aber nicht rechtzeitig einging. Das allein bedeutet keinen fehlgeschlagenen Versand. Ein positiver C5-Wert ist ein vom Anbieter gemeldeter technischer Status. Er bestätigt weder eine steuerliche Genehmigung noch die geschäftliche Annahme durch den Empfänger. Bei einem Prüffehler bleibt die letzte gültige Beobachtung zusammen mit dem Fehler sichtbar. Ersetzen Sie abgelaufene oder widerrufene API-Schlüssel in den Unternehmenseinstellungen.
+
+Für ältere Übermittlungen sind automatische Prüfungen möglicherweise nicht verfügbar. Prüfen Sie diese Dokumente im Anbieterportal. Senden Sie eine bestehende Rechnung nicht erneut, nur um einen Status zu erhalten.
+
+Klären Sie die konkreten Pflichten und Fristen mit der slowakischen Finanzverwaltung oder Ihrer Steuerberatung. Eine funktionierende Verbindung allein bestätigt nicht die Erfüllung aller Versand- und Meldepflichten.

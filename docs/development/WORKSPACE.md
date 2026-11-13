@@ -1,5 +1,26 @@
 # Local workspace
 
+## Automatic ePostman status worktree - 2026-11-12
+
+The scoped outbound worktree storage/app/private/worktrees/efaktura-epostman-outbound
+remains on feat/efaktura-epostman-outbound over d4778fb2 with the independently
+accepted status implementation passing full frontend 3,019 tests / 236 files.
+Primary checkout's unrelated changes remain preserved. No push or deploy.
+
+The new private .env.epostman-status-app-integration fixture has its own application
+key and SQLite file; old RCMD state and Enterprise input are read-only. Exactly two
+actual TEST GETs verify the real status service, server Invoice/local CreditNote
+projections and cooldown. Responses/report and credential/binding fields are
+encrypted; the SQLite file itself is not encrypted. This test-only seeding is not
+product legacy backfill. Existing receiving/other localhost previews, accounts,
+original attempts and captures remain untouched; no new scheduler is started there.
+
+Final QA/security reports and frozen manifests are retained privately. Only owned
+disposable PostgreSQL test projects/networks were removed after passing nine lock
+cases and sixteen migration checks. Next: separate outbound publication and
+deployment readiness; no owner keys are copied
+into an existing preview or committed artifact.
+
 ## ePostman publication and preserved manual preview - 2026-11-12
 
 Owner-authorized publication is prepared on `feat/efaktura-epostman-receiving`

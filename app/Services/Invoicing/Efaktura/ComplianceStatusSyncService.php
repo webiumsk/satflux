@@ -58,6 +58,7 @@ class ComplianceStatusSyncService
 
         BusinessDocumentCompliance::query()
             ->where('status', ComplianceSubmissionStatus::Submitted)
+            ->whereNull('response_payload->epostman')
             ->whereNotNull('external_id')
             ->where('submitted_at', '<', now()->subMinutes(5))
             ->orderBy('submitted_at')
@@ -76,6 +77,12 @@ class ComplianceStatusSyncService
     public function refreshRow(BusinessDocumentCompliance $row): ?BusinessDocumentCompliance
     {
         $payload = $row->response_payload;
+        $outboundPayload = $row->getAttribute('response_payload');
+        if (is_array($outboundPayload) && isset($outboundPayload['epostman'])) {
+            app(EpostmanStatusSyncService::class)->refreshServer($row);
+
+            return $row->fresh();
+        }
         $mapped = SapiSkDocumentStatusMapper::fromProviderPayload(is_array($payload) ? $payload : null);
 
         $remotePayload = $this->fetchRemotePayload($row);

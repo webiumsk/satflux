@@ -38,7 +38,7 @@ class CompanyEfakturaSettingsTest extends TestCase
     {
         $settings = CompanyEfakturaSettings::fromCompany($this->skCompany(['tax_id' => null]));
 
-        $this->assertSame('0208:47615681', $settings->peppolParticipantId());
+        $this->assertSame('0158:47615681', $settings->peppolParticipantId());
     }
 
     #[Test]

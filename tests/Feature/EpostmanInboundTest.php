@@ -461,11 +461,12 @@ class EpostmanInboundTest extends TestCase
         $this->assertSame($hash, $service->detail($company->user, $company, $receipt->fresh())['original_sha256']);
     }
 
-    public function test_changing_connection_clears_old_secret_and_epostman_sending_is_refused(): void
+    public function test_changing_connection_clears_old_secret_and_sending_requires_stable_request_id(): void
     {
         $settings = CompanyEfakturaSettings::mergeIncoming(['efaktura_sapi_base_url' => self::ORIGIN, 'efaktura_sapi_client_secret_encrypted' => 'old'], ['efaktura_sapi_base_url' => 'https://postman.slovakodata.com']);
         $this->assertNull($settings['efaktura_sapi_client_secret_encrypted']);
         $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('stable UUID idempotency key');
         app(SapiSkClient::class)->sendDocument('synthetic-token', self::PARTICIPANT, [], baseUrl: self::ORIGIN);
     }
 

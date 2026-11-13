@@ -76,7 +76,10 @@ class EfakturaController extends Controller
         ComplianceStatusSyncService $statusSyncService,
     ): JsonResponse {
         $this->assertDocumentCompany($businessDocument, $company);
-        $this->assertEfakturaConfigured($company);
+        if (! config('efaktura.enabled') || ! app(CompanyEfakturaEligibility::class)->supportsOutbound($company)
+            || ! CompanyEfakturaSettings::fromCompany($company)->enterpriseConfigured()) {
+            $this->assertEfakturaConfigured($company);
+        }
 
         $statusSyncService->refreshDocument($businessDocument->fresh());
 

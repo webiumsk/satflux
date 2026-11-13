@@ -12,7 +12,10 @@ use App\Models\CompanyContact;
 final class SkUblProfile
 {
     /** Peppol scheme: Slovak IČO (ISO 6523). */
-    public const SCHEME_ICO = '0208';
+    public const SCHEME_ICO = '0158';
+
+    /** Preserve non-SK derivation until its separate country-specific audit. */
+    private const LEGACY_NON_SK_SCHEME = '0208';
 
     /** Peppol scheme: Slovak DIČ (SG:DIC). */
     public const SCHEME_DIC = '0245';
@@ -82,7 +85,7 @@ final class SkUblProfile
                 $id = self::digitsOnly($entity->tax_id);
             }
 
-            return $id !== null ? ['scheme' => self::SCHEME_ICO, 'id' => $id] : null;
+            return $id !== null ? ['scheme' => self::LEGACY_NON_SK_SCHEME, 'id' => $id] : null;
         }
 
         $dic = self::digitsOnly($entity->tax_id);
@@ -105,7 +108,7 @@ final class SkUblProfile
     {
         $ico = self::digitsOnly($entity->registration_number);
         if ($ico !== null) {
-            return ['scheme' => self::SCHEME_ICO, 'id' => $ico];
+            return ['scheme' => self::appliesTo($entity) ? self::SCHEME_ICO : self::LEGACY_NON_SK_SCHEME, 'id' => $ico];
         }
 
         return null;
@@ -135,6 +138,9 @@ final class SkUblProfile
      */
     private static function parseParticipantId(string $value): ?array
     {
+        if (preg_match('/[\x00-\x1F\x7F]/', $value)) {
+            return null;
+        }
         $value = trim($value);
         if ($value === '') {
             return null;
@@ -143,11 +149,15 @@ final class SkUblProfile
         if (str_contains($value, ':')) {
             [$scheme, $id] = explode(':', $value, 2);
             $scheme = trim($scheme);
-            $id = self::digitsOnly($id);
+            $id = trim($id);
 
-            if ($scheme !== '' && $id !== null) {
+            // An explicitly qualified identifier is opaque: stripping its
+            // letters changes the recipient, e.g. Slovakia's 9950 VAT address.
+            if (preg_match('/^[0-9]{4}$/D', $scheme) && preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/D', $id)) {
                 return ['scheme' => $scheme, 'id' => $id];
             }
+
+            return null;
         }
 
         $digits = self::digitsOnly($value);

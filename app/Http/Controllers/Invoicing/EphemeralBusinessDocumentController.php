@@ -33,6 +33,7 @@ use App\Services\Invoicing\Efaktura\EfakturaConnectionTester;
 use App\Services\Invoicing\Efaktura\EphemeralEfakturaSubmissionService;
 use App\Services\Invoicing\EphemeralBtcpayCheckoutService;
 use App\Services\Invoicing\EphemeralDocumentFactory;
+use App\Support\Invoicing\CompanyEfakturaSettings;
 use App\Support\Invoicing\JurisdictionRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -225,9 +226,10 @@ class EphemeralBusinessDocumentController extends Controller
 
         $validated = $request->validate([
             'evolu_document_id' => ['required', 'string', 'max:64'],
+            'bridge_company_id' => ['sometimes', 'nullable', 'uuid'],
         ]);
 
-        $row = $this->efakturaService->latestForDocument($user, $validated['evolu_document_id']);
+        $row = $this->efakturaService->latestForDocument($user, $validated['evolu_document_id'], $validated['bridge_company_id'] ?? null);
 
         return response()->json([
             'data' => $row ? [$row->toApiRow()] : [],
@@ -285,6 +287,9 @@ class EphemeralBusinessDocumentController extends Controller
 
     public function efakturaSend(EphemeralBusinessDocumentEfakturaRequest $request, Company $company): JsonResponse
     {
+        if ($request->validated('bridge_company_id') !== null && $request->validated('bridge_company_id') !== $company->id) {
+            throw ValidationException::withMessages(['bridge_company_id' => ['The connected company does not match the requested company.']]);
+        }
         $this->efakturaService->assertCompanyConfigured($company);
         $snapshotCompany = $this->factory->snapshotCompany($company, (array) ($request->validated()['company'] ?? []));
 
@@ -301,23 +306,34 @@ class EphemeralBusinessDocumentController extends Controller
             (array) ($request->validated()['company'] ?? []),
         );
 
-        $bridgeCompany = $this->efakturaService->assertBridgeCompany($user);
+        $bridgeCompany = $this->efakturaService->assertBridgeCompany($user, $snapshotCompany, $request->validated('bridge_company_id'));
 
         return $this->respondWithEfakturaSend($request, $snapshotCompany, $bridgeCompany);
     }
 
     public function efakturaRefresh(Request $request, Company $company): JsonResponse
     {
-        $this->efakturaService->assertCompanyConfigured($company);
+        if (! config('efaktura.enabled') || ! CompanyEfakturaSettings::fromCompany($company)->enterpriseConfigured()) {
+            $this->efakturaService->assertCompanyConfigured($company);
+        }
 
-        return $this->respondWithEfakturaRefresh($request);
+        return $this->respondWithEfakturaRefresh($request, $company->id);
     }
 
     public function efakturaRefreshWithoutCompany(Request $request): JsonResponse
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
-        $this->efakturaService->assertBridgeCompany($user);
+        $validated = $request->validate([
+            'evolu_document_id' => ['required', 'string', 'max:64'],
+            'bridge_company_id' => ['sometimes', 'nullable', 'uuid'],
+        ]);
+        $row = $this->efakturaService->latestForDocument($user, $validated['evolu_document_id'], $validated['bridge_company_id'] ?? null);
+        $bridge = $row?->bridgeCompany()->first();
+        if (! config('efaktura.enabled') || ! $bridge instanceof Company || $bridge->user_id !== $user->id
+            || ! CompanyEfakturaSettings::fromCompany($bridge)->enterpriseConfigured()) {
+            $this->efakturaService->assertBridgeCompany($user);
+        }
 
         return $this->respondWithEfakturaRefresh($request);
     }
@@ -850,16 +866,20 @@ class EphemeralBusinessDocumentController extends Controller
         ]);
     }
 
-    protected function respondWithEfakturaRefresh(Request $request): JsonResponse
+    protected function respondWithEfakturaRefresh(Request $request, ?string $companyId = null): JsonResponse
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
 
         $validated = $request->validate([
             'evolu_document_id' => ['required', 'string', 'max:64'],
+            'bridge_company_id' => ['sometimes', 'nullable', 'uuid'],
         ]);
 
-        $row = $this->efakturaService->refresh($user, $validated['evolu_document_id']);
+        if ($companyId !== null && isset($validated['bridge_company_id']) && $companyId !== $validated['bridge_company_id']) {
+            throw ValidationException::withMessages(['bridge_company_id' => ['The connected company does not match the requested company.']]);
+        }
+        $row = $this->efakturaService->refresh($user, $validated['evolu_document_id'], $companyId ?? $validated['bridge_company_id'] ?? null);
 
         return response()->json([
             'data' => $row ? [$row->toApiRow()] : [],

@@ -48,6 +48,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
+        $exceptions->dontFlash(['efaktura_epostman_api_key', 'efaktura_epostman_api_key_encrypted',
+            'efaktura_epostman_status_generation', 'company.app_settings']);
         // For API routes, return JSON 401 instead of redirecting to login
         $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->is('api/*') || $request->expectsJson()) {

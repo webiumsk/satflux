@@ -1,14 +1,14 @@
 ---
-title: Slovenská e-fakturace - příjem přes ePostman
+title: Slovenská e-fakturace - propojení ePostman
 category: invoicing
 order: 6
 meta_description: Propojte firemní účet ePostman, přijímejte e-faktury a importujte jejich originály do nákladů v Satfluxu.
 updated: 2026-11-12
 ---
 
-# Slovenská e-fakturace - příjem přes ePostman
+# Slovenská e-fakturace - propojení ePostman
 
-Propojení ePostman podporuje **příjem**. Příjem a import faktury i dobropisu byly ověřeny v testovací síti Peppol. Produkční aktivaci, zákonné hlášení a podmínky archivu poskytovatele je třeba potvrdit samostatně. Satflux zatím neprezentujeme jako kompletní řešení povinné slovenské e-fakturace.
+Propojení podporuje **příjem a ruční odesílání**. Příjem a import faktury i dobropisu byly ověřeny v testovací síti Peppol. Ruční odeslání obou typů přes ePostman do Recommandu bylo také potvrzeno v této testovací síti. Produkční aktivaci, zákonné hlášení a podmínky archivu poskytovatele je třeba potvrdit samostatně. Satflux neprezentujeme jako kompletní řešení povinné slovenské e-fakturace.
 
 ## Propojení firmy
 
@@ -37,8 +37,26 @@ Dokud se lokální import ověřeně nedokončí, originál je na serveru šifro
 
 Účet poskytovatele může mít zvláštní poplatky za API nebo podmínky používání. Bezplatná webová schránka nemusí zahrnovat přístup ze Satfluxu. Před používáním produkčního propojení si v ePostman potvrďte příslušný balíček, přístup SAPI a podmínky archivu.
 
-## Odesílání a zákonné povinnosti
+## Ruční odesílání a zákonné povinnosti
 
-Tento konektor ePostman nezapíná odesílání ani automatické odesílání. Satflux umí exportovat **UBL/XML**, ale stažení souboru ho nedoručí odběrateli. Ruční nahrání je možností pouze tehdy, pokud ho vybraný poskytovatel podporuje a ověří celý postup.
+Při tomto tuzemském odesílání musí mít obě strany zemi Slovensko a adresu `0245:<DIČ>` s vlastním desetimístným DIČ.
 
-Konkrétní povinnosti a termíny vaší firmy si potvrďte u slovenské Finanční správy nebo účetního. Samotný funkční příjem nepotvrzuje splnění všech povinností odesílání a hlášení.
+Tato první verze odesílání odmítne doklady se slevou na položce nebo faktuře, cenami se ztrátou přesnosti při exportu nebo částkami odlišnými od vystaveného dokladu. Tyto doklady bude možné odeslat až po doplnění příslušného exportu. Částečná úhrada se započítá do zůstatku v XML.
+
+U oprávněné slovenské firmy, která je plným plátcem DPH, otevřete vystavenou tuzemskou B2B fakturu nebo dobropis a zvolte **Odeslat e-fakturu**. Nejprve uložte správné firemní propojení. Vystavitel i přístupové údaje musí patřit stejné firmě. Automatické odesílání přes ePostman zůstává vypnuté.
+
+Úspěšné podání znamená **přijetí ke zpracování**. Doručení a daňové hlášení se zobrazují odděleně, pokud je nastaven Enterprise API klíč. Odkaz do portálu ePostman zůstává dostupný pro stejné produkční nebo testovací prostředí.
+
+Při nejistém výsledku opakujte pokus pouze tehdy, když jej Satflux nabídne. Opakování používá původní požadavek a identifikátor v časovém limitu poskytovatele. Po jeho uplynutí nebo změně dokladu či propojení nejprve ověřte výsledek u poskytovatele. Nevytvářejte novou fakturu pouze pro zopakování nejistého podání.
+
+## Automatické stavy doručení
+
+V nastavení e-fakturace stejné firmy zadejte **ePostman API klíč** z **Nastavení > API Klíče** příslušného produkčního nebo testovacího portálu a nastavení uložte. Je oddělený od SAPI Client ID a Client Secret. Satflux ho uchovává šifrovaně na serveru a nezahrnuje ho do sdílených firemních dat. Uchovávejte ho v soukromí. Odstranění API klíče vypne automatické kontroly stavů; příjem a odesílání přes SAPI používají původní přístupové údaje.
+
+Satflux pravidelně kontroluje odeslané doklady i při zavřeném prohlížeči. Panel dokladu zobrazuje doručení, potvrzení **C3 MLS** od příjemce a technický stav **C5** podle údajů poskytovatele odděleně. U podporovaného dokladu můžete použít **Obnovit stav**, s krátkým odstupem mezi kontrolami. Otevřený viditelný panel průběžně načítá také uložené výsledky.
+
+**UNCONFIRMED / TIMEOUT** znamená, že přístupový bod příjemce zprávu převzal, ale konečné MLS potvrzení nepřišlo včas. Samotný tento stav neznamená neúspěšné odeslání. Kladné C5 je technický stav uvedený poskytovatelem. Nepotvrzuje daňové schválení ani obchodní schválení příjemcem. Při chybě kontroly zůstane viditelný poslední platný výsledek spolu s chybou kontroly. Expirovaný nebo odvolaný API klíč nahraďte v nastavení firmy.
+
+U starších podání nemusí být automatická kontrola dostupná. Takové doklady zkontrolujte v portálu poskytovatele. Existující fakturu neposílejte znovu pouze kvůli získání stavu.
+
+Konkrétní povinnosti a termíny firmy si potvrďte u slovenské finanční správy nebo účetního. Samotné funkční propojení nepotvrzuje splnění všech povinností odesílání a hlášení.

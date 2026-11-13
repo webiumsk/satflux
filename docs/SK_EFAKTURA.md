@@ -1,5 +1,27 @@
 # Slovak eFaktura - implementation reference and current limitations
 
+## Manual ePostman sending milestone - 2026-11-12
+
+The separate outbound branch extends the receiving PR441 with manual submission
+of issued eligible domestic B2B invoices and credit notes. It adds durable,
+encrypted retry staging and a pinned request UUID/body, preserving uncertain
+outcomes across process failure. Automatic ePostman sending remains disabled.
+Submission HTTP202 means accepted for processing, not delivered or tax-approved.
+SAPI tokens cannot call the Enterprise delivery-status API; check delivery and
+reporting in the matching ePostman portal. Automatic status synchronization needs
+a separate Enterprise credential or authenticated webhook integration.
+
+Receiving and manual Invoice/CreditNote sending have actual test-network evidence.
+The owner confirms both new documents arrived in Recommand after ePostman
+submission; independent audit also verifies identical-request retry and cached
+replays. This is recipient UI confirmation, not production or statutory-reporting
+approval. An earlier attempt was rejected by national validation, so HTTP202 must
+not be reported as delivery. Domestic ePostman sending requires both SK parties'
+actual DIČ under scheme 0245.
+No merge or production deployment is implied. See
+[the outbound contract and verification record](development/EPOSTMAN_OUTBOUND_IMPLEMENTATION.md).
+
+
 > Current ePostman receiving implementation and activation gates: [runbook](development/EPOSTMAN_INBOUND_IMPLEMENTATION.md). The overview below also describes legacy generic SAPI functionality; it is not evidence of a verified provider integration. ePostman outgoing is unavailable in this receiving scope.
 
 
@@ -27,14 +49,14 @@ Rozsah povinností zákona sa pritom líši: **vystavovať** e-faktúry musia od
 
 - **UBL** export (Peppol BIS 3.0) - `GET .../documents/{id}/ubl`
 - **ISDOC** export a embed do EU PDF
-- **SK CIUS** polia v UBL: Peppol scheme `0208` (IČO), `0245` (DIČ), `PartyLegalEntity`, `PaymentMeans`/IBAN, UN/ECE unit codes
+- **SK CIUS** polia v UBL: Peppol scheme `0158` (IČO), `0245` (DIČ), `PartyLegalEntity`, `PaymentMeans`/IBAN, UN/ECE unit codes
 - Per-company nastavenia v `app_settings` (credentials merchanta)
 - Async odoslanie cez `SubmitBusinessDocumentCompliance` job (za `EFAKTURA_ENABLED=true`)
 - SAPI-SK JSON `document/send` (metadata + UBL payload) podľa špecifikácie CPDS
 - Inbound polling `efaktura:poll-inbound` - import UBL do **nákladov** + acknowledge
 - API: `POST .../efaktura/send`, `POST .../efaktura/poll-inbound`, `GET .../efaktura/compliance`, `POST .../efaktura/compliance/refresh`, `POST .../efaktura/test-connection`, `POST .../efaktura/compliance-bulk` (+ ephemeral varianty pre local-first)
 - Voliteľný scheduler `efaktura:sync-compliance-status` (globálny `EFAKTURA_SAPI_SEND_DETAIL_PATH` alebo per-preset detail path)
-- **Derivované Peppol ID**: sender ID sa automaticky odvodí z DIČ (`0245`) alebo IČO (`0208`) firmy; explicitná hodnota v nastaveniach ho prebije
+- **Derivované Peppol ID**: sender ID sa automaticky odvodí z DIČ (`0245`) alebo IČO (`0158`) firmy; explicitná hodnota v nastaveniach ho prebije. Tuzemské odosielanie cez ePostman vyžaduje `0245` a skutočné desaťmiestne DIČ oboch strán; IČO ani IČ DPH ho nenahrádzajú.
 - **Presety poštárov (CPDS)**: admin ich spravuje na `/admin/efaktura-cpds`; aktívne presety predvypĺňajú base URL v sprievodcovi a ich hosty sú dôveryhodné pre SSRF kontrolu
 - **Viditeľnosť**: indikátor "Odošle sa ako eFaktúra" na formulári faktúry, "e" badge so stavom v zozname, preflight kontrola odberateľa pred odoslaním, readiness checklist pre SK platiteľov (aj pred globálnym zapnutím)
 
@@ -44,7 +66,7 @@ Záložka **E-faktúra** v nastaveniach firmy (`eu_sk`; platitelia DPH vidia pln
 
 1. **Choose the provider** - built-in ePostman production/test choices fill the fixed endpoint without an administrator preset. Registered custom providers and manual URLs remain available. Výber na [portáli Finančnej správy](https://www.financnasprava.sk) ostáva na merchantovi.
 2. **Prepojte svoj účet** - `client_id` + `client_secret` od poštára a tlačidlo **Otestovať pripojenie** (jednorazový OAuth pokus, úspech sa uloží ako `efaktura_connection_tested_at`).
-3. **Receiving settings** - save the selected connection after testing; local-first bridge synchronization failures remain visible across reload, including failed disabling. Manual polling requires successfully saved settings. Outgoing is unavailable for ePostman and optional only for separately supported providers. Peppol participant ID je v "Rozšírené" - bežný merchant ho nerieši, derivuje sa z DIČ/IČO.
+3. **Receiving settings** - save the selected connection after testing; local-first bridge synchronization failures remain visible across reload, including failed disabling. Manual polling requires successfully saved settings. Manual outgoing is available for ePostman on the outbound branch; automatic outgoing remains disabled there. Other providers retain their separately verified capabilities. Peppol participant ID je v "Rozšírené" - bežný merchant ho nerieši, derivuje sa z DIČ/IČO.
 
 Serverový test pripojenia firmy je vyhradený vlastníkovi (support/admin zachovávajú existujúci privilegovaný prístup). Uložený `client_secret` sa doplní len pri nezmenenej URL poskytovateľa a `client_id`; pri ich zmene treba secret zadať znova. Local-first test bez firemnej routy používa iba credentials dodané klientom, nikdy nedopĺňa uložené credentials zdieľanej firmy.
 

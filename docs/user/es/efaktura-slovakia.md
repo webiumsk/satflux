@@ -1,14 +1,14 @@
 ---
-title: Facturación electrónica eslovaca - recepción con ePostman
+title: Facturación electrónica eslovaca - conexión ePostman
 category: invoicing
 order: 6
 meta_description: Conecte la cuenta ePostman de su empresa, reciba facturas electrónicas e importe sus originales como gastos en Satflux.
 updated: 2026-11-12
 ---
 
-# Facturación electrónica eslovaca - recepción con ePostman
+# Facturación electrónica eslovaca - conexión ePostman
 
-La conexión con ePostman admite la **recepción**. La recepción e importación de una factura y una nota de crédito se han verificado en la red de pruebas de Peppol. La activación en producción, las comunicaciones de datos exigidas y las condiciones del archivo del proveedor requieren confirmación independiente. Satflux todavía no se presenta como una solución completa para la facturación electrónica obligatoria eslovaca.
+La conexión admite **recepción y envío manual**. La recepción e importación de una factura y una nota de crédito se han verificado en la red de pruebas de Peppol. También se ha confirmado el envío manual de ambos tipos de documento a través de ePostman a Recommand en esa red de pruebas. La activación en producción, las comunicaciones de datos exigidas y las condiciones del archivo requieren confirmación independiente. Satflux no se presenta como una solución completa para la facturación electrónica obligatoria eslovaca.
 
 ## Conectar su empresa
 
@@ -37,8 +37,26 @@ Hasta completar la importación local verificada, el original permanece cifrado 
 
 La cuenta del proveedor puede tener tarifas de API o condiciones de uso independientes. Un buzón web gratuito no incluye necesariamente acceso desde Satflux. Antes de utilizar la conexión en producción, confirme con ePostman el plan aplicable, el acceso SAPI y las condiciones del archivo.
 
-## Envío y obligaciones legales
+## Envío manual y obligaciones legales
 
-Este conector de ePostman no habilita el envío ni el envío automático. Satflux puede exportar **UBL/XML**, pero descargar un archivo no lo entrega al destinatario. La carga manual solo es una opción si el proveedor elegido admite y verifica ese proceso completo.
+Para este envío nacional, ambas partes deben estar en Eslovaquia y usar `0245:<DIČ>` con su propio DIČ de diez dígitos.
 
-Confirme las obligaciones y los plazos concretos de su empresa con la Administración Financiera eslovaca o con su asesor contable. Una recepción operativa por sí sola no confirma el cumplimiento de todas las obligaciones de envío y comunicación de datos.
+Esta primera versión de envío rechaza documentos con descuentos por línea o factura, pérdida de precisión en los precios o importes distintos del documento emitido. Es necesario ampliar el formato de exportación antes de enviar esos documentos. Los pagos parciales se incluyen en el saldo del XML.
+
+Para una empresa eslovaca elegible con registro completo de IVA, abra una factura B2B nacional emitida o una nota de crédito y seleccione **Enviar factura electrónica**. Guarde primero la conexión correcta de la empresa. El emisor y las credenciales deben pertenecer a la misma empresa. El envío automático mediante ePostman permanece desactivado.
+
+Un envío correcto significa **aceptado para su procesamiento**. La entrega y la comunicación tributaria se muestran por separado cuando se configura una clave de la API Enterprise. El enlace al portal de ePostman sigue disponible en el entorno de producción o pruebas correspondiente.
+
+Si el resultado es incierto, repita el intento solo cuando Satflux lo permita. El reintento utiliza la solicitud y el identificador originales dentro del plazo del proveedor. Tras vencer el plazo o cambiar el documento o la conexión, confirme primero el resultado con el proveedor. No cree una nueva factura únicamente para repetir un envío incierto.
+
+## Estado de entrega automático
+
+En la configuración de facturación electrónica de la misma empresa, introduzca una **clave API de ePostman** de **Configuración > Claves API** del portal de producción o pruebas correspondiente y guarde. Es independiente del SAPI Client ID y Client Secret. Satflux guarda esta clave cifrada en su servidor y no la incluye en los datos compartidos de la empresa. Manténgala privada. Eliminar la clave API desactiva las comprobaciones automáticas de estado; la recepción y el envío SAPI usan sus credenciales existentes.
+
+Satflux comprueba periódicamente los documentos enviados, incluso con el navegador cerrado. El panel del documento muestra por separado la entrega, la confirmación **C3 MLS** del destinatario y el estado técnico **C5** comunicado por el proveedor. En documentos compatibles puede usar **Actualizar estado**, respetando una breve espera entre comprobaciones. Un panel abierto y visible también recarga los resultados guardados.
+
+**UNCONFIRMED / TIMEOUT** significa que el punto de acceso receptor recibió el mensaje, pero la confirmación MLS final no llegó a tiempo. Por sí solo, no significa que el envío fallara. Un C5 positivo es un estado técnico comunicado por el proveedor. No confirma la aprobación fiscal ni la aprobación comercial del destinatario. Si una comprobación falla, el último resultado válido sigue visible junto con el error. Sustituya las claves API caducadas o revocadas en la configuración de la empresa.
+
+Las comprobaciones automáticas pueden no estar disponibles para envíos anteriores. Consulte esos documentos en el portal del proveedor. No vuelva a enviar una factura existente solo para obtener su estado.
+
+Confirme las obligaciones y los plazos concretos con la Administración Financiera eslovaca o con su asesor contable. Una conexión operativa por sí sola no confirma el cumplimiento de todas las obligaciones de envío y comunicación de datos.

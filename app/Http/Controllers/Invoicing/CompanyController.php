@@ -124,8 +124,18 @@ class CompanyController extends Controller
             $validated['vat_status'] = $validated['vat_payer'] ? 'payer' : 'none';
         }
 
-        $company->update($validated);
-        $fresh = $company->fresh();
+        $fresh = DB::transaction(function () use ($company, $validated): Company {
+            $locked = Company::query()->whereKey($company->id)->lockForUpdate()->firstOrFail();
+            abort_unless($locked->user_id === $company->user_id, 404);
+            $before = CompanyEfakturaSettings::fromCompany($locked)->enterpriseIdentityFingerprint();
+            $locked->fill($validated);
+            if ($before !== CompanyEfakturaSettings::fromCompany($locked)->enterpriseIdentityFingerprint()) {
+                $locked->setAttribute('app_settings', CompanyEfakturaSettings::clearEnterpriseKey($locked->getAttribute('app_settings') ?? []));
+            }
+            $locked->save();
+
+            return $locked;
+        });
 
         return response()->json([
             'data' => $this->companyPayload($fresh, $brandingService),
@@ -138,33 +148,44 @@ class CompanyController extends Controller
         CompanyBrandingService $brandingService,
     ): JsonResponse {
         $incoming = $this->normalizeWriteOnlySettings($request->validatedSettings());
-        $eligibility = app(CompanyEfakturaEligibility::class);
-        if ($this->hasMeaningfulEfakturaSettings($incoming)) {
-            if (! $eligibility->supportsAny($company)) {
-                throw ValidationException::withMessages([
-                    'efaktura' => ['E-faktura settings are available only for Slovak companies.'],
-                ]);
+        $company = DB::transaction(function () use ($company, $incoming): Company {
+            $expectedOwner = $company->user_id;
+            $company = Company::query()->whereKey($company->id)->lockForUpdate()->firstOrFail();
+            abort_unless($company->user_id === $expectedOwner, 404);
+            $eligibility = app(CompanyEfakturaEligibility::class);
+            if ($this->hasMeaningfulEfakturaSettings($incoming)) {
+                if (! $eligibility->supportsAny($company)) {
+                    throw ValidationException::withMessages([
+                        'efaktura' => ['E-faktura settings are available only for Slovak companies.'],
+                    ]);
+                }
+                // Non-payers may only receive: issuing (auto-send) is reserved
+                // for full VAT payers by statute.
+                if (($incoming['efaktura_auto_send'] ?? false) === true && ! $eligibility->supportsOutbound($company)) {
+                    throw ValidationException::withMessages([
+                        'efaktura_auto_send' => ['Automatic sending is available only for full VAT payers - this company can only receive e-invoices.'],
+                    ]);
+                }
             }
-            // Non-payers may only receive: issuing (auto-send) is reserved
-            // for full VAT payers by statute.
-            if (($incoming['efaktura_auto_send'] ?? false) === true && ! $eligibility->supportsOutbound($company)) {
-                throw ValidationException::withMessages([
-                    'efaktura_auto_send' => ['Automatic sending is available only for full VAT payers - this company can only receive e-invoices.'],
-                ]);
+            $current = CompanyAppSettings::from($company->app_settings)->toArray();
+            $merged = CompanyEfakturaSettings::mergeIncoming(
+                $current,
+                $incoming,
+                CompanyEfakturaSettings::fromCompany($company)->derivedPeppolParticipantId(),
+            );
+            unset($merged['efaktura_sapi_client_secret']);
+            if (! empty($incoming['efaktura_epostman_api_key']) && (new CompanyEfakturaSettings($merged))->enterpriseOrigin() === null) {
+                throw ValidationException::withMessages(['efaktura_epostman_api_key' => ['Enterprise status is available only for ePostman.']]);
             }
-        }
-        $current = CompanyAppSettings::from($company->app_settings)->toArray();
-        $merged = CompanyEfakturaSettings::mergeIncoming(
-            $current,
-            $incoming,
-        );
-        unset($merged['efaktura_sapi_client_secret']);
-        if (isset($incoming['stripe_tax_secret_key_encrypted'])) {
-            unset($merged[CompanyAppSettings::LEGACY_STRIPE_TAX_SECRET_KEY]);
-        }
-        $company->update([
-            'app_settings' => $merged,
-        ]);
+            if (isset($incoming['stripe_tax_secret_key_encrypted'])) {
+                unset($merged[CompanyAppSettings::LEGACY_STRIPE_TAX_SECRET_KEY]);
+            }
+            $company->update([
+                'app_settings' => $merged,
+            ]);
+
+            return $company;
+        });
 
         AuditLog::log('company.app_settings_updated', 'company', $company->id);
 
@@ -273,6 +294,7 @@ class CompanyController extends Controller
             'efaktura_peppol_participant_id',
             'efaktura_sapi_client_id',
             'efaktura_sapi_client_secret',
+            'efaktura_epostman_api_key',
         ] as $key) {
             if (array_key_exists($key, $incoming) && trim((string) $incoming[$key]) !== '') {
                 return true;

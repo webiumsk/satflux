@@ -1,5 +1,131 @@
 # Development roadmap
 
+## PR442 verified review fixes - 2026-11-13
+
+- [x] Verify all nine findings against 19b1987c; fix eight, skip the already-fixed
+  Peppol character-code guard with its exact revision reason.
+- [x] Preserve Enterprise eligibility, custom-provider URL equivalence, safe
+  opaque-ID lookup and retry custody, accepted-only capability and key-origin pin.
+- [x] Hold unresolved companies before retention batching and locked cleanup;
+  clarify C5 in five guides and allow native Enterprise-only key updates.
+- [x] Independently accept QA/security, including five new PostgreSQL races and
+  the URL-comparison compatibility regression; full frontend 3,058 / 236 passes.
+- [x] Fix actual PHP CI blocker by deleting two obsolete baseline entries; final
+  full-project PHPStan, lint/type/build/API/locale/FAQ checks pass.
+- [ ] Push corrections on existing PR442 and verify exact-head Node and PHP CI.
+
+No authenticated provider operation, preview reset, merge or deployment.
+
+## PR442 Node CI correction - 2026-11-13
+
+- [x] Verify actual failed Node Lint log and fix the equivalent ASCII guard.
+- [x] Cover all 33 rejected control codes at boundaries and inside an address;
+  preserve fallback, opaque identifiers and unchanged lint/type ratchets.
+- [x] Pass full lint, targeted 176 / 4, typecheck and independent parser QA.
+- [ ] Push the reviewed correction and verify Node on the new PR head.
+
+No backend/provider/credential/preview changes or deployment in this repair.
+
+## Automatic ePostman status integration - 2026-11-12
+
+- [x] Add optional server-only encrypted Enterprise credentials with explicit
+  removal, safe local bridge retries and independent status generations.
+- [x] Bind new attempts immutably; keep unbound legacy submissions portal-only
+  without backfill, duplicate sends or altered retry UUID/body.
+- [x] Implement fixed-origin GETs, separate delivery/C3/C5, atomic projections,
+  Enterprise-only historical refresh, five-minute scheduling and bounded backoff.
+- [x] Implement five-language setup/display and thirty-second visible cached reads.
+- [x] Independently accept QA/security and resolve revocation, sharing, migration
+  recovery and non-Peppol completion findings; preserve existing previews/data.
+- [x] Main actual app reads exactly two retained TEST receipts, both UNCONFIRMED,
+  C3 TIMEOUT, C5 OK; both projection modes and immediate cooldown replay pass.
+- [x] Pass scoped PHP, actual PostgreSQL races/migration, final build, static,
+  type/locale/API checks; retain inherited lint/deprecation limits explicitly.
+- [x] Finish full frontend verification: 3,019 tests / 236 files pass.
+- [ ] Prepare separate outbound publication/changelog and release readiness.
+- [ ] Confirm production activation/contracts/archive/export and approve deployment;
+  authenticated public webhooks and another provider are separate milestones.
+
+No production/provider mutation, new document, owner-preview change, push, merge
+or deployment is part of this local milestone. See the automatic-status note.
+
+## Enterprise status preflight - 2026-11-12
+
+- [x] Prepare and independently review hidden TEST-key capture with separate
+  owner-only storage, no echo/overwrite/network and durable cleanup.
+- [x] Owner saves the key; offline bound-input check passes with zero HTTP.
+- [x] Independently review fixed GET-only private probe and synthetic tests.
+- [x] Read exactly the two existing RCMD receipts: HTTP200 and exact binding pass;
+  UNCONFIRMED, offline-classified C3 TIMEOUT and C5 OK remain separate from
+  confirmed recipient UI arrival.
+- [ ] Implement per-company encrypted Enterprise-key setup and status reading
+  without treating SAPI202 processing as delivery, MLS or tax approval.
+- [ ] Verify authenticated webhooks separately when a public HTTPS callback exists.
+
+No new provider documents/ACKs/webhooks or application/production changes.
+
+## Replacement Recommand test-network route - 2026-11-12
+
+- [x] Owner registers the replacement test-only DIČ; independently verify fresh
+  authoritative TEST DNS and both Recommand AS4 document registrations before send.
+- [x] Preserve prior state; prepare a separate private RCMD fixture/key/database.
+- [x] Independent narrow QA/security accept frozen harness; offline 26 checks pass.
+- [x] Actual new Invoice/CreditNote HTTP202 and exact-request/UUID/provider-receipt
+  recovery pass, followed by two zero-HTTP cached replays.
+- [x] Independent actual-capture audit passes 59 checks on unchanged ee5bc3b8.
+- [x] Owner confirms both new RCMD documents in the intended Recommand inbox;
+  update five-language guides without claiming production or signed MLS proof.
+- [ ] Separate outbound PR/changelog; automatic status requires verified
+  Enterprise access or authenticated webhooks. Production gates remain separate.
+
+No new runtime edits or product-suite reruns in this follow-up. Existing owner
+previews and old sandbox evidence remain preserved; no push, merge or deployment.
+
+## Actual ePostman outbound test-network follow-up - 2026-11-12
+
+- [x] Correct literal participant parsing, SK ICO 0158 and legal-name export.
+- [x] Require actual SK parties and matching 0245:DIC before provider HTTP and
+  during fresh locked server-document validation; preserve generic providers.
+- [x] Preserve the initially rejected run; register a separate synthetic receiver
+  in the owner's real Peppol Test Network Playground without moving the real ID.
+- [x] Send new Invoice/CreditNote; verify real HTTP202, identical-wire/UUID/provider
+  receipt replay after controlled response loss and zero-HTTP cached results.
+- [x] Independent QA 69 / 324 plus 14 / 26 / 59 private checks, security 9 / 20, main 81 / 383,
+  scoped Pint/PHPStan and prior frontend/type/build/API checks pass.
+- [x] Verify owner-reported C3 OK and public TEST route advertising Flowis G3 Test;
+  the intended Recommand inbox remains empty. Preserve this diagnostic boundary.
+- [x] Register the new test-only DIČ verified absent in authoritative TEST DNS;
+  confirm its AS4 route before sending and verify intended receiver arrival.
+- [ ] Publish separate outbound PR/changelog after the bounded evidence handoff.
+- [ ] Verify Enterprise or authenticated webhook status tracking separately.
+- [ ] Production activation, contracts/archive/export and deployment approval.
+
+All new sends use sandbox credentials and separate private state. No owner
+preview/database changes, production requests, merge or deployment.
+
+## Manual ePostman outbound milestone - 2026-11-12
+
+- [x] Implement manual SAPI Invoice/CreditNote sending on the separate outbound
+  branch based on PR441 receiving head d7e2063e; preserve active previews/data.
+- [x] Pin durable encrypted request/UUID before HTTP; serialize company, owner,
+  credentials and issued-document fences; preserve unknown outcomes and rollback
+  evidence, clear accepted request staging and suppress automatic sending.
+- [x] Preserve issuer bridge isolation, source amounts and custom-provider status
+  capacity; correct UBL ordering and prepaid balance, reject unsupported exports.
+- [x] Independently accept QA/security: PHP 104 / 800 and final 43 / 215, frontend
+  129 / 7, financial/malformed cases and 11 actual PostgreSQL scenarios pass.
+- [x] Full frontend 2,953 / 235, UBL full-XSD 15 / 67, type/lint/build/API/locale
+  and scoped Pint/PHPStan pass without ratchet changes.
+- [x] Verify actual authorized sandbox Invoice/CreditNote sending and retry;
+  owner confirms both arrive in the intended Recommand test inbox.
+- [ ] Publish a separate outbound PR/changelog, retaining the receiving dependency.
+- [ ] Add delivery/MLS/tax status tracking only with verified Enterprise auth or
+  authenticated webhooks; SAPI submission acceptance is not delivery approval.
+- [ ] Confirm production activation and archive/export terms before deployment.
+
+The new branch is feat/efaktura-epostman-outbound. No provider send, master merge,
+production configuration or deployment is part of local acceptance.
+
 ## PR441 verified review corrections - 2026-11-12
 
 - [x] Verify all 14 findings; no skips. Apply minimal backend/frontend/Python fixes.

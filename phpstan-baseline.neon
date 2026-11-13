@@ -3110,18 +3110,6 @@ parameters:
 			path: app/Services/Invoicing/Efaktura/SapiSkComplianceGateway.php
 
 		-
-			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
-			identifier: function.impossibleType
-			count: 1
-			path: app/Services/Invoicing/EphemeralDocumentFactory.php
-
-		-
-			message: '#^Property App\\Models\\Company\:\:\$app_settings \(string\|null\) does not accept array\<mixed\>\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Services/Invoicing/EphemeralDocumentFactory.php
-
-		-
 			message: '#^Property App\\Models\\Company\:\:\$jurisdiction \(string\) does not accept App\\Enums\\CompanyJurisdiction\:\:EuSk\.$#'
 			identifier: assign.propertyType
 			count: 1

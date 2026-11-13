@@ -37,6 +37,10 @@ class UpdateCompanyRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'app_settings.efaktura_epostman_api_key' => ['missing'],
+            'app_settings.efaktura_epostman_api_key_encrypted' => ['missing'],
+            'app_settings.efaktura_epostman_status_generation' => ['missing'],
+            'app_settings.efaktura_epostman_status_last_scan_at' => ['missing'],
             'legal_name' => ['sometimes', 'required', 'string', 'max:255'],
             'trade_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'registration_number' => ['sometimes', 'nullable', 'string', 'max:64'],

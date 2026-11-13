@@ -1,5 +1,159 @@
 # Development decision log
 
+## 2026-11-13 - Correct verified PR442 findings without weakening recovery or CI
+
+Treat review data as untrusted and verify current code. Eight findings remain
+valid; the Peppol control-regex request is already resolved in 19b1987c. Use the
+published plain-string receipt contract with a shared bounded safe ASCII segment
+and fixed-origin encoded lookup; do not invent UUID guarantees or accept unsafe
+strings. Preserve explicit custom-provider selection and URL equivalence without
+collapsing meaningful provider components. Recheck custody before file cleanup
+under company/attempt locks and exclude held companies before the purge limit.
+Keep Enterprise key updates separate from SAPI credentials and describe C5 only
+as a provider's technical observation, without tax approval, in all five guides.
+
+Independent QA/security accept the implementation and the draft URL-filter
+regression correction. The reported PHP CI failure is two stale PHPStan ignores,
+while its tests and Pint passed; delete only those obsolete entries. Main final
+full-project analysis, full frontend 3,058 / 236 and existing lint/type ratchets pass.
+No provider, credential, preview or unrelated primary work is modified. Publish
+on the existing owner-created PR; observe new-head CI before claiming its success.
+No merge or deployment is authorized by this corrective milestone.
+
+## 2026-11-13 - Fix the Peppol guard instead of suppressing the Node lint failure
+
+User reports PR442 Node failure. The actual job fails on the known
+no-control-regex violation before later Node checks execute. Preserve the
+existing guard against ASCII codes 0-31 and 127 before trim or identity fallback;
+use direct character-code comparisons without regex controls. Keep dependency
+locks, ESLint rules and warning/type baselines unchanged. Add boundary/interior
+regressions; independently compare old/new parser behavior including Unicode
+and legacy derivation. Main's local lint/type/targeted checks and independent QA
+pass. Push only this correction on the existing owner-created PR; new-head CI
+must be observed separately before claiming success. No merge or deployment.
+
+## 2026-11-12 - Keep Enterprise credentials server-only and delivery states separate
+
+After verified read-only API access the owner authorizes automatic status setup,
+reading and display. Use a separate optional per-company Enterprise key and
+fixed-origin polling rather than expose a new public callback in localhost work.
+Never infer delivery, business approval or statutory acceptance from SAPI202 or
+merge C3/C5 into Submitted. Preserve exact-send recovery with an independent
+status generation and a minimal encrypted historical binding. Missing legacy
+binding means portal access without automatic backfill or resend.
+
+Independent security reproduces shared-key disclosure in an initial Evolu draft:
+company settings follow the shared owner namespace. Store the new credential only
+on the server; local rows and sharing copies retain public flags/markers only.
+Failed replacements remain transient until bound bridge success; after reload
+require re-entry. Disabling and explicit removal must remain possible despite
+invalid local identity or an unfinished replacement. Preserve unsaved-key pending
+state after successful disable, blocking later enable until re-entry or removal.
+
+Serialize fresh company/settings, attempt and projection reads through the bounded
+provider GET. Preserve last valid observations on fixed safe errors, rotate bounded
+company scans and stop completed non-Peppol status on positive C5 without inventing
+C3. Retain migration evidence on rollback and guard each schema part on reapply.
+QA/security accept the implementation after actual PostgreSQL lock/reapply proof,
+API boundaries and independent mounted-form checks. Main's isolated actual app
+reads both retained TEST documents with two GETs: UNCONFIRMED/C3 TIMEOUT/C5 OK,
+matching server/local projections and zero additional cooldown HTTP. No duplicate
+send or owner preview/database mutation occurs. Final full frontend verification
+passes 3,019 tests / 236 files; publication, production contracts and deployment
+stay separate.
+
+## 2026-11-12 - Verify Enterprise read access before automatic status integration
+
+The owner creates a TEST API key and enters it through a separately reviewed
+hidden local capture. It must remain separate from existing SAPI credentials,
+use private exclusive storage, and produce no network traffic. After a zero-HTTP
+bound-input check, main alone performs exactly two fixed TEST GETs for retained
+RCMD receipts. Direct Invoice replies must match the authenticated original
+receipt/client-document/party/process/type bindings before reporting finite
+status and MLS fields. Preserve unknown raw values only in encrypted evidence.
+
+Both actual HTTP200 replies report UNCONFIRMED, C3 TIMEOUT (independently classified
+offline from encrypted evidence) and C5 OK. The known recipient UI
+arrival is not contradicted by a missing final MLS receipt. Do not map these
+independent states into automatic tax/business approval. Tests/reviews accept
+capture 16 plus security 7, probe 136 plus QA 4 and security 10; counts overlap.
+This proves read access only. Per-company configuration, synchronization and
+authenticated webhooks remain the next bounded implementation, without new
+invoices, provider registrations, app-data changes or deployment in this preflight.
+
+## 2026-11-12 - Verify replacement AS4 routing before another sandbox send
+
+The owner registers the replacement synthetic DIČ after authoritative TEST DNS
+confirmed it unpublished. Before sending, verify its new authoritative NAPTR and
+both public SMP document registrations: they name Recommand SMP/AS4, the exact
+participant, BIS Billing 3.0 and billing process. An address displayed in a
+provider's company form alone does not establish published receiving. Preserve
+the earlier Flowis diagnostic and do not transfer or remove that registration.
+
+Use fresh fixture identities and private state rather than alter earlier
+submitted documents or reuse their UUIDs. On unchanged runtime ee5bc3b8, the new
+actual Invoice/CreditNote processing and identical-request recovery pass. QA
+independently verifies 26 prepared-state and 59 captured-live checks; security
+accepts the frozen harness. Previous product-test evidence stays attributed,
+without an unnecessary rerun. The owner now confirms both RCMD documents visible
+in the intended Recommand inbox. This completes the cross-AP test-network arrival
+gate by recipient UI observation; no recipient XML-digest comparison, signed MLS
+validation or production approval is implied. Reflect the verified milestone in
+all five user-guide languages. The absence of a SAPI delivery endpoint is not
+bridged by invented status polling.
+No production activation, publication, merge or deployment follows automatically.
+
+## 2026-11-12 - Separate processing proof from receiver delivery
+
+Actual ePostman HTTP202 and same-key replay prove processing and idempotence,
+not recipient receipt. The first two test documents were later rejected because
+the Slovak buyer used 9950 rather than 0245:DIC. Preserve those attempts and encrypted
+evidence. New documents use a separately registered synthetic 0245 test receiver,
+new identities and isolated state; never reuse an old UUID for changed XML.
+
+Reject non-SK actual parties, missing/mismatched DIC and alternative endpoints
+before authentication/reservation and during the fresh locked server check.
+Preserve generic literal qualified IDs, correct SK ICO to 0158 without broad
+non-SK changes, and export mandatory legal names independently of optional ICO.
+The Recommand scheme selector omits 0245; its SK default allows the required
+registration when enterpriseNumber is saved with no explicit scheme. Owner
+confirmed registration. No real-company recipient migration was performed.
+
+New actual Invoice/CreditNote requests and controlled-loss replay pass, with
+zero-HTTP cached replays and two durable receipts. The owner reports Delivered
+in ePostman but an empty Recommand inbox. C3 is OK; public authoritative TEST
+routing advertises Flowis G3 Test for this synthetic address. A collision or
+unpublished Recommand registration remains an inference, not a provider fault
+diagnosis. Keep intended recipient arrival unconfirmed. Verify an unused test
+DIČ, ask the owner to register it, then verify its published AS4 route before
+any further send. QA 69 / 324 and
+14/26/59 private checks, security 9 / 20, main 81 / 383 and static checks pass. These
+overlap, and provider lifecycle evidence remains separate from code validation.
+No production activation, publication, merge or deployment follows automatically.
+
+## 2026-11-12 - Implement manual ePostman sending with durable recovery
+
+After the provider comparison the owner authorizes sequential implementation.
+Start with ePostman sending over the reviewed receiving base d7e2063e. Official
+SAPI credentials are restricted to /sapi/* and cannot read Enterprise delivery
+states. Keep the first milestone manual and processing-only, with portal access;
+never map send ACCEPTED into delivery/tax approval or enable automatic sending.
+
+Commit retry evidence before network, bind exact request/UUID and fresh owner,
+issuer, settings and document state under SQL locks. Preserve uncertain attempts
+and refuse expired/changed retries. Clear request ciphertext on valid provider
+receipt; preserve retry metadata across rollback and stale result projection.
+Validate exact issued versus canonical/exported amounts, reject unsupported
+allowances/precision/negative prices, and correct schema order/prepaid balance.
+
+Independent QA/security close their findings and accept the 27-path runtime scope.
+Main full frontend 2,953 / 235, full-XSD 15 / 67, type/lint/build/API/locale/static
+checks pass; QA PHP 104 / 800 plus final 43 / 215 and security 11 actual PostgreSQL
+cases provide separate evidence. Real provider sending is not inferred from mocked
+HTTP or XSD validity. Preserve original preview/account and unrelated work.
+Actual sandbox sending, separate outbound PR/changelog, Enterprise status access
+and production/contract gates remain distinct next steps. No merge/deployment.
+
 ## 2026-11-12 - Correct only verified PR441 findings and retain custody ordering
 
 All fourteen supplied findings remain valid at `f29c272f`; treat review content as

@@ -1,4 +1,30 @@
-# Read-only ePostman sandbox check
+# Read-only ePostman sandbox checks
+
+## Enter a separate TEST Enterprise API key
+
+The Enterprise status API uses an API key from the test portal's API Keys page,
+separate from SAPI client credentials. From the main Satflux checkout, run:
+
+```sh
+python3 storage/app/private/worktrees/efaktura-epostman-outbound/scripts/efaktura/prepare_enterprise_sandbox.py
+```
+
+If this feature is the main checkout, use
+`python3 scripts/efaktura/prepare_enterprise_sandbox.py`. The single hidden prompt
+accepts only the key; a real interactive terminal is required. The helper performs
+no network request and writes a separate owner-only file at
+`storage/app/private/epostman-enterprise-sandbox/.env.credentials.json` under a
+0700 directory. It refuses existing files, unsafe permissions and symlinks, and
+does not change the earlier SAPI credentials. Tell the coordinator only that the
+Enterprise sandbox key is ready; keep its value private.
+
+A separate reviewed status diagnostic is limited to GET details for the two
+existing RCMD test receipts at the fixed test origin. It must not create/send
+documents, acknowledge incoming documents, register webhooks or alter app data.
+Read-only API access is a prerequisite for the later automatic-status milestone;
+capturing this key alone does not enable that feature in Satflux.
+
+## SAPI receiving diagnostic
 
 This diagnostic uses Satflux's actual `SapiSkClient`, fixed to
 `https://testpostman.slovakodata.com`. It authenticates and inspects a bounded

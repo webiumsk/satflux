@@ -63,3 +63,42 @@ describe('local eFaktura credential retention', () => {
     expect(saved).not.toHaveProperty('efaktura_sapi_client_secret_encrypted');
   });
 });
+
+describe('server-only Enterprise status credentials', () => {
+  it.each(['app-owner', 'shared-owner'])('never persists Enterprise secret bytes in a %s company row', (ownerId) => {
+    const getRows = vi.spyOn(client, 'getQueryRows').mockImplementation(() => [{
+      id: 'company-a', ownerId, appSettingsJson: JSON.stringify(saved),
+    }]);
+    saved.efaktura_epostman_api_key = 'synthetic-legacy-key';
+    saved.efaktura_epostman_api_key_encrypted = 'synthetic-legacy-ciphertext';
+    saved.efaktura_epostman_key_identity = 'synthetic-binding';
+    saved.efaktura_epostman_status_generation = 'synthetic-generation';
+    update({ efaktura_epostman_api_key: 'synthetic-replacement-key' });
+    expect(saved).not.toHaveProperty('efaktura_epostman_api_key');
+    expect(saved).not.toHaveProperty('efaktura_epostman_api_key_encrypted');
+    expect(saved).not.toHaveProperty('efaktura_epostman_key_identity');
+    expect(saved).not.toHaveProperty('efaktura_epostman_status_generation');
+    expect(JSON.stringify(saved)).not.toContain('synthetic-replacement-key');
+    expect(saved.efaktura_sapi_client_secret).toBe('synthetic-old-secret');
+    update({});
+    expect(saved).not.toHaveProperty('efaktura_epostman_api_key');
+    getRows.mockRestore();
+  });
+
+  it('keeps a public saved-key flag across SAPI rotation and receiving toggle', () => {
+    saved.efaktura_epostman_api_key_set = true;
+    update({ efaktura_sapi_client_id: 'rotated-sapi-client', efaktura_sapi_client_secret: 'rotated-secret',
+      efaktura_inbound_enabled: false });
+    expect(saved.efaktura_epostman_api_key_set).toBe(true);
+  });
+
+  it.each([
+    { efaktura_sapi_base_url: 'https://testpostman.slovakodata.com' },
+    { efaktura_peppol_participant_id: '0245:2020000002' },
+  ])('clears the public key flag for a disabled changed connection (%j)', (change) => {
+    saved.efaktura_epostman_api_key_set = true;
+    update({ ...change, efaktura_enabled: false });
+    expect(saved.efaktura_epostman_api_key_set).toBe(false);
+    expect(saved).not.toHaveProperty('efaktura_epostman_api_key');
+  });
+});

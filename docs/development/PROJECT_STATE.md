@@ -1,5 +1,198 @@
 # Project state
 
+## PR442 review corrections accepted locally - 2026-11-13
+
+Eight current review findings are verified and fixed over 19b1987c; the Peppol
+control-character finding is already fixed there and is skipped. Correct outbound
+eligibility, custom-provider resolution, accepted/usable status capability, safe
+opaque receipt IDs, surviving-key origin pinning, unresolved-attempt retention,
+five-language C5 wording and native Enterprise-only key saves. Fresh public
+schemas specify string IDs, not a UUID guarantee; shared bounded safe segments
+and encoded fixed-origin paths preserve URL protection and unsafe-send custody.
+
+Independent QA catches and verifies a draft URL-comparison compatibility fix;
+final comparison normalizes scheme/host/default ports without collapsing path,
+query or other provider distinctions. Security accepts nine tests / 367 assertions,
+five new actual PostgreSQL races and a separate 1 / 17 URI matrix; QA accepts 123 / 697,
+rejected-receipt 1 / 4, native form checks, guide parity and final URL 7 / 17. Counts
+overlap. Main full frontend 3,058 / 236, build 7,660, lint 0 errors / 46 warnings, unchanged
+type baseline 110 inherited / no new, FAQ, locale and API/schema checks pass. Full-project
+PHPStan passes again after the final URI correction; exactly two obsolete
+EphemeralDocumentFactory suppressions are removed, no new ignores or level change.
+
+The old CI PHP job's 3,347 tests and Pint had passed; its failure was PHPStan's
+unmatched baseline entries. This is recorded separately from these new tests.
+Evidence: EPOSTMAN_PR442_REVIEW_FIXES.md and private review reports. Existing
+previews/data/captures and unrelated primary work are preserved. Corrective
+publication and exact new-head CI verification are next; no merge or deployment.
+
+## PR442 Node lint repair - 2026-11-13
+
+CI run 43325166171, Node job 131555682103 fails at Lint on
+peppolEndpoint.ts:31 (no-control-regex). PR442 is open against master at head
+54acde0a. Replace only the ASCII control-character regex with an equivalent
+character-code check before trimming; keep codes 0-31 and 127 rejected and do
+not change derivation, ESLint rules or the 52-warning limit. Main passes full
+lint (0 errors / 46 warnings), 176 targeted tests / 4 files and typecheck
+(110 inherited / no new). Independent QA passes 52 helper tests and 196,668
+baseline/current parser comparisons including every UTF-16 unit and surrogate
+cases. Graph unavailable in the target checkout; known files are read directly.
+New-head CI remains to be verified after the corrective push; no merge or deploy.
+
+## Automatic ePostman delivery observations implemented - 2026-11-12
+
+The authorized feature is implemented on feat/efaktura-epostman-outbound over
+baseline d4778fb2 and accepted by independent QA/security. Optional Enterprise
+API keys remain encrypted on the server in both application modes; local/shared
+company rows contain only public flags and pending markers. Separate immutable
+attempt bindings and credential generations preserve the existing send retry
+UUID/body. Legacy attempts without binding retain portal-only status access.
+Manual refresh and a bounded five-minute scheduler cover server and local-first
+sources; delivery, C3 and C5 remain observations alongside Submitted acceptance.
+
+Main's independently reviewed actual-service harness prepares a new isolated
+SQLite fixture with zero HTTP, then performs exactly two fixed existing-receipt
+TEST GETs. Server Invoice and local CreditNote both report UNCONFIRMED, C3 TIMEOUT
+and C5 OK. Canonical/projection states match, submission stays Submitted and
+immediate repeated reads perform no HTTP. Only credential/binding fields and
+captured evidence are encrypted; SQLite itself is not SQLCipher. Earlier owner
+previews, accounts, original attempts and captures remain preserved.
+
+Independent QA passes 117 PHP / 765 assertions, final status/migration 22 / 193,
+four helper cases, two mounted Vue cases and final build 7,660 modules. Independent
+security passes nine actual PostgreSQL lock scenarios, sixteen PG migration
+checks, API 3 / 31 and twenty-six sharing checks. Main's receiving/generic-provider
+regression passes 97 / 717. Counts overlap; do not combine them. Shared-key
+exposure, invalid-identity and interrupted-key disable, rollback/reapply and
+non-Peppol completion findings are fixed and independently accepted. The suggested
+hidden pending-removal control is skipped because the current button handles it.
+
+Pint/PHPStan, unchanged typecheck baseline (110 inherited, no new), locale parity,
+three OpenAPI documents and isolated API-export freshness pass. Full lint retains
+one unchanged peppolEndpoint control-regex error and 46 warnings; no ratchet is
+raised. One inherited PHPUnit deprecation remains. Final full frontend passes
+3,019 tests / 236 files. The first sandbox run ended SIGTERM without a result;
+the successful final retry is counted, without an inferred pass for the first run.
+
+Evidence: EPOSTMAN_AUTOMATIC_STATUS_IMPLEMENTATION.md and private automatic-status
+review records. No production call, new document, ACK, webhook, owner-preview
+change, push, merge or deployment. Next: separate outbound publication/release
+readiness, backend-first additive migration rollout and explicit deployment gates;
+public webhooks, production contracts and the next provider remain separate.
+
+## Enterprise API read access verified - 2026-11-12
+
+The owner saves a separate TEST API key through the new hidden local capture.
+Main's isolated offline check passes with two bound RCMD documents and zero HTTP.
+Exactly two authenticated TEST GETs then return HTTP200 direct Invoice objects,
+matching retained receipt/client-document/party/process/type identities. Both
+report UNCONFIRMED and C5 OK; independent offline exact-token classification
+confirms C3 TIMEOUT, initially sanitized as OTHER by the frozen probe.
+Actual receiver UI arrival remains owner-confirmed. No new document, ACK, webhook,
+application setting/database or production change occurs.
+
+Capture helper and synthetic tests are independently accepted: main/QA 16 cases,
+security 7 additional checks including real PTY no-echo. The separate private
+GET-only probe passes 136 synthetic checks; QA adds 4 full-schema cases and
+security 10 adversarial cases. These overlap and are not a combined count.
+Original captures/keys and running owner previews remain preserved. Automatic
+delivery-status synchronization is still to be implemented after this verified
+access prerequisite; SAPI processing, AS4/MLS and tax-report states stay separate.
+Evidence: EPOSTMAN_ENTERPRISE_STATUS_PREFLIGHT.md and private review records.
+No push, merge or deployment.
+
+## Recommand cross-AP arrival confirmed - 2026-11-12
+
+The owner registered the previously unpublished replacement test DIČ. Fresh
+authoritative TEST DNS points to Recommand SMP; both Invoice and CreditNote
+metadata advertise https://test-ap.net.recommand.com/as4, BIS Billing 3.0 and the
+correct billing process. Coordinator independently confirms the DNS and supplied
+public XML. XML-signature/PKI verification is not claimed. Earlier Flowis routing
+and all previous attempts/evidence remain preserved.
+
+A third, separately reviewed private harness/key/SQLite/fixture uses new RCMD
+document numbers and the replacement recipient. Coordinator completes actual
+sandbox Invoice/CreditNote HTTP202, a controlled Invoice response loss and exact
+wire-body/UUID/provider-receipt replay, plus two zero-HTTP cached replays. Exactly
+two attempts, two projections and two distinct receipts remain. Independent QA
+passes 26 prepared-state and 59 captured-live checks; independent security accepts
+the frozen two-file harness scope. Runtime remains unchanged at ee5bc3b8 with
+service hash a0130288; prior product tests are not represented as rerun.
+
+The owner confirms both new RCMD documents are visible in the matching Recommand
+test-company inbox. This completes intended Invoice/CreditNote cross-AP arrival
+in the test network. Recipient UI observation is owner-confirmed; no recipient
+original-digest comparison, cryptographic MLS validation or production approval
+is claimed. Neither public routing nor HTTP202 alone establishes arrival.
+Five-language user guides now reflect this evidence and actual domestic DIČ
+requirements. Independent QA accepts all 10 changed Markdown files. Locale parity,
+unchanged article front matter/headings and whitespace checks pass; no new
+runtime changes, product-suite reruns or provider calls in this docs follow-up.
+No production request, owner preview/database change, push, merge
+or deployment. Next: separate outbound publication and Enterprise/webhook status
+tracking; production activation and archive/export terms remain separate.
+
+## ePostman sandbox processing and retry verified - 2026-11-12
+
+The separate outbound branch remains based on local implementation 03b062cc.
+New bounded corrections are local and reviewed; no push, merge or deployment.
+Both running owner previews and their accounts/databases remain preserved.
+
+Actual sandbox Invoice/CreditNote processing and exact-request retry are verified.
+The first recipient scheme caused national rejection after HTTP202; preserve that
+run and its evidence. The owner registered a separate synthetic 0245 recipient in
+a Recommand Peppol Test Network Playground. A new isolated harness/state sends
+two EUR1.23 documents. After controlled loss of the Invoice's real HTTP202 response,
+identical raw bytes/UUID replay returns the same provider receipt. Both cached
+replays perform zero HTTP; two durable attempts and distinct receipts remain.
+The owner reports Delivered in ePostman but no documents in Recommand even after
+checking the same playground without filters. Screenshots show C3 OK. Public
+authoritative TEST DNS/SMP diagnostics advertise Flowis G3 Test for both document
+types at that synthetic address; the displayed 9950 address is unpublished.
+Test-identity collision or unpublished Recommand registration remains an
+inference. A new valid test DIČ is verified absent in authoritative TEST DNS and
+awaits owner registration; verify its AS4 route before any further send.
+Arrival in the intended Recommand inbox remains unconfirmed.
+
+Correct literal participant preservation, SK ICO scheme 0158 and mandatory legal
+names without registration numbers. The domestic service requires both actual
+countries SK and matching 0245:ten-digit-DIC, including its fresh locked recheck.
+Independent QA: 69 PHP / 324 assertions, 14 boundary, 26 prepared-state and 59 actual
+captured-live checks pass. Security: 9 profile cases / 20 assertions pass. Main:
+81 PHP / 383, Pint 8, PHPStan 4; prior 66 frontend / 4, type 110 inherited / no new, API and
+build 7,659 pass. Counts overlap; no ratchet change. The source service is frozen
+at a0130288; private harness/captures and reviewer reports remain uncommitted.
+Evidence: EPOSTMAN_OUTBOUND_IMPLEMENTATION.md and private sandbox review records.
+Next: resolve sender Delivered versus empty receiver inbox, then outbound
+publication/changelog and separately Enterprise/webhook status tracking.
+
+## Manual ePostman sending accepted locally - 2026-11-12
+
+The owner authorizes sequential progress; the first milestone is implemented on
+`feat/efaktura-epostman-outbound`, based on receiving PR441 head `d7e2063e`.
+Manual issued SK B2B Invoice/CreditNote submission uses committed encrypted retry
+staging, a pinned UUID/body and fresh owner/company/document/settings fences.
+Uncertain attempts retain recovery; accepted provider receipts clear request
+ciphertext. Auto-send remains disabled. SAPI cannot read Enterprise delivery
+states, so processing acceptance stays Submitted with a matching portal link.
+
+Independent QA/security accept 27 implementation/test/locale paths with no open
+blocker. QA: 104 PHP / 800 assertions plus final 43 / 215, 129 frontend / 7 suites,
+3 malformed-response and 8 financial cases. Security: 11 actual PostgreSQL cases
+with simulated provider HTTP, 8 amount / 38 and 2 compatibility / 9 assertions.
+Main: full frontend 2,953 / 235, official full-XSD UBL 15 / 67, unchanged typecheck
+110 inherited / no new, lint 46 / 52, build 7,659 modules and API/locale/style/static
+checks pass. These are overlapping counts, not a combined test total.
+
+Corrected UBL sequence/prepaid balance and reject unsupported discounts,
+negative prices, lossy numeric precision and issued/export amount divergence.
+The original receiving preview/account and publication checkout stay preserved.
+No live provider send, production activation, merge or deployment occurs. Next:
+authorized actual sandbox sending; delivery/tax tracking requires a separate
+Enterprise credential or authenticated webhook milestone. Publication/changelog
+remain separate. Evidence: EPOSTMAN_OUTBOUND_IMPLEMENTATION.md and private
+`reviews/epostman-outbound`.
+
 ## PR441 review corrections accepted - 2026-11-12
 
 All fourteen owner-supplied findings are verified against published base `f29c272f`
