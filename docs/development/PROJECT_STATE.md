@@ -1,5 +1,30 @@
 # Project state
 
+## PR443 API freshness preflight corrected locally - 2026-11-13
+
+Fresh PR metadata confirms owner-created PR443 open/unmerged at head
+`c71c4aed648f4dd78659b84af8bfa450a85a7aa8`, base `e2130aea`. CI run
+`43502893971`, PHP job `132152970297`, fails at
+`php artisan api-docs:export --check` with stale `route-coverage.json`.
+PHPUnit, Pint and PHPStan were skipped in that job; this is not evidence of a
+failed PHPUnit assertion. The other four jobs complete successfully.
+
+The earlier invoice changes updated two files in the API inventory's 38-source
+fingerprint set, but their generated hashes were not refreshed. The isolated
+generator reproduces the stale artifact and updates exactly the
+`WooCommerceDocumentService.php` and `BusinessDocument.php` hash values.
+All 460 routes/actions/middleware and all three OpenAPI documents remain unchanged.
+Runtime source fingerprint `bb61393f355a0a4c7a94787819c7b75fcdc31c38950ec9a152f4e841de9e8a75`
+is retained.
+
+Independent QA accepts artifact SHA256
+`b70fd1dbc7f321af32d67419ec59396f226d07ace8774572e4adebd15a678569`.
+Export freshness, three offline schemas, validator regression and API tests
+11 / 230 pass; one inherited PHPUnit deprecation remains. No runtime, route,
+permission, dependency or CI-gate change. Corrective publication on the existing
+PR and exact-new-head CI verification are next. No merge or deployment.
+Evidence: [failed PHP preflight](https://github.com/webiumsk/satflux/actions/runs/43502893971/job/132152970297).
+
 ## Invoice corrections implementation published - 2026-11-13
 
 The owner explicitly authorizes push. Reviewed implementation commit

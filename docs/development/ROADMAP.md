@@ -1,5 +1,16 @@
 # Development roadmap
 
+## PR443 API inventory freshness repair - 2026-11-13
+
+- [x] Verify PHP CI failed before PHPUnit at the generated API freshness gate.
+- [x] Reproduce and regenerate exactly two source fingerprints; preserve all
+  460 routes, middleware/actions and three OpenAPI specifications.
+- [x] Independently accept artifact diff, export check, schema validation and
+  API regressions 11 / 230.
+- [ ] Push the correction on PR443 and verify exact-new-head CI.
+
+No runtime/dependency change, merge or deployment in this repair.
+
 ## Invoice correction publication - 2026-11-13
 
 - [x] Owner authorizes push of the complete reviewed correction branch.

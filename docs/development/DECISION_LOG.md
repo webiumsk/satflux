@@ -1,5 +1,19 @@
 # Development decision log
 
+## 2026-11-13 - Refresh the reviewed API source inventory after invoice changes
+
+PR443 PHP job fails before tests because the invoice model and Woo contact service
+changed without regenerating their API inventory fingerprints. Run the existing
+guarded exporter in uncached testing with SQLite in memory and array stores.
+Refresh only the two generated hashes and retain every route, middleware/action,
+OpenAPI contract and runtime byte. Keep the freshness gate intact.
+
+Independent QA accepts the exact two-value artifact diff, all 38 current source
+hashes, unchanged 460-route inventory, export/schema checks and API tests 11 / 230.
+Publish on the same authorized branch and observe CI for the new head. Earlier
+local runtime test results are not substituted for the skipped CI PHPUnit step.
+No dependency installation, new implementation, merge or deployment.
+
 ## 2026-11-13 - Publish the independently reviewed invoice corrections
 
 Treat the owner's push instruction as authorization to commit and publish the

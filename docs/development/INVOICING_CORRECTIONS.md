@@ -1,5 +1,26 @@
 # Invoice deductions, payment provenance and buyer identity
 
+## PR443 PHP CI preflight repair - 2026-11-13
+
+Run `43502893971` at PR head `c71c4aed` fails before PHPUnit at
+`api-docs:export --check`: the generated route inventory still records old
+hashes for the changed Woo contact service and business invoice model.
+The required API freshness check was omitted from the earlier local validation.
+PHPUnit, Pint and PHPStan were skipped in that CI job; the other four jobs pass.
+
+Regenerate with the existing guarded exporter in the isolated, uncached SQLite
+in-memory fixture. The diff is exactly two source SHA256 values in
+`docs/api/route-coverage.json`; all 460 routes/actions/middleware, the three
+OpenAPI documents and runtime source remain unchanged. Independent QA accepts
+artifact SHA256 `b70fd1dbc7f321af32d67419ec59396f226d07ace8774572e4adebd15a678569`.
+Freshness, three schema validations, the validator regression and API tests
+11 / 230 pass, with one inherited PHPUnit deprecation.
+
+This correction changes no product, auth, dependency or CI behavior. Publish on
+the existing owner-created PR443, then verify its new-head PHP job. No merge or
+deployment. Public CI evidence:
+[PHP job](https://github.com/webiumsk/satflux/actions/runs/43502893971/job/132152970297).
+
 ## Publication - 2026-11-13
 
 The owner authorizes push. Implementation commit
