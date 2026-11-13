@@ -78,7 +78,8 @@ class WooCommerceCompanyLifecycleTest extends TestCase
 
     public function test_permanent_company_deletion_cannot_turn_an_old_token_into_companyless_access(): void
     {
-        app(CompanyPermanentDeleteService::class)->forceDelete($this->company);
+        $this->company->delete();
+        $this->assertTrue(app(CompanyPermanentDeleteService::class)->forceDelete($this->company));
         $this->assertNull($this->store->fresh()->company_id);
         $this->assertNull($this->integration->fresh()->company_id);
         $this->assertFalse($this->integration->fresh()->is_active);

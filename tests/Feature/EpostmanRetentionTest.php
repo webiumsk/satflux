@@ -58,6 +58,31 @@ class EpostmanRetentionTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_direct_purge_rejects_a_restored_company_without_a_cutoff_before_cleanup(): void
+    {
+        Http::fake();
+        $company = $this->company();
+        $company->forceFill(['logo_path' => 'synthetic-logo.png', 'signature_stamp_path' => 'synthetic-stamp.png'])->save();
+        $attempt = $this->attempt($company, resolved: true);
+        $store = Store::factory()->create(['user_id' => $company->user_id, 'company_id' => $company->id]);
+        $integration = StoreIntegration::createForStore($store)['integration'];
+        // The caller's stale snapshot must not override the fresh locked state.
+        Company::withTrashed()->findOrFail($company->id)->restore();
+        $branding = $this->mock(CompanyBrandingService::class);
+        $branding->shouldNotReceive('deleteLogo');
+        $branding->shouldNotReceive('deleteSignatureStamp');
+
+        $this->assertFalse(app(CompanyPermanentDeleteService::class)->forceDelete($company));
+        $retained = Company::findOrFail($company->id);
+        $this->assertNull($retained->deleted_at);
+        $this->assertSame($company->logo_path, $retained->logo_path);
+        $this->assertSame($company->signature_stamp_path, $retained->signature_stamp_path);
+        $this->assertNotNull($attempt->fresh());
+        $this->assertSame($company->id, $store->fresh()->company_id);
+        $this->assertTrue($integration->fresh()->is_active);
+        Http::assertNothingSent();
+    }
+
     public function test_held_company_does_not_consume_the_retention_batch(): void
     {
         config(['data_retention.batch_size' => 1]);
@@ -80,6 +105,20 @@ class EpostmanRetentionTest extends TestCase
         app(CompanyPermanentDeleteService::class)->forceDelete($company);
         $this->assertNull(Company::withTrashed()->find($company->id));
         $this->assertNull(EfakturaOutboundAttempt::find($attempt->id));
+    }
+
+    public function test_direct_purge_preserves_the_cutoff_for_soft_deleted_companies(): void
+    {
+        $company = $this->company();
+        $cutoff = now()->subDays(30)->startOfSecond();
+        $company->forceFill(['deleted_at' => $cutoff])->save();
+        $service = app(CompanyPermanentDeleteService::class);
+        $this->assertFalse($service->forceDelete($company, $cutoff));
+        $this->assertNotNull(Company::withTrashed()->find($company->id));
+
+        $company->forceFill(['deleted_at' => $cutoff->copy()->subSecond()])->save();
+        $this->assertTrue($service->forceDelete($company, $cutoff));
+        $this->assertNull(Company::withTrashed()->find($company->id));
     }
 
     public function test_retention_rechecks_restoration_and_retained_request_before_cleanup(): void

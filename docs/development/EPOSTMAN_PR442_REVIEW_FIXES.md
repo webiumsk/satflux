@@ -1,5 +1,21 @@
 # PR442 verified review corrections
 
+## Follow-up: permanent deletion requires a soft-deleted company
+
+Verified against `7b7588a0`: the direct `forceDelete()` call could delete an active
+company when no cutoff was supplied. Production calls use the retention path;
+the WooCommerce lifecycle test also called the service directly on an active
+fixture. Reject a fresh row-locked company with null `deleted_at` before the
+optional cutoff check. Keep custody, batching and eligible deletion unchanged.
+
+The new stale-snapshot/restoration regression fails before the fix and passes
+after it, preserving branding, attempts and integrations. A cutoff-boundary test
+preserves equality rejection and deletion strictly before the cutoff. Update
+the WooCommerce fixture to soft-delete first and require successful purging.
+Isolated SQLite tests pass: 34 tests / 128 assertions, with one inherited PHPUnit
+deprecation. Full-project PHPStan passes. This is a narrow follow-up; earlier
+independent reviews and full frontend results below are historical evidence.
+
 Date: 2026-11-13. Baseline: `19b1987c`. Repository: Satflux only.
 
 The owner requests verification of nine review findings, minimal corrections and

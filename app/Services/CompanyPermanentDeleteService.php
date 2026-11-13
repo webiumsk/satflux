@@ -55,8 +55,10 @@ class CompanyPermanentDeleteService
     {
         return DB::transaction(function () use ($company, $deletedBefore): bool {
             $company = Company::withTrashed()->whereKey($company->id)->lockForUpdate()->first();
-            if ($company === null || ($deletedBefore !== null && ($company->deleted_at === null
-                || Carbon::parse($company->deleted_at)->gte($deletedBefore)))) {
+            if ($company === null || $company->deleted_at === null) {
+                return false;
+            }
+            if ($deletedBefore !== null && Carbon::parse($company->deleted_at)->gte($deletedBefore)) {
                 return false;
             }
             $attempts = EfakturaOutboundAttempt::query()->where('company_id', $company->id)->orderBy('id')->lockForUpdate()->get();
