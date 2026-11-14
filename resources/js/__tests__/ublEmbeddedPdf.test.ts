@@ -88,6 +88,23 @@ describe('extractUblEmbeddedPdfs', () => {
     expect(extractUblEmbeddedPdfs(xml)).toEqual({ pdfs: [], rejectedCount: 0, error: 'invalid_xml' });
   });
 
+  it('rejects a complete UBL invoice with a PDF attachment followed by a second root', () => {
+    const xml = `${ubl('<cbc:ID>synthetic-invoice</cbc:ID>' + attachment())}<second/>`;
+    expect(extractUblEmbeddedPdfs(xml)).toEqual({ pdfs: [], rejectedCount: 0, error: 'invalid_xml' });
+  });
+
+  it.each([
+    'http://www.mozilla.org/newlayout/xml/parsererror.xml',
+    'http://www.w3.org/1999/xhtml',
+    null,
+  ])('rejects parser errors in namespace %s even when the UBL root and PDF are retained', (namespace) => {
+    const xml = ubl(attachment());
+    const document = new DOMParser().parseFromString(xml, 'application/xml');
+    document.documentElement.prepend(document.createElementNS(namespace, 'parsererror'));
+    vi.stubGlobal('DOMParser', class { parseFromString = () => document; });
+    expect(extractUblEmbeddedPdfs(`${xml}<second/>`)).toEqual({ pdfs: [], rejectedCount: 0, error: 'invalid_xml' });
+  });
+
   it.each([
     '<Invoice/>', '<CreditNote xmlns="urn:spoof"/>',
     '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2"/>',

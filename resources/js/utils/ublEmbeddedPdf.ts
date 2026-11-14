@@ -91,7 +91,7 @@ export function extractUblEmbeddedPdfs(xml: string): EmbeddedUblPdfResult {
     return { pdfs: [], rejectedCount: 0, error: 'invalid_xml' };
   }
   const root = document.documentElement;
-  if (!root || document.getElementsByTagNameNS('http://www.mozilla.org/newlayout/xml/parsererror.xml', 'parsererror').length > 0) {
+  if (!root || document.getElementsByTagNameNS('*', 'parsererror').length > 0) {
     return { pdfs: [], rejectedCount: 0, error: 'invalid_xml' };
   }
   if (

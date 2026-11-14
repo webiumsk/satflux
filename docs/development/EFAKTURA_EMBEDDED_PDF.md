@@ -64,4 +64,10 @@ was stopped; existing owner previews remain untouched.
 
 Existing locked Node dependencies are reused after verifying lockfile equality;
 no packages are added. No PHP/API/schema changes require a new backend test run.
-PR creation, exact-head CI and owner merge/deployment remain the next steps.
+The owner opened [PR445](https://github.com/webiumsk/satflux/pull/445). Its three
+current review findings are reproduced and corrected without changing the feature
+contract: task destruction precedes worker/port teardown with a one-second forced
+cleanup bound, pending-clear reloads the preserved saved preview, and parsererror
+checks cover every namespace including Chromium XHTML. See
+[review corrections](PR445_REVIEW_FIXES.md) for acceptance and regression evidence.
+Published-head CI and owner merge/deployment remain separate gates.

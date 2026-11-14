@@ -1,5 +1,26 @@
 # Project state
 
+## PR445 review corrections independently accepted - 2026-11-14
+
+All three current findings over `49384427` are reproduced and corrected on
+`feat/efaktura-embedded-pdf`; the duplicated request is processed once, none skipped.
+Await PDF.js loading-task destruction before owned worker/port release with a
+one-second forced fallback; reload saved previews after pending-clear; detect XML
+parsererror in every namespace before PDF extraction. Original XML/custody,
+company/document/request fences, resource limits and five-language copy remain intact.
+
+Main passes 223 tests / ten files, lint (zero errors / 46 inherited warnings),
+TypeScript ratchet (110 tolerated / no new), locale parity, whitespace and build
+(7,665 modules). Independent security accepts 137 permanent + 23 private cases;
+QA accepts 137 permanent + 20 private cases. Counts overlap. Real Chrome confirms
+ten parser cases, two-page rendering, exact 697-byte download, graceful Terminate
+reply before port teardown and forced stalled cleanup without harming a new source.
+No page errors/nonlocal requests; all workers terminate. Six frozen hashes match.
+See `PR445_REVIEW_FIXES.md`; private evidence is under
+`storage/app/private/reviews/pr445-review-fixes`. Publish to existing PR445 and
+verify its new-head CI; owner retains merge/deployment. This does not establish a
+deployed revision or statutory/provider production readiness. No merge/deploy here.
+
 ## Embedded UBL PDF access reviewed - 2026-11-14
 
 The owner authorizes View and Download for embedded PDF attachments in received

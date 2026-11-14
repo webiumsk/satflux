@@ -205,21 +205,142 @@ describe('UblEmbeddedPdfViewer', () => {
     expect(wrapper.find('[role="alert"]').exists()).toBe(false);
   });
 
-  it('cancels pending rendering and destroys the loading task and owned worker on unmount', async () => {
+  it('cancels rendering immediately and waits for task destruction before releasing the worker on unmount', async () => {
     const pendingRender = deferred<void>();
+    const pendingDestroy = deferred<void>();
+    const events: string[] = [];
     document = pdfDocument(1, 600, 800, pendingRender.promise);
     task = loadingTask(Promise.resolve(document));
+    task.destroy.mockImplementation(() => {
+      events.push('task:destroy');
+      return pendingDestroy.promise;
+    });
+    document.render.cancel.mockImplementation(() => { events.push('render:cancel'); });
+    worker.destroy.mockImplementation(() => { events.push('worker:destroy'); });
     pdfjs.getDocument.mockReturnValue(task);
     const wrapper = await readyViewer();
+    const port = OwnedWorker.instances[0];
+    port.terminate.mockImplementation(() => { events.push('port:terminate'); });
     expect(document.page.render).toHaveBeenCalledTimes(1);
     wrapper.unmount();
     expect(document.render.cancel).toHaveBeenCalledTimes(1);
     expect(task.destroy).toHaveBeenCalledTimes(1);
+    expect(events).toEqual(['render:cancel', 'task:destroy']);
+    await flushPromises();
+    expect(worker.destroy).not.toHaveBeenCalled();
+    expect(port.terminate).not.toHaveBeenCalled();
+    pendingDestroy.resolve();
+    await flushPromises();
+    expect(events).toEqual(['render:cancel', 'task:destroy', 'worker:destroy', 'port:terminate']);
     expect(worker.destroy).toHaveBeenCalledTimes(1);
-    expect(OwnedWorker.instances[0].terminate).toHaveBeenCalledTimes(1);
+    expect(port.terminate).toHaveBeenCalledTimes(1);
     pendingRender.resolve();
     await flushPromises();
     expect(document.page.cleanup).not.toHaveBeenCalled();
+  });
+
+  it.each(['resolve', 'reject'] as const)('waits for old task destruction to %s without blocking or releasing a replacement source', async (settlement) => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const pendingDestroy = deferred<void>();
+    const oldDocument = pdfDocument();
+    const oldTask = loadingTask(Promise.resolve(oldDocument));
+    oldTask.destroy.mockReturnValue(pendingDestroy.promise);
+    const oldWorker = { destroy: vi.fn() };
+    pdfjs.getDocument.mockReturnValueOnce(oldTask).mockReturnValueOnce(task);
+    pdfjs.createWorker.mockReturnValueOnce(oldWorker).mockReturnValueOnce(worker);
+    const wrapper = await readyViewer();
+    const oldPort = OwnedWorker.instances[0];
+
+    await wrapper.setProps({ bytes: bytes(), label: 'Replacement.pdf' });
+    await flushPromises();
+    const currentPort = OwnedWorker.instances[1];
+    currentPort.ready();
+    await flushPromises();
+    expect(oldDocument.render.cancel).toHaveBeenCalledTimes(1);
+    expect(oldTask.destroy).toHaveBeenCalledTimes(1);
+    expect(oldWorker.destroy).not.toHaveBeenCalled();
+    expect(oldPort.terminate).not.toHaveBeenCalled();
+    expect(document.page.cleanup).toHaveBeenCalledTimes(1);
+    expect(wrapper.find('[role="status"]').exists()).toBe(false);
+
+    if (settlement === 'resolve') pendingDestroy.resolve();
+    else pendingDestroy.reject(new Error('synthetic destruction failure'));
+    await flushPromises();
+    expect(oldWorker.destroy).toHaveBeenCalledTimes(1);
+    expect(oldPort.terminate).toHaveBeenCalledTimes(1);
+    expect(oldTask.destroy.mock.invocationCallOrder[0]).toBeLessThan(oldWorker.destroy.mock.invocationCallOrder[0]);
+    expect(oldWorker.destroy.mock.invocationCallOrder[0]).toBeLessThan(oldPort.terminate.mock.invocationCallOrder[0]);
+    await vi.advanceTimersByTimeAsync(1_000);
+    oldPort.dispatchEvent(new Event('error'));
+    await flushPromises();
+    expect(oldWorker.destroy).toHaveBeenCalledTimes(1);
+    expect(oldPort.terminate).toHaveBeenCalledTimes(1);
+    expect(worker.destroy).not.toHaveBeenCalled();
+    expect(currentPort.terminate).not.toHaveBeenCalled();
+    expect(wrapper.get('canvas').attributes('aria-label')).toBe('Replacement.pdf, page 1');
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+  });
+
+  it.each(['resolve', 'reject'] as const)('forces stalled teardown after one second and ignores its late %s after a source switch', async (settlement) => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const pendingDestroy = deferred<void>();
+    const lateLoad = deferred<ReturnType<typeof pdfDocument>>();
+    const oldDocument = pdfDocument();
+    const oldTask = loadingTask(lateLoad.promise);
+    oldTask.destroy.mockReturnValue(pendingDestroy.promise);
+    const oldWorker = { destroy: vi.fn() };
+    pdfjs.getDocument.mockReturnValueOnce(oldTask).mockReturnValueOnce(task);
+    pdfjs.createWorker.mockReturnValueOnce(oldWorker).mockReturnValueOnce(worker);
+    const wrapper = await readyViewer();
+    const oldPort = OwnedWorker.instances[0];
+    await wrapper.setProps({ bytes: bytes(), label: 'Current.pdf' });
+    await flushPromises();
+    const currentPort = OwnedWorker.instances[1];
+    currentPort.ready();
+    await flushPromises();
+
+    await vi.advanceTimersByTimeAsync(999);
+    expect(oldTask.destroy).toHaveBeenCalledTimes(1);
+    expect(oldWorker.destroy).not.toHaveBeenCalled();
+    expect(oldPort.terminate).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(oldWorker.destroy).toHaveBeenCalledTimes(1);
+    expect(oldPort.terminate).toHaveBeenCalledTimes(1);
+
+    if (settlement === 'resolve') pendingDestroy.resolve();
+    else pendingDestroy.reject(new Error('synthetic late destruction failure'));
+    lateLoad.resolve(oldDocument);
+    oldPort.dispatchEvent(new Event('messageerror'));
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(oldTask.destroy).toHaveBeenCalledTimes(1);
+    expect(oldWorker.destroy).toHaveBeenCalledTimes(1);
+    expect(oldPort.terminate).toHaveBeenCalledTimes(1);
+    expect(oldDocument.getPage).not.toHaveBeenCalled();
+    expect(worker.destroy).not.toHaveBeenCalled();
+    expect(currentPort.terminate).not.toHaveBeenCalled();
+    expect(document.page.cleanup).toHaveBeenCalledTimes(1);
+    expect(wrapper.get('canvas').attributes('aria-label')).toBe('Current.pdf, page 1');
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    expect(wrapper.find('[role="status"]').exists()).toBe(false);
+  });
+
+  it.each(['render', 'task', 'worker', 'port'] as const)('finishes owned cleanup when %s cleanup throws', async (stage) => {
+    const wrapper = await readyViewer();
+    const port = OwnedWorker.instances[0];
+    const cleanup = {
+      render: document.render.cancel,
+      task: task.destroy,
+      worker: worker.destroy,
+      port: port.terminate,
+    }[stage];
+    cleanup.mockImplementation(() => { throw new Error('synthetic cleanup failure'); });
+    expect(() => wrapper.unmount()).not.toThrow();
+    await flushPromises();
+    expect(document.render.cancel).toHaveBeenCalledTimes(1);
+    expect(task.destroy).toHaveBeenCalledTimes(1);
+    expect(worker.destroy).toHaveBeenCalledTimes(1);
+    expect(port.terminate).toHaveBeenCalledTimes(1);
   });
 
   it('ignores a late document load after switching source and renders only the current document', async () => {
@@ -295,5 +416,50 @@ describe('UblEmbeddedPdfViewer', () => {
     expect(wrapper.find('[role="alert"]').exists()).toBe(true);
     expect(OwnedWorker.instances[0].terminate).toHaveBeenCalledTimes(1);
     expect(pdfjs.getDocument).not.toHaveBeenCalled();
+  });
+
+  it.each(['document', 'page', 'render'] as const)('keeps the 15-second %s deadline and bounds stalled destruction separately', async (stage) => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const lateDocument = deferred<ReturnType<typeof pdfDocument>>();
+    const latePage = deferred<ReturnType<typeof pdfDocument>['page']>();
+    const lateRender = deferred<void>();
+    const pendingDestroy = deferred<void>();
+    document = pdfDocument(1, 600, 800, stage === 'render' ? lateRender.promise : Promise.resolve());
+    if (stage === 'page') document.getPage.mockReturnValue(latePage.promise);
+    task = loadingTask(stage === 'document' ? lateDocument.promise : Promise.resolve(document));
+    task.destroy.mockReturnValue(pendingDestroy.promise);
+    pdfjs.getDocument.mockReturnValue(task);
+    const wrapper = await readyViewer();
+    const port = OwnedWorker.instances[0];
+    await vi.advanceTimersByTimeAsync(14_999);
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+    expect(wrapper.get('canvas').element.width).toBe(0);
+    expect(wrapper.get('canvas').element.height).toBe(0);
+    expect(task.destroy).toHaveBeenCalledTimes(1);
+    if (stage === 'render') expect(document.render.cancel).toHaveBeenCalledTimes(1);
+    expect(worker.destroy).not.toHaveBeenCalled();
+    expect(port.terminate).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(999);
+    expect(port.terminate).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(worker.destroy).toHaveBeenCalledTimes(1);
+    expect(port.terminate).toHaveBeenCalledTimes(1);
+
+    lateDocument.resolve(document);
+    latePage.resolve(document.page);
+    lateRender.resolve();
+    pendingDestroy.resolve();
+    await flushPromises();
+    expect(document.page.cleanup).not.toHaveBeenCalled();
+    if (stage !== 'render') expect(document.page.render).not.toHaveBeenCalled();
+    expect(task.destroy).toHaveBeenCalledTimes(1);
+    expect(worker.destroy).toHaveBeenCalledTimes(1);
+    expect(port.terminate).toHaveBeenCalledTimes(1);
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+    expect(wrapper.find('[role="status"]').exists()).toBe(false);
+    expect(wrapper.get('canvas').element.width).toBe(0);
+    expect(wrapper.get('canvas').element.height).toBe(0);
   });
 });

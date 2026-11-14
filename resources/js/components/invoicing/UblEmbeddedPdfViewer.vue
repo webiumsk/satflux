@@ -57,11 +57,28 @@ watch(() => props.bytes, bytes => {
     renderGeneration++;
     clearTimeout(timer);
     cancelWait?.();
+    try { render?.cancel(); } catch { /* Continue releasing owned resources. */ }
+    let released = false;
+    let destroyTimer: ReturnType<typeof setTimeout> | undefined;
+    const releaseWorker = () => {
+      if (released) return;
+      released = true;
+      clearTimeout(destroyTimer);
+      try { worker?.destroy(); } catch { /* The owned port still needs termination. */ }
+      finally {
+        try { port?.terminate(); } catch { /* Already released or unavailable. */ }
+      }
+    };
+    if (!task) {
+      releaseWorker();
+      return;
+    }
+    // PDF.js awaits the worker's Terminate reply during task destruction.
+    // Keep the port alive for graceful cleanup, but bound a stalled teardown.
+    destroyTimer = setTimeout(releaseWorker, 1_000);
     try {
-      render?.cancel();
-      void task?.destroy().catch(() => undefined);
-      worker?.destroy();
-    } finally { port?.terminate(); }
+      void task.destroy().then(releaseWorker, releaseWorker);
+    } catch { releaseWorker(); }
   };
   stop = dispose;
   const fail = () => {

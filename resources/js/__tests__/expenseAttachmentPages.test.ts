@@ -755,6 +755,58 @@ const embeddedXml = (filename = "received.pdf") => `<Invoice xmlns="urn:oasis:na
 const xmlBlob = (xml: string) => Object.assign(new Blob([xml], { type: 'application/xml' }), { text: async () => xml });
 
 describe('embedded PDFs from preserved expense XML', () => {
+    it.each([true, false])('reloads saved XML after clearing a pending attachment that interrupted its read (local: %s)', async local => {
+        const oldText = deferred<string>();
+        const expense = fixture('expense-a', local ? localCompany : serverCompany);
+        expense.attachments = [{ id: 'original', original_filename: 'received.xml', mime: 'application/xml' }];
+        models.value = [expense];
+        mocks.get.mockResolvedValue(expense);
+        const firstBlob = Object.assign(new Blob(['synthetic XML'], { type: 'application/xml' }), { text: () => oldText.promise });
+        mocks.attachmentBlob.mockReturnValueOnce(xmlBlob(embeddedXml('initial.pdf')))
+            .mockReturnValueOnce(firstBlob).mockReturnValue(xmlBlob(embeddedXml('restored.pdf')));
+        mocks.blob.mockResolvedValueOnce(xmlBlob(embeddedXml('initial.pdf')))
+            .mockResolvedValueOnce(firstBlob).mockResolvedValue(xmlBlob(embeddedXml('restored.pdf')));
+        vi.mocked(window.confirm).mockReturnValue(true);
+        for (const detect of [mocks.detect, mocks.localDetect]) detect.mockResolvedValue({ has_isdoc: true, quota });
+        render('show', local);
+        await flushPromises();
+        wrapper!.findComponent({ name: 'ExpenseAttachmentPanel' }).vm.$emit('select-attachment', 'original');
+        await flushPromises();
+        await select(pdf('pending.pdf'));
+        const panel = wrapper!.findComponent({ name: 'ExpenseAttachmentPanel' });
+        expect(panel.props('hasPending')).toBe(true);
+        oldText.resolve(embeddedXml('obsolete.pdf'));
+        await flushPromises();
+        expect(wrapper!.find('[data-testid="ubl-embedded-pdfs"]').exists()).toBe(false);
+
+        panel.vm.$emit('clear');
+        await flushPromises();
+        expect(panel.props('hasPending')).toBe(false);
+        expect(wrapper!.get('[data-testid="ubl-embedded-pdfs"]').text()).toContain('restored.pdf');
+        expect(wrapper!.text()).not.toContain('obsolete.pdf');
+        expect(local ? mocks.attachmentBlob : mocks.blob).toHaveBeenCalledTimes(3);
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        expect(mocks.upload).not.toHaveBeenCalled();
+    });
+
+    it.each([true, false])('revokes the saved preview without reloading when no attachment is pending (local: %s)', async local => {
+        const expense = fixture('expense-a', local ? localCompany : serverCompany);
+        expense.attachments = [{ id: 'original', original_filename: 'received.pdf', mime: 'application/pdf' }];
+        models.value = [expense];
+        mocks.get.mockResolvedValue(expense);
+        mocks.attachmentBlob.mockReturnValue(pdf('received.pdf'));
+        mocks.blob.mockResolvedValue(pdf('received.pdf'));
+        render('show', local);
+        await flushPromises();
+        const panel = wrapper!.findComponent({ name: 'ExpenseAttachmentPanel' });
+        expect(panel.props('previewUrl')).toBe('blob:synthetic-pdf');
+        panel.vm.$emit('clear');
+        await flushPromises();
+        expect(panel.props('previewUrl')).toBeNull();
+        expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:synthetic-pdf');
+        expect(local ? mocks.attachmentBlob : mocks.blob).toHaveBeenCalledTimes(1);
+    });
+
     it.each([true, false])('offers PDFs in an already imported expense without changing original custody (local: %s)', async local => {
         const expense = fixture('expense-a', local ? localCompany : serverCompany);
         expense.attachments = [{ id: 'original', original_filename: 'received.xml', mime: 'application/xml' }];

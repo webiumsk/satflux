@@ -1,5 +1,16 @@
 # Development roadmap
 
+## PR445 verified review corrections - 2026-11-14
+
+- [x] Verify and reproduce all three findings at `49384427`; process duplicates once.
+- [x] Await healthy document destruction; bound stalled worker cleanup to one second.
+- [x] Restore saved previews after pending-clear and reject namespace-independent XML errors.
+- [x] Pass 223 focused tests, static/build/parity and independent QA/security;
+  real Chrome verifies parser rejection, graceful/forced cleanup and exact download.
+- [ ] Verify published PR445 head CI before the owner's merge/deployment decision.
+
+No PHP/API/schema, dependency or custody change. See `PR445_REVIEW_FIXES.md`.
+
 ## Embedded PDF viewing and download - 2026-11-14
 
 - [x] Derive bounded PDFs from original UBL Invoice/CreditNote without custody changes.

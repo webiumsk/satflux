@@ -1093,6 +1093,7 @@ function onPanelClear() {
   uploadError.value = '';
   if (pendingFiles.value.length > 0) {
     clearPendingAttachment();
+    void loadSavedPreview();
 
     return;
   }
