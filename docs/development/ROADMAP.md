@@ -1,5 +1,42 @@
 # Development roadmap
 
+## PR445 master reconciliation after PR443 merge - 2026-11-14
+
+- [x] Confirm PR443 merged as `ce725a99` and fetch current master/PR445.
+- [x] Preserve both histories while resolving four documentation-only conflicts.
+- [x] Verify 90 other changed paths against parents, five-locale three-way values
+  and all six previously reviewed PR445 hashes.
+- [x] Pass 351 combined frontend tests, static/build/parity checks and independent QA.
+- [ ] Verify new-head CI after publishing the reconciliation commit.
+- [ ] Owner reviews and merges PR445 after the new checks pass.
+
+See `PR445_REVIEW_FIXES.md`; original owner data and previews remain untouched.
+
+## PR445 verified review corrections - 2026-11-14
+
+- [x] Verify and reproduce all three findings at `49384427`; process duplicates once.
+- [x] Await healthy document destruction; bound stalled worker cleanup to one second.
+- [x] Restore saved previews after pending-clear and reject namespace-independent XML errors.
+- [x] Pass 223 focused tests, static/build/parity and independent QA/security;
+  real Chrome verifies parser rejection, graceful/forced cleanup and exact download.
+- [ ] Verify published PR445 head CI before the owner's merge/deployment decision.
+
+No PHP/API/schema, dependency or custody change. See `PR445_REVIEW_FIXES.md`.
+
+## Embedded PDF viewing and download - 2026-11-14
+
+- [x] Derive bounded PDFs from original UBL Invoice/CreditNote without custody changes.
+- [x] Offer explicit page preview and exact PDF download in inbox and existing expenses.
+- [x] Preserve tenant/context fences, source bytes, worker/URL cleanup and other XML.
+- [x] Cover EN/SK/ES/DE/CS; pass 204 main tests, static/build checks and independent
+  QA/security, including real Chrome two-page rendering and exact download.
+- [ ] Owner opens the feature PR and verifies its exact-head CI before merge/deployment.
+- [ ] Owner verifies receiving with the browser closed; production/provider obligations
+  and archive arrangements remain separate from the Peppol Test Network evidence.
+
+PR444 is confirmed merged as `f5cb7f0e`; PR443 remains separate and open.
+See `EFAKTURA_EMBEDDED_PDF.md`; no coordinator merge or deployment.
+
 ## PR443 follow-up corrections - 2026-11-14
 
 - [x] Verify all four current claims; correct provider precision, canonical derived

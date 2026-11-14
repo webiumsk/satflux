@@ -3,7 +3,7 @@ title: Slovak e-invoicing - ePostman connection
 category: invoicing
 order: 6
 meta_description: Connect your company's ePostman account to receive e-invoices and import their originals into Satflux expenses.
-updated: 2026-11-12
+updated: 2026-11-14
 ---
 
 # Slovak e-invoicing - ePostman connection
@@ -30,6 +30,8 @@ Open **Expenses > Received e-invoices** for the same company. Review the documen
 Use **Fetch incoming now** in the company's e-invoicing settings to request a retrieval. Then refresh the incoming inbox on Expenses. Refreshing the inbox shows documents already retrieved by Satflux.
 
 Import stores the original in your encrypted local data. If import fails or the original is too large for a local attachment, the inbox item remains available for recovery and original download. An existing expense alone does not complete the import.
+
+If the original UBL contains embedded PDF attachments, the document detail offers **View** and **Download** for each PDF. The same actions are available when you select the original XML attachment in an already imported expense. Viewing opens a page preview; downloading preserves the embedded PDF bytes. The original XML is unchanged. Satflux does not fetch external attachment links. Up to ten PDFs are supported, each up to 1 MiB, within an XML document up to 2 MiB; local import retains its existing attachment size limit. Unsupported, damaged or oversized PDFs show a warning. If the preview fails, you can still download a successfully extracted PDF.
 
 ## Original custody and provider costs
 

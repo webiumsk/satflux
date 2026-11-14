@@ -3,7 +3,7 @@ title: Slovenská e-fakturácia - prepojenie ePostman
 category: invoicing
 order: 6
 meta_description: Prepojte firemný účet ePostman, prijímajte e-faktúry a importujte ich originály do nákladov v Satfluxe.
-updated: 2026-11-12
+updated: 2026-11-14
 ---
 
 # Slovenská e-fakturácia - prepojenie ePostman
@@ -30,6 +30,8 @@ V rovnakej firme otvorte **Náklady > Prijaté e-faktúry**. Doklad skontrolujte
 Manuálne stiahnutie spustíte cez **Stiahnuť prichádzajúce teraz** v nastaveniach e-fakturácie firmy. Následne obnovte inbox na stránke Náklady. Obnovenie inboxu zobrazí doklady, ktoré už Satflux stiahol.
 
 Import uloží originál do vašich šifrovaných lokálnych dát. Ak import zlyhá alebo je originál príliš veľký na lokálnu prílohu, položka zostane dostupná na obnovu a stiahnutie originálu. Samotná existencia nákladu import nedokončí.
+
+Ak pôvodné UBL obsahuje vložené PDF prílohy, detail dokladu ponúkne pri každom PDF **Zobraziť** a **Stiahnuť**. Rovnaké možnosti sú dostupné po výbere pôvodnej XML prílohy v už importovanom náklade. Zobrazenie otvorí náhľad strán; stiahnutie zachová pôvodné bajty vloženého PDF. Pôvodné XML sa nemení. Satflux nenačítava externé odkazy na prílohy. Podporuje najviac desať PDF, každé do 1 MiB, v XML doklade do 2 MiB; lokálny import si zachováva existujúci limit veľkosti prílohy. Nepodporované, poškodené alebo príliš veľké PDF zobrazia upozornenie. Ak náhľad zlyhá, úspešne extrahované PDF si môžeš naďalej stiahnuť.
 
 ## Uchovanie originálov a náklady poštára
 

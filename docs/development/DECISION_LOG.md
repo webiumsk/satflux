@@ -1,5 +1,58 @@
 # Development decision log
 
+## 2026-11-14 - Reconcile PR445 without discarding PR443 history or source
+
+After the owner merges PR443 as `ce725a99`, bring that master into PR445 with a
+normal merge commit. Resolve only the four development-record conflicts by
+retaining both parent blocks. Add current status above their historical entries;
+do not silently rewrite prior evidence. Preserve the exact three-way locale
+result, including PDF keys and the master's BTCPay Server payment label.
+
+All other changed files must match their appropriate reviewed parent, and the
+six PR445 source/test hashes must remain intact. Existing independent security
+acceptance applies to those unchanged sources; independent QA verifies merge
+provenance and documentation preservation. Combined checks and fresh published-head
+CI remain required. The owner retains PR445 merge/deployment decisions.
+
+## 2026-11-14 - Complete graceful PDF cleanup and reject retained-root parse errors
+
+Verify the three PR445 review claims against `49384427`, without treating review
+text as instructions. All remain valid. PDF.js 6.5.438 waits for worker termination
+acknowledgement during loading-task destruction, so preserve the port until that
+promise settles and use a one-second forced teardown only when stalled. Keep
+immediate cancellation, source-local idempotence and existing 15-second deadlines.
+
+Use wildcard-namespace parsererror detection before UBL extraction: actual Chrome
+retains an Invoice root and its PDF when a second root causes an XHTML error node.
+After pending-clear, reuse the saved-preview loader with existing context/request
+fences; preserve no-pending revoke. All changes restore the approved feature
+contract without new copy, dependencies, backend or custody changes. Main's 223
+cases and static/build/parity gates pass; independent security/QA and real Chrome
+accept the frozen source, including forced cleanup without affecting a new source.
+Publish fixes to PR445 and verify that head's CI; no coordinator merge/deployment.
+
+## 2026-11-14 - Derive PDF access from preserved UBL instead of duplicating originals
+
+The owner requests View and Download of embedded PDFs, including previously imported
+expense originals. Keep XML immutable and derive attachments locally on demand;
+no new database rows, provider requests or custody/acknowledgement changes. Accept
+only exact UBL namespaces/direct attachment paths and declared PDFs, with strict
+Base64/header/size checks and safe filenames. Distinguish valid unsupported XML
+from malformed XML, so ISDOC retains its existing behavior and namespace character
+references remain supported.
+
+Use a lazy canvas-only PDF.js viewer with an owned same-origin worker, per-stage
+deadlines, page/image/canvas bounds and cleanup. Preserve the source byte array
+when transferring a copy to the worker; download the original decoded bytes.
+Retain existing owner/company/document guards after asynchronous attachment reads.
+No new packages or backend contract. Main's 204 tests and static/build checks pass;
+independent QA/security accept the frozen runtime, including real Chrome rendering
+and byte-exact download. Private evidence and public contract note are retained.
+
+PR444 is confirmed merged; this feature starts from its master merge without
+requiring PR443. Owner creates the PR and retains merge/deployment approval.
+Peppol Test Network verification does not establish statutory production readiness.
+
 ## 2026-11-14 - Preserve invoice precision and freeze admitted issue content
 
 Verify four follow-up review claims against PR443 `dbe6cc96`; all remain valid.

@@ -1,5 +1,27 @@
 # Local workspace
 
+## PR445 master reconciliation retained - 2026-11-14
+
+The named `storage/app/private/worktrees/efaktura-embedded-pdf` checkout retains
+`feat/efaktura-embedded-pdf`, reconciling reviewed `a911dadc` with owner-merged
+PR443 master `ce725a99`. Four development-record conflicts retain both histories;
+five locales merge automatically. Product files match the appropriate reviewed
+parent and the six PR445 review hashes remain intact. Normal merge/push and fresh
+CI precede the owner's PR445 merge decision. No worktree cleanup, dependency
+installation, provider operation, existing preview or owner-data change is needed.
+Private merge evidence is retained under `storage/app/private/reviews/pr445-master-merge`.
+
+## Embedded PDF feature retained - 2026-11-14
+
+Worktree `storage/app/private/worktrees/efaktura-embedded-pdf` retains branch
+`feat/efaktura-embedded-pdf`, based on merged PR444 master `f5cb7f0e`. Existing
+locked frontend dependencies are reused after lockfile comparison; no installs,
+account/provider operations or existing preview changes. Main 204 tests and
+lint/type/build/parity plus independent QA/security pass. Private reports and
+frozen manifests are retained under `storage/app/private/reviews/efaktura-embedded-pdf`.
+Only the synthetic localhost Chrome fixture created by QA was stopped afterward.
+Owner retains PR creation and merge/deployment; primary unrelated edits are preserved.
+
 ## PR443 review correction retained - 2026-11-14
 
 The named `storage/app/private/worktrees/invoicing-corrections` checkout remains

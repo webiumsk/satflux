@@ -83,6 +83,7 @@
             </table>
           </div>
           <p v-if="selectedDetail.draft?.internal_note" class="mt-2 whitespace-pre-wrap break-words">{{ selectedDetail.draft.internal_note }}</p>
+          <UblEmbeddedPdfPanel :xml="selectedDetail.ubl ?? null" />
           <details v-if="selectedDetail.ubl" class="mt-3">
             <summary class="cursor-pointer text-indigo-700 underline">{{ t('invoicing.efaktura_inbox_xml_preview') }}</summary>
             <pre class="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded bg-gray-50 p-2 text-xs">{{ selectedDetail.ubl }}</pre>
@@ -95,6 +96,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import UblEmbeddedPdfPanel from './UblEmbeddedPdfPanel.vue';
 import { useI18n } from 'vue-i18n';
 import { asApiError } from '../../utils/apiError';
 import { useInvoicingEvolu } from '@/evolu/client';

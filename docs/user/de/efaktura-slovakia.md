@@ -3,7 +3,7 @@ title: Slowakische E-Rechnungen - ePostman-Anbindung
 category: invoicing
 order: 6
 meta_description: Verbinden Sie das ePostman-Konto Ihres Unternehmens, empfangen Sie E-Rechnungen und importieren Sie Originale als Ausgaben in Satflux.
-updated: 2026-11-12
+updated: 2026-11-14
 ---
 
 # Slowakische E-Rechnungen - ePostman-Anbindung
@@ -30,6 +30,8 @@ Ist für dieselbe Verbindung bereits ein Secret gespeichert, lassen Sie das Feld
 Starten Sie einen manuellen Abruf über **Eingehende jetzt abrufen** in den E-Rechnungseinstellungen des Unternehmens. Aktualisieren Sie anschließend den Posteingang unter Ausgaben. Das Aktualisieren des Posteingangs zeigt Dokumente, die Satflux bereits abgerufen hat.
 
 Der Import speichert das Original in Ihren verschlüsselten lokalen Daten. Schlägt der Import fehl oder ist das Original zu groß für einen lokalen Anhang, bleibt der Eintrag zur Wiederherstellung und zum Herunterladen des Originals verfügbar. Eine vorhandene Ausgabe allein schließt den Import nicht ab.
+
+Enthält das ursprüngliche UBL eingebettete PDF-Anhänge, bietet die Dokumentansicht für jede PDF **Anzeigen** und **Herunterladen**. Diese Aktionen stehen auch bei Auswahl des ursprünglichen XML-Anhangs einer bereits importierten Ausgabe zur Verfügung. Die Ansicht zeigt eine Seitenvorschau; der Download bewahrt die eingebetteten PDF-Bytes. Das ursprüngliche XML bleibt unverändert. Satflux ruft keine externen Anhangslinks ab. Unterstützt werden höchstens zehn PDFs mit jeweils bis zu 1 MiB in einem XML-Dokument bis zu 2 MiB; für den lokalen Import gilt weiterhin die bisherige Größenbegrenzung. Nicht unterstützte, beschädigte oder zu große PDFs führen zu einer Warnung. Schlägt die Vorschau fehl, kann eine erfolgreich extrahierte PDF weiterhin heruntergeladen werden.
 
 ## Originale und Anbieterkosten
 

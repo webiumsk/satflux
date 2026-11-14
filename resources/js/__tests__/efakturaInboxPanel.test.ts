@@ -129,3 +129,23 @@ it('preserves a skipped local calendar day and a year below 100 without construc
   expect(wrapper.text()).toContain('1/1/99');
   wrapper.unmount();
 });
+
+
+it('offers embedded PDF view/download in the inbox while preserving original XML and import actions', async () => {
+  const pdf = '%PDF-1.4 synthetic inbox attachment';
+  const xml = `<CreditNote xmlns="urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"><cac:AdditionalDocumentReference><cac:Attachment><cbc:EmbeddedDocumentBinaryObject mimeCode="application/pdf" filename="inbox.pdf">${btoa(pdf)}</cbc:EmbeddedDocumentBinaryObject></cac:Attachment></cac:AdditionalDocumentReference></CreditNote>`;
+  state.detail.mockResolvedValue({ ...detail(), ubl: xml });
+  const wrapper = mount(Panel, { props: { companyId: 'company-a' }, global: { stubs: { UblEmbeddedPdfViewer: true } } });
+  await button(wrapper, 'efaktura_inbox_view').trigger('click'); await flushPromises();
+  expect(wrapper.get('[data-testid="ubl-embedded-pdfs"]').text()).toContain('inbox.pdf');
+  expect(wrapper.find('pre').text()).toBe(xml);
+  expect(button(wrapper, 'efaktura_inbox_import').exists()).toBe(true);
+  expect(button(wrapper, 'efaktura_inbox_download_original').exists()).toBe(true);
+  await button(wrapper, 'ubl_pdf_view').trigger('click');
+  expect(wrapper.findComponent({ name: 'UblEmbeddedPdfViewer' }).exists()).toBe(true);
+  await wrapper.setProps({ companyId: 'company-b' });
+  expect(wrapper.find('[data-testid="ubl-embedded-pdfs"]').exists()).toBe(false);
+  expect(state.detail).toHaveBeenCalledExactlyOnceWith('bridge-a', 'synthetic-receipt');
+  expect(state.imported).not.toHaveBeenCalled();
+  wrapper.unmount();
+});
