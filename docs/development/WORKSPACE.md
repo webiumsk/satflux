@@ -1,5 +1,19 @@
 # Local workspace
 
+## PR443 review correction retained - 2026-11-14
+
+The named `storage/app/private/worktrees/invoicing-corrections` checkout remains
+on `fix/invoicing-lines-payment-identities`. Nine verified fixes and their related
+QA/security corrections are prepared over `da039ded`; 22 runtime/test/view hashes
+are frozen and independently accepted. Main full frontend 3,193 and related PHP
+211 plus static/build/API/parity checks pass. Existing dependencies/previews and
+all unrelated primary work remain preserved; source env is masked in disposable
+PHP tests and never read. Private evidence is retained under
+`storage/app/private/reviews/pr443-review-fixes`. New-head CI and owner merge/deploy
+remain separate. Temporary npm runtime preparation was rejected by automatic review;
+requested permission is pending, no install occurred. Only owned synthetic test
+containers may be cleaned up; existing preview containers are untouched.
+
 ## Automatic ePostman status worktree - 2026-11-12
 
 The scoped outbound worktree storage/app/private/worktrees/efaktura-epostman-outbound

@@ -89,7 +89,7 @@ class EphemeralBusinessDocumentBulkTest extends TestCase
         [$user, $company] = $this->createProUserWithCompany();
         $this->actingAs($user);
         $item = $this->singleDocumentPayload();
-        $item['document']['payment_bank_enabled'] = false;
+        $item['document']['payment_bank_enabled'] = true;
         $item['lines'][] = ['name' => 'Service deduction', 'quantity' => 1, 'unit_price' => -20];
         $item['source_totals'] = [
             'subtotal' => '80.00',
@@ -107,10 +107,37 @@ class EphemeralBusinessDocumentBulkTest extends TestCase
         $this->assertStringStartsWith('%PDF', $response->getContent());
         $this->assertDatabaseCount('business_documents', 0);
 
+        $external = $payload;
+        $external['company']['jurisdiction'] = 'us';
+        $external['company']['app_settings']['us_sales_tax_provider'] = 'stripe_tax';
+        $this->postJson('/api/invoicing/ephemeral/bulk/pdf-zip', $external)
+            ->assertUnprocessable()->assertJsonValidationErrors('documents.0.lines');
+
+        $payload['documents'][0]['lines'][1]['quantity'] = 0;
+        $this->postJson('/api/invoicing/ephemeral/bulk/pdf-zip', $payload)
+            ->assertUnprocessable()->assertJsonValidationErrors('documents.0.lines.1.quantity');
+        $payload['documents'][0]['lines'][1]['quantity'] = 1;
+
         $payload['documents'][0]['lines'][1]['unit_price'] = -101;
         $this->postJson('/api/invoicing/ephemeral/bulk/pdf-zip', $payload)
             ->assertUnprocessable()
             ->assertJsonValidationErrors('documents.0.lines');
+    }
+
+    #[Test]
+    public function negative_quantity_deductions_keep_verified_amounts_in_both_bulk_pdf_formats(): void
+    {
+        [$user] = $this->createProUserWithCompany();
+        $this->actingAs($user);
+        $item = $this->singleDocumentPayload();
+        $item['lines'][] = ['name' => 'Manual deduction', 'quantity' => -1, 'unit_price' => 15];
+        $item['source_totals'] = ['subtotal' => '85.00', 'tax_total' => '0.00', 'total' => '85.00', 'line_totals' => ['100.00', '-15.00']];
+        $payload = ['company' => $item['company'], 'documents' => [$item]];
+        $this->postJson('/api/invoicing/ephemeral/bulk/pdf-zip', $payload)->assertOk();
+        $this->postJson('/api/invoicing/ephemeral/bulk/pdf-merge', $payload)->assertOk();
+        $payload['documents'][0]['lines'][1]['company_warehouse_id'] = '11111111-1111-4111-8111-111111111111';
+        $this->postJson('/api/invoicing/ephemeral/bulk/pdf-merge', $payload)->assertUnprocessable()->assertJsonValidationErrors('documents.0.lines.1.quantity');
+        $this->assertDatabaseCount('business_documents', 0);
     }
 
     /**

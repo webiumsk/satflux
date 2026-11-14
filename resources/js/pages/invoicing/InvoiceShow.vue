@@ -141,7 +141,7 @@
 
         <InvoiceLivePreview
           :company="company"
-          :selected-contact="selectedContact"
+          :selected-contact="previewContact"
           :form="previewForm"
           :totals="previewTotals"
           :document-status="documentStatus"
@@ -231,7 +231,7 @@
           :company-id="companyId"
           :document-id="documentId"
           :company="company"
-          :selected-contact="selectedContact"
+          :selected-contact="previewContact"
           :local-first="localFirst"
           :ephemeral-snapshot="localFirst ? ephemeralSnapshotForModal : null"
           :evolu-document-id="localFirst ? documentId : undefined"
@@ -263,7 +263,7 @@
         :paid-at="paidAt"
         :amount-paid="amountPaid"
         :bank-match="bankMatch"
-        :paid-via-btcpay="paidViaBtcpay"
+        :paid-payment-method="paidPaymentMethod"
         @issue="issueDocument"
         @send-email="openSendEmail"
         @pdf="downloadPdf"
@@ -337,6 +337,7 @@ const {
   displayDocumentNumber,
   documentNumber,
   paidAt,
+  paidPaymentMethod,
   amountPaid,
   bankMatch,
   company,
@@ -349,7 +350,7 @@ const {
   canCancel,
   canUnmarkPaid,
   form,
-  selectedContact,
+  previewContact,
   neighborIndex,
   pdfUrl,
   btcPayUrl,
@@ -396,13 +397,6 @@ const swissQrFeasible = computed(
 );
 const epcQrFeasible = computed(
   () => String(form.currency || '').toUpperCase() === 'EUR',
-);
-
-const paidViaBtcpay = computed(
-  () =>
-    documentStatus.value === 'paid'
-    && !!form.payment_btc_enabled
-    && !bankMatch.value
 );
 
 const listTitle = computed(() => {

@@ -2108,42 +2108,6 @@ parameters:
 			path: app/Services/Invoicing/BusinessDocumentListPresenter.php
 
 		-
-			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Issued will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: app/Services/Invoicing/BusinessDocumentMarkPaidService.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Paid will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: app/Services/Invoicing/BusinessDocumentMarkPaidService.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Cancelled will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Services/Invoicing/BusinessDocumentMarkPaidService.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Draft will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Services/Invoicing/BusinessDocumentMarkPaidService.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between string and App\\Enums\\BusinessDocumentStatus\:\:Paid will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Services/Invoicing/BusinessDocumentMarkPaidService.php
-
-		-
-			message: '#^Unreachable statement \- code above always terminates\.$#'
-			identifier: deadCode.unreachable
-			count: 2
-			path: app/Services/Invoicing/BusinessDocumentMarkPaidService.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$document\.$#'
 			identifier: property.notFound
 			count: 1

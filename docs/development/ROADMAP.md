@@ -1,5 +1,90 @@
 # Development roadmap
 
+## PR443 review corrections - 2026-11-14
+
+- [x] Verify all nine original findings; fix every still-valid issue with regressions.
+- [x] Align four-decimal percentage storage/buckets/XML/PDF and signed credit notes.
+- [x] Protect checkout, stock, outer commit, precise issue/buyer context and snapshots.
+- [x] Close independent QA/security findings including zero-tax buckets, frozen VAT,
+  exact buyer references, pre-allocation and post-await isolation, and PDF labels.
+- [x] Pass full frontend 3,193 / 241, related PHP 211 / 1,325 and required local
+  static/build/API/locale checks; independent QA/security accept 22 frozen files.
+- [ ] Push the correction to existing PR443 and verify exact-head complete CI.
+- [ ] Owner merge/deployment decision; apply new tax-rate migration only through an
+  approved release. Down refuses lossy narrowing while fractional values exist.
+
+Local full PHP runtime preparation remains permission-gated after automatic
+rejection; no dependency install is assumed. CI remains a separately observed gate.
+See `PR443_REVIEW_FIXES.md`; unrelated PDF branch and existing previews are preserved.
+
+## PR443 Laravel audit repair - 2026-11-13
+
+- [x] Confirm all 3,412 PHP tests, Pint and PHPStan pass after API inventory repair.
+- [x] Verify the separate new Composer audit finding and official patched version.
+- [x] Update only Laravel 12.69.3 to 12.71.0, retaining constraints/other packages.
+- [x] Independently accept actual new-vendor security, API/auth/payment/inventory
+  checks, strict Composer validation, clean audit and unchanged artifacts.
+- [ ] Publish the dependency correction and verify all gates on the exact new head.
+
+No advisory ignores, shared-vendor changes, merge or deployment.
+
+## PR443 API inventory freshness repair - 2026-11-13
+
+- [x] Verify PHP CI failed before PHPUnit at the generated API freshness gate.
+- [x] Reproduce and regenerate exactly two source fingerprints; preserve all
+  460 routes, middleware/actions and three OpenAPI specifications.
+- [x] Independently accept artifact diff, export check, schema validation and
+  API regressions 11 / 230.
+- [ ] Push the correction on PR443 and verify exact-new-head CI.
+
+No runtime/dependency change, merge or deployment in this repair.
+
+## Invoice correction publication - 2026-11-13
+
+- [x] Owner authorizes push of the complete reviewed correction branch.
+- [x] Verify all 56 source/config hashes and stage exactly 67 scoped files.
+- [x] Publish implementation `165d315e` without force and verify its remote SHA.
+- [x] Record publication separately from existing local tests and deployment.
+- [ ] PR review and exact-commit CI verification.
+- [ ] Separate merge/deployment approval and backend-first additive migration.
+
+No PR, merge, existing-database migration or deployment in this push-only step.
+
+## Negative-quantity deduction follow-up - 2026-11-13
+
+- [x] Accept `-1 x 15` manual deductions at positive prices/positive totals and
+  retain source precision, VAT, payment balances and stock fences.
+- [x] Preserve generated credit-note correction workflows and original invoices.
+- [x] Verify PDF/email/bulk/checkout and UBL/ISDOC/ePostman preparation, full official
+  UBL schemas and exact fake-provider retry/cache behavior.
+- [x] Independently accept QA/security at frozen 56-file fingerprint, update all
+  five guides and pass final frontend 3,133 / 240, backend regressions, static,
+  lint/type/build/locale gates without ratchet changes.
+- [ ] Owner reviews the retained uncommitted correction branch.
+- [ ] Separately authorize publication/deployment; retain earlier backend-first
+  payment-provenance migration. This quantity extension adds no new migration.
+
+No production provider/delivery or deployment claim. Details:
+[implementation report](INVOICING_CORRECTIONS.md).
+
+## Invoice deductions, payment methods and buyer details - 2026-11-13
+
+- [x] Fix negative-price invoice save/issue/PDF/email/checkout with canonical
+  positive totals, supported precision/VAT and explicit structured-export limits.
+- [x] Record confirmed payment source; remove enabled-BTCPay inference and keep
+  unknown historical methods unspecified without a guessed backfill.
+- [x] Show buyer identifiers from issued snapshots and preserve contact identifiers
+  on blank Woo input; document supported metadata and server/browser boundary.
+- [x] Independently accept QA/security, stale-state payment fixes and five-language
+  documentation; pass full frontend 3,110 / 239, backend regressions, full static
+  analysis, existing lint/type ratchets, build and locale parity.
+- [ ] Owner reviews the retained uncommitted correction branch.
+- [ ] Separately authorize publication/deployment; apply additive server migration
+  before updated backend code. No external plugin change or historical data repair.
+
+Source baseline `e2130aea`; no deployment inferred. See
+[implementation report](INVOICING_CORRECTIONS.md) for fingerprint and test limits.
+
 ## PR442 verified review fixes - 2026-11-13
 
 - [x] Verify all nine findings against 19b1987c; fix eight, skip the already-fixed

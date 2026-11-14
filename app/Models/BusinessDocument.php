@@ -58,6 +58,7 @@ class BusinessDocument extends Model
         'pdf_show_signature',
         'pdf_show_payment_info',
         'paid_at',
+        'paid_payment_method',
         'amount_paid',
         'tags',
         'btcpay_invoice_id',

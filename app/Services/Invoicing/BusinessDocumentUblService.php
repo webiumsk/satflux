@@ -15,6 +15,7 @@ use App\Support\Invoicing\CompanyVatPolicy;
 use App\Support\Invoicing\DeXRechnungProfile;
 use App\Support\Invoicing\EuStructuredDocumentExport;
 use App\Support\Invoicing\SkUblProfile;
+use Illuminate\Validation\ValidationException;
 use XMLWriter;
 
 /**
@@ -49,7 +50,19 @@ class BusinessDocumentUblService
 
     public function xml(BusinessDocument $document, bool $auditDownload = true): string
     {
+        $document->loadMissing('lines');
+        if ($document->lines->contains(fn ($line): bool => (float) ($line->getAttributes()['quantity'] ?? 0) < 0)) {
+            app(BusinessDocumentIssueService::class)->assertSignedInvoiceCanIssue($document);
+        }
         $canonical = $this->canonicalBuilder->fromDocument($document);
+        if (collect($canonical->lines)->contains(fn ($line): bool => $line->unitPrice < 0)) {
+            throw ValidationException::withMessages(['lines' => ['Structured export does not yet support negative unit prices.']]);
+        }
+        if (collect($canonical->lines)->contains(fn ($line): bool => $line->quantity < 0)
+            && ((float) $document->discount_percent !== 0.0
+                || collect($canonical->lines)->contains(fn ($line): bool => $line->lineDiscountPercent !== 0.0))) {
+            throw ValidationException::withMessages(['lines' => ['Structured export of quantity deductions does not yet support invoice or line discounts.']]);
+        }
         $document = $canonical->document ?? $document;
 
         $this->xrechnung = DeXRechnungProfile::appliesTo($canonical->company);
@@ -393,6 +406,6 @@ class BusinessDocumentUblService
 
     protected function formatRate(float $rate): string
     {
-        return rtrim(rtrim(number_format($rate, 2, '.', ''), '0'), '.');
+        return rtrim(rtrim(number_format($rate, 4, '.', ''), '0'), '.');
     }
 }

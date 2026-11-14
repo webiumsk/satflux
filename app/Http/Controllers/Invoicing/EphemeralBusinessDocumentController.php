@@ -33,6 +33,7 @@ use App\Services\Invoicing\Efaktura\EfakturaConnectionTester;
 use App\Services\Invoicing\Efaktura\EphemeralEfakturaSubmissionService;
 use App\Services\Invoicing\EphemeralBtcpayCheckoutService;
 use App\Services\Invoicing\EphemeralDocumentFactory;
+use App\Support\Invoicing\CompanyAppSettings;
 use App\Support\Invoicing\CompanyEfakturaSettings;
 use App\Support\Invoicing\JurisdictionRules;
 use Illuminate\Http\JsonResponse;
@@ -196,7 +197,11 @@ class EphemeralBusinessDocumentController extends Controller
             ->with('user')
             ->firstOrFail();
 
-        $document = $this->factory->document($snapshotCompany, $request->validated());
+        if ($request->validated('document.type') !== BusinessDocumentType::Invoice->value) {
+            throw ValidationException::withMessages(['document.type' => ['Bitcoin checkout is supported only for invoices.']]);
+        }
+
+        $document = $this->documentForPdf($snapshotCompany, $request->validated(), 'lines');
 
         return response()->json([
             'data' => $this->findReusableCheckout($user, $store, $document, $request->input('evolu_document_id')),
@@ -421,7 +426,7 @@ class EphemeralBusinessDocumentController extends Controller
         Company $snapshotCompany,
         ?Company $auditCompany = null,
     ): JsonResponse {
-        $document = $this->factory->document($snapshotCompany, $request->validated());
+        $document = $this->documentForPdf($snapshotCompany, $request->validated(), 'lines');
 
         return response()->json([
             'data' => $this->emailService->previewEphemeral($snapshotCompany, $document, $request->user()),
@@ -433,7 +438,7 @@ class EphemeralBusinessDocumentController extends Controller
         Company $snapshotCompany,
         ?Company $auditCompany = null,
     ): JsonResponse {
-        $document = $this->factory->document($snapshotCompany, $request->validated());
+        $document = $this->documentForPdf($snapshotCompany, $request->validated(), 'lines');
 
         try {
             $result = $this->emailService->sendEphemeral(
@@ -486,7 +491,7 @@ class EphemeralBusinessDocumentController extends Controller
         Company $snapshotCompany,
         ?Company $auditCompany = null,
     ): Response {
-        $document = $this->factory->document($snapshotCompany, $request->validated());
+        $document = $this->documentForPdf($snapshotCompany, $request->validated(), 'lines');
         $this->assertStructuredExportAllowed($document);
 
         $filename = ($document->number ?: 'document').'.isdoc';
@@ -509,7 +514,7 @@ class EphemeralBusinessDocumentController extends Controller
         Company $snapshotCompany,
         ?Company $auditCompany = null,
     ): Response {
-        $document = $this->factory->document($snapshotCompany, $request->validated());
+        $document = $this->documentForPdf($snapshotCompany, $request->validated(), 'lines');
         $this->assertStructuredExportAllowed($document);
 
         $filename = ($document->number ?: 'document').'.xml';
@@ -624,7 +629,15 @@ class EphemeralBusinessDocumentController extends Controller
             ->with('user')
             ->firstOrFail();
 
-        $document = $this->factory->document($snapshotCompany, $request->validated());
+        if ($request->validated('document.type') !== BusinessDocumentType::Invoice->value) {
+            throw ValidationException::withMessages(['document.type' => ['Bitcoin checkout is supported only for invoices.']]);
+        }
+
+        $document = $this->documentForPdf($snapshotCompany, $request->validated(), 'lines');
+        if ($document->lines->contains(fn ($line): bool => ((float) $line->getAttribute('unit_price') < 0 || (float) $line->getAttribute('quantity') < 0))
+            && ((float) $document->amount_paid > 0 || ! $document->hasStatus(BusinessDocumentStatus::Issued))) {
+            throw ValidationException::withMessages(['lines' => ['A deduction invoice checkout requires an unpaid issued invoice.']]);
+        }
         $document->payment_btc_enabled = (bool) ($request->input('document.payment_btc_enabled', true));
         $document->store_id = $store->id;
 
@@ -771,24 +784,23 @@ class EphemeralBusinessDocumentController extends Controller
         /** @var array<int, array<string, mixed>> $linePayloads */
         $linePayloads = (array) $payload['lines'];
         $lines = collect($linePayloads);
-        if (! $lines->contains(fn (array $line): bool => (float) $line['unit_price'] < 0)) {
+        if (! $lines->contains(fn (array $line): bool => ((float) $line['unit_price'] < 0 || (float) $line['quantity'] < 0))) {
             return $this->factory->document($company, $payload);
         }
 
         $snapshot = $payload['document'];
-        // SK/CZ ephemeral PDFs are visual documents. Other renderers can generate
-        // structured e-invoices or request external sales tax calculations.
+        // Keep structured DE hybrids and external US tax calculations outside
+        // the signed-price contract. Visual invoice delivery uses verified totals.
         $jurisdiction = JurisdictionRules::normalizeValue($company->jurisdiction);
-        if (! in_array($jurisdiction, [CompanyJurisdiction::EuSk->value, CompanyJurisdiction::EuCz->value], true)
-            || $snapshot['type'] !== BusinessDocumentType::Invoice->value
+        if (! in_array($jurisdiction, [CompanyJurisdiction::EuSk->value, CompanyJurisdiction::EuCz->value, CompanyJurisdiction::Us->value], true)
+            || ($jurisdiction === CompanyJurisdiction::Us->value
+                && ! in_array(CompanyAppSettings::from($company->getAttribute('app_settings'))->get('us_sales_tax_provider', 'manual'), ['manual', 'none'], true))
+            || ! in_array($snapshot['type'], [BusinessDocumentType::Invoice->value, BusinessDocumentType::CreditNote->value], true)
+            || ($snapshot['type'] === BusinessDocumentType::CreditNote->value && $lines->contains(fn (array $line): bool => (float) $line['unit_price'] < 0))
             || ! in_array($snapshot['status'] ?? null, [BusinessDocumentStatus::Issued->value, BusinessDocumentStatus::Paid->value], true)
-            || (bool) ($snapshot['payment_bank_enabled'] ?? true)
-            || (bool) ($snapshot['payment_btc_enabled'] ?? false)
-            || ! empty($payload['store_id'])
-            || ! empty($payload['btcpay_checkout_link'])
         ) {
             throw ValidationException::withMessages([
-                $linesPath => ['Negative items are supported for issued or paid Slovak and Czech invoice PDFs with payments disabled.'],
+                $linesPath => ['Negative items require a supported issued or paid invoice or credit note; structured German invoices are not supported.'],
             ]);
         }
 
@@ -799,7 +811,8 @@ class EphemeralBusinessDocumentController extends Controller
                 $price = (float) $line['unit_price'];
 
                 return ! is_finite($quantity) || ! is_finite($price)
-                    || $quantity > self::MAX_PDF_QUANTITY || abs($price) > self::MAX_PDF_AMOUNT
+                    || $quantity === 0.0 || abs($quantity) > self::MAX_PDF_QUANTITY
+                    || ($quantity < 0 && $price <= 0) || abs($price) > self::MAX_PDF_AMOUNT
                     || abs($quantity * $price) > self::MAX_PDF_AMOUNT;
             })
         ) {
@@ -848,7 +861,7 @@ class EphemeralBusinessDocumentController extends Controller
         $user = $request->user();
         abort_unless($user instanceof User, 401);
 
-        $document = $this->factory->document($snapshotCompany, $request->validated());
+        $document = $this->documentForPdf($snapshotCompany, $request->validated(), 'lines');
         $evoluDocumentId = (string) $request->validated('evolu_document_id');
 
         $this->efakturaService->assertEphemeralDocumentEligible($document, $bridgeCompany);

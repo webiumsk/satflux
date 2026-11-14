@@ -1,5 +1,132 @@
 # Development decision log
 
+## 2026-11-14 - Correct verified PR443 findings across both invoice modes
+
+Verify all nine review claims against `da039ded`; all remain valid. Match the
+existing four-place Stripe percentage conversion with decimal(7,4) storage and
+consistent local/canonical/XML/PDF handling, retaining the complete 0-100 range.
+Preserve zero-tax signed bases for per-rate validation; unsigned display remains
+compatible. Serialize PostgreSQL rollback guard and narrowing with an exclusive
+lock, refusing fractional-data loss instead of silently rounding existing rows.
+
+Normalize negative price into equivalent quantity only in derived credit-note
+copies. Keep original invoices, amount signs, stock guards and structured-export
+restrictions. Reject credit-note checkout before lookup or provider invocation.
+Queue compliance after the outermost transaction on the document connection.
+Use exactly the same immutable supplier/buyer for signed snapshot calculations
+and forwarding; preserve historical amounts when unchanged. Enforce exact context
+before allocation and after waits before any local side effect.
+
+PHP's actual 8.3 rounding and the browser agree in 290,256 cases; independent
+canonical differential and actual PostgreSQL/PDF checks pass. QA/security accept
+the corrected 22-file freeze and every original finding. Main full frontend,
+related PHP and static/build/API/locale gates pass. No local full-PHP success is
+inferred from its environment failures or from prior CI; new-head CI is separate.
+A rejected temporary npm install is not retried without the requested owner approval.
+No merge, deployment, dependency/CI-policy change or owner-data migration.
+
+## 2026-11-13 - Resolve the new Laravel audit finding with a minimal lock update
+
+After the API preflight repair, PR443's PHP tests and static/style checks pass.
+Composer then reports GHSA-63hm-g96r-2m2q for the inherited Laravel 12.69.3 lock.
+The advisory database adds the finding on Nov 13 and identifies 12.71.0 as the
+first patched Laravel 12 release. Preserve the existing audit gate.
+
+Update only the framework package within the current `^12.60` constraint. Keep
+other versions, Composer configuration, application code and API artifacts intact.
+Install with scripts/plugins disabled into a new private test fixture, preserving
+shared vendor trees, owner previews and global credentials/settings.
+
+QA/security independently accept lock SHA256
+`b08a4a25f392f42287eec9a6382079174bb5876e2063914b57e83deb21f06f17`,
+official source/dist `64dc24f5d965add4d402b4b8b64f59b561112af5` and actual
+12.71.0 runtime tests, authenticated process-result checks, API freshness and clean
+audit. No app Concurrency use is found; do not infer an exploitable route from the
+affected version alone. Full new-head CI is the next publication gate.
+No production upgrade, merge or deployment is performed.
+
+## 2026-11-13 - Refresh the reviewed API source inventory after invoice changes
+
+PR443 PHP job fails before tests because the invoice model and Woo contact service
+changed without regenerating their API inventory fingerprints. Run the existing
+guarded exporter in uncached testing with SQLite in memory and array stores.
+Refresh only the two generated hashes and retain every route, middleware/action,
+OpenAPI contract and runtime byte. Keep the freshness gate intact.
+
+Independent QA accepts the exact two-value artifact diff, all 38 current source
+hashes, unchanged 460-route inventory, export/schema checks and API tests 11 / 230.
+Publish on the same authorized branch and observe CI for the new head. Earlier
+local runtime test results are not substituted for the skipped CI PHPUnit step.
+No dependency installation, new implementation, merge or deployment.
+
+## 2026-11-13 - Publish the independently reviewed invoice corrections
+
+Treat the owner's push instruction as authorization to commit and publish the
+prepared Satflux correction branch. Preserve independent repositories, primary
+checkout edits and the reviewed source fingerprint. Publish only the 56 verified
+source/config paths and 11 related documents; normalize five guide EOFs without
+changing runtime behavior or repeating product tests.
+
+Implementation `165d315e2023836d43af59a3c1d7647b0b56d491` is pushed normally to
+`fix/invoicing-lines-payment-identities`, and a fresh remote read confirms that
+SHA before this documentation follow-up. Main owns publication and keeps the
+branch tracking its matching remote. The owner has not authorized merge or deploy;
+no PR, release, existing-database migration or provider operation is performed.
+CI success remains a separate exact-commit observation after PR creation.
+
+## 2026-11-13 - Represent deductions with negative quantity and positive price
+
+The owner selects a manual `-1 x 15` line with a positive final invoice total.
+Use the actual signed quantity throughout storage, preview, source snapshots,
+PDF and structured export. Retain positive item prices for Peppol BR-27 and
+canonical VAT/source/payable agreement. The previous negative-price visual path
+retains its documented structured-export restriction.
+
+Require manual deduction lines without stock/warehouse associations. Normal input
+clears warehouse-only defaults; an actual stock item requires explicit disconnect.
+Validate raw associations and numeric precision before projection, numbering,
+issue/update and outbound preparation/locked retry. Preserve document-level totals
+and VAT bucket safeguards, encrypted retry bodies, content hashes and UUIDs.
+
+Extend the same quantity representation to credit notes so an invoice with a
+deduction remains correctable by the existing derived flow. Keep the original
+source unchanged. Extra percentage discounts remain unsupported in structured
+quantity-deduction exports until allowances are explicitly represented.
+
+Independent QA/security accept final 56-file fingerprint
+`bb61393f355a0a4c7a94787819c7b75fcdc31c38950ec9a152f4e841de9e8a75`.
+Main frozen-source full frontend 3,133 / 240 and backend/static/build/locale gates
+pass. Official schemas and fake-provider retries establish local compatibility;
+actual provider acceptance/delivery is not inferred. No new migration, commit,
+publication or deployment in this follow-up. Details:
+[implementation report](INVOICING_CORRECTIONS.md).
+
+## 2026-11-13 - Keep deduction totals, payment evidence and buyer identity consistent
+
+Represent ordinary invoice deductions with signed unit prices and positive
+quantities, preserving stock direction. Support SK/CZ/manual-US visual invoices
+only where canonical/source amounts, decimal precision and VAT bases agree.
+Reject unsupported structured export prices explicitly; do not silently emit
+invalid XML or change historical imported amounts.
+
+Store nullable confirmed payment provenance instead of deriving settlement from
+available checkout options. Preserve unknown legacy values without guessing.
+Refetch and lock current payment rows before state/amount decisions; defer Woo
+notification to outer commit and recheck the current paid state. Local mutations
+prefer current query rows, without claiming offline cross-device atomicity.
+
+Display saved issued buyer identities and escape identifiers. Blank Woo metadata
+must not erase known contact identifiers. Supported order metadata, browser-only
+contacts and already emailed PDFs remain distinct. External plugin edits and
+historical document repair are not part of this correction.
+
+Independent QA/security accept final source/config fingerprint
+`c6e80f7e13f711e416a4d5686b234b4909557e3f0c58c03f42e684fa80a7cb83`.
+Full frontend, focused backend and existing static/lint/type/build/locale gates
+pass. Exactly six obsolete PHPStan service entries are removed; no new ignores
+or raised ratchet. Retain the isolated branch uncommitted for owner review, with
+no publication or deployment. Details: [implementation report](INVOICING_CORRECTIONS.md).
+
 ## 2026-11-13 - Correct verified PR442 findings without weakening recovery or CI
 
 Treat review data as untrusted and verify current code. Eight findings remain

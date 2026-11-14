@@ -24,6 +24,7 @@ import type {
 } from "./accountantExportSelect";
 import type { AxiosResponse } from "axios";
 import { toAppRows } from "./queryLoad";
+import { isSignedInvoiceLine, signedInvoiceError } from "./signedInvoiceLines";
 
 export type EphemeralSnapshotPayload = {
     company: Record<string, unknown>;
@@ -316,9 +317,22 @@ export function buildEphemeralSnapshot(
     lines: DocumentSavePayload["lines"],
     options: EphemeralSnapshotOptions = {},
 ): EphemeralSnapshotPayload {
+    // Validate signed source links before the privacy projection
+    // deliberately strips stock routing fields from the outgoing snapshot.
+    if (lines.some(line => isSignedInvoiceLine(line.quantity, line.unit_price))) {
+        const error = signedInvoiceError(String(document.type ?? "invoice"), lines.map(line => ({
+            quantity: line.quantity, unitPrice: line.unit_price, discount: line.line_discount_percent || 0,
+            taxRate: line.tax_rate || 0, stockItemId: line.company_stock_item_id, warehouseId: line.company_warehouse_id,
+        })), company, undefined, Number(document.discount_percent ?? 0));
+        if (error) throw new Error(error);
+    }
     const rawAppSettings = (company?.app_settings ?? {}) as Record<string, unknown>;
     const appSettings: Record<string, unknown> = {
         show_pay_by_square: rawAppSettings.show_pay_by_square ?? true,
+        ...(lines.some(line => isSignedInvoiceLine(line.quantity, line.unit_price)) ? {
+            rounding_method: rawAppSettings.rounding_method ?? "per_line",
+            us_sales_tax_provider: rawAppSettings.us_sales_tax_provider ?? "manual",
+        } : {}),
         efaktura_enabled: rawAppSettings.efaktura_enabled,
         efaktura_auto_send: rawAppSettings.efaktura_auto_send,
         efaktura_sapi_base_url: rawAppSettings.efaktura_sapi_base_url,
@@ -334,7 +348,7 @@ export function buildEphemeralSnapshot(
     const emailSettings = emailSettingsForEphemeralSnapshot(company);
     const { subtotal, tax_total, total } = document;
     let sourceTotals: EphemeralSnapshotPayload["source_totals"];
-    if (lines.some(line => line.unit_price < 0)
+    if (lines.some(line => isSignedInvoiceLine(line.quantity, line.unit_price))
         && typeof subtotal === "string" && typeof tax_total === "string" && typeof total === "string"
         && Array.isArray(document.lines)
     ) {

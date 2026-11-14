@@ -45,6 +45,9 @@ import {
     allNumberSeriesQuery,
 } from "./client";
 import type { LocalDocumentDeletionPolicy } from "./documentBulkLocal";
+import type { PaidPaymentMethod } from "./paidPaymentMethod";
+import { isSignedInvoiceLine, signedInvoiceError, signedLineAmounts, signedMoneyRound, supportsNegativeQuantity } from "./signedInvoiceLines";
+import { useCompanyVatPolicy } from "@/composables/useCompanyVatPolicy";
 
 export type DocumentLinePayload = {
     name: string;
@@ -99,21 +102,30 @@ export function calcDocumentTotals(
     defaultVat: number,
     lineTaxApplies: (line: DocumentLinePayload) => boolean,
     lineTaxRate: (line: DocumentLinePayload) => number,
+    signedRoundingMethod = "per_line",
 ) {
     let subtotal = 0;
     let tax = 0;
     const lineTotals: number[] = [];
 
+    const signed = lines.some(line => isSignedInvoiceLine(line.quantity, line.unit_price));
     for (const line of lines) {
-        const net =
+        let net =
             (line.quantity || 0)
             * (line.unit_price || 0)
             * (1 - (line.line_discount_percent || 0) / 100);
         const rate = lineTaxApplies(line) ? lineTaxRate(line) : 0;
-        const lineTax = net * (rate / 100);
+        let lineTax = net * (rate / 100);
+        let lineGross = net + lineTax;
+        if (signed) {
+            const canonical = signedLineAmounts({ quantity: line.quantity || 0, unitPrice: line.unit_price || 0, discount: line.line_discount_percent || 0, taxRate: rate }, signedRoundingMethod);
+            net = canonical.net;
+            lineTax = canonical.tax;
+            lineGross = canonical.gross;
+        }
         subtotal += net;
         tax += lineTax;
-        lineTotals.push(net + lineTax);
+        lineTotals.push(lineGross);
     }
 
     const gross = subtotal + tax;
@@ -122,15 +134,17 @@ export function calcDocumentTotals(
         const ratio = total / gross;
         subtotal *= ratio;
         tax *= ratio;
-        for (let i = 0; i < lineTotals.length; i++) {
-            lineTotals[i] *= ratio;
+        if (!signed) {
+            for (let i = 0; i < lineTotals.length; i++) {
+                lineTotals[i] *= ratio;
+            }
         }
     }
 
     return {
-        subtotal: fmtDec(subtotal),
-        taxTotal: fmtDec(tax),
-        total: fmtDec(total),
+        subtotal: fmtDec(signed ? signedMoneyRound(subtotal) : subtotal),
+        taxTotal: fmtDec(signed ? signedMoneyRound(tax) : tax),
+        total: fmtDec(signed ? signedMoneyRound(total) : total),
         lineTotals: lineTotals.map((v) => fmtDec(v)),
     };
 }
@@ -190,6 +204,7 @@ function buildDocumentFields(
             storeId: payload.store_id || null,
             tagsJson: payload.tags.length ? JSON.stringify(payload.tags) : null,
             paidAt: null,
+            paidPaymentMethod: null as PaidPaymentMethod | null,
             amountPaid: null,
         },
     };
@@ -219,7 +234,7 @@ function syncDocumentLines(
             unit: line.unit || "ks",
             unitPrice: fmtDec(line.unit_price, 4),
             lineDiscountPercent: fmtDec(line.line_discount_percent || 0),
-            taxRate: fmtDec(line.tax_rate ?? 0),
+            taxRate: fmtDec(line.tax_rate ?? 0, 4),
             lineTotal: lineTotals[index] || "0",
             companyStockItemId: line.company_stock_item_id,
             companyWarehouseId: line.company_warehouse_id,
@@ -257,7 +272,7 @@ function snapshotLinesFromPayload(payload: DocumentSavePayload, lineTotals: stri
         unit: line.unit || "ks",
         unit_price: fmtDec(line.unit_price, 4),
         line_discount_percent: fmtDec(line.line_discount_percent || 0),
-        tax_rate: fmtDec(line.tax_rate ?? 0),
+        tax_rate: fmtDec(line.tax_rate ?? 0, 4),
         line_total: lineTotals[index] || "0",
     }));
 }
@@ -298,10 +313,29 @@ function isPendingMigration(document: EvoluDocumentRow | null | undefined): bool
         && !Reflect.get(document, "migrationCompletedAt");
 }
 
-function ordinaryIssueError(documentId: DocumentId, draft: EvoluDocumentRow | null | undefined, lines: readonly EvoluDocumentLineRow[]) {
+function ordinaryIssueError(
+    documentId: DocumentId,
+    draft: EvoluDocumentRow | null | undefined,
+    lines: readonly EvoluDocumentLineRow[],
+    company?: EvoluCompanyRow,
+    contact?: EvoluContactRow | null,
+) {
     if (isPendingMigration(draft)) return "migration_pending" as const;
-    if (lines.some(line => line.documentId === documentId && Number(line.unitPrice) < 0)) return "negative_line_price" as const;
-    return null;
+    const documentLines = lines.filter(line => line.documentId === documentId);
+    if (documentLines.some(line => !Number.isFinite(Number(line.quantity)) || Number(line.quantity) === 0)) {
+        return !draft || supportsNegativeQuantity(draft.documentType) ? "nonzero_quantity_required" as const : "positive_quantity_required" as const;
+    }
+    if (draft && !supportsNegativeQuantity(draft.documentType) && documentLines.some(line => Number(line.quantity) < 0)) return "positive_quantity_required" as const;
+    if (!company && documentLines.some(line => isSignedInvoiceLine(line.quantity, line.unitPrice))) return "unsupported_negative_lines" as const;
+    const apiCompany = company ? evoluCompanyToApi(company) : null;
+    const apiContact = contact ? evoluContactToApi(contact) : null;
+    const policy = useCompanyVatPolicy();
+    return signedInvoiceError(draft?.documentType ?? "invoice", documentLines.map(line => ({
+        quantity: Number(line.quantity), unitPrice: Number(line.unitPrice), discount: Number(line.lineDiscountPercent ?? 0),
+        lineTotal: Number(line.lineTotal), stockItemId: line.companyStockItemId, warehouseId: line.companyWarehouseId,
+        taxRate: company?.jurisdiction === "us" ? Number(line.taxRate ?? 0)
+            : company ? policy.resolveLineTaxRate(apiCompany, apiContact, Number(line.taxRate ?? 0)) : Number(line.taxRate ?? 0),
+    })), apiCompany, draft ? { subtotal: draft.subtotal, taxTotal: draft.taxTotal, total: draft.total } : undefined, Number(draft?.discountPercent ?? 0));
 }
 
 export function saveLocalDocument(
@@ -357,9 +391,17 @@ export function saveLocalDocument(
     if (!payload.lines.length) {
         return { ok: false as const, error: "lines_required" };
     }
-    if (payload.lines.some(line => line.unit_price < 0)) {
-        return { ok: false as const, error: "negative_line_price" as const };
+
+    const signed = payload.lines.some(line => isSignedInvoiceLine(line.quantity, line.unit_price));
+    const signedLines = payload.lines.map(line => ({ quantity: line.quantity, unitPrice: line.unit_price, discount: line.line_discount_percent || 0, taxRate: options.lineTaxApplies(line) ? options.lineTaxRate(line) : 0, stockItemId: line.company_stock_item_id, warehouseId: line.company_warehouse_id }));
+    if (payload.lines.some(line => !Number.isFinite(Number(line.quantity)) || Number(line.quantity) === 0)) {
+        return { ok: false as const, error: supportsNegativeQuantity(payload.type) ? "nonzero_quantity_required" as const : "positive_quantity_required" as const };
     }
+    if (!supportsNegativeQuantity(payload.type) && payload.lines.some(line => Number(line.quantity) < 0)) {
+        return { ok: false as const, error: "positive_quantity_required" as const };
+    }
+    const signedSupportError = signedInvoiceError(payload.type, signedLines, options.refreezeContext?.company ?? null, undefined, payload.discount_percent);
+    if (signedSupportError) return { ok: false as const, error: signedSupportError };
 
     const totals = calcDocumentTotals(
         payload.lines,
@@ -367,7 +409,13 @@ export function saveLocalDocument(
         options.defaultVat,
         options.lineTaxApplies,
         options.lineTaxRate as (line: DocumentLinePayload) => number,
+        String((options.refreezeContext?.company?.app_settings as Record<string, unknown> | undefined)?.rounding_method ?? "per_line"),
     );
+
+    if (signed && existing && existing.status !== "draft") {
+        const signedError = signedInvoiceError(payload.type, signedLines, options.refreezeContext?.company ?? null, totals, payload.discount_percent);
+        if (signedError) return { ok: false as const, error: signedError };
+    }
 
     const statusForSave = existing?.status ?? "draft";
     const numberForSave = existing?.number ?? null;
@@ -388,6 +436,7 @@ export function saveLocalDocument(
 
     if (existing) {
         fields.value.paidAt = existing.paidAt;
+        fields.value.paidPaymentMethod = (existing.paidPaymentMethod ?? null) as PaidPaymentMethod | null;
         fields.value.amountPaid = existing.amountPaid;
     }
 
@@ -520,8 +569,13 @@ export async function issueLocalDocumentAsync(
             (toAppRows<EvoluContactRow>(contactRows).find((c) => c.id === draft.contactId)
                 ?? null),
     };
-    const issueError = ordinaryIssueError(documentId, draft, snapshotContext.lines);
+    const context = { company, doc: draft, allDocuments: documents, ...snapshotContext };
+    if (!reservedIssueContextMatches(documentId, company.id, draft, context)) return { ok: false as const, error: "not_found" as const };
+    const issueError = ordinaryIssueError(documentId, draft, snapshotContext.lines, company, snapshotContext.contact);
     if (issueError) return { ok: false as const, error: issueError };
+    const draftRevision = JSON.stringify(draft);
+    const contactRevision = JSON.stringify(snapshotContext.contact);
+    const lineRevision = JSON.stringify(snapshotContext.lines.filter(line => line.documentId === documentId));
 
     // Server number allocator (audit F3): the number is reserved atomically
     // on the server, keyed by the document id so a retried issue gets the
@@ -557,6 +611,23 @@ export async function issueLocalDocumentAsync(
     if (reserved.value.status === "voided") {
         return { ok: false as const, error: "reserve_failed" as const };
     }
+
+    // Allocation awaits the server. Recheck local context before even updating
+    // the derived title, and require the same content that requested the number.
+    const [currentDocuments, currentLines, currentContacts] = await Promise.all([
+        evolu.loadQuery(allDocumentsQuery), evolu.loadQuery(allDocumentLinesQuery), evolu.loadQuery(allContactsQuery),
+    ]);
+    const currentDraft = toAppRows<EvoluDocumentRow>(currentDocuments).find(row => row.id === documentId);
+    if (!currentDraft || currentDraft.status !== "draft") return { ok: false as const, error: "not_draft" as const };
+    const currentContact = toAppRows<EvoluContactRow>(currentContacts).find(row => row.id === currentDraft.contactId) ?? null;
+    if (!reservedIssueContextMatches(documentId, company.id, currentDraft, { ...context, contact: currentContact })) {
+        return { ok: false as const, error: "not_found" as const };
+    }
+    const currentDocumentLines = toAppRows<EvoluDocumentLineRow>(currentLines).filter(line => line.documentId === documentId);
+    const currentIssueError = ordinaryIssueError(documentId, currentDraft, currentDocumentLines, company, currentContact);
+    if (currentIssueError) return { ok: false as const, error: currentIssueError };
+    if (JSON.stringify(currentDraft) !== draftRevision || JSON.stringify(currentContact) !== contactRevision
+        || JSON.stringify(currentDocumentLines) !== lineRevision) return { ok: false as const, error: "not_draft" as const };
 
     // The reserved COUNTER is authoritative; the visible number is formatted
     // with the LOCAL series format. The server bridge sequence may carry a
@@ -659,6 +730,7 @@ function markFinalInvoicePaidFromProforma(
         id: draft.id,
         status: "paid",
         paidAt: proforma.paidAt ?? new Date().toISOString(),
+        paidPaymentMethod: proforma.paidPaymentMethod ?? null,
         amountPaid,
     });
     if (result.ok) {
@@ -675,6 +747,22 @@ export type ReservedIssueSnapshotContext = IssueSnapshotContext & {
     allDocuments: EvoluDocumentRow[];
 };
 
+function reservedIssueContextMatches(
+    documentId: DocumentId,
+    companyId: CompanyId,
+    document: EvoluDocumentRow | null | undefined,
+    context?: ReservedIssueSnapshotContext,
+): boolean {
+    const contactId = context?.doc.contactId || null;
+    return (!document || document.companyId === companyId)
+        && (!context || (context.company.id === companyId
+            && context.doc.id === documentId && context.doc.companyId === companyId
+            && (!document || (document.contactId || null) === contactId)
+            && (contactId
+                ? context.contact?.id === contactId && context.contact.companyId === companyId
+                : !context.contact)));
+}
+
 export function applyReservedNumberToLocalDocument(
     evolu: Evolu<InvoicingLocalSchema>,
     documentId: DocumentId,
@@ -687,9 +775,10 @@ export function applyReservedNumberToLocalDocument(
 ) {
     const draft = toAppRows<EvoluDocumentRow>(evolu.getQueryRows(allDocumentsQuery))
         .find(row => row.id === documentId);
+    if (!reservedIssueContextMatches(documentId, companyId, draft, snapshotContext)) return { ok: false as const, error: "not_found" as const };
     const lines = toAppRows<EvoluDocumentLineRow>(evolu.getQueryRows(allDocumentLinesQuery));
-    const issueError = ordinaryIssueError(documentId, draft, lines)
-        ?? ordinaryIssueError(documentId, snapshotContext?.doc, snapshotContext?.lines ?? []);
+    const issueError = ordinaryIssueError(documentId, draft, lines, snapshotContext?.company, snapshotContext?.contact)
+        ?? ordinaryIssueError(documentId, snapshotContext?.doc, snapshotContext?.lines ?? [], snapshotContext?.company, snapshotContext?.contact);
     if (issueError) return { ok: false as const, error: issueError };
     const quoteStatus = documentType === "quote" ? "pending" : null;
 
@@ -739,8 +828,6 @@ export async function applyReservedNumberToLocalDocumentAsync(
 ) {
     const doc = await waitForDraftDocument(evolu, documentId);
     const lines = toAppRows<EvoluDocumentLineRow>(await evolu.loadQuery(allDocumentLinesQuery));
-    const issueError = ordinaryIssueError(documentId, doc, lines);
-    if (issueError) return { ok: false as const, error: issueError };
     // Callers without local row context (e.g. Woo inbox import) get it loaded
     // here so their issues also freeze a snapshot. Best-effort: a missing
     // company row falls back to issuing without a snapshot (legacy behavior).
@@ -769,6 +856,10 @@ export async function applyReservedNumberToLocalDocumentAsync(
             }
         }
     }
+
+    if (!reservedIssueContextMatches(documentId, companyId, doc, context)) return { ok: false as const, error: "not_found" as const };
+    const issueError = ordinaryIssueError(documentId, doc, lines, context?.company, context?.contact);
+    if (issueError) return { ok: false as const, error: issueError };
 
     const result = applyReservedNumberToLocalDocument(
         evolu,
@@ -897,11 +988,12 @@ export function markLocalDocumentPaid(
     evolu: Evolu<InvoicingLocalSchema>,
     documentId: DocumentId,
     documents: EvoluDocumentRow[],
+    method: PaidPaymentMethod | null = "manual",
 ) {
     const doc = documents.find((d) => d.id === documentId);
     if (!doc) return { ok: false as const, error: "not_found" };
     const total = parseFloat(doc.total || "0");
-    return markLocalDocumentPaidWithAmount(evolu, documentId, documents, total);
+    return markLocalDocumentPaidWithAmount(evolu, documentId, documents, total, 0.01, method);
 }
 
 export function markLocalDocumentPaidWithAmount(
@@ -910,8 +1002,13 @@ export function markLocalDocumentPaidWithAmount(
     documents: EvoluDocumentRow[],
     amountPaid: number,
     tolerance = 0.01,
+    method: PaidPaymentMethod | null = "manual",
 ) {
-    const doc = documents.find((d) => d.id === documentId);
+    // A caller may still hold the pre-payment row after a newer local mutation.
+    const current = typeof evolu.getQueryRows === "function"
+        ? toAppRows<EvoluDocumentRow>(evolu.getQueryRows(allDocumentsQuery)).find(row => row.id === documentId)
+        : undefined;
+    const doc = current ?? documents.find((d) => d.id === documentId);
     if (!doc) return { ok: false as const, error: "not_found" };
     if (doc.status === "cancelled") {
         return { ok: false as const, error: "cancelled" };
@@ -929,11 +1026,13 @@ export function markLocalDocumentPaidWithAmount(
         id: documentId,
         status: fullyPaid ? "paid" : "issued",
         paidAt: fullyPaid ? new Date().toISOString() : doc.paidAt,
+        paidPaymentMethod: fullyPaid ? method : (doc.paidPaymentMethod ?? null),
         amountPaid: amountPaid.toFixed(2),
     });
     if (result.ok) {
         logDocumentEvent(evolu, documentId, "business_document.marked_paid", {
             amount_paid: amountPaid,
+            paid_payment_method: fullyPaid ? method : null,
         });
     }
     return result;
@@ -944,6 +1043,7 @@ export function unmarkLocalDocumentPaid(evolu: Evolu<InvoicingLocalSchema>, docu
         id: documentId,
         status: "issued",
         paidAt: null,
+        paidPaymentMethod: null,
         amountPaid: null,
     });
     if (result.ok) {
@@ -1142,6 +1242,10 @@ export function createLocalCreditNoteFromInvoice(
     const today = localIsoDate();
     const payload = payloadFromApiDocument(api);
     payload.type = "credit_note";
+    // Credit notes retain the source amount signs, with positive item prices.
+    payload.lines = payload.lines.map(line => line.unit_price < 0
+        ? { ...line, quantity: -line.quantity, unit_price: Math.abs(line.unit_price) }
+        : line);
     payload.title = "";
     payload.issue_date = today;
     payload.due_date = today;

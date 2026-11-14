@@ -1,5 +1,179 @@
 # Project state
 
+## PR443 review corrections independently accepted - 2026-11-14
+
+The owner authorizes completing all nine unresolved findings on
+`fix/invoicing-lines-payment-identities` over `da039ded`. All nine are verified
+current and fixed; none is skipped. Invoice-only checkout precedes provider access;
+negative-price deductions cannot carry stock links; server/local derived credit
+notes preserve signed products and original invoices. Four-place percentages use
+schema decimal(7,4), model/local values, distinct canonical/manual-US buckets,
+UBL/ISDOC and precise PDF labels. Signed zero-tax buckets cannot hide a negative
+base. Migration down holds a PostgreSQL exclusive lock before guard+narrowing and
+refuses fractional data loss. No owner database migration is performed.
+
+Compliance jobs follow the document connection's outermost commit. Edited signed
+snapshots use current form lines and the same frozen parties they forward;
+unchanged migration amounts remain historical. Exact company/buyer context is
+required before allocation, and asynchronous identity/content changes reject before
+local mutation. Rounding matches actual PHP 8.3.31 in 290,256 comparisons; QA also
+passes 160 PHP/TypeScript canonical cases. The reviewer-discovered context, PDF,
+zero-tax and frozen-VAT gaps are reproduced, fixed and independently retested.
+
+Main: full frontend 3,193 / 241; related PHP 211 / 1,325 assertions; full PHPStan
+zero errors; Pint 1,174; lint zero errors / 46 inherited warnings; unchanged type
+baseline 110 / no new; locales; build 7,664; API freshness and three schemas pass.
+QA accepts 40 permanent PHP / 360 assertions, private 9 PHP / 220 and 172 frontend
+cases plus actual Dompdf/text extraction. Security accepts 30 PHP / 308, 124
+frontend and four actual PostgreSQL controls; counts overlap. Final 22 source,
+test and view hashes match. Contract/disposition: `PR443_REVIEW_FIXES.md`.
+Private evidence: `storage/app/private/reviews/pr443-review-fixes`.
+
+The first full PHP attempt executes 3,459 cases but has 38 environment-related
+failures/errors: offline account DNS and unavailable locked bank parser runtime.
+The separate related selection passes. Automatic approval rejects temporary npm
+runtime preparation pending explicit owner permission; no install or workaround
+occurs. Required new-head CI will verify the complete suite in its existing setup.
+Remote branch still matches the baseline and master is `f5cb7f0e` at this observation.
+Next: corrective publication, exact-head CI, then owner merge/deployment decision.
+Unrelated primary edits, existing previews/data and dependency locks are preserved.
+
+## PR443 Laravel security maintenance accepted locally - 2026-11-13
+
+Run `43504563522` on `b8b75fd0` confirms the API inventory repair and passes all
+3,412 PHP tests / 18,797 assertions (31 skipped), Pint 1,171 and PHPStan.
+Its final Composer audit fails on GHSA-63hm-g96r-2m2q / CVE-2026-128083, newly
+published to GitHub's advisory database on Nov 13. The other four jobs pass.
+This separate failure concerns inherited Laravel 12.69.3, not PHPUnit assertions.
+
+The minimal lock update changes only `laravel/framework` to 12.71.0, official
+source/dist `64dc24f5d965add4d402b4b8b64f59b561112af5`. Root `^12.60` constraint,
+`composer.json`, the other 167 packages, application source and API artifacts
+remain unchanged. Lock SHA256:
+`b08a4a25f392f42287eec9a6382079174bb5876e2063914b57e83deb21f06f17`.
+The upstream maintenance interval includes changes beyond the advisory patch.
+
+Independent QA/security accept the update against an actual fresh 12.71.0 vendor.
+QA passes 95 / 750 plus notification 3 / 10; security passes 81 / 344 and 15
+passive process-result authentication assertions. Counts overlap. Strict Composer
+validation and locked audit pass without ignores, as do main full PHPStan and
+API freshness; all three schemas remain valid. Existing vendors/previews and
+global settings are untouched. New fixture uses synthetic no-network memory DB.
+No application Concurrency API use was found; exploitability is not established.
+
+Publish this dependency-only correction on the existing PR and verify exact new
+head CI, including its audit. No merge, release, existing-database migration or
+deployment. Evidence:
+[previous PHP run](https://github.com/webiumsk/satflux/actions/runs/43504563522/job/132158694259),
+[advisory](https://github.com/advisories/GHSA-63hm-g96r-2m2q) and private
+`reviews/invoicing-pr443-laravel`.
+
+## PR443 API freshness preflight corrected locally - 2026-11-13
+
+Fresh PR metadata confirms owner-created PR443 open/unmerged at head
+`c71c4aed648f4dd78659b84af8bfa450a85a7aa8`, base `e2130aea`. CI run
+`43502893971`, PHP job `132152970297`, fails at
+`php artisan api-docs:export --check` with stale `route-coverage.json`.
+PHPUnit, Pint and PHPStan were skipped in that job; this is not evidence of a
+failed PHPUnit assertion. The other four jobs complete successfully.
+
+The earlier invoice changes updated two files in the API inventory's 38-source
+fingerprint set, but their generated hashes were not refreshed. The isolated
+generator reproduces the stale artifact and updates exactly the
+`WooCommerceDocumentService.php` and `BusinessDocument.php` hash values.
+All 460 routes/actions/middleware and all three OpenAPI documents remain unchanged.
+Runtime source fingerprint `bb61393f355a0a4c7a94787819c7b75fcdc31c38950ec9a152f4e841de9e8a75`
+is retained.
+
+Independent QA accepts artifact SHA256
+`b70fd1dbc7f321af32d67419ec59396f226d07ace8774572e4adebd15a678569`.
+Export freshness, three offline schemas, validator regression and API tests
+11 / 230 pass; one inherited PHPUnit deprecation remains. No runtime, route,
+permission, dependency or CI-gate change. Corrective publication on the existing
+PR and exact-new-head CI verification are next. No merge or deployment.
+Evidence: [failed PHP preflight](https://github.com/webiumsk/satflux/actions/runs/43502893971/job/132152970297).
+
+## Invoice corrections implementation published - 2026-11-13
+
+The owner explicitly authorizes push. Reviewed implementation commit
+`165d315e2023836d43af59a3c1d7647b0b56d491` is published without force to
+`origin/fix/invoicing-lines-payment-identities` in the owned Satflux repository.
+A fresh remote-ref read confirms that implementation SHA before this
+documentation-only publication follow-up. The scoped worktree tracks the matching
+remote branch; the primary checkout and unrelated edits remain preserved.
+
+The commit includes exactly 56 reviewed source/config files and 11 related
+documentation files. Source fingerprint remains
+`bb61393f355a0a4c7a94787819c7b75fcdc31c38950ec9a152f4e841de9e8a75`.
+Only final newlines in five new guides were normalized during publication.
+Prior independent QA/security and local test results remain attributed below;
+product tests were not repeated for unchanged source bytes.
+
+No PR, merge, release, existing-database migration, deployment or provider
+operation. CI success is not inferred from push; the CI workflow targets
+main/master pushes and pull requests. Next: PR review and separate merge/deployment
+approval, preserving the additive backend-first payment-provenance migration.
+Evidence: [implementation commit](https://github.com/webiumsk/satflux/commit/165d315e2023836d43af59a3c1d7647b0b56d491)
+and [implementation report](INVOICING_CORRECTIONS.md).
+
+## Negative-quantity deductions and electronic export accepted locally - 2026-11-13
+
+The owner selects `-1 x 15` with positive unit price and positive invoice total.
+The retained correction branch now supports this representation through local
+and server save/issue/edit, PDF/email/bulk, aggregate checkout and UBL/ISDOC/ePostman
+preparation. Canonical VAT buckets include signed quantities; source totals and
+payable balances agree. Zero/tiny or double-negative inputs and stock/warehouse
+links reject. Normal manual entry clears warehouse-only defaults. Derived credit
+notes remain usable and preserve their original invoice/snapshots.
+
+Independent QA/security accept 56 source/config files at fingerprint
+`bb61393f355a0a4c7a94787819c7b75fcdc31c38950ec9a152f4e841de9e8a75`.
+Main final frontend passes 3,133 / 240, backend 289 / 1,631 and existing inventory
+16 / 100; UBL 16 / 107 overlaps backend. Full PHPStan, Pint 28, lint zero errors /
+46 inherited warnings, unchanged type baseline, build 7,664 and locale parity pass.
+Independent generated local snapshots pass authenticated fake-outbound Invoice
+and CreditNote schema/amount/retry tests. Counts overlap; one inherited PHPUnit
+deprecation remains. A run overlapping source edits was superseded by fresh focused
+and complete frozen-source passes.
+
+Existing payment/buyer fixes and primary unrelated edits remain preserved. No new
+migration for this quantity extension, actual provider delivery, PostgreSQL race,
+browser E2E or cross-device CRDT claim. Structured preceding-invoice references
+remain a separate existing gap. No commit, publication, existing-database migration
+or deployment; correction worktree remains on `fix/invoicing-lines-payment-identities`
+over `e2130aea`. Next: owner review and separately authorized publication/deployment.
+Evidence: [implementation report](INVOICING_CORRECTIONS.md), private source/review
+logs and unmodified official schemas under `reviews/invoicing-quantity`.
+
+## Invoice deductions, payment provenance and buyer identifiers accepted locally - 2026-11-13
+
+Source baseline is freshly fetched `origin/master` at `e2130aea`, which includes
+the PR442 merge; older open-PR entries below are historical observations, not
+current deployment evidence. The durable `invoicing-corrections` worktree holds
+uncommitted `fix/invoicing-lines-payment-identities` changes. Primary unrelated
+edits and owner previews are preserved.
+
+Ordinary SK/CZ/manual-US invoices accept negative prices with positive quantities
+and verified positive totals/VAT/source amounts through issue, edit, PDF, email
+and aggregate checkout. Unsupported structured exports reject explicitly.
+Confirmed payment provenance replaces the enabled-BTCPay inference; unknown history
+stays unspecified. Issued buyer previews use snapshots, display identifiers and
+preserve contact IDs on blank Woo input. External plugin checkout fields remain a
+read-only compatibility boundary. Server autoissued PDFs cannot read browser-only
+contact IDs before import; no old history/snapshot/PDF is rewritten.
+
+Independent QA/security accept 49 source/config files at fingerprint
+`c6e80f7e13f711e416a4d5686b234b4909557e3f0c58c03f42e684fa80a7cb83`.
+Review fixes include signed edit/export/rounding and stale payment state under
+row locks, with notification after commit. Main passes full frontend 3,110 / 239,
+backend 201 / 962 plus post-static-cleanup payment 34 / 146, full PHPStan, Pint,
+lint zero errors / 46 inherited warnings, unchanged type baseline, build 7,664
+and locale parity. Counts overlap; one inherited PHPUnit deprecation remains.
+No actual PostgreSQL race, browser E2E or production claim. No commit, publication,
+merge, existing-database migration or deployment. Next: owner review; backend-first
+additive migration and separate publication/deployment gates.
+Evidence: [implementation report](INVOICING_CORRECTIONS.md) and private review logs.
+
 ## PR442 review corrections accepted locally - 2026-11-13
 
 Eight current review findings are verified and fixed over 19b1987c; the Peppol

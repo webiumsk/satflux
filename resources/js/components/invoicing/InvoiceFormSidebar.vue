@@ -188,6 +188,7 @@
 </template>
 
 <script setup lang="ts">
+import { paidPaymentMethodTranslationKey } from "../../evolu/paidPaymentMethod";
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
@@ -222,7 +223,7 @@ const props = withDefaults(
       matched_at?: string;
       transaction?: { booked_at?: string };
     } | null;
-    paidViaBtcpay?: boolean;
+    paidPaymentMethod?: string | null;
   }>(),
   {
     canSendEmail: false,
@@ -235,7 +236,7 @@ const props = withDefaults(
     showCreateInvoiceFromQuote: false,
     editRouteName: 'invoicing-invoice-edit',
     bankMatch: null,
-    paidViaBtcpay: false,
+    paidPaymentMethod: null,
     canDelete: false,
     canCancel: false,
     canUnmarkPaid: false,
@@ -248,11 +249,7 @@ const paymentMethodText = computed(() => {
       ? t('invoicing.payment_method_bank_auto')
       : t('invoicing.payment_method_bank_manual');
   }
-  if (props.paidViaBtcpay) {
-    return t('invoicing.payment_method_btcpay');
-  }
-
-  return t('invoicing.payment_method_manual');
+  return t(paidPaymentMethodTranslationKey(props.paidPaymentMethod));
 });
 
 const bankPaymentBookedDate = computed(() => {
