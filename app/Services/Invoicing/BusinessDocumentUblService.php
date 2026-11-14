@@ -186,7 +186,7 @@ class BusinessDocumentUblService
         $this->amountElement($writer, 'cbc', 'TaxableAmount', $row->taxableAmount, $currency);
         $this->amountElement($writer, 'cbc', 'TaxAmount', $row->taxAmount, $currency);
         $writer->startElementNs('cac', 'TaxCategory', null);
-        $this->element($writer, 'cbc', 'ID', $this->taxScenario['category'] ?? 'S');
+        $this->element($writer, 'cbc', 'ID', $this->taxScenario['category'] ?? ($row->ratePercent > 0 ? 'S' : 'Z'));
         $this->element($writer, 'cbc', 'Percent', $this->formatRate($row->ratePercent));
         $this->element($writer, 'cbc', 'TaxExemptionReason', $this->taxScenario['reason'] ?? null);
         $writer->startElementNs('cac', 'TaxScheme', null);

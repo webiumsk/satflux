@@ -1,5 +1,28 @@
 # Development decision log
 
+## 2026-11-14 - Preserve invoice precision and freeze admitted issue content
+
+Verify four follow-up review claims against PR443 `dbe6cc96`; all remain valid.
+Apply the raw-precision correction in ePostman's service, where the guard actually
+lives, while retaining intentional four-place model rates. Use exact decimal scale
+checks from the existing Brick dependency and retain raw no-discount rejection.
+Reuse the canonical totals pass to populate unsaved derived credit-note lines
+before persistence; avoid a second calculation or tax-provider request.
+
+Pin admitted row values before asynchronous waits, compare final scoped rows before
+local issue writes and check current buyer ownership without replacing its frozen
+profile. Apply derived title only with the successful snapshot/issued-row update.
+Independent security reproduces mutable-alias and cross-company buyer gaps in the
+first candidate; the final candidate closes both with permanent regressions.
+Preserve explicit UBL tax scenarios and align fallback subtotal categories to lines.
+
+The eight-file freeze and coordinator checks pass; independent QA and security
+accept the exact hashes. QA runs 158 frontend tests / six suites and inspects
+backend code/tests, attributing the coordinator/security PHP executions. Exact-head
+CI remains a separately observed publication gate. Keep all validation gates,
+locks, API artifacts, model precision and schemas unchanged. No merge, deployment,
+production data/provider operation or broader product change is included.
+
 ## 2026-11-14 - Correct verified PR443 findings across both invoice modes
 
 Verify all nine review claims against `da039ded`; all remain valid. Match the

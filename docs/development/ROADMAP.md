@@ -1,5 +1,20 @@
 # Development roadmap
 
+## PR443 follow-up corrections - 2026-11-14
+
+- [x] Verify all four current claims; correct provider precision, canonical derived
+  line totals, reserved issue freshness and UBL zero-rate categories.
+- [x] Close independently reproduced mutable-alias and buyer-ownership gaps.
+- [x] Pass full frontend 3,224 / 241, related PHP 200 / 1,739, required static,
+  build, locale and API checks; independent security accepts the frozen scope.
+- [x] Independent QA accepts 158 frontend tests / six suites plus backend
+  code/test inspection; PHP evidence is explicitly attributed.
+- [ ] Publish the correction to existing PR443 and verify exact-head CI before
+  owner merge/deployment review.
+
+No model precision, dependency, API artifact or schema change is required.
+See `PR443_FOLLOWUP_REVIEW.md`. Prior PR443 CI belongs to `dbe6cc96`.
+
 ## PR443 review corrections - 2026-11-14
 
 - [x] Verify all nine original findings; fix every still-valid issue with regressions.

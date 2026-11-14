@@ -33,6 +33,7 @@ import { applyDocumentStockOnIssueAsync, reverseDocumentStockOnCancelAsync } fro
 import {
     ISSUED_SNAPSHOT_FORMAT_VERSION,
     buildIssuedSnapshotContentV1,
+    deterministicStringify,
     insertIssuedDocumentSnapshot,
 } from "./documentSnapshotCrud";
 import type { DocumentType } from "./schema";
@@ -651,14 +652,6 @@ export async function issueLocalDocumentAsync(
         title: isFallbackTitle(draft.title) ? defaultDocumentTitle(draft.documentType, number) : draft.title,
         variableSymbol: draft.variableSymbol,
     });
-    let issuedDraft = draft;
-    if (derived.title !== (draft.title ?? null) && derived.title) {
-        const titleUpdate = evolu.update("document", { id: documentId, title: derived.title });
-        if (titleUpdate.ok) {
-            issuedDraft = { ...draft, title: derived.title };
-        }
-    }
-
     const result = await applyReservedNumberToLocalDocumentAsync(
         evolu,
         documentId,
@@ -669,7 +662,8 @@ export async function issueLocalDocumentAsync(
         derived.variableSymbol,
         {
             company,
-            doc: issuedDraft,
+            doc: draft,
+            derivedTitle: derived.title,
             allDocuments: documents,
             ...snapshotContext,
         },
@@ -745,7 +739,20 @@ export type ReservedIssueSnapshotContext = IssueSnapshotContext & {
     company: EvoluCompanyRow;
     doc: EvoluDocumentRow;
     allDocuments: EvoluDocumentRow[];
+    /** Applied only after the final content check, together with issued status. */
+    derivedTitle?: string | null;
 };
+
+function reservedIssueContentRevision(
+    documentId: DocumentId,
+    document: EvoluDocumentRow,
+    lines: readonly EvoluDocumentLineRow[],
+): string {
+    return deterministicStringify({
+        document,
+        lines: lines.filter(line => line.documentId === documentId).sort((a, b) => a.id.localeCompare(b.id)),
+    });
+}
 
 function reservedIssueContextMatches(
     documentId: DocumentId,
@@ -776,10 +783,22 @@ export function applyReservedNumberToLocalDocument(
     const draft = toAppRows<EvoluDocumentRow>(evolu.getQueryRows(allDocumentsQuery))
         .find(row => row.id === documentId);
     if (!reservedIssueContextMatches(documentId, companyId, draft, snapshotContext)) return { ok: false as const, error: "not_found" as const };
+    if (snapshotContext && draft?.contactId) {
+        const currentContact = toAppRows<EvoluContactRow>(evolu.getQueryRows(allContactsQuery))
+            .find(contact => contact.id === draft.contactId);
+        if (currentContact?.companyId !== companyId) return { ok: false as const, error: "not_found" as const };
+    }
     const lines = toAppRows<EvoluDocumentLineRow>(evolu.getQueryRows(allDocumentLinesQuery));
     const issueError = ordinaryIssueError(documentId, draft, lines, snapshotContext?.company, snapshotContext?.contact)
         ?? ordinaryIssueError(documentId, snapshotContext?.doc, snapshotContext?.lines ?? [], snapshotContext?.company, snapshotContext?.contact);
     if (issueError) return { ok: false as const, error: issueError };
+    // The async wrapper reloads rows. Freeze only the admitted content that is
+    // still current at this final synchronous boundary, before any local write.
+    if (snapshotContext && (!draft || draft.status !== "draft"
+        || reservedIssueContentRevision(documentId, draft, lines)
+            !== reservedIssueContentRevision(documentId, snapshotContext.doc, snapshotContext.lines))) {
+        return { ok: false as const, error: "not_draft" as const };
+    }
     const quoteStatus = documentType === "quote" ? "pending" : null;
 
     // Snapshot before status flip (audit F2): a document may only become
@@ -788,7 +807,7 @@ export function applyReservedNumberToLocalDocument(
     if (snapshotContext) {
         const snapshot = writeIssueSnapshot(
             evolu,
-            snapshotContext.doc,
+            snapshotContext.derivedTitle ? { ...snapshotContext.doc, title: snapshotContext.derivedTitle } : snapshotContext.doc,
             number,
             documentVariableSymbol(variableSymbol, number),
             snapshotContext.company,
@@ -803,6 +822,7 @@ export function applyReservedNumberToLocalDocument(
         id: documentId,
         status: "issued",
         number,
+        ...(snapshotContext?.derivedTitle ? { title: snapshotContext.derivedTitle } : {}),
         variableSymbol: documentVariableSymbol(variableSymbol, number),
         quoteStatus,
     });
@@ -826,12 +846,22 @@ export async function applyReservedNumberToLocalDocumentAsync(
     variableSymbol?: string | null,
     snapshotContext?: ReservedIssueSnapshotContext,
 ) {
-    const doc = await waitForDraftDocument(evolu, documentId);
-    const lines = toAppRows<EvoluDocumentLineRow>(await evolu.loadQuery(allDocumentLinesQuery));
+    // Query rows can be mutable aliases in callers. Pin admitted content before
+    // yielding so a later reload cannot silently rewrite both sides of the fence.
+    let context = snapshotContext ? {
+        ...snapshotContext,
+        company: { ...snapshotContext.company },
+        doc: { ...snapshotContext.doc },
+        lines: snapshotContext.lines.map(line => ({ ...line })),
+        contact: snapshotContext.contact ? { ...snapshotContext.contact } : null,
+        allDocuments: snapshotContext.allDocuments.map(document => ({ ...document })),
+    } : undefined;
+    const loadedDoc = await waitForDraftDocument(evolu, documentId);
+    const doc = loadedDoc ? { ...loadedDoc } : null;
+    const lines = toAppRows<EvoluDocumentLineRow>(await evolu.loadQuery(allDocumentLinesQuery)).map(line => ({ ...line }));
     // Callers without local row context (e.g. Woo inbox import) get it loaded
     // here so their issues also freeze a snapshot. Best-effort: a missing
     // company row falls back to issuing without a snapshot (legacy behavior).
-    let context = snapshotContext;
     if (!context) {
         if (doc) {
             const [contactRows, companyRows, documents] = await Promise.all([

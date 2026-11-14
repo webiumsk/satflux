@@ -8,7 +8,6 @@ use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentLine;
 use App\Models\Company;
-use App\Support\Invoicing\CompanyVatPolicy;
 use Illuminate\Validation\ValidationException;
 
 class BusinessDocumentCreditNoteService
@@ -91,6 +90,13 @@ class BusinessDocumentCreditNoteService
             'tax_rate' => (float) $line->tax_rate,
         ])->all();
 
+        $lineModels = collect($lines)->map(fn (array $line, int $index): BusinessDocumentLine => new BusinessDocumentLine([
+            ...$line,
+            'sort_order' => $index,
+            'unit' => $line['unit'] ?? 'pcs',
+        ]));
+        $document->setRelation('lines', $lineModels);
+
         $this->totalsCalculator->applyToDocument(
             $document,
             $lines,
@@ -98,31 +104,8 @@ class BusinessDocumentCreditNoteService
         );
 
         $document->save();
-
-        foreach ($lines as $index => $line) {
-            $qty = (float) ($line['quantity'] ?? 1);
-            $unitPrice = (float) ($line['unit_price'] ?? 0);
-            $lineDiscount = (float) ($line['line_discount_percent'] ?? 0);
-            $taxRate = (float) ($line['tax_rate'] ?? 0);
-            $lineNet = $qty * $unitPrice * (1 - $lineDiscount / 100);
-            $buyer = $document->resolvedBuyer();
-            $vatPolicy = app(CompanyVatPolicy::class);
-            $taxRate = $vatPolicy->resolveLineTaxRate($company, $buyer, $taxRate);
-            $lineTax = $vatPolicy->calculatesVatAmounts($company, $buyer) ? $lineNet * ($taxRate / 100) : 0;
-
-            BusinessDocumentLine::create([
-                'business_document_id' => $document->id,
-                'sort_order' => $index,
-                'name' => $line['name'],
-                'description' => $line['description'] ?? null,
-                'quantity' => $qty,
-                'unit' => $line['unit'] ?? 'pcs',
-                'unit_price' => $unitPrice,
-                'line_discount_percent' => $lineDiscount,
-                'tax_rate' => $taxRate,
-                'line_total' => number_format($lineNet + $lineTax, 2, '.', ''),
-            ]);
-        }
+        // applyToDocument populated these same rows with canonical gross/rates.
+        $document->lines()->saveMany($lineModels);
 
         AuditLog::log('business_document.credit_note_from_invoice', 'business_document', $document->id, [
             'company_id' => $company->id,

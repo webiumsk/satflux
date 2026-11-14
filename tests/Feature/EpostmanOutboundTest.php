@@ -16,6 +16,7 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\Invoicing\BusinessDocumentUblService;
+use App\Services\Invoicing\CanonicalInvoiceBuilder;
 use App\Services\Invoicing\Efaktura\ComplianceStatusSyncService;
 use App\Services\Invoicing\Efaktura\ComplianceSubmissionService;
 use App\Services\Invoicing\Efaktura\EphemeralEfakturaSubmissionService;
@@ -574,7 +575,69 @@ class EpostmanOutboundTest extends TestCase
     /** @return array<string, array{string, float}> */
     public static function linePrecisionCases(): array
     {
-        return ['unit price' => ['unit_price', 0.333333], 'quantity' => ['quantity', 0.333333], 'VAT rate' => ['tax_rate', 23.000001]];
+        return ['unit price' => ['unit_price', 0.333333], 'quantity' => ['quantity', 0.333333],
+            'VAT rate' => ['tax_rate', 23.000001], 'four-place VAT rate' => ['tax_rate', 8.8751],
+            'tiny VAT rate' => ['tax_rate', 1e-20]];
+    }
+
+    public function test_provider_precision_does_not_round_supported_four_place_model_rates(): void
+    {
+        Http::fake();
+        $document = $this->document();
+        $line = $document->lines->first();
+        $line->update(['tax_rate' => 8.8751, 'line_total' => 10.89]);
+        $document->update(['tax_total' => 0.89, 'total' => 10.89]);
+        $this->assertSame('8.8751', $line->fresh()->tax_rate);
+        try {
+            app(ComplianceSubmissionService::class)->submitNow($document->fresh(['company', 'contact', 'lines']));
+            $this->fail('The provider limit is narrower than the model precision');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('tax_rate with at most 2 decimal places', $exception->errors()['efaktura'][0]);
+        }
+        $this->assertSame('8.8751', $line->fresh()->tax_rate);
+        Http::assertNothingSent();
+        $this->assertDatabaseCount('efaktura_outbound_attempts', 0);
+    }
+
+    public static function supportedProviderPrecisionCases(): array
+    {
+        return [['unit_price', '12.34'], ['quantity', '1.2345'], ['tax_rate', '8.87'], ['tax_rate', '8.8700']];
+    }
+
+    #[DataProvider('supportedProviderPrecisionCases')]
+    public function test_declared_provider_precision_is_still_accepted(string $field, string $value): void
+    {
+        $this->fakeProvider();
+        $document = $this->document();
+        $document->lines->first()->update([$field => $value]);
+        $document = $document->fresh(['company', 'contact', 'lines']);
+        $canonical = app(CanonicalInvoiceBuilder::class)->fromDocument($document);
+        $document->lines->first()->update(['line_total' => $canonical->lines[0]->grossAmount]);
+        $document->update(['subtotal' => $canonical->subtotal, 'tax_total' => $canonical->taxTotal, 'total' => $canonical->total]);
+        $result = app(ComplianceSubmissionService::class)->submitNow($document->fresh(['company', 'contact', 'lines']));
+        $this->assertSame(ComplianceSubmissionStatus::Submitted, $result->status);
+        $this->assertSame(1, $this->sendCalls);
+    }
+
+    public function test_tiny_raw_discounts_are_not_erased_by_model_casts_before_provider_preflight(): void
+    {
+        Http::fake();
+        foreach (['document', 'line'] as $target) {
+            $document = $this->document();
+            if ($target === 'document') {
+                $document->setAttribute('discount_percent', 0.0001);
+            } else {
+                $document->lines->first()->setAttribute('line_discount_percent', 0.0001);
+            }
+            try {
+                app(ComplianceSubmissionService::class)->submitNow($document);
+                $this->fail('Raw discounts remain unsupported even when their cast is zero');
+            } catch (ValidationException $exception) {
+                $this->assertStringContainsString('discounts', $exception->errors()['efaktura'][0]);
+            }
+        }
+        Http::assertNothingSent();
+        $this->assertDatabaseCount('efaktura_outbound_attempts', 0);
     }
 
     public function test_wrong_stored_invoice_or_line_totals_cannot_be_silently_recalculated(): void
@@ -729,7 +792,7 @@ class EpostmanOutboundTest extends TestCase
             app(ComplianceSubmissionService::class)->submitNow($document->fresh(['company', 'contact', 'lines']));
             $this->fail('A nonzero raw deduction cannot silently become zero');
         } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('lines', $exception->errors());
+            $this->assertStringContainsString('quantity with at most 4 decimal places', $exception->errors()['efaktura'][0]);
         }
         Http::assertNothingSent();
         $this->assertDatabaseCount('efaktura_outbound_attempts', 0);

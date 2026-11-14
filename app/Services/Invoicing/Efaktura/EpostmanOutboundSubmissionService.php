@@ -16,6 +16,8 @@ use App\Support\Invoicing\CompanyEfakturaSettings;
 use App\Support\Invoicing\ComplianceSubmissionResult;
 use App\Support\Invoicing\Efaktura\PeppolParticipantId;
 use App\Support\Invoicing\Efaktura\SapiSkSendPayload;
+use Brick\Math\BigDecimal;
+use Brick\Math\Exception\MathException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -292,18 +294,29 @@ class EpostmanOutboundSubmissionService
 
     protected function assertSupportedAmounts(BusinessDocument $document): void
     {
-        if ((float) $document->getAttribute('discount_percent') !== 0.0 || $document->lines->contains(fn ($line): bool => (float) $line->getAttribute('line_discount_percent') !== 0.0)) {
+        if ((float) ($document->getAttributes()['discount_percent'] ?? 0) !== 0.0 || $document->lines->contains(fn ($line): bool => (float) ($line->getAttributes()['line_discount_percent'] ?? 0) !== 0.0)) {
             $this->invalid('ePostman sending does not yet support invoice or line discounts.');
         }
         foreach ($document->lines as $line) {
             foreach (['unit_price' => 2, 'quantity' => 4, 'tax_rate' => 2] as $field => $precision) {
-                $raw = (float) ($line->getAttributes()[$field] ?? 0);
-                $cast = (float) $line->getAttribute($field);
+                $rawValue = $line->getAttributes()[$field] ?? 0;
+                $raw = (float) $rawValue;
                 if ($field === 'unit_price' && $raw < 0) {
                     $this->invalid('ePostman sending does not yet support negative unit prices.');
                 }
-                if (! is_finite($raw) || abs($raw - $cast) > 0.000000001) {
-                    $this->invalid("ePostman sending currently supports {$field} with at most {$precision} decimal places.");
+                $precisionError = "ePostman sending currently supports {$field} with at most {$precision} decimal places.";
+                if (! is_finite($raw)) {
+                    $this->invalid($precisionError);
+                }
+                try {
+                    // Provider precision is independent of the model's wider casts.
+                    BigDecimal::of((string) $rawValue)->toScale($precision);
+                } catch (MathException) {
+                    $this->invalid($precisionError);
+                }
+                $cast = (float) $line->getAttribute($field);
+                if (abs($raw - $cast) > 0.000000001) {
+                    $this->invalid($precisionError);
                 }
             }
         }

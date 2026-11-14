@@ -1,5 +1,31 @@
 # Project state
 
+## PR443 four follow-up findings corrected locally - 2026-11-14
+
+All four current follow-up findings over `dbe6cc96` are verified and corrected;
+none is skipped. ePostman validates exact raw declared precision independently
+of model casts and retains its no-discount guard. Derived credit-note rows persist
+canonical gross/rate values in one pass. Final reserved issuance pins admitted
+content before waits, checks final document/lines and current buyer ownership,
+and applies the derived title with the issued snapshot. UBL subtotals use Z/S
+consistently while preserving explicit scenarios. Four-place model rates remain.
+
+Eight source/test files are frozen at fingerprint
+`d28c4bfa39698caf7adaaf9aab6415dacef6c260ae1ce41ea46ed7de1e57262e`.
+Main passes full frontend 3,224 / 241, related PHP 200 / 1,739 assertions,
+PHPStan zero errors, Pint 1,174 plus final six changed files, lint zero errors /
+46 inherited warnings, unchanged type baseline 110 / no new errors, locales,
+build 7,664 and API freshness/three schemas. One inherited PHPUnit deprecation.
+Independent security accepts 83 PHP / 551 assertions, five private frontend
+probes and three backend matrices. Independent QA accepts 158 frontend tests / six suites and backend code/test
+inspection with the coordinator/security PHP results explicitly attributed.
+Counts overlap. API artifacts and dependency locks are unchanged.
+
+See `PR443_FOLLOWUP_REVIEW.md`; private evidence is retained under
+`storage/app/private/reviews/pr443-followup`. Prior baseline CI success is separate
+from this uncommitted correction. Next: corrective push and new-head CI.
+No merge, deployment, live provider call, schema or owner-data operation.
+
 ## PR443 review corrections independently accepted - 2026-11-14
 
 The owner authorizes completing all nine unresolved findings on

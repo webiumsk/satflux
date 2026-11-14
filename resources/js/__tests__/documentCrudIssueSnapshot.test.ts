@@ -77,11 +77,11 @@ type MutationResult =
     | { ok: true; value: { id: string } }
     | { ok: false; error: string };
 
-function fakeEvolu() {
+function fakeEvolu(rows: Record<string, unknown[]> = {}) {
     const calls: Call[] = [];
     return {
         calls,
-        getQueryRows: vi.fn((_query: unknown): unknown[] => []),
+        getQueryRows: vi.fn((query: unknown): unknown[] => rows[String(query)] ?? []),
         insert: vi.fn((table: string, row: Record<string, unknown>): MutationResult => {
             calls.push({ table, row });
             return { ok: true, value: { id: `${table}-id` } };
@@ -104,6 +104,42 @@ beforeEach(() => {
 });
 
 describe("primary local issue context admission", () => {
+    it.each([false, true])("defers the derived title until admitted reserved content is issued (changed: %s)", async changed => {
+        const { issueLocalDocumentAsync } = await import("@/evolu/documentCrud");
+        const evolu = fakeEvolu();
+        const doc = { ...draft, title: "Document" };
+        const rows: Record<string, unknown[]> = {
+            allDocumentsQuery: [doc], allDocumentLinesQuery: [line], allContactsQuery: [],
+        };
+        evolu.getQueryRows.mockImplementation((query: unknown) => rows[String(query)] ?? []);
+        allocator.reserve.mockResolvedValue({ ok: true, value: { status: "reserved", counter: 71, periodKey: "2026", bridgeCompanyId: "synthetic-bridge" } });
+        let lineLoads = 0;
+        const local = { ...evolu, loadQuery: vi.fn(async (query: unknown) => {
+            if (String(query) === "allDocumentLinesQuery" && ++lineLoads === 3 && changed) {
+                await Promise.resolve();
+                rows.allDocumentLinesQuery = [{ ...line, name: "Changed during final reserved reload" }];
+            }
+            return rows[String(query)] ?? [];
+        }) };
+        const result = await issueLocalDocumentAsync(local as never, documentId, company);
+        expect(allocator.reserve).toHaveBeenCalledOnce();
+        if (changed) {
+            expect(result).toEqual({ ok: false, error: "not_draft" });
+            expect(doc.title).toBe("Document");
+            expect(evolu.calls).toEqual([]);
+            expect(allocator.confirm).not.toHaveBeenCalled();
+        } else {
+            expect(result.ok).toBe(true);
+            const snapshot = JSON.parse(String(evolu.calls.find(call => call.table === "documentSnapshot")?.row.payloadJson));
+            const documentWrites = evolu.calls.filter(call => call.table === "document");
+            expect(documentWrites).toHaveLength(1);
+            expect(documentWrites[0].row).toMatchObject({ status: "issued", title: snapshot.document.title });
+            expect(snapshot.document.title).toMatch(/20260071$/);
+            expect(evolu.calls[0].table).toBe("documentSnapshot");
+            expect(allocator.confirm).toHaveBeenCalledOnce();
+        }
+    });
+
     it.each([false, true])("issues unchanged admitted content through the allocator (signed: %s)", async signed => {
         const { issueLocalDocumentAsync } = await import("@/evolu/documentCrud");
         const evolu = fakeEvolu();
@@ -177,6 +213,168 @@ describe("primary local issue context admission", () => {
 });
 
 describe("applyReservedNumberToLocalDocument snapshot invariant", () => {
+    it.each([true, false])("pins mutable admitted document and line rows before reloads (supplied: %s)", async supplied => {
+        const { applyReservedNumberToLocalDocumentAsync } = await import("@/evolu/documentCrud");
+        for (const changed of ["document", "line"]) {
+            const evolu = fakeEvolu();
+            const doc = { ...draft };
+            const mutableLine = { ...line };
+            const rows: Record<string, unknown[]> = {
+                allDocumentsQuery: [doc], allDocumentLinesQuery: [mutableLine],
+                allCompaniesDetailQuery: [company], allContactsQuery: [],
+            };
+            evolu.getQueryRows.mockImplementation((query: unknown) => rows[String(query)] ?? []);
+            const local = { ...evolu, loadQuery: vi.fn(async (query: unknown) => {
+                if (String(query) === (supplied ? "allDocumentLinesQuery" : "allContactsQuery")) {
+                    await Promise.resolve();
+                    if (changed === "document") doc.title = "Mutated after admission";
+                    else mutableLine.name = "Mutated after admission";
+                }
+                return rows[String(query)] ?? [];
+            }) };
+            const result = await applyReservedNumberToLocalDocumentAsync(local as never,
+                documentId, companyId, "invoice", "20260071", series, null,
+                supplied ? { company, doc, lines: [mutableLine], allDocuments: [doc], contact: null } : undefined);
+            expect(result).toEqual({ ok: false, error: "not_draft" });
+            expect(evolu.calls).toEqual([]);
+        }
+    });
+
+    it.each(["missing", "foreign_replaced", "foreign_mutated"])("rejects a current buyer binding that becomes %s during the final reload", async changed => {
+        const { applyReservedNumberToLocalDocumentAsync } = await import("@/evolu/documentCrud");
+        const evolu = fakeEvolu();
+        const doc = { ...draft, contactId: "buyer" };
+        const contact = { id: "buyer", companyId, name: "Admitted buyer", country: "SK" } as EvoluContactRow;
+        const rows: Record<string, unknown[]> = {
+            allDocumentsQuery: [doc], allDocumentLinesQuery: [line], allContactsQuery: [contact],
+        };
+        evolu.getQueryRows.mockImplementation((query: unknown) => rows[String(query)] ?? []);
+        const local = { ...evolu, loadQuery: vi.fn(async (query: unknown) => {
+            if (String(query) === "allDocumentLinesQuery") {
+                await Promise.resolve();
+                if (changed === "missing") rows.allContactsQuery = [];
+                if (changed === "foreign_replaced") rows.allContactsQuery = [{ ...contact, companyId: "foreign-company" }];
+                if (changed === "foreign_mutated") contact.companyId = "foreign-company" as CompanyId;
+            }
+            return rows[String(query)] ?? [];
+        }) };
+        const result = await applyReservedNumberToLocalDocumentAsync(local as never,
+            documentId, companyId, "invoice", "20260071", series, null,
+            { company, doc, lines: [line], allDocuments: [doc], contact });
+        expect(result).toEqual({ ok: false, error: "not_found" });
+        expect(evolu.calls).toEqual([]);
+    });
+
+    it("checks current buyer ownership while preserving its admitted profile", async () => {
+        const { applyReservedNumberToLocalDocumentAsync } = await import("@/evolu/documentCrud");
+        const evolu = fakeEvolu();
+        const doc = { ...draft, contactId: "buyer" };
+        const contact = { id: "buyer", companyId, name: "Admitted buyer", country: "SK" } as EvoluContactRow;
+        const rows: Record<string, unknown[]> = {
+            allDocumentsQuery: [doc], allDocumentLinesQuery: [line], allContactsQuery: [contact],
+        };
+        evolu.getQueryRows.mockImplementation((query: unknown) => rows[String(query)] ?? []);
+        const local = { ...evolu, loadQuery: vi.fn(async (query: unknown) => {
+            if (String(query) === "allDocumentLinesQuery") {
+                await Promise.resolve();
+                Object.assign(contact, { name: "Later contact profile", country: "CZ" });
+            }
+            return rows[String(query)] ?? [];
+        }) };
+        const result = await applyReservedNumberToLocalDocumentAsync(local as never,
+            documentId, companyId, "invoice", "20260071", series, null,
+            { company, doc, lines: [line], allDocuments: [doc], contact });
+        expect(result.ok).toBe(true);
+        const snapshot = JSON.parse(String(evolu.calls.find(call => call.table === "documentSnapshot")?.row.payloadJson));
+        expect(snapshot.contact).toMatchObject({ name: "Admitted buyer", country: "SK" });
+    });
+
+    it.each([
+        "title", "footer", "due_date", "currency", "payment_flags", "total", "source_document", "document_type", "status", "deleted_document",
+        "line_name", "line_quantity", "line_price", "line_tax", "line_total", "line_order", "line_stock", "line_id", "added_line", "deleted_line",
+    ])("rejects %s changed during the reserved-issue reload before any local mutation", async changed => {
+        const { applyReservedNumberToLocalDocumentAsync } = await import("@/evolu/documentCrud");
+        const evolu = fakeEvolu();
+        const doc = { ...draft };
+        const originalLines = [{ ...line }];
+        const context = { company, doc, allDocuments: [doc], lines: originalLines, contact: null };
+        const rows: Record<string, unknown[]> = {
+            allDocumentsQuery: [doc], allDocumentLinesQuery: originalLines,
+            allCompaniesDetailQuery: [company], allContactsQuery: [],
+        };
+        evolu.getQueryRows.mockImplementation((query: unknown) => rows[String(query)] ?? []);
+        const local = { ...evolu, loadQuery: vi.fn(async (query: unknown) => {
+            if (String(query) === "allDocumentLinesQuery") {
+                await Promise.resolve();
+                const fields: Record<string, Partial<EvoluDocumentRow>> = {
+                    title: { title: "Edited invoice" }, footer: { noteFooter: "Updated footer" },
+                    due_date: { dueDate: "2026-12-31" }, currency: { currency: "USD" },
+                    payment_flags: { paymentBtcEnabled: 1 }, total: { total: "121.00" },
+                    source_document: { sourceDocumentId: "source-2" as DocumentId },
+                    document_type: { documentType: "quote" }, status: { status: "paid" },
+                };
+                if (fields[changed]) rows.allDocumentsQuery = [{ ...doc, ...fields[changed] }];
+                if (changed === "deleted_document") rows.allDocumentsQuery = [];
+                const lineFields: Record<string, Partial<EvoluDocumentLineRow>> = {
+                    line_name: { name: "Edited service" }, line_quantity: { quantity: "2.0000" },
+                    line_price: { unitPrice: "101.0000" }, line_tax: { taxRate: "23.0000" },
+                    line_total: { lineTotal: "121.00" }, line_order: { sortOrder: "1" },
+                    line_stock: { companyStockItemId: "stock-1" }, line_id: { id: "replacement-line" },
+                };
+                if (lineFields[changed]) rows.allDocumentLinesQuery = [{ ...line, ...lineFields[changed] }];
+                if (changed === "added_line") rows.allDocumentLinesQuery = [line, { ...line, id: "line-2", sortOrder: "1" }];
+                if (changed === "deleted_line") rows.allDocumentLinesQuery = [];
+            }
+            return rows[String(query)] ?? [];
+        }) };
+        const result = await applyReservedNumberToLocalDocumentAsync(local as never,
+            documentId, companyId, "invoice", "20260071", series, null, context);
+        expect(result).toEqual({ ok: false, error: "not_draft" });
+        expect(evolu.calls).toEqual([]);
+    });
+
+    it.each(["document", "lines"])("rejects changed %s while loading missing reserved context", async changed => {
+        const { applyReservedNumberToLocalDocumentAsync } = await import("@/evolu/documentCrud");
+        const evolu = fakeEvolu();
+        const rows: Record<string, unknown[]> = {
+            allDocumentsQuery: [draft], allDocumentLinesQuery: [line],
+            allCompaniesDetailQuery: [company], allContactsQuery: [],
+        };
+        evolu.getQueryRows.mockImplementation((query: unknown) => rows[String(query)] ?? []);
+        const local = { ...evolu, loadQuery: vi.fn(async (query: unknown) => {
+            if (String(query) === "allContactsQuery") {
+                await Promise.resolve();
+                if (changed === "document") rows.allDocumentsQuery = [{ ...draft, title: "Concurrent title" }];
+                else rows.allDocumentLinesQuery = [{ ...line, name: "Concurrent service" }];
+            }
+            return rows[String(query)] ?? [];
+        }) };
+        expect(await applyReservedNumberToLocalDocumentAsync(local as never,
+            documentId, companyId, "invoice", "20260071", series)).toEqual({ ok: false, error: "not_draft" });
+        expect(evolu.calls).toEqual([]);
+    });
+
+    it("issues matching reserved content despite query ordering and unrelated line changes", async () => {
+        const { applyReservedNumberToLocalDocumentAsync } = await import("@/evolu/documentCrud");
+        const evolu = fakeEvolu();
+        const doc = { ...draft, subtotal: "200.00", taxTotal: "40.00", total: "240.00" };
+        const lines = [line, { ...line, id: "line-2", sortOrder: "1", name: "Second service" }];
+        const rows: Record<string, unknown[]> = {
+            allDocumentsQuery: [Object.fromEntries(Object.entries(doc).reverse())],
+            allDocumentLinesQuery: [lines[1], { ...line, id: "unrelated", documentId: "other-doc" }, lines[0]],
+        };
+        evolu.getQueryRows.mockImplementation((query: unknown) => rows[String(query)] ?? []);
+        const local = { ...evolu, loadQuery: async (query: unknown) => rows[String(query)] ?? [] };
+        const result = await applyReservedNumberToLocalDocumentAsync(local as never,
+            documentId, companyId, "invoice", "20260071", series, null,
+            { company, doc, allDocuments: [doc], lines, contact: null });
+        expect(result.ok).toBe(true);
+        const snapshot = JSON.parse(String(evolu.calls.find(call => call.table === "documentSnapshot")?.row.payloadJson));
+        expect(snapshot.document.total).toBe("240.00");
+        expect(snapshot.lines.map((row: { name: string }) => row.name)).toEqual(["Work", "Second service"]);
+        expect(evolu.calls.some(call => call.table === "document" && call.row.status === "issued")).toBe(true);
+    });
+
     it.each([false, true])("loads company rounding context before reserved issue (supplied context: %s)", async supplied => {
         const { applyReservedNumberToLocalDocumentAsync } = await import("@/evolu/documentCrud");
         const evolu = fakeEvolu();
@@ -311,6 +509,7 @@ describe("applyReservedNumberToLocalDocument snapshot invariant", () => {
         const evolu = fakeEvolu();
         const doc = { ...draft, subtotal: "80.00", taxTotal: "16.00", total: "96.00" };
         const deduction = { ...line, id: "line-2" as DocumentLineId, sortOrder: "1", unitPrice: "-20.0000", lineTotal: "-24.00" };
+        evolu.getQueryRows.mockImplementation((query: unknown) => String(query) === "allDocumentsQuery" ? [doc] : String(query) === "allDocumentLinesQuery" ? [line, deduction] : []);
         const result = applyReservedNumberToLocalDocument(
             evolu as never, documentId, companyId, "invoice", "20260071", series, null,
             { company: { ...company, jurisdiction: "eu_sk", vatPayer: 1, vatStatus: "payer" }, doc, allDocuments: [doc], lines: [line, deduction], contact: null },
@@ -337,7 +536,7 @@ describe("applyReservedNumberToLocalDocument snapshot invariant", () => {
 
     it("fails without issuing or advancing the series counter when the snapshot insert fails", async () => {
         const { applyReservedNumberToLocalDocument } = await import("@/evolu/documentCrud");
-        const evolu = fakeEvolu();
+        const evolu = fakeEvolu({ allDocumentsQuery: [draft], allDocumentLinesQuery: [line] });
         evolu.insert.mockImplementation((table: string): MutationResult =>
             table === "documentSnapshot"
                 ? { ok: false, error: "boom" }
@@ -370,7 +569,7 @@ describe("applyReservedNumberToLocalDocument snapshot invariant", () => {
 
     it("refuses the snapshot (and the issue) when the draft has no lines", async () => {
         const { applyReservedNumberToLocalDocument } = await import("@/evolu/documentCrud");
-        const evolu = fakeEvolu();
+        const evolu = fakeEvolu({ allDocumentsQuery: [draft], allDocumentLinesQuery: [] });
 
         const result = applyReservedNumberToLocalDocument(
             evolu as never,
@@ -397,7 +596,7 @@ describe("applyReservedNumberToLocalDocument snapshot invariant", () => {
 
     it("issues, then advances the counter, when the snapshot persists", async () => {
         const { applyReservedNumberToLocalDocument } = await import("@/evolu/documentCrud");
-        const evolu = fakeEvolu();
+        const evolu = fakeEvolu({ allDocumentsQuery: [draft], allDocumentLinesQuery: [line] });
 
         const result = applyReservedNumberToLocalDocument(
             evolu as never,
