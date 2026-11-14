@@ -9,14 +9,25 @@
         {{ t('invoicing.efaktura_inbox_title') }}
         <span v-if="items.length" class="ml-1 text-xs font-normal text-indigo-800">({{ items.length }})</span>
       </p>
-      <button
-        type="button"
-        class="invoicing-btn-secondary shrink-0 text-sm"
-        :disabled="loading"
-        @click="refresh"
-      >
-        {{ t('invoicing.efaktura_inbox_refresh') }}
-      </button>
+      <div class="flex flex-wrap gap-2">
+        <button
+          v-if="receivingEnabled"
+          type="button"
+          class="invoicing-btn-primary shrink-0 text-sm"
+          :disabled="mailboxBusy || busyId !== null || !bridgeCompanyId"
+          @click="checkMailbox"
+        >
+          {{ t(checking || checkingMailbox ? 'invoicing.efaktura_inbox_checking_mailbox' : 'invoicing.efaktura_inbox_check_mailbox') }}
+        </button>
+        <button
+          type="button"
+          class="invoicing-btn-secondary shrink-0 text-sm"
+          :disabled="mailboxBusy || busyId !== null"
+          @click="refresh"
+        >
+          {{ t('invoicing.efaktura_inbox_refresh') }}
+        </button>
+      </div>
     </div>
 
     <p class="mt-2 text-xs text-indigo-950">{{ t('invoicing.efaktura_inbox_original_notice') }}</p>
@@ -25,6 +36,9 @@
       <span v-if="health?.last_poll_at"> {{ t('invoicing.efaktura_inbound_last_poll', { date: formatDate(health.last_poll_at) }) }}</span>
     </p>
     <p v-if="error" role="alert" class="mt-3 text-sm text-red-700">{{ error }}</p>
+    <p v-if="receivingEnabled && !items.length && health?.state === 'ok' && !mailboxBusy" class="mt-3 text-sm text-indigo-950">
+      {{ t('invoicing.efaktura_inbox_empty') }}
+    </p>
 
     <ul v-if="items.length" class="mt-3 space-y-2">
       <li
@@ -46,7 +60,7 @@
           <button
             type="button"
             class="invoicing-btn-secondary"
-            :disabled="busyId !== null"
+            :disabled="busyId !== null || mailboxBusy"
             :aria-expanded="selectedDetail?.inbox_id === item.inbox_id"
             @click="viewItem(item)"
           >
@@ -55,7 +69,7 @@
           <button
             type="button"
             class="invoicing-btn-secondary"
-            :disabled="busyId !== null"
+            :disabled="busyId !== null || mailboxBusy"
             @click="downloadItem(item)"
           >
             {{ t('invoicing.efaktura_inbox_download_original') }}
@@ -63,7 +77,7 @@
           <button
             type="button"
             class="invoicing-btn-primary"
-            :disabled="busyId !== null"
+            :disabled="busyId !== null || mailboxBusy"
             @click="importItem(item)"
           >
             {{ t('invoicing.efaktura_inbox_import') }}
@@ -94,7 +108,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { asApiError } from '../../utils/apiError';
 import { useInvoicingEvolu } from '@/evolu/client';
@@ -104,12 +118,12 @@ import {
   type EfakturaInboxEntry,
   type EfakturaInboxEntryDetail,
 } from '@/evolu/efakturaInboxImport';
-import { refreshEfakturaInboxLive, useEfakturaInboxLive } from '@/evolu/efakturaInboxLive';
+import { checkEfakturaInboxMailbox, refreshEfakturaInboxLive, useEfakturaInboxLive } from '@/evolu/efakturaInboxLive';
 
 /**
  * Received e-invoices waiting on the bridge company for this local-first
- * company. Renders only while there is something to act on (or an error to
- * show) - the live loop in efakturaInboxLive.ts keeps `items` fresh.
+ * company. Receiving stays actionable even with an empty inbox; Refresh
+ * reads stored documents/status while Check mailbox asks the provider.
  */
 const props = defineProps<{
   companyId: string;
@@ -121,9 +135,11 @@ const emit = defineEmits<{
 
 const { t, locale } = useI18n();
 const evolu = useInvoicingEvolu();
-const { entries: items, bridgeCompanyId, health, receivingEnabled } = useEfakturaInboxLive();
+const { entries: items, bridgeCompanyId, health, receivingEnabled, checkingMailbox } = useEfakturaInboxLive();
 
 const loading = ref(false);
+const checking = ref(false);
+const mailboxBusy = computed(() => loading.value || checking.value || checkingMailbox.value);
 const error = ref('');
 const busyId = ref<string | null>(null);
 const selectedDetail = ref<EfakturaInboxEntryDetail | null>(null);
@@ -141,19 +157,22 @@ const lineItems = computed(() => {
   }));
 });
 let generation = 0;
+let active = true;
+onBeforeUnmount(() => { active = false; generation++; });
 watch([() => props.companyId, bridgeCompanyId], () => {
   generation++;
   selectedDetail.value = null;
   error.value = '';
   busyId.value = null;
   loading.value = false;
-});
+  checking.value = false;
+}, { flush: 'sync' });
 
 const healthWarning = computed(() => receivingEnabled.value && health.value?.state !== 'ok' ? health.value?.state ?? 'unavailable' : null);
-const showPanel = computed(() => items.value.length > 0 || error.value !== '' || healthWarning.value !== null);
+const showPanel = computed(() => receivingEnabled.value || items.value.length > 0 || error.value !== '' || healthWarning.value !== null);
 
 function currentAction(companyId: string, bridgeId: string, startedGeneration: number): boolean {
-  return props.companyId === companyId && bridgeCompanyId.value === bridgeId && generation === startedGeneration;
+  return active && props.companyId === companyId && bridgeCompanyId.value === bridgeId && generation === startedGeneration;
 }
 
 function draftDate(key: string): string {
@@ -178,6 +197,7 @@ function describeError(rawError: unknown): string {
 }
 
 async function refresh(): Promise<void> {
+  if (mailboxBusy.value || busyId.value !== null) return;
   const companyId = props.companyId;
   const bridgeId = bridgeCompanyId.value;
   const startedGeneration = generation;
@@ -188,7 +208,23 @@ async function refresh(): Promise<void> {
   } catch (rawError) {
     if (bridgeId && currentAction(companyId, bridgeId, startedGeneration)) error.value = describeError(rawError);
   } finally {
-    if (generation === startedGeneration) loading.value = false;
+    if (active && generation === startedGeneration) loading.value = false;
+  }
+}
+
+async function checkMailbox(): Promise<void> {
+  const companyId = props.companyId;
+  const bridgeId = bridgeCompanyId.value;
+  const startedGeneration = generation;
+  if (!receivingEnabled.value || !bridgeId || mailboxBusy.value || busyId.value !== null) return;
+  checking.value = true;
+  error.value = '';
+  try {
+    await checkEfakturaInboxMailbox(companyId);
+  } catch (rawError) {
+    if (currentAction(companyId, bridgeId, startedGeneration)) error.value = describeError(rawError);
+  } finally {
+    if (currentAction(companyId, bridgeId, startedGeneration)) checking.value = false;
   }
 }
 
@@ -196,7 +232,7 @@ async function importItem(item: EfakturaInboxEntry): Promise<void> {
   const bridgeId = bridgeCompanyId.value;
   const companyId = props.companyId;
   const startedGeneration = generation;
-  if (!bridgeId || busyId.value !== null) return;
+  if (!bridgeId || busyId.value !== null || mailboxBusy.value) return;
   busyId.value = item.inbox_id;
   error.value = '';
   try {
@@ -220,7 +256,7 @@ async function readOriginal(item: EfakturaInboxEntry, download: boolean): Promis
   const bridgeId = bridgeCompanyId.value;
   const companyId = props.companyId;
   const startedGeneration = generation;
-  if (!bridgeId || busyId.value !== null) return;
+  if (!bridgeId || busyId.value !== null || mailboxBusy.value) return;
   busyId.value = item.inbox_id;
   error.value = '';
   try {

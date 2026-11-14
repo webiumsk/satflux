@@ -3,7 +3,7 @@ title: Manage Evolu relays
 category: security
 order: 7
 meta_description: Manage encrypted invoicing synchronization across multiple relays.
-updated: 2026-11-07
+updated: 2026-11-14
 ---
 
 # Manage Evolu relays
@@ -22,6 +22,8 @@ Relay list changes apply to your account. **Disable sync on this device** pauses
 **Connected** means an actual synchronization WebSocket is open. **Connecting**, **Disconnected**, and **Connection error** describe that connection. **Unknown** means current connection evidence is unavailable; restarting all tabs may be necessary after an update. **Sync paused** means the local owner or current relay settings have not yet been confirmed. Sign in and load account settings while online; if local invoicing is locked, restore it with the correct recovery phrase. Disabled relays and device sync-off are shown separately.
 
 **Connection** and **Synchronization** are shown separately. **Quota exceeded** means this relay rejected data because of its storage or service limit, even while the connection remains open. **Response received** means a protocol reply was observed; it does not confirm a complete backup or that previously rejected changes were replayed. After a provider increases a quota, restart all Satflux tabs as described above so the client reconciles pending history. The last recorded Evolu error in local statistics may be older and is not the current per-relay status.
+
+The invoicing overview names relays with currently observed synchronization or connection problems. An amber notice means some enabled relays report a problem; a red notice means all enabled relays report one. Other relays may still be unverified. Historical global errors do not trigger this notice, and it disappears when current evidence recovers, expires, or the affected relay is disabled or no longer active. Open **Manage relays** to review the affected destinations and **Export backup** to reach the backup controls. Export current local data before changing relay selections. For quota errors, check provider limits; deleting invoices does not shrink the stored history, and repeatedly forcing a push is not a remedy.
 
 An open connection does not prove protocol compatibility, successful writes, or a complete backup. The installed client requires a relay compatible with Evolu 7.x. Connections work independently, and missing history is reconciled on subscription or reconnect. Relays do not copy directly between themselves; a client synchronizes them. Allow time for a new relay to catch up.
 

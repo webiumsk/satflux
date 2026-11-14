@@ -3,7 +3,7 @@ title: Slovenská e-fakturácia - prepojenie ePostman
 category: invoicing
 order: 6
 meta_description: Prepojte firemný účet ePostman, prijímajte e-faktúry a importujte ich originály do nákladov v Satfluxe.
-updated: 2026-11-12
+updated: 2026-11-15
 ---
 
 # Slovenská e-fakturácia - prepojenie ePostman
@@ -27,7 +27,9 @@ Ak je secret už uložený pre rovnaké pripojenie, jeho pole nechajte prázdne.
 
 V rovnakej firme otvorte **Náklady > Prijaté e-faktúry**. Doklad skontrolujte alebo stiahnite pôvodné XML a potom ho importujte do nákladov. Dobropisy sa importujú ako opravy so zodpovedajúcim znamienkom sumy. Úspešné prázdne stiahnutie znamená, že sa nestiahli nové doklady; nepotvrdzuje doručenie testovacej faktúry.
 
-Manuálne stiahnutie spustíte cez **Stiahnuť prichádzajúce teraz** v nastaveniach e-fakturácie firmy. Následne obnovte inbox na stránke Náklady. Obnovenie inboxu zobrazí doklady, ktoré už Satflux stiahol.
+Cez **Skontrolovať schránku** priamo v **Náklady > Prijaté e-faktúry** načítaš prichádzajúce doklady od poštára a následne obnovíš schránku aj stav prijímania. **Obnoviť** iba načíta doklady a stav už uložené v Satfluxe. V nastaveniach e-fakturácie firmy zostáva dostupné aj **Stiahnuť prichádzajúce teraz**. Už importované doklady zostávajú v Nákladoch; schránka zobrazuje iba doklady čakajúce na lokálny import. Prázdna schránka je po importe bežný stav.
+
+Po úspešnom lokálnom teste pripojenia formulár upozorní, že overenie ešte treba uložiť. Zachováš ho cez **Uložiť moje údaje**. Uloženie rovnakého pripojenia a prístupových údajov zachová poslednú kontrolu schránky; zmena alebo odstránenie prístupových údajov toto overenie zneplatní. Ak záznam kontroly chýba alebo je stav starý, použi **Skontrolovať schránku**. Úspešná prázdna kontrola nepotvrdzuje doručenie ani produkčnú pripravenosť.
 
 Import uloží originál do vašich šifrovaných lokálnych dát. Ak import zlyhá alebo je originál príliš veľký na lokálnu prílohu, položka zostane dostupná na obnovu a stiahnutie originálu. Samotná existencia nákladu import nedokončí.
 

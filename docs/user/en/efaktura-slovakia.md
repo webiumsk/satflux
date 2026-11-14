@@ -3,7 +3,7 @@ title: Slovak e-invoicing - ePostman connection
 category: invoicing
 order: 6
 meta_description: Connect your company's ePostman account to receive e-invoices and import their originals into Satflux expenses.
-updated: 2026-11-12
+updated: 2026-11-15
 ---
 
 # Slovak e-invoicing - ePostman connection
@@ -27,7 +27,9 @@ If a secret is already saved for the same connection, leave its field empty to k
 
 Open **Expenses > Received e-invoices** for the same company. Review the document or download its original XML, then import it as an expense. Credit notes are imported as corrections with the appropriate signed amount. A successful empty retrieval means no new documents were fetched; it does not establish that a test invoice has been delivered.
 
-Use **Fetch incoming now** in the company's e-invoicing settings to request a retrieval. Then refresh the incoming inbox on Expenses. Refreshing the inbox shows documents already retrieved by Satflux.
+Use **Check mailbox** directly in **Expenses > Received e-invoices** to fetch incoming documents from the provider and then reload the inbox and receiving status. **Refresh** only reloads documents and status already stored in Satflux. **Fetch incoming now** in the company's e-invoicing settings remains available. Already imported documents stay in Expenses; the inbox lists only documents still waiting for local import. An empty inbox is a normal state after import.
+
+After a successful local connection test, the form shows that the verification still needs saving. Choose **Save my details** to retain it. Saving the same connection and credentials preserves the last mailbox check; changing or clearing credentials invalidates that connection evidence. If no mailbox check is recorded or the status is old, use **Check mailbox**. A successful empty check does not establish delivery or production readiness.
 
 Import stores the original in your encrypted local data. If import fails or the original is too large for a local attachment, the inbox item remains available for recovery and original download. An existing expense alone does not complete the import.
 

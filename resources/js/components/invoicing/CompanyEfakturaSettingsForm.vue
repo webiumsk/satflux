@@ -143,7 +143,7 @@
             {{ testingConnection ? t('invoicing.efaktura_testing_connection') : t('invoicing.efaktura_test_connection') }}
           </button>
           <p v-if="testMessage" class="text-xs" :class="testFailed ? 'text-red-600' : 'text-emerald-700'">
-            {{ testMessage }}
+            {{ localVerificationUnsaved && !testFailed ? t('invoicing.efaktura_test_ok_save_required') : testMessage }}
           </p>
         </div>
         <p v-if="!testMessage && form.efaktura_connection_tested_at" class="text-xs text-gray-500">
@@ -373,6 +373,8 @@ const connectionChanged = computed(() => normalizeBaseUrl(form.efaktura_sapi_bas
 
 const epostmanPortalUrl = computed(() => isEpostmanTest.value ? 'https://testpostman.slovakodata.com' : 'https://postman.slovakodata.com');
 const hasEpostmanIdentity = computed(() => /^0245:\d{10}$/.test(derivedParticipantId.value ?? ''));
+const localVerificationUnsaved = computed(() => localFirst && form.efaktura_connection_tested_at !== null
+  && form.efaktura_connection_tested_at !== savedSettings.value.efaktura_connection_tested_at);
 const hasUnsavedSettings = computed(() => {
   const saved = savedSettings.value;
   return form.efaktura_enabled !== saved.efaktura_enabled
@@ -380,6 +382,7 @@ const hasUnsavedSettings = computed(() => {
     || form.efaktura_inbound_enabled !== saved.efaktura_inbound_enabled
     || normalizeBaseUrl(form.efaktura_sapi_base_url) !== normalizeBaseUrl(saved.efaktura_sapi_base_url)
     || form.efaktura_sapi_client_id.trim() !== saved.efaktura_sapi_client_id.trim()
+    || (localFirst && form.efaktura_connection_tested_at !== saved.efaktura_connection_tested_at)
     || form.efaktura_peppol_participant_id !== saved.efaktura_peppol_participant_id
     || form.efaktura_sapi_client_secret !== '' || credentialsDiscarded.value
     || Boolean(form.efaktura_epostman_api_key) || form.efaktura_epostman_api_key === null

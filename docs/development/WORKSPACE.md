@@ -1,5 +1,32 @@
 # Local workspace
 
+## eFaktura receiving correction in relay-status-banner - 2026-11-15
+
+The retained `storage/app/private/worktrees/relay-status-banner` on
+`fix/relay-status-banner` now also contains the owner-authorized eFaktura receiving
+status/action correction. Both scopes remain local/uncommitted/unpublished. The
+18-file eFaktura freeze is independently accepted by QA/security; prior relay
+runtime/test bytes remain accepted unchanged. Main combined/static/build checks
+pass. Contract/evidence: `EFAKTURA_RECEIVING_STATUS.md`.
+
+Existing frontend dependencies are reused. PHP validation binds existing compatible
+vendor read-only inside disposable network-disabled SQLite-memory containers with
+tmpfs storage/cache; no application .env is created and no service remains running.
+Primary checkout remains `fix/sepa-confirmation-isolation` with unrelated edits.
+No PR, remote commit, merge or deployment.
+
+## Relay status banner worktree - 2026-11-14
+
+Retain `storage/app/private/worktrees/relay-status-banner` on
+`fix/relay-status-banner`, base remote-verified master `ce725a99`. The owner-authorized
+current relay notice, five locales/guides and regression tests are independently
+accepted by QA/security; main static/build checks pass. Source and coordination
+records are uncommitted/unpublished; no PR, merge or deployment. The ignored
+`node_modules` link reuses the existing invoicing migration dependency directory
+without installation. No preview server or test infrastructure was started.
+Primary remains on `fix/sepa-confirmation-isolation` with unrelated edits intact.
+Contract, hashes/results and eFaktura read-only diagnosis: `RELAY_STATUS_BANNER.md`.
+
 ## PR443 review correction retained - 2026-11-14
 
 The named `storage/app/private/worktrees/invoicing-corrections` checkout remains

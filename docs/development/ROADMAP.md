@@ -1,5 +1,64 @@
 # Development roadmap
 
+## eFaktura receiving status correction independently accepted locally - 2026-11-15
+
+Owner authorizes fixing the receiving warning after confirming Test plus Save
+removes the setup checklist. Extend the unpublished `fix/relay-status-banner`
+worktree over remote-verified master `ce725a99`; retain the reviewed relay change.
+Equal readable nonempty SAPI secrets now preserve trusted poll/test metadata.
+Changed/cleared/unreadable credentials and connection/provider changes invalidate
+it; incoming server-owned evidence/ciphertext cannot forge values.
+
+Expenses now offers Check mailbox through the captured current local-company and
+bridge poll endpoint, followed by independent list/health reads. Refresh stays
+read-only. Duplicate/poll/refresh races, stale company/bridge results and unmounts
+are fenced; partial documents remain recoverable after failures. Empty receiving
+is neutral, and successful local Test visibly requires explicit Save. Five locales
+and guides agree; custody, snooze, payments and dependencies are preserved.
+
+Main passes246 frontend /11 suites,136 PHP /1,018 assertions, full PHPStan0,
+Pint2, lint0errors/46inherited, type110/no new, parity/whitespace, existing16
+changelog fragments and build7,664. Independent QA accepts120PHP/945assertions
+and133frontend/5; security77PHP/480 and123frontend/4. Counts overlap. Frozen18-file
+aggregate `4609260d8df5d14e31c16d533ef07c44d467cd650337d1e281fe21ce9bbc8811`
+remains verified; prior relay runtime/test hashes are unchanged. No blockers remain.
+
+See `EFAKTURA_RECEIVING_STATUS.md` for contracts, reviewers, tests and limitations.
+Initial disposable-harness and sandbox checks were corrected through normal setup/
+approval, with subsequent complete checks passing. No installation, production
+provider action or deployed-SHA verification. Both corrections remain uncommitted
+and unpublished; no PR/new-head CI/merge/deployment is claimed. Primary unrelated
+edits and other worktrees remain preserved. Next: review local result, then
+publication/fresh-head CI under applicable authorization and owner merge/deployment.
+
+## Current relay banner independently accepted locally - 2026-11-14
+
+Owner authorizes a current per-relay warning and recommended recovery actions.
+Implementation is isolated on `fix/relay-status-banner` over remote-verified
+master `ce725a99`, in durable worktree `relay-status-banner`. Selected enabled
+routes intersect this tab's guarded active destinations and expiring worker
+observations. Historical SDK quota errors no longer trigger the warning. Partial
+errors are amber, all-enabled errors red; local storage warnings remain separate.
+Backup/settings actions and EN/SK/ES/DE/CS guides/copy avoid backup-completeness claims.
+
+Main passes 81 relay tests / four suites and 87 eFaktura tests / two suites;
+lint has zero errors / 46 inherited warnings, typecheck110 has no new errors,
+locale/whitespace and production build7,664 pass. Existing16 changelog fragments
+validate; the new fragment awaits a real PR URL. Independent QA accepts86/5 and
+security141/7, including actual channel expiry and lifecycle/default-owner guards.
+Counts overlap. Reviewed12-file aggregate SHA256 is
+`0aec946d208ecd08b6808bf14e58c449c2d9fd23d7670769e5d88ff535ed833e`.
+
+Separate read-only eFaktura review confirms successful local testing needs explicit
+Save to persist its timestamp; the form does not mark that timestamp as unsaved.
+Remind later hides the company notice locally for14 days without changing receiving.
+No eFaktura policy/source fix is included. See `RELAY_STATUS_BANNER.md` for evidence,
+limitations and exact snooze behavior. Changes remain uncommitted/unpublished;
+no new-head CI, PR, merge, deployment, real provider operation or complete-backup
+proof is claimed. Primary unrelated edits and other worktrees remain preserved.
+Next: local-result review/publication under applicable authorization, fresh-head CI,
+then owner merge/deployment decision.
+
 ## PR443 follow-up corrections - 2026-11-14
 
 - [x] Verify all four current claims; correct provider precision, canonical derived

@@ -3,7 +3,7 @@ title: Slowakische E-Rechnungen - ePostman-Anbindung
 category: invoicing
 order: 6
 meta_description: Verbinden Sie das ePostman-Konto Ihres Unternehmens, empfangen Sie E-Rechnungen und importieren Sie Originale als Ausgaben in Satflux.
-updated: 2026-11-12
+updated: 2026-11-15
 ---
 
 # Slowakische E-Rechnungen - ePostman-Anbindung
@@ -27,7 +27,9 @@ Ist für dieselbe Verbindung bereits ein Secret gespeichert, lassen Sie das Feld
 
 Öffnen Sie beim selben Unternehmen **Ausgaben > Empfangene E-Rechnungen**. Prüfen Sie das Dokument oder laden Sie das ursprüngliche XML herunter und importieren Sie es anschließend als Ausgabe. Gutschriften werden als Korrekturen mit dem entsprechenden Vorzeichen importiert. Ein erfolgreicher leerer Abruf bedeutet, dass keine neuen Dokumente abgerufen wurden; er bestätigt keine Zustellung einer Testrechnung.
 
-Starten Sie einen manuellen Abruf über **Eingehende jetzt abrufen** in den E-Rechnungseinstellungen des Unternehmens. Aktualisieren Sie anschließend den Posteingang unter Ausgaben. Das Aktualisieren des Posteingangs zeigt Dokumente, die Satflux bereits abgerufen hat.
+Mit **Postfach prüfen** direkt unter **Ausgaben > Empfangene E-Rechnungen** rufen Sie eingehende Dokumente beim Anbieter ab und laden danach Posteingang und Empfangsstatus neu. **Aktualisieren** lädt nur Dokumente und Status, die bereits in Satflux gespeichert sind. **Eingehende jetzt abrufen** bleibt in den E-Rechnungseinstellungen verfügbar. Bereits importierte Dokumente bleiben unter Ausgaben; der Posteingang zeigt nur Dokumente, deren lokaler Import noch aussteht. Ein leerer Posteingang ist nach dem Import normal.
+
+Nach einem erfolgreichen lokalen Verbindungstest zeigt das Formular, dass die Prüfung noch gespeichert werden muss. Wählen Sie **Meine Daten speichern**, um sie zu behalten. Das Speichern derselben Verbindung und Zugangsdaten erhält die letzte Postfachprüfung; geänderte oder entfernte Zugangsdaten machen diesen Nachweis ungültig. Fehlt eine Prüfung oder ist der Status veraltet, verwenden Sie **Postfach prüfen**. Eine erfolgreiche leere Prüfung bestätigt weder Zustellung noch Produktivbereitschaft.
 
 Der Import speichert das Original in Ihren verschlüsselten lokalen Daten. Schlägt der Import fehl oder ist das Original zu groß für einen lokalen Anhang, bleibt der Eintrag zur Wiederherstellung und zum Herunterladen des Originals verfügbar. Eine vorhandene Ausgabe allein schließt den Import nicht ab.
 
