@@ -283,7 +283,8 @@ import { asCompanyId } from '../../composables/useInvoicingCompany';
 import { useEfakturaFeature } from '../../composables/useEfakturaFeature';
 import { allCompaniesDetailQuery, useInvoicingEvolu } from '../../evolu/client';
 import { evoluCompanyToApi, type EvoluCompanyRow } from '../../evolu/companyMap';
-import { isValidEfakturaReplacementSecret, updateLocalEfakturaSettings } from '../../evolu/companySettingsCrud';
+import { isValidEfakturaReplacementSecret, mergeEfakturaSettings, updateLocalEfakturaSettings } from '../../evolu/companySettingsCrud';
+import { withTimeout } from '../../evolu/asyncTimeout';
 import { matchCompanyByIdentity } from '../../evolu/duplicateCompanies';
 import { ensureBridgeCompanyIdForLocalCompany } from '../../evolu/bridgeCompanyEnsure';
 import { refreshEfakturaInboxLive, reloadEfakturaInboxLive } from '../../evolu/efakturaInboxLive';
@@ -744,15 +745,8 @@ async function syncInboundSettingsToBridge(payload: Partial<CompanyEfakturaSetti
 }
 
 /** Compare only receiving/identity fields, leaving unrelated newer settings intact. */
-async function localBridgeSyncSnapshot(companyId: string, attemptId: string): Promise<string | null> {
-  if (!evolu) return null;
-  const rows = await evolu.loadQuery(allCompaniesDetailQuery);
-  const row = rows.find((candidate) => candidate.id === companyId);
-  if (!row) return null;
-  const company = evoluCompanyToApi(row as EvoluCompanyRow);
-  const settings = company.app_settings;
-  if (settings.efaktura_inbound_bridge_sync_pending !== true
-    || settings.efaktura_inbound_bridge_sync_id !== attemptId) return null;
+function localReceivingSnapshot(row: EvoluCompanyRow, settings = evoluCompanyToApi(row).app_settings): string {
+  const company = evoluCompanyToApi(row);
   return JSON.stringify([
     Reflect.get(row, 'ownerId'), company.id, company.legal_name, company.registration_number,
     company.tax_id, company.jurisdiction, company.country,
@@ -762,6 +756,28 @@ async function localBridgeSyncSnapshot(companyId: string, attemptId: string): Pr
       'efaktura_sapi_client_secret_set', 'efaktura_epostman_api_key_set',
       'efaktura_epostman_key_save_pending'].map((key) => settings[key] ?? null),
   ]);
+}
+
+async function localBridgeSyncSnapshot(companyId: string, attemptId: string): Promise<string | null> {
+  if (!evolu) return null;
+  const rows = await evolu.loadQuery(allCompaniesDetailQuery);
+  const row = rows.find((candidate) => candidate.id === companyId);
+  if (!row) return null;
+  const settings = evoluCompanyToApi(row as EvoluCompanyRow).app_settings;
+  if (settings.efaktura_inbound_bridge_sync_pending !== true
+    || settings.efaktura_inbound_bridge_sync_id !== attemptId) return null;
+  return localReceivingSnapshot(row as EvoluCompanyRow);
+}
+
+/** update() validates synchronously; cached query rows change only on worker completion. */
+async function commitLocalEfakturaSettings(companyId: string, payload: Parameters<typeof updateLocalEfakturaSettings>[2]): Promise<{ ok: boolean }> {
+  if (!evolu) return { ok: false };
+  return withTimeout(new Promise<{ ok: boolean }>((resolve) => {
+    const result = updateLocalEfakturaSettings(evolu, asCompanyId(companyId), payload, {
+      onComplete: () => resolve({ ok: true }),
+    });
+    if (!result.ok) resolve({ ok: false });
+  }), 30_000);
 }
 
 async function pollInboundNow() {
@@ -862,7 +878,23 @@ async function save() {
         efaktura_inbound_bridge_sync_pending: true,
         efaktura_inbound_bridge_sync_id: syncAttemptId,
       };
-      const result = updateLocalEfakturaSettings(evolu, asCompanyId(companyId), localPayload);
+      const before = evolu.getQueryRows(allCompaniesDetailQuery).find((row) => row.id === companyId);
+      if (!before) {
+        saveError.value = t('invoicing.efaktura_local_save_unconfirmed');
+        return;
+      }
+      const expectedSnapshot = localReceivingSnapshot(before as EvoluCompanyRow,
+        mergeEfakturaSettings(evoluCompanyToApi(before as EvoluCompanyRow).app_settings, localPayload));
+      let result: { ok: boolean };
+      try {
+        result = await commitLocalEfakturaSettings(companyId, localPayload);
+      } catch {
+        if (isCurrent()) {
+          bridgeSaveFailed.value = true;
+          saveError.value = t('invoicing.efaktura_local_save_unconfirmed');
+        }
+        return;
+      }
       if (!result.ok) {
         saveError.value = t('invoicing.company_save_validation_error');
         return;
@@ -872,7 +904,13 @@ async function save() {
       // a bridge failure keeps the local settings and their retry marker.
       try {
         const submittedSnapshot = await localBridgeSyncSnapshot(companyId, syncAttemptId);
-        if (submittedSnapshot === null) return;
+        if (submittedSnapshot === null || submittedSnapshot !== expectedSnapshot) {
+          if (isCurrent()) {
+            bridgeSaveFailed.value = true;
+            saveError.value = t('invoicing.efaktura_local_save_unconfirmed');
+          }
+          return;
+        }
         if (needsKey && transientKey === undefined && payload.efaktura_enabled) {
           if (isCurrent()) { bridgeSaveFailed.value = true; saveError.value = t('invoicing.efaktura_epostman_api_key_reenter'); }
           return;
@@ -890,9 +928,17 @@ async function save() {
           efaktura_inbound_bridge_sync_pending: false,
           efaktura_inbound_bridge_sync_id: null,
         };
-        const completed = updateLocalEfakturaSettings(evolu, asCompanyId(companyId), completedPayload);
+        const clearing = evolu.getQueryRows(allCompaniesDetailQuery).find((row) => row.id === companyId);
+        if (!clearing) return;
+        const completedSnapshot = localReceivingSnapshot(clearing as EvoluCompanyRow,
+          mergeEfakturaSettings(evoluCompanyToApi(clearing as EvoluCompanyRow).app_settings, completedPayload));
+        const completed = await commitLocalEfakturaSettings(companyId, completedPayload);
         if (!isCurrent()) return;
-        if (!completed.ok) {
+        const current = evolu.getQueryRows(allCompaniesDetailQuery).find((row) => row.id === companyId);
+        const currentSettings = current ? evoluCompanyToApi(current as EvoluCompanyRow).app_settings : null;
+        if (!completed.ok || !current || localReceivingSnapshot(current as EvoluCompanyRow) !== completedSnapshot
+          || currentSettings?.efaktura_inbound_bridge_sync_pending !== false
+          || currentSettings.efaktura_inbound_bridge_sync_id !== null) {
           bridgeSaveFailed.value = true;
           saveError.value = t('invoicing.efaktura_epostman_bridge_save_failed');
           return;

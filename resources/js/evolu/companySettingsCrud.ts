@@ -125,9 +125,9 @@ export function isValidEfakturaReplacementSecret(value: unknown): boolean {
     return value === undefined || value === "" || (typeof value === "string" && value.trim() !== "");
 }
 
-function mergeEfakturaSettings(
+export function mergeEfakturaSettings(
     existing: Record<string, unknown>,
-    partial: Partial<CompanyEfakturaSettingsState>,
+    partial: LocalEfakturaSettingsPatch,
 ): Record<string, unknown> {
     const merged: Record<string, unknown> = { ...existing, ...partial };
 
@@ -176,6 +176,7 @@ export function updateLocalEfakturaSettings(
     evolu: Evolu<InvoicingLocalSchema>,
     companyId: CompanyId,
     partial: LocalEfakturaSettingsPatch,
+    options?: { onComplete: () => void },
 ) {
     if (!isValidEfakturaReplacementSecret(partial.efaktura_sapi_client_secret)) return { ok: false as const };
     const row = findCompanyRow(evolu, companyId);
@@ -187,5 +188,5 @@ export function updateLocalEfakturaSettings(
     return evolu.update("company", {
         id: companyId,
         appSettingsJson: stringified.value,
-    });
+    }, options);
 }

@@ -30,16 +30,20 @@ vi.mock('../evolu/client', () => ({
   useInvoicingEvolu: () => ({ getQueryRows: () => state.localRows, loadQuery: async () => state.localRows }),
 }));
 vi.mock('../evolu/companyMap', () => ({ evoluCompanyToApi: (row: unknown) => row }));
-vi.mock('../evolu/companySettingsCrud', async () => ({
-  isValidEfakturaReplacementSecret: (await vi.importActual<typeof import('../evolu/companySettingsCrud')>('../evolu/companySettingsCrud')).isValidEfakturaReplacementSecret,
-  updateLocalEfakturaSettings: vi.fn((_evolu, id, payload) => {
+vi.mock('../evolu/companySettingsCrud', async () => {
+  const actual = await vi.importActual<typeof import('../evolu/companySettingsCrud')>('../evolu/companySettingsCrud');
+  return {
+  isValidEfakturaReplacementSecret: actual.isValidEfakturaReplacementSecret,
+  mergeEfakturaSettings: actual.mergeEfakturaSettings,
+  updateLocalEfakturaSettings: vi.fn((_evolu, id, payload, options) => {
   const row = state.localRows.find((company) => company.id === id);
   if (row) {
-    row.app_settings = { ...row.app_settings, ...payload };
+    row.app_settings = actual.mergeEfakturaSettings(row.app_settings, payload);
     state.onLocalUpdate?.(row);
   }
+  options?.onComplete();
   return { ok: true };
-}) }));
+}) }; });
 vi.mock('../evolu/bridgeCompanyEnsure', () => ({ ensureBridgeCompanyIdForLocalCompany: vi.fn(async () => ({ ok: true, bridgeCompanyId: 'bridge-1' })) }));
 vi.mock('../evolu/efakturaInboxLive', () => ({ refreshEfakturaInboxLive: vi.fn(), reloadEfakturaInboxLive: vi.fn() }));
 vi.mock('../composables/useInvoicingCompany', () => ({ asCompanyId: (id: string) => id }));
@@ -91,7 +95,123 @@ function mountForm(company: Record<string, unknown>, mode: 'full' | 'inbound_onl
   });
 }
 
+/** The real worker publishes query rows before calling onComplete, never during update(). */
+function deferNextLocalCommit(beforeComplete?: () => void): () => void {
+  const original = vi.mocked(updateLocalEfakturaSettings).getMockImplementation()!;
+  let commit!: () => void;
+  vi.mocked(updateLocalEfakturaSettings).mockImplementationOnce((evolu, id, payload, options) => {
+    commit = () => { original(evolu, id, payload, { onComplete: () => {
+      beforeComplete?.();
+      options?.onComplete();
+    } }); };
+    return { ok: true } as never;
+  });
+  return () => commit();
+}
+
 describe('eFaktura settings wizard', () => {
+  it('waits for the worker commit before retrying saved receiving settings on the server', async () => {
+    state.localFirst = true;
+    const company = skCompany({ ...connectedSettings(), efaktura_sapi_client_secret: 'synthetic-stored-secret',
+      efaktura_inbound_bridge_sync_pending: true });
+    state.localRows = [company];
+    const commit = deferNextLocalCommit();
+    const wrapper = mountForm(company, 'inbound_only');
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.get).not.toHaveBeenCalled();
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    expect(state.notifySaved).not.toHaveBeenCalled();
+    expect(wrapper.get('fieldset').attributes('disabled')).toBeDefined();
+
+    commit(); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledExactlyOnceWith('bridge-1', expect.objectContaining({
+      efaktura_inbound_enabled: true, efaktura_sapi_client_secret: 'synthetic-stored-secret',
+    }));
+    expect(company.app_settings.efaktura_inbound_bridge_sync_pending).toBe(false);
+    expect(state.notifySaved).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
+
+  it('waits for committed marker removal before success or clearing the replacement secret', async () => {
+    state.localFirst = true;
+    const company = skCompany({ ...connectedSettings(), efaktura_sapi_client_secret: 'synthetic-stored-secret' });
+    state.localRows = [company];
+    vi.mocked(updateLocalEfakturaSettings).mockImplementationOnce(vi.mocked(updateLocalEfakturaSettings).getMockImplementation()!);
+    const commit = deferNextLocalCommit();
+    const wrapper = mountForm(company);
+    await wrapper.get('#efaktura-client-secret').setValue('synthetic-replacement');
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledOnce();
+    expect(company.app_settings.efaktura_inbound_bridge_sync_pending).toBe(true);
+    expect(state.notifySaved).not.toHaveBeenCalled();
+    expect((wrapper.get('#efaktura-client-secret').element as HTMLInputElement).value).toBe('synthetic-replacement');
+
+    commit(); await flushPromises();
+    expect(company.app_settings.efaktura_inbound_bridge_sync_pending).toBe(false);
+    expect(state.notifySaved).toHaveBeenCalledOnce();
+    expect((wrapper.get('#efaktura-client-secret').element as HTMLInputElement).value).toBe('');
+    wrapper.unmount();
+  });
+
+  it.each(['owner', 'tax', 'provider', 'secret'])('fences a %s change during the initial worker commit', async (change) => {
+    state.localFirst = true;
+    const company = skCompany({ ...connectedSettings(), efaktura_sapi_client_secret: 'synthetic-stored-secret' });
+    state.localRows = [company];
+    const commit = deferNextLocalCommit(() => {
+      if (change === 'owner') company.ownerId = 'synthetic-new-owner';
+      if (change === 'tax') company.tax_id = '9999900009';
+      if (change === 'provider') company.app_settings.efaktura_sapi_base_url = 'https://different.test';
+      if (change === 'secret') company.app_settings.efaktura_sapi_client_secret = 'synthetic-newer-secret';
+    });
+    const wrapper = mountForm(company);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    commit(); await flushPromises();
+    expect(invoicingApi.companies.get).not.toHaveBeenCalled();
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    expect(company.app_settings.efaktura_inbound_bridge_sync_pending).toBe(true);
+    expect(state.notifySaved).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain('efaktura_local_save_unconfirmed');
+    wrapper.unmount();
+  });
+
+  it('does not resume server saving when the worker completes after the commit timeout', async () => {
+    vi.useFakeTimers();
+    state.localFirst = true;
+    const company = skCompany({ ...connectedSettings(), efaktura_sapi_client_secret: 'synthetic-stored-secret',
+      efaktura_inbound_bridge_sync_pending: true });
+    state.localRows = [company];
+    const commit = deferNextLocalCommit();
+    const wrapper = mountForm(company);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    await vi.advanceTimersByTimeAsync(30_001); await flushPromises();
+    expect(wrapper.get('fieldset').attributes('disabled')).toBeUndefined();
+    expect(wrapper.text()).toContain('efaktura_local_save_unconfirmed');
+    commit(); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    expect(company.app_settings.efaktura_inbound_bridge_sync_pending).toBe(true);
+    expect(state.notifySaved).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('does not report completion when a newer marker is published before the clearing callback', async () => {
+    state.localFirst = true;
+    const company = skCompany({ ...connectedSettings(), efaktura_sapi_client_secret: 'synthetic-stored-secret' });
+    state.localRows = [company];
+    vi.mocked(updateLocalEfakturaSettings).mockImplementationOnce(vi.mocked(updateLocalEfakturaSettings).getMockImplementation()!);
+    const commit = deferNextLocalCommit(() => {
+      company.app_settings.efaktura_inbound_bridge_sync_pending = true;
+      company.app_settings.efaktura_inbound_bridge_sync_id = 'synthetic-newer-save';
+    });
+    const wrapper = mountForm(company);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    commit(); await flushPromises();
+    expect(company.app_settings.efaktura_inbound_bridge_sync_id).toBe('synthetic-newer-save');
+    expect(company.app_settings.efaktura_inbound_bridge_sync_pending).toBe(true);
+    expect(state.notifySaved).not.toHaveBeenCalled();
+    expect(status(wrapper)).toContain('status_save_failed');
+    wrapper.unmount();
+  });
+
   it.each(['   ', '\t\n'])('rejects whitespace-only replacement before local or bridge writes: %j', async (secret) => {
     state.localFirst = true;
     state.localRows = [skCompany(connectedSettings())];
@@ -175,13 +295,14 @@ describe('eFaktura settings wizard', () => {
     const real = await vi.importActual<typeof import('../evolu/companySettingsCrud')>('../evolu/companySettingsCrud');
     const client = {
       getQueryRows: () => state.localRows.map((row) => ({ ...row, appSettingsJson: JSON.stringify(row.app_settings) })),
-      update: (_table: string, patch: { id: string; appSettingsJson: string }) => {
+      update: (_table: string, patch: { id: string; appSettingsJson: string }, options?: { onComplete: () => void }) => {
         state.localRows.find((row) => row.id === patch.id)!.app_settings = JSON.parse(patch.appSettingsJson);
+        options?.onComplete();
         return { ok: true };
       },
     };
-    const persist = (_evolu: unknown, id: string, payload: Parameters<typeof real.updateLocalEfakturaSettings>[2]) =>
-      real.updateLocalEfakturaSettings(client as never, id as never, payload);
+    const persist = (_evolu: unknown, id: string, payload: Parameters<typeof real.updateLocalEfakturaSettings>[2], options?: { onComplete: () => void }) =>
+      real.updateLocalEfakturaSettings(client as never, id as never, payload, options);
     vi.mocked(updateLocalEfakturaSettings).mockImplementationOnce(persist as never).mockImplementationOnce(persist as never);
     let wrapper = mountForm(state.localRows[0]);
     await wrapper.get('#efaktura-cpds-preset').setValue('epostman-test');
@@ -257,7 +378,7 @@ describe('eFaktura settings wizard', () => {
     wrapper.unmount();
   });
 
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
   beforeEach(() => {
     state.presets = [];
     state.testResult = { ok: true, tested_at: '2026-07-23T10:00:00Z' };
@@ -603,7 +724,7 @@ describe('eFaktura settings wizard', () => {
     expect(status(wrapper)).toContain('status_unsaved');
     expect((wrapper.get('#efaktura-client-id').element as HTMLInputElement).value).toBe('synthetic-new');
     await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
-    expect(updateLocalEfakturaSettings).toHaveBeenCalledWith(expect.anything(), 'company-1', expect.objectContaining({ efaktura_sapi_client_id: 'synthetic-new', efaktura_connection_tested_at: '2026-07-23T10:00:00Z' }));
+    expect(updateLocalEfakturaSettings).toHaveBeenCalledWith(expect.anything(), 'company-1', expect.objectContaining({ efaktura_sapi_client_id: 'synthetic-new', efaktura_connection_tested_at: '2026-07-23T10:00:00Z' }), expect.objectContaining({ onComplete: expect.any(Function) }));
     expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith('bridge-1', expect.objectContaining({ efaktura_sapi_client_id: 'synthetic-new', efaktura_sapi_client_secret: 'synthetic-secret' }));
     wrapper.unmount();
   });

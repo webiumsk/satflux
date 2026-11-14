@@ -21,6 +21,15 @@ beforeEach(() => {
 });
 
 describe('local eFaktura credential retention', () => {
+  it('passes an optional worker completion callback without waiting in the synchronous CRUD call', () => {
+    const onComplete = vi.fn();
+    expect(updateLocalEfakturaSettings(client as never, 'company-a' as never,
+      { efaktura_inbound_enabled: true }, { onComplete })).toEqual({ ok: true });
+    expect(client.update).toHaveBeenCalledWith('company', expect.anything(), { onComplete });
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(saved.efaktura_inbound_enabled).toBe(true);
+  });
+
   it.each(['   ', '\t\n', '\u00a0'])('rejects whitespace-only replacements before writing: %j', (secret) => {
     const before = JSON.stringify(saved);
     expect(update({ efaktura_sapi_client_secret: secret })).toEqual({ ok: false });
