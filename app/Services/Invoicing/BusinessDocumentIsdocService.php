@@ -16,6 +16,7 @@ use App\Support\Invoicing\Canonical\CanonicalInvoiceLine;
 use App\Support\Invoicing\CompanyAppSettings;
 use App\Support\Invoicing\EuStructuredDocumentExport;
 use DateTimeImmutable;
+use Illuminate\Validation\ValidationException;
 
 class BusinessDocumentIsdocService
 {
@@ -34,7 +35,15 @@ class BusinessDocumentIsdocService
             return false;
         }
 
-        $document->loadMissing('company');
+        $document->loadMissing(['company', 'lines']);
+        if ($document->lines->contains(fn ($line): bool => (float) $line->getAttribute('unit_price') < 0)) {
+            return false;
+        }
+        if ($document->lines->contains(fn ($line): bool => (float) $line->getAttribute('quantity') < 0)
+            && ((float) $document->discount_percent !== 0.0
+                || $document->lines->contains(fn ($line): bool => (float) $line->getAttribute('line_discount_percent') !== 0.0))) {
+            return false;
+        }
 
         return CompanyAppSettings::from($document->company->app_settings)->bool('embed_isdoc_in_pdf');
     }
@@ -58,6 +67,16 @@ class BusinessDocumentIsdocService
     public function build(BusinessDocument $document): IsdocInvoice
     {
         $canonical = $this->canonicalBuilder->fromDocument($document);
+        if (collect($canonical->lines)->contains(fn ($line): bool => $line->unitPrice < 0)) {
+            throw ValidationException::withMessages(['lines' => ['Structured export does not yet support negative unit prices.']]);
+        }
+        if ($document->lines->contains(fn ($line): bool => (float) ($line->getAttributes()['quantity'] ?? 0) < 0)) {
+            if ((float) $document->discount_percent !== 0.0
+                || $document->lines->contains(fn ($line): bool => (float) $line->getAttribute('line_discount_percent') !== 0.0)) {
+                throw ValidationException::withMessages(['lines' => ['Structured deduction export does not yet support additional invoice or line discounts.']]);
+            }
+            app(BusinessDocumentIssueService::class)->assertSignedInvoiceCanIssue($document);
+        }
         $document = $canonical->document ?? $document;
         $document->loadMissing(['company', 'contact', 'lines']);
 
@@ -104,7 +123,7 @@ class BusinessDocumentIsdocService
 
         if ($vatApplicable && (float) $canonical->taxTotal > 0) {
             foreach ($canonical->taxBreakdown as $row) {
-                $taxCategory = new IsdocInvoiceDocument\TaxCategory($this->dec($row->ratePercent));
+                $taxCategory = new IsdocInvoiceDocument\TaxCategory($this->taxRate($row->ratePercent));
                 $taxCategory->setVatApplicable(true);
 
                 $invoice->getTaxTotal()->add(
@@ -168,12 +187,12 @@ class BusinessDocumentIsdocService
     protected function invoiceLineFromCanonical(CanonicalInvoiceLine $line, string $id, bool $vatApplicable): IsdocInvoiceDocument\InvoiceLine
     {
         $taxRate = $vatApplicable ? $line->taxRate : 0.0;
-        $unitPriceTaxInclusive = $line->quantity > 0
+        $unitPriceTaxInclusive = $line->quantity != 0
             ? (float) $line->grossAmount / $line->quantity
             : (float) $line->unitPrice * (1 + $taxRate / 100);
 
         $taxCategory = new IsdocInvoiceDocument\ClassifiedTaxCategory(
-            $this->dec($taxRate),
+            $this->taxRate($taxRate),
             IsdocInvoiceDocument\ClassifiedTaxCategory::VAT_CALCULATION_METHOD_FROM_THE_TOP,
         );
         $taxCategory->setVatApplicable($vatApplicable && $taxRate > 0);
@@ -362,6 +381,11 @@ class BusinessDocumentIsdocService
 
         return DateTimeImmutable::createFromFormat('Y-m-d', $value->format('Y-m-d'))
             ?: new DateTimeImmutable;
+    }
+
+    protected function taxRate(float $rate): string
+    {
+        return number_format($rate, $rate === round($rate, 2) ? 2 : 4, '.', '');
     }
 
     protected function dec(float|string|null $value): string

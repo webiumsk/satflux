@@ -108,6 +108,36 @@ class UsSalesTaxFeatureTest extends TestCase
     }
 
     #[Test]
+    public function manual_tax_preview_accepts_deductions_but_external_provider_and_zero_quantity_do_not(): void
+    {
+        $this->actingAs($this->proUser);
+        $payload = ['lines' => [
+            ['name' => 'Work', 'quantity' => 1, 'unit_price' => 100, 'tax_rate' => 10],
+            ['name' => 'Deduction', 'quantity' => 1, 'unit_price' => -20, 'tax_rate' => 10],
+        ]];
+        $url = "/api/invoicing/companies/{$this->usCompany->id}/us-sales-tax/preview";
+        $this->postJson($url, $payload)->assertOk()
+            ->assertJsonPath('data.subtotal', '80.00')
+            ->assertJsonPath('data.tax_total', '8.00')
+            ->assertJsonPath('data.total', '88.00');
+        $payload['lines'][1]['quantity'] = -1;
+        $payload['lines'][1]['unit_price'] = 20;
+        $this->postJson($url, $payload)->assertOk()->assertJsonPath('data.total', '88.00');
+        $this->usCompany->update(['app_settings' => ['us_sales_tax_provider' => 'stripe_tax']]);
+        $this->postJson($url, $payload)->assertUnprocessable()->assertJsonValidationErrors('lines.1.quantity');
+        $this->usCompany->update(['app_settings' => ['us_sales_tax_provider' => 'manual']]);
+        $payload['lines'][1]['unit_price'] = -20;
+        $payload['lines'][1]['quantity'] = 0;
+        $this->postJson($url, $payload)->assertUnprocessable()->assertJsonValidationErrors('lines.1.quantity');
+        $payload['lines'][1]['quantity'] = 1;
+        $this->usCompany->update(['app_settings' => ['us_sales_tax_provider' => 'stripe_tax']]);
+        $this->postJson($url, $payload)->assertUnprocessable()->assertJsonValidationErrors('lines.1.unit_price');
+        $this->postJson("/api/invoicing/companies/{$this->usCompany->id}/documents", ['type' => 'invoice'] + $payload)
+            ->assertUnprocessable()->assertJsonValidationErrors('lines.1.unit_price');
+        Http::assertNothingSent();
+    }
+
+    #[Test]
     public function stripe_tax_preview_requires_state_and_postal_code(): void
     {
         config(['services.stripe.tax_secret_key' => 'sk_test_fake']);

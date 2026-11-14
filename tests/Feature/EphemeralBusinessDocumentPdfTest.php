@@ -97,8 +97,6 @@ class EphemeralBusinessDocumentPdfTest extends TestCase
         $url = '/api/invoicing/ephemeral/pdf';
 
         foreach ([
-            ['document' => ['payment_btc_enabled' => true]],
-            ['document' => ['payment_bank_enabled' => true]],
             ['document' => ['status' => 'draft']],
             ['company' => ['jurisdiction' => 'us', 'app_settings' => ['us_sales_tax_provider' => 'stripe_tax']]],
             ['company' => ['jurisdiction' => 'eu_de']],
@@ -128,9 +126,9 @@ class EphemeralBusinessDocumentPdfTest extends TestCase
                 'document' => ['amount_paid' => 0],
             ],
         ] as $override) {
-            $this->postJson($url, array_replace_recursive($this->deductionPayload(), $override))
-                ->assertUnprocessable()
-                ->assertJsonValidationErrors('lines');
+            $response = $this->postJson($url, array_replace_recursive($this->deductionPayload(), $override));
+            $this->assertSame(422, $response->status(), json_encode($override));
+            $response->assertJsonValidationErrors('lines');
         }
 
         $this->assertDatabaseCount('ephemeral_btcpay_checkouts', 0);
@@ -189,10 +187,91 @@ class EphemeralBusinessDocumentPdfTest extends TestCase
         [$user] = $this->createProUserWithCompany();
         $this->actingAs($user);
 
-        foreach (['email-preview', 'send-email', 'isdoc', 'ubl', 'btcpay-checkout', 'efaktura/send'] as $action) {
+        foreach (['isdoc', 'ubl', 'efaktura/send'] as $action) {
             $this->postJson("/api/invoicing/ephemeral/{$action}", $this->deductionPayload())
                 ->assertUnprocessable()
                 ->assertJsonValidationErrors('lines.1.unit_price');
+        }
+    }
+
+    #[Test]
+    public function ordinary_invoice_with_deductions_keeps_payment_options_and_can_be_emailed(): void
+    {
+        Mail::fake();
+        [$user] = $this->createProUserWithCompany();
+        $this->actingAs($user);
+        $payload = $this->deductionPayload();
+        $payload['document'] = array_merge($payload['document'], [
+            'status' => 'issued', 'amount_paid' => '0.00',
+            'payment_bank_enabled' => true, 'payment_btc_enabled' => true,
+        ]);
+
+        $this->postJson('/api/invoicing/ephemeral/pdf', $payload)->assertOk();
+        $this->postJson('/api/invoicing/ephemeral/email-preview', $payload)->assertOk();
+        $payload['to'] = ['client@example.com'];
+        $this->postJson('/api/invoicing/ephemeral/send-email', $payload)->assertOk();
+        Mail::assertSent(BusinessDocumentEmail::class);
+        $this->assertDatabaseCount('business_documents', 0);
+        $this->assertDatabaseCount('ephemeral_btcpay_checkouts', 0);
+    }
+
+    #[Test]
+    public function negative_quantity_deductions_render_email_and_export_with_positive_unit_price(): void
+    {
+        Mail::fake();
+        [$user] = $this->createProUserWithCompany();
+        $this->actingAs($user);
+        foreach (['invoice', 'credit_note'] as $type) {
+            $payload = $this->deductionPayload();
+            $payload['document']['type'] = $type;
+            $payload['lines'][1]['quantity'] = -1;
+            $payload['lines'][1]['unit_price'] = 20;
+            $this->postJson('/api/invoicing/ephemeral/pdf', $payload)->assertOk();
+            $this->postJson('/api/invoicing/ephemeral/email-preview', $payload)->assertOk();
+            $payload['to'] = ['buyer@example.test'];
+            $this->postJson('/api/invoicing/ephemeral/send-email', $payload)->assertOk();
+            Mail::assertSent(BusinessDocumentEmail::class);
+            $isdoc = $this->postJson('/api/invoicing/ephemeral/isdoc', $payload)->assertOk();
+            $this->assertStringContainsString('<UnitPrice>20.00</UnitPrice>', $isdoc->getContent());
+            $this->assertStringContainsString('>-1</InvoicedQuantity>', $isdoc->getContent());
+        }
+        $payload['source_totals']['total'] = '123.00';
+        $this->postJson('/api/invoicing/ephemeral/pdf', $payload)->assertUnprocessable()->assertJsonValidationErrors('lines');
+        $this->assertDatabaseCount('business_documents', 0);
+    }
+
+    #[Test]
+    public function negative_quantity_request_rejects_tiny_values_and_malformed_company_shapes(): void
+    {
+        [$user] = $this->createProUserWithCompany();
+        $this->actingAs($user);
+        $base = $this->deductionPayload();
+        $base['lines'][1]['quantity'] = -1;
+        $base['lines'][1]['unit_price'] = 20;
+        foreach ([
+            ['lines' => [1 => ['quantity' => -1e-20]]],
+            ['lines' => [1 => ['unit_price' => 1e-20]]],
+            ['company' => ['app_settings' => 'invalid']],
+            ['company' => ['jurisdiction' => ['eu_sk']]],
+        ] as $override) {
+            $this->postJson('/api/invoicing/ephemeral/pdf', array_replace_recursive($base, $override))->assertUnprocessable();
+        }
+        $this->assertDatabaseCount('business_documents', 0);
+    }
+
+    #[Test]
+    public function signed_snapshot_rejects_zero_or_negative_quantity_on_visual_and_email_routes(): void
+    {
+        [$user] = $this->createProUserWithCompany();
+        $this->actingAs($user);
+        foreach ([0, -1] as $quantity) {
+            foreach (['pdf', 'email-preview', 'send-email'] as $action) {
+                $payload = $this->deductionPayload();
+                $payload['lines'][1]['quantity'] = $quantity;
+                $payload['to'] = ['client@example.com'];
+                $this->postJson("/api/invoicing/ephemeral/{$action}", $payload)
+                    ->assertUnprocessable()->assertJsonValidationErrors('lines.1.quantity');
+            }
         }
     }
 

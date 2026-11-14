@@ -1,5 +1,16 @@
 # Local workspace
 
+## PR445 master reconciliation retained - 2026-11-14
+
+The named `storage/app/private/worktrees/efaktura-embedded-pdf` checkout retains
+`feat/efaktura-embedded-pdf`, reconciling reviewed `a911dadc` with owner-merged
+PR443 master `ce725a99`. Four development-record conflicts retain both histories;
+five locales merge automatically. Product files match the appropriate reviewed
+parent and the six PR445 review hashes remain intact. Normal merge/push and fresh
+CI precede the owner's PR445 merge decision. No worktree cleanup, dependency
+installation, provider operation, existing preview or owner-data change is needed.
+Private merge evidence is retained under `storage/app/private/reviews/pr445-master-merge`.
+
 ## Embedded PDF feature retained - 2026-11-14
 
 Worktree `storage/app/private/worktrees/efaktura-embedded-pdf` retains branch
@@ -10,6 +21,20 @@ lint/type/build/parity plus independent QA/security pass. Private reports and
 frozen manifests are retained under `storage/app/private/reviews/efaktura-embedded-pdf`.
 Only the synthetic localhost Chrome fixture created by QA was stopped afterward.
 Owner retains PR creation and merge/deployment; primary unrelated edits are preserved.
+
+## PR443 review correction retained - 2026-11-14
+
+The named `storage/app/private/worktrees/invoicing-corrections` checkout remains
+on `fix/invoicing-lines-payment-identities`. Nine verified fixes and their related
+QA/security corrections are prepared over `da039ded`; 22 runtime/test/view hashes
+are frozen and independently accepted. Main full frontend 3,193 and related PHP
+211 plus static/build/API/parity checks pass. Existing dependencies/previews and
+all unrelated primary work remain preserved; source env is masked in disposable
+PHP tests and never read. Private evidence is retained under
+`storage/app/private/reviews/pr443-review-fixes`. New-head CI and owner merge/deploy
+remain separate. Temporary npm runtime preparation was rejected by automatic review;
+requested permission is pending, no install occurred. Only owned synthetic test
+containers may be cleaned up; existing preview containers are untouched.
 
 ## Automatic ePostman status worktree - 2026-11-12
 

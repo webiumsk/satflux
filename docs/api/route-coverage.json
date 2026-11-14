@@ -9,7 +9,7 @@
         "app/Http/Controllers/Invoicing/BankInboundWebhookController.php": "8fbd42d43283a9b05149a631abfd2eea067cdd5b4f6f235fb333fd5d98edb09a",
         "app/Http/Controllers/Integrations/WooCommerceIntegrationController.php": "d7ab20d376bf93ee07d4b7e020e6e1f4785ac0f97140d104bb609a10f0b149f5",
         "app/Http/Controllers/Integrations/WooCommerceConnectController.php": "e94b334fe370ade6cb0d7d136a3cd523afac7647f645a63276fb9039e996b44b",
-        "app/Services/Integrations/WooCommerceDocumentService.php": "c29e03fc1096e9ab26c0c29beb7b48a09797d6ff674ed23ef51bbb1b83f757a2",
+        "app/Services/Integrations/WooCommerceDocumentService.php": "1e10bdb6cd585689cc7bd785017f9ef5672bfd4902d0066b6f98ab23544e2345",
         "app/Services/Integrations/IntegrationDocumentInboxService.php": "2956a493f786bd077578f18d993f5d76bd065a0c94ec8223279cc24afb8f908e",
         "app/Services/Invoicing/BankInboundWebhookPayloadNormalizer.php": "5e107b9923b78e34b98abf39d83e3386fe4e0b74696e1ba87139a2387ba9cfdd",
         "app/Services/Invoicing/BankEmailOriginVerifier.php": "97c1fcf9a4555bb0023237ff7a03a1d7eac35cd594d1a6358a32ef4713fb4d92",
@@ -37,7 +37,7 @@
         "app/Http/Middleware/EnsureStoreOwnership.php": "80e69ff001736b77345b8d9805bb2c440093ac231db3d52d57d0fec1acc20b72",
         "app/Services/StoreResponseFormatter.php": "ad6aa7a44546342644813a3a81ff48ce8061dd09244da50466b8b284ed1e5e3b",
         "app/Models/CompanyContact.php": "65e0ddae6c38852ef8277e1a3c8168b36e14230b32dc636814ccf6a12d869b47",
-        "app/Models/BusinessDocument.php": "15e2b85c41c61854ef8a0f65d84fd6f420e24da737463cb3607e82411e2cab4e",
+        "app/Models/BusinessDocument.php": "0db921f1db8c63f18af6d69a256bc99c5bcb54816b9ed4d22740596f923256fd",
         "app/Models/User.php": "dae6d9cc8955b360d143a0951d396f0c84c51718f48ece527c16e0fb07c67178",
         "app/Http/Middleware/RequireVerifiedEmail.php": "20bab2724fce39b66e34e9e1e1bf9f641b018c88d95e5139237866cc39d7d332"
     },

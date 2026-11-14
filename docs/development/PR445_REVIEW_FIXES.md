@@ -75,3 +75,32 @@ fixture is stopped after verification; owner previews/data stay untouched.
 These are scoped code/browser results, not a deployment or provider certification.
 Publish only to existing PR445, check CI for its new head, and retain owner
 merge/deployment gates. No CodeRabbit CLI installation is needed for these checks.
+
+## Master reconciliation after PR443 merge
+
+The owner requests resolving PR445's conflict after merging PR443. Reconcile
+reviewed PR445 head `a911dadc` with fetched master `ce725a99` (PR443 merge).
+Exactly four development records conflict: PROJECT_STATE, ROADMAP, DECISION_LOG
+and WORKSPACE. Preserve both parent histories in their original order and record
+current status above historical observations. All five locale files merge
+without a content conflict; verify their three-way key/value result and locale
+parity. The existing invoicing.payment_method_btcpay label follows master's
+BTCPay Server value; the PDF keys from the feature remain present.
+Application source, tests, locks, migrations and API artifacts must match the
+appropriate reviewed parent. Retain the six PR445 review hashes. No product code,
+new dependency, provider operation or existing owner data/preview change is needed.
+
+Coordinator owns the four conflict resolutions and publication; independent QA
+is read-only and checks parent preservation, locale union and source provenance.
+Use focused combined frontend checks and new-head CI after normal merge/push to
+the existing feature branch. The owner retains PR445 merge/deployment decisions.
+
+Reconciliation validation passes 351 combined frontend cases / 13 suites,
+full lint (zero errors / 46 inherited warnings), unchanged TypeScript ratchet
+(110 tolerated / no new), all-five-locale parity, production build and whitespace
+checks. Independent QA confirms both complete parent document sequences remain,
+all 90 other changed paths match their reviewed parent, and all six prior review
+hashes match. Locale keys match the union and values match the three-way result.
+No browser/security rerun is claimed for byte-identical product sources; their
+previous independent acceptance remains attributed to the reviewed parent.
+Published-head CI is a separate gate after the reconciliation commit.

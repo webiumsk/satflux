@@ -12,15 +12,55 @@ use App\Models\CompanyContact;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Services\Invoicing\BusinessDocumentCreditNoteService;
 use App\Services\Invoicing\BusinessDocumentIssueService;
+use App\Services\Invoicing\CanonicalInvoiceBuilder;
 use App\Services\Invoicing\DocumentSequenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class BusinessDocumentCreditNoteTest extends TestCase
 {
     use RefreshDatabase;
+
+    public static function creditNoteRoundingMethods(): array
+    {
+        return [['per_line', '0.63', '-0.63'], ['per_document', '0.62', '-0.62'], ['none', '0.62', '-0.62']];
+    }
+
+    #[Test]
+    #[DataProvider('creditNoteRoundingMethods')]
+    public function derived_credit_note_stores_canonical_gross_for_normalized_signed_lines(string $rounding, string $positiveGross, string $negativeGross): void
+    {
+        $this->company->update(['vat_payer' => true, 'vat_status' => 'payer', 'app_settings' => ['rounding_method' => $rounding]]);
+        $invoice = BusinessDocument::create(['company_id' => $this->company->id, 'company_contact_id' => $this->contact->id,
+            'type' => BusinessDocumentType::Invoice, 'status' => BusinessDocumentStatus::Issued, 'number' => 'ROUND-001',
+            'issue_date' => '2026-11-14', 'currency' => 'EUR', 'subtotal' => 100, 'tax_total' => 23, 'total' => 123]);
+        foreach ([[1, 100, '123.00'], [0.5, 1.01, $positiveGross], [0.5, -1.01, $negativeGross]] as $index => [$quantity, $price, $gross]) {
+            $invoice->lines()->create(['sort_order' => $index, 'name' => 'Synthetic line '.$index, 'quantity' => $quantity,
+                'unit_price' => $price, 'tax_rate' => 23, 'line_total' => $gross]);
+        }
+        $invoice->refresh();
+        $before = $invoice->getAttributes();
+        $sourceLines = $invoice->lines()->get()->map(fn (BusinessDocumentLine $line): array => $line->getAttributes())->all();
+        $note = app(BusinessDocumentCreditNoteService::class)->createFromInvoice($this->company, $invoice);
+        $canonical = app(CanonicalInvoiceBuilder::class)->fromDocument($note);
+        $this->assertSame($invoice->id, $note->source_document_id);
+        $this->assertSame('0.5000', $note->lines[1]->quantity);
+        $this->assertSame('-0.5000', $note->lines[2]->quantity);
+        $this->assertSame('1.01', $note->lines[2]->unit_price);
+        $this->assertSame($positiveGross, $note->lines[1]->line_total);
+        $this->assertSame($negativeGross, $note->lines[2]->line_total);
+        foreach ($canonical->lines as $index => $line) {
+            $this->assertSame($line->grossAmount, $note->lines[$index]->line_total);
+        }
+        $this->assertSame('123.00', $note->total);
+        $this->assertSame($canonical->total, $note->total);
+        $this->assertSame($before, $invoice->fresh()->getAttributes());
+        $this->assertSame($sourceLines, $invoice->lines()->get()->map(fn (BusinessDocumentLine $line): array => $line->getAttributes())->all());
+    }
 
     protected User $proUser;
 

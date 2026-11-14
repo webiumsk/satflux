@@ -215,7 +215,7 @@ class CanonicalInvoiceBuilder
         $breakdownBuckets = [];
         $calculatesVat = $this->vatPolicy->calculatesVatAmounts($company, $contact);
         $includesDeductions = $calculatesVat && collect($lines)->contains(
-            fn (CanonicalInvoiceLine $line): bool => $line->unitPrice < 0,
+            fn (CanonicalInvoiceLine $line): bool => ($line->unitPrice < 0 || $line->quantity < 0),
         );
 
         foreach ($lines as $line) {
@@ -317,7 +317,7 @@ class CanonicalInvoiceBuilder
 
     protected function taxRateKey(float $rate): string
     {
-        return number_format($rate, 2, '.', '');
+        return number_format($rate, 4, '.', '');
     }
 
     protected function formatMoney(float $amount): string

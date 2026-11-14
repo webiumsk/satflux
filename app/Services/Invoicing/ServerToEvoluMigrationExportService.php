@@ -685,6 +685,7 @@ class ServerToEvoluMigrationExportService
             'storeId' => $document->store_id,
             'tagsJson' => $this->jsonOrNull($document->tags ?? []),
             'paidAt' => $this->datetimeStr($document->paid_at),
+            'paidPaymentMethod' => $document->paid_payment_method,
             'amountPaid' => $this->decimalStr($document->amount_paid),
             'emailSentAt' => $this->datetimeStr($document->email_sent_at),
         ];

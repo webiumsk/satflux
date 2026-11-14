@@ -6,6 +6,7 @@ use App\Enums\BusinessDocumentStatus;
 use App\Enums\BusinessDocumentType;
 use App\Enums\CompanyJurisdiction;
 use App\Support\Invoicing\CompanyEmailSettings;
+use App\Support\Invoicing\InvoiceDeductionRules;
 use App\Support\Invoicing\IsoCountryCode;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -34,6 +35,12 @@ class EphemeralBusinessDocumentPdfRequest extends FormRequest
 
     public function rules(): array
     {
+        $allowsDeduction = in_array($this->route()?->getActionMethod(), [
+            'emailPreview', 'emailPreviewWithoutCompany', 'sendEmail', 'sendEmailWithoutCompany',
+            'btcpayCheckout', 'btcpayCheckoutWithoutCompany', 'btcpayCheckoutExistingWithoutCompany',
+        ], true);
+        $amountRules = ['sometimes', 'string', 'regex:/\A(?:0|[1-9][0-9]{0,11})\.[0-9]{2}\z/'];
+
         return [
             'company' => ['required', 'array'],
             'company.legal_name' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -71,6 +78,8 @@ class EphemeralBusinessDocumentPdfRequest extends FormRequest
             'company.app_settings.efaktura_epostman_status_generation' => ['missing'],
             'company.app_settings.efaktura_epostman_status_last_scan_at' => ['missing'],
             'company.app_settings.show_pay_by_square' => ['sometimes', 'boolean'],
+            'company.app_settings.rounding_method' => ['sometimes', 'in:per_line,per_document,none'],
+            'company.app_settings.us_sales_tax_provider' => ['sometimes', 'string', 'max:64'],
             'company.app_settings.efaktura_enabled' => ['sometimes', 'boolean'],
             'company.app_settings.efaktura_auto_send' => ['sometimes', 'boolean'],
             'company.app_settings.efaktura_sapi_base_url' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -139,12 +148,19 @@ class EphemeralBusinessDocumentPdfRequest extends FormRequest
             'evolu_document_id' => ['sometimes', 'nullable', 'string', 'max:64'],
             'btcpay_checkout_link' => ['sometimes', 'nullable', 'string', 'max:2048'],
 
+            'source_totals' => ['sometimes', 'array:subtotal,tax_total,total,line_totals'],
+            'source_totals.subtotal' => $amountRules,
+            'source_totals.tax_total' => $amountRules,
+            'source_totals.total' => $amountRules,
+            'source_totals.line_totals' => ['sometimes', 'array', 'list'],
+            'source_totals.line_totals.*' => ['string', 'regex:/\A-?(?:0|[1-9][0-9]{0,11})\.[0-9]{2}\z/'],
+
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.name' => ['required', 'string', 'max:500'],
             'lines.*.description' => ['sometimes', 'nullable', 'string', 'max:2000'],
-            'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
+            'lines.*.quantity' => ['required', 'numeric', InvoiceDeductionRules::quantityRule($this)],
             'lines.*.unit' => ['sometimes', 'nullable', 'string', 'max:50'],
-            'lines.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'lines.*.unit_price' => $allowsDeduction ? ['required', 'numeric'] : ['required', 'numeric', 'min:0'],
             'lines.*.line_discount_percent' => ['sometimes', 'numeric', 'min:0', 'max:100'],
             'lines.*.tax_rate' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:100'],
         ];

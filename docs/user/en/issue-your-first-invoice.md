@@ -32,3 +32,5 @@ Use **Send by email** to deliver the PDF to your customer, or download the PDF t
 ## Track payment
 
 Mark invoices paid manually, or let [bank payment matching](/documentation/bank-payment-matching) reconcile them automatically from your bank statements.
+
+See [deductions, buyer details and recorded payment methods](/documentation/invoice-details-and-payments) for negative invoice items, company identifiers and payment labels.

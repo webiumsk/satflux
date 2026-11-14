@@ -188,14 +188,14 @@ describe("conversion guards", () => {
 });
 
 describe("issueLocalDocumentAsync", () => {
-    it("does not reserve a new number for a pending migration or an ordinary signed draft", async () => {
+    it("does not reserve a new number for a pending migration or a nonpositive signed draft", async () => {
         const { issueLocalDocumentAsync } = await import("@/evolu/documentCrud");
         const pending = fakeEvolu([doc({ migrationFingerprint: "pending", migrationCompletedAt: null })], []);
-        const signed = fakeEvolu([doc({})], [{ ...line, unitPrice: "-10.0000" }]);
+        const signed = fakeEvolu([doc({ total: "-12.00" })], [{ ...line, unitPrice: "-10.0000" }]);
         expect(await issueLocalDocumentAsync(pending as never, "doc-1" as DocumentId, company))
             .toEqual({ ok: false, error: "migration_pending" });
         expect(await issueLocalDocumentAsync(signed as never, "doc-1" as DocumentId, company))
-            .toEqual({ ok: false, error: "negative_line_price" });
+            .toEqual({ ok: false, error: "positive_total_required" });
         expect(reserveMock).not.toHaveBeenCalled();
         expect(pending.calls).toEqual([]);
         expect(signed.calls).toEqual([]);
@@ -254,7 +254,7 @@ describe("issueLocalDocumentAsync", () => {
 
         expect(evolu.calls).toContainEqual({
             table: "document",
-            row: { id: "doc-1", status: "paid", paidAt: "2026-12-20T10:00:00.000Z", amountPaid: "120.00" },
+            row: { id: "doc-1", status: "paid", paidAt: "2026-12-20T10:00:00.000Z", amountPaid: "120.00", paidPaymentMethod: null },
         });
     });
 });

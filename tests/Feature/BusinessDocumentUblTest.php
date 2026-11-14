@@ -104,6 +104,30 @@ class BusinessDocumentUblTest extends TestCase
     }
 
     #[Test]
+    public function mixed_standard_and_zero_rate_deductions_use_matching_line_and_subtotal_categories(): void
+    {
+        [, $company] = $this->proUserWithCompany();
+        $doc = BusinessDocument::create(['company_id' => $company->id, 'type' => 'invoice', 'status' => BusinessDocumentStatus::Issued,
+            'number' => 'MIXED-ZERO-001', 'issue_date' => now(), 'currency' => 'EUR',
+            'subtotal' => 135, 'tax_total' => 23, 'total' => 158]);
+        foreach ([[1, 100, 23, 123], [1, 50, 0, 50], [-1, 15, 0, -15]] as $index => [$quantity, $price, $rate, $gross]) {
+            $doc->lines()->create(['sort_order' => $index, 'name' => 'Synthetic line '.$index, 'quantity' => $quantity,
+                'unit_price' => $price, 'tax_rate' => $rate, 'line_total' => $gross]);
+        }
+        $xml = app(BusinessDocumentUblService::class)->xml($doc->fresh(['company', 'contact', 'lines']));
+        $dom = new \DOMDocument;
+        $this->assertTrue($dom->loadXML($xml));
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
+        $xpath->registerNamespace('cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
+        $this->assertSame('Z', $xpath->evaluate('string(//cac:TaxSubtotal[cac:TaxCategory/cbc:Percent="0"]/cac:TaxCategory/cbc:ID)'));
+        $this->assertSame('S', $xpath->evaluate('string(//cac:TaxSubtotal[cac:TaxCategory/cbc:Percent="23"]/cac:TaxCategory/cbc:ID)'));
+        $this->assertSame('35.00', $xpath->evaluate('string(//cac:TaxSubtotal[cac:TaxCategory/cbc:Percent="0"]/cbc:TaxableAmount)'));
+        $this->assertSame(2.0, $xpath->evaluate('count(//cac:ClassifiedTaxCategory[cbc:Percent="0" and cbc:ID="Z"])'));
+        $this->assertSame(1.0, $xpath->evaluate('count(//cac:ClassifiedTaxCategory[cbc:Percent="23" and cbc:ID="S"])'));
+    }
+
+    #[Test]
     public function sk_ubl_contains_cius_fields(): void
     {
         [, $company] = $this->proUserWithCompany();
@@ -326,6 +350,13 @@ class BusinessDocumentUblTest extends TestCase
 
         $this->assertStringContainsString('<cbc:ID>AE</cbc:ID>', $xml);
         $this->assertStringContainsString('Steuerschuldnerschaft des Leistungsempfängers', $xml);
+        $dom = new \DOMDocument;
+        $this->assertTrue($dom->loadXML($xml));
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
+        $xpath->registerNamespace('cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
+        $this->assertSame('AE', $xpath->evaluate('string(//cac:TaxSubtotal/cac:TaxCategory/cbc:ID)'));
+        $this->assertSame('AE', $xpath->evaluate('string(//cac:ClassifiedTaxCategory/cbc:ID)'));
     }
 
     #[Test]
