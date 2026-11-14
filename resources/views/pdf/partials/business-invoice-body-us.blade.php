@@ -1,4 +1,9 @@
 @php
+    $formatTaxRate = static function (float $rate): string {
+        $fraction = explode('.', rtrim(number_format($rate, 4, '.', ''), '0'))[1] ?? '';
+
+        return number_format($rate, max(2, strlen($fraction)), '.', ',');
+    };
     $isQuote = $document->type->value === 'quote';
     $amountDue = max(0, (float) $document->total - (float) ($document->amount_paid ?? 0));
     $showPaidInfo = ! $isQuote
@@ -58,7 +63,7 @@
                 <td>{{ $line->unit }}</td>
                 <td>{{ number_format((float) $line->unit_price, 2) }} {{ $document->currency }}</td>
                 @if(!empty($showSalesTaxColumn))
-                    <td>{{ number_format((float) $line->tax_rate, 2) }}%</td>
+                    <td>{{ $formatTaxRate((float) $line->tax_rate) }}%</td>
                 @endif
                 <td>{{ number_format((float) $line->line_total, 2) }} {{ $document->currency }}</td>
             </tr>

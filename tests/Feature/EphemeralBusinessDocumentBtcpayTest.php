@@ -64,6 +64,56 @@ class EphemeralBusinessDocumentBtcpayTest extends TestCase
     }
 
     #[Test]
+    public function deduction_checkout_charges_only_the_verified_positive_aggregate(): void
+    {
+        Http::fake(['*' => Http::response([
+            'id' => 'deduction-checkout', 'checkoutLink' => 'https://btcpay.example/i/deduction',
+        ], 200)]);
+        $user = $this->createProUser();
+        $user->update(['btcpay_api_key' => 'test-key']);
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        $this->actingAs($user);
+        $payload = $this->ephemeralPayload();
+        $payload['store_id'] = $store->id;
+        $payload['evolu_document_id'] = 'signed-invoice';
+        $payload['document']['payment_btc_enabled'] = true;
+        $payload['lines'][] = ['name' => 'Deduction', 'quantity' => 1, 'unit_price' => -20, 'tax_rate' => 0];
+        $payload['source_totals'] = [
+            'subtotal' => '80.00', 'tax_total' => '0.00', 'total' => '80.00', 'line_totals' => ['100.00', '-20.00'],
+        ];
+        $url = '/api/invoicing/ephemeral/btcpay-checkout';
+        $this->postJson($url, $payload)->assertOk();
+        Http::assertSent(fn ($request) => $request->method() === 'POST' && $request['amount'] === '80.00');
+        $payload['source_totals']['total'] = '100.00';
+        $this->postJson($url, $payload)->assertUnprocessable()->assertJsonValidationErrors('lines');
+        $payload['source_totals']['total'] = '80.00';
+        $payload['document']['amount_paid'] = 10;
+        $this->postJson($url, $payload)->assertUnprocessable()->assertJsonValidationErrors('lines');
+        Http::assertSentCount(1);
+    }
+
+    #[Test]
+    public function negative_quantity_checkout_charges_only_verified_positive_totals(): void
+    {
+        Http::fake(['*' => Http::response(['id' => 'negative-quantity-checkout', 'checkoutLink' => 'https://btcpay.example/i/deduction'], 200)]);
+        $user = $this->createProUser();
+        $user->update(['btcpay_api_key' => 'test-key']);
+        $store = Store::factory()->create(['user_id' => $user->id]);
+        $this->actingAs($user);
+        $payload = $this->ephemeralPayload();
+        $payload['store_id'] = $store->id;
+        $payload['evolu_document_id'] = 'negative-quantity-invoice';
+        $payload['document']['payment_btc_enabled'] = true;
+        $payload['lines'][] = ['name' => 'Deduction', 'quantity' => -1, 'unit_price' => 15, 'tax_rate' => 0];
+        $payload['source_totals'] = ['subtotal' => '85.00', 'tax_total' => '0.00', 'total' => '85.00', 'line_totals' => ['100.00', '-15.00']];
+        $this->postJson('/api/invoicing/ephemeral/btcpay-checkout', $payload)->assertOk();
+        Http::assertSent(fn ($request) => $request->method() === 'POST' && $request['amount'] === '85.00');
+        $payload['document']['amount_paid'] = 10;
+        $this->postJson('/api/invoicing/ephemeral/btcpay-checkout', $payload)->assertUnprocessable()->assertJsonValidationErrors('lines');
+        Http::assertSentCount(1);
+    }
+
+    #[Test]
     public function repeated_checkout_request_reuses_the_pending_btcpay_invoice(): void
     {
         Http::fake([

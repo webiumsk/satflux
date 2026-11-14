@@ -98,9 +98,9 @@ class WooCommerceDocumentService
         $contact->fill([
             'name' => $name !== '' ? $name : ($contact->name ?: $email),
             'email' => $email ?: $contact->email,
-            'registration_number' => (string) ($payload['ico'] ?? $contact->registration_number),
-            'tax_id' => (string) ($payload['dic'] ?? $contact->tax_id),
-            'vat_id' => (string) ($payload['ic_dph'] ?? $contact->vat_id),
+            'registration_number' => trim((string) ($payload['ico'] ?? '')) ?: $contact->registration_number,
+            'tax_id' => trim((string) ($payload['dic'] ?? '')) ?: $contact->tax_id,
+            'vat_id' => trim((string) ($payload['ic_dph'] ?? '')) ?: $contact->vat_id,
             'street' => (string) ($payload['street'] ?? $contact->street),
             'city' => (string) ($payload['city'] ?? $contact->city),
             'postal_code' => (string) ($payload['zip'] ?? $contact->postal_code),

@@ -180,6 +180,7 @@ class BusinessDocumentFromProformaService
                 'title' => $this->finalInvoiceTitle($document->number),
                 'status' => BusinessDocumentStatus::Paid,
                 'paid_at' => $proforma->paid_at ?? now(),
+                'paid_payment_method' => $proforma->paid_payment_method,
                 'amount_paid' => $proforma->amount_paid ?? $proforma->total,
             ]);
 

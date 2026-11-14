@@ -32,3 +32,5 @@ Cez **Poslať e-mailom** doručíte PDF zákazníkovi, alebo si PDF stiahnite a 
 ## Sledujte platbu
 
 Faktúry označte ako zaplatené ručne, alebo nechajte [párovanie bankových platieb](/documentation/bank-payment-matching) zosúladiť ich automaticky z bankových výpisov.
+
+Pozrite si aj [odpočtové položky, údaje odberateľa a evidovaný spôsob úhrady](/documentation/invoice-details-and-payments), kde nájdete vysvetlenie mínusových položiek, firemných identifikátorov a označení platieb.

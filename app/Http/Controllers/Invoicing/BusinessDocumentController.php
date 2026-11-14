@@ -302,6 +302,9 @@ class BusinessDocumentController extends Controller
                 (float) $request->input('discount_percent', $locked->discount_percent)
             );
 
+            if (! $locked->hasStatus(BusinessDocumentStatus::Draft)) {
+                $this->issueService->assertSignedInvoiceCanIssue($locked, $lines);
+            }
             $locked->save();
             $locked->lines()->delete();
             $this->syncLines($locked, $lines);

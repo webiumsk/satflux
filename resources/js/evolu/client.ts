@@ -130,6 +130,7 @@ const documentColumns = [
     "storeId",
     "tagsJson",
     "paidAt",
+    "paidPaymentMethod",
     "amountPaid",
     "emailSentAt",
 ] as const;
