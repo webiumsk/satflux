@@ -3,7 +3,7 @@ title: Facturación electrónica eslovaca - conexión ePostman
 category: invoicing
 order: 6
 meta_description: Conecte la cuenta ePostman de su empresa, reciba facturas electrónicas e importe sus originales como gastos en Satflux.
-updated: 2026-11-12
+updated: 2026-11-14
 ---
 
 # Facturación electrónica eslovaca - conexión ePostman
@@ -30,6 +30,8 @@ En la misma empresa, abra **Gastos > Facturas electrónicas recibidas**. Revise 
 Para iniciar una descarga manual, utilice **Descargar entrantes ahora** en la configuración de facturación electrónica de la empresa. Después, actualice la bandeja de entrada en Gastos. Actualizar la bandeja muestra los documentos que Satflux ya ha descargado.
 
 La importación guarda el original en sus datos locales cifrados. Si falla o el original es demasiado grande para un adjunto local, el elemento sigue disponible para recuperarlo y descargar el original. La existencia de un gasto por sí sola no completa la importación.
+
+Si el UBL original contiene adjuntos PDF incrustados, el detalle del documento ofrece **Ver** y **Descargar** para cada PDF. Estas acciones también están disponibles al seleccionar el adjunto XML original de un gasto ya importado. La vista muestra las páginas; la descarga conserva los bytes del PDF incrustado. El XML original no cambia. Satflux no consulta enlaces externos de adjuntos. Se admiten hasta diez PDF de hasta 1 MiB cada uno en un XML de hasta 2 MiB; la importación local mantiene su límite de tamaño de adjuntos. Los PDF no compatibles, dañados o demasiado grandes muestran un aviso. Si falla la vista previa, aún puedes descargar un PDF extraído correctamente.
 
 ## Conservación de originales y costes del proveedor
 

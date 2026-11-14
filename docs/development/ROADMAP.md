@@ -1,5 +1,19 @@
 # Development roadmap
 
+## Embedded PDF viewing and download - 2026-11-14
+
+- [x] Derive bounded PDFs from original UBL Invoice/CreditNote without custody changes.
+- [x] Offer explicit page preview and exact PDF download in inbox and existing expenses.
+- [x] Preserve tenant/context fences, source bytes, worker/URL cleanup and other XML.
+- [x] Cover EN/SK/ES/DE/CS; pass 204 main tests, static/build checks and independent
+  QA/security, including real Chrome two-page rendering and exact download.
+- [ ] Owner opens the feature PR and verifies its exact-head CI before merge/deployment.
+- [ ] Owner verifies receiving with the browser closed; production/provider obligations
+  and archive arrangements remain separate from the Peppol Test Network evidence.
+
+PR444 is confirmed merged as `f5cb7f0e`; PR443 remains separate and open.
+See `EFAKTURA_EMBEDDED_PDF.md`; no coordinator merge or deployment.
+
 ## PR442 verified review fixes - 2026-11-13
 
 - [x] Verify all nine findings against 19b1987c; fix eight, skip the already-fixed
