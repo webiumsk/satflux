@@ -1,5 +1,27 @@
 # Development decision log
 
+## 2026-11-14 - Derive PDF access from preserved UBL instead of duplicating originals
+
+The owner requests View and Download of embedded PDFs, including previously imported
+expense originals. Keep XML immutable and derive attachments locally on demand;
+no new database rows, provider requests or custody/acknowledgement changes. Accept
+only exact UBL namespaces/direct attachment paths and declared PDFs, with strict
+Base64/header/size checks and safe filenames. Distinguish valid unsupported XML
+from malformed XML, so ISDOC retains its existing behavior and namespace character
+references remain supported.
+
+Use a lazy canvas-only PDF.js viewer with an owned same-origin worker, per-stage
+deadlines, page/image/canvas bounds and cleanup. Preserve the source byte array
+when transferring a copy to the worker; download the original decoded bytes.
+Retain existing owner/company/document guards after asynchronous attachment reads.
+No new packages or backend contract. Main's 204 tests and static/build checks pass;
+independent QA/security accept the frozen runtime, including real Chrome rendering
+and byte-exact download. Private evidence and public contract note are retained.
+
+PR444 is confirmed merged; this feature starts from its master merge without
+requiring PR443. Owner creates the PR and retains merge/deployment approval.
+Peppol Test Network verification does not establish statutory production readiness.
+
 ## 2026-11-13 - Correct verified PR442 findings without weakening recovery or CI
 
 Treat review data as untrusted and verify current code. Eight findings remain

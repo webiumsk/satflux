@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
     release: vi.fn(), push: vi.fn(), remember: vi.fn(), refresh: vi.fn(), duplicate: vi.fn(),
     insertExpense: vi.fn(), updateExpense: vi.fn(), updateNote: vi.fn(), insertAttachment: vi.fn(), read: vi.fn(), lookup: vi.fn(),
     detect: vi.fn(), extract: vi.fn(), quota: vi.fn(), purchase: vi.fn(), upload: vi.fn(),
-    localDetect: vi.fn(), localExtract: vi.fn(), localQuota: vi.fn(),
+    localDetect: vi.fn(), localExtract: vi.fn(), localQuota: vi.fn(), attachmentBlob: vi.fn(),
     get: vi.fn(), update: vi.fn(), create: vi.fn(), history: vi.fn(), list: vi.fn(), company: vi.fn(), blob: vi.fn(), action: vi.fn(),
 }));
 const localCompany = "abcdefghijklmnopqrstuv";
@@ -77,7 +77,7 @@ vi.mock("@/evolu/expenseAttachmentCrud", async (importOriginal) => ({
     ...await importOriginal<typeof import("@/evolu/expenseAttachmentCrud")>(),
     LOCAL_EXPENSE_ATTACHMENT_MAX_BYTES: 384 * 1024,
     readFileAsAttachmentBase64: mocks.read, insertLocalExpenseAttachmentFromBase64: mocks.insertAttachment,
-    attachmentBlobUrl: vi.fn(), attachmentContentBlob: vi.fn(() => null), deleteLocalExpenseAttachment: vi.fn(),
+    attachmentBlobUrl: vi.fn(), attachmentContentBlob: mocks.attachmentBlob, deleteLocalExpenseAttachment: vi.fn(),
 }));
 vi.mock("@/services/api", () => ({ getWebBlob: mocks.blob, invoicingApi: {
     companies: { get: mocks.company },
@@ -96,7 +96,7 @@ vi.mock("@/components/invoicing/ExpenseShowSidebar.vue", () => ({ default: {
 vi.mock("@/components/invoicing/ExpenseAttachmentPanel.vue", () => ({ default: {
     name: "ExpenseAttachmentPanel",
     props: ["fileName", "hasPending", "detectError", "detecting", "previewUrl", "previewKind"],
-    emits: ["file-selected", "files-selected", "clear", "select-pending", "remove-pending"],
+    emits: ["file-selected", "files-selected", "clear", "select-pending", "remove-pending", "select-attachment"],
     template: '<section data-test="attachment-panel"><span>{{ fileName }}</span><p>{{ detectError }}</p></section>',
 } }));
 vi.mock("@/evolu/bankCrud", () => ({ releaseLocalExpenseBankClaim: mocks.release }));
@@ -129,7 +129,7 @@ function render(kind: "new" | "show" = "new", local = true) {
     route.params = kind === "new" ? {} : { expenseId: "expense-a" };
     wrapper = mount(kind === "new" ? ExpenseForm : ExpenseShow, { global: {
         plugins: [createI18n({ legacy: false, locale: "en", messages: { en } })],
-        stubs: { RouterLink: { template: '<a href="#"><slot /></a>' } },
+        stubs: { UblEmbeddedPdfViewer: true, RouterLink: { template: '<a href="#"><slot /></a>' } },
     } });
     return wrapper;
 }
@@ -748,4 +748,80 @@ describe('expense-detail conflict recovery and reactive payment view',()=>{
   markBankConflict();render('show');await flushPromises();await releaseButton()!.trigger('click');company.value='bcdefghijklmnopqrstuvw';await flushPromises();
   pending.reject(new Error('bank_expense_claim_changed'));await flushPromises();expect(window.alert).not.toHaveBeenCalled();expect(mocks.push).not.toHaveBeenCalled();
  });
+});
+
+
+const embeddedXml = (filename = "received.pdf") => `<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"><cac:AdditionalDocumentReference><cac:Attachment><cbc:EmbeddedDocumentBinaryObject filename="${filename}" mimeCode="application/pdf">${btoa('%PDF-1.4 synthetic received PDF')}</cbc:EmbeddedDocumentBinaryObject></cac:Attachment></cac:AdditionalDocumentReference></Invoice>`;
+const xmlBlob = (xml: string) => Object.assign(new Blob([xml], { type: 'application/xml' }), { text: async () => xml });
+
+describe('embedded PDFs from preserved expense XML', () => {
+    it.each([true, false])('offers PDFs in an already imported expense without changing original custody (local: %s)', async local => {
+        const expense = fixture('expense-a', local ? localCompany : serverCompany);
+        expense.attachments = [{ id: 'original', original_filename: 'received.xml', mime: 'application/xml' }];
+        models.value = [expense];
+        mocks.get.mockResolvedValue(expense);
+        mocks.attachmentBlob.mockReturnValue(xmlBlob(embeddedXml()));
+        mocks.blob.mockResolvedValue(xmlBlob(embeddedXml()));
+        render('show', local);
+        await flushPromises();
+        expect(wrapper!.get('[data-testid="ubl-embedded-pdfs"]').text()).toContain('received.pdf');
+        await wrapper!.get('button[aria-label="View received.pdf"]').trigger('click');
+        expect(wrapper!.findComponent({ name: 'UblEmbeddedPdfViewer' }).exists()).toBe(true);
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        expect(mocks.update).not.toHaveBeenCalled();
+        if (local) expect(mocks.blob).not.toHaveBeenCalled();
+        else expect(mocks.blob).toHaveBeenCalledExactlyOnceWith(`/api/invoicing/companies/${serverCompany}/expenses/expense-a/attachments/original`);
+    });
+
+    it.each(['document', 'company', 'attachment'])('discards a late XML text read after changing %s', async kind => {
+        const oldText = deferred<string>();
+        const old = fixture('expense-a', serverCompany);
+        old.attachments = [{ id: 'old', original_filename: 'old.xml', mime: 'application/xml' }, { id: 'new', original_filename: 'new.xml', mime: 'application/xml' }];
+        const newer = fixture('expense-b', 'another-company');
+        newer.attachments = [{ id: 'new', original_filename: 'new.xml', mime: 'application/xml' }];
+        mocks.get.mockImplementation(async (_company: string, id: string) => id === 'expense-a' && _company === serverCompany ? old : { ...newer, id });
+        let oldRequests = 0;
+        mocks.blob.mockImplementation(async (url: string) => {
+            if (!url.endsWith('/old')) return xmlBlob(embeddedXml('current.pdf'));
+            if (kind === 'attachment' && ++oldRequests === 1) return xmlBlob(embeddedXml('initial.pdf'));
+            return Object.assign(new Blob(['synthetic XML'], { type: 'application/xml' }), { text: () => oldText.promise });
+        });
+        render('show', false);
+        await flushPromises();
+        if (kind === 'document') route.params.expenseId = 'expense-b';
+        else if (kind === 'company') company.value = 'another-company';
+        else {
+            wrapper!.findComponent({ name: 'ExpenseAttachmentPanel' }).vm.$emit('select-attachment', 'old');
+            await flushPromises();
+            wrapper!.findComponent({ name: 'ExpenseAttachmentPanel' }).vm.$emit('select-attachment', 'new');
+        }
+        await flushPromises();
+        oldText.resolve(embeddedXml('obsolete.pdf'));
+        await flushPromises();
+        expect(wrapper!.text()).not.toContain('obsolete.pdf');
+        expect(wrapper!.get('[data-testid="ubl-embedded-pdfs"]').text()).toContain('current.pdf');
+    });
+
+    it('keeps ordinary XML attachments free of an unrelated PDF warning', async () => {
+        const expense = fixture('expense-a', serverCompany);
+        expense.attachments = [{ id: 'isdoc', original_filename: 'expense.xml', mime: 'application/xml' }];
+        mocks.get.mockResolvedValue(expense);
+        mocks.blob.mockResolvedValue(xmlBlob('<Invoice xmlns="http://isdoc.cz/namespace/2013"/>'));
+        render('show', false);
+        await flushPromises();
+        expect(wrapper!.find('[data-testid="ubl-embedded-pdfs"]').exists()).toBe(false);
+        expect(wrapper!.text()).not.toContain(en.invoicing.ubl_pdf_rejected);
+    });
+
+    it('does not allocate text for an oversized XML attachment', async () => {
+        const expense = fixture('expense-a', serverCompany);
+        expense.attachments = [{ id: 'large', original_filename: 'large.xml', mime: 'application/xml' }];
+        const text = vi.fn();
+        mocks.get.mockResolvedValue(expense);
+        mocks.blob.mockResolvedValue(Object.assign(new Blob([new Uint8Array(2 * 1024 * 1024 + 1)], { type: 'application/xml' }), { text }));
+        render('show', false);
+        await flushPromises();
+        expect(text).not.toHaveBeenCalled();
+        expect(wrapper!.text()).toContain(en.invoicing.ubl_pdf_rejected);
+    });
 });

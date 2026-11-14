@@ -269,6 +269,10 @@
                 @select-attachment="onSelectAttachment"
                 @remove-saved="onRemoveSavedAttachment"
               />
+              <template v-if="!pendingAttachmentName">
+                <UblEmbeddedPdfPanel :xml="embeddedUblXml" />
+                <p v-if="embeddedUblTooLarge" role="alert" class="p-3 text-sm text-amber-700">{{ t('invoicing.ubl_pdf_rejected') }}</p>
+              </template>
               <p
                 v-if="localFirst"
                 class="px-4 py-2 text-xs text-gray-500 border-t border-gray-100"
@@ -334,6 +338,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import ExpenseAttachmentPanel from "../../components/invoicing/ExpenseAttachmentPanel.vue";
+import UblEmbeddedPdfPanel from "../../components/invoicing/UblEmbeddedPdfPanel.vue";
 import ExpenseIsdocExtractModal from "../../components/invoicing/ExpenseIsdocExtractModal.vue";
 import ExpenseShowSidebar from "../../components/invoicing/ExpenseShowSidebar.vue";
 import InvoicingAppHeader from "../../components/invoicing/InvoicingAppHeader.vue";
@@ -426,6 +431,8 @@ const processingExtraction = ref(false);
 const noteDraft = ref("");
 const noteSaving = ref(false);
 const savedPreviewUrl = ref<string | null>(null);
+const embeddedUblXml = ref<string | null>(null);
+const embeddedUblTooLarge = ref(false);
 const savedPreviewKind = ref<"pdf" | "image" | "other" | null>(null);
 const selectedAttachmentId = ref<string | null>(null);
 const uploadError = ref('');
@@ -690,6 +697,8 @@ async function load() {
 
 function revokeSavedPreview() {
   previewRequest++;
+  embeddedUblXml.value = null;
+  embeddedUblTooLarge.value = false;
   if (savedPreviewUrl.value) {
     URL.revokeObjectURL(savedPreviewUrl.value);
     savedPreviewUrl.value = null;
@@ -729,50 +738,30 @@ async function loadSavedPreview() {
   if (!att && !expense.value?.attachment_path) return;
 
   try {
-    if (localFirst) {
-      const row = localAttachmentRow(att?.id);
-      if (!row) return;
-      const blob = attachmentContentBlob(row);
-      if (!blob) return;
-      const name = att?.original_filename || "";
-      if (
-        name.toLowerCase().endsWith(".pdf") ||
-        blob.type === "application/pdf"
-      ) {
-        savedPreviewKind.value = "pdf";
-      } else if (blob.type.startsWith("image/")) {
-        savedPreviewKind.value = "image";
-      } else {
-        savedPreviewKind.value = "other";
-      }
-      if (
-        savedPreviewKind.value === "pdf" ||
-        savedPreviewKind.value === "image"
-      ) {
-        savedPreviewUrl.value = URL.createObjectURL(blob);
-      }
-      return;
-    }
-
-    const blob = await getWebBlob(attachmentPreviewUrl(att?.id, context.company, context.expense));
-    if (!current()) return;
-    const name =
-      att?.original_filename || expense.value?.original_filename || "";
-    if (
-      name.toLowerCase().endsWith(".pdf") ||
-      blob.type === "application/pdf"
-    ) {
+    const row = localFirst ? localAttachmentRow(att?.id) : null;
+    const blob = localFirst
+      ? (row ? attachmentContentBlob(row) : null)
+      : await getWebBlob(attachmentPreviewUrl(att?.id, context.company, context.expense));
+    if (!blob || !current()) return;
+    const name = att?.original_filename || expense.value?.original_filename || "";
+    const mime = blob.type.split(';')[0].trim().toLowerCase();
+    if (name.toLowerCase().endsWith(".pdf") || mime === "application/pdf") {
       savedPreviewKind.value = "pdf";
-    } else if (blob.type.startsWith("image/")) {
+    } else if (mime.startsWith("image/")) {
       savedPreviewKind.value = "image";
     } else {
       savedPreviewKind.value = "other";
     }
-    if (
-      savedPreviewKind.value === "pdf" ||
-      savedPreviewKind.value === "image"
-    ) {
+    if (savedPreviewKind.value === "pdf" || savedPreviewKind.value === "image") {
       savedPreviewUrl.value = URL.createObjectURL(blob);
+    } else if (name.toLowerCase().endsWith(".xml") || mime === "application/xml" || mime === "text/xml") {
+      // Read only the already-authorized original, within the browser parser budget.
+      if (blob.size > 2 * 1024 * 1024) {
+        embeddedUblTooLarge.value = true;
+        return;
+      }
+      const xml = await blob.text();
+      if (current()) embeddedUblXml.value = xml;
     }
   } catch {
     if (current()) savedPreviewKind.value = "other";

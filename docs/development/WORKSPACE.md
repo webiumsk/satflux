@@ -1,5 +1,16 @@
 # Local workspace
 
+## Embedded PDF feature retained - 2026-11-14
+
+Worktree `storage/app/private/worktrees/efaktura-embedded-pdf` retains branch
+`feat/efaktura-embedded-pdf`, based on merged PR444 master `f5cb7f0e`. Existing
+locked frontend dependencies are reused after lockfile comparison; no installs,
+account/provider operations or existing preview changes. Main 204 tests and
+lint/type/build/parity plus independent QA/security pass. Private reports and
+frozen manifests are retained under `storage/app/private/reviews/efaktura-embedded-pdf`.
+Only the synthetic localhost Chrome fixture created by QA was stopped afterward.
+Owner retains PR creation and merge/deployment; primary unrelated edits are preserved.
+
 ## Automatic ePostman status worktree - 2026-11-12
 
 The scoped outbound worktree storage/app/private/worktrees/efaktura-epostman-outbound

@@ -1,5 +1,34 @@
 # Project state
 
+## Embedded UBL PDF access reviewed - 2026-11-14
+
+The owner authorizes View and Download for embedded PDF attachments in received
+UBL, including originals already imported into expenses. Implementation is isolated
+on `feat/efaktura-embedded-pdf` over owned master `f5cb7f0e`. Browser-only extraction
+preserves original XML/custody, encrypted storage, authorized attachment access and
+all existing import/acknowledgement behavior. No API, schema, dependency or PHP changes.
+PDF.js renders bounded pages in an owned worker; downloads retain decoded bytes.
+Source changes discard stale reads and release workers/URLs. Valid other XML,
+including ISDOC, stays hidden without a PDF warning. All five locales/guides agree.
+
+Main passes 204 focused/regression tests across 10 files, lint (0 errors / 46
+inherited warnings), unchanged TypeScript baseline (110 / no new), locale parity
+and production build (7,665 modules). Independent QA accepts 19 private mounted
+cases and 137 permanent cases; actual Chrome verifies two-page rendering,
+pagination, exact 697-byte download and worker cleanup. Independent security
+accepts 147 tests / 6 files including 10 additional cases, with no blocking findings.
+Counts overlap. Reviewed runtime hashes are retained with private evidence under
+`storage/app/private/reviews/efaktura-embedded-pdf`; contract and limits are in
+`EFAKTURA_EMBEDDED_PDF.md`. Existing previews/data and unrelated edits are preserved.
+
+Fresh GitHub evidence confirms PR444 merged as `f5cb7f0e`; PR443 remains open at
+`da039ded` and is independent of this feature. Owner reports the receiving-save
+repair and test-network invoice/credit-note import plus original XML after reload
+working on live Satflux. This is owner-reported application evidence, not a verified
+deployed SHA or statutory production/provider certification. Browser-closed
+receiving remains an outstanding owner test. Next: owner-created PDF PR, exact-head
+CI and owner merge/deployment decision. No merge or deployment is performed here.
+
 ## PR442 review corrections accepted locally - 2026-11-13
 
 Eight current review findings are verified and fixed over 19b1987c; the Peppol
