@@ -33,6 +33,8 @@ Po úspěšném lokálním testu připojení formulář upozorní, že ověřen�
 
 Import uloží originál do vašich šifrovaných lokálních dat. Pokud import selže nebo je originál příliš velký pro lokální přílohu, položka zůstane dostupná pro obnovu a stažení originálu. Samotná existence nákladu import nedokončí.
 
+Pokud původní UBL obsahuje vložené PDF přílohy, detail dokladu nabídne u každého PDF **Zobrazit** a **Stáhnout**. Stejné možnosti jsou dostupné po výběru původní XML přílohy v již importovaném nákladu. Zobrazení otevře náhled stran; stažení zachová původní bajty vloženého PDF. Původní XML se nemění. Satflux nenačítá externí odkazy na přílohy. Podporuje nejvýše deset PDF, každé do 1 MiB, v XML dokladu do 2 MiB; místní import si zachovává stávající limit velikosti přílohy. Nepodporovaná, poškozená nebo příliš velká PDF zobrazí upozornění. Pokud náhled selže, úspěšně extrahované PDF si můžeš nadále stáhnout.
+
 ## Uchování originálů a náklady poskytovatele
 
 Dokud se lokální import ověřeně nedokončí, originál je na serveru šifrován klíči serveru. Zpracovávají se tam také přístupové údaje poskytovatele a rozparsovaný souhrn dokladu. Čekající originály se automaticky nemažou podle stáří. Po ověřeném lokálním převzetí se dočasný obsah serveru odstraní. Nejde o dlouhodobý serverový archiv Satfluxu. Přístup do archivu, dobu uchování a export si potvrďte s poskytovatelem i pro případ zrušení účtu.

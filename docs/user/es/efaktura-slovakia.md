@@ -33,6 +33,8 @@ Tras una prueba local de conexión correcta, el formulario indica que la verific
 
 La importación guarda el original en sus datos locales cifrados. Si falla o el original es demasiado grande para un adjunto local, el elemento sigue disponible para recuperarlo y descargar el original. La existencia de un gasto por sí sola no completa la importación.
 
+Si el UBL original contiene adjuntos PDF incrustados, el detalle del documento ofrece **Ver** y **Descargar** para cada PDF. Estas acciones también están disponibles al seleccionar el adjunto XML original de un gasto ya importado. La vista muestra las páginas; la descarga conserva los bytes del PDF incrustado. El XML original no cambia. Satflux no consulta enlaces externos de adjuntos. Se admiten hasta diez PDF de hasta 1 MiB cada uno en un XML de hasta 2 MiB; la importación local mantiene su límite de tamaño de adjuntos. Los PDF no compatibles, dañados o demasiado grandes muestran un aviso. Si falla la vista previa, aún puedes descargar un PDF extraído correctamente.
+
 ## Conservación de originales y costes del proveedor
 
 Hasta completar la importación local verificada, el original permanece cifrado en el servidor con claves del servidor. También se procesan allí las credenciales del proveedor y el resumen extraído del documento. Los originales pendientes no se eliminan automáticamente por antigüedad. Tras verificar la transferencia local, se elimina el contenido temporal del servidor. Esto no es un archivo permanente del servidor de Satflux. Confirme con el proveedor el acceso al archivo, la conservación y la exportación, también tras cancelar la cuenta.

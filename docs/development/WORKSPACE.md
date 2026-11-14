@@ -1,5 +1,26 @@
 # Local workspace
 
+## Invoicing status publication reconciliation verified - 2026-11-15
+
+Owner requests push of both accepted corrections. Implementation commit `8d0b4999`
+contains exactly31 reviewed paths. Fresh remote master is `4b9cc230`, the owner's
+merged PR445. Reconcile it locally with a normal feature-branch merge before push.
+Ten conflicts preserve both development histories, the newer five-guide date and
+both required inbox imports. The combined panel is exactly the accepted receiving
+panel plus the master's PDF import/component. No additional product logic is added.
+
+Independent QA accepts all41 affected paths and162 tests /five suites; security
+accepts the narrow17-file byte-preserving integration. Main passes391 combined
+tests /15 suites, lint0errors/46inherited, type110/no new, parity/whitespace and
+build7,669. Earlier136 PHP/1,018, PHPStan0 and Pint2 remain applicable through
+unchanged backend bytes. Merged source fingerprint is
+`42fa35d13d66eccc9f6e04224db322cb3066019d11eba289a6901f10097279ee`.
+
+Main owns the pending normal push and remote-head verification. No new-head CI,
+PR merge or deployment is claimed by this pre-publication record. Owner retains
+PR creation and merge/deployment decisions. Earlier uncommitted/read-only notes
+below are historical; both corrections are now authorized and committed locally.
+
 ## eFaktura receiving correction in relay-status-banner - 2026-11-15
 
 The retained `storage/app/private/worktrees/relay-status-banner` on
@@ -26,6 +47,28 @@ records are uncommitted/unpublished; no PR, merge or deployment. The ignored
 without installation. No preview server or test infrastructure was started.
 Primary remains on `fix/sepa-confirmation-isolation` with unrelated edits intact.
 Contract, hashes/results and eFaktura read-only diagnosis: `RELAY_STATUS_BANNER.md`.
+
+## PR445 master reconciliation retained - 2026-11-14
+
+The named `storage/app/private/worktrees/efaktura-embedded-pdf` checkout retains
+`feat/efaktura-embedded-pdf`, reconciling reviewed `a911dadc` with owner-merged
+PR443 master `ce725a99`. Four development-record conflicts retain both histories;
+five locales merge automatically. Product files match the appropriate reviewed
+parent and the six PR445 review hashes remain intact. Normal merge/push and fresh
+CI precede the owner's PR445 merge decision. No worktree cleanup, dependency
+installation, provider operation, existing preview or owner-data change is needed.
+Private merge evidence is retained under `storage/app/private/reviews/pr445-master-merge`.
+
+## Embedded PDF feature retained - 2026-11-14
+
+Worktree `storage/app/private/worktrees/efaktura-embedded-pdf` retains branch
+`feat/efaktura-embedded-pdf`, based on merged PR444 master `f5cb7f0e`. Existing
+locked frontend dependencies are reused after lockfile comparison; no installs,
+account/provider operations or existing preview changes. Main 204 tests and
+lint/type/build/parity plus independent QA/security pass. Private reports and
+frozen manifests are retained under `storage/app/private/reviews/efaktura-embedded-pdf`.
+Only the synthetic localhost Chrome fixture created by QA was stopped afterward.
+Owner retains PR creation and merge/deployment; primary unrelated edits are preserved.
 
 ## PR443 review correction retained - 2026-11-14
 

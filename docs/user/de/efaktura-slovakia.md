@@ -33,6 +33,8 @@ Nach einem erfolgreichen lokalen Verbindungstest zeigt das Formular, dass die Pr
 
 Der Import speichert das Original in Ihren verschlüsselten lokalen Daten. Schlägt der Import fehl oder ist das Original zu groß für einen lokalen Anhang, bleibt der Eintrag zur Wiederherstellung und zum Herunterladen des Originals verfügbar. Eine vorhandene Ausgabe allein schließt den Import nicht ab.
 
+Enthält das ursprüngliche UBL eingebettete PDF-Anhänge, bietet die Dokumentansicht für jede PDF **Anzeigen** und **Herunterladen**. Diese Aktionen stehen auch bei Auswahl des ursprünglichen XML-Anhangs einer bereits importierten Ausgabe zur Verfügung. Die Ansicht zeigt eine Seitenvorschau; der Download bewahrt die eingebetteten PDF-Bytes. Das ursprüngliche XML bleibt unverändert. Satflux ruft keine externen Anhangslinks ab. Unterstützt werden höchstens zehn PDFs mit jeweils bis zu 1 MiB in einem XML-Dokument bis zu 2 MiB; für den lokalen Import gilt weiterhin die bisherige Größenbegrenzung. Nicht unterstützte, beschädigte oder zu große PDFs führen zu einer Warnung. Schlägt die Vorschau fehl, kann eine erfolgreich extrahierte PDF weiterhin heruntergeladen werden.
+
 ## Originale und Anbieterkosten
 
 Bis zum verifizierten lokalen Import bleibt das Original auf dem Server mit serverseitigen Schlüsseln verschlüsselt. Dort werden auch Anbieterzugangsdaten und die ausgelesene Dokumentzusammenfassung verarbeitet. Ausstehende Originale werden nicht automatisch altersbedingt gelöscht. Nach der verifizierten lokalen Übernahme werden temporäre Serverinhalte entfernt. Dies ist kein langfristiges Satflux-Serverarchiv. Klären Sie Archivzugriff, Aufbewahrung und Export mit dem Anbieter, auch nach einer Kündigung.

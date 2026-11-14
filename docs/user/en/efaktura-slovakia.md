@@ -33,6 +33,8 @@ After a successful local connection test, the form shows that the verification s
 
 Import stores the original in your encrypted local data. If import fails or the original is too large for a local attachment, the inbox item remains available for recovery and original download. An existing expense alone does not complete the import.
 
+If the original UBL contains embedded PDF attachments, the document detail offers **View** and **Download** for each PDF. The same actions are available when you select the original XML attachment in an already imported expense. Viewing opens a page preview; downloading preserves the embedded PDF bytes. The original XML is unchanged. Satflux does not fetch external attachment links. Up to ten PDFs are supported, each up to 1 MiB, within an XML document up to 2 MiB; local import retains its existing attachment size limit. Unsupported, damaged or oversized PDFs show a warning. If the preview fails, you can still download a successfully extracted PDF.
+
 ## Original custody and provider costs
 
 Until verified local import completes, the original is encrypted on the server with server-held keys. Provider credentials and the parsed document summary are also processed there. Pending originals are not automatically deleted by age. After verified local handoff, temporary server content is removed. This is not a long-term Satflux server archive. Confirm archive access, retention and export with your provider, including after cancellation.

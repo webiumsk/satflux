@@ -1,5 +1,26 @@
 # Current relay warning banner
 
+## Invoicing status publication reconciliation verified - 2026-11-15
+
+Owner requests push of both accepted corrections. Implementation commit `8d0b4999`
+contains exactly31 reviewed paths. Fresh remote master is `4b9cc230`, the owner's
+merged PR445. Reconcile it locally with a normal feature-branch merge before push.
+Ten conflicts preserve both development histories, the newer five-guide date and
+both required inbox imports. The combined panel is exactly the accepted receiving
+panel plus the master's PDF import/component. No additional product logic is added.
+
+Independent QA accepts all41 affected paths and162 tests /five suites; security
+accepts the narrow17-file byte-preserving integration. Main passes391 combined
+tests /15 suites, lint0errors/46inherited, type110/no new, parity/whitespace and
+build7,669. Earlier136 PHP/1,018, PHPStan0 and Pint2 remain applicable through
+unchanged backend bytes. Merged source fingerprint is
+`42fa35d13d66eccc9f6e04224db322cb3066019d11eba289a6901f10097279ee`.
+
+Main owns the pending normal push and remote-head verification. No new-head CI,
+PR merge or deployment is claimed by this pre-publication record. Owner retains
+PR creation and merge/deployment decisions. Earlier uncommitted/read-only notes
+below are historical; both corrections are now authorized and committed locally.
+
 ## Authorized eFaktura follow-up - 2026-11-15
 
 The owner now authorizes the eFaktura correction described in

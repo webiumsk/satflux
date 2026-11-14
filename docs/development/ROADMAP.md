@@ -1,5 +1,26 @@
 # Development roadmap
 
+## Invoicing status publication reconciliation verified - 2026-11-15
+
+Owner requests push of both accepted corrections. Implementation commit `8d0b4999`
+contains exactly31 reviewed paths. Fresh remote master is `4b9cc230`, the owner's
+merged PR445. Reconcile it locally with a normal feature-branch merge before push.
+Ten conflicts preserve both development histories, the newer five-guide date and
+both required inbox imports. The combined panel is exactly the accepted receiving
+panel plus the master's PDF import/component. No additional product logic is added.
+
+Independent QA accepts all41 affected paths and162 tests /five suites; security
+accepts the narrow17-file byte-preserving integration. Main passes391 combined
+tests /15 suites, lint0errors/46inherited, type110/no new, parity/whitespace and
+build7,669. Earlier136 PHP/1,018, PHPStan0 and Pint2 remain applicable through
+unchanged backend bytes. Merged source fingerprint is
+`42fa35d13d66eccc9f6e04224db322cb3066019d11eba289a6901f10097279ee`.
+
+Main owns the pending normal push and remote-head verification. No new-head CI,
+PR merge or deployment is claimed by this pre-publication record. Owner retains
+PR creation and merge/deployment decisions. Earlier uncommitted/read-only notes
+below are historical; both corrections are now authorized and committed locally.
+
 ## eFaktura receiving status correction independently accepted locally - 2026-11-15
 
 Owner authorizes fixing the receiving warning after confirming Test plus Save
@@ -58,6 +79,43 @@ no new-head CI, PR, merge, deployment, real provider operation or complete-backu
 proof is claimed. Primary unrelated edits and other worktrees remain preserved.
 Next: local-result review/publication under applicable authorization, fresh-head CI,
 then owner merge/deployment decision.
+
+## PR445 master reconciliation after PR443 merge - 2026-11-14
+
+- [x] Confirm PR443 merged as `ce725a99` and fetch current master/PR445.
+- [x] Preserve both histories while resolving four documentation-only conflicts.
+- [x] Verify 90 other changed paths against parents, five-locale three-way values
+  and all six previously reviewed PR445 hashes.
+- [x] Pass 351 combined frontend tests, static/build/parity checks and independent QA.
+- [ ] Verify new-head CI after publishing the reconciliation commit.
+- [ ] Owner reviews and merges PR445 after the new checks pass.
+
+See `PR445_REVIEW_FIXES.md`; original owner data and previews remain untouched.
+
+## PR445 verified review corrections - 2026-11-14
+
+- [x] Verify and reproduce all three findings at `49384427`; process duplicates once.
+- [x] Await healthy document destruction; bound stalled worker cleanup to one second.
+- [x] Restore saved previews after pending-clear and reject namespace-independent XML errors.
+- [x] Pass 223 focused tests, static/build/parity and independent QA/security;
+  real Chrome verifies parser rejection, graceful/forced cleanup and exact download.
+- [ ] Verify published PR445 head CI before the owner's merge/deployment decision.
+
+No PHP/API/schema, dependency or custody change. See `PR445_REVIEW_FIXES.md`.
+
+## Embedded PDF viewing and download - 2026-11-14
+
+- [x] Derive bounded PDFs from original UBL Invoice/CreditNote without custody changes.
+- [x] Offer explicit page preview and exact PDF download in inbox and existing expenses.
+- [x] Preserve tenant/context fences, source bytes, worker/URL cleanup and other XML.
+- [x] Cover EN/SK/ES/DE/CS; pass 204 main tests, static/build checks and independent
+  QA/security, including real Chrome two-page rendering and exact download.
+- [ ] Owner opens the feature PR and verifies its exact-head CI before merge/deployment.
+- [ ] Owner verifies receiving with the browser closed; production/provider obligations
+  and archive arrangements remain separate from the Peppol Test Network evidence.
+
+PR444 is confirmed merged as `f5cb7f0e`; PR443 remains separate and open.
+See `EFAKTURA_EMBEDDED_PDF.md`; no coordinator merge or deployment.
 
 ## PR443 follow-up corrections - 2026-11-14
 

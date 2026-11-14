@@ -1,5 +1,26 @@
 # Project state
 
+## Invoicing status publication reconciliation verified - 2026-11-15
+
+Owner requests push of both accepted corrections. Implementation commit `8d0b4999`
+contains exactly31 reviewed paths. Fresh remote master is `4b9cc230`, the owner's
+merged PR445. Reconcile it locally with a normal feature-branch merge before push.
+Ten conflicts preserve both development histories, the newer five-guide date and
+both required inbox imports. The combined panel is exactly the accepted receiving
+panel plus the master's PDF import/component. No additional product logic is added.
+
+Independent QA accepts all41 affected paths and162 tests /five suites; security
+accepts the narrow17-file byte-preserving integration. Main passes391 combined
+tests /15 suites, lint0errors/46inherited, type110/no new, parity/whitespace and
+build7,669. Earlier136 PHP/1,018, PHPStan0 and Pint2 remain applicable through
+unchanged backend bytes. Merged source fingerprint is
+`42fa35d13d66eccc9f6e04224db322cb3066019d11eba289a6901f10097279ee`.
+
+Main owns the pending normal push and remote-head verification. No new-head CI,
+PR merge or deployment is claimed by this pre-publication record. Owner retains
+PR creation and merge/deployment decisions. Earlier uncommitted/read-only notes
+below are historical; both corrections are now authorized and committed locally.
+
 ## eFaktura receiving status correction independently accepted locally - 2026-11-15
 
 Owner authorizes fixing the receiving warning after confirming Test plus Save
@@ -58,6 +79,72 @@ no new-head CI, PR, merge, deployment, real provider operation or complete-backu
 proof is claimed. Primary unrelated edits and other worktrees remain preserved.
 Next: local-result review/publication under applicable authorization, fresh-head CI,
 then owner merge/deployment decision.
+
+## PR445 reconciled with merged PR443 - 2026-11-14
+
+Fresh GitHub evidence confirms owner-merged PR443 as `ce725a99`. Reconcile that
+master with reviewed PR445 `a911dadc` in `feat/efaktura-embedded-pdf`. The only
+content conflicts are the four shared development records; both parent histories
+survive in their original order. Older open/unmerged observations below are
+historical. Five locale files merge automatically, retaining PDF strings and the
+master's BTCPay Server payment label.
+
+All 90 other affected source/test/artifact/guide paths match the appropriate
+reviewed parent exactly. Six PR445 review hashes remain unchanged. No new runtime,
+dependency, schema, API or provider change is introduced by conflict resolution.
+Validation and independent QA are recorded in `PR445_REVIEW_FIXES.md`; the merged
+head needs fresh CI before owner review/merge of PR445. This branch reconciliation
+does not establish a deployed revision. Primary unrelated edits remain preserved.
+
+## PR445 review corrections independently accepted - 2026-11-14
+
+All three current findings over `49384427` are reproduced and corrected on
+`feat/efaktura-embedded-pdf`; the duplicated request is processed once, none skipped.
+Await PDF.js loading-task destruction before owned worker/port release with a
+one-second forced fallback; reload saved previews after pending-clear; detect XML
+parsererror in every namespace before PDF extraction. Original XML/custody,
+company/document/request fences, resource limits and five-language copy remain intact.
+
+Main passes 223 tests / ten files, lint (zero errors / 46 inherited warnings),
+TypeScript ratchet (110 tolerated / no new), locale parity, whitespace and build
+(7,665 modules). Independent security accepts 137 permanent + 23 private cases;
+QA accepts 137 permanent + 20 private cases. Counts overlap. Real Chrome confirms
+ten parser cases, two-page rendering, exact 697-byte download, graceful Terminate
+reply before port teardown and forced stalled cleanup without harming a new source.
+No page errors/nonlocal requests; all workers terminate. Six frozen hashes match.
+See `PR445_REVIEW_FIXES.md`; private evidence is under
+`storage/app/private/reviews/pr445-review-fixes`. Publish to existing PR445 and
+verify its new-head CI; owner retains merge/deployment. This does not establish a
+deployed revision or statutory/provider production readiness. No merge/deploy here.
+
+## Embedded UBL PDF access reviewed - 2026-11-14
+
+The owner authorizes View and Download for embedded PDF attachments in received
+UBL, including originals already imported into expenses. Implementation is isolated
+on `feat/efaktura-embedded-pdf` over owned master `f5cb7f0e`. Browser-only extraction
+preserves original XML/custody, encrypted storage, authorized attachment access and
+all existing import/acknowledgement behavior. No API, schema, dependency or PHP changes.
+PDF.js renders bounded pages in an owned worker; downloads retain decoded bytes.
+Source changes discard stale reads and release workers/URLs. Valid other XML,
+including ISDOC, stays hidden without a PDF warning. All five locales/guides agree.
+
+Main passes 204 focused/regression tests across 10 files, lint (0 errors / 46
+inherited warnings), unchanged TypeScript baseline (110 / no new), locale parity
+and production build (7,665 modules). Independent QA accepts 19 private mounted
+cases and 137 permanent cases; actual Chrome verifies two-page rendering,
+pagination, exact 697-byte download and worker cleanup. Independent security
+accepts 147 tests / 6 files including 10 additional cases, with no blocking findings.
+Counts overlap. Reviewed runtime hashes are retained with private evidence under
+`storage/app/private/reviews/efaktura-embedded-pdf`; contract and limits are in
+`EFAKTURA_EMBEDDED_PDF.md`. Existing previews/data and unrelated edits are preserved.
+
+Fresh GitHub evidence confirms PR444 merged as `f5cb7f0e`; PR443 remains open at
+`da039ded` and is independent of this feature. Owner reports the receiving-save
+repair and test-network invoice/credit-note import plus original XML after reload
+working on live Satflux. This is owner-reported application evidence, not a verified
+deployed SHA or statutory production/provider certification. Browser-closed
+receiving remains an outstanding owner test. Next: owner-created PDF PR, exact-head
+CI and owner merge/deployment decision. No merge or deployment is performed here.
 
 ## PR443 four follow-up findings corrected locally - 2026-11-14
 
