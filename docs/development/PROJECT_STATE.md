@@ -1,5 +1,43 @@
 # Project state
 
+## PR443 review corrections independently accepted - 2026-11-14
+
+The owner authorizes completing all nine unresolved findings on
+`fix/invoicing-lines-payment-identities` over `da039ded`. All nine are verified
+current and fixed; none is skipped. Invoice-only checkout precedes provider access;
+negative-price deductions cannot carry stock links; server/local derived credit
+notes preserve signed products and original invoices. Four-place percentages use
+schema decimal(7,4), model/local values, distinct canonical/manual-US buckets,
+UBL/ISDOC and precise PDF labels. Signed zero-tax buckets cannot hide a negative
+base. Migration down holds a PostgreSQL exclusive lock before guard+narrowing and
+refuses fractional data loss. No owner database migration is performed.
+
+Compliance jobs follow the document connection's outermost commit. Edited signed
+snapshots use current form lines and the same frozen parties they forward;
+unchanged migration amounts remain historical. Exact company/buyer context is
+required before allocation, and asynchronous identity/content changes reject before
+local mutation. Rounding matches actual PHP 8.3.31 in 290,256 comparisons; QA also
+passes 160 PHP/TypeScript canonical cases. The reviewer-discovered context, PDF,
+zero-tax and frozen-VAT gaps are reproduced, fixed and independently retested.
+
+Main: full frontend 3,193 / 241; related PHP 211 / 1,325 assertions; full PHPStan
+zero errors; Pint 1,174; lint zero errors / 46 inherited warnings; unchanged type
+baseline 110 / no new; locales; build 7,664; API freshness and three schemas pass.
+QA accepts 40 permanent PHP / 360 assertions, private 9 PHP / 220 and 172 frontend
+cases plus actual Dompdf/text extraction. Security accepts 30 PHP / 308, 124
+frontend and four actual PostgreSQL controls; counts overlap. Final 22 source,
+test and view hashes match. Contract/disposition: `PR443_REVIEW_FIXES.md`.
+Private evidence: `storage/app/private/reviews/pr443-review-fixes`.
+
+The first full PHP attempt executes 3,459 cases but has 38 environment-related
+failures/errors: offline account DNS and unavailable locked bank parser runtime.
+The separate related selection passes. Automatic approval rejects temporary npm
+runtime preparation pending explicit owner permission; no install or workaround
+occurs. Required new-head CI will verify the complete suite in its existing setup.
+Remote branch still matches the baseline and master is `f5cb7f0e` at this observation.
+Next: corrective publication, exact-head CI, then owner merge/deployment decision.
+Unrelated primary edits, existing previews/data and dependency locks are preserved.
+
 ## PR443 Laravel security maintenance accepted locally - 2026-11-13
 
 Run `43504563522` on `b8b75fd0` confirms the API inventory repair and passes all

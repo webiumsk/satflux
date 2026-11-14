@@ -123,7 +123,7 @@ class BusinessDocumentIsdocService
 
         if ($vatApplicable && (float) $canonical->taxTotal > 0) {
             foreach ($canonical->taxBreakdown as $row) {
-                $taxCategory = new IsdocInvoiceDocument\TaxCategory($this->dec($row->ratePercent));
+                $taxCategory = new IsdocInvoiceDocument\TaxCategory($this->taxRate($row->ratePercent));
                 $taxCategory->setVatApplicable(true);
 
                 $invoice->getTaxTotal()->add(
@@ -192,7 +192,7 @@ class BusinessDocumentIsdocService
             : (float) $line->unitPrice * (1 + $taxRate / 100);
 
         $taxCategory = new IsdocInvoiceDocument\ClassifiedTaxCategory(
-            $this->dec($taxRate),
+            $this->taxRate($taxRate),
             IsdocInvoiceDocument\ClassifiedTaxCategory::VAT_CALCULATION_METHOD_FROM_THE_TOP,
         );
         $taxCategory->setVatApplicable($vatApplicable && $taxRate > 0);
@@ -381,6 +381,11 @@ class BusinessDocumentIsdocService
 
         return DateTimeImmutable::createFromFormat('Y-m-d', $value->format('Y-m-d'))
             ?: new DateTimeImmutable;
+    }
+
+    protected function taxRate(float $rate): string
+    {
+        return number_format($rate, $rate === round($rate, 2) ? 2 : 4, '.', '');
     }
 
     protected function dec(float|string|null $value): string

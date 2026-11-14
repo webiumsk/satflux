@@ -85,6 +85,12 @@ class StoreBusinessDocumentRequest extends FormRequest
                 if (! is_numeric($value) || (float) $value >= 0) {
                     return;
                 }
+                $linePath = substr($attribute, 0, -strlen('.unit_price'));
+                if ($this->filled($linePath.'.company_stock_item_id') || $this->filled($linePath.'.company_warehouse_id')) {
+                    $fail('Negative unit prices require a manual item without stock links.');
+
+                    return;
+                }
                 $type = $this->input('type') ?? $this->route('businessDocument')?->type?->value;
                 if ($type !== BusinessDocumentType::Invoice->value) {
                     $fail('Negative unit prices are supported only on invoices.');
@@ -99,7 +105,7 @@ class StoreBusinessDocumentRequest extends FormRequest
                 }
             }],
             'lines.*.line_discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100', $this->deductionPrecision(2)],
-            'lines.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100', $this->deductionPrecision(2)],
+            'lines.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100', $this->deductionPrecision(4)],
             'lines.*.company_stock_item_id' => ['nullable', 'uuid'],
             'lines.*.company_warehouse_id' => ['nullable', 'uuid'],
         ];

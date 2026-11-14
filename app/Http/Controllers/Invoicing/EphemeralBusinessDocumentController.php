@@ -197,6 +197,10 @@ class EphemeralBusinessDocumentController extends Controller
             ->with('user')
             ->firstOrFail();
 
+        if ($request->validated('document.type') !== BusinessDocumentType::Invoice->value) {
+            throw ValidationException::withMessages(['document.type' => ['Bitcoin checkout is supported only for invoices.']]);
+        }
+
         $document = $this->documentForPdf($snapshotCompany, $request->validated(), 'lines');
 
         return response()->json([
@@ -624,6 +628,10 @@ class EphemeralBusinessDocumentController extends Controller
             ->where('user_id', $user->id)
             ->with('user')
             ->firstOrFail();
+
+        if ($request->validated('document.type') !== BusinessDocumentType::Invoice->value) {
+            throw ValidationException::withMessages(['document.type' => ['Bitcoin checkout is supported only for invoices.']]);
+        }
 
         $document = $this->documentForPdf($snapshotCompany, $request->validated(), 'lines');
         if ($document->lines->contains(fn ($line): bool => ((float) $line->getAttribute('unit_price') < 0 || (float) $line->getAttribute('quantity') < 0))

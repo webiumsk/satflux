@@ -234,7 +234,7 @@ function syncDocumentLines(
             unit: line.unit || "ks",
             unitPrice: fmtDec(line.unit_price, 4),
             lineDiscountPercent: fmtDec(line.line_discount_percent || 0),
-            taxRate: fmtDec(line.tax_rate ?? 0),
+            taxRate: fmtDec(line.tax_rate ?? 0, 4),
             lineTotal: lineTotals[index] || "0",
             companyStockItemId: line.company_stock_item_id,
             companyWarehouseId: line.company_warehouse_id,
@@ -272,7 +272,7 @@ function snapshotLinesFromPayload(payload: DocumentSavePayload, lineTotals: stri
         unit: line.unit || "ks",
         unit_price: fmtDec(line.unit_price, 4),
         line_discount_percent: fmtDec(line.line_discount_percent || 0),
-        tax_rate: fmtDec(line.tax_rate ?? 0),
+        tax_rate: fmtDec(line.tax_rate ?? 0, 4),
         line_total: lineTotals[index] || "0",
     }));
 }
@@ -326,6 +326,7 @@ function ordinaryIssueError(
         return !draft || supportsNegativeQuantity(draft.documentType) ? "nonzero_quantity_required" as const : "positive_quantity_required" as const;
     }
     if (draft && !supportsNegativeQuantity(draft.documentType) && documentLines.some(line => Number(line.quantity) < 0)) return "positive_quantity_required" as const;
+    if (!company && documentLines.some(line => isSignedInvoiceLine(line.quantity, line.unitPrice))) return "unsupported_negative_lines" as const;
     const apiCompany = company ? evoluCompanyToApi(company) : null;
     const apiContact = contact ? evoluContactToApi(contact) : null;
     const policy = useCompanyVatPolicy();
@@ -568,8 +569,13 @@ export async function issueLocalDocumentAsync(
             (toAppRows<EvoluContactRow>(contactRows).find((c) => c.id === draft.contactId)
                 ?? null),
     };
+    const context = { company, doc: draft, allDocuments: documents, ...snapshotContext };
+    if (!reservedIssueContextMatches(documentId, company.id, draft, context)) return { ok: false as const, error: "not_found" as const };
     const issueError = ordinaryIssueError(documentId, draft, snapshotContext.lines, company, snapshotContext.contact);
     if (issueError) return { ok: false as const, error: issueError };
+    const draftRevision = JSON.stringify(draft);
+    const contactRevision = JSON.stringify(snapshotContext.contact);
+    const lineRevision = JSON.stringify(snapshotContext.lines.filter(line => line.documentId === documentId));
 
     // Server number allocator (audit F3): the number is reserved atomically
     // on the server, keyed by the document id so a retried issue gets the
@@ -605,6 +611,23 @@ export async function issueLocalDocumentAsync(
     if (reserved.value.status === "voided") {
         return { ok: false as const, error: "reserve_failed" as const };
     }
+
+    // Allocation awaits the server. Recheck local context before even updating
+    // the derived title, and require the same content that requested the number.
+    const [currentDocuments, currentLines, currentContacts] = await Promise.all([
+        evolu.loadQuery(allDocumentsQuery), evolu.loadQuery(allDocumentLinesQuery), evolu.loadQuery(allContactsQuery),
+    ]);
+    const currentDraft = toAppRows<EvoluDocumentRow>(currentDocuments).find(row => row.id === documentId);
+    if (!currentDraft || currentDraft.status !== "draft") return { ok: false as const, error: "not_draft" as const };
+    const currentContact = toAppRows<EvoluContactRow>(currentContacts).find(row => row.id === currentDraft.contactId) ?? null;
+    if (!reservedIssueContextMatches(documentId, company.id, currentDraft, { ...context, contact: currentContact })) {
+        return { ok: false as const, error: "not_found" as const };
+    }
+    const currentDocumentLines = toAppRows<EvoluDocumentLineRow>(currentLines).filter(line => line.documentId === documentId);
+    const currentIssueError = ordinaryIssueError(documentId, currentDraft, currentDocumentLines, company, currentContact);
+    if (currentIssueError) return { ok: false as const, error: currentIssueError };
+    if (JSON.stringify(currentDraft) !== draftRevision || JSON.stringify(currentContact) !== contactRevision
+        || JSON.stringify(currentDocumentLines) !== lineRevision) return { ok: false as const, error: "not_draft" as const };
 
     // The reserved COUNTER is authoritative; the visible number is formatted
     // with the LOCAL series format. The server bridge sequence may carry a
@@ -724,6 +747,22 @@ export type ReservedIssueSnapshotContext = IssueSnapshotContext & {
     allDocuments: EvoluDocumentRow[];
 };
 
+function reservedIssueContextMatches(
+    documentId: DocumentId,
+    companyId: CompanyId,
+    document: EvoluDocumentRow | null | undefined,
+    context?: ReservedIssueSnapshotContext,
+): boolean {
+    const contactId = context?.doc.contactId || null;
+    return (!document || document.companyId === companyId)
+        && (!context || (context.company.id === companyId
+            && context.doc.id === documentId && context.doc.companyId === companyId
+            && (!document || (document.contactId || null) === contactId)
+            && (contactId
+                ? context.contact?.id === contactId && context.contact.companyId === companyId
+                : !context.contact)));
+}
+
 export function applyReservedNumberToLocalDocument(
     evolu: Evolu<InvoicingLocalSchema>,
     documentId: DocumentId,
@@ -736,6 +775,7 @@ export function applyReservedNumberToLocalDocument(
 ) {
     const draft = toAppRows<EvoluDocumentRow>(evolu.getQueryRows(allDocumentsQuery))
         .find(row => row.id === documentId);
+    if (!reservedIssueContextMatches(documentId, companyId, draft, snapshotContext)) return { ok: false as const, error: "not_found" as const };
     const lines = toAppRows<EvoluDocumentLineRow>(evolu.getQueryRows(allDocumentLinesQuery));
     const issueError = ordinaryIssueError(documentId, draft, lines, snapshotContext?.company, snapshotContext?.contact)
         ?? ordinaryIssueError(documentId, snapshotContext?.doc, snapshotContext?.lines ?? [], snapshotContext?.company, snapshotContext?.contact);
@@ -788,8 +828,6 @@ export async function applyReservedNumberToLocalDocumentAsync(
 ) {
     const doc = await waitForDraftDocument(evolu, documentId);
     const lines = toAppRows<EvoluDocumentLineRow>(await evolu.loadQuery(allDocumentLinesQuery));
-    const issueError = ordinaryIssueError(documentId, doc, lines);
-    if (issueError) return { ok: false as const, error: issueError };
     // Callers without local row context (e.g. Woo inbox import) get it loaded
     // here so their issues also freeze a snapshot. Best-effort: a missing
     // company row falls back to issuing without a snapshot (legacy behavior).
@@ -818,6 +856,10 @@ export async function applyReservedNumberToLocalDocumentAsync(
             }
         }
     }
+
+    if (!reservedIssueContextMatches(documentId, companyId, doc, context)) return { ok: false as const, error: "not_found" as const };
+    const issueError = ordinaryIssueError(documentId, doc, lines, context?.company, context?.contact);
+    if (issueError) return { ok: false as const, error: issueError };
 
     const result = applyReservedNumberToLocalDocument(
         evolu,
@@ -1200,6 +1242,10 @@ export function createLocalCreditNoteFromInvoice(
     const today = localIsoDate();
     const payload = payloadFromApiDocument(api);
     payload.type = "credit_note";
+    // Credit notes retain the source amount signs, with positive item prices.
+    payload.lines = payload.lines.map(line => line.unit_price < 0
+        ? { ...line, quantity: -line.quantity, unit_price: Math.abs(line.unit_price) }
+        : line);
     payload.title = "";
     payload.issue_date = today;
     payload.due_date = today;

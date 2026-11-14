@@ -2,7 +2,7 @@
 title: Odpočtové položky, odběratel a úhrady faktury
 category: invoicing
 order: 5
-updated: 2026-11-13
+updated: 2026-11-14
 ---
 
 # Odpočtové položky, odběratel a úhrady faktury
@@ -16,6 +16,8 @@ Odpočtovou položku na slovenské nebo české faktuře zadejte jako samostatn�
 Odpočty se záporným množstvím a kladnou cenou podporují PDF, e-mail, export UBL/ISDOC a přípravu eFaktúry při zachování stávajících podmínek odesílání. Záporná jednotková cena zůstává u strukturovaných exportů nepodporovaná. Německé hybridní faktury a externí poskytovatelé výpočtu americké daně zůstávají mimo tento postup.
 
 Dobropis vytvořený z takové faktury zachová odpočtovou položku bez změny původní faktury. Kombinace těchto odpočtů se samostatnými procentními slevami zůstává ve strukturovaných exportech nepodporovaná.
+
+Ručně zadané procentní sazby podporují nejvýše čtyři desetinná místa, například `8,875 %`. Uložené sazby položek, souhrny DPH, označení v PDF i strukturované exporty zachovávají tuto přesnost.
 
 ## Identifikační údaje odběratele
 

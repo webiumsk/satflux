@@ -2,7 +2,7 @@
 title: Deducciones, datos del cliente y pagos de facturas
 category: invoicing
 order: 5
-updated: 2026-11-13
+updated: 2026-11-14
 ---
 
 # Deducciones, datos del cliente y pagos de facturas
@@ -16,6 +16,8 @@ Para una deducción en una factura eslovaca o checa, introduzca una cantidad neg
 Las deducciones con cantidad negativa y precio positivo admiten PDF, correo, exportación UBL/ISDOC y preparación para eFaktúra con las condiciones de envío existentes. Los precios unitarios negativos siguen sin ser compatibles con las exportaciones estructuradas. Las facturas híbridas alemanas y los proveedores externos de impuestos estadounidenses quedan fuera de este flujo.
 
 Las notas de crédito creadas a partir de estas facturas conservan la deducción sin modificar la factura original. La combinación de estas deducciones con descuentos porcentuales separados sigue sin ser compatible con las exportaciones estructuradas.
+
+Los porcentajes introducidos manualmente admiten hasta cuatro decimales, por ejemplo `8,875 %`. Los tipos guardados en las líneas, los resúmenes de impuestos, las etiquetas del PDF y las exportaciones estructuradas conservan esa precisión.
 
 ## Identificadores del cliente
 

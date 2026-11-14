@@ -44,7 +44,8 @@ class BusinessDocumentIssueService
                 $price = (float) ($line['unit_price'] ?? 0);
 
                 return ! is_finite($quantity) || $quantity === 0.0 || abs($quantity) > 9_999_999_999.9999
-                    || ($quantity < 0 && ($price < 0.01 || abs($quantity) < 0.0001 || ! empty($line['company_stock_item_id']) || ! empty($line['company_warehouse_id'])))
+                    || ($quantity < 0 && ($price < 0.01 || abs($quantity) < 0.0001))
+                    || (($quantity < 0 || $price < 0) && (! empty($line['company_stock_item_id']) || ! empty($line['company_warehouse_id'])))
                     || abs($quantity * 10000 - round($quantity * 10000)) > 0.000001
                     || abs($price * 100 - round($price * 100)) > 0.000001
                     || ! is_finite($price) || abs($price) > 999_999_999_999.99

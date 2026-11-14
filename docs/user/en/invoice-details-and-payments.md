@@ -2,7 +2,7 @@
 title: Invoice deductions, buyer details and payments
 category: invoicing
 order: 5
-updated: 2026-11-13
+updated: 2026-11-14
 ---
 
 # Invoice deductions, buyer details and payments
@@ -16,6 +16,8 @@ For a deduction on a Slovak or Czech invoice, enter a negative quantity and a po
 Negative-quantity deductions at positive prices support PDF, email, UBL/ISDOC export and eFaktúra preparation under the existing sending conditions. A negative unit price remains unsupported by structured exports. German hybrid invoices and external US tax providers remain outside this deduction flow.
 
 Credit notes created from these invoices retain the deduction without changing the original invoice. Combining quantity deductions with separate percentage discounts remains unsupported in structured exports.
+
+Manual percentage rates support up to four decimal places, for example `8.875%`. Saved line rates, VAT summaries, PDF labels and structured exports retain that precision.
 
 ## Buyer identifiers
 

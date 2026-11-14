@@ -317,9 +317,9 @@ export function buildEphemeralSnapshot(
     lines: DocumentSavePayload["lines"],
     options: EphemeralSnapshotOptions = {},
 ): EphemeralSnapshotPayload {
-    // Validate negative-quantity source links before the privacy projection
+    // Validate signed source links before the privacy projection
     // deliberately strips stock routing fields from the outgoing snapshot.
-    if (lines.some(line => line.quantity < 0)) {
+    if (lines.some(line => isSignedInvoiceLine(line.quantity, line.unit_price))) {
         const error = signedInvoiceError(String(document.type ?? "invoice"), lines.map(line => ({
             quantity: line.quantity, unitPrice: line.unit_price, discount: line.line_discount_percent || 0,
             taxRate: line.tax_rate || 0, stockItemId: line.company_stock_item_id, warehouseId: line.company_warehouse_id,

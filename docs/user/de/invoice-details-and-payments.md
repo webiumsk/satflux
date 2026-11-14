@@ -2,7 +2,7 @@
 title: Abzugsposten, Käuferdaten und Rechnungszahlungen
 category: invoicing
 order: 5
-updated: 2026-11-13
+updated: 2026-11-14
 ---
 
 # Abzugsposten, Käuferdaten und Rechnungszahlungen
@@ -16,6 +16,8 @@ Für einen Abzug auf einer slowakischen oder tschechischen Rechnung geben Sie ei
 Abzüge mit negativer Menge und positivem Preis unterstützen PDF, E-Mail, UBL/ISDOC-Export und die Vorbereitung für eFaktúra unter den bestehenden Versandbedingungen. Negative Einzelpreise bleiben bei strukturierten Exporten nicht unterstützt. Deutsche Hybridrechnungen und externe US-Steueranbieter sind von diesem Ablauf ausgenommen.
 
 Aus solchen Rechnungen erstellte Gutschriften behalten die Abzugsposition bei, ohne die ursprüngliche Rechnung zu ändern. Die Kombination dieser Abzüge mit separaten prozentualen Rabatten wird in strukturierten Exporten weiterhin nicht unterstützt.
+
+Manuell eingegebene Prozentsätze unterstützen bis zu vier Nachkommastellen, zum Beispiel `8,875 %`. Gespeicherte Positionssätze, Steuerübersichten, PDF-Angaben und strukturierte Exporte behalten diese Genauigkeit bei.
 
 ## Kennnummern des Käufers
 

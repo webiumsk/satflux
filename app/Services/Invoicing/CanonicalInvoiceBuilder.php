@@ -317,7 +317,7 @@ class CanonicalInvoiceBuilder
 
     protected function taxRateKey(float $rate): string
     {
-        return number_format($rate, 2, '.', '');
+        return number_format($rate, 4, '.', '');
     }
 
     protected function formatMoney(float $amount): string

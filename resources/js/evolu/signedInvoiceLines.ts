@@ -13,7 +13,16 @@ export function supportsNegativeQuantity(type: string): boolean {
 type CompanyContext = { jurisdiction?: unknown; app_settings?: unknown } | null;
 
 export function signedMoneyRound(value: number): number {
-    return Math.sign(value) * Math.round((Math.abs(value) + Number.EPSILON) * 100) / 100;
+    if (!Number.isFinite(value) || value === 0) return value;
+    const magnitude = Math.abs(value);
+    // Match PHP round(..., 2): first remove floating-point multiplication
+    // noise at its decimal precision, then round halves away from zero.
+    const decimalExponent = Number(magnitude.toExponential().split("e")[1]);
+    const precision = 14 - decimalExponent;
+    const cents = precision > 2 && precision - 2 < 15
+        ? Math.floor(magnitude * 10 ** precision + 0.5) / 10 ** (precision - 2)
+        : magnitude * 100;
+    return Math.sign(value) * Math.floor(cents + 0.5) / 100;
 }
 
 /** CanonicalInvoiceLine serializes net, tax and gross separately to two decimals. */
@@ -34,7 +43,7 @@ export function signedInvoiceError(
     documentDiscount = 0,
 ): "unsupported_negative_lines" | "positive_total_required" | "deduction_stock_not_supported" | null {
     if (!lines.some(line => isSignedInvoiceLine(line.quantity, line.unitPrice))) return null;
-    if (lines.some(line => line.quantity < 0 && (line.stockItemId || line.warehouseId))) return "deduction_stock_not_supported";
+    if (lines.some(line => isSignedInvoiceLine(line.quantity, line.unitPrice) && (line.stockItemId || line.warehouseId))) return "deduction_stock_not_supported";
     const settings = (company?.app_settings ?? {}) as Record<string, unknown>;
     if (!supportsNegativeQuantity(type)
         || (type !== "invoice" && lines.some(line => line.unitPrice < 0))
@@ -42,7 +51,7 @@ export function signedInvoiceError(
         || (company?.jurisdiction === "us" && !["manual", "none"].includes(String(settings.us_sales_tax_provider ?? "manual")))
         || !hasPrecision(documentDiscount, 2)
         || lines.some(line => !hasPrecision(line.unitPrice, 2) || !hasPrecision(line.quantity, 4)
-            || !hasPrecision(line.discount, 2) || !hasPrecision(line.taxRate, 2)
+            || !hasPrecision(line.discount, 2) || !hasPrecision(line.taxRate, 4) || line.taxRate < 0 || line.taxRate > 100
             || line.quantity === 0 || Math.abs(line.quantity) > 9999999999.9999
             || (line.quantity < 0 && line.unitPrice <= 0)
             || Math.abs(line.unitPrice) > 999999999999.99

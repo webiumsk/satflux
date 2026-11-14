@@ -87,13 +87,14 @@ class UsSalesTaxCalculationService
      */
     protected function manualBreakdown(array $lines): array
     {
+        $hasSignedLine = collect($lines)->contains(fn (CanonicalInvoiceLine $line): bool => $line->quantity < 0 || $line->unitPrice < 0);
         $buckets = [];
         foreach ($lines as $line) {
             $tax = (float) $line->taxAmount;
-            if ($tax <= 0) {
+            if ($tax === 0.0 && ! $hasSignedLine) {
                 continue;
             }
-            $key = number_format($line->taxRate, 2, '.', '');
+            $key = number_format($line->taxRate, 4, '.', '');
             if (! isset($buckets[$key])) {
                 $buckets[$key] = ['rate' => $line->taxRate, 'net' => 0.0, 'tax' => 0.0];
             }

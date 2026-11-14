@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasHistoricalSignedSource, signedInvoiceError, supportsNegativeQuantity } from "@/evolu/signedInvoiceLines";
+import { hasHistoricalSignedSource, signedInvoiceError, signedLineAmounts, signedMoneyRound, supportsNegativeQuantity } from "@/evolu/signedInvoiceLines";
 
 const lines = [
     { quantity: 1, unitPrice: 100, discount: 0, taxRate: 23 },
@@ -7,6 +7,15 @@ const lines = [
 ];
 const amounts = { subtotal: "80.00", taxTotal: "18.40", total: "98.40" };
 describe("signed invoice eligibility", () => {
+    it.each([0, 8.875, 8.8751, 100])("retains supported percentage precision for rate %s", taxRate => {
+        expect(signedInvoiceError("invoice", lines.map(line => ({ ...line, taxRate })), { jurisdiction: "us" })).toBeNull();
+    });
+    it.each([-0.01, 100.0001, 8.87501, Infinity, NaN])("rejects unsupported percentage rate %s", taxRate => {
+        expect(signedInvoiceError("invoice", lines.map(line => ({ ...line, taxRate })), { jurisdiction: "us" })).toBe("unsupported_negative_lines");
+    });
+    it.each(["stockItemId", "warehouseId"])("rejects negative-price financial deductions linked through %s", field => {
+        expect(signedInvoiceError("invoice", [lines[0], { ...lines[1], [field]: "stock-link" }], { jurisdiction: "eu_sk" })).toBe("deduction_stock_not_supported");
+    });
     it.each(["eu_sk", "eu_cz", "us"])("permits a positive deduction invoice for %s", jurisdiction => {
         expect(signedInvoiceError("invoice", lines, { jurisdiction }, amounts)).toBeNull();
     });
@@ -29,6 +38,24 @@ describe("signed invoice eligibility", () => {
     it("allows invalid draft totals to be edited but rejects issuing them", () => {
         expect(signedInvoiceError("invoice", lines, { jurisdiction: "eu_sk" })).toBeNull();
         expect(signedInvoiceError("invoice", lines, { jurisdiction: "eu_sk" }, { subtotal: -1, taxTotal: 0, total: -1 })).toBe("positive_total_required");
+    });
+});
+
+describe("PHP-compatible signed money rounding", () => {
+    it.each([
+        [0.5 * 20.15, 10.08], [1.005, 1.01], [2.675, 2.68],
+        [1234.565, 1234.57], [100000000.015, 100000000.02],
+        [999999999999.985, 999999999999.99],
+        [10.074999999, 10.07], [10.075000001, 10.08],
+        [0.00499999999, 0], [0.004999999999999999, 0.01], [0.005, 0.01],
+    ])("rounds %s and its opposite away from a half cent", (value, expected) => {
+        expect(signedMoneyRound(value)).toBe(expected);
+        expect(signedMoneyRound(-value)).toBe(-expected);
+    });
+    it("rounds signed net, percentage tax and gross independently", () => {
+        const positive = { quantity: 0.5, unitPrice: 20.15, discount: 0, taxRate: 23 };
+        expect(signedLineAmounts(positive, "per_line")).toEqual({ net: 10.08, tax: 2.32, gross: 12.4 });
+        expect(signedLineAmounts({ ...positive, quantity: -0.5 }, "per_document")).toEqual({ net: -10.08, tax: -2.32, gross: -12.39 });
     });
 });
 

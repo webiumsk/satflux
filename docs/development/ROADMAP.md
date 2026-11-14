@@ -1,5 +1,22 @@
 # Development roadmap
 
+## PR443 review corrections - 2026-11-14
+
+- [x] Verify all nine original findings; fix every still-valid issue with regressions.
+- [x] Align four-decimal percentage storage/buckets/XML/PDF and signed credit notes.
+- [x] Protect checkout, stock, outer commit, precise issue/buyer context and snapshots.
+- [x] Close independent QA/security findings including zero-tax buckets, frozen VAT,
+  exact buyer references, pre-allocation and post-await isolation, and PDF labels.
+- [x] Pass full frontend 3,193 / 241, related PHP 211 / 1,325 and required local
+  static/build/API/locale checks; independent QA/security accept 22 frozen files.
+- [ ] Push the correction to existing PR443 and verify exact-head complete CI.
+- [ ] Owner merge/deployment decision; apply new tax-rate migration only through an
+  approved release. Down refuses lossy narrowing while fractional values exist.
+
+Local full PHP runtime preparation remains permission-gated after automatic
+rejection; no dependency install is assumed. CI remains a separately observed gate.
+See `PR443_REVIEW_FIXES.md`; unrelated PDF branch and existing previews are preserved.
+
 ## PR443 Laravel audit repair - 2026-11-13
 
 - [x] Confirm all 3,412 PHP tests, Pint and PHPStan pass after API inventory repair.

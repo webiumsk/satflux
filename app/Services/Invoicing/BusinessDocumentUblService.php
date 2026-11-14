@@ -406,6 +406,6 @@ class BusinessDocumentUblService
 
     protected function formatRate(float $rate): string
     {
-        return rtrim(rtrim(number_format($rate, 2, '.', ''), '0'), '.');
+        return rtrim(rtrim(number_format($rate, 4, '.', ''), '0'), '.');
     }
 }

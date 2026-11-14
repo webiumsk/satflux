@@ -84,9 +84,9 @@ class BusinessDocumentCreditNoteService
         $lines = $invoice->lines->map(fn (BusinessDocumentLine $line) => [
             'name' => $line->name,
             'description' => $line->description,
-            'quantity' => (float) $line->quantity,
+            'quantity' => (float) $line->unit_price < 0 ? -(float) $line->quantity : (float) $line->quantity,
             'unit' => $line->unit,
-            'unit_price' => (float) $line->unit_price,
+            'unit_price' => abs((float) $line->unit_price),
             'line_discount_percent' => (float) $line->line_discount_percent,
             'tax_rate' => (float) $line->tax_rate,
         ])->all();

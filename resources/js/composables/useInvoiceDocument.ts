@@ -220,10 +220,18 @@ export function useInvoiceDocument() {
       ? local.documentApi(documentId.value as DocumentId)
       : null,
   );
-  const storedSignedDocument = computed(() =>
-    hasHistoricalSignedSource(existingLocalDocument(), form.lines.some(line => isSignedInvoiceLine(line.quantity, line.unit_price)))
-      ? persistedSignedDocument.value : null,
-  );
+  const storedSignedDocument = computed(() => {
+    const document = persistedSignedDocument.value;
+    if (!document || !hasHistoricalSignedSource(existingLocalDocument(), true)) return null;
+    const saved = payloadFromApiDocument(document);
+    const current = payload();
+    // Historical source amounts remain authoritative only for unchanged input.
+    return current.type === saved.type && current.currency === saved.currency
+      && current.company_contact_id === saved.company_contact_id
+      && current.discount_percent === saved.discount_percent
+      && JSON.stringify(current.lines) === JSON.stringify(saved.lines)
+      ? document : null;
+  });
 
   const selectedContact = computed(
     () => contacts.value.find((c) => c.id === form.company_contact_id) ?? null
@@ -265,7 +273,11 @@ export function useInvoiceDocument() {
     payment_bank_enabled: form.payment_bank_enabled,
     pdf_show_signature: form.pdf_show_signature,
     pdf_show_payment_info: form.pdf_show_payment_info,
-    lines: form.lines,
+    lines: storedSignedDocument.value ? form.lines : form.lines.map(line => {
+      const current = { ...line };
+      delete current.historical_line_total;
+      return current;
+    }),
   }));
 
   const showLineTaxColumn = computed(() =>
@@ -337,6 +349,7 @@ export function useInvoiceDocument() {
   });
 
   function lineTotalDisplay(line: InvoiceLineForm) {
+    if (storedSignedDocument.value && line.historical_line_total !== undefined) return line.historical_line_total;
     if (form.lines.some(item => isSignedInvoiceLine(item.quantity, item.unit_price))) {
       return signedLineAmounts({ quantity: line.quantity || 0, unitPrice: line.unit_price || 0,
         discount: line.line_discount_percent || 0, taxRate: lineTaxApplies() ? lineTaxRate(line) : 0 },
@@ -917,8 +930,9 @@ export function useInvoiceDocument() {
   }
 
   function buildCurrentEphemeralSnapshot() {
-    const storedDocument = persistedSignedDocument.value;
-    const p = storedDocument ? payloadFromApiDocument(storedDocument) : payload();
+    const storedDocument = storedSignedDocument.value;
+    const p = payload();
+    const signed = p.lines.some(line => isSignedInvoiceLine(line.quantity, line.unit_price));
     // Snapshot payloads are loose records (frozen snapshots override with
     // partial data); buildEphemeralSnapshot takes Record<string, unknown>.
     let companyForSnapshot: Record<string, unknown> | null = company.value;
@@ -943,6 +957,13 @@ export function useInvoiceDocument() {
       };
       contactForSnapshot = frozen.contact ? { ...frozen.contact } : null;
     }
+    // Source amounts must use the same supplier/buyer VAT policy emitted below.
+    const snapshotDefaultVat = Number(companyForSnapshot?.vat_rate_default ?? 0);
+    const totals = signed ? calcDocumentTotals(p.lines, p.discount_percent, snapshotDefaultVat,
+      () => vatPolicy.calculatesVatAmounts(companyForSnapshot, contactForSnapshot),
+      line => vatPolicy.resolveLineTaxRate(companyForSnapshot, contactForSnapshot, line.tax_rate ?? snapshotDefaultVat),
+      appSettingsFromCompany(companyForSnapshot).rounding_method,
+    ) : null;
     return buildEphemeralSnapshot(
       companyForSnapshot,
       contactForSnapshot,
@@ -969,16 +990,16 @@ export function useInvoiceDocument() {
         payment_btc_enabled: p.payment_btc_enabled,
         discount_percent: p.discount_percent,
         amount_paid: amountPaid.value,
-        subtotal: storedDocument?.subtotal,
-        tax_total: storedDocument?.tax_total,
-        total: storedDocument?.total,
-        lines: storedDocument?.lines,
+        subtotal: storedDocument?.subtotal ?? totals?.subtotal,
+        tax_total: storedDocument?.tax_total ?? totals?.taxTotal,
+        total: storedDocument?.total ?? totals?.total,
+        lines: storedDocument?.lines ?? totals?.lineTotals.map(line_total => ({ line_total })),
       },
       p.lines,
       {
         storeId: p.store_id || null,
         evoluDocumentId: documentId.value || null,
-        btcpayCheckoutLink: storedDocument ? null : (localBtcpayCheckoutLink.value || null),
+        btcpayCheckoutLink: signed ? null : (localBtcpayCheckoutLink.value || null),
       },
     );
   }

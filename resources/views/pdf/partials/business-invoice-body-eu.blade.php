@@ -8,6 +8,11 @@
             ? number_format($amount, 2, '.', ',')
             : number_format($amount, 2, ',', ' ');
     };
+    $formatTaxRate = static function (float $rate, int $minimumDecimals = 0) use ($isUs): string {
+        $fraction = explode('.', rtrim(number_format($rate, 4, '.', ''), '0'))[1] ?? '';
+
+        return number_format($rate, max($minimumDecimals, strlen($fraction)), $isUs ? '.' : ',', $isUs ? ',' : ' ');
+    };
     $docTitle = match ($document->type->value) {
         'proforma' => __('Proforma invoice'),
         'credit_note' => __('Credit note'),
@@ -195,9 +200,9 @@
                 <td class="col-unit">{{ InvoiceUnitLabel::format($line->unit) }}</td>
                 <td class="col-price">{{ $fmtAmount((float) $line->unit_price) }} {{ $document->currency }}</td>
                 @if(!empty($showSalesTaxColumn))
-                    <td class="col-vat">{{ number_format((float) $line->tax_rate, 2, $isUs ? '.' : ',', $isUs ? ',' : ' ') }}%</td>
+                    <td class="col-vat">{{ $formatTaxRate((float) $line->tax_rate, 2) }}%</td>
                 @elseif(!empty($showVatColumn))
-                    <td class="col-vat">{{ number_format((float) $line->tax_rate, 0, ',', ' ') }} %</td>
+                    <td class="col-vat">{{ $formatTaxRate((float) $line->tax_rate) }} %</td>
                 @endif
                 <td class="col-total"><strong>{{ $fmtAmount((float) $line->line_total) }} {{ $document->currency }}</strong></td>
             </tr>
@@ -229,7 +234,7 @@
                     @if(!empty($taxBreakdown))
                         @foreach($taxBreakdown as $row)
                             <tr>
-                                <td class="label">{{ $vatLabel ?? __('VAT') }} {{ number_format($row->ratePercent, 0, ',', ' ') }} %</td>
+                                <td class="label">{{ $vatLabel ?? __('VAT') }} {{ $formatTaxRate((float) $row->ratePercent) }} %</td>
                                 <td class="value">{{ $fmtAmount((float) $row->taxAmount) }} {{ $document->currency }}</td>
                             </tr>
                         @endforeach

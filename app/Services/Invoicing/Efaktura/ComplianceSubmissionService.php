@@ -38,7 +38,12 @@ class ComplianceSubmissionService
             return;
         }
 
-        SubmitBusinessDocumentCompliance::dispatch($document->id);
+        // Issue can run inside mark-paid or another enclosing transaction.
+        // A rollback must discard submission even when the queue runs inline.
+        $documentId = $document->id;
+        $document->getConnection()->afterCommit(static function () use ($documentId): void {
+            SubmitBusinessDocumentCompliance::dispatch($documentId);
+        });
     }
 
     public function submitNow(BusinessDocument $document): ComplianceSubmissionResult

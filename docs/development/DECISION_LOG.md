@@ -1,5 +1,30 @@
 # Development decision log
 
+## 2026-11-14 - Correct verified PR443 findings across both invoice modes
+
+Verify all nine review claims against `da039ded`; all remain valid. Match the
+existing four-place Stripe percentage conversion with decimal(7,4) storage and
+consistent local/canonical/XML/PDF handling, retaining the complete 0-100 range.
+Preserve zero-tax signed bases for per-rate validation; unsigned display remains
+compatible. Serialize PostgreSQL rollback guard and narrowing with an exclusive
+lock, refusing fractional-data loss instead of silently rounding existing rows.
+
+Normalize negative price into equivalent quantity only in derived credit-note
+copies. Keep original invoices, amount signs, stock guards and structured-export
+restrictions. Reject credit-note checkout before lookup or provider invocation.
+Queue compliance after the outermost transaction on the document connection.
+Use exactly the same immutable supplier/buyer for signed snapshot calculations
+and forwarding; preserve historical amounts when unchanged. Enforce exact context
+before allocation and after waits before any local side effect.
+
+PHP's actual 8.3 rounding and the browser agree in 290,256 cases; independent
+canonical differential and actual PostgreSQL/PDF checks pass. QA/security accept
+the corrected 22-file freeze and every original finding. Main full frontend,
+related PHP and static/build/API/locale gates pass. No local full-PHP success is
+inferred from its environment failures or from prior CI; new-head CI is separate.
+A rejected temporary npm install is not retried without the requested owner approval.
+No merge, deployment, dependency/CI-policy change or owner-data migration.
+
 ## 2026-11-13 - Resolve the new Laravel audit finding with a minimal lock update
 
 After the API preflight repair, PR443's PHP tests and static/style checks pass.
