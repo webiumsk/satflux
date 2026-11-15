@@ -5,7 +5,7 @@
     :subtitle="t('invoicing.vat_report_subtitle')"
   >
     <template #header>
-      <InvoicingAppHeader />
+      <InvoicingAppHeader :show-filter-bar="false" />
     </template>
 
     <template #actions>

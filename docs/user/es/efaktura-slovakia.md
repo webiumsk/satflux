@@ -10,6 +10,8 @@ updated: 2026-11-15
 
 La conexión admite **recepción y envío manual**. La recepción e importación de una factura y una nota de crédito se han verificado en la red de pruebas de Peppol. También se ha confirmado el envío manual de ambos tipos de documento a través de ePostman a Recommand en esa red de pruebas. La activación en producción, las comunicaciones de datos exigidas y las condiciones del archivo requieren confirmación independiente. Satflux no se presenta como una solución completa para la facturación electrónica obligatoria eslovaca.
 
+En el perfil de la empresa, las guías de configuración aparecen como tarjetas compactas. Abra una tarjeta para ver su lista de pasos y la opción de ocultarla o recibir un recordatorio más tarde. El estado de conexión no verificada de eFaktúra sigue visible con la tarjeta cerrada.
+
 ## Conectar su empresa
 
 Configure cada empresa por separado. Activar la recepción de una empresa eslovaca no activa la de una LLC extranjera.
@@ -25,11 +27,15 @@ Si ya hay un secreto guardado para la misma conexión, deje su campo vacío para
 
 ## Conexiones separadas para recepción y envío
 
-De forma predeterminada, la recepción utiliza el mismo proveedor y las mismas credenciales que el envío. Las conexiones existentes conservan esta opción. Para recibir mediante otro proveedor, desactive la conexión compartida en la sección de recepción, seleccione un proveedor compatible e introduzca sus propias credenciales. Pruebe cada conexión modificada y guarde los ajustes. Una conexión de recepción separada e incompleta no utiliza al proveedor de envío como alternativa. Una empresa que solo recibe puede configurar la recepción sin completar las credenciales de envío.
+Una empresa que solo recibe ve una única configuración de **Proveedor de recepción** con su conexión existente. Seleccione el proveedor, introduzca o conserve sus credenciales, pruebe la conexión y guarde. En este modo no aparece la opción de conexión de envío. Abrir los ajustes no mueve credenciales ni cambia el proveedor.
 
-La comprobación del buzón y el estado de recepción utilizan la conexión de recepción. El envío manual y la clave API Enterprise utilizan la conexión de envío. Cambiar las credenciales de recepción no modifica un intento de envío existente ni su historial. Un envío incierto debe verificarse con su proveedor original; Satflux no lo envía automáticamente a través de otro proveedor.
+Las empresas que envían y reciben tienen secciones separadas de **Proveedor de envío** y **Proveedor de recepción**. De forma predeterminada está marcada **Usar la conexión de envío para recibir**: la recepción utiliza el proveedor y las credenciales de la sección de envío. Desmárquela para configurar un proveedor de recepción compatible con sus propias credenciales. Ambos conjuntos de datos se conservan al cambiar esta opción; guarde para aplicar el cambio. Una recepción separada incompleta no recurre a la conexión de envío.
 
-Seleccionar un proveedor aquí no registra ni transfiere el servicio de recepción de la empresa. Solo puede haber un proveedor de recepción por DIČ; acuerde cualquier cambio con los proveedores por separado. Una opción predefinida no demuestra compatibilidad probada con todos los proveedores. Las conexiones separadas requieren un servidor Satflux compatible; si falta esta función, complete primero la actualización del servidor.
+Si una empresa que solo recibe tiene una configuración separada vacía y existe una conexión anterior guardada, **Usar la conexión anterior** la selecciona en el formulario. Guarde para aplicar la selección. Los datos separados existentes y los cambios en curso no se sustituyen automáticamente.
+
+La comprobación del buzón utiliza la conexión de recepción; el envío manual y la clave API Enterprise utilizan la conexión de envío. Cambiar los datos de recepción no modifica un intento de envío ni su historial. Confirme un envío incierto con su proveedor original; Satflux no lo envía automáticamente a través de otro proveedor.
+
+Seleccionar un proveedor aquí no registra ni transfiere el servicio de recepción. Solo puede haber un proveedor de recepción por DIČ; acuerde cualquier traslado por separado. Una opción predefinida no demuestra compatibilidad probada con todos los proveedores. Las conexiones separadas requieren un servidor Satflux compatible.
 
 ## Encontrar e importar documentos recibidos
 

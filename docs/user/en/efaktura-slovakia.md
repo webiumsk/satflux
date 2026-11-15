@@ -10,6 +10,8 @@ updated: 2026-11-15
 
 The connection supports **receiving and manual sending**. Receiving and importing an invoice and a credit note have been verified in the Peppol Test Network. Manual sending of both document types through ePostman to Recommand has also been confirmed in that test network. Production activation, statutory reporting and the provider's archive arrangements require separate confirmation. Satflux does not present this as a complete solution for mandatory Slovak e-invoicing.
 
+On the company profile, setup guidance appears as compact cards. Open a card to see its checklist and the option to hide it or remind you later. The unverified eFaktúra status remains visible when the card is closed.
+
 ## Connect your company
 
 Set up each company's connection separately. Enabling a Slovak company's receiving does not enable it for a foreign LLC.
@@ -25,11 +27,15 @@ If a secret is already saved for the same connection, leave its field empty to k
 
 ## Separate receiving and sending connections
 
-By default, receiving uses the same provider and credentials as sending. Existing connections keep this setting. To use a different receiving provider, turn off the shared connection choice in the receiving section, select a supported provider and enter its own credentials. Test each changed connection and save the settings. An incomplete separate receiving connection does not fall back to the sending provider. A receiving-only company can configure receiving without completing sending credentials.
+A receiving-only company sees one **Receiving provider** setup with its existing connection. Select the provider, enter or retain its credentials, test the connection and save. There is no sending-connection choice in this mode. Opening the settings does not move credentials or switch the provider.
 
-The mailbox check and receiving status use the receiving connection. Manual sends and the Enterprise API key use the sending connection. Changing receiving credentials does not change an existing outgoing attempt or its status history. An uncertain send must be reconciled with its original provider; Satflux does not automatically send it through another provider.
+Companies that send and receive have separate **Sending provider** and **Receiving provider** sections. By default, **Use the sending connection for receiving** is selected: receiving uses the provider and credentials entered in the sending section. Turn it off to configure a supported receiving provider with its own credentials. Both sets of details remain available when you change this choice; apply the change with Save. An incomplete separate receiver does not fall back to the sender.
 
-Choosing a provider here does not register or transfer your company's receiving service. A company can have one receiving provider per DIČ; confirm any receiving-provider change with the providers separately. A preset does not establish tested compatibility with every provider. Separate connections require a compatible Satflux server; if support is unavailable, finish the server update before saving them.
+If a receiving-only company has an empty separate setup and a previous saved connection is available, **Use previous connection** selects it in the form. Save to apply the selection. Existing separate details and entered drafts are not automatically replaced.
+
+Mailbox checks use the receiving connection; manual sends and the Enterprise API key use the sending connection. Changing receiving details does not rewrite an outgoing attempt or its history. Reconcile uncertain sends with their original provider; Satflux does not automatically send them through another provider.
+
+Choosing a provider here does not register or transfer your receiving service. A company can have one receiving provider per DIČ; arrange any transfer separately. Presets do not establish tested compatibility with every provider. Separate connections require a compatible Satflux server.
 
 ## Find and import received documents
 

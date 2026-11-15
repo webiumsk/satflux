@@ -1420,4 +1420,215 @@ describe('eFaktura settings wizard', () => {
     wrapper.unmount();
   });
 
+  it.each((['full', 'inbound_only'] as const).flatMap((mode) => [true, false].flatMap((shared) => [false, true].map((local) => ({ mode, shared, local })))))('shows only the effective editors without mutating $mode shared=$shared local=$local settings', async ({ mode, shared, local }) => {
+    state.localFirst = local;
+    const company = skCompany({ ...splitSettings(), efaktura_inbound_use_shared_connection: shared,
+      ...(local ? { efaktura_sapi_client_secret: 'synthetic-shared-secret', efaktura_inbound_sapi_client_secret: 'synthetic-receiver-secret' } : {}) });
+    state.localRows = [company];
+    const before = JSON.stringify(company);
+    const wrapper = mountForm(company, mode); await flushPromises();
+    const headings = wrapper.findAll('h2').map((heading) => heading.text());
+    expect(headings).toEqual(mode === 'inbound_only' ? ['invoicing.efaktura_receiving_connection']
+      : ['invoicing.efaktura_sending_connection', 'invoicing.efaktura_receiving_connection']);
+    expect(wrapper.find('#efaktura-inbound-shared').exists()).toBe(mode === 'full');
+    expect(wrapper.find('#efaktura-client-id').exists()).toBe(mode === 'full' || shared);
+    expect(wrapper.find('#efaktura-inbound-client-id').exists()).toBe(!shared);
+    if (mode === 'inbound_only') {
+      const id = shared ? '#efaktura-client-id' : '#efaktura-inbound-client-id';
+      expect((wrapper.get(id).element as HTMLInputElement).value).toBe(shared ? 'synthetic-client' : 'synthetic-receiver');
+      expect(wrapper.text()).not.toContain('invoicing.efaktura_sending_connection');
+      expect(wrapper.text()).toContain('invoicing.efaktura_epostman_step3_title');
+    } else {
+      expect(wrapper.text()).toContain(shared ? 'efaktura_receiving_shared_hint' : 'efaktura_receiving_separate_hint');
+    }
+    expect((wrapper.get('form').element as HTMLFormElement).checkValidity()).toBe(true);
+    expect(wrapper.text()).toContain('efaktura_receiving_registration_note');
+    expect(JSON.stringify(company)).toBe(before);
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    expect(updateLocalEfakturaSettings).not.toHaveBeenCalled();
+    expect(state.testCalls).toHaveLength(0);
+    wrapper.unmount();
+  });
+
+  it.each([true, false])('preserves the selected receiver and unsaved credentials through company mode changes (shared=%s)', async (shared) => {
+    const company = skCompany({ ...splitSettings(), efaktura_inbound_use_shared_connection: shared });
+    const before = JSON.stringify(company);
+    const wrapper = mountForm(company);
+    const clientId = shared ? '#efaktura-client-id' : '#efaktura-inbound-client-id';
+    const secretId = shared ? '#efaktura-client-secret' : '#efaktura-inbound-client-secret';
+    await wrapper.get(clientId).setValue('synthetic-unsaved-client');
+    await wrapper.get(secretId).setValue('synthetic-unsaved-secret');
+    await wrapper.setProps({ mode: 'inbound_only' });
+    expect(wrapper.findAll('h2').map((heading) => heading.text())).toEqual(['invoicing.efaktura_receiving_connection']);
+    expect(wrapper.find('#efaktura-inbound-shared').exists()).toBe(false);
+    expect((wrapper.get(clientId).element as HTMLInputElement).value).toBe('synthetic-unsaved-client');
+    expect((wrapper.get(secretId).element as HTMLInputElement).value).toBe('synthetic-unsaved-secret');
+    await wrapper.setProps({ mode: 'full' });
+    expect((wrapper.get('#efaktura-inbound-shared').element as HTMLInputElement).checked).toBe(shared);
+    expect((wrapper.get(secretId).element as HTMLInputElement).value).toBe('synthetic-unsaved-secret');
+    expect(JSON.stringify(company)).toBe(before);
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    expect(updateLocalEfakturaSettings).not.toHaveBeenCalled();
+    expect(state.testCalls).toHaveLength(0);
+    wrapper.unmount();
+  });
+
+  it.each([true, false].flatMap((shared) => [true, false].map((testEnvironment) => ({ shared, testEnvironment }))))('keeps full ePostman onboarding with the effective receiving environment (shared=$shared test=$testEnvironment)', async ({ shared, testEnvironment }) => {
+    const receivingUrl = testEnvironment ? 'https://testpostman.slovakodata.com' : 'https://postman.slovakodata.com';
+    const otherUrl = testEnvironment ? 'https://postman.slovakodata.com' : 'https://testpostman.slovakodata.com';
+    const company = skCompany({ ...splitSettings(), efaktura_inbound_use_shared_connection: shared,
+      efaktura_sapi_base_url: shared ? receivingUrl : otherUrl,
+      efaktura_inbound_sapi_base_url: shared ? otherUrl : receivingUrl });
+    const wrapper = mountForm(company, 'inbound_only'); await flushPromises();
+    const setup = wrapper.get(shared ? '[data-testid="epostman-setup"]' : '[data-testid="epostman-inbound-setup"]');
+    expect(setup.text()).toContain(testEnvironment ? 'efaktura_epostman_activation_test' : 'efaktura_epostman_activation');
+    expect(setup.text().includes('efaktura_epostman_test_notice')).toBe(testEnvironment);
+    expect(setup.text()).toContain('efaktura_peppol_derived_hint');
+    expect(setup.findAll('a').some((link) => link.attributes('href') === receivingUrl)).toBe(true);
+    expect(setup.findAll('a').some((link) => link.attributes('href') === otherUrl)).toBe(false);
+    expect(setup.findAll('a').some((link) => link.attributes('href') === 'https://postman.slovakodata.com/help/zaciname/onboarding/')).toBe(true);
+    const guide = wrapper.get(shared ? '[data-testid="epostman-credentials-guide"]' : '[data-testid="epostman-inbound-credentials-guide"]');
+    expect(guide.findAll('ol li')).toHaveLength(3);
+    expect(guide.text()).toContain('efaktura_epostman_sapi_not_api_key');
+    expect(wrapper.text()).toContain('efaktura_step1_title');
+    expect(wrapper.text()).toContain('efaktura_step2_title');
+    expect(wrapper.text()).toContain('efaktura_epostman_step3_title');
+    wrapper.unmount();
+  });
+
+  it.each([true, false])('tests the existing effective receiving fields without switching or copying connections (shared=%s)', async (shared) => {
+    const company = skCompany({ ...splitSettings(), efaktura_inbound_use_shared_connection: shared });
+    const before = JSON.stringify(company);
+    const wrapper = mountForm(company, 'inbound_only');
+    await (shared ? testButton(wrapper) : wrapper.get('[data-testid="efaktura-inbound-test"]')).trigger('click');
+    await flushPromises();
+    expect(state.testCalls).toHaveLength(1);
+    expect(state.testCalls[0]).toMatchObject({ efaktura_sapi_base_url: shared ? connectedSettings().efaktura_sapi_base_url : splitSettings().efaktura_inbound_sapi_base_url,
+      efaktura_sapi_client_id: shared ? 'synthetic-client' : 'synthetic-receiver', efaktura_sapi_client_secret: null });
+    if (!shared) expect(state.testCalls[0]).toHaveProperty('direction', 'inbound');
+    expect(JSON.stringify(company)).toBe(before);
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  function emptySeparateSettings(): Record<string, unknown> {
+    return { ...connectedSettings(), efaktura_inbound_use_shared_connection: false,
+      efaktura_inbound_sapi_base_url: '', efaktura_inbound_sapi_client_id: '', efaktura_inbound_sapi_client_secret_set: false };
+  }
+
+  it.each([false, true])('selects the previous connection only on explicit recovery and applies it only on Save (local=%s)', async (local) => {
+    state.localFirst = local;
+    const company = skCompany({ ...emptySeparateSettings(), ...(local ? { efaktura_sapi_client_secret: 'synthetic-shared-secret' } : {}) });
+    state.localRows = [company];
+    const before = JSON.stringify(company);
+    const focus = vi.spyOn(HTMLSelectElement.prototype, 'focus');
+    const wrapper = mountForm(company, 'inbound_only');
+    expect(wrapper.find('#efaktura-client-id').exists()).toBe(false);
+    await wrapper.get('[data-testid="efaktura-use-previous-connection"]').trigger('click'); await flushPromises();
+    expect(wrapper.find('#efaktura-inbound-client-id').exists()).toBe(false);
+    expect((wrapper.get('#efaktura-client-id').element as HTMLInputElement).value).toBe('synthetic-client');
+    expect(wrapper.findAll('h2').map((heading) => heading.text())).toEqual(['invoicing.efaktura_receiving_connection']);
+    expect(wrapper.text()).toContain('efaktura_receiving_previous_save_required');
+    expect(focus.mock.instances.at(-1)).toBe(wrapper.get('#efaktura-cpds-preset').element);
+    expect(JSON.stringify(company)).toBe(before);
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    expect(updateLocalEfakturaSettings).not.toHaveBeenCalled();
+    expect(state.testCalls).toHaveLength(0);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith(local ? 'bridge-1' : 'company-1', expect.objectContaining({
+      efaktura_inbound_use_shared_connection: true, efaktura_sapi_client_id: 'synthetic-client',
+      efaktura_inbound_sapi_base_url: local ? null : '', efaktura_inbound_sapi_client_id: local ? null : '',
+    }));
+    if (local) expect(company.app_settings.efaktura_sapi_client_secret).toBe('synthetic-shared-secret');
+    expect(state.notifySaved).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
+
+  it.each([
+    { efaktura_inbound_sapi_base_url: 'https://receiver.test' },
+    { efaktura_inbound_sapi_client_id: 'synthetic-receiver' },
+    { efaktura_inbound_sapi_client_secret_set: true },
+    { efaktura_inbound_sapi_client_secret: 'synthetic-receiver-secret' },
+    { efaktura_sapi_base_url: '' },
+    { efaktura_sapi_client_id: '' },
+    { efaktura_sapi_client_secret_set: false },
+  ])('does not offer recovery for a saved receiver or unavailable shared credentials (%j)', (settings) => {
+    const wrapper = mountForm(skCompany({ ...emptySeparateSettings(), ...settings }), 'inbound_only');
+    expect(wrapper.find('[data-testid="efaktura-use-previous-connection"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it.each(['url', 'client', 'secret', 'removal'])('never discards an in-progress separate receiving %s draft through recovery', async (field) => {
+    const company = skCompany(emptySeparateSettings());
+    const before = JSON.stringify(company);
+    const wrapper = mountForm(company, 'inbound_only'); await flushPromises();
+    expect(wrapper.find('[data-testid="efaktura-use-previous-connection"]').exists()).toBe(true);
+    if (field === 'url') {
+      await wrapper.get('#efaktura-inbound-preset').setValue('custom');
+      await wrapper.get('#efaktura-inbound-base-url').setValue('https://draft.test');
+    }
+    if (field === 'client') await wrapper.get('#efaktura-inbound-client-id').setValue('synthetic-draft-client');
+    if (field === 'secret' || field === 'removal') await wrapper.get('#efaktura-inbound-client-secret').setValue('synthetic-draft-secret');
+    if (field === 'removal') await wrapper.get('[data-testid="efaktura-inbound-remove-secret"]').trigger('click');
+    expect(wrapper.find('[data-testid="efaktura-use-previous-connection"]').exists()).toBe(false);
+    expect(JSON.stringify(company)).toBe(before);
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    expect(updateLocalEfakturaSettings).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('never offers a saved separate secret for recovery after its display flag was invalidated by a URL edit', async () => {
+    const company = skCompany({ ...emptySeparateSettings(), efaktura_inbound_sapi_client_secret_set: true });
+    const before = JSON.stringify(company);
+    const wrapper = mountForm(company, 'inbound_only'); await flushPromises();
+    await wrapper.get('#efaktura-inbound-preset').setValue('custom');
+    await wrapper.get('#efaktura-inbound-base-url').setValue('https://draft.test');
+    await wrapper.get('#efaktura-inbound-base-url').setValue('');
+    expect(wrapper.find('[data-testid="efaktura-use-previous-connection"]').exists()).toBe(false);
+    expect(JSON.stringify(company)).toBe(before);
+    wrapper.unmount();
+  });
+
+  it.each(['url', 'client', 'secret'])('does not recover a shared connection with a pending %s change', async (field) => {
+    const company = skCompany(emptySeparateSettings());
+    const wrapper = mountForm(company);
+    if (field === 'url') await wrapper.get('#efaktura-cpds-preset').setValue('epostman-production');
+    if (field === 'client') await wrapper.get('#efaktura-client-id').setValue('synthetic-changed-sender');
+    if (field === 'secret') await wrapper.get('#efaktura-client-secret').setValue('synthetic-replacement');
+    await wrapper.setProps({ mode: 'inbound_only' });
+    expect(wrapper.find('[data-testid="efaktura-use-previous-connection"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('does not offer previous-connection recovery without a compatible server', () => {
+    state.directionalConnections = false;
+    const wrapper = mountForm(skCompany(emptySeparateSettings()), 'inbound_only');
+    expect(wrapper.find('[data-testid="efaktura-use-previous-connection"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('finishes a captured recovery save after navigation without changing the new company', async () => {
+    state.localFirst = true;
+    const companyA = skCompany({ ...emptySeparateSettings(), efaktura_sapi_client_secret: 'synthetic-a-shared-secret' });
+    const companyB = { ...skCompany(splitSettings()), id: 'company-2' };
+    state.localRows = [companyA, companyB];
+    let complete!: (reply: Record<string, unknown>) => void;
+    vi.mocked(invoicingApi.companies.updateAppSettings).mockImplementationOnce(() => new Promise((resolve) => { complete = resolve; }));
+    const wrapper = mountForm(companyA, 'inbound_only');
+    await wrapper.get('[data-testid="efaktura-use-previous-connection"]').trigger('click');
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(companyA.app_settings.efaktura_inbound_bridge_sync_pending).toBe(true);
+    await wrapper.setProps({ companyId: 'company-2', company: companyB });
+    const beforeB = JSON.stringify(companyB);
+    complete(skCompany({ efaktura_inbound_use_shared_connection: true })); await flushPromises();
+    expect(companyA.app_settings.efaktura_inbound_bridge_sync_pending).toBe(false);
+    expect(companyA.app_settings.efaktura_inbound_bridge_sync_id).toBeNull();
+    expect(JSON.stringify(companyB)).toBe(beforeB);
+    expect(wrapper.find('#efaktura-client-id').exists()).toBe(false);
+    expect((wrapper.get('#efaktura-inbound-client-id').element as HTMLInputElement).value).toBe('synthetic-receiver');
+    expect(state.notifySaved).not.toHaveBeenCalled();
+    expect(wrapper.emitted('updated')).toBeUndefined();
+    wrapper.unmount();
+  });
+
 });

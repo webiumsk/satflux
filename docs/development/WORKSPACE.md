@@ -1,5 +1,64 @@
 # Local workspace
 
+## Clarity branch publication authorized - 2026-11-15
+
+The Product Owner explicitly requests pushing the reviewed eFaktura/settings and
+profile/navigation corrections. Publish only `fix/efaktura-settings-clarity` to
+the owned Satflux repository, open its review PR and verify CI for the resulting
+head. Fresh fetch confirms master `c418dcc3` still matches the scoped base;
+there is no existing PR for this branch. Primary unrelated work stays preserved.
+
+All19 reviewed source/test/locale hashes still match aggregate
+`28e1d944f3b711f361836595c2d93303bd5a4f8fd271d5163390f4424c9f7e10`.
+The earlier394frontend/19, static/build, QA44/5+62browserchecks and security40/4
+results remain applicable; no source changes or redundant product-test reruns.
+Main owns scoped commits/push/PR and a user-facing changelog note linked to the
+actual PR. Publication outcome and fresh-head CI must be verified separately.
+Earlier local-only/owner-review checkpoints below are historical and superseded
+by this authorization. Merge, deployment and larger-original implementation are
+not part of this publication request.
+
+## Profile layout and Tools fixes retained in the clarity worktree - 2026-11-15
+
+Retain `storage/app/private/worktrees/efaktura-settings-clarity` on
+`fix/efaktura-settings-clarity`, HEAD/base `c418dcc3` plus local uncommitted
+source/docs. The scope now contains19 source/test/locale files, five user guides
+and six development records, including both clarity notes. Primary remains
+`fix/sepa-confirmation-isolation` at `885168f2`; unrelated edits are preserved.
+
+Final19-file aggregate:
+`28e1d944f3b711f361836595c2d93303bd5a4f8fd271d5163390f4424c9f7e10`.
+The earlier seven-file settings freeze remains unchanged. Main394/19 and
+lint/type/locales/whitespace/build7,669 pass. Independent QA44/5 plus62browser
+checks/28 synthetic PNGs and security40/4 accept; counts overlap. Private evidence
+is retained under `storage/app/private/reviews/invoicing-layout-clarity` without
+owner images or account data. Existing tools/dependencies are reused; no worktree
+Graphify graph is installed or rebuilt and primary previews remain untouched.
+All synthetic layout fixture processes are stopped cleanly before handoff.
+
+Contract, ownership, browser/mock limits: `INVOICING_LAYOUT_CLARITY.md`.
+No commit/push/PR/new-head CI/provider/deployment action is claimed. Next is
+applicable scoped publication/fresh-head CI, then owner merge/deployment decisions.
+Earlier owner Live confirmation remains evidence for merged PR447.
+
+## eFaktura settings clarity worktree retained - 2026-11-15
+
+Retain `storage/app/private/worktrees/efaktura-settings-clarity` on
+`fix/efaktura-settings-clarity`, base fetched master `c418dcc3` (merged PR447).
+Seven source/test/locale files, five guides and coordination evidence remain
+local/uncommitted; no commit/push/PR/new-head CI/deployment. Primary remains on
+`fix/sepa-confirmation-isolation` at `885168f2`, unrelated edits preserved.
+
+Independent design/QA/security accept source freeze `afe36c2da53365e9d0112bbbdaf108ab67f4e5bae8e541af3cbe4425a15a2bd8`.
+Main360tests/14 and static/build7,669 pass; QA200/4+36browserchecks and16 synthetic
+PNGs, security183/4 overlap. Private artifacts are retained under
+`storage/app/private/reviews/efaktura-settings-clarity`. Existing dependencies are
+reused; the scoped checkout has no Graphify graph and none is rebuilt.
+Both loopback synthetic fixture processes are stopped. Original owner screenshots,
+primary previews, databases, credentials and prior worktrees remain untouched.
+Contract/limitations: `EFAKTURA_SETTINGS_CLARITY.md`. Next is owner local-result
+review and applicable publication, followed by fresh-head CI and owner merge/deploy.
+
 ## PR447 review corrections independently accepted locally - 2026-11-15
 
 Observed review baseline: open/unmerged PR447 at `a48570d11bbf73956f89f47e36d7c38f446f3389`,

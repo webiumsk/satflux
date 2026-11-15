@@ -10,6 +10,8 @@ updated: 2026-11-15
 
 Propojení podporuje **příjem a ruční odesílání**. Příjem a import faktury i dobropisu byly ověřeny v testovací síti Peppol. Ruční odeslání obou typů přes ePostman do Recommandu bylo také potvrzeno v této testovací síti. Produkční aktivaci, zákonné hlášení a podmínky archivu poskytovatele je třeba potvrdit samostatně. Satflux neprezentujeme jako kompletní řešení povinné slovenské e-fakturace.
 
+V profilu firmy se průvodci nastavením zobrazují jako kompaktní karty. Otevřete kartu a zobrazí se kontrolní seznam i možnost skrytí nebo připomenutí později. Stav neověřeného napojení eFaktury zůstává viditelný i při zavřené kartě.
+
 ## Propojení firmy
 
 Každou firmu připojte samostatně. Zapnutí příjmu slovenské firmy ho nezapne pro zahraniční LLC.
@@ -25,11 +27,15 @@ Pokud je secret již uložený pro stejné připojení, jeho pole nechte prázdn
 
 ## Samostatné připojení pro příjem a odesílání
 
-Příjem ve výchozím nastavení používá stejného poskytovatele a přístupové údaje jako odesílání. Stávající připojení si toto nastavení zachovají. Pokud chcete jiného poskytovatele pro příjem, v části příjmu vypněte společné připojení, vyberte podporovaného poskytovatele a zadejte jeho vlastní údaje. Každé změněné připojení otestujte a nastavení uložte. Neúplné samostatné přijímací připojení se nenahradí odesílacím poskytovatelem. Firma používající pouze příjem může nastavit příjem bez doplnění odesílacích údajů.
+Firma pouze pro příjem vidí jedno nastavení **Pošťák pro příjem** se svým stávajícím připojením. Vyberte poskytovatele, zadejte nebo ponechte jeho přístupové údaje, připojení otestujte a uložte. V tomto režimu se nezobrazuje volba odesílacího připojení. Otevření nastavení nepřesouvá údaje ani nemění poskytovatele.
 
-Kontrola schránky a stav příjmu používají přijímací připojení. Ruční odesílání a Enterprise API klíč používají odesílací připojení. Změna přijímacích údajů nemění stávající pokus o odeslání ani historii jeho stavů. Nejisté odeslání je třeba ověřit u původního poskytovatele; Satflux je automaticky neodešle přes jiného.
+Firmy s příjmem i odesíláním mají samostatné části **Pošťák pro odesílání** a **Pošťák pro příjem**. Ve výchozím nastavení je zapnutá volba **Pro příjem použít připojení pro odesílání**: příjem používá poskytovatele a údaje zadané v části odesílání. Po jejím vypnutí nastavte podporovaného přijímacího poskytovatele s vlastními údaji. Obě sady údajů zůstanou při přepnutí zachované; změnu použijte uložením. Neúplný samostatný příjem se nenahradí odesílacím připojením.
 
-Výběr poskytovatele zde nezaregistruje ani nepřesune přijímací službu firmy. Firma může mít jednoho přijímacího poskytovatele na DIČ; změnu si dohodněte s poskytovateli samostatně. Předvolba nepotvrzuje otestovanou kompatibilitu s každým poskytovatelem. Samostatná připojení vyžadují kompatibilní server Satfluxu; pokud podpora chybí, nejprve dokončete aktualizaci serveru.
+Pokud má firma pouze pro příjem prázdné samostatné nastavení a dostupné předchozí uložené připojení, tlačítko **Použít předchozí připojení** je vybere ve formuláři. Výběr použijte uložením. Stávající samostatné údaje ani rozpracované změny se automaticky nepřepisují.
+
+Kontrola schránky používá přijímací připojení; ruční odesílání a Enterprise API klíč používají odesílací připojení. Změna přijímacích údajů nepřepisuje pokus o odeslání ani jeho historii. Nejisté odeslání ověřte u původního poskytovatele; Satflux je automaticky neodešle přes jiného.
+
+Výběr poskytovatele zde nezaregistruje ani nepřesune přijímací službu. Firma může mít jednoho přijímacího poskytovatele na DIČ; případný přesun si dohodněte samostatně. Předvolba nepotvrzuje otestovanou kompatibilitu s každým poskytovatelem. Samostatná připojení vyžadují kompatibilní server Satfluxu.
 
 ## Kde najít a importovat doklady
 

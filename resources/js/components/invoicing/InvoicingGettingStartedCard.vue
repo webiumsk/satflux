@@ -1,24 +1,43 @@
 <template>
-  <div
+  <component
+    :is="compact ? 'details' : 'div'"
     v-if="visible"
-    class="rounded-lg border border-emerald-200 bg-emerald-50/60 px-4 py-3"
-    role="status"
+    :key="companyId"
+    class="group rounded-lg border border-emerald-200 bg-emerald-50/60 px-4 py-3"
+    :role="compact ? undefined : 'status'"
   >
-    <div class="flex flex-wrap items-start justify-between gap-3">
-      <div class="text-sm text-emerald-900">
-        <p class="font-medium">{{ t('invoicingOnboarding.checklist_title') }}</p>
-        <p class="text-emerald-800 text-xs mt-0.5">
+    <component
+      :is="compact ? 'summary' : 'div'"
+      class="flex items-start justify-between gap-3"
+      :class="compact
+        ? 'cursor-pointer list-none rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700 [&::-webkit-details-marker]:hidden'
+        : 'flex-wrap'"
+    >
+      <span class="block min-w-0 text-sm text-emerald-900">
+        <span class="block font-medium">{{ t('invoicingOnboarding.checklist_title') }}</span>
+        <span class="block text-emerald-800 text-xs mt-0.5">
           {{ t('invoicingOnboarding.checklist_progress', { done: doneCount, total: setupSteps.length }) }}
-        </p>
-      </div>
+        </span>
+      </span>
+      <svg
+        v-if="compact"
+        aria-hidden="true"
+        class="mt-0.5 h-5 w-5 shrink-0 text-emerald-800 transition-transform group-open:rotate-180"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+      >
+        <path d="m6 9 6 6 6-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
       <button
+        v-else
         type="button"
         class="text-xs font-medium rounded-md px-3 py-1.5 border border-emerald-300 text-emerald-800 hover:bg-emerald-100"
         @click="dismiss"
       >
         {{ t('invoicingOnboarding.checklist_dismiss') }}
       </button>
-    </div>
+    </component>
 
     <ul class="mt-2 space-y-1 text-xs text-emerald-900">
       <li v-for="step in setupSteps" :key="step.key" class="flex items-center gap-2">
@@ -33,7 +52,15 @@
         <span v-else class="text-emerald-700">{{ t(`invoicingOnboarding.checklist_${step.key}`) }}</span>
       </li>
     </ul>
-  </div>
+    <button
+      v-if="compact"
+      type="button"
+      class="mt-3 text-xs font-medium rounded-md px-3 py-1.5 border border-emerald-300 text-emerald-800 hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+      @click="dismiss"
+    >
+      {{ t('invoicingOnboarding.checklist_dismiss') }}
+    </button>
+  </component>
 </template>
 
 <script setup lang="ts">
@@ -53,6 +80,8 @@ import { invoicingApi } from '../../services/api';
 const props = defineProps<{
   companyId: string;
   company: Record<string, unknown> | null;
+  /** Collapse profile guidance while keeping invoice-list guidance expanded by default. */
+  compact?: boolean;
 }>();
 
 const { t } = useI18n();

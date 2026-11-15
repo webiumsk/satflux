@@ -1,5 +1,77 @@
 # Project state
 
+## Clarity branch publication authorized - 2026-11-15
+
+The Product Owner explicitly requests pushing the reviewed eFaktura/settings and
+profile/navigation corrections. Publish only `fix/efaktura-settings-clarity` to
+the owned Satflux repository, open its review PR and verify CI for the resulting
+head. Fresh fetch confirms master `c418dcc3` still matches the scoped base;
+there is no existing PR for this branch. Primary unrelated work stays preserved.
+
+All19 reviewed source/test/locale hashes still match aggregate
+`28e1d944f3b711f361836595c2d93303bd5a4f8fd271d5163390f4424c9f7e10`.
+The earlier394frontend/19, static/build, QA44/5+62browserchecks and security40/4
+results remain applicable; no source changes or redundant product-test reruns.
+Main owns scoped commits/push/PR and a user-facing changelog note linked to the
+actual PR. Publication outcome and fresh-head CI must be verified separately.
+Earlier local-only/owner-review checkpoints below are historical and superseded
+by this authorization. Merge, deployment and larger-original implementation are
+not part of this publication request.
+
+## Compact profile guidance and Tools navigation accepted locally - 2026-11-15
+
+Owner extends the same `fix/efaktura-settings-clarity` branch over merged PR447
+`c418dcc3` with compact profile guidance and navigation corrections. Getting
+started and Slovak eFaktura become collapsed native disclosures on the profile;
+progress/unverified status stays visible. Visible cards share desktop width,
+one fills the row, zero leaves no gap, and mobile stacks them. Sharing remains
+full-width below. Invoice-list guidance keeps its expanded default.
+
+VAT report, audit and accountant export suppress only their empty header filter
+bars. WooCommerce now renders Tools with Application active and company-scoped
+links. A reproduced same-mode company-switch readiness reload defect is fixed
+by adding companyId to the existing guarded watcher; no credential/save/backend
+or provider contract changes.
+
+Main394frontend/19, lint0/46 inherited, type110/no new, locales/whitespace and
+build7,669 pass. Independent QA44/5 plus62browserchecks/28syntheticPNG and
+security40/4 accept final19-file aggregate
+`28e1d944f3b711f361836595c2d93303bd5a4f8fd271d5163390f4424c9f7e10`.
+Counts overlap. The prior seven-file editor freeze remains byte-identical.
+Evidence and browser/mock limits: `INVOICING_LAYOUT_CLARITY.md`.
+
+Scoped HEAD remains `c418dcc3` plus the local uncommitted diff; primary remains
+`fix/sepa-confirmation-isolation` at `885168f2` with unrelated work preserved.
+No new commit/push/PR/head-CI, provider operation or deployment is claimed. The
+owner's earlier Live confirmation belongs to merged PR447, not this correction.
+Next: applicable scoped publication and fresh-head CI; owner retains merge/deploy.
+Larger-original import above384KiB stays proposed outside this UI scope.
+
+## eFaktura settings clarity accepted locally - 2026-11-15
+
+Owner reports confusing duplicated receiving headings and a shared toggle that
+hides the configured guide for a receiving-only company. Implement the bounded
+UX correction on `fix/efaktura-settings-clarity`, base fetched master `c418dcc3`
+(merged PR447). Receiving-only now shows one effective editor without a sharing
+choice, retaining stored mode/credentials. Full mode explains the sending
+connection relationship. Separate receiving keeps the complete guide. Explicit
+recovery for an empty saved separate setup selects an available prior connection
+only in the form and still requires Save; no credentials are moved or erased.
+
+Independent design, QA and security accept the final scope. Main360frontend/14,
+lint0/46inherited, author type110/no new, locale/whitespace and build7,669 pass.
+QA200/4 and36browserchecks/16syntheticPNG, security183/4 overlap. Saved-secret
+recovery hardening and mobile URL wrapping findings are closed. Final7-file
+aggregate `afe36c2da53365e9d0112bbbdaf108ab67f4e5bae8e541af3cbe4425a15a2bd8`.
+See `EFAKTURA_SETTINGS_CLARITY.md`; private evidence is retained in the matching
+review directory. Both synthetic fixture processes are stopped.
+
+Source/docs remain local and uncommitted; no publication, new-head CI, provider
+operation or deployment. Primary remains `fix/sepa-confirmation-isolation` at
+`885168f2` with unrelated work preserved. Prior owner Live confirmation applies
+to merged PR447, not this unpublished correction. Next: local-result review and
+applicable publication; owner retains merge/deploy. Larger originals stay proposed.
+
 ## PR447 review corrections independently accepted locally - 2026-11-15
 
 Observed review baseline: open/unmerged PR447 at `a48570d11bbf73956f89f47e36d7c38f446f3389`,

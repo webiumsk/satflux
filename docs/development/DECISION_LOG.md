@@ -1,5 +1,72 @@
 # Development decision log
 
+## Clarity branch publication authorized - 2026-11-15
+
+The Product Owner explicitly requests pushing the reviewed eFaktura/settings and
+profile/navigation corrections. Publish only `fix/efaktura-settings-clarity` to
+the owned Satflux repository, open its review PR and verify CI for the resulting
+head. Fresh fetch confirms master `c418dcc3` still matches the scoped base;
+there is no existing PR for this branch. Primary unrelated work stays preserved.
+
+All19 reviewed source/test/locale hashes still match aggregate
+`28e1d944f3b711f361836595c2d93303bd5a4f8fd271d5163390f4424c9f7e10`.
+The earlier394frontend/19, static/build, QA44/5+62browserchecks and security40/4
+results remain applicable; no source changes or redundant product-test reruns.
+Main owns scoped commits/push/PR and a user-facing changelog note linked to the
+actual PR. Publication outcome and fresh-head CI must be verified separately.
+Earlier local-only/owner-review checkpoints below are historical and superseded
+by this authorization. Merge, deployment and larger-original implementation are
+not part of this publication request.
+
+## 2026-11-15 - Use compact profile disclosures and consistent Tools navigation
+
+The owner asks for less obstructive setup guidance and suggests an accordion.
+Use optional native disclosures on the company profile: keep progress or the
+explicit unverified eFaktura title visible, and show checklist/disclaimer/actions
+when expanded. Visible cards share a desktop row; a lone card fills it and an
+empty wrapper disappears. Keep sharing below at full width. Existing invoice-list
+callers retain expanded guidance; company-keyed roots reset expansion without
+new persistence or readiness claims.
+
+Suppress the unused filter bar explicitly on the three affected report pages,
+leaving their real controls intact. Add the exact WooCommerce application route
+to existing shell/active-section lists. A reproduced readiness reload defect on
+same-mode company switches needs only companyId in the guarded watcher sources;
+retain the existing stale-response and company-scoped persistence boundaries.
+
+Independent QA/security accept final19-file aggregate
+`28e1d944f3b711f361836595c2d93303bd5a4f8fd271d5163390f4424c9f7e10`;
+prior seven-file editor freeze is unchanged. Main394/19 and static/build gates,
+QA44/5 plus62browserchecks/28syntheticPNG and security40/4 pass with overlapping
+counts. See `INVOICING_LAYOUT_CLARITY.md` for scope, reviews and fixture limits.
+Local/uncommitted only; no backend, provider, publication or deployment change.
+Owner Live confirmation remains attributed to merged PR447.
+
+## 2026-11-15 - Show one effective receiver for receiving-only companies
+
+Owner screenshots and current source confirm duplicated receiving titles and a
+sharing choice whose sending role is unavailable to receiving-only firms. Use one
+editor bound to the saved effective connection without migrating settings on
+render. Keep both explicit roles for full mode and explain the sending-connection
+choice. Retain full onboarding for separate receivers and receiving-only option
+titles independent of dormant sender data.
+
+Allow an explicit previous-connection action only for an empty saved separate
+setup with unchanged stored shared credentials and no saved separate secret.
+Select the form mode, preserve credential sets and require Save; retain existing
+capability, test-cancellation, submitted-save/marker and ownership protections.
+Security hardens the saved-secret gate; QA closes an inner-card mobile URL spill.
+No global theme or backend policy change is included.
+
+Design/QA/security accept final7-file freeze
+`afe36c2da53365e9d0112bbbdaf108ab67f4e5bae8e541af3cbe4425a15a2bd8`.
+Main360/14, lint0/46, type110/no new, locale/whitespace/build7,669 pass;
+independent QA200/4+36browserchecks and security183/4 overlap. Complete evidence
+and inherited theme observation: `EFAKTURA_SETTINGS_CLARITY.md`.
+Local/uncommitted only; no publication, provider operation or deployment. Earlier
+owner Live confirmation remains attributed to merged PR447. Larger originals are
+still proposed and are not implemented through this UI authorization.
+
 ## PR447 review corrections independently accepted locally - 2026-11-15
 
 Observed review baseline: open/unmerged PR447 at `a48570d11bbf73956f89f47e36d7c38f446f3389`,

@@ -50,16 +50,20 @@
     />
 
     <template v-else-if="settingsSection === 'profile'">
-      <InvoicingGettingStartedCard
-        class="mb-4"
-        :company-id="companyId"
-        :company="company as unknown as Record<string, unknown>"
-      />
-      <EfakturaReadinessCard
-        class="mb-4"
-        :company-id="companyId"
-        :company="company as unknown as Record<string, unknown>"
-      />
+      <div class="mb-4 flex flex-wrap items-start gap-4 empty:hidden">
+        <InvoicingGettingStartedCard
+          compact
+          class="min-w-0 basis-full md:flex-1"
+          :company-id="companyId"
+          :company="company as unknown as Record<string, unknown>"
+        />
+        <EfakturaReadinessCard
+          compact
+          class="min-w-0 basis-full md:flex-1"
+          :company-id="companyId"
+          :company="company as unknown as Record<string, unknown>"
+        />
+      </div>
       <CompanyShareCard v-if="localFirst" :company-id="companyId" />
       <CompanySettingsForm
         :company-id="companyId"
