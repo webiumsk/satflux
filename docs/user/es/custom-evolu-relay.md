@@ -3,7 +3,7 @@ title: Gestionar relays Evolu
 category: security
 order: 7
 meta_description: Gestiona la sincronización cifrada de facturas mediante varios relays.
-updated: 2026-11-07
+updated: 2026-11-14
 ---
 
 # Gestionar relays Evolu
@@ -22,6 +22,8 @@ Los cambios de la lista se aplican a tu cuenta. **Desactivar la sincronización 
 **Conectado** significa que una conexión WebSocket real de sincronización está abierta. **Conectando**, **Desconectado** y **Error de conexión** describen esa conexión. **Desconocido** indica que no hay información actual disponible; después de una actualización puede ser necesario reiniciar todas las pestañas. **Sincronización pausada** indica que el propietario local o los ajustes actuales del relay aún no están confirmados. Inicia sesión y carga los ajustes de la cuenta con conexión; si la facturación local está bloqueada, restáurala con la frase de recuperación correcta. Los relays desactivados y la pausa del dispositivo se muestran por separado.
 
 **Conexión** y **Sincronización** se muestran por separado. Una **cuota superada** indica que este relay rechazó datos por un límite de almacenamiento o del servicio, aunque la conexión siga abierta. **Respuesta recibida** significa que se observó una respuesta del protocolo; no confirma una copia completa ni el reenvío de los cambios rechazados anteriormente. Después de que el proveedor aumente la cuota, reinicia todas las pestañas de Satflux como se indica arriba para que el cliente concilie el historial pendiente. El último error de Evolu registrado en las estadísticas locales puede ser antiguo y no es el estado actual de cada relay.
+
+El resumen de facturación identifica los relays con problemas de sincronización o conexión observados actualmente. Un aviso amarillo significa que algunos relays habilitados indican un problema; uno rojo significa que todos lo indican. Los demás relays pueden seguir sin verificar. Los errores globales históricos no activan este aviso, que desaparece al recuperarse el estado actual, caducar la observación o deshabilitarse o dejar de estar activo el relay afectado. Abra **Gestionar relays** para revisar los servidores afectados y **Exportar copia** para acceder a las opciones de copia de seguridad. Exporte los datos locales actuales antes de cambiar la selección de relays. Si hay un error de cuota, consulte los límites del proveedor; borrar facturas no reduce el historial almacenado y forzar el envío repetidamente no resuelve el problema.
 
 Una conexión abierta no confirma compatibilidad del protocolo, escrituras correctas ni una copia completa. El cliente instalado necesita un relay compatible con Evolu 7.x. Las conexiones funcionan de forma independiente y el historial faltante se reconcilia al suscribirse o reconectarse. Los relays no se copian directamente entre sí; los sincroniza un cliente. Deja tiempo para que un relay nuevo reciba los datos.
 

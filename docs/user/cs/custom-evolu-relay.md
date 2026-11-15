@@ -3,7 +3,7 @@ title: Správa Evolu relayů
 category: security
 order: 7
 meta_description: Spravujte šifrovanou synchronizaci fakturačních dat přes více relayů.
-updated: 2026-11-07
+updated: 2026-11-14
 ---
 
 # Správa Evolu relayů
@@ -22,6 +22,8 @@ Změny seznamu platí pro váš účet. **Vypnout synchronizaci na tomto zaříz
 **Připojeno** znamená otevřené skutečné synchronizační WebSocket spojení. **Připojuje se**, **Odpojeno** a **Chyba spojení** popisují toto spojení. **Neznámý** znamená, že aktuální stav není dostupný; po aktualizaci může být nutné zavřít všechny karty a znovu je otevřít. **Sync je pozastavený** znamená, že místní vlastník nebo aktuální nastavení relayů ještě nejsou potvrzené. Přihlaste se a načtěte nastavení účtu online; pokud jsou místní fakturační data zamčená, obnovte je správnou obnovovací frází. Vypnuté relaye a vypnutá synchronizace zařízení se zobrazují samostatně.
 
 **Spojení** a **Synchronizace** se zobrazují samostatně. **Překročená kvóta** znamená, že tento relay odmítl data kvůli limitu úložiště nebo služby, i když je spojení otevřené. **Odpověď přijata** znamená zaznamenanou odpověď protokolu; nepotvrzuje úplnou zálohu ani opětovné odeslání dříve odmítnutých změn. Když poskytovatel zvýší kvótu, restartujte všechny karty Satfluxu podle postupu výše, aby klient sjednotil čekající historii. Poslední zaznamenaná chyba Evolu v místních statistikách může být starší a není aktuálním stavem jednotlivých relayů.
+
+Přehled fakturace pojmenuje relaye s aktuálně pozorovaným problémem synchronizace nebo spojení. Žluté upozornění znamená problém na některých zapnutých relayích; červené znamená, že problém hlásí všechny zapnuté relaye. Ostatní relaye mohou zůstat neověřené. Historická globální chyba toto upozornění nevyvolá a upozornění zmizí po obnovení aktuálního stavu, vypršení pozorování, vypnutí relaye nebo zániku jeho aktivního spojení s účtem. Přes **Spravovat relaye** zkontrolujete označené servery a přes **Exportovat zálohu** přejdete k ovládání záloh. Před změnou výběru relayů exportujte aktuální lokální data. Při kvótě ověřte limity poskytovatele; mazání faktur nezmenší uloženou historii a opakované vynucené odesílání problém nevyřeší.
 
 Otevřené spojení nepotvrzuje kompatibilitu protokolu, úspěšné zápisy ani úplnou zálohu. Nainstalovaný klient potřebuje relay kompatibilní s Evolu 7.x. Spojení fungují nezávisle a chybějící historie se doplňuje při přihlášení k odběru nebo novém připojení. Relaye se nekopírují přímo mezi sebou; synchronizuje je klient. Novému relayi dejte čas na doplnění dat.
 

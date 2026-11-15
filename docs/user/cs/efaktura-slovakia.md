@@ -3,7 +3,7 @@ title: Slovenská e-fakturace - propojení ePostman
 category: invoicing
 order: 6
 meta_description: Propojte firemní účet ePostman, přijímejte e-faktury a importujte jejich originály do nákladů v Satfluxu.
-updated: 2026-11-14
+updated: 2026-11-15
 ---
 
 # Slovenská e-fakturace - propojení ePostman
@@ -27,7 +27,9 @@ Pokud je secret již uložený pro stejné připojení, jeho pole nechte prázdn
 
 Ve stejné firmě otevřete **Náklady > Přijaté e-faktury**. Doklad zkontrolujte nebo stáhněte původní XML a poté ho importujte do nákladů. Dobropisy se importují jako opravy s odpovídajícím znaménkem částky. Úspěšné prázdné stažení znamená, že se nestáhly nové doklady; nepotvrzuje doručení testovací faktury.
 
-Ruční stažení spustíte přes **Stáhnout příchozí nyní** v nastavení e-fakturace firmy. Následně obnovte inbox na stránce Náklady. Obnovení inboxu zobrazí doklady, které již Satflux stáhl.
+Přes **Zkontrolovat schránku** přímo v **Náklady > Přijaté e-faktury** načteš příchozí doklady od poskytovatele a následně obnovíš schránku i stav příjmu. **Obnovit** pouze načte doklady a stav již uložené v Satfluxu. V nastavení e-fakturace firmy zůstává dostupné také **Stáhnout příchozí nyní**. Již importované doklady zůstávají v Nákladech; schránka zobrazuje pouze doklady čekající na lokální import. Prázdná schránka je po importu běžný stav.
+
+Po úspěšném lokálním testu připojení formulář upozorní, že ověření ještě potřebuje uložit. Zachováš ho přes **Uložit mé údaje**. Uložení stejného připojení a přístupových údajů zachová poslední kontrolu schránky; změna nebo odstranění přístupových údajů toto ověření zneplatní. Pokud záznam kontroly chybí nebo je stav starý, použij **Zkontrolovat schránku**. Úspěšná prázdná kontrola nepotvrzuje doručení ani produkční připravenost.
 
 Import uloží originál do vašich šifrovaných lokálních dat. Pokud import selže nebo je originál příliš velký pro lokální přílohu, položka zůstane dostupná pro obnovu a stažení originálu. Samotná existence nákladu import nedokončí.
 

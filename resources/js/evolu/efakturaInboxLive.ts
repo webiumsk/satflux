@@ -32,6 +32,7 @@ export type EfakturaInboundHealth = {
 };
 const health = ref<EfakturaInboundHealth | null>(null);
 const receivingEnabled = ref(false);
+const checkingMailbox = ref(false);
 
 /** Unknown/malformed status must not make an empty inbox appear healthy. */
 export function parseInboundHealth(raw: unknown): EfakturaInboundHealth {
@@ -51,6 +52,8 @@ let listenersInstalled = false;
 /** Bumped on every company switch / settings reload; stale async results are discarded. */
 let generation = 0;
 let refreshRequestId = 0;
+let mailboxRequestId = 0;
+let activeRefresh: Promise<void> | null = null;
 
 type CompanyRowSlice = { id: string; appSettingsJson: string | null };
 
@@ -68,12 +71,16 @@ async function deriveCompanyParams(nextCompanyId: string): Promise<void> {
     // Switch synchronously first so nothing from the previous company leaks
     // into the new one while the bridge lookup below is still in flight.
     const myGeneration = ++generation;
+    mailboxRequestId++;
     companyId = nextCompanyId;
     enabled = false;
     receivingEnabled.value = false;
+    checkingMailbox.value = false;
     health.value = null;
     bridgeCompanyIdRef.value = null;
     entries.value = [];
+
+    if (!nextCompanyId) return;
 
     const { evolu, allCompaniesDetailQuery } = await import("./client");
     const rows = toAppRows<CompanyRowSlice>(await evolu.loadQuery(allCompaniesDetailQuery));
@@ -102,12 +109,21 @@ export async function refreshEfakturaInboxLive(
     force = false,
     options: { throwOnError?: boolean } = {},
 ): Promise<void> {
+    return refreshInbox(force, options);
+}
+
+/** Reserve mailbox checks until their post-poll list and health reads finish. */
+function refreshInbox(
+    force: boolean,
+    options: { throwOnError?: boolean },
+    fromMailboxCheck = false,
+): Promise<void> {
     const bridgeId = bridgeCompanyIdRef.value;
-    if (!enabled || !companyId || !bridgeId || refreshing) {
-        return;
+    if (!enabled || !companyId || !bridgeId || refreshing || (checkingMailbox.value && !fromMailboxCheck)) {
+        return Promise.resolve();
     }
     if (!force && Date.now() - lastRefreshAt < REFRESH_MIN_GAP_MS) {
-        return;
+        return Promise.resolve();
     }
     const myGeneration = generation;
     const myCompanyId = companyId;
@@ -115,40 +131,82 @@ export async function refreshEfakturaInboxLive(
     const isCurrent = () => requestId === refreshRequestId && myGeneration === generation
         && myCompanyId === companyId && bridgeCompanyIdRef.value === bridgeId;
     refreshing = true;
-    let inboxFailed = false;
-    try {
-        const { evolu } = await import("./client");
-        if (!isCurrent()) return;
-        // Health is independent: a slow or failed status call cannot hide fetched documents.
-        const healthRequest = Promise.resolve().then(() => invoicingApi.efaktura.inboundHealth(bridgeId))
-            .then((value) => { if (isCurrent() && !inboxFailed) health.value = parseInboundHealth(value); return { ok: true as const }; })
-            .catch((error: unknown) => {
-                if (isCurrent()) health.value = { state: "unavailable", last_poll_at: health.value?.last_poll_at ?? null, failed: 0 };
-                return { ok: false as const, error: error ?? new Error("inbound_health_unavailable") };
-            });
-        const fetched = await fetchEfakturaInbox(bridgeId);
-        if (!isCurrent()) return;
-        const remaining = await reconcileEfakturaInboxWithLocalExpenses(evolu, myCompanyId, bridgeId, fetched);
-        if (!isCurrent()) return;
-        entries.value = remaining;
-        lastRefreshAt = Date.now();
-        refreshing = false;
-        if (options.throwOnError) {
-            const result = await healthRequest;
-            if (isCurrent() && !result.ok) throw result.error;
-        }
-    } catch (error) {
-        inboxFailed = true;
-        if (!isCurrent()) return;
-        health.value = { state: "unavailable", last_poll_at: health.value?.last_poll_at ?? null, failed: 0 };
-        if (options.throwOnError) throw error;
-        // Background failures remain visible through shared health, even with documents.
-    } finally {
-        if (requestId === refreshRequestId) {
+    const request = (async () => {
+        let inboxFailed = false;
+        try {
+            const { evolu } = await import("./client");
+            if (!isCurrent()) return;
+            // Health is independent: a slow or failed status call cannot hide fetched documents.
+            const healthRequest = Promise.resolve().then(() => invoicingApi.efaktura.inboundHealth(bridgeId))
+                .then((value) => { if (isCurrent() && !inboxFailed) health.value = parseInboundHealth(value); return { ok: true as const }; })
+                .catch((error: unknown) => {
+                    if (isCurrent()) health.value = { state: "unavailable", last_poll_at: health.value?.last_poll_at ?? null, failed: 0 };
+                    return { ok: false as const, error: error ?? new Error("inbound_health_unavailable") };
+                });
+            const fetched = await fetchEfakturaInbox(bridgeId);
+            if (!isCurrent()) return;
+            const remaining = await reconcileEfakturaInboxWithLocalExpenses(evolu, myCompanyId, bridgeId, fetched);
+            if (!isCurrent()) return;
+            entries.value = remaining;
+            lastRefreshAt = Date.now();
             refreshing = false;
-            // A previous company must not delay the new inbox until the next timer tick.
-            if (myGeneration !== generation && enabled) void refreshEfakturaInboxLive(true);
+            if (options.throwOnError) {
+                const result = await healthRequest;
+                if (isCurrent() && !result.ok) throw result.error;
+            }
+        } catch (error) {
+            inboxFailed = true;
+            if (!isCurrent()) return;
+            health.value = { state: "unavailable", last_poll_at: health.value?.last_poll_at ?? null, failed: 0 };
+            if (options.throwOnError) throw error;
+            // Background failures remain visible through shared health, even with documents.
+        } finally {
+            if (requestId === refreshRequestId) {
+                refreshing = false;
+                activeRefresh = null;
+                // A previous company must not delay the new inbox until the next timer tick.
+                if (myGeneration !== generation && enabled) void refreshEfakturaInboxLive(true);
+            }
         }
+    })();
+    activeRefresh = request;
+    return request;
+}
+
+/** Poll only the bridge belonging to the currently derived local company. */
+export async function checkEfakturaInboxMailbox(expectedCompanyId: string): Promise<boolean> {
+    const bridgeId = bridgeCompanyIdRef.value;
+    if (!enabled || !companyId || companyId !== expectedCompanyId || !bridgeId || checkingMailbox.value) return false;
+    const myCompanyId = companyId;
+    const myGeneration = generation;
+    const requestId = ++mailboxRequestId;
+    const isCurrent = () => requestId === mailboxRequestId && myGeneration === generation
+        && myCompanyId === companyId && bridgeCompanyIdRef.value === bridgeId && enabled;
+    checkingMailbox.value = true;
+    try {
+        // Finish admitted reconciliation before polling; no new refresh can enter meanwhile.
+        await activeRefresh?.catch(() => {});
+        if (!isCurrent()) return false;
+        // A pre-check health response must not replace the post-check result.
+        refreshRequestId++;
+        let failure: unknown;
+        try {
+            await invoicingApi.efaktura.pollInbound(bridgeId);
+        } catch (error) {
+            failure = error ?? new Error("inbound_poll_unavailable");
+        }
+        if (!isCurrent()) return false;
+        try {
+            // Read both sources even after failure: a partial poll can have retained documents.
+            await refreshInbox(true, { throwOnError: true }, true);
+        } catch (error) {
+            failure ??= error ?? new Error("inbound_refresh_unavailable");
+        }
+        if (!isCurrent()) return false;
+        if (failure !== undefined) throw failure;
+        return true;
+    } finally {
+        if (isCurrent()) checkingMailbox.value = false;
     }
 }
 
@@ -189,16 +247,16 @@ export function initEfakturaInboxLive(activeCompanyId: Ref<string>): void {
         activeCompanyId,
         async (id) => {
             const next = String(id ?? "").trim();
-            if (!next || next === companyId) {
+            if (next === companyId) {
                 return;
             }
             await deriveCompanyParams(next);
             void refreshEfakturaInboxLive(true);
         },
-        { immediate: true },
+        { immediate: true, flush: "sync" },
     );
 }
 
 export function useEfakturaInboxLive() {
-    return { entries, pendingCount, bridgeCompanyId: bridgeCompanyIdRef, health, receivingEnabled };
+    return { entries, pendingCount, bridgeCompanyId: bridgeCompanyIdRef, health, receivingEnabled, checkingMailbox };
 }

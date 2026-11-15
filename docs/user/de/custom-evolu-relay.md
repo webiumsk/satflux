@@ -3,7 +3,7 @@ title: Evolu-Relays verwalten
 category: security
 order: 7
 meta_description: Verwalten Sie die verschlüsselte Synchronisierung von Rechnungsdaten über mehrere Relays.
-updated: 2026-11-07
+updated: 2026-11-14
 ---
 
 # Evolu-Relays verwalten
@@ -22,6 +22,8 @@ Listenänderungen gelten für Ihr Konto. **Synchronisierung auf diesem Gerät de
 **Verbunden** bedeutet, dass eine echte Synchronisierungs-WebSocket-Verbindung geöffnet ist. **Verbindung wird aufgebaut**, **Getrennt** und **Verbindungsfehler** beschreiben diese Verbindung. **Unbekannt** bedeutet, dass aktuelle Verbindungsinformationen fehlen; nach einem Update kann ein Neustart aller Tabs nötig sein. **Synchronisierung pausiert** bedeutet, dass der lokale Eigentümer oder die aktuellen Relay-Einstellungen noch nicht bestätigt sind. Melden Sie sich an und laden Sie die Kontoeinstellungen online; entsperren Sie gesperrte lokale Rechnungsdaten mit der richtigen Wiederherstellungsphrase. Deaktivierte Relays und die Gerätepause werden separat angezeigt.
 
 **Verbindung** und **Synchronisierung** werden getrennt angezeigt. Eine **überschrittene Quote** bedeutet, dass dieses Relay Daten wegen eines Speicher- oder Dienstlimits abgelehnt hat, auch bei offener Verbindung. **Antwort empfangen** bedeutet eine beobachtete Protokollantwort; sie bestätigt weder eine vollständige Sicherung noch die erneute Übertragung zuvor abgelehnter Änderungen. Starten Sie nach einer Quotenerhöhung alle Satflux-Tabs wie oben beschrieben neu, damit der Client ausstehende Daten abgleicht. Der zuletzt erfasste Evolu-Fehler in den lokalen Statistiken kann älter sein und ist nicht der aktuelle Status einzelner Relays.
+
+Die Rechnungsübersicht nennt Relays mit aktuell beobachteten Synchronisierungs- oder Verbindungsproblemen. Ein gelber Hinweis bedeutet, dass einige aktivierte Relays ein Problem melden; ein roter Hinweis bedeutet, dass alle aktivierten Relays eines melden. Andere Relays können weiterhin ungeprüft sein. Historische globale Fehler lösen diesen Hinweis nicht aus. Er verschwindet nach einer aktuellen Erholung, nach Ablauf der Beobachtung oder wenn das betroffene Relay deaktiviert oder nicht mehr aktiv ist. Über **Relays verwalten** prüfen Sie die betroffenen Server; **Backup exportieren** führt zu den Backup-Funktionen. Exportieren Sie vor Änderungen der Relay-Auswahl die aktuellen lokalen Daten. Prüfen Sie bei Kontingentfehlern die Anbieterlimits; das Löschen von Rechnungen verkleinert den gespeicherten Verlauf nicht, und wiederholtes Erzwingen des Sendens behebt das Problem nicht.
 
 Eine offene Verbindung bestätigt weder Protokollkompatibilität noch erfolgreiche Schreibvorgänge oder eine vollständige Sicherung. Der installierte Client benötigt ein mit Evolu 7.x kompatibles Relay. Verbindungen arbeiten unabhängig; fehlende Historie wird beim Abonnieren oder erneuten Verbinden abgeglichen. Relays kopieren nicht direkt untereinander, sondern werden durch einen Client synchronisiert. Geben Sie einem neuen Relay Zeit zum Aufholen.
 

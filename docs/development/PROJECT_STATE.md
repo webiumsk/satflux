@@ -1,5 +1,140 @@
 # Project state
 
+## PR446 E2E runner compatibility repair approved - 2026-11-15
+
+Exact-head CI43697361409 forbec2c34f passes PHP, Node, PostgreSQL and changelog,
+but E2E fails before tests at browser installation: locked Playwright1.60.0 does
+not support chromium on ubuntu26.04-x64 selected by ubuntu-latest. This is
+runner compatibility evidence, not an application/E2E assertion failure.
+
+Owner explicitly approves only the prepared E2E-runner repair. Change exactly
+`jobs.e2e.runs-on` from ubuntu-latest to ubuntu-24.04. The installed locked
+Playwright registry includes ubuntu24.04-x64. Existing Node YAML parser verifies
+that this scalar is the only semantic workflow change; whitespace checks pass.
+No dependency/action versions, other jobs, permissions, application or tests change.
+The accepted two-file runtime/test freeze remains
+`b342a06d14ed1ba1cade2bfc67716b4bfb7f1685cc4d5c03fb2ab60cf59f1d89`.
+
+Normal corrective publication and new-head CI follow. The failed run is not
+reported green, and no tests are marked skipped to bypass the compatibility issue.
+No installation, provider operation, PR merge or deployment. Owner retains merge/deploy.
+
+## PR446 inbound poll budget correction independently accepted - 2026-11-15
+
+The current owner-supplied finding is valid at64d7bcd7. The previous10-second poll
+limit is shorter than the server120-second cooperative admission budget plus
+finishing provider operations. A dedicated finite300-second poll timeout now
+accommodates default30-second detail/ACK and one token-renewal/retry sequence;
+ordinary inbox/health/custody requests remain10 seconds. Endpoint/auth/payload,
+explicit-only retry and backend acknowledged-receipt skipping are unchanged.
+
+Before-failing virtual regressions now accept a240-second completed poll and
+expire a stalled request at300 seconds. Main66frontend/3 and44PHP/519assertions
+pass; lint0errors/46inherited, type110/no new, locales/whitespace/build7,669 pass.
+Independent QA/security each accept66/3 and the verified two-file freeze
+`b342a06d14ed1ba1cade2bfc67716b4bfb7f1685cc4d5c03fb2ab60cf59f1d89`.
+Counts overlap. The deadline is not a server-cancellation guarantee or universal
+ceiling for arbitrary longer provider/DB settings. See `INBOUND_POLL_TIMEOUT_REVIEW.md`.
+Main owns existing-branch publication and exact-head CI; owner retains merge/deploy.
+Unrelated primary changes remain preserved; no provider operation or installation.
+
+## PR446 review fixes independently accepted - 2026-11-15
+
+Both owner-supplied findings against1411529a are current and reproduced; none is
+skipped. Bound pollInbound with the existing10-second inbox timeout, retaining
+POST/auth/payload and explicit retry. Prevent Save/Test overlap in button and
+handler admission, preserving unsaved verification and exact existing dirty checks.
+Only two runtime paths and two regression files change; no backend/API/schema,
+locale, credential-autosave, provider or dependency expansion.
+
+Main passes174 tests /five suites, lint0errors/46inherited, type110/no new,
+parity/whitespace and build7,669. Independent QA155/5 and security145/4 accept
+four-file freeze `1aa1218f2de98f82442e238caa7db611d3d004e8a3e514f987d4819815f88dd1`.
+Counts overlap. Baseline PR446 CI43654838725 passes at1411529a; fresh-head CI
+must be verified after normal corrective publication. Scope/dispositions:
+`INVOICING_STATUS_REVIEW_FIXES.md`. Main owns existing-branch push/thread handling;
+owner retains PR merge/deployment. Primary unrelated edits remain preserved.
+
+## Invoicing status publication reconciliation verified - 2026-11-15
+
+Owner requests push of both accepted corrections. Implementation commit `8d0b4999`
+contains exactly31 reviewed paths. Fresh remote master is `4b9cc230`, the owner's
+merged PR445. Reconcile it locally with a normal feature-branch merge before push.
+Ten conflicts preserve both development histories, the newer five-guide date and
+both required inbox imports. The combined panel is exactly the accepted receiving
+panel plus the master's PDF import/component. No additional product logic is added.
+
+Independent QA accepts all41 affected paths and162 tests /five suites; security
+accepts the narrow17-file byte-preserving integration. Main passes391 combined
+tests /15 suites, lint0errors/46inherited, type110/no new, parity/whitespace and
+build7,669. Earlier136 PHP/1,018, PHPStan0 and Pint2 remain applicable through
+unchanged backend bytes. Merged source fingerprint is
+`42fa35d13d66eccc9f6e04224db322cb3066019d11eba289a6901f10097279ee`.
+
+Main owns the pending normal push and remote-head verification. No new-head CI,
+PR merge or deployment is claimed by this pre-publication record. Owner retains
+PR creation and merge/deployment decisions. Earlier uncommitted/read-only notes
+below are historical; both corrections are now authorized and committed locally.
+
+## eFaktura receiving status correction independently accepted locally - 2026-11-15
+
+Owner authorizes fixing the receiving warning after confirming Test plus Save
+removes the setup checklist. Extend the unpublished `fix/relay-status-banner`
+worktree over remote-verified master `ce725a99`; retain the reviewed relay change.
+Equal readable nonempty SAPI secrets now preserve trusted poll/test metadata.
+Changed/cleared/unreadable credentials and connection/provider changes invalidate
+it; incoming server-owned evidence/ciphertext cannot forge values.
+
+Expenses now offers Check mailbox through the captured current local-company and
+bridge poll endpoint, followed by independent list/health reads. Refresh stays
+read-only. Duplicate/poll/refresh races, stale company/bridge results and unmounts
+are fenced; partial documents remain recoverable after failures. Empty receiving
+is neutral, and successful local Test visibly requires explicit Save. Five locales
+and guides agree; custody, snooze, payments and dependencies are preserved.
+
+Main passes246 frontend /11 suites,136 PHP /1,018 assertions, full PHPStan0,
+Pint2, lint0errors/46inherited, type110/no new, parity/whitespace, existing16
+changelog fragments and build7,664. Independent QA accepts120PHP/945assertions
+and133frontend/5; security77PHP/480 and123frontend/4. Counts overlap. Frozen18-file
+aggregate `4609260d8df5d14e31c16d533ef07c44d467cd650337d1e281fe21ce9bbc8811`
+remains verified; prior relay runtime/test hashes are unchanged. No blockers remain.
+
+See `EFAKTURA_RECEIVING_STATUS.md` for contracts, reviewers, tests and limitations.
+Initial disposable-harness and sandbox checks were corrected through normal setup/
+approval, with subsequent complete checks passing. No installation, production
+provider action or deployed-SHA verification. Both corrections remain uncommitted
+and unpublished; no PR/new-head CI/merge/deployment is claimed. Primary unrelated
+edits and other worktrees remain preserved. Next: review local result, then
+publication/fresh-head CI under applicable authorization and owner merge/deployment.
+
+## Current relay banner independently accepted locally - 2026-11-14
+
+Owner authorizes a current per-relay warning and recommended recovery actions.
+Implementation is isolated on `fix/relay-status-banner` over remote-verified
+master `ce725a99`, in durable worktree `relay-status-banner`. Selected enabled
+routes intersect this tab's guarded active destinations and expiring worker
+observations. Historical SDK quota errors no longer trigger the warning. Partial
+errors are amber, all-enabled errors red; local storage warnings remain separate.
+Backup/settings actions and EN/SK/ES/DE/CS guides/copy avoid backup-completeness claims.
+
+Main passes 81 relay tests / four suites and 87 eFaktura tests / two suites;
+lint has zero errors / 46 inherited warnings, typecheck110 has no new errors,
+locale/whitespace and production build7,664 pass. Existing16 changelog fragments
+validate; the new fragment awaits a real PR URL. Independent QA accepts86/5 and
+security141/7, including actual channel expiry and lifecycle/default-owner guards.
+Counts overlap. Reviewed12-file aggregate SHA256 is
+`0aec946d208ecd08b6808bf14e58c449c2d9fd23d7670769e5d88ff535ed833e`.
+
+Separate read-only eFaktura review confirms successful local testing needs explicit
+Save to persist its timestamp; the form does not mark that timestamp as unsaved.
+Remind later hides the company notice locally for14 days without changing receiving.
+No eFaktura policy/source fix is included. See `RELAY_STATUS_BANNER.md` for evidence,
+limitations and exact snooze behavior. Changes remain uncommitted/unpublished;
+no new-head CI, PR, merge, deployment, real provider operation or complete-backup
+proof is claimed. Primary unrelated edits and other worktrees remain preserved.
+Next: local-result review/publication under applicable authorization, fresh-head CI,
+then owner merge/deployment decision.
+
 ## PR445 reconciled with merged PR443 - 2026-11-14
 
 Fresh GitHub evidence confirms owner-merged PR443 as `ce725a99`. Reconcile that

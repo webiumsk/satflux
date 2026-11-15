@@ -721,11 +721,87 @@ describe('eFaktura settings wizard', () => {
     await wrapper.get('#efaktura-client-secret').setValue('synthetic-secret');
     await testButton(wrapper).trigger('click'); await flushPromises();
     expect(updateLocalEfakturaSettings).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain('efaktura_test_ok_save_required');
     expect(status(wrapper)).toContain('status_unsaved');
     expect((wrapper.get('#efaktura-client-id').element as HTMLInputElement).value).toBe('synthetic-new');
     await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
     expect(updateLocalEfakturaSettings).toHaveBeenCalledWith(expect.anything(), 'company-1', expect.objectContaining({ efaktura_sapi_client_id: 'synthetic-new', efaktura_connection_tested_at: '2026-07-23T10:00:00Z' }), expect.objectContaining({ onComplete: expect.any(Function) }));
     expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith('bridge-1', expect.objectContaining({ efaktura_sapi_client_id: 'synthetic-new', efaktura_sapi_client_secret: 'synthetic-secret' }));
+    expect(wrapper.text()).not.toContain('efaktura_test_ok_save_required');
+    wrapper.unmount();
+  });
+
+  it('marks a fresh local verification of saved credentials unsaved until Save completes', async () => {
+    state.localFirst = true;
+    const company = skCompany({ ...connectedSettings(), efaktura_sapi_client_secret: 'synthetic-stored-secret' });
+    state.localRows = [company];
+    const wrapper = mountForm(company, 'inbound_only');
+    expect(status(wrapper)).toContain('status_saved');
+    expect(pollButton(wrapper).attributes('disabled')).toBeUndefined();
+    await testButton(wrapper).trigger('click'); await flushPromises();
+    expect(status(wrapper)).toContain('status_unsaved');
+    expect(wrapper.text()).toContain('efaktura_test_ok_save_required');
+    expect(pollButton(wrapper).attributes('disabled')).toBeDefined();
+    expect(company.app_settings.efaktura_connection_tested_at).toBe('2026-11-12T10:00:00Z');
+    expect(updateLocalEfakturaSettings).not.toHaveBeenCalled();
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(company.app_settings.efaktura_connection_tested_at).toBe('2026-07-23T10:00:00Z');
+    expect(status(wrapper)).toContain('status_saved');
+    expect(wrapper.text()).not.toContain('efaktura_test_ok_save_required');
+    expect(pollButton(wrapper).attributes('disabled')).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it('does not admit Save during a pending local test and requires an explicit Save after success', async () => {
+    state.localFirst = true;
+    const company = skCompany({ ...connectedSettings(), efaktura_sapi_client_secret: 'synthetic-stored-secret' });
+    state.localRows = [company];
+    let finishTest!: (result: { ok: boolean; tested_at: string }) => void;
+    vi.mocked(invoicingApi.efaktura.testConnectionEphemeral).mockImplementationOnce(() => new Promise((resolve) => { finishTest = resolve; }));
+    const wrapper = mountForm(company, 'inbound_only');
+    const result = { ok: true, tested_at: '2026-11-15T10:00:00Z' };
+    try {
+      await testButton(wrapper).trigger('click'); await flushPromises();
+      // Forced form submission exercises handler admission independently of button disablement.
+      await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+      expect(updateLocalEfakturaSettings).not.toHaveBeenCalled();
+      expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+      expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined();
+      expect(state.notifySaved).not.toHaveBeenCalled();
+
+      finishTest(result); await flushPromises();
+      expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeUndefined();
+      expect(status(wrapper)).toContain('status_unsaved');
+      expect(wrapper.text()).toContain('efaktura_test_ok_save_required');
+      expect(company.app_settings.efaktura_connection_tested_at).toBe(connectedSettings().efaktura_connection_tested_at);
+      expect(updateLocalEfakturaSettings).not.toHaveBeenCalled();
+
+      await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+      expect(updateLocalEfakturaSettings).toHaveBeenCalledWith(expect.anything(), 'company-1', expect.objectContaining({
+        efaktura_connection_tested_at: result.tested_at,
+      }), expect.objectContaining({ onComplete: expect.any(Function) }));
+      expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledOnce();
+      expect(company.app_settings.efaktura_connection_tested_at).toBe(result.tested_at);
+      expect(status(wrapper)).toContain('status_saved');
+      expect(wrapper.text()).not.toContain('efaktura_test_ok_save_required');
+      expect(state.notifySaved).toHaveBeenCalledOnce();
+    } finally {
+      finishTest(result);
+      wrapper.unmount();
+    }
+  });
+
+  it('does not mark an unchanged saved verification dirty', async () => {
+    state.localFirst = true;
+    const company = skCompany({ ...connectedSettings(), efaktura_sapi_client_secret: 'synthetic-stored-secret' });
+    state.localRows = [company];
+    state.testResult = { ok: true, tested_at: connectedSettings().efaktura_connection_tested_at };
+    const wrapper = mountForm(company, 'inbound_only');
+    await testButton(wrapper).trigger('click'); await flushPromises();
+    expect(status(wrapper)).toContain('status_saved');
+    expect(wrapper.text()).not.toContain('efaktura_test_ok_save_required');
+    expect(pollButton(wrapper).attributes('disabled')).toBeUndefined();
+    expect(updateLocalEfakturaSettings).not.toHaveBeenCalled();
     wrapper.unmount();
   });
 

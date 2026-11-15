@@ -3,7 +3,7 @@ title: Facturación electrónica eslovaca - conexión ePostman
 category: invoicing
 order: 6
 meta_description: Conecte la cuenta ePostman de su empresa, reciba facturas electrónicas e importe sus originales como gastos en Satflux.
-updated: 2026-11-14
+updated: 2026-11-15
 ---
 
 # Facturación electrónica eslovaca - conexión ePostman
@@ -27,7 +27,9 @@ Si ya hay un secreto guardado para la misma conexión, deje su campo vacío para
 
 En la misma empresa, abra **Gastos > Facturas electrónicas recibidas**. Revise el documento o descargue su XML original y, después, impórtelo como gasto. Las notas de crédito se importan como correcciones con el signo correspondiente. Una descarga correcta sin documentos significa que no se han descargado documentos nuevos; no confirma la entrega de una factura de prueba.
 
-Para iniciar una descarga manual, utilice **Descargar entrantes ahora** en la configuración de facturación electrónica de la empresa. Después, actualice la bandeja de entrada en Gastos. Actualizar la bandeja muestra los documentos que Satflux ya ha descargado.
+Usa **Comprobar buzón** directamente en **Gastos > Facturas electrónicas recibidas** para consultar los documentos entrantes en el proveedor y después actualizar el buzón y el estado de recepción. **Actualizar** solo carga documentos y estados ya almacenados en Satflux. **Descargar entrantes ahora** sigue disponible en los ajustes de facturación electrónica de la empresa. Los documentos ya importados permanecen en Gastos; el buzón solo muestra los que esperan la importación local. Un buzón vacío es normal después de importar.
+
+Tras una prueba local de conexión correcta, el formulario indica que la verificación aún debe guardarse. Usa **Guardar mis datos** para conservarla. Guardar la misma conexión y las mismas credenciales conserva la última comprobación del buzón; cambiar o eliminar las credenciales invalida esa evidencia. Si no hay una comprobación registrada o el estado es antiguo, usa **Comprobar buzón**. Una comprobación correcta sin documentos no confirma la entrega ni la preparación para producción.
 
 La importación guarda el original en sus datos locales cifrados. Si falla o el original es demasiado grande para un adjunto local, el elemento sigue disponible para recuperarlo y descargar el original. La existencia de un gasto por sí sola no completa la importación.
 

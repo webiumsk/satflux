@@ -1,5 +1,108 @@
 # Local workspace
 
+## PR446 E2E runner compatibility repair approved - 2026-11-15
+
+Exact-head CI43697361409 forbec2c34f passes PHP, Node, PostgreSQL and changelog,
+but E2E fails before tests at browser installation: locked Playwright1.60.0 does
+not support chromium on ubuntu26.04-x64 selected by ubuntu-latest. This is
+runner compatibility evidence, not an application/E2E assertion failure.
+
+Owner explicitly approves only the prepared E2E-runner repair. Change exactly
+`jobs.e2e.runs-on` from ubuntu-latest to ubuntu-24.04. The installed locked
+Playwright registry includes ubuntu24.04-x64. Existing Node YAML parser verifies
+that this scalar is the only semantic workflow change; whitespace checks pass.
+No dependency/action versions, other jobs, permissions, application or tests change.
+The accepted two-file runtime/test freeze remains
+`b342a06d14ed1ba1cade2bfc67716b4bfb7f1685cc4d5c03fb2ab60cf59f1d89`.
+
+Normal corrective publication and new-head CI follow. The failed run is not
+reported green, and no tests are marked skipped to bypass the compatibility issue.
+No installation, provider operation, PR merge or deployment. Owner retains merge/deploy.
+
+## PR446 inbound poll budget correction independently accepted - 2026-11-15
+
+The current owner-supplied finding is valid at64d7bcd7. The previous10-second poll
+limit is shorter than the server120-second cooperative admission budget plus
+finishing provider operations. A dedicated finite300-second poll timeout now
+accommodates default30-second detail/ACK and one token-renewal/retry sequence;
+ordinary inbox/health/custody requests remain10 seconds. Endpoint/auth/payload,
+explicit-only retry and backend acknowledged-receipt skipping are unchanged.
+
+Before-failing virtual regressions now accept a240-second completed poll and
+expire a stalled request at300 seconds. Main66frontend/3 and44PHP/519assertions
+pass; lint0errors/46inherited, type110/no new, locales/whitespace/build7,669 pass.
+Independent QA/security each accept66/3 and the verified two-file freeze
+`b342a06d14ed1ba1cade2bfc67716b4bfb7f1685cc4d5c03fb2ab60cf59f1d89`.
+Counts overlap. The deadline is not a server-cancellation guarantee or universal
+ceiling for arbitrary longer provider/DB settings. See `INBOUND_POLL_TIMEOUT_REVIEW.md`.
+Main owns existing-branch publication and exact-head CI; owner retains merge/deploy.
+Unrelated primary changes remain preserved; no provider operation or installation.
+
+## PR446 review fixes independently accepted - 2026-11-15
+
+Both owner-supplied findings against1411529a are current and reproduced; none is
+skipped. Bound pollInbound with the existing10-second inbox timeout, retaining
+POST/auth/payload and explicit retry. Prevent Save/Test overlap in button and
+handler admission, preserving unsaved verification and exact existing dirty checks.
+Only two runtime paths and two regression files change; no backend/API/schema,
+locale, credential-autosave, provider or dependency expansion.
+
+Main passes174 tests /five suites, lint0errors/46inherited, type110/no new,
+parity/whitespace and build7,669. Independent QA155/5 and security145/4 accept
+four-file freeze `1aa1218f2de98f82442e238caa7db611d3d004e8a3e514f987d4819815f88dd1`.
+Counts overlap. Baseline PR446 CI43654838725 passes at1411529a; fresh-head CI
+must be verified after normal corrective publication. Scope/dispositions:
+`INVOICING_STATUS_REVIEW_FIXES.md`. Main owns existing-branch push/thread handling;
+owner retains PR merge/deployment. Primary unrelated edits remain preserved.
+
+## Invoicing status publication reconciliation verified - 2026-11-15
+
+Owner requests push of both accepted corrections. Implementation commit `8d0b4999`
+contains exactly31 reviewed paths. Fresh remote master is `4b9cc230`, the owner's
+merged PR445. Reconcile it locally with a normal feature-branch merge before push.
+Ten conflicts preserve both development histories, the newer five-guide date and
+both required inbox imports. The combined panel is exactly the accepted receiving
+panel plus the master's PDF import/component. No additional product logic is added.
+
+Independent QA accepts all41 affected paths and162 tests /five suites; security
+accepts the narrow17-file byte-preserving integration. Main passes391 combined
+tests /15 suites, lint0errors/46inherited, type110/no new, parity/whitespace and
+build7,669. Earlier136 PHP/1,018, PHPStan0 and Pint2 remain applicable through
+unchanged backend bytes. Merged source fingerprint is
+`42fa35d13d66eccc9f6e04224db322cb3066019d11eba289a6901f10097279ee`.
+
+Main owns the pending normal push and remote-head verification. No new-head CI,
+PR merge or deployment is claimed by this pre-publication record. Owner retains
+PR creation and merge/deployment decisions. Earlier uncommitted/read-only notes
+below are historical; both corrections are now authorized and committed locally.
+
+## eFaktura receiving correction in relay-status-banner - 2026-11-15
+
+The retained `storage/app/private/worktrees/relay-status-banner` on
+`fix/relay-status-banner` now also contains the owner-authorized eFaktura receiving
+status/action correction. Both scopes remain local/uncommitted/unpublished. The
+18-file eFaktura freeze is independently accepted by QA/security; prior relay
+runtime/test bytes remain accepted unchanged. Main combined/static/build checks
+pass. Contract/evidence: `EFAKTURA_RECEIVING_STATUS.md`.
+
+Existing frontend dependencies are reused. PHP validation binds existing compatible
+vendor read-only inside disposable network-disabled SQLite-memory containers with
+tmpfs storage/cache; no application .env is created and no service remains running.
+Primary checkout remains `fix/sepa-confirmation-isolation` with unrelated edits.
+No PR, remote commit, merge or deployment.
+
+## Relay status banner worktree - 2026-11-14
+
+Retain `storage/app/private/worktrees/relay-status-banner` on
+`fix/relay-status-banner`, base remote-verified master `ce725a99`. The owner-authorized
+current relay notice, five locales/guides and regression tests are independently
+accepted by QA/security; main static/build checks pass. Source and coordination
+records are uncommitted/unpublished; no PR, merge or deployment. The ignored
+`node_modules` link reuses the existing invoicing migration dependency directory
+without installation. No preview server or test infrastructure was started.
+Primary remains on `fix/sepa-confirmation-isolation` with unrelated edits intact.
+Contract, hashes/results and eFaktura read-only diagnosis: `RELAY_STATUS_BANNER.md`.
+
 ## PR445 master reconciliation retained - 2026-11-14
 
 The named `storage/app/private/worktrees/efaktura-embedded-pdf` checkout retains
