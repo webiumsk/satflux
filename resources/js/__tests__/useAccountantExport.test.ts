@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 import { useAccountantExport } from "../composables/useAccountantExport";
 import { ACCOUNTANT_EXPORT_MAX_DOCUMENTS_PER_BATCH } from "../evolu/accountantExportSelect";
+import { createExpenseOriginalReference, encodeExpenseOriginalReference } from "@/evolu/expenseOriginalReference";
 import { createBankExpenseClaim } from "@/evolu/bankExpenseClaims";
 import type { EvoluExpenseRow } from "@/evolu/expenseMap";
 import type { EvoluBankTransactionRow } from "@/evolu/bankMap";
@@ -12,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     buildRequest: vi.fn(),
     fetchExport: vi.fn(),
     downloadBlob: vi.fn(),
+    readOriginal: vi.fn(),
 }));
 
 vi.mock("@evolu/vue", () => ({
@@ -26,6 +28,8 @@ vi.mock("@/evolu/client", () => ({
     allExpenseAttachmentsQuery: "attachments",
     useInvoicingEvolu: () => ({ loadQuery: mocks.loadQuery }),
 }));
+
+vi.mock("@/evolu/expenseOriginalArchive", () => ({ readVerifiedExpenseAttachment: mocks.readOriginal }));
 
 vi.mock("@/evolu/flags", () => ({
     isInvoicingLocalFirst: () => true,
@@ -85,6 +89,7 @@ describe("useAccountantExport", () => {
         }));
         mocks.fetchExport.mockReset();
         mocks.downloadBlob.mockReset();
+        mocks.readOriginal.mockReset();
     });
 
     it("does not download any local-first batch until every ZIP is prepared", async () => {
@@ -132,4 +137,33 @@ describe("useAccountantExport", () => {
         await state.download();
         expect(mocks.buildRequest.mock.calls[1][2].expenses[0]).toMatchObject({ status: 'recorded', paid_at: null });
     });
+
+
+    it("uses the same verified 450KiB attachment in the preview and request, skips a 600KiB original without reading it", async () => {
+    mocks.queryRows.set("documents", ref([]));
+    const expense = { id: "expense-original", companyId: COMPANY, internalNumber: "E-1", issueDate: "2026-03-05",
+        status: "recorded", total: "1.00", currency: "EUR" };
+    mocks.queryRows.set("expenses", ref([expense]));
+    const rows = [450 * 1024, 600 * 1024].map((sizeBytes, index) => {
+        const ref = createExpenseOriginalReference({ companyId: COMPANY, receiptId: `receipt-${index}`,
+            expenseId: expense.id, attachmentId: `attachment-${index}`, sha256: "a".repeat(64), sizeBytes });
+        return { id: ref.attachmentId, expenseId: expense.id, mimeType: "application/xml", originalFilename: `received-${index}.xml`,
+            sizeBytes: String(sizeBytes), contentBase64: encodeExpenseOriginalReference(ref) };
+    });
+    mocks.queryRows.set("attachments", ref(rows));
+    const bytes = new Uint8Array(450 * 1024).fill(32);
+    mocks.readOriginal.mockResolvedValue({ bytes, blob: new Blob([bytes]) });
+    mocks.fetchExport.mockResolvedValue(new Blob(["synthetic zip"]));
+    const state = useAccountantExport(ref(COMPANY), ref("Acme"));
+    state.period.value = { preset: "custom", customFrom: "2026-03-01", customTo: "2026-03-31" };
+    await state.download();
+    expect(state.error.value).toBeNull();
+    expect(state.plan.value).toMatchObject({ attachments: 1, attachmentBytes: bytes.length, skippedAttachments: 1 });
+    const payload = mocks.buildRequest.mock.calls.at(-1)![2].expenses[0];
+    expect(payload.attachments).toHaveLength(1);
+    expect(Buffer.from(payload.attachments[0].content_base64, "base64")).toEqual(Buffer.from(bytes));
+    expect(JSON.stringify(payload)).not.toContain("satflux:expense-original:");
+    expect(mocks.readOriginal.mock.calls.every(call => call[2].id === rows[0].id && call[3].maxBytes === 512 * 1024)).toBe(true);
+});
+
 });

@@ -4,6 +4,7 @@ import { registerEvoluRelayOwner } from "./relayPreferenceLifecycle";
 import { withCompanyOwnerScoping } from "./ownerScope";
 import { createEvoluWebDepsWithReloadGuard } from "./reloadGuard";
 import { EVOLU_APP_NAME, InvoicingLocalSchema, type CompanyId, type ExpenseId, type MigrationSourceId } from "./schema";
+import { EXPENSE_ORIGINAL_SOURCE_KIND } from "./expenseOriginalReference";
 
 const rawEvolu = createEvolu(createEvoluWebDepsWithReloadGuard())(InvoicingLocalSchema, {
     name: SimpleName.orThrow(EVOLU_APP_NAME),
@@ -607,7 +608,26 @@ export const allCompanySharesQuery = evolu.createQuery((db) =>
 /** Metadata only: the wizard never subscribes to or renders original file bytes. */
 export const allMigrationSourcesQuery = evolu.createQuery((db) => db.selectFrom("migrationSource")
     .select(["id", "companyId", "sourceKind", "relatedExportId", "originalFilename", "mimeType", "sizeBytes", "checksum", "chunkCount", "savedAt"])
-    .where("isDeleted", "is not", sqliteTrue).where("savedAt", "is not", null).orderBy("createdAt"));
+    .where("isDeleted", "is not", sqliteTrue).where("sourceKind", "is not", EXPENSE_ORIGINAL_SOURCE_KIND)
+    .where("savedAt", "is not", null).orderBy("createdAt"));
+
+/** Receipt archives are included even while incomplete; they are not migration wizard entries. */
+export const allExpenseOriginalSourcesQuery = evolu.createQuery((db) => db.selectFrom("migrationSource")
+    .selectAll().where("sourceKind", "=", EXPENSE_ORIGINAL_SOURCE_KIND).where("isDeleted", "is not", sqliteTrue).orderBy("createdAt"));
+export const allExpenseOriginalChunksQuery = evolu.createQuery((db) => db.selectFrom("migrationChunk")
+    .innerJoin("migrationSource", (join) => join.onRef("migrationSource.id", "=", "migrationChunk.sourceId")
+        .onRef("migrationSource.ownerId", "=", "migrationChunk.ownerId").onRef("migrationSource.companyId", "=", "migrationChunk.companyId"))
+    .selectAll("migrationChunk").where("migrationSource.sourceKind", "=", EXPENSE_ORIGINAL_SOURCE_KIND)
+    .where("migrationChunk.isDeleted", "is not", sqliteTrue).where("migrationSource.isDeleted", "is not", sqliteTrue)
+    .orderBy("migrationChunk.createdAt"));
+
+/** Tombstones must remain visible to prevent retry from deliberately reviving a deleted original. */
+export function expenseOriginalChunksProofQuery(companyId: CompanyId, sourceId: MigrationSourceId) {
+    return evolu.createQuery((db) => db.selectFrom("migrationChunk").selectAll()
+        .where("companyId", "=", companyId).where("sourceId", "=", sourceId));
+}
+export const expenseOriginalAttachmentProofQuery = evolu.createQuery((db) => db.selectFrom("expenseAttachment").selectAll()
+    .where("id", "is not", null));
 
 /** Private read-back queries: never subscribe these as UI caches. */
 export const migrationSourceProofQuery = evolu.createQuery((db) => db.selectFrom("migrationSource")

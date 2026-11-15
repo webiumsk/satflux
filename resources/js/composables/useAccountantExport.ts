@@ -1,6 +1,6 @@
 import { projectExpensePayments } from "@/evolu/bankExpenseClaims";
 import type { EvoluBankTransactionRow, EvoluBankTransactionMatchRow } from "@/evolu/bankMap";
-import { computed, ref, type Ref } from "vue";
+import { computed, ref, watch, type Ref } from "vue";
 import { useQuery } from "@evolu/vue";
 import {
     allDocumentsQuery,
@@ -17,6 +17,9 @@ import type { EvoluExpenseAttachmentRow } from "@/evolu/expenseAttachmentCrud";
 import { isInvoicingLocalFirst } from "@/evolu/flags";
 import {
     buildExpensePayload,
+    resolveAccountantExportAttachments,
+    selectExpensesForExport,
+    ACCOUNTANT_EXPORT_MAX_ATTACHMENT_BYTES,
     defaultAccountantExportOptions,
     planAccountantExport,
     type AccountantExportBatch,
@@ -36,6 +39,8 @@ import {
     resolveIssuePeriodRange,
     type IssuePeriodState,
 } from "@/composables/useInvoicingIssuePeriod";
+import { readVerifiedExpenseAttachment } from "@/evolu/expenseOriginalArchive";
+import { isExpenseOriginalReference } from "@/evolu/expenseOriginalReference";
 import { invoicingApi } from "@/services/api";
 
 const MIN_DATE = "0000-01-01";
@@ -107,6 +112,30 @@ export function useAccountantExport(companyId: Ref<string>, companyName: Ref<str
         toAppRows<EvoluBankTransactionRow>(transactionRows.value), toAppRows<EvoluBankTransactionMatchRow>(matchRows.value)));
     const attachments = computed(() => toAppRows<EvoluExpenseAttachmentRow>(attachmentRows.value));
 
+    const resolvedAttachments = ref<EvoluExpenseAttachmentRow[]>([]);
+    const resolvingAttachments = ref(false);
+    let resolutionGeneration = 0;
+    async function refreshResolvedAttachments(): Promise<EvoluExpenseAttachmentRow[]> {
+        const generation = ++resolutionGeneration;
+        const company = companyId.value;
+        resolvingAttachments.value = true;
+        const selected = options.value.includeExpenseAttachments
+            ? new Set(selectExpensesForExport(expenses.value, company, range.value).map(row => String(row.id))) : new Set<string>();
+        const rows = await resolveAccountantExportAttachments(attachments.value, selected, async row => {
+            if (!evolu) throw new Error("local_context_unavailable");
+            return (await readVerifiedExpenseAttachment(evolu, company, row, { maxBytes: ACCOUNTANT_EXPORT_MAX_ATTACHMENT_BYTES })).bytes;
+        });
+        if (generation !== resolutionGeneration || company !== companyId.value) return rows;
+        resolvedAttachments.value = rows;
+        resolvingAttachments.value = false;
+        return rows;
+    }
+    if (localFirst) watch(() => [attachments.value, expenses.value, companyId.value, range.value, options.value.includeExpenseAttachments],
+        () => { void refreshResolvedAttachments(); }, { immediate: true });
+    const exportAttachments = computed(() => resolvingAttachments.value
+        ? attachments.value.map(row => isExpenseOriginalReference(row.contentBase64) ? { ...row, contentBase64: null } : row)
+        : resolvedAttachments.value);
+
     /** Local-first only - server mode has no cheap preview (rows live on the server). */
     const plan = computed<AccountantExportPlan | null>(() => {
         if (!localFirst) return null;
@@ -114,7 +143,7 @@ export function useAccountantExport(companyId: Ref<string>, companyName: Ref<str
             range: range.value,
             documents: documents.value,
             expenses: expenses.value,
-            attachments: attachments.value,
+            attachments: exportAttachments.value,
             companyId: companyId.value,
             includeAttachments: options.value.includeExpenseAttachments,
         });
@@ -137,12 +166,12 @@ export function useAccountantExport(companyId: Ref<string>, companyName: Ref<str
         return `accountant-${slug(companyName.value ?? "company")}-${chunk.from}_${chunk.to}.zip`;
     }
 
-    async function prepareLocalBatch(batch: AccountantExportBatch, signal?: AbortSignal): Promise<{ blob: Blob; filename: string } | null> {
+    async function prepareLocalBatch(batch: AccountantExportBatch, attachmentSnapshot: readonly EvoluExpenseAttachmentRow[], signal?: AbortSignal): Promise<{ blob: Blob; filename: string } | null> {
         if (!localDoc) return null;
         const expenseIds = new Set(batch.expenseIds);
         const expensePayloads = expenses.value
             .filter((row) => expenseIds.has(String(row.id)))
-            .map((row) => buildExpensePayload(row, attachments.value, options.value.includeExpenseAttachments).payload);
+            .map((row) => buildExpensePayload(row, attachmentSnapshot, options.value.includeExpenseAttachments).payload);
         if (batch.documentIds.length === 0 && expensePayloads.length === 0) return null;
 
         const request = await buildAccountantExportEphemeralRequest(localDoc, companyId.value, {
@@ -189,11 +218,18 @@ export function useAccountantExport(companyId: Ref<string>, companyName: Ref<str
                 progress.value = { done: 1, total: 1 };
                 return;
             }
-            const batches = plan.value?.batches ?? [];
+            const company = companyId.value;
+            const attachmentSnapshot = await refreshResolvedAttachments();
+            if (company !== companyId.value || abort.signal.aborted) throw new DOMException("Export context changed", "AbortError");
+            const batches = planAccountantExport({ range: range.value, documents: documents.value,
+                expenses: expenses.value, attachments: attachmentSnapshot, companyId: company,
+                includeAttachments: options.value.includeExpenseAttachments }).batches;
             const prepared: { blob: Blob; filename: string }[] = [];
             progress.value = { done: 0, total: batches.length };
             for (const batch of batches) {
-                const file = await prepareLocalBatch(batch, abort.signal);
+                if (company !== companyId.value) throw new DOMException("Export context changed", "AbortError");
+                const file = await prepareLocalBatch(batch, attachmentSnapshot, abort.signal);
+                if (company !== companyId.value) throw new DOMException("Export context changed", "AbortError");
                 if (file) {
                     prepared.push(file);
                 }
@@ -225,7 +261,7 @@ export function useAccountantExport(companyId: Ref<string>, companyName: Ref<str
         plan,
         nothingToExport,
         wantsAnything,
-        loading,
+        loading: computed(() => loading.value || resolvingAttachments.value),
         loadError,
         downloading,
         progress,

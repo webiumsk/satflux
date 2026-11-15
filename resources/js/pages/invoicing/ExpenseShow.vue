@@ -363,11 +363,12 @@ import { toAppRows } from "../../evolu/queryLoad";
 import {
   attachmentBlobUrl,
   attachmentContentBlob,
-  deleteLocalExpenseAttachment,
   type EvoluExpenseAttachmentRow,
 } from "../../evolu/expenseAttachmentCrud";
+import { isExpenseOriginalReference } from "../../evolu/expenseOriginalReference";
+import { readVerifiedExpenseAttachment, deleteVerifiedExpenseAttachment } from "../../evolu/expenseOriginalArchive";
 import { isInvoicingLocalFirst } from "../../evolu/flags";
-import type { CompanyId, ExpenseAttachmentId, ExpenseId } from "../../evolu/schema";
+import type { CompanyId, ExpenseId } from "../../evolu/schema";
 import { updateLocalExpenseNote } from "../../evolu/expenseCrud";
 import { expenseMutationErrorKey } from "../../utils/expenseError";
 import { getWebBlob, invoicingApi } from "../../services/api";
@@ -740,7 +741,9 @@ async function loadSavedPreview() {
   try {
     const row = localFirst ? localAttachmentRow(att?.id) : null;
     const blob = localFirst
-      ? (row ? attachmentContentBlob(row) : null)
+      ? (row ? isExpenseOriginalReference(row.contentBase64)
+        ? (await readVerifiedExpenseAttachment(expenseResource.evolu!, context.company, row, { maxBytes: 2 * 1024 * 1024 })).blob
+        : attachmentContentBlob(row) : null)
       : await getWebBlob(attachmentPreviewUrl(att?.id, context.company, context.expense));
     if (!blob || !current()) return;
     const name = att?.original_filename || expense.value?.original_filename || "";
@@ -763,19 +766,33 @@ async function loadSavedPreview() {
       const xml = await blob.text();
       if (current()) embeddedUblXml.value = xml;
     }
-  } catch {
-    if (current()) savedPreviewKind.value = "other";
+  } catch (error) {
+    if (current()) {
+      savedPreviewKind.value = "other";
+      if (error instanceof Error && error.message === "original_too_large") embeddedUblTooLarge.value = true;
+    }
   }
 }
 
-function downloadAttachment() {
+async function downloadAttachment() {
   const att = selectedAttachment.value;
   if (localFirst) {
     const row = localAttachmentRow(att?.id);
-    const url = row ? attachmentBlobUrl(row) : null;
-    if (url) {
-      window.open(url, "_blank");
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    const context = captureContext();
+    try {
+      const blob = row && isExpenseOriginalReference(row.contentBase64)
+        ? (await readVerifiedExpenseAttachment(expenseResource.evolu!, context.company, row)).blob : null;
+      if (!isCurrentContext(context) || selectedAttachment.value?.id !== att?.id) return;
+      const url = blob ? URL.createObjectURL(blob) : row ? attachmentBlobUrl(row) : null;
+      if (url) {
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = att?.original_filename || "attachment";
+        anchor.click();
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      }
+    } catch {
+      if (isCurrentContext(context)) window.alert(t("invoicing.expense_attachment_download_failed"));
     }
     return;
   }
@@ -796,10 +813,9 @@ async function onRemoveSavedAttachment(id: string) {
   try {
     if (localFirst) {
       if (!expenseResource.evolu) throw new Error('local_context_unavailable');
-      deleteLocalExpenseAttachment(
-        expenseResource.evolu,
-        id as ExpenseAttachmentId,
-      );
+      const row = localAttachmentRow(id);
+      if (!row) throw new Error('local_context_unavailable');
+      await deleteVerifiedExpenseAttachment(expenseResource.evolu, context.company, row);
       await expenseResource.refresh();
       if (!isCurrentContext(context)) return;
       expense.value = expenseResource.expense.value as Expense | null;

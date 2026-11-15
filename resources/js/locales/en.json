@@ -826,7 +826,7 @@
     "efaktura_epostman_inbound_only": "This company can receive e-invoices. Sending is available for Slovak companies registered as full VAT payers.",
     "efaktura_epostman_manual_sending": "Receiving and manual sending of issued invoices and credit notes are available. Automatic sending is unavailable. Check delivery and tax-reporting status in ePostman.",
     "efaktura_connection_new_credentials": "Enter new credentials for the selected connection. Credentials from another connection will not be reused.",
-    "efaktura_inbox_original_notice": "Import completes only after the original XML has been saved and checked in your encrypted data. If saving fails, the document stays here for recovery. Downloading alone does not complete the import.",
+    "efaktura_inbox_original_notice": "Import completes only after the original XML has been saved and checked in your local Evolu data. Synchronization uses end-to-end encryption. If saving fails, the document stays here for recovery. Downloading alone does not complete the import.",
     "efaktura_inbox_view": "View document",
     "efaktura_inbox_download_original": "Download original XML",
     "efaktura_inbox_document_number": "Document number",
@@ -849,7 +849,7 @@
     "ubl_pdf_canvas": "PDF {name}, page {page}",
     "efaktura_inbox_xml_preview": "Show original XML",
     "efaktura_inbox_error_original_unavailable": "The original XML could not be verified. The document remains in the inbox; refresh or contact support.",
-    "efaktura_inbox_error_original_too_large": "The original exceeds the local attachment limit (384 KB). Import was not completed. Download the XML and retain access to the provider archive; the document remains in the inbox.",
+    "efaktura_inbox_error_original_too_large": "The original exceeds the supported import limit (10 MiB). Import was not completed. Download the XML and retain access to the provider archive; the document remains in the inbox.",
     "efaktura_inbox_error_original_storage_failed": "The original XML could not be saved and verified. The document remains in the inbox. Retry the import to repair the attachment without creating another expense.",
     "efaktura_inbox_line_description": "Description",
     "efaktura_inbox_line_quantity": "Quantity",
@@ -2096,7 +2096,8 @@
     "efaktura_status_value_AB": "AB",
     "efaktura_status_value_CA": "CA",
     "efaktura_status_value_IP": "IP",
-    "efaktura_epostman_api_key_reenter": "The replacement key was not saved to the server. Enter it again or remove the pending key, then save."
+    "efaktura_epostman_api_key_reenter": "The replacement key was not saved to the server. Enter it again or remove the pending key, then save.",
+    "expense_attachment_download_failed": "The original attachment could not be verified or is not available on this device. Sync and try again."
   },
   "common": {
     "danger_type_word_label": "Type {word} to confirm",
@@ -3762,7 +3763,9 @@
     "evolu_relay_protocol_sync_failed": "Relay synchronization failed",
     "evolu_relay_protocol_version_mismatch": "Protocol version mismatch",
     "evolu_relay_protocol_invalid_message": "Invalid protocol response",
-    "evolu_relay_quota_hint": "This relay rejected synchronization because its storage or billing quota was exceeded. Check the provider’s limits or use another relay. Local data stays on this device."
+    "evolu_relay_quota_hint": "This relay rejected synchronization because its storage or billing quota was exceeded. Check the provider’s limits or use another relay. Local data stays on this device.",
+    "backup_restore_original_unverified": "The backup does not contain a complete, verified original for every received invoice. Sync the source device and export a new backup.",
+    "backup_export_original_unverified": "A received invoice original is incomplete or could not be verified. Sync and try the backup again."
   },
   "header": {
     "dashboard": "Dashboard",

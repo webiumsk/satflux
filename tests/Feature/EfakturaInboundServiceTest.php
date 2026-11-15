@@ -152,6 +152,41 @@ XML;
     }
 
     #[Test]
+    public function poll_company_rejects_xml_above_the_existing_ten_mebibyte_limit_without_acknowledging(): void
+    {
+        config([
+            'efaktura.enabled' => true,
+            'efaktura.allowed_sapi_hosts' => ['sapi.test'],
+            'invoicing.local_first' => true,
+        ]);
+        $padding = '<!--'.str_repeat('x', 1024 * 1024).'-->';
+        $ubl = str_replace('</Invoice>', str_repeat($padding, 10).'</Invoice>', $this->sampleInboundUbl());
+        $this->assertGreaterThan(10 * 1024 * 1024, strlen($ubl));
+        Http::fake(function ($request) use ($ubl) {
+            $path = parse_url($request->url(), PHP_URL_PATH);
+            if ($path === '/sapi/v1/auth/token') {
+                return Http::response(['access_token' => 'synthetic-token', 'expires_in' => 900]);
+            }
+            if ($path === '/sapi/v1/document/receive/inbound-oversized') {
+                return Http::response(['providerDocumentId' => 'inbound-oversized', 'payload' => $ubl]);
+            }
+            if ($path === '/sapi/v1/document/receive') {
+                return Http::response(['documents' => [['providerDocumentId' => 'inbound-oversized']]]);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $stats = app(EfakturaInboundService::class)->pollCompany($this->inboundCompany());
+
+        $this->assertSame(['imported' => 0, 'acknowledged' => 0, 'skipped' => 0, 'failed' => 1], $stats);
+        $this->assertDatabaseCount('efaktura_inbound_receipts', 0);
+        $this->assertDatabaseCount('business_expenses', 0);
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/receive/inbound-oversized'));
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/acknowledge'));
+    }
+
+    #[Test]
     public function poll_company_imports_for_non_payer_sk_company(): void
     {
         // Receiving is mandatory for every SK taxable entity, not only full

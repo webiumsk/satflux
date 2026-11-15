@@ -217,3 +217,16 @@ describe('accountant export selection', () => {
         expect(plan.batches[1].documentIds).toHaveLength(1);
     });
 });
+
+it('never puts a storage marker, malformed base64 or a decoded attachment above 512KiB into the request', () => {
+    const row = expense({ id: 'e1' });
+    const invalid = [
+        attachment({ id: 'marker', expenseId: 'e1', contentBase64: 'satflux:expense-original:v1:{}' }),
+        attachment({ id: 'future', expenseId: 'e1', contentBase64: 'satflux:expense-original:v9:{}' }),
+        attachment({ id: 'malformed', expenseId: 'e1', contentBase64: 'c3ludGhldGlj!' }),
+        attachment({ id: 'large', expenseId: 'e1', contentBase64: Buffer.alloc(512 * 1024 + 1, 32).toString('base64') }),
+    ];
+    const selected = buildExpensePayload(row, invalid, true);
+    expect(selected.payload.attachments).toEqual([]);
+    expect(selected.skippedAttachments).toBe(4);
+});

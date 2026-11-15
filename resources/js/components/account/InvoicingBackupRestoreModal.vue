@@ -200,6 +200,8 @@ const validationErrorText = computed(() => {
     case "hash_missing":
     case "hash_mismatch":
       return t("account.backup_restore_hash_mismatch");
+    case "original_unverified":
+      return t("account.backup_restore_original_unverified");
     case "hash_unavailable":
       return t("account.backup_restore_failed");
     case "decrypt_failed":

@@ -1,5 +1,49 @@
 # Development decision log
 
+## Larger eFaktura originals accepted locally - 2026-11-16
+
+The owner authorizes remaining point 1: received originals above 384 KiB,
+including UBL/XML with embedded PDF. Implementation remains uncommitted on
+`feat/efaktura-large-originals`, based on verified PR448 merge
+`2201bf1bacdc9a26571f188382b5e10999bbbf55` from reviewed head `54b9eea1`.
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`; unrelated work
+and the separate 17-file accountant-export clarity diff remain preserved.
+Merge evidence and these local checks do not establish deployed production readiness.
+
+Owner-scoped archives store at most 40 chunks of 256 KiB under the existing
+10 MiB server admission bound. Strict receipt-bound references, durable writes
+and fresh context/byte/digest checks before and after custody preparation protect
+the unchanged server API and post-ACK cleanup contract. Backup v3 validates the
+complete archive before output or restore writes. Download, deletion, sharing,
+rekey, fingerprint and resend consumers handle the representation. Ordinary
+attachments remain 384 KiB; preview and accountant-export caps remain unchanged.
+
+Independent QA and security accept all 38 source/test/locale files at aggregate
+`d0ba510c9b9617484f65d63fb9981db7673e8c9ba000de5d5318f4b5b8c1143d`.
+Two medium findings are fixed: noncanonical snapshot live flags now fail before
+restore writes, and post-proof company/receiving-context changes prevent custody
+completion. Main checks pass 274 frontend tests in 20 suites, 49 PHP tests /
+605 assertions, lint with 0 errors / 46 inherited warnings, typecheck with
+110 inherited errors and nothing new, locale parity and build (7,672 modules).
+Pint passes for both changed PHP test files; no production PHP changes.
+
+QA additionally verifies 44 compatibility/integrity cases, 15 malformed-flag
+cases, and 22 native Chrome/Evolu/OPFS checks plus four native context-race
+regressions. Exact 10 MiB survives a full browser restart; interrupted writes
+resume, and atomic deletion failures retain originals. Review runs overlap.
+All synthetic fixture processes are stopped and private browser profiles removed.
+
+New originals require the updated client for access, backup, restore and sharing;
+rollback needs a compatible reader/backport. Existing E2EE synchronization is
+preserved; SQLite encryption at rest is not configured or certified. Tests use
+synthetic custody callbacks and disabled external transports, so real provider,
+multi-device synchronization and deployment remain unverified. Contract, evidence,
+limits and final review dispositions: `EFAKTURA_LARGE_ORIGINALS.md`.
+
+Source and documentation remain local, with no new commit, push, PR, head CI,
+provider operation or deployment. Next is scoped publication when requested;
+merge and deployment retain their approval gates.
+
 ## PR448 published; final publication checks in progress - 2026-11-15
 
 The owner's push instruction publishes reviewed implementation commit

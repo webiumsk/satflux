@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash, webcrypto } from "node:crypto";
+import { createIdFromString } from "@evolu/common";
 import { invoicingApi } from "@/services/api";
 import {
     importEfakturaInboxEntry, reconcileEfakturaInboxWithLocalExpenses, stableExpenseIdFromInboxUuid,
@@ -10,8 +11,12 @@ import { installBankLocks } from "./bankReconciliationTestSupport";
 import { withExpenseReconciliation } from "@/evolu/expenseReconciliation";
 import { clearRowOwnerIndex } from "@/evolu/ownerScope";
 import { clearCompanyShares } from "@/evolu/companyShareRegistry";
+import { parseExpenseOriginalReference, EXPENSE_ORIGINAL_MAX_BYTES } from "@/evolu/expenseOriginalReference";
+import { readVerifiedExpenseAttachment } from "@/evolu/expenseOriginalArchive";
 
-vi.mock("@/evolu/client", async () => (await import("./expenseReconciliationTestSupport")).expenseTestQueryExports());
+vi.mock("@/evolu/client", async () => ({ ...(await import("./expenseReconciliationTestSupport")).expenseTestQueryExports(),
+    migrationSourceProofQuery: "fresh:migrationSource", expenseOriginalChunksProofQuery: () => "fresh:migrationChunk",
+    expenseOriginalAttachmentProofQuery: "fresh:expenseAttachment" }));
 
 const xml = "\uFEFF<Invoice><Name>Dodávateľ ľščťž</Name></Invoice>";
 const digest = (body: string) => createHash("sha256").update(body, "utf8").digest("hex");
@@ -25,9 +30,9 @@ const custodyToken = btoa("synthetic custody completion token");
 const expenseId = stableExpenseIdFromInboxUuid(entry.evolu_expense_id)!;
 const attachmentId = stableAttachmentIdFromInboxUuid(entry.evolu_expense_id)!;
 
-function setup(existing = false, body = xml) {
+function setup(existing = false, body = xml, companyId = "company-a") {
     const adapter = createExpenseWriterTestAdapter(existing
-        ? [{ id: expenseId, companyId: "company-a", total: "19.00", status: "paid", internalNumber: "EXP-1" }] : []);
+        ? [{ id: expenseId, companyId, total: "19.00", status: "paid", internalNumber: "EXP-1" }] : [], companyId);
     const serverCopy = { original: body as string | null };
     const detail = vi.spyOn(invoicingApi.efaktura, "inboxDetail").mockImplementation(async () => ({ ...entry, ubl: serverCopy.original, original_sha256: digest(body) }));
     const prepared = vi.spyOn(invoicingApi.efaktura, "inboxPrepareImported").mockResolvedValue(custodyToken);
@@ -123,11 +128,81 @@ describe("received original custody", () => {
     });
 
     it("keeps oversize originals pending and does not create a misleading partial expense", async () => {
-        const { evolu, state, imported } = setup(false, "<Invoice>" + "x".repeat(384 * 1024) + "</Invoice>");
+        const { evolu, state, imported } = setup(false, "<Invoice>" + "x".repeat(EXPENSE_ORIGINAL_MAX_BYTES) + "</Invoice>");
         expect(await importEfakturaInboxEntry(evolu as never, "company-a", "bridge-a", entry))
             .toEqual({ ok: false, error: "original_too_large" });
         expect(state.expense).toHaveLength(0);
         expect(imported).not.toHaveBeenCalled();
+    });
+
+    it.each([false, true])("retains exact multi-chunk XML with an embedded PDF before custody and survives a lost completion response, existing %s", async existing => {
+        const companyId = createIdFromString("synthetic-large-company");
+        const body = "\uFEFF<Invoice><Name>ľščťž</Name><EmbeddedDocumentBinaryObject>" + "A".repeat(400_000) + "</EmbeddedDocumentBinaryObject></Invoice>";
+        const { evolu, state, imported, serverCopy } = setup(existing, body, companyId);
+        imported.mockImplementationOnce(async (_bridge, _receipt, hash) => {
+            expect(hash).toBe(digest(body));
+            const marker = parseExpenseOriginalReference(state.expenseAttachment[0].contentBase64)!;
+            expect(marker.sha256).toBe(hash);
+            expect(state.migrationSource[0].savedAt).toEqual(expect.any(String));
+            expect(state.migrationChunk).toHaveLength(2);
+            const persisted = await readVerifiedExpenseAttachment(evolu as never, companyId, state.expenseAttachment[0] as never);
+            expect(Buffer.from(persisted.bytes)).toEqual(Buffer.from(body, "utf8"));
+            serverCopy.original = null;
+            throw new Error("synthetic lost large completion response");
+        });
+        await expect(importEfakturaInboxEntry(evolu as never, companyId, "bridge-a", entry)).rejects.toThrow("synthetic lost large completion response");
+        expect(await importEfakturaInboxEntry(evolu as never, companyId, "bridge-a", entry)).toMatchObject({ ok: true, alreadyImported: true });
+        expect(state.expense).toHaveLength(1);
+        expect(state.expenseAttachment).toHaveLength(1);
+        expect(state.migrationSource).toHaveLength(1);
+        expect(state.migrationChunk).toHaveLength(2);
+    });
+
+    it.each(["missing", "corrupt", "deleted", "foreign"])("keeps the server large original if archive evidence becomes %s during prepare", async change => {
+        const companyId = createIdFromString("synthetic-large-company");
+        const body = "\uFEFF<Invoice>" + "x".repeat(400_000) + "</Invoice>";
+        const { evolu, state, prepared, imported, serverCopy } = setup(false, body, companyId);
+        prepared.mockImplementation(async () => {
+            if (change === "missing") state.migrationChunk.pop();
+            if (change === "corrupt") state.migrationChunk[0].contentBase64 = btoa("wrong");
+            if (change === "deleted") state.migrationChunk[0].isDeleted = 1;
+            if (change === "foreign") state.migrationChunk[0].ownerId = "foreign";
+            return custodyToken;
+        });
+        expect(await importEfakturaInboxEntry(evolu as never, companyId, "bridge-a", entry)).toEqual({ ok: false, error: "original_storage_failed" });
+        expect(imported).not.toHaveBeenCalled();
+        expect(serverCopy.original).toBe(body);
+    });
+
+    it.each(["tax", "receiving"])("retains staging when same-owner %s changes during the post-prepare archive read", async change => {
+        const companyId = createIdFromString("synthetic-large-context-company");
+        const body = "\uFEFF<Invoice>ľščťž" + "x".repeat(400_000) + "</Invoice>";
+        const { evolu, state, prepared, imported, serverCopy } = setup(false, body, companyId);
+        let preparing = false;
+        let changed = false;
+        prepared.mockImplementation(async () => { preparing = true; return custodyToken; });
+        const load = evolu.loadQuery.getMockImplementation()!;
+        evolu.loadQuery.mockImplementation(async query => {
+            const rows = await load(query);
+            if (preparing && !changed && query === "fresh:migrationChunk") {
+                changed = true;
+                if (change === "tax") state.company[0].taxId = "synthetic-changed-tax";
+                else state.company[0].appSettingsJson = JSON.stringify({ efaktura_inbound_use_shared_connection: false,
+                    efaktura_inbound_sapi_client_id: "synthetic-changed-receiver" });
+            }
+            return rows;
+        });
+        await expect(importEfakturaInboxEntry(evolu as never, companyId, "bridge-a", entry)).rejects.toThrow("expense_reconciliation_state_changed");
+        expect(changed).toBe(true);
+        expect(prepared).toHaveBeenCalledOnce();
+        expect(imported).not.toHaveBeenCalled();
+        expect(serverCopy.original).toBe(body);
+        expect(state.expense).toHaveLength(1);
+        expect(state.expenseAttachment).toHaveLength(1);
+        // A new explicit attempt admits the current context and reuses the durable original.
+        expect(await importEfakturaInboxEntry(evolu as never, companyId, "bridge-a", entry)).toMatchObject({ ok: true, alreadyImported: true });
+        expect(state.expense).toHaveLength(1);
+        expect(state.expenseAttachment).toHaveLength(1);
     });
 
     it("does not hand off custody if a worker accepts an attachment but it is absent from read-back", async () => {

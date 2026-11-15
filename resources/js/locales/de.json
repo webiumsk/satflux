@@ -826,7 +826,7 @@
     "efaktura_epostman_inbound_only": "Dieses Unternehmen kann E-Rechnungen empfangen. Der Versand ist für slowakische Unternehmen mit voller Umsatzsteuerregistrierung verfügbar.",
     "efaktura_epostman_manual_sending": "Empfang und manueller Versand ausgestellter Rechnungen und Gutschriften sind verfügbar. Automatischer Versand ist nicht verfügbar. Zustellung und Meldung an die Finanzverwaltung prüfen Sie in ePostman.",
     "efaktura_connection_new_credentials": "Geben Sie neue Zugangsdaten für die gewählte Verbindung ein. Daten einer anderen Verbindung werden nicht wiederverwendet.",
-    "efaktura_inbox_original_notice": "Der Import wird erst abgeschlossen, wenn das Original-XML in Ihren verschlüsselten Daten gespeichert und geprüft wurde. Bei Speicherfehlern bleibt der Beleg hier zur Wiederherstellung. Ein Download allein schließt den Import nicht ab.",
+    "efaktura_inbox_original_notice": "Der Import wird erst abgeschlossen, wenn das Original-XML in Ihren lokalen Evolu-Daten gespeichert und geprüft wurde. Die Synchronisierung verwendet Ende-zu-Ende-Verschlüsselung. Bei Speicherfehlern bleibt der Beleg hier zur Wiederherstellung. Ein Download allein schließt den Import nicht ab.",
     "efaktura_inbox_view": "Beleg anzeigen",
     "efaktura_inbox_download_original": "Original-XML herunterladen",
     "efaktura_inbox_document_number": "Belegnummer",
@@ -849,7 +849,7 @@
     "ubl_pdf_canvas": "PDF {name}, Seite {page}",
     "efaktura_inbox_xml_preview": "Original-XML anzeigen",
     "efaktura_inbox_error_original_unavailable": "Das Original-XML konnte nicht geprüft werden. Der Beleg bleibt im Posteingang. Aktualisieren Sie die Liste oder kontaktieren Sie den Support.",
-    "efaktura_inbox_error_original_too_large": "Das Original überschreitet die lokale Anhangsgrenze (384 KB). Der Import wurde nicht abgeschlossen. Laden Sie das XML herunter und behalten Sie den Zugang zum Anbieterarchiv; der Beleg bleibt im Posteingang.",
+    "efaktura_inbox_error_original_too_large": "Das Original überschreitet die unterstützte Importgrenze (10 MiB). Der Import wurde nicht abgeschlossen. Laden Sie das XML herunter und behalten Sie den Zugang zum Anbieterarchiv; der Beleg bleibt im Posteingang.",
     "efaktura_inbox_error_original_storage_failed": "Das Original-XML konnte nicht gespeichert und geprüft werden. Der Beleg bleibt im Posteingang. Wiederholen Sie den Import, um den Anhang ohne weitere Ausgabe zu reparieren.",
     "efaktura_inbox_line_description": "Beschreibung",
     "efaktura_inbox_line_quantity": "Menge",
@@ -2096,7 +2096,8 @@
     "efaktura_status_value_AB": "AB",
     "efaktura_status_value_CA": "CA",
     "efaktura_status_value_IP": "IP",
-    "efaktura_epostman_api_key_reenter": "Der neue Schlüssel wurde nicht auf dem Server gespeichert. Bitte erneut eingeben oder den ausstehenden Schlüssel entfernen und speichern."
+    "efaktura_epostman_api_key_reenter": "Der neue Schlüssel wurde nicht auf dem Server gespeichert. Bitte erneut eingeben oder den ausstehenden Schlüssel entfernen und speichern.",
+    "expense_attachment_download_failed": "Der Originalanhang konnte nicht geprüft werden oder ist auf diesem Gerät nicht verfügbar. Synchronisieren Sie die Daten und versuchen Sie es erneut."
   },
   "common": {
     "danger_type_word_label": "Geben Sie {word} zur Bestätigung ein",
@@ -3762,7 +3763,9 @@
     "evolu_relay_protocol_sync_failed": "Relay-Synchronisierung fehlgeschlagen",
     "evolu_relay_protocol_version_mismatch": "Inkompatible Protokollversion",
     "evolu_relay_protocol_invalid_message": "Ungültige Protokollantwort",
-    "evolu_relay_quota_hint": "Dieses Relay hat die Synchronisierung wegen eines überschrittenen Speicher- oder Abrechnungskontingents abgelehnt. Prüfen Sie die Limits des Anbieters oder verwenden Sie ein anderes Relay. Lokale Daten bleiben auf diesem Gerät."
+    "evolu_relay_quota_hint": "Dieses Relay hat die Synchronisierung wegen eines überschrittenen Speicher- oder Abrechnungskontingents abgelehnt. Prüfen Sie die Limits des Anbieters oder verwenden Sie ein anderes Relay. Lokale Daten bleiben auf diesem Gerät.",
+    "backup_restore_original_unverified": "Die Sicherung enthält nicht für jede empfangene Rechnung ein vollständiges, geprüftes Original. Synchronisieren Sie das Quellgerät und erstellen Sie eine neue Sicherung.",
+    "backup_export_original_unverified": "Das Original einer empfangenen Rechnung ist unvollständig oder konnte nicht geprüft werden. Synchronisieren Sie die Daten und versuchen Sie die Sicherung erneut."
   },
   "header": {
     "dashboard": "Dashboard",

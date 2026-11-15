@@ -1,6 +1,7 @@
 import { maxLength, NonEmptyString, sqliteTrue } from "@evolu/common";
 import type { Evolu } from "@evolu/common/local-first";
 import type { ExpenseAttachmentId, ExpenseId, InvoicingLocalSchema } from "./schema";
+import { encodeExpenseOriginalReference, isExpenseOriginalReference, type ExpenseOriginalReference } from "./expenseOriginalReference";
 
 const FilenameType = maxLength(255)(NonEmptyString);
 const MimeType = maxLength(128)(NonEmptyString);
@@ -53,7 +54,7 @@ export function attachmentRowToApi(row: EvoluExpenseAttachmentRow): ExpenseAttac
 }
 
 export function attachmentContentBlob(row: EvoluExpenseAttachmentRow): Blob | null {
-    if (!row.contentBase64) return null;
+    if (!row.contentBase64 || isExpenseOriginalReference(row.contentBase64)) return null;
     const binary = atob(row.contentBase64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i += 1) {
@@ -142,6 +143,19 @@ export function insertLocalExpenseAttachmentFromBase64(
 export function base64DecodedLength(base64: string): number {
     const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
     return Math.max(0, Math.floor((base64.length * 3) / 4) - padding);
+}
+
+/** Internal inbox path: archive durability must be proved before scheduling this small reference. */
+export function insertLocalExpenseOriginalReference(
+    evolu: Evolu<InvoicingLocalSchema>, expenseId: ExpenseId, attachmentId: ExpenseAttachmentId,
+    reference: ExpenseOriginalReference, filename: string,
+) {
+    if (reference.expenseId !== expenseId || reference.attachmentId !== attachmentId) throw new Error("original_unverified");
+    const originalFilename = FilenameType.from(filename);
+    if (!originalFilename.ok) return originalFilename;
+    return evolu.upsert("expenseAttachment", { id: attachmentId, expenseId,
+        originalFilename: originalFilename.value, mimeType: MimeType.orThrow("application/xml"),
+        sizeBytes: SizeType.orThrow(String(reference.sizeBytes)), contentBase64: ContentType.orThrow(encodeExpenseOriginalReference(reference)) });
 }
 
 export function deleteLocalExpenseAttachment(

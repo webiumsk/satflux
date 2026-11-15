@@ -14,6 +14,8 @@ import {
     allDocumentLinesQuery,
     allDocumentsQuery,
     allExpenseAttachmentsQuery,
+    allExpenseOriginalSourcesQuery,
+    allExpenseOriginalChunksQuery,
     allExpensesQuery,
     allNumberSeriesQuery,
     allRecurringProfileLinesQuery,
@@ -31,6 +33,8 @@ import type {
     ExpenseId,
     ExpenseAttachmentId,
     InvoicingLocalSchema,
+    MigrationSourceId,
+    MigrationChunkId,
     NumberSeriesId,
     RecurringProfileId,
     RecurringProfileLineId,
@@ -52,7 +56,12 @@ export async function deleteLocalCompany(
  * Queue deletion of the company and its dependencies from the gate's refreshed rows.
  * The enclosing maintenance operation proves completion before reporting success.
  */
-function deleteLocalCompanyCore(evolu: Evolu<InvoicingLocalSchema>, companyId: CompanyId): void {
+async function deleteLocalCompanyCore(evolu: Evolu<InvoicingLocalSchema>, companyId: CompanyId): Promise<void> {
+    // Read before scheduling any deletion; retain unrelated migration evidence.
+    const [originalSources, originalChunks] = await Promise.all([
+        evolu.loadQuery(allExpenseOriginalSourcesQuery), evolu.loadQuery(allExpenseOriginalChunksQuery),
+    ]);
+    const sourceIds = new Set(originalSources.filter(row => row.companyId === companyId).map(row => row.id));
     const documents = evolu.getQueryRows(allDocumentsQuery);
     const companyDocIds = new Set(
         documents.filter((doc) => doc.companyId === companyId).map((doc) => doc.id),
@@ -101,6 +110,15 @@ function deleteLocalCompanyCore(evolu: Evolu<InvoicingLocalSchema>, companyId: C
             id: attachment.id as ExpenseAttachmentId,
             isDeleted: sqliteTrue,
         });
+    }
+
+    for (const chunk of originalChunks) {
+        if (chunk.companyId !== companyId || chunk.sourceId === null || !sourceIds.has(chunk.sourceId)) continue;
+        evolu.update("migrationChunk", { id: chunk.id as MigrationChunkId, companyId, isDeleted: sqliteTrue });
+    }
+    for (const source of originalSources) {
+        if (!sourceIds.has(source.id)) continue;
+        evolu.update("migrationSource", { id: source.id as MigrationSourceId, companyId, isDeleted: sqliteTrue });
     }
 
     const companyProfileIds = new Set(

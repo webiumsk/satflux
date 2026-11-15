@@ -8,6 +8,7 @@ vi.mock("@/evolu/client", () => Object.fromEntries([
     "allCompanyStockMovementsQuery", "allCompanyWarehousesQuery", "allContactsQuery",
     "allDocumentEventsQuery", "allInvoiceTemplatesQuery", "allDocumentLinesQuery",
     "allDocumentSnapshotsQuery", "allDocumentsQuery", "allExpensesQuery",
+    "allExpenseOriginalSourcesQuery", "allExpenseOriginalChunksQuery",
     "allExpenseAttachmentsQuery", "allNumberSeriesQuery", "allMigrationSourcesBackupQuery",
     "allMigrationChunksQuery", "allRecurringProfileLinesQuery", "allRecurringProfilesQuery",
 ].map(name => [name, name])));
@@ -24,7 +25,7 @@ it("retains original bytes in complete snapshots by default", async () => {
     expect(snapshot.migrationChunk).toEqual([chunk]);
 });
 
-it("computes a fingerprint without reading potentially stalled archive contents", async () => {
+it("includes received originals while avoiding unrelated migration archive contents", async () => {
     const loadQuery = vi.fn(query => {
         if (query === "allMigrationChunksQuery" || query === "allMigrationSourcesBackupQuery") {
             return new Promise(() => undefined);
@@ -35,6 +36,8 @@ it("computes a fingerprint without reading potentially stalled archive contents"
     expect(fingerprint).toContain("company:0:");
     expect(loadQuery.mock.calls.flat()).not.toContain("allMigrationChunksQuery");
     expect(loadQuery.mock.calls.flat()).not.toContain("allMigrationSourcesBackupQuery");
+    expect(loadQuery.mock.calls.flat()).toContain("allExpenseOriginalSourcesQuery");
+    expect(loadQuery.mock.calls.flat()).toContain("allExpenseOriginalChunksQuery");
 });
 
 it("bounds passive snapshot reads and rejects a stalled core query", async () => {

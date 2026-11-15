@@ -1,3 +1,8 @@
+import { createExpenseOriginalReference, encodeExpenseOriginalReference, expenseOriginalChunkId, EXPENSE_ORIGINAL_CHUNK_BYTES } from "@/evolu/expenseOriginalReference";
+import { verifyExpenseOriginalArchiveRows } from "@/evolu/expenseOriginalArchive";
+import { migrationSha256 } from "@/evolu/migrationArchiveValues";
+import { validateExpenseOriginalSnapshot } from "@/evolu/expenseOriginalSnapshot";
+import { EMPTY_INVOICING_SNAPSHOT } from "@/evolu/invoicingSnapshot";
 import { deserializeQuery } from "@evolu/common/local-first";
 import { installBankLocks } from "./bankReconciliationTestSupport";
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -267,4 +272,39 @@ describe('company share rekey', () => {
         expect(h.tables.get('document')?.get('old-owner|d1')?.isDeleted).toBe(1);
         expect(companyShareInfo('c1')?.ownerId).toBe(newOwner.id);
     });
+});
+
+async function largeOriginalRows(ownerId: string) {
+    const bytes = new Uint8Array(450 * 1024).fill(32);
+    bytes.set(new TextEncoder().encode("<Invoice>synthetic shared original</Invoice>"));
+    const ref = createExpenseOriginalReference({ companyId: "c1", receiptId: "received-one", expenseId: "e1", attachmentId: "a1",
+        sizeBytes: bytes.length, sha256: await migrationSha256(bytes) });
+    const source = { id: ref.sourceId, companyId: "c1", ownerId, sourceKind: "efaktura-original", relatedExportId: null,
+        originalFilename: "received.xml", mimeType: "application/xml", sizeBytes: String(ref.sizeBytes), checksum: ref.sha256,
+        chunkCount: String(ref.chunkCount), savedAt: "2026-11-15T10:00:00Z" };
+    const chunks = Array.from({ length: ref.chunkCount }, (_, index) => ({ id: expenseOriginalChunkId(ref.sourceId, index),
+        ownerId, companyId: "c1", sourceId: ref.sourceId, chunkIndex: String(index),
+        contentBase64: Buffer.from(bytes.subarray(index * EXPENSE_ORIGINAL_CHUNK_BYTES, (index + 1) * EXPENSE_ORIGINAL_CHUNK_BYTES)).toString("base64") }));
+    const attachment = { id: "a1", expenseId: "e1", ownerId, originalFilename: source.originalFilename,
+        mimeType: source.mimeType, sizeBytes: source.sizeBytes, contentBase64: encodeExpenseOriginalReference(ref) };
+    return { bytes, ref, source, chunks, attachment };
+}
+
+it("preserves large-original bytes and bound references while rotating ownership and retiring old rows", async () => {
+    const h = fakeEvolu(emptyAll());
+    seedSharedCompany(h, "old-owner");
+    const x = await largeOriginalRows("old-owner");
+    h.seedRow("expense", { id: "e1", companyId: "c1", ownerId: "old-owner", internalNumber: "E1" });
+    h.seedRow("expenseAttachment", x.attachment); h.seedRow("migrationSource", x.source);
+    for (const chunk of x.chunks) h.seedRow("migrationChunk", chunk);
+    const result = await rekeyCompanyShare(h.evolu, "c1", { skipSyncWait: true });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const snapshot = { ...EMPTY_INVOICING_SNAPSHOT, ...Object.fromEntries(MIGRATION_ORDER.map(table => [table,
+        [...(h.tables.get(table)?.values() ?? [])].filter(row => row.ownerId === result.newOwnerId && row.isDeleted !== 1)])) };
+    await expect(validateExpenseOriginalSnapshot(snapshot)).resolves.toBeUndefined();
+    expect(await verifyExpenseOriginalArchiveRows(x.ref, snapshot.migrationSource!, snapshot.migrationChunk!, result.newOwnerId)).toEqual(x.bytes);
+    expect(snapshot.expenseAttachment[0].contentBase64).toBe(x.attachment.contentBase64);
+    expect(h.tables.get("migrationSource")?.get(`old-owner|${x.source.id}`)?.isDeleted).toBe(1);
+    for (const chunk of x.chunks) expect(h.tables.get("migrationChunk")?.get(`old-owner|${chunk.id}`)?.isDeleted).toBe(1);
 });

@@ -13,6 +13,8 @@ import {
     allDocumentLinesQuery,
     allDocumentsQuery,
     allExpenseAttachmentsQuery,
+    allExpenseOriginalSourcesQuery,
+    allExpenseOriginalChunksQuery,
     allExpensesQuery,
     allNumberSeriesQuery,
     allRecurringProfileLinesQuery,
@@ -40,6 +42,8 @@ const INVOICING_RELAY_QUERY_LIST = [
     allDocumentEventsQuery,
     allExpensesQuery,
     allExpenseAttachmentsQuery,
+    allExpenseOriginalSourcesQuery,
+    allExpenseOriginalChunksQuery,
     allRecurringProfilesQuery,
     allRecurringProfileLinesQuery,
     allCompanyWarehousesQuery,
@@ -66,6 +70,7 @@ export async function loadInvoicingRelayFingerprint(
 ): Promise<string> {
     const snapshot = await snapshotInvoicingData(evolu, {
         includeMigrationOriginals: false,
+        includeExpenseOriginals: true,
         queryTimeoutMs: timeoutMs,
     });
     const scoped = companyId

@@ -84,7 +84,7 @@ describe('archive-bearing backup version compatibility', () => {
         if (decoded.ok) expect(decoded.value.envelope.version).toBe(2);
     });
 
-    it.each([0, 3, '2', null])('refuses an unsupported or nonnumeric version %j', async version => {
+    it.each([0, 4, '2', null])('refuses an unsupported or nonnumeric version %j', async version => {
         const backup = await buildBackupEnvelopeFromSnapshot({ ...EMPTY_INVOICING_SNAPSHOT }, null);
         expect(await parseAndValidateBackup(JSON.stringify({ ...backup, version }), null)).toEqual({ ok: false, error: 'unsupported_version' });
     });

@@ -45,9 +45,13 @@ Přes **Zkontrolovat schránku** přímo v **Náklady > Přijaté e-faktury** na
 
 Po úspěšném lokálním testu připojení formulář upozorní, že ověření ještě potřebuje uložit. Zachováš ho přes **Uložit mé údaje**. Uložení stejného připojení a přístupových údajů zachová poslední kontrolu schránky; změna nebo odstranění přístupových údajů toto ověření zneplatní. Pokud záznam kontroly chybí nebo je stav starý, použij **Zkontrolovat schránku**. Úspěšná prázdná kontrola nepotvrzuje doručení ani produkční připravenost.
 
-Import uloží originál do vašich šifrovaných lokálních dat. Pokud import selže nebo je originál příliš velký pro lokální přílohu, položka zůstane dostupná pro obnovu a stažení originálu. Samotná existence nákladu import nedokončí.
+Podporované původní XML do 10 MiB lze importovat do tvých lokálních dat Evolu. Synchronizace používá koncové šifrování. Před potvrzením lokálního převzetí se ověří celý originál. Po přerušení zopakuj import pro opravu stejného nákladu a přílohy bez vytvoření duplicity. Samotná existence nákladu import nedokončí. Vyšší limit platí pro import přijatých e-faktur; ručně přidávané lokální přílohy si zachovávají limit 384 KiB.
 
-Pokud původní UBL obsahuje vložené PDF přílohy, detail dokladu nabídne u každého PDF **Zobrazit** a **Stáhnout**. Stejné možnosti jsou dostupné po výběru původní XML přílohy v již importovaném nákladu. Zobrazení otevře náhled stran; stažení zachová původní bajty vloženého PDF. Původní XML se nemění. Satflux nenačítá externí odkazy na přílohy. Podporuje nejvýše deset PDF, každé do 1 MiB, v XML dokladu do 2 MiB; místní import si zachovává stávající limit velikosti přílohy. Nepodporovaná, poškozená nebo příliš velká PDF zobrazí upozornění. Pokud náhled selže, úspěšně extrahované PDF si můžeš nadále stáhnout.
+Na každém zařízení, kde chceš velké originály otevírat nebo zálohovat, používej aktualizovanou aplikaci. Také obnovení jejich nového formátu zálohy vyžaduje aktualizovanou aplikaci. Starší klienti nezaručují přístup ani úplné zálohy těchto originálů.
+
+Export pro účetní si zachovává samostatný limit přílohy 512 KiB. Větší originály se při zvoleném exportu příloh označí jako vynechané; potřebné soubory XML stáhni samostatně.
+
+Pokud původní UBL obsahuje vložené PDF přílohy, detail dokladu nabídne u každého PDF **Zobrazit** a **Stáhnout**. Stejné možnosti jsou dostupné po výběru původní XML přílohy v již importovaném nákladu. Zobrazení otevře náhled stran; stažení zachová původní bajty vloženého PDF. Původní XML se nemění. Satflux nenačítá externí odkazy na přílohy. Podporuje nejvýše deset PDF, každé do 1 MiB, v XML dokladu do 2 MiB. I při překročení tohoto limitu náhledu můžeš větší původní XML uložit a stáhnout. Nepodporovaná, poškozená nebo příliš velká PDF zobrazí upozornění. Pokud náhled selže, úspěšně extrahované PDF si můžeš nadále stáhnout.
 
 ## Uchování originálů a náklady poskytovatele
 

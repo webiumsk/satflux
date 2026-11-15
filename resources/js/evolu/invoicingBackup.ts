@@ -1,3 +1,4 @@
+import { snapshotHasExpenseOriginals, validateExpenseOriginalSnapshot } from "./expenseOriginalSnapshot";
 import type { Evolu } from "@evolu/common/local-first";
 import type { InvoicingLocalSchema } from "./schema";
 import {
@@ -25,10 +26,12 @@ export const INVOICING_BACKUP_FORMAT = "satflux-invoicing-backup";
 export const INVOICING_BACKUP_VERSION = 1;
 /** Older readers must reject backups whose original-file tables they would omit. */
 export const INVOICING_ARCHIVE_BACKUP_VERSION = 2;
+/** This representation requires a reader that verifies bound expense originals. */
+export const INVOICING_EXPENSE_ORIGINAL_BACKUP_VERSION = 3;
 
 export type InvoicingBackupEnvelope = {
     format: typeof INVOICING_BACKUP_FORMAT;
-    version: typeof INVOICING_BACKUP_VERSION | typeof INVOICING_ARCHIVE_BACKUP_VERSION;
+    version: typeof INVOICING_BACKUP_VERSION | typeof INVOICING_ARCHIVE_BACKUP_VERSION | typeof INVOICING_EXPENSE_ORIGINAL_BACKUP_VERSION;
     created_at: string;
     app_version: string | null;
     /** Null only when the backup was made without a known owner id. */
@@ -62,6 +65,7 @@ export async function buildBackupEnvelopeFromSnapshot(
     ownerId: string | null,
     now: Date = new Date(),
 ): Promise<InvoicingBackupEnvelope> {
+    await validateExpenseOriginalSnapshot(snapshot);
     const sha256 = await sha256Hex(deterministicStringify(snapshot));
     if (!sha256) {
         throw new Error("backup_hash_unavailable");
@@ -72,7 +76,8 @@ export async function buildBackupEnvelopeFromSnapshot(
     }
     return {
         format: INVOICING_BACKUP_FORMAT,
-        version: (snapshot.migrationSource?.length ?? 0) > 0 || (snapshot.migrationChunk?.length ?? 0) > 0
+        version: snapshotHasExpenseOriginals(snapshot) ? INVOICING_EXPENSE_ORIGINAL_BACKUP_VERSION
+            : (snapshot.migrationSource?.length ?? 0) > 0 || (snapshot.migrationChunk?.length ?? 0) > 0
             ? INVOICING_ARCHIVE_BACKUP_VERSION : INVOICING_BACKUP_VERSION,
         created_at: now.toISOString(),
         app_version: appVersion(),

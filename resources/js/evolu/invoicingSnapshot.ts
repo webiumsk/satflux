@@ -16,6 +16,8 @@ import {
     allDocumentsQuery,
     allExpensesQuery,
     allExpenseAttachmentsQuery,
+    allExpenseOriginalSourcesQuery,
+    allExpenseOriginalChunksQuery,
     allNumberSeriesQuery,
     allMigrationSourcesBackupQuery,
     allMigrationChunksQuery,
@@ -23,7 +25,7 @@ import {
     allRecurringProfilesQuery,
 } from "./client";
 import type { InvoicingLocalSchema } from "./schema";
-import { validateMigrationSnapshot } from "./migrationSnapshot";
+import { validateExpenseOriginalSnapshot, validateRegularMigrationSnapshot } from "./expenseOriginalSnapshot";
 import { loadEvoluQueryWithTimeout } from "./queryLoad";
 import { withExpenseMaintenance, commitExpenseMutation } from "./expenseReconciliation";
 
@@ -117,7 +119,7 @@ const UPSERT_ORDER: InvoicingTable[] = [
 
 export async function snapshotInvoicingData(
     evolu: Evolu<InvoicingLocalSchema>,
-    options?: { includeMigrationOriginals?: boolean; queryTimeoutMs?: number },
+    options?: { includeMigrationOriginals?: boolean; includeExpenseOriginals?: boolean; queryTimeoutMs?: number },
 ): Promise<InvoicingDataSnapshot> {
     const includeOriginals = options?.includeMigrationOriginals !== false;
     const load: typeof evolu.loadQuery = query => options?.queryTimeoutMs === undefined
@@ -156,8 +158,10 @@ export async function snapshotInvoicingData(
         load(allInvoiceTemplatesQuery),
         load(allExpensesQuery),
         load(allExpenseAttachmentsQuery),
-        includeOriginals ? load(allMigrationSourcesBackupQuery) : Promise.resolve([]),
-        includeOriginals ? load(allMigrationChunksQuery) : Promise.resolve([]),
+        includeOriginals ? load(allMigrationSourcesBackupQuery)
+            : options?.includeExpenseOriginals ? load(allExpenseOriginalSourcesQuery) : Promise.resolve([]),
+        includeOriginals ? load(allMigrationChunksQuery)
+            : options?.includeExpenseOriginals ? load(allExpenseOriginalChunksQuery) : Promise.resolve([]),
         load(allRecurringProfilesQuery),
         load(allRecurringProfileLinesQuery),
         load(allCompanyWarehousesQuery),
@@ -255,7 +259,8 @@ export async function restoreInvoicingSnapshotDetailedAsync(
         if (isCurrent && !isCurrent()) throw new Error("recovery_context_changed");
     }
     assertCurrent();
-    await validateMigrationSnapshot(snapshot);
+    await validateRegularMigrationSnapshot(snapshot);
+    await validateExpenseOriginalSnapshot(snapshot);
     assertCurrent();
     return withExpenseMaintenance(evolu, async (scope) => {
     assertCurrent();

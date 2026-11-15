@@ -45,9 +45,13 @@ Use **Check mailbox** directly in **Expenses > Received e-invoices** to fetch in
 
 After a successful local connection test, the form shows that the verification still needs saving. Choose **Save my details** to retain it. Saving the same connection and credentials preserves the last mailbox check; changing or clearing credentials invalidates that connection evidence. If no mailbox check is recorded or the status is old, use **Check mailbox**. A successful empty check does not establish delivery or production readiness.
 
-Import stores the original in your encrypted local data. If import fails or the original is too large for a local attachment, the inbox item remains available for recovery and original download. An existing expense alone does not complete the import.
+Supported original XML up to 10 MiB can be imported into your local Evolu data. Synchronization uses end-to-end encryption. The complete original is checked before confirming local handoff. If interrupted, retry the import to repair the same expense and attachment without creating a duplicate. An expense alone does not complete the import. This higher limit applies to received e-invoice import; manually added local attachments keep their 384 KiB limit.
 
-If the original UBL contains embedded PDF attachments, the document detail offers **View** and **Download** for each PDF. The same actions are available when you select the original XML attachment in an already imported expense. Viewing opens a page preview; downloading preserves the embedded PDF bytes. The original XML is unchanged. Satflux does not fetch external attachment links. Up to ten PDFs are supported, each up to 1 MiB, within an XML document up to 2 MiB; local import retains its existing attachment size limit. Unsupported, damaged or oversized PDFs show a warning. If the preview fails, you can still download a successfully extracted PDF.
+Use an updated application on every device that accesses or backs up large originals. Restoring their new backup format also requires an updated application. Older clients cannot guarantee access or complete backups of these originals.
+
+Accountant export keeps its separate 512 KiB attachment limit. Larger originals are reported as skipped when attachments are selected; download those XML files separately when needed.
+
+If the original UBL contains embedded PDF attachments, the document detail offers **View** and **Download** for each PDF. The same actions are available when you select the original XML attachment in an already imported expense. Viewing opens a page preview; downloading preserves the embedded PDF bytes. The original XML is unchanged. Satflux does not fetch external attachment links. Up to ten PDFs are supported, each up to 1 MiB, within an XML document up to 2 MiB. Larger original XML can still be stored and downloaded when this preview limit is exceeded. Unsupported, damaged or oversized PDFs show a warning. If the preview fails, you can still download a successfully extracted PDF.
 
 ## Original custody and provider costs
 
