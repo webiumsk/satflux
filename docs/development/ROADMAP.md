@@ -9,13 +9,20 @@ The owner's push instruction publishes reviewed implementation
 https://github.com/webiumsk/satflux/pull/449 . Remote metadata matches that
 implementation commit. This supersedes the local-only status below.
 
-A follow-up adds only this publication record, the updated contract status and
-one reviewed PR-linked user-facing changelog fragment. All 38 accepted
-source/test/locale hashes retain aggregate
+The documentation follow-up adds publication records and one PR-linked
+user-facing changelog fragment. CI43773180167 on `802412ad` then passes
+3,550 tests in 248 files but cannot load two other suites because their existing
+client mocks lack the new original-source/chunk query exports. The correction
+adds those two tokens to each mock, preserving all test assertions; all five
+targeted tests and two-file ESLint pass. Independent QA accepts both exact
+file hashes and confirms unchanged assertions. This is a test-fixture correction,
+with no additional production-code changes.
+
+All 38 accepted source/test/locale hashes retain aggregate
 `d0ba510c9b9617484f65d63fb9981db7673e8c9ba000de5d5318f4b5b8c1143d`.
-The implementation's 48 paths are scoped; the fragment makes 49 total paths.
-Current remote checks must be verified for the final follow-up head; earlier
-local tests do not establish that head's CI or production readiness.
+The fragment and two existing test-file corrections make 51 scoped paths.
+Remote checks must be verified on the corrected final head; neither the earlier
+local tests nor the failed first CI establish that head's CI or production readiness.
 
 Primary remains `fix/sepa-confirmation-isolation` at `885168f2`, with unrelated
 changes preserved. The separate accountant-export clarity freeze is unchanged.

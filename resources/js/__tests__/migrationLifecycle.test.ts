@@ -4,6 +4,7 @@ vi.mock("@/evolu/client", () => Object.fromEntries([
     "allBankImportBatchesQuery", "allBankTransactionMatchesQuery", "allBankTransactionsQuery", "allCompaniesDetailQuery", "allCompanySharesQuery",
     "allCompanyStockBalancesQuery", "allCompanyStockItemsQuery", "allCompanyStockMovementsQuery", "allCompanyWarehousesQuery", "allContactsQuery",
     "allDocumentEventsQuery", "allDocumentLinesQuery", "allDocumentSnapshotsQuery", "allDocumentsQuery", "allExpenseAttachmentsQuery", "allExpensesQuery",
+    "allExpenseOriginalSourcesQuery", "allExpenseOriginalChunksQuery",
     "allInvoiceTemplatesQuery", "allNumberSeriesQuery", "allRecurringProfileLinesQuery", "allRecurringProfilesQuery", "allMigrationSourcesBackupQuery", "allMigrationChunksQuery",
 ].map(name => [name, name])));
 vi.mock("@/evolu/expenseReconciliation", () => ({

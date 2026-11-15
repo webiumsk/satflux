@@ -174,10 +174,16 @@ on the context, strict-flag and type/nullable-binding corrections.
 The owner's push instruction publishes implementation commit
 `91748ce3e7208353f7584e9a323a00139a02c268` on
 `feat/efaktura-large-originals` in open PR449:
-https://github.com/webiumsk/satflux/pull/449 . A follow-up adds only publication
-records and one PR-linked changelog fragment, for 49 total scoped paths.
-All 38 accepted source/test/locale hashes remain unchanged. Final-head CI is
-verified separately from the local results above and reported on the PR.
+https://github.com/webiumsk/satflux/pull/449 . Documentation and the PR-linked
+changelog are followed by a test-only CI compatibility correction, for 51 total
+scoped paths. Initial CI43773180167 on `802412ad` passes 3,550 tests in 248
+files but two suites cannot load: their existing client mocks omit the two new
+original-source/chunk query exports. Adding those query tokens to
+`inboxReconcileGuard.test.ts` and `migrationLifecycle.test.ts` preserves all
+assertions; five targeted tests and two-file ESLint pass. Independent QA accepts
+both corrected file hashes and verifies unchanged assertions. All 38 originally
+accepted source/test/locale hashes remain unchanged. Corrected final-head CI
+is verified separately from local results and reported on the PR.
 
 No merge, provider operation, public changelog publication or deployment is
 performed. New-data client compatibility, rollback/backport requirements,
