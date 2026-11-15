@@ -704,16 +704,23 @@ function storedLocalInboundSecret(): string {
   return typeof secret === 'string' ? secret : '';
 }
 
+type DirectionalSaveConfirmation = Readonly<{
+  required: boolean;
+  useSharedConnection: boolean;
+  baseUrl: string;
+  clientId: string;
+  secretSet: boolean;
+}>;
+
 /** An older backend must never silently discard an independent receiving connection. */
-function assertDirectionalSettingsSaved(response: Record<string, unknown>, payload: Partial<CompanyEfakturaSettingsState>) {
-  if (payload.efaktura_inbound_use_shared_connection !== false && savedSettings.value.efaktura_inbound_use_shared_connection) return;
+function assertDirectionalSettingsSaved(response: Record<string, unknown>, expected: DirectionalSaveConfirmation) {
+  if (!expected.required) return;
   const raw = (response.app_settings ?? response) as Record<string, unknown>;
-  const matches = raw.efaktura_inbound_use_shared_connection === payload.efaktura_inbound_use_shared_connection
-    && (payload.efaktura_inbound_use_shared_connection !== false
-      || (normalizeBaseUrl(String(raw.efaktura_inbound_sapi_base_url ?? '')) === normalizeBaseUrl(payload.efaktura_inbound_sapi_base_url ?? '')
-        && String(raw.efaktura_inbound_sapi_client_id ?? '') === (payload.efaktura_inbound_sapi_client_id ?? '')
-        && (payload.efaktura_inbound_sapi_client_secret === null ? raw.efaktura_inbound_sapi_client_secret_set === false
-          : raw.efaktura_inbound_sapi_client_secret_set === Boolean(payload.efaktura_inbound_sapi_client_secret || inboundSecretSet.value))));
+  const matches = raw.efaktura_inbound_use_shared_connection === expected.useSharedConnection
+    && (expected.useSharedConnection
+      || (normalizeBaseUrl(String(raw.efaktura_inbound_sapi_base_url ?? '')) === expected.baseUrl
+        && String(raw.efaktura_inbound_sapi_client_id ?? '') === expected.clientId
+        && raw.efaktura_inbound_sapi_client_secret_set === expected.secretSet));
   if (!matches) throw new Error(t('invoicing.efaktura_directions_unconfirmed'));
 }
 
@@ -1086,6 +1093,16 @@ async function save() {
       return;
     }
     const payload = buildPayload();
+    // Bridge completion may outlive navigation. Its expected echo belongs only
+    // to this submitted company, including saved-secret and prior shared mode.
+    const directionalConfirmation: DirectionalSaveConfirmation = {
+      required: payload.efaktura_inbound_use_shared_connection === false || !savedSettings.value.efaktura_inbound_use_shared_connection,
+      useSharedConnection: payload.efaktura_inbound_use_shared_connection !== false,
+      baseUrl: normalizeBaseUrl(payload.efaktura_inbound_sapi_base_url ?? ''),
+      clientId: payload.efaktura_inbound_sapi_client_id ?? '',
+      secretSet: payload.efaktura_inbound_sapi_client_secret !== null
+        && Boolean(payload.efaktura_inbound_sapi_client_secret || inboundSecretSet.value),
+    };
     const secret = payload.efaktura_sapi_client_secret || storedLocalSecret();
     const inboundSecret = payload.efaktura_inbound_sapi_client_secret === null ? null : payload.efaktura_inbound_sapi_client_secret || storedLocalInboundSecret();
     const localIdentity = {
@@ -1152,7 +1169,7 @@ async function save() {
         const bridgeResponse = await syncInboundSettingsToBridge(payload, companyId, secret, inboundSecret, localIdentity, transientKey,
           async () => await localBridgeSyncSnapshot(companyId, syncAttemptId) === submittedSnapshot);
         if (bridgeResponse === null) return;
-        assertDirectionalSettingsSaved(bridgeResponse, payload);
+        assertDirectionalSettingsSaved(bridgeResponse, directionalConfirmation);
         // This completion belongs to the captured company, even after navigation.
         // A newer save or identity/credential change must retain its own marker.
         if (await localBridgeSyncSnapshot(companyId, syncAttemptId) !== submittedSnapshot) return;
@@ -1219,7 +1236,7 @@ async function save() {
 
     const updated = await invoicingApi.companies.updateAppSettings<Record<string, unknown>>(companyId, payload);
     if (!isCurrent()) return;
-    assertDirectionalSettingsSaved(updated, payload);
+    assertDirectionalSettingsSaved(updated, directionalConfirmation);
     bridgeSaveFailed.value = false;
     inboundCredentialsDiscarded.value = false;
     credentialsDiscarded.value = false;

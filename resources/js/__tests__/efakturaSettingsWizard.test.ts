@@ -1325,4 +1325,99 @@ describe('eFaktura settings wizard', () => {
     wrapper.unmount();
   });
 
+  it.each([
+    { name: 'saved receiver secret to no receiver secret', aSecret: true, bSecret: false, bShared: false, edit: 'unchanged' },
+    { name: 'no receiver secret to saved receiver secret', aSecret: false, bSecret: true, bShared: false, edit: 'unchanged' },
+    { name: 'saved receiver secret to shared receiving', aSecret: true, bSecret: false, bShared: true, edit: 'unchanged' },
+    { name: 'receiver replacement to a different receiver', aSecret: false, bSecret: false, bShared: false, edit: 'replace' },
+    { name: 'receiver removal to a different receiver', aSecret: true, bSecret: true, bShared: false, edit: 'remove' },
+  ])('confirms the captured local company after navigation: $name', async ({ aSecret, bSecret, bShared, edit }) => {
+    state.localFirst = true;
+    const companyA = skCompany({ ...splitSettings(), efaktura_sapi_client_secret: 'synthetic-a-sender',
+      efaktura_inbound_sapi_client_secret_set: aSecret,
+      ...(aSecret ? { efaktura_inbound_sapi_client_secret: 'synthetic-a-receiver' } : {}) });
+    const companyB = { ...skCompany({ ...splitSettings(), efaktura_inbound_use_shared_connection: bShared,
+      efaktura_inbound_sapi_client_id: 'synthetic-b-receiver', efaktura_inbound_sapi_client_secret_set: bSecret,
+      ...(bSecret ? { efaktura_inbound_sapi_client_secret: 'synthetic-b-receiver' } : {}) }), id: 'company-2' };
+    state.localRows = [companyA, companyB];
+    let complete!: (value: Record<string, unknown>) => void;
+    vi.mocked(invoicingApi.companies.updateAppSettings).mockImplementationOnce(() => new Promise((resolve) => { complete = resolve; }));
+    const wrapper = mountForm(companyA);
+    if (edit === 'replace') await wrapper.get('#efaktura-inbound-client-secret').setValue('synthetic-a-replacement');
+    if (edit === 'remove') await wrapper.get('[data-testid="efaktura-inbound-remove-secret"]').trigger('click');
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    const submittedMarker = companyA.app_settings.efaktura_inbound_bridge_sync_id;
+    expect(submittedMarker).toEqual(expect.any(String));
+    await wrapper.setProps({ companyId: 'company-2', company: companyB });
+    const companyBBefore = JSON.stringify(companyB);
+    complete(skCompany({ ...splitSettings(), efaktura_inbound_sapi_client_secret_set: edit === 'replace' || (aSecret && edit !== 'remove') }));
+    await flushPromises();
+    expect(companyA.app_settings.efaktura_inbound_bridge_sync_pending).toBe(false);
+    expect(companyA.app_settings.efaktura_inbound_bridge_sync_id).toBeNull();
+    expect(JSON.stringify(companyB)).toBe(companyBBefore);
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeUndefined();
+    expect(wrapper.get('#efaktura-inbound-shared').element).toHaveProperty('checked', bShared);
+    expect(state.notifySaved).not.toHaveBeenCalled();
+    expect(wrapper.emitted('updated')).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it('rejects an incorrect A shared-mode echo after navigating to B with shared receiving', async () => {
+    state.localFirst = true;
+    const companyA = skCompany({ ...splitSettings(), efaktura_sapi_client_secret: 'synthetic-a-sender',
+      efaktura_inbound_sapi_client_secret: 'synthetic-a-receiver' });
+    const companyB = { ...skCompany({ ...connectedSettings() }), id: 'company-2' };
+    state.localRows = [companyA, companyB];
+    let complete!: (value: Record<string, unknown>) => void;
+    vi.mocked(invoicingApi.companies.updateAppSettings).mockImplementationOnce(() => new Promise((resolve) => { complete = resolve; }));
+    const wrapper = mountForm(companyA);
+    await wrapper.get('#efaktura-inbound-shared').setValue(true);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    const marker = companyA.app_settings.efaktura_inbound_bridge_sync_id;
+    await wrapper.setProps({ companyId: 'company-2', company: companyB });
+    complete(skCompany(splitSettings())); await flushPromises();
+    expect(companyA.app_settings.efaktura_inbound_bridge_sync_pending).toBe(true);
+    expect(companyA.app_settings.efaktura_inbound_bridge_sync_id).toBe(marker);
+    expect(companyB.app_settings).not.toHaveProperty('efaktura_inbound_bridge_sync_pending');
+    expect(state.notifySaved).not.toHaveBeenCalled();
+    expect(wrapper.emitted('updated')).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it('does not confirm A with B secret state or unlock a newer pending B save', async () => {
+    state.localFirst = true;
+    const companyA = skCompany({ ...splitSettings(), efaktura_sapi_client_secret: 'synthetic-a-sender',
+      efaktura_inbound_sapi_client_secret: 'synthetic-a-receiver' });
+    const companyB = { ...skCompany({ ...splitSettings(), efaktura_sapi_client_secret: 'synthetic-b-sender',
+      efaktura_inbound_sapi_client_secret_set: false }), id: 'company-2' };
+    state.localRows = [companyA, companyB];
+    let completeA!: (value: Record<string, unknown>) => void;
+    let completeB!: (value: Record<string, unknown>) => void;
+    vi.mocked(invoicingApi.companies.updateAppSettings)
+      .mockImplementationOnce(() => new Promise((resolve) => { completeA = resolve; }))
+      .mockImplementationOnce(() => new Promise((resolve) => { completeB = resolve; }));
+    const wrapper = mountForm(companyA);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    const markerA = companyA.app_settings.efaktura_inbound_bridge_sync_id;
+    await wrapper.setProps({ companyId: 'company-2', company: companyB });
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    const markerB = companyB.app_settings.efaktura_inbound_bridge_sync_id;
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined();
+    // This matches B's current marker, but does not confirm A's stored receiver.
+    completeA(skCompany({ ...splitSettings(), efaktura_inbound_sapi_client_secret_set: false }));
+    await flushPromises();
+    expect(companyA.app_settings.efaktura_inbound_bridge_sync_id).toBe(markerA);
+    expect(companyA.app_settings.efaktura_inbound_bridge_sync_pending).toBe(true);
+    expect(companyB.app_settings.efaktura_inbound_bridge_sync_id).toBe(markerB);
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined();
+    expect(state.notifySaved).not.toHaveBeenCalled();
+    completeB({ ...skCompany({ ...splitSettings(), efaktura_inbound_sapi_client_secret_set: false }), id: 'company-2' });
+    await flushPromises();
+    expect(companyB.app_settings.efaktura_inbound_bridge_sync_pending).toBe(false);
+    expect(companyA.app_settings.efaktura_inbound_bridge_sync_pending).toBe(true);
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeUndefined();
+    expect(state.notifySaved).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
+
 });

@@ -1,5 +1,29 @@
 # Development roadmap
 
+## PR447 review corrections independently accepted locally - 2026-11-15
+
+Observed review baseline: open/unmerged PR447 at `a48570d11bbf73956f89f47e36d7c38f446f3389`,
+base master `4b00e2ee`. The directional checkout has this HEAD plus the local
+corrective diff; the primary checkout remains `fix/sepa-confirmation-isolation`
+at `885168f2` with unrelated work preserved. This is remote review evidence and
+local source state, not an established deployment or production/provider proof.
+
+All three supplied findings are current and fixed: PR447 milestone evidence,
+submitted-company receiving confirmation and complete bounded settings JSON.
+The PHP CI failure is the missing legitimate capability in PublicConfigTest's
+exact expectation; the exact assertion remains. No requested finding is skipped.
+QA/security accept five frozen source/test files after before-failing regressions.
+Main passes304PHP/2,223,329frontend/15, PHPStan0, Pint3, lint0/46inherited,
+type110/no new, locales/API/three schemas/whitespace and build7,669. Counts and
+independent overlapping probes are attributed in `PR447_REVIEW_FIXES.md`.
+
+Baseline CI43710844183 has one PHP failure,3,489passes/31skips; its other four
+jobs pass and later PHP static/audit steps are skipped. The corrections above
+are not yet published or checked as a new head. Main proceeds with normal
+existing-branch publication and fresh-head CI under the owner's existing
+publication authorization. Owner retains PR447 merge and deployment. Earlier
+local-only/publication records below are historical, superseded by this milestone.
+
 ## Independent eFaktura connections accepted locally - 2026-11-15
 
 - [x] Verify owner-merged PR446 and fetched master `4b00e2ee`.
