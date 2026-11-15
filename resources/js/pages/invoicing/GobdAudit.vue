@@ -5,7 +5,7 @@
     :subtitle="t('invoicing.audit_subtitle')"
   >
     <template #header>
-      <InvoicingAppHeader />
+      <InvoicingAppHeader :show-filter-bar="false" />
     </template>
 
     <template #actions>

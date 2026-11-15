@@ -30,6 +30,10 @@
     </p>
 
     <template v-if="form.efaktura_enabled">
+      <p v-if="inboundOnly && form.efaktura_inbound_use_shared_connection && !savedSettings.efaktura_inbound_use_shared_connection"
+        data-testid="efaktura-previous-connection-pending" role="status" class="rounded-lg bg-indigo-50 p-3 text-sm text-indigo-900">
+        {{ t('invoicing.efaktura_receiving_previous_save_required') }}
+      </p>
       <template v-if="!inboundOnly || form.efaktura_inbound_use_shared_connection">
       <h2 class="text-base font-semibold text-gray-900">{{ t(inboundOnly ? 'invoicing.efaktura_receiving_connection' : 'invoicing.efaktura_sending_connection') }}</h2>
       <!-- Step 1: choose the CPDS (digitalny postar) -->
@@ -48,10 +52,11 @@
             >vpds.financnasprava.sk</a>
           </template>
         </i18n-t>
+        <p v-if="inboundOnly" class="text-xs text-gray-500">{{ t('invoicing.efaktura_receiving_registration_note') }}</p>
 
         <div>
           <label for="efaktura-cpds-preset" class="invoicing-sf-label">{{ t('invoicing.efaktura_cpds_preset_label') }}</label>
-          <select id="efaktura-cpds-preset" v-model="selectedPresetId" class="invoicing-sf-input" @change="applyPreset">
+          <select id="efaktura-cpds-preset" ref="sharedPresetSelect" v-model="selectedPresetId" class="invoicing-sf-input" @change="applyPreset">
             <option value="">{{ t('invoicing.efaktura_cpds_preset_choose') }}</option>
             <option v-for="preset in cpdsPresets" :key="preset.id" :value="preset.id">{{ preset.name }}</option>
             <option value="custom">{{ t('invoicing.efaktura_cpds_preset_other') }}</option>
@@ -71,7 +76,7 @@
           />
           <p class="text-xs text-gray-500 mt-1">{{ t('invoicing.efaktura_sapi_base_url_hint') }}</p>
         </div>
-        <p v-else-if="form.efaktura_sapi_base_url" class="text-xs text-gray-500 font-mono">
+        <p v-else-if="form.efaktura_sapi_base_url" class="text-xs text-gray-500 font-mono break-all">
           {{ form.efaktura_sapi_base_url }}
         </p>
         <div v-if="isEpostman" data-testid="epostman-setup" class="space-y-2 text-xs text-gray-700">
@@ -155,16 +160,33 @@
 
       </template>
 
-      <section data-testid="efaktura-receiving-connection" class="rounded-lg border border-gray-200 p-4 space-y-3">
+      <section v-if="!inboundOnly || !form.efaktura_inbound_use_shared_connection" data-testid="efaktura-receiving-connection" class="rounded-lg border border-gray-200 p-4 space-y-3">
         <h2 class="text-base font-semibold text-gray-900">{{ t('invoicing.efaktura_receiving_connection') }}</h2>
-        <label class="flex items-start gap-2 text-sm text-gray-700">
+        <label v-if="!inboundOnly" class="flex items-start gap-2 text-sm text-gray-700">
           <input id="efaktura-inbound-shared" v-model="form.efaktura_inbound_use_shared_connection" type="checkbox"
             :disabled="!supportsDirectionalConnections" class="mt-0.5 rounded border-gray-300 text-indigo-600" @change="changeReceivingMode" />
           <span>{{ t('invoicing.efaktura_receiving_use_shared') }}</span>
         </label>
+        <p v-if="!inboundOnly" class="text-xs text-gray-600">{{ t(form.efaktura_inbound_use_shared_connection
+          ? 'invoicing.efaktura_receiving_shared_hint' : 'invoicing.efaktura_receiving_separate_hint') }}</p>
         <p class="text-xs text-gray-500">{{ t('invoicing.efaktura_receiving_registration_note') }}</p>
+        <div v-if="canRecoverPreviousConnection" class="rounded-lg bg-indigo-50 p-3 space-y-2">
+          <p class="text-xs text-indigo-900">{{ t('invoicing.efaktura_receiving_previous_hint') }}</p>
+          <button type="button" data-testid="efaktura-use-previous-connection" class="invoicing-btn-secondary text-sm" @click="recoverPreviousConnection">
+            {{ t('invoicing.efaktura_receiving_use_previous') }}
+          </button>
+        </div>
         <p v-if="!supportsDirectionalConnections" role="status" class="text-xs text-amber-900">{{ t('invoicing.efaktura_directions_unavailable') }}</p>
         <template v-if="!form.efaktura_inbound_use_shared_connection">
+          <h3 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
+            <span :class="stepBadgeClass(receivingStep1Done)">{{ receivingStep1Done ? '✓' : '1' }}</span>
+            {{ t('invoicing.efaktura_step1_title') }}
+          </h3>
+          <i18n-t keypath="invoicing.efaktura_step1_portal" tag="p" class="text-xs text-gray-600">
+            <template #portal>
+              <a href="https://vpds.financnasprava.sk" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-500 underline">vpds.financnasprava.sk</a>
+            </template>
+          </i18n-t>
           <div>
             <label for="efaktura-inbound-preset" class="invoicing-sf-label">{{ t('invoicing.efaktura_cpds_preset_label') }}</label>
             <select id="efaktura-inbound-preset" v-model="inboundSelectedPresetId" class="invoicing-sf-input" @change="applyInboundPreset">
@@ -177,11 +199,28 @@
             <label for="efaktura-inbound-base-url" class="invoicing-sf-label">{{ t('invoicing.efaktura_sapi_base_url') }}</label>
             <input id="efaktura-inbound-base-url" v-model="form.efaktura_inbound_sapi_base_url" type="url" class="invoicing-sf-input font-mono text-sm" @input="handleInboundBaseUrlInput" />
           </div>
-          <p v-else-if="form.efaktura_inbound_sapi_base_url" class="text-xs text-gray-500 font-mono">{{ form.efaktura_inbound_sapi_base_url }}</p>
-          <p v-if="receivingIsEpostman" class="text-xs text-gray-700">
-            {{ t('invoicing.efaktura_epostman_sapi_not_api_key') }}
-            <a href="https://postman.slovakodata.com/help/portal/nastavenia/" target="_blank" rel="noopener noreferrer" class="text-indigo-700 underline">{{ t('invoicing.efaktura_epostman_sapi_guide') }}</a>
-          </p>
+          <p v-else-if="form.efaktura_inbound_sapi_base_url" class="text-xs text-gray-500 font-mono break-all">{{ form.efaktura_inbound_sapi_base_url }}</p>
+          <div v-if="receivingIsEpostman" data-testid="epostman-inbound-setup" class="space-y-2 text-xs text-gray-700">
+            <p>{{ t(receivingIsEpostmanTest ? 'invoicing.efaktura_epostman_activation_test' : 'invoicing.efaktura_epostman_activation') }}</p>
+            <a :href="receivingEpostmanPortalUrl" target="_blank" rel="noopener noreferrer" class="inline-block text-indigo-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">{{ t('invoicing.efaktura_epostman_open_portal') }}</a>
+            <p v-if="derivedParticipantId" class="font-medium">{{ t('invoicing.efaktura_peppol_derived_hint', { id: derivedParticipantId }) }}</p>
+            <a href="https://postman.slovakodata.com/help/zaciname/onboarding/" target="_blank" rel="noopener noreferrer" class="inline-block text-indigo-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">{{ t('invoicing.efaktura_epostman_setup_link') }}</a>
+            <p v-if="!hasEpostmanIdentity" role="status" class="font-medium text-amber-900">{{ t('invoicing.efaktura_epostman_missing_identity') }}</p>
+            <p v-if="receivingIsEpostmanTest" class="font-medium text-amber-900">{{ t('invoicing.efaktura_epostman_test_notice') }}</p>
+          </div>
+          <h3 class="text-sm font-semibold text-gray-800 flex items-center gap-2 border-t border-gray-100 pt-3">
+            <span :class="stepBadgeClass(receivingStep2Done)">{{ receivingStep2Done ? '✓' : '2' }}</span>
+            {{ t('invoicing.efaktura_step2_title') }}
+          </h3>
+          <div v-if="receivingIsEpostman" data-testid="epostman-inbound-credentials-guide" class="rounded-lg bg-gray-50 p-3 text-xs text-gray-700 space-y-2">
+            <ol class="list-decimal pl-4 space-y-1">
+              <li>{{ t('invoicing.efaktura_epostman_sapi_create') }}</li>
+              <li>{{ t('invoicing.efaktura_epostman_sapi_copy') }}</li>
+              <li>{{ t('invoicing.efaktura_epostman_sapi_finish') }}</li>
+            </ol>
+            <p>{{ t('invoicing.efaktura_epostman_sapi_not_api_key') }}</p>
+            <a href="https://postman.slovakodata.com/help/portal/nastavenia/" target="_blank" rel="noopener noreferrer" class="inline-block text-indigo-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">{{ t('invoicing.efaktura_epostman_sapi_guide') }}</a>
+          </div>
           <div>
             <label for="efaktura-inbound-client-id" class="invoicing-sf-label">{{ t('invoicing.efaktura_sapi_client_id') }}</label>
             <input id="efaktura-inbound-client-id" v-model="form.efaktura_inbound_sapi_client_id" type="text" autocomplete="off" class="invoicing-sf-input font-mono text-sm" @input="invalidateInboundConnectionTest" />
@@ -217,7 +256,7 @@
       <section class="rounded-lg border border-gray-200 p-4 space-y-3">
         <h3 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
           <span :class="stepBadgeClass(false)">3</span>
-          {{ t(isEpostman ? 'invoicing.efaktura_epostman_step3_title' : 'invoicing.efaktura_step3_title') }}
+          {{ t(inboundOnly ? 'invoicing.efaktura_epostman_step3_title' : 'invoicing.efaktura_step3_title') }}
         </h3>
 
         <div v-if="receivingIsEpostman" data-testid="epostman-connection-status" role="status" aria-live="polite" class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 space-y-2">
@@ -239,7 +278,7 @@
             />
             <span>{{ t('invoicing.efaktura_auto_send') }}</span>
           </label>
-          <p v-if="isEpostman" data-testid="epostman-manual-sending" class="text-xs text-amber-900">{{ t(inboundOnly ? 'invoicing.efaktura_epostman_inbound_only' : 'invoicing.efaktura_epostman_manual_sending') }}</p>
+          <p v-if="inboundOnly ? receivingIsEpostman : isEpostman" data-testid="epostman-manual-sending" class="text-xs text-amber-900">{{ t(inboundOnly ? 'invoicing.efaktura_epostman_inbound_only' : 'invoicing.efaktura_epostman_manual_sending') }}</p>
           <label class="flex items-start gap-2 text-sm text-gray-700">
             <input
               v-model="form.efaktura_inbound_enabled"
@@ -324,7 +363,7 @@
 <script setup lang="ts">
 import { epostmanConnectionIdentity, epostmanKeyIsSet, isValidEpostmanReplacementKey } from '../../utils/epostmanStatus';
 import { asApiError } from "../../utils/apiError";
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type {
   EfakturaCompanyMode,
@@ -407,6 +446,7 @@ const testingConnection = ref(false);
 const testMessage = ref('');
 const testFailed = ref(false);
 const selectedPresetId = ref('');
+const sharedPresetSelect = ref<HTMLSelectElement | null>(null);
 const credentialBaseUrl = ref('');
 const credentialsDiscarded = ref(false);
 const bridgeSaveFailed = ref(false);
@@ -427,6 +467,8 @@ const isEpostman = computed(() => ['https://postman.slovakodata.com', 'https://t
 const receivingSettings = computed(() => efakturaReceivingSettings(form));
 const receivingIsEpostman = computed(() => ['https://postman.slovakodata.com', 'https://testpostman.slovakodata.com']
   .includes(normalizeBaseUrl(receivingSettings.value.efaktura_sapi_base_url)));
+const receivingIsEpostmanTest = computed(() => normalizeBaseUrl(receivingSettings.value.efaktura_sapi_base_url) === 'https://testpostman.slovakodata.com');
+const receivingEpostmanPortalUrl = computed(() => receivingIsEpostmanTest.value ? 'https://testpostman.slovakodata.com' : 'https://postman.slovakodata.com');
 const inboundConnectionChanged = computed(() => normalizeBaseUrl(form.efaktura_inbound_sapi_base_url)
   !== normalizeBaseUrl(String(props.company?.app_settings?.efaktura_inbound_sapi_base_url ?? ''))
   || form.efaktura_inbound_sapi_client_id.trim() !== String(props.company?.app_settings?.efaktura_inbound_sapi_client_id ?? '').trim());
@@ -489,6 +531,32 @@ const step2Done = computed(
     && (secretSet.value || form.efaktura_sapi_client_secret !== '')
     && !testFailed.value && form.efaktura_connection_tested_at !== null,
 );
+
+const receivingStep1Done = computed(() => receivingSettings.value.efaktura_sapi_base_url.trim() !== '');
+const receivingStep2Done = computed(() => receivingSettings.value.efaktura_sapi_client_id.trim() !== ''
+  && (inboundSecretSet.value || Boolean(form.efaktura_inbound_sapi_client_secret))
+  && !inboundTestFailed.value && form.efaktura_inbound_connection_tested_at !== null);
+const canRecoverPreviousConnection = computed(() => inboundOnly.value && supportsDirectionalConnections.value
+  && !form.efaktura_inbound_use_shared_connection && !savedSettings.value.efaktura_inbound_use_shared_connection
+  && savedSettings.value.efaktura_inbound_sapi_base_url.trim() === ''
+  && savedSettings.value.efaktura_inbound_sapi_client_id.trim() === ''
+  && !separateReceivingSecretIsSet(props.company) && !inboundSecretSet.value
+  && form.efaktura_inbound_sapi_base_url.trim() === '' && form.efaktura_inbound_sapi_client_id.trim() === ''
+  && form.efaktura_inbound_sapi_client_secret === ''
+  && savedSettings.value.efaktura_sapi_base_url.trim() !== '' && savedSettings.value.efaktura_sapi_client_id.trim() !== ''
+  && !connectionChanged.value && !credentialsDiscarded.value && form.efaktura_sapi_client_secret === '' && secretSet.value);
+
+async function recoverPreviousConnection() {
+  if (!canRecoverPreviousConnection.value || saving.value || pollingInbound.value || !loadedCompanyMatches.value) return;
+  const companyId = props.companyId;
+  form.efaktura_inbound_use_shared_connection = true;
+  changeReceivingMode();
+  const generation = connectionGeneration;
+  await nextTick();
+  if (active && companyId === props.companyId && generation === connectionGeneration && form.efaktura_inbound_use_shared_connection) {
+    sharedPresetSelect.value?.focus();
+  }
+}
 
 /** Server payload carries the derived ID; local-first derives client-side. */
 const derivedParticipantId = computed(() => {

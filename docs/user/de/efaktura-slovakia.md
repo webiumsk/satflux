@@ -10,6 +10,8 @@ updated: 2026-11-15
 
 Die Anbindung unterstützt **Empfang und manuellen Versand**. Empfang und Import einer Rechnung und einer Gutschrift wurden im Peppol-Testnetz verifiziert. Auch der manuelle Versand beider Dokumenttypen über ePostman an Recommand wurde in diesem Testnetz bestätigt. Produktivaktivierung, gesetzliche Meldungen und Archivbedingungen müssen separat bestätigt werden. Satflux wird nicht als vollständige Lösung für die verpflichtende slowakische E-Rechnung angeboten.
 
+Im Unternehmensprofil erscheinen Einrichtungshinweise als kompakte Karten. Öffnen Sie eine Karte, um die Checkliste und die Option zum Ausblenden oder späteren Erinnern zu sehen. Der Hinweis auf die ungeprüfte eFaktúra-Anbindung bleibt auch bei geschlossener Karte sichtbar.
+
 ## Unternehmen verbinden
 
 Richten Sie die Verbindung für jedes Unternehmen separat ein. Die Empfangsaktivierung eines slowakischen Unternehmens aktiviert keine ausländische LLC.
@@ -25,11 +27,15 @@ Ist für dieselbe Verbindung bereits ein Secret gespeichert, lassen Sie das Feld
 
 ## Getrennte Verbindungen für Empfang und Versand
 
-Standardmäßig nutzt der Empfang denselben Anbieter und dieselben Zugangsdaten wie der Versand. Bestehende Verbindungen behalten diese Einstellung. Um einen anderen Empfangsanbieter zu verwenden, deaktivieren Sie die gemeinsame Verbindung im Empfangsbereich, wählen Sie einen unterstützten Anbieter und geben Sie dessen eigene Zugangsdaten ein. Testen Sie jede geänderte Verbindung und speichern Sie die Einstellungen. Eine unvollständige getrennte Empfangsverbindung greift nicht auf den Versandanbieter zurück. Ein Unternehmen mit ausschließlich Empfang kann den Empfang ohne Versandzugangsdaten einrichten.
+Ein Unternehmen mit ausschließlich Empfang sieht eine einzige Einrichtung **Anbieter für den Empfang** mit seiner bestehenden Verbindung. Wählen Sie den Anbieter, geben Sie dessen Zugangsdaten ein oder behalten Sie sie bei, testen und speichern Sie die Verbindung. In diesem Modus gibt es keine Auswahl einer Versandverbindung. Das Öffnen der Einstellungen verschiebt keine Zugangsdaten und wechselt keinen Anbieter.
 
-Postfachprüfung und Empfangsstatus verwenden die Empfangsverbindung. Manueller Versand und Enterprise-API-Schlüssel verwenden die Versandverbindung. Geänderte Empfangszugangsdaten ändern weder einen bestehenden Sendeversuch noch dessen Statusverlauf. Ein unklarer Versand muss beim ursprünglichen Anbieter geprüft werden; Satflux versendet ihn nicht automatisch über einen anderen Anbieter.
+Unternehmen mit Empfang und Versand haben getrennte Bereiche **Anbieter für den Versand** und **Anbieter für den Empfang**. Standardmäßig ist **Versandverbindung auch für den Empfang verwenden** aktiviert: Der Empfang nutzt Anbieter und Zugangsdaten aus dem Versandbereich. Deaktivieren Sie die Option, um einen unterstützten Empfangsanbieter mit eigenen Zugangsdaten einzurichten. Beide Datensätze bleiben beim Umschalten erhalten; speichern Sie, um die Änderung anzuwenden. Eine unvollständige getrennte Empfangsverbindung greift nicht auf den Versand zurück.
 
-Die Auswahl hier registriert oder überträgt keinen Empfangsdienst des Unternehmens. Pro DIČ ist nur ein Empfangsanbieter möglich; vereinbaren Sie einen Wechsel gesondert mit den Anbietern. Eine Voreinstellung belegt keine getestete Kompatibilität mit jedem Anbieter. Getrennte Verbindungen erfordern einen kompatiblen Satflux-Server; fehlt die Unterstützung, schließen Sie zuerst die Serveraktualisierung ab.
+Hat ein Unternehmen mit ausschließlich Empfang eine leere getrennte Einrichtung und eine frühere gespeicherte Verbindung, wählt **Vorherige Verbindung verwenden** diese im Formular aus. Speichern Sie, um die Auswahl anzuwenden. Bestehende getrennte Daten und laufende Änderungen werden nicht automatisch ersetzt.
+
+Die Postfachprüfung nutzt die Empfangsverbindung; manueller Versand und Enterprise-API-Schlüssel nutzen die Versandverbindung. Geänderte Empfangsdaten schreiben weder einen Sendeversuch noch dessen Verlauf um. Prüfen Sie einen unklaren Versand beim ursprünglichen Anbieter; Satflux sendet ihn nicht automatisch über einen anderen Anbieter.
+
+Die Auswahl hier registriert oder überträgt keinen Empfangsdienst. Pro DIČ ist nur ein Empfangsanbieter möglich; vereinbaren Sie einen Wechsel gesondert. Eine Voreinstellung belegt keine getestete Kompatibilität mit jedem Anbieter. Getrennte Verbindungen erfordern einen kompatiblen Satflux-Server.
 
 ## Empfangene Dokumente finden und importieren
 

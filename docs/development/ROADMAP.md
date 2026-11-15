@@ -1,5 +1,80 @@
 # Development roadmap
 
+## PR448 published; final publication checks in progress - 2026-11-15
+
+The owner's push instruction publishes reviewed implementation commit
+`373f7e1411b401563c225b6edc9068495e09d302` on
+`fix/efaktura-settings-clarity`. GitHub PR448 is open against master `c418dcc3`:
+https://github.com/webiumsk/satflux/pull/448 . Remote metadata matches that
+reviewed implementation head. A follow-up adds the combined user-facing
+changelog fragment linked to PR448 and this publication record; all19 accepted
+source/test/locale files retain aggregate
+`28e1d944f3b711f361836595c2d93303bd5a4f8fd271d5163390f4424c9f7e10`.
+
+Initial CI43759061107 started for the implementation commit. Fresh-head CI must
+be checked again after the metadata/changelog follow-up; no passing CI result is
+claimed yet. Main394frontend/19 and independent QA/security/browser evidence
+remain attributed to their reviewed source freeze. Earlier local-only and
+publication-authorization checkpoints below are historical and superseded by
+this observed push/PR. No merge, deployment, provider call or new implementation.
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`, unrelated work
+preserved. Owner retains merge/deployment decisions.
+
+## Clarity branch publication authorized - 2026-11-15
+
+The Product Owner explicitly requests pushing the reviewed eFaktura/settings and
+profile/navigation corrections. Publish only `fix/efaktura-settings-clarity` to
+the owned Satflux repository, open its review PR and verify CI for the resulting
+head. Fresh fetch confirms master `c418dcc3` still matches the scoped base;
+there is no existing PR for this branch. Primary unrelated work stays preserved.
+
+All19 reviewed source/test/locale hashes still match aggregate
+`28e1d944f3b711f361836595c2d93303bd5a4f8fd271d5163390f4424c9f7e10`.
+The earlier394frontend/19, static/build, QA44/5+62browserchecks and security40/4
+results remain applicable; no source changes or redundant product-test reruns.
+Main owns scoped commits/push/PR and a user-facing changelog note linked to the
+actual PR. Publication outcome and fresh-head CI must be verified separately.
+Earlier local-only/owner-review checkpoints below are historical and superseded
+by this authorization. Merge, deployment and larger-original implementation are
+not part of this publication request.
+
+## Compact profile guidance and Tools navigation accepted locally - 2026-11-15
+
+- [x] Make profile guidance collapsed native disclosures with visible progress or
+  unverified status; preserve existing invoice-list guidance and scoped actions.
+- [x] Share desktop width across visible cards; fill the row with one and remove
+  the wrapper with zero; stack on mobile and keep sharing full-width below.
+- [x] Remove empty filter strips from VAT report, audit and accountant export;
+  preserve their period/export controls and real filter-bearing page controls.
+- [x] Restore WooCommerce Tools/Application navigation and company links.
+- [x] Reproduce and fix same-mode company-switch coverage reload while retaining
+  generation fences; obtain independent QA/security and synthetic browser checks.
+- [x] Pass394frontend/19, lint/type/locales/whitespace/build7,669; QA44/5 plus
+  62browserchecks/28PNG and security40/4 overlap.
+- [ ] Publish the scoped branch and verify fresh-head CI under applicable owner
+  authorization; owner retains merge and deployment.
+
+Same local `fix/efaktura-settings-clarity` branch over merged PR447 `c418dcc3`;
+no publication/provider/deployment action. Final19-file freeze and browser limits:
+`INVOICING_LAYOUT_CLARITY.md`. Prior seven-file editor correction is unchanged.
+Larger-original import remains proposed separately.
+
+## eFaktura receiving settings clarity accepted locally - 2026-11-15
+
+- [x] Keep one effective editor and no sharing toggle for receiving-only firms.
+- [x] Explain the sender relationship in full mode and retain complete receiver
+  environment, identity, account/test and explicit-save guidance.
+- [x] Add narrowly guarded, explicit previous-connection recovery without data
+  copies or network calls before Save; preserve submitted-company fences.
+- [x] Close saved-secret and mobile URL review findings; obtain independent
+  design/QA/security acceptance and synthetic desktop/mobile/keyboard evidence.
+- [x] Pass360frontend/14, lint/type/locales/whitespace and build7,669.
+- [ ] Owner reviews the local result before scoped publication and fresh-head CI.
+
+Retain `fix/efaktura-settings-clarity` over merged PR447 `c418dcc3`, uncommitted.
+Evidence: `EFAKTURA_SETTINGS_CLARITY.md`. No backend, provider, Live or deployment
+change. Larger-original import above384KiB remains the next separate proposal.
+
 ## PR447 review corrections independently accepted locally - 2026-11-15
 
 Observed review baseline: open/unmerged PR447 at `a48570d11bbf73956f89f47e36d7c38f446f3389`,

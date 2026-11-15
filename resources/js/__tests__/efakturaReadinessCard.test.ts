@@ -6,6 +6,11 @@ const state = vi.hoisted(() => ({
   featureEnabled: true,
   contacts: [] as Record<string, unknown>[],
   contactPages: [] as Record<string, unknown>[][],
+  contactRequests: [] as string[],
+  pendingContactResponse: null as Promise<{
+    data: Record<string, unknown>[];
+    meta: { last_page: number };
+  }> | null,
 }));
 
 vi.mock('vue-i18n', () => ({
@@ -26,7 +31,13 @@ vi.mock('../composables/useEfakturaFeature', () => ({
 vi.mock('../services/api', () => ({
   invoicingApi: {
     contacts: {
-      list: async (_companyId: string, params?: { page?: number }) => {
+      list: async (companyId: string, params?: { page?: number }) => {
+        state.contactRequests.push(companyId);
+        if (state.pendingContactResponse) {
+          const response = state.pendingContactResponse;
+          state.pendingContactResponse = null;
+          return response;
+        }
         const pages = state.contactPages.length ? state.contactPages : [state.contacts];
         const page = Number(params?.page ?? 1);
         return { data: pages[page - 1] ?? [], meta: { last_page: pages.length } };
@@ -48,9 +59,9 @@ function skPayerCompany(appSettings: Record<string, unknown> = {}): Record<strin
   };
 }
 
-function mountCard(company: Record<string, unknown> | null) {
+function mountCard(company: Record<string, unknown> | null, compact = false) {
   return mount(EfakturaReadinessCard, {
-    props: { companyId: 'company-1', company },
+    props: { companyId: 'company-1', company, ...(compact ? { compact } : {}) },
     global: { stubs: { RouterLink: { template: '<a><slot /></a>' } } },
   });
 }
@@ -61,6 +72,8 @@ describe('EfakturaReadinessCard', () => {
     state.featureEnabled = true;
     state.contacts = [{ name: 'Buyer', country: 'SK', tax_id: null, registration_number: null }];
     state.contactPages = [];
+    state.contactRequests = [];
+    state.pendingContactResponse = null;
   });
 
   it('renders nothing for companies outside the e-faktura scope', async () => {
@@ -85,6 +98,7 @@ describe('EfakturaReadinessCard', () => {
     expect(wrapper.text()).toContain('efaktura_readiness_tested');
     // One SK contact without IDs feeds the contacts step counter.
     expect(wrapper.text()).toContain('"count":1');
+    expect(wrapper.find('details').exists()).toBe(false);
   });
 
   it('shows only the teaser and the contacts step while the module is globally off', async () => {
@@ -224,4 +238,74 @@ describe('EfakturaReadinessCard', () => {
     wrapper.unmount();
   });
 
+  it('keeps the unverified title visible in a closed native disclosure and snoozes from expanded content', async () => {
+    const wrapper = mountCard(skPayerCompany(), true);
+    await flushPromises();
+    const details = wrapper.get('details');
+    expect((details.element as HTMLDetailsElement).open).toBe(false);
+    expect(details.attributes('role')).toBeUndefined();
+    const summary = details.get('summary');
+    expect(summary.text()).toContain('invoicing.efaktura_readiness_title');
+    expect(summary.find('button, a').exists()).toBe(false);
+    expect(summary.text()).not.toContain('efaktura_readiness_intro');
+
+    await summary.trigger('click');
+    expect((details.element as HTMLDetailsElement).open).toBe(true);
+    expect(details.get('p').text()).toContain('invoicing.efaktura_readiness_intro');
+    expect(details.get('ul').text()).toContain('efaktura_readiness_credentials');
+    await details.get('button').trigger('click');
+    expect(wrapper.find('details').exists()).toBe(false);
+    const snoozedUntil = Number(localStorage.getItem('satflux.efaktura_readiness_snooze.company-1'));
+    expect(snoozedUntil).toBeGreaterThan(Date.now() + 13 * 24 * 60 * 60 * 1000);
+  });
+
+  it('keeps receiving-only guidance and the unverified receiving title in compact mode', async () => {
+    const wrapper = mountCard({ ...skPayerCompany(), vat_payer: false, vat_status: 'none' }, true);
+    await flushPromises();
+    expect(wrapper.get('summary').text()).toContain('invoicing.efaktura_readiness_inbound_title');
+    expect(wrapper.get('p').text()).toContain('invoicing.efaktura_readiness_inbound_intro');
+    expect(wrapper.get('ul').text()).not.toContain('efaktura_readiness_contacts');
+    expect(wrapper.get('ul').text()).not.toContain('efaktura_readiness_auto_send');
+    expect(state.contactRequests).toEqual([]);
+  });
+
+  it('reloads coverage and collapses when switching between companies in the same mode', async () => {
+    const wrapper = mountCard(skPayerCompany(), true);
+    await flushPromises();
+    const previousDetails = wrapper.get('details').element as HTMLDetailsElement;
+    await wrapper.get('summary').trigger('click');
+    expect(previousDetails.open).toBe(true);
+
+    await wrapper.setProps({ companyId: 'company-2', company: skPayerCompany() });
+    await flushPromises();
+    expect(state.contactRequests).toEqual(['company-1', 'company-2']);
+    const currentDetails = wrapper.get('details').element as HTMLDetailsElement;
+    expect(currentDetails).not.toBe(previousDetails);
+    expect(currentDetails.open).toBe(false);
+    expect(localStorage.length).toBe(0);
+    await wrapper.get('summary').trigger('click');
+    await wrapper.get('button').trigger('click');
+    expect(localStorage.getItem('satflux.efaktura_readiness_snooze.company-2')).not.toBeNull();
+    expect(localStorage.getItem('satflux.efaktura_readiness_snooze.company-1')).toBeNull();
+  });
+
+  it('ignores delayed coverage from the previous company after a same-mode switch', async () => {
+    let resolvePrevious!: (response: { data: Record<string, unknown>[]; meta: { last_page: number } }) => void;
+    state.pendingContactResponse = new Promise((resolve) => { resolvePrevious = resolve; });
+    const wrapper = mountCard(skPayerCompany(), true);
+    await flushPromises();
+    expect(wrapper.find('details').exists()).toBe(false);
+
+    await wrapper.setProps({ companyId: 'company-2', company: skPayerCompany() });
+    await flushPromises();
+    expect(wrapper.get('ul').text()).toContain('efaktura_readiness_contacts:{"count":1}');
+    const currentDetails = wrapper.get('details').element;
+    await wrapper.get('summary').trigger('click');
+
+    resolvePrevious({ data: [], meta: { last_page: 1 } });
+    await flushPromises();
+    expect(wrapper.get('ul').text()).toContain('efaktura_readiness_contacts:{"count":1}');
+    expect(wrapper.get('details').element).toBe(currentDetails);
+    expect((currentDetails as HTMLDetailsElement).open).toBe(true);
+  });
 });

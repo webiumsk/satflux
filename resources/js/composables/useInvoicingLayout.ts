@@ -163,6 +163,7 @@ export function useInvoicingLayout() {
       name === 'invoicing-company-app'
       || name === 'invoicing-company-app-emails'
       || name === 'invoicing-company-app-series'
+      || name === 'invoicing-company-app-woocommerce'
     ) {
       return 'app';
     }

@@ -5,7 +5,7 @@
     :subtitle="t('invoicing.accountant_export_subtitle')"
   >
     <template #header>
-      <InvoicingAppHeader />
+      <InvoicingAppHeader :show-filter-bar="false" />
     </template>
 
     <div v-if="loading" class="py-16 text-center invoicing-muted">
