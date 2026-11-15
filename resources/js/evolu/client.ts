@@ -615,10 +615,15 @@ export const allMigrationSourcesQuery = evolu.createQuery((db) => db.selectFrom(
 export const allExpenseOriginalSourcesQuery = evolu.createQuery((db) => db.selectFrom("migrationSource")
     .selectAll().where("sourceKind", "=", EXPENSE_ORIGINAL_SOURCE_KIND).where("isDeleted", "is not", sqliteTrue).orderBy("createdAt"));
 export const allExpenseOriginalChunksQuery = evolu.createQuery((db) => db.selectFrom("migrationChunk")
-    .innerJoin("migrationSource", (join) => join.onRef("migrationSource.id", "=", "migrationChunk.sourceId")
-        .onRef("migrationSource.ownerId", "=", "migrationChunk.ownerId").onRef("migrationSource.companyId", "=", "migrationChunk.companyId"))
-    .selectAll("migrationChunk").where("migrationSource.sourceKind", "=", EXPENSE_ORIGINAL_SOURCE_KIND)
-    .where("migrationChunk.isDeleted", "is not", sqliteTrue).where("migrationSource.isDeleted", "is not", sqliteTrue)
+    .selectAll("migrationChunk")
+    // Keep one outer table so owner scoping can append its ownerId column.
+    .where(({ exists, selectFrom }) => exists(selectFrom("migrationSource").select("migrationSource.id")
+        .whereRef("migrationSource.id", "=", "migrationChunk.sourceId")
+        .whereRef("migrationSource.ownerId", "=", "migrationChunk.ownerId")
+        .whereRef("migrationSource.companyId", "=", "migrationChunk.companyId")
+        .where("migrationSource.sourceKind", "=", EXPENSE_ORIGINAL_SOURCE_KIND)
+        .where("migrationSource.isDeleted", "is not", sqliteTrue)))
+    .where("migrationChunk.isDeleted", "is not", sqliteTrue)
     .orderBy("migrationChunk.createdAt"));
 
 /** Tombstones must remain visible to prevent retry from deliberately reviving a deleted original. */

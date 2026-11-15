@@ -116,24 +116,33 @@ production databases, package installation or deployment.
 ## Current status
 
 Implementation and independent QA/security review are accepted locally on
-2026-11-16 at base
-`2201bf1bacdc9a26571f188382b5e10999bbbf55`. All 38 source/test/locale files
-match aggregate `d0ba510c9b9617484f65d63fb9981db7673e8c9ba000de5d5318f4b5b8c1143d`.
+2026-11-16 at base `2201bf1bacdc9a26571f188382b5e10999bbbf55`.
+The original 38-file review is aggregate
+`d0ba510c9b9617484f65d63fb9981db7673e8c9ba000de5d5318f4b5b8c1143d`.
+Subsequent fixture and runtime-query corrections produce a combined 41-file
+source/test/locale freeze at aggregate
+`48b383cc6e879a2d8380ca3a223ada392b206bee2597a39909ddfd032e41ec22`
+(SHA-256 of the compact, sorted JSON file-hash map). Only `client.ts` changes
+among the original 38 files; the other 37 retain their hashes. Two existing
+client-mock fixes and one new actual-SQL regression extend the reviewed scope.
 Five translated user guides and these development records accompany the change.
 The separate accountant-export clarity freeze remains unchanged.
 
 Independent `directional_security` and `efaktura_remaining` accept this final
-scope with no unresolved blockers. They authored no implementation. Two medium
+scope with no unresolved blockers. They authored no implementation. Three medium
 findings were reproduced against the implementation and fixed before acceptance:
 
 | Finding | Fix and regression evidence |
 | --- | --- |
 | Noncanonical company, expense or attachment live flags could pass archive snapshot validation and reach restore writes. | Only undefined, null and numeric zero represent a live row. Backup and restore reject other values before output or any write. Permanent regressions and independent actual-restore probes pass. |
 | Company tax identity or receiving settings could change during post-prepare reconstruction, allowing cleanup under stale context. | Import and reconciliation checkpoint after proof, then read and validate the current company context. Four permanent, four independent private and four native browser cases preserve server staging and call completion zero times. |
+| The archive chunk join conflicted with the real owner's unqualified `ownerId` selection, causing ambiguous SQL even with no archives and leaving initial account navigation unresolved. | A single outer chunk table and correlated source `EXISTS` preserve ID, owner, company, kind and live predicates. The actual production client/wrapper/serializer regression fails twice before and passes twice after. Security independently reproduces the SQL error and accepts the exact two-file correction. |
 
 Final main validation:
 
-- 274 frontend tests in 20 suites pass serially with existing deadlines.
+- Before the query correction, 274 frontend tests in 20 suites pass serially with
+  existing deadlines. After correction, 26 focused tests / six suites, two-file
+  ESLint and full typecheck (110 inherited errors / nothing new) pass.
 - 49 PHP tests / 605 assertions pass across inbound inbox/service, provider
   receipt and durable ACK retry suites. Both changed test files pass Pint;
   production PHP and its admission/custody contract are unchanged.
@@ -141,7 +150,8 @@ Final main validation:
   nothing new; the baseline is unchanged. Locale parity passes.
 - Production build passes with 7,672 modules; existing large-bundle/PURE annotation
   warnings remain. No dependency or lockfile changes.
-- Final source hashes, scoped 48-file implementation status and whitespace checks pass.
+- Final source hashes and whitespace checks pass; the original 48-file
+  implementation becomes 52 scoped paths after publication and test corrections.
 
 Independent evidence supplements those overlapping runs:
 
@@ -156,6 +166,14 @@ Independent evidence supplements those overlapping runs:
   and full browser restart, interrupted write recovery, duplicate identity,
   corruption/missing-part custody rejection and atomic deletion rollback.
   Four additional native cases verify the corrected context race.
+- Seven further native checks exercise the corrected production query and owner
+  wrapper in Chrome/OPFS: empty read, snapshot, full refresh, fingerprint, exact
+  accessible owner/company/live-source filtering and post-reload account seed
+  initialization. These cover a query omitted by the earlier native archive
+  proof. Immediate SDK restore returns `owner_restore_failed` without hanging;
+  after the required reload, pending-sync read completes as `already_synced`
+  with its pending flag cleared. Inert auth/API/relay boundaries are explicit;
+  real account/server behavior is left to E2E.
 - Security independently reruns archive, reconciliation, snapshot, consumer,
   relay/deletion and PHP regressions. Runs overlap and must not be summed.
 
@@ -175,15 +193,23 @@ The owner's push instruction publishes implementation commit
 `91748ce3e7208353f7584e9a323a00139a02c268` on
 `feat/efaktura-large-originals` in open PR449:
 https://github.com/webiumsk/satflux/pull/449 . Documentation and the PR-linked
-changelog are followed by a test-only CI compatibility correction, for 51 total
+changelog are followed by a test-only CI compatibility correction, then the
+bounded runtime query correction and regression, for 52 total
 scoped paths. Initial CI43773180167 on `802412ad` passes 3,550 tests in 248
 files but two suites cannot load: their existing client mocks omit the two new
 original-source/chunk query exports. Adding those query tokens to
 `inboxReconcileGuard.test.ts` and `migrationLifecycle.test.ts` preserves all
 assertions; five targeted tests and two-file ESLint pass. Independent QA accepts
-both corrected file hashes and verifies unchanged assertions. All 38 originally
-accepted source/test/locale hashes remain unchanged. Corrected final-head CI
-is verified separately from local results and reported on the PR.
+both corrected mock-file hashes and verifies unchanged assertions.
+
+CI43773954997 on `a7410fc5` subsequently passes Node (3,555 tests / 250 files),
+PHP (3,501 passed / 19,624 assertions, 31 skipped), PostgreSQL and changelog,
+but two E2E routes remain blank before the initial guard completes. A baseline
+rerun at PR448 head `54b9eea1` passes 26 tests with two existing flaky footer
+cases and three skips. Actual SQL execution identifies the owner-column
+ambiguity above; the additional native checks prove the corrected query and
+post-reload initialization. The combined final freeze records that lineage.
+CI for the corrected final head is verified separately and reported on the PR.
 
 No merge, provider operation, public changelog publication or deployment is
 performed. New-data client compatibility, rollback/backport requirements,

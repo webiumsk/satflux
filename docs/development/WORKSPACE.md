@@ -1,5 +1,39 @@
 # Local workspace
 
+## PR449 startup query correction accepted locally - 2026-11-16
+
+PR449's published head `a7410fc59910aa699a7a6cf10b6581e3c4ed5fd0` passes
+CI43773954997 Node (3,555 tests / 250 files), PHP (3,501 passed / 19,624 assertions,
+31 skipped), PostgreSQL and changelog. E2E exposes two blank initial routes.
+A comparison rerun of PR448 head `54b9eea1` passes 26 tests with two existing
+flaky footer cases and three skips, distinguishing the new startup regression.
+
+The actual owner wrapper appends unqualified `ownerId`; the new archive join
+makes that generated SQL ambiguous even on an empty database. Replace only the
+outer join with a correlated `EXISTS`, retaining source ID, owner, company,
+exact kind and live source/chunk predicates. The global wrapper is unchanged.
+A new actual-client/wrapper/serializer SQLite regression fails 2/2 before and
+passes 2/2 after; 26 focused tests / six suites, scoped ESLint and full typecheck
+(110 inherited errors / nothing new) pass.
+
+Independent security accepts both corrected file hashes. QA verifies seven native
+Chrome/Evolu/OPFS checks: empty query, snapshot, refresh, fingerprint, exact
+owner/company/live-source filtering and account seed binding after page reload.
+The immediate SDK restore result and successful post-reload pending-sync read
+are distinguished; no real account, provider or multi-device delivery is claimed.
+
+The combined 41-file source/test/locale freeze is
+`48b383cc6e879a2d8380ca3a223ada392b206bee2597a39909ddfd032e41ec22`.
+Relative to the original 38-file review, only `client.ts` changes; 37 files
+retain their hashes. Two prior QA-approved mock corrections and the new SQL
+regression extend the scope to 41; with docs/changelog the total is 52 paths.
+Contract and evidence: `EFAKTURA_LARGE_ORIGINALS.md`.
+
+Next is normal push of the bounded correction and CI for that exact final head.
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`; unrelated
+changes and the separate accountant-export clarity freeze remain preserved.
+No merge, provider operation, public changelog publication or deployment.
+
 ## PR449 published; publication checks in progress - 2026-11-16
 
 The owner's push instruction publishes reviewed implementation
