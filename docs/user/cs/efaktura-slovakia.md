@@ -23,6 +23,14 @@ Každou firmu připojte samostatně. Zapnutí příjmu slovenské firmy ho nezap
 
 Pokud je secret již uložený pro stejné připojení, jeho pole nechte prázdné. Při změně poskytovatele nebo prostředí zadejte údaje nového připojení a test zopakujte.
 
+## Samostatné připojení pro příjem a odesílání
+
+Příjem ve výchozím nastavení používá stejného poskytovatele a přístupové údaje jako odesílání. Stávající připojení si toto nastavení zachovají. Pokud chcete jiného poskytovatele pro příjem, v části příjmu vypněte společné připojení, vyberte podporovaného poskytovatele a zadejte jeho vlastní údaje. Každé změněné připojení otestujte a nastavení uložte. Neúplné samostatné přijímací připojení se nenahradí odesílacím poskytovatelem. Firma používající pouze příjem může nastavit příjem bez doplnění odesílacích údajů.
+
+Kontrola schránky a stav příjmu používají přijímací připojení. Ruční odesílání a Enterprise API klíč používají odesílací připojení. Změna přijímacích údajů nemění stávající pokus o odeslání ani historii jeho stavů. Nejisté odeslání je třeba ověřit u původního poskytovatele; Satflux je automaticky neodešle přes jiného.
+
+Výběr poskytovatele zde nezaregistruje ani nepřesune přijímací službu firmy. Firma může mít jednoho přijímacího poskytovatele na DIČ; změnu si dohodněte s poskytovateli samostatně. Předvolba nepotvrzuje otestovanou kompatibilitu s každým poskytovatelem. Samostatná připojení vyžadují kompatibilní server Satfluxu; pokud podpora chybí, nejprve dokončete aktualizaci serveru.
+
 ## Kde najít a importovat doklady
 
 Ve stejné firmě otevřete **Náklady > Přijaté e-faktury**. Doklad zkontrolujte nebo stáhněte původní XML a poté ho importujte do nákladů. Dobropisy se importují jako opravy s odpovídajícím znaménkem částky. Úspěšné prázdné stažení znamená, že se nestáhly nové doklady; nepotvrzuje doručení testovací faktury.

@@ -135,30 +135,33 @@ export function mergeEfakturaSettings(
         const text = String(value ?? "").trim().replace(/\/+$/, "");
         try { return new URL(text).href.replace(/\/+$/, ""); } catch { return text; }
     };
-    const changedConnection = (partial.efaktura_sapi_base_url !== undefined
-        && normalizeUrl(partial.efaktura_sapi_base_url) !== normalizeUrl(existing.efaktura_sapi_base_url))
-        || (partial.efaktura_sapi_client_id !== undefined
-            && partial.efaktura_sapi_client_id.trim() !== String(existing.efaktura_sapi_client_id ?? "").trim());
-    if (changedConnection) {
-        delete merged.efaktura_sapi_client_secret;
-        delete merged.efaktura_sapi_client_secret_encrypted;
-        merged.efaktura_sapi_client_secret_set = false;
-    }
-    const incomingSecret = partial.efaktura_sapi_client_secret;
-    if (incomingSecret === undefined || incomingSecret === "") {
-        if (!changedConnection && existing.efaktura_sapi_client_secret) {
-            merged.efaktura_sapi_client_secret = existing.efaktura_sapi_client_secret;
-        } else {
-            delete merged.efaktura_sapi_client_secret;
+    for (const prefix of ["efaktura_sapi", "efaktura_inbound_sapi"] as const) {
+        const incoming = partial as Record<string, unknown>;
+        const urlKey = `${prefix}_base_url`;
+        const clientKey = `${prefix}_client_id`;
+        const secretKey = `${prefix}_client_secret`;
+        const changedConnection = (incoming[urlKey] !== undefined
+            && normalizeUrl(incoming[urlKey]) !== normalizeUrl(existing[urlKey]))
+            || (incoming[clientKey] !== undefined
+                && String(incoming[clientKey] ?? "").trim() !== String(existing[clientKey] ?? "").trim());
+        if (changedConnection) {
+            delete merged[secretKey];
+            delete merged[`${secretKey}_encrypted`];
+            merged[`${secretKey}_set`] = false;
         }
-    }
-
-    if (incomingSecret) {
-        merged.efaktura_sapi_client_secret = incomingSecret;
-        delete merged.efaktura_sapi_client_secret_encrypted;
-    }
-    if (merged.efaktura_sapi_client_secret) {
-        merged.efaktura_sapi_client_secret_set = true;
+        const incomingSecret = incoming[secretKey];
+        if (incomingSecret === null) {
+            delete merged[secretKey];
+            delete merged[`${secretKey}_encrypted`];
+            merged[`${secretKey}_set`] = false;
+        } else if (incomingSecret === undefined || incomingSecret === "") {
+            if (!changedConnection && existing[secretKey]) merged[secretKey] = existing[secretKey];
+            else delete merged[secretKey];
+        } else {
+            merged[secretKey] = incomingSecret;
+            delete merged[`${secretKey}_encrypted`];
+        }
+        if (merged[secretKey]) merged[`${secretKey}_set`] = true;
     }
 
     // Never place Enterprise credentials in a company row: shared owners can read it.
@@ -178,7 +181,9 @@ export function updateLocalEfakturaSettings(
     partial: LocalEfakturaSettingsPatch,
     options?: { onComplete: () => void },
 ) {
-    if (!isValidEfakturaReplacementSecret(partial.efaktura_sapi_client_secret)) return { ok: false as const };
+    if (!isValidEfakturaReplacementSecret(partial.efaktura_sapi_client_secret)
+        || (partial.efaktura_inbound_sapi_client_secret !== null
+            && !isValidEfakturaReplacementSecret(partial.efaktura_inbound_sapi_client_secret))) return { ok: false as const };
     const row = findCompanyRow(evolu, companyId);
     const existing = parseSettingsJson(row?.appSettingsJson ?? null);
     const merged = mergeEfakturaSettings(existing, partial);

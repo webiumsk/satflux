@@ -69,6 +69,7 @@ import { useI18n } from 'vue-i18n';
 import {
   efakturaCompanyMode,
   efakturaSecretIsSet,
+  efakturaReceivingSettings,
   efakturaSettingsFromCompany,
 } from '../../composables/useCompanyEfakturaSettings';
 import { useEfakturaFeature } from '../../composables/useEfakturaFeature';
@@ -109,8 +110,10 @@ const mode = computed(() => efakturaCompanyMode(effectiveCompany.value, true));
 const eligible = computed(() => mode.value !== null);
 const inboundOnly = computed(() => mode.value === 'inbound_only');
 
-const settings = computed(() => efakturaSettingsFromCompany(effectiveCompany.value));
-const secretSet = computed(() => efakturaSecretIsSet(effectiveCompany.value));
+const outgoingSettings = computed(() => efakturaSettingsFromCompany(effectiveCompany.value));
+const receivingSettings = computed(() => efakturaReceivingSettings(outgoingSettings.value));
+const settings = computed(() => inboundOnly.value ? receivingSettings.value : outgoingSettings.value);
+const secretSet = computed(() => efakturaSecretIsSet(effectiveCompany.value, inboundOnly.value ? 'inbound' : 'outbound'));
 
 const setupSteps = computed(() => [
   {
@@ -125,6 +128,13 @@ const setupSteps = computed(() => [
     key: 'tested',
     done: settings.value.efaktura_connection_tested_at !== null,
   },
+  ...(!inboundOnly.value && outgoingSettings.value.efaktura_inbound_enabled && !outgoingSettings.value.efaktura_inbound_use_shared_connection ? [{
+    key: 'receiving_connection',
+    done: receivingSettings.value.efaktura_sapi_base_url.trim() !== ''
+      && receivingSettings.value.efaktura_sapi_client_id.trim() !== ''
+      && efakturaSecretIsSet(effectiveCompany.value, 'inbound')
+      && receivingSettings.value.efaktura_connection_tested_at !== null,
+  }] : []),
   inboundOnly.value
     ? {
         key: 'inbound_enabled',

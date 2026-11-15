@@ -198,6 +198,7 @@ Route::get('/config', function () {
         'turnstile' => app(RegistrationTurnstile::class)->publicConfiguration(),
         'btcpay_lightning_address_domain' => (string) (config('services.btcpay.lightning_address_domain') ?? ''),
         'efaktura_enabled' => (bool) config('efaktura.enabled'),
+        'efaktura_directional_connections' => true,
         // Exposed unconditionally - readiness messaging shows the statutory
         // deadline to SK companies even before the module is switched on.
         'efaktura_mandatory_from' => (string) config('efaktura.mandatory_from'),

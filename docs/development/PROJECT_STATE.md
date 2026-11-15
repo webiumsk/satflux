@@ -1,5 +1,53 @@
 # Project state
 
+## PR447 review corrections independently accepted locally - 2026-11-15
+
+Observed review baseline: open/unmerged PR447 at `a48570d11bbf73956f89f47e36d7c38f446f3389`,
+base master `4b00e2ee`. The directional checkout has this HEAD plus the local
+corrective diff; the primary checkout remains `fix/sepa-confirmation-isolation`
+at `885168f2` with unrelated work preserved. This is remote review evidence and
+local source state, not an established deployment or production/provider proof.
+
+All three supplied findings are current and fixed: PR447 milestone evidence,
+submitted-company receiving confirmation and complete bounded settings JSON.
+The PHP CI failure is the missing legitimate capability in PublicConfigTest's
+exact expectation; the exact assertion remains. No requested finding is skipped.
+QA/security accept five frozen source/test files after before-failing regressions.
+Main passes304PHP/2,223,329frontend/15, PHPStan0, Pint3, lint0/46inherited,
+type110/no new, locales/API/three schemas/whitespace and build7,669. Counts and
+independent overlapping probes are attributed in `PR447_REVIEW_FIXES.md`.
+
+Baseline CI43710844183 has one PHP failure,3,489passes/31skips; its other four
+jobs pass and later PHP static/audit steps are skipped. The corrections above
+are not yet published or checked as a new head. Main proceeds with normal
+existing-branch publication and fresh-head CI under the owner's existing
+publication authorization. Owner retains PR447 merge and deployment. Earlier
+local-only/publication records below are historical, superseded by this milestone.
+
+## Independent eFaktura connections accepted locally - 2026-11-15
+
+Owner authorizes continuing with separate receiving/sending after merging PR446.
+Fresh GitHub metadata and fetched master agree on merge `4b00e2ee`. Implement on
+`feat/efaktura-directional-connections` in its named durable worktree; preserve
+all unrelated primary work. Shared defaults retain credentials, while an optional
+receiving override routes poll/test/health/doctor and local import independently.
+Incomplete receiving has no shared/global fallback. Legacy uncertain sends keep
+exact original requests and sender bindings; no automatic provider failover.
+
+Independent QA/security accept the final 20-file backend and 15-file frontend
+freezes. Review fixes cover ownership transfer, unreadable-secret clearing,
+cross-direction pending-test states and Enterprise-field owner-export redaction.
+Main passes 293 PHP / 2,054 assertions, 318 frontend / 14 suites, PHPStan zero,
+Pint20, lint0/46 inherited, type110/no new, locales, API freshness/three schemas,
+whitespace and build7,669. One inherited PHPUnit deprecation remains.
+
+See `EFAKTURA_DIRECTIONAL_CONNECTIONS.md` for contracts, exact hashes and reviews.
+Direct prefeature backend downgrade is unsupported without compatible routing
+and secret redaction; stop/drain alone is insufficient. Source is local,
+uncommitted and unpublished; deployment/provider production readiness is not
+established. Next: owner reviews the local result, then publication/fresh-head CI
+under applicable authorization; owner retains merge/deployment.
+
 ## PR446 E2E runner compatibility repair approved - 2026-11-15
 
 Exact-head CI43697361409 forbec2c34f passes PHP, Node, PostgreSQL and changelog,

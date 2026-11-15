@@ -96,57 +96,64 @@ class EfakturaDoctorCommand extends Command
                 continue;
             }
 
-            $settings = CompanyEfakturaSettings::fromCompany($company);
-            $this->line('  efaktura_enabled (company): '.($settings->enabled() ? 'yes' : 'no'));
-
-            $baseUrl = $settings->sapiBaseUrl();
-            $baseUrlValid = false;
-            if ($baseUrl === null) {
-                $this->line('  base URL: (none)');
-            } else {
-                try {
-                    $client->validateBaseUrl($baseUrl);
-                    $baseUrlValid = true;
-                    $this->line("  base URL: {$baseUrl} (host allowed)");
-                } catch (\RuntimeException $exception) {
-                    $this->warn("  base URL: {$baseUrl} - REJECTED: {$exception->getMessage()}");
-                }
+            $outgoing = CompanyEfakturaSettings::fromCompany($company);
+            $connections = ['outbound/shared' => $outgoing];
+            if (! $outgoing->inboundUsesSharedConnection()) {
+                $connections['inbound'] = $outgoing->forInbound();
             }
+            foreach ($connections as $direction => $settings) {
+                $this->line('  connection: '.$direction);
+                $this->line('  efaktura_enabled (company): '.($settings->enabled() ? 'yes' : 'no'));
 
-            $this->line('  participant ID: '.($settings->peppolParticipantId() ?? '(none)').(
-                $settings->explicitPeppolParticipantId() !== null
-                    ? ' (explicit)'
-                    : ($settings->derivedPeppolParticipantId() !== null ? ' (derived from DIČ/IČO)' : '')
-            ));
-            $this->line('  client ID set: '.($settings->sapiClientId() !== null ? 'yes' : 'no'));
-            $this->line('  client secret decryptable: '.($settings->sapiClientSecret() !== null ? 'yes' : 'no'));
-            $this->line('  connection tested at: '.((string) ($settings->values['efaktura_connection_tested_at'] ?? '') ?: '(never)'));
-            $this->line('  auto-send: '.($settings->autoSend() ? 'yes' : 'no').', inbound: '.($settings->inboundEnabled() ? 'yes' : 'no'));
-            if (! $company->usesServerInvoicing()) {
-                $this->line('  inbox pending (local-first): '.$inboxService->countPending($company));
-            }
-
-            // A rejected base URL means every real call would fail - it
-            // downgrades the verdict and blocks the --live attempt.
-            $configured = $settings->configured() && $baseUrlValid;
-            if ($configured) {
-                $this->line('  configured: yes');
-            } elseif ($settings->configured() && ! $baseUrlValid) {
-                $this->warn('  configured: NO (base URL rejected)');
-            } else {
-                $this->warn('  configured: NO');
-            }
-
-            if ($this->option('live') && $configured) {
-                $result = $tester->test($baseUrl, $settings->sapiClientId(), $settings->sapiClientSecret());
-                if ($result['ok']) {
-                    $this->info('  live authentication: OK');
+                $baseUrl = $settings->sapiBaseUrl();
+                $baseUrlValid = false;
+                if ($baseUrl === null) {
+                    $this->line('  base URL: (none)');
                 } else {
-                    $this->warn(sprintf(
-                        '  live authentication: FAILED (%s%s)',
-                        $result['code'] ?? 'error',
-                        isset($result['message']) ? ' - '.$result['message'] : '',
-                    ));
+                    try {
+                        $client->validateBaseUrl($baseUrl);
+                        $baseUrlValid = true;
+                        $this->line("  base URL: {$baseUrl} (host allowed)");
+                    } catch (\RuntimeException $exception) {
+                        $this->warn("  base URL: {$baseUrl} - REJECTED: {$exception->getMessage()}");
+                    }
+                }
+
+                $this->line('  participant ID: '.($settings->peppolParticipantId() ?? '(none)').(
+                    $settings->explicitPeppolParticipantId() !== null
+                        ? ' (explicit)'
+                        : ($settings->derivedPeppolParticipantId() !== null ? ' (derived from DIČ/IČO)' : '')
+                ));
+                $this->line('  client ID set: '.($settings->sapiClientId() !== null ? 'yes' : 'no'));
+                $this->line('  client secret decryptable: '.($settings->sapiClientSecret() !== null ? 'yes' : 'no'));
+                $this->line('  connection tested at: '.((string) ($settings->values['efaktura_connection_tested_at'] ?? '') ?: '(never)'));
+                $this->line('  auto-send: '.($settings->autoSend() ? 'yes' : 'no').', inbound: '.($settings->inboundEnabled() ? 'yes' : 'no'));
+                if (! $company->usesServerInvoicing()) {
+                    $this->line('  inbox pending (local-first): '.$inboxService->countPending($company));
+                }
+
+                // A rejected base URL means every real call would fail - it
+                // downgrades the verdict and blocks the --live attempt.
+                $configured = $settings->configured() && $baseUrlValid;
+                if ($configured) {
+                    $this->line('  configured: yes');
+                } elseif ($settings->configured() && ! $baseUrlValid) {
+                    $this->warn('  configured: NO (base URL rejected)');
+                } else {
+                    $this->warn('  configured: NO');
+                }
+
+                if ($this->option('live') && $configured) {
+                    $result = $tester->test($baseUrl, $settings->sapiClientId(), $settings->sapiClientSecret());
+                    if ($result['ok']) {
+                        $this->info('  live authentication: OK');
+                    } else {
+                        $this->warn(sprintf(
+                            '  live authentication: FAILED (%s%s)',
+                            $result['code'] ?? 'error',
+                            isset($result['message']) ? ' - '.$result['message'] : '',
+                        ));
+                    }
                 }
             }
         }

@@ -37,6 +37,8 @@ class ServerToEvoluMigrationExportService
 
     private const MAX_IMAGE_DATA_URL_CHARS = 131_072;
 
+    private const MAX_APP_SETTINGS_UTF16_UNITS = 4000;
+
     /** @var list<string> */
     private array $warnings = [];
 
@@ -536,11 +538,32 @@ class ServerToEvoluMigrationExportService
             'website' => $company->website,
             'invoiceNumberPrefix' => $company->invoice_number_prefix,
             'linkedStoreId' => $linkedStoreId,
-            'appSettingsJson' => $this->truncateJsonBlob($this->jsonOrNull($this->appSettingsForMigration($company))),
+            'appSettingsJson' => $this->appSettingsJsonForMigration($company),
             'emailSettingsJson' => $this->truncateJsonBlob($this->jsonOrNull($this->emailSettingsForMigration($company))),
             'logoDataUrl' => $logoDataUrl,
             'signatureDataUrl' => $signatureDataUrl,
         ];
+    }
+
+    private function appSettingsJsonForMigration(Company $company): ?string
+    {
+        $json = $this->jsonOrNull($this->appSettingsForMigration($company));
+        if ($json === null) {
+            $this->warnings[] = "row_export_failed:company_app_settings:{$company->id}:invalid_json";
+
+            return null;
+        }
+
+        // Evolu's maxLength uses JavaScript string.length (UTF-16 code units).
+        // Keep the complete object or omit it visibly; a JSON prefix can lose
+        // credential bindings and cannot be safely imported as company settings.
+        if (strlen(mb_convert_encoding($json, 'UTF-16LE', 'UTF-8')) > self::MAX_APP_SETTINGS_UTF16_UNITS * 2) {
+            $this->warnings[] = "row_export_failed:company_app_settings:{$company->id}:too_large";
+
+            return null;
+        }
+
+        return $json;
     }
 
     /**
@@ -566,9 +589,13 @@ class ServerToEvoluMigrationExportService
         if ($secret !== null) {
             $settings['efaktura_sapi_client_secret'] = $secret;
         }
-        unset($settings['efaktura_sapi_client_secret_encrypted']);
+        $inboundSecret = $efaktura->separateInboundSecret();
+        if ($inboundSecret !== null) {
+            $settings['efaktura_inbound_sapi_client_secret'] = $inboundSecret;
+        }
+        unset($settings['efaktura_sapi_client_secret_encrypted'], $settings['efaktura_inbound_sapi_client_secret_encrypted']);
 
-        return $settings;
+        return CompanyEfakturaSettings::withoutEnterpriseSecrets($settings);
     }
 
     /**

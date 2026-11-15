@@ -11,6 +11,7 @@ type EfakturaConfig = {
   enabled: boolean;
   presets: EfakturaCpdsPreset[];
   mandatoryFrom: string;
+  directionalConnections: boolean;
 };
 
 const cachedConfig = ref<EfakturaConfig | null>(null);
@@ -38,6 +39,7 @@ export function useEfakturaFeature() {
   const loaded = computed(() => cachedConfig.value !== null);
   const cpdsPresets = computed(() => cachedConfig.value?.presets ?? []);
   const mandatoryFrom = computed(() => cachedConfig.value?.mandatoryFrom ?? '');
+  const directionalConnections = computed(() => cachedConfig.value?.directionalConnections === true);
 
   async function load(): Promise<boolean> {
     if (cachedConfig.value !== null) {
@@ -54,11 +56,13 @@ export function useEfakturaFeature() {
           efaktura_enabled?: boolean;
           efaktura_cpds_presets?: unknown;
           efaktura_mandatory_from?: string;
+          efaktura_directional_connections?: boolean;
         }>('/config');
         cachedConfig.value = {
           enabled: Boolean(data.efaktura_enabled),
           presets: presetsFromRaw(data.efaktura_cpds_presets),
           mandatoryFrom: String(data.efaktura_mandatory_from ?? ''),
+          directionalConnections: data.efaktura_directional_connections === true,
         };
         return cachedConfig.value.enabled;
       } catch {
@@ -73,5 +77,5 @@ export function useEfakturaFeature() {
     return fetchPromise;
   }
 
-  return { enabled, loaded, load, cpdsPresets, mandatoryFrom };
+  return { enabled, loaded, load, cpdsPresets, mandatoryFrom, directionalConnections };
 }

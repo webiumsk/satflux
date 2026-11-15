@@ -20,6 +20,7 @@ class TestEfakturaConnectionRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'direction' => ['sometimes', 'string', 'in:inbound,outbound'],
             'efaktura_sapi_base_url' => ['nullable', 'string', 'url', 'max:255'],
             'efaktura_sapi_client_id' => ['nullable', 'string', 'max:128'],
             'efaktura_sapi_client_secret' => ['nullable', 'string', 'max:255'],

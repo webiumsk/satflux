@@ -22,6 +22,7 @@ use App\Services\Invoicing\Efaktura\ComplianceSubmissionService;
 use App\Services\Invoicing\Efaktura\EphemeralEfakturaSubmissionService;
 use App\Services\Invoicing\Efaktura\EpostmanOutboundSubmissionService;
 use App\Services\Invoicing\Efaktura\SapiSkClient;
+use App\Support\Invoicing\CompanyEfakturaSettings;
 use App\Support\Invoicing\Efaktura\PeppolParticipantId;
 use App\Support\Invoicing\Efaktura\SapiSkSendPayload;
 use Illuminate\Database\Events\TransactionCommitted;
@@ -41,6 +42,63 @@ class EpostmanOutboundTest extends TestCase
     private const ORIGIN = 'https://testpostman.slovakodata.com';
 
     private int $sendCalls = 0;
+
+    #[DataProvider('legacyReceivingFlags')]
+    public function test_legacy_uncertain_send_retries_exact_original_after_independent_receiving_changes(bool $oldInbound): void
+    {
+        $company = $this->company();
+        $company->update(['app_settings' => array_merge($company->app_settings, ['efaktura_inbound_enabled' => $oldInbound])]);
+        $legacy = CompanyEfakturaSettings::fromCompany($company->fresh())->connectionFingerprint();
+        $document = $this->document($company->fresh());
+        $bodies = [];
+        $this->fakeProvider(function ($request) use (&$bodies) {
+            $bodies[] = $request->data();
+            if ($this->sendCalls === 1) {
+                throw new ConnectionException('Synthetic lost response');
+            }
+
+            return Http::response(['providerDocumentId' => 'synthetic-recovered-id', 'status' => 'ACCEPTED'], 202);
+        });
+        $service = app(EpostmanOutboundSubmissionService::class);
+        $service->submit($document);
+        $attempt = EfakturaOutboundAttempt::firstOrFail();
+        $original = Crypt::decryptString($attempt->request_encrypted);
+        $attempt->update(['connection_fingerprint' => $legacy]);
+        $company->update(['app_settings' => CompanyEfakturaSettings::mergeIncoming($company->fresh()->app_settings, [
+            'efaktura_inbound_enabled' => ! $oldInbound,
+            'efaktura_inbound_use_shared_connection' => false,
+            'efaktura_inbound_sapi_base_url' => 'https://postman.slovakodata.com',
+            'efaktura_inbound_sapi_client_id' => 'synthetic-independent-receiver',
+            'efaktura_inbound_sapi_client_secret' => 'synthetic-independent-receiver-secret',
+        ])]);
+        $valid = $company->fresh()->app_settings;
+        foreach (['efaktura_sapi_client_secret' => 'synthetic-replaced-sender-secret', 'efaktura_sapi_base_url' => 'https://postman.slovakodata.com'] as $field => $value) {
+            $company->update(['app_settings' => CompanyEfakturaSettings::mergeIncoming($valid, [$field => $value])]);
+            try {
+                $service->submit($document->fresh(['company', 'contact', 'lines']));
+                $this->fail('A changed sender must not resend a retained legacy attempt.');
+            } catch (ValidationException) {
+                $this->assertSame(1, $this->sendCalls);
+                $this->assertSame($original, Crypt::decryptString($attempt->fresh()->request_encrypted));
+            }
+        }
+        $company->update(['app_settings' => $valid]);
+        $result = $service->submit($document->fresh(['company', 'contact', 'lines']));
+
+        $this->assertSame('synthetic-recovered-id', $result->externalId);
+        $this->assertCount(2, $bodies);
+        $this->assertSame($bodies[0], $bodies[1]);
+        $this->assertSame($attempt->id, $bodies[1]['metadata']['documentId']);
+        $this->assertSame($attempt->id, json_decode($original, true)['metadata']['documentId']);
+        $this->assertSame($legacy, $attempt->fresh()->connection_fingerprint);
+        $this->assertDatabaseCount('efaktura_outbound_attempts', 1);
+        Http::assertNotSent(fn ($request) => ! str_starts_with($request->url(), self::ORIGIN.'/'));
+    }
+
+    public static function legacyReceivingFlags(): array
+    {
+        return [[false], [true]];
+    }
 
     protected function setUp(): void
     {

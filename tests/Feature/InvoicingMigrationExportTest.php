@@ -15,8 +15,11 @@ use App\Models\CompanyDocumentSequence;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Support\Invoicing\CompanyEfakturaSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -129,6 +132,114 @@ class InvoicingMigrationExportTest extends TestCase
             ->assertJsonCount(1, 'data.numberSeries')
             ->assertJsonPath('meta.counts.company', 1)
             ->assertJsonPath('meta.counts.document', 1);
+    }
+
+    #[Test]
+    public function owner_export_keeps_both_sapi_secrets_but_excludes_every_enterprise_field(): void
+    {
+        $company = $this->createCompany();
+        $settings = array_fill_keys(CompanyEfakturaSettings::ENTERPRISE_PRIVATE_FIELDS, 'synthetic-enterprise-private');
+        $company->update(['app_settings' => array_merge($settings, [
+            'efaktura_inbound_use_shared_connection' => false,
+            'efaktura_sapi_client_id' => 'synthetic-sender-client',
+            'efaktura_sapi_client_secret_encrypted' => Crypt::encryptString('synthetic-sender-secret'),
+            'efaktura_inbound_sapi_client_id' => 'synthetic-receiver-client',
+            'efaktura_inbound_sapi_client_secret_encrypted' => Crypt::encryptString('synthetic-receiver-secret'),
+            'efaktura_epostman_api_key_encrypted' => Crypt::encryptString('synthetic-enterprise-private'),
+            'efaktura_epostman_api_key_set' => true,
+        ])]);
+        Company::create([
+            'user_id' => User::factory()->create()->id,
+            'legal_name' => 'Synthetic foreign owner', 'jurisdiction' => CompanyJurisdiction::EuSk,
+            'app_settings' => ['efaktura_sapi_client_secret_encrypted' => Crypt::encryptString('synthetic-foreign-secret')],
+        ]);
+
+        $response = $this->actingAs($this->proUser)->getJson('/api/invoicing/migration/export')
+            ->assertOk()->assertJsonCount(1, 'data.company');
+        $exported = json_decode($response->json('data.company.0.appSettingsJson'), true, flags: JSON_THROW_ON_ERROR);
+        foreach (array_merge(CompanyEfakturaSettings::ENTERPRISE_PRIVATE_FIELDS, ['efaktura_epostman_api_key_set']) as $field) {
+            $this->assertArrayNotHasKey($field, $exported);
+        }
+        $this->assertSame('synthetic-sender-secret', $exported['efaktura_sapi_client_secret']);
+        $this->assertSame('synthetic-receiver-secret', $exported['efaktura_inbound_sapi_client_secret']);
+        $this->assertFalse($exported['efaktura_inbound_use_shared_connection']);
+        $this->assertArrayNotHasKey('efaktura_sapi_client_secret_encrypted', $exported);
+        $this->assertArrayNotHasKey('efaktura_inbound_sapi_client_secret_encrypted', $exported);
+        $this->assertStringNotContainsString('synthetic-enterprise-private', $response->getContent());
+        $this->assertStringNotContainsString('synthetic-foreign-secret', $response->getContent());
+    }
+
+    public static function appSettingsBoundaries(): array
+    {
+        return [
+            'ASCII below limit' => [3999, 'synthetic-private-note:'],
+            'ASCII at limit' => [4000, 'synthetic-private-note:'],
+            'ASCII above limit' => [4001, 'synthetic-private-note:'],
+            'UTF-8 below limit' => [3999, 'synthetic-private-note:žľť'],
+            'UTF-8 at limit' => [4000, 'synthetic-private-note:žľť'],
+            'UTF-8 above limit' => [4001, 'synthetic-private-note:žľť'],
+            'surrogates and escapes below limit' => [3999, "synthetic-private-note:😀\"\\\n"],
+            'surrogates and escapes at limit' => [4000, "synthetic-private-note:😀\"\\\n"],
+            'surrogates and escapes above limit' => [4001, "synthetic-private-note:😀\"\\\n"],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('appSettingsBoundaries')]
+    public function app_settings_export_is_complete_json_or_explicitly_omitted_at_the_importer_limit(int $units, string $prefix): void
+    {
+        $company = $this->createCompany();
+        $settings = [
+            'efaktura_inbound_use_shared_connection' => false,
+            'efaktura_sapi_client_id' => 'synthetic-sender-client',
+            'efaktura_sapi_client_secret_encrypted' => Crypt::encryptString('synthetic-sender-secret'),
+            'efaktura_inbound_sapi_client_id' => 'synthetic-receiver-client',
+            'efaktura_inbound_sapi_client_secret_encrypted' => Crypt::encryptString('synthetic-receiver-secret'),
+            'efaktura_epostman_api_key_encrypted' => Crypt::encryptString('synthetic-enterprise-key'),
+            'reverse_charge_note' => '',
+        ];
+        $company->update(['app_settings' => $settings]);
+        $baseline = $this->actingAs($this->proUser)->getJson('/api/invoicing/migration/export')
+            ->assertOk()->json('data.company.0.appSettingsJson');
+        $this->assertIsString($baseline);
+        $expected = json_decode($baseline, true, flags: JSON_THROW_ON_ERROR);
+        $encodedPrefix = json_encode($prefix, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        $prefixUnits = intdiv(strlen(mb_convert_encoding($encodedPrefix, 'UTF-16LE', 'UTF-8')), 2) - 2;
+        $baselineUnits = intdiv(strlen(mb_convert_encoding($baseline, 'UTF-16LE', 'UTF-8')), 2);
+        $padding = $units - $baselineUnits - $prefixUnits;
+        $this->assertGreaterThan(0, $padding);
+        $settings['reverse_charge_note'] = $prefix.str_repeat('x', $padding);
+        $expected['reverse_charge_note'] = $settings['reverse_charge_note'];
+        $expectedJson = json_encode($expected, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        $this->assertSame($units, intdiv(strlen(mb_convert_encoding($expectedJson, 'UTF-16LE', 'UTF-8')), 2));
+        $company->update(['app_settings' => $settings]);
+
+        $response = $this->actingAs($this->proUser)->getJson('/api/invoicing/migration/export')
+            ->assertOk()->assertJsonPath('data.company.0.id', $company->id);
+        $actual = $response->json('data.company.0.appSettingsJson');
+        $warnings = $response->json('meta.warnings');
+        $settingsWarnings = array_values(array_filter($warnings, fn ($warning) => str_starts_with($warning, 'row_export_failed:company_app_settings:')));
+        if ($units > 4000) {
+            // null matches OptionalString4000 and remains null through snapshot preparation.
+            $this->assertTrue($actual === null, 'Oversized settings must be omitted rather than exported as a JSON prefix.');
+            $this->assertSame(["row_export_failed:company_app_settings:{$company->id}:too_large"], $settingsWarnings);
+        } else {
+            $this->assertIsString($actual);
+            $this->assertTrue(json_validate($actual), 'Fitting settings must remain complete valid JSON.');
+            $this->assertSame(hash('sha256', $expectedJson), hash('sha256', $actual));
+            $parsed = json_decode($actual, true, flags: JSON_THROW_ON_ERROR);
+            $this->assertSame('synthetic-sender-secret', $parsed['efaktura_sapi_client_secret']);
+            $this->assertSame('synthetic-receiver-secret', $parsed['efaktura_inbound_sapi_client_secret']);
+            foreach (CompanyEfakturaSettings::ENTERPRISE_PRIVATE_FIELDS as $field) {
+                $this->assertArrayNotHasKey($field, $parsed);
+            }
+            $this->assertSame([], $settingsWarnings);
+        }
+        $warningsJson = json_encode($warnings, JSON_THROW_ON_ERROR);
+        foreach (['synthetic-private-note', 'synthetic-sender-secret', 'synthetic-receiver-secret', 'synthetic-enterprise-key'] as $secret) {
+            $this->assertStringNotContainsString($secret, $warningsJson);
+        }
+        $this->assertSame($settings, $company->fresh()->app_settings, 'Export never rewrites the source settings.');
     }
 
     #[Test]

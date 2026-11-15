@@ -13,6 +13,12 @@ export type CompanyEfakturaSettingsState = {
   efaktura_enabled: boolean;
   efaktura_auto_send: boolean;
   efaktura_inbound_enabled: boolean;
+  efaktura_inbound_use_shared_connection: boolean;
+  efaktura_inbound_provider: string;
+  efaktura_inbound_sapi_base_url: string;
+  efaktura_inbound_sapi_client_id: string;
+  efaktura_inbound_sapi_client_secret: string | null;
+  efaktura_inbound_connection_tested_at: string | null;
   efaktura_sapi_base_url: string;
   efaktura_peppol_participant_id: string;
   efaktura_sapi_client_id: string;
@@ -44,6 +50,12 @@ export function defaultEfakturaSettings(): CompanyEfakturaSettingsState {
     efaktura_enabled: false,
     efaktura_auto_send: false,
     efaktura_inbound_enabled: false,
+    efaktura_inbound_use_shared_connection: true,
+    efaktura_inbound_provider: 'sapi_sk',
+    efaktura_inbound_sapi_base_url: '',
+    efaktura_inbound_sapi_client_id: '',
+    efaktura_inbound_sapi_client_secret: '',
+    efaktura_inbound_connection_tested_at: null,
     efaktura_sapi_base_url: '',
     efaktura_peppol_participant_id: '',
     efaktura_sapi_client_id: '',
@@ -64,6 +76,13 @@ export function efakturaSettingsFromCompany(company: Record<string, unknown> | n
     efaktura_enabled: Boolean(raw.efaktura_enabled),
     efaktura_auto_send: Boolean(raw.efaktura_auto_send),
     efaktura_inbound_enabled: Boolean(raw.efaktura_inbound_enabled),
+    efaktura_inbound_use_shared_connection: raw.efaktura_inbound_use_shared_connection !== false,
+    efaktura_inbound_provider: String(raw.efaktura_inbound_provider ?? 'sapi_sk'),
+    efaktura_inbound_sapi_base_url: String(raw.efaktura_inbound_sapi_base_url ?? ''),
+    efaktura_inbound_sapi_client_id: String(raw.efaktura_inbound_sapi_client_id ?? ''),
+    efaktura_inbound_sapi_client_secret: '',
+    efaktura_inbound_connection_tested_at: raw.efaktura_inbound_connection_tested_at
+      ? String(raw.efaktura_inbound_connection_tested_at) : null,
     efaktura_sapi_base_url: String(raw.efaktura_sapi_base_url ?? ''),
     efaktura_peppol_participant_id: String(raw.efaktura_peppol_participant_id ?? ''),
     efaktura_sapi_client_id: String(raw.efaktura_sapi_client_id ?? ''),
@@ -79,19 +98,33 @@ export function efakturaSettingsFromCompany(company: Record<string, unknown> | n
   };
 }
 
-export function efakturaSecretIsSet(company: Record<string, unknown> | null): boolean {
+export function efakturaSecretIsSet(company: Record<string, unknown> | null, direction: 'outbound' | 'inbound' = 'outbound'): boolean {
   const raw = (company?.app_settings ?? {}) as Record<string, unknown>;
-  if (raw.efaktura_sapi_client_secret_set === true) {
+  const prefix = direction === 'inbound' && raw.efaktura_inbound_use_shared_connection === false
+    ? 'efaktura_inbound_sapi_client_secret' : 'efaktura_sapi_client_secret';
+  if (raw[`${prefix}_set`] === true) {
     return true;
   }
 
-  const plain = raw.efaktura_sapi_client_secret;
+  const plain = raw[prefix];
   if (typeof plain === 'string' && plain !== '') {
     return true;
   }
 
-  const encrypted = raw.efaktura_sapi_client_secret_encrypted;
+  const encrypted = raw[`${prefix}_encrypted`];
   return typeof encrypted === 'string' && encrypted !== '';
+}
+
+/** Effective receiver fields never fall back to outgoing credentials in separate mode. */
+export function efakturaReceivingSettings(settings: CompanyEfakturaSettingsState): CompanyEfakturaSettingsState {
+  if (settings.efaktura_inbound_use_shared_connection) return settings;
+  return {
+    ...settings,
+    efaktura_sapi_base_url: settings.efaktura_inbound_sapi_base_url,
+    efaktura_sapi_client_id: settings.efaktura_inbound_sapi_client_id,
+    efaktura_sapi_client_secret: settings.efaktura_inbound_sapi_client_secret ?? '',
+    efaktura_connection_tested_at: settings.efaktura_inbound_connection_tested_at,
+  };
 }
 
 export function isEfakturaConfigured(company: Record<string, unknown> | null): boolean {

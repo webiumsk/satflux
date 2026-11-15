@@ -280,6 +280,10 @@ class CompanyController extends Controller
      */
     protected function hasMeaningfulEfakturaSettings(array $incoming): bool
     {
+        if (array_key_exists('efaktura_inbound_use_shared_connection', $incoming) && $incoming['efaktura_inbound_use_shared_connection'] === false) {
+            return true;
+        }
+
         foreach ([
             'efaktura_enabled',
             'efaktura_auto_send',
@@ -294,6 +298,9 @@ class CompanyController extends Controller
             'efaktura_peppol_participant_id',
             'efaktura_sapi_client_id',
             'efaktura_sapi_client_secret',
+            'efaktura_inbound_sapi_base_url',
+            'efaktura_inbound_sapi_client_id',
+            'efaktura_inbound_sapi_client_secret',
             'efaktura_epostman_api_key',
         ] as $key) {
             if (array_key_exists($key, $incoming) && trim((string) $incoming[$key]) !== '') {

@@ -19,6 +19,7 @@ final class CompanyEfakturaSettings
     public function __construct(
         public array $values = [],
         protected ?string $derivedPeppolParticipantId = null,
+        protected bool $allowBaseUrlFallback = true,
     ) {}
 
     public static function fromCompany(Company $company): self
@@ -42,6 +43,31 @@ final class CompanyEfakturaSettings
     public function inboundEnabled(): bool
     {
         return (bool) ($this->values['efaktura_inbound_enabled'] ?? false);
+    }
+
+    public function inboundUsesSharedConnection(): bool
+    {
+        return (bool) ($this->values['efaktura_inbound_use_shared_connection'] ?? true);
+    }
+
+    /** Resolve the receiving credentials without falling back from an incomplete split. */
+    public function forInbound(): self
+    {
+        if ($this->inboundUsesSharedConnection()) {
+            return clone $this;
+        }
+
+        $values = $this->values;
+        $values['efaktura_provider'] = $values['efaktura_inbound_provider'] ?? 'sapi_sk';
+        foreach (['base_url', 'client_id', 'client_secret', 'client_secret_encrypted'] as $suffix) {
+            unset($values['efaktura_sapi_'.$suffix]);
+            if (array_key_exists('efaktura_inbound_sapi_'.$suffix, $this->values)) {
+                $values['efaktura_sapi_'.$suffix] = $this->values['efaktura_inbound_sapi_'.$suffix];
+            }
+        }
+        $values['efaktura_connection_tested_at'] = $values['efaktura_inbound_connection_tested_at'] ?? null;
+
+        return new self($values, $this->derivedPeppolParticipantId, allowBaseUrlFallback: false);
     }
 
     public function provider(): string
@@ -80,7 +106,7 @@ final class CompanyEfakturaSettings
             return rtrim($url, '/');
         }
 
-        $fallback = rtrim((string) config('efaktura.providers.sapi_sk.base_url'), '/');
+        $fallback = $this->allowBaseUrlFallback ? rtrim((string) config('efaktura.providers.sapi_sk.base_url'), '/') : '';
 
         return $fallback !== '' ? $fallback : null;
     }
@@ -118,6 +144,41 @@ final class CompanyEfakturaSettings
             $this->enabled(), $this->inboundEnabled(), $this->provider(),
             $this->sapiBaseUrl(), $this->sapiClientId(), $this->sapiClientSecret(),
             $this->peppolParticipantId(), $this->derivedPeppolParticipantId(),
+        ]));
+    }
+
+    /** Sending identity excludes independent receiving preferences. Never serialize. */
+    public function outboundConnectionFingerprint(): string
+    {
+        return hash('sha256', serialize([
+            'outbound-v2', $this->enabled(), $this->provider(),
+            $this->sapiBaseUrl(), $this->sapiClientId(), $this->sapiClientSecret(),
+            $this->peppolParticipantId(), $this->derivedPeppolParticipantId(),
+        ]));
+    }
+
+    /** Accept old attempts with either receiving flag, retaining every sender binding. */
+    public function matchesOutboundConnectionFingerprint(string $fingerprint): bool
+    {
+        if (hash_equals($this->outboundConnectionFingerprint(), $fingerprint)) {
+            return true;
+        }
+        foreach ([false, true] as $inbound) {
+            $legacy = clone $this;
+            $legacy->values['efaktura_inbound_enabled'] = $inbound;
+            if (hash_equals($legacy->connectionFingerprint(), $fingerprint)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Receiving generation includes the selected source, independent of sender changes. */
+    public function inboundConnectionFingerprint(): string
+    {
+        return hash('sha256', serialize([
+            $this->inboundUsesSharedConnection(), $this->forInbound()->connectionFingerprint(),
         ]));
     }
 
@@ -203,6 +264,14 @@ final class CompanyEfakturaSettings
             'efaktura_enabled' => $this->enabled(),
             'efaktura_auto_send' => $this->autoSend(),
             'efaktura_inbound_enabled' => $this->inboundEnabled(),
+            'efaktura_inbound_use_shared_connection' => $this->inboundUsesSharedConnection(),
+            'efaktura_inbound_provider' => $this->values['efaktura_inbound_provider'] ?? 'sapi_sk',
+            'efaktura_inbound_sapi_base_url' => $this->values['efaktura_inbound_sapi_base_url'] ?? null,
+            'efaktura_inbound_sapi_client_id' => $this->values['efaktura_inbound_sapi_client_id'] ?? null,
+            'efaktura_inbound_sapi_client_secret_set' => ! $this->inboundUsesSharedConnection()
+                ? $this->forInbound()->sapiClientSecret() !== null
+                : $this->separateInboundSecret() !== null,
+            'efaktura_inbound_connection_tested_at' => $this->values['efaktura_inbound_connection_tested_at'] ?? null,
             'efaktura_provider' => $this->provider(),
             'efaktura_sapi_base_url' => $this->sapiBaseUrl(),
             // The form shows only the explicit override; the derived default
@@ -226,7 +295,7 @@ final class CompanyEfakturaSettings
         // Only the write-only plaintext input may replace a stored credential.
         unset($incoming['efaktura_epostman_api_key_encrypted'], $incoming['efaktura_epostman_status_generation'], $incoming['efaktura_epostman_status_last_scan_at'], $incoming['efaktura_epostman_api_key_set']);
         // Poll/test evidence belongs to completed server operations, never a settings save.
-        unset($incoming['efaktura_sapi_client_secret_encrypted'], $incoming['efaktura_inbound_last_poll_at'], $incoming['efaktura_inbound_last_poll_stats'], $incoming['efaktura_connection_tested_at']);
+        unset($incoming['efaktura_sapi_client_secret_encrypted'], $incoming['efaktura_inbound_sapi_client_secret_encrypted'], $incoming['efaktura_inbound_sapi_client_secret_set'], $incoming['efaktura_inbound_last_poll_at'], $incoming['efaktura_inbound_last_poll_stats'], $incoming['efaktura_connection_tested_at'], $incoming['efaktura_inbound_connection_tested_at']);
         $merged = array_merge($current, $incoming);
 
         foreach ([
@@ -278,16 +347,19 @@ final class CompanyEfakturaSettings
             } else {
                 $merged['efaktura_sapi_client_secret_encrypted'] = Crypt::encryptString((string) $secret);
             }
+            unset($merged['efaktura_sapi_client_secret']);
         }
 
-        foreach (['efaktura_provider', 'efaktura_sapi_base_url', 'efaktura_sapi_client_id', 'efaktura_peppol_participant_id', 'efaktura_enabled', 'efaktura_inbound_enabled'] as $connectionField) {
+        foreach (['efaktura_provider', 'efaktura_sapi_base_url', 'efaktura_sapi_client_id', 'efaktura_peppol_participant_id', 'efaktura_enabled'] as $connectionField) {
             if (array_key_exists($connectionField, $incoming) && ($merged[$connectionField] ?? null) !== ($current[$connectionField] ?? null)) {
-                unset($merged['efaktura_inbound_last_poll_at'], $merged['efaktura_inbound_last_poll_stats'], $merged['efaktura_connection_tested_at']);
+                unset($merged['efaktura_connection_tested_at']);
             }
         }
         if ($secretChanged) {
-            unset($merged['efaktura_inbound_last_poll_at'], $merged['efaktura_inbound_last_poll_stats'], $merged['efaktura_connection_tested_at']);
+            unset($merged['efaktura_connection_tested_at']);
         }
+
+        $merged = self::mergeInboundConnection($current, $incoming, $merged, $derivedParticipantId, $secretChanged);
 
         $identityChanged = (new self($current, $derivedParticipantId))->enterpriseIdentityFingerprint() !== (new self($merged, $derivedParticipantId))->enterpriseIdentityFingerprint();
         if ($identityChanged) {
@@ -315,7 +387,63 @@ final class CompanyEfakturaSettings
             && trim((string) ($merged['efaktura_sapi_base_url'] ?? '')) === '') {
             $merged['efaktura_sapi_base_url'] = (new self($current))->sapiBaseUrl();
         }
-        unset($merged['efaktura_sapi_client_secret'], $merged['efaktura_epostman_api_key']);
+        unset($merged['efaktura_sapi_client_secret'], $merged['efaktura_inbound_sapi_client_secret'], $merged['efaktura_epostman_api_key']);
+
+        return $merged;
+    }
+
+    public function separateInboundSecret(): ?string
+    {
+        $separate = clone $this;
+        $separate->values['efaktura_inbound_use_shared_connection'] = false;
+
+        return $separate->forInbound()->sapiClientSecret();
+    }
+
+    /**
+     * @param  array<string, mixed>  $current
+     * @param  array<string, mixed>  $incoming
+     * @param  array<string, mixed>  $merged
+     * @return array<string, mixed>
+     */
+    protected static function mergeInboundConnection(array $current, array $incoming, array $merged, ?string $derivedParticipantId, bool $sharedSecretChanged): array
+    {
+        $before = new self($current, $derivedParticipantId);
+        if (array_key_exists('efaktura_inbound_sapi_base_url', $incoming)) {
+            $url = rtrim(trim((string) $incoming['efaktura_inbound_sapi_base_url']), '/');
+            $merged['efaktura_inbound_sapi_base_url'] = $url !== '' ? $url : null;
+        }
+
+        $oldSeparate = clone $before;
+        $oldSeparate->values['efaktura_inbound_use_shared_connection'] = false;
+        $newSeparate = new self(array_merge($merged, ['efaktura_inbound_use_shared_connection' => false]), $derivedParticipantId);
+        if (! array_key_exists('efaktura_inbound_sapi_client_secret', $incoming)
+            && ($oldSeparate->forInbound()->sapiBaseUrl() !== $newSeparate->forInbound()->sapiBaseUrl()
+                || $oldSeparate->forInbound()->sapiClientId() !== $newSeparate->forInbound()->sapiClientId()
+                || $oldSeparate->forInbound()->provider() !== $newSeparate->forInbound()->provider())) {
+            $merged['efaktura_inbound_sapi_client_secret_encrypted'] = null;
+            unset($merged['efaktura_inbound_sapi_client_secret']);
+        }
+        $secretChanged = false;
+        if (array_key_exists('efaktura_inbound_sapi_client_secret', $incoming)) {
+            $secret = $incoming['efaktura_inbound_sapi_client_secret'];
+            $secret = is_string($secret) ? trim($secret) : $secret;
+            $currentSecret = $oldSeparate->forInbound()->sapiClientSecret();
+            $secretChanged = $currentSecret === null || $currentSecret === ''
+                || ! is_string($secret) || $secret === '' || ! hash_equals($currentSecret, $secret);
+            $merged['efaktura_inbound_sapi_client_secret_encrypted'] = is_string($secret) && $secret !== ''
+                ? Crypt::encryptString($secret) : null;
+            unset($merged['efaktura_inbound_sapi_client_secret']);
+        }
+        $after = new self($merged, $derivedParticipantId);
+        $newSeparate = new self(array_merge($merged, ['efaktura_inbound_use_shared_connection' => false]), $derivedParticipantId);
+        if ($secretChanged || ! hash_equals($oldSeparate->inboundConnectionFingerprint(), $newSeparate->inboundConnectionFingerprint())) {
+            unset($merged['efaktura_inbound_connection_tested_at']);
+        }
+        if (($after->inboundUsesSharedConnection() ? $sharedSecretChanged : $secretChanged)
+            || ! hash_equals($before->inboundConnectionFingerprint(), $after->inboundConnectionFingerprint())) {
+            unset($merged['efaktura_inbound_last_poll_at'], $merged['efaktura_inbound_last_poll_stats']);
+        }
 
         return $merged;
     }
