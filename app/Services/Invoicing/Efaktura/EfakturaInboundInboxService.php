@@ -99,7 +99,7 @@ class EfakturaInboundInboxService
     public function health(User $user, Company $company): array
     {
         $this->assertCompanyAccess($user, $company);
-        $settings = CompanyEfakturaSettings::fromCompany($company);
+        $settings = CompanyEfakturaSettings::fromCompany($company)->forInbound();
         $last = $settings->values['efaktura_inbound_last_poll_at'] ?? null;
         $last = is_string($last) && $last !== '' ? $last : null;
         $stats = $settings->values['efaktura_inbound_last_poll_stats'] ?? [];

@@ -23,6 +23,14 @@ Každú firmu pripojte samostatne. Zapnutie prijímania slovenskej firmy ho neza
 
 Ak je secret už uložený pre rovnaké pripojenie, jeho pole nechajte prázdne. Pri zmene poštára alebo prostredia zadajte údaje nového pripojenia a test zopakujte.
 
+## Samostatné pripojenie pre príjem a odosielanie
+
+Prijímanie predvolene používa rovnakého poštára a prístupové údaje ako odosielanie. Existujúce pripojenia si toto nastavenie zachovajú. Ak chcete iného poštára na príjem, v časti prijímania vypnite spoločné pripojenie, vyberte podporovaného poštára a zadajte jeho vlastné údaje. Každé zmenené pripojenie otestujte a nastavenia uložte. Neúplné samostatné prijímacie pripojenie sa nenahradí odosielacím poštárom. Firma používajúca iba príjem môže nastaviť prijímanie bez doplnenia odosielacích údajov.
+
+Kontrola schránky a stav prijímania používajú prijímacie pripojenie. Manuálne odosielanie a Enterprise API kľúč používajú odosielacie pripojenie. Zmena prijímacích údajov nemení existujúci pokus o odoslanie ani históriu jeho stavov. Neisté odoslanie treba overiť u pôvodného poštára; Satflux ho automaticky neodošle cez iného.
+
+Výber poštára tu nezaregistruje ani nepresunie prijímaciu službu firmy. Firma môže mať jedného prijímacieho poštára na DIČ; zmenu si dohodnite s poštármi samostatne. Preset nepotvrdzuje otestovanú kompatibilitu s každým poštárom. Samostatné pripojenia vyžadujú kompatibilný server Satfluxu; ak podpora chýba, najskôr dokončite aktualizáciu servera.
+
 ## Kde nájsť a importovať doklady
 
 V rovnakej firme otvorte **Náklady > Prijaté e-faktúry**. Doklad skontrolujte alebo stiahnite pôvodné XML a potom ho importujte do nákladov. Dobropisy sa importujú ako opravy so zodpovedajúcim znamienkom sumy. Úspešné prázdne stiahnutie znamená, že sa nestiahli nové doklady; nepotvrdzuje doručenie testovacej faktúry.

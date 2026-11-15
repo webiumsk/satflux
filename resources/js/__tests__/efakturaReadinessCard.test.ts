@@ -199,4 +199,29 @@ describe('EfakturaReadinessCard', () => {
     await flushPromises();
     expect(again.text()).toBe('');
   });
+  it('uses only the independent receiving credentials and proof for a receiving-only company', async () => {
+    const company: Record<string, unknown> = { ...skPayerCompany({ efaktura_enabled: true, efaktura_inbound_enabled: true,
+      efaktura_inbound_use_shared_connection: false,
+      efaktura_inbound_sapi_base_url: 'https://testpostman.slovakodata.com',
+      efaktura_inbound_sapi_client_id: 'synthetic-receiver', efaktura_inbound_sapi_client_secret_set: true,
+      efaktura_inbound_connection_tested_at: '2026-11-13T10:00:00Z' }), vat_status: 'none', vat_payer: false };
+    const wrapper = mountCard(company); await flushPromises();
+    expect(wrapper.text()).toBe('');
+    await wrapper.setProps({ company: { ...company, app_settings: { ...(company.app_settings as Record<string, unknown>),
+      efaktura_inbound_sapi_client_secret_set: false, efaktura_sapi_client_secret_set: true } } });
+    expect(wrapper.text()).toContain('efaktura_readiness_credentials');
+    wrapper.unmount();
+  });
+
+  it('requires separate receiving setup when a full payer enables a separate receiver', async () => {
+    state.contacts = [];
+    const wrapper = mountCard(skPayerCompany({ efaktura_enabled: true, efaktura_sapi_base_url: 'https://sapi.test',
+      efaktura_sapi_client_id: 'synthetic-sender', efaktura_sapi_client_secret_set: true,
+      efaktura_connection_tested_at: '2026-11-13T10:00:00Z', efaktura_inbound_enabled: true,
+      efaktura_inbound_use_shared_connection: false }));
+    await flushPromises();
+    expect(wrapper.text()).toContain('efaktura_readiness_receiving_connection');
+    wrapper.unmount();
+  });
+
 });

@@ -15,7 +15,9 @@ use App\Models\CompanyDocumentSequence;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Support\Invoicing\CompanyEfakturaSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -129,6 +131,41 @@ class InvoicingMigrationExportTest extends TestCase
             ->assertJsonCount(1, 'data.numberSeries')
             ->assertJsonPath('meta.counts.company', 1)
             ->assertJsonPath('meta.counts.document', 1);
+    }
+
+    #[Test]
+    public function owner_export_keeps_both_sapi_secrets_but_excludes_every_enterprise_field(): void
+    {
+        $company = $this->createCompany();
+        $settings = array_fill_keys(CompanyEfakturaSettings::ENTERPRISE_PRIVATE_FIELDS, 'synthetic-enterprise-private');
+        $company->update(['app_settings' => array_merge($settings, [
+            'efaktura_inbound_use_shared_connection' => false,
+            'efaktura_sapi_client_id' => 'synthetic-sender-client',
+            'efaktura_sapi_client_secret_encrypted' => Crypt::encryptString('synthetic-sender-secret'),
+            'efaktura_inbound_sapi_client_id' => 'synthetic-receiver-client',
+            'efaktura_inbound_sapi_client_secret_encrypted' => Crypt::encryptString('synthetic-receiver-secret'),
+            'efaktura_epostman_api_key_encrypted' => Crypt::encryptString('synthetic-enterprise-private'),
+            'efaktura_epostman_api_key_set' => true,
+        ])]);
+        Company::create([
+            'user_id' => User::factory()->create()->id,
+            'legal_name' => 'Synthetic foreign owner', 'jurisdiction' => CompanyJurisdiction::EuSk,
+            'app_settings' => ['efaktura_sapi_client_secret_encrypted' => Crypt::encryptString('synthetic-foreign-secret')],
+        ]);
+
+        $response = $this->actingAs($this->proUser)->getJson('/api/invoicing/migration/export')
+            ->assertOk()->assertJsonCount(1, 'data.company');
+        $exported = json_decode($response->json('data.company.0.appSettingsJson'), true, flags: JSON_THROW_ON_ERROR);
+        foreach (array_merge(CompanyEfakturaSettings::ENTERPRISE_PRIVATE_FIELDS, ['efaktura_epostman_api_key_set']) as $field) {
+            $this->assertArrayNotHasKey($field, $exported);
+        }
+        $this->assertSame('synthetic-sender-secret', $exported['efaktura_sapi_client_secret']);
+        $this->assertSame('synthetic-receiver-secret', $exported['efaktura_inbound_sapi_client_secret']);
+        $this->assertFalse($exported['efaktura_inbound_use_shared_connection']);
+        $this->assertArrayNotHasKey('efaktura_sapi_client_secret_encrypted', $exported);
+        $this->assertArrayNotHasKey('efaktura_inbound_sapi_client_secret_encrypted', $exported);
+        $this->assertStringNotContainsString('synthetic-enterprise-private', $response->getContent());
+        $this->assertStringNotContainsString('synthetic-foreign-secret', $response->getContent());
     }
 
     #[Test]

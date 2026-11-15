@@ -105,6 +105,75 @@ class EpostmanInboundTest extends TestCase
         });
     }
 
+    public function test_separate_receiving_routes_only_to_its_provider_and_keeps_original_provenance(): void
+    {
+        $company = $this->company('https://postman.slovakodata.com');
+        $company->update(['app_settings' => CompanyEfakturaSettings::mergeIncoming($company->app_settings, [
+            'efaktura_inbound_use_shared_connection' => false,
+            'efaktura_inbound_sapi_base_url' => self::ORIGIN,
+            'efaktura_inbound_sapi_client_id' => 'synthetic-receiver-client',
+            'efaktura_inbound_sapi_client_secret' => 'synthetic-receiver-secret',
+        ])]);
+        $this->fakeProvider();
+        $stats = app(EfakturaInboundService::class)->pollCompany($company->fresh());
+
+        $this->assertSame(1, $stats['acknowledged']);
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/auth/token')
+            && $request['client_id'] === 'synthetic-receiver-client'
+            && $request['client_secret'] === 'synthetic-receiver-secret');
+        Http::assertNotSent(fn ($request) => ! str_starts_with($request->url(), self::ORIGIN.'/'));
+        $receipt = EfakturaInboundReceipt::firstOrFail();
+        $this->assertSame(self::ORIGIN, $receipt->connection_origin);
+        $this->assertSame($this->xml(), Crypt::decryptString($receipt->ubl_encrypted));
+        $this->assertSame('ok', app(EfakturaInboundInboxService::class)->health($company->user, $company->fresh())['state']);
+    }
+
+    public function test_incomplete_separate_receiving_cannot_use_populated_shared_or_global_credentials(): void
+    {
+        config(['efaktura.providers.sapi_sk.base_url' => self::ORIGIN]);
+        $company = $this->company();
+        foreach (['base_url', 'client_id', 'client_secret'] as $missing) {
+            $settings = CompanyEfakturaSettings::mergeIncoming($company->app_settings, [
+                'efaktura_inbound_use_shared_connection' => false,
+                'efaktura_inbound_sapi_base_url' => self::ORIGIN,
+                'efaktura_inbound_sapi_client_id' => 'synthetic-receiver-client',
+                'efaktura_inbound_sapi_client_secret' => 'synthetic-receiver-secret',
+            ]);
+            unset($settings['efaktura_inbound_sapi_'.$missing], $settings['efaktura_inbound_sapi_'.$missing.'_encrypted']);
+            $company->update(['app_settings' => $settings]);
+            Http::fake();
+            $this->assertSame(['imported' => 0, 'acknowledged' => 0, 'skipped' => 0, 'failed' => 0], app(EfakturaInboundService::class)->pollCompany($company->fresh()));
+            Http::assertNothingSent();
+            $this->assertSame('disabled', app(EfakturaInboundInboxService::class)->health($company->user, $company->fresh())['state']);
+        }
+    }
+
+    public function test_ownership_transfer_during_receipt_fetch_blocks_original_ack_and_poll_proof(): void
+    {
+        $company = $this->company();
+        $newOwner = User::factory()->create();
+        Http::fake(function ($request) use ($company, $newOwner) {
+            if (str_ends_with($request->url(), '/auth/token')) {
+                return Http::response(['access_token' => 'synthetic-token', 'token_type' => 'Bearer', 'expires_in' => 900]);
+            }
+            if (str_ends_with($request->url(), '/receive/doc-1')) {
+                Company::query()->whereKey($company->id)->update(['user_id' => $newOwner->id]);
+
+                return Http::response(['metadata' => $this->metadata('doc-1'), 'payload' => $this->xml(), 'payloadFormat' => 'XML', 'status' => 'RECEIVED']);
+            }
+
+            return Http::response(['documents' => [array_merge($this->metadata('doc-1'), ['status' => 'RECEIVED'])], 'totalCount' => 1]);
+        });
+        $stats = app(EfakturaInboundService::class)->pollCompany($company);
+        $this->assertGreaterThan(0, $stats['failed']);
+        $this->assertSame(0, $stats['imported']);
+        $this->assertSame(0, $stats['acknowledged']);
+        $this->assertDatabaseCount('efaktura_inbound_receipts', 0);
+        $this->assertSame($newOwner->id, $company->fresh()->user_id);
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/acknowledge'));
+        $this->assertNull($company->fresh()->app_settings['efaktura_inbound_last_poll_at'] ?? null);
+    }
+
     public function test_pages_are_received_and_encrypted_without_an_open_browser_and_replays_deduplicate(): void
     {
         $this->fakeProvider(twoPages: true);

@@ -23,6 +23,14 @@ Richten Sie die Verbindung für jedes Unternehmen separat ein. Die Empfangsaktiv
 
 Ist für dieselbe Verbindung bereits ein Secret gespeichert, lassen Sie das Feld leer. Geben Sie bei einem Anbieter- oder Umgebungswechsel die neuen Zugangsdaten ein und testen Sie erneut.
 
+## Getrennte Verbindungen für Empfang und Versand
+
+Standardmäßig nutzt der Empfang denselben Anbieter und dieselben Zugangsdaten wie der Versand. Bestehende Verbindungen behalten diese Einstellung. Um einen anderen Empfangsanbieter zu verwenden, deaktivieren Sie die gemeinsame Verbindung im Empfangsbereich, wählen Sie einen unterstützten Anbieter und geben Sie dessen eigene Zugangsdaten ein. Testen Sie jede geänderte Verbindung und speichern Sie die Einstellungen. Eine unvollständige getrennte Empfangsverbindung greift nicht auf den Versandanbieter zurück. Ein Unternehmen mit ausschließlich Empfang kann den Empfang ohne Versandzugangsdaten einrichten.
+
+Postfachprüfung und Empfangsstatus verwenden die Empfangsverbindung. Manueller Versand und Enterprise-API-Schlüssel verwenden die Versandverbindung. Geänderte Empfangszugangsdaten ändern weder einen bestehenden Sendeversuch noch dessen Statusverlauf. Ein unklarer Versand muss beim ursprünglichen Anbieter geprüft werden; Satflux versendet ihn nicht automatisch über einen anderen Anbieter.
+
+Die Auswahl hier registriert oder überträgt keinen Empfangsdienst des Unternehmens. Pro DIČ ist nur ein Empfangsanbieter möglich; vereinbaren Sie einen Wechsel gesondert mit den Anbietern. Eine Voreinstellung belegt keine getestete Kompatibilität mit jedem Anbieter. Getrennte Verbindungen erfordern einen kompatiblen Satflux-Server; fehlt die Unterstützung, schließen Sie zuerst die Serveraktualisierung ab.
+
 ## Empfangene Dokumente finden und importieren
 
 Öffnen Sie beim selben Unternehmen **Ausgaben > Empfangene E-Rechnungen**. Prüfen Sie das Dokument oder laden Sie das ursprüngliche XML herunter und importieren Sie es anschließend als Ausgabe. Gutschriften werden als Korrekturen mit dem entsprechenden Vorzeichen importiert. Ein erfolgreicher leerer Abruf bedeutet, dass keine neuen Dokumente abgerufen wurden; er bestätigt keine Zustellung einer Testrechnung.

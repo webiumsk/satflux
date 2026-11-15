@@ -76,7 +76,12 @@ class EfakturaInboundService
         }
 
         try {
-            return $this->pollLockedCompany($company->fresh() ?? $company);
+            $fresh = $company->fresh();
+            if ($fresh === null || $fresh->user_id !== $company->user_id) {
+                return $stats;
+            }
+
+            return $this->pollLockedCompany($fresh);
         } finally {
             $lock->release();
         }
@@ -89,7 +94,7 @@ class EfakturaInboundService
         if (! config('efaktura.enabled') || ! app(CompanyEfakturaEligibility::class)->supportsInbound($company)) {
             return $stats;
         }
-        $settings = CompanyEfakturaSettings::fromCompany($company);
+        $settings = CompanyEfakturaSettings::fromCompany($company)->forInbound();
         if (! $settings->inboundEnabled() || ! $settings->configured()) {
             return $stats;
         }
@@ -98,7 +103,7 @@ class EfakturaInboundService
         $baseUrl = (string) $settings->sapiBaseUrl();
         $clientId = (string) $settings->sapiClientId();
         $secret = (string) $settings->sapiClientSecret();
-        $fingerprint = $settings->connectionFingerprint();
+        $fingerprint = CompanyEfakturaSettings::fromCompany($company)->inboundConnectionFingerprint();
         $started = microtime(true);
 
         try {
@@ -238,8 +243,8 @@ class EfakturaInboundService
     protected function lockMatchingCompany(Company $company, string $fingerprint): Company
     {
         $fresh = Company::query()->whereKey($company->id)->lockForUpdate()->first();
-        if ($fresh === null || ! config('efaktura.enabled') || ! app(CompanyEfakturaEligibility::class)->supportsInbound($fresh)
-            || ! hash_equals($fingerprint, CompanyEfakturaSettings::fromCompany($fresh)->connectionFingerprint())) {
+        if ($fresh === null || $fresh->user_id !== $company->user_id || ! config('efaktura.enabled') || ! app(CompanyEfakturaEligibility::class)->supportsInbound($fresh)
+            || ! hash_equals($fingerprint, CompanyEfakturaSettings::fromCompany($fresh)->inboundConnectionFingerprint())) {
             throw new \RuntimeException('Inbound connection settings changed during polling.');
         }
 
@@ -284,10 +289,10 @@ class EfakturaInboundService
      */
     protected function persistInboundPollMeta(Company $company, array $stats): void
     {
-        $fingerprint = CompanyEfakturaSettings::fromCompany($company)->connectionFingerprint();
+        $fingerprint = CompanyEfakturaSettings::fromCompany($company)->inboundConnectionFingerprint();
         DB::transaction(function () use ($company, $stats, $fingerprint) {
             $fresh = Company::query()->whereKey($company->id)->lockForUpdate()->first();
-            if ($fresh === null || ! hash_equals($fingerprint, CompanyEfakturaSettings::fromCompany($fresh)->connectionFingerprint())) {
+            if ($fresh === null || $fresh->user_id !== $company->user_id || ! hash_equals($fingerprint, CompanyEfakturaSettings::fromCompany($fresh)->inboundConnectionFingerprint())) {
                 // A completed old poll cannot bless a newly selected/revoked connection.
                 return;
             }

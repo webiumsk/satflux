@@ -5,6 +5,7 @@ import { computed, nextTick } from 'vue';
 type TestCompany = Record<string, unknown> & { app_settings: Record<string, unknown> };
 
 const state = vi.hoisted(() => ({
+  directionalConnections: true,
   presets: [] as { id: string; name: string; base_url: string }[],
   testResult: { ok: true, tested_at: '2026-07-23T10:00:00Z' } as Record<string, unknown>,
   testCalls: [] as Record<string, unknown>[],
@@ -52,6 +53,7 @@ vi.mock('../composables/useEfakturaFeature', () => ({
   useEfakturaFeature: () => ({
     enabled: computed(() => true),
     loaded: computed(() => true),
+    directionalConnections: computed(() => state.directionalConnections),
     cpdsPresets: computed(() => state.presets),
     mandatoryFrom: computed(() => '2027-01-01'),
     load: async () => true,
@@ -91,7 +93,7 @@ function skCompany(appSettings: Record<string, unknown> = {}): TestCompany {
 function mountForm(company: Record<string, unknown>, mode: 'full' | 'inbound_only' = 'full') {
   return mount(EfakturaForm, {
     props: { companyId: 'company-1', company, mode },
-    global: { stubs: { 'i18n-t': true } },
+    global: { stubs: { 'i18n-t': true, 'router-link': { template: '<a><slot /></a>' } } },
   });
 }
 
@@ -381,6 +383,7 @@ describe('eFaktura settings wizard', () => {
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
   beforeEach(() => {
     state.presets = [];
+    state.directionalConnections = true;
     state.testResult = { ok: true, tested_at: '2026-07-23T10:00:00Z' };
     state.testCalls = [];
     state.localFirst = false;
@@ -1076,6 +1079,249 @@ describe('eFaktura settings wizard', () => {
     expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith('company-1', expect.objectContaining({
       efaktura_enabled: false, efaktura_epostman_api_key: null,
     }));
+    wrapper.unmount();
+  });
+
+  const splitSettings = () => ({ ...connectedSettings(),
+    efaktura_inbound_use_shared_connection: false,
+    efaktura_inbound_provider: 'sapi_sk',
+    efaktura_inbound_sapi_base_url: 'https://postman.slovakodata.com',
+    efaktura_inbound_sapi_client_id: 'synthetic-receiver',
+    efaktura_inbound_sapi_client_secret_set: true,
+    efaktura_inbound_connection_tested_at: '2026-11-13T10:00:00Z',
+  });
+  function acceptDirectionalSaves() {
+    vi.mocked(invoicingApi.companies.updateAppSettings).mockImplementation(async (_id, payload) => skCompany({
+      ...splitSettings(), ...payload,
+      efaktura_inbound_sapi_client_secret_set: payload.efaktura_inbound_sapi_client_secret !== null,
+    }));
+  }
+
+  it('keeps existing accounts on a shared connection without copying credentials', () => {
+    const wrapper = mountForm(skCompany(connectedSettings()));
+    expect((wrapper.get('#efaktura-inbound-shared').element as HTMLInputElement).checked).toBe(true);
+    expect(wrapper.find('#efaktura-inbound-client-id').exists()).toBe(false);
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('uses the selected receiving connection for a direction-bound test without the sender secret', async () => {
+    const wrapper = mountForm(skCompany(splitSettings()));
+    await wrapper.get('[data-testid="efaktura-inbound-test"]').trigger('click'); await flushPromises();
+    expect(state.testCalls).toEqual([{ direction: 'inbound', efaktura_sapi_base_url: 'https://postman.slovakodata.com',
+      efaktura_sapi_client_id: 'synthetic-receiver', efaktura_sapi_client_secret: null }]);
+    expect(wrapper.get('[data-testid="efaktura-shared-credentials"]').text()).toContain('efaktura_connection_tested_at');
+    wrapper.unmount();
+  });
+
+  it('preserves separate receiving credentials and poll evidence when the sender host changes', async () => {
+    const wrapper = mountForm(skCompany({ ...splitSettings(),
+      efaktura_inbound_sapi_client_secret: 'synthetic-existing-receiver-secret',
+      efaktura_inbound_last_poll_at: '2026-11-13T12:00:00Z',
+      efaktura_inbound_last_poll_stats: { imported: 1, acknowledged: 1, skipped: 0, failed: 0 } }));
+    await wrapper.get('#efaktura-inbound-client-secret').setValue('synthetic-entered-receiver-secret');
+    await wrapper.get('[data-testid="efaktura-inbound-test"]').trigger('click'); await flushPromises();
+    vi.mocked(invoicingApi.efaktura.pollInbound).mockResolvedValue({ imported: 1, acknowledged: 1, skipped: 0, failed: 0 });
+    // Reload stored receiving evidence, then edit only the outgoing origin.
+    await wrapper.setProps({ company: skCompany({ ...splitSettings(),
+      efaktura_inbound_last_poll_at: '2026-11-13T12:00:00Z',
+      efaktura_inbound_last_poll_stats: { imported: 1, acknowledged: 1, skipped: 0, failed: 0 } }) });
+    await wrapper.get('#efaktura-inbound-client-secret').setValue('synthetic-receiver-replacement');
+    await wrapper.get('[data-testid="efaktura-inbound-test"]').trigger('click'); await flushPromises();
+    await wrapper.get('#efaktura-cpds-preset').setValue('epostman-production');
+    expect((wrapper.get('#efaktura-inbound-client-id').element as HTMLInputElement).value).toBe('synthetic-receiver');
+    expect((wrapper.get('#efaktura-inbound-client-secret').element as HTMLInputElement).value).toBe('synthetic-receiver-replacement');
+    expect(wrapper.get('[data-testid="efaktura-receiving-connection"]').text()).toContain('efaktura_test_ok');
+    wrapper.unmount();
+  });
+
+  it('preserves receiving poll metadata on an outgoing-only credential edit in separate mode', async () => {
+    const wrapper = mountForm(skCompany({ ...splitSettings(),
+      efaktura_inbound_last_poll_at: '2026-11-13T12:00:00Z',
+      efaktura_inbound_last_poll_stats: { imported: 2, acknowledged: 2, skipped: 0, failed: 0 } }));
+    await wrapper.get('#efaktura-cpds-preset').setValue('epostman-production');
+    expect(wrapper.text()).toContain('efaktura_inbound_last_poll:');
+    expect(wrapper.text()).toContain('"imported":2');
+    expect(wrapper.get('[data-testid="efaktura-receiving-connection"]').text()).toContain('efaktura_connection_tested_at');
+    wrapper.unmount();
+  });
+
+  it('invalidates receiving proof alone when receiving credentials change', async () => {
+    const wrapper = mountForm(skCompany(splitSettings()));
+    await wrapper.get('#efaktura-inbound-client-id').setValue('synthetic-new-receiver');
+    expect(wrapper.get('[data-testid="efaktura-shared-credentials"]').text()).toContain('efaktura_connection_tested_at');
+    expect(wrapper.get('[data-testid="efaktura-receiving-connection"]').text()).not.toContain('efaktura_connection_tested_at');
+    await wrapper.get('[data-testid="efaktura-inbound-test"]').trigger('click'); await flushPromises();
+    expect(state.testCalls).toHaveLength(0);
+    expect(wrapper.get('[data-testid="efaktura-receiving-connection"]').text()).toContain('efaktura_connection_new_credentials');
+    wrapper.unmount();
+  });
+
+  it.each(['navigation', 'credential', 'unmount'])('ignores a receiving test after %s changes its context', async (change) => {
+    let complete!: (value: Record<string, unknown>) => void;
+    vi.spyOn(invoicingApi.efaktura, 'testConnection').mockImplementation(() => new Promise((resolve) => { complete = resolve; }));
+    const wrapper = mountForm(skCompany(splitSettings()));
+    await wrapper.get('[data-testid="efaktura-inbound-test"]').trigger('click'); await flushPromises();
+    if (change === 'navigation') await wrapper.setProps({ companyId: 'company-2', company: { ...skCompany(splitSettings()), id: 'company-2' } });
+    if (change === 'credential') await wrapper.get('#efaktura-inbound-client-id').setValue('synthetic-later-receiver');
+    if (change === 'unmount') wrapper.unmount();
+    complete({ ok: true, tested_at: '2026-11-14T10:00:00Z' }); await flushPromises();
+    if (change !== 'unmount') {
+      expect(wrapper.get('[data-testid="efaktura-receiving-connection"]').text()).not.toContain('efaktura_test_ok');
+      wrapper.unmount();
+    }
+    expect(state.notifySaved).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['outbound', 'receiving credentials'],
+    ['outbound', 'receiving mode'],
+    ['inbound', 'sending credentials'],
+  ] as const)('releases a pending %s test after editing %s and fences its late reply', async (direction, change) => {
+    const completions: ((value: Record<string, unknown>) => void)[] = [];
+    vi.spyOn(invoicingApi.efaktura, 'testConnection').mockImplementation(() => new Promise((resolve) => { completions.push(resolve); }));
+    const wrapper = mountForm(skCompany(splitSettings()));
+    const pendingTestButton = () => direction === 'inbound'
+      ? wrapper.get('[data-testid="efaktura-inbound-test"]') : testButton(wrapper);
+    const saveButton = () => wrapper.get('button[type="submit"]');
+    await pendingTestButton().trigger('click'); await flushPromises();
+    expect(saveButton().attributes('disabled')).toBeDefined();
+
+    if (change === 'receiving credentials') await wrapper.get('#efaktura-inbound-client-id').setValue('synthetic-later-receiver');
+    else if (change === 'receiving mode') await wrapper.get('#efaktura-inbound-shared').setValue(true);
+    else await wrapper.get('#efaktura-client-id').setValue('synthetic-later-sender');
+    expect(saveButton().attributes('disabled')).toBeUndefined();
+
+    await pendingTestButton().trigger('click'); await flushPromises();
+    expect(completions).toHaveLength(2);
+    completions[0]({ ok: true, tested_at: '2026-11-14T10:00:00Z' }); await flushPromises();
+    expect(saveButton().attributes('disabled')).toBeDefined();
+    completions[1]({ ok: true, tested_at: '2026-11-15T10:00:00Z' }); await flushPromises();
+    expect(saveButton().attributes('disabled')).toBeUndefined();
+    const panel = wrapper.get(direction === 'inbound'
+      ? '[data-testid="efaktura-receiving-connection"]' : '[data-testid="efaktura-shared-credentials"]');
+    expect(panel.text()).toContain('efaktura_test_ok');
+    expect(state.notifySaved).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('keeps receiving-only firms usable with an independent receiver and no outgoing credentials', async () => {
+    acceptDirectionalSaves();
+    const company = skCompany({ ...splitSettings(), efaktura_sapi_base_url: '', efaktura_sapi_client_id: '', efaktura_sapi_client_secret_set: false });
+    const wrapper = mountForm(company, 'inbound_only');
+    expect(wrapper.find('#efaktura-client-id').exists()).toBe(false);
+    expect(pollButton(wrapper).attributes('disabled')).toBeUndefined();
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith('company-1', expect.objectContaining({
+      efaktura_sapi_client_id: '', efaktura_inbound_sapi_client_id: 'synthetic-receiver', efaktura_inbound_use_shared_connection: false,
+    }));
+    expect(state.notifySaved).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
+
+  it.each(['existing', 'new'])('blocks a %s separate receiver when the server lacks directional support', async (kind) => {
+    state.directionalConnections = false;
+    const wrapper = mountForm(skCompany(kind === 'existing' ? splitSettings() : connectedSettings()));
+    expect(wrapper.get('#efaktura-inbound-shared').attributes('disabled')).toBeDefined();
+    if (kind === 'existing') {
+      await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+      expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+      expect(wrapper.text()).toContain('efaktura_directions_unavailable');
+    }
+    wrapper.unmount();
+  });
+
+  it.each(['mode', 'url', 'client', 'marker'])('rejects an unconfirmed receiving save when the server response loses its %s', async (field) => {
+    const reply = skCompany(splitSettings());
+    if (field === 'mode') delete reply.app_settings.efaktura_inbound_use_shared_connection;
+    if (field === 'url') reply.app_settings.efaktura_inbound_sapi_base_url = 'https://testpostman.slovakodata.com';
+    if (field === 'client') reply.app_settings.efaktura_inbound_sapi_client_id = 'synthetic-different';
+    if (field === 'marker') delete reply.app_settings.efaktura_inbound_sapi_client_secret_set;
+    vi.mocked(invoicingApi.companies.updateAppSettings).mockResolvedValue(reply);
+    const wrapper = mountForm(skCompany(splitSettings()));
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(state.notifySaved).not.toHaveBeenCalled();
+    expect(wrapper.emitted('updated')).toBeUndefined();
+    expect(wrapper.text()).toContain('efaktura_directions_unconfirmed');
+    wrapper.unmount();
+  });
+
+  it('removes only the receiving secret and requires saving that removal', async () => {
+    acceptDirectionalSaves();
+    const wrapper = mountForm(skCompany(splitSettings()));
+    await wrapper.get('[data-testid="efaktura-inbound-remove-secret"]').trigger('click');
+    expect(wrapper.text()).toContain('efaktura_receiving_secret_removing');
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith('company-1', expect.objectContaining({ efaktura_inbound_sapi_client_secret: null }));
+    expect(vi.mocked(invoicingApi.companies.updateAppSettings).mock.calls[0][1]).not.toHaveProperty('efaktura_sapi_client_secret');
+    expect(state.notifySaved).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
+
+  it('waits for local custody before mirroring independent receiving and outgoing credentials', async () => {
+    state.localFirst = true;
+    acceptDirectionalSaves();
+    const company = skCompany({ ...splitSettings(), efaktura_sapi_client_secret: 'synthetic-sender-secret', efaktura_inbound_sapi_client_secret: 'synthetic-receiver-secret' });
+    state.localRows = [company];
+    const commit = deferNextLocalCommit();
+    const wrapper = mountForm(company);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    commit(); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).toHaveBeenCalledWith('bridge-1', expect.objectContaining({
+      efaktura_sapi_client_secret: 'synthetic-sender-secret', efaktura_inbound_sapi_client_secret: 'synthetic-receiver-secret', efaktura_inbound_use_shared_connection: false,
+    }));
+    expect(company.app_settings.efaktura_inbound_bridge_sync_pending).toBe(false);
+    expect(state.notifySaved).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
+
+  it('retains the local retry marker if an old bridge drops the separate connection', async () => {
+    state.localFirst = true;
+    const company = skCompany({ ...splitSettings(), efaktura_sapi_client_secret: 'synthetic-sender-secret', efaktura_inbound_sapi_client_secret: 'synthetic-receiver-secret' });
+    state.localRows = [company];
+    vi.mocked(invoicingApi.companies.updateAppSettings).mockResolvedValue(skCompany(connectedSettings()));
+    const wrapper = mountForm(company);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    expect(company.app_settings.efaktura_inbound_bridge_sync_pending).toBe(true);
+    expect(state.notifySaved).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('fences receiving changes during a pending local commit before any bridge request', async () => {
+    state.localFirst = true;
+    const company = skCompany({ ...splitSettings(), efaktura_sapi_client_secret: 'synthetic-sender-secret', efaktura_inbound_sapi_client_secret: 'synthetic-receiver-secret' });
+    state.localRows = [company];
+    const commit = deferNextLocalCommit(() => { company.app_settings.efaktura_inbound_sapi_client_secret = 'synthetic-newer-receiver'; });
+    const wrapper = mountForm(company);
+    await wrapper.get('form').trigger('submit.prevent'); await flushPromises();
+    commit(); await flushPromises();
+    expect(invoicingApi.companies.updateAppSettings).not.toHaveBeenCalled();
+    expect(company.app_settings.efaktura_inbound_bridge_sync_pending).toBe(true);
+    wrapper.unmount();
+  });
+
+  it.each(['full', 'inbound_only'] as const)('allows native form submission with no outgoing credentials in %s separate receiving mode', (mode) => {
+    const wrapper = mountForm(skCompany({ ...splitSettings(), efaktura_sapi_base_url: '', efaktura_sapi_client_id: '', efaktura_sapi_client_secret_set: false }), mode);
+    expect((wrapper.get('form').element as HTMLFormElement).checkValidity()).toBe(true);
+    if (mode === 'full') expect(wrapper.get('#efaktura-client-id').attributes('required')).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it('does not test an incomplete separate connection through the saved shared credentials', async () => {
+    const wrapper = mountForm(skCompany(connectedSettings()));
+    await wrapper.get('#efaktura-inbound-shared').setValue(false);
+    await wrapper.get('[data-testid="efaktura-inbound-test"]').trigger('click'); await flushPromises();
+    expect(state.testCalls).toHaveLength(0);
+    expect(wrapper.get('[data-testid="efaktura-receiving-connection"]').text()).toContain('efaktura_connection_new_credentials');
+    wrapper.unmount();
+  });
+
+  it('does not backfill the shared server secret when testing newly selected dormant receiving credentials', async () => {
+    const wrapper = mountForm(skCompany({ ...splitSettings(), efaktura_inbound_use_shared_connection: true }));
+    await wrapper.get('#efaktura-inbound-shared').setValue(false);
+    await wrapper.get('[data-testid="efaktura-inbound-test"]').trigger('click'); await flushPromises();
+    expect(state.testCalls).toHaveLength(0);
     wrapper.unmount();
   });
 

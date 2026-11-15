@@ -182,8 +182,9 @@ async function companyImportContext(scope: ExpenseReconciliationScope, companyId
     const ownerId = row && Reflect.get(row, "ownerId");
     if (matches.length !== 1 || typeof ownerId !== "string" || ownerId === "") throw new Error("expense_reconciliation_owner_unavailable");
     const settings = typeof row.appSettingsJson === "string" ? JSON.parse(row.appSettingsJson) as Record<string, unknown> : {};
-    const connection = ["efaktura_enabled", "efaktura_inbound_enabled", "efaktura_sapi_base_url",
-        "efaktura_sapi_client_id", "efaktura_sapi_client_secret", "efaktura_peppol_participant_id"]
+    const receiverPrefix = settings.efaktura_inbound_use_shared_connection === false ? "efaktura_inbound_sapi" : "efaktura_sapi";
+    const connection = ["efaktura_enabled", "efaktura_inbound_enabled", "efaktura_inbound_use_shared_connection",
+        `${receiverPrefix}_base_url`, `${receiverPrefix}_client_id`, `${receiverPrefix}_client_secret`, "efaktura_peppol_participant_id"]
         .map((key) => settings[key] ?? null);
     const fingerprint = await sha256Hex(JSON.stringify([
         row.legalName, row.registrationNumber, row.taxId, row.jurisdiction, row.country, connection,

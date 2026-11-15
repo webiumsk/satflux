@@ -1,5 +1,29 @@
 # Development decision log
 
+## 2026-11-15 - Separate receiving without changing outgoing history
+
+After owner-merged PR446 (`4b00e2ee`), the owner authorizes the proposed independent
+eFaktura connection implementation. Retain legacy SAPI fields for sending/shared
+use and make a separate receiver opt-in. This avoids credential migration and
+network/account changes for existing users. Separate receiving fails closed;
+capability and response checks reject unsupported servers. Enterprise status
+credentials remain server-only and outgoing-bound.
+
+Version new sender fingerprints independently of receiving preferences; verify
+complete old fingerprints for either receiving flag rather than rewrite uncertain
+attempts. Preserve original request/UUID/content/owner/provider checks and incoming
+provenance, committed custody and ACK ordering. Independent QA/security close
+owner-transfer, unreadable-clear, pending-test and touched owner-export findings.
+
+Final main checks: 293 PHP / 2,054, 318 frontend / 14, PHPStan0, Pint20,
+lint0/46 inherited, type110/no new, locale/API/schema/whitespace/build7,669.
+Exact freezes, independent overlapping results and resolved setup limitations are
+in `EFAKTURA_DIRECTIONAL_CONNECTIONS.md`. No source review blocker remains.
+Prefeature backend downgrade is unsupported without compatible routing/redaction
+or separately reviewed offline recovery; stopping incoming workers alone does
+not preserve the secret-output boundary. Local/uncommitted only; no publication,
+merge, deployment, real provider operation or production-readiness claim.
+
 ## PR446 E2E runner compatibility repair approved - 2026-11-15
 
 Exact-head CI43697361409 forbec2c34f passes PHP, Node, PostgreSQL and changelog,

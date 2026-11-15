@@ -23,6 +23,14 @@ Set up each company's connection separately. Enabling a Slovak company's receivi
 
 If a secret is already saved for the same connection, leave its field empty to keep it. When switching provider or environment, enter the new connection's credentials and test again.
 
+## Separate receiving and sending connections
+
+By default, receiving uses the same provider and credentials as sending. Existing connections keep this setting. To use a different receiving provider, turn off the shared connection choice in the receiving section, select a supported provider and enter its own credentials. Test each changed connection and save the settings. An incomplete separate receiving connection does not fall back to the sending provider. A receiving-only company can configure receiving without completing sending credentials.
+
+The mailbox check and receiving status use the receiving connection. Manual sends and the Enterprise API key use the sending connection. Changing receiving credentials does not change an existing outgoing attempt or its status history. An uncertain send must be reconciled with its original provider; Satflux does not automatically send it through another provider.
+
+Choosing a provider here does not register or transfer your company's receiving service. A company can have one receiving provider per DIČ; confirm any receiving-provider change with the providers separately. A preset does not establish tested compatibility with every provider. Separate connections require a compatible Satflux server; if support is unavailable, finish the server update before saving them.
+
 ## Find and import received documents
 
 Open **Expenses > Received e-invoices** for the same company. Review the document or download its original XML, then import it as an expense. Credit notes are imported as corrections with the appropriate signed amount. A successful empty retrieval means no new documents were fetched; it does not establish that a test invoice has been delivered.

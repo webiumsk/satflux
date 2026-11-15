@@ -57,7 +57,7 @@ class EpostmanOutboundSubmissionService
             $this->invalid('The connected company is unavailable.');
         }
         $this->assertIssuerMatches($snapshot, $company);
-        $expected = CompanyEfakturaSettings::fromCompany($snapshot)->connectionFingerprint();
+        $expected = CompanyEfakturaSettings::fromCompany($snapshot)->outboundConnectionFingerprint();
         $settings = CompanyEfakturaSettings::fromCompany($company);
         $this->assertConnection($company, $settings, $expected);
 
@@ -223,7 +223,11 @@ class EpostmanOutboundSubmissionService
 
     protected function assertAttempt(EfakturaOutboundAttempt $attempt, Company $company, string $fingerprint, string $hash): void
     {
-        if ($attempt->company_id !== $company->id || $attempt->user_id !== $company->user_id || ! hash_equals($attempt->connection_fingerprint, $fingerprint) || ! hash_equals($attempt->content_sha256, $hash)) {
+        $settings = CompanyEfakturaSettings::fromCompany($company);
+        if ($attempt->company_id !== $company->id || $attempt->user_id !== $company->user_id
+            || ! hash_equals($settings->outboundConnectionFingerprint(), $fingerprint)
+            || ! $settings->matchesOutboundConnectionFingerprint($attempt->connection_fingerprint)
+            || ! hash_equals($attempt->content_sha256, $hash)) {
             $this->invalid('This invoice already has a submission with different content or connection. Reconcile it with the provider before making another submission.');
         }
     }
@@ -254,7 +258,7 @@ class EpostmanOutboundSubmissionService
 
     protected function assertConnection(Company $company, CompanyEfakturaSettings $settings, string $expected): void
     {
-        if (! config('efaktura.enabled') || ! $settings->configured() || ! $this->client->isEpostman($settings->sapiBaseUrl()) || ! app(CompanyEfakturaEligibility::class)->supportsOutbound($company) || ! hash_equals($expected, $settings->connectionFingerprint())) {
+        if (! config('efaktura.enabled') || ! $settings->configured() || ! $this->client->isEpostman($settings->sapiBaseUrl()) || ! app(CompanyEfakturaEligibility::class)->supportsOutbound($company) || ! hash_equals($expected, $settings->outboundConnectionFingerprint())) {
             $this->invalid('The ePostman connection changed or is unavailable. Reload company settings before sending.');
         }
     }

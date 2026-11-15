@@ -161,7 +161,6 @@ class CompanyEfakturaPollEvidenceTest extends TestCase
             'client' => ['efaktura_sapi_client_id', 'synthetic-other-client'],
             'participant' => ['efaktura_peppol_participant_id', '0245:9999999999'],
             'module off' => ['efaktura_enabled', false],
-            'receiving off' => ['efaktura_inbound_enabled', false],
         ];
     }
 
@@ -174,6 +173,28 @@ class CompanyEfakturaPollEvidenceTest extends TestCase
             'efaktura_sapi_client_secret' => 'synthetic-secret',
         ], self::PARTICIPANT);
 
+        $this->assertEvidenceInvalidated($merged);
+    }
+
+    #[Test]
+    public function disabling_receiving_invalidates_poll_evidence_but_preserves_sender_authentication(): void
+    {
+        $merged = CompanyEfakturaSettings::mergeIncoming($this->currentSettings(), [
+            'efaktura_inbound_enabled' => false,
+            'efaktura_sapi_client_secret' => 'synthetic-secret',
+        ], self::PARTICIPANT);
+
+        $this->assertSame(self::EVIDENCE['efaktura_connection_tested_at'], $merged['efaktura_connection_tested_at']);
+        $this->assertArrayNotHasKey('efaktura_inbound_last_poll_at', $merged);
+        $this->assertArrayNotHasKey('efaktura_inbound_last_poll_stats', $merged);
+    }
+
+    #[Test]
+    public function clearing_an_unreadable_shared_secret_cannot_preserve_old_poll_evidence(): void
+    {
+        $current = $this->currentSettings();
+        $current['efaktura_sapi_client_secret_encrypted'] = 'synthetic-unreadable-ciphertext';
+        $merged = CompanyEfakturaSettings::mergeIncoming($current, ['efaktura_sapi_client_secret' => null], self::PARTICIPANT);
         $this->assertEvidenceInvalidated($merged);
     }
 

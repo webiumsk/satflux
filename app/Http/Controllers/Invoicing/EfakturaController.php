@@ -146,7 +146,10 @@ class EfakturaController extends Controller
         }
 
         $validated = $request->validated();
+        $inbound = ($validated['direction'] ?? 'outbound') === 'inbound';
         $stored = CompanyEfakturaSettings::fromCompany($company);
+        $fingerprint = $inbound ? $stored->inboundConnectionFingerprint() : $stored->outboundConnectionFingerprint();
+        $stored = $inbound ? $stored->forInbound() : $stored;
 
         $baseUrl = rtrim(trim((string) ($validated['efaktura_sapi_base_url'] ?? '')), '/');
         $baseUrl = $baseUrl !== '' ? $baseUrl : $stored->sapiBaseUrl();
@@ -170,19 +173,25 @@ class EfakturaController extends Controller
 
         $testedAt = null;
         if ($result['ok']) {
-            $testedAt = DB::transaction(function () use ($company, $baseUrl, $clientId, $clientSecret): ?string {
+            $testedAt = DB::transaction(function () use ($company, $baseUrl, $clientId, $clientSecret, $inbound, $fingerprint): ?string {
                 $fresh = Company::query()->whereKey($company->id)->lockForUpdate()->first();
-                if ($fresh === null || ! app(CompanyEfakturaEligibility::class)->supportsAny($fresh)) {
+                if ($fresh === null || $fresh->user_id !== $company->user_id || ! app(CompanyEfakturaEligibility::class)->supportsAny($fresh)) {
                     return null;
                 }
                 $current = CompanyEfakturaSettings::fromCompany($fresh);
+                $currentFingerprint = $inbound ? $current->inboundConnectionFingerprint() : $current->outboundConnectionFingerprint();
+                if (! hash_equals($fingerprint, $currentFingerprint)) {
+                    return null;
+                }
+                $shared = $current->inboundUsesSharedConnection();
+                $current = $inbound ? $current->forInbound() : $current;
                 if ($current->sapiBaseUrl() !== $baseUrl || $current->sapiClientId() !== $clientId || ! hash_equals((string) $current->sapiClientSecret(), (string) $clientSecret)) {
                     return null;
                 }
                 $timestamp = Carbon::now()->toIso8601String();
                 $rawSettings = $fresh->getAttribute('app_settings');
                 $settings = is_array($rawSettings) ? $rawSettings : [];
-                $settings['efaktura_connection_tested_at'] = $timestamp;
+                $settings[$inbound && ! $shared ? 'efaktura_inbound_connection_tested_at' : 'efaktura_connection_tested_at'] = $timestamp;
 
                 return $fresh->update(['app_settings' => $settings]) ? $timestamp : null;
             });
@@ -223,7 +232,8 @@ class EfakturaController extends Controller
             ]);
         }
 
-        if (! CompanyEfakturaSettings::fromCompany($company)->configured()) {
+        $settings = CompanyEfakturaSettings::fromCompany($company);
+        if (! ($inbound ? $settings->forInbound() : $settings)->configured()) {
             throw ValidationException::withMessages([
                 'efaktura' => ['E-faktura credentials are not configured for this company.'],
             ]);

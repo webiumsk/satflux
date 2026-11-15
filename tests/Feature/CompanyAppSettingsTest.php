@@ -26,6 +26,52 @@ class CompanyAppSettingsTest extends TestCase
 
     protected Company $company;
 
+    #[Test]
+    public function separate_receiving_credentials_are_write_only_and_owner_scoped(): void
+    {
+        $endpoint = "/api/invoicing/companies/{$this->company->id}/app-settings";
+        $this->actingAs($this->proUser)->patchJson($endpoint, [
+            'efaktura_inbound_use_shared_connection' => false,
+            'efaktura_inbound_provider' => 'sapi_sk',
+            'efaktura_inbound_sapi_base_url' => 'https://testpostman.slovakodata.com',
+            'efaktura_inbound_sapi_client_id' => 'synthetic-receiver-client',
+            'efaktura_inbound_sapi_client_secret' => 'synthetic-receiver-secret',
+        ])->assertOk()->assertJsonPath('data.app_settings.efaktura_inbound_use_shared_connection', false)
+            ->assertJsonPath('data.app_settings.efaktura_inbound_sapi_client_secret_set', true)
+            ->assertJsonMissingPath('data.app_settings.efaktura_inbound_sapi_client_secret')
+            ->assertJsonMissingPath('data.app_settings.efaktura_inbound_sapi_client_secret_encrypted');
+        $ciphertext = $this->company->fresh()->app_settings['efaktura_inbound_sapi_client_secret_encrypted'];
+        $this->assertSame('synthetic-receiver-secret', Crypt::decryptString($ciphertext));
+        $other = User::factory()->create();
+        Subscription::create([
+            'user_id' => $other->id,
+            'plan_id' => Subscription::query()->where('user_id', $this->proUser->id)->firstOrFail()->plan_id,
+            'status' => 'active', 'starts_at' => now(), 'expires_at' => now()->addYear(),
+        ]);
+        $this->actingAs($other)->patchJson($endpoint, [
+            'efaktura_inbound_sapi_client_secret' => 'synthetic-foreign-secret',
+        ])->assertForbidden();
+        $this->assertSame($ciphertext, $this->company->fresh()->app_settings['efaktura_inbound_sapi_client_secret_encrypted']);
+        $this->actingAs($this->proUser)->patchJson($endpoint, ['efaktura_inbound_sapi_client_secret' => null])
+            ->assertOk()->assertJsonPath('data.app_settings.efaktura_inbound_sapi_client_secret_set', false);
+    }
+
+    #[Test]
+    public function receiving_ciphertext_and_evidence_are_rejected_and_split_mode_requires_sk_company(): void
+    {
+        $endpoint = "/api/invoicing/companies/{$this->company->id}/app-settings";
+        foreach ([
+            'efaktura_inbound_sapi_client_secret_encrypted' => Crypt::encryptString('synthetic-injected-secret'),
+            'efaktura_inbound_sapi_client_secret_set' => true,
+            'efaktura_inbound_connection_tested_at' => '2026-11-15T10:00:00Z',
+        ] as $field => $value) {
+            $this->actingAs($this->proUser)->patchJson($endpoint, [$field => $value])->assertUnprocessable();
+        }
+        $this->company->update(['jurisdiction' => CompanyJurisdiction::Us]);
+        $this->actingAs($this->proUser)->patchJson($endpoint, ['efaktura_inbound_use_shared_connection' => false])
+            ->assertUnprocessable();
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

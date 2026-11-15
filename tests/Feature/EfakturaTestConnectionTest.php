@@ -14,6 +14,7 @@ use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Support\Invoicing\CompanyEfakturaSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -23,6 +24,76 @@ use Tests\TestCase;
 class EfakturaTestConnectionTest extends TestCase
 {
     use RefreshDatabase;
+
+    #[Test]
+    public function receiving_test_uses_only_its_saved_credentials_and_stamps_only_receiving(): void
+    {
+        config(['efaktura.enabled' => true, 'efaktura.allowed_sapi_hosts' => ['sapi.test', 'receiver.test']]);
+        [$owner, $company] = $this->skUserWithCompany();
+        $company->update(['app_settings' => CompanyEfakturaSettings::mergeIncoming($company->app_settings, [
+            'efaktura_inbound_use_shared_connection' => false,
+            'efaktura_inbound_sapi_base_url' => 'https://receiver.test',
+            'efaktura_inbound_sapi_client_id' => 'synthetic-receiver-client',
+            'efaktura_inbound_sapi_client_secret' => 'synthetic-receiver-secret',
+        ])]);
+        Http::fake(['https://receiver.test/sapi/v1/auth/token' => Http::response(['access_token' => 'synthetic-token'])]);
+        $this->actingAs($owner)->postJson("/api/invoicing/companies/{$company->id}/efaktura/test-connection", ['direction' => 'inbound'])
+            ->assertOk()->assertJsonPath('data.ok', true);
+        Http::assertSent(fn ($request) => $request['client_id'] === 'synthetic-receiver-client' && $request['client_secret'] === 'synthetic-receiver-secret');
+        $this->assertNotNull($company->fresh()->app_settings['efaktura_inbound_connection_tested_at'] ?? null);
+        $this->assertNull($company->fresh()->app_settings['efaktura_connection_tested_at'] ?? null);
+
+        Http::swap(new Factory);
+        Http::fake();
+        $this->actingAs($owner)->postJson("/api/invoicing/companies/{$company->id}/efaktura/test-connection", [
+            'direction' => 'outbound', 'efaktura_sapi_base_url' => 'https://receiver.test',
+            'efaktura_sapi_client_id' => 'synthetic-receiver-client',
+        ])->assertUnprocessable();
+        Http::assertNothingSent();
+    }
+
+    #[Test]
+    public function unfinished_receiver_test_cannot_bless_replaced_receiver_but_ignores_sender_changes(): void
+    {
+        config(['efaktura.enabled' => true, 'efaktura.allowed_sapi_hosts' => ['sapi.test', 'receiver.test']]);
+        [$owner, $company] = $this->skUserWithCompany();
+        $company->update(['app_settings' => CompanyEfakturaSettings::mergeIncoming($company->app_settings, [
+            'efaktura_inbound_use_shared_connection' => false,
+            'efaktura_inbound_sapi_base_url' => 'https://receiver.test',
+            'efaktura_inbound_sapi_client_id' => 'synthetic-receiver-client',
+            'efaktura_inbound_sapi_client_secret' => 'synthetic-receiver-secret',
+        ])]);
+        foreach (['efaktura_sapi_client_secret', 'efaktura_inbound_sapi_client_secret'] as $changed) {
+            Http::swap(new Factory);
+            Http::fake(function () use ($company, $changed) {
+                $fresh = $company->fresh();
+                $fresh->update(['app_settings' => CompanyEfakturaSettings::mergeIncoming($fresh->app_settings, [$changed => 'synthetic-replacement'])]);
+
+                return Http::response(['access_token' => 'synthetic-token']);
+            });
+            $response = $this->actingAs($owner)->postJson("/api/invoicing/companies/{$company->id}/efaktura/test-connection", ['direction' => 'inbound'])
+                ->assertOk()->assertJsonPath('data.ok', true);
+            if ($changed === 'efaktura_sapi_client_secret') {
+                $this->assertNotNull($response->json('data.tested_at'));
+            } else {
+                $response->assertJsonPath('data.tested_at', null);
+            }
+        }
+    }
+
+    #[Test]
+    public function incomplete_split_test_does_not_fall_back_and_invalid_direction_is_rejected(): void
+    {
+        config(['efaktura.enabled' => true, 'efaktura.providers.sapi_sk.base_url' => 'https://sapi.test']);
+        [$owner, $company] = $this->skUserWithCompany();
+        $company->update(['app_settings' => CompanyEfakturaSettings::mergeIncoming($company->app_settings, ['efaktura_inbound_use_shared_connection' => false])]);
+        Http::fake();
+        $this->actingAs($owner)->postJson("/api/invoicing/companies/{$company->id}/efaktura/test-connection", ['direction' => 'inbound'])
+            ->assertOk()->assertJsonPath('data.ok', false)->assertJsonPath('data.code', 'missing_fields');
+        $this->actingAs($owner)->postJson("/api/invoicing/companies/{$company->id}/efaktura/test-connection", ['direction' => 'both'])
+            ->assertUnprocessable();
+        Http::assertNothingSent();
+    }
 
     private function skUserWithCompany(array $companyAttributes = []): array
     {

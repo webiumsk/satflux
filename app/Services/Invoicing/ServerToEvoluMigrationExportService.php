@@ -566,9 +566,13 @@ class ServerToEvoluMigrationExportService
         if ($secret !== null) {
             $settings['efaktura_sapi_client_secret'] = $secret;
         }
-        unset($settings['efaktura_sapi_client_secret_encrypted']);
+        $inboundSecret = $efaktura->separateInboundSecret();
+        if ($inboundSecret !== null) {
+            $settings['efaktura_inbound_sapi_client_secret'] = $inboundSecret;
+        }
+        unset($settings['efaktura_sapi_client_secret_encrypted'], $settings['efaktura_inbound_sapi_client_secret_encrypted']);
 
-        return $settings;
+        return CompanyEfakturaSettings::withoutEnterpriseSecrets($settings);
     }
 
     /**

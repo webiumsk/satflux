@@ -1,5 +1,29 @@
 # Project state
 
+## Independent eFaktura connections accepted locally - 2026-11-15
+
+Owner authorizes continuing with separate receiving/sending after merging PR446.
+Fresh GitHub metadata and fetched master agree on merge `4b00e2ee`. Implement on
+`feat/efaktura-directional-connections` in its named durable worktree; preserve
+all unrelated primary work. Shared defaults retain credentials, while an optional
+receiving override routes poll/test/health/doctor and local import independently.
+Incomplete receiving has no shared/global fallback. Legacy uncertain sends keep
+exact original requests and sender bindings; no automatic provider failover.
+
+Independent QA/security accept the final 20-file backend and 15-file frontend
+freezes. Review fixes cover ownership transfer, unreadable-secret clearing,
+cross-direction pending-test states and Enterprise-field owner-export redaction.
+Main passes 293 PHP / 2,054 assertions, 318 frontend / 14 suites, PHPStan zero,
+Pint20, lint0/46 inherited, type110/no new, locales, API freshness/three schemas,
+whitespace and build7,669. One inherited PHPUnit deprecation remains.
+
+See `EFAKTURA_DIRECTIONAL_CONNECTIONS.md` for contracts, exact hashes and reviews.
+Direct prefeature backend downgrade is unsupported without compatible routing
+and secret redaction; stop/drain alone is insufficient. Source is local,
+uncommitted and unpublished; deployment/provider production readiness is not
+established. Next: owner reviews the local result, then publication/fresh-head CI
+under applicable authorization; owner retains merge/deployment.
+
 ## PR446 E2E runner compatibility repair approved - 2026-11-15
 
 Exact-head CI43697361409 forbec2c34f passes PHP, Node, PostgreSQL and changelog,

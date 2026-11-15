@@ -23,6 +23,14 @@ Configure cada empresa por separado. Activar la recepción de una empresa eslova
 
 Si ya hay un secreto guardado para la misma conexión, deje su campo vacío para conservarlo. Al cambiar de proveedor o de entorno, introduzca las nuevas credenciales y repita la prueba.
 
+## Conexiones separadas para recepción y envío
+
+De forma predeterminada, la recepción utiliza el mismo proveedor y las mismas credenciales que el envío. Las conexiones existentes conservan esta opción. Para recibir mediante otro proveedor, desactive la conexión compartida en la sección de recepción, seleccione un proveedor compatible e introduzca sus propias credenciales. Pruebe cada conexión modificada y guarde los ajustes. Una conexión de recepción separada e incompleta no utiliza al proveedor de envío como alternativa. Una empresa que solo recibe puede configurar la recepción sin completar las credenciales de envío.
+
+La comprobación del buzón y el estado de recepción utilizan la conexión de recepción. El envío manual y la clave API Enterprise utilizan la conexión de envío. Cambiar las credenciales de recepción no modifica un intento de envío existente ni su historial. Un envío incierto debe verificarse con su proveedor original; Satflux no lo envía automáticamente a través de otro proveedor.
+
+Seleccionar un proveedor aquí no registra ni transfiere el servicio de recepción de la empresa. Solo puede haber un proveedor de recepción por DIČ; acuerde cualquier cambio con los proveedores por separado. Una opción predefinida no demuestra compatibilidad probada con todos los proveedores. Las conexiones separadas requieren un servidor Satflux compatible; si falta esta función, complete primero la actualización del servidor.
+
 ## Encontrar e importar documentos recibidos
 
 En la misma empresa, abra **Gastos > Facturas electrónicas recibidas**. Revise el documento o descargue su XML original y, después, impórtelo como gasto. Las notas de crédito se importan como correcciones con el signo correspondiente. Una descarga correcta sin documentos significa que no se han descargado documentos nuevos; no confirma la entrega de una factura de prueba.

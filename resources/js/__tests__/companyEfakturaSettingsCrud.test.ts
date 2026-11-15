@@ -111,3 +111,52 @@ describe('server-only Enterprise status credentials', () => {
     expect(saved).not.toHaveProperty('efaktura_epostman_api_key');
   });
 });
+
+
+describe('independent receiving credential custody', () => {
+  beforeEach(() => {
+    saved = { ...saved, efaktura_inbound_use_shared_connection: false,
+      efaktura_inbound_sapi_base_url: 'https://testpostman.slovakodata.com',
+      efaktura_inbound_sapi_client_id: 'synthetic-receiver',
+      efaktura_inbound_sapi_client_secret: 'synthetic-receiver-secret',
+      efaktura_inbound_sapi_client_secret_encrypted: 'synthetic-obsolete-ciphertext',
+      efaktura_inbound_sapi_client_secret_set: true, efaktura_epostman_api_key_set: true };
+  });
+
+  it('retains the receiving secret across shared-mode changes without copying the outgoing secret', () => {
+    update({ efaktura_inbound_use_shared_connection: true });
+    expect(saved.efaktura_inbound_sapi_client_secret).toBe('synthetic-receiver-secret');
+    update({ efaktura_inbound_use_shared_connection: false });
+    expect(saved.efaktura_inbound_sapi_client_secret).toBe('synthetic-receiver-secret');
+    expect(saved.efaktura_sapi_client_secret).toBe('synthetic-old-secret');
+  });
+
+  it('clears only receiving credentials when its provider/client changes', () => {
+    update({ efaktura_inbound_sapi_client_id: 'synthetic-new-receiver' });
+    expect(saved).not.toHaveProperty('efaktura_inbound_sapi_client_secret');
+    expect(saved).not.toHaveProperty('efaktura_inbound_sapi_client_secret_encrypted');
+    expect(saved.efaktura_inbound_sapi_client_secret_set).toBe(false);
+    expect(saved.efaktura_sapi_client_secret).toBe('synthetic-old-secret');
+    expect(saved.efaktura_epostman_api_key_set).toBe(true);
+  });
+
+  it('explicitly removes the receiving secret and prevents its restoration on later saves', () => {
+    update({ efaktura_inbound_sapi_client_secret: null });
+    update({ efaktura_inbound_sapi_client_secret: '' });
+    expect(saved).not.toHaveProperty('efaktura_inbound_sapi_client_secret');
+    expect(saved).not.toHaveProperty('efaktura_inbound_sapi_client_secret_encrypted');
+    expect(saved.efaktura_inbound_sapi_client_secret_set).toBe(false);
+    expect(saved.efaktura_sapi_client_secret).toBe('synthetic-old-secret');
+  });
+
+  it('stores replacement receiving bytes without retaining obsolete ciphertext', () => {
+    update({ efaktura_inbound_sapi_client_secret: 'synthetic-new-receiver-secret' });
+    expect(saved.efaktura_inbound_sapi_client_secret).toBe('synthetic-new-receiver-secret');
+    expect(saved).not.toHaveProperty('efaktura_inbound_sapi_client_secret_encrypted');
+  });
+
+  it('rejects whitespace receiving replacements before any write', () => {
+    expect(update({ efaktura_inbound_sapi_client_secret: '  ' })).toEqual({ ok: false });
+    expect(client.update).not.toHaveBeenCalled();
+  });
+});

@@ -1,5 +1,24 @@
 # Local workspace
 
+## Independent eFaktura connection worktree retained - 2026-11-15
+
+Retain `storage/app/private/worktrees/efaktura-directional-connections` on
+`feat/efaktura-directional-connections`, based on verified merged PR446 master
+`4b00e2ee`. Source/tests, five guides and design/review evidence remain local and
+uncommitted; no publication, merge or deployment. Primary checkout remains on
+`fix/sepa-confirmation-isolation` with unrelated tracked/untracked work preserved.
+
+Independent QA/security accept backend20/frontend15 frozen files. Main passes
+293 PHP / 2,054 assertions, 318 frontend / 14 suites, PHPStan0, Pint20,
+lint/type/locales/API/whitespace and build7,669. Private hash manifests and final
+logs are retained under `storage/app/private/reviews/efaktura-directional-connections`.
+Existing dependencies are reused without installation; PHP uses network-disabled
+read-only source/vendor and disposable runtime/SQLite targets. No .env or owner
+preview/database was changed. The scoped checkout has no Graphify graph; baseline
+queries were used without rebuilding. Contract and rollback restriction:
+`EFAKTURA_DIRECTIONAL_CONNECTIONS.md`. Next is owner local-result review and
+applicable publication authorization, followed by fresh-head CI before merge.
+
 ## PR446 E2E runner compatibility repair approved - 2026-11-15
 
 Exact-head CI43697361409 forbec2c34f passes PHP, Node, PostgreSQL and changelog,
