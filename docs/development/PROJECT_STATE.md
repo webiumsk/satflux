@@ -1,5 +1,24 @@
 # Project state
 
+## PR446 E2E runner compatibility repair approved - 2026-11-15
+
+Exact-head CI43697361409 forbec2c34f passes PHP, Node, PostgreSQL and changelog,
+but E2E fails before tests at browser installation: locked Playwright1.60.0 does
+not support chromium on ubuntu26.04-x64 selected by ubuntu-latest. This is
+runner compatibility evidence, not an application/E2E assertion failure.
+
+Owner explicitly approves only the prepared E2E-runner repair. Change exactly
+`jobs.e2e.runs-on` from ubuntu-latest to ubuntu-24.04. The installed locked
+Playwright registry includes ubuntu24.04-x64. Existing Node YAML parser verifies
+that this scalar is the only semantic workflow change; whitespace checks pass.
+No dependency/action versions, other jobs, permissions, application or tests change.
+The accepted two-file runtime/test freeze remains
+`b342a06d14ed1ba1cade2bfc67716b4bfb7f1685cc4d5c03fb2ab60cf59f1d89`.
+
+Normal corrective publication and new-head CI follow. The failed run is not
+reported green, and no tests are marked skipped to bypass the compatibility issue.
+No installation, provider operation, PR merge or deployment. Owner retains merge/deploy.
+
 ## PR446 inbound poll budget correction independently accepted - 2026-11-15
 
 The current owner-supplied finding is valid at64d7bcd7. The previous10-second poll
