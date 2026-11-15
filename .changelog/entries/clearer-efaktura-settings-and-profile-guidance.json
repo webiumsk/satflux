@@ -1,0 +1,10 @@
+{
+  "id": "clearer-efaktura-settings-and-profile-guidance",
+  "source": "https://github.com/webiumsk/satflux/pull/448",
+  "title": "Clearer e-invoicing setup and compact profile guidance",
+  "body": "Receiving-only companies now see one clear e-invoicing connection setup. Companies that send and receive see how both connections are related, while existing credentials are preserved. Company-profile setup cards start collapsed, share the available width on larger screens and expand to show their checklists. Progress and the unverified integration status remain visible. Report pages no longer show an empty strip between menus, and WooCommerce settings include the Tools menu.",
+  "labels": [
+    "invoicing",
+    "fix"
+  ]
+}

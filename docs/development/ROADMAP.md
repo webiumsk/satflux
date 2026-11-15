@@ -1,5 +1,25 @@
 # Development roadmap
 
+## PR448 published; final publication checks in progress - 2026-11-15
+
+The owner's push instruction publishes reviewed implementation commit
+`373f7e1411b401563c225b6edc9068495e09d302` on
+`fix/efaktura-settings-clarity`. GitHub PR448 is open against master `c418dcc3`:
+https://github.com/webiumsk/satflux/pull/448 . Remote metadata matches that
+reviewed implementation head. A follow-up adds the combined user-facing
+changelog fragment linked to PR448 and this publication record; all19 accepted
+source/test/locale files retain aggregate
+`28e1d944f3b711f361836595c2d93303bd5a4f8fd271d5163390f4424c9f7e10`.
+
+Initial CI43759061107 started for the implementation commit. Fresh-head CI must
+be checked again after the metadata/changelog follow-up; no passing CI result is
+claimed yet. Main394frontend/19 and independent QA/security/browser evidence
+remain attributed to their reviewed source freeze. Earlier local-only and
+publication-authorization checkpoints below are historical and superseded by
+this observed push/PR. No merge, deployment, provider call or new implementation.
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`, unrelated work
+preserved. Owner retains merge/deployment decisions.
+
 ## Clarity branch publication authorized - 2026-11-15
 
 The Product Owner explicitly requests pushing the reviewed eFaktura/settings and
