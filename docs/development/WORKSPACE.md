@@ -1,5 +1,27 @@
 # Local workspace
 
+## PR449 published; publication checks in progress - 2026-11-16
+
+The owner's push instruction publishes reviewed implementation
+`91748ce3e7208353f7584e9a323a00139a02c268` on
+`feat/efaktura-large-originals`. GitHub PR449 is open against master
+`2201bf1bacdc9a26571f188382b5e10999bbbf55`:
+https://github.com/webiumsk/satflux/pull/449 . Remote metadata matches that
+implementation commit. This supersedes the local-only status below.
+
+A follow-up adds only this publication record, the updated contract status and
+one reviewed PR-linked user-facing changelog fragment. All 38 accepted
+source/test/locale hashes retain aggregate
+`d0ba510c9b9617484f65d63fb9981db7673e8c9ba000de5d5318f4b5b8c1143d`.
+The implementation's 48 paths are scoped; the fragment makes 49 total paths.
+Current remote checks must be verified for the final follow-up head; earlier
+local tests do not establish that head's CI or production readiness.
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`, with unrelated
+changes preserved. The separate accountant-export clarity freeze is unchanged.
+No merge, provider operation, public changelog publication or deployment is
+performed. The changelog uses the existing gated deployment publication process.
+
 ## Larger eFaktura originals accepted locally - 2026-11-16
 
 The owner authorizes remaining point 1: received originals above 384 KiB,

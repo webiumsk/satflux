@@ -141,7 +141,7 @@ Final main validation:
   nothing new; the baseline is unchanged. Locale parity passes.
 - Production build passes with 7,672 modules; existing large-bundle/PURE annotation
   warnings remain. No dependency or lockfile changes.
-- Final source hashes, scoped 48-file status and whitespace checks pass.
+- Final source hashes, scoped 48-file implementation status and whitespace checks pass.
 
 Independent evidence supplements those overlapping runs:
 
@@ -171,7 +171,15 @@ matrix/context reports, teardown evidence and final independent review summary.
 Provenance distinguishes initial native/compatibility runs from focused reruns
 on the context, strict-flag and type/nullable-binding corrections.
 
-No new commit, push, PR, new-head CI, provider operation or deployment is claimed.
-Publish only the accepted scope when requested. New-data client compatibility,
-rollback/backport requirements, viewer/accountant caps and the custody limits
-above remain applicable; local acceptance does not establish production readiness.
+The owner's push instruction publishes implementation commit
+`91748ce3e7208353f7584e9a323a00139a02c268` on
+`feat/efaktura-large-originals` in open PR449:
+https://github.com/webiumsk/satflux/pull/449 . A follow-up adds only publication
+records and one PR-linked changelog fragment, for 49 total scoped paths.
+All 38 accepted source/test/locale hashes remain unchanged. Final-head CI is
+verified separately from the local results above and reported on the PR.
+
+No merge, provider operation, public changelog publication or deployment is
+performed. New-data client compatibility, rollback/backport requirements,
+viewer/accountant caps and custody limits remain applicable. Review acceptance
+and a published branch do not establish production readiness.
