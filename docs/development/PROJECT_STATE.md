@@ -1,5 +1,22 @@
 # Project state
 
+## PR446 review fixes independently accepted - 2026-11-15
+
+Both owner-supplied findings against1411529a are current and reproduced; none is
+skipped. Bound pollInbound with the existing10-second inbox timeout, retaining
+POST/auth/payload and explicit retry. Prevent Save/Test overlap in button and
+handler admission, preserving unsaved verification and exact existing dirty checks.
+Only two runtime paths and two regression files change; no backend/API/schema,
+locale, credential-autosave, provider or dependency expansion.
+
+Main passes174 tests /five suites, lint0errors/46inherited, type110/no new,
+parity/whitespace and build7,669. Independent QA155/5 and security145/4 accept
+four-file freeze `1aa1218f2de98f82442e238caa7db611d3d004e8a3e514f987d4819815f88dd1`.
+Counts overlap. Baseline PR446 CI43654838725 passes at1411529a; fresh-head CI
+must be verified after normal corrective publication. Scope/dispositions:
+`INVOICING_STATUS_REVIEW_FIXES.md`. Main owns existing-branch push/thread handling;
+owner retains PR merge/deployment. Primary unrelated edits remain preserved.
+
 ## Invoicing status publication reconciliation verified - 2026-11-15
 
 Owner requests push of both accepted corrections. Implementation commit `8d0b4999`

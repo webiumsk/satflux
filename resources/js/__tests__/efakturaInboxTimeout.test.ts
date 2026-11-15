@@ -53,6 +53,36 @@ function bridgeTransport(hang: "detail" | "ack" | "none", retryStatus = 200,
 beforeEach(() => { flash.errorKey.mockClear(); vi.useFakeTimers(); installBankLocks(); vi.stubGlobal('crypto', webcrypto); });
 afterEach(() => { api.defaults.adapter = originalAdapter; clearRowOwnerIndex(); clearCompanyShares(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
+it("bounds provider polling and permits only an explicit retry after timeout", async () => {
+    const requests: InternalAxiosRequestConfig[] = [];
+    const stats = { imported: 1, acknowledged: 0, skipped: 0, failed: 0 };
+    api.defaults.adapter = (config) => {
+        requests.push(config);
+        if (requests.length === 1) {
+            return new Promise((_resolve, reject) => {
+                if (config.timeout) setTimeout(() => reject(new AxiosError("synthetic_poll_timeout", "ECONNABORTED", config)), config.timeout);
+            });
+        }
+        return Promise.resolve({ config, status: 200, statusText: "Synthetic", headers: {}, data: { data: stats } });
+    };
+    let settled = false;
+    const outcome = invoicingApi.efaktura.pollInbound("synthetic-bridge")
+        .catch((error) => error).finally(() => { settled = true; });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({ method: "post", timeout: 10_000, withCredentials: true,
+        url: "/invoicing/companies/synthetic-bridge/efaktura/poll-inbound" });
+    expect(requests[0].data).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(9_999);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await outcome).toMatchObject({ code: "ECONNABORTED" });
+    expect(settled).toBe(true);
+    expect(requests).toHaveLength(1);
+    expect(await invoicingApi.efaktura.pollInbound("synthetic-bridge")).toEqual(stats);
+    expect(requests).toHaveLength(2);
+});
+
 it("bounds inbox detail HTTP without retaining the financial gate and writes no expense after timeout", async () => {
     const locks = installBankLocks(); const requests = bridgeTransport("detail");
     const { evolu, state } = createExpenseWriterTestAdapter();

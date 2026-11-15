@@ -1230,7 +1230,9 @@ export const invoicingApi = {
             return data.data;
         },
         async pollInbound<T = unknown>(companyId: string): Promise<T> {
-            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/efaktura/poll-inbound`);
+            const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/efaktura/poll-inbound`, undefined, {
+                timeout: EFAKTURA_INBOX_REQUEST_TIMEOUT_MS,
+            });
             return data.data ?? ({} as T);
         },
         async testConnection<T = unknown>(companyId: string, payload: Record<string, unknown> = {}): Promise<T> {

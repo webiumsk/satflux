@@ -260,7 +260,7 @@
     </template>
 
     <div class="pt-2 border-t border-gray-100">
-      <button type="submit" class="invoicing-btn-primary" :disabled="saving">
+      <button type="submit" class="invoicing-btn-primary" :disabled="saving || testingConnection">
         {{ t('invoicing.save_my_details') }}
       </button>
       <p class="text-xs text-gray-500 mt-2">{{ t('invoicing.profile_save_note') }}</p>
@@ -608,6 +608,7 @@ function storedLocalSecret(): string {
 }
 
 async function testConnection() {
+  if (saving.value || testingConnection.value) return;
   const generation = connectionGeneration;
   const requestId = ++testRequestId;
   const companyId = props.companyId;
@@ -837,7 +838,7 @@ async function pollInboundNow() {
 }
 
 async function save() {
-  if (!loadedCompanyMatches.value) return;
+  if (saving.value || testingConnection.value || !loadedCompanyMatches.value) return;
   const generation = connectionGeneration;
   const requestId = ++saveRequestId;
   const companyId = props.companyId;
