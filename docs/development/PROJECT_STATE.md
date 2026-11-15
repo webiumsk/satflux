@@ -1,5 +1,24 @@
 # Project state
 
+## PR446 inbound poll budget correction independently accepted - 2026-11-15
+
+The current owner-supplied finding is valid at64d7bcd7. The previous10-second poll
+limit is shorter than the server120-second cooperative admission budget plus
+finishing provider operations. A dedicated finite300-second poll timeout now
+accommodates default30-second detail/ACK and one token-renewal/retry sequence;
+ordinary inbox/health/custody requests remain10 seconds. Endpoint/auth/payload,
+explicit-only retry and backend acknowledged-receipt skipping are unchanged.
+
+Before-failing virtual regressions now accept a240-second completed poll and
+expire a stalled request at300 seconds. Main66frontend/3 and44PHP/519assertions
+pass; lint0errors/46inherited, type110/no new, locales/whitespace/build7,669 pass.
+Independent QA/security each accept66/3 and the verified two-file freeze
+`b342a06d14ed1ba1cade2bfc67716b4bfb7f1685cc4d5c03fb2ab60cf59f1d89`.
+Counts overlap. The deadline is not a server-cancellation guarantee or universal
+ceiling for arbitrary longer provider/DB settings. See `INBOUND_POLL_TIMEOUT_REVIEW.md`.
+Main owns existing-branch publication and exact-head CI; owner retains merge/deploy.
+Unrelated primary changes remain preserved; no provider operation or installation.
+
 ## PR446 review fixes independently accepted - 2026-11-15
 
 Both owner-supplied findings against1411529a are current and reproduced; none is

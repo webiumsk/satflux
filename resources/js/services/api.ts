@@ -53,6 +53,9 @@ const api = axios.create({
 });
 // These bridge requests can run while the browser reconciliation lock is held.
 const EFAKTURA_INBOX_REQUEST_TIMEOUT_MS = 10_000;
+// Polls admit work for 120s, then may finish detail/ACK and one token renewal.
+// Allow the default 30s provider calls plus processing headroom without retrying.
+const EFAKTURA_INBOUND_POLL_TIMEOUT_MS = 300_000;
 
 // Helper: get CSRF token from cookie (shared for api and postWeb)
 function getCsrfToken(): string | null {
@@ -1231,7 +1234,7 @@ export const invoicingApi = {
         },
         async pollInbound<T = unknown>(companyId: string): Promise<T> {
             const { data } = await api.post<ApiEnvelope<T>>(`/invoicing/companies/${companyId}/efaktura/poll-inbound`, undefined, {
-                timeout: EFAKTURA_INBOX_REQUEST_TIMEOUT_MS,
+                timeout: EFAKTURA_INBOUND_POLL_TIMEOUT_MS,
             });
             return data.data ?? ({} as T);
         },

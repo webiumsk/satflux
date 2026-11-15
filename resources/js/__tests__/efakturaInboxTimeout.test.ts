@@ -70,10 +70,10 @@ it("bounds provider polling and permits only an explicit retry after timeout", a
         .catch((error) => error).finally(() => { settled = true; });
     await vi.advanceTimersByTimeAsync(0);
     expect(requests).toHaveLength(1);
-    expect(requests[0]).toMatchObject({ method: "post", timeout: 10_000, withCredentials: true,
+    expect(requests[0]).toMatchObject({ method: "post", timeout: 300_000, withCredentials: true,
         url: "/invoicing/companies/synthetic-bridge/efaktura/poll-inbound" });
     expect(requests[0].data).toBeUndefined();
-    await vi.advanceTimersByTimeAsync(9_999);
+    await vi.advanceTimersByTimeAsync(299_999);
     expect(settled).toBe(false);
     await vi.advanceTimersByTimeAsync(1);
     expect(await outcome).toMatchObject({ code: "ECONNABORTED" });
@@ -81,6 +81,36 @@ it("bounds provider polling and permits only an explicit retry after timeout", a
     expect(requests).toHaveLength(1);
     expect(await invoicingApi.efaktura.pollInbound("synthetic-bridge")).toEqual(stats);
     expect(requests).toHaveLength(2);
+});
+
+it("allows the server poll budget and finishing sequential provider calls to complete", async () => {
+    const requests: InternalAxiosRequestConfig[] = [];
+    const stats = { imported: 1, acknowledged: 1, skipped: 1, failed: 0 };
+    api.defaults.adapter = (config) => {
+        requests.push(config);
+        return new Promise((resolve, reject) => {
+            let deadline: ReturnType<typeof setTimeout> | undefined;
+            // Model the 120s admission budget plus finishing detail/ACK/token calls.
+            const response = setTimeout(() => {
+                if (deadline !== undefined) clearTimeout(deadline);
+                resolve({ config, status: 200, statusText: "Synthetic", headers: {}, data: { data: stats } });
+            }, 240_000);
+            if (config.timeout) deadline = setTimeout(() => {
+                clearTimeout(response);
+                reject(new AxiosError("synthetic_poll_timeout", "ECONNABORTED", config));
+            }, config.timeout);
+        });
+    };
+    let settled = false;
+    const outcome = invoicingApi.efaktura.pollInbound("synthetic-bridge")
+        .catch((error) => error).finally(() => { settled = true; });
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(await outcome).toEqual(stats);
+    expect(settled).toBe(true);
+    expect(requests).toHaveLength(1);
 });
 
 it("bounds inbox detail HTTP without retaining the financial gate and writes no expense after timeout", async () => {
