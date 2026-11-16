@@ -10,6 +10,8 @@ import { clearRowOwnerIndex } from "@/evolu/ownerScope";
 import { clearCompanyShares, setCompanyShare } from "@/evolu/companyShareRegistry";
 import { createExpenseWorkerProbe } from "./evoluExpenseWorkerTestSupport";
 import { installBankLocks } from "./bankReconciliationTestSupport";
+import { createExpenseSqliteProbe } from "./expenseSqliteTestSupport";
+import { validateExpenseOriginalSnapshot } from "@/evolu/expenseOriginalSnapshot";
 
 vi.mock("@/evolu/reloadGuard", () => ({ createEvoluWebDepsWithReloadGuard: () => ({
     console: { ...console, log: vi.fn() }, randomBytes: { create: (size: number) => crypto.getRandomValues(new Uint8Array(size)) },
@@ -37,6 +39,52 @@ function fixture(shared = false, size = 400_000) {
 }
 
 describe("owner-scoped received-original archives", () => {
+    it.each(["missing-all", "missing-chunk"])("keeps older SDK archive history deleted when it arrives after deletion: %s", async missing => {
+        const probe = await createExpenseSqliteProbe();
+        try {
+            const ownerId = (await probe.evolu.appOwner).id;
+            const bytes = new Uint8Array(400_000).fill(7);
+            const attachmentId = createIdFromString("synthetic-sqlite-attachment");
+            const ref = await withExpenseReconciliation(probe.evolu, async scope => {
+                const reference = await retainExpenseOriginalArchive(scope, { companyId: probe.ids.company, ownerId,
+                    receiptId: "synthetic-sqlite-receipt", expenseId: probe.ids.expense, attachmentId,
+                    filename: "synthetic-original.xml", bytes, assertCurrent: () => undefined });
+                expect(insertLocalExpenseOriginalReference(scope.evolu, probe.ids.expense as never, attachmentId as never,
+                    reference, "synthetic-original.xml").ok).toBe(true);
+                return reference;
+            }, undefined, ["allExpenseAttachmentsQuery"]);
+            const chunkIds = Array.from({ length: ref.chunkCount }, (_, index) => expenseOriginalChunkId(ref.sourceId, index));
+            // Record actual older live-cell updates through the SDK, not newer
+            // writes after deletion or a synthetic last-write-wins model.
+            await probe.mutate("migrationSource", { id: ref.sourceId, companyId: probe.ids.company, isDeleted: 0 });
+            for (const id of chunkIds) await probe.mutate("migrationChunk", { id, companyId: probe.ids.company, sourceId: ref.sourceId, isDeleted: 0 });
+            const before = await probe.archiveSnapshot();
+            const row = before.expenseAttachment.find(attachment => attachment.id === attachmentId)!;
+            const parked = await probe.parkArchiveHistory({ ownerId, sourceId: ref.sourceId,
+                includeSource: missing === "missing-all", chunkIds: missing === "missing-all" ? chunkIds : chunkIds.slice(1) });
+            expect(parked.parkedCells).toBeGreaterThan(0);
+            await deleteVerifiedExpenseAttachment(probe.evolu, probe.ids.company, row as never);
+            const intents = await probe.archiveSnapshot();
+            const replay = await probe.replayOlderArchive();
+            const after = await probe.archiveSnapshot();
+            const liveSources = after.migrationSource.filter(source => source.isDeleted !== 1);
+            const liveChunks = after.migrationChunk.filter(chunk => chunk.isDeleted !== 1);
+            expect(liveSources).toHaveLength(0);
+            expect(liveChunks).toHaveLength(0);
+            expect(replay).toEqual({ replayedCells: parked.parkedCells, olderThanDelete: true });
+            expect(intents.migrationSource.filter(source => source.id === ref.sourceId && source.ownerId === ownerId && source.isDeleted === 1)).toHaveLength(1);
+            for (const id of chunkIds) expect(intents.migrationChunk.filter(chunk => chunk.id === id && chunk.ownerId === ownerId && chunk.isDeleted === 1)).toHaveLength(1);
+            if (missing === "missing-all") {
+                expect(intents.migrationSource[0]).toMatchObject({ sourceKind: null, companyId: null, checksum: null });
+                expect(after.migrationSource[0]).toMatchObject({ sourceKind: EXPENSE_ORIGINAL_SOURCE_KIND, companyId: probe.ids.company, checksum: ref.sha256, isDeleted: 1 });
+            }
+            for (const id of missing === "missing-all" ? chunkIds : chunkIds.slice(1)) {
+                expect(intents.migrationChunk.find(chunk => chunk.id === id)).toMatchObject({ contentBase64: null, sourceId: null, companyId: null });
+            }
+            await expect(validateExpenseOriginalSnapshot({ ...after, expenseAttachment: after.expenseAttachment.filter(attachment => attachment.isDeleted !== 1),
+                migrationSource: liveSources, migrationChunk: liveChunks } as never)).resolves.toBeUndefined();
+        } finally { await probe.close(); }
+    });
     it.each([false, true])("commits bounded real Evolu mutations and reads exact bytes in current owner partition, shared %s", async shared => {
         const store = fixture(shared);
         const { ref, row } = await store.attach();
@@ -164,22 +212,82 @@ describe("owner-scoped received-original archives", () => {
         expect(store.state.migrationChunk.every(chunk => chunk.isDeleted !== 1)).toBe(true);
     });
 
-    it.each(["corrupt-chunk", "missing-chunk", "missing-source", "missing-all", "tombstoned-chunk"])("deletes existing owned bound rows without requiring complete original bytes: %s", async damage => {
-        const store = fixture();
+    it("does not commit any missing-row tombstone intents when the atomic batch fails validation", async () => {
+        const store = fixture(false, 3);
         const { row } = await store.attach();
+        store.state.migrationSource.splice(0); store.state.migrationChunk.splice(0);
+        const update = store.evolu.update.bind(store.evolu);
+        vi.spyOn(store.evolu, "update").mockImplementation(((table: string, patch: Record<string, unknown>, options: unknown) =>
+            update(table as never, (table === "migrationChunk" ? { ...patch, isDeleted: "invalid" } : patch) as never, options as never)) as never);
+        await expect(deleteVerifiedExpenseAttachment(store.evolu, store.input.companyId, row as never)).rejects.toThrow("original_unverified");
+        expect(store.state.expenseAttachment[0].isDeleted).not.toBe(1);
+        expect(store.state.migrationSource).toHaveLength(0);
+        expect(store.state.migrationChunk).toHaveLength(0);
+    });
+
+    it("records exactly forty-two canonical intent mutations at the maximum bound without inventing archive content", async () => {
+        const store = fixture(false, 3);
+        const { ref, row } = await store.attach();
+        const largest = createExpenseOriginalReference({ ...ref, sizeBytes: EXPENSE_ORIGINAL_MAX_BYTES });
+        row.contentBase64 = encodeExpenseOriginalReference(largest);
+        row.sizeBytes = String(largest.sizeBytes);
+        Object.assign(store.state.expenseAttachment[0], row);
+        store.state.migrationSource.splice(0); store.state.migrationChunk.splice(0);
+        const before = store.financialMutations().length;
+        await deleteVerifiedExpenseAttachment(store.evolu, store.input.companyId, row as never);
+        const batches = store.financialMutations().slice(before);
+        expect(batches).toHaveLength(1);
+        expect(batches[0].changes).toHaveLength(42);
+        expect(store.state.migrationSource).toHaveLength(1);
+        expect(store.state.migrationChunk).toHaveLength(40);
+        expect([...store.state.migrationSource, ...store.state.migrationChunk].every(archive => archive.ownerId === store.input.ownerId
+            && archive.isDeleted === 1 && archive.contentBase64 == null && archive.companyId == null)).toBe(true);
+    });
+
+    it("rejects a claimed completion when a canonical absent-row intent is missing from readback", async () => {
+        const store = fixture(false, 3);
+        const { row } = await store.attach();
+        store.state.migrationSource.splice(0); store.state.migrationChunk.splice(0);
+        const update = store.evolu.update.bind(store.evolu);
+        vi.spyOn(store.evolu, "update").mockImplementation(((table: string, patch: Record<string, unknown>, options: { onComplete?: () => void }) => {
+            if (table === "migrationChunk") {
+                queueMicrotask(() => options?.onComplete?.());
+                return { ok: true, value: { id: patch.id } };
+            }
+            return update(table as never, patch as never, options as never);
+        }) as never);
+        await expect(deleteVerifiedExpenseAttachment(store.evolu, store.input.companyId, row as never)).rejects.toThrow("original_unverified");
+        expect(store.state.migrationChunk).toHaveLength(0);
+    });
+
+    it.each(["corrupt-chunk", "missing-chunk", "missing-source", "missing-all", "tombstoned-chunk"])("records canonical deletion intents without requiring complete original bytes: %s", async damage => {
+        const store = fixture();
+        const { ref, row } = await store.attach();
         if (damage === "corrupt-chunk") store.state.migrationChunk[0].contentBase64 = "corrupt bytes";
         if (damage === "missing-chunk") store.state.migrationChunk.pop();
         if (damage === "missing-source" || damage === "missing-all") store.state.migrationSource.splice(0);
         if (damage === "missing-all") store.state.migrationChunk.splice(0);
         if (damage === "tombstoned-chunk") store.state.migrationChunk[0].isDeleted = 1;
-        const sourceIds = store.state.migrationSource.map(source => source.id);
-        const chunkIds = store.state.migrationChunk.map(chunk => chunk.id);
+        const sourcesBefore = new Set(store.state.migrationSource.map(source => source.id));
+        const chunksBefore = new Set(store.state.migrationChunk.map(chunk => chunk.id));
+        const chunkIds = Array.from({ length: ref.chunkCount }, (_, index) => expenseOriginalChunkId(ref.sourceId, index));
         await deleteVerifiedExpenseAttachment(store.evolu, store.input.companyId, row as never);
         expect(store.state.expenseAttachment[0].isDeleted).toBe(1);
-        expect(store.state.migrationSource.map(source => source.id)).toEqual(sourceIds);
-        expect(store.state.migrationChunk.map(chunk => chunk.id)).toEqual(chunkIds);
+        expect(store.state.migrationSource.map(source => source.id)).toEqual([ref.sourceId]);
+        expect(store.state.migrationChunk.map(chunk => chunk.id).sort()).toEqual(chunkIds.sort());
         expect(store.state.migrationSource.every(source => source.isDeleted === 1)).toBe(true);
         expect(store.state.migrationChunk.every(chunk => chunk.isDeleted === 1)).toBe(true);
+        for (const source of store.state.migrationSource.filter(source => !sourcesBefore.has(source.id))) {
+            expect(source.ownerId).toBe(store.input.ownerId);
+            expect(source.sourceKind ?? null).toBeNull();
+            expect(source.companyId ?? null).toBeNull();
+        }
+        for (const chunk of store.state.migrationChunk.filter(chunk => !chunksBefore.has(chunk.id))) {
+            expect(chunk.ownerId).toBe(store.input.ownerId);
+            expect(chunk.contentBase64 ?? null).toBeNull();
+            expect(chunk.companyId ?? null).toBeNull();
+            expect(chunk.sourceId ?? null).toBeNull();
+        }
         await expect(store.retain()).rejects.toThrow("original_unverified");
     });
 

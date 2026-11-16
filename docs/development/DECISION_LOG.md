@@ -1,5 +1,44 @@
 # Development decision log
 
+## PR449 late-sync deletion intent accepted locally - 2026-11-16
+
+The six original CodeRabbit comments are resolved on published `033fd831`,
+whose CI43780501107 passes all five jobs. The owner's seventh finding,
+[delayed archive arrival after deletion](https://github.com/webiumsk/satflux/pull/449#discussion_r4580967386),
+is independently verified and now corrected in the same branch.
+
+Fresh authorized attachment/reference bindings derive the exact source and
+at most 40 chunk IDs. Present row-level checks remain; one atomic, explicit-owner
+batch records deletion intent for every canonical ID even when absent. Readback
+requires exactly one owner-scoped tombstone per target. No payload bytes or
+financial metadata are invented; foreign rows and retry-resurrection guards
+remain protected. This supersedes the earlier only-existing-row defense.
+
+Independent QA/security accept the final 44-file source/test/locale freeze:
+`2699055fc1a21886a68fd65d7790d35cf2f6698a4dc48ab05716f680929a9688`.
+Only the archive helper/test change from the 42-file parent; two existing
+memory-only SDK test helpers extend the scope. Total PR scope is 55 paths.
+Author57/3, security70/3, selected QA19 (16 filtered) and corrected native10/10
+pass. Genuine older SDK history retains original timestamps; replay fills
+metadata while tombstones stay1 and backup restore preflight passes. Immutable
+parent baseline reproduces the bug; no newer-upsert proxy or relay claim.
+
+Full lint passes with0errors/46inherited warnings, typecheck110inherited/no new,
+locale parity, build7,672 and whitespace pass; ratchets are unchanged. Synthetic
+native processes/profiles are removed and their port is closed. Evidence and
+scope manifest are retained privately.
+
+CodeRabbit CLI is installed, but automatic permission review rejects execution
+before start because source upload to external SaaS lacks explicit consent.
+The consent question remains pending; no CLI upload/review result is claimed.
+Independent local review and tests complete unaffected, with no install, login,
+credit, trust or configuration changes.
+
+The follow-up is ready for normal push and exact-head CI. Primary remains
+`fix/sepa-confirmation-isolation` at `885168f2`; preserve unrelated edits
+and the separate accountant-export clarity freeze. No merge, provider operation,
+public changelog publication or deployment.
+
 ## PR449 CodeRabbit follow-up accepted locally - 2026-11-16
 
 All six actionable comments are independently checked against published parent

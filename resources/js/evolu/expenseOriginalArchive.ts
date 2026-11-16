@@ -212,7 +212,6 @@ export function deleteVerifiedExpenseAttachment(evolu: Client, companyId: string
             const proof = await deletionArchiveRows(scope.evolu, ref);
             const sources = proof.sources.filter(row => row.id === ref.sourceId && row.ownerId === ownerId);
             if (sources.length > 1 || sources.some(row => !sourceMatches(row, ref) || (!live(row) && row.isDeleted !== sqliteTrue))) return fail();
-            for (const source of sources) if (live(source)) targets.push({ table: "migrationSource", id: ref.sourceId });
             const chunks = proof.chunks.filter(row => row.ownerId === ownerId);
             const seen = new Set<unknown>();
             for (const chunk of chunks) {
@@ -221,8 +220,11 @@ export function deleteVerifiedExpenseAttachment(evolu: Client, companyId: string
                     || chunk.chunkIndex !== String(index) || chunk.id !== expenseOriginalChunkId(ref.sourceId, index) || seen.has(chunk.id)
                     || (!live(chunk) && chunk.isDeleted !== sqliteTrue)) return fail();
                 seen.add(chunk.id);
-                if (live(chunk)) targets.push({ table: "migrationChunk", id: chunk.id as string });
             }
+            // Canonical absent ids need deletion history too: older replica
+            // updates may fill their metadata later but must remain deleted.
+            targets.push({ table: "migrationSource", id: ref.sourceId });
+            for (let index = 0; index < ref.chunkCount; index++) targets.push({ table: "migrationChunk", id: expenseOriginalChunkId(ref.sourceId, index) });
         }
         // Deletion authorizes identities and bindings, not recoverability of the bytes.
         await currentAttachment(scope, companyId, attachment, ownerId);
@@ -243,7 +245,7 @@ export function deleteVerifiedExpenseAttachment(evolu: Client, companyId: string
             const proof = await deletionArchiveRows(scope.evolu, ref);
             for (const target of targets.filter(target => target.table !== "expenseAttachment")) {
                 const rows = (target.table === "migrationSource" ? proof.sources : proof.chunks).filter(row => row.id === target.id && row.ownerId === ownerId);
-                if (rows.length > 1 || rows.some(row => row.isDeleted !== sqliteTrue)) return fail();
+                if (rows.length !== 1 || rows[0].isDeleted !== sqliteTrue) return fail();
             }
         }
         assertExpenseCompanyOwner(scope, companyId, ownerId);

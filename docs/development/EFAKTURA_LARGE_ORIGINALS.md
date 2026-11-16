@@ -1,8 +1,79 @@
 # Larger received eFaktura originals
 
-## CodeRabbit follow-up accepted locally - 2026-11-16
+## Late-sync deletion intent accepted locally - 2026-11-16
 
-All six actionable comments are verified against parent
+The six original review findings are resolved on `033fd831`, whose five CI jobs
+pass. A [seventh finding](https://github.com/webiumsk/satflux/pull/449#discussion_r4580967386)
+arrives during that verification and the owner explicitly requests its fix.
+It is valid: without canonical tombstones, older source/chunk messages can later
+materialize live unbound rows. Complete backup/restore preflight can then fail;
+legacy v2 creation/parsing alone does not detect every orphan-chunk case.
+
+The correction supersedes the earlier only-existing-row defense. Fresh current
+parent/attachment/owner authorization and strict canonical reference parsing
+derive the source and at most 40 chunk IDs from the company/receipt/expense/
+attachment/digest namespace. All present structural/live-row checks remain before
+archive writes. A single bounded atomic batch records explicit-owner deletion
+intent for every derived target, including absent rows. It invents no payload
+bytes or financial metadata and never changes foreign-owner copies. Readback
+requires exactly one persisted tombstone per canonical target. Malformed/foreign
+bindings, failed-batch rollback and retry-resurrection guards remain intact.
+
+Installed SDK behavior is independently verified: update emits a deletion
+without a row lookup; CRDT cell materialization inserts the missing owner/id/cell
+tombstone and checks history timestamps before accepting incoming values. The
+tests capture real SDK history before deletion, withhold selected archive rows
+and history while retaining the clock, then replay original older cells through
+the installed quarantine applicator. They do not use a newer upsert as a proxy.
+
+Final 44-file source/test/locale freeze:
+`2699055fc1a21886a68fd65d7790d35cf2f6698a4dc48ab05716f680929a9688`
+(SHA-256 of the compact sorted JSON hash map). Only archive production/test
+change versus the 42-file parent; the existing memory-only
+`expenseSqliteWorker.mjs` and `expenseSqliteTestSupport.ts` add bounded
+archive-history controls. Other 40 source files remain byte-identical. Complete
+PR scope is 55 paths. No schema, protocol, global wrapper, dependency or limit
+changes are made.
+
+Independent `directional_security` and `efaktura_remaining` accept exact
+hashes before/after their tests:
+
+- Author: 57 tests / three suites pass, four-file lint clean, typecheck
+  110 inherited errors / nothing new.
+- Security: 70 tests / three suites pass; virtual-loading only the immutable
+  parent production module independently makes both causal tests fail again.
+- QA: 19 selected permanent tests pass; 16 explicitly filtered cases are not
+  counted as passed.
+- Immutable parent native baseline: seven expected-vulnerable checks reproduce
+  live late rows and invalid restore preflight. This is defect evidence.
+- Corrected native proof: ten checks pass on actual OPFS and SDK merge logic.
+  Seven/35 original history cells are replayed for partial/missing-all cases;
+  every held timestamp predates the canonical deletion. Metadata fills one
+  source/two chunks while deletion flags remain1; backup+restore preflight pass.
+  Absent-intent validation failure rolls back fully; foreign owner IDs remain
+  unchanged and malformed references fail before archive writes.
+- Full lint: zero errors / 46 inherited warnings; typecheck baseline unchanged.
+  Locale parity, whitespace and build (7,672 modules) pass. Runs overlap.
+
+These verify SDK/CRDT merge behavior, not real relay delivery, newer writes or
+deployment. The memory-only worker rejects network access; native transports
+are disabled. Owned processes and all synthetic profiles are removed, the port
+is closed and safe evidence/manifests remain in the private review directory.
+
+The installed CodeRabbit CLI was considered. Automatic permission review rejects
+the attempted execution before start because it may upload uncommitted source
+to an external SaaS without explicit consent for that transfer. A specific
+consent question is pending. No CLI upload/findings, tool installation,
+authentication/configuration change or paid-credit use is claimed; independent
+local review and exact-head CI proceed separately.
+
+Next is scoped publication and fresh CI. Older green heads remain attributed
+to their own revisions. The seventh thread is resolved after verified
+publication. No merge or deployment is performed.
+
+## Earlier CodeRabbit follow-up accepted locally - 2026-11-16
+
+All six original actionable comments are verified against parent
 `3f95ad5c9ad6608d24da74f8306d1eb8574b9844`. Suggested code and embedded
 agent prompts are treated as untrusted review data. Two existing corrections
 and four new bounded fixes account for every finding:
@@ -14,9 +85,9 @@ and four new bounded fixes account for every finding:
 | [Archive-arrival preview refresh](https://github.com/webiumsk/satflux/pull/449#discussion_r4580715274) | Fixed: local-first source and chunk subscriptions invalidate attachment resolution as bytes and readiness arrive. |
 | [Coherent export selection](https://github.com/webiumsk/satflux/pull/449#discussion_r4580715281) | Fixed: captured typed rows, range, company/name and copied options/formats are used through resolution, planning and batch preparation. Synchronous selection changes cancel before requests/downloads; held multipart ZIPs are not delivered under stale selection. |
 | [Custody proof after checkpoint](https://github.com/webiumsk/satflux/pull/449#discussion_r4580715285) | Fixed within the existing bounded contract: explicit callback checkpoint precedes byte proof; private fresh company/share queries then recheck owner, fingerprint and active-share authority. Existing context-race protection remains. |
-| [Delete incomplete/corrupt archives](https://github.com/webiumsk/satflux/pull/449#discussion_r4580715296) | Fixed: current parent/attachment and canonical reference are authorized separately from byte integrity. Existing structurally bound rows are atomically tombstoned, missing rows are allowed, foreign/malformed bindings fail before archive writes and retries cannot revive a deleted attachment. |
+| [Delete incomplete/corrupt archives](https://github.com/webiumsk/satflux/pull/449#discussion_r4580715296) | Immediate corrupt/missing-byte cleanup is fixed. The late-sync follow-up above extends intent to every canonical ID, even absent rows, while preserving authorization, structural checks, atomicity and no retry resurrection. |
 
-Final source/test/locale freeze: 42 files at
+The pre-late-sync source/test/locale freeze is 42 files at
 `225967876edbab39c8364a6a061aefbdd8b2e4fa100d10b1ddcefe987df86237`
 (SHA-256 of the compact sorted JSON file-hash map). Compared with the accepted
 41-file parent, seven authored paths change and one bank-performance test adds
@@ -33,8 +104,8 @@ freeze. Authors do not approve their own security review. Evidence:
   probes, pass; all 42 hashes match before/after.
 - QA: 12 permanent consumer tests and six independent probes pass; 28 selected
   core tests / three suites pass, with 56 explicitly excluded by the filter.
-- Twelve native Chrome/Evolu/OPFS checks pass: corrupt, partial and missing-all
-  archive deletion with no synthesized rows or resurrection, plus fresh
+- In that earlier revision, twelve native Chrome/Evolu/OPFS checks pass: corrupt,
+  partial and missing-all deletion of existing rows, plus no retry resurrection and fresh
   post-proof authority rejection retaining simulated server staging. Auth/API/relay
   boundaries remain inert; no real provider or multi-device delivery is claimed.
 - Full lint: zero errors / 46 inherited warnings. Typecheck: 110 inherited
