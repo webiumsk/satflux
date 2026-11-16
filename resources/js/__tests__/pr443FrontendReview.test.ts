@@ -18,6 +18,7 @@ vi.mock("@/evolu/numberAllocatorBridge", () => ({ reserveIssueNumber: vi.fn(), c
 vi.mock("@/evolu/flags", () => ({ isInvoicingLocalFirst: () => true }));
 vi.mock("@/composables/useLocalInvoiceDocument", () => ({ useLocalInvoiceDocumentSupport: () => mocks.support }));
 vi.mock("@/store/stores", () => ({ useStoresStore: () => ({ stores: [], fetchStores: vi.fn() }) }));
+vi.mock("@/store/auth", () => ({ useAuthStore: () => ({ user: { id: 1 } }) }));
 vi.mock("@/evolu/companySettingsCrud", () => ({ resolveLocalEmailSettingsForBridge: () => ({}) }));
 vi.mock("vue-router", () => ({
     useRoute: () => ({ params: { companyId: "synthetic-company", documentId: "document-1" }, meta: { documentKind: "invoice" }, name: "invoicing-invoice-show" }),

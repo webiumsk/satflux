@@ -222,6 +222,7 @@
     "local_first_btcpay_checkout_hint": "Direct BTCPay checkout link. When payment settles, the invoice is marked paid automatically (via webhook).",
     "local_first_btcpay_checkout_missing": "No payment link yet. Create one to let the customer pay this invoice in Bitcoin.",
     "local_first_btcpay_checkout_refresh": "Create checkout link",
+    "local_first_btcpay_link_revoked": "This Bitcoin payment link was disabled after the invoice changed. Use \"Create checkout link\" to create a new checkout.",
     "local_first_btcpay_paid_synced": "Bitcoin payment detected. Invoice marked as paid.",
     "local_first_pdf_bridge_soon": "PDF export uses the ephemeral server bridge. The invoice is saved locally and is not stored on the server.",
     "auto_issue_title": "Automatic WooCommerce invoicing",

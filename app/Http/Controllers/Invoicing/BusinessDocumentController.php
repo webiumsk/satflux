@@ -27,6 +27,7 @@ use App\Services\Invoicing\BusinessDocumentIsdocService;
 use App\Services\Invoicing\BusinessDocumentIssueService;
 use App\Services\Invoicing\BusinessDocumentListPresenter;
 use App\Services\Invoicing\BusinessDocumentMarkPaidService;
+use App\Services\Invoicing\BusinessDocumentPaymentIntentService;
 use App\Services\Invoicing\BusinessDocumentPaymentTokenService;
 use App\Services\Invoicing\BusinessDocumentPdfService;
 use App\Services\Invoicing\BusinessDocumentQuoteService;
@@ -210,6 +211,24 @@ class BusinessDocumentController extends Controller
 
     public function update(StoreBusinessDocumentRequest $request, Company $company, BusinessDocument $businessDocument): JsonResponse
     {
+        $intents = app(BusinessDocumentPaymentIntentService::class);
+
+        return $intents->locked((int) $company->user_id, 'i:'.$businessDocument->id, function () use ($request, $company, $businessDocument, $intents) {
+            $response = $this->updateLocked($request, $company, $businessDocument);
+            $current = $businessDocument->fresh(['company', 'store']);
+            $paymentStore = $current?->store;
+            if ($current && $paymentStore instanceof Store && $current->payment_btc_enabled) {
+                $intents->prepare($current, $paymentStore);
+            } else {
+                $intents->revokeDocument($businessDocument);
+            }
+
+            return $response;
+        });
+    }
+
+    protected function updateLocked(StoreBusinessDocumentRequest $request, Company $company, BusinessDocument $businessDocument): JsonResponse
+    {
         $this->assertDocumentCompany($businessDocument, $company);
 
         if (! $businessDocument->canUpdate($company)) {
@@ -327,18 +346,6 @@ class BusinessDocumentController extends Controller
                 $businessDocument->save();
             } else {
                 $this->paymentTokenService->assignIfNeeded($businessDocument);
-                if ($this->btcPayService->shouldRefreshAfterUpdate(
-                    $businessDocument,
-                    $previousTotal,
-                    $previousStoreId,
-                    $previousPaymentBtc
-                )) {
-                    try {
-                        $this->btcPayService->syncForDocument($businessDocument, forceRefresh: true);
-                    } catch (\Throwable $e) {
-                        report($e);
-                    }
-                }
                 if ($businessDocument->isDirty()) {
                     $businessDocument->save();
                 }
@@ -361,6 +368,18 @@ class BusinessDocumentController extends Controller
     }
 
     public function cancel(Company $company, BusinessDocument $businessDocument): JsonResponse
+    {
+        $intents = app(BusinessDocumentPaymentIntentService::class);
+
+        return $intents->locked((int) $company->user_id, 'i:'.$businessDocument->id, function () use ($company, $businessDocument, $intents) {
+            $response = $this->cancelLocked($company, $businessDocument);
+            $intents->revokeDocument($businessDocument);
+
+            return $response;
+        });
+    }
+
+    protected function cancelLocked(Company $company, BusinessDocument $businessDocument): JsonResponse
     {
         $this->assertDocumentCompany($businessDocument, $company);
 
@@ -642,6 +661,18 @@ class BusinessDocumentController extends Controller
     }
 
     public function destroy(Company $company, BusinessDocument $businessDocument): JsonResponse
+    {
+        $intents = app(BusinessDocumentPaymentIntentService::class);
+
+        return $intents->locked((int) $company->user_id, 'i:'.$businessDocument->id, function () use ($company, $businessDocument, $intents) {
+            $response = $this->destroyLocked($company, $businessDocument);
+            $intents->revokeDocument($businessDocument);
+
+            return $response;
+        });
+    }
+
+    protected function destroyLocked(Company $company, BusinessDocument $businessDocument): JsonResponse
     {
         $this->assertDocumentCompany($businessDocument, $company);
 

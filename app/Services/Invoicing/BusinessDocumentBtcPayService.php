@@ -4,11 +4,10 @@ namespace App\Services\Invoicing;
 
 use App\Enums\BusinessDocumentStatus;
 use App\Models\BusinessDocument;
+use App\Models\BusinessDocumentPaymentIntent;
+use App\Models\Company;
 use App\Models\Store;
-use App\Models\User;
 use App\Services\BtcPay\InvoiceService as BtcPayInvoiceService;
-use Illuminate\Contracts\Cache\LockTimeoutException;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -19,101 +18,16 @@ class BusinessDocumentBtcPayService
         protected EphemeralBtcpayCheckoutService $ephemeralCheckoutService,
     ) {}
 
-    /**
-     * Checkout link for the BTC QR on an EPHEMERAL render (PDF/e-mail).
-     *
-     * This used to call createEphemeralCheckout() unconditionally and never
-     * registered the row - every rendered PDF of a BTC-enabled document
-     * minted an invisible stray BTCPay invoice (production 2026-07-15).
-     * Now it shares the dedupe semantics:
-     *  - paid documents (status or amount) get NO payment QR,
-     *  - an already paid checkout gets NO payment QR (and is marked paid),
-     *  - a still-payable checkout with a matching amount is reused,
-     *  - an unknown BTCPay state renders WITHOUT a QR - never mints blindly,
-     *  - only a genuinely unpaid document without a usable checkout mints,
-     *    and the new checkout is REGISTERED so future dedupe sees it.
-     */
+    /** Prepare an opaque payment link. Rendering never creates a provider invoice. */
     public function qrCheckoutLinkForEphemeralRender(
         BusinessDocument $document,
         Store $store,
         ?string $evoluDocumentId,
     ): ?string {
-        // Paid documents render without a payment QR. The status check works
-        // for both worlds (the model casts to the enum at runtime; static
-        // analysis types it string in the ephemeral context, hence in_array).
-        if (in_array($document->status, [BusinessDocumentStatus::Paid, BusinessDocumentStatus::Paid->value], true)) {
-            return null;
-        }
-        $total = (float) $document->total;
-        if ($total <= 0 || (float) $document->amount_paid >= $total - 0.005) {
-            return null;
-        }
+        $intents = app(BusinessDocumentPaymentIntentService::class);
+        $intent = $intents->prepare($document, $store, $evoluDocumentId);
 
-        // Without a stable dedupe key a minted invoice could never be found
-        // again by any later render/view/create - refuse to mint and render
-        // without a QR instead of leaving untrackable strays behind.
-        $user = $store->user;
-        if (! $user instanceof User || ! is_string($evoluDocumentId) || $evoluDocumentId === '') {
-            return null;
-        }
-
-        // Serialize per document: the auto-issue email job and the WooCommerce
-        // attachment render fire within seconds of each other - both finding
-        // "no pending checkout" would mint twice. Atomic on redis (prod).
-        $lock = Cache::lock('ephemeral-qr-checkout:'.$store->id.':'.$evoluDocumentId, 30);
-        try {
-            $lock->block(10);
-        } catch (LockTimeoutException) {
-            // The concurrent holder is resolving the same checkout - render
-            // without a QR rather than risk a duplicate mint.
-            return null;
-        }
-
-        try {
-            if ($this->ephemeralCheckoutService->findLatestPaid($user, $store, $evoluDocumentId)) {
-                return null;
-            }
-
-            $pending = $this->ephemeralCheckoutService->findLatestPending($user, $store, $evoluDocumentId);
-            if ($pending) {
-                $state = $this->ephemeralCheckoutState($store, $pending->btcpay_invoice_id);
-                if ($state['state'] === 'paid') {
-                    $this->ephemeralCheckoutService->markPaid($pending);
-
-                    return null;
-                }
-                if ($state['state'] === 'unknown') {
-                    // Fail safe: render without a QR rather than mint a
-                    // possible duplicate of an unverifiable invoice.
-                    return null;
-                }
-                if (
-                    $state['state'] === 'payable'
-                    && abs((float) $pending->amount - $total) < 0.005
-                    && strcasecmp((string) $pending->currency, (string) $document->currency) === 0
-                ) {
-                    return $state['checkout_link'];
-                }
-                // replaceable (expired/invalid) falls through to a fresh one.
-            }
-
-            $result = $this->createEphemeralCheckout($document, $store, $evoluDocumentId);
-
-            if (is_string($result['btcpay_invoice_id'] ?? null) && $result['btcpay_invoice_id'] !== '') {
-                $this->ephemeralCheckoutService->registerCheckout(
-                    $user,
-                    $store,
-                    $evoluDocumentId,
-                    $result['btcpay_invoice_id'],
-                    $total,
-                    $document->currency,
-                );
-            }
-
-            return $result['checkout_link'] ?? null;
-        } finally {
-            $lock->release();
-        }
+        return $intent ? $intents->url($intent) : null;
     }
 
     /**
@@ -155,40 +69,64 @@ class BusinessDocumentBtcPayService
      */
     public function syncPaidFromBtcpayIfSettled(BusinessDocument $document): bool
     {
-        if ($document->status === BusinessDocumentStatus::Paid) {
+        $document->loadMissing('company');
+        $company = $document->company;
+        if (! $company instanceof Company) {
+            return false;
+        }
+        $intents = app(BusinessDocumentPaymentIntentService::class);
+
+        return $intents->locked((int) $company->user_id, 'i:'.$document->id, function () use ($document, $company, $intents) {
+            $current = $document->fresh(['company', 'store.user']);
+            if (! $current || $current->company_id !== $company->id) {
+                return false;
+            }
+            $document->setRawAttributes($current->getAttributes(), true)->setRelations($current->getRelations());
+            if ($document->hasStatus(BusinessDocumentStatus::Paid)) {
+                return true;
+            }
+            if (! $document->hasStatus(BusinessDocumentStatus::Issued)) {
+                return false;
+            }
+            $intent = BusinessDocumentPaymentIntent::where('business_document_id', $document->id)->first();
+            if ($intent) {
+                // A terminal intent records historical payment, not authority to settle revised terms.
+                if (! $intents->matchesDocument($intent, $document)) {
+                    return false;
+                }
+                if ($intent->state === 'paid' && $intent->payment_method === 'btcpay') {
+                    $store = $document->store;
+                    $invoiceId = $intent->settled_invoice_id ?? $intent->btcpay_invoice_id;
+                    if (! $store instanceof Store || ! $invoiceId) {
+                        return false;
+                    }
+                    $invoice = $this->fetchBtcpayInvoiceForStore($store, $invoiceId);
+                    $outstanding = max(0, (float) $document->total - (float) $document->amount_paid);
+                    if ($invoice === null || ($invoice['id'] ?? null) !== $invoiceId
+                        || ($invoice['status'] ?? '') !== 'Settled'
+                        || ! in_array($invoice['additionalStatus'] ?? null, ['None', 'PaidOver', 'PaidLate'], true)
+                        || ! is_numeric($invoice['paidAmount'] ?? null) || (float) $invoice['paidAmount'] < $outstanding
+                        || ! $this->invoiceCoversDocument($invoice, $document, $outstanding)) {
+                        return false;
+                    }
+                }
+                $verified = $intents->status($intent, recoverTerms: true);
+                $document->refresh();
+
+                return $verified->state === 'paid' && $verified->payment_method === 'btcpay'
+                    && $document->hasStatus(BusinessDocumentStatus::Paid);
+            }
+            if (! $document->btcpay_invoice_id) {
+                return false;
+            }
+            $invoice = $this->fetchBtcpayInvoice($document);
+            if ($invoice === null || ! $this->invoiceIndicatesPaid($invoice) || ! $this->invoiceCoversDocument($invoice, $document)) {
+                return false;
+            }
+            app(BusinessDocumentMarkPaidService::class)->markPaid($document, (float) $document->total, null, 'btcpay_sync');
+
             return true;
-        }
-
-        if ($document->status !== BusinessDocumentStatus::Issued || ! $document->btcpay_invoice_id) {
-            return false;
-        }
-
-        $document->loadMissing(['store.user']);
-
-        $invoice = $this->fetchBtcpayInvoice($document);
-        if ($invoice === null || ! $this->invoiceIndicatesPaid($invoice)) {
-            return false;
-        }
-
-        // The linked checkout can predate a total change (a failed refresh
-        // keeps the old, cheaper invoice): paying it must not settle more.
-        if (! $this->invoiceCoversDocument($invoice, $document)) {
-            Log::warning('Business document: paid BTCPay invoice does not cover the document', [
-                'business_document_id' => $document->id,
-                'invoice_id' => $document->btcpay_invoice_id,
-            ]);
-
-            return false;
-        }
-
-        app(BusinessDocumentMarkPaidService::class)->markPaid(
-            $document,
-            (float) $document->total,
-            null,
-            'btcpay_sync',
-        );
-
-        return true;
+        });
     }
 
     /**
@@ -279,10 +217,10 @@ class BusinessDocumentBtcPayService
      *
      * @param  array<string, mixed>  $invoice
      */
-    public function invoiceCoversDocument(array $invoice, BusinessDocument $document): bool
+    public function invoiceCoversDocument(array $invoice, BusinessDocument $document, ?float $requiredAmount = null): bool
     {
         return strcasecmp((string) ($invoice['currency'] ?? ''), (string) $document->currency) === 0
-            && (float) ($invoice['amount'] ?? 0) + 0.005 >= (float) $document->total;
+            && (float) ($invoice['amount'] ?? 0) + 0.005 >= ($requiredAmount ?? (float) $document->total);
     }
 
     public function invoiceIndicatesPaid(array $invoice): bool
@@ -305,7 +243,7 @@ class BusinessDocumentBtcPayService
 
         $invoice = $this->fetchBtcpayInvoice($document);
         if ($invoice === null) {
-            return true;
+            throw new \RuntimeException('The existing payment could not be verified.');
         }
 
         if ($this->invoiceIndicatesPaid($invoice)) {
@@ -378,7 +316,8 @@ class BusinessDocumentBtcPayService
         }
 
         return [
-            'state' => $this->invoiceIndicatesPaid($invoice) ? 'paid' : 'replaceable',
+            'state' => (($invoice['status'] ?? '') === 'Settled' && ($invoice['additionalStatus'] ?? '') !== 'PaidPartial')
+                ? 'paid' : (in_array($invoice['status'] ?? '', ['Expired', 'Invalid'], true) ? 'replaceable' : 'unknown'),
             'checkout_link' => $checkoutLink,
             'btcpay_invoice_id' => $btcpayInvoiceId,
         ];

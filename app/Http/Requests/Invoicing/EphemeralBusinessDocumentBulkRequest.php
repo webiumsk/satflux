@@ -84,6 +84,9 @@ class EphemeralBusinessDocumentBulkRequest extends FormRequest
         ];
 
         $documentItemRules = [
+            'documents.*.store_id' => ['sometimes', 'nullable', 'uuid'],
+            'documents.*.evolu_document_id' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'documents.*.document.payment_btc_enabled' => ['sometimes', 'boolean'],
             'documents.*.contact' => ['sometimes', 'nullable', 'array'],
             'documents.*.contact.name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'documents.*.contact.registration_number' => ['sometimes', 'nullable', 'string', 'max:100'],

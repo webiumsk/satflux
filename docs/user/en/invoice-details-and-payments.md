@@ -2,7 +2,7 @@
 title: Invoice deductions, buyer details and payments
 category: invoicing
 order: 5
-updated: 2026-11-14
+updated: 2026-11-16
 ---
 
 # Invoice deductions, buyer details and payments
@@ -30,3 +30,11 @@ A PDF sent automatically before browser import can include only buyer data avail
 ## Recorded payment method
 
 Payment options offered to a customer are separate from the recorded payment method. Paid WooCommerce orders retain the supplied gateway classification; matched bank payments show their bank source, and verified BTCPay payments show BTCPay. Manual payments are labelled manual. Older invoices without recorded evidence show an unspecified method; their history is not guessed or rewritten.
+
+## Bitcoin payment links
+
+Issuing an invoice does not create a BTCPay invoice. Its PDF and email provide a Satflux payment link when Bitcoin payment is enabled. The QR code opens the payment page in a browser. A BTCPay checkout is created or reused after the customer confirms Bitcoin / Lightning payment. The explicit merchant checkout action can also prepare a checkout.
+
+A recorded bank or manual payment disables further payment through the Satflux link once the status reaches the server. Partial payments and changes to the invoice payment terms invalidate the earlier offer. Before collecting payment again, the issuer must use the explicit refresh action in the invoice detail to create a new payment offer. If checkout creation has an uncertain result, the earlier attempt must be reconciled before refreshing. An unresolved attempt without a BTCPay invoice ID blocks reopening. Local-first changes made offline reach the server after the browser reconnects; keep this delay in mind when confirming a bank payment.
+
+Previously distributed direct BTCPay links keep their original behavior. A bank payment does not become a Bitcoin settlement or automatically cancel a previously created BTCPay checkout.

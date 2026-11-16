@@ -2,7 +2,7 @@
 title: Abzugsposten, Käuferdaten und Rechnungszahlungen
 category: invoicing
 order: 5
-updated: 2026-11-14
+updated: 2026-11-16
 ---
 
 # Abzugsposten, Käuferdaten und Rechnungszahlungen
@@ -30,3 +30,11 @@ Ein vor dem Browserimport automatisch versandtes PDF kann nur Käuferdaten entha
 ## Erfasste Zahlungsart
 
 Angebotene Zahlungsoptionen unterscheiden sich von der erfassten Zahlungsart. Bezahlte WooCommerce-Bestellungen behalten die Klassifizierung des übermittelten Zahlungsanbieters. Zugeordnete Bankzahlungen zeigen ihre Bankquelle, bestätigte BTCPay-Zahlungen zeigen BTCPay. Manuelle Zahlungen werden entsprechend gekennzeichnet. Ältere Rechnungen ohne gespeicherten Nachweis zeigen eine nicht angegebene Zahlungsart; die Historie wird weder geschätzt noch umgeschrieben.
+
+## Bitcoin-Zahlungslinks
+
+Das Ausstellen einer Rechnung erstellt keine BTCPay-Rechnung. PDF und E-Mail enthalten einen Satflux-Zahlungslink, wenn Bitcoin-Zahlung aktiviert ist. Der QR-Code öffnet die Zahlungsseite im Browser. Erst nach Bestätigung der Bitcoin- / Lightning-Zahlung durch den Kunden wird ein BTCPay-Checkout erstellt oder wiederverwendet. Auch der Aussteller kann den Checkout ausdrücklich im Rechnungsdetail erstellen.
+
+Eine erfasste Bank- oder manuelle Zahlung verhindert weitere Zahlungen über den Satflux-Link, sobald der Status den Server erreicht. Teilzahlungen und Änderungen der Zahlungsbedingungen machen das bisherige Angebot ungültig. Vor dem erneuten Einziehen einer Zahlung muss der Aussteller im Rechnungsdetail die ausdrückliche Aktion zum Erneuern verwenden, um ein neues Zahlungsangebot zu erstellen. Bei einem unklaren Ergebnis der Checkout-Erstellung muss der frühere Versuch vor dem Erneuern abgeglichen werden. Ein ungeklärter Versuch ohne BTCPay-Rechnungs-ID blockiert das erneute Öffnen des Angebots. Im Local-first-Modus erreichen offline erfasste Änderungen den Server erst nach erneuter Verbindung des Browsers. Berücksichtigen Sie diese Verzögerung beim Bestätigen einer Bankzahlung.
+
+Bereits verteilte direkte BTCPay-Links behalten ihr bisheriges Verhalten. Eine Bankzahlung wird nicht zur Bitcoin-Zahlung und storniert keinen bereits erstellten BTCPay-Checkout automatisch.

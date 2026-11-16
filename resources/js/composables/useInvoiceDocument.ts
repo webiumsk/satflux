@@ -3,11 +3,13 @@ import { computed, onUnmounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import type { InvoiceLineForm } from '../components/invoicing/InvoiceLivePreview.vue';
+import type { OwnerId } from '@evolu/common/local-first';
 import { invoicingApi } from '../services/api';
 import { isInvoicingLocalFirst } from '../evolu/flags';
 import { deFullInvoiceBuyerMissing } from '../evolu/deInvoiceRules';
 import { defaultPdfLocaleForJurisdiction } from '../config/jurisdictionRules';
-import { allDocumentEventsQuery, allDocumentSnapshotsQuery } from '../evolu/client';
+import { allDocumentEventsQuery, allDocumentSnapshotsQuery, allDocumentsQuery } from '../evolu/client';
+import { scopedEvolu } from '../evolu/ownerScope';
 import {
   latestSnapshotRowForDocument,
   parseIssuedSnapshotRow,
@@ -29,12 +31,15 @@ import type { CompanyContactRow } from './useCompanyContact';
 import {
   buildEphemeralSnapshot,
   fetchEphemeralBtcpayCheckout,
-  fetchEphemeralBtcpayStatus,
   fetchExistingEphemeralBtcpayCheckout,
+  fetchEphemeralPaymentLinkStatus,
   resolveEphemeralBridgeCompanyId,
+  type EphemeralPaymentLink,
 } from '../evolu/ephemeralBridge';
 import { useLocalInvoiceDocumentSupport } from './useLocalInvoiceDocument';
 import { useStoresStore } from '../store/stores';
+import { useAuthStore } from '../store/auth';
+import { canReconcilePaymentIntentOwner, paymentIntentMatchesOutstanding } from '../evolu/paymentIntentSync';
 import { appSettingsFromCompany } from './useCompanyAppSettings';
 import { useCompanyVatPolicy } from './useCompanyVatPolicy';
 import { DEFAULT_INVOICE_LINE_UNIT } from './useInvoiceLineUnits';
@@ -75,6 +80,7 @@ export function useInvoiceDocument() {
   const localFirst = isInvoicingLocalFirst();
   const local = localFirst ? useLocalInvoiceDocumentSupport() : null;
   const storesStore = useStoresStore();
+  const auth = useAuthStore();
 
   const companyId = computed(() => route.params.companyId as string);
   const documentId = computed(() => route.params.documentId as string | undefined);
@@ -108,6 +114,10 @@ export function useInvoiceDocument() {
   const localBtcpayCheckoutLink = ref('');
   const localBtcpayCheckoutLoading = ref(false);
   const localBtcpayInvoiceId = ref('');
+  const localBtcpayIntent = ref<EphemeralPaymentLink | null>(null);
+  let localBtcpayGeneration = 0;
+  let checkoutDisposed = false;
+  let localBtcpaySyncing = false;
   let localBtcpayPollTimer: ReturnType<typeof setInterval> | null = null;
   const sourceDocument = ref<{ id: string; number?: string; type?: string } | null>(null);
   const finalInvoice = ref<{ id: string; number?: string; status?: string } | null>(null);
@@ -1011,54 +1021,83 @@ export function useInvoiceDocument() {
    * 2026-07-14). Minting happens in createLocalBtcpayCheckout (button).
    */
   async function loadLocalBtcpayCheckout() {
+    const generation = ++localBtcpayGeneration;
     localBtcpayCheckoutLink.value = '';
     localBtcpayInvoiceId.value = '';
+    localBtcpayIntent.value = null;
     stopLocalBtcpayPolling();
-    if (!localFirst || !documentId.value) return;
+    if (!localFirst || !documentId.value || !auth.user) return;
     if (
       !form.payment_btc_enabled
       || !form.store_id
       || documentStatus.value === 'draft'
       || documentStatus.value === 'paid'
+      || documentStatus.value === 'cancelled'
     ) {
       return;
     }
 
     localBtcpayCheckoutLoading.value = true;
+    const context = localCheckoutContext();
+    const docId = documentId.value;
     try {
+      const intent = await fetchEphemeralPaymentLinkStatus(docId);
+      if (!localCheckoutCurrent(context, generation)) return;
+      localBtcpayIntent.value = intent;
+      if (intent) {
+        if (intent.state === 'revoked') error.value = t('invoicing.local_first_btcpay_link_revoked');
+        localBtcpayCheckoutLink.value = intent.payment_link || '';
+        localBtcpayInvoiceId.value = intent.btcpay_invoice_id || '';
+        startLocalBtcpayPolling();
+        return;
+      }
       const result = await fetchExistingEphemeralBtcpayCheckout(
         buildCurrentEphemeralSnapshot(),
         form.store_id,
-        documentId.value,
+        docId,
       );
+      if (!localCheckoutCurrent(context, generation)) return;
       localBtcpayCheckoutLink.value = result?.checkout_link || '';
       localBtcpayInvoiceId.value = result?.btcpay_invoice_id || '';
-      if (localBtcpayInvoiceId.value) {
-        startLocalBtcpayPolling();
-      }
+      startLocalBtcpayPolling();
     } catch {
+      if (!localCheckoutCurrent(context, generation)) return;
       // No existing checkout is a normal state - the create button handles it.
       localBtcpayCheckoutLink.value = '';
       localBtcpayInvoiceId.value = '';
+      // A temporary lookup failure must not strand this mounted detail page.
+      // Document-only discovery can recover without creating a checkout.
+      startLocalBtcpayPolling();
     } finally {
-      localBtcpayCheckoutLoading.value = false;
+      if (localCheckoutOwnsGeneration(generation)) localBtcpayCheckoutLoading.value = false;
     }
   }
 
   /** Explicit user action: create (or reuse server-side) the checkout link. */
   async function createLocalBtcpayCheckout() {
-    if (!localFirst || !documentId.value) return;
+    if (!localFirst || !documentId.value || !auth.user) return;
     if (!form.payment_btc_enabled || !form.store_id) return;
+    const generation = ++localBtcpayGeneration;
+    const context = localCheckoutContext();
+    const docId = documentId.value;
 
     localBtcpayCheckoutLoading.value = true;
+    error.value = '';
     try {
       const bridgeCompanyId = await resolveEphemeralBridgeCompanyId();
+      if (!localCheckoutCurrent(context, generation)) return;
+      const intent = await fetchEphemeralPaymentLinkStatus(docId);
+      if (!localCheckoutCurrent(context, generation)) return;
       const result = await fetchEphemeralBtcpayCheckout(
         buildCurrentEphemeralSnapshot(),
         form.store_id,
-        documentId.value,
+        docId,
         bridgeCompanyId,
+        intent && (intent.state === 'revoked' || (intent.state === 'paid' && intent.payment_method === 'external'))
+          ? intent.version : undefined,
       );
+      if (!localCheckoutCurrent(context, generation)) return;
+      localBtcpayIntent.value = null;
       localBtcpayCheckoutLink.value = result.checkout_link || '';
       localBtcpayInvoiceId.value = result.btcpay_invoice_id || '';
       if (localBtcpayInvoiceId.value) {
@@ -1067,12 +1106,26 @@ export function useInvoiceDocument() {
         error.value = t('invoicing.local_first_btcpay_checkout_missing');
       }
     } catch (e: unknown) {
+      if (!localCheckoutCurrent(context, generation)) return;
       localBtcpayCheckoutLink.value = '';
       localBtcpayInvoiceId.value = '';
       error.value = extractError(e);
     } finally {
-      localBtcpayCheckoutLoading.value = false;
+      if (localCheckoutOwnsGeneration(generation)) localBtcpayCheckoutLoading.value = false;
     }
+  }
+
+  function localCheckoutContext(): string {
+    return JSON.stringify([auth.user?.id, companyId.value, documentId.value, form.store_id,
+      form.payment_btc_enabled, form.currency, documentStatus.value, amountPaid.value]);
+  }
+
+  function localCheckoutCurrent(context: string, generation: number): boolean {
+    return localCheckoutOwnsGeneration(generation) && context === localCheckoutContext();
+  }
+
+  function localCheckoutOwnsGeneration(generation: number): boolean {
+    return !checkoutDisposed && generation === localBtcpayGeneration;
   }
 
   function stopLocalBtcpayPolling() {
@@ -1083,38 +1136,76 @@ export function useInvoiceDocument() {
   }
 
   async function syncEphemeralBtcpayPayment(): Promise<boolean> {
-    if (!local || !documentId.value || !localBtcpayInvoiceId.value) return false;
+    if (!local || !documentId.value || !auth.user || localBtcpaySyncing) return false;
     if (documentStatus.value === 'paid') {
       stopLocalBtcpayPolling();
       return true;
     }
+    const docId = documentId.value;
+    const context = localCheckoutContext();
+    const generation = localBtcpayGeneration;
+    localBtcpaySyncing = true;
     try {
-      const status = await fetchEphemeralBtcpayStatus(
-        documentId.value,
-        localBtcpayInvoiceId.value,
-      );
-      if (status.status !== 'paid') return false;
+      const owner = await local.evolu.appOwner;
+      if (!localCheckoutCurrent(context, generation)) return false;
+      const intent = await fetchEphemeralPaymentLinkStatus(docId);
+      if (!localCheckoutCurrent(context, generation)) return false;
+      if (intent) {
+        localBtcpayIntent.value = intent;
+        localBtcpayCheckoutLink.value = intent.payment_link || '';
+        localBtcpayInvoiceId.value = intent.btcpay_invoice_id || '';
+        if (intent.state !== 'paid' || intent.payment_method !== 'btcpay') {
+          if (intent.state === 'revoked') error.value = t('invoicing.local_first_btcpay_link_revoked');
+          if (intent.state === 'revoked' || intent.state === 'paid') stopLocalBtcpayPolling();
+          return false;
+        }
+      } else {
+        // Historical checkout rows do not prove the current amount/currency
+        // or fresh provider settlement. Keep discovery without settling them.
+        return false;
+      }
       await local.refreshAll();
-      markLocalDocumentPaid(
-        local.evolu,
-        documentId.value as DocumentId,
-        toAppRows<EvoluDocumentRow>(local.documentRows.value),
+      if (!localCheckoutCurrent(context, generation)) return false;
+      const currentOwner = await local.evolu.appOwner;
+      if (!localCheckoutCurrent(context, generation) || currentOwner.id !== owner.id) return false;
+      const matches = toAppRows<EvoluDocumentRow & { ownerId?: string }>(local.evolu.getQueryRows(allDocumentsQuery))
+        .filter(row => row.id === docId);
+      if (matches.length !== 1) return false;
+      const live = matches[0];
+      if (live.companyId !== companyId.value || !canReconcilePaymentIntentOwner(live, owner.id)) return false;
+      const companies = toAppRows<{ id: string; ownerId?: string }>(local.companyRows.value)
+        .filter(row => row.id === live.companyId && row.ownerId === live.ownerId);
+      if (companies.length !== 1) return false;
+      if (live.status !== 'issued' || live.paymentBtcEnabled !== 1
+        || (live.documentType !== 'invoice' && live.documentType !== 'proforma')
+        || !paymentIntentMatchesOutstanding(intent, live)) return false;
+      const marked = markLocalDocumentPaid(
+        scopedEvolu(local.evolu, live.ownerId as OwnerId),
+        docId as DocumentId,
+        toAppRows<EvoluDocumentRow>(local.evolu.getQueryRows(allDocumentsQuery)),
         "btcpay",
       );
+      if (!marked.ok) return false;
       await local.refreshAll();
-      const apiDoc = local.documentApi(documentId.value as DocumentId);
+      if (!localCheckoutCurrent(context, generation)) return false;
+      const apiDoc = local.documentApi(docId as DocumentId);
       if (apiDoc) await applyDocument(apiDoc);
       stopLocalBtcpayPolling();
       success.value = t('invoicing.local_first_btcpay_paid_synced');
       return true;
     } catch {
       return false;
+    } finally {
+      localBtcpaySyncing = false;
     }
   }
 
   function startLocalBtcpayPolling() {
     stopLocalBtcpayPolling();
-    if (!localFirst || documentStatus.value === 'paid' || !localBtcpayInvoiceId.value) {
+    const intent = localBtcpayIntent.value;
+    if (!localFirst || !auth.user || !form.payment_btc_enabled || !form.store_id
+      || documentStatus.value === 'paid' || documentStatus.value === 'cancelled'
+      || intent?.state === 'revoked' || (intent?.state === 'paid' && intent.payment_method !== 'btcpay')) {
       return;
     }
     void syncEphemeralBtcpayPayment();
@@ -1124,6 +1215,8 @@ export function useInvoiceDocument() {
   }
 
   onUnmounted(() => {
+    checkoutDisposed = true;
+    localBtcpayGeneration++;
     stopLocalBtcpayPolling();
   });
 

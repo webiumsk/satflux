@@ -222,6 +222,7 @@
     "local_first_btcpay_checkout_hint": "Priamy BTCPay checkout odkaz. Po úhrade sa faktúra označí ako zaplatená automaticky (cez webhook).",
     "local_first_btcpay_checkout_missing": "Platobný odkaz zatiaľ nevznikol. Vytvorte ho, ak má zákazník uhradiť faktúru v bitcoine.",
     "local_first_btcpay_checkout_refresh": "Vytvoriť checkout odkaz",
+    "local_first_btcpay_link_revoked": "Tento odkaz na platbu bitcoinom bol po zmene faktúry deaktivovaný. Nový checkout vytvoríte tlačidlom \"Vytvoriť checkout odkaz\".",
     "local_first_btcpay_paid_synced": "Bitcoin platba zistená. Faktúra bola označená ako zaplatená.",
     "local_first_pdf_bridge_soon": "PDF export používa ephemerálny serverový most. Faktúra je uložená lokálne a na serveri sa neukladá.",
     "auto_issue_title": "Automatická fakturácia WooCommerce",

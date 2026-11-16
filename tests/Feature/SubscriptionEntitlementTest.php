@@ -4,12 +4,14 @@ namespace Tests\Feature;
 
 use App\Enums\BusinessDocumentStatus;
 use App\Models\BusinessDocument;
+use App\Models\BusinessDocumentPaymentIntent;
 use App\Models\Company;
 use App\Models\Store;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\BtcPay\BtcPayClient;
+use App\Services\Invoicing\BusinessDocumentPaymentIntentService;
 use App\Services\SubscriptionEntitlementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -304,8 +306,54 @@ class SubscriptionEntitlementTest extends TestCase
             'total' => 100,
         ]);
 
-        $this->get('/pay/i/'.$document->payment_token)
-            ->assertOk();
+        Http::fake(['*' => Http::response([
+            'id' => 'expired-plan-invoice',
+            'checkoutLink' => 'https://btcpay.example.test/i/expired-plan-invoice',
+        ])]);
+        $url = '/pay/i/'.$document->payment_token;
+        $this->get($url)->assertOk()->assertSee(__('messages.business_invoice_pay_unavailable'), false)
+            ->assertDontSee('<form', false)->assertDontSee('100,00', false);
+        $this->head($url)->assertOk();
+        $this->post($url)->assertNotFound();
+        $this->assertDatabaseCount('business_document_payment_intents', 0);
+        $this->assertDatabaseCount('business_document_payment_attempts', 0);
+        Http::assertNothingSent();
+
+        // A correctly assigned store can still collect an existing invoice after plan expiry.
+        $store->update(['company_id' => $company->id]);
+        $user->update(['btcpay_api_key' => 'synthetic-expired-plan-key']);
+        $this->get($url)->assertOk()->assertSee('method="POST"', false);
+        $this->assertDatabaseCount('business_document_payment_intents', 0);
+        Http::assertNothingSent();
+        $environment = $this->app['env'];
+        $this->app['env'] = 'csrf-regression';
+        try {
+            $this->post($url)->assertStatus(419);
+            Http::assertNothingSent();
+            $this->withSession(['_token' => 'synthetic-expired-plan-csrf'])
+                ->post($url, ['_token' => 'synthetic-expired-plan-csrf'])->assertStatus(303)
+                ->assertRedirect('https://btcpay.example.test/i/expired-plan-invoice');
+        } finally {
+            $this->app['env'] = $environment;
+        }
+        Http::assertSentCount(1);
+        $intent = BusinessDocumentPaymentIntent::sole();
+        $this->assertSame($company->id, $intent->store_company_id);
+
+        $otherCompany = Company::create(['user_id' => $user->id, 'legal_name' => 'Other synthetic issuer',
+            'jurisdiction' => 'eu_sk', 'default_currency' => 'EUR']);
+        $store->update(['company_id' => $otherCompany->id]);
+        $this->get($url)->assertNotFound();
+        $this->post($url)->assertNotFound();
+        $verified = app(BusinessDocumentPaymentIntentService::class)->status($intent);
+        $this->assertSame('revoked', $verified->state);
+        Http::assertSentCount(1);
+
+        $foreignOwner = User::factory()->create();
+        $store->update(['company_id' => $company->id, 'user_id' => $foreignOwner->id]);
+        $this->get($url)->assertNotFound();
+        $this->post($url)->assertNotFound();
+        Http::assertSentCount(1);
     }
 
     #[Test]

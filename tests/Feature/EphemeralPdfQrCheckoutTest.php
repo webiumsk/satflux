@@ -110,12 +110,13 @@ class EphemeralPdfQrCheckoutTest extends TestCase
             'evolu-doc-123',
         );
 
-        $this->assertSame('https://btcpay.example/i/pending', $link);
+        $this->assertStringContainsString('/pay/e/', $link);
+        Http::assertNothingSent();
         $this->assertDatabaseCount('ephemeral_btcpay_checkouts', 1);
     }
 
     #[Test]
-    public function unpaid_document_mints_once_and_registers_the_checkout(): void
+    public function unpaid_document_prepares_one_stable_link_without_a_checkout(): void
     {
         Http::fake([
             '*/invoices/btcpay-inv-new' => Http::response([
@@ -135,13 +136,8 @@ class EphemeralPdfQrCheckoutTest extends TestCase
             'evolu-doc-123',
         );
 
-        $this->assertSame('https://btcpay.example/i/new', $link);
-        // The mint is registered - a later view/render/create finds it.
-        $this->assertDatabaseHas('ephemeral_btcpay_checkouts', [
-            'btcpay_invoice_id' => 'btcpay-inv-new',
-            'evolu_document_id' => 'evolu-doc-123',
-            'status' => 'pending',
-        ]);
+        $this->assertStringContainsString('/pay/e/', $link);
+        $this->assertDatabaseCount('ephemeral_btcpay_checkouts', 0);
 
         // A second render (email + WC attachment) reuses the registered
         // checkout - exactly one create call ever reaches BTCPay.
@@ -152,8 +148,8 @@ class EphemeralPdfQrCheckoutTest extends TestCase
         );
 
         $this->assertSame($link, $secondLink);
-        $this->assertDatabaseCount('ephemeral_btcpay_checkouts', 1);
-        Http::assertSentCount(2); // 1x create + 1x status fetch, never 2x create
+        $this->assertDatabaseCount('ephemeral_btcpay_checkouts', 0);
+        Http::assertSentCount(0); // 1x create + 1x status fetch, never 2x create
     }
 
     #[Test]
@@ -190,7 +186,7 @@ class EphemeralPdfQrCheckoutTest extends TestCase
     }
 
     #[Test]
-    public function unknown_btcpay_state_renders_without_qr_instead_of_minting(): void
+    public function rendering_does_not_need_provider_availability(): void
     {
         Http::fake([
             '*/invoices/btcpay-inv-pending' => Http::response(null, 500),
@@ -216,7 +212,8 @@ class EphemeralPdfQrCheckoutTest extends TestCase
             'evolu-doc-123',
         );
 
-        $this->assertNull($link);
+        $this->assertStringContainsString('/pay/e/', $link);
+        Http::assertNothingSent();
         $this->assertDatabaseMissing('ephemeral_btcpay_checkouts', [
             'btcpay_invoice_id' => 'btcpay-inv-new',
         ]);

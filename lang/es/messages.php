@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'business_invoice_pay_prepare_notice' => 'La solicitud de pago en BTCPay se crea solo después de continuar.',
+    'business_invoice_pay_unavailable' => 'Este enlace de pago no está disponible.',
+    'business_invoice_pay_contact_issuer' => 'Contacte con el emisor de la factura para comprobar el estado del pago.',
+
     'password_reset_unavailable' => 'El restablecimiento de contraseña por correo no está disponible. Usa tu frase de recuperación o passkey. Las cuentas antiguas pueden usar el acceso de migración.',
     /*
     |--------------------------------------------------------------------------

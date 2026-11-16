@@ -30,16 +30,23 @@ class InvoiceService
      * Create a BTCPay store invoice (Greenfield).
      *
      * @param  array{amount: string, currency: string, metadata?: array<string, mixed>}  $payload
+     * @param  (callable(): bool)|null  $beforePost
      */
-    public function createInvoice(string $storeId, array $payload, ?string $userApiKey = null): array
+    public function createInvoice(string $storeId, array $payload, ?string $userApiKey = null, bool $retry = true, ?callable $beforePost = null): array
     {
         $local = Store::where('btcpay_store_id', $storeId)->first();
-        $create = function () use ($storeId, $payload, $userApiKey, $local) {
+        $create = function () use ($storeId, $payload, $userApiKey, $local, $retry, $beforePost) {
             if ($local && WalletConfigurationAttempt::where('store_id', $local->id)->unresolved()->exists()) {
                 throw new \RuntimeException('Invoice creation is paused until the wallet update is reconciled.');
             }
 
-            return $this->client->withUserKey($userApiKey, fn () => $this->client->post("/api/v1/stores/{$storeId}/invoices", $payload));
+            return $this->client->withUserKey($userApiKey, function () use ($storeId, $payload, $retry, $beforePost) {
+                if ($beforePost !== null && $beforePost() === false) {
+                    throw new \RuntimeException('Invoice creation was superseded before submission.');
+                }
+
+                return $this->client->post("/api/v1/stores/{$storeId}/invoices", $payload, $retry);
+            });
         };
 
         return $local ? Cache::lock('wallet-update:'.$local->id, 1800)->block(10, $create) : $create();

@@ -221,6 +221,19 @@ export const allDocumentsQuery = evolu.createQuery((db) =>
         .orderBy("createdAt"),
 );
 
+// Payment-link reconciliation reads live routing/payment state, including
+// explicit tombstones. Invoice content and customer details are not needed.
+export const paymentIntentDocumentsQuery = evolu.createQuery((db) =>
+    db.selectFrom("document").select([
+        "id", "companyId", "isDeleted", "documentType", "status",
+        "paymentBtcEnabled", "storeId", "number", "total", "currency", "amountPaid",
+    ]),
+);
+
+export const paymentIntentCompaniesQuery = evolu.createQuery((db) =>
+    db.selectFrom("company").select(["id", "isDeleted"]),
+);
+
 export const allDocumentLinesQuery = evolu.createQuery((db) =>
     db
         .selectFrom("documentLine")

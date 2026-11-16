@@ -1,5 +1,172 @@
 # Local workspace
 
+## PR450 paid-state and live-row corrections - 2026-11-16
+
+Both findings against published input `f1446a7b` are valid and fixed with two
+production-line changes. Paid presentation cannot be replaced by an active
+intent, and local settlement uses the guarded live rows rather than a lagging
+reactive list. Activation, ownership and retry contracts remain intact.
+
+The four-file freeze is
+`e140e46945daf14f33ef2092c358c9274ee03bdd46680404b69a913affcd4df4`;
+the complete 62-file source freeze is
+`e7ff8e75f96bd2e3e96268e389d134adeb3f9788d4e4bf9ad5ce332f07f9755a`.
+Independent QA and security accept both freezes. Local and independent QA
+tests pass 85 PHP cases / 412 assertions and 58 JS cases / three suites. Pint, PHPStan, lint, typecheck and locale checks pass.
+[Follow-up evidence](PR450_FOLLOWUP_REVIEW.md) attributes independent reviews
+and exact-head CI separately from old checks and deployed readiness.
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`; unrelated work
+is preserved. Corrections use the existing isolated `fix/invoicing-lazy-btcpay`
+worktree and open PR450. No merge, deployment or live provider operation occurs.
+
+## PR450 follow-up corrections reviewed - 2026-11-16
+
+All five further findings against published input head
+`4ad6930369c12bb6a43d9be60af79e6f0eaac370` are valid and corrected.
+Independent QA and security accept the 11-file follow-up freeze
+`e6b0f1ec72791eef2b9326ab30226e0ed87d6700866f9dba59eace606a691e48`
+and complete 62-file source/test/locale/CI/API freeze
+`daceef31e5a8b867dda6df76d2fc8f3e8117529d19322c85ad26aea9e7b0aae4`.
+No blocking review findings remain. See [follow-up evidence](PR450_FOLLOWUP_REVIEW.md).
+
+Issuance preserves invalid-store rejection with fresh preflight before the
+transaction and an actionable local-UUID `store_id` message. Query-only service
+availability preserves existing behavior. Structured diagnostics exclude original
+error data; rejected local paid writes retain polling. All five guides explain
+uncertain-attempt reconciliation before refresh.
+
+Local checks pass 134 targeted PHP tests / 676 assertions, 3,648 JavaScript tests /
+255 files, Pint 1,185 files, PHPStan zero errors, build, locale parity and unchanged
+frontend ratchets. Independent test counts overlap; full PHP is an exact-head CI
+gate. Current publication/check results are tracked in PR450 separately from the
+input head's earlier green CI and from deployment readiness.
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`, preserving unrelated
+work. Corrections use the existing isolated `fix/invoicing-lazy-btcpay` worktree.
+Owner review/merge follows exact-head checks. No merge, deployment, installation
+or live provider operation is performed.
+
+## PR450 review correction checkout - 2026-11-16
+
+Primary stays `fix/sepa-confirmation-isolation` at `885168f2`; preserve its
+unrelated edits. Corrections use the existing isolated
+`fix/invoicing-lazy-btcpay` worktree, with review input/published parent
+`5badc9d669d3b3cb2a73fa47043bbded474d28fc` and merged master base `077c597d`.
+
+Independent reviewers accept the 19-file correction freeze
+`2a56d0267ca6b417271820dfa636dea653567340ce562b0e7486ac5fa94704ee`;
+the complete 61-file source freeze is
+`d244deb8958f524db573c8974dbd004d4d1fd34debc5de7b5a2bdc94836fa640`.
+[Review evidence](PR450_REVIEW_FIXES.md) distinguishes local verification from
+remote PR450 checks and deployment. Only the initiative's exact paths may be
+published; no primary-checkout code or separate accountant-export work is included.
+
+## PR450 published; reviewed source and remote checks - 2026-11-16
+
+The owner requests publication. Normal push publishes reviewed source revision
+`627b273386c5c6c5007d8261e5cf39f32f1e103c` on `fix/invoicing-lazy-btcpay`.
+PR450 is open and unmerged against master
+`077c597df065e000991a67cb9a1b2d32b2d34739`:
+https://github.com/webiumsk/satflux/pull/450 . All 68 changed paths belong to
+this initiative; unrelated primary-checkout work is excluded.
+
+Independent security and QA accept the unchanged 58-file source/test/locale/
+CI/API freeze `1426c72b55687cf866f4ef31a04a9d4d8862e6a75351b0f76033b0612c22fb64`.
+The 45-file production aggregate remains
+`e047dc6e5f26f7ace5da0fefbb2659cdb020efe325382cc86930b6ad21b6d528`.
+The publication follow-up changes documentation only. Local evidence remains
+3,637 JavaScript tests / 254 files, three real QR cases, and 3,506 PHP passes /
+69 skips / 19,199 assertions with one inherited PHPUnit deprecation. Existing
+lint/typecheck ratchets are unchanged; Pint, PHPStan, build, locales and API
+checks pass as attributed in `INVOICING_LAZY_BTCPAY.md`.
+
+Current remote head, exact-head CI and CodeRabbit evidence are tracked on the
+PR; prior PR449 checks do not substitute for this feature's checks. Deployment
+compatibility is not established by local/provider-fake tests. Offline state
+propagation, uncertain-attempt reconciliation, historical direct checkout URLs
+and the inherited external bank-QR fallback remain explicit limits.
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`; preserve all
+unrelated edits and the separate accountant-export clarity freeze. The feature
+has its own durable worktree. Next is exact-head CI/review verification and
+owner review/merge. No merge, deployment, package/tool installation, live
+provider operation or public changelog publication is performed.
+
+## Deferred invoicing BTCPay checkout accepted locally - 2026-11-16
+
+The owner's authorized change is complete in `fix/invoicing-lazy-btcpay`, based
+on merged PR449/master `077c597df065e000991a67cb9a1b2d32b2d34739`.
+Fresh direct remote verification still reports this master. PR449's reviewed
+head `111f5015a67629256241e3c7f61162e897e71511` has the same Git tree.
+The new implementation remains uncommitted and unpublished in the durable
+`storage/app/private/worktrees/invoicing-lazy-btcpay` worktree.
+
+Issuance, PDF/email/bulk rendering and public GET/HEAD do not create BTCPay
+invoices. A stable Satflux link presents a CSRF-protected Bitcoin payment
+confirmation. Explicit activation shares encrypted minimal intent/attempt
+state, locks and durable CAS with the existing merchant action. Uncertain
+creation blocks another automatic POST; actual settlement validates current
+terms and known historical attempts. Bank/manual paid, cancellation, deletion
+and changed terms terminalize the offer without fabricating BTC settlement.
+BTC QR capabilities render locally; a failed renderer retains a clickable link.
+An owned unassigned legacy store keeps a generic GET/HEAD page; activation
+continues to require exact company assignment, including after plan expiry.
+
+Independent QA and security accept the final 58-file source/test/locale/CI/API
+freeze `1426c72b55687cf866f4ef31a04a9d4d8862e6a75351b0f76033b0612c22fb64`.
+Production scope is 45 files, aggregate
+`e047dc6e5f26f7ace5da0fefbb2659cdb020efe325382cc86930b6ad21b6d528`.
+No unresolved blocking findings remain. Main's full JavaScript run passes
+3,637 tests / 254 files; three separate real QR encoding cases pass. Final
+full PHP exits successfully: 3,506 passed, 69 skipped, 19,199 assertions and
+one inherited PHPUnit deprecation. Full Pint passes 1,182 files; the final
+two-file compatibility check also passes. PHPStan has zero errors. Lint has
+zero errors / 46 inherited warnings; typecheck adds no errors against the
+existing 110-error baseline. Locale parity, build 7,673 modules, API inventory,
+Blade compilation, CI YAML, whitespace and exact hash checks pass.
+
+The isolated PHP runner reuses existing matching dependencies and Node 22,
+synthetic loopback-only DNS, SQLite in memory, temporary storage and no network.
+Initial environment failures reproduce on the unchanged base; application
+validators and health thresholds remain intact. Provider/race tests are
+synthetic; deployed BTCPay, distributed Redis contention and native execution
+of the new Evolu projection are not established. Offline terminal updates take
+effect after synchronization. Historical direct checkouts and the inherited
+external bank-QR fallback remain separate limits. Full details and overlapping
+independent test counts are in `INVOICING_LAZY_BTCPAY.md`.
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`. Unrelated edits
+and the separate accountant-export clarity freeze are preserved. Next is owner
+review and requested Git publication. No merge, deployment, package/tool install,
+real provider operation or public changelog publication is performed.
+
+## Deferred invoicing BTCPay checkout authorized - 2026-11-16
+
+PR449 is merged at `077c597df065e000991a67cb9a1b2d32b2d34739`.
+The reviewed head `111f5015a67629256241e3c7f61162e897e71511` has the
+same Git tree. Remote master was verified directly; deployment is unverified.
+This supersedes the earlier open/unmerged milestone below.
+
+The owner authorizes delaying actual BTCPay invoice creation until customer
+payment activation. A new isolated `fix/invoicing-lazy-btcpay` worktree starts
+from this merged base. PDF/email/issuance will prepare a stable Satflux link;
+GET displays the payment page and CSRF-protected POST activates BTC payment.
+The bounded design includes minimal encrypted payment-intent state, durable
+uncertain-attempt protection, owner-scoped bank/manual/cancel reconciliation,
+and payment discovery before the merchant knows a provider invoice ID.
+
+Independent security and QA accept the architecture subject to implementation
+gates. Final implementation reviews and tests are pending. Offline local-first
+payment changes reach the server only after authenticated reconciliation; this
+limit was explained to the owner. Existing provider requests are not silently
+cancelled or marked BTC-paid following a bank transfer.
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`; unrelated
+work and the separate accountant-export clarity freeze remain preserved.
+No merge, deployment or provider operation is performed. Contract and ownership:
+`INVOICING_LAZY_BTCPAY.md` in the feature worktree.
+
 ## PR449 late-sync deletion intent accepted locally - 2026-11-16
 
 The six original CodeRabbit comments are resolved on published `033fd831`,

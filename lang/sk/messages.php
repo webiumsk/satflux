@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'business_invoice_pay_prepare_notice' => 'Platobná požiadavka v BTCPay vznikne až po potvrdení.',
+    'business_invoice_pay_unavailable' => 'Tento platobný odkaz nie je dostupný.',
+    'business_invoice_pay_contact_issuer' => 'Stav úhrady si overte u vystavovateľa faktúry.',
+
     'password_reset_unavailable' => 'Obnovenie hesla e-mailom nie je dostupné. Použite obnovovaciu frázu alebo passkey. Staršie účty môžu použiť migračné prihlásenie.',
     /*
     |--------------------------------------------------------------------------

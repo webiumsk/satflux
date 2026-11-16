@@ -6,6 +6,7 @@ use App\Enums\BusinessDocumentStatus;
 use App\Models\AuditLog;
 use App\Models\BankTransaction;
 use App\Models\BusinessDocument;
+use App\Models\Company;
 use App\Services\Integrations\WooCommerceWebhookNotifier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -21,6 +22,30 @@ class BusinessDocumentMarkPaidService
      * Mark document paid (issues draft first). Supports partial bank amount.
      */
     public function markPaid(
+        BusinessDocument $document,
+        ?float $amountPaid = null,
+        ?BankTransaction $bankTransaction = null,
+        string $source = 'manual',
+        ?int $userId = null,
+    ): BusinessDocument {
+        $document->loadMissing('company');
+        $company = $document->company;
+        if (! $company instanceof Company) {
+            throw ValidationException::withMessages(['company' => ['A valid issuer is required.']]);
+        }
+        $intents = app(BusinessDocumentPaymentIntentService::class);
+
+        return $intents->locked((int) $company->user_id, 'i:'.$document->id, function () use ($document, $amountPaid, $bankTransaction, $source, $userId, $intents) {
+            $result = $this->markPaidLocked($document, $amountPaid, $bankTransaction, $source, $userId);
+            if ($result->hasStatus(BusinessDocumentStatus::Issued) && (float) $result->amount_paid > 0) {
+                $intents->revokeDocument($result);
+            }
+
+            return $result;
+        });
+    }
+
+    protected function markPaidLocked(
         BusinessDocument $document,
         ?float $amountPaid = null,
         ?BankTransaction $bankTransaction = null,
@@ -107,6 +132,18 @@ class BusinessDocumentMarkPaidService
     }
 
     public function unmarkPaid(BusinessDocument $document, ?int $userId = null): BusinessDocument
+    {
+        $document->loadMissing('company');
+        $company = $document->company;
+        if (! $company instanceof Company) {
+            throw ValidationException::withMessages(['company' => ['A valid issuer is required.']]);
+        }
+
+        return app(BusinessDocumentPaymentIntentService::class)->locked((int) $company->user_id,
+            'i:'.$document->id, fn () => $this->unmarkPaidLocked($document, $userId));
+    }
+
+    protected function unmarkPaidLocked(BusinessDocument $document, ?int $userId = null): BusinessDocument
     {
         DB::transaction(function () use ($document, $userId): void {
             $current = BusinessDocument::query()->whereKey($document->getKey())->lockForUpdate()->firstOrFail();

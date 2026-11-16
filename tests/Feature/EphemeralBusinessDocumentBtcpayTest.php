@@ -18,6 +18,12 @@ class EphemeralBusinessDocumentBtcpayTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['services.btcpay.public_url' => 'https://btcpay.example']);
+    }
+
     #[Test]
     public function authenticated_user_can_create_ephemeral_btcpay_checkout_without_persisting_document(): void
     {
@@ -119,7 +125,7 @@ class EphemeralBusinessDocumentBtcpayTest extends TestCase
         Http::fake([
             '*/invoices/btcpay-inv-ephemeral' => Http::response([
                 'id' => 'btcpay-inv-ephemeral',
-                'status' => 'New',
+                'status' => 'New', 'amount' => '100.00', 'currency' => 'EUR', 'paidAmount' => '0', 'additionalStatus' => 'None',
                 'checkoutLink' => 'https://btcpay.example/i/ephemeral',
             ], 200),
             '*' => Http::response([
@@ -162,7 +168,7 @@ class EphemeralBusinessDocumentBtcpayTest extends TestCase
         Http::fake([
             '*/invoices/btcpay-inv-old' => Http::response([
                 'id' => 'btcpay-inv-old',
-                'status' => 'Expired',
+                'status' => 'Expired', 'amount' => '100.00', 'currency' => 'EUR', 'paidAmount' => '0', 'additionalStatus' => 'None',
                 'checkoutLink' => 'https://btcpay.example/i/old',
             ], 200),
             '*' => Http::response([
@@ -199,7 +205,7 @@ class EphemeralBusinessDocumentBtcpayTest extends TestCase
     }
 
     #[Test]
-    public function changed_amount_gets_a_fresh_checkout_instead_of_the_stale_one(): void
+    public function changed_amount_cannot_blindly_replace_an_unverified_earlier_checkout(): void
     {
         Http::fake([
             '*' => Http::response([
@@ -233,8 +239,8 @@ class EphemeralBusinessDocumentBtcpayTest extends TestCase
         $payload['document']['payment_btc_enabled'] = true;
 
         $this->actingAs($user)->postJson('/api/invoicing/ephemeral/btcpay-checkout', $payload)
-            ->assertOk()
-            ->assertJsonPath('data.btcpay_invoice_id', 'btcpay-inv-new');
+            ->assertUnprocessable();
+        $this->assertCount(0, Http::recorded(fn ($request) => $request->method() === 'POST'));
     }
 
     #[Test]
@@ -242,7 +248,7 @@ class EphemeralBusinessDocumentBtcpayTest extends TestCase
     {
         Http::fake([
             '*' => Http::response([
-                'id' => 'btcpay-inv-new',
+                'id' => 'btcpay-inv-paid', 'status' => 'Settled', 'amount' => '100.00', 'currency' => 'EUR', 'paidAmount' => '100', 'additionalStatus' => 'None',
                 'checkoutLink' => 'https://btcpay.example/i/new',
             ], 200),
         ]);
@@ -277,7 +283,7 @@ class EphemeralBusinessDocumentBtcpayTest extends TestCase
             ->assertJsonPath('data.status', 'paid');
 
         $this->assertDatabaseCount('ephemeral_btcpay_checkouts', 1);
-        Http::assertSentCount(0);
+        Http::assertSentCount(1);
     }
 
     #[Test]
@@ -286,7 +292,7 @@ class EphemeralBusinessDocumentBtcpayTest extends TestCase
         Http::fake([
             '*/invoices/btcpay-inv-pending' => Http::response([
                 'id' => 'btcpay-inv-pending',
-                'status' => 'Settled',
+                'status' => 'Settled', 'amount' => '100.00', 'currency' => 'EUR', 'paidAmount' => '100', 'additionalStatus' => 'None',
                 'checkoutLink' => 'https://btcpay.example/i/pending',
             ], 200),
             '*' => Http::response([
@@ -339,7 +345,7 @@ class EphemeralBusinessDocumentBtcpayTest extends TestCase
         Http::fake([
             '*/invoices/btcpay-inv-pending' => Http::response([
                 'id' => 'btcpay-inv-pending',
-                'status' => 'Processing',
+                'status' => 'Processing', 'amount' => '100.00', 'currency' => 'EUR', 'paidAmount' => '100', 'additionalStatus' => 'None',
                 'checkoutLink' => 'https://btcpay.example/i/pending',
             ], 200),
             '*' => Http::response([
@@ -438,7 +444,7 @@ class EphemeralBusinessDocumentBtcpayTest extends TestCase
         Http::fake([
             '*/invoices/btcpay-inv-pending' => Http::response([
                 'id' => 'btcpay-inv-pending',
-                'status' => 'Settled',
+                'status' => 'Settled', 'amount' => '100.00', 'currency' => 'EUR', 'paidAmount' => '100', 'additionalStatus' => 'None',
                 'checkoutLink' => 'https://btcpay.example/i/pending',
             ], 200),
         ]);
@@ -484,7 +490,7 @@ class EphemeralBusinessDocumentBtcpayTest extends TestCase
         Http::fake([
             '*/invoices/btcpay-inv-ephemeral' => Http::response([
                 'id' => 'btcpay-inv-ephemeral',
-                'status' => 'New',
+                'status' => 'New', 'amount' => '100.00', 'currency' => 'EUR', 'paidAmount' => '0', 'additionalStatus' => 'None',
                 'checkoutLink' => 'https://btcpay.example/i/ephemeral',
             ], 200),
             '*' => Http::response([

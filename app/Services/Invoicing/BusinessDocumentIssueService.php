@@ -9,6 +9,7 @@ use App\Enums\CompanyJurisdiction;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\Company;
+use App\Models\Store;
 use App\Services\Invoicing\Efaktura\ComplianceSubmissionService;
 use App\Support\Invoicing\BankSymbolNormalizer;
 use App\Support\Invoicing\BuyerSnapshot;
@@ -79,6 +80,41 @@ class BusinessDocumentIssueService
 
     public function issue(BusinessDocument $document): BusinessDocument
     {
+        $document->loadMissing('company');
+        $company = $document->company;
+        if (! $company instanceof Company) {
+            throw ValidationException::withMessages(['company' => ['A valid issuer is required.']]);
+        }
+
+        return app(BusinessDocumentPaymentIntentService::class)->locked((int) $company->user_id,
+            'i:'.$document->id, function () use ($document) {
+                $current = $document->fresh(['company', 'store']);
+                if ($current && $current->canIssue()) {
+                    $this->assertPaymentStoreCanIssue($current);
+                }
+
+                return $this->issueLocked($document);
+            });
+    }
+
+    private function assertPaymentStoreCanIssue(BusinessDocument $document): void
+    {
+        if (! $document->payment_btc_enabled || ! $document->store_id) {
+            return;
+        }
+        $company = $document->company;
+        $store = $document->store;
+        if (! $company instanceof Company || ! $store instanceof Store
+            || $store->user_id !== $company->user_id || $store->company_id !== $document->company_id) {
+            // The selected local UUID is already part of this document; names and provider IDs can belong to another company.
+            throw ValidationException::withMessages(['store_id' => [
+                'Bitcoin store '.$document->store_id.' is not linked to this issuer. Relink the selected store to this company or disable Bitcoin payments before issuing.',
+            ]]);
+        }
+    }
+
+    protected function issueLocked(BusinessDocument $document): BusinessDocument
+    {
         // Lock + re-check INSIDE the transaction: two concurrent issue calls
         // both passing an unlocked canIssue() would burn two numbers and
         // apply stock twice (Cursor PR #64).
@@ -96,6 +132,7 @@ class BusinessDocumentIssueService
                 ]);
             }
 
+            $this->assertPaymentStoreCanIssue($document);
             $this->assertSignedInvoiceCanIssue($document);
 
             $number = $this->sequenceService->nextNumber(
@@ -123,13 +160,9 @@ class BusinessDocumentIssueService
             $this->paymentTokenService->assignIfNeeded($document);
 
             $document->save();
-
-            if ($document->payment_btc_enabled && $document->store_id) {
-                try {
-                    $this->btcPayService->syncForDocument($document->fresh(), forceRefresh: true);
-                } catch (\Throwable $e) {
-                    report($e);
-                }
+            $paymentStore = $document->store;
+            if ($document->payment_btc_enabled && $paymentStore instanceof Store) {
+                app(BusinessDocumentPaymentIntentService::class)->prepare($document, $paymentStore);
             }
 
             AuditLog::log('business_document.issued', 'business_document', $document->id, [

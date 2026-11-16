@@ -2,7 +2,7 @@
 title: Deducciones, datos del cliente y pagos de facturas
 category: invoicing
 order: 5
-updated: 2026-11-14
+updated: 2026-11-16
 ---
 
 # Deducciones, datos del cliente y pagos de facturas
@@ -30,3 +30,11 @@ Un PDF enviado automáticamente antes de la importación en el navegador solo pu
 ## Método de pago registrado
 
 Las opciones de pago ofrecidas al cliente son distintas del método registrado. Los pedidos pagados de WooCommerce conservan la clasificación de la pasarela suministrada; los pagos bancarios conciliados muestran su origen bancario y los pagos verificados de BTCPay muestran BTCPay. Los pagos manuales se indican como tales. Las facturas antiguas sin pruebas guardadas muestran un método sin especificar; su historial no se adivina ni se reescribe.
+
+## Enlaces de pago con Bitcoin
+
+Emitir una factura no crea una factura de BTCPay. Su PDF y correo incluyen un enlace de pago de Satflux cuando el pago con Bitcoin está habilitado. El código QR abre la página de pago en el navegador. El pago de BTCPay se crea o reutiliza cuando el cliente confirma el pago con Bitcoin / Lightning. El emisor también puede crear el pago expresamente desde el detalle de la factura.
+
+Un pago bancario o manual registrado impide nuevos pagos mediante el enlace de Satflux cuando el estado llega al servidor. Los pagos parciales y los cambios en las condiciones de pago invalidan la oferta anterior. Antes de volver a cobrar, el emisor debe usar la acción explícita de renovación en el detalle de la factura para crear una nueva oferta de pago. Si la creación del pago tiene un resultado incierto, primero hay que conciliar el intento anterior antes de renovar la oferta. Un intento sin resolver y sin ID de factura de BTCPay impide reabrirla. En el modo local-first, los cambios realizados sin conexión llegan al servidor cuando el navegador se conecta de nuevo; tenga en cuenta este retraso al confirmar un pago bancario.
+
+Los enlaces directos de BTCPay distribuidos anteriormente mantienen su comportamiento original. Un pago bancario no se convierte en un pago de Bitcoin ni cancela automáticamente un pago de BTCPay ya creado.

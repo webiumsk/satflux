@@ -14,6 +14,7 @@ use App\Support\Invoicing\JurisdictionRules;
 use App\Support\Invoicing\QrPngRenderer;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Spatie\LaravelPdf\Facades\Pdf;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -33,6 +34,7 @@ class BusinessDocumentPdfService
 
     public function download(BusinessDocument $document): Response
     {
+        $binary = $this->renderBinary($document);
         $filename = $this->pdfFilenameBuilder->build($document);
 
         AuditLog::log('business_document.pdf_downloaded', 'business_document', $document->id, [
@@ -40,7 +42,7 @@ class BusinessDocumentPdfService
             'number' => $document->number,
         ]);
 
-        return response($this->renderBinary($document), 200, [
+        return response($binary, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
@@ -177,6 +179,31 @@ class BusinessDocumentPdfService
      */
     protected function viewDataForDocument(BusinessDocument $document): array
     {
+        if (! $document->exists) {
+            return $this->buildViewDataForDocument($document);
+        }
+        $document->loadMissing('company');
+        $company = $document->company;
+        if (! $company instanceof Company) {
+            throw ValidationException::withMessages(['company' => ['A valid issuer is required.']]);
+        }
+
+        return app(BusinessDocumentPaymentIntentService::class)->locked((int) $company->user_id,
+            'i:'.$document->id, function () use ($document, $company) {
+                // Capture all visible financial data before deriving either payment QR.
+                // The PDF engine consumes this snapshot after the mutex is released.
+                $document->refresh()->load(['company', 'contact', 'lines', 'store.user']);
+                $currentCompany = $document->company;
+                if (! $currentCompany instanceof Company || $currentCompany->user_id !== $company->user_id) {
+                    throw ValidationException::withMessages(['company' => ['A valid issuer is required.']]);
+                }
+
+                return $this->buildViewDataForDocument($document);
+            });
+    }
+
+    protected function buildViewDataForDocument(BusinessDocument $document): array
+    {
         $company = $document->company;
         $bankQr = null;
         $bankQrStandard = null;
@@ -198,7 +225,7 @@ class BusinessDocumentPdfService
             $qrTarget = $this->resolveBtcPayQrTarget($document);
             if ($qrTarget) {
                 $btcPayUrl = $qrTarget;
-                $btcPayQr = QrPngRenderer::dataUri($qrTarget, 180);
+                $btcPayQr = QrPngRenderer::dataUri($qrTarget, 180, allowExternalFallback: false);
             }
         }
 
@@ -280,10 +307,6 @@ class BusinessDocumentPdfService
         }
 
         if (! $document->exists) {
-            if ($document->btcpay_checkout_link) {
-                return $document->btcpay_checkout_link;
-            }
-
             $document->loadMissing(['store.user']);
             $store = $document->store;
             if (! $store instanceof Store) {
@@ -293,10 +316,8 @@ class BusinessDocumentPdfService
             try {
                 $evoluDocumentId = $document->getAttribute('ephemeral_evolu_document_id');
 
-                // Shares the checkout dedupe: paid documents render without a
-                // payment QR, existing checkouts are reused, and a mint is
-                // registered - rendering a PDF must never leave stray BTCPay
-                // invoices behind (production 2026-07-15).
+                // Prepare only a stable payment capability. Rendering never creates
+                // a BTCPay invoice, including when an earlier checkout has expired.
                 return $this->btcPayService->qrCheckoutLinkForEphemeralRender(
                     $document,
                     $store,
@@ -309,13 +330,14 @@ class BusinessDocumentPdfService
             }
         }
 
-        $document->loadMissing(['store']);
-        if (! $document->btcpay_checkout_link) {
-            try {
-                $this->btcPayService->syncForDocument($document, forceRefresh: true);
-            } catch (\Throwable $e) {
-                report($e);
-            }
+        $document->loadMissing('store');
+        $paymentStore = $document->store;
+        if (! $paymentStore instanceof Store) {
+            return null;
+        }
+        $intent = app(BusinessDocumentPaymentIntentService::class)->prepare($document, $paymentStore);
+        if (! $intent || $intent->state !== 'active') {
+            return null;
         }
 
         // Persisted documents encode the lazy pay link (/pay/i/…), not the BTCPay checkout URL.

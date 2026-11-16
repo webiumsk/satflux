@@ -51,6 +51,8 @@ class BusinessDocumentPaymentTokenService
      */
     public function revokeAfterPaid(BusinessDocument $document): void
     {
+        app(BusinessDocumentPaymentIntentService::class)->documentPaid($document);
+
         if (! config('data_retention.clear_payment_token_when_paid', true)) {
             return;
         }
