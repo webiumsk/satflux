@@ -91,3 +91,19 @@ as frozen by the issue-period snapshot fix.
 
 Next: review the dependent QR PR and its exact-head CI. PR merge and deployment
 require applicable owner approval; no release, merge or deployment is performed.
+
+## Supplier payment QR source published as PR452 - 2026-11-17
+
+Reviewed QR source `e0dab7a7015842c76ad05c164c56216b565c5536` is pushed to
+`feat/expense-payment-qr`. [PR452](https://github.com/webiumsk/satflux/pull/452) is
+open and unmerged against PR451's `fix/expense-attachments-bank-direction` at
+`8feb1e8a6e5af1ce19cbf85d4ecfe0a775dd1a7c`. The diff contains 30 scoped paths;
+this follow-up adds publication documentation and one changelog fragment only.
+The 20 reviewed source blobs retain aggregate
+`80ba25a20302921fd1aa0bb68f4453bfc1f65d19e1e188084b62742c17f903ff`.
+
+Current CI only triggers PRs targeting master/main. PR452 therefore requires
+retargeting and exact-head CI after the approved PR451 merge; local QA/build
+results are not GitHub CI for this dependent PR. Neither PR is merged or deployed.
+The public changelog is deferred until its normal approved deployment workflow.
+See [implementation evidence and limits](EXPENSE_PAYMENT_QR.md).

@@ -1,0 +1,9 @@
+{
+  "id": "expense-supplier-payment-qr",
+  "source": "https://github.com/webiumsk/satflux/pull/452",
+  "title": "Payment QR codes for unpaid expenses",
+  "body": "Open PAY by square or PayMe from an eligible unpaid expense row with supplier name, IBAN and variable symbol. QR images are generated locally and show the recipient, amount and payment reference for review. New compatible e-invoice and ISDOC imports retain supplier payment details. Scanning a code does not mark the expense as paid.",
+  "labels": [
+    "feature"
+  ]
+}
