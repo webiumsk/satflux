@@ -1,5 +1,32 @@
 # Development decision log
 
+## PR450 follow-up corrections reviewed - 2026-11-16
+
+All five further findings against published input head
+`4ad6930369c12bb6a43d9be60af79e6f0eaac370` are valid and corrected.
+Independent QA and security accept the 11-file follow-up freeze
+`e6b0f1ec72791eef2b9326ab30226e0ed87d6700866f9dba59eace606a691e48`
+and complete 62-file source/test/locale/CI/API freeze
+`daceef31e5a8b867dda6df76d2fc8f3e8117529d19322c85ad26aea9e7b0aae4`.
+No blocking review findings remain. See [follow-up evidence](PR450_FOLLOWUP_REVIEW.md).
+
+Issuance preserves invalid-store rejection with fresh preflight before the
+transaction and an actionable local-UUID `store_id` message. Query-only service
+availability preserves existing behavior. Structured diagnostics exclude original
+error data; rejected local paid writes retain polling. All five guides explain
+uncertain-attempt reconciliation before refresh.
+
+Local checks pass 134 targeted PHP tests / 676 assertions, 3,648 JavaScript tests /
+255 files, Pint 1,185 files, PHPStan zero errors, build, locale parity and unchanged
+frontend ratchets. Independent test counts overlap; full PHP is an exact-head CI
+gate. Current publication/check results are tracked in PR450 separately from the
+input head's earlier green CI and from deployment readiness.
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`, preserving unrelated
+work. Corrections use the existing isolated `fix/invoicing-lazy-btcpay` worktree.
+Owner review/merge follows exact-head checks. No merge, deployment, installation
+or live provider operation is performed.
+
 ## PR450 verified review corrections - 2026-11-16
 
 Historical paid state cannot authorize payment of revised terms. Current owner,

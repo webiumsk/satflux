@@ -87,7 +87,30 @@ class BusinessDocumentIssueService
         }
 
         return app(BusinessDocumentPaymentIntentService::class)->locked((int) $company->user_id,
-            'i:'.$document->id, fn () => $this->issueLocked($document));
+            'i:'.$document->id, function () use ($document) {
+                $current = $document->fresh(['company', 'store']);
+                if ($current && $current->canIssue()) {
+                    $this->assertPaymentStoreCanIssue($current);
+                }
+
+                return $this->issueLocked($document);
+            });
+    }
+
+    private function assertPaymentStoreCanIssue(BusinessDocument $document): void
+    {
+        if (! $document->payment_btc_enabled || ! $document->store_id) {
+            return;
+        }
+        $company = $document->company;
+        $store = $document->store;
+        if (! $company instanceof Company || ! $store instanceof Store
+            || $store->user_id !== $company->user_id || $store->company_id !== $document->company_id) {
+            // The selected local UUID is already part of this document; names and provider IDs can belong to another company.
+            throw ValidationException::withMessages(['store_id' => [
+                'Bitcoin store '.$document->store_id.' is not linked to this issuer. Relink the selected store to this company or disable Bitcoin payments before issuing.',
+            ]]);
+        }
     }
 
     protected function issueLocked(BusinessDocument $document): BusinessDocument
@@ -109,6 +132,7 @@ class BusinessDocumentIssueService
                 ]);
             }
 
+            $this->assertPaymentStoreCanIssue($document);
             $this->assertSignedInvoiceCanIssue($document);
 
             $number = $this->sequenceService->nextNumber(

@@ -1179,12 +1179,13 @@ export function useInvoiceDocument() {
       if (live.status !== 'issued' || live.paymentBtcEnabled !== 1
         || (live.documentType !== 'invoice' && live.documentType !== 'proforma')
         || !paymentIntentMatchesOutstanding(intent, live)) return false;
-      markLocalDocumentPaid(
+      const marked = markLocalDocumentPaid(
         scopedEvolu(local.evolu, live.ownerId as OwnerId),
         docId as DocumentId,
         toAppRows<EvoluDocumentRow>(local.documentRows.value),
         "btcpay",
       );
+      if (!marked.ok) return false;
       await local.refreshAll();
       if (!localCheckoutCurrent(context, generation)) return false;
       const apiDoc = local.documentApi(docId as DocumentId);

@@ -46,19 +46,22 @@ async function editor() {
     const document = { id: "document", ownerId: "owner", companyId: "company", documentType: "invoice", status: "issued",
         number: "20260001", title: "Synthetic invoice", currency: "EUR", subtotal: "100.00", taxTotal: "0.00", total: "100.00",
         paymentBtcEnabled: 1, paymentBankEnabled: 1, storeId: "store", amountPaid: null } as unknown as EvoluDocumentRow;
-    const update = vi.fn((table: string, patch: Record<string, unknown>) => {
+    const update = vi.fn((table: string, patch: Record<string, unknown>):
+        { ok: true; value: { id: unknown } } | { ok: false; error: string } => {
         if (table === "document") Object.assign(document, patch);
         return { ok: true, value: { id: patch.id } };
     });
+    const refreshAll = vi.fn(async () => {});
+    const documentApi = vi.fn(() => evoluDocumentToApi(document, []));
     mocks.support = {
         evolu: {
             appOwner: Promise.resolve({ id: "owner" }),
             update, insert: vi.fn(() => ({ ok: true, value: { id: "event" } })),
             getQueryRows: () => [document], loadQuery: async () => [],
         },
-        refreshAll: vi.fn(async () => {}), documentRows: ref([document]),
+        refreshAll, documentRows: ref([document]),
         companyRows: ref([{ id: "company", ownerId: "owner" }]),
-        documentApi: () => evoluDocumentToApi(document, []),
+        documentApi,
     };
     let state!: ReturnType<typeof useInvoiceDocument>;
     const wrapper = mount(defineComponent({ setup() { state = useInvoiceDocument(); return () => null; } }));
@@ -66,7 +69,7 @@ async function editor() {
     state.company.value = { id: "company", legal_name: "Synthetic Supplier", jurisdiction: "eu_sk" } as never;
     await state.reloadDocument();
     await flushPromises();
-    return { state, document, update, wrapper };
+    return { state, document, update, wrapper, refreshAll, documentApi };
 }
 
 function heldResponse() {
@@ -139,6 +142,39 @@ describe("checkout request loading ownership", () => {
 });
 
 describe("local-first delayed customer checkout settlement", () => {
+    it("retries a rejected local paid write on the next poll without reporting success or refreshing it as paid", async () => {
+        const { state, document, update, refreshAll, documentApi } = await editor();
+        update.mockImplementationOnce(() => ({ ok: false, error: "synthetic_write_rejected" }));
+        refreshAll.mockClear();
+        documentApi.mockClear();
+        mocks.get.mockClear();
+        mocks.status = { ...activeIntent(), state: "paid", btcpay_invoice_id: "provider", payment_method: "btcpay", payment_link: null };
+
+        await vi.advanceTimersByTimeAsync(15_000);
+
+        expect(update).toHaveBeenCalledOnce();
+        expect(document.status).toBe("issued");
+        expect(state.documentStatus.value).toBe("issued");
+        expect(state.success.value).toBe("");
+        expect(refreshAll).toHaveBeenCalledOnce();
+        expect(documentApi).not.toHaveBeenCalled();
+        expect(mocks.get).toHaveBeenCalledOnce();
+
+        await vi.advanceTimersByTimeAsync(15_000);
+
+        expect(update).toHaveBeenCalledTimes(2);
+        expect(document.status).toBe("paid");
+        expect(document.paidPaymentMethod).toBe("btcpay");
+        expect(state.documentStatus.value).toBe("paid");
+        expect(state.success.value).toBe("invoicing.local_first_btcpay_paid_synced");
+        expect(refreshAll).toHaveBeenCalledTimes(3);
+        expect(documentApi).toHaveBeenCalledOnce();
+        expect(mocks.get).toHaveBeenCalledTimes(2);
+
+        await vi.advanceTimersByTimeAsync(15_000);
+        expect(mocks.get).toHaveBeenCalledTimes(2);
+    });
+
     it("recovers from an initial non-404 lookup failure and discovers payment without a remount", async () => {
         mocks.get.mockRejectedValue({ response: { status: 503 } });
         const { state, document, update } = await editor();

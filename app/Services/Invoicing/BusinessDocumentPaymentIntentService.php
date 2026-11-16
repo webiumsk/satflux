@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\BtcPay\InvoiceService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -123,6 +124,31 @@ class BusinessDocumentPaymentIntentService
     {
         return ['amount' => number_format(max(0, (float) $document->total - (float) $document->amount_paid), 2, '.', ''),
             'currency' => strtoupper((string) $document->currency), 'number' => $document->number];
+    }
+
+    /** Query-only public presentation; legacy callers retain their own document guards. */
+    public function publicAvailability(?BusinessDocumentPaymentIntent $intent, bool $unavailable = false, bool $paid = false,
+        bool $hasReadyTerms = false, bool $checkDocument = false, bool $afterActivation = false): string
+    {
+        if ($checkDocument && $intent !== null) {
+            $unavailable = $unavailable || ($afterActivation && ! in_array($intent->state, ['active', 'paid'], true));
+            if (str_starts_with($intent->document_key, 'i:')) {
+                $document = BusinessDocument::with(['company', 'store'])->find($intent->business_document_id);
+                $documentPaid = $document?->hasStatus(BusinessDocumentStatus::Paid) ?? false;
+                $unavailable = $unavailable || ! $document || (! $documentPaid && ! $this->matchesDocument($intent, $document));
+                $paid = $paid || (! $afterActivation && $documentPaid);
+            }
+        }
+        $state = ! $unavailable && ($paid || $intent?->state === 'paid') ? 'paid' : 'unavailable';
+        if ($intent === null && $hasReadyTerms && ! $unavailable) {
+            $state = 'ready';
+        }
+        if (! $unavailable && $intent?->state === 'active'
+            && $intent->store()->where('user_id', $intent->user_id)->exists()) {
+            $state = 'ready';
+        }
+
+        return $state;
     }
 
     private function fingerprint(string $storeId, array $terms): string
@@ -345,7 +371,16 @@ class BusinessDocumentPaymentIntentService
                 }
 
                 return ['checkout_link' => $invoice['checkoutLink'], 'btcpay_invoice_id' => $invoice['id']];
-            } catch (\Throwable) {
+            } catch (\Throwable $exception) {
+                try {
+                    // Never serialize provider messages, exception traces/arguments, or payment capabilities.
+                    Log::warning('Business invoice Bitcoin checkout failed.', [
+                        'phase' => $postStarted ? 'submission' : 'preflight',
+                        'exception_type' => get_debug_type($exception),
+                    ]);
+                } catch (\Throwable) {
+                    // A logging sink failure must not change the payment recovery state.
+                }
                 if (! $postStarted) {
                     // No submission boundary was crossed: the existing active offer can be retried.
                     $intent->refresh();
