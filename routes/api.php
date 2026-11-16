@@ -399,6 +399,13 @@ Route::middleware(['auth:sanctum', RequireVerifiedEmail::class, 'throttle:api-us
             ->where('token', '[A-Za-z0-9_]{4,64}');
     });
 
+    // Existing payment capabilities remain revocable after plan access is lost. No creation or reopening here.
+    Route::prefix('invoicing')->group(function () {
+        Route::get('/ephemeral/btcpay-payment-links', [EphemeralBusinessDocumentController::class, 'paymentLinks']);
+        Route::post('/ephemeral/btcpay-payment-links/{intentId}/state', [EphemeralBusinessDocumentController::class, 'paymentLinkState'])->whereUuid('intentId');
+        Route::get('/ephemeral/btcpay-payment-link-status', [EphemeralBusinessDocumentController::class, 'paymentLinkStatus']);
+    });
+
     // Business invoicing (Pro+; seed accounts may use local-first + ephemeral bridges)
     Route::middleware([EnsurePlanAllowsBusinessInvoicing::class])
         ->prefix('invoicing')

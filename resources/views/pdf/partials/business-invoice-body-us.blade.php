@@ -97,10 +97,16 @@
     <p class="muted" style="margin-top:16px;">{{ $document->note_footer }}</p>
 @endif
 
-@if(! $isQuote && $btcPayQr)
+@if(! $isQuote && ($btcPayQr || !empty($btcPayUrl)))
     <div class="qr-block">
+        @if(!empty($btcPayUrl))
+            <a href="{{ $btcPayUrl }}">{{ __('Bitcoin / Lightning (payment link)') }}</a>
+        @else
         <div class="muted">{{ __('Bitcoin / Lightning (payment link)') }}</div>
+        @endif
+        @if($btcPayQr)
         <img src="{{ $btcPayQr }}" alt="">
         <div class="qr-hint">{{ __('BTC payment QR is a web link. Open in your browser - do not scan with a Lightning wallet.') }}</div>
+        @endif
     </div>
 @endif

@@ -1,6 +1,14 @@
 <?php
 
 return [
+    'business_invoice_pay_title' => 'Platba Bitcoin / Lightning',
+    'business_invoice_pay_link_notice' => 'QR kód na faktuře odkazuje na tuto stránku. Otevřete jej v prohlížeči pomocí fotoaparátu nebo QR čtečky. Pro Lightning peněženku použijte kód na následující platební stránce.',
+    'business_invoice_pay_continue' => 'Zaplatit Bitcoin / Lightning',
+    'business_invoice_pay_already_paid' => 'Tato faktura je již uhrazena.',
+    'business_invoice_pay_prepare_notice' => 'Platební požadavek v BTCPay vznikne až po potvrzení.',
+    'business_invoice_pay_unavailable' => 'Tento platební odkaz není dostupný.',
+    'business_invoice_pay_contact_issuer' => 'Stav úhrady si ověřte u vystavovatele faktury.',
+
     'password_reset_unavailable' => 'Obnovení hesla e-mailem není dostupné. Použijte obnovovací frázi nebo passkey. Starší účty mohou použít migrační přihlášení.',
 
     // Temporarily paused purchases

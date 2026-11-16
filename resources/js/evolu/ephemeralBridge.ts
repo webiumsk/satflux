@@ -513,7 +513,56 @@ export async function downloadEphemeralUbl(
 export type EphemeralBtcpayCheckoutResult = {
     checkout_link: string | null;
     btcpay_invoice_id: string | null;
+    status?: string;
+    paid_at?: string | null;
+    payment_method?: "btcpay" | "external" | null;
 };
+
+export type EphemeralPaymentLink = {
+    id: string;
+    evolu_document_id: string;
+    version: number;
+    state: "active" | "creating" | "unknown" | "paid" | "revoked";
+    store_id: string | null;
+    number: string | null;
+    amount: string;
+    currency: string;
+    btcpay_invoice_id: string | null;
+    payment_method: "btcpay" | "external" | null;
+    payment_link: string | null;
+};
+
+export async function fetchEphemeralPaymentLinks(signal?: AbortSignal): Promise<EphemeralPaymentLink[]> {
+    const res = await api.get<{ data: EphemeralPaymentLink[] }>(
+        "/invoicing/ephemeral/btcpay-payment-links", { signal, skipErrorFlash: true },
+    );
+    return res.data.data;
+}
+
+export async function updateEphemeralPaymentLinkState(
+    id: string,
+    expectedVersion: number,
+    state: "paid" | "revoked",
+    signal?: AbortSignal,
+): Promise<EphemeralPaymentLink> {
+    const res = await api.post<{ data: EphemeralPaymentLink }>(
+        `/invoicing/ephemeral/btcpay-payment-links/${encodeURIComponent(id)}/state`,
+        { expected_version: expectedVersion, state },
+        { signal, skipErrorFlash: true },
+    );
+    return res.data.data;
+}
+
+export async function fetchEphemeralPaymentLinkStatus(
+    evoluDocumentId: string,
+    signal?: AbortSignal,
+): Promise<EphemeralPaymentLink | null> {
+    const res = await api.get<{ data: EphemeralPaymentLink | null }>(
+        "/invoicing/ephemeral/btcpay-payment-link-status",
+        { params: { evolu_document_id: evoluDocumentId }, signal, skipErrorFlash: true },
+    );
+    return res.data.data;
+}
 
 /**
  * Read-only lookup of an existing still-payable checkout - viewing an
@@ -556,11 +605,13 @@ export async function fetchEphemeralBtcpayCheckout(
     storeId: string,
     evoluDocumentId?: string | null,
     bridgeCompanyId?: string | null,
+    reopenVersion?: number,
 ): Promise<EphemeralBtcpayCheckoutResult> {
     const body = {
         ...snapshot,
         store_id: storeId,
         evolu_document_id: evoluDocumentId || undefined,
+        ...(reopenVersion !== undefined ? { reopen_version: reopenVersion } : {}),
         document: {
             ...snapshot.document,
             payment_btc_enabled: true,
@@ -950,6 +1001,8 @@ export async function buildBulkEphemeralRequest(
             contact: snapshot.contact,
             document: snapshot.document,
             lines: snapshot.lines,
+            ...(snapshot.store_id ? { store_id: snapshot.store_id } : {}),
+            ...(snapshot.evolu_document_id ? { evolu_document_id: snapshot.evolu_document_id } : {}),
             ...(snapshot.source_totals ? { source_totals: snapshot.source_totals } : {}),
         });
     }
@@ -1098,6 +1151,9 @@ function renderInputsFromFrozen(
             // which BTCPay store serves the checkout (without it the server
             // renders no BTC QR at all) and the bank-QR standard choice.
             store_id: liveDoc.store_id,
+            payment_btc_enabled: liveDoc.payment_btc_enabled,
+            currency: liveDoc.currency,
+            total: liveDoc.total,
             pdf_bank_qr: liveDoc.pdf_bank_qr ?? null,
         },
         lines: frozen.lines.map((line) => ({

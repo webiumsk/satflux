@@ -31,15 +31,15 @@ class InvoiceService
      *
      * @param  array{amount: string, currency: string, metadata?: array<string, mixed>}  $payload
      */
-    public function createInvoice(string $storeId, array $payload, ?string $userApiKey = null): array
+    public function createInvoice(string $storeId, array $payload, ?string $userApiKey = null, bool $retry = true): array
     {
         $local = Store::where('btcpay_store_id', $storeId)->first();
-        $create = function () use ($storeId, $payload, $userApiKey, $local) {
+        $create = function () use ($storeId, $payload, $userApiKey, $local, $retry) {
             if ($local && WalletConfigurationAttempt::where('store_id', $local->id)->unresolved()->exists()) {
                 throw new \RuntimeException('Invoice creation is paused until the wallet update is reconciled.');
             }
 
-            return $this->client->withUserKey($userApiKey, fn () => $this->client->post("/api/v1/stores/{$storeId}/invoices", $payload));
+            return $this->client->withUserKey($userApiKey, fn () => $this->client->post("/api/v1/stores/{$storeId}/invoices", $payload, $retry));
         };
 
         return $local ? Cache::lock('wallet-update:'.$local->id, 1800)->block(10, $create) : $create();

@@ -1,5 +1,79 @@
 # Development decision log
 
+## Deferred invoicing BTCPay checkout accepted locally - 2026-11-16
+
+The owner's authorized change is complete in `fix/invoicing-lazy-btcpay`, based
+on merged PR449/master `077c597df065e000991a67cb9a1b2d32b2d34739`.
+Fresh direct remote verification still reports this master. PR449's reviewed
+head `111f5015a67629256241e3c7f61162e897e71511` has the same Git tree.
+The new implementation remains uncommitted and unpublished in the durable
+`storage/app/private/worktrees/invoicing-lazy-btcpay` worktree.
+
+Issuance, PDF/email/bulk rendering and public GET/HEAD do not create BTCPay
+invoices. A stable Satflux link presents a CSRF-protected Bitcoin payment
+confirmation. Explicit activation shares encrypted minimal intent/attempt
+state, locks and durable CAS with the existing merchant action. Uncertain
+creation blocks another automatic POST; actual settlement validates current
+terms and known historical attempts. Bank/manual paid, cancellation, deletion
+and changed terms terminalize the offer without fabricating BTC settlement.
+BTC QR capabilities render locally; a failed renderer retains a clickable link.
+An owned unassigned legacy store keeps a generic GET/HEAD page; activation
+continues to require exact company assignment, including after plan expiry.
+
+Independent QA and security accept the final 58-file source/test/locale/CI/API
+freeze `1426c72b55687cf866f4ef31a04a9d4d8862e6a75351b0f76033b0612c22fb64`.
+Production scope is 45 files, aggregate
+`e047dc6e5f26f7ace5da0fefbb2659cdb020efe325382cc86930b6ad21b6d528`.
+No unresolved blocking findings remain. Main's full JavaScript run passes
+3,637 tests / 254 files; three separate real QR encoding cases pass. Final
+full PHP exits successfully: 3,506 passed, 69 skipped, 19,199 assertions and
+one inherited PHPUnit deprecation. Full Pint passes 1,182 files; the final
+two-file compatibility check also passes. PHPStan has zero errors. Lint has
+zero errors / 46 inherited warnings; typecheck adds no errors against the
+existing 110-error baseline. Locale parity, build 7,673 modules, API inventory,
+Blade compilation, CI YAML, whitespace and exact hash checks pass.
+
+The isolated PHP runner reuses existing matching dependencies and Node 22,
+synthetic loopback-only DNS, SQLite in memory, temporary storage and no network.
+Initial environment failures reproduce on the unchanged base; application
+validators and health thresholds remain intact. Provider/race tests are
+synthetic; deployed BTCPay, distributed Redis contention and native execution
+of the new Evolu projection are not established. Offline terminal updates take
+effect after synchronization. Historical direct checkouts and the inherited
+external bank-QR fallback remain separate limits. Full details and overlapping
+independent test counts are in `INVOICING_LAZY_BTCPAY.md`.
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`. Unrelated edits
+and the separate accountant-export clarity freeze are preserved. Next is owner
+review and requested Git publication. No merge, deployment, package/tool install,
+real provider operation or public changelog publication is performed.
+
+## Deferred invoicing BTCPay checkout authorized - 2026-11-16
+
+PR449 is merged at `077c597df065e000991a67cb9a1b2d32b2d34739`.
+The reviewed head `111f5015a67629256241e3c7f61162e897e71511` has the
+same Git tree. Remote master was verified directly; deployment is unverified.
+This supersedes the earlier open/unmerged milestone below.
+
+The owner authorizes delaying actual BTCPay invoice creation until customer
+payment activation. A new isolated `fix/invoicing-lazy-btcpay` worktree starts
+from this merged base. PDF/email/issuance will prepare a stable Satflux link;
+GET displays the payment page and CSRF-protected POST activates BTC payment.
+The bounded design includes minimal encrypted payment-intent state, durable
+uncertain-attempt protection, owner-scoped bank/manual/cancel reconciliation,
+and payment discovery before the merchant knows a provider invoice ID.
+
+Independent security and QA accept the architecture subject to implementation
+gates. Final implementation reviews and tests are pending. Offline local-first
+payment changes reach the server only after authenticated reconciliation; this
+limit was explained to the owner. Existing provider requests are not silently
+cancelled or marked BTC-paid following a bank transfer.
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`; unrelated
+work and the separate accountant-export clarity freeze remain preserved.
+No merge, deployment or provider operation is performed. Contract and ownership:
+`INVOICING_LAZY_BTCPAY.md` in the feature worktree.
+
 ## PR449 late-sync deletion intent accepted locally - 2026-11-16
 
 The six original CodeRabbit comments are resolved on published `033fd831`,

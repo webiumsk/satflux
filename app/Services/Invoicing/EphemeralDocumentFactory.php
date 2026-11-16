@@ -197,6 +197,8 @@ class EphemeralDocumentFactory
         return collect($items)->map(function (array $item) use ($snapshotCompany, $validated) {
             return $this->document($snapshotCompany, [
                 'company' => $validated['company'] ?? [],
+                'store_id' => $item['store_id'] ?? null,
+                'evolu_document_id' => $item['evolu_document_id'] ?? null,
                 'contact' => $item['contact'] ?? null,
                 'document' => $item['document'] ?? [],
                 'lines' => $item['lines'] ?? [],

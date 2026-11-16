@@ -3265,6 +3265,7 @@
     "local_first_btcpay_checkout_hint": "Enlace directo al checkout de BTCPay. Al liquidarse el pago, la factura se marca como pagada automáticamente (vía webhook).",
     "local_first_btcpay_checkout_missing": "Aún no hay enlace de pago. Créalo para que el cliente pague esta factura en bitcoin.",
     "local_first_btcpay_checkout_refresh": "Crear enlace de checkout",
+    "local_first_btcpay_link_revoked": "Este enlace de pago con bitcoin se desactivó tras cambiar la factura. Use \"Crear enlace de checkout\" para crear un nuevo checkout.",
     "local_first_btcpay_paid_synced": "Pago Bitcoin detectado. Factura marcada como pagada.",
     "local_first_pdf_bridge_soon": "La exportación PDF usa el puente efímero con el servidor. La factura se guarda localmente y no se almacena en el servidor.",
     "auto_issue_title": "Facturación automática de WooCommerce",

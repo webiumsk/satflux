@@ -3,6 +3,8 @@
 namespace App\Services\Invoicing;
 
 use App\Models\AuditLog;
+use App\Models\BusinessDocumentPaymentAttempt;
+use App\Models\BusinessDocumentPaymentIntent;
 use App\Models\EphemeralBtcpayCheckout;
 use App\Models\Store;
 use App\Models\User;
@@ -18,19 +20,12 @@ class EphemeralBtcpayCheckoutService
         ?float $amount = null,
         ?string $currency = null,
     ): EphemeralBtcpayCheckout {
-        return EphemeralBtcpayCheckout::query()->updateOrCreate(
-            [
-                'store_id' => $store->id,
-                'btcpay_invoice_id' => $btcpayInvoiceId,
-            ],
-            [
-                'user_id' => $user->id,
-                'evolu_document_id' => $evoluDocumentId,
+        // Registration retries must never reopen a historically settled mapping.
+        return EphemeralBtcpayCheckout::query()->firstOrCreate(
+            ['store_id' => $store->id, 'btcpay_invoice_id' => $btcpayInvoiceId],
+            ['user_id' => $user->id, 'evolu_document_id' => $evoluDocumentId,
                 'status' => EphemeralBtcpayCheckout::STATUS_PENDING,
-                'amount' => $amount,
-                'currency' => $currency,
-                'paid_at' => null,
-            ],
+                'amount' => $amount, 'currency' => $currency, 'paid_at' => null],
         );
     }
 
@@ -110,6 +105,17 @@ class EphemeralBtcpayCheckoutService
 
         if (! $checkout) {
             return null;
+        }
+
+        $attempt = BusinessDocumentPaymentAttempt::where('store_id', $store->id)
+            ->where('btcpay_invoice_id', $btcpayInvoiceId)->first();
+        $intent = $attempt ? BusinessDocumentPaymentIntent::find($attempt->intent_id)
+            : BusinessDocumentPaymentIntent::where('store_id', $store->id)->where('btcpay_invoice_id', $btcpayInvoiceId)->first();
+        if ($intent) {
+            $verified = app(BusinessDocumentPaymentIntentService::class)->status($intent);
+            if ($verified->state !== 'paid' || $verified->payment_method !== 'btcpay') {
+                return null;
+            }
         }
 
         if ($checkout->isPaid()) {

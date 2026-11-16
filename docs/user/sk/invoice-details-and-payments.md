@@ -2,7 +2,7 @@
 title: Odpočtové položky, odberateľ a úhrady faktúry
 category: invoicing
 order: 5
-updated: 2026-11-14
+updated: 2026-11-16
 ---
 
 # Odpočtové položky, odberateľ a úhrady faktúry
@@ -30,3 +30,11 @@ PDF automaticky odoslané pred importom v prehliadači môže obsahovať iba úd
 ## Evidovaný spôsob úhrady
 
 Ponúkané možnosti platby sa líšia od evidovaného spôsobu úhrady. Uhradené objednávky WooCommerce zachovajú klasifikáciu dodanej platobnej brány, spárované bankové platby zobrazia bankový pôvod a overené úhrady cez BTCPay zobrazia BTCPay. Ručné úhrady majú označenie ručnej úhrady. Staršie faktúry bez uloženého dôkazu zobrazia neurčený spôsob; história sa neodhaduje ani neprepisuje.
+
+## Platobné odkazy pre Bitcoin
+
+Vystavenie faktúry, vytvorenie PDF ani odoslanie e-mailom nevytvoria BTCPay faktúru. PDF a e-mail obsahujú platobný odkaz na Satflux, ak je zapnutá platba Bitcoinom. QR kód otvorí platobnú stránku v prehliadači. BTCPay platba sa vytvorí alebo opätovne použije až po potvrdení platby Bitcoin / Lightning zákazníkom. Platbu môže vytvoriť aj vystavovateľ samostatnou akciou v detaile faktúry.
+
+Zaúčtovaná banková alebo ručná úhrada zablokuje ďalšiu platbu cez odkaz Satfluxu po doručení stavu na server. Čiastočná úhrada a zmena platobných podmienok faktúry zneplatnia pôvodnú ponuku platby. Pri local-first režime sa zmeny vykonané offline doručia až po opätovnom pripojení prehliadača; pri potvrdení bankovej úhrady počítajte s týmto oneskorením.
+
+Staršie priame odkazy na BTCPay zachovajú pôvodné správanie. Banková úhrada sa nestáva bitcoinovou úhradou a automaticky nezruší už vytvorenú platbu v BTCPay.

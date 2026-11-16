@@ -20,8 +20,14 @@ class BusinessDocumentPayTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['services.btcpay.public_url' => 'https://btcpay.example']);
+    }
+
     #[Test]
-    public function pay_page_creates_btcpay_checkout_and_shows_redirect(): void
+    public function pay_page_only_prepares_and_post_creates_btcpay_checkout(): void
     {
         $user = User::factory()->create(['btcpay_api_key' => 'test-key']);
         $company = Company::create([
@@ -60,7 +66,9 @@ class BusinessDocumentPayTest extends TestCase
         $response = $this->get("/pay/i/{$token}");
 
         $response->assertOk();
-        $response->assertSee('https://btcpay.example/i/fresh', false);
+        Http::assertNothingSent();
+        $this->assertDatabaseCount('business_document_payment_intents', 0);
+        $this->post("/pay/i/{$token}")->assertStatus(303)->assertRedirect('https://btcpay.example/i/fresh');
         $response->assertSee(__('messages.business_invoice_pay_link_notice'), false);
         $response->assertSee(__('messages.business_invoice_pay_continue'), false);
         $response->assertDontSee('http-equiv="refresh"', false);
@@ -240,7 +248,7 @@ class BusinessDocumentPayTest extends TestCase
         Http::fake([
             '*/api/v1/stores/btcpay-store-paid/invoices/btcpay-inv-paid' => Http::response([
                 'id' => 'btcpay-inv-paid',
-                'status' => 'Settled',
+                'status' => 'Settled', 'paidAmount' => '75', 'additionalStatus' => 'None',
                 'archived' => true,
                 'monitoringExpiration' => now()->subMonths(2)->toIso8601String(),
                 'amount' => '75',
@@ -249,7 +257,7 @@ class BusinessDocumentPayTest extends TestCase
             ], 200),
         ]);
 
-        $this->get("/pay/i/{$token}")
+        $this->post("/pay/i/{$token}")
             ->assertOk()
             ->assertSee(__('messages.business_invoice_pay_already_paid'), false);
 

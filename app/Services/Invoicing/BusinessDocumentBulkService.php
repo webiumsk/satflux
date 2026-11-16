@@ -252,21 +252,30 @@ class BusinessDocumentBulkService
             // Deleting an issued document must return its stock first
             // (Cursor PR #67) - no-op for drafts, idempotent otherwise.
             // Lock + re-check inside the transaction like the single delete.
-            $deleted = DB::transaction(function () use ($document) {
-                $locked = BusinessDocument::query()
-                    ->whereKey($document->id)
-                    ->lockForUpdate()
-                    ->first();
-                if (! $locked || ! $locked->canDelete()) {
-                    return false;
-                }
+            $intents = app(BusinessDocumentPaymentIntentService::class);
+            $deleted = $intents->locked((int) Company::whereKey($document->company_id)->value('user_id'), 'i:'.$document->id,
+                function () use ($document, $intents) {
+                    $deleted = DB::transaction(function () use ($document) {
+                        $locked = BusinessDocument::query()
+                            ->whereKey($document->id)
+                            ->lockForUpdate()
+                            ->first();
+                        if (! $locked || ! $locked->canDelete()) {
+                            return false;
+                        }
 
-                $this->stockMovementService->reverseDocumentCancel($locked->fresh(['lines']));
-                $locked->lines()->delete();
-                $locked->delete();
+                        $this->stockMovementService->reverseDocumentCancel($locked->fresh(['lines']));
+                        $locked->lines()->delete();
+                        $locked->delete();
 
-                return true;
-            });
+                        return true;
+                    });
+                    if ($deleted) {
+                        $intents->revokeDocument($document);
+                    }
+
+                    return $deleted;
+                });
 
             if (! $deleted) {
                 $skipped++;
@@ -301,24 +310,29 @@ class BusinessDocumentBulkService
 
                 continue;
             }
-            DB::transaction(function () use ($document) {
-                $shouldReverseStock = in_array($document->status, [
-                    BusinessDocumentStatus::Issued,
-                    BusinessDocumentStatus::Issued->value,
-                    BusinessDocumentStatus::Paid,
-                    BusinessDocumentStatus::Paid->value,
-                ], true);
+            $intents = app(BusinessDocumentPaymentIntentService::class);
+            $intents->locked((int) Company::whereKey($document->company_id)->value('user_id'), 'i:'.$document->id,
+                function () use ($document, $intents) {
+                    DB::transaction(function () use ($document) {
+                        $shouldReverseStock = in_array($document->status, [
+                            BusinessDocumentStatus::Issued,
+                            BusinessDocumentStatus::Issued->value,
+                            BusinessDocumentStatus::Paid,
+                            BusinessDocumentStatus::Paid->value,
+                        ], true);
 
-                $document->update([
-                    'status' => BusinessDocumentStatus::Cancelled,
-                    'paid_at' => null,
-                    'amount_paid' => null,
-                ]);
+                        $document->update([
+                            'status' => BusinessDocumentStatus::Cancelled,
+                            'paid_at' => null,
+                            'amount_paid' => null,
+                        ]);
 
-                if ($shouldReverseStock) {
-                    $this->stockMovementService->reverseDocumentCancel($document->fresh(['lines']));
-                }
-            });
+                        if ($shouldReverseStock) {
+                            $this->stockMovementService->reverseDocumentCancel($document->fresh(['lines']));
+                        }
+                    });
+                    $intents->revokeDocument($document);
+                });
             $processed++;
         }
 

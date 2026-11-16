@@ -17,6 +17,7 @@ use App\Http\Requests\Invoicing\TestEfakturaConnectionRequest;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentLine;
+use App\Models\BusinessDocumentPaymentIntent;
 use App\Models\Company;
 use App\Models\EphemeralBtcpayCheckout;
 use App\Models\Store;
@@ -24,6 +25,7 @@ use App\Models\User;
 use App\Services\Invoicing\BusinessDocumentBtcPayService;
 use App\Services\Invoicing\BusinessDocumentEmailService;
 use App\Services\Invoicing\BusinessDocumentIsdocService;
+use App\Services\Invoicing\BusinessDocumentPaymentIntentService;
 use App\Services\Invoicing\BusinessDocumentPdfService;
 use App\Services\Invoicing\BusinessDocumentUblService;
 use App\Services\Invoicing\CanonicalInvoiceBuilder;
@@ -206,6 +208,36 @@ class EphemeralBusinessDocumentController extends Controller
         return response()->json([
             'data' => $this->findReusableCheckout($user, $store, $document, $request->input('evolu_document_id')),
         ]);
+    }
+
+    /** Registered local-first payment capabilities, scoped only to the current owner. */
+    public function paymentLinks(Request $request): JsonResponse
+    {
+        $service = app(BusinessDocumentPaymentIntentService::class);
+        $rows = BusinessDocumentPaymentIntent::where('user_id', $request->user()->id)
+            ->whereNotNull('evolu_document_id')->orderBy('id')->get();
+
+        return response()->json(['data' => $rows->map(fn ($row) => $service->payload($row))]);
+    }
+
+    public function paymentLinkState(Request $request, string $intentId): JsonResponse
+    {
+        $validated = $request->validate(['expected_version' => ['required', 'integer', 'min:1'],
+            'state' => ['required', 'in:paid,revoked']]);
+        $service = app(BusinessDocumentPaymentIntentService::class);
+        $row = $service->updateState($request->user(), $intentId, $validated['expected_version'], $validated['state']);
+
+        return response()->json(['data' => $service->payload($row)]);
+    }
+
+    public function paymentLinkStatus(Request $request): JsonResponse
+    {
+        $validated = $request->validate(['evolu_document_id' => ['required', 'string', 'max:64']]);
+        $row = BusinessDocumentPaymentIntent::where('user_id', $request->user()->id)
+            ->where('evolu_document_id', $validated['evolu_document_id'])->first();
+        $service = app(BusinessDocumentPaymentIntentService::class);
+
+        return response()->json(['data' => $row ? $service->payload($service->status($row)) : null]);
     }
 
     public function efakturaBridge(Request $request): JsonResponse
@@ -560,6 +592,29 @@ class EphemeralBusinessDocumentController extends Controller
             return null;
         }
 
+        $intent = BusinessDocumentPaymentIntent::where('user_id', $user->id)
+            ->where('evolu_document_id', $evoluDocumentId)->first();
+        if ($intent) {
+            $service = app(BusinessDocumentPaymentIntentService::class);
+            $verified = $service->status($intent);
+            if ($verified->state === 'paid' && $verified->payment_method === 'btcpay') {
+                return ['checkout_link' => null, 'btcpay_invoice_id' => $verified->btcpay_invoice_id,
+                    'status' => 'paid', 'payment_method' => 'btcpay', 'paid_at' => $verified->paid_at?->toIso8601String()];
+            }
+            if ($verified->state !== 'active' || ! $verified->btcpay_invoice_id) {
+                return null;
+            }
+            // Only actual mappings without intents use the historical "paid" shortcut below.
+            $pending = $this->ephemeralBtcpayCheckoutService->findForUser($user, $evoluDocumentId, $verified->btcpay_invoice_id);
+            if (! $pending) {
+                return null;
+            }
+            $state = $this->btcPayService->ephemeralCheckoutState($store, $pending->btcpay_invoice_id);
+
+            return $state['state'] === 'payable'
+                ? ['checkout_link' => $state['checkout_link'], 'btcpay_invoice_id' => $pending->btcpay_invoice_id] : null;
+        }
+
         $paid = $this->ephemeralBtcpayCheckoutService->findLatestPaid($user, $store, $evoluDocumentId);
         if ($paid) {
             return $this->paidEphemeralCheckoutPayload($paid);
@@ -649,45 +704,14 @@ class EphemeralBusinessDocumentController extends Controller
 
         $evoluDocumentId = $request->input('evolu_document_id');
 
-        // Reuse a still-payable checkout for the same document (same amount
-        // and currency) - never mint a second BTCPay invoice for it. A PAID
-        // checkout returns its paid payload instead of any new invoice;
-        // an UNKNOWN BTCPay state fails closed (422) rather than minting.
-        $reused = $this->findReusableCheckout($user, $store, $document, $evoluDocumentId, failClosed: true);
-        if ($reused !== null) {
-            if (! isset($reused['status'])) {
-                [$auditType, $auditId] = $this->auditTarget($user, $auditCompany, $snapshotCompany);
-                AuditLog::log('business_document.ephemeral_btcpay_checkout', $auditType, $auditId, [
-                    'document_type' => (string) $request->input('document.type'),
-                    'store_id' => $store->id,
-                    'btcpay_invoice_id' => $reused['btcpay_invoice_id'],
-                    'company_less' => $auditCompany === null,
-                    'reused' => true,
-                ], $user->id);
-            }
-
-            return response()->json(['data' => $reused]);
-        }
-
-        $result = $this->btcPayService->createEphemeralCheckout(
+        $result = app(BusinessDocumentPaymentIntentService::class)->merchantCheckout(
             $document,
             $store,
-            $request->input('evolu_document_id'),
+            is_string($evoluDocumentId) ? $evoluDocumentId : null,
+            $request->validated('reopen_version'),
         );
-        if (
-            is_string($evoluDocumentId)
-            && $evoluDocumentId !== ''
-            && is_string($result['btcpay_invoice_id'] ?? null)
-            && $result['btcpay_invoice_id'] !== ''
-        ) {
-            $this->ephemeralBtcpayCheckoutService->registerCheckout(
-                $user,
-                $store,
-                $evoluDocumentId,
-                $result['btcpay_invoice_id'],
-                (float) $document->total,
-                $document->currency,
-            );
+        if (! $result['checkout_link'] && ($result['status'] ?? '') !== 'paid') {
+            throw ValidationException::withMessages(['btcpay' => ['This payment is unavailable. Contact the issuer.']]);
         }
 
         [$auditType, $auditId] = $this->auditTarget($user, $auditCompany, $snapshotCompany);
@@ -772,7 +796,7 @@ class EphemeralBusinessDocumentController extends Controller
         return collect($items)->map(
             fn (array $snapshot, int $index): BusinessDocument => $this->documentForPdf(
                 $company,
-                Arr::only($snapshot, ['contact', 'document', 'lines', 'source_totals']),
+                Arr::only($snapshot, ['contact', 'document', 'lines', 'source_totals', 'store_id', 'evolu_document_id']),
                 "documents.{$index}.lines",
             ),
         );

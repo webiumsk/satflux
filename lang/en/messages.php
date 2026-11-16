@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'business_invoice_pay_prepare_notice' => 'The BTCPay payment request is created only after you continue.',
+    'business_invoice_pay_unavailable' => 'This payment link is unavailable.',
+    'business_invoice_pay_contact_issuer' => 'Contact the invoice issuer to check the payment status.',
+
     'password_reset_unavailable' => 'Password reset by email is unavailable. Use your recovery phrase or passkey. Older accounts can use the migration sign-in.',
     /*
     |--------------------------------------------------------------------------

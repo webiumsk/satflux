@@ -94,8 +94,8 @@ class BusinessDocumentFlowTest extends TestCase
         $issue->assertOk();
         $issue->assertJsonPath('data.status', BusinessDocumentStatus::Issued->value);
         $issue->assertJsonPath('data.number', fn ($n) => ! empty($n));
-        $issue->assertJsonPath('data.btcpay_invoice_id', 'btcpay-inv-issue');
-        $issue->assertJsonPath('data.btcpay_checkout_link', 'https://btcpay.example/i/issue-checkout');
+        $issue->assertJsonPath('data.btcpay_invoice_id', null);
+        $issue->assertJsonPath('data.btcpay_checkout_link', null);
         $issue->assertJsonPath('data.payment_token', fn ($t) => is_string($t) && strlen($t) === 64);
     }
 
@@ -175,7 +175,7 @@ class BusinessDocumentFlowTest extends TestCase
         $issue->assertJsonPath('data.subtotal', '80.00');
         $issue->assertJsonPath('data.tax_total', '18.40');
         $issue->assertJsonPath('data.total', '98.40');
-        Http::assertSent(fn ($request) => $request->method() === 'POST' && $request['amount'] === '98.40');
+        Http::assertNothingSent();
 
         $this->patchJson("/api/invoicing/companies/{$company->id}/documents/{$docId}", [
             'type' => 'invoice',
@@ -235,13 +235,13 @@ class BusinessDocumentFlowTest extends TestCase
 
         $issue->assertJsonPath('data.status', BusinessDocumentStatus::Issued->value);
         $issue->assertJsonPath('data.number', fn ($n) => ! empty($n));
-        $issue->assertJsonPath('data.btcpay_invoice_id', 'btcpay-inv-issue');
-        $issue->assertJsonPath('data.btcpay_checkout_link', 'https://btcpay.example/i/issue-checkout');
+        $issue->assertJsonPath('data.btcpay_invoice_id', null);
+        $issue->assertJsonPath('data.btcpay_checkout_link', null);
         $issue->assertJsonPath('data.payment_token', fn ($t) => is_string($t) && strlen($t) === 64);
     }
 
     #[Test]
-    public function pro_user_can_update_issued_invoice_and_refresh_btcpay_on_total_change(): void
+    public function pro_user_can_update_issued_invoice_without_creating_btcpay_checkout(): void
     {
         $proPlan = SubscriptionPlan::create([
             'code' => 'pro',
@@ -313,7 +313,8 @@ class BusinessDocumentFlowTest extends TestCase
         )
             ->assertOk()
             ->assertJsonPath('data.total', '150.00')
-            ->assertJsonPath('data.btcpay_invoice_id', 'btcpay-inv-refreshed')
-            ->assertJsonPath('data.btcpay_checkout_link', 'https://btcpay.example/i/refreshed');
+            ->assertJsonPath('data.btcpay_invoice_id', 'old-btcpay')
+            ->assertJsonPath('data.btcpay_checkout_link', 'https://btcpay.example/i/old');
+        Http::assertNothingSent();
     }
 }

@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Integrations\WooCommerceConnectController;
 use App\Http\Controllers\Invoicing\BusinessDocumentController;
 use App\Http\Controllers\Invoicing\BusinessDocumentPayController;
+use App\Http\Controllers\Invoicing\BusinessDocumentPaymentIntentPayController;
 use App\Http\Controllers\LandingPayButtonController;
 use App\Http\Controllers\OgImageController;
 use App\Http\Controllers\SitemapController;
@@ -66,6 +67,12 @@ Route::get('/sitemap.xml', [SitemapController::class, 'index']);
 
 // Public business invoice Bitcoin pay (lazy BTCPay checkout)
 Route::middleware(['throttle:30,1'])->group(function () {
+    Route::post('/pay/i/{payment_token}', [BusinessDocumentPayController::class, 'activate'])
+        ->where('payment_token', '[A-Za-z0-9]{64}');
+    Route::get('/pay/e/{payment_token}', [BusinessDocumentPaymentIntentPayController::class, 'show'])
+        ->where('payment_token', '[A-Za-z0-9]{64}');
+    Route::post('/pay/e/{payment_token}', [BusinessDocumentPaymentIntentPayController::class, 'activate'])
+        ->where('payment_token', '[A-Za-z0-9]{64}');
     Route::get('/pay/i/{payment_token}', [BusinessDocumentPayController::class, 'show'])
         ->where('payment_token', '[A-Za-z0-9]{64}');
 });

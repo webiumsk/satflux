@@ -4,6 +4,8 @@ namespace App\Services\Invoicing;
 
 use App\Enums\BusinessDocumentStatus;
 use App\Models\BusinessDocument;
+use App\Models\BusinessDocumentPaymentAttempt;
+use App\Models\BusinessDocumentPaymentIntent;
 use App\Models\Store;
 use App\Support\BtcPay\BtcPayWebhookEventType;
 use Illuminate\Support\Facades\Log;
@@ -31,6 +33,20 @@ class BusinessDocumentPaymentWebhookService
 
         $metadata = $this->extractMetadata($payload);
         $invoiceId = $this->extractInvoiceId($payload);
+        if ($invoiceId) {
+            $attempt = BusinessDocumentPaymentAttempt::where('store_id', $store->id)
+                ->where('btcpay_invoice_id', $invoiceId)->first();
+            if ($attempt) {
+                $intent = BusinessDocumentPaymentIntent::where('user_id', $store->user_id)->find($attempt->intent_id);
+                if ($intent) {
+                    $verified = app(BusinessDocumentPaymentIntentService::class)->status($intent);
+
+                    return $verified->state === 'paid' && $verified->payment_method === 'btcpay';
+                }
+
+                return false;
+            }
+        }
         if ($invoiceId && $this->ephemeralCheckoutService->metadataIndicatesEphemeral($metadata)) {
             $ephemeral = $this->ephemeralCheckoutService->markPaidFromWebhook($store, $invoiceId, $metadata);
             if ($ephemeral) {

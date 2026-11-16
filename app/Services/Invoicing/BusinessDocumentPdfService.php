@@ -198,7 +198,7 @@ class BusinessDocumentPdfService
             $qrTarget = $this->resolveBtcPayQrTarget($document);
             if ($qrTarget) {
                 $btcPayUrl = $qrTarget;
-                $btcPayQr = QrPngRenderer::dataUri($qrTarget, 180);
+                $btcPayQr = QrPngRenderer::dataUri($qrTarget, 180, allowExternalFallback: false);
             }
         }
 
@@ -280,10 +280,6 @@ class BusinessDocumentPdfService
         }
 
         if (! $document->exists) {
-            if ($document->btcpay_checkout_link) {
-                return $document->btcpay_checkout_link;
-            }
-
             $document->loadMissing(['store.user']);
             $store = $document->store;
             if (! $store instanceof Store) {
@@ -309,13 +305,14 @@ class BusinessDocumentPdfService
             }
         }
 
-        $document->loadMissing(['store']);
-        if (! $document->btcpay_checkout_link) {
-            try {
-                $this->btcPayService->syncForDocument($document, forceRefresh: true);
-            } catch (\Throwable $e) {
-                report($e);
-            }
+        $document->loadMissing('store');
+        $paymentStore = $document->store;
+        if (! $paymentStore instanceof Store) {
+            return null;
+        }
+        $intent = app(BusinessDocumentPaymentIntentService::class)->prepare($document, $paymentStore);
+        if (! $intent || $intent->state !== 'active') {
+            return null;
         }
 
         // Persisted documents encode the lazy pay link (/pay/i/…), not the BTCPay checkout URL.

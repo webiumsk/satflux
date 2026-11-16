@@ -1854,6 +1854,30 @@
             "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."
         },
         {
+            "route": "GET api/invoicing/ephemeral/btcpay-payment-link-status",
+            "action": "App\\Http\\Controllers\\Invoicing\\EphemeralBusinessDocumentController@paymentLinkStatus",
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "App\\Http\\Middleware\\RequireVerifiedEmail",
+                "throttle:api-user"
+            ],
+            "status": "excluded",
+            "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."
+        },
+        {
+            "route": "GET api/invoicing/ephemeral/btcpay-payment-links",
+            "action": "App\\Http\\Controllers\\Invoicing\\EphemeralBusinessDocumentController@paymentLinks",
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "App\\Http\\Middleware\\RequireVerifiedEmail",
+                "throttle:api-user"
+            ],
+            "status": "excluded",
+            "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."
+        },
+        {
             "route": "GET api/invoicing/ephemeral/btcpay-status",
             "action": "App\\Http\\Controllers\\Invoicing\\EphemeralBusinessDocumentController@btcpayStatus",
             "middleware": [
@@ -4627,6 +4651,18 @@
                 "App\\Http\\Middleware\\RequireVerifiedEmail",
                 "throttle:api-user",
                 "App\\Http\\Middleware\\EnsurePlanAllowsBusinessInvoicing"
+            ],
+            "status": "excluded",
+            "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."
+        },
+        {
+            "route": "POST api/invoicing/ephemeral/btcpay-payment-links/{intentId}/state",
+            "action": "App\\Http\\Controllers\\Invoicing\\EphemeralBusinessDocumentController@paymentLinkState",
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "App\\Http\\Middleware\\RequireVerifiedEmail",
+                "throttle:api-user"
             ],
             "status": "excluded",
             "reason": "Outside the initial reviewed account/store/raffle, WooCommerce and inbound-webhook scope; expand with reviewed schemas."

@@ -222,6 +222,7 @@
     "local_first_btcpay_checkout_hint": "Direktlink zum BTCPay-Checkout. Nach erfolgreicher Zahlung wird die Rechnung automatisch als bezahlt markiert (per Webhook).",
     "local_first_btcpay_checkout_missing": "Noch kein Zahlungslink. Erstellen Sie einen, damit der Kunde diese Rechnung in Bitcoin bezahlen kann.",
     "local_first_btcpay_checkout_refresh": "Checkout-Link erstellen",
+    "local_first_btcpay_link_revoked": "Dieser Bitcoin-Zahlungslink wurde nach einer Änderung der Rechnung deaktiviert. Mit \"Checkout-Link erstellen\" können Sie einen neuen Checkout erstellen.",
     "local_first_btcpay_paid_synced": "Bitcoin-Zahlung erkannt. Rechnung als bezahlt markiert.",
     "local_first_pdf_bridge_soon": "Der PDF-Export nutzt die kurzlebige Serverbrücke. Die Rechnung wird lokal gespeichert und nicht auf dem Server abgelegt.",
     "auto_issue_title": "Automatische WooCommerce-Rechnungsstellung",

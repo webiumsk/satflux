@@ -4,18 +4,57 @@ namespace Tests\Feature;
 
 use App\Enums\CompanyJurisdiction;
 use App\Mail\BusinessDocumentEmail;
+use App\Models\BusinessDocumentPaymentIntent;
 use App\Models\Company;
+use App\Models\Store;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Process;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class EphemeralBusinessDocumentPdfTest extends TestCase
 {
     use RefreshDatabase;
+
+    #[Test]
+    public function bitcoin_pdf_email_and_bulk_prepare_stable_links_without_provider_calls(): void
+    {
+        Mail::fake();
+        Http::fake();
+        Process::fake([
+            '*' => Process::result(output: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg=='),
+        ]);
+        [$user, $company] = $this->createProUserWithCompany();
+        $store = Store::factory()->create(['user_id' => $user->id, 'company_id' => $company->id]);
+        $payload = $this->ephemeralPayload();
+        $payload['store_id'] = $store->id;
+        $payload['evolu_document_id'] = 'rendered-local-invoice';
+        $payload['document']['payment_btc_enabled'] = true;
+        $payload['document']['payment_bank_enabled'] = false;
+        $payload['btcpay_checkout_link'] = 'https://btcpay.example/i/stale-client-link';
+        $this->actingAs($user);
+        $this->postJson('/api/invoicing/ephemeral/email-preview', $payload)->assertOk();
+        $this->assertDatabaseCount('business_document_payment_intents', 0);
+        $pdf = $this->postJson('/api/invoicing/ephemeral/pdf', $payload)->assertOk();
+        $this->assertStringContainsString('/pay/e/', $pdf->getContent());
+        $this->assertStringNotContainsString('stale-client-link', $pdf->getContent());
+        $token = BusinessDocumentPaymentIntent::sole()->token;
+        $this->postJson('/api/invoicing/ephemeral/send-email', $payload + ['to' => ['billing@client.test']])->assertOk();
+        $this->postJson('/api/invoicing/ephemeral/bulk/pdf-zip', [
+            'company' => $payload['company'], 'documents' => [Arr::except($payload, ['company'])],
+        ])->assertOk();
+        $this->assertSame($token, BusinessDocumentPaymentIntent::sole()->token);
+        $this->assertDatabaseCount('ephemeral_btcpay_checkouts', 0);
+        $this->assertDatabaseCount('business_document_payment_attempts', 0);
+        Http::assertNothingSent();
+        Mail::assertSent(BusinessDocumentEmail::class);
+    }
 
     #[Test]
     public function authenticated_user_can_render_ephemeral_pdf_without_persisting_document(): void

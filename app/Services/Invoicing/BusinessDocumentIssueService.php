@@ -9,6 +9,7 @@ use App\Enums\CompanyJurisdiction;
 use App\Models\AuditLog;
 use App\Models\BusinessDocument;
 use App\Models\Company;
+use App\Models\Store;
 use App\Services\Invoicing\Efaktura\ComplianceSubmissionService;
 use App\Support\Invoicing\BankSymbolNormalizer;
 use App\Support\Invoicing\BuyerSnapshot;
@@ -123,13 +124,9 @@ class BusinessDocumentIssueService
             $this->paymentTokenService->assignIfNeeded($document);
 
             $document->save();
-
-            if ($document->payment_btc_enabled && $document->store_id) {
-                try {
-                    $this->btcPayService->syncForDocument($document->fresh(), forceRefresh: true);
-                } catch (\Throwable $e) {
-                    report($e);
-                }
+            $paymentStore = $document->store;
+            if ($document->payment_btc_enabled && $paymentStore instanceof Store) {
+                app(BusinessDocumentPaymentIntentService::class)->prepare($document, $paymentStore);
             }
 
             AuditLog::log('business_document.issued', 'business_document', $document->id, [
