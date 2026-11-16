@@ -1,5 +1,25 @@
 # Project state
 
+## PR450 paid-state and live-row corrections - 2026-11-16
+
+Both findings against published input `f1446a7b` are valid and fixed with two
+production-line changes. Paid presentation cannot be replaced by an active
+intent, and local settlement uses the guarded live rows rather than a lagging
+reactive list. Activation, ownership and retry contracts remain intact.
+
+The four-file freeze is
+`e140e46945daf14f33ef2092c358c9274ee03bdd46680404b69a913affcd4df4`;
+the complete 62-file source freeze is
+`e7ff8e75f96bd2e3e96268e389d134adeb3f9788d4e4bf9ad5ce332f07f9755a`.
+Independent QA and security accept both freezes. Local and independent QA
+tests pass 85 PHP cases / 412 assertions and 58 JS cases / three suites. Pint, PHPStan, lint, typecheck and locale checks pass.
+[Follow-up evidence](PR450_FOLLOWUP_REVIEW.md) attributes independent reviews
+and exact-head CI separately from old checks and deployed readiness.
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`; unrelated work
+is preserved. Corrections use the existing isolated `fix/invoicing-lazy-btcpay`
+worktree and open PR450. No merge, deployment or live provider operation occurs.
+
 ## PR450 follow-up corrections reviewed - 2026-11-16
 
 All five further findings against published input head

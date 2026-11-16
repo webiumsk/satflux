@@ -1182,7 +1182,7 @@ export function useInvoiceDocument() {
       const marked = markLocalDocumentPaid(
         scopedEvolu(local.evolu, live.ownerId as OwnerId),
         docId as DocumentId,
-        toAppRows<EvoluDocumentRow>(local.documentRows.value),
+        toAppRows<EvoluDocumentRow>(local.evolu.getQueryRows(allDocumentsQuery)),
         "btcpay",
       );
       if (!marked.ok) return false;

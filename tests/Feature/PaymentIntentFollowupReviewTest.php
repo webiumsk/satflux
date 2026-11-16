@@ -207,7 +207,7 @@ class PaymentIntentFollowupReviewTest extends TestCase
             'issued revoked' => ['revoked', false, 'unavailable', 'unavailable'],
             'issued unknown' => ['unknown', false, 'unavailable', 'unavailable'],
             'issued creating' => ['creating', false, 'unavailable', 'unavailable'],
-            'paid active' => ['active', true, 'ready', 'ready'],
+            'paid active' => ['active', true, 'paid', 'ready'],
             'paid paid' => ['paid', true, 'paid', 'paid'],
             'paid revoked' => ['revoked', true, 'paid', 'unavailable'],
             'paid unknown' => ['unknown', true, 'paid', 'unavailable'],
@@ -232,6 +232,30 @@ class PaymentIntentFollowupReviewTest extends TestCase
         $this->get($url)->assertOk()->assertViewHas('state', $get);
         $this->post($url)->assertOk()->assertViewHas('state', $post);
         $this->assertSame($state, $intent->fresh()->state);
+        Http::assertNothingSent();
+    }
+
+    #[Test]
+    public function an_active_intent_cannot_override_an_explicit_paid_presentation(): void
+    {
+        $intent = $this->intents->prepare($this->document(false), $this->store, 'paid-precedence');
+
+        $this->assertSame('paid', $this->intents->publicAvailability($intent, paid: true));
+        $this->assertSame('active', $intent->fresh()->state);
+        Http::assertNothingSent();
+    }
+
+    #[Test]
+    public function activating_an_already_paid_document_keeps_the_paid_page_without_provider_calls(): void
+    {
+        $document = $this->document();
+        $intent = $this->intents->prepare($document, $this->store);
+        $document->update(['status' => BusinessDocumentStatus::Paid, 'amount_paid' => '100.00']);
+
+        $this->post('/pay/e/'.$intent->token)->assertOk()->assertViewHas('state', 'paid')
+            ->assertDontSee('method="POST"', false);
+        $this->assertSame('paid', $intent->fresh()->state);
+        $this->assertSame('external', $intent->fresh()->payment_method);
         Http::assertNothingSent();
     }
 

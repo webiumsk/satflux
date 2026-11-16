@@ -143,7 +143,7 @@ class BusinessDocumentPaymentIntentService
         if ($intent === null && $hasReadyTerms && ! $unavailable) {
             $state = 'ready';
         }
-        if (! $unavailable && $intent?->state === 'active'
+        if (! $unavailable && ! $paid && $intent?->state === 'active'
             && $intent->store()->where('user_id', $intent->user_id)->exists()) {
             $state = 'ready';
         }

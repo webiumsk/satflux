@@ -1,5 +1,39 @@
 # PR450 follow-up review
 
+## Paid-state precedence and live rows - 2026-11-16
+
+Both further findings are valid against published input
+`f1446a7bbdd9e109d457b2a2201d0bf91e1e9295`; neither is skipped.
+Production changes are exactly two lines: a selected paid state prevents the
+active-intent ready branch, and the local paid mutation receives the same live
+query source used by its intent guard. Existing activation, owner/company,
+generation, disposal and failed-write recovery rules remain intact.
+
+The four-file correction freeze is
+`e140e46945daf14f33ef2092c358c9274ee03bdd46680404b69a913affcd4df4`;
+the complete 62-file source/test/locale/CI/API freeze is
+`e7ff8e75f96bd2e3e96268e389d134adeb3f9788d4e4bf9ad5ce332f07f9755a`.
+Development records are excluded from both manifests.
+
+Before the fixes, two PHP assertions fail because paid becomes ready, and two
+JavaScript cases fail for a stale total or missing cached row. After the fixes,
+85 PHP tests / 412 assertions and 58 JavaScript tests / three suites pass.
+Independent QA reproduces those passing counts with unchanged hashes before
+and after testing; overlapping counts are not summed. The PHP cases include
+real activation of an already paid document with no provider call. The browser
+cases use the actual mutation helper and verify the live 200 total rather than
+the cached 100 total. Synthetic fixtures do not establish native Evolu durability.
+
+Scoped Pint passes two files, PHPStan reports zero errors, scoped ESLint has zero
+errors / two inherited warnings, typecheck adds no errors against the unchanged
+110-error baseline, and locale parity passes. Independent security accepts both
+manifests and passes 26 PHP tests / 163 assertions plus 23 JavaScript cases with
+matching before/after hashes. No blocking QA or security findings remain.
+Complete PHP/JavaScript/build/E2E gates use exact-head CI. Prior green
+checks on the input revision do not validate these corrections or deployment.
+The primary Graphify query is supplemented by targeted reads; the missing feature
+graph is not silently rebuilt.
+
 ## Scope and intended behavior
 
 The owner submits five further findings against published correction head

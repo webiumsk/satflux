@@ -142,6 +142,25 @@ describe("checkout request loading ownership", () => {
 });
 
 describe("local-first delayed customer checkout settlement", () => {
+    it.each(["lagging total", "missing"] as const)("uses the guarded live rows when the cached document list is %s", async cache => {
+        const { state, document, update } = await editor();
+        const cached = { ...document };
+        document.total = "200.00";
+        document.subtotal = "200.00";
+        (mocks.support.documentRows as { value: EvoluDocumentRow[] }).value = cache === "missing" ? [] : [cached];
+        mocks.status = { ...activeIntent(), amount: "200.00", state: "paid", btcpay_invoice_id: "provider",
+            payment_method: "btcpay", payment_link: null };
+
+        await vi.advanceTimersByTimeAsync(15_000);
+
+        expect(update).toHaveBeenCalledWith("document", expect.objectContaining({ status: "paid", amountPaid: "200.00",
+            paidPaymentMethod: "btcpay" }), { ownerId: "owner" });
+        expect(document.status).toBe("paid");
+        expect(document.amountPaid).toBe("200.00");
+        expect(state.success.value).toBe("invoicing.local_first_btcpay_paid_synced");
+        expect(mocks.post).not.toHaveBeenCalled();
+    });
+
     it("retries a rejected local paid write on the next poll without reporting success or refreshing it as paid", async () => {
         const { state, document, update, refreshAll, documentApi } = await editor();
         update.mockImplementationOnce(() => ({ ok: false, error: "synthetic_write_rejected" }));
