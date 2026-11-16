@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
     evolu: {} as object | null,
     detect: vi.fn(), extract: vi.fn(), quota: vi.fn(), purchase: vi.fn(), upload: vi.fn(),
     localDetect: vi.fn(), localExtract: vi.fn(), localQuota: vi.fn(),
-    read: vi.fn(), insert: vi.fn(), lookup: vi.fn(),
+    read: vi.fn(), insert: vi.fn(), lookup: vi.fn(), archiveSave: vi.fn(),
 }));
 vi.mock("@/composables/useEffectiveAccess", () => ({ useEffectiveAccess: () => ({ purchases: ref({ isdoc_packs: true }) }) }));
 vi.mock("@/evolu/flags", () => ({ isInvoicingLocalFirst: () => mocks.local }));
@@ -22,6 +22,7 @@ vi.mock("@/evolu/expenseAttachmentCrud", () => ({
     readFileAsAttachmentBase64: mocks.read,
     insertLocalExpenseAttachmentFromBase64: mocks.insert,
 }));
+vi.mock("@/evolu/manualExpenseAttachment", () => ({ saveManualExpenseAttachmentArchive: mocks.archiveSave }));
 vi.mock("@/services/api", () => ({ invoicingApi: { expenses: {
     detectIsdoc: mocks.detect, extract: mocks.extract, isdocQuota: mocks.quota,
     purchaseIsdocPack: mocks.purchase, uploadAttachment: mocks.upload,
@@ -74,6 +75,7 @@ beforeEach(() => {
     mocks.upload.mockResolvedValue(undefined);
     mocks.read.mockResolvedValue("c3ludGhldGlj");
     mocks.insert.mockReturnValue({ ok: true, value: { id: "attachment-a" } });
+    mocks.archiveSave.mockResolvedValue(undefined);
 });
 afterEach(() => {
     wrapper?.unmount();
@@ -83,6 +85,18 @@ afterEach(() => {
 });
 
 describe("expense attachment bridge", () => {
+    it.each(["text/html", ""])("uses a PDF-only pending preview for a .pdf with MIME %j", async mime => {
+        confirm.mockReturnValue(false);
+        render();
+        const file = new File(["<script>synthetic</script>"], "synthetic.pdf", { type: mime });
+        await resource.onDocumentSelected(file);
+        const preview = vi.mocked(URL.createObjectURL).mock.calls[0][0] as Blob;
+        expect(preview.type).toBe("application/pdf");
+        expect(preview.size).toBe(file.size);
+        expect(resource.pendingAttachment.value).toBe(file);
+        expect(file.type).toBe(mime);
+        expect(mocks.localDetect).not.toHaveBeenCalled();
+    });
     it("uses company-free quota, detection and explicitly confirmed extraction for a local company", async () => {
         render();
         await resource.loadQuota();
@@ -152,16 +166,51 @@ describe("expense attachment bridge", () => {
         expect(mocks.purchase).not.toHaveBeenCalled();
     });
 
-    it("rejects an oversized local attachment before consent or upload and accepts the existing cap", async () => {
+    it("rejects above 10 MiB before consent or upload and accepts the exact manual archive cap", async () => {
         render();
-        await resource.onDocumentSelected(pdf(384 * 1024 + 1));
+        await resource.onDocumentSelected(pdf(10 * 1024 * 1024 + 1));
         expect(resource.detectError.value).toBe(en.invoicing.expense_attachment_too_large);
         expect(resource.pendingFiles.value).toHaveLength(0);
         expect(confirm).not.toHaveBeenCalled();
         expect(mocks.localDetect).not.toHaveBeenCalled();
-        await resource.onDocumentSelected(pdf(384 * 1024));
+        await resource.onDocumentSelected(pdf(10 * 1024 * 1024));
         expect(resource.pendingFiles.value).toHaveLength(1);
         expect(mocks.localDetect).toHaveBeenCalledOnce();
+    });
+
+    it("saves a 450 KiB manual file locally with a stable identity across a failed archive retry", async () => {
+        confirm.mockReturnValue(false);
+        render();
+        const file = pdf(450 * 1024);
+        await resource.onDocumentSelected(file);
+        mocks.archiveSave.mockRejectedValueOnce(new Error("original_unverified"));
+        await expect(resource.uploadAllPendingAttachments("expense-a")).rejects.toThrow("original_unverified");
+        expect(resource.pendingFiles.value).toHaveLength(1);
+        await resource.uploadAllPendingAttachments("expense-a");
+        const first = mocks.archiveSave.mock.calls[0][1];
+        const second = mocks.archiveSave.mock.calls[1][1];
+        expect(first).toMatchObject({ companyId: localId, expenseId: "expense-a", file });
+        expect(first.attachmentId).toBe(second.attachmentId);
+        expect(resource.pendingFiles.value).toHaveLength(0);
+        expect(mocks.insert).not.toHaveBeenCalled();
+        expect(mocks.read).not.toHaveBeenCalled();
+        expect(mocks.localDetect).not.toHaveBeenCalled();
+        expectNoCompanyApi();
+    });
+
+    it("invalidates a large-file archive operation after changing company", async () => {
+        confirm.mockReturnValue(false);
+        render();
+        await resource.onDocumentSelected(pdf(450 * 1024));
+        const pending = deferred<void>();
+        mocks.archiveSave.mockReturnValue(pending.promise);
+        const upload = resource.uploadAllPendingAttachments("expense-a");
+        const options = mocks.archiveSave.mock.calls[0][1];
+        company.value = "different-company";
+        expect(() => options.assertCurrent()).toThrow(en.errors.generic);
+        pending.resolve();
+        await expect(upload).rejects.toThrow(en.errors.generic);
+        expectNoCompanyApi();
     });
 
     it("fails closed when the local context is unavailable", async () => {

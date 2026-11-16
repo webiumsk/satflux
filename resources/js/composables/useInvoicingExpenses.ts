@@ -1,7 +1,7 @@
 import { effectiveExpensePayment, projectExpensePayments } from "@/evolu/bankExpenseClaims";
 import type { EvoluBankTransactionRow, EvoluBankTransactionMatchRow } from "@/evolu/bankMap";
 import type { Evolu } from "@evolu/common/local-first";
-import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
+import { computed, onScopeDispose, ref, watch, type ComputedRef, type Ref } from "vue";
 import { useQuery } from "@evolu/vue";
 import { invoicingApi } from "@/services/api";
 import { allExpensesQuery, allBankTransactionsQuery, allBankTransactionMatchesQuery, allExpenseAttachmentsQuery, useInvoicingEvolu } from "@/evolu/client";
@@ -32,22 +32,31 @@ function useServerInvoicingExpenses(companyId: Ref<string>): UseInvoicingExpense
     const expenses = ref<ExpenseListRow[]>([]);
     const loading = ref(false);
     let lastFilters: ExpenseListFilterOptions = {};
+    let generation = 0;
+    let disposed = false;
+    watch(companyId, () => { generation++; expenses.value = []; loading.value = false; }, { flush: "sync" });
+    onScopeDispose(() => { disposed = true; generation++; });
 
     async function refresh(filters: ExpenseListFilterOptions = lastFilters): Promise<void> {
-        lastFilters = filters;
-        if (!companyId.value) {
+        lastFilters = { ...filters };
+        const currentFilters = { ...filters };
+        const company = companyId.value;
+        const request = ++generation;
+        const current = () => !disposed && generation === request && companyId.value === company;
+        if (!company) {
             expenses.value = [];
             return;
         }
         loading.value = true;
         try {
-            expenses.value = await invoicingApi.expenses.list(companyId.value, {
-                filter: filters.filter === "all" ? undefined : filters.filter,
-                year: filters.year,
+            const rows = await invoicingApi.expenses.list<ExpenseListRow>(company, {
+                ...currentFilters,
+                filter: currentFilters.filter === "all" ? undefined : currentFilters.filter,
                 per_page: 500,
             });
+            if (current()) expenses.value = rows;
         } finally {
-            loading.value = false;
+            if (current()) loading.value = false;
         }
     }
 

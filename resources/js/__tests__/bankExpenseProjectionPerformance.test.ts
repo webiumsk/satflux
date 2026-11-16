@@ -187,7 +187,7 @@ describe('bounded canonical expense and payment projections', () => {
         const bank = scope.run(() => useInvoicingBankPayments(ref('company-a'), ref('EUR')))!;
         expect(bank.transactions.value).toHaveLength(50);
         await bank.load('unmatched');
-        expect(bank.transactions.value.map((row) => row.id)).toEqual(transactions.slice(60).map((row) => row.id));
+        expect(bank.transactions.value.map((row) => row.id)).toEqual(transactions.slice(60).map((row) => row.id).sort((a, b) => b.localeCompare(a)));
         expect(bank.transactions.value.every((row) => row.bank_match_conflict)).toBe(true);
         await bank.load('matched');
         expect(bank.transactions.value).toHaveLength(50);

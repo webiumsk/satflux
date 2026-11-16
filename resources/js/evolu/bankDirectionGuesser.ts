@@ -52,6 +52,11 @@ export function guessDirectionFromAmountAndHints(
     amount: number,
     ...hints: (string | null | undefined)[]
 ): BankTransactionDirection {
+    return directionFromHints(...hints) ?? (amount < 0 ? "debit" : "credit");
+}
+
+/** Return actual directional text evidence, leaving stored magnitudes out of the decision. */
+function directionFromHints(...hints: (string | null | undefined)[]): BankTransactionDirection | null {
     for (const hint of hints) {
         if (hint == null || hint.trim() === "") continue;
         const norm = hint.trim().toLowerCase();
@@ -77,7 +82,7 @@ export function guessDirectionFromAmountAndHints(
         return "credit";
     }
 
-    return amount < 0 ? "debit" : "credit";
+    return null;
 }
 
 export function resolvedBankDirection(row: {
@@ -86,17 +91,5 @@ export function resolvedBankDirection(row: {
     reference: string | null;
     counterpartyName: string | null;
 }): BankTransactionDirection {
-    const hasHints =
-        (row.reference?.trim() ?? "") !== "" || (row.counterpartyName?.trim() ?? "") !== "";
-
-    if (hasHints) {
-        const amount = parseFloat(row.amount || "0");
-        return guessDirectionFromAmountAndHints(
-            amount,
-            row.reference,
-            row.counterpartyName,
-        );
-    }
-
-    return row.direction;
+    return directionFromHints(row.reference, row.counterpartyName) ?? row.direction;
 }

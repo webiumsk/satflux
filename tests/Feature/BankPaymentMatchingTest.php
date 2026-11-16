@@ -142,8 +142,8 @@ class BankPaymentMatchingTest extends TestCase
 
         $csv = implode("\n", [
             'datum;suma;mena;vs;popis',
-            '01.06.2026;100,00;EUR;111;Kredit na ucte',
-            '02.06.2026;40,00;EUR;222;Debet na ucte',
+            '01.06.2026;100,00;EUR;111;Platba 0900/000000-1234567890',
+            '02.06.2026;-40,00;EUR;222;Platba 0900/000000-0987654321',
         ]);
 
         $this->actingAs($this->user)->postJson(
@@ -162,6 +162,12 @@ class BankPaymentMatchingTest extends TestCase
         $response->assertJsonPath('meta.summary.debit_total', '40.00');
         $response->assertJsonPath('meta.summary.balance', '60.00');
         $response->assertJsonPath('meta.summary.currency', 'EUR');
+
+        $rows = collect($response->json('data'));
+        $this->assertSame('credit', $rows->firstWhere('variable_symbol', '111')['direction']);
+        $this->assertSame('debit', $rows->firstWhere('variable_symbol', '222')['direction']);
+        $this->assertSame('debit', $rows->firstWhere('variable_symbol', '222')['recorded_direction']);
+        $this->assertSame('40.00', $rows->firstWhere('variable_symbol', '222')['amount']);
     }
 
     #[Test]

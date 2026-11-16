@@ -3,11 +3,19 @@ title: Conciliación de pagos bancarios
 category: invoicing
 order: 5
 meta_description: Importe extractos bancarios y concilie automáticamente los pagos con sus facturas.
+updated: 2026-11-16
 ---
 
 # Conciliación de pagos bancarios
 
 La conciliación bancaria relaciona los pagos recibidos con los documentos emitidos para mostrar qué facturas están pagadas.
+
+
+## Buscar y filtrar movimientos
+
+Seleccione el estado de conciliación y el periodo de contabilización. Abra **Más** para elegir entradas o salidas, límites del importe y búsqueda. Introduzca los importes sin signo y elija la dirección por separado. La búsqueda incluye símbolos variables, contrapartes y cuentas, referencias y números de documentos vinculados.
+
+Los filtros se aplican antes de limitar la lista a los 50 movimientos más recientes. Los totales incluyen todos los movimientos coincidentes, separados por moneda. El saldo de la cuenta con fecha sigue siendo un dato del banco, no el total de movimientos filtrados. En el móvil, confirme con **Aplicar**; **Borrar filtros** (en el móvil **Borrar todo**) elimina todos los criterios. Los filtros no cambian la conciliación ni el estado del pago.
 
 ## Importar transacciones
 

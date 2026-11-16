@@ -5,7 +5,7 @@ import { createI18n } from "vue-i18n";
 import en from "@/locales/en.json";
 import { evoluExpenseToApi, type EvoluExpenseRow } from "@/evolu/expenseMap";
 import { toAppRows } from "@/evolu/queryLoad";
-import { createExpenseOriginalReference, encodeExpenseOriginalReference } from "@/evolu/expenseOriginalReference";
+import { createExpenseOriginalReference, createManualExpenseOriginalReference, encodeExpenseOriginalReference } from "@/evolu/expenseOriginalReference";
 import type { EvoluExpenseAttachmentRow } from "@/evolu/expenseAttachmentCrud";
 
 const mocks = vi.hoisted(() => ({
@@ -892,6 +892,26 @@ describe("archived received originals on expense detail", () => {
         models.value = [expense];
         return expense;
     }
+
+    it("uses a PDF-only saved preview while downloads preserve the original contradictory MIME", async () => {
+        const expense = archivedExpense();
+        const blob = new Blob(["<script>synthetic</script>"], { type: "text/html" });
+        const ref = createManualExpenseOriginalReference({ companyId: localCompany, expenseId: expense.id,
+            attachmentId: "original", sizeBytes: blob.size, sha256: "a".repeat(64), mimeType: "text/html" });
+        expense.attachments = [{ id: "original", original_filename: "manual.pdf", mime: "text/html",
+            contentBase64: encodeExpenseOriginalReference(ref), sizeBytes: String(blob.size) }];
+        mocks.archiveRead.mockResolvedValue({ bytes: new Uint8Array(blob.size), blob });
+        vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+        render("show", true);
+        await flushPromises();
+        const preview = vi.mocked(URL.createObjectURL).mock.calls.at(-1)![0] as Blob;
+        expect(preview.type).toBe("application/pdf");
+        expect(preview.size).toBe(blob.size);
+        wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).vm.$emit("download");
+        await flushPromises();
+        expect(URL.createObjectURL).toHaveBeenLastCalledWith(blob);
+        expect(blob.type).toBe("text/html");
+    });
 
     it("previews embedded PDF from verified bytes and downloads the exact original after a fresh read", async () => {
         archivedExpense();

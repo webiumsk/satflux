@@ -33,8 +33,10 @@ export function resolveBulkExpenseTargets(
 export async function bulkMarkPaidLocalExpenses(
     evolu: Evolu<InvoicingLocalSchema>,
     targets: EvoluExpenseRow[],
+    assertCurrent: () => void = () => undefined,
 ): Promise<BulkResult> {
     return withExpenseReconciliation(evolu, (scope) => {
+    assertCurrent();
     let processed = 0;
     let skipped = 0;
 
@@ -61,8 +63,10 @@ export async function bulkMarkPaidLocalExpenses(
 export async function bulkCancelLocalExpenses(
     evolu: Evolu<InvoicingLocalSchema>,
     targets: EvoluExpenseRow[],
+    assertCurrent: () => void = () => undefined,
 ): Promise<BulkResult> {
     return withExpenseReconciliation(evolu, (scope) => {
+    assertCurrent();
     let processed = 0;
     let skipped = 0;
 

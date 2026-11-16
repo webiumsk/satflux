@@ -3,11 +3,19 @@ title: Bank payment matching
 category: invoicing
 order: 5
 meta_description: Import bank statements and reconcile payments to your invoices automatically.
+updated: 2026-11-16
 ---
 
 # Bank payment matching
 
 Bank payment matching reconciles incoming payments against your issued documents, so you can see at a glance what has been paid.
+
+
+## Search and filter movements
+
+Use the matching status and booking-date period, then open **More** for income/expense direction, amount bounds and search. Enter amounts without a sign and choose income or expenses separately. Search covers variable symbols, counterparties and accounts, references and linked document numbers.
+
+Filters run before the list is limited to the newest 50 movements. Totals include all matching movements, separately by currency. The dated account balance remains a bank snapshot and does not become a filtered movement total. On mobile, confirm the advanced filter drawer with **Apply**; **Clear filters** (on mobile **Clear all**) removes all criteria. Filtering does not change matching or payment status.
 
 ## Import your transactions
 

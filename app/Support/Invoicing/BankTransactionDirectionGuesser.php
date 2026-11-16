@@ -12,6 +12,15 @@ final class BankTransactionDirectionGuesser
      */
     public function fromAmountAndHints(float $amount, ?string ...$hints): BankTransactionDirection
     {
+        return $this->fromHints(...$hints)
+            ?? ($amount < 0 ? BankTransactionDirection::Debit : BankTransactionDirection::Credit);
+    }
+
+    /**
+     * Return only actual directional text evidence, without treating a stored magnitude as credit.
+     */
+    public function fromHints(?string ...$hints): ?BankTransactionDirection
+    {
         foreach ($hints as $hint) {
             if ($hint === null || trim($hint) === '') {
                 continue;
@@ -35,9 +44,7 @@ final class BankTransactionDirectionGuesser
             return BankTransactionDirection::Credit;
         }
 
-        return $amount < 0
-            ? BankTransactionDirection::Debit
-            : BankTransactionDirection::Credit;
+        return null;
     }
 
     public function inferFromTransaction(BankTransaction $transaction): BankTransactionDirection

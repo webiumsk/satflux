@@ -2,7 +2,7 @@
 title: Import expenses from SuperFaktura
 category: invoicing
 order: 12
-updated: 2026-11-03
+updated: 2026-11-16
 ---
 
 # Import expenses from SuperFaktura
@@ -24,6 +24,13 @@ Limits: **10 MB, 2,000 rows, 256 columns** per file. Invalid or overlong rows ar
 
 In local-first invoicing, the spreadsheet is processed in your browser and saved with the existing encrypted invoicing data. Keep your recovery phrase backed up. PDF attachments are separate from spreadsheet import.
 
+
+## Search and filter expenses
+
+Use the status buttons and issue-date period to narrow the list. The initial period is the current year; choose all dates, a preset or your own date bounds. Open **More** to filter the amount, due date and text. Search covers internal and supplier document numbers, title, variable symbol and notes.
+
+Choose **Filter** to commit advanced fields. On mobile, use the filter drawer. **Clear filters** (on mobile **Clear all**) removes the search and other criteria. Changing applied filters clears the current selection. Totals and **select all** use the entire filtered result, including records on other pages.
+
 ## Defaults for a new expense
 
 The variable symbol follows the digits in the document number, including leading zeros. The delivery date follows the received date. Editing either default manually stops that link. Explicit values extracted from an attachment are preserved; existing expenses keep their saved values. A manually cleared delivery date stays blank after saving and reopening.
@@ -42,6 +49,8 @@ The unpaid expense total adds the full amounts of documents not marked paid. Par
 
 ## PDF attachments on an individual expense
 
-Open an individual expense and add its PDF. In local-first invoicing, attachments and extracted expense fields are saved with your encrypted local data. Each local attachment may be at most **384 KiB**. In the create or edit form, choose **Save** to save pending attachments. On the expense detail page, attachments are saved immediately after you finish or skip optional ISDOC processing.
+Open an individual expense and add its PDF. In local-first invoicing, attachments and extracted expense fields are saved with your encrypted local data. Each local attachment may be at most **10 MiB**. In the create or edit form, choose **Save** to save pending attachments. On the expense detail page, attachments are saved immediately after you finish or skip optional ISDOC processing.
 
 You can allow temporary server processing to detect embedded ISDOC data. Cancel keeps the attachment local. If ISDOC is found, confirm field extraction separately or keep only the attachment. Extraction uses your existing allowance and credits; it is not OCR. When the allowance is exhausted, you can still attach the file and enter its fields manually.
+
+If saving a larger attachment is interrupted, retry while the file is still selected. After reloading, remove the incomplete attachment and select the original file again. Complete the upload or remove the incomplete attachment before creating a full backup.

@@ -2,7 +2,7 @@
 title: Import nákladů ze SuperFaktury
 category: invoicing
 order: 12
-updated: 2026-11-03
+updated: 2026-11-16
 ---
 
 # Import nákladů ze SuperFaktury
@@ -24,6 +24,13 @@ Limity: **10 MB, 2 000 řádků a 256 sloupců** na soubor. Neplatné nebo pří
 
 Při lokální fakturaci se soubor zpracuje v prohlížeči a uloží mezi stávající šifrované údaje. Zálohujte si obnovovací frázi. Přílohy PDF se importují samostatně.
 
+
+## Vyhledávání a filtrování nákladů
+
+Seznam zúžíte tlačítky stavu a obdobím podle data vystavení. Na začátku se zobrazuje aktuální rok; můžete zvolit všechna data, předvolené období nebo vlastní meze. V dalších filtrech nastavíte částku, splatnost a hledaný text. Vyhledává se v interním čísle, čísle dodavatelského dokladu, názvu, variabilním symbolu a poznámkách.
+
+Rozšířené podmínky potvrďte tlačítkem **Filtrovat**. Na mobilu použijte panel filtrů. **Vymazat filtry** (na mobilu **Vymazat vše**) odstraní vyhledávání i ostatní podmínky. Změna použitých filtrů zruší aktuální výběr. Součty i **vybrat vše** používají celý filtrovaný výsledek včetně záznamů na dalších stránkách.
+
 ## Předvyplnění nového nákladu
 
 Variabilní symbol se průběžně nastavuje podle číslic v čísle dokladu včetně úvodních nul. Datum dodání se nastavuje podle data přijetí. Ruční úpravou předvyplněné hodnoty se její propojení vypne. Výslovné hodnoty vytěžené z přílohy se zachovají; existující náklady si ponechají uložené hodnoty. Ručně vymazané datum dodání zůstane prázdné i po uložení a opětovném otevření.
@@ -42,6 +49,8 @@ Součet neuhrazených nákladů zahrnuje celé částky dokladů, které nejsou 
 
 ## PDF příloha k jednotlivému nákladu
 
-Otevřete konkrétní náklad a přidejte jeho PDF. V lokálním účetnictví se přílohy i vytěžené údaje ukládají mezi vaše šifrovaná lokální data. Jedna lokální příloha může mít nejvýše **384 KiB**. Ve formuláři vytvoření nebo úpravy zvolte **Uložit**, aby se uložily připravené přílohy. V detailu nákladu se přílohy uloží ihned po dokončení nebo přeskočení volitelného zpracování ISDOC.
+Otevřete konkrétní náklad a přidejte jeho PDF. V lokálním účetnictví se přílohy i vytěžené údaje ukládají mezi vaše šifrovaná lokální data. Jedna lokální příloha může mít nejvýše **10 MiB**. Ve formuláři vytvoření nebo úpravy zvolte **Uložit**, aby se uložily připravené přílohy. V detailu nákladu se přílohy uloží ihned po dokončení nebo přeskočení volitelného zpracování ISDOC.
 
 Můžete povolit dočasné zpracování souboru na serveru pro detekci vložených údajů ISDOC. Zrušením zůstane příloha pouze lokálně. Pokud se ISDOC najde, samostatně potvrďte extrakci údajů nebo ponechte pouze přílohu. Extrakce využívá váš stávající limit a kredity; nejde o OCR. Po vyčerpání limitu můžete soubor stále přiložit a údaje zadat ručně.
+
+Pokud se ukládání větší přílohy přeruší, opakujte ho, dokud je soubor stále vybraný. Po obnovení stránky odstraňte neúplnou přílohu a znovu vyberte původní soubor. Před vytvořením úplné zálohy dokončete nahrávání nebo neúplnou přílohu odstraňte.

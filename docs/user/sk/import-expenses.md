@@ -2,7 +2,7 @@
 title: Import nákladov zo SuperFaktúry
 category: invoicing
 order: 12
-updated: 2026-11-03
+updated: 2026-11-16
 ---
 
 # Import nákladov zo SuperFaktúry
@@ -24,6 +24,13 @@ Limity sú **10 MB, 2 000 riadkov a 256 stĺpcov** na súbor. Neplatné alebo pr
 
 Pri lokálnej fakturácii sa súbor spracuje vo vašom prehliadači a uloží medzi existujúce šifrované údaje. Zálohujte si obnovovaciu frázu. Prílohy PDF sa importujú samostatne.
 
+
+## Vyhľadávanie a filtrovanie nákladov
+
+Zoznam zúžite tlačidlami stavu a obdobím podľa dátumu vystavenia. Na začiatku sa zobrazuje aktuálny rok; môžete zvoliť všetky dátumy, predvolené obdobie alebo vlastné hranice. V ďalších filtroch nastavíte sumu, splatnosť a hľadaný text. Vyhľadáva sa v internom čísle, čísle dodávateľského dokladu, názve, variabilnom symbole a poznámkach.
+
+Rozšírené podmienky potvrďte tlačidlom **Filtrovať**. Na mobile použite panel filtrov. **Vymazať filtre** (na mobile **Vymazať všetko**) odstráni vyhľadávanie aj ostatné podmienky. Zmena použitých filtrov zruší aktuálny výber. Súčty aj **vybrať všetky** používajú celý filtrovaný výsledok vrátane záznamov na ďalších stranách.
+
 ## Predvyplnenie nového nákladu
 
 Variabilný symbol sa priebežne nastavuje podľa číslic v čísle dokladu vrátane úvodných núl. Dátum dodania sa nastavuje podľa dátumu prijatia. Ručnou úpravou predvyplnenej hodnoty sa jej prepojenie vypne. Výslovné hodnoty vyťažené z prílohy sa zachovajú; existujúce náklady si ponechajú uložené hodnoty. Ručne vymazaný dátum dodania zostane prázdny aj po uložení a opätovnom otvorení.
@@ -42,6 +49,8 @@ Suma neuhradených nákladov zahŕňa celé sumy dokladov, ktoré nie sú označ
 
 ## PDF príloha k jednotlivému nákladu
 
-Otvorte konkrétny náklad a pridajte jeho PDF. V lokálnom účtovníctve sa prílohy aj vyťažené údaje ukladajú medzi vaše šifrované lokálne dáta. Jedna lokálna príloha môže mať najviac **384 KiB**. Vo formulári vytvorenia alebo úpravy stlačte **Uložiť**, aby sa uložili pripravené prílohy. V detaile nákladu sa prílohy uložia ihneď po dokončení alebo preskočení voliteľného spracovania ISDOC.
+Otvorte konkrétny náklad a pridajte jeho PDF. V lokálnom účtovníctve sa prílohy aj vyťažené údaje ukladajú medzi vaše šifrované lokálne dáta. Jedna lokálna príloha môže mať najviac **10 MiB**. Vo formulári vytvorenia alebo úpravy stlačte **Uložiť**, aby sa uložili pripravené prílohy. V detaile nákladu sa prílohy uložia ihneď po dokončení alebo preskočení voliteľného spracovania ISDOC.
 
 Môžete povoliť dočasné spracovanie súboru na serveri na detekciu vložených údajov ISDOC. Zrušením zostane príloha iba lokálne. Ak sa ISDOC nájde, samostatne potvrďte vyťaženie údajov alebo ponechajte iba prílohu. Vyťaženie využíva váš existujúci limit a kredity; nejde o OCR. Po vyčerpaní limitu môžete súbor stále priložiť a údaje zadať ručne.
+
+Ak sa ukladanie väčšej prílohy preruší, zopakujte ho, kým je súbor stále vybraný. Po obnovení stránky odstráňte neúplnú prílohu a znova vyberte pôvodný súbor. Pred vytvorením úplnej zálohy dokončite nahrávanie alebo neúplnú prílohu odstráňte.

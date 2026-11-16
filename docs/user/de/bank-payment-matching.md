@@ -3,11 +3,19 @@ title: Bankzahlungen abgleichen
 category: invoicing
 order: 5
 meta_description: Importieren Sie Kontoauszüge und gleichen Sie Zahlungen automatisch mit Rechnungen ab.
+updated: 2026-11-16
 ---
 
 # Bankzahlungen abgleichen
 
 Der Bankabgleich ordnet eingehende Zahlungen Ihren ausgestellten Dokumenten zu, damit Sie bezahlte Rechnungen erkennen.
+
+
+## Bewegungen suchen und filtern
+
+Wählen Sie den Zuordnungsstatus und Buchungszeitraum. Unter **Mehr** finden Sie Einnahmen/Ausgaben, Betragsgrenzen und Suche. Geben Sie Beträge ohne Vorzeichen ein und wählen Sie die Richtung gesondert. Die Suche umfasst variable Verwendungszwecke, Gegenparteien und Konten, Referenzen und Nummern zugeordneter Belege.
+
+Die Filter greifen vor der Begrenzung auf die neuesten 50 Bewegungen. Summen umfassen alle passenden Bewegungen, getrennt nach Währung. Der datierte Kontostand bleibt eine Bankaufnahme und ist keine Summe gefilterter Bewegungen. Bestätigen Sie auf Mobilgeräten mit **Anwenden**; **Filter zurücksetzen** (auf Mobilgeräten **Alle löschen**) entfernt alle Kriterien. Filter ändern weder Zuordnungen noch Zahlungsstatus.
 
 ## Transaktionen importieren
 

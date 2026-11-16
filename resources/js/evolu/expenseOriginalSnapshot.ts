@@ -1,5 +1,5 @@
 import {
-    EXPENSE_ORIGINAL_SOURCE_KIND,
+    EXPENSE_ORIGINAL_SOURCE_KINDS, expenseOriginalMimeType, expenseOriginalSourceKind, isExpenseOriginalSourceKind,
     isExpenseOriginalReference,
     parseExpenseOriginalReference,
 } from "./expenseOriginalReference";
@@ -13,7 +13,7 @@ type Row = Readonly<Record<string, unknown>>;
 export function snapshotHasExpenseOriginals(snapshot: InvoicingDataSnapshot): boolean {
     return (snapshot.expenseAttachment ?? []).some(row => isExpenseOriginalReference(row.contentBase64))
         || (snapshot.migrationSource ?? []).some(row => typeof row.sourceKind === "string"
-            && row.sourceKind.startsWith(EXPENSE_ORIGINAL_SOURCE_KIND));
+            && EXPENSE_ORIGINAL_SOURCE_KINDS.some(kind => String(row.sourceKind).startsWith(kind)));
 }
 
 /** Keep established migration validation unchanged for its own archive namespace. */
@@ -21,7 +21,7 @@ export async function validateRegularMigrationSnapshot(snapshot: InvoicingDataSn
     const sources = snapshot.migrationSource ?? [];
     const chunks = snapshot.migrationChunk ?? [];
     if (!Array.isArray(sources) || !Array.isArray(chunks)) throw new Error("archive_unverified");
-    const originalIds = new Set(sources.filter(row => row.sourceKind === EXPENSE_ORIGINAL_SOURCE_KIND).map(row => row.id));
+    const originalIds = new Set(sources.filter(row => isExpenseOriginalSourceKind(row.sourceKind)).map(row => row.id));
     await validateMigrationSnapshot({
         company: snapshot.company ?? [],
         migrationSource: sources.filter(row => !originalIds.has(row.id)),
@@ -48,21 +48,21 @@ export async function validateExpenseOriginalSnapshot(snapshot: InvoicingDataSna
     }
     const sources = snapshot.migrationSource ?? [];
     const chunks = snapshot.migrationChunk ?? [];
-    const originalSources = sources.filter(row => row.sourceKind === EXPENSE_ORIGINAL_SOURCE_KIND);
-    if (sources.some(row => typeof row.sourceKind === "string" && row.sourceKind.startsWith(EXPENSE_ORIGINAL_SOURCE_KIND)
-        && row.sourceKind !== EXPENSE_ORIGINAL_SOURCE_KIND)) throw new Error("original_unverified");
+    const originalSources = sources.filter(row => isExpenseOriginalSourceKind(row.sourceKind));
+    if (sources.some(row => typeof row.sourceKind === "string" && EXPENSE_ORIGINAL_SOURCE_KINDS.some(kind => String(row.sourceKind).startsWith(kind))
+        && !isExpenseOriginalSourceKind(row.sourceKind))) throw new Error("original_unverified");
     const referenced = new Set<string>();
     for (const attachment of snapshot.expenseAttachment) {
         if (!isExpenseOriginalReference(attachment.contentBase64)) continue;
         const ref = parseExpenseOriginalReference(attachment.contentBase64);
         if (!ref || ref.attachmentId !== attachment.id || ref.expenseId !== attachment.expenseId
             || String(ref.sizeBytes) !== attachment.sizeBytes
-            || attachment.mimeType !== "application/xml" || referenced.has(ref.sourceId)) throw new Error("original_unverified");
+            || attachment.mimeType !== expenseOriginalMimeType(ref) || referenced.has(ref.sourceId)) throw new Error("original_unverified");
         one(snapshot.expenseAttachment, ref.attachmentId);
         const company = one(snapshot.company, ref.companyId);
         const expense = one(snapshot.expense, ref.expenseId);
         const source = one(sources, ref.sourceId);
-        if (expense.companyId !== ref.companyId || source.sourceKind !== EXPENSE_ORIGINAL_SOURCE_KIND
+        if (expense.companyId !== ref.companyId || source.sourceKind !== expenseOriginalSourceKind(ref)
             || attachment.originalFilename !== source.originalFilename || attachment.mimeType !== source.mimeType) throw new Error("original_unverified");
         const archiveChunks = chunks.filter(row => row.sourceId === ref.sourceId);
         const related = [company, expense, attachment, source, ...archiveChunks];

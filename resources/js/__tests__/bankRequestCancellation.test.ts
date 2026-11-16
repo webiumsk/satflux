@@ -119,3 +119,36 @@ it.each([false, true])("cancels an inbound-address read without a global flash (
     await rejected;
     expect(flash.errorKey).not.toHaveBeenCalled();
 });
+
+
+it("copies applied ordinary filters, keeps them through refresh and never passes a nested filters transport option", async () => {
+    const { bank } = bankFor();
+    const filters = { search: "ŽLTÝ %_reference", amount_min: "0.10", direction: "debit" as const };
+    const first = bank.load("unmatched", { skipErrorFlash: true, filters });
+    await vi.waitFor(() => expect(requests).toHaveLength(1));
+    filters.search = "mutated caller";
+    expect(requests[0].config.params).toEqual({ per_page: 50, match_status: "unmatched", search: "ŽLTÝ %_reference", amount_min: "0.10", direction: "debit" });
+    expect(Reflect.get(requests[0].config, "filters")).toBeUndefined();
+    respond(requests[0], "first"); await first;
+    const next = bank.load();
+    await vi.waitFor(() => expect(requests).toHaveLength(2));
+    expect(requests[1].config.params.search).toBe("ŽLTÝ %_reference");
+    respond(requests[1], "refreshed"); await next;
+    const cleared = bank.load("all", { filters: {} });
+    await vi.waitFor(() => expect(requests).toHaveLength(3));
+    expect(requests[2].config.params).toEqual({ per_page: 50 });
+    respond(requests[2], "cleared"); await cleared;
+});
+
+it("supersedes an old same-company search and applies only the new result", async () => {
+    const { bank } = bankFor();
+    const old = bank.load("all", { filters: { search: "old search" } });
+    await vi.waitFor(() => expect(requests).toHaveLength(1));
+    const current = bank.load("all", { filters: { search: "current search" } });
+    await vi.waitFor(() => expect(requests).toHaveLength(2));
+    await old;
+    expect(requests[0].config.signal?.aborted).toBe(true);
+    respond(requests[1], "current"); await current;
+    expect(bank.transactions.value).toEqual([{ id: "current" }]);
+    expect(flash.errorKey).not.toHaveBeenCalled();
+});

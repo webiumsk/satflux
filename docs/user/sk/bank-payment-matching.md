@@ -3,11 +3,19 @@ title: Párovanie bankových platieb
 category: invoicing
 order: 5
 meta_description: Importujte bankové výpisy a automaticky spárujte platby s faktúrami.
+updated: 2026-11-16
 ---
 
 # Párovanie bankových platieb
 
 Párovanie bankových platieb zosúlaďuje prichádzajúce platby s vašimi vystavenými dokladmi, takže na prvý pohľad vidíte, čo je zaplatené.
+
+
+## Vyhľadávanie a filtrovanie pohybov
+
+Použite stav párovania a obdobie podľa dátumu zaúčtovania. V ďalších filtroch nastavíte príjmy alebo výdaje, hranice sumy a hľadaný text. Sumy zadávajte bez znamienka a smer pohybu zvoľte samostatne. Vyhľadáva sa vo variabilných symboloch, protistranách a účtoch, referenciách a číslach priradených dokladov.
+
+Filtre sa použijú ešte pred obmedzením zoznamu na najnovších 50 pohybov. Súčty zahŕňajú všetky zodpovedajúce pohyby samostatne podľa mien. Zostatok účtu s dátumom zostáva údajom banky a nepredstavuje súčet filtrovaných pohybov. Na mobile potvrďte rozšírené filtre tlačidlom **Použiť**; **Vymazať filtre** (na mobile **Vymazať všetko**) odstráni všetky podmienky. Filtrovanie nemení párovanie ani stav úhrady.
 
 ## Import transakcií
 

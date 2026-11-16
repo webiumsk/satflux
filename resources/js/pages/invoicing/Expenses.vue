@@ -2,33 +2,30 @@
   <InvoicingPageShell content-class="pb-8">
     <template #header>
       <InvoicingAppHeader
+        ref="appHeader"
         :company-label="companyName"
         :show-filter-bar="false"
         show-mobile-filters
         :mobile-filter-active-count="mobileFilterActiveCount"
-        @mobile-filter-apply="load"
+        @mobile-filter-apply="onMobileFilterApply"
         @mobile-filter-clear="onMobileFilterClear"
       >
         <template #mobile-filters>
-          <div class="invoicing-mobile-filter-stack">
-            <button
-              v-for="f in statusFilters"
-              :key="f.id"
-              type="button"
-              class="invoicing-filter"
-              :class="activeFilter === f.id ? 'invoicing-filter--active' : 'invoicing-filter--idle'"
-              @click="setFilter(f.id)"
-            >
-              {{ t(f.labelKey) }}
-            </button>
-            <select
-              v-model="year"
-              class="invoicing-sf-input w-full"
-              @change="onYearChange"
-            >
-              <option v-for="y in yearOptions" :key="y" :value="y">{{ yearLabel(y) }}</option>
-            </select>
-          </div>
+          <InvoicingRecordFilterBar
+            ref="mobileFilters"
+            kind="expense"
+            layout="drawer"
+            :container-class="INVOICING_CONTAINER_CLASS"
+            :status-filters="statusFilters"
+            :active-filter="activeFilter"
+            :issue-period="issuePeriod"
+            :advanced-draft="advancedDraft"
+            :has-active-advanced="hasActiveAdvanced()"
+            @filter-change="setFilter"
+            @period-change="onPeriodChange"
+            @advanced-open="resetAdvancedDraft"
+            @advanced-apply="onAdvancedApply"
+          />
         </template>
         <template #mobile-actions>
           <button type="button" class="invoicing-btn-secondary w-full" @click="openImport('excel')">
@@ -50,32 +47,25 @@
     </template>
 
     <template #subheader>
-      <div class="invoicing-filter-bar bg-white border-b border-gray-200 hidden md:block">
-        <div :class="[INVOICING_CONTAINER_CLASS, 'flex flex-wrap items-center gap-2 py-3']">
-          <div class="flex flex-wrap items-center gap-2 flex-1 min-w-0">
-            <button
-              v-for="f in statusFilters"
-              :key="f.id"
-              type="button"
-              class="invoicing-filter"
-              :class="activeFilter === f.id ? 'invoicing-filter--active' : 'invoicing-filter--idle'"
-              @click="setFilter(f.id)"
-            >
-              {{ t(f.labelKey) }}
-            </button>
-
-            <div class="relative">
-              <select
-                v-model="year"
-                class="invoicing-filter invoicing-filter--idle appearance-none pr-7 cursor-pointer"
-                @change="onYearChange"
-              >
-                <option v-for="y in yearOptions" :key="y" :value="y">{{ yearLabel(y) }}</option>
-              </select>
-            </div>
-          </div>
-
+      <InvoicingRecordFilterBar
+        ref="desktopFilters"
+        kind="expense"
+        :container-class="INVOICING_CONTAINER_CLASS"
+        :status-filters="statusFilters"
+        :active-filter="activeFilter"
+        :issue-period="issuePeriod"
+        :advanced-draft="advancedDraft"
+        :has-active-advanced="hasActiveAdvanced()"
+        @filter-change="setFilter"
+        @period-change="onPeriodChange"
+        @advanced-open="resetAdvancedDraft"
+        @advanced-apply="onAdvancedApply"
+      >
+        <template #actions>
           <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <button v-if="hasAnyFilters" type="button" class="invoicing-btn-secondary" @click="onMobileFilterClear">
+              {{ t('invoicing.filter_clear') }}
+            </button>
             <div class="relative">
               <button
                 type="button"
@@ -97,8 +87,8 @@
               + {{ t('invoicing.expenses_new') }}
             </RouterLink>
           </div>
-        </div>
-      </div>
+        </template>
+      </InvoicingRecordFilterBar>
     </template>
 
     <LocalFirstBridgeNotice
@@ -133,8 +123,11 @@
     <div v-if="loading" class="invoicing-muted py-8">{{ t('common.loading') }}</div>
 
     <div v-else-if="!error && expenses.length === 0" class="invoicing-card-pad text-center text-gray-600 my-8">
-      <p>{{ t('invoicing.expenses_empty') }}</p>
-      <p class="text-sm text-gray-500 mt-2">{{ t('invoicing.expenses_empty_hint') }}</p>
+      <p>{{ t(hasAnyFilters ? 'invoicing.filter_no_results' : 'invoicing.expenses_empty') }}</p>
+      <button v-if="hasAnyFilters" type="button" class="invoicing-btn-secondary mt-3" @click="onMobileFilterClear">
+        {{ t('invoicing.filter_clear') }}
+      </button>
+      <p v-else class="text-sm text-gray-500 mt-2">{{ t('invoicing.expenses_empty_hint') }}</p>
     </div>
 
     <div v-else-if="!error" class="invoicing-card overflow-hidden my-8">
@@ -210,6 +203,7 @@ import ExpenseImportModal from '../../components/invoicing/ExpenseImportModal.vu
 import ExpenseListSummary from '../../components/invoicing/ExpenseListSummary.vue';
 import ExpensesTable from '../../components/invoicing/ExpensesTable.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
+import InvoicingRecordFilterBar from '../../components/invoicing/InvoicingRecordFilterBar.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
 import LocalFirstBridgeNotice from '../../components/invoicing/LocalFirstBridgeNotice.vue';
 import InvoicingMobileBulkBar from '../../components/invoicing/InvoicingMobileBulkBar.vue';
@@ -232,6 +226,9 @@ import { useInvoicingExpenses } from '../../composables/useInvoicingExpenses';
 import { INVOICING_CONTAINER_CLASS, useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import { invoicingApi } from '../../services/api';
 import { summarizeExpenses, type ExpenseSummary } from '../../utils/expenseSummary';
+import { useExpenseListFilters, expenseListFilterParams } from '../../composables/useExpenseListFilters';
+import type { IssuePeriodState } from '../../composables/useInvoicingIssuePeriod';
+import { validExpenseListFilters } from '../../evolu/expenseListFilters';
 
 const { t } = useI18n();
 const localFirst = isInvoicingLocalFirst();
@@ -256,36 +253,41 @@ const lastPage = ref(1);
 const totalCount = ref(0);
 const summary = ref<ExpenseSummary | null>(null);
 let loadEpoch = 0;
+let disposed = false;
 const activeFilter = ref('all');
-const year = ref(route.query.year === 'all' ? 0 : new Date().getFullYear());
+const { issuePeriod, advancedApplied, advancedDraft, hasActiveAdvanced, resetAdvancedDraft, clear: clearFilters } =
+  useExpenseListFilters(route.query.year === 'all');
+type FilterBarHandle = { applyAdvanced: () => boolean; resetDraft: () => void };
+const appHeader = ref<InstanceType<typeof InvoicingAppHeader> | null>(null);
+const mobileFilters = ref<FilterBarHandle | null>(null);
+const desktopFilters = ref<FilterBarHandle | null>(null);
+function resetFilterDrafts() { mobileFilters.value?.resetDraft(); desktopFilters.value?.resetDraft(); }
+const hasAnyFilters = computed(() => activeFilter.value !== 'all' || issuePeriod.preset !== 'all' || hasActiveAdvanced());
+let selectionRevision = 0;
 const selectedIds = ref<Set<string>>(new Set());
 const selectAllMode = ref(false);
 
-const statusFilters = [
-  { id: 'all', labelKey: 'invoicing.adv_all' },
-  { id: 'paid', labelKey: 'invoicing.adv_paid' },
-  { id: 'unpaid', labelKey: 'invoicing.expense_filter_unpaid' },
-  { id: 'overdue', labelKey: 'invoicing.expense_filter_overdue' },
-];
-
-const yearOptions = computed(() => {
-  const current = new Date().getFullYear();
-
-  return [0, current, current - 1, current - 2];
-});
+const statusFilters = computed(() => [
+  { id: 'all', label: t('invoicing.adv_all') },
+  { id: 'paid', label: t('invoicing.adv_paid') },
+  { id: 'unpaid', label: t('invoicing.expense_filter_unpaid') },
+  { id: 'overdue', label: t('invoicing.expense_filter_overdue') },
+]);
 
 const selectionCount = computed(() => (selectAllMode.value ? totalCount.value : selectedIds.value.size));
 
 const mobileFilterActiveCount = computed(() => {
   let count = 0;
   if (activeFilter.value !== 'all') count++;
-  if (year.value !== new Date().getFullYear()) count++;
+  if (issuePeriod.preset !== 'all') count++;
+  if (hasActiveAdvanced()) count++;
   return count;
 });
 
 function onMobileFilterClear() {
   activeFilter.value = 'all';
-  year.value = new Date().getFullYear();
+  clearFilters();
+  resetFilterDrafts();
   page.value = 1;
   clearSelection();
   load();
@@ -293,13 +295,31 @@ function onMobileFilterClear() {
 
 const fileActions = new Set(['export_xlsx', 'attachments_zip']);
 
-function yearLabel(y: number) {
-  if (y === 0) return t('invoicing.expense_year_all');
-  if (y === new Date().getFullYear()) {
-    return t('invoicing.expense_year_this', { year: y });
-  }
+function onMobileFilterApply() {
+  if (mobileFilters.value?.applyAdvanced() === false) appHeader.value?.openFilterDrawer();
+}
 
-  return String(y);
+function onPeriodChange(next: IssuePeriodState) {
+  if (!validExpenseListFilters(expenseListFilterParams(activeFilter.value, next, advancedApplied))) {
+    error.value = t('invoicing.filter_invalid_range');
+    return;
+  }
+  Object.assign(issuePeriod, next);
+  page.value = 1;
+  clearSelection();
+  void load();
+}
+
+function onAdvancedApply(next: IssuePeriodState) {
+  if (!validExpenseListFilters(expenseListFilterParams(activeFilter.value, next, advancedDraft))) {
+    error.value = t('invoicing.filter_invalid_range');
+    return;
+  }
+  Object.assign(issuePeriod, next);
+  Object.assign(advancedApplied, advancedDraft);
+  page.value = 1;
+  clearSelection();
+  void load();
 }
 
 function expenseNewTo() {
@@ -315,12 +335,6 @@ function setFilter(id: string) {
   page.value = 1;
   clearSelection();
   load();
-}
-
-function onYearChange() {
-  page.value = 1;
-  clearSelection();
-  void load();
 }
 
 function changePage(p: number) {
@@ -343,7 +357,8 @@ function openImport(kind: 'excel' | 'pdf') {
 
 function onImported() {
   showAttachImportModal.value = false;
-  year.value = 0;
+  clearFilters();
+  resetFilterDrafts();
   activeFilter.value = 'all';
   page.value = 1;
   clearSelection();
@@ -352,13 +367,17 @@ function onImported() {
 
 watch(() => route.query.year, (value) => {
   if (value === 'all') {
-    year.value = 0;
+    Object.assign(issuePeriod, { preset: 'all', customFrom: '', customTo: '' });
+    clearSelection();
     page.value = 1;
     void load();
   }
 });
 
 watch(companyId, (id) => {
+  activeFilter.value = 'all';
+  clearFilters();
+  resetFilterDrafts();
   expenses.value = [];
   summary.value = null;
   totalCount.value = 0;
@@ -376,6 +395,7 @@ watch(companyId, (id) => {
 }, { flush: 'sync' });
 
 function toggleRow(id: string) {
+  selectionRevision++;
   selectAllMode.value = false;
   const next = new Set(selectedIds.value);
   if (next.has(id)) next.delete(id);
@@ -384,6 +404,7 @@ function toggleRow(id: string) {
 }
 
 function selectPage() {
+  selectionRevision++;
   selectAllMode.value = false;
   const next = new Set(selectedIds.value);
   expenses.value.forEach((e) => next.add(e.id));
@@ -392,21 +413,20 @@ function selectPage() {
 }
 
 function selectAllFiltered() {
+  selectionRevision++;
   selectAllMode.value = true;
   selectedIds.value = new Set();
   showHeaderMenu.value = true;
 }
 
 function clearSelection() {
+  selectionRevision++;
   selectAllMode.value = false;
   selectedIds.value = new Set();
 }
 
 function listFilterParams() {
-  return {
-    filter: activeFilter.value === 'all' ? undefined : activeFilter.value,
-    year: year.value || undefined,
-  };
+  return expenseListFilterParams(activeFilter.value, issuePeriod, advancedApplied);
 }
 
 function bulkPayload(action: string) {
@@ -427,6 +447,12 @@ async function runBulk(action: string) {
   if (selectionCount.value === 0) return;
   const actionCompany = companyId.value;
   const actionEpoch = loadEpoch;
+  const actionFilters = listFilterParams();
+  const actionSelection = selectionRevision;
+  const payload = bulkPayload(action);
+  const actionCurrent = () => !disposed && actionCompany === companyId.value && actionSelection === selectionRevision
+    && JSON.stringify(actionFilters) === JSON.stringify(listFilterParams());
+  const assertActionCurrent = () => { if (!actionCurrent()) throw new Error('expense_selection_stale'); };
   showHeaderMenu.value = false;
 
   if (action === 'cancel' && !window.confirm(t('invoicing.expense_bulk_delete_confirm'))) return;
@@ -446,8 +472,8 @@ async function runBulk(action: string) {
         companyId.value as CompanyId,
         selectAllMode.value,
         selectedIds.value,
-        invoicingExpenses.expenseRows.value,
-        listFilterParams(),
+        invoicingExpenses.expenseRows.value.map((row) => ({ ...row })),
+        actionFilters,
       );
 
       if (targets.length === 0) {
@@ -457,11 +483,11 @@ async function runBulk(action: string) {
 
       const result =
         action === 'mark_paid'
-          ? await bulkMarkPaidLocalExpenses(invoicingExpenses.evolu, targets)
+          ? await bulkMarkPaidLocalExpenses(invoicingExpenses.evolu, targets, assertActionCurrent)
           : action === 'cancel'
-            ? await bulkCancelLocalExpenses(invoicingExpenses.evolu, targets)
+            ? await bulkCancelLocalExpenses(invoicingExpenses.evolu, targets, assertActionCurrent)
             : null;
-      if (actionCompany !== companyId.value) return;
+      if (!actionCurrent()) return;
 
       if (result) {
         success.value = t('invoicing.bulk_result', {
@@ -469,7 +495,7 @@ async function runBulk(action: string) {
           skipped: result.skipped,
         });
         await load();
-        if (actionCompany !== companyId.value) return;
+        if (!actionCurrent()) return;
         clearSelection();
       }
       return;
@@ -477,9 +503,9 @@ async function runBulk(action: string) {
 
     const isFile = fileActions.has(action);
     const res = isFile
-      ? await invoicingApi.expenses.bulkExport(companyId.value, bulkPayload(action))
-      : await invoicingApi.expenses.bulk(companyId.value, bulkPayload(action));
-    if (actionCompany !== companyId.value) return;
+      ? await invoicingApi.expenses.bulkExport(actionCompany, payload)
+      : await invoicingApi.expenses.bulk(actionCompany, payload);
+    if (!actionCurrent()) return;
 
     if (isFile) {
       const names: Record<string, string> = {
@@ -500,18 +526,18 @@ async function runBulk(action: string) {
         skipped: data.skipped ?? 0,
       });
       await load();
-      if (actionCompany !== companyId.value) return;
+      if (!actionCurrent()) return;
       clearSelection();
     }
   } catch (rawError) {
-    if (actionCompany !== companyId.value) return;
+    if (!actionCurrent()) return;
     const e = asApiError(rawError);
     const mutationErrorKey = expenseMutationErrorKey(rawError);
     if (mutationErrorKey) {
       error.value = t(mutationErrorKey);
     } else if (e?.response?.data instanceof Blob) {
       const text = await e.response.data.text();
-      if (actionCompany !== companyId.value) return;
+      if (!actionCurrent()) return;
       try {
         const json = JSON.parse(text);
         error.value = json.message || t('common.error');
@@ -634,10 +660,9 @@ async function load() {
   const requestedCompany = companyId.value;
   const requestedFilters = listFilterParams();
   const requestedPage = page.value;
-  const isCurrent = () => requestEpoch === loadEpoch
+  const isCurrent = () => !disposed && requestEpoch === loadEpoch
     && requestedCompany === companyId.value
-    && requestedFilters.filter === listFilterParams().filter
-    && requestedFilters.year === listFilterParams().year
+    && JSON.stringify(requestedFilters) === JSON.stringify(listFilterParams())
     && requestedPage === page.value;
   loading.value = true;
   error.value = '';
@@ -702,6 +727,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  disposed = true;
   loadEpoch += 1;
   document.removeEventListener('click', onDocumentClick);
 });

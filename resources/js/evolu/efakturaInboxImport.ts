@@ -256,7 +256,7 @@ async function hasVerifiedOriginal(
     try {
         const reference = parseExpenseOriginalReference(matches[0].contentBase64);
         if (reference) {
-            if (reference.receiptId !== entry.inbox_id || reference.sha256 !== digest) return false;
+            if (reference.version !== 1 || reference.receiptId !== entry.inbox_id || reference.sha256 !== digest) return false;
             const original = await readVerifiedExpenseAttachment(evolu, companyId, matches[0], { expectedOwnerId: ownerId });
             return await migrationSha256(original.bytes) === digest;
         }

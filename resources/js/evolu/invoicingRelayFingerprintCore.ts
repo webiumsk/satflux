@@ -1,5 +1,5 @@
 import { sha256 } from "@noble/hashes/sha2.js";
-import { EXPENSE_ORIGINAL_SOURCE_KIND, isExpenseOriginalReference } from "./expenseOriginalReference";
+import { isExpenseOriginalSourceKind, isExpenseOriginalReference } from "./expenseOriginalReference";
 import { deterministicStringify } from "./documentSnapshotCrud";
 import type { InvoicingDataSnapshot } from "./invoicingSnapshot";
 
@@ -37,7 +37,7 @@ export function fingerprintInvoicingSnapshot(snapshot: InvoicingDataSnapshot): s
     const core = SNAPSHOT_TABLE_KEYS.map(
         (table) => `${table}:${snapshot[table].length}:${rowIdFingerprint(snapshot[table])}`,
     ).join(";");
-    const sources = (snapshot.migrationSource ?? []).filter(row => row.sourceKind === EXPENSE_ORIGINAL_SOURCE_KIND);
+    const sources = (snapshot.migrationSource ?? []).filter(row => isExpenseOriginalSourceKind(row.sourceKind));
     const sourceIds = new Set(sources.map(row => row.id));
     // Hash content as well as ids: a partial relay merge or changed chunk with the
     // same id must never look like a complete, healthy ownership snapshot.

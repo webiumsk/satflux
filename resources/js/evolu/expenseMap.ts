@@ -5,6 +5,8 @@ import {
     type EvoluExpenseAttachmentRow,
 } from "./expenseAttachmentCrud";
 import type { CompanyId, ExpenseId } from "./schema";
+import { expenseFilterCents, validExpenseListFilters, type ExpenseListFilterOptions } from "./expenseListFilters";
+export type { ExpenseListFilterOptions } from "./expenseListFilters";
 
 export type EvoluExpenseRow = {
     id: ExpenseId;
@@ -109,19 +111,19 @@ function localDateString(date = new Date()): string {
     return `${year}-${month}-${day}`;
 }
 
-export type ExpenseListFilterOptions = {
-    filter?: string;
-    year?: number;
-};
-
 export function filterLocalExpenses(
     rows: EvoluExpenseRow[],
     options: ExpenseListFilterOptions,
 ): EvoluExpenseRow[] {
     const today = localDateString();
+    if (!validExpenseListFilters(options)) return [];
     let result = rows.filter((row) => row.status !== "cancelled");
 
-    if (options.year) {
+    if (options.issue_from || options.issue_to) {
+        result = result.filter((row) => Boolean(row.issueDate)
+            && (!options.issue_from || row.issueDate! >= options.issue_from)
+            && (!options.issue_to || row.issueDate! <= options.issue_to));
+    } else if (options.year) {
         const yearPrefix = String(options.year);
         result = result.filter((row) => row.issueDate?.startsWith(yearPrefix));
     }
@@ -138,6 +140,27 @@ export function filterLocalExpenses(
                 && Boolean(row.dueDate)
                 && row.dueDate! < today,
         );
+    }
+
+    if (options.due === "overdue") {
+        result = result.filter((row) => row.status === "recorded" && Boolean(row.dueDate) && row.dueDate! < today);
+    } else if (options.due === "custom") {
+        result = result.filter((row) => Boolean(row.dueDate)
+            && (!options.due_from || row.dueDate! >= options.due_from)
+            && (!options.due_to || row.dueDate! <= options.due_to));
+    }
+    const min = options.amount_min === undefined || options.amount_min === "" ? null : expenseFilterCents(options.amount_min);
+    const max = options.amount_max === undefined || options.amount_max === "" ? null : expenseFilterCents(options.amount_max);
+    if (min !== null || max !== null) {
+        result = result.filter((row) => {
+            const total = expenseFilterCents(row.total);
+            return total !== null && (min === null || total >= min) && (max === null || total <= max);
+        });
+    }
+    const search = options.search?.trim().toLowerCase();
+    if (search) {
+        result = result.filter((row) => [row.internalNumber, row.externalNumber, row.title, row.variableSymbol, row.internalNote]
+            .some((value) => value?.toLowerCase().includes(search)));
     }
 
     return result.sort((a, b) => {

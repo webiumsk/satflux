@@ -2,15 +2,16 @@ import { sqliteTrue } from "@evolu/common";
 import { createQuery, type Evolu } from "@evolu/common/local-first";
 import { awaitBankMutation, awaitWorkerOutcome } from "./bankReconciliation";
 import { expenseOriginalAttachmentProofQuery, expenseOriginalChunksProofQuery, migrationSourceProofQuery } from "./client";
-import { LOCAL_EXPENSE_ATTACHMENT_MAX_BYTES, type EvoluExpenseAttachmentRow } from "./expenseAttachmentCrud";
+import { insertLocalExpenseOriginalReference, LOCAL_EXPENSE_ATTACHMENT_MAX_BYTES, type EvoluExpenseAttachmentRow } from "./expenseAttachmentCrud";
 import { assertExpenseCompanyOwner, checkpointExpenseMutations, currentExpenseTarget, withExpenseReconciliation,
     type ExpenseReconciliationScope } from "./expenseReconciliation";
 import { migrationSha256 } from "./migrationArchiveValues";
 import { CompanyId, MigrationChunkId, MigrationSourceId, type InvoicingLocalSchema } from "./schema";
 import { toAppRows } from "./queryLoad";
-import { createExpenseOriginalReference, encodeExpenseOriginalReference, expenseOriginalChunkId,
-    EXPENSE_ORIGINAL_CHUNK_BYTES, EXPENSE_ORIGINAL_MAX_BYTES, EXPENSE_ORIGINAL_SOURCE_KIND,
-    parseExpenseOriginalReference, type ExpenseOriginalReference } from "./expenseOriginalReference";
+import { createExpenseOriginalReference, createManualExpenseOriginalReference, encodeExpenseOriginalReference, expenseOriginalChunkId,
+    expenseOriginalMimeType, expenseOriginalSourceKind, EXPENSE_ORIGINAL_CHUNK_BYTES, EXPENSE_ORIGINAL_MAX_BYTES,
+    parseExpenseOriginalReference, type ExpenseOriginalReference, type ManualExpenseOriginalReference,
+    type ReceivedExpenseOriginalReference } from "./expenseOriginalReference";
 
 type Client = Evolu<InvoicingLocalSchema>;
 type Row = Readonly<Record<string, unknown>>;
@@ -35,10 +36,10 @@ function live(row: Row): boolean {
     return row.isDeleted == null || row.isDeleted === 0;
 }
 function sourceMatches(source: Row, ref: ExpenseOriginalReference): boolean {
-    return source.id === ref.sourceId && source.companyId === ref.companyId && source.sourceKind === EXPENSE_ORIGINAL_SOURCE_KIND
+    return source.id === ref.sourceId && source.companyId === ref.companyId && source.sourceKind === expenseOriginalSourceKind(ref)
         && source.relatedExportId == null && source.checksum === ref.sha256 && source.sizeBytes === String(ref.sizeBytes)
         && source.chunkCount === String(ref.chunkCount) && typeof source.originalFilename === "string"
-        && source.originalFilename.length > 0 && source.originalFilename.length <= 255 && source.mimeType === "application/xml";
+        && source.originalFilename.length > 0 && source.originalFilename.length <= 255 && source.mimeType === expenseOriginalMimeType(ref);
 }
 async function verifyRows(ref: ExpenseOriginalReference, sources: readonly Row[], chunks: readonly Row[], ownerId: string | undefined, ready: boolean): Promise<Uint8Array> {
     // Recreate all derived bindings even when the caller supplies a typed object.
@@ -77,25 +78,36 @@ async function archiveRows(evolu: Client, ref: ExpenseOriginalReference) {
     return { sources, chunks };
 }
 
-/** Exact-byte writer under the caller's existing financial lease. Pending retries never clear a ready cell. */
-export async function retainExpenseOriginalArchive(scope: ExpenseReconciliationScope, input: {
-    companyId: string; ownerId: string; receiptId: string; expenseId: string; attachmentId: string; filename: string;
+type ArchiveInput = {
+    companyId: string; ownerId: string; expenseId: string; attachmentId: string; filename: string;
     bytes: Uint8Array; assertCurrent: () => void | Promise<void>;
-}): Promise<ExpenseOriginalReference> {
+};
+/** Exact-byte writer under the caller's existing financial lease. Pending retries never clear a ready cell. */
+export function retainExpenseOriginalArchive(scope: ExpenseReconciliationScope, input: ArchiveInput & { receiptId: string; mimeType?: never }): Promise<ReceivedExpenseOriginalReference>;
+export function retainExpenseOriginalArchive(scope: ExpenseReconciliationScope, input: ArchiveInput & { receiptId?: never; mimeType: string }): Promise<ManualExpenseOriginalReference>;
+export async function retainExpenseOriginalArchive(scope: ExpenseReconciliationScope,
+    input: ArchiveInput & ({ receiptId: string; mimeType?: never } | { receiptId?: never; mimeType: string })): Promise<ExpenseOriginalReference> {
     if (input.bytes.length < 1 || input.bytes.length > EXPENSE_ORIGINAL_MAX_BYTES || !input.filename || input.filename.length > 255
         || /[/\\]/.test(input.filename) || Array.from(input.filename).some(char => char.charCodeAt(0) < 32)) return fail();
-    const ref = createExpenseOriginalReference({ ...input, sha256: await migrationSha256(input.bytes), sizeBytes: input.bytes.length });
+    const digest = { sha256: await migrationSha256(input.bytes), sizeBytes: input.bytes.length };
+    const ref = input.receiptId !== undefined ? createExpenseOriginalReference({ ...input, receiptId: input.receiptId, ...digest })
+        : createManualExpenseOriginalReference({ ...input, mimeType: input.mimeType, ...digest });
     const companyId = CompanyId.orThrow(input.companyId);
     const id = MigrationSourceId.orThrow(ref.sourceId);
     const attachments = await loadRows(scope.evolu, expenseOriginalAttachmentProofQuery);
     if (attachments.some(row => row.id === input.attachmentId && row.ownerId === input.ownerId
         && (!live(row) || row.expenseId !== input.expenseId))) return fail();
+    if (ref.version === 2) {
+        const current = attachments.filter(row => row.id === input.attachmentId && row.ownerId === input.ownerId);
+        if (current.length > 1 || current.some(row => row.contentBase64 !== encodeExpenseOriginalReference(ref)
+            || row.originalFilename !== input.filename || row.mimeType !== ref.mimeType || row.sizeBytes !== String(ref.sizeBytes))) return fail();
+    }
     const assertCurrent = async () => {
         await input.assertCurrent();
         assertExpenseCompanyOwner(scope, input.companyId, input.ownerId);
     };
-    const metadata = { id, companyId, sourceKind: EXPENSE_ORIGINAL_SOURCE_KIND, relatedExportId: null,
-        originalFilename: input.filename, mimeType: "application/xml", sizeBytes: String(ref.sizeBytes),
+    const metadata = { id, companyId, sourceKind: expenseOriginalSourceKind(ref), relatedExportId: null,
+        originalFilename: input.filename, mimeType: expenseOriginalMimeType(ref), sizeBytes: String(ref.sizeBytes),
         checksum: ref.sha256, chunkCount: String(ref.chunkCount) };
     let proof = await archiveRows(scope.evolu, ref);
     const existing = proof.sources.filter(row => row.id === id && row.ownerId === input.ownerId);
@@ -106,8 +118,16 @@ export async function retainExpenseOriginalArchive(scope: ExpenseReconciliationS
         return ref;
     }
     await assertCurrent();
-    if (!await awaitBankMutation(scope.evolu, onComplete => scope.evolu.upsert("migrationSource", metadata,
-        { ownerId: input.ownerId as never, onComplete }))) return fail();
+    if (!await awaitBankMutation(scope.evolu, onComplete => {
+        const source = scope.evolu.upsert("migrationSource", metadata,
+            { ownerId: input.ownerId as never, ...(ref.version === 1 ? { onComplete } : {}) });
+        if (!source.ok || ref.version === 1) return source;
+        // A manual File has no durable inbox receipt. Link its pending source in
+        // this same atomic batch so interruption always leaves a deletable row.
+        const attachment = insertLocalExpenseOriginalReference(scope.evolu, input.expenseId as never,
+            input.attachmentId as never, ref, input.filename, { ownerId: input.ownerId, onComplete });
+        return attachment;
+    })) return fail();
     await checkpointExpenseMutations(scope.evolu);
     for (let index = 0; index < ref.chunkCount; index++) {
         await assertCurrent();
@@ -178,7 +198,7 @@ async function readInScope(scope: ExpenseReconciliationScope, companyId: string,
 
 function assertReferenceBinding(ref: ExpenseOriginalReference, companyId: string, attachment: EvoluExpenseAttachmentRow): void {
     if (ref.companyId !== companyId || ref.expenseId !== attachment.expenseId || ref.attachmentId !== attachment.id
-        || attachment.sizeBytes !== String(ref.sizeBytes) || attachment.mimeType !== "application/xml") return fail();
+        || attachment.sizeBytes !== String(ref.sizeBytes) || attachment.mimeType !== expenseOriginalMimeType(ref)) return fail();
 }
 
 /** Include intended chunk ids even if a damaged row points at another source/company. */

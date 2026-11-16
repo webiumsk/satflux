@@ -2,7 +2,7 @@
 title: Importar gastos de SuperFaktura
 category: invoicing
 order: 12
-updated: 2026-11-03
+updated: 2026-11-16
 ---
 
 # Importar gastos de SuperFaktura
@@ -24,6 +24,13 @@ Límites: **10 MB, 2.000 filas y 256 columnas** por archivo. Las filas no válid
 
 En la facturación local, el archivo se procesa en su navegador y se guarda con los datos cifrados existentes. Guarde su frase de recuperación. Los adjuntos PDF se importan por separado.
 
+
+## Buscar y filtrar gastos
+
+Acote la lista con los botones de estado y el periodo de emisión. Al abrir se muestra el año actual; puede elegir todas las fechas, un periodo predefinido o límites propios. Abra **Más** para filtrar el importe, el vencimiento y el texto. La búsqueda incluye el número interno, el número del documento del proveedor, el título, el símbolo variable y las notas.
+
+Confirme los campos avanzados con **Filtrar**. En el móvil, use el panel de filtros. **Borrar filtros** (en el móvil **Borrar todo**) elimina la búsqueda y los demás criterios. Al cambiar los filtros aplicados se borra la selección actual. Los totales y **seleccionar todo** usan el resultado filtrado completo, incluidos los registros de otras páginas.
+
 ## Valores iniciales de un gasto nuevo
 
 El símbolo variable sigue los dígitos del número del documento, incluidos los ceros iniciales. La fecha de entrega sigue la fecha de recepción. Al editar manualmente uno de estos valores, se detiene su vínculo. Se conservan los valores explícitos extraídos de un adjunto; los gastos existentes mantienen sus valores guardados. Una fecha de entrega borrada manualmente permanece vacía después de guardar y volver a abrir.
@@ -42,6 +49,8 @@ El importe de los gastos no pagados suma los importes completos de los documento
 
 ## Adjuntos PDF en un gasto individual
 
-Abra un gasto y añada su PDF. En la facturación local, los adjuntos y los campos extraídos se guardan con sus datos locales cifrados. Cada adjunto local puede ocupar como máximo **384 KiB**. En el formulario de creación o edición, pulse **Guardar** para guardar los adjuntos pendientes. En la página de detalle del gasto se guardan inmediatamente al terminar u omitir el procesamiento ISDOC opcional.
+Abra un gasto y añada su PDF. En la facturación local, los adjuntos y los campos extraídos se guardan con sus datos locales cifrados. Cada adjunto local puede ocupar como máximo **10 MiB**. En el formulario de creación o edición, pulse **Guardar** para guardar los adjuntos pendientes. En la página de detalle del gasto se guardan inmediatamente al terminar u omitir el procesamiento ISDOC opcional.
 
 Puede permitir el procesamiento temporal en el servidor para detectar datos ISDOC incrustados. Cancelar mantiene el adjunto en local. Si se encuentra ISDOC, confirme por separado la extracción o conserve solo el adjunto. La extracción usa su límite y créditos existentes; no es OCR. Si se agota el límite, puede adjuntar el archivo e introducir los datos manualmente.
+
+Si se interrumpe el guardado de un adjunto grande, vuelva a intentarlo mientras el archivo siga seleccionado. Tras recargar la página, elimine el adjunto incompleto y seleccione de nuevo el archivo original. Complete la carga o elimine el adjunto incompleto antes de crear una copia de seguridad completa.

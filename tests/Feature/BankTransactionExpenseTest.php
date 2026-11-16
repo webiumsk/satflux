@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\Invoicing\DocumentSequenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 class BankTransactionExpenseTest extends TestCase
@@ -68,7 +69,9 @@ class BankTransactionExpenseTest extends TestCase
     }
 
     #[Test]
-    public function debit_transaction_can_create_linked_expense(): void
+    #[TestWith(['Platba kartou 4234**3873, HOSTEL LETOV.'])]
+    #[TestWith(['Platba 0900/000000-1234567890'])]
+    public function debit_transaction_can_create_linked_expense(string $reference): void
     {
         $transaction = BankTransaction::create([
             'company_id' => $this->company->id,
@@ -79,7 +82,7 @@ class BankTransactionExpenseTest extends TestCase
             'match_status' => BankTransactionMatchStatus::Unmatched,
             'variable_symbol' => '4234',
             'counterparty_name' => 'HOSTEL LETOV',
-            'reference' => 'Platba kartou 4234**3873, HOSTEL LETOV.',
+            'reference' => $reference,
             'dedupe_hash' => 'debit-expense-test',
         ]);
 
@@ -97,6 +100,7 @@ class BankTransactionExpenseTest extends TestCase
         $response->assertCreated();
         $response->assertJsonPath('data.expense.status', BusinessExpenseStatus::Paid->value);
         $response->assertJsonPath('data.transaction.match_status', BankTransactionMatchStatus::Matched->value);
+        $response->assertJsonPath('data.transaction.direction', BankTransactionDirection::Debit->value);
         $response->assertJsonPath('data.transaction.expense.internal_number', fn ($v) => is_string($v) && $v !== '');
 
         $transaction->refresh();

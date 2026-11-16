@@ -2,7 +2,7 @@
 title: Ausgaben aus SuperFaktura importieren
 category: invoicing
 order: 12
-updated: 2026-11-03
+updated: 2026-11-16
 ---
 
 # Ausgaben aus SuperFaktura importieren
@@ -24,6 +24,13 @@ Grenzen: **10 MB, 2.000 Zeilen und 256 Spalten** je Datei. Ungültige oder zu la
 
 Bei lokaler Rechnungsstellung wird die Datei im Browser verarbeitet und mit den bestehenden verschlüsselten Daten gespeichert. Sichern Sie Ihre Wiederherstellungsphrase. PDF-Anhänge werden separat importiert.
 
+
+## Ausgaben suchen und filtern
+
+Grenzen Sie die Liste mit Status und Ausstellungszeitraum ein. Anfangs wird das aktuelle Jahr angezeigt; wählen Sie alle Daten, einen voreingestellten Zeitraum oder eigene Datumsgrenzen. Unter **Mehr** finden Sie Betrag, Fälligkeit und Textsuche. Durchsucht werden interne Nummer, Lieferantenbelegnummer, Titel, variabler Verwendungszweck und Notizen.
+
+Übernehmen Sie erweiterte Kriterien mit **Filtern**. Nutzen Sie auf dem Mobilgerät den Filterbereich. **Filter zurücksetzen** (auf Mobilgeräten **Alle löschen**) entfernt Suche und andere Kriterien. Änderungen der angewendeten Filter leeren die Auswahl. Summen und **alle auswählen** beziehen sich auf das gesamte gefilterte Ergebnis, auch auf weitere Seiten.
+
 ## Vorgaben für eine neue Ausgabe
 
 Das variable Symbol folgt den Ziffern der Belegnummer einschließlich führender Nullen. Das Lieferdatum folgt dem Eingangsdatum. Eine manuelle Änderung des jeweiligen Vorgabewerts beendet diese Verknüpfung. Aus einem Anhang ausdrücklich extrahierte Werte bleiben erhalten; bestehende Ausgaben behalten ihre gespeicherten Werte. Ein manuell gelöschtes Lieferdatum bleibt auch nach dem Speichern und erneuten Öffnen leer.
@@ -42,6 +49,8 @@ Die Summe unbezahlter Ausgaben enthält die vollen Beträge der nicht als bezahl
 
 ## PDF-Anhänge einer einzelnen Ausgabe
 
-Öffnen Sie eine Ausgabe und fügen Sie ihre PDF-Datei hinzu. Bei lokaler Rechnungsverwaltung werden Anhänge und extrahierte Felder mit Ihren verschlüsselten lokalen Daten gespeichert. Ein lokaler Anhang darf höchstens **384 KiB** groß sein. Wählen Sie im Formular zum Erstellen oder Bearbeiten **Speichern**, um vorgemerkte Anhänge zu speichern. Auf der Detailseite werden Anhänge sofort gespeichert, nachdem Sie die optionale ISDOC-Verarbeitung abgeschlossen oder übersprungen haben.
+Öffnen Sie eine Ausgabe und fügen Sie ihre PDF-Datei hinzu. Bei lokaler Rechnungsverwaltung werden Anhänge und extrahierte Felder mit Ihren verschlüsselten lokalen Daten gespeichert. Ein lokaler Anhang darf höchstens **10 MiB** groß sein. Wählen Sie im Formular zum Erstellen oder Bearbeiten **Speichern**, um vorgemerkte Anhänge zu speichern. Auf der Detailseite werden Anhänge sofort gespeichert, nachdem Sie die optionale ISDOC-Verarbeitung abgeschlossen oder übersprungen haben.
 
 Sie können der vorübergehenden Serververarbeitung zur Erkennung eingebetteter ISDOC-Daten zustimmen. Beim Abbrechen bleibt der Anhang lokal. Wird ISDOC gefunden, bestätigen Sie die Feldextraktion separat oder behalten nur den Anhang. Die Extraktion nutzt Ihr bestehendes Kontingent und Guthaben; sie ist keine OCR. Ist das Kontingent aufgebraucht, können Sie die Datei weiterhin anhängen und die Daten manuell eingeben.
+
+Wird das Speichern eines größeren Anhangs unterbrochen, versuchen Sie es erneut, solange die Datei noch ausgewählt ist. Entfernen Sie nach dem Neuladen den unvollständigen Anhang und wählen Sie die Originaldatei erneut aus. Schließen Sie den Upload ab oder entfernen Sie den unvollständigen Anhang, bevor Sie eine vollständige Sicherung erstellen.
