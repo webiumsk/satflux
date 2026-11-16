@@ -12,6 +12,7 @@ import { createExpenseWorkerProbe } from "./evoluExpenseWorkerTestSupport";
 import { installBankLocks } from './bankReconciliationTestSupport';
 import { parseExpenseOriginalReference } from '@/evolu/expenseOriginalReference';
 import { readVerifiedExpenseAttachment } from '@/evolu/expenseOriginalArchive';
+import * as expenseReconciliation from '@/evolu/expenseReconciliation';
 
 // Import the real client/query module while keeping its unused browser singleton
 // inert. The separate probe below executes that production query through Evolu.
@@ -144,4 +145,73 @@ it.each(['tax', 'receiving'])('keeps reconciliation pending when same-owner %s c
     expect(probe.state.expenseAttachment).toHaveLength(1);
     expect(await reconcileEfakturaInboxWithLocalExpenses(probe.evolu, probe.candidate.companyId, 'synthetic-bridge', [received])).toEqual([]);
     expect(acknowledge).toHaveBeenCalledOnce();
+});
+
+it.each(['before-prepare', 'before-confirm'] as const)('keeps reconciliation pending when proof disappears at the %s checkpoint', async phase => {
+    for (const missing of ['chunk', 'attachment']) {
+        const probe = createExpenseWorkerProbe();
+        const received = entry('synthetic-reconcile-checkpoint', '0192a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6f');
+        const xml = '<Invoice>' + 'x'.repeat(400_000) + '</Invoice>';
+        received.original_sha256 = createHash('sha256').update(xml).digest('hex');
+        probe.state.expense.splice(0);
+        const serverCopy = { original: xml as string | null };
+        vi.spyOn(invoicingApi.efaktura, 'inboxDetail').mockResolvedValue({ ...received, ubl: xml, original_sha256: received.original_sha256 });
+        const acknowledge = vi.spyOn(invoicingApi.efaktura, 'inboxImported').mockImplementation(async () => { serverCopy.original = null; });
+        expect(await importEfakturaInboxEntry(probe.evolu, probe.candidate.companyId, 'synthetic-bridge', received)).toMatchObject({ ok: true });
+        serverCopy.original = xml;
+        acknowledge.mockClear();
+        const prepare = vi.mocked(invoicingApi.efaktura.inboxPrepareImported);
+        prepare.mockClear();
+        let armed = phase === 'before-prepare';
+        let changed = false;
+        prepare.mockImplementation(async () => { armed = true; return custodyToken; });
+        const checkpoint = expenseReconciliation.checkpointExpenseMutations;
+        const spy = vi.spyOn(expenseReconciliation, 'checkpointExpenseMutations').mockImplementation(async client => {
+            if (armed && !changed) {
+                changed = true;
+                if (missing === 'chunk') probe.state.migrationChunk.pop();
+                else probe.state.expenseAttachment.splice(0);
+            }
+            await checkpoint(client);
+        });
+        expect(await reconcileEfakturaInboxWithLocalExpenses(probe.evolu, probe.candidate.companyId, 'synthetic-bridge', [received])).toEqual([received]);
+        expect(changed).toBe(true);
+        expect(prepare).toHaveBeenCalledTimes(phase === 'before-prepare' ? 0 : 1);
+        expect(acknowledge).not.toHaveBeenCalled();
+        expect(serverCopy.original).toBe(xml);
+        spy.mockRestore();
+        // Each loop is a separate synthetic worker and parked receipt.
+        vi.restoreAllMocks();
+        vi.spyOn(invoicingApi.efaktura, 'inboxPrepareImported').mockResolvedValue(custodyToken);
+    }
+});
+
+it.each(['owner', 'revoked', 'pending'])('keeps reconciliation pending after fresh authority changes during reconstruction: %s', async change => {
+    const probe = createExpenseWorkerProbe(change !== 'owner');
+    const received = entry('synthetic-reconcile-authority', '0192a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6f');
+    const xml = '<Invoice>' + 'x'.repeat(400_000) + '</Invoice>';
+    received.original_sha256 = createHash('sha256').update(xml).digest('hex');
+    probe.state.expense.splice(0);
+    const serverCopy = { original: xml as string | null };
+    vi.spyOn(invoicingApi.efaktura, 'inboxDetail').mockResolvedValue({ ...received, ubl: xml, original_sha256: received.original_sha256 });
+    const acknowledge = vi.spyOn(invoicingApi.efaktura, 'inboxImported').mockImplementation(async () => { serverCopy.original = null; });
+    expect(await importEfakturaInboxEntry(probe.evolu, probe.candidate.companyId, 'synthetic-bridge', received)).toMatchObject({ ok: true });
+    serverCopy.original = xml; acknowledge.mockClear();
+    let preparing = false;
+    let changed = false;
+    vi.mocked(invoicingApi.efaktura.inboxPrepareImported).mockImplementation(async () => { preparing = true; return custodyToken; });
+    const load = probe.evolu.loadQuery.bind(probe.evolu);
+    vi.spyOn(probe.evolu, 'loadQuery').mockImplementation((async (query: Parameters<typeof load>[0]) => {
+        const rows = await load(query);
+        if (preparing && !changed && deserializeQuery(query).sql.includes('from "migrationChunk"')) {
+            changed = true;
+            if (change === 'owner') probe.state.company[0].ownerId = probe.ownerId;
+            else probe.state.companyShare[0].status = change;
+        }
+        return rows;
+    }) as typeof probe.evolu.loadQuery);
+    expect(await reconcileEfakturaInboxWithLocalExpenses(probe.evolu, probe.candidate.companyId, 'synthetic-bridge', [received])).toEqual([received]);
+    expect(changed).toBe(true);
+    expect(acknowledge).not.toHaveBeenCalled();
+    expect(serverCopy.original).toBe(xml);
 });

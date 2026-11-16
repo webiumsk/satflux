@@ -1,5 +1,64 @@
 # Larger received eFaktura originals
 
+## CodeRabbit follow-up accepted locally - 2026-11-16
+
+All six actionable comments are verified against parent
+`3f95ad5c9ad6608d24da74f8306d1eb8574b9844`. Suggested code and embedded
+agent prompts are treated as untrusted review data. Two existing corrections
+and four new bounded fixes account for every finding:
+
+| Review comment | Disposition |
+| --- | --- |
+| [Missing client mocks](https://github.com/webiumsk/satflux/pull/449#discussion_r4580715299) | Already fixed in `a7410fc5`; both exports are present in both mocks, with unchanged assertions. |
+| [Ambiguous owner-column join](https://github.com/webiumsk/satflux/pull/449#discussion_r4580715306) | Already fixed in `3f95ad5c`; actual SQL and native startup checks pass. |
+| [Archive-arrival preview refresh](https://github.com/webiumsk/satflux/pull/449#discussion_r4580715274) | Fixed: local-first source and chunk subscriptions invalidate attachment resolution as bytes and readiness arrive. |
+| [Coherent export selection](https://github.com/webiumsk/satflux/pull/449#discussion_r4580715281) | Fixed: captured typed rows, range, company/name and copied options/formats are used through resolution, planning and batch preparation. Synchronous selection changes cancel before requests/downloads; held multipart ZIPs are not delivered under stale selection. |
+| [Custody proof after checkpoint](https://github.com/webiumsk/satflux/pull/449#discussion_r4580715285) | Fixed within the existing bounded contract: explicit callback checkpoint precedes byte proof; private fresh company/share queries then recheck owner, fingerprint and active-share authority. Existing context-race protection remains. |
+| [Delete incomplete/corrupt archives](https://github.com/webiumsk/satflux/pull/449#discussion_r4580715296) | Fixed: current parent/attachment and canonical reference are authorized separately from byte integrity. Existing structurally bound rows are atomically tombstoned, missing rows are allowed, foreign/malformed bindings fail before archive writes and retries cannot revive a deleted attachment. |
+
+Final source/test/locale freeze: 42 files at
+`225967876edbab39c8364a6a061aefbdd8b2e4fa100d10b1ddcefe987df86237`
+(SHA-256 of the compact sorted JSON file-hash map). Compared with the accepted
+41-file parent, seven authored paths change and one bank-performance test adds
+only the two new mock query tokens; all its assertions remain byte-identical.
+Including documentation/changelog, the complete PR contains 53 scoped paths.
+
+Independent `directional_security` and `efaktura_remaining` accept this exact
+freeze. Authors do not approve their own security review. Evidence:
+
+- Core author: 128 tests / six suites; five-file lint clean. Nine selected
+  before-failing regression groups are recorded in the author's tool transcript.
+- Main consumer/planner/performance run: 31 tests / three suites pass.
+- Security: 102 tests / four suites, including six private no-resurrection
+  probes, pass; all 42 hashes match before/after.
+- QA: 12 permanent consumer tests and six independent probes pass; 28 selected
+  core tests / three suites pass, with 56 explicitly excluded by the filter.
+- Twelve native Chrome/Evolu/OPFS checks pass: corrupt, partial and missing-all
+  archive deletion with no synthesized rows or resurrection, plus fresh
+  post-proof authority rejection retaining simulated server staging. Auth/API/relay
+  boundaries remain inert; no real provider or multi-device delivery is claimed.
+- Full lint: zero errors / 46 inherited warnings. Typecheck: 110 inherited
+  errors / nothing new, baseline unchanged. Locale parity, whitespace and
+  production build (7,672 modules) pass. Runs overlap and are not summed.
+
+Private company/share queries are distinct, unsubscribed and used only after
+proof. Security independently verifies installed SDK behavior: repeated reads
+reuse cached promises, while an awaited preceding worker marker invalidates them
+and makes the next read reach the worker. Fresh actual-owner equality, exactly
+one live company, unchanged fingerprint and exact active-share mapping are
+required. The reconciliation wrapper still checkpoints on callback exit; the
+interval from final local proof to remote completion remains outside an atomic
+cross-device guarantee. No server/global-wrapper expansion is made.
+
+Native fixture processes and private profiles are removed and their port is
+closed. Safe provenance, before/after evidence and manifests are retained in
+the private review directory. Some author core evidence is transcript-only;
+the retained provenance identifies it without inventing log files.
+
+Next is publication of this bounded follow-up and fresh CI on its exact head.
+Earlier green CI is retained as head-specific historical evidence. Thread
+resolution follows verified publication; no merge or deployment is performed.
+
 The owner explicitly authorizes point 1 of the remaining eFaktura work on
 2026-11-15: import originals above 384 KiB, including UBL/XML with embedded PDF.
 Implement separately on `feat/efaktura-large-originals` over fetched master
@@ -113,7 +172,7 @@ storage/cache. Resolved preflight is testing, SQLite `:memory:`, array cache/mai
 sync queue and no cached configuration. No real wallets/accounts/provider data,
 production databases, package installation or deployment.
 
-## Current status
+## Implementation review before the CodeRabbit follow-up
 
 Implementation and independent QA/security review are accepted locally on
 2026-11-16 at base `2201bf1bacdc9a26571f188382b5e10999bbbf55`.
@@ -135,7 +194,7 @@ findings were reproduced against the implementation and fixed before acceptance:
 | Finding | Fix and regression evidence |
 | --- | --- |
 | Noncanonical company, expense or attachment live flags could pass archive snapshot validation and reach restore writes. | Only undefined, null and numeric zero represent a live row. Backup and restore reject other values before output or any write. Permanent regressions and independent actual-restore probes pass. |
-| Company tax identity or receiving settings could change during post-prepare reconstruction, allowing cleanup under stale context. | Import and reconciliation checkpoint after proof, then read and validate the current company context. Four permanent, four independent private and four native browser cases preserve server staging and call completion zero times. |
+| Company tax identity or receiving settings could change during post-prepare reconstruction, allowing cleanup under stale context. | The original post-proof checkpoint fix is superseded by checkpoint-before-proof plus fresh private company/share authority checks after proof. Existing late-context regressions remain, with owner/revocation/pending coverage. Server staging is retained and completion is rejected on changed context. |
 | The archive chunk join conflicted with the real owner's unqualified `ownerId` selection, causing ambiguous SQL even with no archives and leaving initial account navigation unresolved. | A single outer chunk table and correlated source `EXISTS` preserve ID, owner, company, kind and live predicates. The actual production client/wrapper/serializer regression fails twice before and passes twice after. Security independently reproduces the SQL error and accepts the exact two-file correction. |
 
 Final main validation:

@@ -1,5 +1,5 @@
-import { createIdFromString } from "@evolu/common";
-import type { Evolu } from "@evolu/common/local-first";
+import { createIdFromString, sqliteTrue } from "@evolu/common";
+import { createQuery, type Evolu } from "@evolu/common/local-first";
 import { invoicingApi } from "@/services/api";
 import { sha256Hex } from "@/utils/sha256";
 import { allCompaniesDetailQuery, allExpensesQuery, allExpenseAttachmentsQuery } from "./client";
@@ -17,6 +17,7 @@ import { withExpenseReconciliation, currentExpenseTarget, checkpointExpenseMutat
 import { EXPENSE_ORIGINAL_MAX_BYTES, parseExpenseOriginalReference } from "./expenseOriginalReference";
 import { readVerifiedExpenseAttachment, retainExpenseOriginalArchive } from "./expenseOriginalArchive";
 import { migrationSha256 } from "./migrationArchiveValues";
+import { awaitWorkerOutcome } from "./bankReconciliation";
 
 /**
  * Received e-invoices (Peppol via the CPDS) for a LOCAL-FIRST company. The
@@ -142,10 +143,10 @@ export async function reconcileEfakturaInboxWithLocalExpenses(
             if (detail.custody_protocol !== "post_ack_proof_v1") { remaining.push(entry); continue; }
             const verify = () => withExpenseReconciliation(evolu, async (scope) => {
                 await assertCompanyImportContext(scope, companyId, admitted.context);
-                const verified = digest !== null && await hasVerifiedOriginal(scope.evolu, companyId, entry, digest);
-                // Archive reconstruction awaits the worker; refresh identity/connection evidence after it too.
                 await checkpointExpenseMutations(scope.evolu);
                 await assertCompanyImportContext(scope, companyId, admitted.context);
+                const verified = digest !== null && await hasVerifiedOriginal(scope.evolu, companyId, entry, digest);
+                await assertCompanyImportContext(scope, companyId, admitted.context, true);
                 return verified;
             }, undefined, ["allExpenseAttachmentsQuery"]);
             if (!await verify()) { remaining.push(entry); continue; }
@@ -181,14 +182,44 @@ function normalizeOriginalDigest(value: unknown): string | null {
 
 type CompanyImportContext = { ownerId: string; fingerprint: string };
 
+/**
+ * These private, unsubscribed queries run only AFTER proof. The preceding marker
+ * invalidates their fulfilled SDK promises; reusing the facade's auxiliary keys
+ * would instead return its pre-proof company/share snapshot.
+ */
+async function freshCompanyImportAuthority(scope: ExpenseReconciliationScope, companyId: string) {
+    const appOwner = await awaitWorkerOutcome<Awaited<typeof scope.evolu.appOwner>>(scope.evolu, (complete, unknown) => {
+        void scope.evolu.appOwner.then(complete, unknown);
+    });
+    const companyQuery = createQuery(db => db.selectFrom("company").selectAll()
+        .where("id", "=", companyId as CompanyId).where("isDeleted", "is not", sqliteTrue));
+    const sharesQuery = createQuery(db => db.selectFrom("companyShare").selectAll()
+        .where("companyId", "=", companyId as CompanyId).where("ownerId", "=", appOwner.id)
+        .where("isDeleted", "is not", sqliteTrue));
+    const load = () => Promise.all([scope.evolu.loadQuery(companyQuery), scope.evolu.loadQuery(sharesQuery)]);
+    const [companies, shares] = await awaitWorkerOutcome<Awaited<ReturnType<typeof load>>>(scope.evolu, (complete, unknown) => {
+        void load().then(complete, unknown);
+    });
+    return { companies, shares, appOwnerId: appOwner.id };
+}
+
 /** Read identity and connection evidence only while holding a fresh company lease. */
-async function companyImportContext(scope: ExpenseReconciliationScope, companyId: string): Promise<CompanyImportContext> {
+async function companyImportContext(scope: ExpenseReconciliationScope, companyId: string, freshProof = false): Promise<CompanyImportContext> {
     assertExpenseCompanyOwner(scope, companyId);
-    const rows = await scope.evolu.loadQuery(allCompaniesDetailQuery);
-    const matches = rows.filter((row) => row.id === companyId);
+    const authority = freshProof ? await freshCompanyImportAuthority(scope, companyId) : null;
+    const rows = authority?.companies ?? await scope.evolu.loadQuery(allCompaniesDetailQuery);
+    const matches = rows.filter((row) => row.id === companyId && Reflect.get(row, "isDeleted") !== sqliteTrue);
     const row = matches[0];
     const ownerId = row && Reflect.get(row, "ownerId");
     if (matches.length !== 1 || typeof ownerId !== "string" || ownerId === "") throw new Error("expense_reconciliation_owner_unavailable");
+    if (authority) {
+        // Same gate as financialOwner: fresh private reads are necessary here
+        // because its scope cache cannot attest changes made during byte proof.
+        const shares = authority.shares.filter(share => share.companyId === companyId && share.ownerId === authority.appOwnerId
+            && share.isDeleted !== sqliteTrue && share.status !== "revoked");
+        if (shares.length > 1 || (shares.length === 1 && (shares[0].status !== "active" || shares[0].sharedOwnerId !== ownerId))
+            || (shares.length === 0 && ownerId !== authority.appOwnerId)) throw new Error("expense_reconciliation_owner_unavailable");
+    }
     const settings = typeof row.appSettingsJson === "string" ? JSON.parse(row.appSettingsJson) as Record<string, unknown> : {};
     const receiverPrefix = settings.efaktura_inbound_use_shared_connection === false ? "efaktura_inbound_sapi" : "efaktura_sapi";
     const connection = ["efaktura_enabled", "efaktura_inbound_enabled", "efaktura_inbound_use_shared_connection",
@@ -201,9 +232,10 @@ async function companyImportContext(scope: ExpenseReconciliationScope, companyId
     return { ownerId, fingerprint };
 }
 
-async function assertCompanyImportContext(scope: ExpenseReconciliationScope, companyId: string, expected: CompanyImportContext): Promise<void> {
+async function assertCompanyImportContext(scope: ExpenseReconciliationScope, companyId: string, expected: CompanyImportContext, freshProof = false): Promise<void> {
     assertExpenseCompanyOwner(scope, companyId, expected.ownerId);
-    if ((await companyImportContext(scope, companyId)).fingerprint !== expected.fingerprint) throw new Error("expense_reconciliation_state_changed");
+    const actual = await companyImportContext(scope, companyId, freshProof);
+    if (actual.ownerId !== expected.ownerId || actual.fingerprint !== expected.fingerprint) throw new Error("expense_reconciliation_state_changed");
 }
 
 /** A fresh worker snapshot must contain a live same-company expense and the exact original bytes. */
@@ -312,9 +344,10 @@ export async function importEfakturaInboxEntry(
     // The bridge wait never holds the origin's financial lock or a scoped facade.
     const verify = () => withExpenseReconciliation(evolu, async (scope) => {
         await assertCompanyImportContext(scope, companyId, admitted.context);
-        const verified = await hasVerifiedOriginal(scope.evolu, companyId, entry, digest);
         await checkpointExpenseMutations(scope.evolu);
         await assertCompanyImportContext(scope, companyId, admitted.context);
+        const verified = await hasVerifiedOriginal(scope.evolu, companyId, entry, digest);
+        await assertCompanyImportContext(scope, companyId, admitted.context, true);
         return verified;
     }, undefined, ["allExpenseAttachmentsQuery"]);
     if (!await verify()) return { ok: false, error: "original_storage_failed" };

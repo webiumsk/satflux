@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
+import { flushPromises } from "@vue/test-utils";
 import { useAccountantExport } from "../composables/useAccountantExport";
 import { ACCOUNTANT_EXPORT_MAX_DOCUMENTS_PER_BATCH } from "../evolu/accountantExportSelect";
 import { createExpenseOriginalReference, encodeExpenseOriginalReference } from "@/evolu/expenseOriginalReference";
@@ -9,6 +10,8 @@ import type { EvoluBankTransactionRow } from "@/evolu/bankMap";
 
 const mocks = vi.hoisted(() => ({
     queryRows: new Map<string, { value: unknown[] }>(),
+    local: true,
+    subscriptions: [] as string[],
     loadQuery: vi.fn(),
     buildRequest: vi.fn(),
     fetchExport: vi.fn(),
@@ -17,7 +20,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@evolu/vue", () => ({
-    useQuery: (query: string) => mocks.queryRows.get(query) ?? { value: [] },
+    useQuery: (query: string) => { mocks.subscriptions.push(query); return mocks.queryRows.get(query) ?? { value: [] }; },
 }));
 
 vi.mock("@/evolu/client", () => ({
@@ -26,13 +29,15 @@ vi.mock("@/evolu/client", () => ({
     allBankTransactionsQuery: "transactions",
     allBankTransactionMatchesQuery: "matches",
     allExpenseAttachmentsQuery: "attachments",
+    allExpenseOriginalSourcesQuery: "originalSources",
+    allExpenseOriginalChunksQuery: "originalChunks",
     useInvoicingEvolu: () => ({ loadQuery: mocks.loadQuery }),
 }));
 
 vi.mock("@/evolu/expenseOriginalArchive", () => ({ readVerifiedExpenseAttachment: mocks.readOriginal }));
 
 vi.mock("@/evolu/flags", () => ({
-    isInvoicingLocalFirst: () => true,
+    isInvoicingLocalFirst: () => mocks.local,
 }));
 
 vi.mock("@/composables/useLocalInvoiceDocument", () => ({
@@ -57,8 +62,27 @@ function issuedDocument(id: string) {
     };
 }
 
+function originalFixture(id = "expense-original", issueDate = "2026-03-05") {
+    const expense = { id, companyId: COMPANY, internalNumber: id, issueDate,
+        status: "recorded", total: "1.00", currency: "EUR" };
+    const bytes = new Uint8Array(450 * 1024).fill(32);
+    const reference = createExpenseOriginalReference({ companyId: COMPANY, receiptId: `receipt-${id}`,
+        expenseId: id, attachmentId: `attachment-${id}`, sha256: "a".repeat(64), sizeBytes: bytes.length });
+    const attachment = { id: reference.attachmentId, expenseId: id, mimeType: "application/xml", originalFilename: "received.xml",
+        sizeBytes: String(bytes.length), contentBase64: encodeExpenseOriginalReference(reference) };
+    return { expense, bytes, reference, attachment };
+}
+
+function deferred<T>() {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>(done => { resolve = done; });
+    return { promise, resolve };
+}
+
 describe("useAccountantExport", () => {
     beforeEach(() => {
+        mocks.local = true;
+        mocks.subscriptions.length = 0;
         mocks.queryRows.clear();
         mocks.queryRows.set("documents", {
             value: Array.from({ length: ACCOUNTANT_EXPORT_MAX_DOCUMENTS_PER_BATCH + 1 }, (_, i) =>
@@ -165,5 +189,92 @@ describe("useAccountantExport", () => {
     expect(JSON.stringify(payload)).not.toContain("satflux:expense-original:");
     expect(mocks.readOriginal.mock.calls.every(call => call[2].id === rows[0].id && call[3].maxBytes === 512 * 1024)).toBe(true);
 });
+
+    it.each(["chunks", "source-ready"])("refreshes a skipped original when %s evidence arrives last", async last => {
+        const x = originalFixture();
+        const sources = ref<Record<string, unknown>[]>([{ id: x.reference.sourceId, savedAt: null }]);
+        const chunks = ref<Record<string, unknown>[]>([]);
+        mocks.queryRows.set("documents", ref([]));
+        mocks.queryRows.set("expenses", ref([x.expense]));
+        mocks.queryRows.set("attachments", ref([x.attachment]));
+        mocks.queryRows.set("originalSources", sources);
+        mocks.queryRows.set("originalChunks", chunks);
+        mocks.readOriginal.mockImplementation(async () => {
+            if (!sources.value[0]?.savedAt || chunks.value.length === 0) throw new Error("original_unverified");
+            return { bytes: x.bytes, blob: new Blob([x.bytes]) };
+        });
+        const state = useAccountantExport(ref(COMPANY), ref("Acme"));
+        state.period.value = { preset: "custom", customFrom: "2026-03-01", customTo: "2026-03-31" };
+        await flushPromises();
+        expect(state.plan.value).toMatchObject({ attachments: 0, skippedAttachments: 1 });
+        if (last === "chunks") sources.value = [{ id: x.reference.sourceId, savedAt: "2026-11-16T10:00:00Z" }];
+        else chunks.value = [{ sourceId: x.reference.sourceId, chunkIndex: "0" }];
+        await flushPromises();
+        expect(state.plan.value).toMatchObject({ attachments: 0, skippedAttachments: 1 });
+        if (last === "chunks") chunks.value = [{ sourceId: x.reference.sourceId, chunkIndex: "0" }];
+        else sources.value = [{ id: x.reference.sourceId, savedAt: "2026-11-16T10:00:00Z" }];
+        await flushPromises();
+        expect(state.plan.value).toMatchObject({ attachments: 1, attachmentBytes: x.bytes.length, skippedAttachments: 0 });
+        expect(mocks.subscriptions).toEqual(expect.arrayContaining(["originalSources", "originalChunks"]));
+    });
+
+    it.each(["expense-period", "range", "include-attachments", "formats"])("aborts a pending original read when the export selection changes: %s", async change => {
+        const active = originalFixture("active");
+        const outside = originalFixture("outside", "2026-04-05");
+        const expenseRows = ref([active.expense, outside.expense]);
+        mocks.queryRows.set("documents", ref([]));
+        mocks.queryRows.set("expenses", expenseRows);
+        mocks.queryRows.set("attachments", ref([active.attachment, outside.attachment]));
+        mocks.readOriginal.mockRejectedValue(new Error("original_unverified"));
+        const state = useAccountantExport(ref(COMPANY), ref("Acme"));
+        state.period.value = { preset: "custom", customFrom: "2026-03-01", customTo: "2026-03-31" };
+        await flushPromises();
+        const read = deferred<{ bytes: Uint8Array; blob: Blob }>();
+        mocks.readOriginal.mockReturnValue(read.promise);
+        const downloading = state.download();
+        if (change === "expense-period") expenseRows.value = [active.expense, { ...outside.expense, issueDate: "2026-03-06" }];
+        if (change === "range") state.period.value.customTo = "2026-04-30";
+        if (change === "include-attachments") state.options.value.includeExpenseAttachments = false;
+        if (change === "formats") state.options.value.formats.splice(0, 1);
+        read.resolve({ bytes: active.bytes, blob: new Blob([active.bytes]) });
+        await downloading;
+        await flushPromises();
+        expect(mocks.buildRequest).not.toHaveBeenCalled();
+        expect(mocks.fetchExport).not.toHaveBeenCalled();
+        expect(mocks.downloadBlob).not.toHaveBeenCalled();
+        expect(state.error.value).toBeNull();
+        expect(state.progress.value).toBeNull();
+        expect(state.downloading.value).toBe(false);
+    });
+
+    it.each(["formats", "documents"])("copies options arrays and aborts before fetching if %s change during batch preparation", async change => {
+        const documentRows = ref([issuedDocument("doc-1")]);
+        mocks.queryRows.set("documents", documentRows);
+        const build = deferred<{ bridgeCompanyId: string; body: object }>();
+        mocks.buildRequest.mockReturnValue(build.promise);
+        const state = useAccountantExport(ref(COMPANY), ref("Acme"));
+        state.period.value = { preset: "custom", customFrom: "2026-03-01", customTo: "2026-03-31" };
+        const downloading = state.download();
+        await flushPromises();
+        const captured = mocks.buildRequest.mock.calls[0][2];
+        if (change === "formats") state.options.value.formats.splice(0, 1);
+        else documentRows.value[0].number = "changed-after-selection";
+        build.resolve({ bridgeCompanyId: "bridge-company-1", body: {} });
+        await downloading;
+        expect(captured.options.formats).toEqual(["pohoda", "csv"]);
+        expect(mocks.fetchExport).not.toHaveBeenCalled();
+        expect(mocks.downloadBlob).not.toHaveBeenCalled();
+    });
+
+    it("does not subscribe to or load local archive evidence in server mode", async () => {
+        mocks.local = false;
+        const state = useAccountantExport(ref(COMPANY), ref("Acme"));
+        await flushPromises();
+        expect(state.plan.value).toBeNull();
+        expect(state.loading.value).toBe(false);
+        expect(mocks.subscriptions).toEqual([]);
+        expect(mocks.loadQuery).not.toHaveBeenCalled();
+        expect(mocks.readOriginal).not.toHaveBeenCalled();
+    });
 
 });

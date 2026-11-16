@@ -1,5 +1,45 @@
 # Development roadmap
 
+## PR449 CodeRabbit follow-up accepted locally - 2026-11-16
+
+All six actionable comments are independently checked against published parent
+`3f95ad5c9ad6608d24da74f8306d1eb8574b9844`. Missing mocks and the owner-column
+SQL ambiguity were already fixed. The remaining four valid findings are now
+corrected in the same branch: archive-arrival preview refresh, coherent captured
+export selection, checkpoint-before-byte-proof ordering with fresh authority
+checks, and authorized deletion of damaged/incomplete archives.
+
+Export selection captures typed rows, range, company/name and copied options
+(including formats), and cancels on synchronous selection changes before bridge
+requests or held ZIP downloads. Source/chunk evidence refreshes previews.
+Private post-proof company/share reads preserve owner, fingerprint and exact
+active-share authority checks after the earlier worker marker. Deletion validates
+available structural bindings, atomically tombstones only existing owned rows,
+and prevents deleted attachments from recreating missing archives. Existing
+limits, financial contracts, server protocol, schema, dependencies and global
+owner/reconciliation wrappers remain unchanged.
+
+Independent QA and security accept the final 42-file source/test/locale freeze:
+`225967876edbab39c8364a6a061aefbdd8b2e4fa100d10b1ddcefe987df86237`.
+Seven prior files change; one bank-performance mock adds two query tokens with
+all assertions unchanged. The combined PR scope is 53 paths. Author core
+128/6, main consumer/planner/performance 31/3, security 102/4 including six private
+probes, QA consumer 12 plus six private probes, selected core 28/3 and native
+12/12 pass. Runs overlap; 56 QA-filtered tests are not counted as passed.
+Lint 0 errors / 46 inherited warnings, typecheck 110 inherited errors / nothing
+new, locale parity, build 7,672 modules and whitespace pass.
+
+The wrapper-exit checkpoint and final local read to remote completion interval
+remain explicit non-atomic limits. Native fixtures/profile data are removed,
+their port is closed, and private evidence distinguishes mocks, native storage
+and earlier CI. Details and finding links: `EFAKTURA_LARGE_ORIGINALS.md`.
+
+The reviewed follow-up is ready for normal push and CI on its exact new head.
+Prior green CI43776670496 belongs to `3f95ad5c`. Primary remains
+`fix/sepa-confirmation-isolation` at `885168f2`; preserve unrelated edits
+and the separate accountant-export clarity freeze. No merge, provider operation,
+public changelog publication or deployment is performed.
+
 ## PR449 startup query correction accepted locally - 2026-11-16
 
 PR449's published head `a7410fc59910aa699a7a6cf10b6581e3c4ed5fd0` passes

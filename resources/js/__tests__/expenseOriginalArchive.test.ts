@@ -164,6 +164,64 @@ describe("owner-scoped received-original archives", () => {
         expect(store.state.migrationChunk.every(chunk => chunk.isDeleted !== 1)).toBe(true);
     });
 
+    it.each(["corrupt-chunk", "missing-chunk", "missing-source", "missing-all", "tombstoned-chunk"])("deletes existing owned bound rows without requiring complete original bytes: %s", async damage => {
+        const store = fixture();
+        const { row } = await store.attach();
+        if (damage === "corrupt-chunk") store.state.migrationChunk[0].contentBase64 = "corrupt bytes";
+        if (damage === "missing-chunk") store.state.migrationChunk.pop();
+        if (damage === "missing-source" || damage === "missing-all") store.state.migrationSource.splice(0);
+        if (damage === "missing-all") store.state.migrationChunk.splice(0);
+        if (damage === "tombstoned-chunk") store.state.migrationChunk[0].isDeleted = 1;
+        const sourceIds = store.state.migrationSource.map(source => source.id);
+        const chunkIds = store.state.migrationChunk.map(chunk => chunk.id);
+        await deleteVerifiedExpenseAttachment(store.evolu, store.input.companyId, row as never);
+        expect(store.state.expenseAttachment[0].isDeleted).toBe(1);
+        expect(store.state.migrationSource.map(source => source.id)).toEqual(sourceIds);
+        expect(store.state.migrationChunk.map(chunk => chunk.id)).toEqual(chunkIds);
+        expect(store.state.migrationSource.every(source => source.isDeleted === 1)).toBe(true);
+        expect(store.state.migrationChunk.every(chunk => chunk.isDeleted === 1)).toBe(true);
+        await expect(store.retain()).rejects.toThrow("original_unverified");
+    });
+
+    it.each(["source-company", "source-kind", "chunk-company", "chunk-source", "chunk-id", "chunk-index", "duplicate-chunk", "foreign-reference", "malformed-reference"])("rejects unauthorized or ambiguous deletion bindings before mutation: %s", async damage => {
+        const store = fixture(false, 3);
+        const { ref, row } = await store.attach();
+        if (damage === "source-company") store.state.migrationSource[0].companyId = createIdFromString("foreign-company");
+        if (damage === "source-kind") store.state.migrationSource[0].sourceKind = "original";
+        if (damage === "chunk-company") store.state.migrationChunk[0].companyId = createIdFromString("foreign-company");
+        if (damage === "chunk-source") store.state.migrationChunk[0].sourceId = createIdFromString("foreign-source");
+        if (damage === "chunk-id") store.state.migrationChunk[0].id = createIdFromString("wrong-chunk-id");
+        if (damage === "chunk-index") store.state.migrationChunk[0].chunkIndex = "1";
+        if (damage === "duplicate-chunk") store.state.migrationChunk.push({ ...store.state.migrationChunk[0] });
+        if (damage === "foreign-reference") {
+            const marker = encodeExpenseOriginalReference(createExpenseOriginalReference({ ...ref, companyId: createIdFromString("foreign-company") }));
+            row.contentBase64 = marker; store.state.expenseAttachment[0].contentBase64 = marker;
+        }
+        if (damage === "malformed-reference") {
+            row.contentBase64 = "satflux:expense-original:v2:{}";
+            store.state.expenseAttachment[0].contentBase64 = row.contentBase64;
+        }
+        const before = structuredClone(store.state);
+        const mutations = store.financialMutations().length;
+        await expect(deleteVerifiedExpenseAttachment(store.evolu, store.input.companyId, row as never)).rejects.toThrow("original_unverified");
+        expect(store.financialMutations()).toHaveLength(mutations);
+        for (const table of ["expenseAttachment", "migrationSource", "migrationChunk"]) expect(store.state[table]).toEqual(before[table]);
+    });
+
+    it("preserves former-owner copies with identical archive ids while deleting only the current partition", async () => {
+        const store = fixture(false, 3);
+        const { row } = await store.attach();
+        const formerOwner = createIdFromString("former-owner");
+        const formerSource = { ...store.state.migrationSource[0], ownerId: formerOwner };
+        const formerChunk = { ...store.state.migrationChunk[0], ownerId: formerOwner };
+        store.state.migrationSource.push(formerSource); store.state.migrationChunk.push(formerChunk);
+        await deleteVerifiedExpenseAttachment(store.evolu, store.input.companyId, row as never);
+        expect(store.state.migrationSource[0].isDeleted).toBe(1);
+        expect(store.state.migrationChunk[0].isDeleted).toBe(1);
+        expect(Reflect.get(formerSource, "isDeleted")).toBeUndefined();
+        expect(Reflect.get(formerChunk, "isDeleted")).toBeUndefined();
+    });
+
     it("validates ownerless snapshot bytes but rejects mixed owners, dangling chunks and missing ready proof", async () => {
         const bytes = new Uint8Array([0, 255, 1]);
         const ref = createExpenseOriginalReference({ companyId: "company", expenseId: "expense", attachmentId: "attachment",

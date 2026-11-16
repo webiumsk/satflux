@@ -9,6 +9,7 @@ import {
 import { createExpenseWriterTestAdapter } from "./expenseReconciliationTestSupport";
 import { installBankLocks } from "./bankReconciliationTestSupport";
 import { withExpenseReconciliation } from "@/evolu/expenseReconciliation";
+import * as expenseReconciliation from "@/evolu/expenseReconciliation";
 import { clearRowOwnerIndex } from "@/evolu/ownerScope";
 import { clearCompanyShares } from "@/evolu/companyShareRegistry";
 import { parseExpenseOriginalReference, EXPENSE_ORIGINAL_MAX_BYTES } from "@/evolu/expenseOriginalReference";
@@ -203,6 +204,65 @@ describe("received original custody", () => {
         expect(await importEfakturaInboxEntry(evolu as never, companyId, "bridge-a", entry)).toMatchObject({ ok: true, alreadyImported: true });
         expect(state.expense).toHaveLength(1);
         expect(state.expenseAttachment).toHaveLength(1);
+    });
+
+    it.each(["before-prepare", "before-confirm"] as const)("re-reads chunk and attachment proof after the %s checkpoint", async phase => {
+        for (const missing of ["chunk", "attachment"]) {
+            const companyId = createIdFromString(`synthetic-checkpoint-${missing}`);
+            const body = "<Invoice>" + "x".repeat(400_000) + "</Invoice>";
+            const { evolu, state, prepared, imported, serverCopy } = setup(false, body, companyId);
+            expect(await importEfakturaInboxEntry(evolu as never, companyId, "bridge-a", entry)).toMatchObject({ ok: true });
+            serverCopy.original = body;
+            prepared.mockClear(); imported.mockClear();
+            let armed = phase === "before-prepare";
+            let changed = false;
+            prepared.mockImplementation(async () => { armed = true; return custodyToken; });
+            const checkpoint = expenseReconciliation.checkpointExpenseMutations;
+            const spy = vi.spyOn(expenseReconciliation, "checkpointExpenseMutations").mockImplementation(async client => {
+                if (armed && !changed) {
+                    changed = true;
+                    if (missing === "chunk") state.migrationChunk.pop();
+                    else state.expenseAttachment.splice(0);
+                }
+                await checkpoint(client);
+            });
+            expect(await importEfakturaInboxEntry(evolu as never, companyId, "bridge-a", entry)).toEqual({ ok: false, error: "original_storage_failed" });
+            expect(changed).toBe(true);
+            expect(prepared).toHaveBeenCalledTimes(phase === "before-prepare" ? 0 : 1);
+            expect(imported).not.toHaveBeenCalled();
+            expect(serverCopy.original).toBe(body);
+            spy.mockRestore();
+            vi.restoreAllMocks();
+        }
+    });
+
+    it.each(["owner", "revoked", "pending"])("rejects fresh authority changes during post-prepare reconstruction: %s", async change => {
+        const companyId = createIdFromString("synthetic-authority-company");
+        const body = "<Invoice>" + "x".repeat(400_000) + "</Invoice>";
+        const { evolu, state, prepared, imported, serverCopy } = setup(false, body, companyId);
+        if (change !== "owner") {
+            const sharedOwner = createIdFromString("synthetic-shared-owner");
+            state.company[0].ownerId = sharedOwner;
+            state.companyShare.push({ id: createIdFromString("synthetic-share"), ownerId: "app-owner", companyId,
+                sharedOwnerId: sharedOwner, status: "active" });
+        }
+        let preparing = false;
+        let changed = false;
+        prepared.mockImplementation(async () => { preparing = true; return custodyToken; });
+        const load = evolu.loadQuery.getMockImplementation()!;
+        evolu.loadQuery.mockImplementation(async query => {
+            const rows = await load(query);
+            if (preparing && !changed && query === "fresh:migrationChunk") {
+                changed = true;
+                if (change === "owner") state.company[0].ownerId = createIdFromString("synthetic-new-owner");
+                else state.companyShare[0].status = change;
+            }
+            return rows;
+        });
+        await expect(importEfakturaInboxEntry(evolu as never, companyId, "bridge-a", entry)).rejects.toThrow("expense_reconciliation_owner_unavailable");
+        expect(changed).toBe(true);
+        expect(imported).not.toHaveBeenCalled();
+        expect(serverCopy.original).toBe(body);
     });
 
     it("does not hand off custody if a worker accepts an attachment but it is absent from read-back", async () => {

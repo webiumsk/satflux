@@ -1,5 +1,5 @@
 import { sqliteTrue } from "@evolu/common";
-import type { Evolu } from "@evolu/common/local-first";
+import { createQuery, type Evolu } from "@evolu/common/local-first";
 import { awaitBankMutation, awaitWorkerOutcome } from "./bankReconciliation";
 import { expenseOriginalAttachmentProofQuery, expenseOriginalChunksProofQuery, migrationSourceProofQuery } from "./client";
 import { LOCAL_EXPENSE_ATTACHMENT_MAX_BYTES, type EvoluExpenseAttachmentRow } from "./expenseAttachmentCrud";
@@ -87,6 +87,9 @@ export async function retainExpenseOriginalArchive(scope: ExpenseReconciliationS
     const ref = createExpenseOriginalReference({ ...input, sha256: await migrationSha256(input.bytes), sizeBytes: input.bytes.length });
     const companyId = CompanyId.orThrow(input.companyId);
     const id = MigrationSourceId.orThrow(ref.sourceId);
+    const attachments = await loadRows(scope.evolu, expenseOriginalAttachmentProofQuery);
+    if (attachments.some(row => row.id === input.attachmentId && row.ownerId === input.ownerId
+        && (!live(row) || row.expenseId !== input.expenseId))) return fail();
     const assertCurrent = async () => {
         await input.assertCurrent();
         assertExpenseCompanyOwner(scope, input.companyId, input.ownerId);
@@ -158,8 +161,7 @@ async function readInScope(scope: ExpenseReconciliationScope, companyId: string,
     if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > EXPENSE_ORIGINAL_MAX_BYTES) return fail();
     let bytes: Uint8Array;
     if (ref) {
-        if (ref.companyId !== companyId || ref.expenseId !== attachment.expenseId || ref.attachmentId !== attachment.id
-            || attachment.sizeBytes !== String(ref.sizeBytes) || attachment.mimeType !== "application/xml") return fail();
+        assertReferenceBinding(ref, companyId, attachment);
         if (ref.sizeBytes > maxBytes) throw new Error("original_too_large");
         const proof = await archiveRows(scope.evolu, ref);
         bytes = await verifyExpenseOriginalArchiveRows(ref, proof.sources, proof.chunks, ownerId);
@@ -174,6 +176,22 @@ async function readInScope(scope: ExpenseReconciliationScope, companyId: string,
     return { bytes, blob: new Blob([new Uint8Array(bytes)], { type: attachment.mimeType || "application/octet-stream" }) };
 }
 
+function assertReferenceBinding(ref: ExpenseOriginalReference, companyId: string, attachment: EvoluExpenseAttachmentRow): void {
+    if (ref.companyId !== companyId || ref.expenseId !== attachment.expenseId || ref.attachmentId !== attachment.id
+        || attachment.sizeBytes !== String(ref.sizeBytes) || attachment.mimeType !== "application/xml") return fail();
+}
+
+/** Include intended chunk ids even if a damaged row points at another source/company. */
+async function deletionArchiveRows(evolu: Client, ref: ExpenseOriginalReference) {
+    const chunkIds = Array.from({ length: ref.chunkCount }, (_, index) => MigrationChunkId.orThrow(expenseOriginalChunkId(ref.sourceId, index)));
+    const query = createQuery(db => db.selectFrom("migrationChunk").selectAll().where(eb => eb.or([
+        eb("sourceId", "=", MigrationSourceId.orThrow(ref.sourceId)), eb("id", "in", chunkIds),
+    ])));
+    const sources = await loadRows(evolu, migrationSourceProofQuery);
+    const chunks = (await loadRows(evolu, query)).filter(row => row.sourceId === ref.sourceId || chunkIds.includes(row.id as MigrationChunkId));
+    return { sources, chunks };
+}
+
 /** Fresh authorization and exact content verification for UI/export consumers; no external fetching. */
 export function readVerifiedExpenseAttachment(evolu: Client, companyId: string, attachment: EvoluExpenseAttachmentRow,
     options: { maxBytes?: number; expectedOwnerId?: string } = {}): Promise<{ bytes: Uint8Array; blob: Blob }> {
@@ -184,16 +202,30 @@ export function readVerifiedExpenseAttachment(evolu: Client, companyId: string, 
 export function deleteVerifiedExpenseAttachment(evolu: Client, companyId: string, attachment: EvoluExpenseAttachmentRow,
     options: { expectedOwnerId?: string } = {}): Promise<void> {
     return withExpenseReconciliation(evolu, async scope => {
-        await readInScope(scope, companyId, attachment, options);
         const { ownerId } = await currentAttachment(scope, companyId, attachment, options.expectedOwnerId);
         const ref = parseExpenseOriginalReference(attachment.contentBase64);
         const targets: { table: "expenseAttachment" | "migrationSource" | "migrationChunk"; id: string }[] = [
             { table: "expenseAttachment", id: attachment.id },
         ];
         if (ref) {
-            targets.push({ table: "migrationSource", id: ref.sourceId });
-            for (let index = 0; index < ref.chunkCount; index++) targets.push({ table: "migrationChunk", id: expenseOriginalChunkId(ref.sourceId, index) });
+            assertReferenceBinding(ref, companyId, attachment);
+            const proof = await deletionArchiveRows(scope.evolu, ref);
+            const sources = proof.sources.filter(row => row.id === ref.sourceId && row.ownerId === ownerId);
+            if (sources.length > 1 || sources.some(row => !sourceMatches(row, ref) || (!live(row) && row.isDeleted !== sqliteTrue))) return fail();
+            for (const source of sources) if (live(source)) targets.push({ table: "migrationSource", id: ref.sourceId });
+            const chunks = proof.chunks.filter(row => row.ownerId === ownerId);
+            const seen = new Set<unknown>();
+            for (const chunk of chunks) {
+                const index = Number(chunk.chunkIndex);
+                if (chunk.companyId !== companyId || chunk.sourceId !== ref.sourceId || !Number.isInteger(index) || index < 0 || index >= ref.chunkCount
+                    || chunk.chunkIndex !== String(index) || chunk.id !== expenseOriginalChunkId(ref.sourceId, index) || seen.has(chunk.id)
+                    || (!live(chunk) && chunk.isDeleted !== sqliteTrue)) return fail();
+                seen.add(chunk.id);
+                if (live(chunk)) targets.push({ table: "migrationChunk", id: chunk.id as string });
+            }
         }
+        // Deletion authorizes identities and bindings, not recoverability of the bytes.
+        await currentAttachment(scope, companyId, attachment, ownerId);
         assertExpenseCompanyOwner(scope, companyId, ownerId);
         const removed = await awaitBankMutation(scope.evolu, onComplete => {
             for (const [index, target] of targets.entries()) {
@@ -208,10 +240,11 @@ export function deleteVerifiedExpenseAttachment(evolu: Client, companyId: string
         const attachmentRows = await loadRows(scope.evolu, expenseOriginalAttachmentProofQuery);
         if (!attachmentRows.some(row => row.id === attachment.id && row.ownerId === ownerId && row.isDeleted === sqliteTrue)) return fail();
         if (ref) {
-            const proof = await archiveRows(scope.evolu, ref);
-            if (!proof.sources.some(row => row.id === ref.sourceId && row.ownerId === ownerId && row.isDeleted === sqliteTrue)
-                || targets.filter(target => target.table === "migrationChunk").some(target => !proof.chunks.some(row => row.id === target.id
-                    && row.ownerId === ownerId && row.isDeleted === sqliteTrue))) return fail();
+            const proof = await deletionArchiveRows(scope.evolu, ref);
+            for (const target of targets.filter(target => target.table !== "expenseAttachment")) {
+                const rows = (target.table === "migrationSource" ? proof.sources : proof.chunks).filter(row => row.id === target.id && row.ownerId === ownerId);
+                if (rows.length > 1 || rows.some(row => row.isDeleted !== sqliteTrue)) return fail();
+            }
         }
         assertExpenseCompanyOwner(scope, companyId, ownerId);
     }, undefined, ["allExpenseAttachmentsQuery"]);
