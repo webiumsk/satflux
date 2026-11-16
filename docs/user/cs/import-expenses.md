@@ -54,3 +54,9 @@ Otevřete konkrétní náklad a přidejte jeho PDF. V lokálním účetnictví s
 Můžete povolit dočasné zpracování souboru na serveru pro detekci vložených údajů ISDOC. Zrušením zůstane příloha pouze lokálně. Pokud se ISDOC najde, samostatně potvrďte extrakci údajů nebo ponechte pouze přílohu. Extrakce využívá váš stávající limit a kredity; nejde o OCR. Po vyčerpání limitu můžete soubor stále přiložit a údaje zadat ručně.
 
 Pokud se ukládání větší přílohy přeruší, opakujte ho, dokud je soubor stále vybraný. Po obnovení stránky odstraňte neúplnou přílohu a znovu vyberte původní soubor. Před vytvořením úplné zálohy dokončete nahrávání nebo neúplnou přílohu odstraňte.
+
+## Platební QR kódy
+
+U neuhrazeného nákladu v EUR s názvem dodavatele, platným IBANem dodavatele a variabilním symbolem do 10 číslic klikněte v řádku na **Platební QR**. Můžete přepnout mezi **PAY by square** a **PayMe**. Před potvrzením v bankovní aplikaci zkontrolujte příjemce, částku a variabilní symbol. Kód se tvoří ve vašem prohlížeči. Tlačítko Otevřít PayMe vědomě otevře jeho platební odkaz. Naskenování kódu neoznačí náklad jako uhrazený.
+
+Kód se nezobrazí u uhrazených a zrušených nákladů, sporného bankovního párování ani u importu s částečnou nebo nevyřešenou úhradou. Platební údaje pocházejí z výslovně uložených údajů dodavatele; vlastní účet firmy se nepoužije. Nové vhodné importy eFaktur a ISDOC zachovají účet dodavatele. U starších importů bez těchto údajů je třeba nejprve doplnit platební údaje.

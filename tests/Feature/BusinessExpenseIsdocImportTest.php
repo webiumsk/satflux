@@ -2,6 +2,11 @@
 
 namespace Tests\Feature;
 
+use Adawolfa\ISDOC\Manager;
+use Adawolfa\ISDOC\Schema\Invoice as IsdocInvoiceSchema;
+use Adawolfa\ISDOC\Schema\Invoice\DocumentType;
+use Adawolfa\ISDOC\Schema\Invoice\Payment;
+use Adawolfa\ISDOC\Schema\Invoice\PaymentMeansCode;
 use App\Enums\BusinessDocumentStatus;
 use App\Enums\CompanyJurisdiction;
 use App\Models\AuditLog;
@@ -149,6 +154,73 @@ class BusinessExpenseIsdocImportTest extends TestCase
         $this->assertSame('2026-06-01', $draft['issue_date']);
         $this->assertGreaterThan(0, $draft['total']);
         $this->assertNotEmpty($draft['title']);
+    }
+
+    #[Test]
+    public function supplier_payment_metadata_requires_one_creditor_account_and_no_ambiguous_payment(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'exp-isdoc-payment-');
+        file_put_contents($path, $this->sampleIsdocXml());
+        $service = new class extends BusinessExpenseIsdocImportService
+        {
+            /** @return array<string, mixed> */
+            public function mapForPaymentTest(IsdocInvoiceSchema $invoice): array
+            {
+                return $this->mapInvoice($invoice);
+            }
+        };
+
+        try {
+            foreach (['valid', 'multiple', 'same-account-multiple', 'different-payment-amount', 'partial-payment', 'bad-checksum', 'account-injection', 'name-injection', 'cash', 'credit-note', 'deposit', 'claimed-advance', 'zero-payable', 'negative-payable'] as $case) {
+                $invoice = Manager::create()->getReader()->file($path, IsdocInvoiceSchema::class, Manager::FORMAT_ISDOC);
+                $payments = $invoice->getPaymentMeans();
+                $this->assertNotNull($payments);
+                $payment = iterator_to_array($payments)[0];
+                $payment->setPaidAmount($invoice->getLegalMonetaryTotal()->getPayableAmount());
+                $payment->setPartialPayment(false);
+                $details = $payment->getDetails();
+                $this->assertNotNull($details);
+                $details->setIban('SK6807200002891987426353');
+                $name = $invoice->getAccountingSupplierParty()->getParty()->getPartyName();
+                $name->setName('Synthetic supplier');
+                if (in_array($case, ['multiple', 'same-account-multiple'], true)) {
+                    $otherDetails = clone $details;
+                    $otherDetails->setIban($case === 'multiple' ? 'DE89370400440532013000' : 'SK6807200002891987426353');
+                    $other = new Payment('1.00', PaymentMeansCode::CreditTransfer);
+                    $other->setDetails($otherDetails);
+                    $payments->add($other);
+                } elseif ($case === 'different-payment-amount') {
+                    $payment->setPaidAmount('1.00');
+                } elseif ($case === 'partial-payment') {
+                    $payment->setPartialPayment(true);
+                } elseif ($case === 'bad-checksum') {
+                    $details->setIban('SK6807200002891987426354');
+                } elseif ($case === 'account-injection') {
+                    $details->setIban("SK6807200002891987426353\nSupplier: Other");
+                } elseif ($case === 'name-injection') {
+                    $name->setName("Synthetic supplier\nSupplier bank account: Other");
+                } elseif ($case === 'cash') {
+                    $payment->setPaymentMeansCode(PaymentMeansCode::CashPayment);
+                } elseif ($case === 'credit-note') {
+                    $invoice->setDocumentType(DocumentType::CreditNote);
+                } elseif ($case === 'deposit') {
+                    $invoice->getLegalMonetaryTotal()->setPaidDepositsAmount('1.00');
+                } elseif ($case === 'claimed-advance') {
+                    $invoice->getLegalMonetaryTotal()->setAlreadyClaimedTaxInclusiveAmount('1.00');
+                } elseif ($case === 'zero-payable') {
+                    $invoice->getLegalMonetaryTotal()->setPayableAmount('0.00');
+                } elseif ($case === 'negative-payable') {
+                    $invoice->getLegalMonetaryTotal()->setPayableAmount('-1.00');
+                }
+
+                $draft = $service->mapForPaymentTest($invoice);
+                $this->assertSame($case === 'valid', str_contains($draft['internal_note'], 'Supplier bank account: SK6807200002891987426353'), $case);
+                $this->assertStringNotContainsString('DE89370400440532013000', $draft['internal_note'], $case);
+                $this->assertStringContainsString('Imported from ISDOC.', $draft['internal_note']);
+            }
+        } finally {
+            @unlink($path);
+        }
     }
 
     #[Test]

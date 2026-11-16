@@ -271,6 +271,10 @@ function syncDeliveryDateDefault() {
 }
 
 function applyImportDraft(draft: ExpenseImportDraft) {
+  // A newly extracted invoice must never reuse the previous supplier's payment account.
+  const preservedNote = form.value.internal_note.split(/\r?\n/)
+    .filter(line => !/^Supplier(?: bank account)?:/i.test(line)).join('\n').trim();
+  form.value.internal_note = [preservedNote, draft.internal_note?.trim()].filter(Boolean).join('\n\n');
   if (draft.title) form.value.title = draft.title;
   if (draft.external_number) {
     form.value.external_number = draft.external_number;

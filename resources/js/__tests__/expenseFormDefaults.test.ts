@@ -107,6 +107,20 @@ afterEach(() => {
 });
 
 describe('new expense field defaults', () => {
+  it('keeps user notes while replacing supplier payment metadata when extracting another invoice', async () => {
+    await render();
+    await wrapper!.get('textarea').setValue('Keep this user note\nSupplier: Previous supplier\nSupplier bank account: SK6807200002891987426353');
+    await extract({ title: 'New supplier', internal_note: 'Supplier: New supplier\nSupplier bank account: CZ6508000000192000145399' });
+    expect((wrapper!.get('textarea').element as HTMLTextAreaElement).value).toBe(
+      'Keep this user note\n\nSupplier: New supplier\nSupplier bank account: CZ6508000000192000145399');
+    await extract({ title: 'Supplier without payment details', internal_note: 'Supplier: Supplier without payment details' });
+    expect((wrapper!.get('textarea').element as HTMLTextAreaElement).value).toContain('Keep this user note');
+    expect((wrapper!.get('textarea').element as HTMLTextAreaElement).value).not.toContain('Supplier bank account:');
+    await wrapper!.get('form').trigger('submit');
+    await flushPromises();
+    expect(mocks.insert.mock.calls[0][2].internal_note).toContain('Supplier: Supplier without payment details');
+  });
+
   it('waits for the local expense write before navigating or saving attachments', async () => {
     let complete!: (value: { ok: true; value: { id: string } }) => void;
     mocks.insert.mockReturnValueOnce(new Promise((resolve) => { complete = resolve; }));

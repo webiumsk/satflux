@@ -201,6 +201,14 @@
             @click="$emit('open', row.id)"
           >
             {{ formatMoney(row.total, row.currency) }}
+            <button
+              v-if="expensePaymentQrDetails(row)"
+              type="button"
+              class="mt-1 block ml-auto rounded px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600"
+              :aria-label="t('invoicing.expense_payment_qr_open_for', { number: row.internal_number })"
+              @click.stop="openPaymentQr(row)"
+              @keydown.stop
+            >{{ t('invoicing.expense_payment_qr_open') }}</button>
           </td>
 
           <td
@@ -374,9 +382,17 @@
               {{ t('invoicing.expense_bank_match_conflict') }}
             </p>
           </div>
-          <p class="text-sm font-semibold shrink-0">
-            {{ formatMoney(row.total, row.currency) }}
-          </p>
+          <div class="shrink-0 text-right">
+            <p class="text-sm font-semibold">{{ formatMoney(row.total, row.currency) }}</p>
+            <button
+              v-if="expensePaymentQrDetails(row)"
+              type="button"
+              class="mt-1 rounded px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600"
+              :aria-label="t('invoicing.expense_payment_qr_open_for', { number: row.internal_number })"
+              @click.stop="openPaymentQr(row)"
+              @keydown.stop
+            >{{ t('invoicing.expense_payment_qr_open') }}</button>
+          </div>
         </div>
       </div>
       <template #actions>
@@ -422,10 +438,14 @@
       </template>
     </InvoicingMobileCard>
   </div>
+  <ExpensePaymentQrDialog :details="selectedQrDetails" @close="selectedQr = null" />
 </template>
 
 <script setup lang="ts">
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import ExpensePaymentQrDialog from "./ExpensePaymentQrDialog.vue";
+import { expensePaymentQrDetails } from "../../utils/expensePaymentQr";
 import IconPaperclip from "./icons/IconPaperclip.vue";
 import InvoicingMobileCard from "./InvoicingMobileCard.vue";
 import InvoicingRowActionsMenu from "./InvoicingRowActionsMenu.vue";
@@ -462,6 +482,22 @@ defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+// Keep the row live and close the preview if any displayed payment detail changes.
+const selectedQr = ref<{ id: string; companyId: string; fingerprint: string } | null>(null);
+const selectedQrDetails = computed(() => {
+  const selection = selectedQr.value;
+  if (!selection || selection.companyId !== props.companyId) return null;
+  const row = props.rows.find(candidate => candidate.id === selection.id);
+  const details = row ? expensePaymentQrDetails(row) : null;
+  return details && JSON.stringify(details) === selection.fingerprint ? details : null;
+});
+watch(selectedQrDetails, details => { if (!details) selectedQr.value = null; }, { flush: 'sync' });
+
+function openPaymentQr(row: ExpenseListRow) {
+  const details = expensePaymentQrDetails(row);
+  if (details) selectedQr.value = { id: row.id, companyId: props.companyId, fingerprint: JSON.stringify(details) };
+}
 
 const metaCache = new Map<string, ReturnType<typeof parseExpenseRowMeta>>();
 

@@ -6,7 +6,9 @@ use Adawolfa\ISDOC\Manager;
 use Adawolfa\ISDOC\ReaderException;
 use Adawolfa\ISDOC\Schema\Invoice as IsdocInvoiceSchema;
 use Adawolfa\ISDOC\Schema\Invoice\Details;
+use Adawolfa\ISDOC\Schema\Invoice\DocumentType;
 use Adawolfa\ISDOC\Schema\Invoice\Payment;
+use Adawolfa\ISDOC\Schema\Invoice\PaymentMeansCode;
 use DateTimeInterface;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
@@ -130,7 +132,67 @@ class BusinessExpenseIsdocImportService
                 : null,
             'total' => round($total, 2),
             'currency' => strtoupper($invoice->getLocalCurrencyCode()),
+            'internal_note' => $this->supplierPaymentNote($invoice, $supplierName),
         ];
+    }
+
+    protected function supplierPaymentNote(IsdocInvoiceSchema $invoice, string $supplier): string
+    {
+        $parts = ['Imported from ISDOC.'];
+        if ($supplier === '' || preg_match('/[\p{Cc}\p{Zl}\p{Zp}]/u', $supplier)) {
+            return $parts[0];
+        }
+        $parts[] = 'Supplier: '.$supplier;
+        // Preserve existing total mapping while withholding a payment QR for
+        // credit notes or documents with deposits/claimed advances. The expense
+        // model does not store a separate outstanding-balance ledger.
+        $monetary = $invoice->getLegalMonetaryTotal();
+        if ($invoice->getDocumentType() !== DocumentType::Invoice
+            || bccomp($monetary->getPayableAmount(), '0', 2) <= 0
+            || bccomp($monetary->getPaidDepositsAmount(), '0', 2) !== 0
+            || bccomp($monetary->getAlreadyClaimedTaxInclusiveAmount(), '0', 2) !== 0) {
+            return implode("\n\n", $parts);
+        }
+
+        $accounts = [];
+        $means = $invoice->getPaymentMeans();
+        if ($means === null || count($means) !== 1) {
+            return implode("\n\n", $parts);
+        }
+        foreach ($means as $payment) {
+            if (! in_array($payment->getPaymentMeansCode(), [PaymentMeansCode::CreditTransfer, PaymentMeansCode::MoneyTransferToAnAccount], true)
+                || $payment->getPartialPayment() === true
+                || bccomp($payment->getPaidAmount(), $monetary->getPayableAmount(), 2) !== 0) {
+                return implode("\n\n", $parts);
+            }
+            $iban = $this->paymentIban($payment->getDetails()?->getIban() ?? '');
+            if ($iban === null) {
+                return implode("\n\n", $parts);
+            }
+            $accounts[$iban] = true;
+        }
+        if (count($accounts) === 1) {
+            $parts[] = 'Supplier bank account: '.array_key_first($accounts);
+        }
+
+        return implode("\n\n", $parts);
+    }
+
+    protected function paymentIban(string $value): ?string
+    {
+        $iban = strtoupper(str_replace(' ', '', $value));
+        if (! preg_match('/^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/D', $iban)) {
+            return null;
+        }
+        $remainder = 0;
+        foreach (str_split(substr($iban, 4).substr($iban, 0, 4)) as $character) {
+            $digits = ctype_alpha($character) ? (string) (ord($character) - 55) : $character;
+            foreach (str_split($digits) as $digit) {
+                $remainder = ($remainder * 10 + (int) $digit) % 97;
+            }
+        }
+
+        return $remainder === 1 ? $iban : null;
     }
 
     protected function firstPaymentDetails(IsdocInvoiceSchema $invoice): ?Details

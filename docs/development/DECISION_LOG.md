@@ -1,5 +1,23 @@
 # Development decision log
 
+## Supplier payment QR implementation reviewed - 2026-11-17
+
+The owner authorized expense-row PayMe/PAY by square QR codes. The isolated
+`feat/expense-payment-qr` branch depends on open PR451 at `8feb1e8a`. Both formats
+are generated locally for eligible unpaid EUR expenses with explicit supplier
+name/account and VS. Import metadata preserves direct-creditor provenance;
+partial, ambiguous and nonpositive-payable cases are withheld. No settlement,
+subscription, entitlement or production-state changes are introduced.
+
+Independent QA/security accept the 20-blob source freeze
+`80ba25a20302921fd1aa0bb68f4453bfc1f65d19e1e188084b62742c17f903ff`.
+Nine real-browser scenarios, focused frontend and 37 PHP import tests / 202
+assertions pass. Lint/typecheck baselines, five-locale parity and build pass.
+See [scope, protocol, limits and exact evidence](EXPENSE_PAYMENT_QR.md), including
+historical imports without retained IBAN and the full-run timeout/retry result.
+The next step is publication as a dependent review PR; no PR merge or deployment
+is authorized or performed by this implementation.
+
 ## PR451 review corrections - 2026-11-17
 
 All three owner-supplied CodeRabbit findings were verified against the current

@@ -17,6 +17,7 @@ import { saveManualExpenseAttachmentArchive } from '../evolu/manualExpenseAttach
 import { EXPENSE_ORIGINAL_MAX_BYTES } from '../evolu/expenseOriginalReference';
 
 export type ExpenseImportDraft = {
+  internal_note?: string | null;
   title?: string | null;
   external_number?: string | null;
   variable_symbol?: string | null;

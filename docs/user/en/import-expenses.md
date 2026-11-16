@@ -54,3 +54,9 @@ Open an individual expense and add its PDF. In local-first invoicing, attachment
 You can allow temporary server processing to detect embedded ISDOC data. Cancel keeps the attachment local. If ISDOC is found, confirm field extraction separately or keep only the attachment. Extraction uses your existing allowance and credits; it is not OCR. When the allowance is exhausted, you can still attach the file and enter its fields manually.
 
 If saving a larger attachment is interrupted, retry while the file is still selected. After reloading, remove the incomplete attachment and select the original file again. Complete the upload or remove the incomplete attachment before creating a full backup.
+
+## Payment QR codes
+
+For an unpaid EUR expense with a supplier name, a valid supplier IBAN and a variable symbol of up to 10 digits, choose **Payment QR** in its row. Switch between **PAY by square** and **PayMe**, and check the recipient, amount and variable symbol before confirming in your banking app. The code is generated in your browser. Opening PayMe deliberately opens its payment link. Scanning a code does not mark the expense as paid.
+
+No code appears for paid or cancelled expenses, disputed bank matches, or imports with partial or unresolved payments. Supplier payment details are taken from explicit imported supplier metadata; the company’s own account is never used. New eligible e-invoice and ISDOC imports retain the supplier account; older imports without that metadata must first have their payment details completed.

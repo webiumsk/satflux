@@ -54,3 +54,9 @@ Abra un gasto y añada su PDF. En la facturación local, los adjuntos y los camp
 Puede permitir el procesamiento temporal en el servidor para detectar datos ISDOC incrustados. Cancelar mantiene el adjunto en local. Si se encuentra ISDOC, confirme por separado la extracción o conserve solo el adjunto. La extracción usa su límite y créditos existentes; no es OCR. Si se agota el límite, puede adjuntar el archivo e introducir los datos manualmente.
 
 Si se interrumpe el guardado de un adjunto grande, vuelva a intentarlo mientras el archivo siga seleccionado. Tras recargar la página, elimine el adjunto incompleto y seleccione de nuevo el archivo original. Complete la carga o elimine el adjunto incompleto antes de crear una copia de seguridad completa.
+
+## Códigos QR de pago
+
+En un gasto pendiente en EUR con nombre del proveedor, IBAN válido del proveedor y símbolo variable de hasta 10 dígitos, seleccione **QR de pago** en su fila. Cambie entre **PAY by square** y **PayMe** y compruebe el destinatario, el importe y el símbolo variable antes de confirmar en su aplicación bancaria. El código se genera en su navegador. Abrir PayMe abre de forma deliberada su enlace de pago. Escanear el código no marca el gasto como pagado.
+
+No se muestra ningún código para gastos pagados o anulados, conciliaciones bancarias en disputa ni importaciones con pagos parciales o pendientes de aclarar. Los datos de pago proceden de metadatos explícitos del proveedor; nunca se usa la cuenta de la propia empresa. Las nuevas importaciones compatibles de facturas electrónicas e ISDOC conservan la cuenta del proveedor. En importaciones anteriores sin estos metadatos hay que completar primero los datos de pago.

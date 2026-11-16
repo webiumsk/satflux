@@ -95,3 +95,26 @@ Parser: [`BusinessExpenseIsdocImportService`](../app/Services/Invoicing/Business
 - Bulk extract on list
 - Bank debit matching (0.3)
 - Unified accounting export
+
+## Supplier payment QR codes
+
+The desktop amount cell and mobile expense card expose a Payment QR action for
+unpaid recorded EUR expenses with a positive bounded amount, an explicit supplier
+name and supplier bank account in imported metadata, a checksum-valid IBAN and a
+1-10 digit variable symbol. Leading zeros are preserved. Paid/cancelled records,
+bank conflicts and partial/unresolved imported payments are ineligible. Supplier
+metadata must be unique; the company account and arbitrary note IBANs are never
+used as fallbacks.
+
+The dialog creates PAY by square 1.2.0 or PayMe Payment Link Standard 2.0 QR images
+locally using the existing QR renderer. The bounded PAY by square encoder uses
+literal-only raw LZMA1, CRC32 and base32hex without new dependencies. The explicit
+PayMe action opens a fixed-origin editable payment link with no referrer. Neither
+displaying, scanning nor opening a code records settlement. A change of company,
+row payment details, paid state or list membership closes the preview, and late
+image results are discarded.
+
+New eligible UBL and ISDOC imports retain explicit creditor-account metadata in
+the private note. Old expenses without retained supplier details do not infer
+accounts from attachments or company settings. See the user guides for the
+conditional action and the development review for protocol evidence.

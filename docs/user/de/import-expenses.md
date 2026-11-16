@@ -54,3 +54,9 @@ Die Summe unbezahlter Ausgaben enthält die vollen Beträge der nicht als bezahl
 Sie können der vorübergehenden Serververarbeitung zur Erkennung eingebetteter ISDOC-Daten zustimmen. Beim Abbrechen bleibt der Anhang lokal. Wird ISDOC gefunden, bestätigen Sie die Feldextraktion separat oder behalten nur den Anhang. Die Extraktion nutzt Ihr bestehendes Kontingent und Guthaben; sie ist keine OCR. Ist das Kontingent aufgebraucht, können Sie die Datei weiterhin anhängen und die Daten manuell eingeben.
 
 Wird das Speichern eines größeren Anhangs unterbrochen, versuchen Sie es erneut, solange die Datei noch ausgewählt ist. Entfernen Sie nach dem Neuladen den unvollständigen Anhang und wählen Sie die Originaldatei erneut aus. Schließen Sie den Upload ab oder entfernen Sie den unvollständigen Anhang, bevor Sie eine vollständige Sicherung erstellen.
+
+## QR-Codes für Zahlungen
+
+Wählen Sie bei einer unbezahlten EUR-Ausgabe mit Lieferantenname, gültiger Lieferanten-IBAN und einem variablen Symbol mit bis zu 10 Ziffern **Zahlungs-QR** in der Zeile. Wechseln Sie zwischen **PAY by square** und **PayMe** und prüfen Sie Empfänger, Betrag und variables Symbol vor der Bestätigung in Ihrer Banking-App. Der Code wird in Ihrem Browser erstellt. PayMe öffnen öffnet bewusst den Zahlungslink. Das Scannen markiert die Ausgabe nicht als bezahlt.
+
+Für bezahlte oder stornierte Ausgaben, strittige Bankzuordnungen und Importe mit Teilzahlungen oder ungeklärten Zahlungen wird kein Code angezeigt. Zahlungsdaten stammen aus ausdrücklich gespeicherten Lieferantendaten; das eigene Firmenkonto wird nie verwendet. Neue geeignete E-Rechnungs- und ISDOC-Importe behalten das Lieferantenkonto. Bei älteren Importen ohne diese Metadaten müssen zuerst die Zahlungsdaten ergänzt werden.
