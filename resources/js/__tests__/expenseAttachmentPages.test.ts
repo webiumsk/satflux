@@ -5,6 +5,7 @@ import { createI18n } from "vue-i18n";
 import en from "@/locales/en.json";
 import { evoluExpenseToApi, type EvoluExpenseRow } from "@/evolu/expenseMap";
 import { toAppRows } from "@/evolu/queryLoad";
+import { createExpenseOriginalReference, encodeExpenseOriginalReference } from "@/evolu/expenseOriginalReference";
 import type { EvoluExpenseAttachmentRow } from "@/evolu/expenseAttachmentCrud";
 
 const mocks = vi.hoisted(() => ({
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
     insertExpense: vi.fn(), updateExpense: vi.fn(), updateNote: vi.fn(), insertAttachment: vi.fn(), read: vi.fn(), lookup: vi.fn(),
     detect: vi.fn(), extract: vi.fn(), quota: vi.fn(), purchase: vi.fn(), upload: vi.fn(),
     localDetect: vi.fn(), localExtract: vi.fn(), localQuota: vi.fn(), attachmentBlob: vi.fn(),
+    archiveRead: vi.fn(), archiveDelete: vi.fn(),
     get: vi.fn(), update: vi.fn(), create: vi.fn(), history: vi.fn(), list: vi.fn(), company: vi.fn(), blob: vi.fn(), action: vi.fn(),
 }));
 const localCompany = "abcdefghijklmnopqrstuv";
@@ -22,7 +24,7 @@ const company = ref(localCompany);
 // A lagging query is observable state, including when another consumer warms the computed projection.
 const filteredLagId = ref<string | null>(null);
 const route = reactive({ name: "invoicing-expense-new", params: {} as { expenseId?: string } });
-type Attachment = { id: string; original_filename: string; mime: string | null };
+type Attachment = { id: string; original_filename: string; mime: string | null; contentBase64?: string; sizeBytes?: string };
 function fixture(id = "expense-a", owner = localCompany) {
     return {
         id, companyId: owner, internal_number: "E-2026-001", external_number: null as string | null,
@@ -46,7 +48,7 @@ const expenseRows = computed(() => models.value
     .filter((expense) => expense.isDeleted !== 1 && expense.id !== filteredLagId.value).map(rawRow));
 const attachmentRows = computed(() => models.value.flatMap((expense) => expense.attachments.map((attachment) => ({
     id: attachment.id, expenseId: expense.id, originalFilename: attachment.original_filename,
-    mimeType: attachment.mime, sizeBytes: "18", contentBase64: "c3ludGhldGlj",
+    mimeType: attachment.mime, sizeBytes: attachment.sizeBytes ?? "18", contentBase64: attachment.contentBase64 ?? "c3ludGhldGlj",
 }))));
 const currentExpense = computed(() => {
     const row = expenseRows.value.find((expense) => expense.id === route.params.expenseId
@@ -79,6 +81,7 @@ vi.mock("@/evolu/expenseAttachmentCrud", async (importOriginal) => ({
     readFileAsAttachmentBase64: mocks.read, insertLocalExpenseAttachmentFromBase64: mocks.insertAttachment,
     attachmentBlobUrl: vi.fn(), attachmentContentBlob: mocks.attachmentBlob, deleteLocalExpenseAttachment: vi.fn(),
 }));
+vi.mock("@/evolu/expenseOriginalArchive", () => ({ readVerifiedExpenseAttachment: mocks.archiveRead, deleteVerifiedExpenseAttachment: mocks.archiveDelete }));
 vi.mock("@/services/api", () => ({ getWebBlob: mocks.blob, invoicingApi: {
     companies: { get: mocks.company },
     expenses: {
@@ -96,7 +99,7 @@ vi.mock("@/components/invoicing/ExpenseShowSidebar.vue", () => ({ default: {
 vi.mock("@/components/invoicing/ExpenseAttachmentPanel.vue", () => ({ default: {
     name: "ExpenseAttachmentPanel",
     props: ["fileName", "hasPending", "detectError", "detecting", "previewUrl", "previewKind"],
-    emits: ["file-selected", "files-selected", "clear", "select-pending", "remove-pending", "select-attachment"],
+    emits: ["file-selected", "files-selected", "clear", "select-pending", "remove-pending", "select-attachment", "download", "remove-saved"],
     template: '<section data-test="attachment-panel"><span>{{ fileName }}</span><p>{{ detectError }}</p></section>',
 } }));
 vi.mock("@/evolu/bankCrud", () => ({ releaseLocalExpenseBankClaim: mocks.release }));
@@ -875,5 +878,88 @@ describe('embedded PDFs from preserved expense XML', () => {
         await flushPromises();
         expect(text).not.toHaveBeenCalled();
         expect(wrapper!.text()).toContain(en.invoicing.ubl_pdf_rejected);
+    });
+});
+
+
+describe("archived received originals on expense detail", () => {
+    function archivedExpense(sizeBytes = 450 * 1024) {
+        const expense = fixture("expense-a", localCompany);
+        const ref = createExpenseOriginalReference({ companyId: localCompany, receiptId: "receipt", expenseId: expense.id,
+            attachmentId: "original", sizeBytes, sha256: "a".repeat(64) });
+        expense.attachments = [{ id: "original", original_filename: "received.xml", mime: "application/xml",
+            contentBase64: encodeExpenseOriginalReference(ref), sizeBytes: String(sizeBytes) }];
+        models.value = [expense];
+        return expense;
+    }
+
+    it("previews embedded PDF from verified bytes and downloads the exact original after a fresh read", async () => {
+        archivedExpense();
+        const xml = embeddedXml("archived.pdf").padEnd(450 * 1024, " ");
+        const blob = xmlBlob(xml);
+        mocks.archiveRead.mockResolvedValue({ bytes: new TextEncoder().encode(xml), blob });
+        const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+        render("show", true);
+        await flushPromises();
+        expect(wrapper!.get('[data-testid="ubl-embedded-pdfs"]').text()).toContain("archived.pdf");
+        expect(mocks.archiveRead).toHaveBeenCalledWith(mocks.evolu, localCompany,
+            expect.objectContaining({ id: "original" }), { maxBytes: 2 * 1024 * 1024 });
+        expect(mocks.attachmentBlob).not.toHaveBeenCalled();
+        wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).vm.$emit("download");
+        await flushPromises();
+        expect(mocks.archiveRead).toHaveBeenLastCalledWith(mocks.evolu, localCompany, expect.objectContaining({ id: "original" }));
+        expect(URL.createObjectURL).toHaveBeenLastCalledWith(blob);
+        expect(click).toHaveBeenCalledOnce();
+        expect(mocks.blob).not.toHaveBeenCalled();
+    });
+
+    it("keeps the 2MiB XML preview bound while allowing a verified raw download", async () => {
+        archivedExpense(2 * 1024 * 1024 + 1);
+        const text = vi.fn();
+        const blob = Object.assign(new Blob([new Uint8Array(2 * 1024 * 1024 + 1)], { type: "application/xml" }), { text });
+        mocks.archiveRead.mockImplementation(async (_client, _company, _row, options) => {
+            if (options?.maxBytes) throw new Error("original_too_large");
+            return { bytes: new Uint8Array(blob.size), blob };
+        });
+        vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+        render("show", true);
+        await flushPromises();
+        expect(wrapper!.text()).toContain(en.invoicing.ubl_pdf_rejected);
+        expect(text).not.toHaveBeenCalled();
+        wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).vm.$emit("download");
+        await flushPromises();
+        expect(URL.createObjectURL).toHaveBeenCalledWith(blob);
+        expect(text).not.toHaveBeenCalled();
+    });
+
+    it("does not expose an unverified marker as a file when its archive is unavailable", async () => {
+        archivedExpense();
+        mocks.archiveRead.mockRejectedValue(new Error("original_unverified"));
+        const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+        render("show", true);
+        await flushPromises();
+        wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).vm.$emit("download");
+        await flushPromises();
+        expect(click).not.toHaveBeenCalled();
+        expect(mocks.attachmentBlob).not.toHaveBeenCalled();
+        expect(window.alert).toHaveBeenCalledWith(en.invoicing.expense_attachment_download_failed);
+    });
+
+    it("waits for authorized archive cleanup before refreshing a deleted attachment", async () => {
+        archivedExpense();
+        mocks.archiveRead.mockResolvedValue({ bytes: new Uint8Array(0), blob: xmlBlob(embeddedXml()) });
+        const deletion = deferred<void>();
+        mocks.archiveDelete.mockReturnValue(deletion.promise);
+        vi.mocked(window.confirm).mockReturnValue(true);
+        render("show", true);
+        await flushPromises();
+        mocks.refresh.mockClear();
+        wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).vm.$emit("remove-saved", "original");
+        await flushPromises();
+        expect(mocks.archiveDelete).toHaveBeenCalledWith(mocks.evolu, localCompany, expect.objectContaining({ id: "original" }));
+        expect(mocks.refresh).not.toHaveBeenCalled();
+        deletion.resolve();
+        await flushPromises();
+        expect(mocks.refresh).toHaveBeenCalledOnce();
     });
 });

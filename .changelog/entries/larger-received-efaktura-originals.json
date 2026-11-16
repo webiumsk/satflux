@@ -1,0 +1,10 @@
+{
+  "id": "larger-received-efaktura-originals",
+  "source": "https://github.com/webiumsk/satflux/pull/449",
+  "title": "Import larger received e-invoice originals",
+  "body": "Supported received XML/UBL e-invoices up to 10 MiB can now be saved locally, including originals with embedded PDFs. Interrupted imports can resume without creating duplicate expenses, and complete originals are checked before local receipt is confirmed. Download, backup and restore support the larger originals. Use the updated app on devices that open or back up these files; older clients cannot guarantee complete access or backups. PDF preview and accountant-export attachment limits remain unchanged.",
+  "labels": [
+    "invoicing",
+    "feature"
+  ]
+}

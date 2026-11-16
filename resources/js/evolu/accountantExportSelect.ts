@@ -1,3 +1,4 @@
+import { isExpenseOriginalReference, parseExpenseOriginalReference } from "./expenseOriginalReference";
 import type { EvoluDocumentRow } from "./documentMap";
 import type { EvoluExpenseAttachmentRow } from "./expenseAttachmentCrud";
 import type { EvoluExpenseRow } from "./expenseMap";
@@ -97,6 +98,7 @@ export const ACCOUNTANT_EXPORT_ATTACHMENT_MIMES = new Set([
 
 /** Server-side per-attachment cap on the base64 string (~512 KB decoded). */
 export const ACCOUNTANT_EXPORT_MAX_ATTACHMENT_BASE64 = 700_000;
+export const ACCOUNTANT_EXPORT_MAX_ATTACHMENT_BYTES = 512 * 1024;
 /**
  * Issued documents per ephemeral request. The limit is server render time,
  * not body size: every document in a batch is rendered to PDF (+ ISDOC /
@@ -127,7 +129,10 @@ export function buildExpensePayload(
             if (
                 !content
                 || !ACCOUNTANT_EXPORT_ATTACHMENT_MIMES.has(mime)
+                || isExpenseOriginalReference(content)
                 || content.length > ACCOUNTANT_EXPORT_MAX_ATTACHMENT_BASE64
+                || attachmentDecodedBytes(content) > ACCOUNTANT_EXPORT_MAX_ATTACHMENT_BYTES
+                || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(content)
             ) {
                 skipped++;
                 continue;
@@ -159,6 +164,36 @@ export function buildExpensePayload(
             attachments: payloadAttachments,
         },
     };
+}
+
+/** Resolve only selected, cap-eligible originals into transient verified base64. */
+export async function resolveAccountantExportAttachments(
+    attachments: readonly EvoluExpenseAttachmentRow[],
+    expenseIds: ReadonlySet<string>,
+    read: (row: EvoluExpenseAttachmentRow) => Promise<Uint8Array>,
+): Promise<EvoluExpenseAttachmentRow[]> {
+    const resolved: EvoluExpenseAttachmentRow[] = [];
+    for (const row of attachments) {
+        if (!isExpenseOriginalReference(row.contentBase64)) { resolved.push(row); continue; }
+        const skipped = { ...row, contentBase64: null };
+        if (!expenseIds.has(String(row.expenseId)) || !ACCOUNTANT_EXPORT_ATTACHMENT_MIMES.has(row.mimeType ?? "")) {
+            resolved.push(skipped); continue;
+        }
+        try {
+            const ref = parseExpenseOriginalReference(row.contentBase64);
+            if (!ref || ref.sizeBytes > ACCOUNTANT_EXPORT_MAX_ATTACHMENT_BYTES) { resolved.push(skipped); continue; }
+            const bytes = await read(row);
+            if (bytes.length !== ref.sizeBytes || bytes.length > ACCOUNTANT_EXPORT_MAX_ATTACHMENT_BYTES) { resolved.push(skipped); continue; }
+            let binary = "";
+            for (let offset = 0; offset < bytes.length; offset += 0x8000) binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+            resolved.push({ ...row, contentBase64: btoa(binary) });
+        } catch {
+            // Partial sync, unknown representation and failed verification are
+            // explicit skipped attachments in both preview and request payload.
+            resolved.push(skipped);
+        }
+    }
+    return resolved;
 }
 
 export function estimateAttachmentBytes(payloads: readonly AccountantExportExpensePayload[]): number {

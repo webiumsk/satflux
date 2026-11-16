@@ -826,7 +826,7 @@
     "efaktura_epostman_inbound_only": "Táto firma môže prijímať e-faktúry. Odosielanie je dostupné slovenským firmám registrovaným ako plní platitelia DPH.",
     "efaktura_epostman_manual_sending": "Dostupné je prijímanie a ručné odosielanie vystavených faktúr a dobropisov. Automatické odosielanie nie je dostupné. Stav doručenia a oznámenia Finančnej správe overte v ePostmane.",
     "efaktura_connection_new_credentials": "Zadaj nové prístupové údaje pre vybrané pripojenie. Údaje z iného pripojenia sa nepoužijú.",
-    "efaktura_inbox_original_notice": "Import sa dokončí až po uložení a overení originálneho XML v tvojich šifrovaných dátach. Pri chybe uloženia zostáva doklad tu na obnovu. Samotné stiahnutie import nedokončí.",
+    "efaktura_inbox_original_notice": "Import sa dokončí až po uložení a overení originálneho XML v tvojich lokálnych dátach Evolu. Synchronizácia používa koncové šifrovanie. Pri chybe uloženia zostáva doklad tu na obnovu. Samotné stiahnutie import nedokončí.",
     "efaktura_inbox_view": "Zobraziť doklad",
     "efaktura_inbox_download_original": "Stiahnuť originálne XML",
     "efaktura_inbox_document_number": "Číslo dokladu",
@@ -849,7 +849,7 @@
     "ubl_pdf_canvas": "PDF {name}, strana {page}",
     "efaktura_inbox_xml_preview": "Zobraziť originálne XML",
     "efaktura_inbox_error_original_unavailable": "Originálne XML sa nepodarilo overiť. Doklad zostáva v schránke; obnov zoznam alebo kontaktuj podporu.",
-    "efaktura_inbox_error_original_too_large": "Originál prekračuje miestny limit prílohy (384 KB). Import sa nedokončil. Stiahni XML a zachovaj prístup k archívu poštára; doklad zostáva v schránke.",
+    "efaktura_inbox_error_original_too_large": "Originál prekračuje podporovaný limit importu (10 MiB). Import sa nedokončil. Stiahni XML a zachovaj prístup k archívu poštára; doklad zostáva v schránke.",
     "efaktura_inbox_error_original_storage_failed": "Originálne XML sa nepodarilo uložiť a overiť. Doklad zostáva v schránke. Zopakuj import na opravu prílohy bez vytvorenia ďalšieho výdavku.",
     "efaktura_inbox_line_description": "Popis",
     "efaktura_inbox_line_quantity": "Množstvo",
@@ -2096,7 +2096,8 @@
     "efaktura_status_value_AB": "AB",
     "efaktura_status_value_CA": "CA",
     "efaktura_status_value_IP": "IP",
-    "efaktura_epostman_api_key_reenter": "Náhradný kľúč sa neuložil na server. Zadajte ho znova alebo odstráňte čakajúci kľúč a uložte nastavenia."
+    "efaktura_epostman_api_key_reenter": "Náhradný kľúč sa neuložil na server. Zadajte ho znova alebo odstráňte čakajúci kľúč a uložte nastavenia.",
+    "expense_attachment_download_failed": "Originálnu prílohu sa nepodarilo overiť alebo na tomto zariadení nie je dostupná. Synchronizuj dáta a skús znova."
   },
   "common": {
     "danger_type_word_label": "Napíšte {word} pre potvrdenie",
@@ -3763,7 +3764,9 @@
     "evolu_relay_protocol_sync_failed": "Synchronizácia relay zlyhala",
     "evolu_relay_protocol_version_mismatch": "Nekompatibilná verzia protokolu",
     "evolu_relay_protocol_invalid_message": "Neplatná odpoveď protokolu",
-    "evolu_relay_quota_hint": "Relay odmietol synchronizáciu pre prekročenú kapacitu alebo platobnú kvótu. Overte limity poskytovateľa alebo použite iný relay. Lokálne dáta zostávajú na tomto zariadení."
+    "evolu_relay_quota_hint": "Relay odmietol synchronizáciu pre prekročenú kapacitu alebo platobnú kvótu. Overte limity poskytovateľa alebo použite iný relay. Lokálne dáta zostávajú na tomto zariadení.",
+    "backup_restore_original_unverified": "Záloha neobsahuje úplný a overený originál každej prijatej faktúry. Synchronizujte zdrojové zariadenie a vytvorte novú zálohu.",
+    "backup_export_original_unverified": "Originál prijatej faktúry je neúplný alebo sa nepodarilo overiť. Synchronizujte dáta a skúste zálohu vytvoriť znova."
   },
   "header": {
     "dashboard": "Nástenka",

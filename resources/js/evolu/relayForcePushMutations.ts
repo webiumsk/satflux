@@ -13,6 +13,8 @@ import {
     allDocumentLinesQuery,
     allDocumentsQuery,
     allExpenseAttachmentsQuery,
+    allExpenseOriginalSourcesQuery,
+    allExpenseOriginalChunksQuery,
     allExpensesQuery,
     allNumberSeriesQuery,
     allRecurringProfileLinesQuery,
@@ -30,6 +32,8 @@ import type {
     ExpenseAttachmentId,
     ExpenseId,
     InvoicingLocalSchema,
+    MigrationSourceId,
+    MigrationChunkId,
     NumberSeriesId,
     RecurringProfileId,
     RecurringProfileLineId,
@@ -38,6 +42,8 @@ import type {
     StockMovementId,
     WarehouseId,
 } from "./schema";
+
+import { isExpenseOriginalReference } from "./expenseOriginalReference";
 
 const FORCE_PUSH_AT_KEY = "satfluxForceRelayPushAt";
 
@@ -180,15 +186,49 @@ export async function forceTouchAllInvoicingRowsForRelay(
         }
     }
 
+    const expenseIds = new Set(expenses.filter(row => !companyId || String(row.companyId) === companyId).map(row => row.id));
     const expenseAttachments = await evolu.loadQuery(allExpenseAttachmentsQuery);
     for (const row of expenseAttachments) {
-        const result = evolu.update("expenseAttachment", {
-            id: row.id as ExpenseAttachmentId,
-            originalFilename: touchOptionalText(row.originalFilename, timestamp),
-        });
+        if (row.expenseId === null || !expenseIds.has(row.expenseId)) continue;
+        // Evolu emits new CRDT messages for every submitted value, including
+        // unchanged values. Re-send all columns without changing bound metadata.
+        const result = isExpenseOriginalReference(row.contentBase64)
+            ? evolu.upsert("expenseAttachment", {
+                id: row.id as ExpenseAttachmentId, expenseId: row.expenseId,
+                originalFilename: row.originalFilename, mimeType: row.mimeType,
+                sizeBytes: row.sizeBytes, contentBase64: row.contentBase64,
+            })
+            : evolu.update("expenseAttachment", {
+                id: row.id as ExpenseAttachmentId,
+                originalFilename: touchOptionalText(row.originalFilename, timestamp),
+            });
         if (result.ok) {
             touched += 1;
         }
+    }
+
+    const originalSources = await evolu.loadQuery(allExpenseOriginalSourcesQuery);
+    const sourceIds = new Set(originalSources.filter(row => row.companyId !== null
+        && (!companyId || row.companyId === companyId)).map(row => row.id));
+    for (const row of originalSources) {
+        if (row.companyId === null || !sourceIds.has(row.id)) continue;
+        const result = evolu.upsert("migrationSource", {
+            id: row.id as MigrationSourceId, companyId: row.companyId,
+            sourceKind: row.sourceKind, relatedExportId: row.relatedExportId,
+            originalFilename: row.originalFilename, mimeType: row.mimeType,
+            sizeBytes: row.sizeBytes, checksum: row.checksum,
+            chunkCount: row.chunkCount, savedAt: row.savedAt,
+        });
+        if (result.ok) touched += 1;
+    }
+    for (const row of await evolu.loadQuery(allExpenseOriginalChunksQuery)) {
+        if (row.sourceId === null || row.companyId === null || !sourceIds.has(row.sourceId)
+            || (companyId && row.companyId !== companyId)) continue;
+        const result = evolu.upsert("migrationChunk", {
+            id: row.id as MigrationChunkId, companyId: row.companyId, sourceId: row.sourceId,
+            chunkIndex: row.chunkIndex, contentBase64: row.contentBase64,
+        });
+        if (result.ok) touched += 1;
     }
 
     const recurringProfiles = await evolu.loadQuery(allRecurringProfilesQuery);

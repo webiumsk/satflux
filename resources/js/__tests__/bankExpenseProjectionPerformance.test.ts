@@ -11,6 +11,7 @@ vi.mock('@evolu/vue', () => ({ useQuery: (query: string) => mocks.queryRows.get(
 vi.mock('@/evolu/client', () => ({
     allBankImportBatchesQuery: 'batches', allBankTransactionMatchesQuery: 'matches', allBankTransactionsQuery: 'transactions',
     allCompaniesDetailQuery: 'companies', allDocumentsQuery: 'documents', allExpensesQuery: 'expenses', allExpenseAttachmentsQuery: 'attachments',
+    allExpenseOriginalSourcesQuery: 'original-sources', allExpenseOriginalChunksQuery: 'original-chunks',
     useInvoicingEvolu: () => ({ loadQuery: mocks.loadQuery, appOwner: Promise.resolve({ id: 'owner-a' }) }),
 }));
 vi.mock('@/evolu/documentCrud', () => ({ markLocalDocumentPaidWithAmount: vi.fn(), unmarkLocalDocumentPaid: vi.fn() }));

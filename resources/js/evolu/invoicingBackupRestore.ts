@@ -1,3 +1,4 @@
+import { validateExpenseOriginalSnapshot } from "./expenseOriginalSnapshot";
 import type { Evolu } from "@evolu/common/local-first";
 import type { InvoicingLocalSchema } from "./schema";
 import {
@@ -10,6 +11,7 @@ import {
     INVOICING_BACKUP_FORMAT,
     INVOICING_BACKUP_VERSION,
     INVOICING_ARCHIVE_BACKUP_VERSION,
+    INVOICING_EXPENSE_ORIGINAL_BACKUP_VERSION,
     backupTableCounts,
     type InvoicingBackupEnvelope,
 } from "./invoicingBackup";
@@ -29,6 +31,7 @@ import type { EncryptedBackupEnvelope } from "./invoicingBackupCrypto";
 export type BackupValidationError =
     | "invalid_json"
     | "invalid_format"
+    | "original_unverified"
     | "unsupported_version"
     | "hash_missing"
     | "hash_mismatch"
@@ -109,7 +112,8 @@ export async function parseAndValidateBackup(
     ) {
         return { ok: false, error: "invalid_format" };
     }
-    if (envelope.version !== INVOICING_BACKUP_VERSION && envelope.version !== INVOICING_ARCHIVE_BACKUP_VERSION) {
+    if (envelope.version !== INVOICING_BACKUP_VERSION && envelope.version !== INVOICING_ARCHIVE_BACKUP_VERSION
+        && envelope.version !== INVOICING_EXPENSE_ORIGINAL_BACKUP_VERSION) {
         return { ok: false, error: "unsupported_version" };
     }
     if (typeof envelope.sha256 !== "string" || envelope.sha256 === "") {
@@ -123,6 +127,12 @@ export async function parseAndValidateBackup(
     }
     if (computed !== envelope.sha256) {
         return { ok: false, error: "hash_mismatch" };
+    }
+
+    try {
+        await validateExpenseOriginalSnapshot(envelope.data as InvoicingDataSnapshot);
+    } catch {
+        return { ok: false, error: "original_unverified" };
     }
 
     const ownerMatches =

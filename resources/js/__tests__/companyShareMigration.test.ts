@@ -1,3 +1,10 @@
+import { createExpenseOriginalReference, encodeExpenseOriginalReference, expenseOriginalChunkId, EXPENSE_ORIGINAL_CHUNK_BYTES } from "@/evolu/expenseOriginalReference";
+import { verifyExpenseOriginalArchiveRows } from "@/evolu/expenseOriginalArchive";
+import { migrationSha256 } from "@/evolu/migrationArchiveValues";
+import { validateExpenseOriginalSnapshot } from "@/evolu/expenseOriginalSnapshot";
+import { EMPTY_INVOICING_SNAPSHOT } from "@/evolu/invoicingSnapshot";
+import { buildBackupEnvelopeFromSnapshot } from "@/evolu/invoicingBackup";
+import { parseAndValidateBackup, restoreInvoicingBackup } from "@/evolu/invoicingBackupRestore";
 import { deserializeQuery } from "@evolu/common/local-first";
 import { installBankLocks } from "./bankReconciliationTestSupport";
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -342,4 +349,49 @@ describe('Enterprise credential sharing exclusion', () => {
     it.each(['{"efaktura_epostman_api_key":"synthetic-secret"', '["synthetic-secret"]', '"synthetic-secret"'])('fails closed for malformed/non-object settings (%s)', (appSettingsJson) => {
         expect(rowForSharedUpsert({ id: 'synthetic-company', appSettingsJson }).appSettingsJson).toBeNull();
     });
+});
+
+async function largeOriginalRows(ownerId: string) {
+    const bytes = new Uint8Array(450 * 1024).fill(32);
+    bytes.set(new TextEncoder().encode("<Invoice>synthetic shared original</Invoice>"));
+    const ref = createExpenseOriginalReference({ companyId: "c1", receiptId: "received-one", expenseId: "e1", attachmentId: "a1",
+        sizeBytes: bytes.length, sha256: await migrationSha256(bytes) });
+    const source = { id: ref.sourceId, companyId: "c1", ownerId, sourceKind: "efaktura-original", relatedExportId: null,
+        originalFilename: "received.xml", mimeType: "application/xml", sizeBytes: String(ref.sizeBytes), checksum: ref.sha256,
+        chunkCount: String(ref.chunkCount), savedAt: "2026-11-15T10:00:00Z" };
+    const chunks = Array.from({ length: ref.chunkCount }, (_, index) => ({ id: expenseOriginalChunkId(ref.sourceId, index),
+        ownerId, companyId: "c1", sourceId: ref.sourceId, chunkIndex: String(index),
+        contentBase64: Buffer.from(bytes.subarray(index * EXPENSE_ORIGINAL_CHUNK_BYTES, (index + 1) * EXPENSE_ORIGINAL_CHUNK_BYTES)).toString("base64") }));
+    const attachment = { id: "a1", expenseId: "e1", ownerId, originalFilename: source.originalFilename,
+        mimeType: source.mimeType, sizeBytes: source.sizeBytes, contentBase64: encodeExpenseOriginalReference(ref) };
+    return { bytes, ref, source, chunks, attachment };
+}
+
+it("preserves a complete large received original through sharing, backup and restore into a fresh private owner", async () => {
+    const x = await largeOriginalRows(APP);
+    const seed = emptyAll();
+    seed.company = [{ id: "c1", ownerId: APP, legalName: "Synthetic" }];
+    seed.expense = [{ id: "e1", companyId: "c1", ownerId: APP, internalNumber: "E1" }];
+    seed.expenseAttachment = [x.attachment]; seed.migrationSource = [x.source]; seed.migrationChunk = x.chunks;
+    const h = fakeEvolu(seed);
+    const result = await convertCompanyToShared(h.evolu, "c1");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const snapshot = { ...EMPTY_INVOICING_SNAPSHOT, ...Object.fromEntries(MIGRATION_ORDER.map(table => [table,
+        [...(h.tables.get(table)?.values() ?? [])].filter(row => row.ownerId === result.ownerId && row.isDeleted !== 1)])) };
+    await expect(validateExpenseOriginalSnapshot(snapshot)).resolves.toBeUndefined();
+    expect(await verifyExpenseOriginalArchiveRows(x.ref, snapshot.migrationSource!, snapshot.migrationChunk!, result.ownerId)).toEqual(x.bytes);
+    const envelope = await buildBackupEnvelopeFromSnapshot(snapshot, null);
+    expect(envelope.version).toBe(3);
+    const parsed = await parseAndValidateBackup(JSON.stringify(envelope), null);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    clearCompanyShares(); clearRowOwnerIndex();
+    const target = fakeEvolu(emptyAll());
+    const report = await restoreInvoicingBackup(target.evolu, parsed.value);
+    expect(report.failed).toEqual([]);
+    const source = [...target.tables.get("migrationSource")!.values()];
+    const chunks = [...target.tables.get("migrationChunk")!.values()];
+    expect(await verifyExpenseOriginalArchiveRows(x.ref, source, chunks, APP)).toEqual(x.bytes);
+    expect(target.tables.get("expenseAttachment")?.get(`${APP}|a1`)?.contentBase64).toBe(x.attachment.contentBase64);
 });

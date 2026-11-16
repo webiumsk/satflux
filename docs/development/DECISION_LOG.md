@@ -1,5 +1,191 @@
 # Development decision log
 
+## PR449 late-sync deletion intent accepted locally - 2026-11-16
+
+The six original CodeRabbit comments are resolved on published `033fd831`,
+whose CI43780501107 passes all five jobs. The owner's seventh finding,
+[delayed archive arrival after deletion](https://github.com/webiumsk/satflux/pull/449#discussion_r4580967386),
+is independently verified and now corrected in the same branch.
+
+Fresh authorized attachment/reference bindings derive the exact source and
+at most 40 chunk IDs. Present row-level checks remain; one atomic, explicit-owner
+batch records deletion intent for every canonical ID even when absent. Readback
+requires exactly one owner-scoped tombstone per target. No payload bytes or
+financial metadata are invented; foreign rows and retry-resurrection guards
+remain protected. This supersedes the earlier only-existing-row defense.
+
+Independent QA/security accept the final 44-file source/test/locale freeze:
+`2699055fc1a21886a68fd65d7790d35cf2f6698a4dc48ab05716f680929a9688`.
+Only the archive helper/test change from the 42-file parent; two existing
+memory-only SDK test helpers extend the scope. Total PR scope is 55 paths.
+Author57/3, security70/3, selected QA19 (16 filtered) and corrected native10/10
+pass. Genuine older SDK history retains original timestamps; replay fills
+metadata while tombstones stay1 and backup restore preflight passes. Immutable
+parent baseline reproduces the bug; no newer-upsert proxy or relay claim.
+
+Full lint passes with0errors/46inherited warnings, typecheck110inherited/no new,
+locale parity, build7,672 and whitespace pass; ratchets are unchanged. Synthetic
+native processes/profiles are removed and their port is closed. Evidence and
+scope manifest are retained privately.
+
+CodeRabbit CLI is installed, but automatic permission review rejects execution
+before start because source upload to external SaaS lacks explicit consent.
+The consent question remains pending; no CLI upload/review result is claimed.
+Independent local review and tests complete unaffected, with no install, login,
+credit, trust or configuration changes.
+
+The follow-up is ready for normal push and exact-head CI. Primary remains
+`fix/sepa-confirmation-isolation` at `885168f2`; preserve unrelated edits
+and the separate accountant-export clarity freeze. No merge, provider operation,
+public changelog publication or deployment.
+
+## PR449 CodeRabbit follow-up accepted locally - 2026-11-16
+
+All six actionable comments are independently checked against published parent
+`3f95ad5c9ad6608d24da74f8306d1eb8574b9844`. Missing mocks and the owner-column
+SQL ambiguity were already fixed. The remaining four valid findings are now
+corrected in the same branch: archive-arrival preview refresh, coherent captured
+export selection, checkpoint-before-byte-proof ordering with fresh authority
+checks, and authorized deletion of damaged/incomplete archives.
+
+Export selection captures typed rows, range, company/name and copied options
+(including formats), and cancels on synchronous selection changes before bridge
+requests or held ZIP downloads. Source/chunk evidence refreshes previews.
+Private post-proof company/share reads preserve owner, fingerprint and exact
+active-share authority checks after the earlier worker marker. Deletion validates
+available structural bindings, atomically tombstones only existing owned rows,
+and prevents deleted attachments from recreating missing archives. Existing
+limits, financial contracts, server protocol, schema, dependencies and global
+owner/reconciliation wrappers remain unchanged.
+
+Independent QA and security accept the final 42-file source/test/locale freeze:
+`225967876edbab39c8364a6a061aefbdd8b2e4fa100d10b1ddcefe987df86237`.
+Seven prior files change; one bank-performance mock adds two query tokens with
+all assertions unchanged. The combined PR scope is 53 paths. Author core
+128/6, main consumer/planner/performance 31/3, security 102/4 including six private
+probes, QA consumer 12 plus six private probes, selected core 28/3 and native
+12/12 pass. Runs overlap; 56 QA-filtered tests are not counted as passed.
+Lint 0 errors / 46 inherited warnings, typecheck 110 inherited errors / nothing
+new, locale parity, build 7,672 modules and whitespace pass.
+
+The wrapper-exit checkpoint and final local read to remote completion interval
+remain explicit non-atomic limits. Native fixtures/profile data are removed,
+their port is closed, and private evidence distinguishes mocks, native storage
+and earlier CI. Details and finding links: `EFAKTURA_LARGE_ORIGINALS.md`.
+
+The reviewed follow-up is ready for normal push and CI on its exact new head.
+Prior green CI43776670496 belongs to `3f95ad5c`. Primary remains
+`fix/sepa-confirmation-isolation` at `885168f2`; preserve unrelated edits
+and the separate accountant-export clarity freeze. No merge, provider operation,
+public changelog publication or deployment is performed.
+
+## PR449 startup query correction accepted locally - 2026-11-16
+
+PR449's published head `a7410fc59910aa699a7a6cf10b6581e3c4ed5fd0` passes
+CI43773954997 Node (3,555 tests / 250 files), PHP (3,501 passed / 19,624 assertions,
+31 skipped), PostgreSQL and changelog. E2E exposes two blank initial routes.
+A comparison rerun of PR448 head `54b9eea1` passes 26 tests with two existing
+flaky footer cases and three skips, distinguishing the new startup regression.
+
+The actual owner wrapper appends unqualified `ownerId`; the new archive join
+makes that generated SQL ambiguous even on an empty database. Replace only the
+outer join with a correlated `EXISTS`, retaining source ID, owner, company,
+exact kind and live source/chunk predicates. The global wrapper is unchanged.
+A new actual-client/wrapper/serializer SQLite regression fails 2/2 before and
+passes 2/2 after; 26 focused tests / six suites, scoped ESLint and full typecheck
+(110 inherited errors / nothing new) pass.
+
+Independent security accepts both corrected file hashes. QA verifies seven native
+Chrome/Evolu/OPFS checks: empty query, snapshot, refresh, fingerprint, exact
+owner/company/live-source filtering and account seed binding after page reload.
+The immediate SDK restore result and successful post-reload pending-sync read
+are distinguished; no real account, provider or multi-device delivery is claimed.
+
+The combined 41-file source/test/locale freeze is
+`48b383cc6e879a2d8380ca3a223ada392b206bee2597a39909ddfd032e41ec22`.
+Relative to the original 38-file review, only `client.ts` changes; 37 files
+retain their hashes. Two prior QA-approved mock corrections and the new SQL
+regression extend the scope to 41; with docs/changelog the total is 52 paths.
+Contract and evidence: `EFAKTURA_LARGE_ORIGINALS.md`.
+
+Next is normal push of the bounded correction and CI for that exact final head.
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`; unrelated
+changes and the separate accountant-export clarity freeze remain preserved.
+No merge, provider operation, public changelog publication or deployment.
+
+## PR449 published; publication checks in progress - 2026-11-16
+
+The owner's push instruction publishes reviewed implementation
+`91748ce3e7208353f7584e9a323a00139a02c268` on
+`feat/efaktura-large-originals`. GitHub PR449 is open against master
+`2201bf1bacdc9a26571f188382b5e10999bbbf55`:
+https://github.com/webiumsk/satflux/pull/449 . Remote metadata matches that
+implementation commit. This supersedes the local-only status below.
+
+The documentation follow-up adds publication records and one PR-linked
+user-facing changelog fragment. CI43773180167 on `802412ad` then passes
+3,550 tests in 248 files but cannot load two other suites because their existing
+client mocks lack the new original-source/chunk query exports. The correction
+adds those two tokens to each mock, preserving all test assertions; all five
+targeted tests and two-file ESLint pass. Independent QA accepts both exact
+file hashes and confirms unchanged assertions. This is a test-fixture correction,
+with no additional production-code changes.
+
+All 38 accepted source/test/locale hashes retain aggregate
+`d0ba510c9b9617484f65d63fb9981db7673e8c9ba000de5d5318f4b5b8c1143d`.
+The fragment and two existing test-file corrections make 51 scoped paths.
+Remote checks must be verified on the corrected final head; neither the earlier
+local tests nor the failed first CI establish that head's CI or production readiness.
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`, with unrelated
+changes preserved. The separate accountant-export clarity freeze is unchanged.
+No merge, provider operation, public changelog publication or deployment is
+performed. The changelog uses the existing gated deployment publication process.
+
+## Larger eFaktura originals accepted locally - 2026-11-16
+
+The owner authorizes remaining point 1: received originals above 384 KiB,
+including UBL/XML with embedded PDF. Implementation remains uncommitted on
+`feat/efaktura-large-originals`, based on verified PR448 merge
+`2201bf1bacdc9a26571f188382b5e10999bbbf55` from reviewed head `54b9eea1`.
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`; unrelated work
+and the separate 17-file accountant-export clarity diff remain preserved.
+Merge evidence and these local checks do not establish deployed production readiness.
+
+Owner-scoped archives store at most 40 chunks of 256 KiB under the existing
+10 MiB server admission bound. Strict receipt-bound references, durable writes
+and fresh context/byte/digest checks before and after custody preparation protect
+the unchanged server API and post-ACK cleanup contract. Backup v3 validates the
+complete archive before output or restore writes. Download, deletion, sharing,
+rekey, fingerprint and resend consumers handle the representation. Ordinary
+attachments remain 384 KiB; preview and accountant-export caps remain unchanged.
+
+Independent QA and security accept all 38 source/test/locale files at aggregate
+`d0ba510c9b9617484f65d63fb9981db7673e8c9ba000de5d5318f4b5b8c1143d`.
+Two medium findings are fixed: noncanonical snapshot live flags now fail before
+restore writes, and post-proof company/receiving-context changes prevent custody
+completion. Main checks pass 274 frontend tests in 20 suites, 49 PHP tests /
+605 assertions, lint with 0 errors / 46 inherited warnings, typecheck with
+110 inherited errors and nothing new, locale parity and build (7,672 modules).
+Pint passes for both changed PHP test files; no production PHP changes.
+
+QA additionally verifies 44 compatibility/integrity cases, 15 malformed-flag
+cases, and 22 native Chrome/Evolu/OPFS checks plus four native context-race
+regressions. Exact 10 MiB survives a full browser restart; interrupted writes
+resume, and atomic deletion failures retain originals. Review runs overlap.
+All synthetic fixture processes are stopped and private browser profiles removed.
+
+New originals require the updated client for access, backup, restore and sharing;
+rollback needs a compatible reader/backport. Existing E2EE synchronization is
+preserved; SQLite encryption at rest is not configured or certified. Tests use
+synthetic custody callbacks and disabled external transports, so real provider,
+multi-device synchronization and deployment remain unverified. Contract, evidence,
+limits and final review dispositions: `EFAKTURA_LARGE_ORIGINALS.md`.
+
+Source and documentation remain local, with no new commit, push, PR, head CI,
+provider operation or deployment. Next is scoped publication when requested;
+merge and deployment retain their approval gates.
+
 ## PR448 published; final publication checks in progress - 2026-11-15
 
 The owner's push instruction publishes reviewed implementation commit

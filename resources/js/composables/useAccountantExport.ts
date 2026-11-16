@@ -1,10 +1,12 @@
 import { projectExpensePayments } from "@/evolu/bankExpenseClaims";
 import type { EvoluBankTransactionRow, EvoluBankTransactionMatchRow } from "@/evolu/bankMap";
-import { computed, ref, type Ref } from "vue";
+import { computed, ref, watch, type Ref } from "vue";
 import { useQuery } from "@evolu/vue";
 import {
     allDocumentsQuery,
     allExpenseAttachmentsQuery,
+    allExpenseOriginalSourcesQuery,
+    allExpenseOriginalChunksQuery,
     allExpensesQuery,
     allBankTransactionsQuery,
     allBankTransactionMatchesQuery,
@@ -17,6 +19,9 @@ import type { EvoluExpenseAttachmentRow } from "@/evolu/expenseAttachmentCrud";
 import { isInvoicingLocalFirst } from "@/evolu/flags";
 import {
     buildExpensePayload,
+    resolveAccountantExportAttachments,
+    selectExpensesForExport,
+    ACCOUNTANT_EXPORT_MAX_ATTACHMENT_BYTES,
     defaultAccountantExportOptions,
     planAccountantExport,
     type AccountantExportBatch,
@@ -36,6 +41,8 @@ import {
     resolveIssuePeriodRange,
     type IssuePeriodState,
 } from "@/composables/useInvoicingIssuePeriod";
+import { readVerifiedExpenseAttachment } from "@/evolu/expenseOriginalArchive";
+import { isExpenseOriginalReference } from "@/evolu/expenseOriginalReference";
 import { invoicingApi } from "@/services/api";
 
 const MIN_DATE = "0000-01-01";
@@ -79,6 +86,8 @@ export function useAccountantExport(companyId: Ref<string>, companyName: Ref<str
     const transactionRows = localFirst ? useQuery(allBankTransactionsQuery) : ref<readonly unknown[]>([]);
     const matchRows = localFirst ? useQuery(allBankTransactionMatchesQuery) : ref<readonly unknown[]>([]);
     const attachmentRows = localFirst ? useQuery(allExpenseAttachmentsQuery) : ref<readonly unknown[]>([]);
+    const originalSourceRows = localFirst ? useQuery(allExpenseOriginalSourcesQuery) : ref<readonly unknown[]>([]);
+    const originalChunkRows = localFirst ? useQuery(allExpenseOriginalChunksQuery) : ref<readonly unknown[]>([]);
 
     /** Load raw expense, bank and attachment queries before preparing the accountant export view. */
     async function load(): Promise<void> {
@@ -92,6 +101,8 @@ export function useAccountantExport(companyId: Ref<string>, companyName: Ref<str
                 evolu.loadQuery(allBankTransactionsQuery),
                 evolu.loadQuery(allBankTransactionMatchesQuery),
                 evolu.loadQuery(allExpenseAttachmentsQuery),
+                evolu.loadQuery(allExpenseOriginalSourcesQuery),
+                evolu.loadQuery(allExpenseOriginalChunksQuery),
             ]);
         } catch (e) {
             loadError.value = true;
@@ -107,6 +118,73 @@ export function useAccountantExport(companyId: Ref<string>, companyName: Ref<str
         toAppRows<EvoluBankTransactionRow>(transactionRows.value), toAppRows<EvoluBankTransactionMatchRow>(matchRows.value)));
     const attachments = computed(() => toAppRows<EvoluExpenseAttachmentRow>(attachmentRows.value));
 
+    // Synchronous invalidation closes races during attachment reads and bridge
+    // preparation, including in-place option-array and row-field changes.
+    let selectionRevision = 0;
+    if (localFirst) watch(() => [companyId.value, companyName.value, range.value, options.value,
+        documents.value, expenses.value, attachments.value], () => { selectionRevision += 1; }, { deep: true, flush: "sync" });
+
+    function captureExportSelection() {
+        return {
+            revision: selectionRevision,
+            company: companyId.value,
+            companyName: companyName.value ?? "company",
+            range: { ...range.value },
+            options: { ...options.value, formats: [...options.value.formats] },
+            documents: documents.value.map(row => ({ ...row })),
+            expenses: expenses.value.map(row => ({ ...row })),
+            attachments: attachments.value.map(row => ({ ...row })),
+        };
+    }
+    type ExportSelection = ReturnType<typeof captureExportSelection>;
+
+    function assertExportSelection(selection: ExportSelection, signal?: AbortSignal): void {
+        if (selection.revision !== selectionRevision || selection.company !== companyId.value || signal?.aborted) {
+            throw new DOMException("Export context changed", "AbortError");
+        }
+    }
+
+    async function resolveExportAttachments(selection: ExportSelection, signal: AbortSignal) {
+        const selected = selection.options.includeExpenseAttachments
+            ? new Set(selectExpensesForExport(selection.expenses, selection.company, selection.range).map(row => String(row.id))) : new Set<string>();
+        const rows = await resolveAccountantExportAttachments(selection.attachments, selected, async row => {
+            assertExportSelection(selection, signal);
+            if (!evolu) throw new Error("local_context_unavailable");
+            const verified = await readVerifiedExpenseAttachment(evolu, selection.company, row, { maxBytes: ACCOUNTANT_EXPORT_MAX_ATTACHMENT_BYTES });
+            assertExportSelection(selection, signal);
+            return verified.bytes;
+        });
+        // The resolver treats unreadable files as skipped, so repeat the context
+        // guard outside it before planning or preparing any request.
+        assertExportSelection(selection, signal);
+        return rows;
+    }
+
+    const resolvedAttachments = ref<EvoluExpenseAttachmentRow[]>([]);
+    const resolvingAttachments = ref(false);
+    let resolutionGeneration = 0;
+    async function refreshResolvedAttachments(): Promise<EvoluExpenseAttachmentRow[]> {
+        const generation = ++resolutionGeneration;
+        const company = companyId.value;
+        resolvingAttachments.value = true;
+        const selected = options.value.includeExpenseAttachments
+            ? new Set(selectExpensesForExport(expenses.value, company, range.value).map(row => String(row.id))) : new Set<string>();
+        const rows = await resolveAccountantExportAttachments(attachments.value, selected, async row => {
+            if (!evolu) throw new Error("local_context_unavailable");
+            return (await readVerifiedExpenseAttachment(evolu, company, row, { maxBytes: ACCOUNTANT_EXPORT_MAX_ATTACHMENT_BYTES })).bytes;
+        });
+        if (generation !== resolutionGeneration || company !== companyId.value) return rows;
+        resolvedAttachments.value = rows;
+        resolvingAttachments.value = false;
+        return rows;
+    }
+    if (localFirst) watch(() => [attachments.value, expenses.value, companyId.value, range.value, options.value.includeExpenseAttachments,
+        originalSourceRows.value, originalChunkRows.value],
+        () => { void refreshResolvedAttachments(); }, { immediate: true });
+    const exportAttachments = computed(() => resolvingAttachments.value
+        ? attachments.value.map(row => isExpenseOriginalReference(row.contentBase64) ? { ...row, contentBase64: null } : row)
+        : resolvedAttachments.value);
+
     /** Local-first only - server mode has no cheap preview (rows live on the server). */
     const plan = computed<AccountantExportPlan | null>(() => {
         if (!localFirst) return null;
@@ -114,7 +192,7 @@ export function useAccountantExport(companyId: Ref<string>, companyName: Ref<str
             range: range.value,
             documents: documents.value,
             expenses: expenses.value,
-            attachments: attachments.value,
+            attachments: exportAttachments.value,
             companyId: companyId.value,
             includeAttachments: options.value.includeExpenseAttachments,
         });
@@ -133,29 +211,32 @@ export function useAccountantExport(companyId: Ref<string>, companyName: Ref<str
             || options.value.includeExpenseAttachments,
     );
 
-    function filename(chunk: ExportDateRange): string {
-        return `accountant-${slug(companyName.value ?? "company")}-${chunk.from}_${chunk.to}.zip`;
+    function filename(chunk: ExportDateRange, name = companyName.value ?? "company"): string {
+        return `accountant-${slug(name)}-${chunk.from}_${chunk.to}.zip`;
     }
 
-    async function prepareLocalBatch(batch: AccountantExportBatch, signal?: AbortSignal): Promise<{ blob: Blob; filename: string } | null> {
+    async function prepareLocalBatch(batch: AccountantExportBatch, selection: ExportSelection, attachmentSnapshot: readonly EvoluExpenseAttachmentRow[], signal?: AbortSignal): Promise<{ blob: Blob; filename: string } | null> {
         if (!localDoc) return null;
+        assertExportSelection(selection, signal);
         const expenseIds = new Set(batch.expenseIds);
-        const expensePayloads = expenses.value
+        const expensePayloads = selection.expenses
             .filter((row) => expenseIds.has(String(row.id)))
-            .map((row) => buildExpensePayload(row, attachments.value, options.value.includeExpenseAttachments).payload);
+            .map((row) => buildExpensePayload(row, attachmentSnapshot, selection.options.includeExpenseAttachments).payload);
         if (batch.documentIds.length === 0 && expensePayloads.length === 0) return null;
 
-        const request = await buildAccountantExportEphemeralRequest(localDoc, companyId.value, {
+        const request = await buildAccountantExportEphemeralRequest(localDoc, selection.company, {
             documentIds: batch.documentIds,
             expenses: expensePayloads,
             range: batch.range,
-            options: options.value,
+            options: selection.options,
         });
+        assertExportSelection(selection, signal);
         if (!request) {
             throw new Error("accountant_export_build_failed");
         }
         const blob = await fetchEphemeralAccountantExport(request.body, request.bridgeCompanyId, { signal });
-        return { blob, filename: filename(batch.range) };
+        assertExportSelection(selection, signal);
+        return { blob, filename: filename(batch.range, selection.companyName) };
     }
 
     async function downloadServer(signal?: AbortSignal): Promise<void> {
@@ -181,29 +262,36 @@ export function useAccountantExport(companyId: Ref<string>, companyName: Ref<str
         if (downloading.value) return;
         error.value = null;
         downloading.value = true;
-        abort = new AbortController();
+        const controller = new AbortController();
+        abort = controller;
         try {
             if (!localFirst) {
                 progress.value = { done: 0, total: 1 };
-                await downloadServer(abort.signal);
+                await downloadServer(controller.signal);
                 progress.value = { done: 1, total: 1 };
                 return;
             }
-            const batches = plan.value?.batches ?? [];
+            const selection = captureExportSelection();
+            const attachmentSnapshot = await resolveExportAttachments(selection, controller.signal);
+            const batches = planAccountantExport({ range: selection.range, documents: selection.documents,
+                expenses: selection.expenses, attachments: attachmentSnapshot, companyId: selection.company,
+                includeAttachments: selection.options.includeExpenseAttachments }).batches;
             const prepared: { blob: Blob; filename: string }[] = [];
             progress.value = { done: 0, total: batches.length };
             for (const batch of batches) {
-                const file = await prepareLocalBatch(batch, abort.signal);
+                const file = await prepareLocalBatch(batch, selection, attachmentSnapshot, controller.signal);
                 if (file) {
                     prepared.push(file);
                 }
                 progress.value = { done: progress.value.done + 1, total: batches.length };
             }
             for (const file of prepared) {
+                assertExportSelection(selection, controller.signal);
                 downloadResponseBlob(file.blob, file.filename);
             }
         } catch (e) {
             if ((e as { name?: string })?.name === "CanceledError" || (e as { name?: string })?.name === "AbortError") {
+                progress.value = null;
                 return;
             }
             error.value = e instanceof Error ? e.message : String(e);
@@ -225,7 +313,7 @@ export function useAccountantExport(companyId: Ref<string>, companyName: Ref<str
         plan,
         nothingToExport,
         wantsAnything,
-        loading,
+        loading: computed(() => loading.value || resolvingAttachments.value),
         loadError,
         downloading,
         progress,

@@ -90,9 +90,9 @@ class EfakturaInboundInboxTest extends TestCase
 XML;
     }
 
-    private function fakeCpds(string $ubl, string $externalId = 'inbound-42'): void
+    private function fakeCpds(string $ubl, string $externalId = 'inbound-42', ?callable $beforeAcknowledge = null): void
     {
-        Http::fake(function ($request) use ($ubl, $externalId) {
+        Http::fake(function ($request) use ($ubl, $externalId, $beforeAcknowledge) {
             $url = $request->url();
             if (str_contains($url, '/sapi/v1/auth/token')) {
                 return Http::response(['access_token' => 'token-abc', 'expires_in' => 900]);
@@ -104,6 +104,10 @@ XML;
                 return Http::response(['documents' => [['providerDocumentId' => $externalId]]]);
             }
             if (str_contains($url, '/acknowledge')) {
+                if ($beforeAcknowledge !== null) {
+                    $beforeAcknowledge();
+                }
+
                 return Http::response(['status' => 'ACKNOWLEDGED']);
             }
 
@@ -172,6 +176,91 @@ XML;
         $receipt = EfakturaInboundReceipt::query()->firstOrFail();
         $this->assertSame('imported', $receipt->inbox_status);
         $this->assertNull($receipt->ubl_encrypted);
+    }
+
+    #[Test]
+    public function a_large_embedded_pdf_original_preserves_exact_bytes_until_resumed_custody_completion(): void
+    {
+        $this->localFirst();
+        $pdf = "%PDF-1.4\n".str_repeat("% Synthetic invoice attachment.\n", 10 * 1024)."%%EOF\n";
+        $embedded = chunk_split(base64_encode($pdf), 76, "\n");
+        $attachment = '<cac:AdditionalDocumentReference><cbc:ID>synthetic-pdf</cbc:ID><cac:Attachment>'
+            .'<cbc:EmbeddedDocumentBinaryObject mimeCode="application/pdf" filename="synthetic-original.pdf">'
+            .$embedded.'</cbc:EmbeddedDocumentBinaryObject></cac:Attachment></cac:AdditionalDocumentReference>';
+        $xml = str_replace('<cac:AccountingSupplierParty>', $attachment.'<cac:AccountingSupplierParty>', $this->sampleUbl('IN-LARGE-ŽLTÝ'));
+        $xml = str_replace('Supplier s.r.o.', 'Dodávateľ Žltý 🧾', $xml);
+        $ubl = "\xEF\xBB\xBF".str_replace("\n", "\r\n", $xml);
+        $digest = hash('sha256', $ubl);
+        $this->assertGreaterThan(384 * 1024, strlen($ubl));
+        $this->assertLessThan(10 * 1024 * 1024, strlen($ubl));
+
+        $acknowledgements = 0;
+        $this->fakeCpds($ubl, beforeAcknowledge: function () use ($ubl, $digest, &$acknowledgements): void {
+            $receipt = EfakturaInboundReceipt::query()->firstOrFail();
+            $this->assertSame($ubl, Crypt::decryptString($receipt->ubl_encrypted));
+            $this->assertSame($digest, $receipt->original_sha256);
+            $this->assertNull($receipt->acknowledged_at);
+            $acknowledgements++;
+        });
+        [$user, $company] = $this->proUserWithBridgeCompany();
+        $stats = app(EfakturaInboundService::class)->pollCompany($company);
+        $this->assertSame(['imported' => 1, 'acknowledged' => 1, 'skipped' => 0, 'failed' => 0], $stats);
+        $this->assertSame(1, $acknowledgements);
+
+        $receipt = EfakturaInboundReceipt::query()->firstOrFail();
+        $expenseId = $receipt->evolu_expense_id;
+        $encrypted = $receipt->ubl_encrypted;
+        $this->assertNotNull($expenseId);
+        $this->assertSame($company->id, $receipt->company_id);
+        $this->assertStringNotContainsString('<Invoice', $encrypted);
+        $this->assertSame(['providerDocumentId' => 'inbound-42'], $receipt->response_payload);
+        $this->assertSame('Dodávateľ Žltý 🧾', $receipt->draft_json['title']);
+        $base = "/api/invoicing/companies/{$company->id}/efaktura/inbox/{$receipt->id}";
+        $detail = $this->actingAs($user)->getJson($base)->assertOk()
+            ->assertJsonPath('data.evolu_expense_id', $expenseId)
+            ->assertJsonPath('data.original_sha256', $digest)
+            ->assertJsonMissingPath('data.ubl_encrypted')->assertJsonMissingPath('data.response_payload')
+            ->json('data');
+        $this->assertSame($ubl, $detail['ubl']);
+        $this->assertSame($digest, hash('sha256', $detail['ubl']));
+
+        $normalizedDigest = hash('sha256', str_replace("\r\n", "\n", substr($ubl, 3)));
+        $this->actingAs($user)->postJson($base.'/prepare-import', ['original_sha256' => $normalizedDigest])->assertUnprocessable();
+        $prepared = $this->actingAs($user)->postJson($base.'/prepare-import', ['original_sha256' => $digest])
+            ->assertOk()->assertJsonPath('data.custody_protocol', EfakturaInboundInboxService::CUSTODY_PROTOCOL)
+            ->json('data.custody_token');
+        $this->assertIsString($prepared);
+        foreach ([
+            ['original_sha256' => $normalizedDigest, 'custody_token' => $prepared],
+            ['original_sha256' => $digest, 'custody_token' => 'synthetic-invalid-token'],
+        ] as $invalid) {
+            $this->actingAs($user)->postJson($base.'/imported', $invalid)->assertUnprocessable();
+            $this->assertSame('pending', $receipt->fresh()->inbox_status);
+            $this->assertSame($encrypted, $receipt->fresh()->ubl_encrypted);
+        }
+
+        // An interrupted client can re-download and prepare again without losing custody.
+        $this->actingAs($user)->getJson($base)->assertOk()->assertJsonPath('data.ubl', $ubl);
+        $resumed = $this->actingAs($user)->postJson($base.'/prepare-import', ['original_sha256' => $digest])
+            ->assertOk()->json('data.custody_token');
+        $this->assertSame('pending', $receipt->fresh()->inbox_status);
+        $this->assertSame($encrypted, $receipt->fresh()->ubl_encrypted);
+        $this->assertSame($ubl, Crypt::decryptString($receipt->fresh()->ubl_encrypted));
+        $confirmation = ['original_sha256' => $digest, 'custody_token' => $resumed];
+        $this->actingAs($user)->postJson($base.'/imported', $confirmation)->assertNoContent();
+        $this->actingAs($user)->postJson($base.'/imported', $confirmation)->assertNoContent();
+
+        $receipt->refresh();
+        $this->assertSame('imported', $receipt->inbox_status);
+        $this->assertSame($expenseId, $receipt->evolu_expense_id);
+        $this->assertSame($digest, $receipt->original_sha256);
+        $this->assertNull($receipt->ubl_encrypted);
+        $this->assertNull($receipt->draft_json);
+        $this->assertNotNull($receipt->inbox_resolved_at);
+        $this->assertDatabaseCount('efaktura_inbound_receipts', 1);
+        $this->assertDatabaseCount('business_expenses', 0);
+        $this->actingAs($user)->getJson($base)->assertOk()->assertJsonPath('data.ubl', null)
+            ->assertJsonPath('data.original_sha256', $digest)->assertJsonPath('data.evolu_expense_id', $expenseId);
     }
 
     #[Test]

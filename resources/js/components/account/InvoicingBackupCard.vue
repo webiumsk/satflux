@@ -160,7 +160,8 @@ async function runExport() {
     message.value = t("account.backup_export_success");
   } catch (error) {
     console.error("Invoicing backup export failed:", error);
-    message.value = t("account.backup_export_failed");
+    message.value = error instanceof Error && error.message === "original_unverified"
+      ? t("account.backup_export_original_unverified") : t("account.backup_export_failed");
     messageIsError.value = true;
   } finally {
     exporting.value = false;

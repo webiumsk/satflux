@@ -1,3 +1,6 @@
+import { sha256 } from "@noble/hashes/sha2.js";
+import { EXPENSE_ORIGINAL_SOURCE_KIND, isExpenseOriginalReference } from "./expenseOriginalReference";
+import { deterministicStringify } from "./documentSnapshotCrud";
 import type { InvoicingDataSnapshot } from "./invoicingSnapshot";
 
 const SNAPSHOT_TABLE_KEYS = [
@@ -31,9 +34,22 @@ function rowIdFingerprint(rows: ReadonlyArray<Record<string, unknown>>): string 
 
 /** Stable fingerprint across all invoicing tables (documents, expenses, stock, settings, …). */
 export function fingerprintInvoicingSnapshot(snapshot: InvoicingDataSnapshot): string {
-    return SNAPSHOT_TABLE_KEYS.map(
+    const core = SNAPSHOT_TABLE_KEYS.map(
         (table) => `${table}:${snapshot[table].length}:${rowIdFingerprint(snapshot[table])}`,
     ).join(";");
+    const sources = (snapshot.migrationSource ?? []).filter(row => row.sourceKind === EXPENSE_ORIGINAL_SOURCE_KIND);
+    const sourceIds = new Set(sources.map(row => row.id));
+    // Hash content as well as ids: a partial relay merge or changed chunk with the
+    // same id must never look like a complete, healthy ownership snapshot.
+    const originals = {
+        attachments: snapshot.expenseAttachment.filter(row => isExpenseOriginalReference(row.contentBase64))
+            .sort((a, b) => String(a.id).localeCompare(String(b.id))),
+        sources: [...sources].sort((a, b) => String(a.id).localeCompare(String(b.id))),
+        chunks: (snapshot.migrationChunk ?? []).filter(row => sourceIds.has(row.sourceId))
+            .sort((a, b) => String(a.id).localeCompare(String(b.id))),
+    };
+    const digest = Array.from(sha256(new TextEncoder().encode(deterministicStringify(originals))), byte => byte.toString(16).padStart(2, "0")).join("");
+    return `${core};expenseOriginal:${sources.length}:${originals.chunks.length}:${digest}`;
 }
 
 export function filterInvoicingSnapshotByCompany(
@@ -63,6 +79,8 @@ export function filterInvoicingSnapshotByCompany(
         documentSnapshot: snapshot.documentSnapshot.filter((row) =>
             documentIds.has(String(row.documentId)),
         ),
+        migrationSource: (snapshot.migrationSource ?? []).filter(row => row.companyId === companyId),
+        migrationChunk: (snapshot.migrationChunk ?? []).filter(row => row.companyId === companyId),
         expense: expenses,
         expenseAttachment: snapshot.expenseAttachment.filter((row) =>
             expenseIds.has(String(row.expenseId)),
