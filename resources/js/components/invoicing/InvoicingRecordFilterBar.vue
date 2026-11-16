@@ -206,7 +206,12 @@ function commitPeriod(): boolean {
 }
 function toggleAdvanced() {
   advancedOpen.value = !advancedOpen.value;
-  if (advancedOpen.value) emit('advanced-open');
+  if (advancedOpen.value) {
+    invalidAmounts.amountMin = false;
+    invalidAmounts.amountMax = false;
+    error.value = '';
+    emit('advanced-open');
+  }
 }
 function closeAdvanced() { advancedOpen.value = false; }
 function resetDraft() {

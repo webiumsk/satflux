@@ -15,7 +15,9 @@ use App\Models\Company;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -65,6 +67,33 @@ class BankListFiltersTest extends TestCase
         $result = $this->listing(['search' => 'needle', 'per_page' => 50]);
         $result->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $older->id)
             ->assertJsonPath('meta.total', 1)->assertJsonPath('meta.summary.debit_total', '19.05');
+    }
+
+    #[Test]
+    public function scan_uses_a_composite_cursor_across_timestamp_ties_without_sql_offsets(): void
+    {
+        $ids = [];
+        for ($i = 0; $i < 505; $i++) {
+            $ids[] = $this->movement(['booked_at' => $i < 502 ? '2026-11-17 12:00:00' : '2026-11-16 12:00:00'])->id;
+        }
+        $expected = array_merge(collect(array_slice($ids, 0, 502))->sortDesc()->values()->all(),
+            collect(array_slice($ids, 502))->sortDesc()->values()->all());
+        $scanQueries = [];
+        DB::listen(function (QueryExecuted $query) use (&$scanQueries): void {
+            if (str_contains($query->sql, 'bank_transactions') && str_contains($query->sql, 'limit 250')) {
+                $scanQueries[] = $query->sql;
+            }
+        });
+        $result = $this->listing(['page' => 6, 'per_page' => 100]);
+        $result->assertOk()->assertJsonPath('meta.total', 505)->assertJsonCount(5, 'data')
+            ->assertJsonPath('meta.summary.debit_count', 505)->assertJsonPath('meta.summary.debit_total', '9620.25');
+        $this->assertSame(array_slice($expected, 500), array_column($result->json('data'), 'id'));
+        $this->assertCount(3, $scanQueries);
+        foreach ($scanQueries as $query) {
+            $this->assertStringNotContainsString('offset', strtolower($query));
+        }
+        $this->assertStringContainsString('"booked_at" <', $scanQueries[1]);
+        $this->assertStringContainsString('"id" <', $scanQueries[1]);
     }
 
     #[Test]

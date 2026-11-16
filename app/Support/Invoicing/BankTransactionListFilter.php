@@ -8,6 +8,7 @@ use App\Models\BusinessDocument;
 use App\Models\BusinessExpense;
 use App\Models\Company;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -100,7 +101,7 @@ final class BankTransactionListFilter
         /** @var array<string, array{currency: string, credit_count: int, debit_count: int, credit_total: int|float, debit_total: int|float}> $currencies */
         $currencies = [];
 
-        foreach ($scan->lazy(250) as $transaction) {
+        foreach ($this->scanBatches($scan) as $transaction) {
             $direction = $transaction->resolvedDirection()->value;
             if (isset($filters['direction']) && $direction !== $filters['direction']) {
                 continue;
@@ -156,6 +157,36 @@ final class BankTransactionListFilter
 
         return ['rows' => $rows, 'meta' => ['current_page' => $page, 'last_page' => max(1, (int) ceil($total / $perPage)),
             'per_page' => $perPage, 'total' => $total, 'summary' => $summary]];
+    }
+
+    /**
+     * A composite cursor avoids offset rescans while preserving timestamp ties.
+     *
+     * @param  Builder<BankTransaction>  $scan
+     * @return \Generator<int, BankTransaction>
+     */
+    private function scanBatches(Builder $scan): \Generator
+    {
+        $cursorDate = null;
+        $cursorId = null;
+        do {
+            $batchQuery = clone $scan;
+            if ($cursorId !== null) {
+                $batchQuery->where(function (Builder $query) use ($cursorDate, $cursorId): void {
+                    $query->where('booked_at', '<', $cursorDate)
+                        ->orWhere(function (Builder $tie) use ($cursorDate, $cursorId): void {
+                            $tie->where('booked_at', $cursorDate)->where('id', '<', $cursorId);
+                        });
+                });
+            }
+            $batch = $batchQuery->limit(250)->get();
+            foreach ($batch as $transaction) {
+                yield $transaction;
+            }
+            $last = $batch->last();
+            $cursorDate = $last?->getRawOriginal('booked_at');
+            $cursorId = $last?->id;
+        } while ($batch->count() === 250);
     }
 
     private function matchesSearch(BankTransaction $transaction, string $term): bool

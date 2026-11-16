@@ -53,7 +53,9 @@ vi.mock("@/components/invoicing/ExpensesTable.vue", () => ({ default: {
 vi.mock("@/components/invoicing/ExpenseImportModal.vue", () => ({ default: { name: "ExpenseImportModal", emits: ["imported"], template: "<div />" } }));
 vi.mock("@/components/invoicing/ExpenseAttachmentImportModal.vue", () => ({ default: { name: "ExpenseAttachmentImportModal", emits: ["imported"], template: "<div />" } }));
 vi.mock("@/components/invoicing/EfakturaInboxPanel.vue", () => ({ default: { template: "<div />" } }));
-vi.mock("@/components/invoicing/InvoicingMobileBulkBar.vue", () => ({ default: { template: "<div />" } }));
+vi.mock("@/components/invoicing/InvoicingMobileBulkBar.vue", () => ({ default: {
+    props: ["open"], template: '<div v-if="open" data-test="mobile-bulk"><slot /></div>',
+} }));
 vi.mock("@/components/invoicing/LocalFirstBridgeNotice.vue", () => ({ default: { template: "<div />" } }));
 import Expenses from "@/pages/invoicing/Expenses.vue";
 
@@ -117,6 +119,7 @@ afterEach(() => {
     wrapper = undefined;
     config.global.plugins = originalPlugins;
     vi.unstubAllGlobals();
+    vi.useRealTimers();
 });
 
 describe("expense page filtered summary", () => {
@@ -423,6 +426,123 @@ describe("expense page filtered summary", () => {
         await flushPromises();
         expect(mocks.bulk).toHaveBeenCalledExactlyOnceWith("company-a", expect.objectContaining({
             action: "mark_paid", select_all: true, search: "invoice 00042", amount_min: "12.50",
+        }));
+    });
+
+    it.each([false, true])("keeps the successfully loaded day in bulk filters across midnight (local=%s)", async local => {
+        vi.useFakeTimers({ toFake: ["Date"] });
+        vi.setSystemTime(new Date(2026, 5, 30, 23, 59));
+        localSource = [{ ...row("June expense"), issue_date: "2026-06-30" }];
+        mocks.listPaged.mockResolvedValue(response(localSource));
+        mocks.resolveTargets.mockReturnValue([{ id: "June expense" }]);
+        mocks.markPaidBulk.mockImplementationOnce(async (_evolu, _targets, assertCurrent: () => void) => {
+            assertCurrent();
+            return { processed: 1, skipped: 0 };
+        });
+        render(local);
+        await flushPromises();
+        wrapper!.findAllComponents({ name: "InvoicingRecordFilterBar" })[1].vm.$emit("period-change", {
+            preset: "today", customFrom: "", customTo: "",
+        });
+        await flushPromises();
+        const table = wrapper!.findComponent({ name: "ExpensesTable" });
+        table.vm.$emit("select-all");
+        await flushPromises();
+        vi.setSystemTime(new Date(2026, 6, 1, 0, 1));
+        table.vm.$emit("run-bulk", "mark_paid");
+        await flushPromises();
+
+        if (local) {
+            expect(mocks.resolveTargets).toHaveBeenCalledExactlyOnceWith("company-a", true, expect.any(Set),
+                expect.any(Array), expect.objectContaining({ issue_from: "2026-06-30", issue_to: "2026-06-30" }));
+            expect(mocks.markPaidBulk).toHaveResolvedWith({ processed: 1, skipped: 0 });
+            expect(mocks.bulk).not.toHaveBeenCalled();
+        } else {
+            expect(mocks.bulk).toHaveBeenCalledExactlyOnceWith("company-a", expect.objectContaining({
+                action: "mark_paid", select_all: true, issue_from: "2026-06-30", issue_to: "2026-06-30",
+            }));
+        }
+    });
+
+    it("replaces the bulk date snapshot only after the new day's load succeeds", async () => {
+        vi.useFakeTimers({ toFake: ["Date"] });
+        vi.setSystemTime(new Date(2026, 5, 30, 23, 59));
+        render();
+        await flushPromises();
+        const setToday = () => wrapper!.findAllComponents({ name: "InvoicingRecordFilterBar" })[1].vm.$emit("period-change", {
+            preset: "today", customFrom: "", customTo: "",
+        });
+        setToday();
+        await flushPromises();
+        vi.setSystemTime(new Date(2026, 6, 1, 0, 1));
+        const pending = deferred<Response>();
+        mocks.listPaged.mockReturnValueOnce(pending.promise);
+        setToday();
+        await flushPromises();
+        expect(wrapper!.find('[data-test="expenses-table"]').exists()).toBe(false);
+        pending.resolve(response([{ ...row("July expense"), issue_date: "2026-07-01" }]));
+        await flushPromises();
+        const table = wrapper!.findComponent({ name: "ExpensesTable" });
+        table.vm.$emit("select-all");
+        await flushPromises();
+        table.vm.$emit("run-bulk", "mark_paid");
+        await flushPromises();
+        expect(mocks.bulk).toHaveBeenCalledExactlyOnceWith("company-a", expect.objectContaining({
+            issue_from: "2026-07-01", issue_to: "2026-07-01", select_all: true,
+        }));
+    });
+
+    it("accepts a successful relative-period load that finishes after midnight", async () => {
+        vi.useFakeTimers({ toFake: ["Date"] });
+        vi.setSystemTime(new Date(2026, 5, 30, 23, 59));
+        render();
+        await flushPromises();
+        const pending = deferred<Response>();
+        mocks.listPaged.mockReturnValueOnce(pending.promise);
+        wrapper!.findAllComponents({ name: "InvoicingRecordFilterBar" })[1].vm.$emit("period-change", {
+            preset: "today", customFrom: "", customTo: "",
+        });
+        await flushPromises();
+        vi.setSystemTime(new Date(2026, 6, 1, 0, 1));
+        pending.resolve(response([{ ...row("June result"), issue_date: "2026-06-30" }]));
+        await flushPromises();
+        expect(wrapper!.find('[data-test="expenses-table"]').text()).toContain("June result");
+        const table = wrapper!.findComponent({ name: "ExpensesTable" });
+        table.vm.$emit("select-all");
+        await flushPromises();
+        table.vm.$emit("run-bulk", "mark_paid");
+        await flushPromises();
+        expect(mocks.bulk).toHaveBeenCalledExactlyOnceWith("company-a", expect.objectContaining({
+            issue_from: "2026-06-30", issue_to: "2026-06-30",
+        }));
+    });
+
+    it("blocks a previous selection during pending or failed reloads until a new load succeeds", async () => {
+        const rows = Array.from({ length: 26 }, (_, index) => row(`Expense ${index}`));
+        mocks.listPaged.mockResolvedValueOnce(response(rows.slice(0, 25), summarizeExpenses(rows)));
+        render();
+        await flushPromises();
+        wrapper!.findComponent({ name: "ExpensesTable" }).vm.$emit("select-page");
+        await flushPromises();
+        const pending = deferred<Response>();
+        mocks.listPaged.mockReturnValueOnce(pending.promise);
+        await wrapper!.findAll("button").find(button => button.text() === "›")!.trigger("click");
+        await flushPromises();
+        await wrapper!.find('[data-test="mobile-bulk"] button').trigger("click");
+        await flushPromises();
+        expect(mocks.bulk).not.toHaveBeenCalled();
+        pending.reject(new Error("Synthetic reload failure"));
+        await flushPromises();
+        await wrapper!.find('[data-test="mobile-bulk"] button').trigger("click");
+        await flushPromises();
+        expect(mocks.bulk).not.toHaveBeenCalled();
+        mocks.listPaged.mockResolvedValueOnce(response(rows.slice(25), summarizeExpenses(rows), 2));
+        await wrapper!.find('[role="alert"] button').trigger("click");
+        await flushPromises();
+        await wrapper!.find('[data-test="mobile-bulk"] button').trigger("click");
+        await flushPromises();
+        expect(mocks.bulk).toHaveBeenCalledExactlyOnceWith("company-a", expect.objectContaining({
+            action: "mark_paid", expense_ids: rows.slice(0, 25).map(item => item.id),
         }));
     });
 
