@@ -56,6 +56,26 @@ describe('shared expense and bank record filters', () => {
     expect(wrapper.emitted('advanced-apply')).toHaveLength(1);
   });
 
+  it('discards browser numeric validity when reopening a restored advanced draft', async () => {
+    const { wrapper, draft } = fixture();
+    await openAdvanced(wrapper);
+    for (const field of ['min', 'max']) {
+      const input = wrapper.get(`input[id$="-amount-${field}"]`);
+      Object.defineProperty(input.element, 'validity', { value: { badInput: true }, configurable: true });
+      await input.trigger('input');
+    }
+    await wrapper.get('form').trigger('submit');
+    expect(wrapper.emitted('advanced-apply')).toBeUndefined();
+    await openAdvanced(wrapper);
+    // The parent restores the last applied criteria in response to advanced-open.
+    draft.amountMin = '12.30'; draft.amountMax = '24.50';
+    await openAdvanced(wrapper);
+    await wrapper.get('form').trigger('submit');
+    expect(wrapper.emitted('advanced-open')).toHaveLength(2);
+    expect(wrapper.emitted('advanced-apply')).toHaveLength(1);
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+  });
+
   it('keeps custom dates separate from applied parent criteria and refuses a reversed range', async () => {
     const { wrapper, period } = fixture();
     await openPeriod(wrapper);

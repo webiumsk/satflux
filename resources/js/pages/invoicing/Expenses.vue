@@ -228,7 +228,7 @@ import { invoicingApi } from '../../services/api';
 import { summarizeExpenses, type ExpenseSummary } from '../../utils/expenseSummary';
 import { useExpenseListFilters, expenseListFilterParams } from '../../composables/useExpenseListFilters';
 import type { IssuePeriodState } from '../../composables/useInvoicingIssuePeriod';
-import { validExpenseListFilters } from '../../evolu/expenseListFilters';
+import { validExpenseListFilters, type ExpenseListFilterOptions } from '../../evolu/expenseListFilters';
 
 const { t } = useI18n();
 const localFirst = isInvoicingLocalFirst();
@@ -254,6 +254,12 @@ const totalCount = ref(0);
 const summary = ref<ExpenseSummary | null>(null);
 let loadEpoch = 0;
 let disposed = false;
+let loadedFilterSnapshot: {
+  company: string;
+  filters: ExpenseListFilterOptions;
+  appliedStateKey: string;
+  epoch: number;
+} | null = null;
 const activeFilter = ref('all');
 const { issuePeriod, advancedApplied, advancedDraft, hasActiveAdvanced, resetAdvancedDraft, clear: clearFilters } =
   useExpenseListFilters(route.query.year === 'all');
@@ -429,10 +435,14 @@ function listFilterParams() {
   return expenseListFilterParams(activeFilter.value, issuePeriod, advancedApplied);
 }
 
-function bulkPayload(action: string) {
+function appliedFilterStateKey() {
+  return JSON.stringify([activeFilter.value, issuePeriod, advancedApplied]);
+}
+
+function bulkPayload(action: string, filters: ExpenseListFilterOptions) {
   const base: Record<string, unknown> = {
     action,
-    ...listFilterParams(),
+    ...filters,
   };
   if (selectAllMode.value) {
     base.select_all = true;
@@ -445,13 +455,18 @@ function bulkPayload(action: string) {
 
 async function runBulk(action: string) {
   if (selectionCount.value === 0) return;
+  const snapshot = loadedFilterSnapshot;
+  if (!snapshot || snapshot.company !== companyId.value || snapshot.epoch !== loadEpoch
+    || snapshot.appliedStateKey !== appliedFilterStateKey()) return;
   const actionCompany = companyId.value;
   const actionEpoch = loadEpoch;
-  const actionFilters = listFilterParams();
+  const actionFilters = { ...snapshot.filters };
   const actionSelection = selectionRevision;
-  const payload = bulkPayload(action);
+  const payload = bulkPayload(action, actionFilters);
   const actionCurrent = () => !disposed && actionCompany === companyId.value && actionSelection === selectionRevision
-    && JSON.stringify(actionFilters) === JSON.stringify(listFilterParams());
+    && loadedFilterSnapshot?.epoch === loadEpoch && loadedFilterSnapshot.company === actionCompany
+    && snapshot.appliedStateKey === appliedFilterStateKey()
+    && JSON.stringify(actionFilters) === JSON.stringify(loadedFilterSnapshot.filters);
   const assertActionCurrent = () => { if (!actionCurrent()) throw new Error('expense_selection_stale'); };
   showHeaderMenu.value = false;
 
@@ -659,10 +674,11 @@ async function load() {
   const requestEpoch = ++loadEpoch;
   const requestedCompany = companyId.value;
   const requestedFilters = listFilterParams();
+  const requestedFilterStateKey = appliedFilterStateKey();
   const requestedPage = page.value;
   const isCurrent = () => !disposed && requestEpoch === loadEpoch
     && requestedCompany === companyId.value
-    && JSON.stringify(requestedFilters) === JSON.stringify(listFilterParams())
+    && requestedFilterStateKey === appliedFilterStateKey()
     && requestedPage === page.value;
   loading.value = true;
   error.value = '';
@@ -685,6 +701,8 @@ async function load() {
       const start = (page.value - 1) * 25;
       expenses.value = all.slice(start, start + 25);
       summary.value = nextSummary;
+      loadedFilterSnapshot = { company: requestedCompany, filters: { ...requestedFilters },
+        appliedStateKey: requestedFilterStateKey, epoch: requestEpoch };
       return;
     }
 
@@ -708,6 +726,8 @@ async function load() {
     page.value = listRes.current_page ?? 1;
     totalCount.value = listRes.total ?? expenses.value.length;
     summary.value = listRes.summary ?? null;
+    loadedFilterSnapshot = { company: requestedCompany, filters: { ...requestedFilters },
+      appliedStateKey: requestedFilterStateKey, epoch: requestEpoch };
   } catch {
     if (!isCurrent()) return;
     expenses.value = [];

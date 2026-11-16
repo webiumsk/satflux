@@ -1,5 +1,21 @@
 # Project state
 
+## PR451 review corrections - 2026-11-17
+
+All three owner-supplied CodeRabbit findings were verified against the current
+source and retained as valid. Bank scans now use a descending `(booked_at, id)`
+keyset cursor in batches of 250 while preserving filtered page slicing. Reopening
+the advanced filter resets both browser numeric-validity flags. Expense bulk
+operations use concrete criteria captured by the last accepted successful load,
+including across midnight; pending/failed loads cannot authorize an old selection.
+
+Independent QA and security reviews found no blockers in the six-file source/test
+diff against `0e9ea219`. Validation: 66 targeted JavaScript tests, 9 PHP bank-list
+tests with 85 assertions, scoped ESLint/Pint and whitespace checks passed.
+Typecheck retains the unchanged 110-error baseline. Publication to the existing
+PR451 branch is authorized; merge and deployment remain separate owner gates.
+The supplier payment QR feature is separate ongoing work on a dependent branch.
+
 ## PR451 source published and review handoff - 2026-11-17
 
 The owner requests normal publication of the complete accepted expense/bank
