@@ -1,5 +1,31 @@
 # Project state
 
+## PR451 source published and review handoff - 2026-11-17
+
+The owner requests normal publication of the complete accepted expense/bank
+initiative. Source commit `08e68fefc980ec5e8829078110255c0ef883ed29` is pushed to
+`fix/expense-attachments-bank-direction`. PR451 is open and unmerged against
+verified master `18729a26fc7f99d34364f8317b852d205a33f107`:
+https://github.com/webiumsk/satflux/pull/451 .
+
+All 56 reviewed source/test/locale blobs retain aggregate
+`dacf07ba8f8487ec8b70562c14838e9c5cd2d2818db5367bca554f2ce7e871b0`.
+The initial commit contains exactly 72 scoped paths. This publication follow-up
+contains documentation and one reviewed combined changelog fragment only;
+feature-branch/PR activity does not publish a public changelog entry.
+
+Local checks and independent QA/security acceptance remain attributed in
+[filter evidence](EXPENSE_BANK_LIST_FILTERS.md) and
+[attachment/direction evidence](EXPENSE_ATTACHMENTS_BANK_DIRECTION.md).
+Current head, exact-head CI and automated review must be checked on PR451;
+older/local checks are not new-head GitHub CI or deployed readiness. Source
+publication does not establish production behavior. Next is remote check/review
+verification and owner merge review. No merge or deployment is performed.
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2` with unrelated
+work preserved; the isolated feature has its own branch and publication scope.
+No private artifacts, screenshots, credentials or unrelated edits are included.
+
 ## Detailed expense and bank filters accepted locally - 2026-11-16
 
 The owner requests invoice-style detailed filters/search for expenses and bank

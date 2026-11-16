@@ -1,5 +1,17 @@
 # Expense and bank list filters
 
+## Publication handoff - 2026-11-17
+
+The owner authorizes normal Git publication. Reviewed source is committed as
+`08e68fefc980ec5e8829078110255c0ef883ed29` on
+`fix/expense-attachments-bank-direction`; [PR451](https://github.com/webiumsk/satflux/pull/451)
+is open and unmerged against master `18729a26`. All 56 final source hashes remain
+`dacf07ba8f8487ec8b70562c14838e9c5cd2d2818db5367bca554f2ce7e871b0`.
+The follow-up adds publication records and a reviewed combined changelog fragment
+without changing implementation. Refer to PR451 for its latest head, exact-head
+CI and automated review; local evidence below is not remote CI or deployment.
+No merge, deployment, public changelog release or provider operation occurs.
+
 ## Authorized continuation and baseline
 
 The owner requests detailed expense filtering/search like Invoices, with the
