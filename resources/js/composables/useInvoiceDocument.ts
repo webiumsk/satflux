@@ -31,7 +31,6 @@ import type { CompanyContactRow } from './useCompanyContact';
 import {
   buildEphemeralSnapshot,
   fetchEphemeralBtcpayCheckout,
-  fetchEphemeralBtcpayStatus,
   fetchExistingEphemeralBtcpayCheckout,
   fetchEphemeralPaymentLinkStatus,
   resolveEphemeralBridgeCompanyId,
@@ -1070,7 +1069,7 @@ export function useInvoiceDocument() {
       // Document-only discovery can recover without creating a checkout.
       startLocalBtcpayPolling();
     } finally {
-      if (localCheckoutCurrent(context, generation)) localBtcpayCheckoutLoading.value = false;
+      if (localCheckoutOwnsGeneration(generation)) localBtcpayCheckoutLoading.value = false;
     }
   }
 
@@ -1112,7 +1111,7 @@ export function useInvoiceDocument() {
       localBtcpayInvoiceId.value = '';
       error.value = extractError(e);
     } finally {
-      if (localCheckoutCurrent(context, generation)) localBtcpayCheckoutLoading.value = false;
+      if (localCheckoutOwnsGeneration(generation)) localBtcpayCheckoutLoading.value = false;
     }
   }
 
@@ -1122,7 +1121,11 @@ export function useInvoiceDocument() {
   }
 
   function localCheckoutCurrent(context: string, generation: number): boolean {
-    return !checkoutDisposed && generation === localBtcpayGeneration && context === localCheckoutContext();
+    return localCheckoutOwnsGeneration(generation) && context === localCheckoutContext();
+  }
+
+  function localCheckoutOwnsGeneration(generation: number): boolean {
+    return !checkoutDisposed && generation === localBtcpayGeneration;
   }
 
   function stopLocalBtcpayPolling() {
@@ -1157,9 +1160,9 @@ export function useInvoiceDocument() {
           return false;
         }
       } else {
-        if (!localBtcpayInvoiceId.value) return false;
-        const status = await fetchEphemeralBtcpayStatus(docId, localBtcpayInvoiceId.value);
-        if (!localCheckoutCurrent(context, generation) || status.status !== 'paid') return false;
+        // Historical checkout rows do not prove the current amount/currency
+        // or fresh provider settlement. Keep discovery without settling them.
+        return false;
       }
       await local.refreshAll();
       if (!localCheckoutCurrent(context, generation)) return false;
@@ -1175,7 +1178,7 @@ export function useInvoiceDocument() {
       if (companies.length !== 1) return false;
       if (live.status !== 'issued' || live.paymentBtcEnabled !== 1
         || (live.documentType !== 'invoice' && live.documentType !== 'proforma')
-        || (intent && !paymentIntentMatchesOutstanding(intent, live))) return false;
+        || !paymentIntentMatchesOutstanding(intent, live)) return false;
       markLocalDocumentPaid(
         scopedEvolu(local.evolu, live.ownerId as OwnerId),
         docId as DocumentId,

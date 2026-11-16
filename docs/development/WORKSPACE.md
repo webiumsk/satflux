@@ -1,5 +1,20 @@
 # Local workspace
 
+## PR450 review correction checkout - 2026-11-16
+
+Primary stays `fix/sepa-confirmation-isolation` at `885168f2`; preserve its
+unrelated edits. Corrections use the existing isolated
+`fix/invoicing-lazy-btcpay` worktree, with review input/published parent
+`5badc9d669d3b3cb2a73fa47043bbded474d28fc` and merged master base `077c597d`.
+
+Independent reviewers accept the 19-file correction freeze
+`2a56d0267ca6b417271820dfa636dea653567340ce562b0e7486ac5fa94704ee`;
+the complete 61-file source freeze is
+`d244deb8958f524db573c8974dbd004d4d1fd34debc5de7b5a2bdc94836fa640`.
+[Review evidence](PR450_REVIEW_FIXES.md) distinguishes local verification from
+remote PR450 checks and deployment. Only the initiative's exact paths may be
+published; no primary-checkout code or separate accountant-export work is included.
+
 ## PR450 published; reviewed source and remote checks - 2026-11-16
 
 The owner requests publication. Normal push publishes reviewed source revision

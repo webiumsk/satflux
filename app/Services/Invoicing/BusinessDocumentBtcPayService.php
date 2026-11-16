@@ -5,6 +5,7 @@ namespace App\Services\Invoicing;
 use App\Enums\BusinessDocumentStatus;
 use App\Models\BusinessDocument;
 use App\Models\BusinessDocumentPaymentIntent;
+use App\Models\Company;
 use App\Models\Store;
 use App\Services\BtcPay\InvoiceService as BtcPayInvoiceService;
 use Illuminate\Support\Facades\Log;
@@ -68,39 +69,64 @@ class BusinessDocumentBtcPayService
      */
     public function syncPaidFromBtcpayIfSettled(BusinessDocument $document): bool
     {
-        if ($document->status === BusinessDocumentStatus::Paid) {
-            return true;
-        }
-
-        if ($document->status !== BusinessDocumentStatus::Issued || ! $document->btcpay_invoice_id) {
+        $document->loadMissing('company');
+        $company = $document->company;
+        if (! $company instanceof Company) {
             return false;
         }
+        $intents = app(BusinessDocumentPaymentIntentService::class);
 
-        $document->loadMissing(['store.user']);
-
-        $invoice = $this->fetchBtcpayInvoice($document);
-        if ($invoice === null || ! $this->invoiceIndicatesPaid($invoice)) {
-            return false;
-        }
-
-        $intent = BusinessDocumentPaymentIntent::where('business_document_id', $document->id)->first();
-        if ($intent) {
-            $verified = app(BusinessDocumentPaymentIntentService::class)->status($intent);
-            if ($verified->state !== 'paid' || $verified->payment_method !== 'btcpay') {
+        return $intents->locked((int) $company->user_id, 'i:'.$document->id, function () use ($document, $company, $intents) {
+            $current = $document->fresh(['company', 'store.user']);
+            if (! $current || $current->company_id !== $company->id) {
                 return false;
             }
-        } elseif (! $this->invoiceCoversDocument($invoice, $document)) {
-            return false;
-        }
+            $document->setRawAttributes($current->getAttributes(), true)->setRelations($current->getRelations());
+            if ($document->hasStatus(BusinessDocumentStatus::Paid)) {
+                return true;
+            }
+            if (! $document->hasStatus(BusinessDocumentStatus::Issued)) {
+                return false;
+            }
+            $intent = BusinessDocumentPaymentIntent::where('business_document_id', $document->id)->first();
+            if ($intent) {
+                // A terminal intent records historical payment, not authority to settle revised terms.
+                if (! $intents->matchesDocument($intent, $document)) {
+                    return false;
+                }
+                if ($intent->state === 'paid' && $intent->payment_method === 'btcpay') {
+                    $store = $document->store;
+                    $invoiceId = $intent->settled_invoice_id ?? $intent->btcpay_invoice_id;
+                    if (! $store instanceof Store || ! $invoiceId) {
+                        return false;
+                    }
+                    $invoice = $this->fetchBtcpayInvoiceForStore($store, $invoiceId);
+                    $outstanding = max(0, (float) $document->total - (float) $document->amount_paid);
+                    if ($invoice === null || ($invoice['id'] ?? null) !== $invoiceId
+                        || ($invoice['status'] ?? '') !== 'Settled'
+                        || ! in_array($invoice['additionalStatus'] ?? null, ['None', 'PaidOver', 'PaidLate'], true)
+                        || ! is_numeric($invoice['paidAmount'] ?? null) || (float) $invoice['paidAmount'] < $outstanding
+                        || ! $this->invoiceCoversDocument($invoice, $document, $outstanding)) {
+                        return false;
+                    }
+                }
+                $verified = $intents->status($intent, recoverTerms: true);
+                $document->refresh();
 
-        app(BusinessDocumentMarkPaidService::class)->markPaid(
-            $document,
-            (float) $document->total,
-            null,
-            'btcpay_sync',
-        );
+                return $verified->state === 'paid' && $verified->payment_method === 'btcpay'
+                    && $document->hasStatus(BusinessDocumentStatus::Paid);
+            }
+            if (! $document->btcpay_invoice_id) {
+                return false;
+            }
+            $invoice = $this->fetchBtcpayInvoice($document);
+            if ($invoice === null || ! $this->invoiceIndicatesPaid($invoice) || ! $this->invoiceCoversDocument($invoice, $document)) {
+                return false;
+            }
+            app(BusinessDocumentMarkPaidService::class)->markPaid($document, (float) $document->total, null, 'btcpay_sync');
 
-        return true;
+            return true;
+        });
     }
 
     /**
@@ -191,10 +217,10 @@ class BusinessDocumentBtcPayService
      *
      * @param  array<string, mixed>  $invoice
      */
-    public function invoiceCoversDocument(array $invoice, BusinessDocument $document): bool
+    public function invoiceCoversDocument(array $invoice, BusinessDocument $document, ?float $requiredAmount = null): bool
     {
         return strcasecmp((string) ($invoice['currency'] ?? ''), (string) $document->currency) === 0
-            && (float) ($invoice['amount'] ?? 0) + 0.005 >= (float) $document->total;
+            && (float) ($invoice['amount'] ?? 0) + 0.005 >= ($requiredAmount ?? (float) $document->total);
     }
 
     public function invoiceIndicatesPaid(array $invoice): bool

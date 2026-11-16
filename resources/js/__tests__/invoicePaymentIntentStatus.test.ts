@@ -66,8 +66,77 @@ async function editor() {
     state.company.value = { id: "company", legal_name: "Synthetic Supplier", jurisdiction: "eu_sk" } as never;
     await state.reloadDocument();
     await flushPromises();
-    return { state, document, update };
+    return { state, document, update, wrapper };
 }
+
+function heldResponse() {
+    let resolve!: (value: unknown) => void;
+    const promise = new Promise(done => { resolve = done; });
+    return { promise, resolve };
+}
+
+describe("checkout request loading ownership", () => {
+    function hold(action: "lookup" | "create", responses: ReturnType<typeof heldResponse>[]) {
+        const mock = action === "lookup" ? mocks.get : mocks.post;
+        for (const response of responses) mock.mockImplementationOnce(() => response.promise);
+    }
+
+    function start(state: ReturnType<typeof useInvoiceDocument>, action: "lookup" | "create") {
+        return action === "lookup" ? state.loadLocalBtcpayCheckout() : state.createLocalBtcpayCheckout();
+    }
+
+    function result(action: "lookup" | "create", marker = "new") {
+        return { data: { data: action === "lookup"
+            ? { ...activeIntent(), payment_link: `https://example.test/pay/${marker}` }
+            : { checkout_link: `https://example.test/i/${marker}`, btcpay_invoice_id: marker } } };
+    }
+
+    it.each(["lookup", "create"] as const)("releases %s loading when currency changes while discarding the held response", async action => {
+        const { state } = await editor();
+        const response = heldResponse();
+        hold(action, [response]);
+        const running = start(state, action);
+        await flushPromises();
+        expect(state.localBtcpayCheckoutLoading.value).toBe(true);
+        const previous = state.btcPayUrl.value;
+        state.form.currency = "USD";
+        response.resolve(result(action));
+        await running;
+        expect(state.localBtcpayCheckoutLoading.value).toBe(false);
+        expect(state.btcPayUrl.value).toBe(previous);
+    });
+
+    it.each(["lookup", "create"] as const)("keeps a newer %s request loading when the older request finishes", async action => {
+        const { state } = await editor();
+        const first = heldResponse();
+        const second = heldResponse();
+        hold(action, [first, second]);
+        const older = start(state, action);
+        await flushPromises();
+        const newer = start(state, action);
+        await flushPromises();
+        first.resolve(result(action, "old"));
+        await older;
+        expect(state.localBtcpayCheckoutLoading.value).toBe(true);
+        second.resolve(result(action, "new"));
+        await newer;
+        expect(state.localBtcpayCheckoutLoading.value).toBe(false);
+    });
+
+    it.each(["lookup", "create"] as const)("does not mutate disposed %s request state", async action => {
+        const { state, wrapper } = await editor();
+        const response = heldResponse();
+        hold(action, [response]);
+        const running = start(state, action);
+        await flushPromises();
+        const previous = state.btcPayUrl.value;
+        wrapper.unmount();
+        response.resolve(result(action));
+        await running;
+        expect(state.localBtcpayCheckoutLoading.value).toBe(true);
+        expect(state.btcPayUrl.value).toBe(previous);
+    });
+});
 
 describe("local-first delayed customer checkout settlement", () => {
     it("recovers from an initial non-404 lookup failure and discovers payment without a remount", async () => {
@@ -129,6 +198,24 @@ describe("local-first delayed customer checkout settlement", () => {
         await vi.advanceTimersByTimeAsync(15_000);
         expect(update).not.toHaveBeenCalled();
         expect(document.status).toBe("issued");
+    });
+
+    it("does not settle a changed live total from a historical legacy paid status without an intent", async () => {
+        mocks.status = null;
+        const legacy = heldResponse();
+        mocks.get.mockImplementation(async path => path === "/invoicing/ephemeral/btcpay-status"
+            ? legacy.promise : { data: { data: null } });
+        mocks.post.mockResolvedValue({ data: { data: {
+            checkout_link: "https://example.test/i/historical", btcpay_invoice_id: "historical-provider",
+        } } });
+        const { state, document, update } = await editor();
+        expect(state.btcPayUrl.value).toBe("https://example.test/i/historical");
+        document.total = "120.00";
+        legacy.resolve({ data: { data: { status: "paid", paid_at: "2026-10-01T00:00:00Z", evolu_document_id: "document" } } });
+        await flushPromises();
+        expect(update).not.toHaveBeenCalled();
+        expect(document.status).toBe("issued");
+        expect(mocks.get.mock.calls.some(([path]) => path === "/invoicing/ephemeral/btcpay-status")).toBe(false);
     });
 
     it.each(["account", "document"] as const)("discards a paid response after the %s changes", async change => {

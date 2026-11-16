@@ -1,5 +1,25 @@
 # Development decision log
 
+## PR450 verified review corrections - 2026-11-16
+
+Historical paid state cannot authorize payment of revised terms. Current owner,
+company, store and outstanding amount must match; known older settled attempts
+remain discoverable. Unknown historical terms recover only from an exactly bound
+provider response during explicit reconciliation, never from edited document terms.
+
+Issuance and persisted PDF preparation acquire the document payment mutex before
+transactions or financial derivation. The creation claim and attempt commit
+atomically inside the existing wallet guard after key/client preconditions, just
+before the single provider POST. Definite preflight rejection remains retryable;
+uncertain submission stays blocked. The optional callback preserves other callers.
+
+Browser cleanup follows request-generation ownership, settlement needs an
+authoritative matching intent, and frozen financial fields retain one version.
+Five user guides require explicit refresh after invalidation. Independent QA and
+security accept the final 61-file source freeze
+`d244deb8958f524db573c8974dbd004d4d1fd34debc5de7b5a2bdc94836fa640`
+against published review parent `5badc9d`. See [review evidence](PR450_REVIEW_FIXES.md).
+
 ## PR450 published; reviewed source and remote checks - 2026-11-16
 
 The owner requests publication. Normal push publishes reviewed source revision

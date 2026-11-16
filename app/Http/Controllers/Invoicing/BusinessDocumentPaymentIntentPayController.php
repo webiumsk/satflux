@@ -47,7 +47,7 @@ class BusinessDocumentPaymentIntentPayController extends Controller
         }
 
         $current = $intent->fresh();
-        $unavailable = $current->state !== 'paid';
+        $unavailable = ! in_array($current->state, ['active', 'paid'], true);
         if (str_starts_with($current->document_key, 'i:')) {
             $document = BusinessDocument::with(['company', 'store'])->find($current->business_document_id);
             $unavailable = $unavailable || ! $document || (! $document->hasStatus(BusinessDocumentStatus::Paid)

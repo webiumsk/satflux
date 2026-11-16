@@ -51,12 +51,25 @@ class BusinessDocumentPaymentIntentService
             throw ValidationException::withMessages(['company' => ['A valid issuer is required.']]);
         }
         $owner = (int) $company->user_id;
-        if ($owner !== $store->user_id || ($document->exists && $store->company_id !== $document->company_id)) {
-            throw ValidationException::withMessages(['store_id' => ['The selected store does not belong to this document.']]);
-        }
         $key = $document->exists ? 'i:'.$document->id : 'e:'.$localId;
 
         return $this->locked($owner, $key, function () use ($document, $store, $localId, $owner, $key) {
+            if ($owner !== $store->user_id) {
+                throw ValidationException::withMessages(['store_id' => ['The selected store does not belong to this document.']]);
+            }
+            if ($document->exists) {
+                $current = $document->fresh(['company', 'store']);
+                if (! $current) {
+                    return null;
+                }
+                $document = $current;
+                $store = $current->store;
+            }
+            $company = $document->company;
+            if (! $company instanceof Company || (int) $company->user_id !== $owner || ! $store instanceof Store
+                || $owner !== $store->user_id || ($document->exists && $store->company_id !== $document->company_id)) {
+                throw ValidationException::withMessages(['store_id' => ['The selected store does not belong to this document.']]);
+            }
             $intent = BusinessDocumentPaymentIntent::where('user_id', $owner)->where('document_key', $key)->first();
             $terms = $this->terms($document);
             $fingerprint = $this->fingerprint($store->id, $terms);
@@ -93,7 +106,12 @@ class BusinessDocumentPaymentIntentService
                         ['amount' => $old->amount, 'currency' => $old->currency, 'number' => null]);
                 }
                 if ($document->exists && $invoiceId) {
-                    $this->rememberAttempt($intent, $store->id, $invoiceId, $terms);
+                    $mapping = EphemeralBtcpayCheckout::where('user_id', $owner)->where('store_id', $store->id)
+                        ->where('btcpay_invoice_id', $invoiceId)->first();
+                    // A changed document is not evidence of the old provider invoice's original face value.
+                    $this->rememberAttempt($intent, $store->id, $invoiceId, [
+                        'amount' => $mapping?->amount, 'currency' => $mapping?->currency, 'number' => null,
+                    ]);
                 }
 
                 return $intent;
@@ -126,13 +144,21 @@ class BusinessDocumentPaymentIntentService
         if ($reopenVersion !== null) {
             $this->locked($intent->user_id, $intent->document_key, function () use ($intent, $document, $store, $reopenVersion) {
                 $intent = $intent->fresh();
+                if ($document->exists) {
+                    $document = $document->fresh(['company', 'store']);
+                    $store = $document?->store;
+                    if (! $document || ! $store instanceof Store || $store->user_id !== $intent->user_id
+                        || $store->company_id !== $document->company_id) {
+                        throw ValidationException::withMessages(['store_id' => ['The selected store does not belong to this document.']]);
+                    }
+                }
                 abort_if($intent->version !== $reopenVersion, 409);
                 if (! in_array($intent->state, ['revoked', 'paid'], true) || $intent->payment_method === 'btcpay'
                     || ! $document->hasStatus(BusinessDocumentStatus::Issued) || ! $document->payment_btc_enabled
                     || (float) $this->terms($document)['amount'] <= 0) {
                     throw ValidationException::withMessages(['document' => ['This payment cannot be reopened.']]);
                 }
-                if (! $this->historyAllowsPayment($intent) || ($intent->btcpay_invoice_id && $this->existing($intent) !== 'replaceable')) {
+                if (! $this->historyAllowsPayment($intent, recoverTerms: true) || ($intent->btcpay_invoice_id && $this->existing($intent, recoverTerms: true) !== 'replaceable')) {
                     throw ValidationException::withMessages(['document' => ['The earlier payment must be resolved first.']]);
                 }
                 if ($intent->attempt_id && ! $intent->btcpay_invoice_id) {
@@ -210,13 +236,13 @@ class BusinessDocumentPaymentIntentService
         });
     }
 
-    public function status(BusinessDocumentPaymentIntent $intent): BusinessDocumentPaymentIntent
+    public function status(BusinessDocumentPaymentIntent $intent, bool $recoverTerms = false): BusinessDocumentPaymentIntent
     {
-        return $this->locked($intent->user_id, $intent->document_key, function () use ($intent) {
+        return $this->locked($intent->user_id, $intent->document_key, function () use ($intent, $recoverTerms) {
             $intent = $intent->fresh();
             $this->assertCurrentDocument($intent);
-            if (in_array($intent->state, ['active', 'unknown', 'creating'], true) && $this->historyAllowsPayment($intent) && $intent->btcpay_invoice_id) {
-                $this->existing($intent);
+            if (in_array($intent->state, ['active', 'unknown', 'creating'], true) && $this->historyAllowsPayment($intent, $recoverTerms) && $intent->btcpay_invoice_id) {
+                $this->existing($intent, $recoverTerms);
             }
             if ($intent->state === 'paid' && $intent->payment_method === 'btcpay') {
                 $this->settleDocument($intent);
@@ -240,31 +266,24 @@ class BusinessDocumentPaymentIntentService
             if ($intent->state !== 'active') {
                 return $this->result($intent);
             }
-            if (! $this->historyAllowsPayment($intent)) {
+            if (! $this->historyAllowsPayment($intent, recoverTerms: true)) {
                 return $this->result($intent);
             }
             if ($intent->btcpay_invoice_id) {
-                $existing = $this->existing($intent);
+                $existing = $this->existing($intent, recoverTerms: true);
                 if ($existing !== 'replaceable') {
                     return is_array($existing) ? $existing : $this->result($intent);
                 }
             }
             $store = $this->store($intent);
-            // This save is deliberately outside a DB transaction containing the network request.
-            // A crash leaves "creating" durable; no subsequent request may repeat its POST.
             $attemptId = (string) Str::uuid();
-            $claimed = BusinessDocumentPaymentIntent::whereKey($intent->id)->where('version', $intent->version)
-                ->where('state', 'active')->update(['state' => 'creating', 'attempt_id' => $attemptId,
-                    'version' => $intent->version + 1, 'btcpay_invoice_id' => null]);
-            $intent->refresh();
-            if (! $claimed) {
-                return $this->result($intent);
-            }
-            $attempt = BusinessDocumentPaymentAttempt::create(['id' => $intent->attempt_id,
-                'intent_id' => $intent->id, 'store_id' => $store->id, 'store_company_id' => $store->company_id, 'terms' => $intent->terms, 'state' => 'creating']);
+            $attempt = null;
+            $postStarted = false;
             try {
+                // Key/client/wallet preconditions run before the durable creation boundary.
+                $apiKey = $this->user($store)->getBtcPayApiKeyOrFail();
                 $terms = $intent->terms;
-                $metadata = ['paymentIntentId' => $intent->id, 'paymentAttemptId' => $intent->attempt_id,
+                $metadata = ['paymentIntentId' => $intent->id, 'paymentAttemptId' => $attemptId,
                     'documentNumber' => $terms['number']];
                 if ($intent->evolu_document_id) {
                     $metadata += ['ephemeral' => true, 'evoluDocumentId' => $intent->evolu_document_id];
@@ -274,7 +293,31 @@ class BusinessDocumentPaymentIntentService
                 $invoice = $this->invoices->createInvoice($store->btcpay_store_id, [
                     'amount' => $terms['amount'], 'currency' => $terms['currency'], 'metadata' => $metadata,
                     'checkout' => ['expirationMinutes' => 60, 'monitoringMinutes' => 1440],
-                ], $this->user($store)->getBtcPayApiKeyOrFail(), retry: false);
+                ], $apiKey, retry: false, beforePost: function () use ($intent, $store, $attemptId, &$attempt, &$postStarted): bool {
+                    // Claim and attempt are one committed write before the single provider POST.
+                    $attempt = DB::transaction(function () use ($intent, $store, $attemptId) {
+                        $claimed = BusinessDocumentPaymentIntent::whereKey($intent->id)->where('version', $intent->version)
+                            ->where('state', 'active')->update(['state' => 'creating', 'attempt_id' => $attemptId,
+                                'version' => $intent->version + 1, 'btcpay_invoice_id' => null]);
+                        if (! $claimed) {
+                            return null;
+                        }
+
+                        return BusinessDocumentPaymentAttempt::create(['id' => $attemptId,
+                            'intent_id' => $intent->id, 'store_id' => $store->id, 'store_company_id' => $store->company_id,
+                            'terms' => $intent->terms, 'state' => 'creating']);
+                    });
+                    $intent->refresh();
+                    if (! $attempt) {
+                        return false;
+                    }
+                    $postStarted = true;
+
+                    return true;
+                });
+                if (! $attempt instanceof BusinessDocumentPaymentAttempt) {
+                    throw new \LogicException('Invoice creation did not claim a durable attempt.');
+                }
                 if (! is_string($invoice['id'] ?? null) || $invoice['id'] === '' || strlen($invoice['id']) > 128) {
                     throw new \RuntimeException('Uncertain invoice creation.');
                 }
@@ -303,7 +346,13 @@ class BusinessDocumentPaymentIntentService
 
                 return ['checkout_link' => $invoice['checkoutLink'], 'btcpay_invoice_id' => $invoice['id']];
             } catch (\Throwable) {
-                $attempt->forceFill(['state' => 'unknown'])->save();
+                if (! $postStarted) {
+                    // No submission boundary was crossed: the existing active offer can be retried.
+                    $intent->refresh();
+
+                    return $this->result($intent);
+                }
+                $attempt?->forceFill(['state' => 'unknown'])->save();
                 BusinessDocumentPaymentIntent::whereKey($intent->id)->where('state', 'creating')->where('attempt_id', $attemptId)
                     ->update(['state' => 'unknown', 'version' => DB::raw('version + 1')]);
                 $intent->refresh();
@@ -368,7 +417,7 @@ class BusinessDocumentPaymentIntentService
     }
 
     /** All known older attempts remain relevant, including late settlement after expiry. */
-    private function historyAllowsPayment(BusinessDocumentPaymentIntent $intent): bool
+    private function historyAllowsPayment(BusinessDocumentPaymentIntent $intent, bool $recoverTerms = false): bool
     {
         $blocked = false;
         $insufficient = false;
@@ -382,7 +431,7 @@ class BusinessDocumentPaymentIntentService
 
                 continue;
             }
-            $state = $this->inspect($intent, $attempt->store_id, $attempt->btcpay_invoice_id, $attempt->terms, $attempt->store_company_id);
+            $state = $this->inspect($intent, $attempt->store_id, $attempt->btcpay_invoice_id, $attempt->terms, $attempt->store_company_id, $recoverTerms, $attempt);
             if ($state['state'] === 'paid') {
                 if (strcasecmp((string) $attempt->terms['currency'], $intent->terms['currency']) === 0
                     && (float) $attempt->terms['amount'] + 0.005 >= (float) $intent->terms['amount']) {
@@ -401,7 +450,7 @@ class BusinessDocumentPaymentIntentService
         }
         // Pending or unavailable older invoices prohibit creation, but must not hide
         // a confirmed payment on another attempt, including the current checkout.
-        if ($blocked && $intent->btcpay_invoice_id && $this->existing($intent) === 'paid') {
+        if ($blocked && $intent->btcpay_invoice_id && $this->existing($intent, $recoverTerms) === 'paid') {
             return false;
         }
         if ($insufficient) {
@@ -449,13 +498,28 @@ class BusinessDocumentPaymentIntentService
         }
     }
 
-    private function existing(BusinessDocumentPaymentIntent $intent): array|string
+    private function existing(BusinessDocumentPaymentIntent $intent, bool $recoverTerms = false): array|string
     {
-        $state = $this->inspect($intent, $intent->store_id, $intent->btcpay_invoice_id, $intent->terms, $intent->store_company_id);
+        $attempt = BusinessDocumentPaymentAttempt::where('intent_id', $intent->id)->where('store_id', $intent->store_id)
+            ->where('btcpay_invoice_id', $intent->btcpay_invoice_id)->first();
+        $terms = $attempt->terms ?? $intent->terms;
+        $state = $this->inspect($intent, $intent->store_id, $intent->btcpay_invoice_id, $terms, $intent->store_company_id, $recoverTerms, $attempt);
+        $terms = $attempt->terms ?? $terms;
+        $sameCurrency = strcasecmp((string) ($terms['currency'] ?? ''), $intent->terms['currency']) === 0;
         if ($state['state'] === 'paid') {
-            $this->settled($intent);
+            if ($sameCurrency && (float) ($terms['amount'] ?? 0) >= (float) $intent->terms['amount']) {
+                $this->settled($intent);
+            } else {
+                $this->terminal($intent, 'revoked');
+
+                return 'unknown';
+            }
         }
         if ($state['state'] === 'payable') {
+            // A still-payable old amount cannot be reused for edited terms or replaced blindly.
+            if (! $sameCurrency || number_format((float) ($terms['amount'] ?? 0), 2, '.', '') !== $intent->terms['amount']) {
+                return 'unknown';
+            }
             $version = $intent->version;
             $intent->refresh();
             if ($intent->state !== 'active' || $intent->version !== $version) {
@@ -469,17 +533,26 @@ class BusinessDocumentPaymentIntentService
     }
 
     /** Only a fresh, exactly bound response can establish settlement or unpaid expiry. */
-    private function inspect(BusinessDocumentPaymentIntent $intent, ?string $storeId, string $invoiceId, array $terms, ?string $companyId): array
+    private function inspect(BusinessDocumentPaymentIntent $intent, ?string $storeId, string $invoiceId, array $terms, ?string $companyId, bool $recoverTerms = false, ?BusinessDocumentPaymentAttempt $attempt = null): array
     {
         try {
             $store = Store::with('user')->where('user_id', $intent->user_id)->where('company_id', $companyId)->findOrFail($storeId);
             $key = $this->user($store)->getBtcPayApiKeyOrFail();
             $this->invoices->forgetInvoiceCache($store->btcpay_store_id, $invoiceId, $key);
             $invoice = $this->invoices->getInvoice($store->btcpay_store_id, $invoiceId, $key);
-            if (($invoice['id'] ?? null) !== $invoiceId
-                || ! is_numeric($invoice['amount'] ?? null) || ! is_numeric($terms['amount'] ?? null)
+            if (($invoice['id'] ?? null) !== $invoiceId || ! is_numeric($invoice['amount'] ?? null)
+                || ! is_finite((float) $invoice['amount']) || (float) $invoice['amount'] <= 0
+                || ! is_string($invoice['currency'] ?? null) || ! preg_match('/\A[A-Za-z]{3}\z/', $invoice['currency'])) {
+                return ['state' => 'unknown'];
+            }
+            if ((! is_numeric($terms['amount'] ?? null) || empty($terms['currency'])) && $recoverTerms && $attempt) {
+                $terms = ['amount' => number_format((float) $invoice['amount'], 2, '.', ''),
+                    'currency' => strtoupper($invoice['currency']), 'number' => $terms['number'] ?? null];
+                $attempt->forceFill(['terms' => $terms])->save();
+            }
+            if (! is_numeric($terms['amount'] ?? null)
                 || number_format((float) $invoice['amount'], 2, '.', '') !== number_format((float) $terms['amount'], 2, '.', '')
-                || strcasecmp((string) ($invoice['currency'] ?? ''), (string) ($terms['currency'] ?? '')) !== 0) {
+                || strcasecmp($invoice['currency'], (string) ($terms['currency'] ?? '')) !== 0) {
                 return ['state' => 'unknown'];
             }
             if (($invoice['status'] ?? '') === 'Settled'

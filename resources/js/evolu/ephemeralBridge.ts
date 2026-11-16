@@ -1076,8 +1076,8 @@ type LocalDocSupport = ReturnType<typeof useLocalInvoiceDocumentSupport>;
 /**
  * Resolves the frozen issued snapshot for a non-draft document, backfilling
  * one (marked backfilled) for documents issued before F2. Returns null for
- * drafts and when no valid snapshot can be obtained - callers then render
- * from live rows as before.
+ * drafts and when snapshot data is unavailable. A known invalid frozen
+ * version fails closed instead of silently replacing it with live content.
  */
 async function resolveFrozenIssuedContent(
     localDoc: LocalDocSupport,
@@ -1101,7 +1101,8 @@ async function resolveFrozenIssuedContent(
     const latest = latestSnapshotRowForDocument(rows, documentId);
     if (latest) {
         const parsed = parseIssuedSnapshotRow(latest);
-        return parsed.ok ? parsed.value : null;
+        if (!parsed.ok) throw new Error(parsed.error);
+        return parsed.value;
     }
 
     // Legacy issued document (pre-F2): freeze the current live state once,
@@ -1152,8 +1153,6 @@ function renderInputsFromFrozen(
             // renders no BTC QR at all) and the bank-QR standard choice.
             store_id: liveDoc.store_id,
             payment_btc_enabled: liveDoc.payment_btc_enabled,
-            currency: liveDoc.currency,
-            total: liveDoc.total,
             pdf_bank_qr: liveDoc.pdf_bank_qr ?? null,
         },
         lines: frozen.lines.map((line) => ({

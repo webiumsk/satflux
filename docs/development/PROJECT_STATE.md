@@ -1,5 +1,29 @@
 # Project state
 
+## PR450 review fixes independently accepted - 2026-11-16
+
+All twelve owner-supplied findings are valid against PR450 input head
+`5badc9d669d3b3cb2a73fa47043bbded474d28fc` and are corrected. Independent QA
+and security accept the 19-file review freeze
+`2a56d0267ca6b417271820dfa636dea653567340ce562b0e7486ac5fa94704ee`
+and the complete 61-file source/test/locale/CI/API freeze
+`d244deb8958f524db573c8974dbd004d4d1fd34debc5de7b5a2bdc94836fa640`.
+No blocking review findings remain. See [review evidence](PR450_REVIEW_FIXES.md).
+
+Full JavaScript passes 3,647 tests / 255 files. PHPStan reports zero errors;
+Pint passes 1,184 files and the final changed-file check. Build, local QR,
+locale parity and API validation pass with existing frontend ratchets intact.
+Full final-source PHP passes 3,538 tests / 69 skips / 19,332 assertions, with
+one inherited PHPUnit deprecation and zero failures or errors.
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2` with unrelated
+work preserved. The isolated feature remains `fix/invoicing-lazy-btcpay` based
+on merged PR449/master `077c597df065e000991a67cb9a1b2d32b2d34739`.
+PR450 publication and exact-head CI are tracked separately on
+https://github.com/webiumsk/satflux/pull/450 . Earlier green checks on `5badc9d`
+do not establish checks for these corrections or production readiness.
+No merge, deployment, live provider operation or tool/package installation occurs.
+
 ## PR450 published; reviewed source and remote checks - 2026-11-16
 
 The owner requests publication. Normal push publishes reviewed source revision

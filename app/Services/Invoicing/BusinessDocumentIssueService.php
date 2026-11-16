@@ -80,6 +80,18 @@ class BusinessDocumentIssueService
 
     public function issue(BusinessDocument $document): BusinessDocument
     {
+        $document->loadMissing('company');
+        $company = $document->company;
+        if (! $company instanceof Company) {
+            throw ValidationException::withMessages(['company' => ['A valid issuer is required.']]);
+        }
+
+        return app(BusinessDocumentPaymentIntentService::class)->locked((int) $company->user_id,
+            'i:'.$document->id, fn () => $this->issueLocked($document));
+    }
+
+    protected function issueLocked(BusinessDocument $document): BusinessDocument
+    {
         // Lock + re-check INSIDE the transaction: two concurrent issue calls
         // both passing an unlocked canIssue() would burn two numbers and
         // apply stock twice (Cursor PR #64).

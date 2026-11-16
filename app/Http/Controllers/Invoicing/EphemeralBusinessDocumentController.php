@@ -598,7 +598,7 @@ class EphemeralBusinessDocumentController extends Controller
             $service = app(BusinessDocumentPaymentIntentService::class);
             $verified = $service->status($intent);
             if ($verified->state === 'paid' && $verified->payment_method === 'btcpay') {
-                return ['checkout_link' => null, 'btcpay_invoice_id' => $verified->btcpay_invoice_id,
+                return ['checkout_link' => null, 'btcpay_invoice_id' => $verified->settled_invoice_id ?? $verified->btcpay_invoice_id,
                     'status' => 'paid', 'payment_method' => 'btcpay', 'paid_at' => $verified->paid_at?->toIso8601String()];
             }
             if ($verified->state !== 'active' || ! $verified->btcpay_invoice_id) {
@@ -612,6 +612,8 @@ class EphemeralBusinessDocumentController extends Controller
             $state = $this->btcPayService->ephemeralCheckoutState($store, $pending->btcpay_invoice_id);
 
             return $state['state'] === 'payable'
+                && abs((float) $pending->amount - max(0, (float) $document->total - (float) $document->amount_paid)) < 0.005
+                && strcasecmp((string) $pending->currency, (string) $document->currency) === 0
                 ? ['checkout_link' => $state['checkout_link'], 'btcpay_invoice_id' => $pending->btcpay_invoice_id] : null;
         }
 

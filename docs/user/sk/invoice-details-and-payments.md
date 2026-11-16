@@ -35,6 +35,6 @@ Ponúkané možnosti platby sa líšia od evidovaného spôsobu úhrady. Uhraden
 
 Vystavenie faktúry, vytvorenie PDF ani odoslanie e-mailom nevytvoria BTCPay faktúru. PDF a e-mail obsahujú platobný odkaz na Satflux, ak je zapnutá platba Bitcoinom. QR kód otvorí platobnú stránku v prehliadači. BTCPay platba sa vytvorí alebo opätovne použije až po potvrdení platby Bitcoin / Lightning zákazníkom. Platbu môže vytvoriť aj vystavovateľ samostatnou akciou v detaile faktúry.
 
-Zaúčtovaná banková alebo ručná úhrada zablokuje ďalšiu platbu cez odkaz Satfluxu po doručení stavu na server. Čiastočná úhrada a zmena platobných podmienok faktúry zneplatnia pôvodnú ponuku platby. Pri local-first režime sa zmeny vykonané offline doručia až po opätovnom pripojení prehliadača; pri potvrdení bankovej úhrady počítajte s týmto oneskorením.
+Zaúčtovaná banková alebo ručná úhrada zablokuje ďalšiu platbu cez odkaz Satfluxu po doručení stavu na server. Čiastočná úhrada a zmena platobných podmienok faktúry zneplatnia pôvodnú ponuku platby. Pred ďalším prijímaním platieb musí vystavovateľ v detaile faktúry použiť samostatnú akciu na obnovenie a vytvoriť novú ponuku platby. Pri local-first režime sa zmeny vykonané offline doručia až po opätovnom pripojení prehliadača; pri potvrdení bankovej úhrady počítajte s týmto oneskorením.
 
 Staršie priame odkazy na BTCPay zachovajú pôvodné správanie. Banková úhrada sa nestáva bitcoinovou úhradou a automaticky nezruší už vytvorenú platbu v BTCPay.

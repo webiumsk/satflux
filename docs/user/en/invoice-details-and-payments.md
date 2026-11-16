@@ -35,6 +35,6 @@ Payment options offered to a customer are separate from the recorded payment met
 
 Issuing an invoice does not create a BTCPay invoice. Its PDF and email provide a Satflux payment link when Bitcoin payment is enabled. The QR code opens the payment page in a browser. A BTCPay checkout is created or reused after the customer confirms Bitcoin / Lightning payment. The explicit merchant checkout action can also prepare a checkout.
 
-A recorded bank or manual payment disables further payment through the Satflux link once the status reaches the server. Partial payments and changes to the invoice payment terms invalidate the earlier offer. Local-first changes made offline reach the server after the browser reconnects; keep this delay in mind when confirming a bank payment.
+A recorded bank or manual payment disables further payment through the Satflux link once the status reaches the server. Partial payments and changes to the invoice payment terms invalidate the earlier offer. Before collecting payment again, the issuer must use the explicit refresh action in the invoice detail to create a new payment offer. Local-first changes made offline reach the server after the browser reconnects; keep this delay in mind when confirming a bank payment.
 
 Previously distributed direct BTCPay links keep their original behavior. A bank payment does not become a Bitcoin settlement or automatically cancel a previously created BTCPay checkout.

@@ -1,5 +1,20 @@
 # Development roadmap
 
+## PR450 review correction milestone - 2026-11-16
+
+The twelve supplied review findings are verified and fixed on the existing
+`fix/invoicing-lazy-btcpay` initiative. Independent QA and security accept
+review freeze `2a56d0267ca6b417271820dfa636dea653567340ce562b0e7486ac5fa94704ee`.
+Current-term coverage, original historical terms, pre-POST retry safety,
+mutex ordering, PDF/frozen snapshots, browser cleanup and explicit refresh
+instructions are covered. See [review evidence](PR450_REVIEW_FIXES.md).
+
+Full final-source PHP passes 3,538 tests / 69 skips / 19,332 assertions, with
+one inherited PHPUnit deprecation and zero failures or errors. The next authorized step is
+normal publication to existing PR450, followed by exact-head CI verification.
+Owner merge and deployment remain separate gates. Prior CI and synthetic
+provider tests do not establish deployed readiness.
+
 ## PR450 published; reviewed source and remote checks - 2026-11-16
 
 The owner requests publication. Normal push publishes reviewed source revision
