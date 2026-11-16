@@ -1,5 +1,36 @@
 # Development decision log
 
+## PR450 published; reviewed source and remote checks - 2026-11-16
+
+The owner requests publication. Normal push publishes reviewed source revision
+`627b273386c5c6c5007d8261e5cf39f32f1e103c` on `fix/invoicing-lazy-btcpay`.
+PR450 is open and unmerged against master
+`077c597df065e000991a67cb9a1b2d32b2d34739`:
+https://github.com/webiumsk/satflux/pull/450 . All 68 changed paths belong to
+this initiative; unrelated primary-checkout work is excluded.
+
+Independent security and QA accept the unchanged 58-file source/test/locale/
+CI/API freeze `1426c72b55687cf866f4ef31a04a9d4d8862e6a75351b0f76033b0612c22fb64`.
+The 45-file production aggregate remains
+`e047dc6e5f26f7ace5da0fefbb2659cdb020efe325382cc86930b6ad21b6d528`.
+The publication follow-up changes documentation only. Local evidence remains
+3,637 JavaScript tests / 254 files, three real QR cases, and 3,506 PHP passes /
+69 skips / 19,199 assertions with one inherited PHPUnit deprecation. Existing
+lint/typecheck ratchets are unchanged; Pint, PHPStan, build, locales and API
+checks pass as attributed in `INVOICING_LAZY_BTCPAY.md`.
+
+Current remote head, exact-head CI and CodeRabbit evidence are tracked on the
+PR; prior PR449 checks do not substitute for this feature's checks. Deployment
+compatibility is not established by local/provider-fake tests. Offline state
+propagation, uncertain-attempt reconciliation, historical direct checkout URLs
+and the inherited external bank-QR fallback remain explicit limits.
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`; preserve all
+unrelated edits and the separate accountant-export clarity freeze. The feature
+has its own durable worktree. Next is exact-head CI/review verification and
+owner review/merge. No merge, deployment, package/tool installation, live
+provider operation or public changelog publication is performed.
+
 ## Deferred invoicing BTCPay checkout accepted locally - 2026-11-16
 
 The owner's authorized change is complete in `fix/invoicing-lazy-btcpay`, based

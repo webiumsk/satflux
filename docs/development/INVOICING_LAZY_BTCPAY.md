@@ -205,7 +205,12 @@ native SDK tests are separate evidence. The optional CodeRabbit CLI is not used.
 
 The final corrected-runner PHP execution exits successfully: 3,575 total tests,
 19,199 assertions, 69 skips and one inherited PHPUnit deprecation. All mandatory
-local checks and both independent reviews are complete. The result remains local
-and unpublished in the durable feature worktree. Next is owner review and Git
-publication when requested. Main performs no merge, deployment or real provider
-action.
+local checks and both independent reviews are complete.
+
+Normal push publishes reviewed source revision
+`627b273386c5c6c5007d8261e5cf39f32f1e103c` on `fix/invoicing-lazy-btcpay`.
+[PR450](https://github.com/webiumsk/satflux/pull/450) is open and unmerged
+against master `077c597d`. The publication follow-up changes documentation only;
+the reviewed source freeze remains unchanged. Exact remote head and CI/review
+results are tracked on the PR. Local evidence does not substitute for those
+exact-head checks. Main performs no merge, deployment or real provider action.
