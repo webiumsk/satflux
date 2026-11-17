@@ -81,6 +81,7 @@
               >
                 <span class="text-indigo-600 mr-1">{{ t('invoicing.expense_attachment_pending_badge') }}</span>
                 {{ pf.name }}
+                <span v-if="pf.detectionStatus" class="ml-1 text-xs text-gray-500">{{ t(`invoicing.expense_attachment_status_${pf.detectionStatus}`) }}</span>
               </button>
               <button
                 type="button"
@@ -156,10 +157,16 @@
       </div>
     </div>
 
+    <div v-if="hasAnyFile && hasPending" class="mt-2 shrink-0 space-y-2 px-1">
+      <p class="text-xs text-gray-600" role="status">{{ t(`invoicing.expense_attachment_status_${activeDetectionStatus}`) }}</p>
+      <button
+        v-if="!detecting && activeDetectionStatus !== 'checking'"
+        type="button"
+        class="rounded text-xs font-medium text-indigo-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600"
+        @click="$emit('check-isdoc')"
+      >{{ t(activeDetectionStatus === 'found' ? 'invoicing.expense_attachment_extract_isdoc' : activeDetectionStatus === 'error' ? 'invoicing.expense_attachment_retry_isdoc' : 'invoicing.expense_attachment_check_isdoc') }}</button>
+    </div>
     <p v-if="detectError" class="mt-2 text-sm text-amber-700 shrink-0 px-1">{{ detectError }}</p>
-    <p v-else-if="hasAnyFile && !hasIsdoc && !detecting && hasPending" class="mt-2 text-xs text-gray-500 shrink-0 px-1">
-      {{ t('invoicing.expense_no_isdoc_in_file') }}
-    </p>
     <p v-if="allowMultiple && pendingFiles.length > 1" class="mt-2 text-xs text-gray-500 shrink-0 px-1">
       {{ t('invoicing.expense_attachment_pending_count', { count: pendingFiles.length }) }}
     </p>
@@ -169,6 +176,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import type { ExpenseFileDetectionStatus } from '../../composables/useExpenseIsdocAttachment';
 
 export type SavedExpenseAttachment = {
   id: string;
@@ -178,6 +186,7 @@ export type SavedExpenseAttachment = {
 export type PendingExpenseAttachment = {
   id: string;
   name: string;
+  detectionStatus?: ExpenseFileDetectionStatus;
 };
 
 const props = withDefaults(
@@ -189,6 +198,7 @@ const props = withDefaults(
     detecting: boolean;
     detectError: string;
     hasIsdoc: boolean;
+    detectionStatus?: ExpenseFileDetectionStatus | null;
     embedded?: boolean;
     fillHeight?: boolean;
     savedAttachments?: SavedExpenseAttachment[];
@@ -207,12 +217,14 @@ const props = withDefaults(
     selectedPendingId: null,
     hasPending: false,
     allowMultiple: true,
+    detectionStatus: null,
   },
 );
 
 const emit = defineEmits<{
   'file-selected': [file: File];
   'files-selected': [files: File[]];
+  'check-isdoc': [];
   clear: [];
   download: [];
   'select-attachment': [id: string];
@@ -229,6 +241,8 @@ const addMoreInputRef = ref<HTMLInputElement | null>(null);
 const hasAnyFile = computed(
   () => props.hasFile || props.savedAttachments.length > 0 || props.pendingFiles.length > 0,
 );
+const activeDetectionStatus = computed(() => props.detecting ? 'checking'
+  : props.detectionStatus ?? (props.hasIsdoc ? 'found' : 'pending'));
 
 const showingSaved = computed(
   () => !props.hasPending && props.savedAttachments.length > 0,

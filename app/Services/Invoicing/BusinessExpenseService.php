@@ -3,6 +3,7 @@
 namespace App\Services\Invoicing;
 
 use App\Enums\BusinessExpenseStatus;
+use App\Models\AuditLog;
 use App\Models\BankTransaction;
 use App\Models\BusinessExpense;
 use App\Models\BusinessExpenseAttachment;
@@ -96,32 +97,44 @@ class BusinessExpenseService
      */
     public function create(Company $company, array $data, bool $markPaid = false): BusinessExpense
     {
-        $supplier = $this->supplierFields($company, $data);
-        $internalNumber = $this->sequenceService->nextNumber($company, 'expense');
+        $connectionName = $company->getConnection()->getName();
 
-        $expense = new BusinessExpense([
-            'company_id' => $company->id,
-            ...$supplier,
-            'payment_review_required' => (bool) ($data['payment_review_required'] ?? false),
-            'status' => $markPaid ? BusinessExpenseStatus::Paid : BusinessExpenseStatus::Recorded,
-            'internal_number' => $internalNumber,
-            'external_number' => $data['external_number'] ?? null,
-            'title' => $data['title'] ?? null,
-            'variable_symbol' => $data['variable_symbol'] ?? null,
-            'constant_symbol' => $data['constant_symbol'] ?? null,
-            'specific_symbol' => $data['specific_symbol'] ?? null,
-            'issue_date' => $data['issue_date'],
-            'delivery_date' => array_key_exists('delivery_date', $data) ? $data['delivery_date'] : $data['issue_date'],
-            'due_date' => $data['due_date'] ?? null,
-            'total' => $data['total'],
-            'currency' => $data['currency'] ?? $company->default_currency ?? 'EUR',
-            'internal_note' => $data['internal_note'] ?? null,
-            'paid_at' => $markPaid ? now() : null,
-        ]);
+        return $company->getConnection()->transaction(function () use ($company, $data, $markPaid, $connectionName): BusinessExpense {
+            $company = Company::on($connectionName)->whereKey($company->id)->lockForUpdate()->firstOrFail();
+            $supplier = $this->supplierFields($company, $data);
+            $internalNumber = $this->sequenceService->nextNumber($company, 'expense');
 
-        $expense->save();
+            $expense = new BusinessExpense([
+                'company_id' => $company->id,
+                ...$supplier,
+                'payment_review_required' => (bool) ($data['payment_review_required'] ?? false),
+                'status' => $markPaid ? BusinessExpenseStatus::Paid : BusinessExpenseStatus::Recorded,
+                'internal_number' => $internalNumber,
+                'external_number' => $data['external_number'] ?? null,
+                'title' => $data['title'] ?? null,
+                'variable_symbol' => $data['variable_symbol'] ?? null,
+                'constant_symbol' => $data['constant_symbol'] ?? null,
+                'specific_symbol' => $data['specific_symbol'] ?? null,
+                'issue_date' => $data['issue_date'],
+                'delivery_date' => array_key_exists('delivery_date', $data) ? $data['delivery_date'] : $data['issue_date'],
+                'due_date' => $data['due_date'] ?? null,
+                'total' => $data['total'],
+                'currency' => $data['currency'] ?? $company->default_currency ?? 'EUR',
+                'internal_note' => $data['internal_note'] ?? null,
+                'paid_at' => $markPaid ? now() : null,
+            ]);
 
-        return $expense->fresh();
+            $expense->setConnection($connectionName);
+            if ($this->hasPaymentConfirmation($data)) {
+                $this->applyPaymentConfirmation($expense, $data, $data['internal_note'] ?? null);
+            }
+            $expense->save();
+            if ($this->hasPaymentConfirmation($data)) {
+                $this->auditPaymentConfirmation($expense);
+            }
+
+            return $expense->fresh();
+        });
     }
 
     /**
@@ -138,6 +151,9 @@ class BusinessExpenseService
             $locked = BusinessExpense::on($connectionName)->whereKey($expense->id)
                 ->where('company_id', $expense->company_id)->lockForUpdate()->firstOrFail();
             if ($locked->getRawOriginal('status') === BusinessExpenseStatus::Cancelled->value) {
+                if ($this->hasPaymentConfirmation($data)) {
+                    $this->invalidPaymentConfirmation();
+                }
                 throw ValidationException::withMessages([
                     'status' => ['Cancelled expenses cannot be edited.'],
                 ]);
@@ -165,6 +181,7 @@ class BusinessExpenseService
                 ]));
             }
 
+            $originalNote = $locked->internal_note;
             $locked->fill([
                 ...$this->supplierFields($company, $data),
                 // Use the original saved note before an edit can erase legacy evidence.
@@ -182,10 +199,63 @@ class BusinessExpenseService
                 'currency' => $data['currency'] ?? $locked->currency,
                 'internal_note' => array_key_exists('internal_note', $data) ? $data['internal_note'] : $locked->internal_note,
             ]);
+            if ($this->hasPaymentConfirmation($data)) {
+                $this->applyPaymentConfirmation($locked, $data, $originalNote);
+            }
             $locked->save();
+            if ($this->hasPaymentConfirmation($data)) {
+                $this->auditPaymentConfirmation($locked);
+            }
 
             return $locked->fresh();
         });
+    }
+
+    /** @param array<string, mixed> $data */
+    private function hasPaymentConfirmation(array $data): bool
+    {
+        return array_key_exists('payment_details_confirmation', $data) && $data['payment_details_confirmation'] !== null;
+    }
+
+    /**
+     * A manual reassertion can resolve uncertainty, never concrete payment or bank evidence.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function applyPaymentConfirmation(BusinessExpense $expense, array $data, ?string $originalNote): void
+    {
+        $confirmation = $data['payment_details_confirmation'] ?? null;
+        $tuple = ExpensePaymentReview::confirmationTuple($expense->getAttributes());
+        if (! is_string($confirmation) || strlen($confirmation) > 2048 || $tuple === null || ! hash_equals($tuple, $confirmation)
+            || (bool) ($data['mark_paid'] ?? false) || ($data['paid_at'] ?? null) !== null
+            || $expense->getAttribute('status') !== BusinessExpenseStatus::Recorded || $expense->getRawOriginal('paid_at') !== null
+            || $expense->getAttribute('paid_at') !== null || $expense->getRawOriginal('cancelled_at') !== null
+            || ExpensePaymentReview::hasPaymentEvidence($originalNote)
+            || ExpensePaymentReview::hasPaymentEvidence($expense->internal_note)
+            || ($expense->exists && BankTransaction::on($expense->getConnectionName())
+                ->where('business_expense_id', $expense->id)->exists())) {
+            $this->invalidPaymentConfirmation();
+        }
+        $expense->payment_review_required = false;
+    }
+
+    private function invalidPaymentConfirmation(): never
+    {
+        throw ValidationException::withMessages([
+            'payment_details_confirmation' => ['Payment details changed or existing payment evidence requires review.'],
+        ]);
+    }
+
+    /** Record the user's manual-review disposition without logging payment instructions. */
+    private function auditPaymentConfirmation(BusinessExpense $expense): void
+    {
+        AuditLog::on($expense->getConnectionName())->create([
+            'user_id' => auth()->id(),
+            'action' => 'business_expense.payment_details_confirmed',
+            'target_type' => 'business_expense',
+            'target_id' => $expense->id,
+            'metadata' => ['company_id' => $expense->company_id, 'source' => 'manual'],
+        ]);
     }
 
     /**

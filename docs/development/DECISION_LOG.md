@@ -1,5 +1,24 @@
 # Development decision log
 
+## Manual expense payment confirmation and visible ISDOC consent - 2026-11-17
+
+Ordinary contact/IBAN edits retain legacy payment-review blocks. An explicit
+manual reassertion can resolve unknown imported payment instructions only for an
+otherwise eligible recorded, wholly unpaid expense. Bind it to the exact displayed
+payment tuple for this save, invalidate on relevant changes, and recheck fresh
+ownership, status, original-note and bank evidence inside the persistence gate.
+Do not persist the transient tuple or equate confirmation with XML validation or
+settlement. Historical evidence erased in earlier saves cannot be reconstructed;
+this is manual-source authority, not an immutable provenance ledger.
+
+Local attachment detection requires visible consent immediately after selection;
+field extraction has separate approval and unchanged quotas. Accurate per-file
+states, retries and sequential decisions precede form Save. Detection failure
+retains the pending file until retry or explicit attachment-only saving.
+Original native Chrome probes already process before Save, so no unsupported
+Save-only timing cause is claimed. PR454 is verified merged at `422bdd06`.
+See [implementation contract, checks and reviews](EXPENSE_EDIT_QR_ISDOC.md).
+
 ## PR454 currency and form-VS follow-up accepted - 2026-11-17
 
 Both subsequent owner findings reproduce on `a7fa749f` and are corrected. Company

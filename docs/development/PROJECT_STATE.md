@@ -1,5 +1,26 @@
 # Project state
 
+## Expense edit QR and ISDOC follow-up - 2026-11-17
+
+PR454 is verified merged at master `422bdd06`; earlier open-PR entries below are
+historical. The owner reports missing QR after editing an older imported expense
+and apparently deferred attachment extraction. Follow-up branch
+`fix/expense-edit-qr-isdoc` adds explicit manual payment confirmation for eligible
+unpaid expenses and visible per-file consent/status/retry immediately on selection.
+Original browser probes already detect/extract before Save; the reproduced defect
+is native-consent/status ambiguity, not a demonstrated Save-only parser trigger.
+
+Main validation passes348 JS tests,216 PHP tests/911 assertions (plus90/345 after
+the final equivalent enum accessor), lint/typecheck ratchets, locale parity,
+PHPStan/Pint and production build. Independent security accepts frozen23-path
+aggregate `2591f486fa32e6df3edac76fe17d4f0aad73df23446df5f5677a8af3dd000e0c`
+and all five guides. Independent QA accepts the same hashes, passes328 JS tests,
+90 PHP tests/345 assertions and22 native Chrome scenarios including decoded QR
+and detail failure/retry. The reviewed result is ready for branch publication and
+owner PR review; new-head remote CI is not yet claimed.
+[Evidence](EXPENSE_EDIT_QR_ISDOC.md). Primary unrelated edits remain preserved.
+No migration, production-data operation, merge or deployment is performed.
+
 ## PR454 currency and form-VS follow-up accepted - 2026-11-17
 
 Both subsequent owner findings reproduce on `a7fa749f` and are corrected. Company

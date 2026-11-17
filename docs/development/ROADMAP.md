@@ -1,5 +1,17 @@
 # Development roadmap
 
+## Expense edit QR and ISDOC follow-up - 2026-11-17
+
+PR454 is merged at verified master `422bdd06`. The authorized follow-up restores
+an explicit recovery route for legacy payment-review blocks and makes immediate
+attachment checking visible, retryable and separate from saving. Implementation
+and main checks pass on `fix/expense-edit-qr-isdoc`; independent security accepts
+the frozen source and five guides. Independent QA also accepts the exact scope,
+with22 native Chrome scenarios,328 JS tests and90 PHP tests passing. Publish the
+reviewed branch, verify new-head CI and obtain owner PR review; merge/deployment
+remain separate approvals. See
+[acceptance contract and evidence](EXPENSE_EDIT_QR_ISDOC.md).
+
 ## PR454 currency and form-VS follow-up accepted - 2026-11-17
 
 Both subsequent owner findings reproduce on `a7fa749f` and are corrected. Company

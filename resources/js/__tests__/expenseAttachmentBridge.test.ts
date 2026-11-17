@@ -46,6 +46,7 @@ let resource: ReturnType<typeof useExpenseIsdocAttachment>;
 let company = ref(localId);
 let expense = ref<string | undefined>("expense-a");
 let confirm: ReturnType<typeof vi.spyOn>;
+let consentChoice = true;
 function render(local = true) {
     mocks.local = local;
     company = ref(local ? localId : serverId);
@@ -55,11 +56,19 @@ function render(local = true) {
         return () => h("main");
     } }), { global: { plugins: [createI18n({ legacy: false, locale: "en", messages: { en } })] } });
 }
+async function choose(file: File) {
+    await resource.onDocumentSelected(file);
+    if (mocks.local && resource.showProcessingConsent.value) {
+        if (consentChoice) await resource.confirmProcessingConsent();
+        else resource.skipProcessingConsent();
+    }
+}
 function expectNoCompanyApi() {
     for (const call of [mocks.detect, mocks.extract, mocks.quota, mocks.purchase, mocks.upload]) expect(call).not.toHaveBeenCalled();
 }
 beforeEach(() => {
     vi.resetAllMocks();
+    consentChoice = true;
     mocks.evolu = { loadQuery: mocks.lookup };
     mocks.lookup.mockImplementation(async (query: { expenseId: string }) => [{ id: query.expenseId, companyId: localId, isDeleted: null }]);
     confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
@@ -86,10 +95,10 @@ afterEach(() => {
 
 describe("expense attachment bridge", () => {
     it.each(["text/html", ""])("uses a PDF-only pending preview for a .pdf with MIME %j", async mime => {
-        confirm.mockReturnValue(false);
+        consentChoice = false;
         render();
         const file = new File(["<script>synthetic</script>"], "synthetic.pdf", { type: mime });
-        await resource.onDocumentSelected(file);
+        await choose(file);
         const preview = vi.mocked(URL.createObjectURL).mock.calls[0][0] as Blob;
         expect(preview.type).toBe("application/pdf");
         expect(preview.size).toBe(file.size);
@@ -101,11 +110,10 @@ describe("expense attachment bridge", () => {
         render();
         await resource.loadQuota();
         const file = pdf();
-        await resource.onDocumentSelected(file);
-        expect(confirm).toHaveBeenCalledOnce();
+        await choose(file);
+        expect(confirm).not.toHaveBeenCalled();
         expect(mocks.localQuota).toHaveBeenCalledWith();
         expect(mocks.localDetect).toHaveBeenCalledOnce();
-        expect(confirm.mock.invocationCallOrder[0]).toBeLessThan(mocks.localDetect.mock.invocationCallOrder[0]);
         expect(mocks.localDetect.mock.calls[0]).toHaveLength(1);
         expect((mocks.localDetect.mock.calls[0][0] as FormData).get("file")).toBe(file);
         expect(resource.showExtractModal.value).toBe(true);
@@ -117,9 +125,9 @@ describe("expense attachment bridge", () => {
     });
 
     it("keeps a declined file available for encrypted local persistence without transmitting it", async () => {
-        confirm.mockReturnValue(false);
+        consentChoice = false;
         render();
-        await resource.onDocumentSelected(pdf());
+        await choose(pdf());
         expect(resource.pendingFiles.value).toHaveLength(1);
         expect(resource.showExtractModal.value).toBe(false);
         expect(await resource.confirmExtract()).toBeNull();
@@ -136,7 +144,7 @@ describe("expense attachment bridge", () => {
     it("skips extraction when no embedded ISDOC is detected", async () => {
         mocks.localDetect.mockResolvedValue({ has_isdoc: false, quota });
         render();
-        await resource.onDocumentSelected(pdf());
+        await choose(pdf());
         expect(resource.showExtractModal.value).toBe(false);
         expect(await resource.confirmExtract()).toBeNull();
         expect(mocks.localExtract).not.toHaveBeenCalled();
@@ -146,7 +154,7 @@ describe("expense attachment bridge", () => {
     it("preserves owned server-company routing and purchases without the local processing prompt", async () => {
         render(false);
         await resource.loadQuota();
-        await resource.onDocumentSelected(pdf());
+        await choose(pdf());
         await resource.confirmExtract();
         await resource.purchasePack(25);
         await resource.uploadAllPendingAttachments("server-expense");
@@ -166,23 +174,39 @@ describe("expense attachment bridge", () => {
         expect(mocks.purchase).not.toHaveBeenCalled();
     });
 
+    it("keeps both server extraction choices unresolved until each file has a decision", async () => {
+        render(false);
+        const files = [pdf(), new File(["synthetic"], "second.pdf", { type: "application/pdf" })];
+        await resource.onDocumentsSelected(files);
+        expect(mocks.detect).toHaveBeenCalledTimes(2);
+        expect(resource.showProcessingConsent.value).toBe(false);
+        await resource.confirmExtract();
+        expect((mocks.extract.mock.calls[0][1] as FormData).get("file")).toBe(files[0]);
+        expect(resource.showExtractModal.value).toBe(true);
+        await expect(resource.uploadAllPendingAttachments("server-expense")).rejects.toThrow(en.invoicing.expense_attachment_processing_pending);
+        resource.skipExtract();
+        expect(resource.hasUnresolvedProcessing.value).toBe(false);
+        await resource.uploadAllPendingAttachments("server-expense");
+        expect(mocks.upload).toHaveBeenCalledTimes(2);
+    });
+
     it("rejects above 10 MiB before consent or upload and accepts the exact manual archive cap", async () => {
         render();
-        await resource.onDocumentSelected(pdf(10 * 1024 * 1024 + 1));
+        await choose(pdf(10 * 1024 * 1024 + 1));
         expect(resource.detectError.value).toBe(en.invoicing.expense_attachment_too_large);
         expect(resource.pendingFiles.value).toHaveLength(0);
         expect(confirm).not.toHaveBeenCalled();
         expect(mocks.localDetect).not.toHaveBeenCalled();
-        await resource.onDocumentSelected(pdf(10 * 1024 * 1024));
+        await choose(pdf(10 * 1024 * 1024));
         expect(resource.pendingFiles.value).toHaveLength(1);
         expect(mocks.localDetect).toHaveBeenCalledOnce();
     });
 
     it("saves a 450 KiB manual file locally with a stable identity across a failed archive retry", async () => {
-        confirm.mockReturnValue(false);
+        consentChoice = false;
         render();
         const file = pdf(450 * 1024);
-        await resource.onDocumentSelected(file);
+        await choose(file);
         mocks.archiveSave.mockRejectedValueOnce(new Error("original_unverified"));
         await expect(resource.uploadAllPendingAttachments("expense-a")).rejects.toThrow("original_unverified");
         expect(resource.pendingFiles.value).toHaveLength(1);
@@ -199,9 +223,9 @@ describe("expense attachment bridge", () => {
     });
 
     it("invalidates a large-file archive operation after changing company", async () => {
-        confirm.mockReturnValue(false);
+        consentChoice = false;
         render();
-        await resource.onDocumentSelected(pdf(450 * 1024));
+        await choose(pdf(450 * 1024));
         const pending = deferred<void>();
         mocks.archiveSave.mockReturnValue(pending.promise);
         const upload = resource.uploadAllPendingAttachments("expense-a");
@@ -216,7 +240,7 @@ describe("expense attachment bridge", () => {
     it("fails closed when the local context is unavailable", async () => {
         mocks.evolu = null;
         render();
-        await resource.onDocumentSelected(pdf());
+        await choose(pdf());
         expect(resource.detectError.value).toBe(en.errors.generic);
         expect(resource.pendingFiles.value).toHaveLength(0);
         expect(confirm).not.toHaveBeenCalled();
@@ -228,7 +252,8 @@ describe("expense attachment bridge", () => {
         const pending = deferred<{ has_isdoc: boolean; quota: typeof quota }>();
         mocks.localDetect.mockReturnValue(pending.promise);
         render();
-        const loading = resource.onDocumentSelected(pdf());
+        await resource.onDocumentSelected(pdf());
+        const loading = resource.confirmProcessingConsent();
         if (change === "company") company.value = "different-local-company";
         if (change === "expense") expense.value = "expense-b";
         if (change === "removed") resource.removePendingFile(resource.pendingFiles.value[0].id);
@@ -244,7 +269,7 @@ describe("expense attachment bridge", () => {
         const pending = deferred<{ data: typeof draft; quota: typeof quota }>();
         mocks.localExtract.mockReturnValue(pending.promise);
         render();
-        await resource.onDocumentSelected(pdf());
+        await choose(pdf());
         const extraction = resource.confirmExtract();
         expense.value = "expense-b";
         if (reject) pending.reject(new Error("synthetic old request failed"));
@@ -259,7 +284,8 @@ describe("expense attachment bridge", () => {
         const pending = deferred<{ has_isdoc: boolean; quota: typeof quota }>();
         mocks.localDetect.mockReturnValue(pending.promise);
         render();
-        const loading = resource.onDocumentSelected(pdf());
+        await resource.onDocumentSelected(pdf());
+        const loading = resource.confirmProcessingConsent();
         company.value = "different-local-company";
         company.value = localId;
         pending.resolve({ has_isdoc: true, quota });
@@ -273,7 +299,7 @@ describe("expense attachment bridge", () => {
         const pending = deferred<{ data: typeof draft; quota: typeof quota }>();
         mocks.localExtract.mockReturnValue(pending.promise);
         render();
-        await resource.onDocumentSelected(pdf());
+        await choose(pdf());
         const extraction = resource.confirmExtract();
         if (change === "removed") resource.removePendingFile(resource.pendingFiles.value[0].id);
         else { wrapper!.unmount(); wrapper = undefined; }
@@ -286,7 +312,7 @@ describe("expense attachment bridge", () => {
         const pending = deferred<{ data: typeof draft; quota: typeof quota }>();
         mocks.localExtract.mockReturnValue(pending.promise);
         render();
-        await resource.onDocumentSelected(pdf());
+        await choose(pdf());
         const first = resource.confirmExtract();
         expect(await resource.confirmExtract()).toBeNull();
         expect(mocks.localExtract).toHaveBeenCalledOnce();
@@ -298,7 +324,7 @@ describe("expense attachment bridge", () => {
         const pending = deferred<{ data: typeof draft; quota: typeof quota }>();
         mocks.localExtract.mockReturnValue(pending.promise);
         render();
-        await resource.onDocumentSelected(pdf());
+        await choose(pdf());
         const extraction = resource.confirmExtract();
         resource.skipExtract();
         expect(resource.showExtractModal.value).toBe(true);
@@ -310,9 +336,9 @@ describe("expense attachment bridge", () => {
     });
 
     it.each(["missing", "deleted", "foreign"])("rejects a %s attachment target after encoding", async (state) => {
-        confirm.mockReturnValue(false);
+        consentChoice = false;
         render();
-        await resource.onDocumentSelected(pdf());
+        await choose(pdf());
         mocks.lookup.mockResolvedValue(state === "missing" ? [] : [{
             id: "expense-a", companyId: state === "foreign" ? "other-company" : localId,
             isDeleted: state === "deleted" ? 1 : null,
@@ -326,7 +352,7 @@ describe("expense attachment bridge", () => {
     it("keeps the file and never falls back to a company route on an older backend", async () => {
         mocks.localDetect.mockRejectedValue({ response: { status: 404, data: { message: "Not found" } } });
         render();
-        await resource.onDocumentSelected(pdf());
+        await choose(pdf());
         expect(resource.pendingFiles.value).toHaveLength(1);
         expect(resource.detectError.value).toBe("Not found");
         expect(resource.showExtractModal.value).toBe(false);
@@ -334,11 +360,11 @@ describe("expense attachment bridge", () => {
     });
 
     it("retains a failed local attachment for retry without logging its filename", async () => {
-        confirm.mockReturnValue(false);
+        consentChoice = false;
         const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
         mocks.insert.mockReturnValueOnce({ ok: false, error: "synthetic validation rejection" });
         render();
-        await resource.onDocumentSelected(pdf());
+        await choose(pdf());
         await expect(resource.uploadAllPendingAttachments("expense-a")).rejects.toThrow(en.invoicing.expense_attachment_detect_failed);
         expect(resource.pendingFiles.value).toHaveLength(1);
         expect(errorLog).not.toHaveBeenCalled();
@@ -348,11 +374,11 @@ describe("expense attachment bridge", () => {
     });
 
     it("does not insert an attachment if its context changes during encoding", async () => {
-        confirm.mockReturnValue(false);
+        consentChoice = false;
         const pending = deferred<string>();
         mocks.read.mockReturnValue(pending.promise);
         render();
-        await resource.onDocumentSelected(pdf());
+        await choose(pdf());
         const upload = resource.uploadAllPendingAttachments("expense-a");
         company.value = "different-local-company";
         pending.resolve("c3ludGhldGlj");

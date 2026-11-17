@@ -1,5 +1,7 @@
 <template>
   <InvoicingPageShell content-class="pt-4 pb-10">
+    <ExpenseAttachmentConsentModal :open="showProcessingConsent" :file-name="processingConsentFileName"
+      :busy="detecting || extracting" @confirm="onConfirmProcessingConsent" @skip="onSkipProcessingConsent" />
     <ExpenseIsdocExtractModal
       :open="showExtractModal"
       :extracting="extracting || processingExtraction"
@@ -95,15 +97,15 @@
       </div>
     </template>
 
-    <div v-if="uploadError" class="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
-      <p>{{ uploadError }}</p>
+    <div v-if="uploadError || hasFailedAttachmentDetection" class="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
+      <p v-if="uploadError">{{ uploadError }}</p>
       <button
         v-if="pendingFiles.length > 0"
         type="button"
         class="invoicing-btn-secondary mt-2"
         :disabled="uploading || detecting || extracting || processingExtraction"
         @click="retryAttachmentUpload"
-      >{{ t('invoicing.expense_attachment_retry') }}</button>
+      >{{ t(hasFailedAttachmentDetection ? 'invoicing.expense_attachment_processing_skip' : 'invoicing.expense_attachment_retry') }}</button>
     </div>
     <div v-if="loading" class="invoicing-muted py-8">
       {{ t("common.loading") }}
@@ -268,6 +270,8 @@
                 :detecting="detecting || uploading || extracting || processingExtraction"
                 :detect-error="detectErrorMessage"
                 :has-isdoc="lastDetectHasIsdoc"
+                :detection-status="detectionStatus"
+                @check-isdoc="onRetryDetection"
                 @file-selected="onFileSelected"
                 @files-selected="onFilesSelected"
                 @clear="onPanelClear"
@@ -344,6 +348,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import ExpenseAttachmentPanel from "../../components/invoicing/ExpenseAttachmentPanel.vue";
+import ExpenseAttachmentConsentModal from "../../components/invoicing/ExpenseAttachmentConsentModal.vue";
 import UblEmbeddedPdfPanel from "../../components/invoicing/UblEmbeddedPdfPanel.vue";
 import ExpenseIsdocExtractModal from "../../components/invoicing/ExpenseIsdocExtractModal.vue";
 import ExpenseShowSidebar from "../../components/invoicing/ExpenseShowSidebar.vue";
@@ -474,6 +479,13 @@ const {
   lastDetectHasIsdoc,
   detectError,
   showExtractModal,
+  showProcessingConsent,
+  processingConsentFileName,
+  detectionStatus,
+  hasUnresolvedProcessing,
+  confirmProcessingConsent,
+  skipProcessingConsent,
+  retryDetection,
   detecting,
   extracting,
   purchasing,
@@ -487,6 +499,7 @@ const {
   clearPendingAttachment,
   uploadAllPendingAttachments,
 } = useExpenseIsdocAttachment(companyId, expenseId);
+const hasFailedAttachmentDetection = computed(() => pendingFiles.value.some(file => file.detectionStatus === 'error'));
 
 const rowMeta = computed(() =>
   expense.value
@@ -617,6 +630,7 @@ function historyLabel(action: string) {
   const map: Record<string, string> = {
     "business_expense.created": t("invoicing.expense_history_created"),
     "business_expense.updated": t("invoicing.expense_history_updated"),
+    "business_expense.payment_details_confirmed": t("invoicing.expense_history_payment_details_confirmed"),
     "business_expense.imported": t("invoicing.expense_history_imported"),
     "business_expense.duplicated": t("invoicing.expense_history_duplicated"),
     "business_expense.marked_paid": t("invoicing.expense_history_marked_paid"),
@@ -1046,8 +1060,9 @@ function draftToPayload(draft: ExpenseImportDraft, current: Expense) {
   };
 }
 
-async function uploadAttachmentOnly() {
-  if (pendingFiles.value.length === 0) return;
+async function uploadAttachmentOnly(keepWithoutProcessing = false) {
+  if (pendingFiles.value.length === 0 || hasUnresolvedProcessing.value
+    || (hasFailedAttachmentDetection.value && !keepWithoutProcessing)) return;
   const context = captureContext();
   uploadError.value = '';
   uploading.value = true;
@@ -1090,7 +1105,25 @@ async function refreshAttachmentState(context: ReturnType<typeof captureContext>
 
 async function retryAttachmentUpload() {
   if (uploading.value || detecting.value || extracting.value || processingExtraction.value || pendingFiles.value.length === 0) return;
-  await uploadAttachmentOnly();
+  await uploadAttachmentOnly(true);
+}
+
+async function onConfirmProcessingConsent() {
+  const context = captureContext();
+  await confirmProcessingConsent();
+  if (isCurrentContext(context) && !hasUnresolvedProcessing.value) await uploadAttachmentOnly();
+}
+
+async function onSkipProcessingConsent() {
+  const context = captureContext();
+  skipProcessingConsent();
+  if (isCurrentContext(context) && !hasUnresolvedProcessing.value) await uploadAttachmentOnly();
+}
+
+async function onRetryDetection() {
+  const context = captureContext();
+  await retryDetection();
+  if (isCurrentContext(context) && !hasUnresolvedProcessing.value) await uploadAttachmentOnly();
 }
 
 async function onFileSelected(file: File) {
@@ -1102,7 +1135,7 @@ async function onFileSelected(file: File) {
   try {
     await onDocumentSelected(file);
     if (capturedGeneration !== contextGeneration || requestedCompany !== companyId.value || requestedExpense !== expenseId.value) return;
-    if (!showExtractModal.value) {
+    if (!hasUnresolvedProcessing.value) {
       await uploadAttachmentOnly();
     }
   } catch {
@@ -1119,7 +1152,7 @@ async function onFilesSelected(files: File[]) {
   try {
     await onDocumentsSelected(files);
     if (capturedGeneration !== contextGeneration || requestedCompany !== companyId.value || requestedExpense !== expenseId.value) return;
-    if (!showExtractModal.value) {
+    if (!hasUnresolvedProcessing.value) {
       await uploadAttachmentOnly();
     }
   } catch {

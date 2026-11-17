@@ -51,7 +51,7 @@ The unpaid expense total adds the full amounts of documents not marked paid. Par
 
 Open an individual expense and add its PDF. In local-first invoicing, attachments and extracted expense fields are saved with your encrypted local data. Each local attachment may be at most **10 MiB**. In the create or edit form, choose **Save** to save pending attachments. On the expense detail page, attachments are saved immediately after you finish or skip optional ISDOC processing.
 
-You can allow temporary server processing to detect embedded ISDOC data. Cancel keeps the attachment local. If ISDOC is found, confirm field extraction separately or keep only the attachment. Extraction uses your existing allowance and credits; it is not OCR. When the allowance is exhausted, you can still attach the file and enter its fields manually.
+Immediately after you select a file, the app asks whether to allow temporary server processing to check for embedded ISDOC data. Choose **Keep attachment without processing** to skip the check. The attachment shows whether checking is pending, skipped, complete or failed; you can retry the check before saving. If ISDOC is found, confirm field extraction separately or keep only the attachment. Detection and extraction happen before **Save**; saving remains unavailable while a processing decision is open. Extraction uses your existing allowance and credits; it is not OCR. When the allowance is exhausted, you can still attach the file and enter its fields manually.
 
 If saving a larger attachment is interrupted, retry while the file is still selected. After reloading, remove the incomplete attachment and select the original file again. Complete the upload or remove the incomplete attachment before creating a full backup.
 
@@ -65,7 +65,7 @@ Saved expenses retain their supplier name and account when a contact later chang
 
 An unpaid EUR expense with a positive amount, supplier name of up to 70 characters, valid supplier IBAN and a variable symbol of up to 10 digits offers **Payment QR** in its row. Choose **PAY by square** or **PayMe**. Check the recipient, exact amount and variable symbol in your bank app. Generating or scanning the QR does not mark the expense paid. Larger exact amounts unsupported by PayMe can use PAY by square.
 
-No IBAN means no QR. Paid/cancelled expenses, bank conflicts, negative credit notes and imports requiring payment review have no payable QR. Selecting a contact cannot override partial/prepaid or ambiguous imported payment evidence. Old ISDOC/Peppol records without retained financial evidence remain blocked. Historical supplier lines in notes are not copied into payment fields.
+No IBAN means no QR. Paid/cancelled expenses, bank conflicts, negative credit notes and imports requiring payment review have no payable QR. Selecting a contact does not complete payment review. For an older unpaid ISDOC/Peppol expense, open **Edit**, check the original document and payment history, and confirm the exact recipient, IBAN, amount, currency and variable symbol and that the entire amount remains unpaid. Save to enable **Payment QR** in the expense list. If you change payment details before saving, confirm them again. Recorded payment dates, nonzero or unclear payment amounts, and bank links prevent this confirmation. Historical supplier lines in notes are not copied into payment fields.
 
 ## Add a received credit note manually
 

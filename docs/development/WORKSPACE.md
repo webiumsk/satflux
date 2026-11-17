@@ -1,5 +1,16 @@
 # Local workspace
 
+## Expense edit QR and ISDOC follow-up - 2026-11-17
+
+The primary checkout stays on its existing branch with unrelated edits preserved.
+Authorized follow-up work is isolated in retained
+`storage/app/private/worktrees/expense-edit-qr-isdoc`, branch
+`fix/expense-edit-qr-isdoc`, based on verified remote master `422bdd06` containing
+merged PR454. Only scoped follow-up paths may be committed. Existing dependencies
+are reused; no tools or graph rebuilds are installed. Private synthetic review
+artifacts remain untracked. No merge/deployment occurs.
+[Validation and publication evidence](EXPENSE_EDIT_QR_ISDOC.md).
+
 ## PR454 inline review corrections accepted - 2026-11-17
 
 The owner requests six inline finding fixes against published `7d19dbff` on

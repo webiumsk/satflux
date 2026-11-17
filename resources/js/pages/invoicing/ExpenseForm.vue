@@ -9,6 +9,9 @@
       </RouterLink>
     </template>
 
+    <ExpenseAttachmentConsentModal :open="showProcessingConsent" :file-name="processingConsentFileName"
+      :busy="detecting || extracting" @confirm="confirmProcessingConsent" @skip="skipProcessingConsent" />
+
     <ExpenseIsdocExtractModal
       :open="showExtractModal"
       :extracting="extracting"
@@ -25,7 +28,7 @@
       <h1 class="invoicing-title">
         {{ isNew ? t(isCreditNote ? 'invoicing.expense_credit_note_new' : 'invoicing.expenses_new') : expenseLabel }}
       </h1>
-      <button type="button" class="invoicing-btn-primary" :disabled="saving" @click="save">
+      <button type="button" class="invoicing-btn-primary" :disabled="saving || hasUnresolvedProcessing" @click="save">
         {{ t('common.save') }}
       </button>
     </div>
@@ -78,7 +81,15 @@
             <input id="expense-supplier-iban" v-model="form.supplier_iban" type="text" maxlength="64" class="invoicing-sf-input w-full font-mono" autocomplete="off" @input="supplierIbanManuallyEdited = true" />
           </div>
         </div>
-        <p v-if="form.payment_review_required" class="text-xs text-amber-800" role="status">{{ t('invoicing.expense_payment_review_required') }}</p>
+        <div v-if="form.payment_review_required" class="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+          <p class="text-xs text-amber-900" role="status">{{ t('invoicing.expense_payment_review_required') }}</p>
+          <label v-if="canConfirmPaymentDetails" class="flex items-start gap-2 text-sm text-gray-800">
+            <input id="expense-confirm-payment-details" type="checkbox" class="mt-1 rounded border-gray-300"
+              :checked="paymentDetailsConfirmed" @change="setPaymentDetailsConfirmed" />
+            <span>{{ t('invoicing.expense_payment_review_confirm') }}</span>
+          </label>
+          <p class="text-xs text-amber-900">{{ t(canConfirmPaymentDetails ? 'invoicing.expense_payment_review_after_save' : 'invoicing.expense_payment_review_blocked') }}</p>
+        </div>
         <p v-else class="text-xs text-gray-500">{{ t('invoicing.expense_supplier_iban_hint') }}</p>
         <div>
           <label class="invoicing-sf-label">{{ t('invoicing.expense_col_title') }}</label>
@@ -145,7 +156,7 @@
           {{ t('invoicing.expense_mark_paid_on_create') }}
         </label>
         <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
-        <button type="submit" class="invoicing-btn-primary" :disabled="saving">{{ t('common.save') }}</button>
+        <button type="submit" class="invoicing-btn-primary" :disabled="saving || hasUnresolvedProcessing">{{ t('common.save') }}</button>
       </form>
 
       <ExpenseAttachmentPanel
@@ -160,6 +171,8 @@
         :detecting="detecting || saving || extracting"
         :detect-error="detectErrorMessage"
         :has-isdoc="lastDetectHasIsdoc"
+        :detection-status="detectionStatus"
+        @check-isdoc="retryDetection"
         @file-selected="onFileSelected"
         @files-selected="onFilesSelected"
         @select-pending="selectPendingFile"
@@ -180,6 +193,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { sqliteTrue } from '@evolu/common';
 import { createQuery } from '@evolu/common/local-first';
 import ExpenseAttachmentPanel from '../../components/invoicing/ExpenseAttachmentPanel.vue';
+import ExpenseAttachmentConsentModal from '../../components/invoicing/ExpenseAttachmentConsentModal.vue';
 import ExpenseIsdocExtractModal from '../../components/invoicing/ExpenseIsdocExtractModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
 import InvoicingPageShell from '../../components/invoicing/InvoicingPageShell.vue';
@@ -198,7 +212,7 @@ import { expenseByIdIncludingDeletedQuery } from '../../evolu/client';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
 import { evoluExpenseToApi, type ExpenseApiRow, type EvoluExpenseRow } from '../../evolu/expenseMap';
 import { normalizePaymentIban } from '../../utils/paymentIban';
-import { expensePaymentReviewRequired } from '../../utils/expensePaymentReview';
+import { expensePaymentConfirmationTuple, expensePaymentReviewRequired, hasExpensePaymentEvidence } from '../../utils/expensePaymentReview';
 import { companyShareRoutingKey, ownerIdForCompany, waitCompanyShareRegistryReady } from '../../evolu/companyShareRegistry';
 import { withTimeout } from '../../evolu/asyncTimeout';
 import { loadEvoluQueryWithTimeout, toAppRows } from '../../evolu/queryLoad';
@@ -234,6 +248,13 @@ const {
   lastDetectHasIsdoc,
   detectError,
   showExtractModal,
+  showProcessingConsent,
+  processingConsentFileName,
+  detectionStatus,
+  hasUnresolvedProcessing,
+  confirmProcessingConsent,
+  skipProcessingConsent,
+  retryDetection,
   detecting,
   extracting,
   purchasing,
@@ -283,6 +304,27 @@ let extractedSupplier: { name: string; iban: string } | null = null;
 const supplierNameManuallyEdited = ref(false);
 const supplierIbanManuallyEdited = ref(false);
 const currencyHasExplicitValue = ref(false);
+const confirmedPaymentTuple = ref<string | null>(null);
+const originalPaymentState = ref({ status: isNew.value ? 'recorded' : '', paidAt: null as string | null,
+  note: null as string | null, bankLinked: false });
+const paymentTuple = computed(() => expensePaymentConfirmationTuple(form.value));
+const canConfirmPaymentDetails = computed(() => Boolean(form.value.payment_review_required && paymentTuple.value
+  && originalPaymentState.value.status === 'recorded' && !originalPaymentState.value.paidAt
+  && !originalPaymentState.value.bankLinked && !form.value.mark_paid
+  && !hasExpensePaymentEvidence(originalPaymentState.value.note) && !hasExpensePaymentEvidence(form.value.internal_note)));
+const paymentDetailsConfirmed = computed(() => canConfirmPaymentDetails.value
+  && confirmedPaymentTuple.value !== null && confirmedPaymentTuple.value === paymentTuple.value);
+function setPaymentDetailsConfirmed(event: Event) {
+  confirmedPaymentTuple.value = (event.target as HTMLInputElement).checked && canConfirmPaymentDetails.value ? paymentTuple.value : null;
+}
+function rememberPaymentState(expense: ExpenseApiRow) {
+  originalPaymentState.value = { status: expense.status || '', paidAt: expense.paid_at || null,
+    note: expense.internal_note || null, bankLinked: Boolean(expense.bank_match_claim || expense.bank_match_conflict) };
+  confirmedPaymentTuple.value = null;
+}
+watch([paymentTuple, () => form.value.mark_paid], () => { confirmedPaymentTuple.value = null; }, { flush: 'sync' });
+watch(hasUnresolvedProcessing, pending => { if (pending) confirmedPaymentTuple.value = null; }, { flush: 'sync' });
+watch(() => localFirst ? companyShareRoutingKey(companyId.value) : 'server', () => { confirmedPaymentTuple.value = null; }, { flush: 'sync' });
 
 function onDocumentKindChange() {
   form.value.total = Math.abs(Number(form.value.total) || 0) * (isCreditNote.value ? -1 : 1);
@@ -323,6 +365,8 @@ watch([companyId, expenseId], () => {
   form.value.supplier_name = '';
   form.value.supplier_iban = '';
   form.value.payment_review_required = false;
+  confirmedPaymentTuple.value = null;
+  originalPaymentState.value = { status: isNew.value ? 'recorded' : '', paidAt: null, note: null, bankLinked: false };
   supplierNameManuallyEdited.value = false;
   supplierIbanManuallyEdited.value = false;
   currencyHasExplicitValue.value = false;
@@ -350,6 +394,10 @@ function syncDeliveryDateDefault() {
 }
 
 function applyImportDraft(draft: ExpenseImportDraft) {
+  confirmedPaymentTuple.value = null;
+  if (hasExpensePaymentEvidence(draft.internal_note)) {
+    originalPaymentState.value.note = [originalPaymentState.value.note, draft.internal_note].filter(Boolean).join('\n');
+  }
   markFormEdited();
   // Supplier identity and account come from structured fields, never copied prose.
   extractedSupplier = { name: draft.supplier_name?.trim() ?? '', iban: draft.supplier_iban?.trim() ?? '' };
@@ -443,6 +491,7 @@ async function loadExpense() {
     await expenseResource.refresh();
     const e = expenseResource.expense.value;
     if (!e) return;
+    rememberPaymentState(e);
     internalNumber.value = e.internal_number;
     expenseLabel.value = e.internal_number + (e.title ? ` · ${e.title}` : '');
     form.value = {
@@ -469,6 +518,7 @@ async function loadExpense() {
     return;
   }
   const e = await invoicingApi.expenses.get<ExpenseApiRow>(companyId.value, expenseId.value!);
+  rememberPaymentState(e);
   internalNumber.value = e.internal_number;
   expenseLabel.value = e.internal_number + (e.title ? ` · ${e.title}` : '');
   form.value = {
@@ -540,6 +590,7 @@ async function prefillCreditNote(expectedEditRevision: number) {
  */
 async function save() {
   if (saving.value || extracting.value || detecting.value) return;
+  if (hasUnresolvedProcessing.value) { error.value = t('invoicing.expense_attachment_processing_pending'); return; }
   markFormEdited();
   const requestedCompany = companyId.value;
   const requestedExpense = expenseId.value;
@@ -566,6 +617,7 @@ async function save() {
   saving.value = true;
   try {
     const payload = {
+      ...(paymentDetailsConfirmed.value ? { payment_details_confirmation: confirmedPaymentTuple.value } : {}),
       company_contact_id: form.value.company_contact_id || null,
       supplier_name: form.value.supplier_name.trim() || null,
       supplier_iban: iban,
@@ -639,7 +691,12 @@ async function save() {
     await (requestedDuplicate ? router.replace(expenseShowTo(savedId)) : router.push(expenseShowTo(savedId)));
   } catch (e: unknown) {
     if (!stillCurrent()) return;
-    const err = e as { response?: { data?: { message?: string } } };
+    const err = e as { response?: { data?: { message?: string; errors?: { payment_details_confirmation?: string[] } } } };
+    if ((e instanceof Error && e.message === 'expense_payment_details_confirmation') || err?.response?.data?.errors?.payment_details_confirmation) {
+      confirmedPaymentTuple.value = null;
+      error.value = t('invoicing.expense_payment_review_changed');
+      return;
+    }
     const mutationErrorKey = expenseMutationErrorKey(e);
     error.value = mutationErrorKey ? t(mutationErrorKey) : e instanceof Error && e.message === 'expense_unavailable'
       ? t('invoicing.expense_unavailable')

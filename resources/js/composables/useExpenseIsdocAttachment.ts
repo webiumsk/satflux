@@ -15,6 +15,7 @@ import {
 import type { ExpenseId } from '../evolu/schema';
 import { saveManualExpenseAttachmentArchive } from '../evolu/manualExpenseAttachment';
 import { EXPENSE_ORIGINAL_MAX_BYTES } from '../evolu/expenseOriginalReference';
+import { companyShareRoutingKey } from '../evolu/companyShareRegistry';
 
 export type ExpenseImportDraft = {
   supplier_name?: string | null;
@@ -33,11 +34,14 @@ export type ExpenseImportDraft = {
   currency?: string;
 };
 
+export type ExpenseFileDetectionStatus = 'pending' | 'skipped' | 'checking' | 'found' | 'absent' | 'error';
+
 export type PendingExpenseFile = {
   id: string;
   file: File;
   hasIsdoc: boolean;
   detectError: string;
+  detectionStatus: ExpenseFileDetectionStatus;
 };
 
 function previewKindForFile(file: File): 'pdf' | 'image' | 'other' {
@@ -65,6 +69,9 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
   const pendingFiles = ref<PendingExpenseFile[]>([]);
   const selectedPendingId = ref<string | null>(null);
   const isdocModalFileId = ref<string | null>(null);
+  const processingConsentFileId = ref<string | null>(null);
+  const consentQueue = ref<string[]>([]);
+  const extractionQueue = ref<string[]>([]);
   const lastAddedFileId = ref<string | null>(null);
   const previewUrl = ref<string | null>(null);
   const previewKind = ref<'pdf' | 'image' | 'other' | null>(null);
@@ -78,12 +85,14 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
   let activeDetections = 0;
 
   function context() {
-    return { generation, company: companyId.value, expense: expenseId?.value };
+    return { generation, company: companyId.value, expense: expenseId?.value,
+      routing: localFirst ? companyShareRoutingKey(companyId.value) : 'server' };
   }
 
   function isCurrent(captured: ReturnType<typeof context>, fileId?: string) {
     return !disposed && captured.generation === generation
       && captured.company === companyId.value && captured.expense === expenseId?.value
+      && captured.routing === (localFirst ? companyShareRoutingKey(companyId.value) : 'server')
       && (fileId === undefined || pendingFiles.value.some((entry) => entry.id === fileId));
   }
 
@@ -101,12 +110,20 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
     pendingFiles.value.map((entry) => ({
       id: entry.id,
       name: entry.file.name,
+      detectionStatus: entry.detectionStatus,
     })),
   );
 
   const lastDetectHasIsdoc = computed(() => selectedPending.value?.hasIsdoc ?? false);
 
   const detectError = computed(() => selectedPending.value?.detectError || selectionError.value);
+  const detectionStatus = computed(() => selectedPending.value?.detectionStatus ?? null);
+  const processingConsentFileName = computed(() => pendingFiles.value.find(entry => entry.id === processingConsentFileId.value)?.file.name ?? '');
+  const showProcessingConsent = computed(() => processingConsentFileId.value !== null);
+  const hasUnresolvedProcessing = computed(() => showProcessingConsent.value || showExtractModal.value
+    || detecting.value || extracting.value || consentQueue.value.length > 0 || extractionQueue.value.length > 0
+    || pendingFiles.value.some(entry => entry.detectionStatus === 'pending' || entry.detectionStatus === 'checking'));
+  const readyToUpload = computed(() => pendingFiles.value.length > 0 && !hasUnresolvedProcessing.value);
 
   function revokePreview() {
     if (previewUrl.value) {
@@ -126,11 +143,24 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
     }
   }
 
-  function updatePendingEntry(id: string, patch: Partial<Pick<PendingExpenseFile, 'hasIsdoc' | 'detectError'>>) {
+  function updatePendingEntry(id: string, patch: Partial<Pick<PendingExpenseFile, 'hasIsdoc' | 'detectError' | 'detectionStatus'>>) {
     const entry = pendingFiles.value.find((item) => item.id === id);
     if (!entry) return;
     if (patch.hasIsdoc !== undefined) entry.hasIsdoc = patch.hasIsdoc;
     if (patch.detectError !== undefined) entry.detectError = patch.detectError;
+    if (patch.detectionStatus !== undefined) entry.detectionStatus = patch.detectionStatus;
+  }
+
+  /** Show one decision at a time, keeping the exact file identity throughout retries. */
+  function advanceDialogs() {
+    if (disposed || detecting.value || extracting.value || showExtractModal.value || showProcessingConsent.value) return;
+    extractionQueue.value = extractionQueue.value.filter(id => pendingFiles.value.some(entry => entry.id === id && entry.hasIsdoc));
+    consentQueue.value = consentQueue.value.filter(id => pendingFiles.value.some(entry => entry.id === id && entry.detectionStatus === 'pending'));
+    const extracted = extractionQueue.value[0];
+    if (extracted) {
+      isdocModalFileId.value = extracted;
+      showExtractModal.value = true;
+    } else processingConsentFileId.value = consentQueue.value[0] ?? null;
   }
 
   async function loadQuota() {
@@ -162,19 +192,30 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
       file,
       hasIsdoc: false,
       detectError: '',
+      detectionStatus: 'pending',
     });
     lastAddedFileId.value = id;
     selectedPendingId.value = id;
     setPreview(file);
 
-    // A file may always stay local without server-assisted ISDOC processing.
-    if (localFirst && !window.confirm(t('invoicing.expense_attachment_server_processing_confirm'))) return;
     if (!isCurrent(captured, id)) return;
+    if (localFirst) {
+      consentQueue.value.push(id);
+      advanceDialogs();
+    } else await detectPendingFile(id);
+  }
+
+  /** Called for local files only after the explicit in-app consent decision. */
+  async function detectPendingFile(id: string) {
+    const entry = pendingFiles.value.find(item => item.id === id);
+    if (!entry) return;
+    const captured = context();
+    updatePendingEntry(id, { hasIsdoc: false, detectError: '', detectionStatus: 'checking' });
     activeDetections++;
     detecting.value = true;
 
     const fd = new FormData();
-    fd.append('file', file);
+    fd.append('file', entry.file);
 
     try {
       type Detection = { quota?: IsdocExtractQuota; has_isdoc?: boolean };
@@ -182,13 +223,11 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
         ? await invoicingApi.expenses.ephemeral.detectIsdoc<Detection>(fd)
         : await invoicingApi.expenses.detectIsdoc<Detection>(captured.company, fd);
       if (!isCurrent(captured, id)) return;
+      if (typeof detected.has_isdoc !== 'boolean') throw new Error('detect_failed');
       quota.value = (detected.quota as typeof quota.value) ?? quota.value;
-      const hasIsdoc = Boolean(detected.has_isdoc);
-      updatePendingEntry(id, { hasIsdoc });
-      if (hasIsdoc && !showExtractModal.value) {
-        isdocModalFileId.value = id;
-        showExtractModal.value = true;
-      }
+      const hasIsdoc = detected.has_isdoc;
+      updatePendingEntry(id, { hasIsdoc, detectionStatus: hasIsdoc ? 'found' : 'absent' });
+      if (hasIsdoc && !extractionQueue.value.includes(id)) extractionQueue.value.push(id);
     } catch (e: unknown) {
       if (!isCurrent(captured, id)) return;
       const err = e as { response?: { data?: { message?: string; errors?: { file?: string[] } } } };
@@ -198,13 +237,48 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
         rawMessage.includes('Start tag expected') || rawMessage.includes('not well-formed');
       updatePendingEntry(id, {
         detectError: fileErr || (looksLikeXmlParseNoise ? 'detect_failed' : rawMessage) || 'detect_failed',
+        detectionStatus: 'error',
       });
     } finally {
       if (isCurrent(captured)) {
         activeDetections--;
         detecting.value = activeDetections > 0;
+        advanceDialogs();
       }
     }
+  }
+
+  async function confirmProcessingConsent() {
+    if (detecting.value || extracting.value) return;
+    const id = processingConsentFileId.value;
+    if (!id) return;
+    processingConsentFileId.value = null;
+    consentQueue.value = consentQueue.value.filter(value => value !== id);
+    await detectPendingFile(id);
+  }
+
+  function skipProcessingConsent() {
+    if (detecting.value || extracting.value) return;
+    const id = processingConsentFileId.value;
+    if (!id) return;
+    updatePendingEntry(id, { detectionStatus: 'skipped', hasIsdoc: false, detectError: '' });
+    processingConsentFileId.value = null;
+    consentQueue.value = consentQueue.value.filter(value => value !== id);
+    advanceDialogs();
+  }
+
+  async function retryDetection() {
+    if (detecting.value || extracting.value || showExtractModal.value || showProcessingConsent.value) return;
+    const entry = selectedPending.value;
+    if (!entry) return;
+    if (entry.hasIsdoc) {
+      if (!extractionQueue.value.includes(entry.id)) extractionQueue.value.push(entry.id);
+      advanceDialogs();
+    } else if (localFirst) {
+      updatePendingEntry(entry.id, { detectionStatus: 'pending', detectError: '' });
+      if (!consentQueue.value.includes(entry.id)) consentQueue.value.push(entry.id);
+      advanceDialogs();
+    } else await detectPendingFile(entry.id);
   }
 
   async function onDocumentSelected(file: File) {
@@ -231,6 +305,9 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
     if (index < 0) return;
 
     pendingFiles.value.splice(index, 1);
+    consentQueue.value = consentQueue.value.filter(value => value !== id);
+    extractionQueue.value = extractionQueue.value.filter(value => value !== id);
+    if (processingConsentFileId.value === id) processingConsentFileId.value = null;
     if (isdocModalFileId.value === id) {
       isdocModalFileId.value = null;
       showExtractModal.value = false;
@@ -248,6 +325,7 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
         revokePreview();
       }
     }
+    advanceDialogs();
   }
 
   async function confirmExtract(): Promise<ExpenseImportDraft | null> {
@@ -269,20 +347,27 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
       quota.value = (res.quota as typeof quota.value) ?? quota.value;
       showExtractModal.value = false;
       isdocModalFileId.value = null;
+      extractionQueue.value = extractionQueue.value.filter(value => value !== entry.id);
 
       return res.data;
     } catch (error: unknown) {
       if (!isCurrent(captured, entry.id)) return null;
       throw error;
     } finally {
-      if (isCurrent(captured)) extracting.value = false;
+      if (isCurrent(captured)) {
+        extracting.value = false;
+        advanceDialogs();
+      }
     }
   }
 
   function skipExtract() {
     if (extracting.value) return;
+    const id = isdocModalFileId.value;
+    extractionQueue.value = extractionQueue.value.filter(value => value !== id);
     showExtractModal.value = false;
     isdocModalFileId.value = null;
+    advanceDialogs();
   }
 
   async function purchasePack(credits: number) {
@@ -312,12 +397,16 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
     selectionError.value = '';
     selectedPendingId.value = null;
     isdocModalFileId.value = null;
+    processingConsentFileId.value = null;
+    consentQueue.value = [];
+    extractionQueue.value = [];
     lastAddedFileId.value = null;
     showExtractModal.value = false;
     revokePreview();
   }
 
   async function uploadPendingFiles(expenseId: string, fileIds: string[]) {
+    if (hasUnresolvedProcessing.value) throw new Error(t('invoicing.expense_attachment_processing_pending'));
     const captured = context();
     if (localFirst) {
       if (!evolu || !captured.company) throw new Error(t('errors.generic'));
@@ -388,7 +477,7 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
     if (isCurrent(captured) && pendingFiles.value.length === 0) clearPendingAttachment();
   }
 
-  watch([companyId, () => expenseId?.value], () => {
+  watch([companyId, () => expenseId?.value, () => localFirst ? companyShareRoutingKey(companyId.value) : 'server'], () => {
     generation++;
     activeDetections = 0;
     detecting.value = false;
@@ -415,6 +504,11 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
     previewKind,
     lastDetectHasIsdoc,
     detectError,
+    detectionStatus,
+    showProcessingConsent,
+    processingConsentFileName,
+    hasUnresolvedProcessing,
+    readyToUpload,
     showExtractModal,
     detecting,
     extracting,
@@ -423,6 +517,9 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
     purchasePack,
     onDocumentSelected,
     onDocumentsSelected,
+    confirmProcessingConsent,
+    skipProcessingConsent,
+    retryDetection,
     selectPendingFile,
     removePendingFile,
     confirmExtract,

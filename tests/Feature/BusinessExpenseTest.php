@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Enums\BusinessExpenseStatus;
 use App\Enums\CompanyJurisdiction;
+use App\Models\AuditLog;
+use App\Models\BankTransaction;
 use App\Models\BusinessExpense;
 use App\Models\Company;
 use App\Models\CompanyContact;
@@ -15,6 +17,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 class BusinessExpenseTest extends TestCase
@@ -499,5 +502,221 @@ class BusinessExpenseTest extends TestCase
         $this->postJson($url.'/duplicate-suggestions', [
             'issue_date' => '2026-11-03', 'total' => -20.25, 'currency' => 'EUR',
         ])->assertOk();
+    }
+
+    /** @return array<string, mixed> */
+    private function confirmablePaymentFields(): array
+    {
+        return ['issue_date' => '2026-11-03', 'total' => '19.50', 'currency' => 'EUR',
+            'supplier_name' => 'Synthetic supplier', 'supplier_iban' => 'SK6807200002891987426353', 'variable_symbol' => '00019'];
+    }
+
+    private function paymentConfirmation(): string
+    {
+        return '["Synthetic supplier","SK6807200002891987426353","19.50","EUR","00019"]';
+    }
+
+    /** @param array<string, mixed> $overrides */
+    private function reviewExpense(array $overrides = []): BusinessExpense
+    {
+        return BusinessExpense::create(array_merge($this->confirmablePaymentFields(), [
+            'company_id' => $this->company->id, 'internal_number' => 'REVIEW-1', 'status' => BusinessExpenseStatus::Recorded,
+            'payment_review_required' => true, 'internal_note' => 'Imported from ISDOC.',
+        ], $overrides));
+    }
+
+    #[Test]
+    #[TestWith([true])]
+    #[TestWith([null])]
+    public function explicit_current_manual_confirmation_resolves_legacy_uncertainty_without_marking_paid(?bool $storedReview): void
+    {
+        $expense = $this->reviewExpense(['payment_review_required' => $storedReview]);
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}";
+        $this->actingAs($this->user)->patchJson($url, [
+            ...$this->confirmablePaymentFields(), 'payment_review_required' => true, 'internal_note' => null,
+            'mark_paid' => false, 'paid_at' => null,
+            'payment_details_confirmation' => $this->paymentConfirmation(),
+        ])->assertOk()->assertJsonPath('data.payment_review_required', false)
+            ->assertJsonPath('data.status', 'recorded')->assertJsonPath('data.paid_at', null)
+            ->assertJsonPath('data.total', '19.50')->assertJsonPath('data.variable_symbol', '00019');
+        $this->patchJson($url, ['title' => 'Ordinary later edit'])->assertOk()->assertJsonPath('data.payment_review_required', false);
+        $this->patchJson($url, ['payment_review_required' => true])->assertOk()->assertJsonPath('data.payment_review_required', true);
+        $audit = AuditLog::where('action', 'business_expense.payment_details_confirmed')->sole();
+        $this->assertSame(['company_id' => $this->company->id, 'source' => 'manual'], $audit->metadata);
+    }
+
+    #[Test]
+    public function explicit_confirmation_can_save_a_new_manually_verified_unpaid_expense(): void
+    {
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses";
+        $this->actingAs($this->user)->postJson($url, [
+            ...$this->confirmablePaymentFields(), 'payment_review_required' => true, 'internal_note' => 'Imported from ISDOC.',
+            'payment_details_confirmation' => $this->paymentConfirmation(),
+        ])->assertCreated()->assertJsonPath('data.payment_review_required', false)
+            ->assertJsonPath('data.status', 'recorded')->assertJsonPath('data.paid_at', null);
+    }
+
+    #[Test]
+    #[TestWith(['supplier_name', 'Different supplier'])]
+    #[TestWith(['supplier_iban', 'DE89370400440532013000'])]
+    #[TestWith(['total', '19.51'])]
+    #[TestWith(['currency', 'USD'])]
+    #[TestWith(['variable_symbol', '00020'])]
+    public function stale_confirmation_does_not_apply_after_payment_fields_change(string $field, string $value): void
+    {
+        $expense = $this->reviewExpense();
+        $this->actingAs($this->user)->patchJson("/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}", [
+            $field => $value, 'payment_details_confirmation' => $this->paymentConfirmation(),
+        ])->assertUnprocessable()->assertJsonValidationErrors('payment_details_confirmation');
+        $this->assertTrue($expense->fresh()->payment_review_required);
+        $this->assertSame('19.50', $expense->fresh()->total);
+        $this->assertSame('Synthetic supplier', $expense->fresh()->supplier_name);
+        $this->assertSame(0, AuditLog::where('action', 'business_expense.payment_details_confirmed')->count());
+    }
+
+    #[Test]
+    #[TestWith(['Payment amount: 2.00'])]
+    #[TestWith(['Payment amount: unknown'])]
+    #[TestWith(['Payment amount: 0.000'])]
+    #[TestWith(['Payment date: 2026-11-01'])]
+    public function manual_confirmation_cannot_erase_original_payment_evidence(string $originalNote): void
+    {
+        $expense = $this->reviewExpense(['internal_note' => $originalNote]);
+        $this->actingAs($this->user)->patchJson("/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}", [
+            'internal_note' => null, 'payment_review_required' => false,
+            'payment_details_confirmation' => $this->paymentConfirmation(),
+        ])->assertUnprocessable()->assertJsonValidationErrors('payment_details_confirmation');
+        $this->assertSame($originalNote, $expense->fresh()->internal_note);
+        $this->assertTrue($expense->fresh()->payment_review_required);
+    }
+
+    #[Test]
+    public function new_payment_note_evidence_also_blocks_manual_confirmation(): void
+    {
+        $expense = $this->reviewExpense();
+        $this->actingAs($this->user)->patchJson("/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}", [
+            'internal_note' => 'Payment amount: 1.00', 'payment_details_confirmation' => $this->paymentConfirmation(),
+        ])->assertUnprocessable()->assertJsonValidationErrors('payment_details_confirmation');
+        $this->assertTrue($expense->fresh()->payment_review_required);
+    }
+
+    #[Test]
+    #[TestWith(['mark_paid', true])]
+    #[TestWith(['paid_at', '2026-11-02'])]
+    public function confirmation_rejects_conflicting_payment_intent_on_http_update(string $field, mixed $value): void
+    {
+        $expense = $this->reviewExpense();
+        $this->actingAs($this->user)->patchJson("/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}", [
+            $field => $value, 'title' => 'Conflicting edit', 'payment_details_confirmation' => $this->paymentConfirmation(),
+        ])->assertUnprocessable()->assertJsonValidationErrors('payment_details_confirmation');
+        $this->assertTrue($expense->fresh()->payment_review_required);
+        $this->assertSame(BusinessExpenseStatus::Recorded, $expense->fresh()->status);
+        $this->assertNull($expense->fresh()->paid_at);
+        $this->assertNull($expense->fresh()->title);
+        $this->assertSame(0, AuditLog::where('action', 'business_expense.payment_details_confirmed')->count());
+    }
+
+    #[Test]
+    #[TestWith(['mark_paid', true])]
+    #[TestWith(['paid_at', '2026-11-02'])]
+    public function confirmation_rejects_conflicting_payment_intent_on_direct_service_update(string $field, mixed $value): void
+    {
+        $expense = $this->reviewExpense();
+        try {
+            app(BusinessExpenseService::class)->update($expense, [
+                $field => $value, 'title' => 'Conflicting edit', 'payment_details_confirmation' => $this->paymentConfirmation(),
+            ]);
+            $this->fail('Conflicting payment intent must reject the confirmation.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('payment_details_confirmation', $exception->errors());
+        }
+        $this->assertTrue($expense->fresh()->payment_review_required);
+        $this->assertSame(BusinessExpenseStatus::Recorded, $expense->fresh()->status);
+        $this->assertNull($expense->fresh()->paid_at);
+        $this->assertNull($expense->fresh()->title);
+        $this->assertSame(0, AuditLog::where('action', 'business_expense.payment_details_confirmed')->count());
+    }
+
+    #[Test]
+    #[TestWith(['paid', null, null])]
+    #[TestWith(['recorded', '2026-11-01', null])]
+    #[TestWith(['cancelled', null, '2026-11-01'])]
+    #[TestWith(['recorded', null, '2026-11-01'])]
+    public function paid_or_cancelled_records_cannot_be_manually_confirmed(string $status, ?string $paidAt, ?string $cancelledAt): void
+    {
+        $expense = $this->reviewExpense(['status' => $status, 'paid_at' => $paidAt]);
+        if ($cancelledAt !== null) {
+            $expense->cancelled_at = $cancelledAt;
+            $expense->save();
+        }
+        $this->actingAs($this->user)->patchJson("/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}", [
+            'payment_details_confirmation' => $this->paymentConfirmation(),
+        ])->assertUnprocessable()->assertJsonValidationErrors('payment_details_confirmation');
+        $this->assertTrue($expense->fresh()->payment_review_required);
+    }
+
+    #[Test]
+    public function any_recorded_bank_association_blocks_confirmation_even_before_a_match_is_final(): void
+    {
+        $expense = $this->reviewExpense();
+        BankTransaction::create([
+            'company_id' => $this->company->id, 'business_expense_id' => $expense->id,
+            'booked_at' => '2026-11-03 10:00:00', 'amount' => '19.50', 'currency' => 'EUR',
+            'direction' => 'debit', 'match_status' => 'unmatched', 'source' => 'csv', 'dedupe_hash' => 'synthetic-review-bank',
+        ]);
+        $this->actingAs($this->user)->patchJson("/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}", [
+            'payment_details_confirmation' => $this->paymentConfirmation(),
+        ])->assertUnprocessable()->assertJsonValidationErrors('payment_details_confirmation');
+        $this->assertTrue($expense->fresh()->payment_review_required);
+        $this->assertSame(BusinessExpenseStatus::Recorded, $expense->fresh()->status);
+    }
+
+    #[Test]
+    public function confirmation_does_not_bypass_foreign_contact_validation(): void
+    {
+        $expense = $this->reviewExpense();
+        $otherCompany = Company::create(['user_id' => $this->user->id, 'legal_name' => 'Other synthetic company', 'jurisdiction' => CompanyJurisdiction::EuSk]);
+        $foreign = CompanyContact::create(['company_id' => $otherCompany->id, 'name' => 'Foreign contact']);
+        $this->actingAs($this->user)->patchJson("/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}", [
+            'company_contact_id' => $foreign->id, 'payment_details_confirmation' => $this->paymentConfirmation(),
+        ])->assertUnprocessable()->assertJsonValidationErrors('company_contact_id');
+        $this->assertTrue($expense->fresh()->payment_review_required);
+        $this->assertNull($expense->fresh()->company_contact_id);
+    }
+
+    #[Test]
+    public function invalid_new_confirmation_rolls_back_the_expense_and_cannot_mark_it_paid(): void
+    {
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses";
+        $this->actingAs($this->user)->postJson($url, [
+            ...$this->confirmablePaymentFields(), 'mark_paid' => true, 'payment_review_required' => true,
+            'payment_details_confirmation' => $this->paymentConfirmation(),
+        ])->assertUnprocessable()->assertJsonValidationErrors('payment_details_confirmation');
+        $this->assertSame(0, BusinessExpense::where('company_id', $this->company->id)->count());
+        $this->postJson($url, [
+            ...$this->confirmablePaymentFields(), 'paid_at' => '2026-11-02',
+            'payment_details_confirmation' => $this->paymentConfirmation(),
+        ])->assertUnprocessable()->assertJsonValidationErrors('payment_details_confirmation');
+        $this->assertSame(0, BusinessExpense::where('company_id', $this->company->id)->count());
+        $this->postJson($url, [
+            ...$this->confirmablePaymentFields(), 'variable_symbol' => '00020',
+            'payment_details_confirmation' => $this->paymentConfirmation(),
+        ])->assertUnprocessable()->assertJsonValidationErrors('payment_details_confirmation');
+        $this->assertSame(0, BusinessExpense::where('company_id', $this->company->id)->count());
+    }
+
+    #[Test]
+    public function manual_confirmation_remains_bound_to_the_authorized_company_and_user(): void
+    {
+        $expense = $this->reviewExpense();
+        $otherCompany = Company::create(['user_id' => $this->user->id, 'legal_name' => 'Other synthetic company', 'jurisdiction' => CompanyJurisdiction::EuSk]);
+        $this->actingAs($this->user)->patchJson("/api/invoicing/companies/{$otherCompany->id}/expenses/{$expense->id}", [
+            'payment_details_confirmation' => $this->paymentConfirmation(),
+        ])->assertNotFound();
+        $this->actingAs(User::factory()->create())->patchJson("/api/invoicing/companies/{$this->company->id}/expenses/{$expense->id}", [
+            'payment_details_confirmation' => $this->paymentConfirmation(),
+        ])->assertForbidden();
+        $this->assertTrue($expense->fresh()->payment_review_required);
+        $this->assertSame(0, AuditLog::where('action', 'business_expense.payment_details_confirmed')->count());
     }
 }
