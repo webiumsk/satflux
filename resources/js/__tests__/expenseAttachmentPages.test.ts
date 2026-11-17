@@ -106,7 +106,7 @@ vi.mock("@/components/invoicing/ExpenseShowSidebar.vue", () => ({ default: {
 } }));
 vi.mock("@/components/invoicing/ExpenseAttachmentPanel.vue", () => ({ default: {
     name: "ExpenseAttachmentPanel",
-    props: ["fileName", "hasPending", "detectError", "detecting", "previewUrl", "previewKind"],
+    props: ["fileName", "hasPending", "detectError", "detecting", "previewUrl", "previewKind", "pendingFiles", "selectedPendingId"],
     emits: ["file-selected", "files-selected", "clear", "select-pending", "remove-pending", "select-attachment", "download", "remove-saved", "check-isdoc"],
     template: '<section data-test="attachment-panel"><span>{{ fileName }}</span><p>{{ detectError }}</p></section>',
 } }));
@@ -588,6 +588,93 @@ describe("expense attachment page integration", () => {
         expect(detect).toHaveBeenCalledTimes(2);
         expect(mocks.insertAttachment).not.toHaveBeenCalled();
         expect(mocks.upload).not.toHaveBeenCalled();
+    });
+
+    it.each([true, false])("retries the selected earlier failed detail file in local mode %s", async local => {
+        consentChoice = true;
+        if (!local) models.value = [fixture("expense-a", serverCompany)];
+        const detect = local ? mocks.localDetect : mocks.detect;
+        detect.mockRejectedValue(new Error("synthetic failure"));
+        render("show", local); await flushPromises();
+        const panel = wrapper!.findComponent({ name: "ExpenseAttachmentPanel" });
+        panel.vm.$emit("files-selected", [pdf("first.pdf"), pdf("second.pdf")]);
+        await flushPromises(); await settleConsentChoices();
+        const pending = panel.props("pendingFiles") as { id: string; name: string }[];
+        expect(pending.map(file => file.name)).toEqual(["first.pdf", "second.pdf"]);
+        expect(panel.props("fileName")).toBe("second.pdf");
+        panel.vm.$emit("select-pending", pending[0]!.id); await flushPromises();
+        expect(panel.props("selectedPendingId")).toBe(pending[0]!.id);
+        expect(panel.props("fileName")).toBe("first.pdf");
+        detect.mockResolvedValueOnce({ has_isdoc: true, quota });
+        panel.vm.$emit("check-isdoc"); await flushPromises(); await settleConsentChoices();
+        const args = detect.mock.lastCall!;
+        const file = (args[local ? 0 : 1] as FormData).get("file") as File;
+        expect(file.name).toBe("first.pdf");
+        expect(wrapper!.findComponent(ExpenseIsdocExtractModal).props("open")).toBe(true);
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        expect(mocks.upload).not.toHaveBeenCalled();
+    });
+
+    it.each([true, false])("saves remaining resolved detail files after removing a failed file in local mode %s", async local => {
+        consentChoice = true;
+        if (!local) models.value = [fixture("expense-a", serverCompany)];
+        const detect = local ? mocks.localDetect : mocks.detect;
+        detect.mockRejectedValueOnce(new Error("synthetic failure"));
+        render("show", local); await flushPromises();
+        const panel = wrapper!.findComponent({ name: "ExpenseAttachmentPanel" });
+        panel.vm.$emit("files-selected", [pdf("failed.pdf"), pdf("remaining.pdf")]);
+        await flushPromises(); await settleConsentChoices();
+        const pending = panel.props("pendingFiles") as { id: string; name: string }[];
+        expect(pending.map(file => file.name)).toEqual(["failed.pdf", "remaining.pdf"]);
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        expect(mocks.upload).not.toHaveBeenCalled();
+        panel.vm.$emit("remove-pending", pending[0]!.id); await flushPromises();
+        expect(panel.props("pendingFiles")).toEqual([]);
+        if (local) {
+            expect(mocks.insertAttachment).toHaveBeenCalledOnce();
+            expect(mocks.insertAttachment.mock.calls[0]![2]).toMatchObject({ filename: "remaining.pdf" });
+            expect(mocks.upload).not.toHaveBeenCalled();
+        } else {
+            expect(mocks.upload).toHaveBeenCalledOnce();
+            expect((mocks.upload.mock.calls[0]![2] as FormData).get("file")).toHaveProperty("name", "remaining.pdf");
+            expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        }
+        expect(mocks.localExtract).not.toHaveBeenCalled();
+        expect(mocks.extract).not.toHaveBeenCalled();
+    });
+
+    it("blocks the next consent decision until the previous extracted draft is saved", async () => {
+        mocks.localDetect.mockResolvedValueOnce({ has_isdoc: true, quota });
+        const write = deferred<{ ok: true; value: { id: string } }>();
+        mocks.updateExpense.mockReturnValueOnce(write.promise);
+        render("show"); await flushPromises();
+        const panel = wrapper!.findComponent({ name: "ExpenseAttachmentPanel" });
+        panel.vm.$emit("files-selected", [pdf("first.pdf"), pdf("second.pdf")]);
+        await flushPromises();
+        const consent = wrapper!.findComponent(ExpenseAttachmentConsentModal);
+        consent.vm.$emit("confirm"); await flushPromises();
+        wrapper!.findComponent(ExpenseIsdocExtractModal).vm.$emit("confirm");
+        await flushPromises();
+        expect(mocks.updateExpense).toHaveBeenCalledOnce();
+        expect(consent.props("open")).toBe(true);
+        expect(consent.props("fileName")).toBe("second.pdf");
+        expect(consent.props("busy")).toBe(true);
+        expect(consent.findAll("button").every(button => button.attributes("disabled") !== undefined)).toBe(true);
+        // Guard emitted actions too, independently of the modal's disabled buttons.
+        consent.vm.$emit("confirm");
+        consent.vm.$emit("skip");
+        const pending = panel.props("pendingFiles") as { id: string }[];
+        panel.vm.$emit("remove-pending", pending[0]!.id); await flushPromises();
+        expect(panel.props("pendingFiles")).toHaveLength(2);
+        expect(mocks.localDetect).toHaveBeenCalledOnce();
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        expect(consent.props("open")).toBe(true);
+        write.resolve({ ok: true, value: { id: "expense-a" } }); await flushPromises();
+        expect(consent.props("busy")).toBe(false);
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        consent.vm.$emit("skip"); await flushPromises();
+        expect(mocks.insertAttachment).toHaveBeenCalledTimes(2);
+        expect(mocks.localDetect).toHaveBeenCalledOnce();
     });
 
     it("keeps a failed detail attachment only after explicit user choice", async () => {

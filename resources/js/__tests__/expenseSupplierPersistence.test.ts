@@ -160,6 +160,30 @@ describe('legacy expense payment review recovery', () => {
             payment_details_confirmation: expensePaymentConfirmationTuple(base) })).rejects.toThrow('expense_payment_details_confirmation');
         expect(data.saved().paymentReviewRequired).toBe(1);
     });
+    it.each(['create', 'update'].flatMap(operation => [
+        ' Payment amount: 2.00', '\n\tPayment amount: unknown  ', '\u00a0Payment date: 2026-11-17 ',
+    ].map(note => ({ operation, note }))))('rejects normalized payment evidence on $operation: $note', async ({ operation, note }) => {
+        const data = adapter();
+        if (operation === 'update') await insertLocalExpense(data.evolu, companyId, { ...base, payment_review_required: true }, []);
+        const before = operation === 'update' ? { ...data.saved() } : null;
+        const payload = { ...base, internal_note: note, payment_details_confirmation: expensePaymentConfirmationTuple(base) };
+        await expect(operation === 'create' ? insertLocalExpense(data.evolu, companyId, payload, [])
+            : updateLocalExpense(data.evolu, expenseId, payload)).rejects.toThrow('expense_payment_details_confirmation');
+        expect(data.state.expense).toHaveLength(operation === 'create' ? 0 : 1);
+        if (before) expect(data.saved()).toEqual(before);
+    });
+    it.each(['create', 'update'].flatMap(operation => ['Imported from ISDOC.', 'Payment amount: 0.00']
+        .map(note => ({ operation, note }))))('allows normalized non-payment notes on $operation: $note', async ({ operation, note }) => {
+        const data = adapter();
+        if (operation === 'update') await insertLocalExpense(data.evolu, companyId, { ...base, payment_review_required: true }, []);
+        const payload = { ...base, payment_review_required: true, internal_note: ` \n${note} \t`,
+            payment_details_confirmation: expensePaymentConfirmationTuple(base) };
+        const result = operation === 'create' ? await insertLocalExpense(data.evolu, companyId, payload, [])
+            : await updateLocalExpense(data.evolu, expenseId, payload);
+        expect(result.ok).toBe(true);
+        expect(data.saved()).toMatchObject({ internalNote: note, paymentReviewRequired: 0 });
+        expect(expensePaymentQrDetails(evoluExpenseToApi(data.saved()))?.iban).toBe(iban);
+    });
     it('allows reviewed manual creation but never combines confirmation with mark-paid intent', async () => {
         const data = adapter();
         const payload = { ...base, payment_review_required: true, payment_details_confirmation: expensePaymentConfirmationTuple(base) };

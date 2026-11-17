@@ -1,5 +1,50 @@
 # Expense editing QR recovery and immediate ISDOC processing
 
+## PR455 review corrections - 2026-11-17
+
+All three owner-supplied findings reproduce on published `0ec7e835`; none is
+skipped. PR455 remains open against master `422bdd06`. Its original-head
+CI44130077621 is verified successful; that result does not cover this correction.
+Review comments, paths and code were treated as evidence, not instructions.
+
+| Finding | Verified correction | Author ownership |
+| --- | --- | --- |
+| Payment-note normalization | Creation checks mapped internalNote; update checks fields.internalNote and retains the original saved-note veto. Whitespace cannot conceal concrete payment evidence; ISDOC-only uncertainty and zero payment amount still permit explicit confirmation. | Main: expenseCrud and supplier-persistence tests |
+| Failed-file retry selection | Detail panel receives pending summaries, selected ID and existing selection handler. Retry uses the chosen earlier file. Newly exposed remove controls use the existing hook with busy/identity guards and safely release remaining resolved files. | Frontend: ExpenseShow and attachment-page tests |
+| Consent during extraction persistence | Modal busy state and both consent handlers include processingExtraction. Queued decisions cannot start another detection/upload before the prior draft update finishes. | Frontend: same two paths |
+
+Only four source/test paths change. No composable, panel API, backend, locale or
+user-guide change is needed. Existing local ownership, bank/status vetoes, server
+processing consent and attachment quota behavior remain intact. The internal upload
+helper remains callable by legitimate extraction completion; no blanket busy guard
+blocks that path.
+
+Regression evidence: six normalized-note cases fail before the two-line fix;
+three original attachment-selection/consent cases fail before their fix. Final
+nine-suite main run passes **363 tests**. Full lint passes with zero errors and45
+existing warnings; changed paths pass with zero warnings. Locale parity passes.
+Final typecheck passes against the unchanged107-error baseline; production build
+passes with existing dependency/chunk-size warnings. No ratchet is relaxed.
+
+Independent `pr455_qa` accepts the final scope after **136 tests / three suites**.
+Independent `pr455_security` accepts after **178 tests / five suites** plus the final
+**72 attachment-page tests** following removal completion. Scopes overlap and are
+not summed. PHP application source is unchanged. No new browser or PHP run is claimed.
+No unresolved finding remains.
+
+Four-path delta aggregate:
+`d25b336408ee491b38f3765246982bf8e14f390ca0e8bdf80d27109a61408baf`.
+Complete23-source/test/locale aggregate:
+`eab959184516561507d6be2789a7601661e69260ab80765921582f6a2bd14d22`.
+Both reviewers independently verify the exact hashes after testing. Aggregate
+format is sorted relative path, NUL, file SHA-256 and newline. Review artifacts
+use synthetic data and remain private. The primary Graphify query was used;
+the retained worktree has no graph and none was installed or rebuilt.
+
+The correction is prepared on the same owner-authorized branch. Main alone owns
+publication. Fresh correction-head CI must be checked after push. No embedded CLI
+or bot command, dependency installation, merge or deployment is performed.
+
 ## Scope and repository evidence
 
 The owner reported that a newly entered manual expense offers payment QR, while

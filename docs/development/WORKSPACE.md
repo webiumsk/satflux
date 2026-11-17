@@ -1,5 +1,24 @@
 # Local workspace
 
+## PR455 review corrections accepted - 2026-11-17
+
+All three supplied findings reproduce on `0ec7e835` and are corrected: normalized
+payment-note evidence with the original-note veto retained, detail pending-file
+selection/removal and exact retry identity, and consent guards while extraction
+persistence is active. Only four source/test paths change. Main363 JS tests pass;
+independent QA136 and security178 plus final72 overlapping tests pass. Both
+reviewers accept delta4 aggregate
+`d25b336408ee491b38f3765246982bf8e14f390ca0e8bdf80d27109a61408baf`
+and complete23 aggregate
+`eab959184516561507d6be2789a7601661e69260ab80765921582f6a2bd14d22`.
+Full/scoped lint, unchanged107-error typecheck baseline, locale parity and
+production build pass. No ratchet is relaxed.
+
+PR455 is open; original-head CI44130077621 is successful. Correction-head CI is not
+yet claimed. Main will publish the reviewed correction to the same authorized
+branch; primary unrelated edits remain preserved. No merge/deployment occurs.
+[Finding disposition and evidence](EXPENSE_EDIT_QR_ISDOC.md).
+
 ## Expense edit QR and ISDOC follow-up - 2026-11-17
 
 The primary checkout stays on its existing branch with unrelated edits preserved.

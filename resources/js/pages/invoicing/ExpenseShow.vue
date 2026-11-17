@@ -1,7 +1,7 @@
 <template>
   <InvoicingPageShell content-class="pt-4 pb-10">
     <ExpenseAttachmentConsentModal :open="showProcessingConsent" :file-name="processingConsentFileName"
-      :busy="detecting || extracting" @confirm="onConfirmProcessingConsent" @skip="onSkipProcessingConsent" />
+      :busy="detecting || extracting || processingExtraction" @confirm="onConfirmProcessingConsent" @skip="onSkipProcessingConsent" />
     <ExpenseIsdocExtractModal
       :open="showExtractModal"
       :extracting="extracting || processingExtraction"
@@ -263,6 +263,8 @@
                 :file-name="panelFileName"
                 :has-file="panelHasFile"
                 :has-pending="pendingFiles.length > 0"
+                :pending-files="pendingFileSummaries"
+                :selected-pending-id="selectedPendingId"
                 :saved-attachments="savedAttachments"
                 :selected-attachment-id="selectedAttachmentId"
                 :preview-url="panelPreviewUrl"
@@ -272,6 +274,8 @@
                 :has-isdoc="lastDetectHasIsdoc"
                 :detection-status="detectionStatus"
                 @check-isdoc="onRetryDetection"
+                @select-pending="selectPendingFile"
+                @remove-pending="onRemovePendingFile"
                 @file-selected="onFileSelected"
                 @files-selected="onFilesSelected"
                 @clear="onPanelClear"
@@ -492,6 +496,10 @@ const {
   loadQuota,
   purchasePack,
   pendingFiles,
+  pendingFileSummaries,
+  selectedPendingId,
+  selectPendingFile,
+  removePendingFile,
   onDocumentSelected,
   onDocumentsSelected,
   confirmExtract,
@@ -1109,12 +1117,14 @@ async function retryAttachmentUpload() {
 }
 
 async function onConfirmProcessingConsent() {
+  if (processingExtraction.value) return;
   const context = captureContext();
   await confirmProcessingConsent();
   if (isCurrentContext(context) && !hasUnresolvedProcessing.value) await uploadAttachmentOnly();
 }
 
 async function onSkipProcessingConsent() {
+  if (processingExtraction.value) return;
   const context = captureContext();
   skipProcessingConsent();
   if (isCurrentContext(context) && !hasUnresolvedProcessing.value) await uploadAttachmentOnly();
@@ -1158,6 +1168,16 @@ async function onFilesSelected(files: File[]) {
   } catch {
     if (capturedGeneration === contextGeneration) uploadError.value = t('invoicing.expense_attachment_upload_failed');
   }
+}
+
+async function onRemovePendingFile(id: string) {
+  if (detecting.value || uploading.value || extracting.value || processingExtraction.value
+    || !pendingFiles.value.some(file => file.id === id)) return;
+  removePendingFile(id);
+  if (pendingFiles.value.length === 0) {
+    uploadError.value = '';
+    await loadSavedPreview();
+  } else await uploadAttachmentOnly();
 }
 
 function onPanelClear() {

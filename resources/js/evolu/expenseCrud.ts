@@ -155,7 +155,7 @@ function insertLocalExpenseCore(
     if (payload.payment_details_confirmation != null) {
         const tuple = expensePaymentConfirmationTuple(payload);
         if (!tuple || payload.payment_details_confirmation !== tuple || markPaid || payload.paid_at
-            || options?.bankPaymentClaimJson || hasExpensePaymentEvidence(payload.internal_note)) {
+            || options?.bankPaymentClaimJson || hasExpensePaymentEvidence(mapped.value.internalNote)) {
             throw new Error("expense_payment_details_confirmation");
         }
         mapped.value.paymentReviewRequired = booleanToSqliteBoolean(false);
@@ -219,7 +219,7 @@ function updateLocalExpenseCore(
             || current.status !== "recorded" || effective.status !== "recorded" || current.paidAt || effective.paidAt
             || current.cancelledAt || effective.bankMatchConflict || payload.mark_paid || payload.paid_at
             || hasExpenseBankAssociation(current, scope.context)
-            || hasExpensePaymentEvidence(current.internalNote) || hasExpensePaymentEvidence(payload.internal_note)) {
+            || hasExpensePaymentEvidence(current.internalNote) || hasExpensePaymentEvidence(fields.internalNote)) {
             throw new Error("expense_payment_details_confirmation");
         }
         assertExpenseCompanyOwner(scope, current.companyId, Reflect.get(current, "ownerId"));
