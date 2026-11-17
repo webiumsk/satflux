@@ -1,5 +1,28 @@
 # Project state
 
+## Expense supplier and received-credit source pushed - 2026-11-17
+
+The owner requested publication. Normal Git push publishes implementation commit
+`1ee599001c5edcb4b2431366a9e8223a806e5b90` to owned repository
+`webiumsk/satflux`, branch `feat/expense-supplier-credit-notes`, based on verified
+master `eee6cd01`. Direct remote Git confirms the same implementation SHA.
+
+The source commit includes exactly 59 scoped files: 49 independently accepted
+source/test/locale paths and ten matching guide/development documents. All 49
+reviewed blobs retain aggregate
+`bb7a48f142f9d4ec6ba8906462c729403ccafb758c8bfd2d1e1ca32d4b064c0f`.
+This publication follow-up changes five development documents only. Local and
+independent test/review evidence remains attributed to that unchanged source;
+no new remote CI pass is claimed. The CI workflow runs for master/main pushes
+and pull requests, not an isolated feature-branch push.
+
+The feature checkout is otherwise clean and tracks its matching origin branch.
+Primary remains `fix/sepa-confirmation-isolation` with unrelated work preserved.
+No PR creation, review-bot request, merge, release, deployment, package publication
+or external-repository write is performed. Next is owner review of the published
+branch. Public changelog publication remains tied to its normal deployment gate.
+See [scope and validation](EXPENSE_SUPPLIER_CREDITS.md).
+
 ## Structured expense suppliers and manual received credits accepted locally - 2026-11-17
 
 The owner-authorized implementation is complete in retained worktree

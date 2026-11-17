@@ -108,3 +108,16 @@ Private hash manifests and independent review/browser reports are retained in
 `storage/app/private/reviews/expense-supplier-credit-notes/`. A publication
 changelog fragment awaits an actual authorized PR URL; no placeholder source URL
 or public announcement is created for this local implementation.
+
+## Source publication - 2026-11-17
+
+The owner requested push. Implementation commit
+`1ee599001c5edcb4b2431366a9e8223a806e5b90` is published on
+[`feat/expense-supplier-credit-notes`](https://github.com/webiumsk/satflux/tree/feat/expense-supplier-credit-notes)
+in `webiumsk/satflux`. Direct remote Git confirms the same SHA. Its 59-path scope
+contains exactly the accepted 49-source freeze and ten accompanying documents.
+The follow-up commit changes five development documents only; source and
+validation aggregates remain unchanged. Feature-branch push alone does not run
+the repository's PR/master CI. No new CI, PR review or deployment pass is claimed.
+No PR, merge, release or deployment is performed. The previous uncommitted/local
+statements above describe the earlier acceptance checkpoint.
