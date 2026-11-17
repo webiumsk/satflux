@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Invoicing;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class StoreBusinessExpenseRequest extends FormRequest
 {
@@ -18,6 +19,17 @@ class StoreBusinessExpenseRequest extends FormRequest
         }
     }
 
+    /** @return array<callable(Validator): void> */
+    public function after(): array
+    {
+        return [function (Validator $validator): void {
+            if ($this->input('payment_details_confirmation') !== null
+                && ($this->boolean('mark_paid') || $this->input('paid_at') !== null)) {
+                $validator->errors()->add('payment_details_confirmation', 'Payment details changed or existing payment evidence requires review.');
+            }
+        }];
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -28,6 +40,7 @@ class StoreBusinessExpenseRequest extends FormRequest
             'supplier_name' => ['nullable', 'string', 'max:255'],
             'supplier_iban' => ['nullable', 'string', 'max:34'],
             'payment_review_required' => ['nullable', 'boolean'],
+            'payment_details_confirmation' => ['nullable', 'string', 'max:2048'],
             'title' => ['nullable', 'string', 'max:255'],
             'external_number' => ['nullable', 'string', 'max:64'],
             'variable_symbol' => ['nullable', 'string', 'max:32'],

@@ -106,14 +106,15 @@ vi.mock("@/components/invoicing/ExpenseShowSidebar.vue", () => ({ default: {
 } }));
 vi.mock("@/components/invoicing/ExpenseAttachmentPanel.vue", () => ({ default: {
     name: "ExpenseAttachmentPanel",
-    props: ["fileName", "hasPending", "detectError", "detecting", "previewUrl", "previewKind"],
-    emits: ["file-selected", "files-selected", "clear", "select-pending", "remove-pending", "select-attachment", "download", "remove-saved"],
+    props: ["fileName", "hasPending", "detectError", "detecting", "previewUrl", "previewKind", "pendingFiles", "selectedPendingId"],
+    emits: ["file-selected", "files-selected", "clear", "select-pending", "remove-pending", "select-attachment", "download", "remove-saved", "check-isdoc"],
     template: '<section data-test="attachment-panel"><span>{{ fileName }}</span><p>{{ detectError }}</p></section>',
 } }));
 vi.mock("@/evolu/bankCrud", () => ({ releaseLocalExpenseBankClaim: mocks.release }));
 import ExpenseForm from "@/pages/invoicing/ExpenseForm.vue";
 import ExpenseShow from "@/pages/invoicing/ExpenseShow.vue";
 import ExpenseIsdocExtractModal from "@/components/invoicing/ExpenseIsdocExtractModal.vue";
+import ExpenseAttachmentConsentModal from "@/components/invoicing/ExpenseAttachmentConsentModal.vue";
 
 type AttachmentInput = { filename: string; mimeType: string | null; contentBase64: string };
 function appendAttachment(_evolu: object, id: string, input: AttachmentInput) {
@@ -133,6 +134,7 @@ function deferred<T>() {
     return { promise, resolve, reject };
 }
 let wrapper: VueWrapper | undefined;
+let consentChoice = false;
 function render(kind: "new" | "show" = "new", local = true) {
     mocks.local = local;
     company.value = local ? localCompany : serverCompany;
@@ -147,12 +149,22 @@ function render(kind: "new" | "show" = "new", local = true) {
 async function select(file = pdf()) {
     wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).vm.$emit("file-selected", file);
     await flushPromises();
+    await settleConsentChoices();
+}
+async function settleConsentChoices() {
+    for (let step = 0; step < 20; step++) {
+        const modal = wrapper!.findComponent(ExpenseAttachmentConsentModal);
+        if (!modal.exists() || !modal.props("open")) break;
+        modal.vm.$emit(consentChoice ? "confirm" : "skip");
+        await flushPromises();
+    }
 }
 function expectNoLegacyExpenseWrites() {
     for (const call of [mocks.get, mocks.update, mocks.create, mocks.upload, mocks.detect, mocks.extract, mocks.purchase]) expect(call).not.toHaveBeenCalled();
 }
 beforeEach(() => {
     vi.resetAllMocks();
+    consentChoice = false;
     mocks.release.mockResolvedValue(undefined);
     mocks.local = true;
     mocks.displayForeign = false;
@@ -258,6 +270,7 @@ describe("expense attachment page integration", () => {
         await flushPromises();
         wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).vm.$emit("files-selected", [pdf("first.pdf"), pdf("second.pdf")]);
         await flushPromises();
+        await settleConsentChoices();
         await wrapper!.find("form").trigger("submit");
         await flushPromises();
         expect(mocks.push).not.toHaveBeenCalled();
@@ -289,7 +302,7 @@ describe("expense attachment page integration", () => {
         panel.vm.$emit("file-selected", pdf("late-single.pdf"));
         panel.vm.$emit("files-selected", [pdf("late-multiple.pdf")]);
         await flushPromises();
-        expect(window.confirm).toHaveBeenCalledOnce();
+        expect(window.confirm).not.toHaveBeenCalled();
         expect(panel.props("fileName")).toBe("original.pdf");
         expect(mocks.localDetect).not.toHaveBeenCalled();
         expect(mocks.read).toHaveBeenCalledOnce();
@@ -397,7 +410,7 @@ describe("expense attachment page integration", () => {
     });
 
     it("applies confirmed extracted fields and the attachment only through Evolu", async () => {
-        vi.mocked(window.confirm).mockReturnValue(true);
+        consentChoice = true;
         mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
         render("show");
         await flushPromises();
@@ -420,7 +433,7 @@ describe("expense attachment page integration", () => {
         models.value[0].supplier_name = "Saved supplier";
         models.value[0].supplier_iban = "CZ6508000000192000145399";
         models.value[0].company_contact_id = "saved-contact";
-        vi.mocked(window.confirm).mockReturnValue(true);
+        consentChoice = true;
         mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
         mocks.localExtract.mockResolvedValue({ data: { ...draft, supplier_name: "Changed supplier", supplier_iban: "SK6807200002891987426353", payment_review_required }, quota });
         render("show"); await flushPromises(); await select();
@@ -434,7 +447,7 @@ describe("expense attachment page integration", () => {
         models.value[0].variable_symbol = "0042";
         models.value[0].supplier_name = "Saved supplier";
         models.value[0].supplier_iban = "CZ6508000000192000145399";
-        vi.mocked(window.confirm).mockReturnValue(true);
+        consentChoice = true;
         mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
         mocks.localExtract.mockResolvedValue({ data: { ...draft, variable_symbol }, quota });
         render("show"); await flushPromises(); await select();
@@ -449,7 +462,7 @@ describe("expense attachment page integration", () => {
         models.value[0].variable_symbol = "0042";
         models.value[0].supplier_name = "Saved supplier";
         models.value[0].supplier_iban = "CZ6508000000192000145399";
-        vi.mocked(window.confirm).mockReturnValue(true);
+        consentChoice = true;
         mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
         mocks.localExtract.mockResolvedValue({ data: { ...draft, supplier_name: "Different XML supplier", variable_symbol: "0007" }, quota });
         render("show"); await flushPromises(); await select();
@@ -461,7 +474,7 @@ describe("expense attachment page integration", () => {
     });
 
     it("preserves saved null recipient fields during detail re-extraction", async () => {
-        vi.mocked(window.confirm).mockReturnValue(true);
+        consentChoice = true;
         mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
         mocks.localExtract.mockResolvedValue({ data: { ...draft, supplier_name: "Imported supplier", supplier_iban: "SK6807200002891987426353" }, quota });
         render("show"); await flushPromises(); await select();
@@ -472,7 +485,7 @@ describe("expense attachment page integration", () => {
     });
 
     it("keeps the PDF as a local attachment when field extraction is skipped", async () => {
-        vi.mocked(window.confirm).mockReturnValue(true);
+        consentChoice = true;
         mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
         render("show");
         await flushPromises();
@@ -486,7 +499,7 @@ describe("expense attachment page integration", () => {
     });
 
     it("keeps every dismissal path closed while extraction is pending", async () => {
-        vi.mocked(window.confirm).mockReturnValue(true);
+        consentChoice = true;
         mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
         const extraction = deferred<{ data: typeof draft; quota: typeof quota }>();
         mocks.localExtract.mockReturnValue(extraction.promise);
@@ -513,7 +526,7 @@ describe("expense attachment page integration", () => {
     });
 
     it("allows attachment-only saving after a confirmed extraction is rejected for quota", async () => {
-        vi.mocked(window.confirm).mockReturnValue(true);
+        consentChoice = true;
         mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
         mocks.localExtract.mockRejectedValue({ response: { data: { errors: { quota: ["Synthetic quota exhausted"] } } } });
         render("show");
@@ -536,7 +549,7 @@ describe("expense attachment page integration", () => {
     });
 
     it("keeps new file selection blocked through the extracted draft's local refresh", async () => {
-        vi.mocked(window.confirm).mockReturnValue(true);
+        consentChoice = true;
         mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
         render("show");
         await flushPromises();
@@ -550,7 +563,7 @@ describe("expense attachment page integration", () => {
         panel.vm.$emit("file-selected", pdf("late-during-apply.pdf"));
         panel.vm.$emit("files-selected", [pdf("late-multiple-during-apply.pdf")]);
         await flushPromises();
-        expect(window.confirm).toHaveBeenCalledOnce();
+        expect(window.confirm).not.toHaveBeenCalled();
         expect(mocks.localDetect).toHaveBeenCalledOnce();
         expect(mocks.insertAttachment).not.toHaveBeenCalled();
         refreshed.resolve();
@@ -559,12 +572,130 @@ describe("expense attachment page integration", () => {
         expect(mocks.insertAttachment.mock.calls[0][2]).toMatchObject({ filename: "synthetic.pdf" });
     });
 
+    it.each([true, false])("retains a failed detail check for retry in local mode %s", async local => {
+        consentChoice = true;
+        if (!local) models.value = [fixture("expense-a", serverCompany)];
+        const detect = local ? mocks.localDetect : mocks.detect;
+        detect.mockRejectedValueOnce(new Error("synthetic failure"));
+        render("show", local); await flushPromises(); await select();
+        const panel = wrapper!.findComponent({ name: "ExpenseAttachmentPanel" });
+        expect(panel.props("fileName")).toBe("synthetic.pdf");
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        expect(mocks.upload).not.toHaveBeenCalled();
+        detect.mockResolvedValueOnce({ has_isdoc: true, quota });
+        panel.vm.$emit("check-isdoc"); await flushPromises(); await settleConsentChoices();
+        expect(wrapper!.findComponent(ExpenseIsdocExtractModal).props("open")).toBe(true);
+        expect(detect).toHaveBeenCalledTimes(2);
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        expect(mocks.upload).not.toHaveBeenCalled();
+    });
+
+    it.each([true, false])("retries the selected earlier failed detail file in local mode %s", async local => {
+        consentChoice = true;
+        if (!local) models.value = [fixture("expense-a", serverCompany)];
+        const detect = local ? mocks.localDetect : mocks.detect;
+        detect.mockRejectedValue(new Error("synthetic failure"));
+        render("show", local); await flushPromises();
+        const panel = wrapper!.findComponent({ name: "ExpenseAttachmentPanel" });
+        panel.vm.$emit("files-selected", [pdf("first.pdf"), pdf("second.pdf")]);
+        await flushPromises(); await settleConsentChoices();
+        const pending = panel.props("pendingFiles") as { id: string; name: string }[];
+        expect(pending.map(file => file.name)).toEqual(["first.pdf", "second.pdf"]);
+        expect(panel.props("fileName")).toBe("second.pdf");
+        panel.vm.$emit("select-pending", pending[0]!.id); await flushPromises();
+        expect(panel.props("selectedPendingId")).toBe(pending[0]!.id);
+        expect(panel.props("fileName")).toBe("first.pdf");
+        detect.mockResolvedValueOnce({ has_isdoc: true, quota });
+        panel.vm.$emit("check-isdoc"); await flushPromises(); await settleConsentChoices();
+        const args = detect.mock.lastCall!;
+        const file = (args[local ? 0 : 1] as FormData).get("file") as File;
+        expect(file.name).toBe("first.pdf");
+        expect(wrapper!.findComponent(ExpenseIsdocExtractModal).props("open")).toBe(true);
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        expect(mocks.upload).not.toHaveBeenCalled();
+    });
+
+    it.each([true, false])("saves remaining resolved detail files after removing a failed file in local mode %s", async local => {
+        consentChoice = true;
+        if (!local) models.value = [fixture("expense-a", serverCompany)];
+        const detect = local ? mocks.localDetect : mocks.detect;
+        detect.mockRejectedValueOnce(new Error("synthetic failure"));
+        render("show", local); await flushPromises();
+        const panel = wrapper!.findComponent({ name: "ExpenseAttachmentPanel" });
+        panel.vm.$emit("files-selected", [pdf("failed.pdf"), pdf("remaining.pdf")]);
+        await flushPromises(); await settleConsentChoices();
+        const pending = panel.props("pendingFiles") as { id: string; name: string }[];
+        expect(pending.map(file => file.name)).toEqual(["failed.pdf", "remaining.pdf"]);
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        expect(mocks.upload).not.toHaveBeenCalled();
+        panel.vm.$emit("remove-pending", pending[0]!.id); await flushPromises();
+        expect(panel.props("pendingFiles")).toEqual([]);
+        if (local) {
+            expect(mocks.insertAttachment).toHaveBeenCalledOnce();
+            expect(mocks.insertAttachment.mock.calls[0]![2]).toMatchObject({ filename: "remaining.pdf" });
+            expect(mocks.upload).not.toHaveBeenCalled();
+        } else {
+            expect(mocks.upload).toHaveBeenCalledOnce();
+            expect((mocks.upload.mock.calls[0]![2] as FormData).get("file")).toHaveProperty("name", "remaining.pdf");
+            expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        }
+        expect(mocks.localExtract).not.toHaveBeenCalled();
+        expect(mocks.extract).not.toHaveBeenCalled();
+    });
+
+    it("blocks the next consent decision until the previous extracted draft is saved", async () => {
+        mocks.localDetect.mockResolvedValueOnce({ has_isdoc: true, quota });
+        const write = deferred<{ ok: true; value: { id: string } }>();
+        mocks.updateExpense.mockReturnValueOnce(write.promise);
+        render("show"); await flushPromises();
+        const panel = wrapper!.findComponent({ name: "ExpenseAttachmentPanel" });
+        panel.vm.$emit("files-selected", [pdf("first.pdf"), pdf("second.pdf")]);
+        await flushPromises();
+        const consent = wrapper!.findComponent(ExpenseAttachmentConsentModal);
+        consent.vm.$emit("confirm"); await flushPromises();
+        wrapper!.findComponent(ExpenseIsdocExtractModal).vm.$emit("confirm");
+        await flushPromises();
+        expect(mocks.updateExpense).toHaveBeenCalledOnce();
+        expect(consent.props("open")).toBe(true);
+        expect(consent.props("fileName")).toBe("second.pdf");
+        expect(consent.props("busy")).toBe(true);
+        expect(consent.findAll("button").every(button => button.attributes("disabled") !== undefined)).toBe(true);
+        // Guard emitted actions too, independently of the modal's disabled buttons.
+        consent.vm.$emit("confirm");
+        consent.vm.$emit("skip");
+        const pending = panel.props("pendingFiles") as { id: string }[];
+        panel.vm.$emit("remove-pending", pending[0]!.id); await flushPromises();
+        expect(panel.props("pendingFiles")).toHaveLength(2);
+        expect(mocks.localDetect).toHaveBeenCalledOnce();
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        expect(consent.props("open")).toBe(true);
+        write.resolve({ ok: true, value: { id: "expense-a" } }); await flushPromises();
+        expect(consent.props("busy")).toBe(false);
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        consent.vm.$emit("skip"); await flushPromises();
+        expect(mocks.insertAttachment).toHaveBeenCalledTimes(2);
+        expect(mocks.localDetect).toHaveBeenCalledOnce();
+    });
+
+    it("keeps a failed detail attachment only after explicit user choice", async () => {
+        consentChoice = true;
+        mocks.localDetect.mockRejectedValueOnce(new Error("synthetic failure"));
+        render("show"); await flushPromises(); await select();
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        const keep = wrapper!.findAll("button").find(button => button.text() === en.invoicing.expense_attachment_processing_skip)!;
+        await keep.trigger("click"); await flushPromises();
+        expect(mocks.insertAttachment).toHaveBeenCalledOnce();
+        expect(mocks.localDetect).toHaveBeenCalledOnce();
+        expect(mocks.localExtract).not.toHaveBeenCalled();
+    });
+
     it("shows a local upload failure and retries only remaining files without extracting again", async () => {
         mocks.insertAttachment.mockImplementationOnce(appendAttachment).mockReturnValueOnce({ ok: false, error: "synthetic insert rejection" });
         render("show");
         await flushPromises();
         wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).vm.$emit("files-selected", [pdf("first.pdf"), pdf("second.pdf")]);
         await flushPromises();
+        await settleConsentChoices();
         expect(wrapper!.text()).toContain(en.invoicing.expense_attachment_upload_failed);
         expect(models.value[0].attachments).toHaveLength(1);
         expect(wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).props("fileName")).toBe("second.pdf");
@@ -597,7 +728,7 @@ describe("expense attachment page integration", () => {
     });
 
     it("does not apply a late extraction to another expense", async () => {
-        vi.mocked(window.confirm).mockReturnValue(true);
+        consentChoice = true;
         mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
         const extraction = deferred<{ data: typeof draft; quota: typeof quota }>();
         mocks.localExtract.mockReturnValue(extraction.promise);
@@ -832,7 +963,7 @@ describe('embedded PDFs from preserved expense XML', () => {
             .mockReturnValueOnce(firstBlob).mockReturnValue(xmlBlob(embeddedXml('restored.pdf')));
         mocks.blob.mockResolvedValueOnce(xmlBlob(embeddedXml('initial.pdf')))
             .mockResolvedValueOnce(firstBlob).mockResolvedValue(xmlBlob(embeddedXml('restored.pdf')));
-        vi.mocked(window.confirm).mockReturnValue(true);
+        consentChoice = true;
         for (const detect of [mocks.detect, mocks.localDetect]) detect.mockResolvedValue({ has_isdoc: true, quota });
         render('show', local);
         await flushPromises();

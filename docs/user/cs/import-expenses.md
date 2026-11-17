@@ -51,7 +51,7 @@ Součet neuhrazených nákladů zahrnuje celé částky dokladů, které nejsou 
 
 Otevřete konkrétní náklad a přidejte jeho PDF. V lokálním účetnictví se přílohy i vytěžené údaje ukládají mezi vaše šifrovaná lokální data. Jedna lokální příloha může mít nejvýše **10 MiB**. Ve formuláři vytvoření nebo úpravy zvolte **Uložit**, aby se uložily připravené přílohy. V detailu nákladu se přílohy uloží ihned po dokončení nebo přeskočení volitelného zpracování ISDOC.
 
-Můžete povolit dočasné zpracování souboru na serveru pro detekci vložených údajů ISDOC. Zrušením zůstane příloha pouze lokálně. Pokud se ISDOC najde, samostatně potvrďte extrakci údajů nebo ponechte pouze přílohu. Extrakce využívá váš stávající limit a kredity; nejde o OCR. Po vyčerpání limitu můžete soubor stále přiložit a údaje zadat ručně.
+Hned po výběru souboru se aplikace zeptá na povolení dočasného zpracování na serveru pro kontrolu vložených údajů ISDOC. Volbou ponechat přílohu bez zpracování kontrolu přeskočíte. U přílohy vidíte, zda kontrola čeká, byla přeskočena, dokončena nebo selhala; před uložením ji můžete zopakovat. Pokud se ISDOC najde, samostatně potvrďte extrakci údajů nebo ponechte pouze přílohu. Kontrola i extrakce proběhnou před **Uložit**; dokud čeká rozhodnutí o zpracování, uložení není dostupné. Extrakce využívá váš stávající limit a kredity; nejde o OCR. Po vyčerpání limitu můžete soubor stále přiložit a údaje zadat ručně.
 
 Pokud se ukládání větší přílohy přeruší, opakujte ho, dokud je soubor stále vybraný. Po obnovení stránky odstraňte neúplnou přílohu a znovu vyberte původní soubor. Před vytvořením úplné zálohy dokončete nahrávání nebo neúplnou přílohu odstraňte.
 
@@ -65,7 +65,7 @@ Uložený náklad si ponechá název a účet i po pozdější změně kontaktu.
 
 U neuhrazeného nákladu v EUR s kladnou částkou, názvem dodavatele do 70 znaků, platným IBANem a variabilním symbolem do 10 číslic klikněte na **Platební QR**. Vyberte **PAY by square** nebo **PayMe**. V bankovní aplikaci ověřte příjemce, přesnou částku a variabilní symbol. Vytvoření ani naskenování QR neoznačí náklad jako uhrazený. Pro větší přesné částky nepodporované PayMe použijte PAY by square.
 
-Bez IBANu se QR nezobrazí. Uhrazené a zrušené náklady, sporná bankovní párování, záporné dobropisy a importy vyžadující kontrolu úhrady nemají platební QR. Výběr kontaktu neobejde částečné či zálohové platby ani nejednoznačné údaje z importu. Starší záznamy ISDOC/Peppol bez platebních podkladů zůstávají blokované. Údaje dodavatele z poznámky se do platebních polí nepřebírají.
+Bez IBANu se QR nezobrazí. Uhrazené a zrušené náklady, sporná bankovní párování, záporné dobropisy a importy vyžadující kontrolu úhrady nemají platební QR. Výběr kontaktu kontrolu úhrady nenahrazuje. U staršího neuhrazeného nákladu ISDOC/Peppol otevřete **Upravit**, zkontrolujte původní doklad a historii plateb a potvrďte přesného příjemce, IBAN, částku, měnu, variabilní symbol a to, že celá částka zůstává neuhrazená. Po uložení bude **Platební QR** dostupné v seznamu nákladů. Pokud platební údaje změníte před uložením, potvrďte je znovu. Evidované datum platby, nenulová nebo nejasná uhrazená částka a bankovní propojení toto potvrzení neumožňují. Údaje dodavatele z poznámky se do platebních polí nepřebírají.
 
 ## Ruční přidání přijatého dobropisu
 

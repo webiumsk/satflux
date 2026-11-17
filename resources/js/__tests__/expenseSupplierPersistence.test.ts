@@ -4,6 +4,7 @@ import type { Evolu } from '@evolu/common/local-first';
 import { insertLocalExpense, updateLocalExpense, updateLocalExpenseNote, duplicateLocalExpense } from '@/evolu/expenseCrud';
 import { evoluExpenseToApi, type EvoluExpenseRow } from '@/evolu/expenseMap';
 import { ContactId, type CompanyId, type ExpenseId, type InvoicingLocalSchema } from '@/evolu/schema';
+import { expensePaymentConfirmationTuple } from '@/utils/expensePaymentReview';
 import { expensePaymentQrDetails } from '@/utils/expensePaymentQr';
 import { installBankLocks } from './bankReconciliationTestSupport';
 import { createExpenseWriterTestAdapter } from './expenseReconciliationTestSupport';
@@ -111,5 +112,84 @@ describe('structured expense supplier persistence', () => {
         expect(expensePaymentQrDetails(evoluExpenseToApi(data.saved()))).toBeNull();
         await updateLocalExpense(data.evolu, expenseId, { ...base, total: '-9.50' });
         expect(evoluExpenseToApi(data.saved()).total).toBe('-9.50');
+    });
+});
+
+
+describe('legacy expense payment review recovery', () => {
+    it('makes edited legacy payment QR available only after exact explicit manual verification', async () => {
+        const data = adapter();
+        await insertLocalExpense(data.evolu, companyId, { ...base, payment_review_required: true, internal_note: 'Imported from ISDOC.' }, []);
+        await updateLocalExpense(data.evolu, expenseId, base);
+        expect(expensePaymentQrDetails(evoluExpenseToApi(data.saved()))).toBeNull();
+        const confirmation = expensePaymentConfirmationTuple(base)!;
+        expect((await updateLocalExpense(data.evolu, expenseId, { ...base, payment_details_confirmation: confirmation })).ok).toBe(true);
+        expect(evoluExpenseToApi(data.saved())).toMatchObject({ payment_review_required: false, status: 'recorded', paid_at: null });
+        expect(expensePaymentQrDetails(evoluExpenseToApi(data.saved()))?.iban).toBe(iban);
+        expect(data.saved()).not.toHaveProperty('payment_details_confirmation');
+    });
+    it.each([{ supplier_name: 'Other recipient' }, { supplier_iban: 'CZ6508000000192000145399' },
+        { total: '20.00' }, { currency: 'USD' }, { variable_symbol: '00020' }])('rejects a confirmation after instructions change %j', async patch => {
+        const data = adapter();
+        await insertLocalExpense(data.evolu, companyId, { ...base, payment_review_required: true }, []);
+        await expect(updateLocalExpense(data.evolu, expenseId, { ...base, ...patch,
+            payment_details_confirmation: expensePaymentConfirmationTuple(base) })).rejects.toThrow('expense_payment_details_confirmation');
+        expect(data.saved().paymentReviewRequired).toBe(1);
+    });
+    it.each(['Payment amount: 2.00', 'Payment amount: unknown', 'Payment date: 2026-11-17'])('preserves original payment evidence even when the edited note clears it: %s', async note => {
+        const data = adapter();
+        await insertLocalExpense(data.evolu, companyId, { ...base, internal_note: note, payment_review_required: true }, []);
+        await expect(updateLocalExpense(data.evolu, expenseId, { ...base, internal_note: null,
+            payment_details_confirmation: expensePaymentConfirmationTuple(base) })).rejects.toThrow('expense_payment_details_confirmation');
+        expect(data.saved().internalNote).toBe(note);
+        expect(data.saved().paymentReviewRequired).toBe(1);
+    });
+    it.each([{ status: 'paid' }, { paidAt: '2026-11-17' }, { cancelledAt: '2026-11-17' }, { bankMatchConflict: true }])('does not manually approve incompatible saved payment state %j', async patch => {
+        const data = adapter();
+        await insertLocalExpense(data.evolu, companyId, { ...base, payment_review_required: true }, []);
+        Object.assign(data.state.expense[0], patch);
+        await expect(updateLocalExpense(data.evolu, expenseId, { ...base,
+            payment_details_confirmation: expensePaymentConfirmationTuple(base) })).rejects.toThrow('expense_payment_details_confirmation');
+        expect(data.saved().paymentReviewRequired).toBe(1);
+    });
+    it('rejects a fresh bank association before changing review disposition', async () => {
+        const data = adapter();
+        await insertLocalExpense(data.evolu, companyId, { ...base, payment_review_required: true }, []);
+        data.state.bankTransaction.push({ id: 'linked-bank', companyId, ownerId: data.appOwnerId, businessExpenseId: expenseId });
+        await expect(updateLocalExpense(data.evolu, expenseId, { ...base,
+            payment_details_confirmation: expensePaymentConfirmationTuple(base) })).rejects.toThrow('expense_payment_details_confirmation');
+        expect(data.saved().paymentReviewRequired).toBe(1);
+    });
+    it.each(['create', 'update'].flatMap(operation => [
+        ' Payment amount: 2.00', '\n\tPayment amount: unknown  ', '\u00a0Payment date: 2026-11-17 ',
+    ].map(note => ({ operation, note }))))('rejects normalized payment evidence on $operation: $note', async ({ operation, note }) => {
+        const data = adapter();
+        if (operation === 'update') await insertLocalExpense(data.evolu, companyId, { ...base, payment_review_required: true }, []);
+        const before = operation === 'update' ? { ...data.saved() } : null;
+        const payload = { ...base, internal_note: note, payment_details_confirmation: expensePaymentConfirmationTuple(base) };
+        await expect(operation === 'create' ? insertLocalExpense(data.evolu, companyId, payload, [])
+            : updateLocalExpense(data.evolu, expenseId, payload)).rejects.toThrow('expense_payment_details_confirmation');
+        expect(data.state.expense).toHaveLength(operation === 'create' ? 0 : 1);
+        if (before) expect(data.saved()).toEqual(before);
+    });
+    it.each(['create', 'update'].flatMap(operation => ['Imported from ISDOC.', 'Payment amount: 0.00']
+        .map(note => ({ operation, note }))))('allows normalized non-payment notes on $operation: $note', async ({ operation, note }) => {
+        const data = adapter();
+        if (operation === 'update') await insertLocalExpense(data.evolu, companyId, { ...base, payment_review_required: true }, []);
+        const payload = { ...base, payment_review_required: true, internal_note: ` \n${note} \t`,
+            payment_details_confirmation: expensePaymentConfirmationTuple(base) };
+        const result = operation === 'create' ? await insertLocalExpense(data.evolu, companyId, payload, [])
+            : await updateLocalExpense(data.evolu, expenseId, payload);
+        expect(result.ok).toBe(true);
+        expect(data.saved()).toMatchObject({ internalNote: note, paymentReviewRequired: 0 });
+        expect(expensePaymentQrDetails(evoluExpenseToApi(data.saved()))?.iban).toBe(iban);
+    });
+    it('allows reviewed manual creation but never combines confirmation with mark-paid intent', async () => {
+        const data = adapter();
+        const payload = { ...base, payment_review_required: true, payment_details_confirmation: expensePaymentConfirmationTuple(base) };
+        expect((await insertLocalExpense(data.evolu, companyId, payload, [])).ok).toBe(true);
+        expect(data.saved().paymentReviewRequired).toBe(0);
+        await expect(insertLocalExpense(data.evolu, companyId, { ...payload, mark_paid: true }, [])).rejects.toThrow('expense_payment_details_confirmation');
+        expect(data.state.expense).toHaveLength(1);
     });
 });

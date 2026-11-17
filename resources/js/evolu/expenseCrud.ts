@@ -2,7 +2,7 @@ import { effectiveExpensePayment, hasExpenseBankAssociation } from "./bankExpens
 import { bankPaymentCurrency } from "./bankPaymentValues";
 import { booleanToSqliteBoolean, maxLength, NonEmptyString } from "@evolu/common";
 import { normalizePaymentIban } from "@/utils/paymentIban";
-import { expensePaymentReviewRequired } from "@/utils/expensePaymentReview";
+import { expensePaymentConfirmationTuple, expensePaymentReviewRequired, hasExpensePaymentEvidence } from "@/utils/expensePaymentReview";
 import type { Evolu } from "@evolu/common/local-first";
 import type { EvoluExpenseRow } from "./expenseMap";
 import { ContactId, type CompanyId, type ExpenseId, type InvoicingLocalSchema } from "./schema";
@@ -19,6 +19,7 @@ const InternalNumberType = maxLength(64)(NonEmptyString);
 const CurrencyType = maxLength(3)(NonEmptyString);
 
 export type ExpenseSavePayload = {
+    payment_details_confirmation?: string | null;
     company_contact_id?: string | null;
     supplier_name?: string | null;
     supplier_iban?: string | null;
@@ -151,6 +152,14 @@ function insertLocalExpenseCore(
     if (!internalNumber.ok) return internalNumber;
 
     const markPaid = Boolean(payload.mark_paid);
+    if (payload.payment_details_confirmation != null) {
+        const tuple = expensePaymentConfirmationTuple(payload);
+        if (!tuple || payload.payment_details_confirmation !== tuple || markPaid || payload.paid_at
+            || options?.bankPaymentClaimJson || hasExpensePaymentEvidence(mapped.value.internalNote)) {
+            throw new Error("expense_payment_details_confirmation");
+        }
+        mapped.value.paymentReviewRequired = booleanToSqliteBoolean(false);
+    }
     const now = new Date().toISOString();
     const row = {
         companyId,
@@ -198,6 +207,24 @@ function updateLocalExpenseCore(
         expensePaymentReviewRequired(current?.paymentReviewRequired, current?.internalNote)
         || (payload.payment_review_required != null && payload.payment_review_required),
     );
+    if (payload.payment_details_confirmation != null) {
+        const scope = expenseReconciliationScope(evolu);
+        const effective = current && effectiveExpensePayment(current, scope.context.transactions, scope.context.matches);
+        const tuple = expensePaymentConfirmationTuple({
+            supplier_name: "supplierName" in fields ? fields.supplierName : current?.supplierName,
+            supplier_iban: "supplierIban" in fields ? fields.supplierIban : current?.supplierIban,
+            total: payload.total, currency: fields.currency, variable_symbol: fields.variableSymbol,
+        });
+        if (!current || !effective || !tuple || payload.payment_details_confirmation !== tuple
+            || current.status !== "recorded" || effective.status !== "recorded" || current.paidAt || effective.paidAt
+            || current.cancelledAt || effective.bankMatchConflict || payload.mark_paid || payload.paid_at
+            || hasExpenseBankAssociation(current, scope.context)
+            || hasExpensePaymentEvidence(current.internalNote) || hasExpensePaymentEvidence(fields.internalNote)) {
+            throw new Error("expense_payment_details_confirmation");
+        }
+        assertExpenseCompanyOwner(scope, current.companyId, Reflect.get(current, "ownerId"));
+        fields.paymentReviewRequired = booleanToSqliteBoolean(false);
+    }
     if (current && hasExpenseBankAssociation(current, expenseReconciliationScope(evolu).context)) {
         const beforeAmount = canonicalExpenseCents(current.total);
         const afterAmount = canonicalExpenseCents(fields.total);

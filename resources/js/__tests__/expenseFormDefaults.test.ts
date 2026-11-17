@@ -4,6 +4,7 @@ import { reactive, ref } from 'vue';
 import type { CompanyContactRow } from '@/composables/useCompanyContact';
 import { createI18n } from 'vue-i18n';
 import en from '@/locales/en.json';
+import { expensePaymentConfirmationTuple } from '@/utils/expensePaymentReview';
 import { expensePaymentQrDetails } from '@/utils/expensePaymentQr';
 
 const mocks = vi.hoisted(() => ({
@@ -14,6 +15,8 @@ const mocks = vi.hoisted(() => ({
 }));
 const supplierContacts = ref<CompanyContactRow[]>([]);
 const contactsLoading = ref(false);
+const processingPending = ref(false);
+const paymentRouting = ref('private');
 const companyId = ref('abcdefghijklmnopqrstuv');
 const route = reactive({ name: 'invoicing-expense-new', params: {} as { expenseId?: string },
   query: {} as { duplicate?: string | string[] | null; credit_note?: string; source_expense?: string } });
@@ -21,6 +24,7 @@ const existingExpense = {
   id: 'synthetic-expense', internal_number: 'EXP20260001', title: 'Synthetic expense',
   external_number: 'DOC-0012', variable_symbol: '0099',
   issue_date: '2026-01-10', delivery_date: '2026-01-07' as string | null, due_date: null,
+  status: 'recorded', paid_at: null as string | null, bank_match_claim: null as string | null, bank_match_conflict: false,
   total: '12.00', currency: 'EUR', constant_symbol: null, specific_symbol: null,
   internal_note: null as string | null, company_contact_id: null as string | null, supplier_name: null as string | null,
   supplier_iban: null as string | null, payment_review_required: false as boolean | null,
@@ -30,7 +34,7 @@ vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push: 
 vi.mock('@/composables/useExpenseSupplierContacts', () => ({ useExpenseSupplierContacts: () => ({
   contacts: supplierContacts, loading: contactsLoading, failed: ref(false), refresh: vi.fn(),
 }) }));
-vi.mock('@/evolu/companyShareRegistry', () => ({ ownerIdForCompany: () => undefined, companyShareRoutingKey: () => 'private', waitCompanyShareRegistryReady: async () => {} }));
+vi.mock('@/evolu/companyShareRegistry', () => ({ ownerIdForCompany: () => undefined, companyShareRoutingKey: () => paymentRouting.value, waitCompanyShareRegistryReady: async () => {} }));
 vi.mock('@/evolu/flags', () => ({ isInvoicingLocalFirst: () => mocks.local }));
 vi.mock('@/evolu/client', () => ({ expenseByIdIncludingDeletedQuery: vi.fn() }));
 vi.mock('@/composables/useInvoicingLayout', () => ({ useInvoicingLayout: () => ({ companyId, rememberCompany: vi.fn() }) }));
@@ -47,6 +51,8 @@ vi.mock('@/composables/useExpenseIsdocAttachment', () => ({ useExpenseIsdocAttac
   quota: ref(null), pendingFiles: ref([]), pendingFileSummaries: ref([]), selectedPendingId: ref(null),
   pendingAttachmentName: ref(''), previewUrl: ref(null), previewKind: ref(null),
   lastDetectHasIsdoc: ref(false), detectError: ref(''), showExtractModal: ref(true),
+  showProcessingConsent: ref(false), processingConsentFileName: ref(''), detectionStatus: ref(null), hasUnresolvedProcessing: processingPending,
+  confirmProcessingConsent: vi.fn(), skipProcessingConsent: vi.fn(), retryDetection: vi.fn(),
   detecting: ref(false), extracting: ref(false), purchasing: ref(false),
   loadQuota: mocks.loadQuota, purchasePack: vi.fn(), onDocumentSelected: vi.fn(),
   onDocumentsSelected: vi.fn(), selectPendingFile: vi.fn(), removePendingFile: vi.fn(),
@@ -97,6 +103,12 @@ beforeEach(() => {
     { id: 'contact-other', name: 'Other supplier', iban: null },
   ];
   contactsLoading.value = false;
+  processingPending.value = false;
+  paymentRouting.value = 'private';
+  existingExpense.status = 'recorded';
+  existingExpense.paid_at = null;
+  existingExpense.bank_match_claim = null;
+  existingExpense.bank_match_conflict = false;
   existingExpense.company_contact_id = null;
   existingExpense.supplier_name = null;
   existingExpense.supplier_iban = null;
@@ -874,4 +886,83 @@ describe('company currency defaults and sparse extraction', () => {
       const payload = local ? mocks.insert.mock.calls[0][2] : mocks.create.mock.calls[0][1];
       expect(payload).toMatchObject({ variable_symbol: symbol || null, payment_review_required: false });
     });
+});
+
+
+describe('manual payment-details review in an edited legacy expense', () => {
+  async function legacyForm(local: boolean) {
+    existingExpense.payment_review_required = true;
+    existingExpense.internal_note = 'Imported from ISDOC.';
+    await render(local, true);
+    await wrapper!.get('#expense-supplier-contact').setValue('contact-bank');
+  }
+  it.each([true, false])('sends explicit verification for the current payment tuple only (local=%s)', async local => {
+    await legacyForm(local);
+    const checkbox = wrapper!.get('#expense-confirm-payment-details');
+    expect((checkbox.element as HTMLInputElement).checked).toBe(false);
+    await checkbox.setValue(true);
+    await wrapper!.get('form').trigger('submit');
+    await flushPromises();
+    const payload = (local ? mocks.updateLocal : mocks.update).mock.calls[0][2];
+    expect(payload.payment_details_confirmation).toBe(expensePaymentConfirmationTuple(payload));
+    expect(payload.payment_review_required).toBe(true);
+    expect(payload.mark_paid).toBeUndefined();
+  });
+  it.each([true, false])('does not treat selecting and saving a contact as completed verification (local=%s)', async local => {
+    await legacyForm(local);
+    await wrapper!.get('form').trigger('submit');
+    await flushPromises();
+    const payload = (local ? mocks.updateLocal : mocks.update).mock.calls[0][2];
+    expect(payload).not.toHaveProperty('payment_details_confirmation');
+    expect(payload.payment_review_required).toBe(true);
+  });
+  it.each(['name', 'iban', 'amount', 'currency', 'reference'])('invalidates checked verification after %s changes', async kind => {
+    await legacyForm(true);
+    await wrapper!.get('#expense-confirm-payment-details').setValue(true);
+    if (kind === 'name') await wrapper!.get('#expense-supplier-name').setValue('Corrected recipient');
+    if (kind === 'iban') await wrapper!.get('#expense-supplier-iban').setValue('CZ6508000000192000145399');
+    if (kind === 'amount') {
+      const label = wrapper!.findAll('form label').find(entry => entry.text() === en.invoicing.expense_col_total + ' *')!;
+      await new DOMWrapper(label.element.nextElementSibling as HTMLInputElement).setValue('13');
+    }
+    if (kind === 'currency') await wrapper!.findAll('form select').at(-1)!.setValue('USD');
+    if (kind === 'reference') await field('variable_symbol').setValue('000333');
+    await wrapper!.get('form').trigger('submit');
+    await flushPromises();
+    expect(mocks.updateLocal.mock.calls[0][2]).not.toHaveProperty('payment_details_confirmation');
+  });
+  it('invalidates verification when extraction or attachment processing starts', async () => {
+    await legacyForm(true);
+    await wrapper!.get('#expense-confirm-payment-details').setValue(true);
+    await extract({ supplier_name: 'Supplier A', variable_symbol: '0099', total: 12, currency: 'EUR' });
+    expect((wrapper!.get('#expense-confirm-payment-details').element as HTMLInputElement).checked).toBe(false);
+    await wrapper!.get('#expense-confirm-payment-details').setValue(true);
+    processingPending.value = true;
+    await flushPromises();
+    await wrapper!.get('form').trigger('submit');
+    await flushPromises();
+    expect(mocks.updateLocal).not.toHaveBeenCalled();
+    processingPending.value = false;
+    await flushPromises();
+    expect((wrapper!.get('#expense-confirm-payment-details').element as HTMLInputElement).checked).toBe(false);
+  });
+  it('invalidates verification after encrypted owner routing changes', async () => {
+    await legacyForm(true);
+    await wrapper!.get('#expense-confirm-payment-details').setValue(true);
+    paymentRouting.value = 'different-owner';
+    await flushPromises();
+    expect((wrapper!.get('#expense-confirm-payment-details').element as HTMLInputElement).checked).toBe(false);
+    await wrapper!.get('form').trigger('submit');
+    await flushPromises();
+    expect(mocks.updateLocal.mock.calls[0][2]).not.toHaveProperty('payment_details_confirmation');
+  });
+  it.each(['Payment amount: 2.00', 'Payment date: 2026-11-17'])('keeps concrete original payment evidence blocked after note edits: %s', async note => {
+    existingExpense.payment_review_required = true;
+    existingExpense.internal_note = note;
+    await render(true, true);
+    await wrapper!.get('#expense-supplier-contact').setValue('contact-bank');
+    expect(wrapper!.find('#expense-confirm-payment-details').exists()).toBe(false);
+    await wrapper!.get('textarea').setValue('');
+    expect(wrapper!.find('#expense-confirm-payment-details').exists()).toBe(false);
+  });
 });

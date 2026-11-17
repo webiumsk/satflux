@@ -1,5 +1,45 @@
 # Project state
 
+## PR455 review corrections accepted - 2026-11-17
+
+All three supplied findings reproduce on `0ec7e835` and are corrected: normalized
+payment-note evidence with the original-note veto retained, detail pending-file
+selection/removal and exact retry identity, and consent guards while extraction
+persistence is active. Only four source/test paths change. Main363 JS tests pass;
+independent QA136 and security178 plus final72 overlapping tests pass. Both
+reviewers accept delta4 aggregate
+`d25b336408ee491b38f3765246982bf8e14f390ca0e8bdf80d27109a61408baf`
+and complete23 aggregate
+`eab959184516561507d6be2789a7601661e69260ab80765921582f6a2bd14d22`.
+Full/scoped lint, unchanged107-error typecheck baseline, locale parity and
+production build pass. No ratchet is relaxed.
+
+PR455 is open; original-head CI44130077621 is successful. Correction-head CI is not
+yet claimed. Main will publish the reviewed correction to the same authorized
+branch; primary unrelated edits remain preserved. No merge/deployment occurs.
+[Finding disposition and evidence](EXPENSE_EDIT_QR_ISDOC.md).
+
+## Expense edit QR and ISDOC follow-up - 2026-11-17
+
+PR454 is verified merged at master `422bdd06`; earlier open-PR entries below are
+historical. The owner reports missing QR after editing an older imported expense
+and apparently deferred attachment extraction. Follow-up branch
+`fix/expense-edit-qr-isdoc` adds explicit manual payment confirmation for eligible
+unpaid expenses and visible per-file consent/status/retry immediately on selection.
+Original browser probes already detect/extract before Save; the reproduced defect
+is native-consent/status ambiguity, not a demonstrated Save-only parser trigger.
+
+Main validation passes348 JS tests,216 PHP tests/911 assertions (plus90/345 after
+the final equivalent enum accessor), lint/typecheck ratchets, locale parity,
+PHPStan/Pint and production build. Independent security accepts frozen23-path
+aggregate `2591f486fa32e6df3edac76fe17d4f0aad73df23446df5f5677a8af3dd000e0c`
+and all five guides. Independent QA accepts the same hashes, passes328 JS tests,
+90 PHP tests/345 assertions and22 native Chrome scenarios including decoded QR
+and detail failure/retry. The reviewed result is ready for branch publication and
+owner PR review; new-head remote CI is not yet claimed.
+[Evidence](EXPENSE_EDIT_QR_ISDOC.md). Primary unrelated edits remain preserved.
+No migration, production-data operation, merge or deployment is performed.
+
 ## PR454 currency and form-VS follow-up accepted - 2026-11-17
 
 Both subsequent owner findings reproduce on `a7fa749f` and are corrected. Company
