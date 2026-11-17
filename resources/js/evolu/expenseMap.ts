@@ -4,12 +4,17 @@ import {
     attachmentRowToApi,
     type EvoluExpenseAttachmentRow,
 } from "./expenseAttachmentCrud";
-import type { CompanyId, ExpenseId } from "./schema";
+import type { CompanyId, ContactId, ExpenseId } from "./schema";
+import { expensePaymentReviewRequired } from "@/utils/expensePaymentReview";
 import { expenseFilterCents, validExpenseListFilters, type ExpenseListFilterOptions } from "./expenseListFilters";
 export type { ExpenseListFilterOptions } from "./expenseListFilters";
 
 export type EvoluExpenseRow = {
     id: ExpenseId;
+    companyContactId?: ContactId | null;
+    supplierName?: string | null;
+    supplierIban?: string | null;
+    paymentReviewRequired?: number | boolean | null;
     bankPaymentClaimJson?: string | null;
     bankMatchConflict?: number | boolean;
     companyId: CompanyId;
@@ -55,6 +60,10 @@ export function evoluExpenseToApi(
 
     return {
         id: row.id,
+        company_contact_id: row.companyContactId ?? null,
+        supplier_name: row.supplierName ?? null,
+        supplier_iban: row.supplierIban ?? null,
+        payment_review_required: expensePaymentReviewRequired(row.paymentReviewRequired, row.internalNote),
         bank_match_conflict: Boolean(row.bankMatchConflict),
         bank_match_claim: row.bankPaymentClaimJson ?? null,
         internal_number: row.internalNumber,
@@ -86,6 +95,10 @@ export function evoluExpenseToListRow(
     const api = evoluExpenseToApi(row, attachments);
     return {
         id: api.id,
+        company_contact_id: api.company_contact_id,
+        supplier_name: api.supplier_name,
+        supplier_iban: api.supplier_iban,
+        payment_review_required: api.payment_review_required,
         bank_match_conflict: Boolean(api.bank_match_conflict),
         internal_number: api.internal_number,
         external_number: api.external_number,

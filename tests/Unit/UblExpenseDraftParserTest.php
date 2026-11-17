@@ -31,6 +31,12 @@ class UblExpenseDraftParserTest extends TestCase
 XML;
         $draft = (new UblExpenseDraftParser)->parse($xml);
         $this->assertSame($hasAccount, str_contains($draft['internal_note'], 'Supplier bank account:'));
+        $this->assertSame($hasAccount ? 'SK6807200002891987426353' : null, $draft['supplier_iban']);
+        if ($hasAccount) {
+            $this->assertFalse($draft['payment_review_required']);
+        } elseif ($documentType === 'CreditNote' || str_contains($extra, '<cac:LegalMonetaryTotal>')) {
+            $this->assertTrue($draft['payment_review_required']);
+        }
         if ($hasAccount) {
             $this->assertStringContainsString('Supplier bank account: SK6807200002891987426353', $draft['internal_note']);
         }
@@ -223,6 +229,7 @@ XML;
         $this->assertSame($expectedCurrency, $draft['currency']);
         $this->assertSame($expectedTotal, $draft['total']);
         $this->assertSame($hasAccount, str_contains($draft['internal_note'], 'Supplier bank account:'));
+        $this->assertSame(! $hasAccount, $draft['payment_review_required']);
     }
 
     /** @return array<string, array{string, string, string, string, string, bool}> */

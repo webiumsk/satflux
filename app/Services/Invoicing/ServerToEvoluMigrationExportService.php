@@ -22,6 +22,7 @@ use App\Models\User;
 use App\Support\Invoicing\CompanyAppSettings;
 use App\Support\Invoicing\CompanyEfakturaSettings;
 use App\Support\Invoicing\CompanyEmailSettings;
+use App\Support\Invoicing\ExpensePaymentReview;
 use App\Support\Invoicing\IsoCountryCode;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -748,6 +749,10 @@ class ServerToEvoluMigrationExportService
         return [
             'id' => $expense->id,
             'companyId' => $expense->company_id,
+            'companyContactId' => $expense->company_contact_id,
+            'supplierName' => $expense->supplier_name,
+            'supplierIban' => $expense->supplier_iban,
+            'paymentReviewRequired' => $this->boolToSqlite(ExpensePaymentReview::required($expense->payment_review_required, $expense->internal_note)),
             'status' => $this->enumValue($expense->status, 'recorded'),
             'internalNumber' => $expense->internal_number,
             'externalNumber' => $expense->external_number,

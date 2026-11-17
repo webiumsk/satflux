@@ -45,6 +45,10 @@ class BusinessExpenseController extends Controller
                 ->select([
                     'id',
                     'company_id',
+                    'company_contact_id',
+                    'supplier_name',
+                    'supplier_iban',
+                    'payment_review_required',
                     'status',
                     'internal_number',
                     'external_number',
@@ -120,7 +124,7 @@ class BusinessExpenseController extends Controller
             'external_number' => ['sometimes', 'nullable', 'string', 'max:64'],
             'title' => ['sometimes', 'nullable', 'string', 'max:255'],
             'issue_date' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
-            'total' => ['required', 'numeric', 'min:0'],
+            'total' => ['required', 'numeric', 'between:-999999999999.99,999999999999.99'],
             'currency' => ['required', 'string', 'size:3', 'regex:/\A[A-Za-z]{3}\z/'],
             'exclude_id' => ['sometimes', 'nullable', 'uuid'],
         ]);

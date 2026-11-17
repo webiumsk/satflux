@@ -135,6 +135,32 @@ class InvoicingMigrationExportTest extends TestCase
     }
 
     #[Test]
+    public function migration_export_preserves_supplier_snapshots_and_original_payment_review(): void
+    {
+        $company = $this->createCompany();
+        $contact = CompanyContact::create(['company_id' => $company->id, 'name' => 'Synthetic supplier']);
+        BusinessExpense::create([
+            'company_id' => $company->id, 'company_contact_id' => $contact->id,
+            'supplier_name' => 'Saved supplier', 'supplier_iban' => 'SK6807200002891987426353',
+            'payment_review_required' => false, 'internal_number' => 'EXP20260001',
+            'issue_date' => '2026-11-03', 'total' => -20.25, 'currency' => 'EUR',
+        ]);
+        BusinessExpense::create([
+            'company_id' => $company->id, 'internal_number' => 'EXP20260002',
+            'issue_date' => '2026-11-03', 'total' => 10, 'currency' => 'EUR',
+            'internal_note' => 'Imported from ISDOC.',
+        ]);
+        $this->actingAs($this->proUser)->getJson('/api/invoicing/migration/export')->assertOk()
+            ->assertJsonPath('data.expense.0.companyContactId', $contact->id)
+            ->assertJsonPath('data.expense.0.supplierName', 'Saved supplier')
+            ->assertJsonPath('data.expense.0.supplierIban', 'SK6807200002891987426353')
+            ->assertJsonPath('data.expense.0.paymentReviewRequired', 0)
+            ->assertJsonPath('data.expense.0.total', '-20.25')
+            ->assertJsonPath('data.expense.1.supplierIban', null)
+            ->assertJsonPath('data.expense.1.paymentReviewRequired', 1);
+    }
+
+    #[Test]
     public function owner_export_keeps_both_sapi_secrets_but_excludes_every_enterprise_field(): void
     {
         $company = $this->createCompany();

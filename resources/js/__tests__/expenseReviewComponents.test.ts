@@ -11,6 +11,7 @@ vi.mock('@/evolu/companyShareRegistry', () => ({ companyShareRoutingKey: () => '
 vi.mock('@/evolu/ownerScope', () => ({ resolveMutationOwner: () => undefined }));
 import ExpenseDuplicateWarning from '@/components/invoicing/ExpenseDuplicateWarning.vue';
 import BankExpenseMatchModal from '@/components/invoicing/BankExpenseMatchModal.vue';
+import ExpenseShowSidebar from '@/components/invoicing/ExpenseShowSidebar.vue';
 
 const draft = { external_number: 'INV-001', title: 'Hosting', issue_date: '2026-11-05', total: '19.00', currency: 'EUR' };
 const expense = { id: 'expense-a', companyId: 'company-a', ownerId: 'owner-a', internalNumber: 'EXP001', externalNumber: 'INV-001',
@@ -24,6 +25,20 @@ beforeEach(() => { vi.useFakeTimers(); mocks.duplicates.mockReset(); mocks.dupli
 afterEach(() => { wrapper?.unmount(); wrapper = undefined; vi.useRealTimers(); });
 
 describe('expense review components', () => {
+  it('opens a new received-credit form with a scoped source instead of the disabled placeholder', async () => {
+    wrapper = mount(ExpenseShowSidebar, { props: {
+      companyId: 'company-a', expenseId: 'expense-a', status: 'recorded', isOverdue: false,
+      paidAt: null, total: '19.00', currency: 'EUR', hasAttachment: false, busy: false,
+    }, global: {
+      plugins: global().plugins,
+      stubs: { RouterLink: { name: 'RouterLink', props: ['to'], template: '<a><slot /></a>' } },
+    } });
+    await wrapper.findAll('button').find(button => button.text().includes(en.invoicing.expense_show_issue_menu))!.trigger('click');
+    const creditLink = wrapper.findAllComponents({ name: 'RouterLink' }).find(link => link.text() === en.invoicing.expense_show_issue_credit_note);
+    expect(creditLink?.props('to')).toEqual({ name: 'invoicing-expense-new', params: { companyId: 'company-a' }, query: { credit_note: '1', source_expense: 'expense-a' } });
+    await wrapper.setProps({ total: '-19.00' });
+    expect(wrapper.findAllComponents({ name: 'RouterLink' }).some(link => link.text() === en.invoicing.expense_show_issue_credit_note)).toBe(false);
+  });
   it('keeps local duplicate checks private and advisory', async () => {
     wrapper = mount(ExpenseDuplicateWarning, { props: { companyId: 'company-a', draft, localFirst: true,
       localRows: [expense], evolu: { appOwner: Promise.resolve({ id: 'owner-a' }) } as never }, global: global() });

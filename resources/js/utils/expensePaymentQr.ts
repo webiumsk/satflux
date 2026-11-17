@@ -10,30 +10,16 @@ export type ExpensePaymentQrDetails = {
     supplier: string;
 };
 
-/** Read only explicit supplier metadata written by expense importers, never a company's bank account. */
-function noteValues(note: string, label: string): string[] {
-    return note.split(/\r?\n/).filter(line => line.toLowerCase().startsWith(`${label.toLowerCase()}:`))
-        .map(line => line.slice(label.length + 1).trim());
-}
-
 /** No partial-payment balance is inferred from imported notes or disputed matching evidence. */
 export function expensePaymentQrDetails(row: ExpenseListRow): ExpensePaymentQrDetails | null {
-    if (row.status !== 'recorded' || row.paid_at || row.bank_match_conflict || row.currency !== 'EUR') return null;
+    if (row.payment_review_required !== false || row.status !== 'recorded' || row.paid_at || row.bank_match_conflict || row.currency !== 'EUR') return null;
     const amount = /^(\d{1,12})(?:\.(\d{1,2}))?$/.exec(row.total);
     const vs = row.variable_symbol?.trim() ?? '';
     if (!amount || !/[1-9]/.test(row.total) || !/^\d{1,10}$/.test(vs)) return null;
-    const note = row.internal_note ?? '';
-    const accounts = noteValues(note, 'Supplier bank account');
-    const suppliers = noteValues(note, 'Supplier');
-    if (accounts.length !== 1 || suppliers.length !== 1) return null;
-    const iban = normalizePaymentIban(accounts[0]);
-    const supplier = suppliers[0];
+    const iban = normalizePaymentIban(row.supplier_iban ?? '');
+    const supplier = row.supplier_name?.trim() ?? '';
     if (!iban || !supplier || Array.from(supplier).length > 70
         || /[\p{Cc}\p{Cs}\p{Zl}\p{Zp}]/u.test(supplier)) return null;
-    // The import keeps the original total when only part of it was paid.
-    // Until a remaining balance is authoritative, do not prepare another full payment.
-    if (noteValues(note, 'Payment date').length || noteValues(note, 'Payment amount')
-        .some(value => !/^0+(?:[.,]0{1,2})?$/.test(value))) return null;
     return { iban, variableSymbol: vs, amount: `${amount[1].replace(/^0+(?=\d)/, '')}.${(amount[2] ?? '').padEnd(2, '0')}`,
         currency: 'EUR', supplier };
 }

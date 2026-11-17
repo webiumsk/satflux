@@ -1,5 +1,44 @@
 # Development decision log
 
+## Structured expense suppliers and manual received credits accepted locally - 2026-11-17
+
+The owner-authorized implementation is complete in retained worktree
+`storage/app/private/worktrees/expense-supplier-credit-notes`, branch
+`feat/expense-supplier-credit-notes`, based on fetched remote master `eee6cd01`.
+GitHub and remote Git verify that PR451 and PR452 are merged; earlier open-PR
+notes below are historical. Actual deployment remains unverified.
+
+Expenses now save optional company-scoped contact references and supplier
+name/IBAN snapshots. Explicit contact IBAN takes priority, then a compatible safe
+extraction, otherwise the account stays empty and QR is absent. Notes never
+supply a QR recipient. Saved/manual recipient edits and explicit clears survive
+hydration and extraction. Independent structured review evidence prevents a
+contact account from bypassing unsafe XML or partial-payment restrictions.
+Legacy original evidence is frozen before note edits and preserved on duplication.
+
+Manual received credits use a sign-inferred document choice and negative totals,
+with visible labels and a new source-prefill action that clears the new document
+number/VS. Negative totals cannot enable outgoing QR or debit matching. Existing
+bank-linked edit locks and local/server duplicate amount behavior are preserved.
+All five locales and expense guides are updated together.
+
+Independent QA/security accept all 49 source/test/locale paths at aggregate
+`bb7a48f142f9d4ec6ba8906462c729403ccafb758c8bfd2d1e1ca32d4b064c0f`.
+Main PHP checks pass 285 tests / 1,806 assertions; independent QA passes 91 / 476,
+289 JavaScript tests / 13 suites and 11 real Chrome desktop/320px scenarios with
+QR bitmap decoding and no external requests. Main affected JavaScript run passes
+837/838 with one unchanged 10 MiB archive timeout under concurrent load; its
+complete single-worker retry passes all 35 tests without tolerance changes.
+Typecheck adds no errors (107 inherited tolerated); scoped ESLint has no warnings,
+Pint/PHPStan, locale parity and whitespace checks pass. The final production build
+passes on the accepted source; an interrupted attempt passed on unchanged retry.
+
+Primary remains on `fix/sepa-confirmation-isolation` with unrelated work preserved.
+No commit, push, PR creation, merge, deployment, dependency installation, production
+operation or external-repository write is performed. Next is owner review of the
+local implementation. Publication and deployment remain separate approved steps.
+See [scope, contract and validation](EXPENSE_SUPPLIER_CREDITS.md).
+
 ## PR452 precision and recovery corrections - 2026-11-17
 
 Both requested CodeRabbit reviews completed in owner order: parent #451 first,

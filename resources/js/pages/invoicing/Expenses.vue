@@ -37,6 +37,9 @@
           <RouterLink :to="expenseNewTo()" class="invoicing-btn-primary w-full text-center">
             + {{ t('invoicing.expenses_new') }}
           </RouterLink>
+          <RouterLink :to="expenseNewTo(true)" class="invoicing-btn-secondary w-full text-center">
+            + {{ t('invoicing.expense_received_credit_note') }}
+          </RouterLink>
         </template>
         <template #mobile-primary-action>
           <RouterLink :to="expenseNewTo()" class="invoicing-mobile-icon-btn" :title="t('invoicing.mobile_new_expense')">
@@ -85,6 +88,9 @@
             </div>
             <RouterLink :to="expenseNewTo()" class="invoicing-btn-primary shrink-0">
               + {{ t('invoicing.expenses_new') }}
+            </RouterLink>
+            <RouterLink :to="expenseNewTo(true)" class="invoicing-btn-secondary shrink-0">
+              + {{ t('invoicing.expense_received_credit_note') }}
             </RouterLink>
           </div>
         </template>
@@ -328,8 +334,8 @@ function onAdvancedApply(next: IssuePeriodState) {
   void load();
 }
 
-function expenseNewTo() {
-  return { name: 'invoicing-expense-new', params: { companyId: companyId.value } };
+function expenseNewTo(creditNote = false) {
+  return { name: 'invoicing-expense-new', params: { companyId: companyId.value }, ...(creditNote ? { query: { credit_note: '1' } } : {}) };
 }
 
 function goShow(expenseId: string) {

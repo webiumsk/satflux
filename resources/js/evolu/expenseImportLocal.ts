@@ -1,3 +1,4 @@
+import { normalizePaymentIban } from "@/utils/paymentIban";
 import { bankPaymentCurrency, positiveBankAmount } from "./bankPaymentValues";
 import { normalizedExpenseNumber, normalizedExpenseTitle, expenseCandidate, type ExpenseDuplicateSuggestion } from "./expenseDuplicateSuggestions";
 import type { Evolu } from "@evolu/common/local-first";
@@ -295,6 +296,9 @@ function rowToPayload(
 
     return {
         title,
+        supplier_name: cell(row, mapping.supplier_name),
+        supplier_iban: normalizePaymentIban(cell(row, mapping.supplier_bank_account) ?? ""),
+        payment_review_required: !markPaid && (paidAt !== null || (paymentAmountRaw !== null && paymentAmount !== 0)),
         external_number: cell(row, mapping.external_number),
         variable_symbol: cell(row, mapping.variable_symbol) ?? cell(row, mapping.external_number),
         constant_symbol: cell(row, mapping.constant_symbol),
@@ -469,6 +473,10 @@ export async function importLocalExpensesFromFile(
                 companyId,
                 internalNumber,
                 status: draft.mark_paid ? "paid" : "recorded",
+                companyContactId: null,
+                supplierName: draft.supplier_name ?? null,
+                supplierIban: draft.supplier_iban ?? null,
+                paymentReviewRequired: draft.payment_review_required ? 1 : 0,
                 title: draft.title ?? null,
                 externalNumber: draft.external_number ?? null,
                 variableSymbol: draft.variable_symbol ?? null,

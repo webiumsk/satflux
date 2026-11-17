@@ -37,6 +37,7 @@
           <h1 v-if="expense" class="expense-show-toolbar__title">
             {{ displayName }}
           </h1>
+          <span v-if="expense && Number(expense.total) < 0" class="rounded bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-800">{{ t('invoicing.expense_received_credit_note') }}</span>
         </div>
 
         <div
@@ -222,6 +223,11 @@
                     </div>
                     <div class="text-indigo-700">{{ tagsLine }}</div>
                   </div>
+                  <div v-if="expense.supplier_iban">
+                    <div class="invoicing-sf-label">{{ t('invoicing.expense_supplier_iban') }}</div>
+                    <div class="break-all font-mono">{{ expense.supplier_iban }}</div>
+                  </div>
+                  <p v-if="expensePaymentReviewRequired(expense.payment_review_required, expense.internal_note)" class="text-xs text-amber-800" role="status">{{ t('invoicing.expense_payment_review_required') }}</p>
                 </div>
               </div>
 
@@ -371,6 +377,7 @@ import { isInvoicingLocalFirst } from "../../evolu/flags";
 import type { CompanyId, ExpenseId } from "../../evolu/schema";
 import { updateLocalExpenseNote } from "../../evolu/expenseCrud";
 import { expenseMutationErrorKey } from "../../utils/expenseError";
+import { expensePaymentReviewRequired } from "../../utils/expensePaymentReview";
 import { getWebBlob, invoicingApi } from "../../services/api";
 import { useInvoicingSaveFeedback } from "../../composables/useInvoicingSaveFeedback";
 
@@ -382,6 +389,10 @@ type ExpenseAttachment = {
 };
 
 type Expense = {
+  company_contact_id?: string | null;
+  supplier_name?: string | null;
+  supplier_iban?: string | null;
+  payment_review_required?: boolean | null;
   bank_match_conflict?: boolean;
   bank_match_claim?: string | null;
   id: string;
@@ -1011,9 +1022,14 @@ async function cancelExpense() {
 
 function draftToPayload(draft: ExpenseImportDraft, current: Expense) {
   return {
+    company_contact_id: current.company_contact_id ?? null,
+    // Saved recipient snapshots, including explicit clears, need a deliberate edit.
+    supplier_name: current.supplier_name ?? null,
+    supplier_iban: current.supplier_iban ?? null,
+    payment_review_required: expensePaymentReviewRequired(current.payment_review_required, current.internal_note) || draft.payment_review_required !== false,
     title: draft.title ?? current.title,
     external_number: draft.external_number ?? current.external_number,
-    variable_symbol: draft.variable_symbol ?? current.variable_symbol,
+    variable_symbol: draft.variable_symbol ?? null,
     constant_symbol: draft.constant_symbol ?? current.constant_symbol,
     specific_symbol: draft.specific_symbol ?? current.specific_symbol,
     issue_date: draft.issue_date?.slice(0, 10) ?? current.issue_date,

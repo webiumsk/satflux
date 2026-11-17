@@ -2,7 +2,7 @@
 title: Import nákladů ze SuperFaktury
 category: invoicing
 order: 12
-updated: 2026-11-16
+updated: 2026-11-17
 ---
 
 # Import nákladů ze SuperFaktury
@@ -55,19 +55,20 @@ Můžete povolit dočasné zpracování souboru na serveru pro detekci vložený
 
 Pokud se ukládání větší přílohy přeruší, opakujte ho, dokud je soubor stále vybraný. Po obnovení stránky odstraňte neúplnou přílohu a znovu vyberte původní soubor. Před vytvořením úplné zálohy dokončete nahrávání nebo neúplnou přílohu odstraňte.
 
+## Kontakt dodavatele a IBAN
+
+U nového nákladu volitelně vyberte **Kontakt dodavatele**. Jeho IBAN se vloží do pole **IBAN dodavatele**. Pokud kontakt IBAN nemá, použije se účet bezpečně vytěžený z PDF/XML stejného dodavatele; jinak pole zůstane prázdné. Název a IBAN můžete zadat také ručně. U jiného dodavatele se vytěžený účet původního dodavatele nepřevezme.
+
+Uložený náklad si ponechá název a účet i po pozdější změně kontaktu. Ruční úpravy a vymazaný účet zůstanou zachovány při dalším vytěžení; vědomou změnu proveďte v úpravě nákladu. Interní poznámka neurčuje příjemce QR platby.
+
 ## Platební QR kódy
 
-U neuhrazeného nákladu v EUR s názvem dodavatele, platným IBANem dodavatele a variabilním symbolem do 10 číslic klikněte v řádku na **Platební QR**. Částka musí být větší než nula a mít nejvýše 12 číslic před desetinnou čárkou; název dodavatele může mít nejvýše 70 znaků. Můžete přepnout mezi **PAY by square** a **PayMe**. Před potvrzením v bankovní aplikaci zkontrolujte příjemce, částku a variabilní symbol. Kód se tvoří ve vašem prohlížeči. Tlačítko Otevřít PayMe vědomě otevře jeho platební odkaz. Naskenování kódu neoznačí náklad jako uhrazený. U částek, které PayMe nedokáže zapsat, použijte PAY by square; částka se nikdy nezaokrouhluje.
+U neuhrazeného nákladu v EUR s kladnou částkou, názvem dodavatele, platným IBANem a variabilním symbolem do 10 číslic klikněte na **Platební QR**. Vyberte **PAY by square** nebo **PayMe**. V bankovní aplikaci ověřte příjemce, přesnou částku a variabilní symbol. Vytvoření ani naskenování QR neoznačí náklad jako uhrazený. Pro větší přesné částky nepodporované PayMe použijte PAY by square.
 
-Kód se nezobrazí u uhrazených a zrušených nákladů, sporného bankovního párování ani u importu s částečnou nebo nevyřešenou úhradou. Platební údaje pocházejí z výslovně uložených údajů dodavatele; vlastní účet firmy se nepoužije. Nové vhodné importy eFaktur a ISDOC zachovají účet dodavatele. U starších importů bez těchto údajů je třeba nejprve doplnit platební údaje.
+Bez IBANu se QR nezobrazí. Uhrazené a zrušené náklady, sporná bankovní párování, záporné dobropisy a importy vyžadující kontrolu úhrady nemají platební QR. Výběr kontaktu neobejde částečné či zálohové platby ani nejednoznačné údaje z importu. Starší záznamy ISDOC/Peppol bez platebních podkladů zůstávají blokované. Údaje dodavatele z poznámky se do platebních polí nepřebírají.
 
-Při vytěžení dokladu bez platební reference zůstane variabilní symbol prázdný a účet dodavatele se neimportuje. Ověřte původní doklad a doplňte správný variabilní symbol. Platební QR zůstane nedostupné, dokud nebudou doplněny a ověřeny také název a IBAN dodavatele.
+## Ruční přidání přijatého dobropisu
 
-Ověřené údaje doplníte úpravou nákladu: variabilní symbol zadejte do jeho pole a do pole **Interní poznámka** přidejte nebo nahraďte tyto dva řádky. Každý řádek ponechte právě jednou a zachovejte uvedené anglické názvy: Před uložením také ověřte, že částka a měna nákladu přesně odpovídají celé neuhrazené platbě v původním dokladu a částka má nejvýše dvě desetinná místa.
+V **Nákladech** vyberte **Nový přijatý dobropis**, nebo v novém nákladu zvolte typ **Přijatý dobropis**. Zadejte vlastní číslo dokladu a variabilní symbol, dodavatele a **zápornou celkovou částku**, pak uložte. Dobropisy zůstávají v Nákladech s označením a snižují součty. Nemají QR pro odchozí platbu ani párování s debetní úhradou nákladu.
 
-```text
-Supplier: VERIFIED_NAME
-Supplier bank account: VERIFIED_IBAN
-```
-
-Hodnoty `VERIFIED_NAME` a `VERIFIED_IBAN` nahraďte názvem dodavatele a IBANem ověřenými podle původního dokladu. Ostatní poznámky a platební údaje zachovejte, náklad uložte a vraťte se do seznamu. Postup platí i tehdy, když extrakce účet vynechala; nadále platí podmínky uvedené výše.
+Detail nákladu nabízí také **Přidat přijatý dobropis**. Předvyplní dodavatele a zápornou částku, vlastní číslo a variabilní symbol ponechá prázdné. Nevytváří trvalé propojení s původním nákladem. Vystavené zákaznické dobropisy zůstávají v Doklady > Dobropisy.

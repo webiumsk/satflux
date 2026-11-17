@@ -353,6 +353,10 @@ export const InvoicingLocalSchema = {
     },
     expense: {
         id: ExpenseId,
+        companyContactId: nullOr(ContactId),
+        supplierName: OptionalString255,
+        supplierIban: nullOr(maxLength(34)(NonEmptyString)),
+        paymentReviewRequired: nullOr(SqliteBoolean),
         bankPaymentClaimJson: nullOr(maxLength(32768)(NonEmptyString)),
         companyId: CompanyId,
         status: ExpenseStatus,

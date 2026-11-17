@@ -107,7 +107,10 @@ class BusinessExpenseIsdocImportService
         $details = $this->firstPaymentDetails($invoice);
         $monetary = $invoice->getLegalMonetaryTotal();
         $total = (float) $monetary->getPayableAmount();
-        if ($total <= 0) {
+        if ($invoice->getDocumentType() === DocumentType::CreditNote) {
+            // Negate the source sign; abs() would conceal an unexpected negative original.
+            $total = -$total;
+        } elseif ($total <= 0) {
             $total = (float) $monetary->getTaxInclusiveAmount();
         }
 
@@ -121,9 +124,11 @@ class BusinessExpenseIsdocImportService
         $reference = trim($details?->getVariableSymbol() ?? '');
         $variableSymbol = $means !== null && count($means) === 1 && preg_match('/^[0-9]{1,10}$/D', $reference)
             ? $reference : null;
+        $payment = $this->supplierPaymentMetadata($invoice, $supplierName, $variableSymbol);
 
         return [
             'source' => 'isdoc',
+            ...$payment,
             'title' => $supplierName !== '' ? $supplierName : null,
             'external_number' => $externalNumber,
             'variable_symbol' => $variableSymbol,
@@ -143,10 +148,23 @@ class BusinessExpenseIsdocImportService
     protected function supplierPaymentNote(IsdocInvoiceSchema $invoice, string $supplier, ?string $variableSymbol): string
     {
         $parts = ['Imported from ISDOC.'];
-        if ($supplier === '' || preg_match('/[\p{Cc}\p{Zl}\p{Zp}]/u', $supplier)) {
-            return $parts[0];
+        $payment = $this->supplierPaymentMetadata($invoice, $supplier, $variableSymbol);
+        if ($payment['supplier_name'] !== null) {
+            $parts[] = 'Supplier: '.$payment['supplier_name'];
         }
-        $parts[] = 'Supplier: '.$supplier;
+        if ($payment['supplier_iban'] !== null) {
+            $parts[] = 'Supplier bank account: '.$payment['supplier_iban'];
+        }
+
+        return implode("\n\n", $parts);
+    }
+
+    /** @return array{supplier_name: ?string, supplier_iban: ?string, payment_review_required: bool} */
+    protected function supplierPaymentMetadata(IsdocInvoiceSchema $invoice, string $supplier, ?string $variableSymbol): array
+    {
+        $name = $supplier !== '' && mb_strlen($supplier) <= 255 && ! preg_match('/[\p{Cc}\p{Zl}\p{Zp}]/u', $supplier)
+            ? $supplier : null;
+        $result = ['supplier_name' => $name, 'supplier_iban' => null, 'payment_review_required' => true];
         // The legacy expense projection uses local accounting amounts. A
         // foreign-currency invoice has separate Curr payment amounts, so that
         // projection must not authorize a payment QR. Credit notes and deposits
@@ -154,39 +172,42 @@ class BusinessExpenseIsdocImportService
         $monetary = $invoice->getLegalMonetaryTotal();
         $payable = $monetary->getPayableAmount();
         if ($invoice->getForeignCurrencyCode() !== null
-            || $variableSymbol === null || $invoice->getDocumentType() !== DocumentType::Invoice
+            || $invoice->getDocumentType() !== DocumentType::Invoice
             || ! $this->supportsPaymentPrecision($payable)
             || ! $this->supportsPaymentPrecision($monetary->getPaidDepositsAmount())
             || ! $this->supportsPaymentPrecision($monetary->getAlreadyClaimedTaxInclusiveAmount())
             || bccomp($payable, '0', 2) <= 0
             || bccomp($monetary->getPaidDepositsAmount(), '0', 2) !== 0
             || bccomp($monetary->getAlreadyClaimedTaxInclusiveAmount(), '0', 2) !== 0) {
-            return implode("\n\n", $parts);
+            return $result;
         }
 
         $accounts = [];
         $means = $invoice->getPaymentMeans();
         if ($means === null || count($means) !== 1) {
-            return implode("\n\n", $parts);
+            return $result;
         }
         foreach ($means as $payment) {
             if (! in_array($payment->getPaymentMeansCode(), [PaymentMeansCode::CreditTransfer, PaymentMeansCode::MoneyTransferToAnAccount], true)
                 || $payment->getPartialPayment() === true
                 || ! $this->supportsPaymentPrecision($payment->getPaidAmount())
                 || bccomp($payment->getPaidAmount(), $payable, 2) !== 0) {
-                return implode("\n\n", $parts);
+                return $result;
             }
+            // Missing account/name/reference is repairable without changing the
+            // monetary proof. Financial ambiguity remains a durable separate flag.
+            $result['payment_review_required'] = false;
             $iban = SupplierPaymentIban::normalize($payment->getDetails()?->getIban() ?? '');
-            if ($iban === null) {
-                return implode("\n\n", $parts);
+            if ($iban === null || $name === null || $variableSymbol === null) {
+                return $result;
             }
             $accounts[$iban] = true;
         }
         if (count($accounts) === 1) {
-            $parts[] = 'Supplier bank account: '.array_key_first($accounts);
+            $result['supplier_iban'] = array_key_first($accounts);
         }
 
-        return implode("\n\n", $parts);
+        return $result;
     }
 
     /** Never let scale-2 comparison discard unsupported source fractions, even trailing zeroes. */
