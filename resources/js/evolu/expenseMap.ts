@@ -115,7 +115,7 @@ export function filterLocalExpenses(
     rows: EvoluExpenseRow[],
     options: ExpenseListFilterOptions,
 ): EvoluExpenseRow[] {
-    const today = localDateString();
+    const overdueBefore = options.overdue_before ?? localDateString();
     if (!validExpenseListFilters(options)) return [];
     let result = rows.filter((row) => row.status !== "cancelled");
 
@@ -138,12 +138,12 @@ export function filterLocalExpenses(
             (row) =>
                 row.status === "recorded"
                 && Boolean(row.dueDate)
-                && row.dueDate! < today,
+                && row.dueDate! < overdueBefore,
         );
     }
 
     if (options.due === "overdue") {
-        result = result.filter((row) => row.status === "recorded" && Boolean(row.dueDate) && row.dueDate! < today);
+        result = result.filter((row) => row.status === "recorded" && Boolean(row.dueDate) && row.dueDate! < overdueBefore);
     } else if (options.due === "custom") {
         result = result.filter((row) => Boolean(row.dueDate)
             && (!options.due_from || row.dueDate! >= options.due_from)

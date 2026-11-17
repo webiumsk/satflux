@@ -4,6 +4,8 @@ export type ExpenseListFilterOptions = {
     issue_from?: string;
     issue_to?: string;
     due?: string;
+    /** Exclusive due-date cutoff captured with the loaded list, reused by bulk actions. */
+    overdue_before?: string;
     due_from?: string;
     due_to?: string;
     amount_min?: string | number;
@@ -32,7 +34,7 @@ export function validExpenseListFilters(options: ExpenseListFilterOptions): bool
     if (options.year !== undefined && (!Number.isInteger(options.year) || options.year < 2000 || options.year > 2100)) return false;
     if (options.due && !["all", "overdue", "custom"].includes(options.due)) return false;
     if (options.due === "custom" && !options.due_from && !options.due_to) return false;
-    for (const field of ["issue_from", "issue_to", "due_from", "due_to"] as const) {
+    for (const field of ["issue_from", "issue_to", "due_from", "due_to", "overdue_before"] as const) {
         if (options[field] && !expenseFilterDate(options[field])) return false;
     }
     if (options.issue_from && options.issue_to && options.issue_from > options.issue_to) return false;

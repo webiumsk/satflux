@@ -1,5 +1,5 @@
 import { reactive } from "vue";
-import { defaultIssuePeriodState, resolveIssuePeriodRange, type IssuePeriodState } from "./useInvoicingIssuePeriod";
+import { defaultIssuePeriodState, resolveIssuePeriodRange, toIsoDate, type IssuePeriodState } from "./useInvoicingIssuePeriod";
 import type { ExpenseListFilterOptions } from "../evolu/expenseListFilters";
 
 export type ExpenseAdvancedFilters = {
@@ -22,6 +22,7 @@ export function expenseListFilterParams(filter: string, period: IssuePeriodState
         issue_from: range.from,
         issue_to: range.to,
         due: advanced.due === "all" ? undefined : advanced.due,
+        overdue_before: filter === "overdue" || advanced.due === "overdue" ? toIsoDate(new Date()) : undefined,
         due_from: advanced.due === "custom" ? advanced.dueFrom || undefined : undefined,
         due_to: advanced.due === "custom" ? advanced.dueTo || undefined : undefined,
         amount_min: String(advanced.amountMin).trim() || undefined,

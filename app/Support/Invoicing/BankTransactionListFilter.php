@@ -75,7 +75,7 @@ final class BankTransactionListFilter
         if (! empty($filters['to'])) {
             $query->whereDate('booked_at', '<=', $filters['to']);
         }
-        if (! empty($filters['variable_symbol'])) {
+        if (isset($filters['variable_symbol']) && $filters['variable_symbol'] !== '') {
             $query->whereRaw("variable_symbol LIKE ? ESCAPE '!'", ['%'.$this->escapeLike($filters['variable_symbol']).'%']);
         }
         if (! empty($filters['source'])) {
