@@ -161,3 +161,41 @@ API checks pass 47 tests / 274 assertions. Final typecheck retains the unchanged
 110-error baseline with no new errors. Earlier Chrome checks remain attributed
 to the byte-identical UI/helper blobs; no duplicate browser run is claimed.
 Publication and exact-head CI are verified separately from this local integration.
+
+
+## Third CodeRabbit pass: exact ISDOC cents and manual recovery
+
+The requested PR452 review5932293520 examined `2357c2a0` after the separate parent
+review. Both new findings were verified as valid. A scale-2 `bccomp` comparison
+could discard a source fraction: payable `19.509` and paid instruction `19.500`
+retained the account while the expense displayed `19.51`. Payment metadata now
+requires at most two raw fractional digits in payable, paid instruction, deposits
+and already-claimed amounts before any relevant comparison. Extra precision,
+including trailing zeros, withholds the account without changing legacy expense
+mapping. Supported zero/one/two-decimal representations and exact-zero balances
+retain their existing behavior.
+
+All five guides now identify the actual expense edit fields: VS in its own field,
+and exactly one `Supplier:` and `Supplier bank account:` line in Internal note.
+The English labels remain literal across locales. Recovery requires checking the
+original supplier, IBAN, full unpaid amount and currency without rounding, while
+preserving other notes and payment evidence. This applies to older imports and
+accounts omitted during extraction; existing eligibility gates still apply.
+
+The original example failed before the fix. Independent QA also reproduced 14
+unsafe cases in the initial 23-case matrix, with nine normal controls passing.
+The final matrix adds a supported fractional-only decimal control. Final exact
+hashes, checks and independent acceptance are recorded below before publication.
+
+
+The final two-source delta against `2357c2a0` has aggregate
+`f8e2860d595b0cd4ccca37fb4ac2909a12ec869ec7eda6a186217579f5ead827`;
+code plus five guides has seven blobs, aggregate
+`0b1acfe93cb1e7f12406300426f78c79b8be1fe3d571bfe4573fd4c7906e0775`.
+The complete 27-source scope against parent `156078e4` is
+`12abd048b549aa777ddf95c11653c40178d1a4a76ae24ab122f4ff05c03571d7`.
+Final ISDOC checks pass 39 tests / 369 assertions; independent actual-XML checks
+pass 24 contexts / 360 assertions. Scoped Pint/PHPStan and whitespace checks pass.
+Independent QA and security accept all hashes and guide instructions without
+blocking findings. Client/UI blobs are unchanged, so no new browser
+run or client result is claimed for this PHP/documentation-only delta.

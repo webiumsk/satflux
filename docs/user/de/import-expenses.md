@@ -62,3 +62,12 @@ Wählen Sie bei einer unbezahlten EUR-Ausgabe mit Lieferantenname, gültiger Lie
 Für bezahlte oder stornierte Ausgaben, strittige Bankzuordnungen und Importe mit Teilzahlungen oder ungeklärten Zahlungen wird kein Code angezeigt. Zahlungsdaten stammen aus ausdrücklich gespeicherten Lieferantendaten; das eigene Firmenkonto wird nie verwendet. Neue geeignete E-Rechnungs- und ISDOC-Importe behalten das Lieferantenkonto. Bei älteren Importen ohne diese Metadaten müssen zuerst die Zahlungsdaten ergänzt werden.
 
 Fehlt beim Auslesen eine Zahlungsreferenz, bleibt das variable Symbol leer und das Lieferantenkonto wird nicht importiert. Prüfen Sie den Originalbeleg und tragen Sie das richtige variable Symbol ein. Zahlungs-QR bleibt nicht verfügbar, bis auch Name und IBAN des Lieferanten vollständig und geprüft sind.
+
+Öffnen Sie die Ausgabe zum Bearbeiten, tragen Sie das geprüfte variable Symbol in sein Feld ein und ergänzen oder ersetzen Sie diese beiden Zeilen unter **Interne Notiz**. Jede Zeile darf genau einmal vorkommen; behalten Sie die gezeigten englischen Bezeichnungen bei: Prüfen Sie vor dem Speichern außerdem, dass Betrag und Währung der Ausgabe exakt der vollständigen offenen Zahlungsanweisung entsprechen und der Betrag höchstens zwei Nachkommastellen hat.
+
+```text
+Supplier: VERIFIED_NAME
+Supplier bank account: VERIFIED_IBAN
+```
+
+Ersetzen Sie `VERIFIED_NAME` und `VERIFIED_IBAN` durch den anhand des Originalbelegs geprüften Lieferantennamen und die IBAN. Behalten Sie andere Notizen und Zahlungsangaben bei, speichern Sie die Ausgabe und kehren Sie zur Liste zurück. Dies gilt auch, wenn beim Auslesen kein Konto übernommen wurde; die oben genannten Voraussetzungen gelten weiterhin.

@@ -306,6 +306,92 @@ class BusinessExpenseIsdocImportTest extends TestCase
     }
 
     #[Test]
+    #[DataProvider('expensePaymentPrecisionContexts')]
+    public function supplier_payment_metadata_requires_exact_cent_precision(
+        string $payable,
+        string $paid,
+        string $deposits,
+        string $claimed,
+        bool $hasAccount,
+        float $displayedTotal,
+    ): void {
+        $path = tempnam(sys_get_temp_dir(), 'exp-isdoc-precision-');
+        file_put_contents($path, $this->sampleIsdocXml());
+        $service = new class extends BusinessExpenseIsdocImportService
+        {
+            /** @return array<string, mixed> */
+            public function mapForPaymentTest(IsdocInvoiceSchema $invoice): array
+            {
+                return $this->mapInvoice($invoice);
+            }
+        };
+
+        try {
+            $invoice = Manager::create()->getReader()->file($path, IsdocInvoiceSchema::class, Manager::FORMAT_ISDOC);
+            $invoice->setLocalCurrencyCode('EUR');
+            $invoice->setForeignCurrencyCode(null);
+            $monetary = $invoice->getLegalMonetaryTotal();
+            $monetary->setPayableAmount($payable);
+            $monetary->setTaxInclusiveAmount($payable);
+            $monetary->setPaidDepositsAmount($deposits);
+            $monetary->setAlreadyClaimedTaxInclusiveAmount($claimed);
+            $payments = $invoice->getPaymentMeans();
+            $this->assertNotNull($payments);
+            $this->assertCount(1, $payments);
+            $payment = iterator_to_array($payments)[0];
+            $payment->setPaymentMeansCode(PaymentMeansCode::CreditTransfer);
+            $payment->setPaidAmount($paid);
+            $payment->setPartialPayment(false);
+            $details = $payment->getDetails();
+            $this->assertNotNull($details);
+            $details->setIban('SK6807200002891987426353');
+            $details->setVariableSymbol('0000042');
+            $invoice->getAccountingSupplierParty()->getParty()->getPartyName()->setName('Synthetic supplier');
+
+            $draft = $service->mapForPaymentTest($invoice);
+
+            $this->assertSame($displayedTotal, $draft['total']);
+            $this->assertSame('EUR', $draft['currency']);
+            $this->assertSame('0000042', $draft['variable_symbol']);
+            $this->assertSame($hasAccount, str_contains($draft['internal_note'], 'Supplier bank account:'));
+            $this->assertStringContainsString('Supplier: Synthetic supplier', $draft['internal_note']);
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    /** @return array<string, array{string, string, string, string, bool, float}> */
+    public static function expensePaymentPrecisionContexts(): array
+    {
+        return [
+            'original-example' => ['19.509', '19.500', '0', '0', false, 19.51],
+            'zero decimal places' => ['19', '19', '0', '0', true, 19.0],
+            'one decimal place' => ['19.5', '19.5', '0.0', '0.0', true, 19.5],
+            'two decimal places' => ['19.50', '19.50', '0.00', '0.00', true, 19.5],
+            'equal mixed supported precision' => ['19.5', '19.50', '0', '0.00', true, 19.5],
+            'smallest supported positive amount' => ['0.01', '0.01', '0', '0', true, 0.01],
+            'supported decimal notation without integer digits' => ['.5', '0.50', '.0', '-.00', true, 0.5],
+            'supported negative zero balances' => ['19.50', '19.50', '-0.00', '-0.0', true, 19.5],
+            'payable has unsupported precision' => ['19.509', '19.50', '0', '0', false, 19.51],
+            'paid instruction has unsupported precision' => ['19.50', '19.509', '0', '0', false, 19.5],
+            'equal high precision amounts are not cent instructions' => ['19.509', '19.509', '0', '0', false, 19.51],
+            'payable would round down' => ['19.504', '19.50', '0', '0', false, 19.5],
+            'paid instruction would round down' => ['19.50', '19.504', '0', '0', false, 19.5],
+            'payable trailing zero is still unsupported raw precision' => ['19.500', '19.50', '0', '0', false, 19.5],
+            'paid trailing zero is still unsupported raw precision' => ['19.50', '19.500', '0', '0', false, 19.5],
+            'subcent deposit is not zero' => ['19.50', '19.50', '0.001', '0', false, 19.5],
+            'subcent claim is not zero' => ['19.50', '19.50', '0', '0.001', false, 19.5],
+            'negative subcent deposit is not zero' => ['19.50', '19.50', '-0.001', '0', false, 19.5],
+            'negative subcent claim is not zero' => ['19.50', '19.50', '0', '-0.001', false, 19.5],
+            'deposit zero has unsupported raw precision' => ['19.50', '19.50', '0.000', '0', false, 19.5],
+            'claim zero has unsupported raw precision' => ['19.50', '19.50', '0', '0.000', false, 19.5],
+            'different exact cent instruction remains rejected' => ['19.50', '19.49', '0', '0', false, 19.5],
+            'nonzero exact cent deposit remains rejected' => ['19.50', '19.50', '0.01', '0', false, 19.5],
+            'nonzero exact cent claim remains rejected' => ['19.50', '19.50', '0', '0.01', false, 19.5],
+        ];
+    }
+
+    #[Test]
     public function service_detects_isdoc_in_satflux_issued_pdf(): void
     {
         $doc = BusinessDocument::create([

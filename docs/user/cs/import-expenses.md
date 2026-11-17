@@ -62,3 +62,12 @@ U neuhrazeného nákladu v EUR s názvem dodavatele, platným IBANem dodavatele 
 Kód se nezobrazí u uhrazených a zrušených nákladů, sporného bankovního párování ani u importu s částečnou nebo nevyřešenou úhradou. Platební údaje pocházejí z výslovně uložených údajů dodavatele; vlastní účet firmy se nepoužije. Nové vhodné importy eFaktur a ISDOC zachovají účet dodavatele. U starších importů bez těchto údajů je třeba nejprve doplnit platební údaje.
 
 Při vytěžení dokladu bez platební reference zůstane variabilní symbol prázdný a účet dodavatele se neimportuje. Ověřte původní doklad a doplňte správný variabilní symbol. Platební QR zůstane nedostupné, dokud nebudou doplněny a ověřeny také název a IBAN dodavatele.
+
+Ověřené údaje doplníte úpravou nákladu: variabilní symbol zadejte do jeho pole a do pole **Interní poznámka** přidejte nebo nahraďte tyto dva řádky. Každý řádek ponechte právě jednou a zachovejte uvedené anglické názvy: Před uložením také ověřte, že částka a měna nákladu přesně odpovídají celé neuhrazené platbě v původním dokladu a částka má nejvýše dvě desetinná místa.
+
+```text
+Supplier: VERIFIED_NAME
+Supplier bank account: VERIFIED_IBAN
+```
+
+Hodnoty `VERIFIED_NAME` a `VERIFIED_IBAN` nahraďte názvem dodavatele a IBANem ověřenými podle původního dokladu. Ostatní poznámky a platební údaje zachovejte, náklad uložte a vraťte se do seznamu. Postup platí i tehdy, když extrakce účet vynechala; nadále platí podmínky uvedené výše.

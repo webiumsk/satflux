@@ -62,3 +62,12 @@ En un gasto pendiente en EUR con nombre del proveedor, IBAN válido del proveedo
 No se muestra ningún código para gastos pagados o anulados, conciliaciones bancarias en disputa ni importaciones con pagos parciales o pendientes de aclarar. Los datos de pago proceden de metadatos explícitos del proveedor; nunca se usa la cuenta de la propia empresa. Las nuevas importaciones compatibles de facturas electrónicas e ISDOC conservan la cuenta del proveedor. En importaciones anteriores sin estos metadatos hay que completar primero los datos de pago.
 
 Si la extracción no contiene una referencia de pago, el símbolo variable queda en blanco y la cuenta bancaria del proveedor no se importa. Verifique el documento original e introduzca el símbolo variable correcto. El QR de pago seguirá sin estar disponible hasta que el nombre y el IBAN del proveedor también estén completos y verificados.
+
+Edite el gasto, introduzca el símbolo variable verificado en su campo y añada o sustituya estas dos líneas en **Nota interna**. Mantenga exactamente una línea de cada tipo y conserve las etiquetas en inglés que se muestran aquí: Antes de guardar, compruebe también que el importe y la moneda del gasto coincidan exactamente con la instrucción de pago completa pendiente, con un máximo de dos decimales.
+
+```text
+Supplier: VERIFIED_NAME
+Supplier bank account: VERIFIED_IBAN
+```
+
+Sustituya `VERIFIED_NAME` y `VERIFIED_IBAN` por el nombre y el IBAN del proveedor verificados en el documento original. Conserve las demás notas y datos de pago, guarde el gasto y vuelva a la lista. Estos pasos también se aplican si la extracción omitió la cuenta; siguen vigentes las condiciones anteriores.

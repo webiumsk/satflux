@@ -152,9 +152,13 @@ class BusinessExpenseIsdocImportService
         // projection must not authorize a payment QR. Credit notes and deposits
         // also lack a separate outstanding-balance ledger in this model.
         $monetary = $invoice->getLegalMonetaryTotal();
+        $payable = $monetary->getPayableAmount();
         if ($invoice->getForeignCurrencyCode() !== null
             || $variableSymbol === null || $invoice->getDocumentType() !== DocumentType::Invoice
-            || bccomp($monetary->getPayableAmount(), '0', 2) <= 0
+            || ! $this->supportsPaymentPrecision($payable)
+            || ! $this->supportsPaymentPrecision($monetary->getPaidDepositsAmount())
+            || ! $this->supportsPaymentPrecision($monetary->getAlreadyClaimedTaxInclusiveAmount())
+            || bccomp($payable, '0', 2) <= 0
             || bccomp($monetary->getPaidDepositsAmount(), '0', 2) !== 0
             || bccomp($monetary->getAlreadyClaimedTaxInclusiveAmount(), '0', 2) !== 0) {
             return implode("\n\n", $parts);
@@ -168,7 +172,8 @@ class BusinessExpenseIsdocImportService
         foreach ($means as $payment) {
             if (! in_array($payment->getPaymentMeansCode(), [PaymentMeansCode::CreditTransfer, PaymentMeansCode::MoneyTransferToAnAccount], true)
                 || $payment->getPartialPayment() === true
-                || bccomp($payment->getPaidAmount(), $monetary->getPayableAmount(), 2) !== 0) {
+                || ! $this->supportsPaymentPrecision($payment->getPaidAmount())
+                || bccomp($payment->getPaidAmount(), $payable, 2) !== 0) {
                 return implode("\n\n", $parts);
             }
             $iban = SupplierPaymentIban::normalize($payment->getDetails()?->getIban() ?? '');
@@ -182,6 +187,12 @@ class BusinessExpenseIsdocImportService
         }
 
         return implode("\n\n", $parts);
+    }
+
+    /** Never let scale-2 comparison discard unsupported source fractions, even trailing zeroes. */
+    protected function supportsPaymentPrecision(string $amount): bool
+    {
+        return preg_match('/^-?(?:[0-9]*\.[0-9]{1,2}|[0-9]+)$/D', $amount) === 1;
     }
 
     protected function firstPaymentDetails(IsdocInvoiceSchema $invoice): ?Details

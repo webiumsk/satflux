@@ -1,5 +1,33 @@
 # Project state
 
+## PR452 precision and recovery corrections - 2026-11-17
+
+Both requested CodeRabbit reviews completed in owner order: parent #451 first,
+then child #452. Child review5932293520 examined `2357c2a0` and reported two valid
+findings. ISDOC payment metadata now rejects more than two raw fractional digits
+in payable, paid-instruction, deposit and already-claimed amounts before scale-2
+comparisons. No amount is normalized or rounded to authorize a QR; legacy expense
+display remains unchanged. Five guides now explain the actual Internal note fields,
+exact English metadata labels, separate VS field and verification of the original
+full unpaid amount/currency, preserving other notes/payment facts.
+
+The two-source delta against `2357c2a0` has aggregate
+`f8e2860d595b0cd4ccca37fb4ac2909a12ec869ec7eda6a186217579f5ead827`;
+seven source/guide blobs have aggregate
+`0b1acfe93cb1e7f12406300426f78c79b8be1fe3d571bfe4573fd4c7906e0775`.
+The complete 27-source scope against parent `156078e4` is
+`12abd048b549aa777ddf95c11653c40178d1a4a76ae24ab122f4ff05c03571d7`.
+Final ISDOC checks pass 39 tests / 369 assertions. Independent actual-XML probing
+passes 24 contexts / 360 assertions, including raw fractions and normal controls.
+Pint/PHPStan and whitespace checks pass. Independent QA and security accept the
+exact hashes and recovery guidance without blockers. No client/UI source
+changed, so earlier browser/client results retain their unchanged-blob attribution.
+
+Next publish the correction and verify new exact-head CI. Parent `156078e4` stays
+unchanged with five successful checks. The fresh child automated review covered
+`2357c2a0`, not this follow-up. No additional included review slot, PR merge or
+deployment is claimed.
+
 ## Expense stack integrated for final QR review - 2026-11-17
 
 Parent PR451 corrections are published as `156078e4`: literal VS `0` filtering

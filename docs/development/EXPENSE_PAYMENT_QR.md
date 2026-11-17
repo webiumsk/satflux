@@ -46,7 +46,10 @@ nonpositive original payable amounts, partial/prepaid instructions, multiple ter
 and conflicting account-owner names suppress the account. UBL explicit PayeeParty
 also suppresses it because the expense model has no independent factor identity.
 ISDOC invoices declaring a foreign currency withhold bank metadata because local
-bookkeeping amounts do not identify the foreign payment instruction. Re-extraction
+bookkeeping amounts do not identify the foreign payment instruction. Payable,
+paid-instruction, deposit and already-claimed amounts must each have at most two
+raw fractional digits before scale-2 comparisons run. Additional fractional digits,
+even trailing zeros, withhold bank metadata; expense display mapping stays unchanged. Re-extraction
 removes previous supplier/account metadata while preserving user prose; explicitly
 cleared notes remain cleared on server edits. Existing
 expenses whose original import discarded supplier bank details remain ineligible.
