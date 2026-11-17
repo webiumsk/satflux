@@ -586,6 +586,7 @@
     "expense_payment_qr_open_for": "Payment QR for {number}",
     "expense_payment_qr_title": "Pay an expense",
     "expense_payment_qr_format": "QR format",
+    "expense_payment_qr_payme_amount_unavailable": "Use PAY by square for this amount.",
     "expense_payment_qr_recipient": "Recipient",
     "expense_payment_qr_iban": "IBAN",
     "expense_payment_qr_amount": "Amount",

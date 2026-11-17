@@ -57,7 +57,7 @@ Ak sa ukladanie väčšej prílohy preruší, zopakujte ho, kým je súbor stál
 
 ## Platobné QR kódy
 
-Pri neuhradenom náklade v EUR s názvom dodávateľa, platným IBAN-om dodávateľa a variabilným symbolom do 10 číslic kliknite v riadku na **Platobné QR**. Suma musí byť väčšia ako nula a mať najviac 12 číslic pred desatinnou čiarkou; názov dodávateľa môže mať najviac 70 znakov. Môžete prepnúť medzi **PAY by square** a **PayMe**. Pred potvrdením v bankovej aplikácii skontrolujte príjemcu, sumu a variabilný symbol. Kód sa tvorí vo vašom prehliadači. Tlačidlo Otvoriť PayMe vedome otvorí jeho platobný odkaz. Naskenovanie kódu neoznačí náklad ako uhradený.
+Pri neuhradenom náklade v EUR s názvom dodávateľa, platným IBAN-om dodávateľa a variabilným symbolom do 10 číslic kliknite v riadku na **Platobné QR**. Suma musí byť väčšia ako nula a mať najviac 12 číslic pred desatinnou čiarkou; názov dodávateľa môže mať najviac 70 znakov. Môžete prepnúť medzi **PAY by square** a **PayMe**. Pred potvrdením v bankovej aplikácii skontrolujte príjemcu, sumu a variabilný symbol. Kód sa tvorí vo vašom prehliadači. Tlačidlo Otvoriť PayMe vedome otvorí jeho platobný odkaz. Naskenovanie kódu neoznačí náklad ako uhradený. Pri sumách, ktoré PayMe nedokáže zapísať, použite PAY by square; suma sa nikdy nezaokrúhľuje.
 
 Kód sa nezobrazí pri uhradených a zrušených nákladoch, spornom bankovom párovaní ani pri importe s čiastočnou alebo nevyriešenou úhradou. Platobné údaje pochádzajú z výslovne uložených údajov dodávateľa; vlastný účet firmy sa nepoužije. Nové vhodné importy eFaktúr a ISDOC zachovajú účet dodávateľa. Pri starších importoch bez týchto údajov treba najprv doplniť platobné údaje.
 

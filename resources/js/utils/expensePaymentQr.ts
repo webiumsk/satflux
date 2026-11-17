@@ -38,9 +38,26 @@ export function expensePaymentQrDetails(row: ExpenseListRow): ExpensePaymentQrDe
         currency: 'EUR', supplier };
 }
 
+/** PayMe AM is limited to nine characters; never round significant cents to make it fit. */
+function payMeAmount(details: ExpensePaymentQrDetails): string | null {
+    const match = /^(\d{1,12})\.(\d{2})$/.exec(details.amount);
+    if (details.currency !== 'EUR' || !match || match[0] !== details.amount || !/[1-9]/.test(details.amount)) return null;
+    if (details.amount.length <= 9) return details.amount;
+    const integer = match[1].replace(/^0+(?=\d)/, '');
+    const fraction = match[2].replace(/0+$/, '');
+    const compact = `${integer}${fraction ? `.${fraction}` : ''}`;
+    return compact.length <= 9 ? compact : null;
+}
+
+export function canCreateExpensePayMe(details: ExpensePaymentQrDetails): boolean {
+    return payMeAmount(details) !== null;
+}
+
 /** SBA Payment Link Standard 2.0; editable QR instructions, without scheduling a payment. */
 export function expensePayMePayload(details: ExpensePaymentQrDetails): string {
-    const params = new URLSearchParams({ IBAN: details.iban, AM: details.amount, CC: details.currency,
+    const amount = payMeAmount(details);
+    if (amount === null) throw new Error('Expense amount is not supported by PayMe.');
+    const params = new URLSearchParams({ IBAN: details.iban, AM: amount, CC: details.currency,
         PI: `/VS${details.variableSymbol}`, CN: details.supplier });
     return `https://payme.sk/2/q/PME?${params}`;
 }

@@ -114,3 +114,34 @@ constitute another review of parent PR451 head `8feb1e8a`; its last delivered
 automated review covered `0e9ea219`. Parent corrections have independent QA/security
 and green exact-head CI, and the original threads are resolved. No parent fresh
 CodeRabbit approval, PR merge or deployment is claimed.
+
+
+## PayMe amount representation
+
+A direct check of the official [SBA Payment Link Standard 2.0](https://www.payme.sk/docs/Payment_Link_standard_2_0.pdf),
+section 3.4 Table 1, confirms AM is String(9). The existing general expense amount
+limit can exceed that field. The helper now rejects unsupported PayMe amounts,
+while losslessly compacting only insignificant zeros when needed. Examples:
+`1000000.00` becomes `1000000`, `1000000.10` becomes `1000000.1`, and
+`1000000.01` cannot produce PayMe instructions. Exact integer-cent comparisons
+cover the supported boundary values. PAY by square preserves the original
+canonical amount and remains available. The dialog disables only PayMe with a
+translated explanation and resets a newly unsupported active choice safely.
+Five user guides explain the available alternative without exposing encoding
+details in the payment flow.
+
+Independent QA and security accepted the nine changed source/test/locale blobs
+against `7270625a`, aggregate
+`e8b5a6c229233092ab261889995105c3994e304b67d8c7190dbebb1024b2c8c8`.
+The complete pre-integration QR scope remains 27 blobs, aggregate
+`f11488d9bbcab9b5724be9d0e7e93eae6ddc139ff9b2dfcba88712e1864cb7e1`.
+Author checks pass 80 helper/dialog/encoder tests; independent checks pass 66
+helper/dialog/table tests. Counts overlap and are not summed. Security additionally
+runs 69 integer-cent boundary probes, with 39 accepted and 30 rejected amounts.
+Seven real Chrome scenarios pass at 1440px and 320px: `1000000.10` produces exact
+AM `1000000.1`; `1000000.01` disables PayMe alone, and its actual PAY by square
+bitmap independently decodes through raw LZMA/CRC to the original amount, IBAN and
+VS. Focus, Escape, background inertness and width bounds pass with no external
+requests, payment events or browser errors. Scoped ESLint and locale parity pass;
+the one test-only href type error was corrected without altering the baseline.
+Final stack integration and exact-head CI remain separately verified steps.

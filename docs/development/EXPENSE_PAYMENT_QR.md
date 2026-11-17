@@ -33,7 +33,11 @@ The browser encoder implements bounded PAY by square 1.2.0 single credit transfe
 with CRC32, literal-only LZMA1 (lc3/lp0/pb2, 128 KiB dictionary, EOS), base32hex,
 alphanumeric QR mode and correction level L. PayMe uses editable `/2/q/PME`
 Payment Link Standard 2.0 instructions, EUR, creditor name and `/VS` identification;
-no scheduled date is added. Sources: [SBA PAY by square 1.2.0](https://www.sbaonline.sk/wp-content/uploads/2020/03/bysquare-PAYspecifications-1.2.0.pdf)
+no scheduled date is added. Its AM field is limited to nine characters. Amounts
+that fit retain their canonical two decimals; otherwise only insignificant zeros
+are removed, without rounding or dropping significant cents. PayMe is disabled
+with a translated explanation when the amount still cannot fit. PAY by square
+remains available through the existing 12-integer-digit limit. Sources: [SBA PAY by square 1.2.0](https://www.sbaonline.sk/wp-content/uploads/2020/03/bysquare-PAYspecifications-1.2.0.pdf)
 and [SBA PayMe 2.0](https://www.payme.sk/docs/Payment_Link_standard_2_0.pdf).
 
 CSV/Excel already retain explicit supplier-note metadata. New UBL/ISDOC extraction
@@ -108,8 +112,9 @@ this follow-up adds publication documentation and one changelog fragment only.
 The 20 reviewed source blobs retain aggregate
 `80ba25a20302921fd1aa0bb68f4453bfc1f65d19e1e188084b62742c17f903ff`.
 
-Current CI only triggers PRs targeting master/main. PR452 therefore requires
-retargeting and exact-head CI after the approved PR451 merge; local QA/build
-results are not GitHub CI for this dependent PR. Neither PR is merged or deployed.
+The dependent PR has observed exact-head CI runs, including all five successful
+jobs on `7270625a` in run43997399339. Earlier assumptions that the stack base
+prevented CI were incorrect. Verify checks again after each new head and after
+the approved base merge/retargeting. Neither PR is merged or deployed.
 The public changelog is deferred until its normal approved deployment workflow.
 See [implementation evidence and limits](EXPENSE_PAYMENT_QR.md).

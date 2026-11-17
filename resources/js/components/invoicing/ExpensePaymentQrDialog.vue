@@ -21,11 +21,17 @@
             v-for="option in formats"
             :key="option.value"
             type="button"
+            class="disabled:cursor-not-allowed disabled:opacity-50"
             :class="format === option.value ? 'invoicing-btn-primary' : 'invoicing-btn-secondary'"
             :aria-pressed="format === option.value"
+            :disabled="option.value === 'payme' && !paymeAvailable"
+            :aria-describedby="option.value === 'payme' && !paymeAvailable ? paymeAmountHintId : undefined"
             @click="format = option.value"
           >{{ option.label }}</button>
         </div>
+        <p v-if="!paymeAvailable" :id="paymeAmountHintId" class="text-sm text-gray-600">
+          {{ t('invoicing.expense_payment_qr_payme_amount_unavailable') }}
+        </p>
 
         <div class="flex min-h-64 items-center justify-center rounded-lg border border-gray-200 bg-white p-2" :aria-busy="loading">
           <img
@@ -81,7 +87,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import QRCode from 'qrcode';
-import { expensePayBySquarePayload, expensePayMePayload, type expensePaymentQrDetails } from '../../utils/expensePaymentQr';
+import { canCreateExpensePayMe, expensePayBySquarePayload, expensePayMePayload, type expensePaymentQrDetails } from '../../utils/expensePaymentQr';
 
 type PaymentDetails = NonNullable<ReturnType<typeof expensePaymentQrDetails>>;
 type QrFormat = 'bysquare' | 'payme';
@@ -90,6 +96,8 @@ const props = defineProps<{ details: PaymentDetails | null }>();
 const emit = defineEmits<{ close: [] }>();
 const { t } = useI18n();
 const titleId = `expense-payment-qr-${useId()}`;
+const paymeAmountHintId = `${titleId}-payme-amount`;
+const paymeAvailable = computed(() => Boolean(props.details && canCreateExpensePayMe(props.details)));
 const dialog = ref<HTMLDialogElement | null>(null);
 const closeButton = ref<HTMLButtonElement | null>(null);
 const format = ref<QrFormat>('bysquare');
@@ -152,8 +160,13 @@ async function renderQr() {
   }
 }
 
-watch([() => props.details, format], () => { void renderQr(); }, { immediate: true, flush: 'sync' });
-watch(() => props.details, details => { if (!details) format.value = 'bysquare'; }, { flush: 'sync' });
+watch([() => props.details, format, paymeAvailable], () => {
+  if (format.value === 'payme' && !paymeAvailable.value) {
+    format.value = 'bysquare';
+    return;
+  }
+  void renderQr();
+}, { immediate: true, flush: 'sync' });
 onBeforeUnmount(() => {
   generation++;
   if (dialog.value?.open) dialog.value.close();

@@ -1,13 +1,15 @@
 import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createI18n } from 'vue-i18n';
+import { reactive } from 'vue';
 import ExpensePaymentQrDialog from '@/components/invoicing/ExpensePaymentQrDialog.vue';
 
-const mocks = vi.hoisted(() => ({ image: vi.fn(), payme: vi.fn(), square: vi.fn() }));
+const mocks = vi.hoisted(() => ({ image: vi.fn(), payme: vi.fn(), square: vi.fn(), canPayme: vi.fn() }));
 vi.mock('qrcode', () => ({ default: { toDataURL: mocks.image } }));
 vi.mock('@/utils/expensePaymentQr', () => ({
   expensePayMePayload: mocks.payme,
   expensePayBySquarePayload: mocks.square,
+  canCreateExpensePayMe: mocks.canPayme,
 }));
 
 const details = { iban: 'SK3112000000198742637541', variableSymbol: '000123', amount: '12.34', currency: 'EUR' as const, supplier: 'Synthetic supplier' };
@@ -22,6 +24,7 @@ const messages = { invoicing: {
   expense_payment_qr_loading: 'Preparing QR', expense_payment_qr_error: 'QR could not be prepared.',
   expense_payment_qr_retry: 'Try again', expense_payment_qr_open_payme: 'Open PayMe',
   expense_payment_qr_image_alt: '{format} payment QR',
+  expense_payment_qr_payme_amount_unavailable: 'Use PAY by square for this amount.',
 }, common: { close: 'Close' } };
 let wrapper: VueWrapper | undefined;
 
@@ -48,6 +51,7 @@ beforeEach(() => {
   mocks.image.mockReset().mockResolvedValue(image);
   mocks.square.mockReset().mockReturnValue('SYNTHETIC-SQUARE');
   mocks.payme.mockReset().mockReturnValue('https://payme.sk/?V=2&IBAN=synthetic&AM=12.34');
+  mocks.canPayme.mockReset().mockReturnValue(true);
 });
 
 afterEach(() => {
@@ -78,6 +82,57 @@ describe('expense payment QR dialog', () => {
     for (const value of ['Synthetic supplier', details.iban, '000123', '12.34 EUR']) expect(dom().text()).toContain(value);
     expect(dom().find('a').exists()).toBe(false);
     expect(wrapper!.emitted()).not.toHaveProperty('mark-paid');
+  });
+
+  it('disables unavailable PayMe with an associated hint while keeping PAY by square usable', async () => {
+    mocks.canPayme.mockReturnValue(false);
+    render({ ...details, amount: '123456789.01' }); await flushPromises();
+    const payme = dom().findAll('button').find(button => button.text() === 'PayMe')!;
+    expect(payme.attributes('disabled')).toBe('');
+    const hintId = payme.attributes('aria-describedby');
+    expect(hintId).toBeTruthy();
+    expect(dom().get(`[id="${hintId}"]`).text()).toBe('Use PAY by square for this amount.');
+    expect(dom().get('button[aria-pressed="true"]').text()).toBe('PAY by square');
+    expect(dom().get('img').attributes('src')).toBe(image);
+    await payme.trigger('click'); await flushPromises();
+    expect(mocks.payme).not.toHaveBeenCalled();
+    expect(dom().find('a').exists()).toBe(false);
+  });
+
+  it('allows a large compactable amount when the availability helper accepts it', async () => {
+    const compactable = { ...details, amount: '123456789.00' };
+    mocks.payme.mockReturnValue('https://payme.sk/2/q/PME?IBAN=synthetic&AM=123456789');
+    render(compactable); await flushPromises();
+    const payme = dom().findAll('button').find(button => button.text() === 'PayMe')!;
+    expect(mocks.canPayme).toHaveBeenCalledWith(compactable);
+    expect(payme.attributes('disabled')).toBeUndefined();
+    expect(dom().text()).not.toContain('Use PAY by square for this amount.');
+    await payme.trigger('click'); await flushPromises();
+    expect(mocks.payme).toHaveBeenCalledWith(compactable);
+    expect(dom().get('button[aria-pressed="true"]').text()).toBe('PayMe');
+    expect(new URL(dom().get('a').attributes('href')!).searchParams.get('AM')).toBe('123456789');
+    expect(dom().text()).toContain('123456789.00 EUR');
+  });
+
+  it.each([false, true])('resets unavailable selected PayMe and ignores its pending image (mutated=%s)', async mutate => {
+    mocks.canPayme.mockImplementation(payment => payment.amount === '12.34');
+    const payment = reactive({ ...details });
+    render(payment); await flushPromises();
+    const pending = deferred<string>(); mocks.image.mockReturnValueOnce(pending.promise);
+    await dom().findAll('button').find(button => button.text() === 'PayMe')!.trigger('click');
+    await flushPromises();
+    const unavailable = { ...details, amount: '123456789.01' };
+    if (mutate) payment.amount = unavailable.amount;
+    else await wrapper!.setProps({ details: unavailable });
+    await flushPromises();
+    expect(dom().get('button[aria-pressed="true"]').text()).toBe('PAY by square');
+    expect(mocks.square).toHaveBeenLastCalledWith(unavailable);
+    expect(mocks.payme).toHaveBeenCalledOnce();
+    expect(dom().find('a').exists()).toBe(false);
+    expect(dom().find('[role="alert"]').exists()).toBe(false);
+    pending.resolve(`${image}stale`); await flushPromises();
+    expect(dom().get('img').attributes('src')).toBe(image);
+    expect(dom().find('a').exists()).toBe(false);
   });
 
   it('clears the previous image and ignores an older encoding result after changing format', async () => {

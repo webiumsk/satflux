@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ExpenseListRow } from '@/composables/useExpenseRowMeta';
-import { expensePayMePayload, expensePaymentQrDetails } from '@/utils/expensePaymentQr';
+import { canCreateExpensePayMe, expensePayBySquarePayload, expensePayMePayload, expensePaymentQrDetails } from '@/utils/expensePaymentQr';
 
 const row: ExpenseListRow = {
     id: 'synthetic-expense', internal_number: 'EXP-001', external_number: 'INV-001',
@@ -47,6 +47,42 @@ describe('expense payment QR eligibility and PayMe instructions', () => {
     it('accepts an explicitly zero imported payment without treating it as a partial payment', () => {
         expect(expensePaymentQrDetails({ ...row, internal_note: `${row.internal_note}\nPayment amount: 0,00` })).not.toBeNull();
     });
+
+
+    it.each([
+        ['999999.99', '999999.99'], ['1000000.00', '1000000'],
+        ['1000000.10', '1000000.1'], ['999999999.00', '999999999'], ['0.01', '0.01'],
+    ])('represents %s within the PayMe amount limit without losing cents', (amount, encoded) => {
+        const details = expensePaymentQrDetails({ ...row, total: amount })!;
+        expect(canCreateExpensePayMe(details)).toBe(true);
+        const actual = new URL(expensePayMePayload(details)).searchParams.get('AM')!;
+        expect(actual).toBe(encoded);
+        expect(actual.length).toBeLessThanOrEqual(9);
+        const cents = (value: string) => {
+            const [integer, fraction = ''] = value.split('.');
+            return BigInt(integer) * 100n + BigInt(fraction.padEnd(2, '0'));
+        };
+        expect(cents(actual)).toBe(cents(amount));
+        expect(details.amount).toBe(amount);
+    });
+
+    it.each(['1000000.01', '9999999.99', '1000000000.00', '999999999999.99'])(
+        'keeps PAY by square available when %s cannot fit the PayMe amount field', amount => {
+            const details = expensePaymentQrDetails({ ...row, total: amount })!;
+            expect(details).not.toBeNull();
+            expect(canCreateExpensePayMe(details)).toBe(false);
+            expect(() => expensePayMePayload(details)).toThrow('Expense amount is not supported by PayMe.');
+            expect(expensePayBySquarePayload(details)).toMatch(/^[0-9A-V]+$/);
+        },
+    );
+
+    it.each(['0.00', '-1.00', '1e2', '1.001', '1.00\n', 'NaN'])(
+        'rejects invalid direct PayMe amount %j', amount => {
+            const details = { ...expensePaymentQrDetails(row)!, amount };
+            expect(canCreateExpensePayMe(details)).toBe(false);
+            expect(() => expensePayMePayload(details)).toThrow();
+        },
+    );
 
     it('encodes supplier names as URL values without injecting another recipient', () => {
         const supplier = 'Synthetic & CN=other + čaj';

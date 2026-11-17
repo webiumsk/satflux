@@ -586,6 +586,7 @@
     "expense_payment_qr_open_for": "Platobné QR pre {number}",
     "expense_payment_qr_title": "Uhradiť náklad",
     "expense_payment_qr_format": "Formát QR",
+    "expense_payment_qr_payme_amount_unavailable": "Pre túto sumu použite PAY by square.",
     "expense_payment_qr_recipient": "Príjemca",
     "expense_payment_qr_iban": "IBAN",
     "expense_payment_qr_amount": "Suma",

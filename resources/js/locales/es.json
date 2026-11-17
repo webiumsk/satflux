@@ -3628,6 +3628,7 @@
     "expense_payment_qr_open_for": "QR de pago para {number}",
     "expense_payment_qr_title": "Pagar un gasto",
     "expense_payment_qr_format": "Formato QR",
+    "expense_payment_qr_payme_amount_unavailable": "Use PAY by square para este importe.",
     "expense_payment_qr_recipient": "Destinatario",
     "expense_payment_qr_iban": "IBAN",
     "expense_payment_qr_amount": "Importe",
