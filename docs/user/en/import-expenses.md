@@ -2,7 +2,7 @@
 title: Import expenses from SuperFaktura
 category: invoicing
 order: 12
-updated: 2026-11-16
+updated: 2026-11-17
 ---
 
 # Import expenses from SuperFaktura
@@ -55,19 +55,20 @@ You can allow temporary server processing to detect embedded ISDOC data. Cancel 
 
 If saving a larger attachment is interrupted, retry while the file is still selected. After reloading, remove the incomplete attachment and select the original file again. Complete the upload or remove the incomplete attachment before creating a full backup.
 
+## Supplier contact and IBAN
+
+In a new expense, optionally select **Supplier contact**. Its IBAN is copied into **Supplier IBAN**. If the contact has no IBAN, an account safely extracted from the same supplier's PDF/XML is used; otherwise the field stays empty. You can also enter the supplier name and IBAN manually. A conflicting supplier does not reuse another supplier's extracted account.
+
+Saved expenses retain their supplier name and account when a contact later changes. Manual edits and cleared accounts survive subsequent extraction; use the expense editor to deliberately change them. Internal note is for notes and does not provide the QR recipient.
+
 ## Payment QR codes
 
-For an unpaid EUR expense with a supplier name, a valid supplier IBAN and a variable symbol of up to 10 digits, choose **Payment QR** in its row. The amount must be greater than zero with at most 12 digits before the decimal point, and the supplier name must be at most 70 characters. Switch between **PAY by square** and **PayMe**, and check the recipient, amount and variable symbol before confirming in your banking app. The code is generated in your browser. Opening PayMe deliberately opens its payment link. Scanning a code does not mark the expense as paid. For amounts that PayMe cannot represent, use PAY by square; the amount is never rounded.
+An unpaid EUR expense with a positive amount, supplier name of up to 70 characters, valid supplier IBAN and a variable symbol of up to 10 digits offers **Payment QR** in its row. Choose **PAY by square** or **PayMe**. Check the recipient, exact amount and variable symbol in your bank app. Generating or scanning the QR does not mark the expense paid. Larger exact amounts unsupported by PayMe can use PAY by square.
 
-No code appears for paid or cancelled expenses, disputed bank matches, or imports with partial or unresolved payments. Supplier payment details are taken from explicit imported supplier metadata; the company’s own account is never used. New eligible e-invoice and ISDOC imports retain the supplier account; older imports without that metadata must first have their payment details completed.
+No IBAN means no QR. Paid/cancelled expenses, bank conflicts, negative credit notes and imports requiring payment review have no payable QR. Selecting a contact cannot override partial/prepaid or ambiguous imported payment evidence. Old ISDOC/Peppol records without retained financial evidence remain blocked. Historical supplier lines in notes are not copied into payment fields.
 
-When extraction has no payment reference, the variable symbol stays blank and the supplier bank account is not imported. Verify the original document and enter the correct variable symbol. Payment QR remains unavailable until the supplier name and IBAN are also complete and verified.
+## Add a received credit note manually
 
-To complete verified details, edit the expense, enter the variable symbol in its field and add or replace these two lines in **Internal note**. Keep exactly one line with each label, including the English labels shown here: Before saving, also verify that the saved amount and currency match the full unpaid payment instruction exactly, with no more than two decimal places.
+In **Expenses**, choose **New received credit note**, or select **Received credit note** as the document type in the new expense form. Enter its own document number and variable symbol, supplier details and a **negative total**, then save. Received credits remain in Expenses, carry a label and reduce signed expense totals. They do not generate outgoing-payment QR codes or match debit expense payments.
 
-```text
-Supplier: VERIFIED_NAME
-Supplier bank account: VERIFIED_IBAN
-```
-
-Replace `VERIFIED_NAME` and `VERIFIED_IBAN` with the supplier name and IBAN verified against the original document. Preserve other notes and payment information, then save and return to the list. These steps also apply when extraction omitted the account; the eligibility conditions above still apply.
+The expense detail also offers **Add received credit note**. It prefills supplier details and a negative amount in a new form, leaving the new document number and variable symbol empty. This does not create a permanent link to the original expense. Issued customer credit notes remain under Documents > Credit notes.

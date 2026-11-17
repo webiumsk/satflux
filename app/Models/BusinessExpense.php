@@ -15,6 +15,10 @@ class BusinessExpense extends Model
 
     protected $fillable = [
         'company_id',
+        'company_contact_id',
+        'supplier_name',
+        'supplier_iban',
+        'payment_review_required',
         'status',
         'internal_number',
         'external_number',
@@ -45,6 +49,7 @@ class BusinessExpense extends Model
             'paid_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'total' => 'decimal:2',
+            'payment_review_required' => 'boolean',
         ];
     }
 
@@ -56,6 +61,11 @@ class BusinessExpense extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(BusinessExpenseAttachment::class)->orderBy('created_at');
+    }
+
+    public function contact(): BelongsTo
+    {
+        return $this->belongsTo(CompanyContact::class, 'company_contact_id');
     }
 
     public function isOverdue(): bool

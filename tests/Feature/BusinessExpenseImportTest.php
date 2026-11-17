@@ -132,6 +132,9 @@ class BusinessExpenseImportTest extends TestCase
 
         $this->assertNotNull($expense);
         $this->assertSame(BusinessExpenseStatus::Paid, $expense->status);
+        $this->assertSame('MONACOR', $expense->supplier_name);
+        $this->assertNull($expense->supplier_iban);
+        $this->assertFalse($expense->payment_review_required);
         $this->assertSame('250351', $expense->external_number);
         $this->assertSame('Monacor káble', $expense->title);
         $this->assertSame('45.76', $expense->total);
@@ -202,6 +205,9 @@ class BusinessExpenseImportTest extends TestCase
         $this->assertSame('2025-01-15', $expense->due_date->toDateString());
         $this->assertSame('2025-01-02', $expense->paid_at->toDateString());
         $this->assertSame(BusinessExpenseStatus::Paid, $expense->status);
+        $this->assertSame('Example Supplier', $expense->supplier_name);
+        $this->assertNull($expense->supplier_iban);
+        $this->assertFalse($expense->payment_review_required);
         foreach ([
             'Private synthetic note', 'Tags: synthetic', 'Supplier: Example Supplier',
             'Category: Office', 'Supplier registration number: 00112233', 'Supplier tax ID: 0011223344',
@@ -236,6 +242,7 @@ class BusinessExpenseImportTest extends TestCase
         foreach (BusinessExpense::where('company_id', $this->company->id)->get() as $expense) {
             $this->assertSame(BusinessExpenseStatus::Recorded, $expense->status);
             $this->assertNull($expense->paid_at);
+            $this->assertTrue($expense->payment_review_required);
             $this->assertStringContainsString('Payment date: 2025-01-02', $expense->internal_note);
             $this->assertStringContainsString('Payment amount:', $expense->internal_note);
         }

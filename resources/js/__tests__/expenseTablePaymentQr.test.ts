@@ -5,7 +5,7 @@ import ExpensesTable from '@/components/invoicing/ExpensesTable.vue';
 import type { ExpenseListRow } from '@/composables/useExpenseRowMeta';
 
 vi.mock('@/utils/expensePaymentQr', () => ({
-  expensePaymentQrDetails: (row: ExpenseListRow) => row.status === 'recorded' && !row.bank_match_conflict && row.internal_note === 'eligible'
+  expensePaymentQrDetails: (row: ExpenseListRow) => row.status === 'recorded' && Number(row.total) > 0 && !row.bank_match_conflict && row.supplier_iban === 'SK3112000000198742637541' && row.payment_review_required === false
     ? { iban: 'SK3112000000198742637541', variableSymbol: row.variable_symbol, amount: row.total, currency: 'EUR', supplier: row.title }
     : null,
   expensePayMePayload: () => '', expensePayBySquarePayload: () => '',
@@ -14,14 +14,14 @@ vi.mock('@/utils/expensePaymentQr', () => ({
 const row = (changes: Partial<ExpenseListRow> = {}): ExpenseListRow => ({
   id: 'synthetic-expense', internal_number: 'EXP001', external_number: 'SUP001',
   title: 'Synthetic supplier', issue_date: '2026-11-01', status: 'recorded',
-  total: '12.34', currency: 'EUR', variable_symbol: '000123', internal_note: 'eligible', ...changes,
+  total: '12.34', currency: 'EUR', variable_symbol: '000123', supplier_name: 'Synthetic supplier', supplier_iban: 'SK3112000000198742637541', payment_review_required: false, ...changes,
 });
 let wrapper: VueWrapper | undefined;
 function render(rows = [row()]) {
   wrapper = mount(ExpensesTable, {
     props: { rows, companyId: 'company-one', selectedIds: [], selectAllMode: false, selectionCount: 0, totalCount: rows.length, showHeaderMenu: false, actionId: null },
     global: {
-      plugins: [createI18n({ legacy: false, locale: 'en', missingWarn: false, fallbackWarn: false, messages: { en: { invoicing: { expense_payment_qr_open: 'Payment QR', expense_payment_qr_open_for: 'Payment QR for {number}' } } } })],
+      plugins: [createI18n({ legacy: false, locale: 'en', missingWarn: false, fallbackWarn: false, messages: { en: { invoicing: { expense_received_credit_note: 'Received credit note', expense_payment_qr_open: 'Payment QR', expense_payment_qr_open_for: 'Payment QR for {number}' } } } })],
       stubs: {
         RouterLink: { props: ['to'], template: '<a><slot /></a>' },
         ExpensePaymentQrDialog: { props: ['details'], template: '<div data-test="qr-dialog">{{ details ? details.amount : "closed" }}</div>' },
@@ -34,8 +34,13 @@ const triggers = () => wrapper!.findAll('button[aria-label^="Payment QR for"]');
 afterEach(() => { wrapper?.unmount(); wrapper = undefined; });
 
 describe('expense-row payment QR entry points', () => {
+  it('labels received credits in desktop and mobile rows and offers no payment QR', () => {
+    render([row({ total: '-12.34' })]);
+    expect(wrapper!.findAll('span,p').filter(entry => entry.text() === 'Received credit note')).toHaveLength(2);
+    expect(triggers()).toHaveLength(0);
+  });
   it('offers visible desktop and mobile QR controls only for eligible expense rows', () => {
-    render([row(), row({ id: 'paid', status: 'paid' }), row({ id: 'cancelled', status: 'cancelled' }), row({ id: 'missing', internal_note: '' })]);
+    render([row(), row({ id: 'paid', status: 'paid' }), row({ id: 'cancelled', status: 'cancelled' }), row({ id: 'missing', supplier_iban: null })]);
     expect(triggers()).toHaveLength(2);
     expect(triggers().every(button => button.text() === 'Payment QR')).toBe(true);
     expect(wrapper!.get('[data-test="qr-dialog"]').text()).toBe('closed');

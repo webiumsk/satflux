@@ -8,6 +8,7 @@ use App\Models\BusinessExpense;
 use App\Models\Company;
 use App\Support\Invoicing\BusinessExpenseImportFields;
 use App\Support\Invoicing\ImportDateParser;
+use App\Support\Invoicing\SupplierPaymentIban;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -373,6 +374,9 @@ class BusinessExpenseExcelImportService
         $note = $this->buildInternalNote($row, $mapping, $paid ? null : $paidAt);
         $data = [
             'internal_number' => $internalNumber,
+            'supplier_name' => $this->cell($row, $mapping['supplier_name']),
+            'supplier_iban' => SupplierPaymentIban::normalize($this->cell($row, $mapping['supplier_bank_account']) ?? ''),
+            'payment_review_required' => ! $paid && ($paidAt !== null || ($paymentAmountRaw !== null && $paymentAmount != 0)),
             'external_number' => $this->cell($row, $mapping['external_number']),
             'title' => $title,
             'variable_symbol' => $this->cell($row, $mapping['variable_symbol'])
@@ -389,7 +393,7 @@ class BusinessExpenseExcelImportService
             'paid_at' => $paidAt,
         ];
 
-        foreach (['internal_number' => 64, 'external_number' => 64, 'title' => 255, 'variable_symbol' => 32, 'constant_symbol' => 16, 'specific_symbol' => 16, 'internal_note' => 4000] as $field => $limit) {
+        foreach (['internal_number' => 64, 'external_number' => 64, 'title' => 255, 'supplier_name' => 255, 'variable_symbol' => 32, 'constant_symbol' => 16, 'specific_symbol' => 16, 'internal_note' => 4000] as $field => $limit) {
             if (mb_strlen((string) $data[$field]) > $limit) {
                 throw new \InvalidArgumentException('Field exceeds maximum length: '.$field);
             }
@@ -430,6 +434,9 @@ class BusinessExpenseExcelImportService
 
         BusinessExpense::create([
             'company_id' => $company->id,
+            'supplier_name' => $data['supplier_name'],
+            'supplier_iban' => $data['supplier_iban'],
+            'payment_review_required' => $data['payment_review_required'],
             'status' => $data['paid'] ? BusinessExpenseStatus::Paid : BusinessExpenseStatus::Recorded,
             'internal_number' => $data['internal_number'],
             'external_number' => $data['external_number'],

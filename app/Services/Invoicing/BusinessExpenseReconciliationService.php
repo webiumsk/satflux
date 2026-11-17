@@ -139,7 +139,7 @@ class BusinessExpenseReconciliationService
         if ($excludeId !== null) {
             BusinessExpense::query()->where('company_id', $company->id)->whereKey($excludeId)->firstOrFail();
         }
-        $amount = $this->positiveCents($draft['total']);
+        $amount = $this->signedCents($draft['total']);
         $currency = $this->currency($draft['currency']);
         if ($amount === null || $currency === null) {
             return [];
@@ -198,7 +198,7 @@ class BusinessExpenseReconciliationService
                 $needed[$key] = true;
             }
             if ($keys !== []) {
-                $cents = $this->positiveCents($draft['total']);
+                $cents = $this->signedCents($draft['total']);
                 $currency = $this->currency($draft['currency']);
                 if ($cents !== null && $currency !== null) {
                     $amount = $this->decimalAmount($cents);
@@ -264,7 +264,7 @@ class BusinessExpenseReconciliationService
      */
     private function duplicateKeys(array $draft): array
     {
-        $amount = $this->positiveCents($draft['total'] ?? null);
+        $amount = $this->signedCents($draft['total'] ?? null);
         $currency = $this->currency($draft['currency'] ?? null);
         if ($amount === null || $currency === null) {
             return [];
@@ -382,12 +382,37 @@ class BusinessExpenseReconciliationService
         return $cents !== '' ? $cents : null;
     }
 
+    /** Signed duplicate identity only; bank-movement eligibility keeps positiveCents. */
+    private function signedCents(mixed $value): ?string
+    {
+        if (is_float($value)) {
+            if (! is_finite($value)) {
+                return null;
+            }
+            $formatted = number_format($value, 2, '.', '');
+            if ((float) $formatted !== $value) {
+                return null;
+            }
+            $value = $formatted;
+        }
+        if (! is_string($value) && ! is_int($value)) {
+            return null;
+        }
+        $value = trim((string) $value);
+        $negative = str_starts_with($value, '-');
+        $unsigned = $negative || str_starts_with($value, '+') ? substr($value, 1) : $value;
+        $cents = $this->positiveCents($unsigned);
+
+        return $cents === null ? null : ($negative ? '-'.$cents : $cents);
+    }
+
     /** Render canonical cent digits as a fixed two-decimal database amount. */
     private function decimalAmount(string $cents): string
     {
-        $padded = str_pad($cents, 3, '0', STR_PAD_LEFT);
+        $negative = str_starts_with($cents, '-');
+        $padded = str_pad($negative ? substr($cents, 1) : $cents, 3, '0', STR_PAD_LEFT);
 
-        return substr($padded, 0, -2).'.'.substr($padded, -2);
+        return ($negative ? '-' : '').substr($padded, 0, -2).'.'.substr($padded, -2);
     }
 
     /** Accept only a normalized three-letter ASCII currency code. */

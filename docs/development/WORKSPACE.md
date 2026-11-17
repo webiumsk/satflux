@@ -1,5 +1,97 @@
 # Local workspace
 
+## PR454 inline review corrections accepted - 2026-11-17
+
+The owner requests six inline finding fixes against published `7d19dbff` on
+`feat/expense-supplier-credit-notes`. All six are verified and corrected. Actual
+GitHub PR454 is open against master `eee6cd01`; its CI44085701876 passed on the
+prior head only. No new correction-head CI result is claimed before publication.
+
+Signed advisory duplicates work in both storage modes; bank matching remains
+positive-only. Copies preserve supplier snapshots while dropping non-live contact
+links and retaining live company/owner checks. Supplier mismatches now require
+review in either event order and detail extraction, superseding the former explicit
+contact exception. User edits invalidate delayed source/default-currency prefill.
+Sparse extraction retains saved VS with an independent payment-review veto when
+seller-reference proof is missing. All five guides document the 70-character limit.
+
+Independent QA/security accept delta16 aggregate
+`acd818ec378d89d78b81af04287941aa98b5a79e452cbbcdab4cf3a7ad1b381e`
+and complete53-source aggregate
+`c0b061befb7f7c053abdb11d0176f0e9ff2c7db968e943642f24d4f85879ac05`.
+Main checks: 324 JavaScript tests / nine suites; 164 PHP tests / 862 assertions;
+scoped ESLint zero warnings, unchanged107-error typecheck baseline, Pint/PHPStan,
+locale parity and production build pass. Independent QA: 208 JS,126 PHP/566,
+six real Chrome desktop/320px scenarios. Security independently passes243 JS.
+Test scopes overlap and are not summed; no unresolved review blocker remains.
+
+Only the retained feature branch is published. Primary unrelated edits remain
+preserved. No unsolicited bot command, dependency installation, production-data
+operation, merge, release or deployment. Next is correction-head CI/owner review.
+[Finding disposition and evidence](PR454_REVIEW_FIXES.md).
+
+## Expense supplier and received-credit source pushed - 2026-11-17
+
+The owner requested publication. Normal Git push publishes implementation commit
+`1ee599001c5edcb4b2431366a9e8223a806e5b90` to owned repository
+`webiumsk/satflux`, branch `feat/expense-supplier-credit-notes`, based on verified
+master `eee6cd01`. Direct remote Git confirms the same implementation SHA.
+
+The source commit includes exactly 59 scoped files: 49 independently accepted
+source/test/locale paths and ten matching guide/development documents. All 49
+reviewed blobs retain aggregate
+`bb7a48f142f9d4ec6ba8906462c729403ccafb758c8bfd2d1e1ca32d4b064c0f`.
+This publication follow-up changes five development documents only. Local and
+independent test/review evidence remains attributed to that unchanged source;
+no new remote CI pass is claimed. The CI workflow runs for master/main pushes
+and pull requests, not an isolated feature-branch push.
+
+The feature checkout is otherwise clean and tracks its matching origin branch.
+Primary remains `fix/sepa-confirmation-isolation` with unrelated work preserved.
+No PR creation, review-bot request, merge, release, deployment, package publication
+or external-repository write is performed. Next is owner review of the published
+branch. Public changelog publication remains tied to its normal deployment gate.
+See [scope and validation](EXPENSE_SUPPLIER_CREDITS.md).
+
+## Structured expense suppliers and manual received credits accepted locally - 2026-11-17
+
+The owner-authorized implementation is complete in retained worktree
+`storage/app/private/worktrees/expense-supplier-credit-notes`, branch
+`feat/expense-supplier-credit-notes`, based on fetched remote master `eee6cd01`.
+GitHub and remote Git verify that PR451 and PR452 are merged; earlier open-PR
+notes below are historical. Actual deployment remains unverified.
+
+Expenses now save optional company-scoped contact references and supplier
+name/IBAN snapshots. Explicit contact IBAN takes priority, then a compatible safe
+extraction, otherwise the account stays empty and QR is absent. Notes never
+supply a QR recipient. Saved/manual recipient edits and explicit clears survive
+hydration and extraction. Independent structured review evidence prevents a
+contact account from bypassing unsafe XML or partial-payment restrictions.
+Legacy original evidence is frozen before note edits and preserved on duplication.
+
+Manual received credits use a sign-inferred document choice and negative totals,
+with visible labels and a new source-prefill action that clears the new document
+number/VS. Negative totals cannot enable outgoing QR or debit matching. Existing
+bank-linked edit locks and local/server duplicate amount behavior are preserved.
+All five locales and expense guides are updated together.
+
+Independent QA/security accept all 49 source/test/locale paths at aggregate
+`bb7a48f142f9d4ec6ba8906462c729403ccafb758c8bfd2d1e1ca32d4b064c0f`.
+Main PHP checks pass 285 tests / 1,806 assertions; independent QA passes 91 / 476,
+289 JavaScript tests / 13 suites and 11 real Chrome desktop/320px scenarios with
+QR bitmap decoding and no external requests. Main affected JavaScript run passes
+837/838 with one unchanged 10 MiB archive timeout under concurrent load; its
+complete single-worker retry passes all 35 tests without tolerance changes.
+Typecheck adds no errors (107 inherited tolerated); scoped ESLint has no warnings,
+Pint/PHPStan, locale parity and whitespace checks pass. The final production build
+passes on the accepted source; an interrupted attempt passed on unchanged retry.
+
+Primary remains on `fix/sepa-confirmation-isolation` with unrelated work preserved.
+No commit, push, PR creation, merge, deployment, dependency installation, production
+operation or external-repository write is performed. Next is owner review of the
+local implementation. Publication and deployment remain separate approved steps.
+See [scope, contract and validation](EXPENSE_SUPPLIER_CREDITS.md).
+
 ## PR451 source published and review handoff - 2026-11-17
 
 The owner requests normal publication of the complete accepted expense/bank

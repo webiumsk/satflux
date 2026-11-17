@@ -45,13 +45,21 @@ export function expenseCandidate(row: EvoluExpenseRow): ExpenseCandidate {
     };
 }
 
+/** Signed bookkeeping identity only; payment matching keeps its positive-only amount predicate. */
+function signedDuplicateAmount(value: string | null | undefined): string | null {
+    const text = value?.trim() ?? "";
+    const negative = text.startsWith("-");
+    const amount = positiveBankAmount(negative || text.startsWith("+") ? text.slice(1) : text);
+    return amount === null ? null : `${negative ? "-" : ""}${amount}`;
+}
+
 /** Compare available evidence conservatively; a duplicate suggestion never prevents a save. */
 export function expenseDuplicateReason(
     draft: ExpenseDuplicateDraft, row: Pick<EvoluExpenseRow, "externalNumber" | "title" | "issueDate" | "total" | "currency">,
 ): ExpenseDuplicateSuggestion["reason"] | null {
-    const amount = positiveBankAmount(String(draft.total));
+    const amount = signedDuplicateAmount(String(draft.total));
     const currency = bankPaymentCurrency(draft.currency);
-    if (!amount || !currency || amount !== positiveBankAmount(row.total)
+    if (!amount || !currency || amount !== signedDuplicateAmount(row.total)
         || currency !== bankPaymentCurrency(row.currency)) return null;
     const number = normalizedExpenseNumber(draft.external_number);
     if (number && number === normalizedExpenseNumber(row.externalNumber)) return "external_number";

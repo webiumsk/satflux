@@ -266,6 +266,7 @@ export function prepareServerSnapshotForEvolu(snapshot: InvoicingDataSnapshot): 
             const mapped = withCompanyFk(
                 mapRowIds(row, {
                     id: ExpenseId,
+                    fields: { companyContactId: ContactId },
                 }),
                 companyIdByServerUuid,
             );

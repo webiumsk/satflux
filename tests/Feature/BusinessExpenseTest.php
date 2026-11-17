@@ -6,11 +6,14 @@ use App\Enums\BusinessExpenseStatus;
 use App\Enums\CompanyJurisdiction;
 use App\Models\BusinessExpense;
 use App\Models\Company;
+use App\Models\CompanyContact;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Services\Invoicing\BusinessExpenseService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -392,5 +395,109 @@ class BusinessExpenseTest extends TestCase
         $this->getJson($url.'/'.$created['id'])->assertOk()->assertJsonPath('data.delivery_date', null);
         $this->patchJson($url.'/'.$created['id'], ['issue_date' => '2026-11-04'])->assertOk();
         $this->assertNull(BusinessExpense::findOrFail($created['id'])->delivery_date);
+    }
+
+    #[Test]
+    public function supplier_snapshots_roundtrip_without_note_dependency_and_survive_contact_changes(): void
+    {
+        $contact = CompanyContact::create(['company_id' => $this->company->id, 'name' => 'Synthetic supplier', 'iban' => 'SK6807200002891987426353']);
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses";
+        $created = $this->actingAs($this->user)->postJson($url, [
+            'company_contact_id' => $contact->id, 'supplier_name' => $contact->name,
+            'supplier_iban' => 'sk68 0720 0002 8919 8742 6353',
+            'issue_date' => '2026-11-03', 'total' => 20.50, 'internal_note' => 'Unrelated private note.',
+        ])->assertCreated()->assertJsonPath('data.supplier_iban', 'SK6807200002891987426353')
+            ->assertJsonPath('data.payment_review_required', false)->json('data');
+
+        $contact->update(['name' => 'Changed contact name', 'iban' => 'DE89370400440532013000']);
+        $this->patchJson($url.'/'.$created['id'], ['title' => 'Renamed expense'])->assertOk()
+            ->assertJsonPath('data.supplier_name', 'Synthetic supplier')
+            ->assertJsonPath('data.supplier_iban', 'SK6807200002891987426353');
+        $this->getJson($url.'?year=2026')->assertOk()
+            ->assertJsonPath('data.0.company_contact_id', $contact->id)
+            ->assertJsonPath('data.0.supplier_iban', 'SK6807200002891987426353');
+        $contact->delete();
+        $this->getJson($url.'/'.$created['id'])->assertOk()->assertJsonPath('data.company_contact_id', null)
+            ->assertJsonPath('data.supplier_name', 'Synthetic supplier')->assertJsonPath('data.supplier_iban', 'SK6807200002891987426353');
+    }
+
+    #[Test]
+    public function supplier_account_and_contact_can_be_explicitly_cleared(): void
+    {
+        $contact = CompanyContact::create(['company_id' => $this->company->id, 'name' => 'Synthetic supplier']);
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses";
+        $created = $this->actingAs($this->user)->postJson($url, [
+            'issue_date' => '2026-11-03', 'total' => 10, 'company_contact_id' => $contact->id,
+            'supplier_name' => $contact->name, 'supplier_iban' => 'SK6807200002891987426353',
+        ])->assertCreated()->json('data');
+        $this->patchJson($url.'/'.$created['id'], ['company_contact_id' => null, 'supplier_name' => null, 'supplier_iban' => null])
+            ->assertOk()->assertJsonPath('data.company_contact_id', null)
+            ->assertJsonPath('data.supplier_name', null)->assertJsonPath('data.supplier_iban', null);
+    }
+
+    #[Test]
+    public function foreign_company_contacts_and_invalid_ibans_are_rejected_without_creating_expenses(): void
+    {
+        $otherCompany = Company::create(['user_id' => $this->user->id, 'legal_name' => 'Other synthetic company', 'jurisdiction' => CompanyJurisdiction::EuSk]);
+        $contact = CompanyContact::create(['company_id' => $otherCompany->id, 'name' => 'Foreign supplier']);
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses";
+        $this->actingAs($this->user)->postJson($url, [
+            'issue_date' => '2026-11-03', 'total' => 10, 'company_contact_id' => $contact->id,
+        ])->assertUnprocessable()->assertJsonValidationErrors('company_contact_id');
+        $this->postJson($url, ['issue_date' => '2026-11-03', 'total' => 10, 'supplier_iban' => 'SK6807200002891987426354'])
+            ->assertUnprocessable()->assertJsonValidationErrors('supplier_iban');
+        $this->assertSame(0, BusinessExpense::where('company_id', $this->company->id)->count());
+
+        $this->expectException(ValidationException::class);
+        app(BusinessExpenseService::class)->create($this->company, [
+            'issue_date' => '2026-11-03', 'total' => 10, 'company_contact_id' => $contact->id,
+        ]);
+    }
+
+    #[Test]
+    public function contact_account_and_note_edits_cannot_clear_imported_payment_review(): void
+    {
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses";
+        $source = app(BusinessExpenseService::class)->create($this->company, [
+            'issue_date' => '2026-11-03', 'total' => 10, 'payment_review_required' => true,
+            'internal_note' => 'Original partial payment evidence.',
+        ]);
+        $this->actingAs($this->user)->patchJson($url.'/'.$source->id, [
+            'supplier_name' => 'Synthetic supplier', 'supplier_iban' => 'SK6807200002891987426353',
+            'payment_review_required' => false, 'internal_note' => null,
+        ])->assertOk()->assertJsonPath('data.payment_review_required', true);
+        $this->postJson($url.'/'.$source->id.'/duplicate')->assertCreated()
+            ->assertJsonPath('data.payment_review_required', true)->assertJsonPath('data.total', '0.00');
+    }
+
+    #[Test]
+    public function original_legacy_payment_evidence_is_frozen_before_note_clearing(): void
+    {
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses";
+        foreach (['Payment amount: 2.00', 'Imported from ISDOC.', 'Importované z Peppol (SAPI-SK).'] as $index => $note) {
+            $expense = BusinessExpense::create([
+                'company_id' => $this->company->id, 'status' => 'recorded', 'internal_number' => 'LEGACY'.$index,
+                'issue_date' => '2026-11-03', 'total' => 10, 'currency' => 'EUR', 'internal_note' => $note,
+            ]);
+            $this->actingAs($this->user)->patchJson($url.'/'.$expense->id, [
+                'internal_note' => null, 'payment_review_required' => false,
+                'supplier_name' => 'Synthetic supplier', 'supplier_iban' => 'SK6807200002891987426353',
+            ])->assertOk()->assertJsonPath('data.payment_review_required', true);
+        }
+    }
+
+    #[Test]
+    public function manual_incoming_credit_preserves_negative_total_on_save_edit_list_and_summary(): void
+    {
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses";
+        $created = $this->actingAs($this->user)->postJson($url, [
+            'issue_date' => '2026-11-03', 'total' => -42.50, 'currency' => 'EUR', 'title' => 'Synthetic incoming credit',
+        ])->assertCreated()->assertJsonPath('data.total', '-42.50')->json('data');
+        $this->patchJson($url.'/'.$created['id'], ['total' => -20.25])->assertOk()->assertJsonPath('data.total', '-20.25');
+        $this->getJson($url.'?year=2026')->assertOk()->assertJsonPath('data.0.total', '-20.25')
+            ->assertJsonPath('summary.currencies.0.total', '-20.25')->assertJsonPath('summary.currencies.0.unpaid_total', '-20.25');
+        $this->postJson($url.'/duplicate-suggestions', [
+            'issue_date' => '2026-11-03', 'total' => -20.25, 'currency' => 'EUR',
+        ])->assertOk();
     }
 }

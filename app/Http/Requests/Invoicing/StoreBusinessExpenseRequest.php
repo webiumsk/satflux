@@ -11,12 +11,23 @@ class StoreBusinessExpenseRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('supplier_iban'))) {
+            $this->merge(['supplier_iban' => strtoupper(str_replace(' ', '', $this->input('supplier_iban')))]);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
         return [
+            'company_contact_id' => ['nullable', 'uuid'],
+            'supplier_name' => ['nullable', 'string', 'max:255'],
+            'supplier_iban' => ['nullable', 'string', 'max:34'],
+            'payment_review_required' => ['nullable', 'boolean'],
             'title' => ['nullable', 'string', 'max:255'],
             'external_number' => ['nullable', 'string', 'max:64'],
             'variable_symbol' => ['nullable', 'string', 'max:32'],
@@ -25,7 +36,7 @@ class StoreBusinessExpenseRequest extends FormRequest
             'issue_date' => [$this->isMethod('post') ? 'required' : 'sometimes', 'date'],
             'delivery_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
-            'total' => [$this->isMethod('post') ? 'required' : 'sometimes', 'numeric', 'min:0'],
+            'total' => [$this->isMethod('post') ? 'required' : 'sometimes', 'numeric', 'between:-999999999999.99,999999999999.99'],
             'currency' => ['nullable', 'string', 'size:3'],
             'internal_note' => ['nullable', 'string', 'max:5000'],
             'mark_paid' => ['sometimes', 'boolean'],

@@ -2,7 +2,7 @@
 title: Importar gastos de SuperFaktura
 category: invoicing
 order: 12
-updated: 2026-11-16
+updated: 2026-11-17
 ---
 
 # Importar gastos de SuperFaktura
@@ -55,19 +55,20 @@ Puede permitir el procesamiento temporal en el servidor para detectar datos ISDO
 
 Si se interrumpe el guardado de un adjunto grande, vuelva a intentarlo mientras el archivo siga seleccionado. Tras recargar la página, elimine el adjunto incompleto y seleccione de nuevo el archivo original. Complete la carga o elimine el adjunto incompleto antes de crear una copia de seguridad completa.
 
+## Contacto e IBAN del proveedor
+
+Al crear un gasto, seleccione opcionalmente **Contacto del proveedor**. Su IBAN se copia en **IBAN del proveedor**. Si no tiene IBAN, se utiliza la cuenta extraída de forma segura del PDF/XML del mismo proveedor; si no hay ninguna, el campo queda vacío. También puede introducir nombre e IBAN manualmente. No se reutiliza la cuenta extraída de un proveedor distinto.
+
+Los gastos guardados conservan nombre y cuenta aunque cambie el contacto. Las ediciones manuales y los campos borrados se conservan en extracciones posteriores; cámbielos expresamente en el editor. La nota interna no determina el destinatario del QR.
+
 ## Códigos QR de pago
 
-En un gasto pendiente en EUR con nombre del proveedor, IBAN válido del proveedor y símbolo variable de hasta 10 dígitos, seleccione **QR de pago** en su fila. El importe debe ser mayor que cero y tener como máximo 12 dígitos antes del separador decimal; el nombre del proveedor puede tener como máximo 70 caracteres. Cambie entre **PAY by square** y **PayMe** y compruebe el destinatario, el importe y el símbolo variable antes de confirmar en su aplicación bancaria. El código se genera en su navegador. Abrir PayMe abre de forma deliberada su enlace de pago. Escanear el código no marca el gasto como pagado. Para importes que PayMe no puede representar, utilice PAY by square; el importe nunca se redondea.
+Un gasto pendiente en EUR con importe positivo, nombre del proveedor de hasta 70 caracteres e IBAN válido del proveedor y símbolo variable de hasta 10 dígitos ofrece **QR de pago**. Elija **PAY by square** o **PayMe** y compruebe destinatario, importe exacto y referencia en la aplicación bancaria. Crear o escanear el QR no marca el gasto como pagado. Para importes exactos mayores que PayMe no admite, utilice PAY by square.
 
-No se muestra ningún código para gastos pagados o anulados, conciliaciones bancarias en disputa ni importaciones con pagos parciales o pendientes de aclarar. Los datos de pago proceden de metadatos explícitos del proveedor; nunca se usa la cuenta de la propia empresa. Las nuevas importaciones compatibles de facturas electrónicas e ISDOC conservan la cuenta del proveedor. En importaciones anteriores sin estos metadatos hay que completar primero los datos de pago.
+Sin IBAN no hay QR. Los gastos pagados o cancelados, conflictos bancarios, abonos negativos e importaciones que requieren revisar el pago no ofrecen QR. Elegir un contacto no elimina las restricciones por pagos parciales, anticipos o datos ambiguos. Los registros ISDOC/Peppol antiguos sin pruebas de pago conservadas siguen bloqueados. Los datos del proveedor en las notas no se copian a los campos de pago.
 
-Si la extracción no contiene una referencia de pago, el símbolo variable queda en blanco y la cuenta bancaria del proveedor no se importa. Verifique el documento original e introduzca el símbolo variable correcto. El QR de pago seguirá sin estar disponible hasta que el nombre y el IBAN del proveedor también estén completos y verificados.
+## Añadir una nota de crédito recibida
 
-Edite el gasto, introduzca el símbolo variable verificado en su campo y añada o sustituya estas dos líneas en **Nota interna**. Mantenga exactamente una línea de cada tipo y conserve las etiquetas en inglés que se muestran aquí: Antes de guardar, compruebe también que el importe y la moneda del gasto coincidan exactamente con la instrucción de pago completa pendiente, con un máximo de dos decimales.
+En **Gastos**, seleccione **Nueva nota de crédito recibida**, o elija **Nota de crédito recibida** como tipo de documento. Introduzca su propio número y símbolo variable, proveedor e **importe total negativo**, y guarde. Los abonos permanecen identificados en Gastos y reducen sus totales. No generan QR de pago saliente ni se vinculan a cargos bancarios de gastos.
 
-```text
-Supplier: VERIFIED_NAME
-Supplier bank account: VERIFIED_IBAN
-```
-
-Sustituya `VERIFIED_NAME` y `VERIFIED_IBAN` por el nombre y el IBAN del proveedor verificados en el documento original. Conserve las demás notas y datos de pago, guarde el gasto y vuelva a la lista. Estos pasos también se aplican si la extracción omitió la cuenta; siguen vigentes las condiciones anteriores.
+El detalle también ofrece **Añadir nota de crédito recibida**. Abre un formulario con proveedor e importe negativo, dejando vacíos el nuevo número y la referencia. No crea un vínculo permanente con el gasto original. Los abonos emitidos a clientes permanecen en Documentos > Notas de crédito.

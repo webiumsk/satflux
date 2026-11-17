@@ -23,7 +23,7 @@
 
     <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
       <h1 class="invoicing-title">
-        {{ isNew ? t('invoicing.expenses_new') : expenseLabel }}
+        {{ isNew ? t(isCreditNote ? 'invoicing.expense_credit_note_new' : 'invoicing.expenses_new') : expenseLabel }}
       </h1>
       <button type="button" class="invoicing-btn-primary" :disabled="saving" @click="save">
         {{ t('common.save') }}
@@ -48,7 +48,38 @@
     />
 
     <div class="grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)] gap-6 items-start">
-      <form class="invoicing-card-pad space-y-4 min-w-0" @submit.prevent="save">
+      <form class="invoicing-card-pad space-y-4 min-w-0" @input="markFormEdited" @change="markFormEdited" @submit.prevent="save">
+        <div>
+          <label for="expense-document-kind" class="invoicing-sf-label">{{ t('invoicing.expense_document_kind') }}</label>
+          <select id="expense-document-kind" v-model="documentKind" class="invoicing-sf-input w-full" @change="onDocumentKindChange">
+            <option value="expense">{{ t('invoicing.expense_document_expense') }}</option>
+            <option value="credit_note">{{ t('invoicing.expense_received_credit_note') }}</option>
+          </select>
+        </div>
+        <div>
+          <label for="expense-supplier-contact" class="invoicing-sf-label">{{ t('invoicing.expense_supplier_contact') }}</label>
+          <select id="expense-supplier-contact" v-model="form.company_contact_id" class="invoicing-sf-input w-full" :disabled="contactsLoading" @change="onSupplierContactChange">
+            <option value="">{{ t('invoicing.expense_supplier_contact_none') }}</option>
+            <option v-if="form.company_contact_id && !selectedContact" :value="form.company_contact_id">{{ t('invoicing.expense_supplier_contact_unavailable') }}</option>
+            <option v-for="contact in supplierContacts" :key="contact.id" :value="contact.id">{{ contact.name }}</option>
+          </select>
+          <p v-if="contactsFailed" class="mt-1 text-xs text-amber-800" role="status">
+            {{ t('invoicing.expense_supplier_contacts_failed') }}
+            <button type="button" class="underline" @click="refreshContacts">{{ t('common.retry') }}</button>
+          </p>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label for="expense-supplier-name" class="invoicing-sf-label">{{ t('invoicing.expense_supplier_name') }}</label>
+            <input id="expense-supplier-name" v-model="form.supplier_name" type="text" maxlength="255" class="invoicing-sf-input w-full" @input="supplierNameManuallyEdited = true" />
+          </div>
+          <div>
+            <label for="expense-supplier-iban" class="invoicing-sf-label">{{ t('invoicing.expense_supplier_iban') }}</label>
+            <input id="expense-supplier-iban" v-model="form.supplier_iban" type="text" maxlength="64" class="invoicing-sf-input w-full font-mono" autocomplete="off" @input="supplierIbanManuallyEdited = true" />
+          </div>
+        </div>
+        <p v-if="form.payment_review_required" class="text-xs text-amber-800" role="status">{{ t('invoicing.expense_payment_review_required') }}</p>
+        <p v-else class="text-xs text-gray-500">{{ t('invoicing.expense_supplier_iban_hint') }}</p>
         <div>
           <label class="invoicing-sf-label">{{ t('invoicing.expense_col_title') }}</label>
           <input v-model="form.title" type="text" class="invoicing-sf-input w-full" />
@@ -94,11 +125,11 @@
         <div class="grid sm:grid-cols-2 gap-4">
           <div>
             <label class="invoicing-sf-label">{{ t('invoicing.expense_col_total') }} *</label>
-            <input v-model.number="form.total" type="number" min="0" step="0.01" class="invoicing-sf-input w-full" required />
+            <input v-model.number="form.total" type="number" :min="isCreditNote ? undefined : 0" :max="isCreditNote ? -0.01 : undefined" step="0.01" class="invoicing-sf-input w-full" required />
           </div>
           <div>
             <label class="invoicing-sf-label">{{ t('invoicing.currency') }}</label>
-            <select v-model="form.currency" class="invoicing-sf-input w-full">
+            <select v-model="form.currency" class="invoicing-sf-input w-full" @change="currencyHasExplicitValue = true">
               <option value="EUR">EUR</option>
               <option value="CZK">CZK</option>
               <option value="USD">USD</option>
@@ -147,6 +178,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { sqliteTrue } from '@evolu/common';
+import { createQuery } from '@evolu/common/local-first';
 import ExpenseAttachmentPanel from '../../components/invoicing/ExpenseAttachmentPanel.vue';
 import ExpenseIsdocExtractModal from '../../components/invoicing/ExpenseIsdocExtractModal.vue';
 import InvoicingAppHeader from '../../components/invoicing/InvoicingAppHeader.vue';
@@ -157,13 +189,18 @@ import {
 } from '../../composables/useExpenseIsdocAttachment';
 import { useInvoicingCompanySummary } from '../../composables/useInvoicingCompanySummary';
 import { useInvoicingExpense } from '../../composables/useInvoicingExpenses';
+import { useExpenseSupplierContacts } from '../../composables/useExpenseSupplierContacts';
 import { useInvoicingLayout } from '../../composables/useInvoicingLayout';
 import { insertLocalExpense, updateLocalExpense } from '../../evolu/expenseCrud';
 import { expenseMutationErrorKey } from '../../utils/expenseError';
 import { normalizeVariableSymbol } from '../../evolu/bankSymbolNormalizer';
 import { expenseByIdIncludingDeletedQuery } from '../../evolu/client';
 import { isInvoicingLocalFirst } from '../../evolu/flags';
-import type { EvoluExpenseRow } from '../../evolu/expenseMap';
+import { evoluExpenseToApi, type ExpenseApiRow, type EvoluExpenseRow } from '../../evolu/expenseMap';
+import { normalizePaymentIban } from '../../utils/paymentIban';
+import { expensePaymentReviewRequired } from '../../utils/expensePaymentReview';
+import { companyShareRoutingKey, ownerIdForCompany, waitCompanyShareRegistryReady } from '../../evolu/companyShareRegistry';
+import { withTimeout } from '../../evolu/asyncTimeout';
 import { loadEvoluQueryWithTimeout, toAppRows } from '../../evolu/queryLoad';
 import type { CompanyId, ExpenseId } from '../../evolu/schema';
 import { invoicingApi } from '../../services/api';
@@ -184,6 +221,7 @@ const localFirst = isInvoicingLocalFirst();
 const expenseResource = useInvoicingExpense(companyId, expenseId);
 const expenseRows = computed(() => toAppRows<EvoluExpenseRow>(expenseResource.expenseRows.value));
 const { defaultCurrency } = useInvoicingCompanySummary();
+const { contacts: supplierContacts, loading: contactsLoading, failed: contactsFailed, refresh: refreshContacts } = useExpenseSupplierContacts(companyId);
 
 const {
   quota,
@@ -221,6 +259,10 @@ const detectErrorMessage = computed(() => {
 const today = new Date().toISOString().slice(0, 10);
 
 const form = ref({
+  company_contact_id: '',
+  supplier_name: '',
+  supplier_iban: '',
+  payment_review_required: false,
   title: '',
   external_number: '',
   variable_symbol: '',
@@ -234,6 +276,28 @@ const form = ref({
   internal_note: '',
   mark_paid: false,
 });
+const documentKind = ref(route.query.credit_note === '1' ? 'credit_note' : 'expense');
+const isCreditNote = computed(() => documentKind.value === 'credit_note');
+const selectedContact = computed(() => supplierContacts.value.find(contact => contact.id === form.value.company_contact_id));
+let extractedSupplier: { name: string; iban: string } | null = null;
+const supplierNameManuallyEdited = ref(false);
+const supplierIbanManuallyEdited = ref(false);
+const currencyHasExplicitValue = ref(false);
+
+function onDocumentKindChange() {
+  form.value.total = Math.abs(Number(form.value.total) || 0) * (isCreditNote.value ? -1 : 1);
+}
+
+/** Only deliberate selection replaces the stored supplier and payment snapshots. */
+function onSupplierContactChange() {
+  const contact = selectedContact.value;
+  const sameSupplier = (name: string) => extractedSupplier?.name.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase();
+  if (contact && extractedSupplier?.name && !sameSupplier(contact.name)) form.value.payment_review_required = true;
+  form.value.supplier_name = contact?.name ?? extractedSupplier?.name ?? '';
+  form.value.supplier_iban = contact?.iban?.trim() || (extractedSupplier && (!contact || sameSupplier(contact.name)) ? extractedSupplier.iban : '');
+  supplierNameManuallyEdited.value = false;
+  supplierIbanManuallyEdited.value = false;
+}
 
 const internalNumber = ref('');
 const expenseLabel = ref('');
@@ -244,15 +308,30 @@ const createdLocalExpenseId = ref<string | null>(null);
 const variableSymbolFollowsNumber = ref(true);
 const deliveryDateFollowsIssueDate = ref(true);
 let contextGeneration = 0;
+let formEditRevision = 0;
+let sourceReadController: AbortController | null = null;
+function markFormEdited() {
+  formEditRevision++;
+}
 watch([companyId, expenseId], () => {
   contextGeneration++;
   createdLocalExpenseId.value = null;
   saving.value = false;
   error.value = '';
+  extractedSupplier = null;
+  form.value.company_contact_id = '';
+  form.value.supplier_name = '';
+  form.value.supplier_iban = '';
+  form.value.payment_review_required = false;
+  supplierNameManuallyEdited.value = false;
+  supplierIbanManuallyEdited.value = false;
+  currencyHasExplicitValue.value = false;
+  sourceReadController?.abort();
 }, { flush: 'sync' });
 onUnmounted(() => {
   contextGeneration++;
   duplicateEditActive.value = false;
+  sourceReadController?.abort();
 });
 
 /** Follow document-number input for new or initial copy edits until a manual/imported VS overrides it. */
@@ -271,11 +350,24 @@ function syncDeliveryDateDefault() {
 }
 
 function applyImportDraft(draft: ExpenseImportDraft) {
-  // Keep the supplier account and payment reference from the same extracted invoice.
-  const preservedNote = form.value.internal_note.split(/\r?\n/)
-    .filter(line => !/^Supplier(?: bank account)?:/i.test(line)).join('\n').trim();
-  form.value.internal_note = [preservedNote, draft.internal_note?.trim()].filter(Boolean).join('\n\n');
-  form.value.variable_symbol = draft.variable_symbol ?? '';
+  markFormEdited();
+  // Supplier identity and account come from structured fields, never copied prose.
+  extractedSupplier = { name: draft.supplier_name?.trim() ?? '', iban: draft.supplier_iban?.trim() ?? '' };
+  form.value.payment_review_required ||= draft.payment_review_required !== false
+    || (draft.variable_symbol == null && Boolean(form.value.variable_symbol.trim()));
+  const contact = selectedContact.value;
+  const sameSupplier = (name: string) => extractedSupplier!.name.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase();
+  const retainedSupplierName = supplierNameManuallyEdited.value || supplierIbanManuallyEdited.value
+    ? form.value.supplier_name : contact?.name ?? extractedSupplier.name;
+  const supplierConflict = Boolean(retainedSupplierName && extractedSupplier.name && !sameSupplier(retainedSupplierName));
+  if (supplierConflict) form.value.payment_review_required = true;
+  if (!supplierNameManuallyEdited.value) form.value.supplier_name = retainedSupplierName;
+  if (!supplierIbanManuallyEdited.value) form.value.supplier_iban = contact?.iban?.trim()
+    || (supplierConflict ? '' : extractedSupplier.iban);
+  if (draft.internal_note?.trim() && !form.value.internal_note.includes(draft.internal_note.trim())) {
+    form.value.internal_note = [form.value.internal_note.trim(), draft.internal_note.trim()].filter(Boolean).join('\n\n');
+  }
+  form.value.variable_symbol = draft.variable_symbol ?? form.value.variable_symbol;
   variableSymbolFollowsNumber.value = false;
   if (draft.title) form.value.title = draft.title;
   if (draft.external_number) {
@@ -292,8 +384,14 @@ function applyImportDraft(draft: ExpenseImportDraft) {
     deliveryDateFollowsIssueDate.value = false;
   }
   if (draft.due_date) form.value.due_date = draft.due_date.slice(0, 10);
-  if (draft.total != null) form.value.total = Number(draft.total);
-  if (draft.currency) form.value.currency = draft.currency;
+  if (draft.total != null) {
+    form.value.total = Number(draft.total);
+    documentKind.value = form.value.total < 0 ? 'credit_note' : 'expense';
+  }
+  if (draft.currency) {
+    form.value.currency = draft.currency;
+    currencyHasExplicitValue.value = true;
+  }
   importNotice.value = t('invoicing.expense_import_prefilled');
 }
 
@@ -348,6 +446,10 @@ async function loadExpense() {
     internalNumber.value = e.internal_number;
     expenseLabel.value = e.internal_number + (e.title ? ` · ${e.title}` : '');
     form.value = {
+      company_contact_id: e.company_contact_id || '',
+      supplier_name: e.supplier_name || '',
+      supplier_iban: e.supplier_iban || '',
+      payment_review_required: expensePaymentReviewRequired(e.payment_review_required, e.internal_note),
       title: e.title || '',
       external_number: e.external_number || '',
       variable_symbol: e.variable_symbol || '',
@@ -361,12 +463,19 @@ async function loadExpense() {
       internal_note: e.internal_note || '',
       mark_paid: false,
     };
+    documentKind.value = form.value.total < 0 ? 'credit_note' : 'expense';
+    supplierNameManuallyEdited.value = true;
+    supplierIbanManuallyEdited.value = true;
     return;
   }
-  const e = await invoicingApi.expenses.get<Record<string, any>>(companyId.value, expenseId.value!);
+  const e = await invoicingApi.expenses.get<ExpenseApiRow>(companyId.value, expenseId.value!);
   internalNumber.value = e.internal_number;
   expenseLabel.value = e.internal_number + (e.title ? ` · ${e.title}` : '');
   form.value = {
+    company_contact_id: e.company_contact_id || '',
+    supplier_name: e.supplier_name || '',
+    supplier_iban: e.supplier_iban || '',
+    payment_review_required: expensePaymentReviewRequired(e.payment_review_required, e.internal_note),
     title: e.title || '',
     external_number: e.external_number || '',
     variable_symbol: e.variable_symbol || '',
@@ -380,6 +489,49 @@ async function loadExpense() {
     internal_note: e.internal_note || '',
     mark_paid: false,
   };
+  documentKind.value = form.value.total < 0 ? 'credit_note' : 'expense';
+  supplierNameManuallyEdited.value = true;
+  supplierIbanManuallyEdited.value = true;
+}
+
+/** Prefill a new received correction without claiming a persisted document relationship. */
+async function prefillCreditNote(expectedEditRevision: number) {
+  const sourceId = route.query.source_expense;
+  if (!isNew.value || !isCreditNote.value || typeof sourceId !== 'string' || expectedEditRevision !== formEditRevision) return;
+  const generation = contextGeneration;
+  const company = companyId.value;
+  let source: ExpenseApiRow;
+  if (localFirst) {
+    if (!expenseResource.evolu) return;
+    sourceReadController?.abort();
+    const controller = new AbortController();
+    sourceReadController = controller;
+    try { await withTimeout(waitCompanyShareRegistryReady(controller.signal), 30_000, 'expense_source_timeout'); }
+    finally { controller.abort(); }
+    if (generation !== contextGeneration || company !== companyId.value) return;
+    const routingKey = companyShareRoutingKey(company);
+    const owner = ownerIdForCompany(company) ?? (await withTimeout(expenseResource.evolu.appOwner, 30_000, 'expense_source_timeout')).id;
+    if (generation !== contextGeneration || company !== companyId.value || routingKey !== companyShareRoutingKey(company)) return;
+    const query = createQuery(db => db.selectFrom('expense').selectAll()
+      .where('id', '=', sourceId as ExpenseId).where('companyId', '=', company as CompanyId)
+      .where('ownerId', '=', owner).where('isDeleted', 'is not', sqliteTrue));
+    const rows = await loadEvoluQueryWithTimeout(expenseResource.evolu, query);
+    if (routingKey !== companyShareRoutingKey(company)) return;
+    const row = toAppRows<EvoluExpenseRow & { isDeleted: number | null }>(rows).find(entry => entry.id === sourceId && entry.companyId === company
+      && Reflect.get(entry, 'ownerId') === owner && entry.isDeleted !== sqliteTrue);
+    if (!row) throw new Error('expense_unavailable');
+    source = evoluExpenseToApi(row);
+  } else source = await invoicingApi.expenses.get<ExpenseApiRow>(company, sourceId);
+  if (generation !== contextGeneration || company !== companyId.value || expectedEditRevision !== formEditRevision) return;
+  form.value.company_contact_id = source.company_contact_id || '';
+  form.value.supplier_name = source.supplier_name || '';
+  form.value.supplier_iban = source.supplier_iban || '';
+  form.value.payment_review_required = expensePaymentReviewRequired(source.payment_review_required, source.internal_note);
+  form.value.total = -Math.abs(Number(source.total) || 0);
+  form.value.currency = source.currency || form.value.currency;
+  form.value.external_number = '';
+  form.value.variable_symbol = '';
+  variableSymbolFollowsNumber.value = false;
 }
 
 /**
@@ -388,6 +540,7 @@ async function loadExpense() {
  */
 async function save() {
   if (saving.value || extracting.value || detecting.value) return;
+  markFormEdited();
   const requestedCompany = companyId.value;
   const requestedExpense = expenseId.value;
   const requestedNew = isNew.value;
@@ -400,9 +553,23 @@ async function save() {
     error.value = t('validation.required');
     return;
   }
+  const total = Number(form.value.total);
+  if (!Number.isFinite(total) || (isCreditNote.value ? total >= 0 : total < 0)) {
+    error.value = t('invoicing.expense_credit_note_amount_invalid');
+    return;
+  }
+  const iban = form.value.supplier_iban.trim() ? normalizePaymentIban(form.value.supplier_iban) : null;
+  if (form.value.supplier_iban.trim() && !iban) {
+    error.value = t('invoicing.expense_supplier_iban_invalid');
+    return;
+  }
   saving.value = true;
   try {
     const payload = {
+      company_contact_id: form.value.company_contact_id || null,
+      supplier_name: form.value.supplier_name.trim() || null,
+      supplier_iban: iban,
+      payment_review_required: form.value.payment_review_required,
       title: form.value.title || null,
       external_number: form.value.external_number || null,
       variable_symbol: form.value.variable_symbol || null,
@@ -483,14 +650,23 @@ async function save() {
 }
 
 onMounted(async () => {
-  rememberCompany(companyId.value);
+  const initialEditRevision = formEditRevision;
+  const initialCompany = companyId.value;
+  const initialGeneration = contextGeneration;
+  const stillInitialContext = () => initialGeneration === contextGeneration && initialCompany === companyId.value;
+  rememberCompany(initialCompany);
   if (!localFirst) {
     await loadQuota();
-    const companyRec = await invoicingApi.companies.get<{ default_currency?: string }>(companyId.value);
-    form.value.currency = companyRec?.default_currency || 'EUR';
+    if (!stillInitialContext()) return;
+    const companyRec = await invoicingApi.companies.get<{ default_currency?: string }>(initialCompany);
+    if (!stillInitialContext()) return;
+    if (!currencyHasExplicitValue.value) form.value.currency = companyRec?.default_currency || 'EUR';
   } else {
     form.value.currency = defaultCurrency.value || 'EUR';
   }
   await loadExpense();
+  if (!stillInitialContext()) return;
+  try { await prefillCreditNote(initialEditRevision); }
+  catch { if (stillInitialContext() && initialEditRevision === formEditRevision) error.value = t('invoicing.expense_unavailable'); }
 });
 </script>

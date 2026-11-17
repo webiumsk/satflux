@@ -2,7 +2,7 @@
 title: Ausgaben aus SuperFaktura importieren
 category: invoicing
 order: 12
-updated: 2026-11-16
+updated: 2026-11-17
 ---
 
 # Ausgaben aus SuperFaktura importieren
@@ -55,19 +55,20 @@ Sie können der vorübergehenden Serververarbeitung zur Erkennung eingebetteter 
 
 Wird das Speichern eines größeren Anhangs unterbrochen, versuchen Sie es erneut, solange die Datei noch ausgewählt ist. Entfernen Sie nach dem Neuladen den unvollständigen Anhang und wählen Sie die Originaldatei erneut aus. Schließen Sie den Upload ab oder entfernen Sie den unvollständigen Anhang, bevor Sie eine vollständige Sicherung erstellen.
 
+## Lieferantenkontakt und IBAN
+
+Wählen Sie bei einer neuen Ausgabe optional **Lieferantenkontakt**. Seine IBAN wird in **IBAN des Lieferanten** übernommen. Fehlt sie, wird das sicher aus PDF/XML desselben Lieferanten ausgelesene Konto verwendet; sonst bleibt das Feld leer. Name und IBAN können auch manuell eingegeben werden. Ein Konto eines anderen ausgelesenen Lieferanten wird nicht übernommen.
+
+Gespeicherte Ausgaben behalten Namen und Konto auch nach Kontaktänderungen. Manuelle Änderungen und geleerte Kontofelder bleiben beim erneuten Auslesen erhalten; ändern Sie diese bewusst im Ausgabeneditor. Die interne Notiz bestimmt keinen QR-Zahlungsempfänger.
+
 ## QR-Codes für Zahlungen
 
-Wählen Sie bei einer unbezahlten EUR-Ausgabe mit Lieferantenname, gültiger Lieferanten-IBAN und einem variablen Symbol mit bis zu 10 Ziffern **Zahlungs-QR** in der Zeile. Der Betrag muss größer als null sein und darf höchstens 12 Stellen vor dem Komma haben; der Lieferantenname darf höchstens 70 Zeichen enthalten. Wechseln Sie zwischen **PAY by square** und **PayMe** und prüfen Sie Empfänger, Betrag und variables Symbol vor der Bestätigung in Ihrer Banking-App. Der Code wird in Ihrem Browser erstellt. PayMe öffnen öffnet bewusst den Zahlungslink. Das Scannen markiert die Ausgabe nicht als bezahlt. Für Beträge, die PayMe nicht darstellen kann, verwenden Sie PAY by square; der Betrag wird niemals gerundet.
+Eine unbezahlte EUR-Ausgabe mit positivem Betrag, Lieferantenname mit höchstens 70 Zeichen, gültiger Lieferanten-IBAN und bis zu zehnstelliger Zahlungsreferenz bietet **Zahlungs-QR**. Wählen Sie **PAY by square** oder **PayMe**. Prüfen Sie Empfänger, genauen Betrag und Referenz in der Banking-App. Erstellen oder Scannen markiert die Ausgabe nicht als bezahlt. Für größere genaue Beträge außerhalb des PayMe-Limits verwenden Sie PAY by square.
 
-Für bezahlte oder stornierte Ausgaben, strittige Bankzuordnungen und Importe mit Teilzahlungen oder ungeklärten Zahlungen wird kein Code angezeigt. Zahlungsdaten stammen aus ausdrücklich gespeicherten Lieferantendaten; das eigene Firmenkonto wird nie verwendet. Neue geeignete E-Rechnungs- und ISDOC-Importe behalten das Lieferantenkonto. Bei älteren Importen ohne diese Metadaten müssen zuerst die Zahlungsdaten ergänzt werden.
+Ohne IBAN gibt es keinen QR. Bezahlte oder stornierte Ausgaben, Bankkonflikte, negative Gutschriften und Importe mit Prüfbedarf bieten keinen Zahlungs-QR. Eine Kontaktauswahl hebt Sperren wegen Teilzahlungen, Vorauszahlungen oder unklarer Importdaten nicht auf. Ältere ISDOC/Peppol-Datensätze ohne erhaltene Zahlungsnachweise bleiben gesperrt. Lieferantenangaben aus Notizen werden nicht in Zahlungsfelder übernommen.
 
-Fehlt beim Auslesen eine Zahlungsreferenz, bleibt das variable Symbol leer und das Lieferantenkonto wird nicht importiert. Prüfen Sie den Originalbeleg und tragen Sie das richtige variable Symbol ein. Zahlungs-QR bleibt nicht verfügbar, bis auch Name und IBAN des Lieferanten vollständig und geprüft sind.
+## Erhaltene Gutschrift manuell hinzufügen
 
-Öffnen Sie die Ausgabe zum Bearbeiten, tragen Sie das geprüfte variable Symbol in sein Feld ein und ergänzen oder ersetzen Sie diese beiden Zeilen unter **Interne Notiz**. Jede Zeile darf genau einmal vorkommen; behalten Sie die gezeigten englischen Bezeichnungen bei: Prüfen Sie vor dem Speichern außerdem, dass Betrag und Währung der Ausgabe exakt der vollständigen offenen Zahlungsanweisung entsprechen und der Betrag höchstens zwei Nachkommastellen hat.
+Wählen Sie unter **Ausgaben** die Aktion **Neue erhaltene Gutschrift** oder die Belegart **Erhaltene Gutschrift**. Geben Sie die eigene Belegnummer und Zahlungsreferenz, den Lieferanten und einen **negativen Gesamtbetrag** ein und speichern Sie. Gutschriften bleiben gekennzeichnet in Ausgaben und verringern die Summen. Sie erzeugen keinen QR für ausgehende Zahlungen und werden nicht mit Lastschriften für Ausgaben abgeglichen.
 
-```text
-Supplier: VERIFIED_NAME
-Supplier bank account: VERIFIED_IBAN
-```
-
-Ersetzen Sie `VERIFIED_NAME` und `VERIFIED_IBAN` durch den anhand des Originalbelegs geprüften Lieferantennamen und die IBAN. Behalten Sie andere Notizen und Zahlungsangaben bei, speichern Sie die Ausgabe und kehren Sie zur Liste zurück. Dies gilt auch, wenn beim Auslesen kein Konto übernommen wurde; die oben genannten Voraussetzungen gelten weiterhin.
+Im Ausgabedetail gibt es auch **Erhaltene Gutschrift hinzufügen**. Ein neues Formular übernimmt Lieferant und negativen Betrag; neue Nummer und Referenz bleiben leer. Es entsteht keine dauerhafte Verknüpfung zur ursprünglichen Ausgabe. Kundengutschriften bleiben unter Belege > Gutschriften.

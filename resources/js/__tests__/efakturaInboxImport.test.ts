@@ -70,6 +70,9 @@ describe('efaktura inbox import helpers', () => {
         const payload = draftToExpensePayload(entry().draft, entry());
         expect(payload).toEqual({
             title: 'Supplier s.r.o.',
+            supplier_name: null,
+            supplier_iban: null,
+            payment_review_required: true,
             external_number: 'IN-7788',
             variable_symbol: '7788',
             issue_date: '2026-06-02',
@@ -79,6 +82,12 @@ describe('efaktura inbox import helpers', () => {
             currency: 'EUR',
             internal_note: 'Importované z Peppol (SAPI-SK).',
         });
+    });
+
+    it('retains structured recipient and independent payment review evidence from the server draft', () => {
+        const draft = { ...entry().draft, supplier_name: 'Synthetic supplier', supplier_iban: 'SK6807200002891987426353', payment_review_required: true };
+        expect(draftToExpensePayload(draft, entry())).toMatchObject({ supplier_name: 'Synthetic supplier', supplier_iban: 'SK6807200002891987426353', payment_review_required: true });
+        expect(draftToExpensePayload({ ...draft, payment_review_required: false }, entry())?.payment_review_required).toBe(false);
     });
 
     it('falls back to the summary and created_at when the draft is thin', () => {

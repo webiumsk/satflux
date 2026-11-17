@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { reactive, ref } from 'vue';
+import type { CompanyContactRow } from '@/composables/useCompanyContact';
 import { createI18n } from 'vue-i18n';
 import en from '@/locales/en.json';
 import { expensePaymentQrDetails } from '@/utils/expensePaymentQr';
@@ -11,24 +12,31 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(), update: vi.fn(), insert: vi.fn(), updateLocal: vi.fn(),
   confirmExtract: vi.fn(), upload: vi.fn(), loadQuota: vi.fn(), skipExtract: vi.fn(),
 }));
+const supplierContacts = ref<CompanyContactRow[]>([]);
+const contactsLoading = ref(false);
 const companyId = ref('abcdefghijklmnopqrstuv');
 const route = reactive({ name: 'invoicing-expense-new', params: {} as { expenseId?: string },
-  query: {} as { duplicate?: string | string[] | null } });
+  query: {} as { duplicate?: string | string[] | null; credit_note?: string; source_expense?: string } });
 const existingExpense = {
   id: 'synthetic-expense', internal_number: 'EXP20260001', title: 'Synthetic expense',
   external_number: 'DOC-0012', variable_symbol: '0099',
   issue_date: '2026-01-10', delivery_date: '2026-01-07' as string | null, due_date: null,
   total: '12.00', currency: 'EUR', constant_symbol: null, specific_symbol: null,
-  internal_note: null,
+  internal_note: null as string | null, company_contact_id: null as string | null, supplier_name: null as string | null,
+  supplier_iban: null as string | null, payment_review_required: false as boolean | null,
 };
 
 vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push: mocks.push, replace: mocks.replace }) }));
+vi.mock('@/composables/useExpenseSupplierContacts', () => ({ useExpenseSupplierContacts: () => ({
+  contacts: supplierContacts, loading: contactsLoading, failed: ref(false), refresh: vi.fn(),
+}) }));
+vi.mock('@/evolu/companyShareRegistry', () => ({ ownerIdForCompany: () => undefined, companyShareRoutingKey: () => 'private', waitCompanyShareRegistryReady: async () => {} }));
 vi.mock('@/evolu/flags', () => ({ isInvoicingLocalFirst: () => mocks.local }));
 vi.mock('@/evolu/client', () => ({ expenseByIdIncludingDeletedQuery: vi.fn() }));
 vi.mock('@/composables/useInvoicingLayout', () => ({ useInvoicingLayout: () => ({ companyId, rememberCompany: vi.fn() }) }));
 vi.mock('@/composables/useInvoicingCompanySummary', () => ({ useInvoicingCompanySummary: () => ({ defaultCurrency: ref('EUR') }) }));
 vi.mock('@/composables/useInvoicingExpenses', () => ({ useInvoicingExpense: () => ({
-  evolu: { loadQuery: mocks.lookup }, expense: ref(existingExpense), expenseRows: ref([]), refresh: mocks.refresh,
+  evolu: { loadQuery: mocks.lookup, appOwner: Promise.resolve({ id: 'synthetic-owner' }) }, expense: ref(existingExpense), expenseRows: ref([]), refresh: mocks.refresh,
 }) }));
 vi.mock('@/evolu/expenseCrud', () => ({ insertLocalExpense: mocks.insert, updateLocalExpense: mocks.updateLocal }));
 vi.mock('@/services/api', () => ({ invoicingApi: {
@@ -52,7 +60,7 @@ vi.mock('@/components/invoicing/ExpenseIsdocExtractModal.vue', () => ({ default:
 } }));
 import ExpenseForm from '@/pages/invoicing/ExpenseForm.vue';
 
-type FieldKey = 'expense_col_external' | 'variable_symbol' | 'expense_col_issue' | 'expense_col_delivery';
+type FieldKey = 'expense_col_title' | 'expense_col_external' | 'variable_symbol' | 'expense_col_issue' | 'expense_col_delivery';
 let wrapper: VueWrapper | undefined;
 function field(key: FieldKey) {
   const label = wrapper!.findAll('form label').find((entry) => entry.text().replace(' *', '') === en.invoicing[key]);
@@ -75,7 +83,7 @@ async function render(local = true, editing = false, duplicate?: string | string
   await flushPromises();
 }
 async function extract(draft: Record<string, unknown>) {
-  mocks.confirmExtract.mockResolvedValueOnce(draft);
+  mocks.confirmExtract.mockResolvedValueOnce({ payment_review_required: false, ...draft });
   wrapper!.findComponent({ name: 'ExpenseIsdocExtractModal' }).vm.$emit('confirm');
   await flushPromises();
 }
@@ -83,6 +91,18 @@ async function extract(draft: Record<string, unknown>) {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.local = true;
+  supplierContacts.value = [
+    { id: 'contact-bank', name: 'Supplier A', iban: 'SK6807200002891987426353' },
+    { id: 'contact-empty', name: 'Supplier A', iban: null },
+    { id: 'contact-other', name: 'Other supplier', iban: null },
+  ];
+  contactsLoading.value = false;
+  existingExpense.company_contact_id = null;
+  existingExpense.supplier_name = null;
+  existingExpense.supplier_iban = null;
+  existingExpense.payment_review_required = false;
+  existingExpense.internal_note = null;
+  existingExpense.total = '12.00';
   existingExpense.delivery_date = '2026-01-07';
   companyId.value = 'abcdefghijklmnopqrstuv';
   route.name = 'invoicing-expense-new';
@@ -108,37 +128,41 @@ afterEach(() => {
 });
 
 describe('new expense field defaults', () => {
-  it.each([true, false])('clears the previous invoice reference when a replacement has no VS (local=%s)', async local => {
+  it.each([true, false])('retains the previous reference for sparse extraction without enabling payment (local=%s)', async local => {
     await render(local);
     await extract({ external_number: 'A-2026', variable_symbol: '0001', total: 123.45, currency: 'EUR',
+      supplier_name: 'Supplier A', supplier_iban: 'SK6807200002891987426353', payment_review_required: false,
       internal_note: 'Supplier: Supplier A\nSupplier bank account: SK6807200002891987426353' });
     expect(field('variable_symbol').element.value).toBe('0001');
     await extract({ external_number: 'B-2026', variable_symbol: null, total: 123.45, currency: 'EUR',
+      supplier_name: 'Supplier B', supplier_iban: 'CZ6508000000192000145399', payment_review_required: false,
       internal_note: 'Supplier: Supplier B\nSupplier bank account: CZ6508000000192000145399' });
-    expect(field('variable_symbol').element.value).toBe('');
+    expect(field('variable_symbol').element.value).toBe('0001');
     await field('expense_col_external').setValue('B-2027');
-    expect(field('variable_symbol').element.value).toBe('');
+    expect(field('variable_symbol').element.value).toBe('0001');
     await wrapper!.get('form').trigger('submit');
     await flushPromises();
     const payload = local ? mocks.insert.mock.calls[0][2] : mocks.create.mock.calls[0][1];
-    expect(payload).toMatchObject({ external_number: 'B-2027', variable_symbol: null, total: 123.45, currency: 'EUR' });
-    expect(payload.internal_note).toBe('Supplier: Supplier B\nSupplier bank account: CZ6508000000192000145399');
+    expect(payload).toMatchObject({ external_number: 'B-2027', variable_symbol: '0001', total: 123.45, currency: 'EUR', payment_review_required: true });
+    expect(payload.internal_note).toContain('Supplier: Supplier B\nSupplier bank account: CZ6508000000192000145399');
     expect(expensePaymentQrDetails({ ...payload, id: 'synthetic-saved', internal_number: 'EXP-001',
       status: 'recorded', total: String(payload.total) })).toBeNull();
   });
 
-  it.each([undefined, ''])('clears a manual reference when the extracted VS is %s', async variableSymbol => {
+  it.each([undefined, null, ''])('preserves a missing manual reference but honors an explicit extracted VS %s', async variableSymbol => {
     await render();
     await field('variable_symbol').setValue('0099');
     await extract({ external_number: 'B-2026', variable_symbol: variableSymbol });
-    expect(field('variable_symbol').element.value).toBe('');
+    expect(field('variable_symbol').element.value).toBe(variableSymbol ?? '0099');
   });
 
   it.each([true, false])('replaces the supplier and VS together while retaining explicit leading zeros (local=%s)', async local => {
     await render(local);
     await extract({ external_number: 'A-2026', variable_symbol: '0001', total: 123.45, currency: 'EUR',
+      supplier_name: 'Supplier A', supplier_iban: 'SK6807200002891987426353', payment_review_required: false,
       internal_note: 'Supplier: Supplier A\nSupplier bank account: SK6807200002891987426353' });
     await extract({ external_number: 'B-2026', variable_symbol: '0000042', total: 123.45, currency: 'EUR',
+      supplier_name: 'Supplier B', supplier_iban: 'CZ6508000000192000145399', payment_review_required: false,
       internal_note: 'Supplier: Supplier B\nSupplier bank account: CZ6508000000192000145399' });
     await wrapper!.get('form').trigger('submit');
     await flushPromises();
@@ -149,18 +173,18 @@ describe('new expense field defaults', () => {
     });
   });
 
-  it('keeps user notes while replacing supplier payment metadata when extracting another invoice', async () => {
+  it('preserves prose while replacing structured supplier payment fields', async () => {
     await render();
-    await wrapper!.get('textarea').setValue('Keep this user note\nSupplier: Previous supplier\nSupplier bank account: SK6807200002891987426353');
-    await extract({ title: 'New supplier', internal_note: 'Supplier: New supplier\nSupplier bank account: CZ6508000000192000145399' });
-    expect((wrapper!.get('textarea').element as HTMLTextAreaElement).value).toBe(
-      'Keep this user note\n\nSupplier: New supplier\nSupplier bank account: CZ6508000000192000145399');
-    await extract({ title: 'Supplier without payment details', internal_note: 'Supplier: Supplier without payment details' });
-    expect((wrapper!.get('textarea').element as HTMLTextAreaElement).value).toContain('Keep this user note');
-    expect((wrapper!.get('textarea').element as HTMLTextAreaElement).value).not.toContain('Supplier bank account:');
+    const oldNote = 'Keep this user note\nSupplier: Previous supplier\nSupplier bank account: SK6807200002891987426353';
+    await wrapper!.get('textarea').setValue(oldNote);
+    await extract({ title: 'New supplier', supplier_name: 'New supplier', supplier_iban: 'CZ6508000000192000145399' });
+    expect((wrapper!.get('textarea').element as HTMLTextAreaElement).value).toBe(oldNote);
+    expect((wrapper!.get('#expense-supplier-iban').element as HTMLInputElement).value).toBe('CZ6508000000192000145399');
+    await extract({ title: 'Supplier without payment details', supplier_name: 'Supplier without payment details', supplier_iban: null });
+    expect((wrapper!.get('textarea').element as HTMLTextAreaElement).value).toBe(oldNote);
     await wrapper!.get('form').trigger('submit');
     await flushPromises();
-    expect(mocks.insert.mock.calls[0][2].internal_note).toContain('Supplier: Supplier without payment details');
+    expect(mocks.insert.mock.calls[0][2]).toMatchObject({ internal_note: oldNote, supplier_name: 'Supplier without payment details', supplier_iban: null });
   });
 
   it('waits for the local expense write before navigating or saving attachments', async () => {
@@ -334,7 +358,7 @@ describe('new expense field defaults', () => {
     });
   });
 
-  it('derives missing attachment delivery dates while clearing an absent payment reference', async () => {
+  it('derives missing attachment delivery dates while retaining an unprovided payment reference', async () => {
     await render();
     await extract({ external_number: 'ATT-0004', issue_date: '2026-03-04' });
     expect(field('variable_symbol').element.value).toBe('');
@@ -342,7 +366,7 @@ describe('new expense field defaults', () => {
     await field('variable_symbol').setValue('0099');
     await field('expense_col_delivery').setValue('2026-03-01');
     await extract({ external_number: 'ATT-0005', issue_date: '2026-03-05' });
-    expect(field('variable_symbol').element.value).toBe('');
+    expect(field('variable_symbol').element.value).toBe('0099');
     expect(field('expense_col_delivery').element.value).toBe('2026-03-01');
   });
 
@@ -388,6 +412,244 @@ describe('new expense field defaults', () => {
     await field('expense_col_issue').setValue('2026-03-05');
     expect(field('variable_symbol').element.value).toBe('0013');
     expect(field('expense_col_delivery').element.value).toBe('2026-03-05');
+  });
+});
+
+describe('structured supplier snapshots and received credit notes', () => {
+  const value = (selector: string) => (wrapper!.get(selector).element as HTMLInputElement).value;
+  const submit = async (local: boolean) => {
+    await wrapper!.get('form').trigger('submit');
+    await flushPromises();
+    return local ? mocks.insert.mock.calls.at(-1)?.[2] : mocks.create.mock.calls.at(-1)?.[1];
+  };
+
+  it.each([true, false])('takes the selected contact IBAN and never reuses a previous contact account (local=%s)', async local => {
+    await render(local);
+    expect(value('#expense-supplier-iban')).toBe('');
+    await wrapper!.get('#expense-supplier-contact').setValue('contact-bank');
+    expect(value('#expense-supplier-name')).toBe('Supplier A');
+    expect(value('#expense-supplier-iban')).toBe('SK6807200002891987426353');
+    await wrapper!.get('#expense-supplier-contact').setValue('contact-empty');
+    expect(value('#expense-supplier-iban')).toBe('');
+    expect(await submit(local)).toMatchObject({ company_contact_id: 'contact-empty', supplier_name: 'Supplier A', supplier_iban: null, payment_review_required: false });
+  });
+
+  it.each([true, false])('uses a matching extracted account only when the chosen contact has no IBAN (local=%s)', async local => {
+    await render(local);
+    await extract({ supplier_name: ' Supplier A ', supplier_iban: 'CZ6508000000192000145399', total: 19.5, variable_symbol: '0009' });
+    await wrapper!.get('#expense-supplier-contact').setValue('contact-empty');
+    expect(value('#expense-supplier-iban')).toBe('CZ6508000000192000145399');
+    await wrapper!.get('#expense-supplier-contact').setValue('contact-bank');
+    expect(value('#expense-supplier-iban')).toBe('SK6807200002891987426353');
+    await wrapper!.get('#expense-supplier-contact').setValue('contact-other');
+    expect(value('#expense-supplier-iban')).toBe('');
+    const payload = await submit(local);
+    expect(payload).toMatchObject({ company_contact_id: 'contact-other', supplier_name: 'Other supplier', supplier_iban: null });
+    expect(expensePaymentQrDetails({ ...payload, id: 'test', internal_number: 'test', status: 'recorded', total: String(payload.total) })).toBeNull();
+  });
+
+  it.each([
+    { local: true, extractFirst: false }, { local: false, extractFirst: false },
+    { local: true, extractFirst: true }, { local: false, extractFirst: true },
+  ])('requires review for conflicting extracted and selected suppliers in either event order: %j', async ({ local, extractFirst }) => {
+    await render(local);
+    if (!extractFirst) await wrapper!.get('#expense-supplier-contact').setValue('contact-bank');
+    await extract({ supplier_name: 'Other XML supplier', supplier_iban: 'CZ6508000000192000145399', total: 19.5, variable_symbol: '0099' });
+    if (extractFirst) await wrapper!.get('#expense-supplier-contact').setValue('contact-bank');
+    expect(value('#expense-supplier-name')).toBe('Supplier A');
+    expect(value('#expense-supplier-iban')).toBe('SK6807200002891987426353');
+    const payload = await submit(local);
+    expect(payload.payment_review_required).toBe(true);
+    expect(expensePaymentQrDetails({ ...payload, id: 'test', internal_number: 'test', status: 'recorded', total: String(payload.total) })).toBeNull();
+  });
+
+  it.each([true, false])('retains the selected supplier and extracted account without review when names match (local=%s)', async local => {
+    await render(local);
+    await wrapper!.get('#expense-supplier-contact').setValue('contact-empty');
+    await extract({ supplier_name: ' supplier a ', supplier_iban: 'CZ6508000000192000145399', total: 19.5, variable_symbol: '0099' });
+    expect(await submit(local)).toMatchObject({ supplier_name: 'Supplier A', supplier_iban: 'CZ6508000000192000145399', payment_review_required: false });
+  });
+
+  it.each([true, false])('keeps saved snapshots and explicit clears when contact choices hydrate later (local=%s)', async local => {
+    existingExpense.company_contact_id = 'contact-bank';
+    existingExpense.supplier_name = 'Saved supplier';
+    existingExpense.supplier_iban = 'CZ6508000000192000145399';
+    supplierContacts.value = [];
+    await render(local, true);
+    expect(value('#expense-supplier-name')).toBe('Saved supplier');
+    expect(value('#expense-supplier-iban')).toBe('CZ6508000000192000145399');
+    supplierContacts.value = [{ id: 'contact-bank', name: 'Changed contact', iban: 'SK6807200002891987426353' }];
+    await flushPromises();
+    expect(value('#expense-supplier-name')).toBe('Saved supplier');
+    await wrapper!.get('#expense-supplier-iban').setValue('');
+    await wrapper!.get('#expense-supplier-name').setValue('');
+    await wrapper!.get('form').trigger('submit');
+    await flushPromises();
+    const payload = local ? mocks.updateLocal.mock.calls[0][2] : mocks.update.mock.calls[0][2];
+    expect(payload).toMatchObject({ company_contact_id: 'contact-bank', supplier_iban: null, supplier_name: null });
+  });
+
+  it('does not derive payment instructions from copied notes or a generic title', async () => {
+    await render();
+    await wrapper!.get('textarea').setValue('Supplier: Copied supplier\nSupplier bank account: SK6807200002891987426353');
+    const payload = await submit(true);
+    expect(payload).toMatchObject({ company_contact_id: null, supplier_name: null, supplier_iban: null });
+  });
+
+  it('keeps extraction review sticky through another extraction and contact selection', async () => {
+    await render();
+    await extract({ supplier_name: 'Supplier A', supplier_iban: null, payment_review_required: true });
+    await extract({ supplier_name: 'Supplier A', supplier_iban: 'CZ6508000000192000145399', payment_review_required: false });
+    await wrapper!.get('#expense-supplier-contact').setValue('contact-bank');
+    expect(wrapper!.text()).toContain(en.invoicing.expense_payment_review_required);
+    expect(await submit(true)).toMatchObject({ payment_review_required: true });
+  });
+
+  it.each([undefined, null])('fails closed when an extraction review flag is %s', async payment_review_required => {
+    await render();
+    await extract({ supplier_name: 'Supplier A', supplier_iban: 'CZ6508000000192000145399', payment_review_required });
+    expect(await submit(true)).toMatchObject({ payment_review_required: true });
+  });
+
+  it.each([true, false])('preserves manual accounts and explicit clears across extraction (contact=%s)', async contact => {
+    await render();
+    if (contact) await wrapper!.get('#expense-supplier-contact').setValue('contact-bank');
+    for (const account of ['CZ6508000000192000145399', '']) {
+      await wrapper!.get('#expense-supplier-iban').setValue(account);
+      await extract({ supplier_name: 'Supplier A', supplier_iban: 'SK6807200002891987426353' });
+      expect(value('#expense-supplier-iban')).toBe(account);
+    }
+    await wrapper!.get('#expense-supplier-name').setValue('Manually named supplier');
+    await extract({ supplier_name: 'Supplier A', supplier_iban: 'SK6807200002891987426353' });
+    expect(value('#expense-supplier-name')).toBe('Manually named supplier');
+    await wrapper!.get('#expense-supplier-contact').setValue('contact-empty');
+    await wrapper!.get('#expense-supplier-contact').setValue('contact-bank');
+    expect(value('#expense-supplier-iban')).toBe('SK6807200002891987426353');
+  });
+
+  it.each([true, false])('preserves saved recipient snapshots on re-extraction after contact edits (local=%s)', async local => {
+    existingExpense.company_contact_id = 'contact-bank';
+    existingExpense.supplier_name = 'Saved supplier';
+    existingExpense.supplier_iban = 'CZ6508000000192000145399';
+    await render(local, true);
+    await extract({ supplier_name: 'Supplier A', supplier_iban: 'SK6807200002891987426353', total: 15 });
+    expect(value('#expense-supplier-name')).toBe('Saved supplier');
+    expect(value('#expense-supplier-iban')).toBe('CZ6508000000192000145399');
+  });
+
+  it.each([true, false])('withholds an extracted account that conflicts with a manually retained supplier name (local=%s)', async local => {
+    await render(local);
+    await wrapper!.get('#expense-supplier-name').setValue('Different supplier');
+    await extract({ supplier_name: 'Supplier A', supplier_iban: 'SK6807200002891987426353', payment_review_required: false });
+    expect(value('#expense-supplier-name')).toBe('Different supplier');
+    expect(value('#expense-supplier-iban')).toBe('');
+    expect(await submit(local)).toMatchObject({ supplier_name: 'Different supplier', supplier_iban: null, payment_review_required: true });
+  });
+
+  it('requires correction of a nonempty invalid IBAN before saving', async () => {
+    await render();
+    await wrapper!.get('#expense-supplier-iban').setValue('SK6807200002891987426354');
+    await submit(true);
+    expect(mocks.insert).not.toHaveBeenCalled();
+    expect(wrapper!.text()).toContain(en.invoicing.expense_supplier_iban_invalid);
+  });
+
+  it.each([true, false])('creates a received credit note with a negative total and preserves it on edit (local=%s)', async local => {
+    await render(local);
+    const amount = wrapper!.get('input[type="number"]');
+    await amount.setValue('19.5');
+    await wrapper!.get('#expense-document-kind').setValue('credit_note');
+    expect(value('input[type="number"]')).toBe('-19.5');
+    expect(amount.attributes('max')).toBe('-0.01');
+    expect(await submit(local)).toMatchObject({ total: -19.5 });
+    wrapper!.unmount();
+    existingExpense.total = '-19.50';
+    await render(local, true);
+    expect(value('#expense-document-kind')).toBe('credit_note');
+    await wrapper!.get('#expense-document-kind').setValue('expense');
+    expect(value('input[type="number"]')).toBe('19.5');
+  });
+
+  it('rejects zero and positive received credit amounts even through the toolbar save path', async () => {
+    await render();
+    await wrapper!.get('#expense-document-kind').setValue('credit_note');
+    for (const amount of ['0', '19.5']) {
+      await wrapper!.get('input[type="number"]').setValue(amount);
+      await submit(true);
+      expect(mocks.insert).not.toHaveBeenCalled();
+    }
+    expect(wrapper!.text()).toContain(en.invoicing.expense_credit_note_amount_invalid);
+  });
+
+  it.each([true, false])('prefills a new received credit without copying original document references (local=%s)', async local => {
+    existingExpense.supplier_name = 'Original supplier';
+    existingExpense.supplier_iban = 'CZ6508000000192000145399';
+    existingExpense.payment_review_required = null;
+    existingExpense.internal_note = 'Payment amount: 2.00';
+    mocks.lookup.mockResolvedValue([{ id: existingExpense.id, companyId: companyId.value, isDeleted: null,
+      ownerId: 'synthetic-owner', internalNumber: 'EXP001', title: 'Original', total: '12.00', currency: 'EUR', supplierName: 'Original supplier', supplierIban: 'CZ6508000000192000145399', paymentReviewRequired: null, internalNote: 'Payment amount: 2.00' }]);
+    await render(local);
+    wrapper!.unmount();
+    route.query = { credit_note: '1', source_expense: existingExpense.id };
+    wrapper = mount(ExpenseForm, { global: {
+      plugins: [createI18n({ legacy: false, locale: 'en', messages: { en } })],
+      stubs: { RouterLink: { template: '<a><slot /></a>' } },
+    } });
+    await flushPromises();
+    expect(value('input[type="number"]')).toBe('-12');
+    expect(field('expense_col_external').element.value).toBe('');
+    expect(field('variable_symbol').element.value).toBe('');
+    expect(value('#expense-supplier-name')).toBe('Original supplier');
+    await wrapper!.get('#expense-document-kind').setValue('expense');
+    expect(await submit(local)).toMatchObject({ payment_review_required: true });
+  });
+
+  it.each([true, false])('preserves edits made while a received-credit source request is pending (local=%s)', async local => {
+    let finishSource!: (source: unknown) => void;
+    const pendingSource = new Promise(resolve => { finishSource = resolve; });
+    if (local) mocks.lookup.mockReturnValueOnce(pendingSource);
+    else mocks.get.mockReturnValueOnce(pendingSource);
+    await render(local);
+    wrapper!.unmount();
+    route.query = { credit_note: '1', source_expense: existingExpense.id };
+    wrapper = mount(ExpenseForm, { global: {
+      plugins: [createI18n({ legacy: false, locale: 'en', messages: { en } })],
+      stubs: { RouterLink: { template: '<a><slot /></a>' } },
+    } });
+    await flushPromises();
+    expect(local ? mocks.lookup : mocks.get).toHaveBeenCalledOnce();
+    await wrapper!.get('#expense-supplier-contact').setValue('contact-bank');
+    await wrapper!.get('#expense-supplier-name').setValue('Deliberately edited supplier');
+    await wrapper!.get('#expense-supplier-iban').setValue('SK6807200002891987426353');
+    await wrapper!.get('#expense-document-kind').setValue('expense');
+    await wrapper!.get('input[type="number"]').setValue('25');
+    await wrapper!.findAll('form select').at(-1)!.setValue('CZK');
+    await field('expense_col_external').setValue('CREDIT-0004');
+    await field('variable_symbol').setValue('0004');
+    const rawSource = { id: existingExpense.id, ownerId: 'synthetic-owner', companyId: companyId.value, isDeleted: null,
+      internalNumber: 'EXP001', title: 'Source', total: '12.00', currency: 'EUR', supplierName: 'Source supplier', supplierIban: 'CZ6508000000192000145399' };
+    finishSource(local ? [rawSource] : { ...existingExpense, supplier_name: 'Source supplier', supplier_iban: 'CZ6508000000192000145399' });
+    await flushPromises();
+    expect(value('#expense-supplier-contact')).toBe('contact-bank');
+    expect(value('#expense-supplier-name')).toBe('Deliberately edited supplier');
+    expect(value('#expense-supplier-iban')).toBe('SK6807200002891987426353');
+    expect(value('#expense-document-kind')).toBe('expense');
+    expect(value('input[type="number"]')).toBe('25');
+    expect((wrapper!.findAll('form select').at(-1)!.element as HTMLSelectElement).value).toBe('CZK');
+    expect(field('expense_col_external').element.value).toBe('CREDIT-0004');
+    expect(field('variable_symbol').element.value).toBe('0004');
+  });
+
+  it('preserves a currency edit while initial company metadata is pending', async () => {
+    let finishCompany!: (company: { default_currency: string }) => void;
+    mocks.company.mockReturnValueOnce(new Promise(resolve => { finishCompany = resolve; }));
+    await render(false);
+    expect(mocks.company).toHaveBeenCalledOnce();
+    const currency = wrapper!.findAll('form select').at(-1)!;
+    await currency.setValue('CZK');
+    finishCompany({ default_currency: 'USD' });
+    await flushPromises();
+    expect((currency.element as HTMLSelectElement).value).toBe('CZK');
   });
 });
 
@@ -459,10 +721,10 @@ describe('duplicated expense field defaults', () => {
     expect((local ? mocks.updateLocal : mocks.update).mock.calls[0][2]).toMatchObject({ variable_symbol: null, delivery_date: null });
   });
 
-  it.each([true, false])('clears missing copy import references and preserves explicit equal-value import overrides (local=%s)', async (local) => {
+  it.each([true, false])('retains missing copy import references and preserves explicit equal-value import overrides (local=%s)', async (local) => {
     await render(local, true, existingExpense.id);
     await extract({ external_number: 'COPY-00088', issue_date: '2026-07-18' });
-    expect(field('variable_symbol').element.value).toBe('');
+    expect(field('variable_symbol').element.value).toBe('0099');
     expect(field('expense_col_delivery').element.value).toBe('2026-07-18');
     await extract({ external_number: 'COPY-00088', variable_symbol: '00088',
       issue_date: '2026-07-18', delivery_date: '2026-07-18' });
@@ -536,4 +798,80 @@ describe('duplicated expense field defaults', () => {
     expect(mocks.insert).not.toHaveBeenCalled();
     expect(mocks.create).not.toHaveBeenCalled();
   });
+});
+
+
+describe('company currency defaults and sparse extraction', () => {
+  it.each([
+    ['expense_col_title', 'Manually entered title'],
+    ['expense_col_external', 'MANUAL-0007'],
+    ['expense_col_issue', '2026-05-06'],
+  ] as const)('applies the delayed company currency after an unrelated %s edit', async (key, value) => {
+    let finishCompany!: (company: { default_currency: string }) => void;
+    mocks.company.mockReturnValueOnce(new Promise(resolve => { finishCompany = resolve; }));
+    await render(false);
+    await field(key).setValue(value);
+    finishCompany({ default_currency: 'USD' });
+    await flushPromises();
+    expect((wrapper!.findAll('form select').at(-1)!.element as HTMLSelectElement).value).toBe('USD');
+    expect(field(key).element.value).toBe(value);
+  });
+
+  it.each(['EUR', 'CZK'])('keeps explicit currency selection %s even if it equals the initial value', async value => {
+    let finishCompany!: (company: { default_currency: string }) => void;
+    mocks.company.mockReturnValueOnce(new Promise(resolve => { finishCompany = resolve; }));
+    await render(false);
+    const currency = wrapper!.findAll('form select').at(-1)!;
+    await currency.setValue(value);
+    finishCompany({ default_currency: 'USD' });
+    await flushPromises();
+    expect((currency.element as HTMLSelectElement).value).toBe(value);
+  });
+
+  it('keeps an explicitly extracted currency while company metadata is pending', async () => {
+    let finishCompany!: (company: { default_currency: string }) => void;
+    mocks.company.mockReturnValueOnce(new Promise(resolve => { finishCompany = resolve; }));
+    await render(false);
+    await extract({ currency: 'CZK' });
+    finishCompany({ default_currency: 'USD' });
+    await flushPromises();
+    expect((wrapper!.findAll('form select').at(-1)!.element as HTMLSelectElement).value).toBe('CZK');
+  });
+
+  it('still applies the company currency after extraction that does not supply one', async () => {
+    let finishCompany!: (company: { default_currency: string }) => void;
+    mocks.company.mockReturnValueOnce(new Promise(resolve => { finishCompany = resolve; }));
+    await render(false);
+    await extract({ title: 'Extracted title', variable_symbol: '0009' });
+    finishCompany({ default_currency: 'USD' });
+    await flushPromises();
+    expect((wrapper!.findAll('form select').at(-1)!.element as HTMLSelectElement).value).toBe('USD');
+    expect(field('variable_symbol').element.value).toBe('0009');
+  });
+
+  it.each([true, false].flatMap(local => [true, false].flatMap(editing => [undefined, null].map(symbol => ({ local, editing, symbol })))))('retains a nullish extracted VS and blocks unproven QR: %j', async ({ local, editing, symbol }) => {
+      await render(local, editing);
+      await field('variable_symbol').setValue('000123');
+      await extract({ variable_symbol: symbol, external_number: 'REPLACEMENT-9', total: 12,
+        supplier_name: 'Supplier A', supplier_iban: 'SK6807200002891987426353', payment_review_required: false });
+      expect(field('variable_symbol').element.value).toBe('000123');
+      await wrapper!.get('form').trigger('submit');
+      await flushPromises();
+      const payload = editing ? (local ? mocks.updateLocal : mocks.update).mock.calls[0][2]
+        : local ? mocks.insert.mock.calls[0][2] : mocks.create.mock.calls[0][1];
+      expect(payload).toMatchObject({ variable_symbol: '000123', payment_review_required: true });
+      expect(expensePaymentQrDetails({ ...payload, id: 'synthetic', internal_number: 'EXP-1',
+        status: 'recorded', total: String(payload.total) })).toBeNull();
+    });
+
+  it.each([true, false].flatMap(local => ['', '000777'].map(symbol => ({ local, symbol }))))('applies an explicit extracted VS including an empty value: %j', async ({ local, symbol }) => {
+      await render(local);
+      await field('variable_symbol').setValue('000123');
+      await extract({ variable_symbol: symbol, total: 12, payment_review_required: false });
+      expect(field('variable_symbol').element.value).toBe(symbol);
+      await wrapper!.get('form').trigger('submit');
+      await flushPromises();
+      const payload = local ? mocks.insert.mock.calls[0][2] : mocks.create.mock.calls[0][1];
+      expect(payload).toMatchObject({ variable_symbol: symbol || null, payment_review_required: false });
+    });
 });

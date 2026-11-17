@@ -1,8 +1,14 @@
 export type ExpenseListRow = {
   id: string;
+  company_contact_id?: string | null;
+  supplier_name?: string | null;
+  supplier_iban?: string | null;
+  payment_review_required?: boolean | null;
   internal_number: string;
   external_number: string | null;
   variable_symbol?: string | null;
+  constant_symbol?: string | null;
+  specific_symbol?: string | null;
   title: string | null;
   issue_date: string;
   delivery_date?: string | null;
@@ -20,7 +26,7 @@ export type ExpenseListRow = {
 export function parseExpenseRowMeta(row: ExpenseListRow) {
   const note = row.internal_note ?? '';
   let category = '';
-  let supplier = '';
+  let supplier = row.supplier_name?.trim() ?? '';
 
   const categoryMatch = note.match(/Category:\s*([^\n]+)/i);
   const supplierMatch = note.match(/Supplier:\s*([^\n]+)/i);
@@ -28,7 +34,7 @@ export function parseExpenseRowMeta(row: ExpenseListRow) {
   if (categoryMatch) {
     category = categoryMatch[1].trim();
   }
-  if (supplierMatch) {
+  if (!supplier && supplierMatch) {
     supplier = supplierMatch[1].trim();
   }
 

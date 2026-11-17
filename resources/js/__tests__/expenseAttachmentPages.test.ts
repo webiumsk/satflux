@@ -7,6 +7,7 @@ import { evoluExpenseToApi, type EvoluExpenseRow } from "@/evolu/expenseMap";
 import { toAppRows } from "@/evolu/queryLoad";
 import { createExpenseOriginalReference, createManualExpenseOriginalReference, encodeExpenseOriginalReference } from "@/evolu/expenseOriginalReference";
 import type { EvoluExpenseAttachmentRow } from "@/evolu/expenseAttachmentCrud";
+import { expensePaymentQrDetails } from "@/utils/expensePaymentQr";
 
 const mocks = vi.hoisted(() => ({
     local: true, evolu: {} as object | null, displayForeign: false,
@@ -23,15 +24,17 @@ const newExpenseId = "synthetic-created-expense";
 const company = ref(localCompany);
 // A lagging query is observable state, including when another consumer warms the computed projection.
 const filteredLagId = ref<string | null>(null);
-const route = reactive({ name: "invoicing-expense-new", params: {} as { expenseId?: string } });
+const route = reactive({ name: "invoicing-expense-new", params: {} as { expenseId?: string }, query: {} });
 type Attachment = { id: string; original_filename: string; mime: string | null; contentBase64?: string; sizeBytes?: string };
 function fixture(id = "expense-a", owner = localCompany) {
     return {
         id, companyId: owner, internal_number: "E-2026-001", external_number: null as string | null,
         title: "Synthetic existing expense", status: "recorded", issue_date: "2026-01-01",
         delivery_date: "2026-01-01", due_date: null, paid_at: null,
-        total: "1.00", currency: "EUR", variable_symbol: null, constant_symbol: null,
+        total: "1.00", currency: "EUR", variable_symbol: null as string | null, constant_symbol: null,
         specific_symbol: null, internal_note: null, attachment_path: null, original_filename: null,
+        company_contact_id: null as string | null, supplier_name: null as string | null,
+        supplier_iban: null as string | null, payment_review_required: false,
         attachments: [] as Attachment[], isDeleted: null as number | null,
     };
 }
@@ -43,6 +46,8 @@ function rawRow(expense: ReturnType<typeof fixture>) { return {
     paidAt: expense.paid_at, cancelledAt: null, total: expense.total, currency: expense.currency,
     variableSymbol: expense.variable_symbol, constantSymbol: expense.constant_symbol,
     specificSymbol: expense.specific_symbol, internalNote: expense.internal_note, isDeleted: expense.isDeleted,
+    companyContactId: expense.company_contact_id, supplierName: expense.supplier_name,
+    supplierIban: expense.supplier_iban, paymentReviewRequired: expense.payment_review_required ? 1 : 0,
 }; }
 const expenseRows = computed(() => models.value
     .filter((expense) => expense.isDeleted !== 1 && expense.id !== filteredLagId.value).map(rawRow));
@@ -60,6 +65,9 @@ const currentExpense = computed(() => {
 });
 vi.mock("vue-router", () => ({ useRoute: () => route, useRouter: () => ({ push: mocks.push }) }));
 vi.mock("@/composables/useEffectiveAccess", () => ({ useEffectiveAccess: () => ({ purchases: ref({ isdoc_packs: true }) }) }));
+vi.mock("@/composables/useExpenseSupplierContacts", () => ({ useExpenseSupplierContacts: () => ({
+    contacts: ref([]), loading: ref(false), failed: ref(false), refresh: vi.fn(),
+}) }));
 vi.mock("@/evolu/flags", () => ({ isInvoicingLocalFirst: () => mocks.local }));
 vi.mock("@/evolu/client", () => ({
     useInvoicingEvolu: () => mocks.evolu,
@@ -116,7 +124,7 @@ function appendAttachment(_evolu: object, id: string, input: AttachmentInput) {
     return { ok: true, value: { id: attachmentId } };
 }
 const quota = { unlimited: false, can_extract: true, free_remaining: 19, free_limit: 20, packs: [{ credits: 25, price_eur: 1 }] };
-const draft = { title: "Synthetic extracted title", total: 7.5, issue_date: "2026-02-03", currency: "EUR" };
+const draft = { payment_review_required: false, title: "Synthetic extracted title", total: 7.5, issue_date: "2026-02-03", currency: "EUR" };
 const pdf = (name = "synthetic.pdf") => new File(["%PDF synthetic only"], name, { type: "application/pdf" });
 function deferred<T>() {
     let resolve!: (value: T) => void;
@@ -406,6 +414,61 @@ describe("expense attachment page integration", () => {
         expect(mocks.insertAttachment).toHaveBeenCalledOnce();
         expect(wrapper!.text()).toContain(draft.title);
         expectNoLegacyExpenseWrites();
+    });
+
+    it.each([undefined, null])("keeps detail extraction fail-closed for review flag %s and preserves saved recipient snapshots", async payment_review_required => {
+        models.value[0].supplier_name = "Saved supplier";
+        models.value[0].supplier_iban = "CZ6508000000192000145399";
+        models.value[0].company_contact_id = "saved-contact";
+        vi.mocked(window.confirm).mockReturnValue(true);
+        mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
+        mocks.localExtract.mockResolvedValue({ data: { ...draft, supplier_name: "Changed supplier", supplier_iban: "SK6807200002891987426353", payment_review_required }, quota });
+        render("show"); await flushPromises(); await select();
+        wrapper!.findComponent(ExpenseIsdocExtractModal).vm.$emit("confirm"); await flushPromises();
+        expect(mocks.updateExpense).toHaveBeenCalledWith(mocks.evolu, "expense-a", expect.objectContaining({
+            supplier_name: "Saved supplier", supplier_iban: "CZ6508000000192000145399", company_contact_id: "saved-contact", payment_review_required: true,
+        }), expect.anything());
+    });
+
+    it.each([undefined, null, "", "0007"])("preserves a sparse detail reference or honors supplied reference %s", async variable_symbol => {
+        models.value[0].variable_symbol = "0042";
+        models.value[0].supplier_name = "Saved supplier";
+        models.value[0].supplier_iban = "CZ6508000000192000145399";
+        vi.mocked(window.confirm).mockReturnValue(true);
+        mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
+        mocks.localExtract.mockResolvedValue({ data: { ...draft, variable_symbol }, quota });
+        render("show"); await flushPromises(); await select();
+        wrapper!.findComponent(ExpenseIsdocExtractModal).vm.$emit("confirm"); await flushPromises();
+        expect(mocks.updateExpense).toHaveBeenCalledWith(mocks.evolu, "expense-a", expect.objectContaining({
+            variable_symbol: variable_symbol ?? "0042", payment_review_required: variable_symbol == null,
+        }), expect.anything());
+        if (variable_symbol == null) expect(expensePaymentQrDetails(models.value[0])).toBeNull();
+    });
+
+    it("requires review when a fresh extraction supplier conflicts with retained detail snapshots despite an explicit VS", async () => {
+        models.value[0].variable_symbol = "0042";
+        models.value[0].supplier_name = "Saved supplier";
+        models.value[0].supplier_iban = "CZ6508000000192000145399";
+        vi.mocked(window.confirm).mockReturnValue(true);
+        mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
+        mocks.localExtract.mockResolvedValue({ data: { ...draft, supplier_name: "Different XML supplier", variable_symbol: "0007" }, quota });
+        render("show"); await flushPromises(); await select();
+        wrapper!.findComponent(ExpenseIsdocExtractModal).vm.$emit("confirm"); await flushPromises();
+        expect(mocks.updateExpense).toHaveBeenCalledWith(mocks.evolu, "expense-a", expect.objectContaining({
+            supplier_name: "Saved supplier", supplier_iban: "CZ6508000000192000145399", variable_symbol: "0007", payment_review_required: true,
+        }), expect.anything());
+        expect(expensePaymentQrDetails(models.value[0])).toBeNull();
+    });
+
+    it("preserves saved null recipient fields during detail re-extraction", async () => {
+        vi.mocked(window.confirm).mockReturnValue(true);
+        mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
+        mocks.localExtract.mockResolvedValue({ data: { ...draft, supplier_name: "Imported supplier", supplier_iban: "SK6807200002891987426353" }, quota });
+        render("show"); await flushPromises(); await select();
+        wrapper!.findComponent(ExpenseIsdocExtractModal).vm.$emit("confirm"); await flushPromises();
+        expect(mocks.updateExpense).toHaveBeenCalledWith(mocks.evolu, "expense-a", expect.objectContaining({
+            supplier_name: null, supplier_iban: null, payment_review_required: false,
+        }), expect.anything());
     });
 
     it("keeps the PDF as a local attachment when field extraction is skipped", async () => {

@@ -1,11 +1,13 @@
 import { effectiveExpensePayment, hasExpenseBankAssociation } from "./bankExpenseClaims";
 import { bankPaymentCurrency } from "./bankPaymentValues";
-import { maxLength, NonEmptyString } from "@evolu/common";
+import { booleanToSqliteBoolean, maxLength, NonEmptyString } from "@evolu/common";
+import { normalizePaymentIban } from "@/utils/paymentIban";
+import { expensePaymentReviewRequired } from "@/utils/expensePaymentReview";
 import type { Evolu } from "@evolu/common/local-first";
 import type { EvoluExpenseRow } from "./expenseMap";
-import type { CompanyId, ExpenseId, InvoicingLocalSchema } from "./schema";
+import { ContactId, type CompanyId, type ExpenseId, type InvoicingLocalSchema } from "./schema";
 import {
-    currentExpenseTarget, expenseReconciliationScope, withExpenseReconciliation, type ExpenseReconciliationScope,
+    assertExpenseCompanyOwner, assertExpenseContact, hasLiveExpenseContact, currentExpenseTarget, expenseReconciliationScope, withExpenseReconciliation, type ExpenseReconciliationScope,
 } from "./expenseReconciliation";
 
 const Opt16 = maxLength(16)(NonEmptyString);
@@ -17,6 +19,10 @@ const InternalNumberType = maxLength(64)(NonEmptyString);
 const CurrencyType = maxLength(3)(NonEmptyString);
 
 export type ExpenseSavePayload = {
+    company_contact_id?: string | null;
+    supplier_name?: string | null;
+    supplier_iban?: string | null;
+    payment_review_required?: boolean | null;
     title?: string | null;
     external_number?: string | null;
     variable_symbol?: string | null;
@@ -74,6 +80,13 @@ export function nextLocalExpenseInternalNumber(
  * An omitted delivery value maps to the issue date; update callers decide whether omission should be written.
  */
 export function mapLocalExpensePayloadFields(payload: ExpenseSavePayload) {
+    const contact = parseOpt(payload.company_contact_id, ContactId);
+    if (!contact.ok) return contact;
+    const supplier = parseOpt(payload.supplier_name, Opt255);
+    if (!supplier.ok) return supplier;
+    const rawIban = payload.supplier_iban?.trim();
+    const iban = rawIban ? normalizePaymentIban(rawIban) : null;
+    if (rawIban && !iban) return { ok: false as const, error: "supplier_iban" };
     const title = parseOpt(payload.title ?? null, Opt255);
     if (!title.ok) return title;
     const external = parseOpt(payload.external_number ?? null, Opt64);
@@ -98,6 +111,10 @@ export function mapLocalExpensePayloadFields(payload: ExpenseSavePayload) {
     return {
         ok: true as const,
         value: {
+            companyContactId: contact.value,
+            supplierName: supplier.value,
+            supplierIban: iban,
+            paymentReviewRequired: booleanToSqliteBoolean(expensePaymentReviewRequired(payload.payment_review_required, payload.internal_note)),
             title: title.value,
             externalNumber: external.value,
             variableSymbol: vs.value,
@@ -124,6 +141,7 @@ function insertLocalExpenseCore(
     existingRows: EvoluExpenseRow[],
     options?: { internalNumber?: string; id?: ExpenseId; bankPaymentClaimJson?: string },
 ) {
+    if (payload.company_contact_id) assertExpenseContact(expenseReconciliationScope(evolu), companyId, payload.company_contact_id);
     const mapped = mapLocalExpensePayloadFields(payload);
     if (!mapped.ok) return mapped;
 
@@ -172,6 +190,14 @@ function updateLocalExpenseCore(
     if (!mapped.ok) return mapped;
 
     const { deliveryDate, ...fields } = mapped.value;
+    if (payload.company_contact_id && current) assertExpenseContact(expenseReconciliationScope(evolu), current.companyId, payload.company_contact_id);
+    for (const [input, column] of [["company_contact_id", "companyContactId"], ["supplier_name", "supplierName"], ["supplier_iban", "supplierIban"]] as const) {
+        if (payload[input] === undefined) Reflect.deleteProperty(fields, column);
+    }
+    fields.paymentReviewRequired = booleanToSqliteBoolean(
+        expensePaymentReviewRequired(current?.paymentReviewRequired, current?.internalNote)
+        || (payload.payment_review_required != null && payload.payment_review_required),
+    );
     if (current && hasExpenseBankAssociation(current, expenseReconciliationScope(evolu).context)) {
         const beforeAmount = canonicalExpenseCents(current.total);
         const afterAmount = canonicalExpenseCents(fields.total);
@@ -245,6 +271,10 @@ function duplicateLocalExpenseCore(
 
     return evolu.insert("expense", {
         companyId: source.companyId,
+        companyContactId: source.companyContactId ?? null,
+        supplierName: source.supplierName ?? null,
+        supplierIban: source.supplierIban ?? null,
+        paymentReviewRequired: booleanToSqliteBoolean(expensePaymentReviewRequired(source.paymentReviewRequired, source.internalNote)),
         status: "recorded",
         internalNumber: internalNumber.value,
         externalNumber: source.externalNumber,
@@ -283,7 +313,7 @@ export async function insertLocalExpense(
     evolu: Evolu<InvoicingLocalSchema>, companyId: CompanyId, payload: ExpenseSavePayload,
     _existingRows: EvoluExpenseRow[], options?: { internalNumber?: string; id?: ExpenseId; bankPaymentClaimJson?: string },
 ) {
-    return withExpenseReconciliation(evolu, (scope) => insertLocalExpenseInReconciliation(scope, companyId, payload, options));
+    return withExpenseReconciliation(evolu, (scope) => insertLocalExpenseInReconciliation(scope, companyId, payload, options), undefined, payload.company_contact_id ? ["allContactsQuery"] : []);
 }
 
 /**
@@ -299,7 +329,7 @@ export async function updateLocalExpense(
             return { ok: false as const, error: "expense_target_changed" };
         }
         return updateLocalExpenseCore(scope.evolu, expenseId, payload, fresh);
-    });
+    }, undefined, payload.company_contact_id ? ["allContactsQuery"] : []);
 }
 
 /**
@@ -316,7 +346,9 @@ export async function updateLocalExpenseNote(
         }
         const value = parseOpt(note, Opt4000);
         if (!value.ok) return value;
-        return scope.evolu.update("expense", { id: expenseId, companyId: fresh.companyId, internalNote: value.value });
+        return scope.evolu.update("expense", { id: expenseId, companyId: fresh.companyId, internalNote: value.value,
+            paymentReviewRequired: booleanToSqliteBoolean(expensePaymentReviewRequired(fresh.paymentReviewRequired, fresh.internalNote)),
+        });
     });
 }
 
@@ -371,6 +403,10 @@ export async function duplicateLocalExpense(
     return withExpenseReconciliation(evolu, (scope) => {
         const fresh = currentExpenseTarget(scope, source.id);
         if (!fresh || fresh.isDeleted === 1 || fresh.companyId !== source.companyId) return { ok: false as const, error: "expense_target_changed" };
-        return duplicateLocalExpenseCore(scope.evolu, fresh, scope.context.expenses);
-    });
+        assertExpenseCompanyOwner(scope, fresh.companyId, Reflect.get(fresh, "ownerId"));
+        const copySource = fresh.companyContactId && !hasLiveExpenseContact(scope, fresh.companyContactId)
+            ? { ...fresh, companyContactId: null } : fresh;
+        if (copySource.companyContactId) assertExpenseContact(scope, copySource.companyId, copySource.companyContactId);
+        return duplicateLocalExpenseCore(scope.evolu, copySource, scope.context.expenses);
+    }, undefined, ["allContactsQuery"]);
 }

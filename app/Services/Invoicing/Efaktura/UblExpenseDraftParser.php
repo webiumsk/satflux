@@ -32,9 +32,11 @@ class UblExpenseDraftParser
         if ($creditNote) {
             $total = bcsub('0', $total, 2);
         }
+        $payment = $this->supplierPaymentMetadata($root, $supplierName, $creditNote, $variableSymbol);
 
         return [
             'document_type' => $creditNote ? 'credit_note' : 'invoice',
+            ...$payment,
             'external_number' => $invoiceNumber !== '' ? $invoiceNumber : null,
             'title' => $supplierName !== '' ? $supplierName : 'Prijatá e-faktúra',
             'variable_symbol' => $variableSymbol,
@@ -50,51 +52,70 @@ class UblExpenseDraftParser
     protected function supplierPaymentNote(\SimpleXMLElement $root, string $supplier, bool $creditNote, ?string $variableSymbol): string
     {
         $parts = [$creditNote ? 'Dobropis prijatý z Peppol (SAPI-SK).' : 'Importované z Peppol (SAPI-SK).'];
-        if ($supplier === '' || preg_match('/[\p{Cc}\p{Zl}\p{Zp}]/u', $supplier)) {
-            return $parts[0];
+        $payment = $this->supplierPaymentMetadata($root, $supplier, $creditNote, $variableSymbol);
+        if ($payment['supplier_name'] !== null) {
+            $parts[] = 'Supplier: '.$payment['supplier_name'];
         }
-        $parts[] = 'Supplier: '.$supplier;
+        if ($payment['supplier_iban'] !== null) {
+            $parts[] = 'Supplier bank account: '.$payment['supplier_iban'];
+        }
+
+        return implode("\n\n", $parts);
+    }
+
+    /** @return array{supplier_name: ?string, supplier_iban: ?string, payment_review_required: bool} */
+    protected function supplierPaymentMetadata(\SimpleXMLElement $root, string $supplier, bool $creditNote, ?string $variableSymbol): array
+    {
+        $name = $supplier !== '' && mb_strlen($supplier) <= 255 && ! preg_match('/[\p{Cc}\p{Zl}\p{Zp}]/u', $supplier)
+            ? $supplier : null;
+        $result = ['supplier_name' => $name, 'supplier_iban' => null, 'payment_review_required' => true];
         // An explicit payee may be a factor rather than the supplier. This
         // expense model has no separate payee identity, so do not pair its
         // payment account with the supplier name. Credit notes never pay out.
         $supplierNames = $root->xpath('./cac:AccountingSupplierParty/cac:Party/cac:PartyName/cbc:Name') ?: [];
-        if ($creditNote || $variableSymbol === null || ($root->xpath('./cac:PayeeParty') ?: []) !== []
-            || count($supplierNames) !== 1 || trim((string) $supplierNames[0]) !== $supplier
+        if ($creditNote || ($root->xpath('./cac:PayeeParty') ?: []) !== []
+            || count($supplierNames) > 1
             || ! $this->hasUnambiguousPaymentTotal($root)) {
-            return implode("\n\n", $parts);
+            return $result;
         }
 
         $accounts = [];
         $means = $root->xpath('./cac:PaymentMeans') ?: [];
         if (count($means) !== 1) {
-            return implode("\n\n", $parts);
+            return $result;
         }
         foreach ($means as $payment) {
             $payment->registerXPathNamespace('cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
             $payment->registerXPathNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
-            if (! in_array($this->xpathString($payment, './cbc:PaymentMeansCode'), ['30', '58'], true)) {
-                return implode("\n\n", $parts);
+            $codes = $payment->xpath('./cbc:PaymentMeansCode') ?: [];
+            $references = $payment->xpath('./cbc:PaymentID') ?: [];
+            if (count($codes) !== 1 || ! in_array(trim((string) $codes[0]), ['30', '58'], true) || count($references) > 1) {
+                return $result;
             }
             $nodes = $payment->xpath('./cac:PayeeFinancialAccount/cbc:ID') ?: [];
             $accountNames = $payment->xpath('./cac:PayeeFinancialAccount/cbc:Name') ?: [];
-            if (count($nodes) !== 1) {
-                return implode("\n\n", $parts);
+            if (count($nodes) > 1) {
+                return $result;
             }
             if (count($accountNames) > 1
                 || ($accountNames !== [] && trim((string) $accountNames[0]) !== $supplier)) {
-                return implode("\n\n", $parts);
+                return $result;
+            }
+            $result['payment_review_required'] = false;
+            if (count($nodes) !== 1 || $name === null || $variableSymbol === null) {
+                return $result;
             }
             $iban = SupplierPaymentIban::normalize((string) $nodes[0]);
             if ($iban === null) {
-                return implode("\n\n", $parts);
+                return $result;
             }
             $accounts[$iban] = true;
         }
         if (count($accounts) === 1) {
-            $parts[] = 'Supplier bank account: '.array_key_first($accounts);
+            $result['supplier_iban'] = array_key_first($accounts);
         }
 
-        return implode("\n\n", $parts);
+        return $result;
     }
 
     protected function hasUnambiguousPaymentTotal(\SimpleXMLElement $root): bool

@@ -22,6 +22,17 @@ describe('advisory duplicate expense evidence', () => {
   it.each(['19oops', '1.9e1', '-19.00', '0.00', '19.001', '18.99'])('declines invalid or different total %s', (total) => {
     expect(expenseDuplicateReason({ ...draft, total }, expense())).toBeNull();
   });
+  it.each(['-19.00', '-00019.0', -19])('matches signed negative duplicate totals exactly: %s', total => {
+    const credit = expense({ total: '-19.00' });
+    expect(expenseDuplicateReason({ ...draft, total }, credit)).toBe('external_number');
+    expect(expenseDuplicateReason({ ...draft, total }, expense())).toBeNull();
+    expect(localExpenseDuplicateSuggestions('company-a', 'owner-a', { ...draft, total }, [credit, expense({ id: 'positive' })])
+      .map(row => row.expense.id)).toEqual(['expense-a']);
+  });
+  it('does not round fractional cents or match a negative credit with a positive draft', () => {
+    expect(expenseDuplicateReason({ ...draft, total: '-19.001' }, expense({ total: '-19.00' }))).toBeNull();
+    expect(expenseDuplicateReason(draft, expense({ total: '-19.00' }))).toBeNull();
+  });
   it.each(['USD', '', 'EU', 'EURO'])('declines missing or different currency %s', (currency) => {
     expect(expenseDuplicateReason({ ...draft, currency }, expense())).toBeNull();
   });

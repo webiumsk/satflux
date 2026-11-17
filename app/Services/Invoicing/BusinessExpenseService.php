@@ -7,8 +7,11 @@ use App\Models\BankTransaction;
 use App\Models\BusinessExpense;
 use App\Models\BusinessExpenseAttachment;
 use App\Models\Company;
+use App\Models\CompanyContact;
 use App\Support\Invoicing\BusinessExpenseListFilters;
 use App\Support\Invoicing\ExpenseAttachmentMime;
+use App\Support\Invoicing\ExpensePaymentReview;
+use App\Support\Invoicing\SupplierPaymentIban;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -93,10 +96,13 @@ class BusinessExpenseService
      */
     public function create(Company $company, array $data, bool $markPaid = false): BusinessExpense
     {
+        $supplier = $this->supplierFields($company, $data);
         $internalNumber = $this->sequenceService->nextNumber($company, 'expense');
 
         $expense = new BusinessExpense([
             'company_id' => $company->id,
+            ...$supplier,
+            'payment_review_required' => (bool) ($data['payment_review_required'] ?? false),
             'status' => $markPaid ? BusinessExpenseStatus::Paid : BusinessExpenseStatus::Recorded,
             'internal_number' => $internalNumber,
             'external_number' => $data['external_number'] ?? null,
@@ -128,7 +134,7 @@ class BusinessExpenseService
 
         return $connection->transaction(function () use ($expense, $data, $connectionName): BusinessExpense {
             // Edits never lock a bank movement: Company -> Expense is compatible with matching's Tx -> Company -> Expense.
-            Company::on($connectionName)->whereKey($expense->company_id)->lockForUpdate()->firstOrFail();
+            $company = Company::on($connectionName)->whereKey($expense->company_id)->lockForUpdate()->firstOrFail();
             $locked = BusinessExpense::on($connectionName)->whereKey($expense->id)
                 ->where('company_id', $expense->company_id)->lockForUpdate()->firstOrFail();
             if ($locked->getRawOriginal('status') === BusinessExpenseStatus::Cancelled->value) {
@@ -160,6 +166,10 @@ class BusinessExpenseService
             }
 
             $locked->fill([
+                ...$this->supplierFields($company, $data),
+                // Use the original saved note before an edit can erase legacy evidence.
+                'payment_review_required' => ExpensePaymentReview::required($locked->payment_review_required, $locked->internal_note)
+                    || (bool) ($data['payment_review_required'] ?? false),
                 'external_number' => $data['external_number'] ?? $locked->external_number,
                 'title' => $data['title'] ?? $locked->title,
                 'variable_symbol' => array_key_exists('variable_symbol', $data) ? $data['variable_symbol'] : $locked->variable_symbol,
@@ -176,6 +186,38 @@ class BusinessExpenseService
 
             return $locked->fresh();
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function supplierFields(Company $company, array $data): array
+    {
+        $fields = array_intersect_key($data, array_flip(['company_contact_id', 'supplier_name', 'supplier_iban']));
+        if (isset($fields['company_contact_id'])
+            && (! is_string($fields['company_contact_id']) || ! Str::isUuid($fields['company_contact_id'])
+                || ! CompanyContact::on($company->getConnectionName())->whereKey($fields['company_contact_id'])
+                    ->where('company_id', $company->id)->exists())) {
+            throw ValidationException::withMessages(['company_contact_id' => ['Invalid contact for this company.']]);
+        }
+        if (array_key_exists('supplier_name', $fields)) {
+            if ($fields['supplier_name'] !== null && (! is_string($fields['supplier_name']) || mb_strlen($fields['supplier_name']) > 255)) {
+                throw ValidationException::withMessages(['supplier_name' => ['Supplier name must be at most 255 characters.']]);
+            }
+            $name = $fields['supplier_name'] !== null ? trim($fields['supplier_name']) : '';
+            $fields['supplier_name'] = $name !== '' ? $name : null;
+        }
+        if (array_key_exists('supplier_iban', $fields)) {
+            $value = $fields['supplier_iban'];
+            $iban = is_string($value) ? SupplierPaymentIban::normalize($value) : null;
+            if ($value !== null && $value !== '' && $iban === null) {
+                throw ValidationException::withMessages(['supplier_iban' => ['Supplier IBAN is invalid.']]);
+            }
+            $fields['supplier_iban'] = $iban;
+        }
+
+        return $fields;
     }
 
     /** Compare exact cent values, including harmless leading/trailing zeros and decimal exponent notation. */
@@ -219,10 +261,13 @@ class BusinessExpenseService
 
     public function duplicate(Company $company, BusinessExpense $source): BusinessExpense
     {
+        $supplier = $this->supplierFields($company, $source->only(['company_contact_id', 'supplier_name', 'supplier_iban']));
         $internalNumber = $this->sequenceService->nextNumber($company, 'expense');
 
         $copy = new BusinessExpense([
             'company_id' => $company->id,
+            ...$supplier,
+            'payment_review_required' => ExpensePaymentReview::required($source->payment_review_required, $source->internal_note),
             'status' => BusinessExpenseStatus::Recorded,
             'internal_number' => $internalNumber,
             'external_number' => $source->external_number,

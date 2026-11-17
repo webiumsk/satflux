@@ -172,7 +172,7 @@ class BusinessExpenseIsdocImportTest extends TestCase
         };
 
         try {
-            foreach (['valid', 'multiple', 'same-account-multiple', 'no-variable-symbol', 'unsupported-variable-symbol', 'long-variable-symbol', 'different-payment-amount', 'partial-payment', 'bad-checksum', 'short-iban', 'unknown-iban-country', 'account-injection', 'name-injection', 'cash', 'credit-note', 'deposit', 'claimed-advance', 'zero-payable', 'negative-payable'] as $case) {
+            foreach (['valid', 'multiple', 'same-account-multiple', 'no-variable-symbol', 'unsupported-variable-symbol', 'long-variable-symbol', 'different-payment-amount', 'partial-payment', 'bad-checksum', 'short-iban', 'unknown-iban-country', 'account-injection', 'name-injection', 'cash', 'credit-note', 'negative-credit-note', 'deposit', 'claimed-advance', 'zero-payable', 'negative-payable'] as $case) {
                 $invoice = Manager::create()->getReader()->file($path, IsdocInvoiceSchema::class, Manager::FORMAT_ISDOC);
                 $payments = $invoice->getPaymentMeans();
                 $this->assertNotNull($payments);
@@ -216,6 +216,9 @@ class BusinessExpenseIsdocImportTest extends TestCase
                     $payment->setPaymentMeansCode(PaymentMeansCode::CashPayment);
                 } elseif ($case === 'credit-note') {
                     $invoice->setDocumentType(DocumentType::CreditNote);
+                } elseif ($case === 'negative-credit-note') {
+                    $invoice->setDocumentType(DocumentType::CreditNote);
+                    $invoice->getLegalMonetaryTotal()->setPayableAmount('-1.00');
                 } elseif ($case === 'deposit') {
                     $invoice->getLegalMonetaryTotal()->setPaidDepositsAmount('1.00');
                 } elseif ($case === 'claimed-advance') {
@@ -228,6 +231,14 @@ class BusinessExpenseIsdocImportTest extends TestCase
 
                 $draft = $service->mapForPaymentTest($invoice);
                 $this->assertSame($case === 'valid', str_contains($draft['internal_note'], 'Supplier bank account:'), $case);
+                $this->assertSame($case === 'valid' ? 'SK6807200002891987426353' : null, $draft['supplier_iban'], $case);
+                $repairable = ['valid', 'no-variable-symbol', 'unsupported-variable-symbol', 'long-variable-symbol', 'bad-checksum', 'short-iban', 'unknown-iban-country', 'account-injection', 'name-injection'];
+                $this->assertSame(! in_array($case, $repairable, true), $draft['payment_review_required'], $case);
+                if ($case === 'credit-note') {
+                    $this->assertLessThan(0, $draft['total']);
+                } elseif ($case === 'negative-credit-note') {
+                    $this->assertSame(1.0, $draft['total']);
+                }
                 if ($case === 'valid') {
                     $this->assertStringContainsString('Supplier bank account: SK6807200002891987426353', $draft['internal_note']);
                     $this->assertSame('0000042', $draft['variable_symbol']);
@@ -289,6 +300,7 @@ class BusinessExpenseIsdocImportTest extends TestCase
             $this->assertSame($localCurrency, $draft['currency']);
             $this->assertSame('0000042', $draft['variable_symbol']);
             $this->assertSame($foreignCurrency === null, str_contains($draft['internal_note'], 'Supplier bank account:'));
+            $this->assertSame($foreignCurrency !== null, $draft['payment_review_required']);
             $this->assertStringContainsString('Supplier: Synthetic supplier', $draft['internal_note']);
         } finally {
             @unlink($path);
@@ -354,6 +366,7 @@ class BusinessExpenseIsdocImportTest extends TestCase
             $this->assertSame('EUR', $draft['currency']);
             $this->assertSame('0000042', $draft['variable_symbol']);
             $this->assertSame($hasAccount, str_contains($draft['internal_note'], 'Supplier bank account:'));
+            $this->assertSame(! $hasAccount, $draft['payment_review_required']);
             $this->assertStringContainsString('Supplier: Synthetic supplier', $draft['internal_note']);
         } finally {
             @unlink($path);

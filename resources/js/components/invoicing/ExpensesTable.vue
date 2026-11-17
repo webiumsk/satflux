@@ -162,6 +162,7 @@
                 >
                   {{ displayTitle(row) }}
                 </span>
+                <span v-if="Number(row.total) < 0" class="mt-1 block text-xs font-medium text-indigo-800">{{ t('invoicing.expense_received_credit_note') }}</span>
                 <p class="text-xs text-gray-500 mt-0.5 truncate">
                   {{ row.internal_number }}
                 </p>
@@ -372,6 +373,7 @@
             <p class="font-semibold text-gray-900 truncate">
               {{ displayTitle(row) }}
             </p>
+            <p v-if="Number(row.total) < 0" class="text-xs font-medium text-indigo-800">{{ t('invoicing.expense_received_credit_note') }}</p>
             <p class="text-sm text-gray-600 truncate">
               {{ metaFor(row).supplier || "-" }}
             </p>

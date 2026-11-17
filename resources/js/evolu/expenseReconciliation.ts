@@ -164,6 +164,25 @@ export function assertExpenseCompanyOwner(scope: ExpenseReconciliationScope, com
     if (expectedOwnerId !== undefined && ownerId !== expectedOwnerId) throw new Error("expense_reconciliation_owner_unavailable");
 }
 
+/** Missing, deleted or inactive references may be dropped while retaining an expense's saved snapshots. */
+export function hasLiveExpenseContact(scope: ExpenseReconciliationScope, contactId: string): boolean {
+    const internal = scopes.get(scope);
+    if (!internal?.active) throw new Error("expense_reconciliation_lease_expired");
+    return (internal.tableRows.get("contact") ?? []).some((row) => row.id === contactId
+        && row.isDeleted !== sqliteTrue && row.isActive !== 0 && row.isActive !== false);
+}
+
+/** Validate the contact in the same fresh company and encrypted owner partition as the expense. */
+export function assertExpenseContact(scope: ExpenseReconciliationScope, companyId: string, contactId: string): void {
+    const internal = scopes.get(scope);
+    if (!internal?.active) throw new Error("expense_reconciliation_lease_expired");
+    const ownerId = financialOwner(internal, "expense", { companyId });
+    const contacts = (internal.tableRows.get("contact") ?? []).filter((row) => row.id === contactId);
+    if (contacts.length !== 1 || contacts[0].companyId !== companyId || contacts[0].ownerId !== ownerId) {
+        throw new Error("expense_contact_unavailable");
+    }
+}
+
 /** A real local-only write invalidates private caches before the worker read. */
 async function marker(scope: Scope): Promise<void> {
     const completed = await awaitBankMutation(scope.raw, (onComplete) => scope.raw.upsert("_expenseReconciliation", {

@@ -5,6 +5,7 @@ import { canCreateExpensePayMe, expensePayBySquarePayload, expensePayMePayload, 
 const row: ExpenseListRow = {
     id: 'synthetic-expense', internal_number: 'EXP-001', external_number: 'INV-001',
     title: 'Synthetic supplies', issue_date: '2026-11-17', total: '0019.5', currency: 'EUR', status: 'recorded',
+    supplier_name: 'Synthetic supplier', supplier_iban: 'sk68 0720 0002 8919 8742 6353', payment_review_required: false,
     variable_symbol: '0000123456', internal_note: 'Supplier: Synthetic supplier\n\nSupplier bank account: sk68 0720 0002 8919 8742 6353\nimport',
 };
 
@@ -30,24 +31,25 @@ describe('expense payment QR eligibility and PayMe instructions', () => {
     });
 
     it.each([
-        '', 'IBAN: SK6807200002891987426353',
-        'Supplier bank account: SK6807200002891987426353',
-        'Supplier: Synthetic supplier\nSupplier bank account: SK6807200002891987426354',
-        'Supplier: Synthetic supplier\nSupplier bank account: SK7700000000000',
-        'Supplier: Synthetic supplier\nBuyer bank account: SK6807200002891987426353',
-        `${row.internal_note}\nSupplier bank account: SK6807200002891987426353`,
-        `${row.internal_note}\nSupplier: Another supplier`,
-        `${row.internal_note}\nPayment amount: 5.00`,
-        `${row.internal_note}\nPayment amount: invalid`,
-        `${row.internal_note}\nPayment date: 2026-11-16`,
-    ])('refuses missing, ambiguous or partially paid metadata', internal_note => {
-        expect(expensePaymentQrDetails({ ...row, internal_note })).toBeNull();
+        { supplier_name: null }, { supplier_name: '' }, { supplier_name: 'x'.repeat(71) },
+        { supplier_name: 'Bad\nrecipient' }, { supplier_iban: null },
+        { supplier_iban: 'SK6807200002891987426354' }, { supplier_iban: 'SK7700000000000' },
+        { payment_review_required: true }, { payment_review_required: null }, { payment_review_required: undefined },
+    ])('refuses incomplete structured data or unresolved payment evidence %j', patch => {
+        expect(expensePaymentQrDetails({ ...row, ...patch })).toBeNull();
     });
 
-    it('accepts an explicitly zero imported payment without treating it as a partial payment', () => {
-        expect(expensePaymentQrDetails({ ...row, internal_note: `${row.internal_note}\nPayment amount: 0,00` })).not.toBeNull();
+    it('never derives a recipient from forged or duplicated Internal note metadata', () => {
+        expect(expensePaymentQrDetails({ ...row, supplier_iban: null })).toBeNull();
+        expect(expensePaymentQrDetails({ ...row, supplier_name: null })).toBeNull();
+        const details = expensePaymentQrDetails({ ...row, internal_note: 'Supplier: Other\nSupplier bank account: DE89370400440532013000' });
+        expect(details?.supplier).toBe('Synthetic supplier');
+        expect(details?.iban).toBe('SK6807200002891987426353');
     });
 
+    it('does not let a contact account bypass independent imported-payment review evidence', () => {
+        expect(expensePaymentQrDetails({ ...row, payment_review_required: true, internal_note: null })).toBeNull();
+    });
 
     it.each([
         ['999999.99', '999999.99'], ['1000000.00', '1000000'],
@@ -86,7 +88,7 @@ describe('expense payment QR eligibility and PayMe instructions', () => {
 
     it('encodes supplier names as URL values without injecting another recipient', () => {
         const supplier = 'Synthetic & CN=other + čaj';
-        const details = expensePaymentQrDetails({ ...row, internal_note: `Supplier: ${supplier}\nSupplier bank account: SK6807200002891987426353` })!;
+        const details = expensePaymentQrDetails({ ...row, supplier_name: supplier })!;
         const params = new URL(expensePayMePayload(details)).searchParams;
         expect(params.getAll('CN')).toEqual([supplier]);
         expect(params.getAll('IBAN')).toEqual(['SK6807200002891987426353']);

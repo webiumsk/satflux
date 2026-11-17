@@ -85,6 +85,9 @@ export function draftToExpensePayload(draft: Record<string, unknown> | null, ent
 
     return {
         title: text(draft?.title) ?? entry.summary.supplier_name ?? "Prijatá e-faktúra",
+        supplier_name: text(draft?.supplier_name),
+        supplier_iban: text(draft?.supplier_iban),
+        payment_review_required: typeof draft?.payment_review_required === "boolean" ? draft.payment_review_required : true,
         external_number: text(draft?.external_number) ?? entry.summary.external_number,
         variable_symbol: text(draft?.variable_symbol),
         issue_date: issueDate,

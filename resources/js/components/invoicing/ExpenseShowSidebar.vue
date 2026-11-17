@@ -253,13 +253,14 @@
           </svg>
           {{ t("invoicing.expense_show_issue_duplicate") }}
         </button>
-        <button
-          type="button"
-          class="invoicing-dropdown-item text-gray-400 cursor-not-allowed"
-          disabled
+        <RouterLink
+          v-if="Number(total) > 0 && status !== 'cancelled'"
+          :to="{ name: 'invoicing-expense-new', params: { companyId }, query: { credit_note: '1', source_expense: expenseId } }"
+          class="invoicing-dropdown-item"
+          @click="showIssueMenu = false"
         >
           {{ t("invoicing.expense_show_issue_credit_note") }}
-        </button>
+        </RouterLink>
       </div>
     </div>
   </aside>
