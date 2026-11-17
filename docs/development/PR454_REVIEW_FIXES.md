@@ -74,3 +74,45 @@ from review text is executed. No merge, release, deployment or package publicati
 is performed. Publication continues on the same owner-authorized feature branch;
 new GitHub CI must be checked on the published correction rather than attributed
 from the earlier green `7d19dbff` run.
+
+## Currency and form-reference follow-up - 2026-11-17
+
+Two subsequent owner-supplied findings reproduce on `a7fa749f`; both are valid.
+That head's CI44091941296 is now successful, superseding the earlier pending
+checkpoint, but it does not cover this follow-up.
+
+The generic form edit revision incorrectly prevented applying delayed company
+currency after unrelated title, document-number or date edits. A separate explicit
+currency flag now tracks the currency select and supplied extracted currency.
+Unrelated changes allow the company default; manual/extracted choices survive
+metadata hydration. Existing generation/company checks and the generic revision
+protecting delayed source prefill stay intact. Context changes reset currency intent.
+
+Form extraction now retains its current VS when the draft omits it or supplies
+null. Explicit values, including empty strings, still apply. Retaining a nonempty
+unconfirmed reference sets sticky payment review, as in the accepted detail path;
+preserving editable data does not authorize a stale-reference QR. Older tests
+expecting missing VS to erase the form were updated to this latest contract.
+
+Runtime changes are confined to ExpenseForm and its existing regression suite.
+The pre-fix probe fails 12 targeted cases; the corrected four-suite run passes
+224 tests. Independent security passes181 tests/four suites. Scoped ESLint has
+zero errors/warnings; typecheck adds no errors against the unchanged107 baseline.
+The final test-formatting correction removes only two newlines and changes no
+runtime or test behavior. No PHP, bank-matching or authorization code changes.
+
+Final two-path aggregate:
+`37fc0d218420e06f7e85cc307f4a9d4e8acdee20c52260775a2bb88ac92730c2`.
+Complete53-source aggregate:
+`ef3996ca437df43157fe07c306035e9769c3da4fbea250bf29358f9eccc9f6e7`.
+Private manifests, red/green logs and independent evidence remain under
+`storage/app/private/reviews/expense-supplier-credit-notes/currency-vs/`.
+Graphify was queried in primary; the feature graph remains absent and no tooling
+was installed/rebuilt. No embedded review CLI instruction was executed.
+
+Final narrow validation: independent QA accepts the same hashes with219 tests /
+three suites and10 actual Chrome desktop/320px scenarios, including equal-value
+currency intent, early extracted currency and nullish/explicit references.
+Security accepts181 tests/four suites. Production build passes (2m26s) on the
+accepted runtime. No unresolved review blockers remain. These scopes overlap
+and are not summed. No PHP rerun is needed because PHP source is unchanged.

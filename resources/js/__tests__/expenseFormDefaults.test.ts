@@ -60,7 +60,7 @@ vi.mock('@/components/invoicing/ExpenseIsdocExtractModal.vue', () => ({ default:
 } }));
 import ExpenseForm from '@/pages/invoicing/ExpenseForm.vue';
 
-type FieldKey = 'expense_col_external' | 'variable_symbol' | 'expense_col_issue' | 'expense_col_delivery';
+type FieldKey = 'expense_col_title' | 'expense_col_external' | 'variable_symbol' | 'expense_col_issue' | 'expense_col_delivery';
 let wrapper: VueWrapper | undefined;
 function field(key: FieldKey) {
   const label = wrapper!.findAll('form label').find((entry) => entry.text().replace(' *', '') === en.invoicing[key]);
@@ -128,7 +128,7 @@ afterEach(() => {
 });
 
 describe('new expense field defaults', () => {
-  it.each([true, false])('clears the previous invoice reference when a replacement has no VS (local=%s)', async local => {
+  it.each([true, false])('retains the previous reference for sparse extraction without enabling payment (local=%s)', async local => {
     await render(local);
     await extract({ external_number: 'A-2026', variable_symbol: '0001', total: 123.45, currency: 'EUR',
       supplier_name: 'Supplier A', supplier_iban: 'SK6807200002891987426353', payment_review_required: false,
@@ -137,23 +137,23 @@ describe('new expense field defaults', () => {
     await extract({ external_number: 'B-2026', variable_symbol: null, total: 123.45, currency: 'EUR',
       supplier_name: 'Supplier B', supplier_iban: 'CZ6508000000192000145399', payment_review_required: false,
       internal_note: 'Supplier: Supplier B\nSupplier bank account: CZ6508000000192000145399' });
-    expect(field('variable_symbol').element.value).toBe('');
+    expect(field('variable_symbol').element.value).toBe('0001');
     await field('expense_col_external').setValue('B-2027');
-    expect(field('variable_symbol').element.value).toBe('');
+    expect(field('variable_symbol').element.value).toBe('0001');
     await wrapper!.get('form').trigger('submit');
     await flushPromises();
     const payload = local ? mocks.insert.mock.calls[0][2] : mocks.create.mock.calls[0][1];
-    expect(payload).toMatchObject({ external_number: 'B-2027', variable_symbol: null, total: 123.45, currency: 'EUR' });
+    expect(payload).toMatchObject({ external_number: 'B-2027', variable_symbol: '0001', total: 123.45, currency: 'EUR', payment_review_required: true });
     expect(payload.internal_note).toContain('Supplier: Supplier B\nSupplier bank account: CZ6508000000192000145399');
     expect(expensePaymentQrDetails({ ...payload, id: 'synthetic-saved', internal_number: 'EXP-001',
       status: 'recorded', total: String(payload.total) })).toBeNull();
   });
 
-  it.each([undefined, ''])('clears a manual reference when the extracted VS is %s', async variableSymbol => {
+  it.each([undefined, null, ''])('preserves a missing manual reference but honors an explicit extracted VS %s', async variableSymbol => {
     await render();
     await field('variable_symbol').setValue('0099');
     await extract({ external_number: 'B-2026', variable_symbol: variableSymbol });
-    expect(field('variable_symbol').element.value).toBe('');
+    expect(field('variable_symbol').element.value).toBe(variableSymbol ?? '0099');
   });
 
   it.each([true, false])('replaces the supplier and VS together while retaining explicit leading zeros (local=%s)', async local => {
@@ -358,7 +358,7 @@ describe('new expense field defaults', () => {
     });
   });
 
-  it('derives missing attachment delivery dates while clearing an absent payment reference', async () => {
+  it('derives missing attachment delivery dates while retaining an unprovided payment reference', async () => {
     await render();
     await extract({ external_number: 'ATT-0004', issue_date: '2026-03-04' });
     expect(field('variable_symbol').element.value).toBe('');
@@ -366,7 +366,7 @@ describe('new expense field defaults', () => {
     await field('variable_symbol').setValue('0099');
     await field('expense_col_delivery').setValue('2026-03-01');
     await extract({ external_number: 'ATT-0005', issue_date: '2026-03-05' });
-    expect(field('variable_symbol').element.value).toBe('');
+    expect(field('variable_symbol').element.value).toBe('0099');
     expect(field('expense_col_delivery').element.value).toBe('2026-03-01');
   });
 
@@ -721,10 +721,10 @@ describe('duplicated expense field defaults', () => {
     expect((local ? mocks.updateLocal : mocks.update).mock.calls[0][2]).toMatchObject({ variable_symbol: null, delivery_date: null });
   });
 
-  it.each([true, false])('clears missing copy import references and preserves explicit equal-value import overrides (local=%s)', async (local) => {
+  it.each([true, false])('retains missing copy import references and preserves explicit equal-value import overrides (local=%s)', async (local) => {
     await render(local, true, existingExpense.id);
     await extract({ external_number: 'COPY-00088', issue_date: '2026-07-18' });
-    expect(field('variable_symbol').element.value).toBe('');
+    expect(field('variable_symbol').element.value).toBe('0099');
     expect(field('expense_col_delivery').element.value).toBe('2026-07-18');
     await extract({ external_number: 'COPY-00088', variable_symbol: '00088',
       issue_date: '2026-07-18', delivery_date: '2026-07-18' });
@@ -798,4 +798,80 @@ describe('duplicated expense field defaults', () => {
     expect(mocks.insert).not.toHaveBeenCalled();
     expect(mocks.create).not.toHaveBeenCalled();
   });
+});
+
+
+describe('company currency defaults and sparse extraction', () => {
+  it.each([
+    ['expense_col_title', 'Manually entered title'],
+    ['expense_col_external', 'MANUAL-0007'],
+    ['expense_col_issue', '2026-05-06'],
+  ] as const)('applies the delayed company currency after an unrelated %s edit', async (key, value) => {
+    let finishCompany!: (company: { default_currency: string }) => void;
+    mocks.company.mockReturnValueOnce(new Promise(resolve => { finishCompany = resolve; }));
+    await render(false);
+    await field(key).setValue(value);
+    finishCompany({ default_currency: 'USD' });
+    await flushPromises();
+    expect((wrapper!.findAll('form select').at(-1)!.element as HTMLSelectElement).value).toBe('USD');
+    expect(field(key).element.value).toBe(value);
+  });
+
+  it.each(['EUR', 'CZK'])('keeps explicit currency selection %s even if it equals the initial value', async value => {
+    let finishCompany!: (company: { default_currency: string }) => void;
+    mocks.company.mockReturnValueOnce(new Promise(resolve => { finishCompany = resolve; }));
+    await render(false);
+    const currency = wrapper!.findAll('form select').at(-1)!;
+    await currency.setValue(value);
+    finishCompany({ default_currency: 'USD' });
+    await flushPromises();
+    expect((currency.element as HTMLSelectElement).value).toBe(value);
+  });
+
+  it('keeps an explicitly extracted currency while company metadata is pending', async () => {
+    let finishCompany!: (company: { default_currency: string }) => void;
+    mocks.company.mockReturnValueOnce(new Promise(resolve => { finishCompany = resolve; }));
+    await render(false);
+    await extract({ currency: 'CZK' });
+    finishCompany({ default_currency: 'USD' });
+    await flushPromises();
+    expect((wrapper!.findAll('form select').at(-1)!.element as HTMLSelectElement).value).toBe('CZK');
+  });
+
+  it('still applies the company currency after extraction that does not supply one', async () => {
+    let finishCompany!: (company: { default_currency: string }) => void;
+    mocks.company.mockReturnValueOnce(new Promise(resolve => { finishCompany = resolve; }));
+    await render(false);
+    await extract({ title: 'Extracted title', variable_symbol: '0009' });
+    finishCompany({ default_currency: 'USD' });
+    await flushPromises();
+    expect((wrapper!.findAll('form select').at(-1)!.element as HTMLSelectElement).value).toBe('USD');
+    expect(field('variable_symbol').element.value).toBe('0009');
+  });
+
+  it.each([true, false].flatMap(local => [true, false].flatMap(editing => [undefined, null].map(symbol => ({ local, editing, symbol })))))('retains a nullish extracted VS and blocks unproven QR: %j', async ({ local, editing, symbol }) => {
+      await render(local, editing);
+      await field('variable_symbol').setValue('000123');
+      await extract({ variable_symbol: symbol, external_number: 'REPLACEMENT-9', total: 12,
+        supplier_name: 'Supplier A', supplier_iban: 'SK6807200002891987426353', payment_review_required: false });
+      expect(field('variable_symbol').element.value).toBe('000123');
+      await wrapper!.get('form').trigger('submit');
+      await flushPromises();
+      const payload = editing ? (local ? mocks.updateLocal : mocks.update).mock.calls[0][2]
+        : local ? mocks.insert.mock.calls[0][2] : mocks.create.mock.calls[0][1];
+      expect(payload).toMatchObject({ variable_symbol: '000123', payment_review_required: true });
+      expect(expensePaymentQrDetails({ ...payload, id: 'synthetic', internal_number: 'EXP-1',
+        status: 'recorded', total: String(payload.total) })).toBeNull();
+    });
+
+  it.each([true, false].flatMap(local => ['', '000777'].map(symbol => ({ local, symbol }))))('applies an explicit extracted VS including an empty value: %j', async ({ local, symbol }) => {
+      await render(local);
+      await field('variable_symbol').setValue('000123');
+      await extract({ variable_symbol: symbol, total: 12, payment_review_required: false });
+      expect(field('variable_symbol').element.value).toBe(symbol);
+      await wrapper!.get('form').trigger('submit');
+      await flushPromises();
+      const payload = local ? mocks.insert.mock.calls[0][2] : mocks.create.mock.calls[0][1];
+      expect(payload).toMatchObject({ variable_symbol: symbol || null, payment_review_required: false });
+    });
 });

@@ -1,5 +1,27 @@
 # Project state
 
+## PR454 currency and form-VS follow-up accepted - 2026-11-17
+
+Both subsequent owner findings reproduce on `a7fa749f` and are corrected. Company
+currency defaults now ignore unrelated form edits while preserving explicit select
+or extraction choices. Missing/null extracted VS retains the form value; explicit
+empty/new values apply, and unconfirmed retained references still veto payment QR.
+Generic source-prefill revision and company/owner checks remain intact.
+
+Independent QA/security accept two-path aggregate
+`37fc0d218420e06f7e85cc307f4a9d4e8acdee20c52260775a2bb88ac92730c2`
+and complete53-source aggregate
+`ef3996ca437df43157fe07c306035e9769c3da4fbea250bf29358f9eccc9f6e7`.
+Main224 JS tests/four suites, independent QA219/three suites and10 real Chrome
+scenarios, security181/four suites, scoped lint, unchanged107-error typecheck
+baseline and production build pass. PHP and bank-matching code are unchanged.
+
+Prior-head CI44091941296 is fully successful; new correction-head CI must be
+verified after publication. Both review findings are fixed; no embedded review CLI
+or bot command, installation, merge or deployment. Primary unrelated work remains
+preserved; the correction stays on the same owner-authorized feature branch.
+See [follow-up evidence](PR454_REVIEW_FIXES.md).
+
 ## PR454 inline review corrections accepted - 2026-11-17
 
 The owner requests six inline finding fixes against published `7d19dbff` on

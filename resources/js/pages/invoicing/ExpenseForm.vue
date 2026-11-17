@@ -129,7 +129,7 @@
           </div>
           <div>
             <label class="invoicing-sf-label">{{ t('invoicing.currency') }}</label>
-            <select v-model="form.currency" class="invoicing-sf-input w-full">
+            <select v-model="form.currency" class="invoicing-sf-input w-full" @change="currencyHasExplicitValue = true">
               <option value="EUR">EUR</option>
               <option value="CZK">CZK</option>
               <option value="USD">USD</option>
@@ -282,6 +282,7 @@ const selectedContact = computed(() => supplierContacts.value.find(contact => co
 let extractedSupplier: { name: string; iban: string } | null = null;
 const supplierNameManuallyEdited = ref(false);
 const supplierIbanManuallyEdited = ref(false);
+const currencyHasExplicitValue = ref(false);
 
 function onDocumentKindChange() {
   form.value.total = Math.abs(Number(form.value.total) || 0) * (isCreditNote.value ? -1 : 1);
@@ -324,6 +325,7 @@ watch([companyId, expenseId], () => {
   form.value.payment_review_required = false;
   supplierNameManuallyEdited.value = false;
   supplierIbanManuallyEdited.value = false;
+  currencyHasExplicitValue.value = false;
   sourceReadController?.abort();
 }, { flush: 'sync' });
 onUnmounted(() => {
@@ -351,7 +353,8 @@ function applyImportDraft(draft: ExpenseImportDraft) {
   markFormEdited();
   // Supplier identity and account come from structured fields, never copied prose.
   extractedSupplier = { name: draft.supplier_name?.trim() ?? '', iban: draft.supplier_iban?.trim() ?? '' };
-  form.value.payment_review_required ||= draft.payment_review_required !== false;
+  form.value.payment_review_required ||= draft.payment_review_required !== false
+    || (draft.variable_symbol == null && Boolean(form.value.variable_symbol.trim()));
   const contact = selectedContact.value;
   const sameSupplier = (name: string) => extractedSupplier!.name.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase();
   const retainedSupplierName = supplierNameManuallyEdited.value || supplierIbanManuallyEdited.value
@@ -364,7 +367,7 @@ function applyImportDraft(draft: ExpenseImportDraft) {
   if (draft.internal_note?.trim() && !form.value.internal_note.includes(draft.internal_note.trim())) {
     form.value.internal_note = [form.value.internal_note.trim(), draft.internal_note.trim()].filter(Boolean).join('\n\n');
   }
-  form.value.variable_symbol = draft.variable_symbol ?? '';
+  form.value.variable_symbol = draft.variable_symbol ?? form.value.variable_symbol;
   variableSymbolFollowsNumber.value = false;
   if (draft.title) form.value.title = draft.title;
   if (draft.external_number) {
@@ -385,7 +388,10 @@ function applyImportDraft(draft: ExpenseImportDraft) {
     form.value.total = Number(draft.total);
     documentKind.value = form.value.total < 0 ? 'credit_note' : 'expense';
   }
-  if (draft.currency) form.value.currency = draft.currency;
+  if (draft.currency) {
+    form.value.currency = draft.currency;
+    currencyHasExplicitValue.value = true;
+  }
   importNotice.value = t('invoicing.expense_import_prefilled');
 }
 
@@ -654,7 +660,7 @@ onMounted(async () => {
     if (!stillInitialContext()) return;
     const companyRec = await invoicingApi.companies.get<{ default_currency?: string }>(initialCompany);
     if (!stillInitialContext()) return;
-    if (initialEditRevision === formEditRevision) form.value.currency = companyRec?.default_currency || 'EUR';
+    if (!currencyHasExplicitValue.value) form.value.currency = companyRec?.default_currency || 'EUR';
   } else {
     form.value.currency = defaultCurrency.value || 'EUR';
   }
