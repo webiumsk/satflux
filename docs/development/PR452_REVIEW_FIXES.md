@@ -79,3 +79,38 @@ CI jobs pass. PR452 retains its dependent base branch. These corrections are
 published together after independent QA/security acceptance, preserving stack
 history. Verify exact-head CI after the push; earlier green checks are attributed
 to `481e9c4c`, not to this correction. No PR merge or deployment is performed.
+
+## Second CodeRabbit pass and payment-metadata clearing
+
+The owner-authorized review of `7e8c0764` completed in review5931052198 with two
+new findings. Both were verified as valid. Declared foreign-currency ISDOC invoices
+now withhold supplier bank metadata: local bookkeeping PayableAmount is not the
+foreign PayableAmountCurr payment instruction. Legacy displayed values remain
+unchanged. The ordinary null-ForeignCurrencyCode path remains eligible. The five
+recovery guides now explain that a missing reference also omits the bank account;
+a QR remains unavailable until name and IBAN are complete and verified.
+
+Independent security verification also reproduced a related manual-edit issue:
+clearing the private note sent explicit null, but server updates retained the old
+supplier/account note while saving a new VS. Updates now distinguish an omitted
+note from explicit null. An API regression verifies omission, clearing, reopening
+and removal of the canonical payment metadata.
+
+The follow-up has four source/test blobs against `7e8c0764`, aggregate
+`5a8d56bcec7885be22fc7bfc12dc76b29f6f99b2158c734d32eb5029b64de26f`.
+The complete QR scope remains 27 blobs with current aggregate
+`4686938f35a5d7279feaad76f5cd75c880a77261e4af97b88d2f3512f22568bf`.
+Affected PHP suites pass 29 tests / 271 assertions, with scoped Pint/PHPStan and
+locale parity passing. Independent QA and security accepted the same hashes and recovery text. JavaScript/UI files are
+unchanged, so earlier browser/client validation remains attributed to unchanged
+blobs rather than presented as a new run.
+
+Primary format evidence: [official ISDOC 6.0.2 schema documentation](https://isdoc.cz/6.0.2/doc-en/isdoc-invoice-6_0_2_xsd.html)
+distinguishes local PayableAmount and foreign PayableAmountCurr. Both foreign
+fixtures failed before the guard and pass afterward; the normal control passes.
+
+CodeRabbit reviews remain per pull request. The fresh child reviews do not
+constitute another review of parent PR451 head `8feb1e8a`; its last delivered
+automated review covered `0e9ea219`. Parent corrections have independent QA/security
+and green exact-head CI, and the original threads are resolved. No parent fresh
+CodeRabbit approval, PR merge or deployment is claimed.

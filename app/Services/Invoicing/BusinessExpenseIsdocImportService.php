@@ -147,11 +147,13 @@ class BusinessExpenseIsdocImportService
             return $parts[0];
         }
         $parts[] = 'Supplier: '.$supplier;
-        // Preserve existing total mapping while withholding a payment QR for
-        // credit notes or documents with deposits/claimed advances. The expense
-        // model does not store a separate outstanding-balance ledger.
+        // The legacy expense projection uses local accounting amounts. A
+        // foreign-currency invoice has separate Curr payment amounts, so that
+        // projection must not authorize a payment QR. Credit notes and deposits
+        // also lack a separate outstanding-balance ledger in this model.
         $monetary = $invoice->getLegalMonetaryTotal();
-        if ($variableSymbol === null || $invoice->getDocumentType() !== DocumentType::Invoice
+        if ($invoice->getForeignCurrencyCode() !== null
+            || $variableSymbol === null || $invoice->getDocumentType() !== DocumentType::Invoice
             || bccomp($monetary->getPayableAmount(), '0', 2) <= 0
             || bccomp($monetary->getPaidDepositsAmount(), '0', 2) !== 0
             || bccomp($monetary->getAlreadyClaimedTaxInclusiveAmount(), '0', 2) !== 0) {

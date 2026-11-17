@@ -1,5 +1,21 @@
 # Development decision log
 
+## PR452 second review corrections verified - 2026-11-17
+
+The fresh CodeRabbit review of `7e8c0764` reported two valid findings: foreign-
+currency ISDOC payment metadata and incomplete missing-reference recovery guidance.
+Both are corrected. A related independently reproduced manual-note clearing issue
+also now persists explicit null instead of retaining an old supplier bank account.
+
+The follow-up source/test freeze has four blobs, aggregate
+`5a8d56bcec7885be22fc7bfc12dc76b29f6f99b2158c734d32eb5029b64de26f`;
+complete QR scope remains 27 blobs, aggregate
+`4686938f35a5d7279feaad76f5cd75c880a77261e4af97b88d2f3512f22568bf`.
+Independent QA and security accepted the final hashes. The affected PHP suites
+pass 29 tests / 271 assertions; style/static checks and locale parity pass. Client/UI sources remain unchanged. See [review disposition
+and evidence](PR452_REVIEW_FIXES.md). Publish after independent acceptance and
+verify new-head CI, preserving the parent branch and stack. No merge/deployment.
+
 ## PR452 review corrections verified locally - 2026-11-17
 
 The owner-triggered CodeRabbit review of `481e9c4c` produced three inline findings

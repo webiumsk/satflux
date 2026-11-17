@@ -61,4 +61,4 @@ For an unpaid EUR expense with a supplier name, a valid supplier IBAN and a vari
 
 No code appears for paid or cancelled expenses, disputed bank matches, or imports with partial or unresolved payments. Supplier payment details are taken from explicit imported supplier metadata; the company’s own account is never used. New eligible e-invoice and ISDOC imports retain the supplier account; older imports without that metadata must first have their payment details completed.
 
-When extracting a new document, a missing payment reference stays blank. Check the supplier document and enter the correct variable symbol before preparing a payment.
+When extraction has no payment reference, the variable symbol stays blank and the supplier bank account is not imported. Verify the original document and enter the correct variable symbol. Payment QR remains unavailable until the supplier name and IBAN are also complete and verified.

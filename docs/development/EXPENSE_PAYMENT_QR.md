@@ -41,8 +41,10 @@ retains it only for an unambiguous direct creditor instruction. Credit notes,
 nonpositive original payable amounts, partial/prepaid instructions, multiple terms
 and conflicting account-owner names suppress the account. UBL explicit PayeeParty
 also suppresses it because the expense model has no independent factor identity.
-ISDOC re-extraction removes previous supplier/account metadata while preserving
-user prose, so a new document cannot reuse an older supplier account. Existing
+ISDOC invoices declaring a foreign currency withhold bank metadata because local
+bookkeeping amounts do not identify the foreign payment instruction. Re-extraction
+removes previous supplier/account metadata while preserving user prose; explicitly
+cleared notes remain cleared on server edits. Existing
 expenses whose original import discarded supplier bank details remain ineligible.
 Legacy gross-total display fallback remains; a nonpositive or ambiguous original
 payable amount cannot enable a payment action. Payment references now require a

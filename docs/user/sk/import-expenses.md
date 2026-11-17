@@ -61,4 +61,4 @@ Pri neuhradenom náklade v EUR s názvom dodávateľa, platným IBAN-om dodávat
 
 Kód sa nezobrazí pri uhradených a zrušených nákladoch, spornom bankovom párovaní ani pri importe s čiastočnou alebo nevyriešenou úhradou. Platobné údaje pochádzajú z výslovne uložených údajov dodávateľa; vlastný účet firmy sa nepoužije. Nové vhodné importy eFaktúr a ISDOC zachovajú účet dodávateľa. Pri starších importoch bez týchto údajov treba najprv doplniť platobné údaje.
 
-Pri vyťažení nového dokladu zostane chýbajúca platobná referencia prázdna. Pred prípravou platby skontrolujte doklad dodávateľa a doplňte správny variabilný symbol.
+Pri vyťažení dokladu bez platobnej referencie zostane variabilný symbol prázdny a účet dodávateľa sa neimportuje. Overte pôvodný doklad a doplňte správny variabilný symbol. Platobné QR zostane nedostupné, kým nebudú doplnené a overené aj meno a IBAN dodávateľa.

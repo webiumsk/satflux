@@ -169,7 +169,7 @@ class BusinessExpenseService
                 'due_date' => $data['due_date'] ?? $locked->due_date,
                 'total' => $data['total'] ?? $locked->total,
                 'currency' => $data['currency'] ?? $locked->currency,
-                'internal_note' => $data['internal_note'] ?? $locked->internal_note,
+                'internal_note' => array_key_exists('internal_note', $data) ? $data['internal_note'] : $locked->internal_note,
             ]);
             $locked->save();
 

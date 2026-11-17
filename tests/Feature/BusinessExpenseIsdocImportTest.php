@@ -28,6 +28,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Mockery\MockInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -239,6 +240,69 @@ class BusinessExpenseIsdocImportTest extends TestCase
         } finally {
             @unlink($path);
         }
+    }
+
+    #[Test]
+    #[DataProvider('expensePaymentCurrencyContexts')]
+    public function supplier_payment_metadata_requires_the_legacy_amount_to_be_in_the_invoice_currency(
+        string $localCurrency,
+        ?string $foreignCurrency,
+        string $localPayable,
+        ?string $foreignPayable,
+    ): void {
+        $path = tempnam(sys_get_temp_dir(), 'exp-isdoc-currency-');
+        file_put_contents($path, $this->sampleIsdocXml());
+        $service = new class extends BusinessExpenseIsdocImportService
+        {
+            /** @return array<string, mixed> */
+            public function mapForPaymentTest(IsdocInvoiceSchema $invoice): array
+            {
+                return $this->mapInvoice($invoice);
+            }
+        };
+
+        try {
+            $invoice = Manager::create()->getReader()->file($path, IsdocInvoiceSchema::class, Manager::FORMAT_ISDOC);
+            $invoice->setLocalCurrencyCode($localCurrency);
+            $invoice->setForeignCurrencyCode($foreignCurrency);
+            $monetary = $invoice->getLegalMonetaryTotal();
+            $monetary->setPayableAmount($localPayable);
+            $monetary->setTaxInclusiveAmount($localPayable);
+            $monetary->setPayableAmountCurr($foreignPayable);
+            $monetary->setTaxInclusiveAmountCurr($foreignPayable);
+            $payments = $invoice->getPaymentMeans();
+            $this->assertNotNull($payments);
+            $this->assertCount(1, $payments);
+            $payment = iterator_to_array($payments)[0];
+            $payment->setPaymentMeansCode(PaymentMeansCode::CreditTransfer);
+            $payment->setPaidAmount($localPayable);
+            $payment->setPartialPayment(false);
+            $details = $payment->getDetails();
+            $this->assertNotNull($details);
+            $details->setIban('SK6807200002891987426353');
+            $details->setVariableSymbol('0000042');
+            $invoice->getAccountingSupplierParty()->getParty()->getPartyName()->setName('Synthetic supplier');
+
+            $draft = $service->mapForPaymentTest($invoice);
+
+            $this->assertSame((float) $localPayable, $draft['total']);
+            $this->assertSame($localCurrency, $draft['currency']);
+            $this->assertSame('0000042', $draft['variable_symbol']);
+            $this->assertSame($foreignCurrency === null, str_contains($draft['internal_note'], 'Supplier bank account:'));
+            $this->assertStringContainsString('Supplier: Synthetic supplier', $draft['internal_note']);
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    /** @return array<string, array{string, string|null, string, string|null}> */
+    public static function expensePaymentCurrencyContexts(): array
+    {
+        return [
+            'local EUR is not the USD payment instruction' => ['EUR', 'USD', '250.00', '10.00'],
+            'local CZK is not the EUR payment instruction' => ['CZK', 'EUR', '6000.00', '250.00'],
+            'no foreign currency retains ordinary payment metadata' => ['EUR', null, '250.00', null],
+        ];
     }
 
     #[Test]
