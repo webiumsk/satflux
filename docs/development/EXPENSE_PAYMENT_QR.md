@@ -4,7 +4,7 @@
 
 The owner requested PayMe/PAY by square QR codes on unpaid expense rows when
 supplier payment details are available. This work is isolated on
-`feat/expense-payment-qr`, depending on PR451 at `8feb1e8a`. PR451 remains open and
+`feat/expense-payment-qr`, depending on PR451 at `156078e4`. PR451 remains open and
 unmerged; these changes do not establish deployed behavior. No external repository,
 production database, bank application, wallet or real payment is used.
 
@@ -95,9 +95,10 @@ All three supplied CodeRabbit findings were valid and fixed in `8feb1e8a`:
 composite keyset bank scanning, restored numeric-input validity and successful-load
 issue-period filter snapshots. Independent QA/security accepted that six-file
 source/test delta; 66 JavaScript tests and 9 PHP tests / 85 assertions passed.
-Existing overdue enums still resolve against the current day. This related
-preexisting behavior is outside the three requested corrections and is not claimed
-as frozen by the issue-period snapshot fix.
+That original snapshot fix did not freeze overdue enums. Parent follow-up
+`156078e4` now captures `overdue_before` in the list request and reuses it for both
+local/server bulk selectors. The explicit parent review5931726200 covered
+`8feb1e8a`; both subsequent findings received independent QA/security acceptance.
 
 Next: review the dependent QR PR and its exact-head CI. PR merge and deployment
 require applicable owner approval; no release, merge or deployment is performed.
@@ -118,3 +119,32 @@ prevented CI were incorrect. Verify checks again after each new head and after
 the approved base merge/retargeting. Neither PR is merged or deployed.
 The public changelog is deferred until its normal approved deployment workflow.
 See [implementation evidence and limits](EXPENSE_PAYMENT_QR.md).
+
+## Expense stack integrated for final QR review - 2026-11-17
+
+Parent PR451 corrections are published as `156078e4`: literal VS `0` filtering
+and concrete overdue cutoffs for successful-load bulk snapshots. CodeRabbit
+review5931726200 covered the preceding `8feb1e8a`; its two findings were verified
+and fixed with independent QA/security acceptance. The owner explicitly requests
+PR452 as the next included review after PR451.
+
+QR source `2c00627a` enforces PayMe's nine-character amount field without rounding;
+PAY by square remains available when PayMe cannot encode the exact amount. The
+nine-file correction freeze is
+`e8b5a6c229233092ab261889995105c3994e304b67d8c7190dbebb1024b2c8c8`.
+The integrated 27-blob QR scope against `156078e4` is
+`33d155cf46e020ed0776400189637abf4d7fa189bca6341b6067c6b750a7cbcb`.
+All accepted blobs are preserved except the expected combined expense service,
+whose cutoff and explicit-null changes received independent integration review.
+
+Final integration checks pass 131 frontend tests / five suites and 47 PHP API
+tests / 274 assertions. Typecheck adds no errors against the unchanged 110-error
+baseline. Seven new Chrome scenarios verify lossless PayMe amounts and exact
+PAY by square bitmap decoding at desktop/320px; that UI source is unchanged by
+integration. Scoped lint/style/static checks and locale parity pass. Both
+independent reviewers accept the combined source. Documentation conflicts retain
+both branches' historical records.
+
+Next publish the synchronized child, verify both exact-head CI runs and request
+PR452 review after included capacity returns. No fresh automated approval of the
+new parent correction, PR merge or deployment is claimed.

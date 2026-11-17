@@ -138,6 +138,21 @@ class BankListFiltersTest extends TestCase
     }
 
     #[Test]
+    public function zero_variable_symbol_is_applied_to_rows_and_summary(): void
+    {
+        $zero = $this->movement(['variable_symbol' => '0']);
+        $containingZero = $this->movement(['variable_symbol' => '1203']);
+        $this->movement(['variable_symbol' => '999']);
+        $this->movement(['variable_symbol' => null]);
+
+        $result = $this->listing(['variable_symbol' => '0']);
+        $result->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('meta.total', 2)
+            ->assertJsonPath('meta.summary.debit_count', 2)->assertJsonPath('meta.summary.debit_total', '38.10');
+        $this->assertEqualsCanonicalizing([$zero->id, $containingZero->id], array_column($result->json('data'), 'id'));
+        $this->listing()->assertOk()->assertJsonPath('meta.total', 4)->assertJsonPath('meta.summary.debit_total', '76.20');
+    }
+
+    #[Test]
     public function linked_document_search_is_company_scoped_even_for_a_corrupted_cross_company_link(): void
     {
         $foreign = Company::create(['user_id' => $this->user->id, 'legal_name' => 'Another synthetic company',

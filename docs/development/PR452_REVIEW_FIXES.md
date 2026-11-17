@@ -109,11 +109,12 @@ Primary format evidence: [official ISDOC 6.0.2 schema documentation](https://isd
 distinguishes local PayableAmount and foreign PayableAmountCurr. Both foreign
 fixtures failed before the guard and pass afterward; the normal control passes.
 
-CodeRabbit reviews remain per pull request. The fresh child reviews do not
-constitute another review of parent PR451 head `8feb1e8a`; its last delivered
-automated review covered `0e9ea219`. Parent corrections have independent QA/security
-and green exact-head CI, and the original threads are resolved. No parent fresh
-CodeRabbit approval, PR merge or deployment is claimed.
+CodeRabbit reviews remain per pull request. The child reviews did not constitute
+another parent review. The subsequent explicit parent review5931726200 examined
+`8feb1e8a` and found VS `0` filtering and overdue-cutoff rollover defects. Both
+are independently reviewed and fixed in `156078e4`, which is now integrated into
+the child. The next included review is assigned to PR452 by explicit owner order;
+a child review is not automated approval of the new parent correction.
 
 
 ## PayMe amount representation
@@ -145,3 +146,18 @@ VS. Focus, Escape, background inertness and width bounds pass with no external
 requests, payment events or browser errors. Scoped ESLint and locale parity pass;
 the one test-only href type error was corrected without altering the baseline.
 Final stack integration and exact-head CI remain separately verified steps.
+
+
+## Final parent/child integration
+
+The normal local merge preserves published ancestry and combines only the accepted
+parent cutoff and child null-field changes in `BusinessExpenseService.php`.
+Its SHA-256 is `fadc6c845a823477d790e59e0fffd902ea8d79fa47e4bcc4423513b7a0bb6f12`.
+All other accepted parent/child source hashes are identical. Independent QA and
+security accepted this union. The final 27-blob QR scope against `156078e4` has
+aggregate `33d155cf46e020ed0776400189637abf4d7fa189bca6341b6067c6b750a7cbcb`.
+Combined client checks pass 131 tests / five suites; combined cutoff/null-field
+API checks pass 47 tests / 274 assertions. Final typecheck retains the unchanged
+110-error baseline with no new errors. Earlier Chrome checks remain attributed
+to the byte-identical UI/helper blobs; no duplicate browser run is claimed.
+Publication and exact-head CI are verified separately from this local integration.

@@ -203,7 +203,7 @@ ignored private review directory.
 
 | List | Applied query fields |
 | --- | --- |
-| Expenses | Existing `filter`, optional fallback `year`; `issue_from`, `issue_to`, `due` (`all`, `overdue`, `custom`), `due_from`, `due_to`, `amount_min`, `amount_max`, `search` |
+| Expenses | Existing `filter`, optional fallback `year`; `issue_from`, `issue_to`, `due` (`all`, `overdue`, `custom`), optional `overdue_before` (`Y-m-d`), `due_from`, `due_to`, `amount_min`, `amount_max`, `search` |
 | Bank | Existing `match_status`, `source`, `variable_symbol`, `page`, `per_page`; `from`, `to`, `direction` (`credit`, `debit`), `amount_min`, `amount_max`, `search` |
 
 Date bounds are inclusive calendar dates; one-sided ranges are supported.
@@ -248,3 +248,27 @@ tests with 85 assertions, scoped ESLint/Pint and whitespace checks passed.
 Typecheck retains the unchanged 110-error baseline. Publication to the existing
 PR451 branch is authorized; merge and deployment remain separate owner gates.
 The supplier payment QR feature is separate ongoing work on a dependent branch.
+
+## PR451 second review corrections - 2026-11-17
+
+CodeRabbit review5931726200 examined `8feb1e8a` and reported two valid issues.
+The bank variable-symbol predicate now treats `"0"` as a supplied search value,
+keeping matching rows and totals consistent. Expense list requests capture an
+optional `overdue_before` date for either overdue filter. The successful-load
+snapshot carries it unchanged into local bulk targets and server bulk payloads;
+failed or superseded loads cannot refresh the snapshot. Both server predicates
+validate/use the same cutoff, with the existing current-day fallback for callers
+that omit it. No company, selection, status or custom-boundary checks are relaxed.
+
+Independent QA and security accepted the ten source/test blobs with aggregate
+`b007c62783a8303c947bf69e7b8c3012c84b9b21657d90391906dde2400a46a9`.
+Independent regression runs pass 65 JavaScript tests and 43 PHP tests / 274
+assertions. Scoped ESLint, Pint, PHPStan and whitespace checks pass; typecheck
+adds no errors against the unchanged 110-error baseline. The new server cutoff
+cases failed before the fix and pass afterward.
+
+The owner requested review451 followed by review452. The parent review is complete;
+next publish these corrections, verify exact-head CI and synchronize the dependent
+branch. The next included CodeRabbit slot remains reserved for PR452. Review of
+`8feb1e8a` is not automated approval of this follow-up. PR merges and deployment
+require separate applicable approval.

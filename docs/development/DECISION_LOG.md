@@ -1,5 +1,58 @@
 # Development decision log
 
+## Expense stack integrated for final QR review - 2026-11-17
+
+Parent PR451 corrections are published as `156078e4`: literal VS `0` filtering
+and concrete overdue cutoffs for successful-load bulk snapshots. CodeRabbit
+review5931726200 covered the preceding `8feb1e8a`; its two findings were verified
+and fixed with independent QA/security acceptance. The owner explicitly requests
+PR452 as the next included review after PR451.
+
+QR source `2c00627a` enforces PayMe's nine-character amount field without rounding;
+PAY by square remains available when PayMe cannot encode the exact amount. The
+nine-file correction freeze is
+`e8b5a6c229233092ab261889995105c3994e304b67d8c7190dbebb1024b2c8c8`.
+The integrated 27-blob QR scope against `156078e4` is
+`33d155cf46e020ed0776400189637abf4d7fa189bca6341b6067c6b750a7cbcb`.
+All accepted blobs are preserved except the expected combined expense service,
+whose cutoff and explicit-null changes received independent integration review.
+
+Final integration checks pass 131 frontend tests / five suites and 47 PHP API
+tests / 274 assertions. Typecheck adds no errors against the unchanged 110-error
+baseline. Seven new Chrome scenarios verify lossless PayMe amounts and exact
+PAY by square bitmap decoding at desktop/320px; that UI source is unchanged by
+integration. Scoped lint/style/static checks and locale parity pass. Both
+independent reviewers accept the combined source. Documentation conflicts retain
+both branches' historical records.
+
+Next publish the synchronized child, verify both exact-head CI runs and request
+PR452 review after included capacity returns. No fresh automated approval of the
+new parent correction, PR merge or deployment is claimed.
+
+## PR451 second review corrections - 2026-11-17
+
+CodeRabbit review5931726200 examined `8feb1e8a` and reported two valid issues.
+The bank variable-symbol predicate now treats `"0"` as a supplied search value,
+keeping matching rows and totals consistent. Expense list requests capture an
+optional `overdue_before` date for either overdue filter. The successful-load
+snapshot carries it unchanged into local bulk targets and server bulk payloads;
+failed or superseded loads cannot refresh the snapshot. Both server predicates
+validate/use the same cutoff, with the existing current-day fallback for callers
+that omit it. No company, selection, status or custom-boundary checks are relaxed.
+
+Independent QA and security accepted the ten source/test blobs with aggregate
+`b007c62783a8303c947bf69e7b8c3012c84b9b21657d90391906dde2400a46a9`.
+Independent regression runs pass 65 JavaScript tests and 43 PHP tests / 274
+assertions. Scoped ESLint, Pint, PHPStan and whitespace checks pass; typecheck
+adds no errors against the unchanged 110-error baseline. The new server cutoff
+cases failed before the fix and pass afterward.
+
+The owner requested review451 followed by review452. The parent review is complete;
+next publish these corrections, verify exact-head CI and synchronize the dependent
+branch. The next included CodeRabbit slot remains reserved for PR452. Review of
+`8feb1e8a` is not automated approval of this follow-up. PR merges and deployment
+require separate applicable approval.
+
 ## PR452 second review corrections verified - 2026-11-17
 
 The fresh CodeRabbit review of `7e8c0764` reported two valid findings: foreign-
@@ -45,9 +98,10 @@ this follow-up adds publication documentation and one changelog fragment only.
 The 20 reviewed source blobs retain aggregate
 `80ba25a20302921fd1aa0bb68f4453bfc1f65d19e1e188084b62742c17f903ff`.
 
-Current CI only triggers PRs targeting master/main. PR452 therefore requires
-retargeting and exact-head CI after the approved PR451 merge; local QA/build
-results are not GitHub CI for this dependent PR. Neither PR is merged or deployed.
+The dependent PR has observed exact-head CI, including five successful jobs on
+`7270625a` in run43997399339. The earlier assumption that its stack base prevented
+CI was incorrect. Reverify checks after each new head and base change. Neither
+PR is merged or deployed.
 The public changelog is deferred until its normal approved deployment workflow.
 See [implementation evidence and limits](EXPENSE_PAYMENT_QR.md).
 

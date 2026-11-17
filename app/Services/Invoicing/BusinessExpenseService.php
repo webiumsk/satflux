@@ -46,6 +46,7 @@ class BusinessExpenseService
             $query->whereYear('issue_date', (int) $filters['year']);
         }
 
+        $overdueBefore = $filters['overdue_before'] ?? now()->toDateString();
         $filter = $filters['filter'] ?? 'all';
         if ($filter === 'paid') {
             $query->where('status', BusinessExpenseStatus::Paid);
@@ -53,11 +54,11 @@ class BusinessExpenseService
             $query->where('status', BusinessExpenseStatus::Recorded);
         } elseif ($filter === 'overdue') {
             $query->where('status', BusinessExpenseStatus::Recorded)
-                ->whereDate('due_date', '<', now()->toDateString());
+                ->whereDate('due_date', '<', $overdueBefore);
         }
         if (($filters['due'] ?? null) === 'overdue') {
             $query->where('status', BusinessExpenseStatus::Recorded)
-                ->whereDate('due_date', '<', now()->toDateString());
+                ->whereDate('due_date', '<', $overdueBefore);
         } elseif (($filters['due'] ?? null) === 'custom') {
             $query->whereNotNull('due_date');
             if (! empty($filters['due_from'])) {

@@ -23,6 +23,7 @@ final class BusinessExpenseListFilters
             'issue_from' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:0001-01-01'],
             'issue_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:0001-01-01'],
             'due' => ['nullable', Rule::in(['all', 'overdue', 'custom'])],
+            'overdue_before' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:0001-01-01'],
             'due_from' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:0001-01-01'],
             'due_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:0001-01-01'],
             'amount_min' => ['nullable', 'regex:/^\d{1,20}(?:\.\d{1,2})?$/D'],

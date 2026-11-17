@@ -98,11 +98,111 @@ class BusinessExpenseListFiltersTest extends TestCase
             ->assertJsonPath('summary.currencies.0.unpaid_total', '10.00');
     }
 
+    /** @return array<string, array{array<string, string>}> */
+    public static function overdueSelectors(): array
+    {
+        return [
+            'overdue status' => [['filter' => 'overdue']],
+            'overdue due date' => [['due' => 'overdue']],
+            'both overdue selectors' => [['filter' => 'overdue', 'due' => 'overdue']],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('overdueSelectors')]
+    public function captured_overdue_cutoff_keeps_list_and_bulk_targets_the_same_after_midnight(array $selector): void
+    {
+        $overdue = $this->expense(['due_date' => '2026-06-14']);
+        $nextDay = $this->expense(['due_date' => '2026-06-15']);
+        $noDueDate = $this->expense();
+        $this->expense(['due_date' => '2026-06-14', 'status' => BusinessExpenseStatus::Paid]);
+        $this->expense(['due_date' => '2026-06-14', 'status' => BusinessExpenseStatus::Cancelled]);
+        $filters = [...$selector, 'overdue_before' => '2026-06-15'];
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses";
+        $this->actingAs($this->user)->getJson($url.'?'.http_build_query($filters))
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $overdue->id)
+            ->assertJsonPath('summary.currencies.0.unpaid_total', '10.00');
+
+        $this->travelTo(now()->setDate(2026, 6, 16)->setTime(0, 1));
+        $this->getJson($url.'?'.http_build_query($filters))
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $overdue->id);
+        $this->postJson($url.'/bulk', [...$filters, 'action' => 'mark_paid', 'select_all' => true])
+            ->assertOk()->assertJsonPath('data.processed', 1);
+        $this->assertSame(BusinessExpenseStatus::Paid, $overdue->fresh()->status);
+        $this->assertSame(BusinessExpenseStatus::Recorded, $nextDay->fresh()->status);
+        $this->assertSame(BusinessExpenseStatus::Recorded, $noDueDate->fresh()->status);
+    }
+
+    #[Test]
+    #[DataProvider('overdueSelectors')]
+    public function callers_without_an_overdue_cutoff_keep_the_existing_current_day_behavior(array $selector): void
+    {
+        $old = $this->expense(['due_date' => '2026-06-14']);
+        $boundary = $this->expense(['due_date' => '2026-06-15']);
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses";
+        $this->actingAs($this->user)->getJson($url.'?'.http_build_query($selector))->assertOk()->assertJsonPath('total', 1);
+        $this->travelTo(now()->setDate(2026, 6, 16)->setTime(0, 1));
+        $this->getJson($url.'?'.http_build_query($selector))->assertOk()->assertJsonPath('total', 2);
+        $this->getJson($url.'?'.http_build_query([...$selector, 'overdue_before' => null]))->assertOk()->assertJsonPath('total', 2);
+        $this->postJson($url.'/bulk', [...$selector, 'action' => 'mark_paid', 'select_all' => true])
+            ->assertOk()->assertJsonPath('data.processed', 2);
+        $this->assertSame(BusinessExpenseStatus::Paid, $old->fresh()->status);
+        $this->assertSame(BusinessExpenseStatus::Paid, $boundary->fresh()->status);
+    }
+
+    #[Test]
+    public function overdue_cutoff_preserves_exact_ids_company_isolation_and_custom_due_intersections(): void
+    {
+        $selected = $this->expense(['due_date' => '2026-06-14']);
+        $unselected = $this->expense(['due_date' => '2026-06-13']);
+        $boundary = $this->expense(['due_date' => '2026-06-15']);
+        $other = Company::create(['user_id' => $this->user->id, 'legal_name' => 'Other cutoff company',
+            'jurisdiction' => CompanyJurisdiction::EuSk, 'default_currency' => 'EUR']);
+        $foreign = $this->expense(['company_id' => $other->id, 'due_date' => '2026-06-14']);
+        $this->travelTo(now()->setDate(2026, 6, 16)->setTime(0, 1));
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses";
+        $filters = ['filter' => 'overdue', 'overdue_before' => '2026-06-15', 'due' => 'custom',
+            'due_from' => '2026-06-14', 'due_to' => '2026-06-15'];
+        $this->actingAs($this->user)->getJson($url.'?'.http_build_query($filters))
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $selected->id);
+        $this->postJson($url.'/bulk', [...$filters, 'action' => 'mark_paid',
+            'expense_ids' => [$selected->id, $boundary->id, $foreign->id]])
+            ->assertOk()->assertJsonPath('data.processed', 1);
+        $this->assertSame(BusinessExpenseStatus::Paid, $selected->fresh()->status);
+        foreach ([$unselected, $boundary, $foreign] as $expense) {
+            $this->assertSame(BusinessExpenseStatus::Recorded, $expense->fresh()->status);
+        }
+
+        $this->getJson($url.'?'.http_build_query(['filter' => 'paid', 'due' => 'overdue', 'overdue_before' => '2026-06-15']))
+            ->assertOk()->assertJsonPath('total', 0);
+        $this->getJson($url.'?'.http_build_query(['filter' => 'unpaid', 'due' => 'custom', 'due_from' => '2026-06-15',
+            'due_to' => '2026-06-15', 'overdue_before' => '2026-06-15']))
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $boundary->id);
+    }
+
+    #[Test]
+    public function overdue_cutoff_accepts_the_first_supported_calendar_year(): void
+    {
+        $this->expense(['due_date' => '2026-06-14']);
+        $filters = ['filter' => 'overdue', 'overdue_before' => '0001-01-01'];
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses";
+        $this->actingAs($this->user)->getJson($url.'?'.http_build_query($filters))->assertOk()->assertJsonPath('total', 0);
+        $this->postJson($url.'/bulk', [...$filters, 'action' => 'mark_paid', 'select_all' => true])
+            ->assertUnprocessable()->assertJsonValidationErrors(['expense_ids'])
+            ->assertJsonMissingValidationErrors(['overdue_before']);
+    }
+
     /** @return iterable<string, array{array<string, mixed>}> */
     public static function invalidFilters(): iterable
     {
         yield 'year zero' => [['issue_from' => '0000-01-01']];
         yield 'bad date' => [['issue_from' => '2026-02-30']];
+        yield 'overdue cutoff year zero' => [['filter' => 'overdue', 'overdue_before' => '0000-01-01']];
+        yield 'invalid overdue cutoff calendar day' => [['due' => 'overdue', 'overdue_before' => '2026-02-30']];
+        yield 'overdue cutoff is a date without time' => [['overdue_before' => '2026-06-15T12:00:00']];
+        yield 'overdue cutoff requires canonical padding' => [['overdue_before' => '2026-6-15']];
+        yield 'overdue cutoff is not an array' => [['overdue_before' => ['2026-06-15']]];
+        yield 'overdue cutoff rejects SQL text' => [['overdue_before' => "2026-06-15' OR 1=1 --"]];
         yield 'reversed issue' => [['issue_from' => '2026-06-02', 'issue_to' => '2026-06-01']];
         yield 'reversed due' => [['due' => 'custom', 'due_from' => '2026-06-02', 'due_to' => '2026-06-01']];
         yield 'empty custom due' => [['due' => 'custom']];

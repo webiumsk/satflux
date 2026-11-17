@@ -464,6 +464,61 @@ describe("expense page filtered summary", () => {
         }
     });
 
+    it.each([
+        { local: false, variant: "status" }, { local: false, variant: "due" },
+        { local: true, variant: "status" }, { local: true, variant: "due" },
+    ])("uses the successful overdue cutoff for bulk and refreshes it after reload (local=$local, variant=$variant)", async ({ local, variant }) => {
+        vi.useFakeTimers({ toFake: ["Date"] });
+        vi.setSystemTime(new Date(2026, 5, 30, 23, 59));
+        localSource = [
+            { ...row("Already overdue"), due_date: "2026-06-29" },
+            { ...row("Due today"), due_date: "2026-06-30" },
+        ];
+        mocks.listPaged.mockImplementation(async (_company, filters: ExpenseListFilterOptions) => response(
+            filters.overdue_before ? localSource.filter(item => item.due_date! < filters.overdue_before!) : localSource,
+        ));
+        mocks.resolveTargets.mockReturnValue([{ id: "Already overdue" }]);
+        mocks.markPaidBulk.mockImplementation(async (_evolu, _targets, assertCurrent: () => void) => {
+            assertCurrent();
+            return { processed: 1, skipped: 0 };
+        });
+        render(local);
+        await flushPromises();
+        if (variant === "status") {
+            await filter(en.invoicing.expense_filter_overdue);
+        } else {
+            const desktop = wrapper!.findAllComponents({ name: "InvoicingRecordFilterBar" })[1];
+            await desktop.find('button[aria-controls$="-advanced"]').trigger("click");
+            await desktop.find('select[id$="-due"]').setValue("overdue");
+            await desktop.find("form").trigger("submit");
+            await flushPromises();
+        }
+        expect(wrapper!.find('[data-test="expenses-table"]').text()).toContain("Already overdue");
+        expect(wrapper!.find('[data-test="expenses-table"]').text()).not.toContain("Due today");
+        wrapper!.findComponent({ name: "ExpensesTable" }).vm.$emit("select-all");
+        await flushPromises();
+        vi.setSystemTime(new Date(2026, 6, 1, 0, 1));
+        wrapper!.findComponent({ name: "ExpensesTable" }).vm.$emit("run-bulk", "mark_paid");
+        await flushPromises();
+        const overdueFilter = variant === "status" ? { filter: "overdue" } : { due: "overdue" };
+        if (local) {
+            expect(mocks.resolveTargets.mock.calls[0][4]).toEqual(expect.objectContaining({ ...overdueFilter, overdue_before: "2026-06-30" }));
+            expect(mocks.refresh).toHaveBeenLastCalledWith(expect.objectContaining({ ...overdueFilter, overdue_before: "2026-07-01" }));
+        } else {
+            expect(mocks.bulk).toHaveBeenCalledExactlyOnceWith("company-a", expect.objectContaining({
+                ...overdueFilter, action: "mark_paid", select_all: true, overdue_before: "2026-06-30",
+            }));
+            expect(mocks.listPaged).toHaveBeenLastCalledWith("company-a", expect.objectContaining({ ...overdueFilter, overdue_before: "2026-07-01" }));
+        }
+        expect(wrapper!.find('[data-test="expenses-table"]').text()).toContain("Due today");
+        wrapper!.findComponent({ name: "ExpensesTable" }).vm.$emit("select-all");
+        await flushPromises();
+        wrapper!.findComponent({ name: "ExpensesTable" }).vm.$emit("run-bulk", "mark_paid");
+        await flushPromises();
+        expect(local ? mocks.resolveTargets.mock.calls[1][4] : mocks.bulk.mock.calls[1][1])
+            .toEqual(expect.objectContaining({ ...overdueFilter, overdue_before: "2026-07-01" }));
+    });
+
     it("replaces the bulk date snapshot only after the new day's load succeeds", async () => {
         vi.useFakeTimers({ toFake: ["Date"] });
         vi.setSystemTime(new Date(2026, 5, 30, 23, 59));
