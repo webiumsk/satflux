@@ -1,5 +1,24 @@
 # Development decision log
 
+## Review-only text-PDF expense drafts - 2026-11-18
+
+Reuse the installed PDF parser behind an additive import facade. Any embedded
+file stays exclusively on the existing ISDOC path; structured-reader errors must
+not downgrade to visible text. Only PDFs without embedded files use bounded,
+conservative SK/CS/EN field mapping. Conflicting or missing fields remain absent.
+A unique coherent invoice header may distinguish a total from annex totals;
+page order alone never chooses it. Decoder safeguards are partial, not a global
+process-memory/CPU sandbox; legacy structured-reader limits remain documented.
+
+Text drafts always require payment review and retain concrete payment evidence.
+New/edit forms prefill without writes until Save. Detail extraction previews the
+exact frozen merged payload and writes only after explicit approval, invalidated
+by context/owner/record changes. Track automatic supplier/account provenance
+across sparse drafts so changed or unknown identities cannot inherit an unrelated
+account. Deliberate saved/contact/manual snapshots and clears remain authoritative.
+No OCR/provider, schema or quota-policy change is needed. Independent QA/security
+accept the final reviewed scope; [contract and checks](EXPENSE_TEXT_PDF_EXTRACTION.md).
+
 ## PR455 review corrections accepted - 2026-11-17
 
 All three supplied findings reproduce on `0ec7e835` and are corrected: normalized

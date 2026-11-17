@@ -1,5 +1,17 @@
 # Development roadmap
 
+## Reviewed text-PDF expense extraction - 2026-11-18
+
+The authorized Satflux-only implementation is complete on
+`feat/expense-text-pdf-extraction`, based on merged PR455 at `2ffd3465`.
+Readable text PDFs now produce reviewable sparse drafts before Save; embedded
+ISDOC retains priority. Detail extraction needs explicit preview approval, and
+repeated partial drafts preserve coherent supplier/account pairs. All five locales
+and guides are updated. Main and independent QA/security checks accept the final
+source; see [evidence and validation limits](EXPENSE_TEXT_PDF_EXTRACTION.md).
+Next is reviewed branch publication, new-head CI and owner PR review. OCR, external
+AI, pricing changes, merge and deployment are outside this accepted milestone.
+
 ## PR455 review corrections accepted - 2026-11-17
 
 All three supplied findings reproduce on `0ec7e835` and are corrected: normalized

@@ -21,10 +21,12 @@
         ×
       </button>
 
-      <h3 :id="dialogTitleId" class="text-lg font-semibold text-gray-900 pr-8">{{ t('invoicing.expense_isdoc_detected_title') }}</h3>
+      <h3 :id="dialogTitleId" class="text-lg font-semibold text-gray-900 pr-8">{{ t(source === 'pdf_text' ? 'invoicing.expense_pdf_text_detected_title' : 'invoicing.expense_isdoc_detected_title') }}</h3>
       <p class="mt-3 text-sm text-gray-600 leading-relaxed">
         {{ bodyText }}
       </p>
+
+      <p v-if="source === 'pdf_text'" class="mt-2 text-sm text-amber-800">{{ t('invoicing.expense_pdf_text_review_notice') }}</p>
 
       <p v-if="quotaHint" class="mt-2 text-xs text-gray-500">
         {{ quotaHint }}
@@ -88,6 +90,7 @@
 </template>
 
 <script setup lang="ts">
+import type { ExpenseExtractionSource } from "@/composables/useExpenseIsdocAttachment";
 import { useDialogFocus } from "@/composables/useDialogFocus";
 import { useId } from "vue";
 import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
@@ -110,6 +113,7 @@ export type IsdocExtractQuota = {
 
 const props = defineProps<{
   open: boolean;
+  source?: ExpenseExtractionSource | null;
   extracting?: boolean;
   purchasing?: boolean;
   quota: IsdocExtractQuota | null;

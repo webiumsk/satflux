@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Invoicing;
 
 use App\Http\Controllers\Controller;
-use App\Services\Invoicing\BusinessExpenseIsdocImportService;
+use App\Services\Invoicing\BusinessExpenseImportService;
 use App\Services\Invoicing\BusinessExpenseIsdocQuotaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,7 +22,7 @@ class EphemeralBusinessExpenseController extends Controller
     ];
 
     public function __construct(
-        protected BusinessExpenseIsdocImportService $isdocImportService,
+        protected BusinessExpenseImportService $documentImportService,
         protected BusinessExpenseIsdocQuotaService $isdocQuotaService,
     ) {}
 
@@ -46,10 +46,11 @@ class EphemeralBusinessExpenseController extends Controller
         ]));
 
         $file = $request->file('file');
+        $detection = $this->documentImportService->detectFromUpload($file);
 
         return response()->json([
             'data' => [
-                'has_isdoc' => $this->isdocImportService->hasIsdocInUpload($file),
+                ...$detection,
                 'quota' => $this->isdocQuotaService->snapshot($request->user()),
                 'filename' => $file->getClientOriginalName(),
             ],
@@ -64,7 +65,7 @@ class EphemeralBusinessExpenseController extends Controller
 
         $user = $request->user();
         $this->isdocQuotaService->assertCanExtract($user);
-        $draft = $this->isdocImportService->extractFromUpload($request->file('file'));
+        $draft = $this->documentImportService->extractFromUpload($request->file('file'));
         $this->isdocQuotaService->recordExtraction($user, null, null);
 
         return response()->json([

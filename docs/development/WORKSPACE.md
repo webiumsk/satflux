@@ -1,5 +1,19 @@
 # Local workspace
 
+## Text-PDF extraction reviewed worktree - 2026-11-18
+
+Primary unrelated edits remain preserved. Authorized implementation is isolated
+in retained `storage/app/private/worktrees/expense-text-pdf-extraction`, branch
+`feat/expense-text-pdf-extraction`, based on verified master `2ffd3465` with merged
+PR455. Only28 independently reviewed source/test/locale/guide paths and5 scoped
+technical-state documents belong to this publication. Main owns Git publication.
+
+Existing dependencies are reused; no graph/tool installation, production database,
+external AI, original-document fixture, merge or deployment is involved. Graphify
+was queried in the primary checkout; this worktree has no graph and none was built.
+Private review reports and field-presence-only sample evidence stay untracked.
+[Reviewed hashes, test evidence and pending publication gate](EXPENSE_TEXT_PDF_EXTRACTION.md).
+
 ## PR455 review corrections accepted - 2026-11-17
 
 All three supplied findings reproduce on `0ec7e835` and are corrected: normalized

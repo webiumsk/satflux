@@ -14,6 +14,7 @@
 
     <ExpenseIsdocExtractModal
       :open="showExtractModal"
+      :source="extractionSource"
       :extracting="extracting"
       :purchasing="purchasing"
       :quota="quota"
@@ -248,6 +249,7 @@ const {
   lastDetectHasIsdoc,
   detectError,
   showExtractModal,
+  extractionSource,
   showProcessingConsent,
   processingConsentFileName,
   detectionStatus,
@@ -301,6 +303,7 @@ const documentKind = ref(route.query.credit_note === '1' ? 'credit_note' : 'expe
 const isCreditNote = computed(() => documentKind.value === 'credit_note');
 const selectedContact = computed(() => supplierContacts.value.find(contact => contact.id === form.value.company_contact_id));
 let extractedSupplier: { name: string; iban: string } | null = null;
+let automaticSupplier: { name: string; iban: string } | null = null;
 const supplierNameManuallyEdited = ref(false);
 const supplierIbanManuallyEdited = ref(false);
 const currencyHasExplicitValue = ref(false);
@@ -339,6 +342,7 @@ function onSupplierContactChange() {
   form.value.supplier_iban = contact?.iban?.trim() || (extractedSupplier && (!contact || sameSupplier(contact.name)) ? extractedSupplier.iban : '');
   supplierNameManuallyEdited.value = false;
   supplierIbanManuallyEdited.value = false;
+  automaticSupplier = contact ? null : { name: form.value.supplier_name, iban: form.value.supplier_iban };
 }
 
 const internalNumber = ref('');
@@ -361,6 +365,7 @@ watch([companyId, expenseId], () => {
   saving.value = false;
   error.value = '';
   extractedSupplier = null;
+  automaticSupplier = null;
   form.value.company_contact_id = '';
   form.value.supplier_name = '';
   form.value.supplier_iban = '';
@@ -401,17 +406,36 @@ function applyImportDraft(draft: ExpenseImportDraft) {
   markFormEdited();
   // Supplier identity and account come from structured fields, never copied prose.
   extractedSupplier = { name: draft.supplier_name?.trim() ?? '', iban: draft.supplier_iban?.trim() ?? '' };
-  form.value.payment_review_required ||= draft.payment_review_required !== false
+  form.value.payment_review_required ||= draft.source === 'pdf_text' || draft.payment_review_required !== false
     || (draft.variable_symbol == null && Boolean(form.value.variable_symbol.trim()));
   const contact = selectedContact.value;
-  const sameSupplier = (name: string) => extractedSupplier!.name.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase();
+  const sameName = (left: string, right: string) => left.trim().toLocaleLowerCase() === right.trim().toLocaleLowerCase();
+  const sameSupplier = (name: string) => sameName(extractedSupplier!.name, name);
+  const partialTextDraft = draft.source === 'pdf_text';
+  const previousSupplierName = form.value.supplier_name;
+  // A later partial draft may replace automatic fields, but cannot mix two inferred recipients.
+  const canReplaceAutomaticSupplier = !contact && !supplierNameManuallyEdited.value && !supplierIbanManuallyEdited.value
+    && (automaticSupplier ? sameName(form.value.supplier_name, automaticSupplier.name) && form.value.supplier_iban === automaticSupplier.iban
+      : !form.value.supplier_name.trim() && !form.value.supplier_iban.trim());
   const retainedSupplierName = supplierNameManuallyEdited.value || supplierIbanManuallyEdited.value
-    ? form.value.supplier_name : contact?.name ?? extractedSupplier.name;
+    ? form.value.supplier_name : contact?.name ?? (partialTextDraft
+      ? canReplaceAutomaticSupplier && extractedSupplier.name ? extractedSupplier.name : form.value.supplier_name
+      : extractedSupplier.name);
   const supplierConflict = Boolean(retainedSupplierName && extractedSupplier.name && !sameSupplier(retainedSupplierName));
   if (supplierConflict) form.value.payment_review_required = true;
   if (!supplierNameManuallyEdited.value) form.value.supplier_name = retainedSupplierName;
-  if (!supplierIbanManuallyEdited.value) form.value.supplier_iban = contact?.iban?.trim()
-    || (supplierConflict ? '' : extractedSupplier.iban);
+  if (!supplierIbanManuallyEdited.value) {
+    if (!partialTextDraft) form.value.supplier_iban = contact?.iban?.trim() || (supplierConflict ? '' : extractedSupplier.iban);
+    else if (contact?.iban?.trim()) form.value.supplier_iban = contact.iban.trim();
+    else if (extractedSupplier.iban && (!retainedSupplierName || sameSupplier(retainedSupplierName))) {
+      form.value.supplier_iban = extractedSupplier.iban;
+    } else if (canReplaceAutomaticSupplier && (!sameName(previousSupplierName, retainedSupplierName)
+      || (extractedSupplier.iban && !extractedSupplier.name))) form.value.supplier_iban = '';
+  }
+  if (!contact && !supplierNameManuallyEdited.value && !supplierIbanManuallyEdited.value
+    && (!partialTextDraft || canReplaceAutomaticSupplier)) {
+    automaticSupplier = { name: form.value.supplier_name, iban: form.value.supplier_iban };
+  }
   if (draft.internal_note?.trim() && !form.value.internal_note.includes(draft.internal_note.trim())) {
     form.value.internal_note = [form.value.internal_note.trim(), draft.internal_note.trim()].filter(Boolean).join('\n\n');
   }

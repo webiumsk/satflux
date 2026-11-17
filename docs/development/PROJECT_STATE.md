@@ -1,5 +1,25 @@
 # Project state
 
+## Reviewed text-PDF expense extraction - 2026-11-18
+
+PR455 is verified merged at master `2ffd3465`; older open-PR entries below are
+historical. The owner authorizes readable text-PDF extraction after the SPS audit.
+Branch `feat/expense-text-pdf-extraction` adds sparse draft extraction before Save,
+retaining ISDOC priority, existing quotas, consent and payment-review safeguards.
+Detail text extraction requires explicit approval of the displayed merged payload.
+No OCR, external AI, migration or dependency change is included.
+
+Main checks pass442 JS tests,244 PHP cases/1780 assertions (13 optional PostgreSQL
+concurrency cases skip), lint/typecheck ratchets, locale parity, Pint/PHPStan and
+production build. Independent QA accepts288 JS tests,111 PHP/936 assertions and20
+native scenarios; security accepts the final source and independently verifies the
+last145 Form cases. Scopes overlap. Both accept complete28 aggregate
+`9789f7632b6ffea55c9d10ce2cc2febd6ab3decfd644dc6dbd08adc926957219`.
+The private read-only sample probe finds all9 basic fields; no document values or
+binary fixture enter Git. Primary unrelated edits remain preserved. Main owns
+publication; new-head CI must be verified afterward. No merge/deployment occurs.
+[Contract, review attribution and limits](EXPENSE_TEXT_PDF_EXTRACTION.md).
+
 ## PR455 review corrections accepted - 2026-11-17
 
 All three supplied findings reproduce on `0ec7e835` and are corrected: normalized
