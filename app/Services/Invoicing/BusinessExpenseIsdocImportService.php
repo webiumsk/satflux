@@ -6,7 +6,10 @@ use Adawolfa\ISDOC\Manager;
 use Adawolfa\ISDOC\ReaderException;
 use Adawolfa\ISDOC\Schema\Invoice as IsdocInvoiceSchema;
 use Adawolfa\ISDOC\Schema\Invoice\Details;
+use Adawolfa\ISDOC\Schema\Invoice\DocumentType;
 use Adawolfa\ISDOC\Schema\Invoice\Payment;
+use Adawolfa\ISDOC\Schema\Invoice\PaymentMeansCode;
+use App\Support\Invoicing\SupplierPaymentIban;
 use DateTimeInterface;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
@@ -114,7 +117,10 @@ class BusinessExpenseIsdocImportService
             ->getName();
 
         $externalNumber = $invoice->getId();
-        $variableSymbol = $details?->getVariableSymbol() ?? $externalNumber;
+        $means = $invoice->getPaymentMeans();
+        $reference = trim($details?->getVariableSymbol() ?? '');
+        $variableSymbol = $means !== null && count($means) === 1 && preg_match('/^[0-9]{1,10}$/D', $reference)
+            ? $reference : null;
 
         return [
             'source' => 'isdoc',
@@ -130,7 +136,63 @@ class BusinessExpenseIsdocImportService
                 : null,
             'total' => round($total, 2),
             'currency' => strtoupper($invoice->getLocalCurrencyCode()),
+            'internal_note' => $this->supplierPaymentNote($invoice, $supplierName, $variableSymbol),
         ];
+    }
+
+    protected function supplierPaymentNote(IsdocInvoiceSchema $invoice, string $supplier, ?string $variableSymbol): string
+    {
+        $parts = ['Imported from ISDOC.'];
+        if ($supplier === '' || preg_match('/[\p{Cc}\p{Zl}\p{Zp}]/u', $supplier)) {
+            return $parts[0];
+        }
+        $parts[] = 'Supplier: '.$supplier;
+        // The legacy expense projection uses local accounting amounts. A
+        // foreign-currency invoice has separate Curr payment amounts, so that
+        // projection must not authorize a payment QR. Credit notes and deposits
+        // also lack a separate outstanding-balance ledger in this model.
+        $monetary = $invoice->getLegalMonetaryTotal();
+        $payable = $monetary->getPayableAmount();
+        if ($invoice->getForeignCurrencyCode() !== null
+            || $variableSymbol === null || $invoice->getDocumentType() !== DocumentType::Invoice
+            || ! $this->supportsPaymentPrecision($payable)
+            || ! $this->supportsPaymentPrecision($monetary->getPaidDepositsAmount())
+            || ! $this->supportsPaymentPrecision($monetary->getAlreadyClaimedTaxInclusiveAmount())
+            || bccomp($payable, '0', 2) <= 0
+            || bccomp($monetary->getPaidDepositsAmount(), '0', 2) !== 0
+            || bccomp($monetary->getAlreadyClaimedTaxInclusiveAmount(), '0', 2) !== 0) {
+            return implode("\n\n", $parts);
+        }
+
+        $accounts = [];
+        $means = $invoice->getPaymentMeans();
+        if ($means === null || count($means) !== 1) {
+            return implode("\n\n", $parts);
+        }
+        foreach ($means as $payment) {
+            if (! in_array($payment->getPaymentMeansCode(), [PaymentMeansCode::CreditTransfer, PaymentMeansCode::MoneyTransferToAnAccount], true)
+                || $payment->getPartialPayment() === true
+                || ! $this->supportsPaymentPrecision($payment->getPaidAmount())
+                || bccomp($payment->getPaidAmount(), $payable, 2) !== 0) {
+                return implode("\n\n", $parts);
+            }
+            $iban = SupplierPaymentIban::normalize($payment->getDetails()?->getIban() ?? '');
+            if ($iban === null) {
+                return implode("\n\n", $parts);
+            }
+            $accounts[$iban] = true;
+        }
+        if (count($accounts) === 1) {
+            $parts[] = 'Supplier bank account: '.array_key_first($accounts);
+        }
+
+        return implode("\n\n", $parts);
+    }
+
+    /** Never let scale-2 comparison discard unsupported source fractions, even trailing zeroes. */
+    protected function supportsPaymentPrecision(string $amount): bool
+    {
+        return preg_match('/^-?(?:[0-9]*\.[0-9]{1,2}|[0-9]+)$/D', $amount) === 1;
     }
 
     protected function firstPaymentDetails(IsdocInvoiceSchema $invoice): ?Details

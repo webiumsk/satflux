@@ -132,6 +132,18 @@ afterEach(() => {
 });
 
 describe("bank movement bridge synchronization", () => {
+    it("keeps local private list criteria out of every inbound synchronization request", async () => {
+        const { bank } = bankFor();
+        await bank.load("unmatched", { filters: { search: "synthetic-private-search", direction: "debit", amount_min: "10.00",
+            from: "2026-11-01", to: "2026-11-30" } });
+        expect(mocks.list).toHaveBeenCalled();
+        for (const [, params] of mocks.list.mock.calls) {
+            expect(Object.keys(params).sort()).toEqual(["per_page", "source", "sync", "sync_context", "sync_cursor"].sort());
+            expect(params).toMatchObject({ source: "email", sync: 1 });
+            expect(JSON.stringify(params)).not.toContain("synthetic-private-search");
+        }
+    });
+
     it("leaves refresh to the page after local batch matching succeeds", async () => {
         const { bank } = bankFor();
         mocks.loadQuery.mockClear();

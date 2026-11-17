@@ -37,14 +37,14 @@ describe("production owner-scoped original chunk query", () => {
         } finally { db.close(); }
     });
 
-    it("keeps source id, owner, company, kind and live-row bindings while retaining incomplete sync evidence", () => {
+    it.each(["efaktura-original", "expense-attachment"])("keeps source id, owner, company, kind and live-row bindings for %s, including incomplete sync evidence", sourceKind => {
         const db = database();
         try {
             const source = db.prepare("INSERT INTO migrationSource VALUES (?, ?, ?, ?, ?, ?)");
-            source.run("source", "owner-a", "company-a", "efaktura-original", 0, "2026-11-16T00:00:00Z");
-            source.run("source", "owner-b", "company-b", "efaktura-original", 0, "2026-11-16T00:00:00Z");
-            source.run("pending", "owner-a", "company-a", "efaktura-original", 0, null);
-            source.run("deleted", "owner-a", "company-a", "efaktura-original", 1, null);
+            source.run("source", "owner-a", "company-a", sourceKind, 0, "2026-11-16T00:00:00Z");
+            source.run("source", "owner-b", "company-b", sourceKind, 0, "2026-11-16T00:00:00Z");
+            source.run("pending", "owner-a", "company-a", sourceKind, 0, null);
+            source.run("deleted", "owner-a", "company-a", sourceKind, 1, null);
             source.run("migration", "owner-a", "company-a", "superfaktura", 0, null);
             const chunk = db.prepare("INSERT INTO migrationChunk VALUES (?, ?, ?, ?, '0', 'c3ludGhldGlj', ?, '2026-11-16T00:00:00Z')");
             chunk.run("complete-a", "owner-a", "company-a", "source", 0);

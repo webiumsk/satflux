@@ -1,0 +1,7 @@
+{
+  "id": "expense-attachments-bank-filters",
+  "source": "https://github.com/webiumsk/satflux/pull/451",
+  "title": "Larger expense attachments and detailed bank filters",
+  "body": "Manually add expense attachments up to 10 MiB. Outgoing bank movements keep the correct minus sign and colour. Expenses and bank movements now support detailed filters and search on desktop and mobile, with totals that follow the applied filters.",
+  "labels": ["fix"]
+}

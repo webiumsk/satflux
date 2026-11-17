@@ -71,6 +71,7 @@ export type BankTxApiRow = {
     direction: string;
     variable_symbol?: string | null;
     counterparty_name?: string | null;
+    counterparty_iban?: string | null;
     reference?: string | null;
     match_status: string;
     match?: {
@@ -81,6 +82,7 @@ export type BankTxApiRow = {
         document?: {
             id: string;
             number?: string | null;
+            title?: string | null;
             status?: string;
             type?: string;
         } | null;
@@ -185,6 +187,7 @@ export function evoluBankTxToApi(
             && row.recordedDirectionEvidence !== row.direction ? "unverified" : row.direction,
         variable_symbol: row.variableSymbol,
         counterparty_name: row.counterpartyName,
+        counterparty_iban: row.counterpartyIban,
         reference: row.reference,
         match_status: conflict ? "unmatched" : row.matchStatus,
         bank_match_claim: row.bankPaymentClaimJson ?? null,
@@ -200,6 +203,7 @@ export function evoluBankTxToApi(
             document: {
                 id: document.id,
                 number: document.number,
+                title: document.title,
                 status: document.status,
                 type: document.documentType,
             },
@@ -228,7 +232,7 @@ export function filterLocalBankTransactions(
     return rows
         .filter((row) => row.companyId === companyId && isMovementTransaction(row))
         .filter((row) => !matchStatus || matchStatus === "all" || row.matchStatus === matchStatus)
-        .sort((a, b) => (b.bookedAt || "").localeCompare(a.bookedAt || ""));
+        .sort((a, b) => (b.bookedAt || "").localeCompare(a.bookedAt || "") || b.id.localeCompare(a.id));
 }
 
 export function buildBankSummary(rows: EvoluBankTransactionRow[]): BankSummary {
@@ -307,7 +311,7 @@ export function buildBankSummary(rows: EvoluBankTransactionRow[]): BankSummary {
         by_currency: byCurrencyFormatted,
         account_balance: latestSnapshot
             ? {
-                amount: formatMoney(Math.abs(parseFloat(latestSnapshot.amount || "0"))),
+                amount: formatMoney(parseFloat(latestSnapshot.amount || "0")),
                 currency: latestSnapshot.currency || "EUR",
                 as_of: latestSnapshot.bookedAt || "",
             }

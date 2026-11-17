@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({ ensure: vi.fn(), inbound: vi.fn(), local: true
   fetchExpenseSuggestions: vi.fn(), matchExpense: vi.fn(),
   fetchWiseStatus: vi.fn(),
   connectWise: vi.fn(), flashSuccess: vi.fn(),
-  syncWise: vi.fn(),
+  syncWise: vi.fn(), reopenFilterDrawer: vi.fn(),
 }));
 const route = reactive({ params: { companyId: 'local-a' } });
 const hasBankAccount = ref(true);
@@ -23,11 +23,14 @@ const bridgeRoutingKey = computed(() => JSON.stringify([route.params.companyId, 
 vi.mock('vue-router', () => ({ useRoute: () => route }));
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key, locale: ref('en') }) }));
 vi.mock('@/components/invoicing/InvoicingPageShell.vue', () => ({ default: { template: '<div><slot name="header"/><slot/></div>' } }));
-vi.mock('@/components/invoicing/InvoicingAppHeader.vue', () => ({ default: { template: '<div><slot name="actions"/></div>' } }));
+vi.mock('@/components/invoicing/InvoicingAppHeader.vue', () => ({ default: {
+  name: 'InvoicingAppHeader', methods: { openFilterDrawer: () => mocks.reopenFilterDrawer() },
+  template: '<div><slot name="actions"/><slot name="mobile-filters"/></div>',
+} }));
 vi.mock('@/components/invoicing/InvoicingMobileCard.vue', () => ({ default: { template: '<div><slot/><slot name="actions"/></div>' } }));
 vi.mock('@/components/invoicing/InvoicingRowActionsMenu.vue', () => ({ default: { template: '<div><slot/></div>' } }));
 vi.mock('@/components/invoicing/BankCreateExpenseModal.vue', () => ({ default: { template: '<div/>' } }));
-vi.mock('@/composables/useInvoicingLayout', () => ({ useInvoicingLayout: () => ({ rememberCompany: vi.fn() }) }));
+vi.mock('@/composables/useInvoicingLayout', () => ({ INVOICING_CONTAINER_CLASS: 'synthetic-container', useInvoicingLayout: () => ({ rememberCompany: vi.fn() }) }));
 vi.mock('@/composables/useInvoicingCompanySummary', () => ({ useInvoicingCompanySummary: () => ({
   hasBankAccount, summaryLoaded: ref(true), bankAccountLabel: ref('Synthetic bank'), defaultCurrency: ref('EUR'),
 }) }));
@@ -458,7 +461,7 @@ describe('batch matching errors', () => {
     mocks.load.mockRejectedValueOnce(new Error(message));
     await render();
     expect(mocks.flashError).toHaveBeenCalledExactlyOnceWith(key);
-    expect(mocks.load).toHaveBeenCalledExactlyOnceWith('all', { skipErrorFlash: true });
+    expect(mocks.load).toHaveBeenCalledExactlyOnceWith('all', { skipErrorFlash: true, filters: {} });
   });
 
   it.each(['load', 'loadBatches'] as const)('discards a stale %s failure after switching companies', async (action) => {
@@ -564,7 +567,7 @@ describe('batch matching errors', () => {
     await flushPromises();
     expect(mocks.load).toHaveBeenCalledOnce();
     expect(mocks.flashError).not.toHaveBeenCalled();
-    expect(mocks.load).toHaveBeenCalledWith('all', { skipErrorFlash: true });
+    expect(mocks.load).toHaveBeenCalledWith('all', { skipErrorFlash: true, filters: {} });
   });
 
   it('reports a refresh failure separately after matching succeeds without retrying the match', async () => {
@@ -653,7 +656,7 @@ describe('batch matching errors', () => {
       const input = wrapper!.get('input[type="file"]');
       Object.defineProperty(input.element, 'files', { value: [new File(['synthetic'], 'bank.csv', { type: 'text/csv' })] });
       await input.trigger('change');
-      await wrapper!.get('form').trigger('submit');
+      await wrapper!.findAll('form').find(form => form.find('input[type="file"]').exists())!.trigger('submit');
       await flushPromises();
       expect(alert).toHaveBeenCalledExactlyOnceWith(key);
       expect(mocks.importFile).toHaveBeenCalledOnce();
@@ -782,18 +785,28 @@ describe('recorded debit action reachability', () => {
   function existingExpenseAction() {
     return wrapper!.findAll('button').find((button) => button.text() === 'invoicing.bank_match_expense');
   }
-  it('offers the existing-expense action for an actual mapped debit despite a credit display guess', async () => {
+  it('renders a mapped debit with generic text as an outgoing movement and offers both expense actions', async () => {
     const tx = mapped();
-    expect(tx.direction).toBe('credit');
+    expect(tx.direction).toBe('debit');
     expect(tx.recorded_direction).toBe('debit');
     await showTransactions(tx);
+    const amount = wrapper!.get('.bank-movement-row .font-semibold.tabular-nums');
+    expect(amount.classes()).toContain('text-red-600');
+    expect(amount.text()).toMatch(/^-19[.,]00 EUR$/);
     expect(existingExpenseAction()).toBeDefined();
-    // Existing display/create behavior is intentionally outside this action's policy.
-    expect(wrapper!.findAll('button').some((button) => button.text() === 'invoicing.bank_create_expense')).toBe(false);
+    expect(wrapper!.findAll('button').some((button) => button.text() === 'invoicing.bank_create_expense')).toBe(true);
     await existingExpenseAction()!.trigger('click');
     await flushPromises();
     expect(mocks.fetchExpenseSuggestions).toHaveBeenCalledExactlyOnceWith('synthetic-debit');
     expect(mocks.matchExpense).not.toHaveBeenCalled();
+  });
+  it('keeps a mapped credit with generic payment text green and positive', async () => {
+    const tx = mapped({ direction: 'credit', counterpartyName: 'Platba 0900/000000-1234567890' });
+    await showTransactions(tx);
+    const amount = wrapper!.get('.bank-movement-row .font-semibold.tabular-nums');
+    expect(amount.classes()).toContain('text-emerald-700');
+    expect(amount.text()).toMatch(/^\+19[.,]00 EUR$/);
+    expect(existingExpenseAction()).toBeUndefined();
   });
   it('declines an actual recorded credit even when debit hints change its legacy display', async () => {
     const tx = mapped({ direction: 'credit', reference: 'platba kartou' });
@@ -897,4 +910,38 @@ describe('bank claim conflict presentation and revision guards',()=>{
   expect(mocks.flashError).toHaveBeenCalledExactlyOnceWith('invoicing.bank_expense_match_failed');expect(mocks.unmatch).toHaveBeenCalledOnce();expect(mocks.load).toHaveBeenCalledTimes(loaded);
   expect(wrapper!.text()).toContain('invoicing.bank_expense_match_conflict');
  });
+});
+
+
+describe('bank list advanced filter integration', () => {
+  it('applies search, direction and amount together and Clear discards applied and pending criteria', async () => {
+    wrapper = mount(CompanyPayments, { global: { stubs: { RouterLink: true } } });
+    await flushPromises(); mocks.load.mockClear();
+    await wrapper.find('input[type="search"]').setValue('ŽLTÝ 0019');
+    await wrapper.find('select').setValue('debit');
+    const amounts = wrapper.findAll('input[type="number"]');
+    await amounts[0].setValue('10.00'); await amounts[1].setValue('20.00');
+    const header = wrapper.findComponent({ name: 'InvoicingAppHeader' });
+    header.vm.$emit('mobile-filter-apply'); await flushPromises();
+    expect(mocks.load).toHaveBeenLastCalledWith('all', { skipErrorFlash: true,
+      filters: { direction: 'debit', amount_min: '10.00', amount_max: '20.00', search: 'ŽLTÝ 0019' } });
+    await wrapper.find('input[type="search"]').setValue('unapplied');
+    header.vm.$emit('mobile-filter-clear'); await flushPromises();
+    expect(mocks.load).toHaveBeenLastCalledWith('all', { skipErrorFlash: true, filters: {} });
+    expect((wrapper.find('input[type="search"]').element as HTMLInputElement).value).toBe('');
+    header.vm.$emit('mobile-filter-apply'); await flushPromises();
+    expect(mocks.load).toHaveBeenLastCalledWith('all', { skipErrorFlash: true, filters: {} });
+  });
+
+  it('keeps invalid amount drafts unapplied and reopens the outer mobile drawer', async () => {
+    wrapper = mount(CompanyPayments, { global: { stubs: { RouterLink: true } } });
+    await flushPromises(); mocks.load.mockClear();
+    const amounts = wrapper.findAll('input[type="number"]');
+    await amounts[0].setValue('20.00'); await amounts[1].setValue('10.00');
+    wrapper.findComponent({ name: 'InvoicingAppHeader' }).vm.$emit('mobile-filter-apply');
+    await flushPromises();
+    expect(mocks.load).not.toHaveBeenCalled();
+    expect(mocks.reopenFilterDrawer).toHaveBeenCalledOnce();
+    expect(wrapper.find('[role="alert"]').text()).toBe('invoicing.filter_invalid_range');
+  });
 });

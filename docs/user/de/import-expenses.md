@@ -2,7 +2,7 @@
 title: Ausgaben aus SuperFaktura importieren
 category: invoicing
 order: 12
-updated: 2026-11-03
+updated: 2026-11-16
 ---
 
 # Ausgaben aus SuperFaktura importieren
@@ -24,6 +24,13 @@ Grenzen: **10 MB, 2.000 Zeilen und 256 Spalten** je Datei. Ungültige oder zu la
 
 Bei lokaler Rechnungsstellung wird die Datei im Browser verarbeitet und mit den bestehenden verschlüsselten Daten gespeichert. Sichern Sie Ihre Wiederherstellungsphrase. PDF-Anhänge werden separat importiert.
 
+
+## Ausgaben suchen und filtern
+
+Grenzen Sie die Liste mit Status und Ausstellungszeitraum ein. Anfangs wird das aktuelle Jahr angezeigt; wählen Sie alle Daten, einen voreingestellten Zeitraum oder eigene Datumsgrenzen. Unter **Mehr** finden Sie Betrag, Fälligkeit und Textsuche. Durchsucht werden interne Nummer, Lieferantenbelegnummer, Titel, variabler Verwendungszweck und Notizen.
+
+Übernehmen Sie erweiterte Kriterien mit **Filtern**. Nutzen Sie auf dem Mobilgerät den Filterbereich. **Filter zurücksetzen** (auf Mobilgeräten **Alle löschen**) entfernt Suche und andere Kriterien. Änderungen der angewendeten Filter leeren die Auswahl. Summen und **alle auswählen** beziehen sich auf das gesamte gefilterte Ergebnis, auch auf weitere Seiten.
+
 ## Vorgaben für eine neue Ausgabe
 
 Das variable Symbol folgt den Ziffern der Belegnummer einschließlich führender Nullen. Das Lieferdatum folgt dem Eingangsdatum. Eine manuelle Änderung des jeweiligen Vorgabewerts beendet diese Verknüpfung. Aus einem Anhang ausdrücklich extrahierte Werte bleiben erhalten; bestehende Ausgaben behalten ihre gespeicherten Werte. Ein manuell gelöschtes Lieferdatum bleibt auch nach dem Speichern und erneuten Öffnen leer.
@@ -42,6 +49,25 @@ Die Summe unbezahlter Ausgaben enthält die vollen Beträge der nicht als bezahl
 
 ## PDF-Anhänge einer einzelnen Ausgabe
 
-Öffnen Sie eine Ausgabe und fügen Sie ihre PDF-Datei hinzu. Bei lokaler Rechnungsverwaltung werden Anhänge und extrahierte Felder mit Ihren verschlüsselten lokalen Daten gespeichert. Ein lokaler Anhang darf höchstens **384 KiB** groß sein. Wählen Sie im Formular zum Erstellen oder Bearbeiten **Speichern**, um vorgemerkte Anhänge zu speichern. Auf der Detailseite werden Anhänge sofort gespeichert, nachdem Sie die optionale ISDOC-Verarbeitung abgeschlossen oder übersprungen haben.
+Öffnen Sie eine Ausgabe und fügen Sie ihre PDF-Datei hinzu. Bei lokaler Rechnungsverwaltung werden Anhänge und extrahierte Felder mit Ihren verschlüsselten lokalen Daten gespeichert. Ein lokaler Anhang darf höchstens **10 MiB** groß sein. Wählen Sie im Formular zum Erstellen oder Bearbeiten **Speichern**, um vorgemerkte Anhänge zu speichern. Auf der Detailseite werden Anhänge sofort gespeichert, nachdem Sie die optionale ISDOC-Verarbeitung abgeschlossen oder übersprungen haben.
 
 Sie können der vorübergehenden Serververarbeitung zur Erkennung eingebetteter ISDOC-Daten zustimmen. Beim Abbrechen bleibt der Anhang lokal. Wird ISDOC gefunden, bestätigen Sie die Feldextraktion separat oder behalten nur den Anhang. Die Extraktion nutzt Ihr bestehendes Kontingent und Guthaben; sie ist keine OCR. Ist das Kontingent aufgebraucht, können Sie die Datei weiterhin anhängen und die Daten manuell eingeben.
+
+Wird das Speichern eines größeren Anhangs unterbrochen, versuchen Sie es erneut, solange die Datei noch ausgewählt ist. Entfernen Sie nach dem Neuladen den unvollständigen Anhang und wählen Sie die Originaldatei erneut aus. Schließen Sie den Upload ab oder entfernen Sie den unvollständigen Anhang, bevor Sie eine vollständige Sicherung erstellen.
+
+## QR-Codes für Zahlungen
+
+Wählen Sie bei einer unbezahlten EUR-Ausgabe mit Lieferantenname, gültiger Lieferanten-IBAN und einem variablen Symbol mit bis zu 10 Ziffern **Zahlungs-QR** in der Zeile. Der Betrag muss größer als null sein und darf höchstens 12 Stellen vor dem Komma haben; der Lieferantenname darf höchstens 70 Zeichen enthalten. Wechseln Sie zwischen **PAY by square** und **PayMe** und prüfen Sie Empfänger, Betrag und variables Symbol vor der Bestätigung in Ihrer Banking-App. Der Code wird in Ihrem Browser erstellt. PayMe öffnen öffnet bewusst den Zahlungslink. Das Scannen markiert die Ausgabe nicht als bezahlt. Für Beträge, die PayMe nicht darstellen kann, verwenden Sie PAY by square; der Betrag wird niemals gerundet.
+
+Für bezahlte oder stornierte Ausgaben, strittige Bankzuordnungen und Importe mit Teilzahlungen oder ungeklärten Zahlungen wird kein Code angezeigt. Zahlungsdaten stammen aus ausdrücklich gespeicherten Lieferantendaten; das eigene Firmenkonto wird nie verwendet. Neue geeignete E-Rechnungs- und ISDOC-Importe behalten das Lieferantenkonto. Bei älteren Importen ohne diese Metadaten müssen zuerst die Zahlungsdaten ergänzt werden.
+
+Fehlt beim Auslesen eine Zahlungsreferenz, bleibt das variable Symbol leer und das Lieferantenkonto wird nicht importiert. Prüfen Sie den Originalbeleg und tragen Sie das richtige variable Symbol ein. Zahlungs-QR bleibt nicht verfügbar, bis auch Name und IBAN des Lieferanten vollständig und geprüft sind.
+
+Öffnen Sie die Ausgabe zum Bearbeiten, tragen Sie das geprüfte variable Symbol in sein Feld ein und ergänzen oder ersetzen Sie diese beiden Zeilen unter **Interne Notiz**. Jede Zeile darf genau einmal vorkommen; behalten Sie die gezeigten englischen Bezeichnungen bei: Prüfen Sie vor dem Speichern außerdem, dass Betrag und Währung der Ausgabe exakt der vollständigen offenen Zahlungsanweisung entsprechen und der Betrag höchstens zwei Nachkommastellen hat.
+
+```text
+Supplier: VERIFIED_NAME
+Supplier bank account: VERIFIED_IBAN
+```
+
+Ersetzen Sie `VERIFIED_NAME` und `VERIFIED_IBAN` durch den anhand des Originalbelegs geprüften Lieferantennamen und die IBAN. Behalten Sie andere Notizen und Zahlungsangaben bei, speichern Sie die Ausgabe und kehren Sie zur Liste zurück. Dies gilt auch, wenn beim Auslesen kein Konto übernommen wurde; die oben genannten Voraussetzungen gelten weiterhin.

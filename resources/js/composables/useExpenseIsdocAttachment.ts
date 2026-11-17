@@ -1,7 +1,7 @@
 import { useEffectiveAccess } from "@/composables/useEffectiveAccess";
 import { computed, onUnmounted, ref, watch, type Ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { sqliteTrue } from '@evolu/common';
+import { createIdFromString, sqliteTrue } from '@evolu/common';
 import { invoicingApi } from '../services/api';
 import type { IsdocExtractQuota } from '../components/invoicing/ExpenseIsdocExtractModal.vue';
 import { isInvoicingLocalFirst } from '../evolu/flags';
@@ -13,8 +13,11 @@ import {
   readFileAsAttachmentBase64,
 } from '../evolu/expenseAttachmentCrud';
 import type { ExpenseId } from '../evolu/schema';
+import { saveManualExpenseAttachmentArchive } from '../evolu/manualExpenseAttachment';
+import { EXPENSE_ORIGINAL_MAX_BYTES } from '../evolu/expenseOriginalReference';
 
 export type ExpenseImportDraft = {
+  internal_note?: string | null;
   title?: string | null;
   external_number?: string | null;
   variable_symbol?: string | null;
@@ -114,7 +117,9 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
     revokePreview();
     previewKind.value = previewKindForFile(file);
     if (previewKind.value === 'pdf' || previewKind.value === 'image') {
-      previewUrl.value = URL.createObjectURL(file);
+      const preview = previewKind.value === 'pdf' && file.type !== 'application/pdf'
+        ? new Blob([file], { type: 'application/pdf' }) : file;
+      previewUrl.value = URL.createObjectURL(preview);
     }
   }
 
@@ -139,7 +144,7 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
       selectionError.value = t('errors.generic');
       return;
     }
-    if (localFirst && file.size > LOCAL_EXPENSE_ATTACHMENT_MAX_BYTES) {
+    if (localFirst && file.size > EXPENSE_ORIGINAL_MAX_BYTES) {
       selectionError.value = t('invoicing.expense_attachment_too_large');
       return;
     }
@@ -316,6 +321,18 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
       for (const id of fileIds) {
         const entry = pendingFiles.value.find((item) => item.id === id);
         if (!entry) continue;
+        if (entry.file.size > LOCAL_EXPENSE_ATTACHMENT_MAX_BYTES) {
+          await saveManualExpenseAttachmentArchive(evolu, {
+            companyId: captured.company, expenseId: expenseId as ExpenseId,
+            attachmentId: createIdFromString(`satflux.manual-expense-attachment.v1.${id}`) as never,
+            file: entry.file, assertCurrent: () => {
+              if (!isCurrent(captured, id)) throw new Error(t('errors.generic'));
+            },
+          });
+          if (!isCurrent(captured, id)) throw new Error(t('errors.generic'));
+          removePendingFile(id);
+          continue;
+        }
         const contentBase64 = await readFileAsAttachmentBase64(entry.file);
         if (!isCurrent(captured, id)) throw new Error(t('errors.generic'));
         const targets = await loadEvoluQueryWithTimeout(evolu, expenseByIdIncludingDeletedQuery(expenseId as ExpenseId));

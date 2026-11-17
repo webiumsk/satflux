@@ -15,7 +15,7 @@ use App\Services\Invoicing\BankStatementImportService;
 use App\Services\Invoicing\BankTransactionExpenseService;
 use App\Services\Invoicing\BusinessDocumentPaymentMatcher;
 use App\Services\Invoicing\BusinessExpenseReconciliationService;
-use App\Support\Invoicing\BankTransactionListSummary;
+use App\Support\Invoicing\BankTransactionListFilter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -44,52 +44,12 @@ class BankTransactionController extends Controller
             ]);
         }
 
-        $validated = $request->validate([
-            'match_status' => ['sometimes', 'string', Rule::in(['unmatched', 'matched', 'ignored'])],
-            'from' => ['sometimes', 'date'],
-            'to' => ['sometimes', 'date'],
-            'variable_symbol' => ['sometimes', 'string', 'max:32'],
-            'source' => ['sometimes', 'string', Rule::in(['csv', 'camt053', 'manual', 'email', 'wise'])],
-            'per_page' => ['sometimes', 'integer', 'min:5', 'max:100'],
-        ]);
-
-        $query = BankTransaction::query()
-            ->where('company_id', $company->id)
-            ->with([
-                'match.document:id,number,status,total,currency,type',
-                'expense:id,internal_number,title,status,total,currency',
-            ])
-            ->orderByDesc('booked_at');
-
-        if (! empty($validated['match_status'])) {
-            $query->where('match_status', $validated['match_status']);
-        }
-        if (! empty($validated['from'])) {
-            $query->whereDate('booked_at', '>=', $validated['from']);
-        }
-        if (! empty($validated['to'])) {
-            $query->whereDate('booked_at', '<=', $validated['to']);
-        }
-        if (! empty($validated['variable_symbol'])) {
-            $query->where('variable_symbol', 'like', '%'.$validated['variable_symbol'].'%');
-        }
-        if (! empty($validated['source'])) {
-            $query->where('source', $validated['source']);
-        }
-
-        $summary = app(BankTransactionListSummary::class)->forQuery($query);
-
-        $paginated = $query->excludingBalanceSnapshots()->paginate((int) ($validated['per_page'] ?? 25));
+        $filter = app(BankTransactionListFilter::class);
+        $result = $filter->page($company, $filter->validate($request));
 
         return response()->json([
-            'data' => collect($paginated->items())->map(fn (BankTransaction $tx) => $this->transactionPayload($tx)),
-            'meta' => [
-                'current_page' => $paginated->currentPage(),
-                'last_page' => $paginated->lastPage(),
-                'per_page' => $paginated->perPage(),
-                'total' => $paginated->total(),
-                'summary' => $summary,
-            ],
+            'data' => $result['rows']->map(fn (BankTransaction $tx) => $this->transactionPayload($tx)),
+            'meta' => $result['meta'],
         ]);
     }
 

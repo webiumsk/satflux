@@ -21,8 +21,8 @@ import { EMPTY_INVOICING_SNAPSHOT, restoreInvoicingSnapshotAsync, type Invoicing
 import { buildBackupEnvelopeFromSnapshot } from "@/evolu/invoicingBackup";
 import { parseAndValidateBackup, restoreInvoicingBackup } from "@/evolu/invoicingBackupRestore";
 import { snapshotHasExpenseOriginals, validateExpenseOriginalSnapshot } from "@/evolu/expenseOriginalSnapshot";
-import { createExpenseOriginalReference, encodeExpenseOriginalReference, expenseOriginalChunkId,
-    EXPENSE_ORIGINAL_CHUNK_BYTES, EXPENSE_ORIGINAL_SOURCE_KIND } from "@/evolu/expenseOriginalReference";
+import { createExpenseOriginalReference, createManualExpenseOriginalReference, encodeExpenseOriginalReference, expenseOriginalChunkId,
+    expenseOriginalSourceKind, expenseOriginalMimeType, EXPENSE_ORIGINAL_CHUNK_BYTES } from "@/evolu/expenseOriginalReference";
 import { verifyExpenseOriginalArchiveRows } from "@/evolu/expenseOriginalArchive";
 import { deterministicStringify } from "@/evolu/documentSnapshotCrud";
 import { migrationSha256 } from "@/evolu/migrationArchiveValues";
@@ -30,13 +30,15 @@ import { sha256Hex } from "@/utils/sha256";
 
 beforeEach(() => vi.stubGlobal("crypto", webcrypto));
 
-async function fixture(size = 450 * 1024, suffix = "one") {
+async function fixture(size = 450 * 1024, suffix = "one", manualMime?: string) {
     const bytes = new Uint8Array(size).fill(32);
     bytes.set(new TextEncoder().encode('\ufeff<Invoice>synthetic received original</Invoice>'));
-    const ref = createExpenseOriginalReference({ companyId: "company", receiptId: `receipt-${suffix}`,
-        expenseId: `expense-${suffix}`, attachmentId: `attachment-${suffix}`, sha256: await migrationSha256(bytes), sizeBytes: bytes.length });
-    const source = { id: ref.sourceId, companyId: ref.companyId, sourceKind: EXPENSE_ORIGINAL_SOURCE_KIND,
-        relatedExportId: null, originalFilename: "received.xml", mimeType: "application/xml", sizeBytes: String(bytes.length),
+    const fields = { companyId: "company", expenseId: `expense-${suffix}`, attachmentId: `attachment-${suffix}`,
+        sha256: await migrationSha256(bytes), sizeBytes: bytes.length };
+    const ref = manualMime ? createManualExpenseOriginalReference({ ...fields, mimeType: manualMime })
+        : createExpenseOriginalReference({ ...fields, receiptId: `receipt-${suffix}` });
+    const source = { id: ref.sourceId, companyId: ref.companyId, sourceKind: expenseOriginalSourceKind(ref),
+        relatedExportId: null, originalFilename: manualMime ? "manual.pdf" : "received.xml", mimeType: expenseOriginalMimeType(ref), sizeBytes: String(bytes.length),
         checksum: ref.sha256, chunkCount: String(ref.chunkCount), savedAt: "2026-11-15T10:00:00Z" };
     const chunks = Array.from({ length: ref.chunkCount }, (_, index) => ({
         id: expenseOriginalChunkId(ref.sourceId, index), companyId: ref.companyId, sourceId: ref.sourceId,
@@ -59,6 +61,20 @@ function writer() {
 }
 
 describe("portable expense original snapshots", () => {
+    it.each(["application/pdf", "image/jpeg", "application/xml"])("restores a version-3 manual %s archive without inventing a receipt", async mime => {
+        const x = await fixture(450 * 1024, "manual", mime);
+        const envelope = await buildBackupEnvelopeFromSnapshot(x.snapshot, null);
+        expect(envelope.version).toBe(3);
+        const parsed = await parseAndValidateBackup(JSON.stringify(envelope), null);
+        if (!parsed.ok) throw new Error(parsed.error);
+        const target = writer();
+        await expect(restoreInvoicingBackup(target.evolu, parsed.value)).resolves.toEqual({ upserted: 4 + x.chunks.length, failed: [] });
+        const source = target.upsert.mock.calls.filter(call => call[0] === "migrationSource").map(call => call[1] as Record<string, unknown>);
+        const chunks = target.upsert.mock.calls.filter(call => call[0] === "migrationChunk").map(call => call[1] as Record<string, unknown>);
+        expect(await verifyExpenseOriginalArchiveRows(x.ref, source, chunks)).toEqual(x.bytes);
+        expect(target.upsert.mock.calls.find(call => call[0] === "expenseAttachment")?.[1]).toEqual(x.attachment);
+        expect(x.ref).not.toHaveProperty("receiptId");
+    });
     it("exports version 3 and restores exact BOM-bearing bytes, manifest and source links", async () => {
         const x = await fixture();
         const envelope = await buildBackupEnvelopeFromSnapshot(x.snapshot, null);

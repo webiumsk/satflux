@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { config, flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import { reactive, ref } from "vue";
+import { createIdFromString } from "@evolu/common";
+import { CompanyId, ExpenseId } from "@/evolu/schema";
 import { createI18n } from "vue-i18n";
 import en from "@/locales/en.json";
 import type { ExpenseListRow } from "@/composables/useExpenseRowMeta";
 import { summarizeExpenses, type ExpenseSummary } from "@/utils/expenseSummary";
+import { filterLocalExpenses, type EvoluExpenseRow, type ExpenseListFilterOptions } from "@/evolu/expenseMap";
 
 const mocks = vi.hoisted(() => ({
     localFirst: false,
@@ -16,6 +19,11 @@ const mocks = vi.hoisted(() => ({
     rememberCompany: vi.fn(),
     push: vi.fn(),
     duplicateLocal: vi.fn(),
+    bulk: vi.fn(),
+    bulkExport: vi.fn(),
+    resolveTargets: vi.fn(),
+    markPaidBulk: vi.fn(),
+    openFilterDrawer: vi.fn(),
 }));
 const localExpenses = ref<ExpenseListRow[]>([]);
 const localExpenseRows = ref<{ id: string }[]>([]);
@@ -34,18 +42,20 @@ vi.mock("@/composables/useInvoicingLayout", () => ({
     useInvoicingLayout: () => ({ rememberCompany: mocks.rememberCompany }),
 }));
 vi.mock("@/evolu/expenseCrud", () => ({ markLocalExpensePaid: vi.fn(), duplicateLocalExpense: mocks.duplicateLocal, cancelLocalExpense: vi.fn() }));
-vi.mock("@/evolu/expenseBulkLocal", () => ({ bulkCancelLocalExpenses: vi.fn(), bulkMarkPaidLocalExpenses: vi.fn(), resolveBulkExpenseTargets: vi.fn() }));
-vi.mock("@/services/api", () => ({ invoicingApi: { expenses: { listPaged: mocks.listPaged, action: mocks.action, delete: mocks.delete } } }));
+vi.mock("@/evolu/expenseBulkLocal", () => ({ bulkCancelLocalExpenses: vi.fn(), bulkMarkPaidLocalExpenses: mocks.markPaidBulk, resolveBulkExpenseTargets: mocks.resolveTargets }));
+vi.mock("@/services/api", () => ({ invoicingApi: { expenses: { listPaged: mocks.listPaged, action: mocks.action, delete: mocks.delete, bulk: mocks.bulk, bulkExport: mocks.bulkExport } } }));
 vi.mock("@/components/invoicing/InvoicingPageShell.vue", () => ({ default: { template: '<main><slot name="header" /><slot name="subheader" /><slot /></main>' } }));
-vi.mock("@/components/invoicing/InvoicingAppHeader.vue", () => ({ default: { template: '<header><slot name="mobile-filters" /></header>' } }));
+vi.mock("@/components/invoicing/InvoicingAppHeader.vue", () => ({ default: { name: "InvoicingAppHeader", setup: () => ({ openFilterDrawer: mocks.openFilterDrawer }), emits: ["mobile-filter-apply", "mobile-filter-clear"], template: '<header><slot name="mobile-filters" /></header>' } }));
 vi.mock("@/components/invoicing/ExpensesTable.vue", () => ({ default: {
-    name: "ExpensesTable", props: ["rows", "totalCount", "selectionCount"], emits: ["mark-paid", "select-page", "duplicate"],
+    name: "ExpensesTable", props: ["rows", "totalCount", "selectionCount"], emits: ["mark-paid", "select-page", "select-all", "run-bulk", "duplicate"],
     template: '<div data-test="expenses-table"><p v-for="row in rows" :key="row.id">{{ row.title }}</p><span data-test="selection">{{ selectionCount }}</span></div>',
 } }));
 vi.mock("@/components/invoicing/ExpenseImportModal.vue", () => ({ default: { name: "ExpenseImportModal", emits: ["imported"], template: "<div />" } }));
 vi.mock("@/components/invoicing/ExpenseAttachmentImportModal.vue", () => ({ default: { name: "ExpenseAttachmentImportModal", emits: ["imported"], template: "<div />" } }));
 vi.mock("@/components/invoicing/EfakturaInboxPanel.vue", () => ({ default: { template: "<div />" } }));
-vi.mock("@/components/invoicing/InvoicingMobileBulkBar.vue", () => ({ default: { template: "<div />" } }));
+vi.mock("@/components/invoicing/InvoicingMobileBulkBar.vue", () => ({ default: {
+    props: ["open"], template: '<div v-if="open" data-test="mobile-bulk"><slot /></div>',
+} }));
 vi.mock("@/components/invoicing/LocalFirstBridgeNotice.vue", () => ({ default: { template: "<div />" } }));
 import Expenses from "@/pages/invoicing/Expenses.vue";
 
@@ -88,16 +98,28 @@ beforeEach(() => {
     localSource = [];
     localExpenses.value = [];
     localExpenseRows.value = [];
-    mocks.refresh.mockImplementation(async (filters: { filter?: string; year?: number } = {}) => {
-        localExpenses.value = localSource.filter((item) => item.status !== "cancelled"
-            && (!filters.year || item.issue_date.startsWith(String(filters.year)))
-            && (!filters.filter || (filters.filter === "paid" ? item.status === "paid" : item.status === "recorded")));
+    mocks.bulk.mockResolvedValue({ processed: 1, skipped: 0 });
+    mocks.markPaidBulk.mockResolvedValue({ processed: 1, skipped: 0 });
+    mocks.resolveTargets.mockReturnValue([]);
+    mocks.refresh.mockImplementation(async (filters: ExpenseListFilterOptions = {}) => {
+        const raw: EvoluExpenseRow[] = localSource.map((item) => ({
+            id: ExpenseId.orThrow(createIdFromString(item.id)), companyId: CompanyId.orThrow(createIdFromString("company-a")),
+            internalNumber: item.internal_number, externalNumber: item.external_number ?? null,
+            title: item.title ?? null, variableSymbol: item.variable_symbol ?? null, status: item.status,
+            issueDate: item.issue_date || null, dueDate: item.due_date ?? null, total: item.total ?? null,
+            currency: item.currency ?? null, internalNote: item.internal_note ?? null,
+            constantSymbol: null, specificSymbol: null, deliveryDate: null, paidAt: item.paid_at ?? null, cancelledAt: null,
+        }));
+        const ids = new Set(filterLocalExpenses(raw, filters).map((item) => item.id));
+        localExpenses.value = localSource.filter((item) => ids.has(ExpenseId.orThrow(createIdFromString(item.id))));
     });
 });
 afterEach(() => {
     wrapper?.unmount();
     wrapper = undefined;
     config.global.plugins = originalPlugins;
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
 });
 
 describe("expense page filtered summary", () => {
@@ -131,7 +153,7 @@ describe("expense page filtered summary", () => {
         expect(wrapper!.text()).toContain("2 / 2");
     });
 
-    it("refreshes local totals for status and year filters", async () => {
+    it("refreshes local totals for status and issue-period filters", async () => {
         const current = new Date().getFullYear();
         localSource = [row("Paid current", "2.00", "EUR", "paid", current), row("Unpaid old", "3.00", "EUR", "recorded", current - 1)];
         render(true);
@@ -141,7 +163,9 @@ describe("expense page filtered summary", () => {
         expect(summaryText()).toContain("Expenses: 1");
         expect(wrapper!.findAll("dd").map((node) => node.text())).toEqual(["€2.00", "€0.00"]);
         await filter(en.invoicing.adv_all);
-        await wrapper!.find("select").setValue(String(current - 1));
+        wrapper!.findAllComponents({ name: "InvoicingRecordFilterBar" })[1].vm.$emit("period-change", {
+            preset: "last_year", customFrom: "", customTo: "",
+        });
         await flushPromises();
         expect(summaryText()).toContain("Expenses: 1");
         expect(summaryText()).toContain("€3.00");
@@ -150,12 +174,12 @@ describe("expense page filtered summary", () => {
     it.each([
         { control: "mobile", selectorIndex: 0 },
         { control: "desktop", selectorIndex: 1 },
-    ])("resets server pagination and selection when the $control year selector changes", async ({ selectorIndex }) => {
+    ])("resets server pagination and selection when the $control period changes", async ({ selectorIndex }) => {
         const targetYear = new Date().getFullYear() - 1;
         const full = Array.from({ length: 26 }, (_, index) => row(`Expense ${index}`, "2.00"));
         const smallerYear = [row("Smaller year expense", "7.50", "EUR", "recorded", targetYear)];
-        mocks.listPaged.mockImplementation(async (_company: string, options: { page: number; year?: number }) => {
-            const filtered = options.year === targetYear ? smallerYear : full;
+        mocks.listPaged.mockImplementation(async (_company: string, options: { page: number; issue_from?: string }) => {
+            const filtered = options.issue_from === `${targetYear}-01-01` ? smallerYear : full;
             const start = (options.page - 1) * 25;
             return response(filtered.slice(start, start + 25), summarizeExpenses(filtered), options.page);
         });
@@ -170,12 +194,12 @@ describe("expense page filtered summary", () => {
         await flushPromises();
         expect(wrapper!.find('[data-test="selection"]').text()).toBe("1");
 
-        const selectors = wrapper!.findAll("select");
-        expect(selectors).toHaveLength(2);
-        await selectors[selectorIndex].setValue(String(targetYear));
+        const bars = wrapper!.findAllComponents({ name: "InvoicingRecordFilterBar" });
+        expect(bars).toHaveLength(2);
+        bars[selectorIndex].vm.$emit("period-change", { preset: "last_year", customFrom: "", customTo: "" });
         await flushPromises();
 
-        expect(mocks.listPaged).toHaveBeenLastCalledWith("company-a", expect.objectContaining({ year: targetYear, page: 1 }));
+        expect(mocks.listPaged).toHaveBeenLastCalledWith("company-a", expect.objectContaining({ issue_from: `${targetYear}-01-01`, issue_to: `${targetYear}-12-31`, page: 1 }));
         expect(wrapper!.find('[data-test="expenses-table"]').text()).toContain("Smaller year expense");
         expect(wrapper!.find('[data-test="selection"]').text()).toBe("0");
         expect(summaryText()).toContain("Expenses: 1");
@@ -338,6 +362,284 @@ describe("expense page filtered summary", () => {
         mocks.listPaged.mockResolvedValueOnce(response([]));
         await filter(en.invoicing.adv_paid);
         expect(wrapper!.find("section").exists()).toBe(false);
-        expect(wrapper!.text()).toContain(en.invoicing.expenses_empty);
+        expect(wrapper!.text()).toContain(en.invoicing.filter_no_results);
+    });
+
+    it("applies mobile search and period together, while Clear removes applied and unsubmitted drafts", async () => {
+        render();
+        await flushPromises();
+        const mobile = wrapper!.findAllComponents({ name: "InvoicingRecordFilterBar" })[0];
+        const header = wrapper!.findComponent({ name: "InvoicingAppHeader" });
+        await mobile.find('input[type="search"]').setValue("Supplier note 000123");
+        await mobile.find('button[aria-controls$="-period"]').trigger("click");
+        const lastYear = mobile.findAll("button").find(button => button.text() === en.invoicing.period_last_year)!;
+        await lastYear.trigger("click");
+        expect(mocks.listPaged).toHaveBeenCalledOnce();
+        header.vm.$emit("mobile-filter-apply");
+        await flushPromises();
+        const previous = new Date().getFullYear() - 1;
+        expect(mocks.listPaged).toHaveBeenLastCalledWith("company-a", expect.objectContaining({
+            issue_from: `${previous}-01-01`, issue_to: `${previous}-12-31`, search: "Supplier note 000123", page: 1,
+        }));
+        await mobile.find('input[type="search"]').setValue("unsubmitted draft");
+        header.vm.$emit("mobile-filter-clear");
+        await flushPromises();
+        expect(mobile.find('input[type="search"]').element).toHaveProperty("value", "");
+        expect(mocks.listPaged).toHaveBeenLastCalledWith("company-a", expect.objectContaining({
+            search: undefined, issue_from: undefined, issue_to: undefined, filter: undefined, page: 1,
+        }));
+        header.vm.$emit("mobile-filter-apply");
+        await flushPromises();
+        expect(mocks.listPaged.mock.calls.at(-1)![1].search).toBeUndefined();
+        expect(mocks.route.query).toEqual({ year: "all" });
+        expect(mocks.push).not.toHaveBeenCalled();
+    });
+
+    it("reopens the mobile drawer for an invalid range without changing the applied query", async () => {
+        render();
+        await flushPromises();
+        const mobile = wrapper!.findAllComponents({ name: "InvoicingRecordFilterBar" })[0];
+        await mobile.find('input[id$="-amount-min"]').setValue("20");
+        await mobile.find('input[id$="-amount-max"]').setValue("10");
+        wrapper!.findComponent({ name: "InvoicingAppHeader" }).vm.$emit("mobile-filter-apply");
+        await flushPromises();
+        expect(mocks.openFilterDrawer).toHaveBeenCalledOnce();
+        expect(mobile.find('[role="alert"]').text()).toContain(en.invoicing.filter_invalid_range);
+        expect(mocks.listPaged).toHaveBeenCalledOnce();
+        expect(summaryText()).toContain("€1.00");
+    });
+
+    it("uses applied search and amount in select-all bulk payload, ignoring unsubmitted draft edits", async () => {
+        render();
+        await flushPromises();
+        const desktop = wrapper!.findAllComponents({ name: "InvoicingRecordFilterBar" })[1];
+        await desktop.find('button[aria-controls$="-advanced"]').trigger("click");
+        await desktop.find('input[type="search"]').setValue("invoice 00042");
+        await desktop.find('input[id$="-amount-min"]').setValue("12.50");
+        await desktop.find("form").trigger("submit");
+        await flushPromises();
+        wrapper!.findComponent({ name: "ExpensesTable" }).vm.$emit("select-all");
+        await flushPromises();
+        await desktop.find('button[aria-controls$="-advanced"]').trigger("click");
+        await desktop.find('input[type="search"]').setValue("different draft");
+        wrapper!.findComponent({ name: "ExpensesTable" }).vm.$emit("run-bulk", "mark_paid");
+        await flushPromises();
+        expect(mocks.bulk).toHaveBeenCalledExactlyOnceWith("company-a", expect.objectContaining({
+            action: "mark_paid", select_all: true, search: "invoice 00042", amount_min: "12.50",
+        }));
+    });
+
+    it.each([false, true])("keeps the successfully loaded day in bulk filters across midnight (local=%s)", async local => {
+        vi.useFakeTimers({ toFake: ["Date"] });
+        vi.setSystemTime(new Date(2026, 5, 30, 23, 59));
+        localSource = [{ ...row("June expense"), issue_date: "2026-06-30" }];
+        mocks.listPaged.mockResolvedValue(response(localSource));
+        mocks.resolveTargets.mockReturnValue([{ id: "June expense" }]);
+        mocks.markPaidBulk.mockImplementationOnce(async (_evolu, _targets, assertCurrent: () => void) => {
+            assertCurrent();
+            return { processed: 1, skipped: 0 };
+        });
+        render(local);
+        await flushPromises();
+        wrapper!.findAllComponents({ name: "InvoicingRecordFilterBar" })[1].vm.$emit("period-change", {
+            preset: "today", customFrom: "", customTo: "",
+        });
+        await flushPromises();
+        const table = wrapper!.findComponent({ name: "ExpensesTable" });
+        table.vm.$emit("select-all");
+        await flushPromises();
+        vi.setSystemTime(new Date(2026, 6, 1, 0, 1));
+        table.vm.$emit("run-bulk", "mark_paid");
+        await flushPromises();
+
+        if (local) {
+            expect(mocks.resolveTargets).toHaveBeenCalledExactlyOnceWith("company-a", true, expect.any(Set),
+                expect.any(Array), expect.objectContaining({ issue_from: "2026-06-30", issue_to: "2026-06-30" }));
+            expect(mocks.markPaidBulk).toHaveResolvedWith({ processed: 1, skipped: 0 });
+            expect(mocks.bulk).not.toHaveBeenCalled();
+        } else {
+            expect(mocks.bulk).toHaveBeenCalledExactlyOnceWith("company-a", expect.objectContaining({
+                action: "mark_paid", select_all: true, issue_from: "2026-06-30", issue_to: "2026-06-30",
+            }));
+        }
+    });
+
+    it.each([
+        { local: false, variant: "status" }, { local: false, variant: "due" },
+        { local: true, variant: "status" }, { local: true, variant: "due" },
+    ])("uses the successful overdue cutoff for bulk and refreshes it after reload (local=$local, variant=$variant)", async ({ local, variant }) => {
+        vi.useFakeTimers({ toFake: ["Date"] });
+        vi.setSystemTime(new Date(2026, 5, 30, 23, 59));
+        localSource = [
+            { ...row("Already overdue"), due_date: "2026-06-29" },
+            { ...row("Due today"), due_date: "2026-06-30" },
+        ];
+        mocks.listPaged.mockImplementation(async (_company, filters: ExpenseListFilterOptions) => response(
+            filters.overdue_before ? localSource.filter(item => item.due_date! < filters.overdue_before!) : localSource,
+        ));
+        mocks.resolveTargets.mockReturnValue([{ id: "Already overdue" }]);
+        mocks.markPaidBulk.mockImplementation(async (_evolu, _targets, assertCurrent: () => void) => {
+            assertCurrent();
+            return { processed: 1, skipped: 0 };
+        });
+        render(local);
+        await flushPromises();
+        if (variant === "status") {
+            await filter(en.invoicing.expense_filter_overdue);
+        } else {
+            const desktop = wrapper!.findAllComponents({ name: "InvoicingRecordFilterBar" })[1];
+            await desktop.find('button[aria-controls$="-advanced"]').trigger("click");
+            await desktop.find('select[id$="-due"]').setValue("overdue");
+            await desktop.find("form").trigger("submit");
+            await flushPromises();
+        }
+        expect(wrapper!.find('[data-test="expenses-table"]').text()).toContain("Already overdue");
+        expect(wrapper!.find('[data-test="expenses-table"]').text()).not.toContain("Due today");
+        wrapper!.findComponent({ name: "ExpensesTable" }).vm.$emit("select-all");
+        await flushPromises();
+        vi.setSystemTime(new Date(2026, 6, 1, 0, 1));
+        wrapper!.findComponent({ name: "ExpensesTable" }).vm.$emit("run-bulk", "mark_paid");
+        await flushPromises();
+        const overdueFilter = variant === "status" ? { filter: "overdue" } : { due: "overdue" };
+        if (local) {
+            expect(mocks.resolveTargets.mock.calls[0][4]).toEqual(expect.objectContaining({ ...overdueFilter, overdue_before: "2026-06-30" }));
+            expect(mocks.refresh).toHaveBeenLastCalledWith(expect.objectContaining({ ...overdueFilter, overdue_before: "2026-07-01" }));
+        } else {
+            expect(mocks.bulk).toHaveBeenCalledExactlyOnceWith("company-a", expect.objectContaining({
+                ...overdueFilter, action: "mark_paid", select_all: true, overdue_before: "2026-06-30",
+            }));
+            expect(mocks.listPaged).toHaveBeenLastCalledWith("company-a", expect.objectContaining({ ...overdueFilter, overdue_before: "2026-07-01" }));
+        }
+        expect(wrapper!.find('[data-test="expenses-table"]').text()).toContain("Due today");
+        wrapper!.findComponent({ name: "ExpensesTable" }).vm.$emit("select-all");
+        await flushPromises();
+        wrapper!.findComponent({ name: "ExpensesTable" }).vm.$emit("run-bulk", "mark_paid");
+        await flushPromises();
+        expect(local ? mocks.resolveTargets.mock.calls[1][4] : mocks.bulk.mock.calls[1][1])
+            .toEqual(expect.objectContaining({ ...overdueFilter, overdue_before: "2026-07-01" }));
+    });
+
+    it("replaces the bulk date snapshot only after the new day's load succeeds", async () => {
+        vi.useFakeTimers({ toFake: ["Date"] });
+        vi.setSystemTime(new Date(2026, 5, 30, 23, 59));
+        render();
+        await flushPromises();
+        const setToday = () => wrapper!.findAllComponents({ name: "InvoicingRecordFilterBar" })[1].vm.$emit("period-change", {
+            preset: "today", customFrom: "", customTo: "",
+        });
+        setToday();
+        await flushPromises();
+        vi.setSystemTime(new Date(2026, 6, 1, 0, 1));
+        const pending = deferred<Response>();
+        mocks.listPaged.mockReturnValueOnce(pending.promise);
+        setToday();
+        await flushPromises();
+        expect(wrapper!.find('[data-test="expenses-table"]').exists()).toBe(false);
+        pending.resolve(response([{ ...row("July expense"), issue_date: "2026-07-01" }]));
+        await flushPromises();
+        const table = wrapper!.findComponent({ name: "ExpensesTable" });
+        table.vm.$emit("select-all");
+        await flushPromises();
+        table.vm.$emit("run-bulk", "mark_paid");
+        await flushPromises();
+        expect(mocks.bulk).toHaveBeenCalledExactlyOnceWith("company-a", expect.objectContaining({
+            issue_from: "2026-07-01", issue_to: "2026-07-01", select_all: true,
+        }));
+    });
+
+    it("accepts a successful relative-period load that finishes after midnight", async () => {
+        vi.useFakeTimers({ toFake: ["Date"] });
+        vi.setSystemTime(new Date(2026, 5, 30, 23, 59));
+        render();
+        await flushPromises();
+        const pending = deferred<Response>();
+        mocks.listPaged.mockReturnValueOnce(pending.promise);
+        wrapper!.findAllComponents({ name: "InvoicingRecordFilterBar" })[1].vm.$emit("period-change", {
+            preset: "today", customFrom: "", customTo: "",
+        });
+        await flushPromises();
+        vi.setSystemTime(new Date(2026, 6, 1, 0, 1));
+        pending.resolve(response([{ ...row("June result"), issue_date: "2026-06-30" }]));
+        await flushPromises();
+        expect(wrapper!.find('[data-test="expenses-table"]').text()).toContain("June result");
+        const table = wrapper!.findComponent({ name: "ExpensesTable" });
+        table.vm.$emit("select-all");
+        await flushPromises();
+        table.vm.$emit("run-bulk", "mark_paid");
+        await flushPromises();
+        expect(mocks.bulk).toHaveBeenCalledExactlyOnceWith("company-a", expect.objectContaining({
+            issue_from: "2026-06-30", issue_to: "2026-06-30",
+        }));
+    });
+
+    it("blocks a previous selection during pending or failed reloads until a new load succeeds", async () => {
+        const rows = Array.from({ length: 26 }, (_, index) => row(`Expense ${index}`));
+        mocks.listPaged.mockResolvedValueOnce(response(rows.slice(0, 25), summarizeExpenses(rows)));
+        render();
+        await flushPromises();
+        wrapper!.findComponent({ name: "ExpensesTable" }).vm.$emit("select-page");
+        await flushPromises();
+        const pending = deferred<Response>();
+        mocks.listPaged.mockReturnValueOnce(pending.promise);
+        await wrapper!.findAll("button").find(button => button.text() === "›")!.trigger("click");
+        await flushPromises();
+        await wrapper!.find('[data-test="mobile-bulk"] button').trigger("click");
+        await flushPromises();
+        expect(mocks.bulk).not.toHaveBeenCalled();
+        pending.reject(new Error("Synthetic reload failure"));
+        await flushPromises();
+        await wrapper!.find('[data-test="mobile-bulk"] button').trigger("click");
+        await flushPromises();
+        expect(mocks.bulk).not.toHaveBeenCalled();
+        mocks.listPaged.mockResolvedValueOnce(response(rows.slice(25), summarizeExpenses(rows), 2));
+        await wrapper!.find('[role="alert"] button').trigger("click");
+        await flushPromises();
+        await wrapper!.find('[data-test="mobile-bulk"] button').trigger("click");
+        await flushPromises();
+        expect(mocks.bulk).toHaveBeenCalledExactlyOnceWith("company-a", expect.objectContaining({
+            action: "mark_paid", expense_ids: rows.slice(0, 25).map(item => item.id),
+        }));
+    });
+
+    it("ignores an old search response when a new search keeps the same status and period", async () => {
+        render();
+        await flushPromises();
+        const older = deferred<Response>();
+        const newer = deferred<Response>();
+        mocks.listPaged.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise);
+        const desktop = wrapper!.findAllComponents({ name: "InvoicingRecordFilterBar" })[1];
+        for (const term of ["old term", "new term"]) {
+            await desktop.find('button[aria-controls$="-advanced"]').trigger("click");
+            await desktop.find('input[type="search"]').setValue(term);
+            await desktop.find("form").trigger("submit");
+            await flushPromises();
+        }
+        newer.resolve(response([row("Current search", "2.00")]));
+        await flushPromises();
+        older.resolve(response([row("Old search", "999.00")]));
+        await flushPromises();
+        expect(wrapper!.text()).toContain("Current search");
+        expect(wrapper!.text()).not.toContain("Old search");
+        expect(summaryText()).toContain("€2.00");
+    });
+
+    it.each(["filters", "company", "unmount"])("does not deliver a pending export after %s changes", async change => {
+        const pending = deferred<Blob>();
+        const objectUrl = vi.fn(() => "blob:synthetic-export");
+        const NativeUrl = URL;
+        vi.stubGlobal("URL", class extends NativeUrl { static createObjectURL = objectUrl; static revokeObjectURL = vi.fn(); });
+        mocks.bulkExport.mockReturnValueOnce(pending.promise);
+        render();
+        await flushPromises();
+        wrapper!.findComponent({ name: "ExpensesTable" }).vm.$emit("select-all");
+        await flushPromises();
+        wrapper!.findComponent({ name: "ExpensesTable" }).vm.$emit("run-bulk", "export_xlsx");
+        await flushPromises();
+        if (change === "filters") await filter(en.invoicing.adv_paid);
+        else if (change === "company") { mocks.route.params.companyId = "company-b"; await flushPromises(); }
+        else { wrapper!.unmount(); wrapper = undefined; }
+        pending.resolve(new Blob(["synthetic export"]));
+        await flushPromises();
+        expect(objectUrl).not.toHaveBeenCalled();
     });
 });

@@ -1,60 +1,22 @@
 <template>
   <InvoicingPageShell content-class="pb-8">
     <template #header>
-      <InvoicingAppHeader
-        :show-filter-bar="activeTab === 'transactions' && hasBankAccount"
+      <InvoicingAppHeader ref="appHeaderRef"
+        :show-filter-bar="false"
         :show-mobile-filters="activeTab === 'transactions' && hasBankAccount"
-        :mobile-filter-active-count="matchFilter !== 'all' ? 1 : 0"
-        @mobile-filter-apply="load"
-        @mobile-filter-clear="
-          matchFilter = 'all';
-          load();
-        "
+        :mobile-filter-active-count="mobileFilterActiveCount"
+        @mobile-filter-apply="onMobileFilterApply"
+        @mobile-filter-clear="clearFilters"
       >
-        <template #filters>
-          <select
-            v-model="matchFilter"
-            class="invoicing-sf-input max-w-[180px]"
-            @change="load"
-          >
-            <option value="all">{{ t("invoicing.bank_filter_all") }}</option>
-            <option value="unmatched">
-              {{ t("invoicing.bank_filter_unmatched") }}
-            </option>
-            <option value="matched">
-              {{ t("invoicing.bank_filter_matched") }}
-            </option>
-            <option value="ignored">
-              {{ t("invoicing.bank_filter_ignored") }}
-            </option>
-          </select>
-        </template>
-        <template #actions>
-          <button
-            type="button"
-            class="invoicing-btn-secondary"
-            @click="activeTab = 'import'"
-          >
-            {{ t("invoicing.bank_tab_import") }}
-          </button>
-        </template>
         <template #mobile-filters>
-          <select
-            v-model="matchFilter"
-            class="invoicing-sf-input w-full"
-            @change="load"
-          >
-            <option value="all">{{ t("invoicing.bank_filter_all") }}</option>
-            <option value="unmatched">
-              {{ t("invoicing.bank_filter_unmatched") }}
-            </option>
-            <option value="matched">
-              {{ t("invoicing.bank_filter_matched") }}
-            </option>
-            <option value="ignored">
-              {{ t("invoicing.bank_filter_ignored") }}
-            </option>
-          </select>
+          <InvoicingRecordFilterBar
+            ref="mobileFiltersRef" kind="bank" layout="drawer"
+            :container-class="INVOICING_CONTAINER_CLASS" :status-filters="statusFilters"
+            :active-filter="matchFilter" :issue-period="issuePeriod"
+            :advanced-draft="advancedDraft" :has-active-advanced="hasActiveAdvanced"
+            @filter-change="setMatchFilter" @period-change="applyPeriod"
+            @advanced-open="resetAdvancedDraft" @advanced-apply="applyAdvanced"
+          />
         </template>
         <template #mobile-actions>
           <button
@@ -66,6 +28,25 @@
           </button>
         </template>
       </InvoicingAppHeader>
+    </template>
+    <template #subheader>
+      <InvoicingRecordFilterBar
+        v-if="activeTab === 'transactions' && hasBankAccount"
+        ref="desktopFiltersRef" kind="bank" :container-class="INVOICING_CONTAINER_CLASS"
+        :status-filters="statusFilters" :active-filter="matchFilter" :issue-period="issuePeriod"
+        :advanced-draft="advancedDraft" :has-active-advanced="hasActiveAdvanced"
+        @filter-change="setMatchFilter" @period-change="applyPeriod"
+        @advanced-open="resetAdvancedDraft" @advanced-apply="applyAdvanced"
+      >
+        <template #actions>
+          <button v-if="hasActiveFilters" type="button" class="invoicing-btn-secondary" @click="clearFilters">
+            {{ t('invoicing.filter_clear') }}
+          </button>
+          <button type="button" class="invoicing-btn-secondary" @click="activeTab = 'import'">
+            {{ t('invoicing.bank_tab_import') }}
+          </button>
+        </template>
+      </InvoicingRecordFilterBar>
     </template>
 
     <div v-if="!summaryLoaded" class="invoicing-muted py-8">
@@ -358,7 +339,10 @@
             v-if="transactions.length === 0"
             class="invoicing-card-pad text-center text-gray-600 mb-6"
           >
-            {{ t("invoicing.bank_no_transactions") }}
+            <p>{{ t(hasActiveFilters ? 'invoicing.filter_no_results' : 'invoicing.bank_no_transactions') }}</p>
+            <button v-if="hasActiveFilters" type="button" class="invoicing-btn-secondary mt-3" @click="clearFilters">
+              {{ t('invoicing.filter_clear') }}
+            </button>
           </div>
           <div v-else class="invoicing-card overflow-hidden mb-6">
             <div class="hidden md:block overflow-x-auto">
@@ -602,6 +586,7 @@
 
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="invoicing-card-pad">
+              <p class="text-xs text-gray-600 mb-3">{{ t('invoicing.bank_filter_summary_scope') }}</p>
               <h3
                 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3"
               >
@@ -807,11 +792,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import InvoicingPageShell from "../../components/invoicing/InvoicingPageShell.vue";
 import InvoicingAppHeader from "../../components/invoicing/InvoicingAppHeader.vue";
+import InvoicingRecordFilterBar from "../../components/invoicing/InvoicingRecordFilterBar.vue";
+import { resolveIssuePeriodRange, type IssuePeriodState } from "../../composables/useInvoicingIssuePeriod";
+import { normalizeBankListFilters, type BankListFilterOptions } from "../../evolu/bankListFilters";
 import InvoicingMobileCard from "../../components/invoicing/InvoicingMobileCard.vue";
 import InvoicingRowActionsMenu from "../../components/invoicing/InvoicingRowActionsMenu.vue";
 import BankExpenseMatchModal from "../../components/invoicing/BankExpenseMatchModal.vue";
@@ -819,7 +807,7 @@ import type { BankExpenseMatchSuggestion } from "../../evolu/bankExpenseManualMa
 import BankCreateExpenseModal, {
   type BankExpenseDraft,
 } from "../../components/invoicing/BankCreateExpenseModal.vue";
-import { useInvoicingLayout } from "../../composables/useInvoicingLayout";
+import { INVOICING_CONTAINER_CLASS, useInvoicingLayout } from "../../composables/useInvoicingLayout";
 import { useInvoicingCompanySummary } from "../../composables/useInvoicingCompanySummary";
 import { useInvoicingBankPayments } from "../../composables/useInvoicingBankPayments";
 import { invoicingDocumentRoutesForType } from "../../composables/useInvoicingDocumentRoutes";
@@ -849,6 +837,67 @@ const transactions = bank.transactions;
 const summary = bank.summary;
 const batches = bank.batches;
 const matchFilter = ref(route.query?.match_status === "unmatched" ? "unmatched" : "all");
+
+const issuePeriod = reactive<IssuePeriodState>({ preset: "all", customFrom: "", customTo: "" });
+const defaultBankAdvanced = () => ({ search: "", amountMin: "", amountMax: "", direction: "all" });
+const advancedApplied = ref(defaultBankAdvanced());
+const advancedDraft = reactive(defaultBankAdvanced());
+const appHeaderRef = ref<InstanceType<typeof InvoicingAppHeader> | null>(null);
+const desktopFiltersRef = ref<InstanceType<typeof InvoicingRecordFilterBar> | null>(null);
+const mobileFiltersRef = ref<InstanceType<typeof InvoicingRecordFilterBar> | null>(null);
+const statusFilters = computed(() => [
+  { id: "all", label: t("invoicing.bank_filter_all") },
+  { id: "unmatched", label: t("invoicing.bank_filter_unmatched") },
+  { id: "matched", label: t("invoicing.bank_filter_matched") },
+  { id: "ignored", label: t("invoicing.bank_filter_ignored") },
+]);
+const hasActiveAdvanced = computed(() => advancedApplied.value.direction !== "all"
+  || Boolean(advancedApplied.value.search.trim()) || advancedApplied.value.amountMin !== "" || advancedApplied.value.amountMax !== "");
+const hasActiveFilters = computed(() => matchFilter.value !== "all" || issuePeriod.preset !== "all" || hasActiveAdvanced.value);
+const mobileFilterActiveCount = computed(() => Number(matchFilter.value !== "all") + Number(issuePeriod.preset !== "all") + Number(hasActiveAdvanced.value));
+
+function filterOptions(period = issuePeriod, advanced = advancedApplied.value): BankListFilterOptions {
+  const range = resolveIssuePeriodRange(period);
+  if (advanced.direction !== "all" && advanced.direction !== "credit" && advanced.direction !== "debit") throw new Error("bank_filters_invalid");
+  return normalizeBankListFilters({
+    ...(range.from ? { from: range.from } : {}), ...(range.to ? { to: range.to } : {}),
+    ...(advanced.direction === "credit" || advanced.direction === "debit" ? { direction: advanced.direction } : {}),
+    ...(advanced.amountMin !== "" ? { amount_min: advanced.amountMin } : {}),
+    ...(advanced.amountMax !== "" ? { amount_max: advanced.amountMax } : {}),
+    ...(advanced.search.trim() ? { search: advanced.search.trim() } : {}),
+  });
+}
+function resetAdvancedDraft() { Object.assign(advancedDraft, advancedApplied.value); }
+function onMobileFilterApply() {
+  if (mobileFiltersRef.value?.applyAdvanced() === false) appHeaderRef.value?.openFilterDrawer();
+}
+function setMatchFilter(value: string) {
+  if (!["all", "unmatched", "matched", "ignored"].includes(value)) return;
+  matchFilter.value = value;
+  void load();
+}
+function applyPeriod(next: IssuePeriodState) {
+  try { filterOptions(next); } catch { flashStore.error(t("invoicing.filter_invalid_range")); return; }
+  Object.assign(issuePeriod, next);
+  void load();
+}
+function applyAdvanced(next: IssuePeriodState) {
+  const candidate = { ...advancedDraft };
+  try { filterOptions(next, candidate); } catch { flashStore.error(t("invoicing.filter_invalid_range")); return; }
+  Object.assign(issuePeriod, next);
+  advancedApplied.value = candidate;
+  void load();
+}
+function resetFilters() {
+  matchFilter.value = "all";
+  Object.assign(issuePeriod, { preset: "all", customFrom: "", customTo: "" });
+  advancedApplied.value = defaultBankAdvanced();
+  Object.assign(advancedDraft, defaultBankAdvanced());
+  desktopFiltersRef.value?.resetDraft();
+  mobileFiltersRef.value?.resetDraft();
+}
+function clearFilters() { resetFilters(); void load(); }
+
 const wiseStatus = computed(() => bank.wiseStatus.value);
 const wiseBridgeMissing = computed(() => bank.wiseBridgeMissing.value);
 const bridgeLookupFailed = computed(() => bank.bridgeLookupFailed.value);
@@ -995,6 +1044,7 @@ watch(bank.bridgeRoutingKey, () => {
   wiseSyncResult.value = null;
   if (companyId.value !== selectedCompany) {
     selectedCompany = companyId.value;
+    resetFilters();
     void loadBatches();
   }
   void load();
@@ -1075,7 +1125,7 @@ async function load() {
   if (!hasBankAccount.value) return;
   const requestedCompany = companyId.value;
   try {
-    await bank.load(matchFilter.value, { skipErrorFlash: true });
+    await bank.load(matchFilter.value, { skipErrorFlash: true, filters: filterOptions() });
   } catch (error: unknown) {
     if (companyId.value === requestedCompany && request === bankLoadRequest) {
       flashStore.error(t(reconciliationErrorKey(error) || expenseMutationErrorKey(error) || "common.error"));
@@ -1085,7 +1135,7 @@ async function load() {
 
 async function loadAfterBankAction() {
   if (!hasBankAccount.value) return;
-  await bank.load(matchFilter.value, { skipErrorFlash: true });
+  await bank.load(matchFilter.value, { skipErrorFlash: true, filters: filterOptions() });
 }
 
 /** Keep batch refresh errors local to the current page instead of an unscoped API flash. */

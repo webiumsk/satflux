@@ -1,5 +1,269 @@
 # Development decision log
 
+## PR452 precision and recovery corrections - 2026-11-17
+
+Both requested CodeRabbit reviews completed in owner order: parent #451 first,
+then child #452. Child review5932293520 examined `2357c2a0` and reported two valid
+findings. ISDOC payment metadata now rejects more than two raw fractional digits
+in payable, paid-instruction, deposit and already-claimed amounts before scale-2
+comparisons. No amount is normalized or rounded to authorize a QR; legacy expense
+display remains unchanged. Five guides now explain the actual Internal note fields,
+exact English metadata labels, separate VS field and verification of the original
+full unpaid amount/currency, preserving other notes/payment facts.
+
+The two-source delta against `2357c2a0` has aggregate
+`f8e2860d595b0cd4ccca37fb4ac2909a12ec869ec7eda6a186217579f5ead827`;
+seven source/guide blobs have aggregate
+`0b1acfe93cb1e7f12406300426f78c79b8be1fe3d571bfe4573fd4c7906e0775`.
+The complete 27-source scope against parent `156078e4` is
+`12abd048b549aa777ddf95c11653c40178d1a4a76ae24ab122f4ff05c03571d7`.
+Final ISDOC checks pass 39 tests / 369 assertions. Independent actual-XML probing
+passes 24 contexts / 360 assertions, including raw fractions and normal controls.
+Pint/PHPStan and whitespace checks pass. Independent QA and security accept the
+exact hashes and recovery guidance without blockers. No client/UI source
+changed, so earlier browser/client results retain their unchanged-blob attribution.
+
+Next publish the correction and verify new exact-head CI. Parent `156078e4` stays
+unchanged with five successful checks. The fresh child automated review covered
+`2357c2a0`, not this follow-up. No additional included review slot, PR merge or
+deployment is claimed.
+
+## Expense stack integrated for final QR review - 2026-11-17
+
+Parent PR451 corrections are published as `156078e4`: literal VS `0` filtering
+and concrete overdue cutoffs for successful-load bulk snapshots. CodeRabbit
+review5931726200 covered the preceding `8feb1e8a`; its two findings were verified
+and fixed with independent QA/security acceptance. The owner explicitly requests
+PR452 as the next included review after PR451.
+
+QR source `2c00627a` enforces PayMe's nine-character amount field without rounding;
+PAY by square remains available when PayMe cannot encode the exact amount. The
+nine-file correction freeze is
+`e8b5a6c229233092ab261889995105c3994e304b67d8c7190dbebb1024b2c8c8`.
+The integrated 27-blob QR scope against `156078e4` is
+`33d155cf46e020ed0776400189637abf4d7fa189bca6341b6067c6b750a7cbcb`.
+All accepted blobs are preserved except the expected combined expense service,
+whose cutoff and explicit-null changes received independent integration review.
+
+Final integration checks pass 131 frontend tests / five suites and 47 PHP API
+tests / 274 assertions. Typecheck adds no errors against the unchanged 110-error
+baseline. Seven new Chrome scenarios verify lossless PayMe amounts and exact
+PAY by square bitmap decoding at desktop/320px; that UI source is unchanged by
+integration. Scoped lint/style/static checks and locale parity pass. Both
+independent reviewers accept the combined source. Documentation conflicts retain
+both branches' historical records.
+
+Next publish the synchronized child, verify both exact-head CI runs and request
+PR452 review after included capacity returns. No fresh automated approval of the
+new parent correction, PR merge or deployment is claimed.
+
+## PR451 second review corrections - 2026-11-17
+
+CodeRabbit review5931726200 examined `8feb1e8a` and reported two valid issues.
+The bank variable-symbol predicate now treats `"0"` as a supplied search value,
+keeping matching rows and totals consistent. Expense list requests capture an
+optional `overdue_before` date for either overdue filter. The successful-load
+snapshot carries it unchanged into local bulk targets and server bulk payloads;
+failed or superseded loads cannot refresh the snapshot. Both server predicates
+validate/use the same cutoff, with the existing current-day fallback for callers
+that omit it. No company, selection, status or custom-boundary checks are relaxed.
+
+Independent QA and security accepted the ten source/test blobs with aggregate
+`b007c62783a8303c947bf69e7b8c3012c84b9b21657d90391906dde2400a46a9`.
+Independent regression runs pass 65 JavaScript tests and 43 PHP tests / 274
+assertions. Scoped ESLint, Pint, PHPStan and whitespace checks pass; typecheck
+adds no errors against the unchanged 110-error baseline. The new server cutoff
+cases failed before the fix and pass afterward.
+
+The owner requested review451 followed by review452. The parent review is complete;
+next publish these corrections, verify exact-head CI and synchronize the dependent
+branch. The next included CodeRabbit slot remains reserved for PR452. Review of
+`8feb1e8a` is not automated approval of this follow-up. PR merges and deployment
+require separate applicable approval.
+
+## PR452 second review corrections verified - 2026-11-17
+
+The fresh CodeRabbit review of `7e8c0764` reported two valid findings: foreign-
+currency ISDOC payment metadata and incomplete missing-reference recovery guidance.
+Both are corrected. A related independently reproduced manual-note clearing issue
+also now persists explicit null instead of retaining an old supplier bank account.
+
+The follow-up source/test freeze has four blobs, aggregate
+`5a8d56bcec7885be22fc7bfc12dc76b29f6f99b2158c734d32eb5029b64de26f`;
+complete QR scope remains 27 blobs, aggregate
+`4686938f35a5d7279feaad76f5cd75c880a77261e4af97b88d2f3512f22568bf`.
+Independent QA and security accepted the final hashes. The affected PHP suites
+pass 29 tests / 271 assertions; style/static checks and locale parity pass. Client/UI sources remain unchanged. See [review disposition
+and evidence](PR452_REVIEW_FIXES.md). Publish after independent acceptance and
+verify new-head CI, preserving the parent branch and stack. No merge/deployment.
+
+## PR452 review corrections verified locally - 2026-11-17
+
+The owner-triggered CodeRabbit review of `481e9c4c` produced three inline findings
+and one outside the diff; all four were valid and fixed. Independent review added
+server explicit-null persistence and direct-root UBL financial binding regressions.
+Shared SWIFT country lengths, explicit supplier references and document replacement
+now stay consistent through both storage modes. See [scope, disposition and exact
+validation](PR452_REVIEW_FIXES.md).
+
+Independent QA and security accepted the final correction freeze: 17
+source/test/data blobs, aggregate
+`3b8f3f9b85cb97cd918610409525d4183082dc8b26afb07496f969b5fb22a0b3`.
+Whole QR source now has 27 blobs, aggregate
+`b2e4ba1b1fb440b7da8f731be681c8dff8fe020e3ac21043516183575a1f3436`.
+Focused frontend141, import PHP85/449, server API13/83 and nine Chrome scenarios
+pass; lint/typecheck ratchets, locale parity, build and scoped style/static checks
+pass. Publish the reviewed correction once, then verify new exact-head CI. PR451
+stays unchanged as the stack base. No PR merge or deployment is performed.
+
+## Supplier payment QR source published as PR452 - 2026-11-17
+
+Reviewed QR source `e0dab7a7015842c76ad05c164c56216b565c5536` is pushed to
+`feat/expense-payment-qr`. [PR452](https://github.com/webiumsk/satflux/pull/452) is
+open and unmerged against PR451's `fix/expense-attachments-bank-direction` at
+`8feb1e8a6e5af1ce19cbf85d4ecfe0a775dd1a7c`. The diff contains 30 scoped paths;
+this follow-up adds publication documentation and one changelog fragment only.
+The 20 reviewed source blobs retain aggregate
+`80ba25a20302921fd1aa0bb68f4453bfc1f65d19e1e188084b62742c17f903ff`.
+
+The dependent PR has observed exact-head CI, including five successful jobs on
+`7270625a` in run43997399339. The earlier assumption that its stack base prevented
+CI was incorrect. Reverify checks after each new head and base change. Neither
+PR is merged or deployed.
+The public changelog is deferred until its normal approved deployment workflow.
+See [implementation evidence and limits](EXPENSE_PAYMENT_QR.md).
+
+## Supplier payment QR implementation reviewed - 2026-11-17
+
+The owner authorized expense-row PayMe/PAY by square QR codes. The isolated
+`feat/expense-payment-qr` branch depends on open PR451 at `8feb1e8a`. Both formats
+are generated locally for eligible unpaid EUR expenses with explicit supplier
+name/account and VS. Import metadata preserves direct-creditor provenance;
+partial, ambiguous and nonpositive-payable cases are withheld. No settlement,
+subscription, entitlement or production-state changes are introduced.
+
+Independent QA/security accept the 20-blob source freeze
+`80ba25a20302921fd1aa0bb68f4453bfc1f65d19e1e188084b62742c17f903ff`.
+Nine real-browser scenarios, focused frontend and 37 PHP import tests / 202
+assertions pass. Lint/typecheck baselines, five-locale parity and build pass.
+See [scope, protocol, limits and exact evidence](EXPENSE_PAYMENT_QR.md), including
+historical imports without retained IBAN and the full-run timeout/retry result.
+The next step is publication as a dependent review PR; no PR merge or deployment
+is authorized or performed by this implementation.
+
+## PR451 review corrections - 2026-11-17
+
+All three owner-supplied CodeRabbit findings were verified against the current
+source and retained as valid. Bank scans now use a descending `(booked_at, id)`
+keyset cursor in batches of 250 while preserving filtered page slicing. Reopening
+the advanced filter resets both browser numeric-validity flags. Expense bulk
+operations use concrete criteria captured by the last accepted successful load,
+including across midnight; pending/failed loads cannot authorize an old selection.
+
+Independent QA and security reviews found no blockers in the six-file source/test
+diff against `0e9ea219`. Validation: 66 targeted JavaScript tests, 9 PHP bank-list
+tests with 85 assertions, scoped ESLint/Pint and whitespace checks passed.
+Typecheck retains the unchanged 110-error baseline. Publication to the existing
+PR451 branch is authorized; merge and deployment remain separate owner gates.
+The supplier payment QR feature is separate ongoing work on a dependent branch.
+
+## PR451 source published and review handoff - 2026-11-17
+
+The owner requests normal publication of the complete accepted expense/bank
+initiative. Source commit `08e68fefc980ec5e8829078110255c0ef883ed29` is pushed to
+`fix/expense-attachments-bank-direction`. PR451 is open and unmerged against
+verified master `18729a26fc7f99d34364f8317b852d205a33f107`:
+https://github.com/webiumsk/satflux/pull/451 .
+
+All 56 reviewed source/test/locale blobs retain aggregate
+`dacf07ba8f8487ec8b70562c14838e9c5cd2d2818db5367bca554f2ce7e871b0`.
+The initial commit contains exactly 72 scoped paths. This publication follow-up
+contains documentation and one reviewed combined changelog fragment only;
+feature-branch/PR activity does not publish a public changelog entry.
+
+Local checks and independent QA/security acceptance remain attributed in
+[filter evidence](EXPENSE_BANK_LIST_FILTERS.md) and
+[attachment/direction evidence](EXPENSE_ATTACHMENTS_BANK_DIRECTION.md).
+Current head, exact-head CI and automated review must be checked on PR451;
+older/local checks are not new-head GitHub CI or deployed readiness. Source
+publication does not establish production behavior. Next is remote check/review
+verification and owner merge review. No merge or deployment is performed.
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2` with unrelated
+work preserved; the isolated feature has its own branch and publication scope.
+No private artifacts, screenshots, credentials or unrelated edits are included.
+
+## Detailed expense and bank filters accepted locally - 2026-11-16
+
+The owner requests invoice-style detailed filters/search for expenses and bank
+movements. Implementation continues in the retained
+`fix/expense-attachments-bank-direction` worktree, based on `18729a26`.
+Expenses now combine status, issue period, due range, amount and literal search;
+list, summary, pagination, export and select-all share applied criteria. Pending
+bulk writes recheck captured context inside the existing financial gate.
+Bank filters include booking period, direction, matching state, amount and
+scoped reference/counterparty/account/document search before the 50-row display
+cap. Totals cover all matches by currency; actual bank balance remains separate.
+Local search is not sent into synchronization requests. Prior attachment and
+direction fixes remain preserved.
+
+Independent QA/security accept final combined 56-file freeze
+`dacf07ba8f8487ec8b70562c14838e9c5cd2d2818db5367bca554f2ce7e871b0`
+and continuation 32-file freeze
+`211ef9ea8993b0fa92a9f5f76d0d88c37e33a676515676dd16767f54f6d1a556`.
+No unresolved blocking findings remain. Full JavaScript passes 3,751 tests /
+260 files on the preceding reviewed freeze; the final two-file native mobile
+Enter correction passes 125 tests / three affected suites, including nine shared
+bar cases. Other 54 files are byte-identical. Fourteen real browser scenarios
+pass, including Slovak 320px controls, mobile Enter/validation and draft Clear.
+Author PHP scopes pass 49 tests / 278 assertions and 119 tests / 612 assertions;
+counts overlap other checks and are not summed. Final build passes 7,680 modules;
+typecheck adds no errors against the unchanged 110-error baseline. Full lint has
+zero errors / 46 inherited warnings; the final two paths pass zero-warning lint.
+Locale parity, API inventory, scoped Pint/PHPStan and whitespace checks pass.
+[Filter evidence and precise revisions](EXPENSE_BANK_LIST_FILTERS.md) records
+independent tests, privacy/scan limits and prior archive review attribution.
+
+Primary stays `fix/sepa-confirmation-isolation` at `885168f2` with unrelated
+changes preserved. The combined feature remains uncommitted and unpublished in
+`storage/app/private/worktrees/expense-attachments-bank-direction`; both source
+freezes and safe validation evidence remain in the matching private review
+folder. Next is owner review. Git publication, merge and deployment are separate
+steps. No commit, push, merge, deployment, production-data operation, dependency
+installation or external-repository write is performed.
+
+## Manual expense attachment and bank-direction fixes accepted locally - 2026-11-16
+
+The owner-authorized fixes are complete in the isolated
+`fix/expense-attachments-bank-direction` worktree, based on verified remote master
+`18729a26fc7f99d34364f8317b852d205a33f107` (including PR449/PR450 source).
+Manual local expense uploads accept through 10 MiB using canonical MIME-bound
+v2 encrypted archives; the 384 KiB inline cell bound and eFaktura v1 custody
+remain intact. Interrupted files are visible/deletable and retries keep one
+identity. Generic reference/counterparty text no longer changes a recorded bank
+debit into credit; display, totals and expense actions agree while original
+recorded-direction payment evidence remains separate.
+
+Independent security and QA accept the 30-file source/test/locale freeze
+`b677cde350ac194bd89089339877a13c88f914c6222740bf2348a8f663083dc0`.
+No unresolved blocking findings remain. Final JavaScript passes 3,685 tests /
+257 files; focused PHP passes 77 tests / 243 assertions. Pint and scoped PHPStan
+pass. Final lint has zero errors / 46 inherited warnings; typecheck has no new
+errors against the unchanged 110-error baseline. Locale parity and build
+(7,674 modules) pass. Independent native browser checks verify 450 KiB / 10 MiB
+bytes, restart, backup, interruption/retry and canonical deletion. Native
+fresh-target restore remains unverified; restore over existing tombstones is
+not claimed as that proof. Full details and overlapping review/test counts:
+[implementation evidence](EXPENSE_ATTACHMENTS_BANK_DIRECTION.md).
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`; unrelated edits
+and other worktrees are preserved. The feature changes are uncommitted and
+unpublished in `storage/app/private/worktrees/expense-attachments-bank-direction`.
+The source freeze is retained under the matching private review directory.
+Next is owner review. Scoped Git publication, merge and deployment remain
+separate steps. No commit, push, merge, deployment, tool installation,
+production data mutation or provider operation is performed.
+
 ## PR450 paid-state and live-row corrections - 2026-11-16
 
 Both findings against published input `f1446a7b` are valid and fixed with two

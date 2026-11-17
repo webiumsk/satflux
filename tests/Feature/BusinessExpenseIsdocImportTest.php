@@ -2,6 +2,11 @@
 
 namespace Tests\Feature;
 
+use Adawolfa\ISDOC\Manager;
+use Adawolfa\ISDOC\Schema\Invoice as IsdocInvoiceSchema;
+use Adawolfa\ISDOC\Schema\Invoice\DocumentType;
+use Adawolfa\ISDOC\Schema\Invoice\Payment;
+use Adawolfa\ISDOC\Schema\Invoice\PaymentMeansCode;
 use App\Enums\BusinessDocumentStatus;
 use App\Enums\CompanyJurisdiction;
 use App\Models\AuditLog;
@@ -23,6 +28,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Mockery\MockInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -149,6 +155,240 @@ class BusinessExpenseIsdocImportTest extends TestCase
         $this->assertSame('2026-06-01', $draft['issue_date']);
         $this->assertGreaterThan(0, $draft['total']);
         $this->assertNotEmpty($draft['title']);
+    }
+
+    #[Test]
+    public function supplier_payment_metadata_requires_one_creditor_account_and_no_ambiguous_payment(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'exp-isdoc-payment-');
+        file_put_contents($path, $this->sampleIsdocXml());
+        $service = new class extends BusinessExpenseIsdocImportService
+        {
+            /** @return array<string, mixed> */
+            public function mapForPaymentTest(IsdocInvoiceSchema $invoice): array
+            {
+                return $this->mapInvoice($invoice);
+            }
+        };
+
+        try {
+            foreach (['valid', 'multiple', 'same-account-multiple', 'no-variable-symbol', 'unsupported-variable-symbol', 'long-variable-symbol', 'different-payment-amount', 'partial-payment', 'bad-checksum', 'short-iban', 'unknown-iban-country', 'account-injection', 'name-injection', 'cash', 'credit-note', 'deposit', 'claimed-advance', 'zero-payable', 'negative-payable'] as $case) {
+                $invoice = Manager::create()->getReader()->file($path, IsdocInvoiceSchema::class, Manager::FORMAT_ISDOC);
+                $payments = $invoice->getPaymentMeans();
+                $this->assertNotNull($payments);
+                $payment = iterator_to_array($payments)[0];
+                $payment->setPaidAmount($invoice->getLegalMonetaryTotal()->getPayableAmount());
+                $payment->setPartialPayment(false);
+                $details = $payment->getDetails();
+                $this->assertNotNull($details);
+                $details->setIban('SK6807200002891987426353');
+                $details->setVariableSymbol('0000042');
+                $name = $invoice->getAccountingSupplierParty()->getParty()->getPartyName();
+                $name->setName('Synthetic supplier');
+                if (in_array($case, ['multiple', 'same-account-multiple'], true)) {
+                    $otherDetails = clone $details;
+                    $otherDetails->setIban($case === 'multiple' ? 'DE89370400440532013000' : 'SK6807200002891987426353');
+                    $other = new Payment('1.00', PaymentMeansCode::CreditTransfer);
+                    $other->setDetails($otherDetails);
+                    $payments->add($other);
+                } elseif ($case === 'no-variable-symbol') {
+                    $invoice->setId('20260001');
+                    $details->setVariableSymbol(null);
+                } elseif ($case === 'unsupported-variable-symbol') {
+                    $details->setVariableSymbol('INV-0000042');
+                } elseif ($case === 'long-variable-symbol') {
+                    $details->setVariableSymbol('12345678901');
+                } elseif ($case === 'different-payment-amount') {
+                    $payment->setPaidAmount('1.00');
+                } elseif ($case === 'partial-payment') {
+                    $payment->setPartialPayment(true);
+                } elseif ($case === 'bad-checksum') {
+                    $details->setIban('SK6807200002891987426354');
+                } elseif ($case === 'short-iban') {
+                    $details->setIban('SK7700000000000');
+                } elseif ($case === 'unknown-iban-country') {
+                    $details->setIban('ZZ6600000000000');
+                } elseif ($case === 'account-injection') {
+                    $details->setIban("SK6807200002891987426353\nSupplier: Other");
+                } elseif ($case === 'name-injection') {
+                    $name->setName("Synthetic supplier\nSupplier bank account: Other");
+                } elseif ($case === 'cash') {
+                    $payment->setPaymentMeansCode(PaymentMeansCode::CashPayment);
+                } elseif ($case === 'credit-note') {
+                    $invoice->setDocumentType(DocumentType::CreditNote);
+                } elseif ($case === 'deposit') {
+                    $invoice->getLegalMonetaryTotal()->setPaidDepositsAmount('1.00');
+                } elseif ($case === 'claimed-advance') {
+                    $invoice->getLegalMonetaryTotal()->setAlreadyClaimedTaxInclusiveAmount('1.00');
+                } elseif ($case === 'zero-payable') {
+                    $invoice->getLegalMonetaryTotal()->setPayableAmount('0.00');
+                } elseif ($case === 'negative-payable') {
+                    $invoice->getLegalMonetaryTotal()->setPayableAmount('-1.00');
+                }
+
+                $draft = $service->mapForPaymentTest($invoice);
+                $this->assertSame($case === 'valid', str_contains($draft['internal_note'], 'Supplier bank account:'), $case);
+                if ($case === 'valid') {
+                    $this->assertStringContainsString('Supplier bank account: SK6807200002891987426353', $draft['internal_note']);
+                    $this->assertSame('0000042', $draft['variable_symbol']);
+                } elseif (in_array($case, ['multiple', 'same-account-multiple', 'no-variable-symbol', 'unsupported-variable-symbol', 'long-variable-symbol'], true)) {
+                    $this->assertNull($draft['variable_symbol'], $case);
+                }
+                $this->assertStringNotContainsString('DE89370400440532013000', $draft['internal_note'], $case);
+                $this->assertStringContainsString('Imported from ISDOC.', $draft['internal_note']);
+            }
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    #[Test]
+    #[DataProvider('expensePaymentCurrencyContexts')]
+    public function supplier_payment_metadata_requires_the_legacy_amount_to_be_in_the_invoice_currency(
+        string $localCurrency,
+        ?string $foreignCurrency,
+        string $localPayable,
+        ?string $foreignPayable,
+    ): void {
+        $path = tempnam(sys_get_temp_dir(), 'exp-isdoc-currency-');
+        file_put_contents($path, $this->sampleIsdocXml());
+        $service = new class extends BusinessExpenseIsdocImportService
+        {
+            /** @return array<string, mixed> */
+            public function mapForPaymentTest(IsdocInvoiceSchema $invoice): array
+            {
+                return $this->mapInvoice($invoice);
+            }
+        };
+
+        try {
+            $invoice = Manager::create()->getReader()->file($path, IsdocInvoiceSchema::class, Manager::FORMAT_ISDOC);
+            $invoice->setLocalCurrencyCode($localCurrency);
+            $invoice->setForeignCurrencyCode($foreignCurrency);
+            $monetary = $invoice->getLegalMonetaryTotal();
+            $monetary->setPayableAmount($localPayable);
+            $monetary->setTaxInclusiveAmount($localPayable);
+            $monetary->setPayableAmountCurr($foreignPayable);
+            $monetary->setTaxInclusiveAmountCurr($foreignPayable);
+            $payments = $invoice->getPaymentMeans();
+            $this->assertNotNull($payments);
+            $this->assertCount(1, $payments);
+            $payment = iterator_to_array($payments)[0];
+            $payment->setPaymentMeansCode(PaymentMeansCode::CreditTransfer);
+            $payment->setPaidAmount($localPayable);
+            $payment->setPartialPayment(false);
+            $details = $payment->getDetails();
+            $this->assertNotNull($details);
+            $details->setIban('SK6807200002891987426353');
+            $details->setVariableSymbol('0000042');
+            $invoice->getAccountingSupplierParty()->getParty()->getPartyName()->setName('Synthetic supplier');
+
+            $draft = $service->mapForPaymentTest($invoice);
+
+            $this->assertSame((float) $localPayable, $draft['total']);
+            $this->assertSame($localCurrency, $draft['currency']);
+            $this->assertSame('0000042', $draft['variable_symbol']);
+            $this->assertSame($foreignCurrency === null, str_contains($draft['internal_note'], 'Supplier bank account:'));
+            $this->assertStringContainsString('Supplier: Synthetic supplier', $draft['internal_note']);
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    /** @return array<string, array{string, string|null, string, string|null}> */
+    public static function expensePaymentCurrencyContexts(): array
+    {
+        return [
+            'local EUR is not the USD payment instruction' => ['EUR', 'USD', '250.00', '10.00'],
+            'local CZK is not the EUR payment instruction' => ['CZK', 'EUR', '6000.00', '250.00'],
+            'no foreign currency retains ordinary payment metadata' => ['EUR', null, '250.00', null],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('expensePaymentPrecisionContexts')]
+    public function supplier_payment_metadata_requires_exact_cent_precision(
+        string $payable,
+        string $paid,
+        string $deposits,
+        string $claimed,
+        bool $hasAccount,
+        float $displayedTotal,
+    ): void {
+        $path = tempnam(sys_get_temp_dir(), 'exp-isdoc-precision-');
+        file_put_contents($path, $this->sampleIsdocXml());
+        $service = new class extends BusinessExpenseIsdocImportService
+        {
+            /** @return array<string, mixed> */
+            public function mapForPaymentTest(IsdocInvoiceSchema $invoice): array
+            {
+                return $this->mapInvoice($invoice);
+            }
+        };
+
+        try {
+            $invoice = Manager::create()->getReader()->file($path, IsdocInvoiceSchema::class, Manager::FORMAT_ISDOC);
+            $invoice->setLocalCurrencyCode('EUR');
+            $invoice->setForeignCurrencyCode(null);
+            $monetary = $invoice->getLegalMonetaryTotal();
+            $monetary->setPayableAmount($payable);
+            $monetary->setTaxInclusiveAmount($payable);
+            $monetary->setPaidDepositsAmount($deposits);
+            $monetary->setAlreadyClaimedTaxInclusiveAmount($claimed);
+            $payments = $invoice->getPaymentMeans();
+            $this->assertNotNull($payments);
+            $this->assertCount(1, $payments);
+            $payment = iterator_to_array($payments)[0];
+            $payment->setPaymentMeansCode(PaymentMeansCode::CreditTransfer);
+            $payment->setPaidAmount($paid);
+            $payment->setPartialPayment(false);
+            $details = $payment->getDetails();
+            $this->assertNotNull($details);
+            $details->setIban('SK6807200002891987426353');
+            $details->setVariableSymbol('0000042');
+            $invoice->getAccountingSupplierParty()->getParty()->getPartyName()->setName('Synthetic supplier');
+
+            $draft = $service->mapForPaymentTest($invoice);
+
+            $this->assertSame($displayedTotal, $draft['total']);
+            $this->assertSame('EUR', $draft['currency']);
+            $this->assertSame('0000042', $draft['variable_symbol']);
+            $this->assertSame($hasAccount, str_contains($draft['internal_note'], 'Supplier bank account:'));
+            $this->assertStringContainsString('Supplier: Synthetic supplier', $draft['internal_note']);
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    /** @return array<string, array{string, string, string, string, bool, float}> */
+    public static function expensePaymentPrecisionContexts(): array
+    {
+        return [
+            'original-example' => ['19.509', '19.500', '0', '0', false, 19.51],
+            'zero decimal places' => ['19', '19', '0', '0', true, 19.0],
+            'one decimal place' => ['19.5', '19.5', '0.0', '0.0', true, 19.5],
+            'two decimal places' => ['19.50', '19.50', '0.00', '0.00', true, 19.5],
+            'equal mixed supported precision' => ['19.5', '19.50', '0', '0.00', true, 19.5],
+            'smallest supported positive amount' => ['0.01', '0.01', '0', '0', true, 0.01],
+            'supported decimal notation without integer digits' => ['.5', '0.50', '.0', '-.00', true, 0.5],
+            'supported negative zero balances' => ['19.50', '19.50', '-0.00', '-0.0', true, 19.5],
+            'payable has unsupported precision' => ['19.509', '19.50', '0', '0', false, 19.51],
+            'paid instruction has unsupported precision' => ['19.50', '19.509', '0', '0', false, 19.5],
+            'equal high precision amounts are not cent instructions' => ['19.509', '19.509', '0', '0', false, 19.51],
+            'payable would round down' => ['19.504', '19.50', '0', '0', false, 19.5],
+            'paid instruction would round down' => ['19.50', '19.504', '0', '0', false, 19.5],
+            'payable trailing zero is still unsupported raw precision' => ['19.500', '19.50', '0', '0', false, 19.5],
+            'paid trailing zero is still unsupported raw precision' => ['19.50', '19.500', '0', '0', false, 19.5],
+            'subcent deposit is not zero' => ['19.50', '19.50', '0.001', '0', false, 19.5],
+            'subcent claim is not zero' => ['19.50', '19.50', '0', '0.001', false, 19.5],
+            'negative subcent deposit is not zero' => ['19.50', '19.50', '-0.001', '0', false, 19.5],
+            'negative subcent claim is not zero' => ['19.50', '19.50', '0', '-0.001', false, 19.5],
+            'deposit zero has unsupported raw precision' => ['19.50', '19.50', '0.000', '0', false, 19.5],
+            'claim zero has unsupported raw precision' => ['19.50', '19.50', '0', '0.000', false, 19.5],
+            'different exact cent instruction remains rejected' => ['19.50', '19.49', '0', '0', false, 19.5],
+            'nonzero exact cent deposit remains rejected' => ['19.50', '19.50', '0.01', '0', false, 19.5],
+            'nonzero exact cent claim remains rejected' => ['19.50', '19.50', '0', '0.01', false, 19.5],
+        ];
     }
 
     #[Test]

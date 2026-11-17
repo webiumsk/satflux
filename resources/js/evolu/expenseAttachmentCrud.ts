@@ -1,7 +1,7 @@
 import { maxLength, NonEmptyString, sqliteTrue } from "@evolu/common";
 import type { Evolu } from "@evolu/common/local-first";
 import type { ExpenseAttachmentId, ExpenseId, InvoicingLocalSchema } from "./schema";
-import { encodeExpenseOriginalReference, isExpenseOriginalReference, type ExpenseOriginalReference } from "./expenseOriginalReference";
+import { encodeExpenseOriginalReference, expenseOriginalMimeType, isExpenseOriginalReference, type ExpenseOriginalReference } from "./expenseOriginalReference";
 
 const FilenameType = maxLength(255)(NonEmptyString);
 const MimeType = maxLength(128)(NonEmptyString);
@@ -145,17 +145,19 @@ export function base64DecodedLength(base64: string): number {
     return Math.max(0, Math.floor((base64.length * 3) / 4) - padding);
 }
 
-/** Internal inbox path: archive durability must be proved before scheduling this small reference. */
+/** Inbox callers prove durability first; manual archives atomically link their explicit pending source. */
 export function insertLocalExpenseOriginalReference(
     evolu: Evolu<InvoicingLocalSchema>, expenseId: ExpenseId, attachmentId: ExpenseAttachmentId,
     reference: ExpenseOriginalReference, filename: string,
+    options?: { ownerId: string; onComplete?: () => void },
 ) {
     if (reference.expenseId !== expenseId || reference.attachmentId !== attachmentId) throw new Error("original_unverified");
     const originalFilename = FilenameType.from(filename);
     if (!originalFilename.ok) return originalFilename;
     return evolu.upsert("expenseAttachment", { id: attachmentId, expenseId,
-        originalFilename: originalFilename.value, mimeType: MimeType.orThrow("application/xml"),
-        sizeBytes: SizeType.orThrow(String(reference.sizeBytes)), contentBase64: ContentType.orThrow(encodeExpenseOriginalReference(reference)) });
+        originalFilename: originalFilename.value, mimeType: MimeType.orThrow(expenseOriginalMimeType(reference)),
+        sizeBytes: SizeType.orThrow(String(reference.sizeBytes)), contentBase64: ContentType.orThrow(encodeExpenseOriginalReference(reference)) },
+    options ? { ...options, ownerId: options.ownerId as never } : undefined);
 }
 
 export function deleteLocalExpenseAttachment(

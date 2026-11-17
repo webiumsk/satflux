@@ -2,7 +2,7 @@
 title: Import expenses from SuperFaktura
 category: invoicing
 order: 12
-updated: 2026-11-03
+updated: 2026-11-16
 ---
 
 # Import expenses from SuperFaktura
@@ -24,6 +24,13 @@ Limits: **10 MB, 2,000 rows, 256 columns** per file. Invalid or overlong rows ar
 
 In local-first invoicing, the spreadsheet is processed in your browser and saved with the existing encrypted invoicing data. Keep your recovery phrase backed up. PDF attachments are separate from spreadsheet import.
 
+
+## Search and filter expenses
+
+Use the status buttons and issue-date period to narrow the list. The initial period is the current year; choose all dates, a preset or your own date bounds. Open **More** to filter the amount, due date and text. Search covers internal and supplier document numbers, title, variable symbol and notes.
+
+Choose **Filter** to commit advanced fields. On mobile, use the filter drawer. **Clear filters** (on mobile **Clear all**) removes the search and other criteria. Changing applied filters clears the current selection. Totals and **select all** use the entire filtered result, including records on other pages.
+
 ## Defaults for a new expense
 
 The variable symbol follows the digits in the document number, including leading zeros. The delivery date follows the received date. Editing either default manually stops that link. Explicit values extracted from an attachment are preserved; existing expenses keep their saved values. A manually cleared delivery date stays blank after saving and reopening.
@@ -42,6 +49,25 @@ The unpaid expense total adds the full amounts of documents not marked paid. Par
 
 ## PDF attachments on an individual expense
 
-Open an individual expense and add its PDF. In local-first invoicing, attachments and extracted expense fields are saved with your encrypted local data. Each local attachment may be at most **384 KiB**. In the create or edit form, choose **Save** to save pending attachments. On the expense detail page, attachments are saved immediately after you finish or skip optional ISDOC processing.
+Open an individual expense and add its PDF. In local-first invoicing, attachments and extracted expense fields are saved with your encrypted local data. Each local attachment may be at most **10 MiB**. In the create or edit form, choose **Save** to save pending attachments. On the expense detail page, attachments are saved immediately after you finish or skip optional ISDOC processing.
 
 You can allow temporary server processing to detect embedded ISDOC data. Cancel keeps the attachment local. If ISDOC is found, confirm field extraction separately or keep only the attachment. Extraction uses your existing allowance and credits; it is not OCR. When the allowance is exhausted, you can still attach the file and enter its fields manually.
+
+If saving a larger attachment is interrupted, retry while the file is still selected. After reloading, remove the incomplete attachment and select the original file again. Complete the upload or remove the incomplete attachment before creating a full backup.
+
+## Payment QR codes
+
+For an unpaid EUR expense with a supplier name, a valid supplier IBAN and a variable symbol of up to 10 digits, choose **Payment QR** in its row. The amount must be greater than zero with at most 12 digits before the decimal point, and the supplier name must be at most 70 characters. Switch between **PAY by square** and **PayMe**, and check the recipient, amount and variable symbol before confirming in your banking app. The code is generated in your browser. Opening PayMe deliberately opens its payment link. Scanning a code does not mark the expense as paid. For amounts that PayMe cannot represent, use PAY by square; the amount is never rounded.
+
+No code appears for paid or cancelled expenses, disputed bank matches, or imports with partial or unresolved payments. Supplier payment details are taken from explicit imported supplier metadata; the company’s own account is never used. New eligible e-invoice and ISDOC imports retain the supplier account; older imports without that metadata must first have their payment details completed.
+
+When extraction has no payment reference, the variable symbol stays blank and the supplier bank account is not imported. Verify the original document and enter the correct variable symbol. Payment QR remains unavailable until the supplier name and IBAN are also complete and verified.
+
+To complete verified details, edit the expense, enter the variable symbol in its field and add or replace these two lines in **Internal note**. Keep exactly one line with each label, including the English labels shown here: Before saving, also verify that the saved amount and currency match the full unpaid payment instruction exactly, with no more than two decimal places.
+
+```text
+Supplier: VERIFIED_NAME
+Supplier bank account: VERIFIED_IBAN
+```
+
+Replace `VERIFIED_NAME` and `VERIFIED_IBAN` with the supplier name and IBAN verified against the original document. Preserve other notes and payment information, then save and return to the list. These steps also apply when extraction omitted the account; the eligibility conditions above still apply.

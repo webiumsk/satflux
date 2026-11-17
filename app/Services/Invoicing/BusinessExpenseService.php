@@ -7,6 +7,7 @@ use App\Models\BankTransaction;
 use App\Models\BusinessExpense;
 use App\Models\BusinessExpenseAttachment;
 use App\Models\Company;
+use App\Support\Invoicing\BusinessExpenseListFilters;
 use App\Support\Invoicing\ExpenseAttachmentMime;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -28,29 +29,60 @@ class BusinessExpenseService
      */
     public function filteredQuery(Company $company, Request $request): Builder
     {
+        $filters = BusinessExpenseListFilters::validated($request);
         $query = BusinessExpense::query()
             ->withCount('attachments')
             ->where('company_id', $company->id)
             ->where('status', '!=', BusinessExpenseStatus::Cancelled);
 
-        if ($request->filled('issue_from')) {
-            $query->whereDate('issue_date', '>=', $request->get('issue_from'));
+        if (! empty($filters['issue_from']) || ! empty($filters['issue_to'])) {
+            if (! empty($filters['issue_from'])) {
+                $query->whereDate('issue_date', '>=', $filters['issue_from']);
+            }
+            if (! empty($filters['issue_to'])) {
+                $query->whereDate('issue_date', '<=', $filters['issue_to']);
+            }
+        } elseif (! empty($filters['year'])) {
+            $query->whereYear('issue_date', (int) $filters['year']);
         }
 
-        if ($request->filled('issue_to')) {
-            $query->whereDate('issue_date', '<=', $request->get('issue_to'));
-        } elseif ($request->filled('year')) {
-            $query->whereYear('issue_date', (int) $request->get('year'));
-        }
-
-        $filter = $request->get('filter', 'all');
+        $overdueBefore = $filters['overdue_before'] ?? now()->toDateString();
+        $filter = $filters['filter'] ?? 'all';
         if ($filter === 'paid') {
             $query->where('status', BusinessExpenseStatus::Paid);
         } elseif ($filter === 'unpaid') {
             $query->where('status', BusinessExpenseStatus::Recorded);
         } elseif ($filter === 'overdue') {
             $query->where('status', BusinessExpenseStatus::Recorded)
-                ->whereDate('due_date', '<', now()->toDateString());
+                ->whereDate('due_date', '<', $overdueBefore);
+        }
+        if (($filters['due'] ?? null) === 'overdue') {
+            $query->where('status', BusinessExpenseStatus::Recorded)
+                ->whereDate('due_date', '<', $overdueBefore);
+        } elseif (($filters['due'] ?? null) === 'custom') {
+            $query->whereNotNull('due_date');
+            if (! empty($filters['due_from'])) {
+                $query->whereDate('due_date', '>=', $filters['due_from']);
+            }
+            if (! empty($filters['due_to'])) {
+                $query->whereDate('due_date', '<=', $filters['due_to']);
+            }
+        }
+        if (isset($filters['amount_min'])) {
+            $query->where('total', '>=', $filters['amount_min']);
+        }
+        if (isset($filters['amount_max'])) {
+            $query->where('total', '<=', $filters['amount_max']);
+        }
+        $search = trim((string) ($filters['search'] ?? ''));
+        if ($search !== '') {
+            $pattern = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], mb_strtolower($search)).'%';
+            $lower = BusinessExpenseListFilters::lowerFunction($query->getConnection());
+            $query->where(function (Builder $matches) use ($pattern, $lower) {
+                foreach (['internal_number', 'external_number', 'title', 'variable_symbol', 'internal_note'] as $column) {
+                    $matches->orWhereRaw("{$lower}(COALESCE({$column}, '')) LIKE ? ESCAPE '!'", [$pattern]);
+                }
+            });
         }
 
         return $query;
@@ -130,7 +162,7 @@ class BusinessExpenseService
             $locked->fill([
                 'external_number' => $data['external_number'] ?? $locked->external_number,
                 'title' => $data['title'] ?? $locked->title,
-                'variable_symbol' => $data['variable_symbol'] ?? $locked->variable_symbol,
+                'variable_symbol' => array_key_exists('variable_symbol', $data) ? $data['variable_symbol'] : $locked->variable_symbol,
                 'constant_symbol' => $data['constant_symbol'] ?? $locked->constant_symbol,
                 'specific_symbol' => $data['specific_symbol'] ?? $locked->specific_symbol,
                 'issue_date' => $data['issue_date'] ?? $locked->issue_date,
@@ -138,7 +170,7 @@ class BusinessExpenseService
                 'due_date' => $data['due_date'] ?? $locked->due_date,
                 'total' => $data['total'] ?? $locked->total,
                 'currency' => $data['currency'] ?? $locked->currency,
-                'internal_note' => $data['internal_note'] ?? $locked->internal_note,
+                'internal_note' => array_key_exists('internal_note', $data) ? $data['internal_note'] : $locked->internal_note,
             ]);
             $locked->save();
 

@@ -756,7 +756,9 @@ async function loadSavedPreview() {
       savedPreviewKind.value = "other";
     }
     if (savedPreviewKind.value === "pdf" || savedPreviewKind.value === "image") {
-      savedPreviewUrl.value = URL.createObjectURL(blob);
+      const preview = savedPreviewKind.value === "pdf" && mime !== "application/pdf"
+        ? new Blob([blob], { type: "application/pdf" }) : blob;
+      savedPreviewUrl.value = URL.createObjectURL(preview);
     } else if (name.toLowerCase().endsWith(".xml") || mime === "application/xml" || mime === "text/xml") {
       // Read only the already-authorized original, within the browser parser budget.
       if (blob.size > 2 * 1024 * 1024) {

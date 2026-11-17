@@ -1,5 +1,102 @@
 # Local workspace
 
+## PR451 source published and review handoff - 2026-11-17
+
+The owner requests normal publication of the complete accepted expense/bank
+initiative. Source commit `08e68fefc980ec5e8829078110255c0ef883ed29` is pushed to
+`fix/expense-attachments-bank-direction`. PR451 is open and unmerged against
+verified master `18729a26fc7f99d34364f8317b852d205a33f107`:
+https://github.com/webiumsk/satflux/pull/451 .
+
+All 56 reviewed source/test/locale blobs retain aggregate
+`dacf07ba8f8487ec8b70562c14838e9c5cd2d2818db5367bca554f2ce7e871b0`.
+The initial commit contains exactly 72 scoped paths. This publication follow-up
+contains documentation and one reviewed combined changelog fragment only;
+feature-branch/PR activity does not publish a public changelog entry.
+
+Local checks and independent QA/security acceptance remain attributed in
+[filter evidence](EXPENSE_BANK_LIST_FILTERS.md) and
+[attachment/direction evidence](EXPENSE_ATTACHMENTS_BANK_DIRECTION.md).
+Current head, exact-head CI and automated review must be checked on PR451;
+older/local checks are not new-head GitHub CI or deployed readiness. Source
+publication does not establish production behavior. Next is remote check/review
+verification and owner merge review. No merge or deployment is performed.
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2` with unrelated
+work preserved; the isolated feature has its own branch and publication scope.
+No private artifacts, screenshots, credentials or unrelated edits are included.
+
+## Detailed expense and bank filters accepted locally - 2026-11-16
+
+The owner requests invoice-style detailed filters/search for expenses and bank
+movements. Implementation continues in the retained
+`fix/expense-attachments-bank-direction` worktree, based on `18729a26`.
+Expenses now combine status, issue period, due range, amount and literal search;
+list, summary, pagination, export and select-all share applied criteria. Pending
+bulk writes recheck captured context inside the existing financial gate.
+Bank filters include booking period, direction, matching state, amount and
+scoped reference/counterparty/account/document search before the 50-row display
+cap. Totals cover all matches by currency; actual bank balance remains separate.
+Local search is not sent into synchronization requests. Prior attachment and
+direction fixes remain preserved.
+
+Independent QA/security accept final combined 56-file freeze
+`dacf07ba8f8487ec8b70562c14838e9c5cd2d2818db5367bca554f2ce7e871b0`
+and continuation 32-file freeze
+`211ef9ea8993b0fa92a9f5f76d0d88c37e33a676515676dd16767f54f6d1a556`.
+No unresolved blocking findings remain. Full JavaScript passes 3,751 tests /
+260 files on the preceding reviewed freeze; the final two-file native mobile
+Enter correction passes 125 tests / three affected suites, including nine shared
+bar cases. Other 54 files are byte-identical. Fourteen real browser scenarios
+pass, including Slovak 320px controls, mobile Enter/validation and draft Clear.
+Author PHP scopes pass 49 tests / 278 assertions and 119 tests / 612 assertions;
+counts overlap other checks and are not summed. Final build passes 7,680 modules;
+typecheck adds no errors against the unchanged 110-error baseline. Full lint has
+zero errors / 46 inherited warnings; the final two paths pass zero-warning lint.
+Locale parity, API inventory, scoped Pint/PHPStan and whitespace checks pass.
+[Filter evidence and precise revisions](EXPENSE_BANK_LIST_FILTERS.md) records
+independent tests, privacy/scan limits and prior archive review attribution.
+
+Primary stays `fix/sepa-confirmation-isolation` at `885168f2` with unrelated
+changes preserved. The combined feature remains uncommitted and unpublished in
+`storage/app/private/worktrees/expense-attachments-bank-direction`; both source
+freezes and safe validation evidence remain in the matching private review
+folder. Next is owner review. Git publication, merge and deployment are separate
+steps. No commit, push, merge, deployment, production-data operation, dependency
+installation or external-repository write is performed.
+
+## Manual expense attachment and bank-direction fixes accepted locally - 2026-11-16
+
+The owner-authorized fixes are complete in the isolated
+`fix/expense-attachments-bank-direction` worktree, based on verified remote master
+`18729a26fc7f99d34364f8317b852d205a33f107` (including PR449/PR450 source).
+Manual local expense uploads accept through 10 MiB using canonical MIME-bound
+v2 encrypted archives; the 384 KiB inline cell bound and eFaktura v1 custody
+remain intact. Interrupted files are visible/deletable and retries keep one
+identity. Generic reference/counterparty text no longer changes a recorded bank
+debit into credit; display, totals and expense actions agree while original
+recorded-direction payment evidence remains separate.
+
+Independent security and QA accept the 30-file source/test/locale freeze
+`b677cde350ac194bd89089339877a13c88f914c6222740bf2348a8f663083dc0`.
+No unresolved blocking findings remain. Final JavaScript passes 3,685 tests /
+257 files; focused PHP passes 77 tests / 243 assertions. Pint and scoped PHPStan
+pass. Final lint has zero errors / 46 inherited warnings; typecheck has no new
+errors against the unchanged 110-error baseline. Locale parity and build
+(7,674 modules) pass. Independent native browser checks verify 450 KiB / 10 MiB
+bytes, restart, backup, interruption/retry and canonical deletion. Native
+fresh-target restore remains unverified; restore over existing tombstones is
+not claimed as that proof. Full details and overlapping review/test counts:
+[implementation evidence](EXPENSE_ATTACHMENTS_BANK_DIRECTION.md).
+
+Primary remains `fix/sepa-confirmation-isolation` at `885168f2`; unrelated edits
+and other worktrees are preserved. The feature changes are uncommitted and
+unpublished in `storage/app/private/worktrees/expense-attachments-bank-direction`.
+The source freeze is retained under the matching private review directory.
+Next is owner review. Scoped Git publication, merge and deployment remain
+separate steps. No commit, push, merge, deployment, tool installation,
+production data mutation or provider operation is performed.
+
 ## PR450 paid-state and live-row corrections - 2026-11-16
 
 Both findings against published input `f1446a7b` are valid and fixed with two

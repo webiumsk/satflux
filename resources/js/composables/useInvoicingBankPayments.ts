@@ -1,3 +1,4 @@
+import { createBankListSummary, normalizeBankListFilters, type BankListFilterOptions } from "@/evolu/bankListFilters";
 import { bankExpenseMatchSuggestions, matchLocalBankTransactionToExpense, type BankExpenseMatchSuggestion } from "@/evolu/bankExpenseManualMatching";
 import { resolveMutationOwner } from "@/evolu/ownerScope";
 import { getActivePinia } from "pinia";
@@ -70,6 +71,8 @@ export type WiseStatus = {
     api_available?: boolean;
 };
 
+export type BankListLoadOptions = { skipErrorFlash?: boolean; filters?: BankListFilterOptions };
+
 export interface UseInvoicingBankPaymentsResult {
     localFirst: boolean;
     evolu: Evolu<InvoicingLocalSchema> | null;
@@ -80,7 +83,7 @@ export interface UseInvoicingBankPaymentsResult {
     inboundEmailAvailable: ComputedRef<boolean>;
     bridgeLookupFailed: Ref<boolean>;
     bridgeRoutingKey: ComputedRef<string>;
-    load: (matchFilter?: string, options?: { skipErrorFlash?: boolean }) => Promise<void>;
+    load: (matchFilter?: string, options?: BankListLoadOptions) => Promise<void>;
     loadBatches: (options?: { skipErrorFlash?: boolean }) => Promise<void>;
     loadInbound: () => Promise<void>;
     importFile: (file: File, format?: string) => Promise<{ imported: number; auto_matched: number }>;
@@ -124,6 +127,7 @@ function useServerInvoicingBankPayments(
     const batches = ref<BankBatchApiRow[]>([]);
     const inboundEmail = ref("");
     let lastFilter = "all";
+    let lastFilters: BankListFilterOptions = {};
     let loadRequest = 0;
     let batchRequest = 0;
     let loadController: AbortController | null = null;
@@ -132,6 +136,8 @@ function useServerInvoicingBankPayments(
     let companyGeneration = 0;
 
     watch(companyId, () => {
+        lastFilter = "all";
+        lastFilters = {};
         companyGeneration++;
         loadRequest++;
         batchRequest++;
@@ -169,7 +175,8 @@ function useServerInvoicingBankPayments(
      * Abort superseded transport requests but retain guards for adapters that ignore cancellation.
      * Only Axios cancellation is consumed; ordinary failures retain caller/global error handling.
      */
-    async function load(matchFilter = lastFilter, options: { skipErrorFlash?: boolean } = {}) {
+    async function load(matchFilter = lastFilter, options: BankListLoadOptions = {}) {
+        const nextFilters = normalizeBankListFilters(options.filters ?? lastFilters);
         const request = ++loadRequest;
         loadController?.abort();
         const controller = new AbortController();
@@ -183,11 +190,14 @@ function useServerInvoicingBankPayments(
             return;
         }
         lastFilter = matchFilter;
+        lastFilters = nextFilters;
         loading.value = true;
         try {
-            const params: Record<string, string | number> = { per_page: 50 };
+            const params: Record<string, string | number> = { per_page: 50, ...nextFilters };
             if (matchFilter !== "all") params.match_status = matchFilter;
-            const res = await invoicingApi.bankTransactions.list<BankTxApiRow>(cid, params, { ...options, signal: controller.signal });
+            const requestOptions = { signal: controller.signal,
+                ...(options.skipErrorFlash !== undefined ? { skipErrorFlash: options.skipErrorFlash } : {}) };
+            const res = await invoicingApi.bankTransactions.list<BankTxApiRow>(cid, params, requestOptions);
             if (companyId.value !== cid || request !== loadRequest) return;
             transactions.value = res.data;
             summary.value = (res.meta?.summary as typeof summary.value) || emptySummary(defaultCurrency.value);
@@ -432,6 +442,11 @@ function useLocalInvoicingBankPayments(
     const loading = ref(true);
     let loadRequest = 0;
     const matchFilter = ref("all");
+    const appliedFilters = ref<BankListFilterOptions>({});
+    watch(companyId, () => {
+        matchFilter.value = "all";
+        appliedFilters.value = {};
+    }, { flush: "sync" });
 
     // Per-query promises: useQuery's `promise` option is typed per query,
     // so hand each one its own (Promise.all only gates the loading flag).
@@ -485,17 +500,17 @@ function useLocalInvoicingBankPayments(
         toAppRows<BankPaymentContext["transactions"][number]>(bankTxRows.value), companyId.value as CompanyId,
     ));
 
-    const transactions = computed(() => mapLocalBankTransactionsToApi(filteredRows.value, ctx.value,
-        { matchStatus: matchFilter.value, limit: 50 }));
-
-    const summary = computed(() =>
-        buildBankSummary(
-            filterLocalBankTransactions(
-                toAppRows<BankPaymentContext["transactions"][number]>(bankTxRows.value),
-                companyId.value as CompanyId,
-            ),
-        ),
-    );
+    const listProjection = computed(() => {
+        const accumulator = createBankListSummary();
+        const rows = mapLocalBankTransactionsToApi(filteredRows.value, ctx.value, {
+            matchStatus: matchFilter.value, limit: 50, filters: appliedFilters.value, onMatch: accumulator.add,
+        });
+        const companyRows = ctx.value.transactions.filter(row => row.companyId === companyId.value);
+        const snapshot = buildBankSummary(companyRows).account_balance;
+        return { rows, summary: accumulator.finish(snapshot ?? null) };
+    });
+    const transactions = computed(() => listProjection.value.rows);
+    const summary = computed(() => listProjection.value.summary);
 
     const batches = computed(() =>
         mapLocalBankBatchesToApi(
@@ -776,10 +791,12 @@ function useLocalInvoicingBankPayments(
     }
 
     /** Await inbound completion and refresh rows only while this hook remains mounted. */
-    async function load(filter = matchFilter.value) {
+    async function load(filter = matchFilter.value, options: BankListLoadOptions = {}) {
         if (disposed) return;
+        const nextFilters = normalizeBankListFilters(options.filters ?? appliedFilters.value);
         const request = ++loadRequest;
         matchFilter.value = filter;
+        appliedFilters.value = nextFilters;
         loading.value = true;
         try {
             await syncInboundFromBridge();

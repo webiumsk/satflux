@@ -52,4 +52,14 @@ class BankTransactionDirectionGuesserTest extends TestCase
             $guesser->fromAmountAndHints(100.0, 'OUT'),
         );
     }
+
+    #[Test]
+    public function generic_payment_text_is_not_directional_evidence(): void
+    {
+        $guesser = app(BankTransactionDirectionGuesser::class);
+
+        $this->assertNull($guesser->fromHints('Platba 0900/000000-1234567890', 'Synthetic supplier invoice'));
+        $this->assertSame(BankTransactionDirection::Debit, $guesser->fromAmountAndHints(-42.50, 'Synthetic supplier invoice'));
+        $this->assertSame(BankTransactionDirection::Credit, $guesser->fromAmountAndHints(42.50, 'Synthetic customer invoice'));
+    }
 }

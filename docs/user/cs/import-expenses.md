@@ -2,7 +2,7 @@
 title: Import nákladů ze SuperFaktury
 category: invoicing
 order: 12
-updated: 2026-11-03
+updated: 2026-11-16
 ---
 
 # Import nákladů ze SuperFaktury
@@ -24,6 +24,13 @@ Limity: **10 MB, 2 000 řádků a 256 sloupců** na soubor. Neplatné nebo pří
 
 Při lokální fakturaci se soubor zpracuje v prohlížeči a uloží mezi stávající šifrované údaje. Zálohujte si obnovovací frázi. Přílohy PDF se importují samostatně.
 
+
+## Vyhledávání a filtrování nákladů
+
+Seznam zúžíte tlačítky stavu a obdobím podle data vystavení. Na začátku se zobrazuje aktuální rok; můžete zvolit všechna data, předvolené období nebo vlastní meze. V dalších filtrech nastavíte částku, splatnost a hledaný text. Vyhledává se v interním čísle, čísle dodavatelského dokladu, názvu, variabilním symbolu a poznámkách.
+
+Rozšířené podmínky potvrďte tlačítkem **Filtrovat**. Na mobilu použijte panel filtrů. **Vymazat filtry** (na mobilu **Vymazat vše**) odstraní vyhledávání i ostatní podmínky. Změna použitých filtrů zruší aktuální výběr. Součty i **vybrat vše** používají celý filtrovaný výsledek včetně záznamů na dalších stránkách.
+
 ## Předvyplnění nového nákladu
 
 Variabilní symbol se průběžně nastavuje podle číslic v čísle dokladu včetně úvodních nul. Datum dodání se nastavuje podle data přijetí. Ruční úpravou předvyplněné hodnoty se její propojení vypne. Výslovné hodnoty vytěžené z přílohy se zachovají; existující náklady si ponechají uložené hodnoty. Ručně vymazané datum dodání zůstane prázdné i po uložení a opětovném otevření.
@@ -42,6 +49,25 @@ Součet neuhrazených nákladů zahrnuje celé částky dokladů, které nejsou 
 
 ## PDF příloha k jednotlivému nákladu
 
-Otevřete konkrétní náklad a přidejte jeho PDF. V lokálním účetnictví se přílohy i vytěžené údaje ukládají mezi vaše šifrovaná lokální data. Jedna lokální příloha může mít nejvýše **384 KiB**. Ve formuláři vytvoření nebo úpravy zvolte **Uložit**, aby se uložily připravené přílohy. V detailu nákladu se přílohy uloží ihned po dokončení nebo přeskočení volitelného zpracování ISDOC.
+Otevřete konkrétní náklad a přidejte jeho PDF. V lokálním účetnictví se přílohy i vytěžené údaje ukládají mezi vaše šifrovaná lokální data. Jedna lokální příloha může mít nejvýše **10 MiB**. Ve formuláři vytvoření nebo úpravy zvolte **Uložit**, aby se uložily připravené přílohy. V detailu nákladu se přílohy uloží ihned po dokončení nebo přeskočení volitelného zpracování ISDOC.
 
 Můžete povolit dočasné zpracování souboru na serveru pro detekci vložených údajů ISDOC. Zrušením zůstane příloha pouze lokálně. Pokud se ISDOC najde, samostatně potvrďte extrakci údajů nebo ponechte pouze přílohu. Extrakce využívá váš stávající limit a kredity; nejde o OCR. Po vyčerpání limitu můžete soubor stále přiložit a údaje zadat ručně.
+
+Pokud se ukládání větší přílohy přeruší, opakujte ho, dokud je soubor stále vybraný. Po obnovení stránky odstraňte neúplnou přílohu a znovu vyberte původní soubor. Před vytvořením úplné zálohy dokončete nahrávání nebo neúplnou přílohu odstraňte.
+
+## Platební QR kódy
+
+U neuhrazeného nákladu v EUR s názvem dodavatele, platným IBANem dodavatele a variabilním symbolem do 10 číslic klikněte v řádku na **Platební QR**. Částka musí být větší než nula a mít nejvýše 12 číslic před desetinnou čárkou; název dodavatele může mít nejvýše 70 znaků. Můžete přepnout mezi **PAY by square** a **PayMe**. Před potvrzením v bankovní aplikaci zkontrolujte příjemce, částku a variabilní symbol. Kód se tvoří ve vašem prohlížeči. Tlačítko Otevřít PayMe vědomě otevře jeho platební odkaz. Naskenování kódu neoznačí náklad jako uhrazený. U částek, které PayMe nedokáže zapsat, použijte PAY by square; částka se nikdy nezaokrouhluje.
+
+Kód se nezobrazí u uhrazených a zrušených nákladů, sporného bankovního párování ani u importu s částečnou nebo nevyřešenou úhradou. Platební údaje pocházejí z výslovně uložených údajů dodavatele; vlastní účet firmy se nepoužije. Nové vhodné importy eFaktur a ISDOC zachovají účet dodavatele. U starších importů bez těchto údajů je třeba nejprve doplnit platební údaje.
+
+Při vytěžení dokladu bez platební reference zůstane variabilní symbol prázdný a účet dodavatele se neimportuje. Ověřte původní doklad a doplňte správný variabilní symbol. Platební QR zůstane nedostupné, dokud nebudou doplněny a ověřeny také název a IBAN dodavatele.
+
+Ověřené údaje doplníte úpravou nákladu: variabilní symbol zadejte do jeho pole a do pole **Interní poznámka** přidejte nebo nahraďte tyto dva řádky. Každý řádek ponechte právě jednou a zachovejte uvedené anglické názvy: Před uložením také ověřte, že částka a měna nákladu přesně odpovídají celé neuhrazené platbě v původním dokladu a částka má nejvýše dvě desetinná místa.
+
+```text
+Supplier: VERIFIED_NAME
+Supplier bank account: VERIFIED_IBAN
+```
+
+Hodnoty `VERIFIED_NAME` a `VERIFIED_IBAN` nahraďte názvem dodavatele a IBANem ověřenými podle původního dokladu. Ostatní poznámky a platební údaje zachovejte, náklad uložte a vraťte se do seznamu. Postup platí i tehdy, když extrakce účet vynechala; nadále platí podmínky uvedené výše.

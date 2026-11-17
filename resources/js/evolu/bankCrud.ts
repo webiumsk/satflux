@@ -1,3 +1,4 @@
+import { matchesBankListFilters, normalizeBankListFilters, type BankListFilterOptions } from "./bankListFilters";
 import { activeBankExpenseClaim, bankExpenseScopeKey, createBankExpenseClaim, createBankExpensePaymentIndex, releasedBankExpenseReceipt } from "./bankExpenseClaims";
 import { sqliteTrue, createId, createRandomBytes } from "@evolu/common";
 import { ExpenseId } from "./schema";
@@ -945,11 +946,12 @@ function indexBankApiRows<T extends object>(rows: readonly T[], key: (row: T) =>
 export function mapLocalBankTransactionsToApi(
     rows: readonly EvoluBankTransactionRow[],
     ctx: BankPaymentContext,
-    options: { matchStatus?: string; limit?: number } = {},
+    options: { matchStatus?: string; limit?: number; filters?: BankListFilterOptions; onMatch?: (row: BankTxApiRow) => void } = {},
 ) {
     const result: BankTxApiRow[] = [];
     const limit = Math.max(0, options.limit ?? Infinity);
     if (rows.length === 0 || limit === 0) return result;
+    const filters = normalizeBankListFilters(options.filters);
     const requested = options.matchStatus;
     const selective = requested && requested !== "all";
     const matches = indexBankApiRows(ctx.matches, (row) => bankExpenseScopeKey(Reflect.get(row, "ownerId"), "", row.bankTransactionId));
@@ -969,8 +971,10 @@ export function mapLocalBankTransactionsToApi(
             ? documents.get(bankExpenseScopeKey(owner, row.companyId, match.businessDocumentId)) ?? null : null;
         const projected = evoluBankTxToApi(row, match, document, expense, evidence);
         if (selective && projected.match_status !== requested) continue;
-        result.push(projected);
-        if (result.length >= limit) break;
+        if (!matchesBankListFilters(projected, filters)) continue;
+        options.onMatch?.(projected);
+        if (result.length < limit) result.push(projected);
+        if (result.length >= limit && !options.onMatch) break;
     }
     return result;
 }

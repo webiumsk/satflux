@@ -4,7 +4,7 @@ import { registerEvoluRelayOwner } from "./relayPreferenceLifecycle";
 import { withCompanyOwnerScoping } from "./ownerScope";
 import { createEvoluWebDepsWithReloadGuard } from "./reloadGuard";
 import { EVOLU_APP_NAME, InvoicingLocalSchema, type CompanyId, type ExpenseId, type MigrationSourceId } from "./schema";
-import { EXPENSE_ORIGINAL_SOURCE_KIND } from "./expenseOriginalReference";
+import { EXPENSE_ORIGINAL_SOURCE_KINDS } from "./expenseOriginalReference";
 
 const rawEvolu = createEvolu(createEvoluWebDepsWithReloadGuard())(InvoicingLocalSchema, {
     name: SimpleName.orThrow(EVOLU_APP_NAME),
@@ -621,12 +621,13 @@ export const allCompanySharesQuery = evolu.createQuery((db) =>
 /** Metadata only: the wizard never subscribes to or renders original file bytes. */
 export const allMigrationSourcesQuery = evolu.createQuery((db) => db.selectFrom("migrationSource")
     .select(["id", "companyId", "sourceKind", "relatedExportId", "originalFilename", "mimeType", "sizeBytes", "checksum", "chunkCount", "savedAt"])
-    .where("isDeleted", "is not", sqliteTrue).where("sourceKind", "is not", EXPENSE_ORIGINAL_SOURCE_KIND)
+    .where("isDeleted", "is not", sqliteTrue).where("sourceKind", "is not", EXPENSE_ORIGINAL_SOURCE_KINDS[0])
+    .where("sourceKind", "is not", EXPENSE_ORIGINAL_SOURCE_KINDS[1])
     .where("savedAt", "is not", null).orderBy("createdAt"));
 
-/** Receipt archives are included even while incomplete; they are not migration wizard entries. */
+/** Expense archives are included even while incomplete; they are not migration wizard entries. */
 export const allExpenseOriginalSourcesQuery = evolu.createQuery((db) => db.selectFrom("migrationSource")
-    .selectAll().where("sourceKind", "=", EXPENSE_ORIGINAL_SOURCE_KIND).where("isDeleted", "is not", sqliteTrue).orderBy("createdAt"));
+    .selectAll().where("sourceKind", "in", EXPENSE_ORIGINAL_SOURCE_KINDS).where("isDeleted", "is not", sqliteTrue).orderBy("createdAt"));
 export const allExpenseOriginalChunksQuery = evolu.createQuery((db) => db.selectFrom("migrationChunk")
     .selectAll("migrationChunk")
     // Keep one outer table so owner scoping can append its ownerId column.
@@ -634,7 +635,7 @@ export const allExpenseOriginalChunksQuery = evolu.createQuery((db) => db.select
         .whereRef("migrationSource.id", "=", "migrationChunk.sourceId")
         .whereRef("migrationSource.ownerId", "=", "migrationChunk.ownerId")
         .whereRef("migrationSource.companyId", "=", "migrationChunk.companyId")
-        .where("migrationSource.sourceKind", "=", EXPENSE_ORIGINAL_SOURCE_KIND)
+        .where("migrationSource.sourceKind", "in", EXPENSE_ORIGINAL_SOURCE_KINDS)
         .where("migrationSource.isDeleted", "is not", sqliteTrue)))
     .where("migrationChunk.isDeleted", "is not", sqliteTrue)
     .orderBy("migrationChunk.createdAt"));

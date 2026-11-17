@@ -1,11 +1,28 @@
 import { describe, expect, it } from "vitest";
 import { attachmentContentBlob, insertLocalExpenseAttachmentFromBase64, LOCAL_EXPENSE_ATTACHMENT_MAX_BYTES, readFileAsAttachmentBase64 } from "@/evolu/expenseAttachmentCrud";
-import { createExpenseOriginalReference, encodeExpenseOriginalReference, expenseOriginalChunkId, EXPENSE_ORIGINAL_CHUNK_BYTES,
+import { createExpenseOriginalReference, createManualExpenseOriginalReference, encodeExpenseOriginalReference, expenseOriginalChunkId, EXPENSE_ORIGINAL_CHUNK_BYTES,
     EXPENSE_ORIGINAL_MAX_BYTES, EXPENSE_ORIGINAL_PREFIX, isExpenseOriginalReference, parseExpenseOriginalReference } from "@/evolu/expenseOriginalReference";
 
 const input = { companyId: "company-a", receiptId: "receipt-a", expenseId: "expense-a", attachmentId: "attachment-a", sha256: "a".repeat(64), sizeBytes: 400_000 };
 
 describe("expense original references", () => {
+    it("round-trips the manual namespace without a receipt and binds MIME to its canonical source", () => {
+        const manual = { companyId: input.companyId, expenseId: input.expenseId, attachmentId: input.attachmentId,
+            sha256: input.sha256, sizeBytes: input.sizeBytes, mimeType: "application/pdf" };
+        const ref = createManualExpenseOriginalReference(manual);
+        const encoded = encodeExpenseOriginalReference(ref);
+        expect(encoded.startsWith("satflux:expense-original:v2:")).toBe(true);
+        expect(ref).not.toHaveProperty("receiptId");
+        expect(parseExpenseOriginalReference(encoded)).toEqual(ref);
+        expect(ref.sourceId).not.toBe(createExpenseOriginalReference(input).sourceId);
+        expect(createManualExpenseOriginalReference({ ...manual, mimeType: "image/png" }).sourceId).not.toBe(ref.sourceId);
+        for (const changed of [{ ...ref, mimeType: "text/html" }, { ...ref, receiptId: "fake-receipt" }, { ...ref, version: 1 }]) {
+            expect(() => parseExpenseOriginalReference("satflux:expense-original:v2:" + JSON.stringify(changed))).toThrow("original_unverified");
+        }
+        for (const mimeType of ["", "text/html; charset=utf-8", "text/html\n", "x".repeat(129)]) {
+            expect(() => createManualExpenseOriginalReference({ ...manual, mimeType })).toThrow("original_unverified");
+        }
+    });
     it("round-trips a canonical bounded manifest and binds all receipt identities without an owner key", () => {
         const ref = createExpenseOriginalReference(input);
         const marker = encodeExpenseOriginalReference(ref);
