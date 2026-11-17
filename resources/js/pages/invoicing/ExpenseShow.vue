@@ -377,7 +377,7 @@ import {
   updateLocalExpense,
 } from "../../evolu/expenseCrud";
 import { releaseLocalExpenseBankClaim } from "../../evolu/bankCrud";
-import { filterLocalExpenses, type EvoluExpenseRow } from "../../evolu/expenseMap";
+import { evoluExpenseToApi, filterLocalExpenses, type EvoluExpenseRow } from "../../evolu/expenseMap";
 import { toAppRows } from "../../evolu/queryLoad";
 import {
   attachmentBlobUrl,
@@ -1233,9 +1233,18 @@ async function onConfirmExtract() {
     if (!stillCurrent()) return;
     if (!draft) return;
     let approvedPayload: ReturnType<typeof draftToPayload> | null = null;
+    let reviewBaseline: Expense | null = null;
     if (draft.source === 'pdf_text') {
-      if (!expense.value) return;
-      approvedPayload = draftToPayload(draft, expense.value);
+      if (localFirst) {
+        const current = expenseRows.value.find(row => row.id === requestedExpense && row.companyId === requestedCompany);
+        if (!current) throw new Error(t('errors.generic'));
+        reviewBaseline = evoluExpenseToApi(current) as Expense;
+      } else {
+        reviewBaseline = await invoicingApi.expenses.get<Expense>(requestedCompany, requestedExpense);
+      }
+      if (!stillCurrent()) return;
+      if (reviewBaseline.id !== requestedExpense) throw new Error(t('errors.generic'));
+      approvedPayload = draftToPayload(draft, reviewBaseline);
       const reviewRevision = textPdfReviewRevision;
       const accepted = await reviewTextPdfValues(approvedPayload);
       if (!stillCurrent() || reviewRevision !== textPdfReviewRevision) return;
@@ -1245,18 +1254,26 @@ async function onConfirmExtract() {
       }
     }
     if (draft) {
+      if (!expense.value) throw new Error(t('errors.generic'));
+      const payload = approvedPayload ? { ...approvedPayload } : draftToPayload(draft, expense.value);
+      // Showing saved supplier values is not an instruction to overwrite later remote edits.
+      if (reviewBaseline) {
+        for (const field of ['company_contact_id', 'supplier_name', 'supplier_iban'] as const) {
+          if (payload[field] === (reviewBaseline[field] ?? null)) Reflect.deleteProperty(payload, field);
+        }
+      }
       if (localFirst) {
         if (!expenseResource.evolu || expense.value?.id !== requestedExpense) throw new Error(t('errors.generic'));
         const current = expenseRows.value.find((row) => row.id === requestedExpense && row.companyId === requestedCompany);
         if (!current) throw new Error(t('errors.generic'));
-        const result = await updateLocalExpense(expenseResource.evolu, requestedExpense as ExpenseId, approvedPayload ?? draftToPayload(draft, expense.value), current);
+        const result = await updateLocalExpense(expenseResource.evolu, requestedExpense as ExpenseId, payload, current);
         if (!result.ok) throw new Error(t('errors.generic'));
         await expenseResource.refresh();
         if (!stillCurrent()) return;
         expense.value = expenseResource.expense.value as Expense | null;
       } else {
         if (!expense.value) throw new Error(t('errors.generic'));
-        const updated = await invoicingApi.expenses.update<NonNullable<typeof expense.value>>(requestedCompany, requestedExpense, approvedPayload ?? draftToPayload(draft, expense.value));
+        const updated = await invoicingApi.expenses.update<NonNullable<typeof expense.value>>(requestedCompany, requestedExpense, payload);
         if (!stillCurrent()) return;
         expense.value = updated;
       }

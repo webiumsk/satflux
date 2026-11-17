@@ -1,5 +1,17 @@
 # Local workspace
 
+## PR456 review correction ready for publication - 2026-11-18
+
+The retained text-PDF worktree stays on `feat/expense-text-pdf-extraction` at
+published `bab3d9fa` plus the reviewed correction. Only12 source/test/guide paths
+and5 technical-state documents belong to the correction commit. Both independent
+reviewers accept the frozen hashes; main checks and the private boolean-only sample
+probe pass. Original-head CI44195801806 is successful; new-head CI is verified
+after publication. Main owns Git publication on the same authorized branch.
+Primary unrelated work is preserved. No private document fixture, tool/graph
+installation, production target, merge or deployment is involved.
+[Correction contract, review and validation evidence](EXPENSE_TEXT_PDF_EXTRACTION.md).
+
 ## Text-PDF extraction reviewed worktree - 2026-11-18
 
 Primary unrelated edits remain preserved. Authorized implementation is isolated

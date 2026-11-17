@@ -1,5 +1,22 @@
 # Development decision log
 
+## Preserve expense classification and retained payment authority - 2026-11-18
+
+EF file-specification references establish attachment presence even without a
+stream Type; nested direct dictionaries/arrays are inspected without following
+indirect cycles. Any attachment retains exclusive structured handling. Positive
+credit signs require one unambiguous numbered/bare document kind; conflicting or
+unknown types withhold positive totals, while negative amounts retain their sign.
+
+Text-PDF previews use a current scoped row or fresh server record as one baseline.
+A readonly display of saved supplier/contact values creates no edit intent; omit
+unchanged fields from mutation so concurrent supplier edits survive the write gap.
+Protected original payment-evidence lines survive ordinary note edits and saves;
+zero-only amounts and ISDOC-only uncertainty remain editable under existing rules.
+Five-language guides explain exact manual review/Save and unchanged QR eligibility.
+All five supplied findings are fixed; independent QA/security accept the final
+frozen scope. [Evidence](EXPENSE_TEXT_PDF_EXTRACTION.md). No new schema/payment authority.
+
 ## Review-only text-PDF expense drafts - 2026-11-18
 
 Reuse the installed PDF parser behind an additive import facade. Any embedded

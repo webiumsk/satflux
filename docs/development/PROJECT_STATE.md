@@ -1,5 +1,24 @@
 # Project state
 
+## PR456 supplied review corrections accepted - 2026-11-18
+
+All five supplied findings reproduce on `bab3d9fa` and are corrected on the same
+feature branch. Untyped EF attachments retain structured-only processing; credit
+references cannot negate invoice totals; ambiguous positive signs remain unresolved.
+Text review uses current supplier baselines and omits unchanged supplier/contact
+intent from writes. Form note edits retain protected payment evidence after reopen.
+All five import guides explain explicit review/Save before eligible Payment QR.
+
+Main460 JS tests, lint/typecheck ratchets, locale parity and production build pass.
+Independent QA320 JS,122 PHP/993 assertions and6 native Chrome scenarios pass;
+security279 JS,122 PHP/993 and6 parser controls pass. Scopes overlap. Both accept
+delta12 `f44dfbf0b64f0be42f4e1ed2983cbe50ec1b0270dbc7a8a8b12b6639108fb330`
+and complete28 `22847b3e39c6e7eca22a8919736e7237bac44160ca579bbeeb44871f2b3e510c`.
+Pint/PHPStan pass, and the corrected-parser private probe still finds all9 fields.
+Original-head CI44195801806 is successful; correction-head CI follows publication.
+Main owns the scoped17-path correction; unrelated primary edits remain preserved.
+No merge/deployment. [Finding disposition and evidence](EXPENSE_TEXT_PDF_EXTRACTION.md).
+
 ## Reviewed text-PDF expense extraction - 2026-11-18
 
 PR455 is verified merged at master `2ffd3465`; older open-PR entries below are

@@ -1,5 +1,17 @@
 # Development roadmap
 
+## PR456 supplied review corrections accepted - 2026-11-18
+
+Five verified findings on `bab3d9fa` are fixed and independently accepted: EF
+attachment classification, document-header sign authority, explicit text-PDF QR
+review guidance, current supplier baselines and durable original payment evidence.
+Source/test/guide delta12 and all28 implementation/locale/guide paths are frozen;
+main460 JS tests and all required ratchets/build pass. QA additionally verifies6
+native correction scenarios in both modes. Publish the scoped correction to the
+existing branch, verify new-head CI, then obtain owner PR review. Original-head
+CI44195801806 is successful; merge/deployment remain separate owner gates.
+[Review attribution and exact hashes](EXPENSE_TEXT_PDF_EXTRACTION.md).
+
 ## Reviewed text-PDF expense extraction - 2026-11-18
 
 The authorized Satflux-only implementation is complete on

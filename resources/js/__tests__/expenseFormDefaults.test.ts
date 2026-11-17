@@ -609,7 +609,7 @@ describe('structured supplier snapshots and received credit notes', () => {
     expect(wrapper!.find('#expense-confirm-payment-details').exists()).toBe(false);
     await wrapper!.get('textarea').setValue('');
     expect(wrapper!.find('#expense-confirm-payment-details').exists()).toBe(false);
-    expect(await submit(local)).toMatchObject({ payment_review_required: true });
+    expect(await submit(local)).toMatchObject({ payment_review_required: true, internal_note: 'Payment amount: 2.00' });
   });
 
   it('does not derive payment instructions from copied notes or a generic title', async () => {
@@ -1067,13 +1067,41 @@ describe('manual payment-details review in an edited legacy expense', () => {
     await flushPromises();
     expect(mocks.updateLocal.mock.calls[0][2]).not.toHaveProperty('payment_details_confirmation');
   });
-  it.each(['Payment amount: 2.00', 'Payment date: 2026-11-17'])('keeps concrete original payment evidence blocked after note edits: %s', async note => {
+  it.each([true, false].flatMap(local => ['Payment amount: 2.00', 'Payment date: 2026-11-17'].flatMap(note =>
+    ['', 'Replacement ordinary note', 'Payment amount: 0.00'].map(edited => ({ local, note, edited })))))(
+    'retains original payment evidence through save and reopen after note edits (local=$local, note=$note, edited=$edited)', async ({ local, note, edited }) => {
     existingExpense.payment_review_required = true;
-    existingExpense.internal_note = note;
-    await render(true, true);
+    existingExpense.internal_note = 'Old ordinary note\n' + note;
+    await render(local, true);
     await wrapper!.get('#expense-supplier-contact').setValue('contact-bank');
     expect(wrapper!.find('#expense-confirm-payment-details').exists()).toBe(false);
-    await wrapper!.get('textarea').setValue('');
+    await wrapper!.get('textarea').setValue(edited);
     expect(wrapper!.find('#expense-confirm-payment-details').exists()).toBe(false);
+    await wrapper!.get('form').trigger('submit'); await flushPromises();
+    const payload = (local ? mocks.updateLocal : mocks.update).mock.lastCall![2];
+    expect(payload.internal_note).toBe([edited, note].filter(Boolean).join('\n'));
+    expect(payload).not.toHaveProperty('payment_details_confirmation');
+    existingExpense.internal_note = payload.internal_note;
+    wrapper!.unmount();
+    await render(local, true);
+    expect((wrapper!.get('textarea').element as HTMLTextAreaElement).value).toBe(payload.internal_note);
+    expect(wrapper!.find('#expense-confirm-payment-details').exists()).toBe(false);
+  });
+
+  it.each([true, false])('does not duplicate retained evidence and leaves ordinary or zero-payment notes editable (local=%s)', async local => {
+    existingExpense.internal_note = 'Old note\nPayment amount: 0.00\nPayment amount: unknown\nPayment date: unknown';
+    await render(local, true);
+    await wrapper!.get('textarea').setValue('New note\nPayment amount: unknown');
+    await wrapper!.get('form').trigger('submit'); await flushPromises();
+    expect((local ? mocks.updateLocal : mocks.update).mock.lastCall![2].internal_note)
+      .toBe('New note\nPayment amount: unknown\nPayment date: unknown');
+  });
+
+  it.each([true, false])('allows clearing an ISDOC-only uncertainty note and a zero paid amount (local=%s)', async local => {
+    existingExpense.internal_note = 'Imported from ISDOC.\nPayment amount: 0.00\nOrdinary note';
+    await render(local, true);
+    await wrapper!.get('textarea').setValue('');
+    await wrapper!.get('form').trigger('submit'); await flushPromises();
+    expect((local ? mocks.updateLocal : mocks.update).mock.lastCall![2].internal_note).toBeNull();
   });
 });

@@ -2,7 +2,7 @@
 title: Ausgaben aus SuperFaktura importieren
 category: invoicing
 order: 12
-updated: 2026-11-17
+updated: 2026-11-18
 ---
 
 # Ausgaben aus SuperFaktura importieren
@@ -54,6 +54,8 @@ Die Summe unbezahlter Ausgaben enthält die vollen Beträge der nicht als bezahl
 Direkt nach der Dateiauswahl bittet die App um Zustimmung zur vorübergehenden Serververarbeitung, um eingebettete ISDOC-Daten oder lesbaren PDF-Rechnungstext zu prüfen. Sie können den Anhang ohne Verarbeitung behalten. Der Anhang zeigt den Prüfstatus und bietet eine Wiederholung an. Werden unterstützte Daten gefunden, bestätigen Sie die Extraktion separat. Prüfung und Extraktion erfolgen vor **Speichern** im Formular; solange eine Entscheidung aussteht, bleibt Speichern gesperrt. Jede erfolgreiche Extraktion wird einmal auf Ihr bestehendes Kontingent oder Guthaben angerechnet. Es wird keine OCR durchgeführt: reine Bildscans können weiterhin angehängt und manuell erfasst werden.
 
 Text-PDFs ergeben einen teilweise vorausgefüllten Entwurf anhand erkannter slowakischer, tschechischer oder englischer Rechnungsbezeichnungen. Text-PDFs dürfen höchstens **25 Seiten** und innerhalb des bestehenden Anhangslimits **10 MiB** umfassen. Fehlende, widersprüchliche oder nicht unterstützte Felder bleiben leer und löschen keine gespeicherten Lieferanten- oder Kontodaten. Prüfen Sie die Werte am Originalbeleg. Speichern Sie sie im Erstellungs- oder Bearbeitungsformular nach der Prüfung. Auf der Ausgabendetailseite öffnet die Textextraktion eine Vorschau; erst **Extrahierte Werte speichern** ändert die Ausgabe. **Nur Anhang behalten** lässt ihre Felder unverändert. Die bestehende ISDOC-Extraktion auf der Detailseite übernimmt Daten weiterhin nach ihrer Extraktionsbestätigung. Zahlungsdaten aus Text-PDFs müssen immer geprüft werden; sie markieren die Ausgabe niemals automatisch als bezahlt und aktivieren keinen Zahlungs-QR.
+
+Prüfen Sie nach der Textextraktion für einen **Zahlungs-QR** die Zahlungsdaten im Erstellungs- oder Bearbeitungsformular; öffnen Sie aus dem Ausgabendetail **Bearbeiten**. Vergleichen Sie Originalbeleg und Zahlungshistorie, prüfen Sie den genauen Empfänger, die Lieferanten-IBAN, Betrag, Währung und Zahlungsreferenz und bestätigen Sie, dass der gesamte Betrag unbezahlt ist. Wählen Sie **Speichern**. **Zahlungs-QR** steht in der Ausgabenliste nur bereit, wenn die Bedingungen unter **QR-Codes für Zahlungen** unten erfüllt sind. Kontaktauswahl und Extraktion ersetzen diese Prüfung nicht. Erfasste Zahlungsnachweise oder eine Bankverknüpfung verhindern die Bestätigung; die Extraktion markiert die Ausgabe nicht als bezahlt und aktiviert den QR nicht automatisch.
 
 Wird das Speichern eines größeren Anhangs unterbrochen, versuchen Sie es erneut, solange die Datei noch ausgewählt ist. Entfernen Sie nach dem Neuladen den unvollständigen Anhang und wählen Sie die Originaldatei erneut aus. Schließen Sie den Upload ab oder entfernen Sie den unvollständigen Anhang, bevor Sie eine vollständige Sicherung erstellen.
 

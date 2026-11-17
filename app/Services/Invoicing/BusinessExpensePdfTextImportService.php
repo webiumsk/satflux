@@ -6,6 +6,8 @@ use App\Support\Invoicing\SupplierPaymentIban;
 use DateTimeImmutable;
 use Illuminate\Validation\ValidationException;
 use Smalot\PdfParser\Config;
+use Smalot\PdfParser\Element\ElementArray;
+use Smalot\PdfParser\Header;
 use Smalot\PdfParser\Parser;
 use Throwable;
 
@@ -21,7 +23,11 @@ class BusinessExpensePdfTextImportService
 
     private const DECODE_BYTES = 16 * 1024 * 1024;
 
-    private const NUMBER_LABELS = '[čc][íi]slo\h+fakt[úu]ry|fakt[úu]ra\h+[čc](?:[íi]slo)?\.?|invoice\h+(?:number|no\.?|#)|dobropis\h+[čc](?:[íi]slo)?\.?|credit\h+note\h+(?:number|no\.?|#)';
+    private const INVOICE_NUMBER_LABELS = '[čc][íi]slo\h+fakt[úu]ry|fakt[úu]ra\h+[čc](?:[íi]slo)?\.?|invoice\h+(?:number|no\.?|#)';
+
+    private const CREDIT_NUMBER_LABELS = 'dobropis\h+[čc](?:[íi]slo)?\.?|credit\h+note\h+(?:number|no\.?|#)';
+
+    private const NUMBER_LABELS = self::INVOICE_NUMBER_LABELS.'|'.self::CREDIT_NUMBER_LABELS;
 
     private const ISSUE_DATE_LABELS = 'd[áa]tum\h+(?:vystavenia|vyhotovenia)|datum\h+vystaven[íi]|invoice\h+date|issue\h+date|date\h+of\h+issue';
 
@@ -53,6 +59,12 @@ class BusinessExpensePdfTextImportService
             if ($pdf->getObjectsByType('EmbeddedFile') !== []) {
                 return ['has_embedded_files' => true, 'text' => ''];
             }
+            foreach ($pdf->getObjects() as $object) {
+                $header = $object->getHeader();
+                if ($header !== null && $this->hasEmbeddedFileReference($header)) {
+                    return ['has_embedded_files' => true, 'text' => ''];
+                }
+            }
 
             $pages = $pdf->getPages();
             if (count($pages) > self::MAX_PAGES) {
@@ -73,6 +85,23 @@ class BusinessExpensePdfTextImportService
             // Parser messages can contain document text or local paths.
             $this->invalidPdf();
         }
+    }
+
+    private function hasEmbeddedFileReference(Header|ElementArray $container): bool
+    {
+        // /EF also identifies attachments whose streams omit optional /Type headers.
+        if ($container instanceof Header && $container->has('EF')) {
+            return true;
+        }
+        $elements = $container instanceof Header ? $container->getElements() : $container->getRawContent();
+        foreach ($elements as $element) {
+            // Referenced objects are inspected separately; do not follow cyclic PDF links.
+            if (($element instanceof Header || $element instanceof ElementArray) && $this->hasEmbeddedFileReference($element)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function hasExtractableFields(string $text): bool
@@ -144,10 +173,14 @@ class BusinessExpensePdfTextImportService
         }
 
         $amount = $this->invoiceTotal($text, $number);
+        if ($amount !== null && (float) $amount > 0) {
+            $amount = match ($this->documentType($text)) {
+                'invoice' => $amount,
+                'credit_note' => '-'.$amount,
+                default => null,
+            };
+        }
         if ($amount !== null) {
-            if (preg_match('/(?:^|\n)\h*(?:dobropis|credit\h+note)(?:\h+(?:[čc](?:[íi]slo)?\.?|number|no\.?|#))?(?:\h*[:#.]|\h+\d|\h*$)/imu', $text) && (float) $amount > 0) {
-                $amount = '-'.$amount;
-            }
             $fields['total'] = (float) $amount;
         }
         preg_match_all('/\b(?:EUR|USD|GBP|CZK|CHF|PLN|HUF|SEK|NOK|DKK)\b|€/u', $text, $currencies);
@@ -173,6 +206,22 @@ class BusinessExpensePdfTextImportService
         }
 
         return $fields;
+    }
+
+    private function documentType(string $text): ?string
+    {
+        $types = [];
+        foreach ([
+            'invoice' => [self::INVOICE_NUMBER_LABELS, 'fakt[úu]ra|invoice'],
+            'credit_note' => [self::CREDIT_NUMBER_LABELS, 'dobropis|credit\h+note'],
+        ] as $type => [$numberLabels, $heading]) {
+            if ($this->values($text, $numberLabels, true) !== []
+                || preg_match('/(?:^|\n)\h*(?:'.$heading.')\h*(?=\n|$)/iu', $text)) {
+                $types[$type] = true;
+            }
+        }
+
+        return count($types) === 1 ? (string) array_key_first($types) : null;
     }
 
     /** @return list<string> */

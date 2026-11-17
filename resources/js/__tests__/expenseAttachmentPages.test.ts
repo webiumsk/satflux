@@ -220,10 +220,11 @@ afterEach(() => {
 });
 
 describe("expense attachment page integration", () => {
-    async function openTextReview(local: boolean) {
+    async function openTextReview(local: boolean, beforeExtraction?: () => void) {
         consentChoice = true;
         if (!local) models.value = [fixture("expense-a", serverCompany)];
         Object.assign(models.value[0]!, { supplier_name: "Retained supplier", supplier_iban: "CZ6508000000192000145399", variable_symbol: "0007" });
+        mocks.get.mockImplementation(async () => ({ ...models.value[0]! }));
         mocks.update.mockImplementation(async (_company, id: string, payload: Record<string, unknown>) => {
             const expense = models.value.find(row => row.id === id)!;
             Object.assign(expense, payload, { total: String(payload.total ?? expense.total) }); return expense;
@@ -232,6 +233,7 @@ describe("expense attachment page integration", () => {
         (local ? mocks.localExtract : mocks.extract).mockResolvedValue({ data: { ...draft, source: "pdf_text", payment_review_required: false,
             supplier_name: "Different extracted supplier", supplier_iban: "SK6807200002891987426353", variable_symbol: "00019" }, quota });
         render("show", local); await flushPromises(); await select();
+        beforeExtraction?.();
         wrapper!.findComponent(ExpenseIsdocExtractModal).vm.$emit("confirm"); await flushPromises();
         const review = wrapper!.findComponent(ExpenseTextPdfReviewModal);
         expect(review.props("open")).toBe(true);
@@ -250,12 +252,44 @@ describe("expense attachment page integration", () => {
             review.vm.$emit("confirm"); await flushPromises();
             const update = local ? mocks.updateExpense : mocks.update;
             expect(update).toHaveBeenCalledTimes(accept ? 1 : 0);
-            if (accept) expect(update.mock.lastCall![2]).toEqual(approvedValues);
+            if (accept) {
+                const written = { ...approvedValues };
+                for (const field of ["company_contact_id", "supplier_name", "supplier_iban"]) Reflect.deleteProperty(written, field);
+                expect(update.mock.lastCall![2]).toEqual(written);
+            }
             else expect(models.value[0]!.title).toBe("Synthetic existing expense");
             expect(local ? mocks.insertAttachment : mocks.upload).toHaveBeenCalledOnce();
             expect(wrapper!.findComponent(ExpenseTextPdfReviewModal).props("open")).toBe(false);
             expect(route.query).toEqual({});
         });
+
+    it.each([true, false])("reviews the current supplier record after the initially loaded copy becomes stale (local=%s)", async local => {
+        const review = await openTextReview(local, () => {
+            Object.assign(models.value[0]!, { company_contact_id: "new-supplier-contact", supplier_name: "New saved supplier",
+                supplier_iban: "SK6807200002891987426353" });
+        });
+        expect(review.props("values")).toMatchObject({ company_contact_id: "new-supplier-contact", supplier_name: "New saved supplier",
+            supplier_iban: "SK6807200002891987426353" });
+        review.vm.$emit("confirm"); await flushPromises();
+        const payload = (local ? mocks.updateExpense : mocks.update).mock.lastCall![2];
+        for (const key of ["company_contact_id", "supplier_name", "supplier_iban"]) expect(payload).not.toHaveProperty(key);
+        expect(models.value[0]).toMatchObject({ company_contact_id: "new-supplier-contact", supplier_name: "New saved supplier",
+            supplier_iban: "SK6807200002891987426353" });
+    });
+
+    it.each([true, false])("does not overwrite supplier changes arriving at the text-PDF write boundary (local=%s)", async local => {
+        const review = await openTextReview(local);
+        const update = local ? mocks.updateExpense : mocks.update;
+        update.mockImplementationOnce((_scope: unknown, id: string, payload: Record<string, unknown>) => {
+            const current = models.value.find(row => row.id === id)!;
+            Object.assign(current, { company_contact_id: null, supplier_name: "Concurrent supplier", supplier_iban: null });
+            Object.assign(current, payload);
+            return local ? { ok: true, value: { id } } : Promise.resolve({ ...current });
+        });
+        review.vm.$emit("confirm"); await flushPromises();
+        expect(models.value[0]).toMatchObject({ company_contact_id: null, supplier_name: "Concurrent supplier", supplier_iban: null });
+        expect(update).toHaveBeenCalledOnce();
+    });
 
     it.each([true, false].flatMap(local => ["company", "expense", "unmount", "record"].map(change => ({ local, change }))))(
         "invalidates a pending text review after $change changes (local=$local)", async ({ local, change }) => {
@@ -574,8 +608,9 @@ describe("expense attachment page integration", () => {
         expect(mocks.updateExpense).not.toHaveBeenCalled(); expect(mocks.update).not.toHaveBeenCalled();
         wrapper!.findComponent(ExpenseTextPdfReviewModal).vm.$emit("confirm"); await flushPromises();
         const payload = (local ? mocks.updateExpense : mocks.update).mock.lastCall![2];
-        expect(payload).toMatchObject({ supplier_name: "Saved supplier", supplier_iban: "CZ6508000000192000145399",
-            payment_review_required: true, internal_note: "Saved expense note\n\nImported from text PDF.\n\nPayment amount: 2.00" });
+        expect(payload).toMatchObject({ payment_review_required: true,
+            internal_note: "Saved expense note\n\nImported from text PDF.\n\nPayment amount: 2.00" });
+        expect(models.value[0]).toMatchObject({ supplier_name: "Saved supplier", supplier_iban: "CZ6508000000192000145399" });
         expect(models.value[0]!.internal_note).toBe(payload.internal_note);
         expect(expensePaymentQrDetails(models.value[0]!)).toBeNull();
         wrapper!.unmount();

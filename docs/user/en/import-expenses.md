@@ -2,7 +2,7 @@
 title: Import expenses from SuperFaktura
 category: invoicing
 order: 12
-updated: 2026-11-17
+updated: 2026-11-18
 ---
 
 # Import expenses from SuperFaktura
@@ -54,6 +54,8 @@ Open an individual expense and add its PDF. In local-first invoicing, attachment
 Immediately after selecting a file, the app asks whether to allow temporary server processing to check embedded ISDOC or readable PDF invoice text. Choose **Keep attachment without processing** to skip. The attachment shows the check status and offers retry. If supported data is found, confirm extraction separately. Detection and extraction happen before form **Save**, which stays unavailable while a decision is open. Extraction uses your existing allowance and credits once per successful extraction. It does not perform OCR: image-only scans can still be attached and entered manually.
 
 Text PDFs create a partial draft from recognized Slovak, Czech or English invoice labels. Text PDFs may have at most **25 pages** within the existing **10 MiB** attachment limit. Missing, conflicting or unsupported fields stay unfilled and do not clear saved supplier details. Check the extracted values against the original document. In create/edit forms, save after reviewing. On the expense detail page, text extraction opens a preview and requires **Save extracted values** before changing the expense; **Keep attachment only** leaves its fields unchanged. Existing ISDOC detail extraction still applies after its extraction confirmation. Text-PDF payment details always require payment review and never automatically mark an expense paid or enable Payment QR.
+
+For **Payment QR** after text extraction, check the payment details in the create/edit form; from the expense detail, open **Edit**. Compare the original document and payment history, verify the exact recipient, supplier IBAN, amount, currency and variable symbol, then confirm that the entire amount remains unpaid. Choose **Save**. **Payment QR** becomes available in the expense list only when the conditions under **Payment QR codes** below are met. Selecting a contact or extracting fields does not complete this review. Recorded payment evidence or a bank link prevents confirmation; extraction does not mark the expense paid or enable QR automatically.
 
 If saving a larger attachment is interrupted, retry while the file is still selected. After reloading, remove the incomplete attachment and select the original file again. Complete the upload or remove the incomplete attachment before creating a full backup.
 

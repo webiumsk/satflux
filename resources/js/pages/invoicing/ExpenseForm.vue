@@ -640,6 +640,9 @@ async function save() {
   }
   saving.value = true;
   try {
+    const editedNoteLines = form.value.internal_note.split(/\r?\n/);
+    const protectedPaymentLines = [...new Set((originalPaymentState.value.note ?? '').split(/\r?\n/)
+      .filter(line => hasExpensePaymentEvidence(line) && !editedNoteLines.includes(line)))];
     const payload = {
       ...(paymentDetailsConfirmed.value ? { payment_details_confirmation: confirmedPaymentTuple.value } : {}),
       company_contact_id: form.value.company_contact_id || null,
@@ -656,7 +659,7 @@ async function save() {
       due_date: form.value.due_date || null,
       total: form.value.total,
       currency: form.value.currency,
-      internal_note: form.value.internal_note || null,
+      internal_note: [form.value.internal_note, ...protectedPaymentLines].filter(Boolean).join('\n') || null,
       mark_paid: isNew.value ? form.value.mark_paid : undefined,
     };
     let savedId: string;

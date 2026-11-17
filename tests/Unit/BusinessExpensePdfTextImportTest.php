@@ -219,6 +219,41 @@ class BusinessExpensePdfTextImportTest extends TestCase
         $this->assertSame(1234.5, $draft['total']);
     }
 
+    /** @return array<string, array{string, ?float}> */
+    public static function documentHeaders(): array
+    {
+        return [
+            'invoice with a separate credit reference' => ["Invoice no.: INV-001\nCredit note: CR-001", 12.5],
+            'credit reference before the invoice header' => ["Credit note: CR-001\nInvoice no.: INV-001", 12.5],
+            'conflicting numbered headers' => ["Invoice no.: INV-001\nCredit note no.: CR-001", null],
+            'conflicting bare headers' => ["Invoice\nCredit note", null],
+            'no document header' => ['Invoice date: 2026-11-01', null],
+            'standalone English credit header' => ['Credit note', -12.5],
+            'standalone Slovak credit header' => ['Dobropis č.: CR-001', -12.5],
+            'standalone Czech invoice header' => ['Číslo faktury: INV-001', 12.5],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('documentHeaders')]
+    public function positive_total_sign_uses_only_unambiguous_document_headers(string $header, ?float $expected): void
+    {
+        $draft = (new BusinessExpensePdfTextImportService)->extractFromText("{$header}\nDue date: 2026-11-15\nTotal due: 12.50 EUR");
+        if ($expected === null) {
+            $this->assertArrayNotHasKey('total', $draft);
+        } else {
+            $this->assertSame($expected, $draft['total']);
+        }
+        $this->assertTrue($draft['payment_review_required']);
+    }
+
+    #[Test]
+    public function already_negative_totals_keep_their_sign_despite_ambiguous_document_headers(): void
+    {
+        $draft = (new BusinessExpensePdfTextImportService)->extractFromText("Invoice no.: INV-001\nCredit note no.: CR-001\nTotal due: -12.50 EUR");
+        $this->assertSame(-12.5, $draft['total']);
+    }
+
     #[Test]
     public function explicit_paid_or_deposit_evidence_becomes_existing_review_vetoes(): void
     {

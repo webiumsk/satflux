@@ -14,6 +14,7 @@ use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\Invoicing\BusinessDocumentIsdocService;
 use App\Services\Invoicing\BusinessExpenseIsdocQuotaService;
+use App\Services\Invoicing\BusinessExpensePdfTextImportService;
 use App\Support\Invoicing\ExpensePaymentReview;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -72,7 +73,7 @@ class BusinessExpensePdfTextImportTest extends TestCase
     }
 
     /** Create an actual small PDF with only synthetic contents and optional attachment. */
-    private function pdf(string|array $text, ?string $embedded = null, int $pages = 1): UploadedFile
+    private function pdf(string|array $text, ?string $embedded = null, int $pages = 1, bool $embeddedType = true, bool $inlineFileSpec = false): UploadedFile
     {
         $pages = is_array($text) ? count($text) : $pages;
         $objects = [1 => '<< /Type /Catalog /Pages 2 0 R >>', 2 => '',
@@ -95,9 +96,14 @@ class BusinessExpensePdfTextImportTest extends TestCase
         if ($embedded !== null) {
             $stream = count($objects) + 1;
             $file = $stream + 1;
-            $objects[$stream] = '<< /Type /EmbeddedFile /Subtype /application#2Fxml /Length '.strlen($embedded)." >>\nstream\n{$embedded}\nendstream";
-            $objects[$file] = "<< /Type /Filespec /F (invoice.isdoc) /EF << /F {$stream} 0 R >> >>";
-            $objects[1] = "<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles << /Names [(invoice.isdoc) {$file} 0 R] >> >> >>";
+            $objects[$stream] = '<< '.($embeddedType ? '/Type /EmbeddedFile ' : '').'/Subtype /application#2Fxml /Length '.strlen($embedded)." >>\nstream\n{$embedded}\nendstream";
+            $fileSpec = "<< /Type /Filespec /F (invoice.isdoc) /EF << /F {$stream} 0 R >> >>";
+            if ($inlineFileSpec) {
+                $objects[1] = "<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles << /Names [(invoice.isdoc) {$fileSpec}] >> >> >>";
+            } else {
+                $objects[$file] = $fileSpec;
+                $objects[1] = "<< /Type /Catalog /Pages 2 0 R /Names << /EmbeddedFiles << /Names [(invoice.isdoc) {$file} 0 R] >> >> >>";
+            }
         }
         $pdf = "%PDF-1.4\n";
         $offsets = [0];
@@ -206,6 +212,25 @@ class BusinessExpensePdfTextImportTest extends TestCase
                 $detection->assertOk()->assertJsonPath('data.has_isdoc', false)->assertJsonPath('data.extraction_source', null);
             }
             $this->postJson($this->root(true).'extract', ['file' => $this->pdf($this->invoice(), $xml)])
+                ->assertUnprocessable()->assertJsonValidationErrors('file');
+        }
+        $this->assertDatabaseCount('audit_logs', 0);
+        $this->assertNoExpenseStored();
+    }
+
+    #[Test]
+    #[DataProvider('storageModes')]
+    public function file_specification_references_keep_untyped_embedded_streams_off_the_text_path(bool $ephemeral): void
+    {
+        $this->actingAs($this->user);
+        foreach ([false, true] as $inlineFileSpec) {
+            $file = $this->pdf($this->invoice(), 'not valid structured data', 1, false, $inlineFileSpec);
+            $inspection = app(BusinessExpensePdfTextImportService::class)->inspectFromPath($file->getRealPath());
+            $this->assertTrue($inspection['has_embedded_files']);
+            $this->assertSame('', $inspection['text']);
+            $this->postJson($this->root($ephemeral).'detect-isdoc', ['file' => $file])
+                ->assertOk()->assertJsonPath('data.has_isdoc', false)->assertJsonPath('data.extraction_source', null);
+            $this->postJson($this->root($ephemeral).'extract', ['file' => $file])
                 ->assertUnprocessable()->assertJsonValidationErrors('file');
         }
         $this->assertDatabaseCount('audit_logs', 0);

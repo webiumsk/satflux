@@ -75,7 +75,7 @@ safeguard with image retention/filter-error ignoring disabled. The decoder limit
 is per Flate stream and is not a global memory/CPU sandbox. The legacy structured
 reader retains its existing limits after embedded-file delegation.
 
-## Verified implementation and validation
+## Initial implementation validation - bab3d9fa
 
 The implementation uses sparse SK/CS/EN label parsing, checksum/length-valid IBANs,
 strict amount grouping and precision, four-digit calendar dates and unique slash
@@ -129,7 +129,7 @@ Its20 native Chrome scenarios comprise15 broad flow checks before the last Form-
 correction and5 targeted recipient-binding checks afterward, with zero page errors.
 Both reproduced account-binding defects are fixed; no review blocker remains.
 
-Frozen aggregates (sorted relative path, NUL, file SHA-256, newline):
+Frozen aggregates for bab3d9fa (sorted relative path, NUL, file SHA-256, newline):
 
 - Implementation18: 26611dbe05d08f01d3962445a758da10a6b0e2d7ac7480cc4ce931240b00ff4d
 - Source23 including locales: 89d473eb2fc6c59700143ed7f4a18648759e0c08acc1475d603b15c3565bd323
@@ -140,3 +140,78 @@ has no graph; none was built/installed. All PHP runs use disposable network-disa
 read-only containers with synthetic uncached testing configuration, SQLite in memory,
 array cache/session and sync queue. Native browser fixtures use synthetic intercepted
 API/persistence boundaries; no production target is exercised.
+
+## PR456 supplied review corrections - 2026-11-18
+
+The owner requests validation and minimal fixes of five findings against published
+`bab3d9fa`. PR456 remains open; original-head CI44195801806 is successful. This
+result does not establish correction-head CI or deployment status.
+
+Acceptance contract: recognize file-specification EF attachment streams even when
+their optional Type is missing, retaining exclusive structured handling before text;
+resolve positive-total credit signs only from an unambiguous document heading,
+leaving ambiguous positive totals absent and preserving existing negative totals;
+use a shared current-record baseline for text review and preserve concurrently
+changed supplier/contact snapshots; retain protected original payment-evidence
+lines when ordinary note text is edited; explain explicit review/Save and QR
+eligibility in EN/CS/DE with equivalent SK/ES guidance. No new routes, schema,
+quota policy, dependency or payment authority is authorized.
+
+| Task | Owner | Exact correction write scope | Acceptance evidence |
+| --- | --- | --- | --- |
+| B1/B2 | Backend specialist | Text parser, existing unit and feature parser tests | Synthetic PDF EF fixture, header/reference/sign regression, isolated PHP checks |
+| F1/F2 | Frontend specialist | ExpenseShow/Form, attachment-page and form-default tests | Fresh baseline/remote snapshots, save-and-reopen evidence, both modes |
+| D1/integration | Main | Five import guides, this contract and four technical-state documents | Matching instructions, final integration checks and scoped publication |
+| Security | Independent security | Read-only; private report only | Reviewed final hashes, attack/correctness cases, no author self-approval |
+| QA | Independent QA | Read-only; private report only | Independently reproduced fixes and scoped regression |
+
+Primary Graphify was queried before exploration but returned stale unrelated notes;
+the feature worktree has no graph. No graph/tool rebuild or installation is performed.
+Current unrelated primary edits remain outside the correction commit. Main owns Git
+publication on the existing branch; no merge or deployment is included.
+
+All five supplied findings reproduce on the published head; none is skipped:
+
+| Finding | Final correction | Regression evidence |
+| --- | --- | --- |
+| B1: untyped attachment stream | Inspect EF references in object headers and nested direct dictionaries/arrays before any page text, without traversing indirect cycles | Synthetic typed/untyped and inline/referenced file specifications in both API modes; no-attachment text controls |
+| B2: credit reference changes sign | Classify explicit numbered/bare invoice or credit headings; conflicting/unknown type omits a positive total, while existing negative totals retain sign | References before/after invoice header, conflicting headings, unknown type, standalone EN/SK credit and CS invoice controls |
+| D1: text-PDF payment-review instructions | Describe original/payment-history check, exact payment tuple, manual confirmation and Save before eligible QR; retain all eligibility/evidence conditions | Equivalent EN/CS/DE and SK/ES guides, existing localized controls and payment eligibility reviewed |
+| F1: stale supplier review baseline | Build preview from current scoped local row or fresh server GET and compare against that baseline; omit unchanged supplier/contact intent from text writes | Both modes, changes before preview and at final write boundary, explicit clears and existing invalidation |
+| F2: editable note loses payment evidence | Append missing protected original evidence lines to the saved edited note; keep ordinary, zero-only and ISDOC-only prose editable | Save/reopen after clear/edit/zeroing, unknown evidence, deduplication and ordinary-note controls in both modes |
+
+The main read-only private-sample probe is repeated on the corrected parser. All9
+field-presence and5 document-comparison booleans pass, including the invoice-header
+total. The binary, text and values remain outside Git; specialists do not access it.
+
+Correction validation on the frozen source:
+
+- Main:460 JS tests/twelve suites, full lint with zero errors and45 existing
+  warnings within52, no new typecheck errors against the unchanged107-error
+  baseline, locale parity, whitespace and production build all pass.
+- Backend author:122 PHP tests/993 assertions/four scopes, Pint on all3 changed PHP
+  paths and PHPStan on the changed service pass. Seven new regression failures
+  reproduce before correction. No broader PostgreSQL rerun is claimed.
+- Frontend author:16 regression failures reproduce before correction; final
+  affected Form159 and Attachment97 cases pass, with zero-warning scoped lint.
+- Independent security accepts279 JS tests/three suites,122 PHP/993 assertions,
+  six synthetic parser controls, source and five guides.
+- Independent QA accepts320 JS tests/four suites,122 PHP/993 assertions and6
+  native Chrome scenarios across local/server modes. They exercise fresh supplier
+  preview/write-gap preservation and cleared/zeroed-note save/reopen; zero browser
+  errors/external requests/native dialogs. Only the owned fixture process is stopped.
+  Browser API/persistence boundaries are synthetic. Reviewer scopes overlap and
+  are not summed; neither specialist accesses the private document.
+
+Both independent reviewers accept unchanged delta12 aggregate
+`f44dfbf0b64f0be42f4e1ed2983cbe50ec1b0270dbc7a8a8b12b6639108fb330`
+and complete28 aggregate
+`22847b3e39c6e7eca22a8919736e7237bac44160ca579bbeeb44871f2b3e510c`.
+Implementation18 is
+`e91672fa3cb34227c419155e2065c067a4b8c664bd7f795c27a1d226fbc8e8e3`;
+source23 including locales is
+`d12aebdde86e330cab7c3212c4fca77dc86229dd281dfb79f06a9c38f657b0b8`.
+The12 correction paths plus5 technical-state documents form the scoped commit.
+Main publishes on the existing authorized branch, then verifies new-head CI;
+no correction-head success, merge or deployment is claimed before publication.
+No embedded review instruction or optional external CLI command is executed.
