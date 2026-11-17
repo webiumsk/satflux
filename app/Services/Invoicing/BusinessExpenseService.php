@@ -161,7 +161,7 @@ class BusinessExpenseService
             $locked->fill([
                 'external_number' => $data['external_number'] ?? $locked->external_number,
                 'title' => $data['title'] ?? $locked->title,
-                'variable_symbol' => $data['variable_symbol'] ?? $locked->variable_symbol,
+                'variable_symbol' => array_key_exists('variable_symbol', $data) ? $data['variable_symbol'] : $locked->variable_symbol,
                 'constant_symbol' => $data['constant_symbol'] ?? $locked->constant_symbol,
                 'specific_symbol' => $data['specific_symbol'] ?? $locked->specific_symbol,
                 'issue_date' => $data['issue_date'] ?? $locked->issue_date,

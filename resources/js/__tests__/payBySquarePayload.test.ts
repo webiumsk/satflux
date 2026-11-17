@@ -52,7 +52,7 @@ describe('local PAY by square payload', () => {
     it.each([
         { amount: '0.00' }, { amount: '-1.00' }, { amount: '1e3' }, { amount: '1.001' },
         { amount: '1000000000000.00' }, { currency: 'CZK' as 'EUR' },
-        { iban: 'SK6807200002891987426354' }, { iban: 'not-an-iban' },
+        { iban: 'SK6807200002891987426354' }, { iban: 'not-an-iban' }, { iban: 'SK7700000000000' },
         { variableSymbol: '' }, { variableSymbol: '12345678901' }, { variableSymbol: 'INV-123' },
         { beneficiaryName: '' }, { beneficiaryName: undefined },
         { beneficiaryName: 'A'.repeat(71) }, { beneficiaryName: 'Supplier\u0000Other' },

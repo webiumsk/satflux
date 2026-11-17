@@ -311,6 +311,25 @@ class BusinessExpenseTest extends TestCase
     }
 
     #[Test]
+    public function replacement_can_clear_a_previous_variable_symbol_while_omitted_fields_preserve_it(): void
+    {
+        $url = "/api/invoicing/companies/{$this->company->id}/expenses";
+        $created = $this->actingAs($this->user)->postJson($url, [
+            'issue_date' => '2026-11-03', 'total' => 10, 'currency' => 'EUR',
+            'variable_symbol' => '0001', 'title' => 'Synthetic original supplier',
+        ])->assertCreated()->assertJsonPath('data.variable_symbol', '0001')->json('data');
+
+        $this->patchJson($url.'/'.$created['id'], ['title' => 'Synthetic retained reference'])
+            ->assertOk()->assertJsonPath('data.variable_symbol', '0001');
+        $note = "Supplier: Synthetic replacement supplier\nSupplier bank account: CZ6508000000192000145399";
+        $this->patchJson($url.'/'.$created['id'], ['variable_symbol' => null, 'internal_note' => $note])
+            ->assertOk()->assertJsonPath('data.variable_symbol', null)->assertJsonPath('data.status', 'recorded');
+        $this->getJson($url.'/'.$created['id'])->assertOk()->assertJsonPath('data.variable_symbol', null)
+            ->assertJsonPath('data.internal_note', $note);
+        $this->assertNull(BusinessExpense::findOrFail($created['id'])->variable_symbol);
+    }
+
+    #[Test]
     public function explicit_null_delivery_date_stays_null_on_create_and_show(): void
     {
         $url = "/api/invoicing/companies/{$this->company->id}/expenses";

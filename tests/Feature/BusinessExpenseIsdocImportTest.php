@@ -171,7 +171,7 @@ class BusinessExpenseIsdocImportTest extends TestCase
         };
 
         try {
-            foreach (['valid', 'multiple', 'same-account-multiple', 'different-payment-amount', 'partial-payment', 'bad-checksum', 'account-injection', 'name-injection', 'cash', 'credit-note', 'deposit', 'claimed-advance', 'zero-payable', 'negative-payable'] as $case) {
+            foreach (['valid', 'multiple', 'same-account-multiple', 'no-variable-symbol', 'unsupported-variable-symbol', 'long-variable-symbol', 'different-payment-amount', 'partial-payment', 'bad-checksum', 'short-iban', 'unknown-iban-country', 'account-injection', 'name-injection', 'cash', 'credit-note', 'deposit', 'claimed-advance', 'zero-payable', 'negative-payable'] as $case) {
                 $invoice = Manager::create()->getReader()->file($path, IsdocInvoiceSchema::class, Manager::FORMAT_ISDOC);
                 $payments = $invoice->getPaymentMeans();
                 $this->assertNotNull($payments);
@@ -181,6 +181,7 @@ class BusinessExpenseIsdocImportTest extends TestCase
                 $details = $payment->getDetails();
                 $this->assertNotNull($details);
                 $details->setIban('SK6807200002891987426353');
+                $details->setVariableSymbol('0000042');
                 $name = $invoice->getAccountingSupplierParty()->getParty()->getPartyName();
                 $name->setName('Synthetic supplier');
                 if (in_array($case, ['multiple', 'same-account-multiple'], true)) {
@@ -189,12 +190,23 @@ class BusinessExpenseIsdocImportTest extends TestCase
                     $other = new Payment('1.00', PaymentMeansCode::CreditTransfer);
                     $other->setDetails($otherDetails);
                     $payments->add($other);
+                } elseif ($case === 'no-variable-symbol') {
+                    $invoice->setId('20260001');
+                    $details->setVariableSymbol(null);
+                } elseif ($case === 'unsupported-variable-symbol') {
+                    $details->setVariableSymbol('INV-0000042');
+                } elseif ($case === 'long-variable-symbol') {
+                    $details->setVariableSymbol('12345678901');
                 } elseif ($case === 'different-payment-amount') {
                     $payment->setPaidAmount('1.00');
                 } elseif ($case === 'partial-payment') {
                     $payment->setPartialPayment(true);
                 } elseif ($case === 'bad-checksum') {
                     $details->setIban('SK6807200002891987426354');
+                } elseif ($case === 'short-iban') {
+                    $details->setIban('SK7700000000000');
+                } elseif ($case === 'unknown-iban-country') {
+                    $details->setIban('ZZ6600000000000');
                 } elseif ($case === 'account-injection') {
                     $details->setIban("SK6807200002891987426353\nSupplier: Other");
                 } elseif ($case === 'name-injection') {
@@ -214,7 +226,13 @@ class BusinessExpenseIsdocImportTest extends TestCase
                 }
 
                 $draft = $service->mapForPaymentTest($invoice);
-                $this->assertSame($case === 'valid', str_contains($draft['internal_note'], 'Supplier bank account: SK6807200002891987426353'), $case);
+                $this->assertSame($case === 'valid', str_contains($draft['internal_note'], 'Supplier bank account:'), $case);
+                if ($case === 'valid') {
+                    $this->assertStringContainsString('Supplier bank account: SK6807200002891987426353', $draft['internal_note']);
+                    $this->assertSame('0000042', $draft['variable_symbol']);
+                } elseif (in_array($case, ['multiple', 'same-account-multiple', 'no-variable-symbol', 'unsupported-variable-symbol', 'long-variable-symbol'], true)) {
+                    $this->assertNull($draft['variable_symbol'], $case);
+                }
                 $this->assertStringNotContainsString('DE89370400440532013000', $draft['internal_note'], $case);
                 $this->assertStringContainsString('Imported from ISDOC.', $draft['internal_note']);
             }

@@ -3,6 +3,7 @@ import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-uti
 import { reactive, ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 import en from '@/locales/en.json';
+import { expensePaymentQrDetails } from '@/utils/expensePaymentQr';
 
 const mocks = vi.hoisted(() => ({
   local: true,
@@ -107,6 +108,47 @@ afterEach(() => {
 });
 
 describe('new expense field defaults', () => {
+  it.each([true, false])('clears the previous invoice reference when a replacement has no VS (local=%s)', async local => {
+    await render(local);
+    await extract({ external_number: 'A-2026', variable_symbol: '0001', total: 123.45, currency: 'EUR',
+      internal_note: 'Supplier: Supplier A\nSupplier bank account: SK6807200002891987426353' });
+    expect(field('variable_symbol').element.value).toBe('0001');
+    await extract({ external_number: 'B-2026', variable_symbol: null, total: 123.45, currency: 'EUR',
+      internal_note: 'Supplier: Supplier B\nSupplier bank account: CZ6508000000192000145399' });
+    expect(field('variable_symbol').element.value).toBe('');
+    await field('expense_col_external').setValue('B-2027');
+    expect(field('variable_symbol').element.value).toBe('');
+    await wrapper!.get('form').trigger('submit');
+    await flushPromises();
+    const payload = local ? mocks.insert.mock.calls[0][2] : mocks.create.mock.calls[0][1];
+    expect(payload).toMatchObject({ external_number: 'B-2027', variable_symbol: null, total: 123.45, currency: 'EUR' });
+    expect(payload.internal_note).toBe('Supplier: Supplier B\nSupplier bank account: CZ6508000000192000145399');
+    expect(expensePaymentQrDetails({ ...payload, id: 'synthetic-saved', internal_number: 'EXP-001',
+      status: 'recorded', total: String(payload.total) })).toBeNull();
+  });
+
+  it.each([undefined, ''])('clears a manual reference when the extracted VS is %s', async variableSymbol => {
+    await render();
+    await field('variable_symbol').setValue('0099');
+    await extract({ external_number: 'B-2026', variable_symbol: variableSymbol });
+    expect(field('variable_symbol').element.value).toBe('');
+  });
+
+  it.each([true, false])('replaces the supplier and VS together while retaining explicit leading zeros (local=%s)', async local => {
+    await render(local);
+    await extract({ external_number: 'A-2026', variable_symbol: '0001', total: 123.45, currency: 'EUR',
+      internal_note: 'Supplier: Supplier A\nSupplier bank account: SK6807200002891987426353' });
+    await extract({ external_number: 'B-2026', variable_symbol: '0000042', total: 123.45, currency: 'EUR',
+      internal_note: 'Supplier: Supplier B\nSupplier bank account: CZ6508000000192000145399' });
+    await wrapper!.get('form').trigger('submit');
+    await flushPromises();
+    const payload = local ? mocks.insert.mock.calls[0][2] : mocks.create.mock.calls[0][1];
+    expect(expensePaymentQrDetails({ ...payload, id: 'synthetic-saved', internal_number: 'EXP-001',
+      status: 'recorded', total: String(payload.total) })).toMatchObject({
+      iban: 'CZ6508000000192000145399', variableSymbol: '0000042', supplier: 'Supplier B', amount: '123.45',
+    });
+  });
+
   it('keeps user notes while replacing supplier payment metadata when extracting another invoice', async () => {
     await render();
     await wrapper!.get('textarea').setValue('Keep this user note\nSupplier: Previous supplier\nSupplier bank account: SK6807200002891987426353');
@@ -292,15 +334,15 @@ describe('new expense field defaults', () => {
     });
   });
 
-  it('derives missing attachment fields while preserving manual overrides', async () => {
+  it('derives missing attachment delivery dates while clearing an absent payment reference', async () => {
     await render();
     await extract({ external_number: 'ATT-0004', issue_date: '2026-03-04' });
-    expect(field('variable_symbol').element.value).toBe('0004');
+    expect(field('variable_symbol').element.value).toBe('');
     expect(field('expense_col_delivery').element.value).toBe('2026-03-04');
     await field('variable_symbol').setValue('0099');
     await field('expense_col_delivery').setValue('2026-03-01');
     await extract({ external_number: 'ATT-0005', issue_date: '2026-03-05' });
-    expect(field('variable_symbol').element.value).toBe('0099');
+    expect(field('variable_symbol').element.value).toBe('');
     expect(field('expense_col_delivery').element.value).toBe('2026-03-01');
   });
 
@@ -417,10 +459,10 @@ describe('duplicated expense field defaults', () => {
     expect((local ? mocks.updateLocal : mocks.update).mock.calls[0][2]).toMatchObject({ variable_symbol: null, delivery_date: null });
   });
 
-  it.each([true, false])('derives missing copy import targets and preserves explicit equal-value import overrides (local=%s)', async (local) => {
+  it.each([true, false])('clears missing copy import references and preserves explicit equal-value import overrides (local=%s)', async (local) => {
     await render(local, true, existingExpense.id);
     await extract({ external_number: 'COPY-00088', issue_date: '2026-07-18' });
-    expect(field('variable_symbol').element.value).toBe('00088');
+    expect(field('variable_symbol').element.value).toBe('');
     expect(field('expense_col_delivery').element.value).toBe('2026-07-18');
     await extract({ external_number: 'COPY-00088', variable_symbol: '00088',
       issue_date: '2026-07-18', delivery_date: '2026-07-18' });

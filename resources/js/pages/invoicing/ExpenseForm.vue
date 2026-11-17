@@ -271,18 +271,15 @@ function syncDeliveryDateDefault() {
 }
 
 function applyImportDraft(draft: ExpenseImportDraft) {
-  // A newly extracted invoice must never reuse the previous supplier's payment account.
+  // Keep the supplier account and payment reference from the same extracted invoice.
   const preservedNote = form.value.internal_note.split(/\r?\n/)
     .filter(line => !/^Supplier(?: bank account)?:/i.test(line)).join('\n').trim();
   form.value.internal_note = [preservedNote, draft.internal_note?.trim()].filter(Boolean).join('\n\n');
+  form.value.variable_symbol = draft.variable_symbol ?? '';
+  variableSymbolFollowsNumber.value = false;
   if (draft.title) form.value.title = draft.title;
   if (draft.external_number) {
     form.value.external_number = draft.external_number;
-    syncVariableSymbolDefault();
-  }
-  if (draft.variable_symbol) {
-    form.value.variable_symbol = draft.variable_symbol;
-    variableSymbolFollowsNumber.value = false;
   }
   if (draft.constant_symbol) form.value.constant_symbol = draft.constant_symbol;
   if (draft.specific_symbol) form.value.specific_symbol = draft.specific_symbol;

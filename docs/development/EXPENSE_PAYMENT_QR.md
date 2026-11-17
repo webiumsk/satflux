@@ -44,8 +44,12 @@ also suppresses it because the expense model has no independent factor identity.
 ISDOC re-extraction removes previous supplier/account metadata while preserving
 user prose, so a new document cannot reuse an older supplier account. Existing
 expenses whose original import discarded supplier bank details remain ineligible.
-Legacy total/VS fallback behavior is preserved; those fallbacks cannot make a
-nonpositive original payable amount eligible for the new payment action.
+Legacy gross-total display fallback remains; a nonpositive or ambiguous original
+payable amount cannot enable a payment action. Payment references now require a
+supported explicit seller instruction: one direct UBL PaymentID (plain numeric or
+exact /VS notation) or an explicit ISDOC VS. BuyerReference and invoice numbers
+remain routing/display data. See [review corrections](PR452_REVIEW_FIXES.md) for
+reference replacement, shared country lengths and direct-root financial binding.
 
 ## Independent review and validation
 

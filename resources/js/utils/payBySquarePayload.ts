@@ -1,3 +1,5 @@
+import { normalizePaymentIban } from './paymentIban';
+
 /**
  * Browser-only PAY by square 1.2.0 single credit-transfer encoder.
  * https://www.sbaonline.sk/wp-content/uploads/2020/03/bysquare-PAYspecifications-1.2.0.pdf
@@ -14,9 +16,9 @@ export function encodePayBySquare(input: {
     variableSymbol: string;
     beneficiaryName?: string;
 }): string {
-    const iban = input.iban.replace(/ /g, '').toUpperCase();
+    const iban = normalizePaymentIban(input.iban);
     const name = (input.beneficiaryName ?? '').replace(/[\t\r\n]+/g, ' ').trim();
-    if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(iban) || !validIbanChecksum(iban)
+    if (!iban
         || input.currency !== 'EUR' || !/^\d{1,12}\.\d{2}$/.test(input.amount)
         || !/[1-9]/.test(input.amount) || !/^\d{1,10}$/.test(input.variableSymbol)
         || !name || Array.from(name).length > 70
@@ -40,15 +42,6 @@ export function encodePayBySquare(input: {
     new DataView(framed.buffer).setUint16(2, checksummed.length, true);
     framed.set(compressed, 4);
     return base32hex(framed);
-}
-
-function validIbanChecksum(iban: string): boolean {
-    let remainder = 0;
-    for (const char of iban.slice(4) + iban.slice(0, 4)) {
-        const value = char >= 'A' ? String(char.charCodeAt(0) - 55) : char;
-        for (const digit of value) remainder = (remainder * 10 + Number(digit)) % 97;
-    }
-    return remainder === 1;
 }
 
 function crc32(data: Uint8Array): number {

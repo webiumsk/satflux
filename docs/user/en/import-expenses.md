@@ -57,6 +57,8 @@ If saving a larger attachment is interrupted, retry while the file is still sele
 
 ## Payment QR codes
 
-For an unpaid EUR expense with a supplier name, a valid supplier IBAN and a variable symbol of up to 10 digits, choose **Payment QR** in its row. Switch between **PAY by square** and **PayMe**, and check the recipient, amount and variable symbol before confirming in your banking app. The code is generated in your browser. Opening PayMe deliberately opens its payment link. Scanning a code does not mark the expense as paid.
+For an unpaid EUR expense with a supplier name, a valid supplier IBAN and a variable symbol of up to 10 digits, choose **Payment QR** in its row. The amount must be greater than zero with at most 12 digits before the decimal point, and the supplier name must be at most 70 characters. Switch between **PAY by square** and **PayMe**, and check the recipient, amount and variable symbol before confirming in your banking app. The code is generated in your browser. Opening PayMe deliberately opens its payment link. Scanning a code does not mark the expense as paid.
 
 No code appears for paid or cancelled expenses, disputed bank matches, or imports with partial or unresolved payments. Supplier payment details are taken from explicit imported supplier metadata; the company’s own account is never used. New eligible e-invoice and ISDOC imports retain the supplier account; older imports without that metadata must first have their payment details completed.
+
+When extracting a new document, a missing payment reference stays blank. Check the supplier document and enter the correct variable symbol before preparing a payment.

@@ -33,6 +33,7 @@ describe('expense payment QR eligibility and PayMe instructions', () => {
         '', 'IBAN: SK6807200002891987426353',
         'Supplier bank account: SK6807200002891987426353',
         'Supplier: Synthetic supplier\nSupplier bank account: SK6807200002891987426354',
+        'Supplier: Synthetic supplier\nSupplier bank account: SK7700000000000',
         'Supplier: Synthetic supplier\nBuyer bank account: SK6807200002891987426353',
         `${row.internal_note}\nSupplier bank account: SK6807200002891987426353`,
         `${row.internal_note}\nSupplier: Another supplier`,

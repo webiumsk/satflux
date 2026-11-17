@@ -1,5 +1,6 @@
 import type { ExpenseListRow } from '@/composables/useExpenseRowMeta';
 import { encodePayBySquare } from './payBySquarePayload';
+import { normalizePaymentIban } from './paymentIban';
 
 export type ExpensePaymentQrDetails = {
     iban: string;
@@ -15,17 +16,6 @@ function noteValues(note: string, label: string): string[] {
         .map(line => line.slice(label.length + 1).trim());
 }
 
-function validIban(iban: string): boolean {
-    if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(iban)) return false;
-    let remainder = 0;
-    for (const char of iban.slice(4) + iban.slice(0, 4)) {
-        for (const digit of char >= 'A' ? String(char.charCodeAt(0) - 55) : char) {
-            remainder = (remainder * 10 + Number(digit)) % 97;
-        }
-    }
-    return remainder === 1;
-}
-
 /** No partial-payment balance is inferred from imported notes or disputed matching evidence. */
 export function expensePaymentQrDetails(row: ExpenseListRow): ExpensePaymentQrDetails | null {
     if (row.status !== 'recorded' || row.paid_at || row.bank_match_conflict || row.currency !== 'EUR') return null;
@@ -36,9 +26,9 @@ export function expensePaymentQrDetails(row: ExpenseListRow): ExpensePaymentQrDe
     const accounts = noteValues(note, 'Supplier bank account');
     const suppliers = noteValues(note, 'Supplier');
     if (accounts.length !== 1 || suppliers.length !== 1) return null;
-    const iban = accounts[0].replace(/ /g, '').toUpperCase();
+    const iban = normalizePaymentIban(accounts[0]);
     const supplier = suppliers[0];
-    if (!validIban(iban) || !supplier || Array.from(supplier).length > 70
+    if (!iban || !supplier || Array.from(supplier).length > 70
         || /[\p{Cc}\p{Cs}\p{Zl}\p{Zp}]/u.test(supplier)) return null;
     // The import keeps the original total when only part of it was paid.
     // Until a remaining balance is authoritative, do not prepare another full payment.

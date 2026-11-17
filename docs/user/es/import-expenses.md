@@ -57,6 +57,8 @@ Si se interrumpe el guardado de un adjunto grande, vuelva a intentarlo mientras 
 
 ## Códigos QR de pago
 
-En un gasto pendiente en EUR con nombre del proveedor, IBAN válido del proveedor y símbolo variable de hasta 10 dígitos, seleccione **QR de pago** en su fila. Cambie entre **PAY by square** y **PayMe** y compruebe el destinatario, el importe y el símbolo variable antes de confirmar en su aplicación bancaria. El código se genera en su navegador. Abrir PayMe abre de forma deliberada su enlace de pago. Escanear el código no marca el gasto como pagado.
+En un gasto pendiente en EUR con nombre del proveedor, IBAN válido del proveedor y símbolo variable de hasta 10 dígitos, seleccione **QR de pago** en su fila. El importe debe ser mayor que cero y tener como máximo 12 dígitos antes del separador decimal; el nombre del proveedor puede tener como máximo 70 caracteres. Cambie entre **PAY by square** y **PayMe** y compruebe el destinatario, el importe y el símbolo variable antes de confirmar en su aplicación bancaria. El código se genera en su navegador. Abrir PayMe abre de forma deliberada su enlace de pago. Escanear el código no marca el gasto como pagado.
 
 No se muestra ningún código para gastos pagados o anulados, conciliaciones bancarias en disputa ni importaciones con pagos parciales o pendientes de aclarar. Los datos de pago proceden de metadatos explícitos del proveedor; nunca se usa la cuenta de la propia empresa. Las nuevas importaciones compatibles de facturas electrónicas e ISDOC conservan la cuenta del proveedor. En importaciones anteriores sin estos metadatos hay que completar primero los datos de pago.
+
+Al extraer un nuevo documento, la referencia de pago ausente queda en blanco. Compruebe el documento del proveedor e introduzca el símbolo variable correcto antes de preparar el pago.

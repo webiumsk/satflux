@@ -1,5 +1,24 @@
 # Development roadmap
 
+## PR452 review corrections verified locally - 2026-11-17
+
+The owner-triggered CodeRabbit review of `481e9c4c` produced three inline findings
+and one outside the diff; all four were valid and fixed. Independent review added
+server explicit-null persistence and direct-root UBL financial binding regressions.
+Shared SWIFT country lengths, explicit supplier references and document replacement
+now stay consistent through both storage modes. See [scope, disposition and exact
+validation](PR452_REVIEW_FIXES.md).
+
+Independent QA and security accepted the final correction freeze: 17
+source/test/data blobs, aggregate
+`3b8f3f9b85cb97cd918610409525d4183082dc8b26afb07496f969b5fb22a0b3`.
+Whole QR source now has 27 blobs, aggregate
+`b2e4ba1b1fb440b7da8f731be681c8dff8fe020e3ac21043516183575a1f3436`.
+Focused frontend141, import PHP85/449, server API13/83 and nine Chrome scenarios
+pass; lint/typecheck ratchets, locale parity, build and scoped style/static checks
+pass. Publish the reviewed correction once, then verify new exact-head CI. PR451
+stays unchanged as the stack base. No PR merge or deployment is performed.
+
 ## Supplier payment QR source published as PR452 - 2026-11-17
 
 Reviewed QR source `e0dab7a7015842c76ad05c164c56216b565c5536` is pushed to
