@@ -72,6 +72,31 @@ describe('structured expense supplier persistence', () => {
         expect(evoluExpenseToApi(data.saved()).payment_review_required).toBe(true);
         expect(expensePaymentQrDetails(evoluExpenseToApi(data.saved()))).toBeNull();
     });
+    it.each(['missing', 'deleted', 'inactive', 'incomplete'])('duplicates with supplier snapshots and a null link when its contact is %s', async (kind) => {
+        const data = adapter();
+        await insertLocalExpense(data.evolu, companyId, { ...base, payment_review_required: true }, []);
+        if (kind === 'missing') data.state.contact = [];
+        else Object.assign(data.state.contact[0], kind === 'deleted' ? { isDeleted: 1 }
+            : kind === 'inactive' ? { isActive: 0 } : { name: null });
+        expect((await duplicateLocalExpense(data.evolu, data.saved(), [])).ok).toBe(true);
+        expect(data.state.expense[1]).toMatchObject({ companyContactId: null, supplierName: base.supplier_name,
+            supplierIban: iban, paymentReviewRequired: 1 });
+        expect(data.saved().companyContactId).toBe(contactId);
+    });
+    it('still rejects a live duplicate contact from another encrypted owner', async () => {
+        const data = adapter();
+        await insertLocalExpense(data.evolu, companyId, base, []);
+        data.state.contact[0].ownerId = 'foreign-owner';
+        await expect(duplicateLocalExpense(data.evolu, data.saved(), [])).rejects.toThrow('expense_contact_unavailable');
+        expect(data.state.expense).toHaveLength(1);
+    });
+    it('does not copy a source expense from a stale encrypted owner partition', async () => {
+        const data = adapter();
+        await insertLocalExpense(data.evolu, companyId, base, []);
+        Object.assign(data.state.expense[0], { ownerId: 'stale-owner', companyContactId: null });
+        await expect(duplicateLocalExpense(data.evolu, data.saved(), [])).rejects.toThrow('expense_reconciliation_owner_unavailable');
+        expect(data.state.expense).toHaveLength(1);
+    });
     it('rejects duplication when its contact has moved out of the company', async () => {
         const data = adapter();
         await insertLocalExpense(data.evolu, companyId, base, []);

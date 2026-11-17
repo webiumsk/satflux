@@ -164,6 +164,14 @@ export function assertExpenseCompanyOwner(scope: ExpenseReconciliationScope, com
     if (expectedOwnerId !== undefined && ownerId !== expectedOwnerId) throw new Error("expense_reconciliation_owner_unavailable");
 }
 
+/** Missing, deleted or inactive references may be dropped while retaining an expense's saved snapshots. */
+export function hasLiveExpenseContact(scope: ExpenseReconciliationScope, contactId: string): boolean {
+    const internal = scopes.get(scope);
+    if (!internal?.active) throw new Error("expense_reconciliation_lease_expired");
+    return (internal.tableRows.get("contact") ?? []).some((row) => row.id === contactId
+        && row.isDeleted !== sqliteTrue && row.isActive !== 0 && row.isActive !== false);
+}
+
 /** Validate the contact in the same fresh company and encrypted owner partition as the expense. */
 export function assertExpenseContact(scope: ExpenseReconciliationScope, companyId: string, contactId: string): void {
     const internal = scopes.get(scope);

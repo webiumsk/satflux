@@ -7,6 +7,7 @@ import { evoluExpenseToApi, type EvoluExpenseRow } from "@/evolu/expenseMap";
 import { toAppRows } from "@/evolu/queryLoad";
 import { createExpenseOriginalReference, createManualExpenseOriginalReference, encodeExpenseOriginalReference } from "@/evolu/expenseOriginalReference";
 import type { EvoluExpenseAttachmentRow } from "@/evolu/expenseAttachmentCrud";
+import { expensePaymentQrDetails } from "@/utils/expensePaymentQr";
 
 const mocks = vi.hoisted(() => ({
     local: true, evolu: {} as object | null, displayForeign: false,
@@ -30,7 +31,7 @@ function fixture(id = "expense-a", owner = localCompany) {
         id, companyId: owner, internal_number: "E-2026-001", external_number: null as string | null,
         title: "Synthetic existing expense", status: "recorded", issue_date: "2026-01-01",
         delivery_date: "2026-01-01", due_date: null, paid_at: null,
-        total: "1.00", currency: "EUR", variable_symbol: null, constant_symbol: null,
+        total: "1.00", currency: "EUR", variable_symbol: null as string | null, constant_symbol: null,
         specific_symbol: null, internal_note: null, attachment_path: null, original_filename: null,
         company_contact_id: null as string | null, supplier_name: null as string | null,
         supplier_iban: null as string | null, payment_review_required: false,
@@ -427,6 +428,36 @@ describe("expense attachment page integration", () => {
         expect(mocks.updateExpense).toHaveBeenCalledWith(mocks.evolu, "expense-a", expect.objectContaining({
             supplier_name: "Saved supplier", supplier_iban: "CZ6508000000192000145399", company_contact_id: "saved-contact", payment_review_required: true,
         }), expect.anything());
+    });
+
+    it.each([undefined, null, "", "0007"])("preserves a sparse detail reference or honors supplied reference %s", async variable_symbol => {
+        models.value[0].variable_symbol = "0042";
+        models.value[0].supplier_name = "Saved supplier";
+        models.value[0].supplier_iban = "CZ6508000000192000145399";
+        vi.mocked(window.confirm).mockReturnValue(true);
+        mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
+        mocks.localExtract.mockResolvedValue({ data: { ...draft, variable_symbol }, quota });
+        render("show"); await flushPromises(); await select();
+        wrapper!.findComponent(ExpenseIsdocExtractModal).vm.$emit("confirm"); await flushPromises();
+        expect(mocks.updateExpense).toHaveBeenCalledWith(mocks.evolu, "expense-a", expect.objectContaining({
+            variable_symbol: variable_symbol ?? "0042", payment_review_required: variable_symbol == null,
+        }), expect.anything());
+        if (variable_symbol == null) expect(expensePaymentQrDetails(models.value[0])).toBeNull();
+    });
+
+    it("requires review when a fresh extraction supplier conflicts with retained detail snapshots despite an explicit VS", async () => {
+        models.value[0].variable_symbol = "0042";
+        models.value[0].supplier_name = "Saved supplier";
+        models.value[0].supplier_iban = "CZ6508000000192000145399";
+        vi.mocked(window.confirm).mockReturnValue(true);
+        mocks.localDetect.mockResolvedValue({ has_isdoc: true, quota });
+        mocks.localExtract.mockResolvedValue({ data: { ...draft, supplier_name: "Different XML supplier", variable_symbol: "0007" }, quota });
+        render("show"); await flushPromises(); await select();
+        wrapper!.findComponent(ExpenseIsdocExtractModal).vm.$emit("confirm"); await flushPromises();
+        expect(mocks.updateExpense).toHaveBeenCalledWith(mocks.evolu, "expense-a", expect.objectContaining({
+            supplier_name: "Saved supplier", supplier_iban: "CZ6508000000192000145399", variable_symbol: "0007", payment_review_required: true,
+        }), expect.anything());
+        expect(expensePaymentQrDetails(models.value[0])).toBeNull();
     });
 
     it("preserves saved null recipient fields during detail re-extraction", async () => {

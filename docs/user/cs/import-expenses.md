@@ -63,7 +63,7 @@ Uložený náklad si ponechá název a účet i po pozdější změně kontaktu.
 
 ## Platební QR kódy
 
-U neuhrazeného nákladu v EUR s kladnou částkou, názvem dodavatele, platným IBANem a variabilním symbolem do 10 číslic klikněte na **Platební QR**. Vyberte **PAY by square** nebo **PayMe**. V bankovní aplikaci ověřte příjemce, přesnou částku a variabilní symbol. Vytvoření ani naskenování QR neoznačí náklad jako uhrazený. Pro větší přesné částky nepodporované PayMe použijte PAY by square.
+U neuhrazeného nákladu v EUR s kladnou částkou, názvem dodavatele do 70 znaků, platným IBANem a variabilním symbolem do 10 číslic klikněte na **Platební QR**. Vyberte **PAY by square** nebo **PayMe**. V bankovní aplikaci ověřte příjemce, přesnou částku a variabilní symbol. Vytvoření ani naskenování QR neoznačí náklad jako uhrazený. Pro větší přesné částky nepodporované PayMe použijte PAY by square.
 
 Bez IBANu se QR nezobrazí. Uhrazené a zrušené náklady, sporná bankovní párování, záporné dobropisy a importy vyžadující kontrolu úhrady nemají platební QR. Výběr kontaktu neobejde částečné či zálohové platby ani nejednoznačné údaje z importu. Starší záznamy ISDOC/Peppol bez platebních podkladů zůstávají blokované. Údaje dodavatele z poznámky se do platebních polí nepřebírají.
 

@@ -7,7 +7,7 @@ import type { Evolu } from "@evolu/common/local-first";
 import type { EvoluExpenseRow } from "./expenseMap";
 import { ContactId, type CompanyId, type ExpenseId, type InvoicingLocalSchema } from "./schema";
 import {
-    assertExpenseContact, currentExpenseTarget, expenseReconciliationScope, withExpenseReconciliation, type ExpenseReconciliationScope,
+    assertExpenseCompanyOwner, assertExpenseContact, hasLiveExpenseContact, currentExpenseTarget, expenseReconciliationScope, withExpenseReconciliation, type ExpenseReconciliationScope,
 } from "./expenseReconciliation";
 
 const Opt16 = maxLength(16)(NonEmptyString);
@@ -403,7 +403,10 @@ export async function duplicateLocalExpense(
     return withExpenseReconciliation(evolu, (scope) => {
         const fresh = currentExpenseTarget(scope, source.id);
         if (!fresh || fresh.isDeleted === 1 || fresh.companyId !== source.companyId) return { ok: false as const, error: "expense_target_changed" };
-        if (fresh.companyContactId) assertExpenseContact(scope, fresh.companyId, fresh.companyContactId);
-        return duplicateLocalExpenseCore(scope.evolu, fresh, scope.context.expenses);
+        assertExpenseCompanyOwner(scope, fresh.companyId, Reflect.get(fresh, "ownerId"));
+        const copySource = fresh.companyContactId && !hasLiveExpenseContact(scope, fresh.companyContactId)
+            ? { ...fresh, companyContactId: null } : fresh;
+        if (copySource.companyContactId) assertExpenseContact(scope, copySource.companyId, copySource.companyContactId);
+        return duplicateLocalExpenseCore(scope.evolu, copySource, scope.context.expenses);
     }, undefined, ["allContactsQuery"]);
 }

@@ -1021,15 +1021,19 @@ async function cancelExpense() {
 }
 
 function draftToPayload(draft: ExpenseImportDraft, current: Expense) {
+  // Retain an existing reference on sparse extraction without treating it as new seller payment proof.
+  const retainsUnprovenReference = draft.variable_symbol == null && Boolean(current.variable_symbol?.trim());
+  const supplierConflict = Boolean(current.supplier_name?.trim() && draft.supplier_name?.trim()
+    && current.supplier_name.trim().toLocaleLowerCase() !== draft.supplier_name.trim().toLocaleLowerCase());
   return {
     company_contact_id: current.company_contact_id ?? null,
     // Saved recipient snapshots, including explicit clears, need a deliberate edit.
     supplier_name: current.supplier_name ?? null,
     supplier_iban: current.supplier_iban ?? null,
-    payment_review_required: expensePaymentReviewRequired(current.payment_review_required, current.internal_note) || draft.payment_review_required !== false,
+    payment_review_required: expensePaymentReviewRequired(current.payment_review_required, current.internal_note) || draft.payment_review_required !== false || retainsUnprovenReference || supplierConflict,
     title: draft.title ?? current.title,
     external_number: draft.external_number ?? current.external_number,
-    variable_symbol: draft.variable_symbol ?? null,
+    variable_symbol: draft.variable_symbol ?? current.variable_symbol,
     constant_symbol: draft.constant_symbol ?? current.constant_symbol,
     specific_symbol: draft.specific_symbol ?? current.specific_symbol,
     issue_date: draft.issue_date?.slice(0, 10) ?? current.issue_date,

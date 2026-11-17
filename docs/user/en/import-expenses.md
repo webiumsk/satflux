@@ -63,7 +63,7 @@ Saved expenses retain their supplier name and account when a contact later chang
 
 ## Payment QR codes
 
-An unpaid EUR expense with a positive amount, supplier name, valid supplier IBAN and a variable symbol of up to 10 digits offers **Payment QR** in its row. Choose **PAY by square** or **PayMe**. Check the recipient, exact amount and variable symbol in your bank app. Generating or scanning the QR does not mark the expense paid. Larger exact amounts unsupported by PayMe can use PAY by square.
+An unpaid EUR expense with a positive amount, supplier name of up to 70 characters, valid supplier IBAN and a variable symbol of up to 10 digits offers **Payment QR** in its row. Choose **PAY by square** or **PayMe**. Check the recipient, exact amount and variable symbol in your bank app. Generating or scanning the QR does not mark the expense paid. Larger exact amounts unsupported by PayMe can use PAY by square.
 
 No IBAN means no QR. Paid/cancelled expenses, bank conflicts, negative credit notes and imports requiring payment review have no payable QR. Selecting a contact cannot override partial/prepaid or ambiguous imported payment evidence. Old ISDOC/Peppol records without retained financial evidence remain blocked. Historical supplier lines in notes are not copied into payment fields.
 

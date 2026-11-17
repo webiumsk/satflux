@@ -63,7 +63,7 @@ Los gastos guardados conservan nombre y cuenta aunque cambie el contacto. Las ed
 
 ## Códigos QR de pago
 
-Un gasto pendiente en EUR con importe positivo, nombre e IBAN válido del proveedor y símbolo variable de hasta 10 dígitos ofrece **QR de pago**. Elija **PAY by square** o **PayMe** y compruebe destinatario, importe exacto y referencia en la aplicación bancaria. Crear o escanear el QR no marca el gasto como pagado. Para importes exactos mayores que PayMe no admite, utilice PAY by square.
+Un gasto pendiente en EUR con importe positivo, nombre del proveedor de hasta 70 caracteres e IBAN válido del proveedor y símbolo variable de hasta 10 dígitos ofrece **QR de pago**. Elija **PAY by square** o **PayMe** y compruebe destinatario, importe exacto y referencia en la aplicación bancaria. Crear o escanear el QR no marca el gasto como pagado. Para importes exactos mayores que PayMe no admite, utilice PAY by square.
 
 Sin IBAN no hay QR. Los gastos pagados o cancelados, conflictos bancarios, abonos negativos e importaciones que requieren revisar el pago no ofrecen QR. Elegir un contacto no elimina las restricciones por pagos parciales, anticipos o datos ambiguos. Los registros ISDOC/Peppol antiguos sin pruebas de pago conservadas siguen bloqueados. Los datos del proveedor en las notas no se copian a los campos de pago.
 

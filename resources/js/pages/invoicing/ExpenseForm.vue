@@ -48,7 +48,7 @@
     />
 
     <div class="grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)] gap-6 items-start">
-      <form class="invoicing-card-pad space-y-4 min-w-0" @submit.prevent="save">
+      <form class="invoicing-card-pad space-y-4 min-w-0" @input="markFormEdited" @change="markFormEdited" @submit.prevent="save">
         <div>
           <label for="expense-document-kind" class="invoicing-sf-label">{{ t('invoicing.expense_document_kind') }}</label>
           <select id="expense-document-kind" v-model="documentKind" class="invoicing-sf-input w-full" @change="onDocumentKindChange">
@@ -291,6 +291,7 @@ function onDocumentKindChange() {
 function onSupplierContactChange() {
   const contact = selectedContact.value;
   const sameSupplier = (name: string) => extractedSupplier?.name.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase();
+  if (contact && extractedSupplier?.name && !sameSupplier(contact.name)) form.value.payment_review_required = true;
   form.value.supplier_name = contact?.name ?? extractedSupplier?.name ?? '';
   form.value.supplier_iban = contact?.iban?.trim() || (extractedSupplier && (!contact || sameSupplier(contact.name)) ? extractedSupplier.iban : '');
   supplierNameManuallyEdited.value = false;
@@ -306,7 +307,11 @@ const createdLocalExpenseId = ref<string | null>(null);
 const variableSymbolFollowsNumber = ref(true);
 const deliveryDateFollowsIssueDate = ref(true);
 let contextGeneration = 0;
+let formEditRevision = 0;
 let sourceReadController: AbortController | null = null;
+function markFormEdited() {
+  formEditRevision++;
+}
 watch([companyId, expenseId], () => {
   contextGeneration++;
   createdLocalExpenseId.value = null;
@@ -343,17 +348,19 @@ function syncDeliveryDateDefault() {
 }
 
 function applyImportDraft(draft: ExpenseImportDraft) {
+  markFormEdited();
   // Supplier identity and account come from structured fields, never copied prose.
   extractedSupplier = { name: draft.supplier_name?.trim() ?? '', iban: draft.supplier_iban?.trim() ?? '' };
   form.value.payment_review_required ||= draft.payment_review_required !== false;
   const contact = selectedContact.value;
   const sameSupplier = (name: string) => extractedSupplier!.name.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase();
-  const supplierConflict = Boolean((supplierNameManuallyEdited.value || supplierIbanManuallyEdited.value)
-    && form.value.supplier_name && extractedSupplier.name && !sameSupplier(form.value.supplier_name));
+  const retainedSupplierName = supplierNameManuallyEdited.value || supplierIbanManuallyEdited.value
+    ? form.value.supplier_name : contact?.name ?? extractedSupplier.name;
+  const supplierConflict = Boolean(retainedSupplierName && extractedSupplier.name && !sameSupplier(retainedSupplierName));
   if (supplierConflict) form.value.payment_review_required = true;
-  if (!supplierNameManuallyEdited.value) form.value.supplier_name = contact?.name ?? extractedSupplier.name;
-  if (!supplierIbanManuallyEdited.value) form.value.supplier_iban = supplierConflict ? '' : contact?.iban?.trim()
-    || (!contact || sameSupplier(contact.name) ? extractedSupplier.iban : '');
+  if (!supplierNameManuallyEdited.value) form.value.supplier_name = retainedSupplierName;
+  if (!supplierIbanManuallyEdited.value) form.value.supplier_iban = contact?.iban?.trim()
+    || (supplierConflict ? '' : extractedSupplier.iban);
   if (draft.internal_note?.trim() && !form.value.internal_note.includes(draft.internal_note.trim())) {
     form.value.internal_note = [form.value.internal_note.trim(), draft.internal_note.trim()].filter(Boolean).join('\n\n');
   }
@@ -482,9 +489,9 @@ async function loadExpense() {
 }
 
 /** Prefill a new received correction without claiming a persisted document relationship. */
-async function prefillCreditNote() {
+async function prefillCreditNote(expectedEditRevision: number) {
   const sourceId = route.query.source_expense;
-  if (!isNew.value || !isCreditNote.value || typeof sourceId !== 'string') return;
+  if (!isNew.value || !isCreditNote.value || typeof sourceId !== 'string' || expectedEditRevision !== formEditRevision) return;
   const generation = contextGeneration;
   const company = companyId.value;
   let source: ExpenseApiRow;
@@ -509,7 +516,7 @@ async function prefillCreditNote() {
     if (!row) throw new Error('expense_unavailable');
     source = evoluExpenseToApi(row);
   } else source = await invoicingApi.expenses.get<ExpenseApiRow>(company, sourceId);
-  if (generation !== contextGeneration || company !== companyId.value) return;
+  if (generation !== contextGeneration || company !== companyId.value || expectedEditRevision !== formEditRevision) return;
   form.value.company_contact_id = source.company_contact_id || '';
   form.value.supplier_name = source.supplier_name || '';
   form.value.supplier_iban = source.supplier_iban || '';
@@ -527,6 +534,7 @@ async function prefillCreditNote() {
  */
 async function save() {
   if (saving.value || extracting.value || detecting.value) return;
+  markFormEdited();
   const requestedCompany = companyId.value;
   const requestedExpense = expenseId.value;
   const requestedNew = isNew.value;
@@ -636,15 +644,23 @@ async function save() {
 }
 
 onMounted(async () => {
-  rememberCompany(companyId.value);
+  const initialEditRevision = formEditRevision;
+  const initialCompany = companyId.value;
+  const initialGeneration = contextGeneration;
+  const stillInitialContext = () => initialGeneration === contextGeneration && initialCompany === companyId.value;
+  rememberCompany(initialCompany);
   if (!localFirst) {
     await loadQuota();
-    const companyRec = await invoicingApi.companies.get<{ default_currency?: string }>(companyId.value);
-    form.value.currency = companyRec?.default_currency || 'EUR';
+    if (!stillInitialContext()) return;
+    const companyRec = await invoicingApi.companies.get<{ default_currency?: string }>(initialCompany);
+    if (!stillInitialContext()) return;
+    if (initialEditRevision === formEditRevision) form.value.currency = companyRec?.default_currency || 'EUR';
   } else {
     form.value.currency = defaultCurrency.value || 'EUR';
   }
   await loadExpense();
-  try { await prefillCreditNote(); } catch { error.value = t('invoicing.expense_unavailable'); }
+  if (!stillInitialContext()) return;
+  try { await prefillCreditNote(initialEditRevision); }
+  catch { if (stillInitialContext() && initialEditRevision === formEditRevision) error.value = t('invoicing.expense_unavailable'); }
 });
 </script>

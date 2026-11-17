@@ -63,7 +63,7 @@ Gespeicherte Ausgaben behalten Namen und Konto auch nach Kontaktänderungen. Man
 
 ## QR-Codes für Zahlungen
 
-Eine unbezahlte EUR-Ausgabe mit positivem Betrag, Lieferantenname, gültiger Lieferanten-IBAN und bis zu zehnstelliger Zahlungsreferenz bietet **Zahlungs-QR**. Wählen Sie **PAY by square** oder **PayMe**. Prüfen Sie Empfänger, genauen Betrag und Referenz in der Banking-App. Erstellen oder Scannen markiert die Ausgabe nicht als bezahlt. Für größere genaue Beträge außerhalb des PayMe-Limits verwenden Sie PAY by square.
+Eine unbezahlte EUR-Ausgabe mit positivem Betrag, Lieferantenname mit höchstens 70 Zeichen, gültiger Lieferanten-IBAN und bis zu zehnstelliger Zahlungsreferenz bietet **Zahlungs-QR**. Wählen Sie **PAY by square** oder **PayMe**. Prüfen Sie Empfänger, genauen Betrag und Referenz in der Banking-App. Erstellen oder Scannen markiert die Ausgabe nicht als bezahlt. Für größere genaue Beträge außerhalb des PayMe-Limits verwenden Sie PAY by square.
 
 Ohne IBAN gibt es keinen QR. Bezahlte oder stornierte Ausgaben, Bankkonflikte, negative Gutschriften und Importe mit Prüfbedarf bieten keinen Zahlungs-QR. Eine Kontaktauswahl hebt Sperren wegen Teilzahlungen, Vorauszahlungen oder unklarer Importdaten nicht auf. Ältere ISDOC/Peppol-Datensätze ohne erhaltene Zahlungsnachweise bleiben gesperrt. Lieferantenangaben aus Notizen werden nicht in Zahlungsfelder übernommen.
 

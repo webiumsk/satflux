@@ -105,6 +105,61 @@ class ExpenseReconciliationTest extends TestCase
         return "/api/invoicing/companies/{$this->company->id}/expenses/duplicate-suggestions";
     }
 
+    /** Duplicate identity includes signed exact cents; bank matching remains positive-only. */
+    #[Test]
+    #[TestWith(['-25.00', '-25.00'])]
+    #[TestWith(['-00025.0', '-25.00'])]
+    #[TestWith(['-0.01', '-0.01'])]
+    #[TestWith([-25, '-25.00'])]
+    #[TestWith([-25.0, '-25.00'])]
+    public function negative_drafts_find_only_existing_duplicates_with_the_same_signed_amount(mixed $draftTotal, string $storedTotal): void
+    {
+        $credit = $this->expense(['total' => $storedTotal]);
+        $this->expense(['total' => substr($storedTotal, 1)]);
+        $draft = ['external_number' => $credit->external_number, 'title' => $credit->title,
+            'issue_date' => '2026-10-30', 'total' => $draftTotal, 'currency' => 'EUR'];
+
+        $this->postJson($this->duplicateUrl(), $draft)->assertOk()->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.expense.id', $credit->id)
+            ->assertJsonPath('data.0.expense.total', $storedTotal);
+        $warnings = app(BusinessExpenseReconciliationService::class)->importDuplicateSuggestions($this->company, [
+            [...$draft, 'row' => 2],
+        ]);
+        $this->assertCount(1, $warnings);
+        $this->assertSame($credit->id, $warnings[0]['expense']['id']);
+        $this->assertFalse($warnings[0]['in_file']);
+        $this->assertSame(BusinessExpenseStatus::Recorded, $credit->fresh()->status);
+    }
+
+    /** Imported duplicate keys distinguish debit documents from received credits in the same file. */
+    #[Test]
+    public function imported_negative_drafts_share_signed_keys_without_matching_positive_rows(): void
+    {
+        $draft = ['external_number' => 'SYNTHETIC-CREDIT', 'title' => 'Synthetic credit',
+            'issue_date' => '2026-10-30', 'currency' => 'EUR'];
+        $warnings = app(BusinessExpenseReconciliationService::class)->importDuplicateSuggestions($this->company, [
+            [...$draft, 'row' => 2, 'total' => '-25.00'],
+            [...$draft, 'row' => 3, 'total' => '-00025.0'],
+            [...$draft, 'row' => 4, 'total' => '25.00'],
+        ]);
+        $this->assertCount(1, $warnings);
+        $this->assertSame(3, $warnings[0]['row']);
+        $this->assertSame('preview-row-2', $warnings[0]['expense']['id']);
+        $this->assertTrue($warnings[0]['in_file']);
+    }
+
+    /** Do not round unsupported fractional cents into an existing negative duplicate. */
+    #[Test]
+    public function negative_duplicate_previews_reject_fractional_cent_evidence(): void
+    {
+        $credit = $this->expense(['total' => '-25.00']);
+        $draft = ['external_number' => $credit->external_number, 'total' => '-25.001', 'currency' => 'EUR'];
+        $this->postJson($this->duplicateUrl(), $draft)->assertOk()->assertJsonCount(0, 'data');
+        $this->assertSame([], app(BusinessExpenseReconciliationService::class)->importDuplicateSuggestions($this->company, [
+            [...$draft, 'row' => 2],
+        ]));
+    }
+
     /** Keep ambiguous suggestions read-only until the user selects one expense. */
     #[Test]
     public function suggestions_are_read_only_and_ambiguous_candidates_require_explicit_confirmation(): void

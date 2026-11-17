@@ -121,3 +121,16 @@ validation aggregates remain unchanged. Feature-branch push alone does not run
 the repository's PR/master CI. No new CI, PR review or deployment pass is claimed.
 No PR, merge, release or deployment is performed. The previous uncommitted/local
 statements above describe the earlier acceptance checkpoint.
+
+## PR454 correction policy - 2026-11-17
+
+The owner requests all six verified review corrections. The previous explicit
+contact-authority exception above is superseded: supplier identity conflicts now
+require payment review in either selection/extraction order and saved-detail
+re-extraction. Contact account precedence still controls the stored destination.
+Nullish extraction preserves a saved VS, but an unconfirmed retained reference
+cannot enable QR. Missing/deleted/inactive contact links may be detached during
+copying while snapshots and review evidence remain. Live foreign contacts and
+stale source owners still reject. Signed duplicate detection works in both
+storage modes while bank matching remains positive-only. See
+[review corrections and validation](PR454_REVIEW_FIXES.md).

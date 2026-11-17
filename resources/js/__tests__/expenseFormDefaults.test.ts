@@ -448,6 +448,28 @@ describe('structured supplier snapshots and received credit notes', () => {
     expect(expensePaymentQrDetails({ ...payload, id: 'test', internal_number: 'test', status: 'recorded', total: String(payload.total) })).toBeNull();
   });
 
+  it.each([
+    { local: true, extractFirst: false }, { local: false, extractFirst: false },
+    { local: true, extractFirst: true }, { local: false, extractFirst: true },
+  ])('requires review for conflicting extracted and selected suppliers in either event order: %j', async ({ local, extractFirst }) => {
+    await render(local);
+    if (!extractFirst) await wrapper!.get('#expense-supplier-contact').setValue('contact-bank');
+    await extract({ supplier_name: 'Other XML supplier', supplier_iban: 'CZ6508000000192000145399', total: 19.5, variable_symbol: '0099' });
+    if (extractFirst) await wrapper!.get('#expense-supplier-contact').setValue('contact-bank');
+    expect(value('#expense-supplier-name')).toBe('Supplier A');
+    expect(value('#expense-supplier-iban')).toBe('SK6807200002891987426353');
+    const payload = await submit(local);
+    expect(payload.payment_review_required).toBe(true);
+    expect(expensePaymentQrDetails({ ...payload, id: 'test', internal_number: 'test', status: 'recorded', total: String(payload.total) })).toBeNull();
+  });
+
+  it.each([true, false])('retains the selected supplier and extracted account without review when names match (local=%s)', async local => {
+    await render(local);
+    await wrapper!.get('#expense-supplier-contact').setValue('contact-empty');
+    await extract({ supplier_name: ' supplier a ', supplier_iban: 'CZ6508000000192000145399', total: 19.5, variable_symbol: '0099' });
+    expect(await submit(local)).toMatchObject({ supplier_name: 'Supplier A', supplier_iban: 'CZ6508000000192000145399', payment_review_required: false });
+  });
+
   it.each([true, false])('keeps saved snapshots and explicit clears when contact choices hydrate later (local=%s)', async local => {
     existingExpense.company_contact_id = 'contact-bank';
     existingExpense.supplier_name = 'Saved supplier';
@@ -580,6 +602,54 @@ describe('structured supplier snapshots and received credit notes', () => {
     expect(value('#expense-supplier-name')).toBe('Original supplier');
     await wrapper!.get('#expense-document-kind').setValue('expense');
     expect(await submit(local)).toMatchObject({ payment_review_required: true });
+  });
+
+  it.each([true, false])('preserves edits made while a received-credit source request is pending (local=%s)', async local => {
+    let finishSource!: (source: unknown) => void;
+    const pendingSource = new Promise(resolve => { finishSource = resolve; });
+    if (local) mocks.lookup.mockReturnValueOnce(pendingSource);
+    else mocks.get.mockReturnValueOnce(pendingSource);
+    await render(local);
+    wrapper!.unmount();
+    route.query = { credit_note: '1', source_expense: existingExpense.id };
+    wrapper = mount(ExpenseForm, { global: {
+      plugins: [createI18n({ legacy: false, locale: 'en', messages: { en } })],
+      stubs: { RouterLink: { template: '<a><slot /></a>' } },
+    } });
+    await flushPromises();
+    expect(local ? mocks.lookup : mocks.get).toHaveBeenCalledOnce();
+    await wrapper!.get('#expense-supplier-contact').setValue('contact-bank');
+    await wrapper!.get('#expense-supplier-name').setValue('Deliberately edited supplier');
+    await wrapper!.get('#expense-supplier-iban').setValue('SK6807200002891987426353');
+    await wrapper!.get('#expense-document-kind').setValue('expense');
+    await wrapper!.get('input[type="number"]').setValue('25');
+    await wrapper!.findAll('form select').at(-1)!.setValue('CZK');
+    await field('expense_col_external').setValue('CREDIT-0004');
+    await field('variable_symbol').setValue('0004');
+    const rawSource = { id: existingExpense.id, ownerId: 'synthetic-owner', companyId: companyId.value, isDeleted: null,
+      internalNumber: 'EXP001', title: 'Source', total: '12.00', currency: 'EUR', supplierName: 'Source supplier', supplierIban: 'CZ6508000000192000145399' };
+    finishSource(local ? [rawSource] : { ...existingExpense, supplier_name: 'Source supplier', supplier_iban: 'CZ6508000000192000145399' });
+    await flushPromises();
+    expect(value('#expense-supplier-contact')).toBe('contact-bank');
+    expect(value('#expense-supplier-name')).toBe('Deliberately edited supplier');
+    expect(value('#expense-supplier-iban')).toBe('SK6807200002891987426353');
+    expect(value('#expense-document-kind')).toBe('expense');
+    expect(value('input[type="number"]')).toBe('25');
+    expect((wrapper!.findAll('form select').at(-1)!.element as HTMLSelectElement).value).toBe('CZK');
+    expect(field('expense_col_external').element.value).toBe('CREDIT-0004');
+    expect(field('variable_symbol').element.value).toBe('0004');
+  });
+
+  it('preserves a currency edit while initial company metadata is pending', async () => {
+    let finishCompany!: (company: { default_currency: string }) => void;
+    mocks.company.mockReturnValueOnce(new Promise(resolve => { finishCompany = resolve; }));
+    await render(false);
+    expect(mocks.company).toHaveBeenCalledOnce();
+    const currency = wrapper!.findAll('form select').at(-1)!;
+    await currency.setValue('CZK');
+    finishCompany({ default_currency: 'USD' });
+    await flushPromises();
+    expect((currency.element as HTMLSelectElement).value).toBe('CZK');
   });
 });
 

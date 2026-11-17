@@ -1,5 +1,35 @@
 # Local workspace
 
+## PR454 inline review corrections accepted - 2026-11-17
+
+The owner requests six inline finding fixes against published `7d19dbff` on
+`feat/expense-supplier-credit-notes`. All six are verified and corrected. Actual
+GitHub PR454 is open against master `eee6cd01`; its CI44085701876 passed on the
+prior head only. No new correction-head CI result is claimed before publication.
+
+Signed advisory duplicates work in both storage modes; bank matching remains
+positive-only. Copies preserve supplier snapshots while dropping non-live contact
+links and retaining live company/owner checks. Supplier mismatches now require
+review in either event order and detail extraction, superseding the former explicit
+contact exception. User edits invalidate delayed source/default-currency prefill.
+Sparse extraction retains saved VS with an independent payment-review veto when
+seller-reference proof is missing. All five guides document the 70-character limit.
+
+Independent QA/security accept delta16 aggregate
+`acd818ec378d89d78b81af04287941aa98b5a79e452cbbcdab4cf3a7ad1b381e`
+and complete53-source aggregate
+`c0b061befb7f7c053abdb11d0176f0e9ff2c7db968e943642f24d4f85879ac05`.
+Main checks: 324 JavaScript tests / nine suites; 164 PHP tests / 862 assertions;
+scoped ESLint zero warnings, unchanged107-error typecheck baseline, Pint/PHPStan,
+locale parity and production build pass. Independent QA: 208 JS,126 PHP/566,
+six real Chrome desktop/320px scenarios. Security independently passes243 JS.
+Test scopes overlap and are not summed; no unresolved review blocker remains.
+
+Only the retained feature branch is published. Primary unrelated edits remain
+preserved. No unsolicited bot command, dependency installation, production-data
+operation, merge, release or deployment. Next is correction-head CI/owner review.
+[Finding disposition and evidence](PR454_REVIEW_FIXES.md).
+
 ## Expense supplier and received-credit source pushed - 2026-11-17
 
 The owner requested publication. Normal Git push publishes implementation commit
