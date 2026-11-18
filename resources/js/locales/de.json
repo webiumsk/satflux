@@ -2166,6 +2166,7 @@
     "expense_pdf_text_detected_title": "Rechnungstext in PDF gefunden",
     "expense_pdf_text_review_notice": "Prüfen Sie die extrahierten Felder vor dem Speichern anhand des Originalbelegs. Zahlungsdaten müssen weiterhin bestätigt werden.",
     "expense_pdf_text_review_title": "Extrahierte PDF-Felder prüfen",
+    "expense_select_invoice_currency": "Währung laut Rechnung auswählen",
     "expense_pdf_text_review_body": "Vergleichen Sie diese Angaben mit dem Originalbeleg. Speichern Sie die extrahierten Werte oder behalten Sie nur den Anhang.",
     "expense_pdf_text_review_save": "Extrahierte Werte speichern",
     "expense_pdf_text_review_skip": "Nur Anhang behalten",

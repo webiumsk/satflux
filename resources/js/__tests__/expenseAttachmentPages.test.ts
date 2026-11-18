@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
+import { DOMWrapper, flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import { computed, reactive, ref } from "vue";
 import { createI18n } from "vue-i18n";
 import en from "@/locales/en.json";
@@ -262,6 +262,25 @@ describe("expense attachment page integration", () => {
             expect(wrapper!.findComponent(ExpenseTextPdfReviewModal).props("open")).toBe(false);
             expect(route.query).toEqual({});
         });
+
+    it.each([true, false])("requires an explicit currency before saving a unitless detail total (local=%s)", async local => {
+        const review = await openTextReview(local, () => {
+            const extract = local ? mocks.localExtract : mocks.extract;
+            extract.mockResolvedValueOnce({ data: { source: "pdf_text", total: 17.5 }, quota });
+        });
+        expect(review.props("values")).toMatchObject({ total: 17.5, currency: "" });
+        const dialog = new DOMWrapper(document.body.querySelector<HTMLElement>('[role="dialog"]')!);
+        const save = dialog.findAll("button").find(button => button.text() === en.invoicing.expense_pdf_text_review_save)!;
+        expect(save.attributes("disabled")).toBeDefined();
+        review.vm.$emit("confirm");
+        await flushPromises();
+        const update = local ? mocks.updateExpense : mocks.update;
+        expect(update).not.toHaveBeenCalled();
+        await dialog.get("select").setValue("USD");
+        await save.trigger("click");
+        await flushPromises();
+        expect(update.mock.lastCall![2]).toMatchObject({ total: 17.5, currency: "USD", payment_review_required: true });
+    });
 
     it("passes the original review baseline to the local gate and keeps a conflicted attachment pending", async () => {
         const review = await openTextReview(true);

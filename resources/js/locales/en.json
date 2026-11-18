@@ -2166,6 +2166,7 @@
     "expense_pdf_text_detected_title": "Invoice text found in PDF",
     "expense_pdf_text_review_notice": "Review extracted fields against the original document before saving. Payment details still require confirmation.",
     "expense_pdf_text_review_title": "Review extracted PDF fields",
+    "expense_select_invoice_currency": "Select the currency printed on the invoice",
     "expense_pdf_text_review_body": "Check these values against the original document. Save the extracted values or keep only the attachment.",
     "expense_pdf_text_review_save": "Save extracted values",
     "expense_pdf_text_review_skip": "Keep attachment only",

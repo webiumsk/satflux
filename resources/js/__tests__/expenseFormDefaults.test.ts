@@ -959,6 +959,39 @@ describe('company currency defaults and sparse extraction', () => {
     expect((currency.element as HTMLSelectElement).value).toBe(value);
   });
 
+  it.each([true, false].flatMap(local => [true, false].map(editing => ({ local, editing }))))(
+    'requires a currency for a unitless text-PDF total (local=$local, editing=$editing)', async ({ local, editing }) => {
+      await render(local, editing);
+      const currency = wrapper!.get<HTMLSelectElement>('#expense-currency');
+      expect(currency.findAll('option').map(option => option.element.value)).not.toContain('JPY');
+      await currency.setValue('CZK');
+      await extract({ source: 'pdf_text', total: 17.5 });
+      await extract({ source: 'pdf_text', currency: 'EUR' });
+      expect(currency.element.value).toBe('');
+      await wrapper!.get('form').trigger('submit');
+      await flushPromises();
+      const write = editing ? (local ? mocks.updateLocal : mocks.update) : (local ? mocks.insert : mocks.create);
+      expect(write).not.toHaveBeenCalled();
+      expect(wrapper!.text()).toContain(en.invoicing.expense_select_invoice_currency);
+      await currency.setValue('JPY');
+      expect(currency.get('option[value="CHF"]').exists()).toBe(true);
+      await extract({ source: 'pdf_text', currency: 'EUR' });
+      expect(currency.element.value).toBe('JPY');
+      await wrapper!.get('form').trigger('submit');
+      await flushPromises();
+      expect(write.mock.lastCall![editing || local ? 2 : 1]).toMatchObject({ total: 17.5, currency: 'JPY' });
+    });
+
+  it('keeps the currency empty when the company default arrives after the imported amount', async () => {
+    let finishCompany!: (company: { default_currency: string }) => void;
+    mocks.company.mockReturnValueOnce(new Promise(resolve => { finishCompany = resolve; }));
+    await render(false);
+    await extract({ source: 'pdf_text', total: 17.5 });
+    finishCompany({ default_currency: 'USD' });
+    await flushPromises();
+    expect(wrapper!.get<HTMLSelectElement>('#expense-currency').element.value).toBe('');
+  });
+
   it('keeps an explicitly extracted currency while company metadata is pending', async () => {
     let finishCompany!: (company: { default_currency: string }) => void;
     mocks.company.mockReturnValueOnce(new Promise(resolve => { finishCompany = resolve; }));

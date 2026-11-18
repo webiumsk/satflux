@@ -65,6 +65,7 @@ class BusinessExpensePdfTextImportTest extends TestCase
             'prose in footer' => ['FAKTÚRA č.: INV-001    strana 1/1 continued', 'external_number'],
             'malformed number in footer' => ['FAKTÚRA č.: INV 001    strana 1/1', 'external_number'],
             'incomplete counter' => ['FAKTÚRA č.: INV-001    strana 1/', 'external_number'],
+            'invalid adjacent counter cell' => ["FAKTÚRA č.: INV-001\tstrana 2/1", 'external_number'],
             'invalid counter' => ['FAKTÚRA č.: INV-001    strana 2/1', 'external_number'],
             'symbol' => ['Variabilný symbol: 0000777', 'variable_symbol'],
             'account' => ['IBAN: DE89370400440532013000', 'supplier_iban'],
@@ -113,6 +114,7 @@ class BusinessExpensePdfTextImportTest extends TestCase
             'signer is not the seller label' => ["Digitally signed by\nSynthetic Signatory Ltd.\nBuyer: Synthetic Shop Ltd.", null],
             'explicit supplier after buyer' => ["Odběratel: Synthetic Shop s.r.o.\nDodavatel:\nSynthetic Carrier s.r.o.", 'Synthetic Carrier s.r.o.'],
             'same seller and buyer candidate' => ["Seller: Synthetic Shop s.r.o.\nBill to: SYNTHETIC SHOP s. r. o.", null],
+            'space-separated buyer matches seller' => ["Seller: Synthetic Shop s.r.o.\nBuyer SYNTHETIC SHOP s. r. o.", null],
             'competing explicit sellers' => ["Supplier: Synthetic Carrier Ltd.\nVendor: Synthetic Other Ltd.", null],
             'adjacent party headings' => ["Seller:\tBuyer:\nSynthetic Carrier Ltd.\tSynthetic Shop Ltd.", null],
         ];
@@ -215,7 +217,25 @@ class BusinessExpensePdfTextImportTest extends TestCase
 
         return [
             'only numbered page is a marked annex' => ["Invoice\nSupplier: Carrier Ltd.\nTotal due: 11 EUR", $detail,
-                ['supplier_iban' => null, 'total' => 11.0, 'currency' => 'EUR', 'due_date' => null]],
+                ['external_number' => null, 'supplier_iban' => null, 'total' => 11.0, 'currency' => 'EUR', 'due_date' => null]],
+            'number printed only on invoice and a conflicting marked annex' => [$dated, str_replace('I-01', 'OTHER', $detail),
+                ['external_number' => 'I-01', 'supplier_name' => 'Carrier Ltd.']],
+            'unmarked footer retains a conflicting number' => [$dated, 'Invoice no.: OTHER strana 2/2', ['external_number' => null]],
+            'footer-only repeat keeps partial header seller' => [$invoice."\nTotal due: 11 EUR", 'Invoice no.: I-01 strana 2/2',
+                ['supplier_name' => 'Carrier Ltd.', 'title' => 'Carrier Ltd.', 'total' => 11.0]],
+            'unrelated table cell following a number' => [$invoice, "Invoice no.: I-01\tTerms", ['external_number' => 'I-01']],
+            'valid adjacent counter cell' => [$invoice, "Invoice no.: I-01\tstrana 2/2", ['external_number' => 'I-01']],
+            'conflicting unnumbered invoice' => ["Invoice\nSupplier: Other Ltd.", $dated,
+                ['supplier_name' => null, 'title' => null]],
+            'unnumbered dated page with a different seller' => [$dated, "Supplier: Other Ltd.\nInvoice date: 2026-11-02\nDue date: 2026-11-30",
+                ['supplier_name' => null, 'title' => null]],
+            'terms leave complete header intact' => [$dated, 'Terms and conditions', ['supplier_name' => 'Carrier Ltd.', 'title' => 'Carrier Ltd.']],
+            'same-invoice payable continuation uses header currency' => [$dated."\nCurrency: USD", $invoice."\nTotal due: 11",
+                ['currency' => 'USD', 'total' => 11.0]],
+            'conflicting currencies do not fall back to header currency' => [$dated."\nCurrency: USD", $invoice."\nTotal due: 11\nCurrency: EUR or CZK",
+                ['currency' => null, 'total' => 11.0]],
+            'unnumbered invoice and neutral terms' => ["Invoice\nTotal due: 19.50 EUR", 'Terms and conditions',
+                ['external_number' => null, 'total' => 19.5, 'currency' => 'EUR']],
             'annex with the same seller has the only total' => [$dated, $sameSeller."\nTotal due: 3.00 USD", ['total' => null]],
             'invoice has amount without currency' => [$invoice."\nTotal due: 11", $detail."\nTotal due: 3.00 USD", ['total' => 11.0, 'currency' => null]],
             'invoice has complete amount and currency' => [$dated."\nTotal due: 11 EUR", $sameSeller."\nTotal due: 3.00 USD", ['total' => 11.0, 'currency' => 'EUR']],
@@ -238,8 +258,7 @@ class BusinessExpensePdfTextImportTest extends TestCase
         $service = new BusinessExpensePdfTextImportService;
         foreach ([$invoice."\f".$other, $other."\f".$invoice] as $text) {
             $draft = $service->extractFromText($text);
-            $this->assertSame('I-01', $draft['external_number']);
-            foreach ($fields as $key => $expected) {
+            foreach ($fields + ['external_number' => 'I-01'] as $key => $expected) {
                 if ($expected === null) {
                     $this->assertArrayNotHasKey($key, $draft);
                 } else {
@@ -247,6 +266,16 @@ class BusinessExpensePdfTextImportTest extends TestCase
                 }
             }
         }
+    }
+
+    #[Test]
+    public function competing_unnumbered_invoices_do_not_establish_a_payable_amount(): void
+    {
+        $service = new BusinessExpensePdfTextImportService;
+        $a = "Invoice\nTotal due: 19.50 EUR";
+        $b = "Invoice\nTotal due: 3.00 EUR";
+        $this->assertFalse($service->hasExtractableFields($a."\f".$b));
+        $this->assertFalse($service->hasExtractableFields($b."\f".$a));
     }
 
     #[Test]
@@ -264,7 +293,7 @@ class BusinessExpensePdfTextImportTest extends TestCase
     public function an_empty_seller_label_does_not_name_the_invoice_heading_or_metadata_as_the_supplier(): void
     {
         $service = new BusinessExpensePdfTextImportService;
-        foreach (['Invoice', 'Faktúra', 'Credit note', 'Invoice date', 'Variabilný symbol', 'Total due', 'Invoice no. I-01', 'Currency EUR', 'IBAN DE89370400440532013000'] as $heading) {
+        foreach (['Invoice', 'Faktúra', 'Credit note', 'Invoice date', 'Variabilný symbol', 'Total due', 'Invoice no. I-01', 'FAKTÚRA č. I-01 strana 1/1', 'strana 1/2', 'Currency EUR', 'IBAN DE89370400440532013000'] as $heading) {
             $draft = $service->extractFromText("Supplier:\n{$heading}\nInvoice no.: I-01");
             $this->assertArrayNotHasKey('supplier_name', $draft, $heading);
             $this->assertArrayNotHasKey('title', $draft);

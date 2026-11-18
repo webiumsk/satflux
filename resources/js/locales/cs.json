@@ -2166,6 +2166,7 @@
     "expense_pdf_text_detected_title": "V PDF byl nalezen text faktury",
     "expense_pdf_text_review_notice": "Před uložením zkontrolujte vytěžené údaje podle původního dokladu. Platební údaje stále vyžadují potvrzení.",
     "expense_pdf_text_review_title": "Zkontrolovat vytěžené údaje PDF",
+    "expense_select_invoice_currency": "Vyberte měnu uvedenou na faktuře",
     "expense_pdf_text_review_body": "Porovnejte tyto údaje s původním dokladem. Vytěžené údaje můžete uložit nebo ponechat pouze přílohu.",
     "expense_pdf_text_review_save": "Uložit vytěžené údaje",
     "expense_pdf_text_review_skip": "Ponechat pouze přílohu",
