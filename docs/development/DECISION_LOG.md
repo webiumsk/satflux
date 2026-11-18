@@ -1,5 +1,9 @@
 # Development decision log
 
+## Require role evidence for text-PDF suppliers - 2026-11-18
+
+A legal company name in an address window can belong to the buyer. Only populate the supplier and derived title from unambiguous seller-labelled text. When that evidence is missing, the user can select a supplier contact or enter the name manually. Sample validation must check the identity against the known parties.
+
 ## Preserve expense classification and retained payment authority - 2026-11-18
 
 EF file-specification references establish attachment presence even without a

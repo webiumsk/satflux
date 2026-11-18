@@ -625,6 +625,7 @@
     "expense_attachment_upload": "Nahrát přílohu",
     "expense_extract_failed": "Extrakce z ISDOC selhala.",
     "expense_import_prefilled": "Pole byla extrahována z ISDOC. Před uložením je zkontrolujte.",
+    "expense_pdf_text_prefilled": "Údaje byly vytěženy z textu PDF. Před uložením je zkontrolujte.",
     "expense_attachment_choose": "Vybrat soubor",
     "expense_attachment_remove": "Odstranit",
     "expense_attachment_add_more": "Přidat další soubor",

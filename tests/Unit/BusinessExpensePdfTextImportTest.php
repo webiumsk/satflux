@@ -37,10 +37,10 @@ class BusinessExpensePdfTextImportTest extends TestCase
     }
 
     #[Test]
-    public function supports_slovak_and_czech_labels_and_supplier_header_before_customer(): void
+    public function supports_slovak_and_czech_invoice_labels(): void
     {
         $draft = (new BusinessExpensePdfTextImportService)->extractFromText("Synthetic carrier s.r.o.\nIBAN\tSK6807200002891987426353\nOdberateľ:\nSynthetic customer s.r.o.\nFaktúra č. : 00000042\nDátum vystavenia: 1.11.2026\nDátum dodania služby: 2.11.2026\nDatum splatnosti: 15.11.2026\nVariabilní symbol: 00000042\nCelkom k úhrade\t42,50\nMena: EUR");
-        $this->assertSame('Synthetic carrier s.r.o.', $draft['supplier_name']);
+        $this->assertArrayNotHasKey('supplier_name', $draft);
         $this->assertSame('00000042', $draft['external_number']);
         $this->assertSame('00000042', $draft['variable_symbol']);
         $this->assertSame('2026-11-01', $draft['issue_date']);
@@ -49,11 +49,23 @@ class BusinessExpensePdfTextImportTest extends TestCase
         $this->assertSame(42.5, $draft['total']);
     }
 
+    #[Test]
+    public function a_repeated_slovak_invoice_heading_can_end_with_a_page_counter(): void
+    {
+        $draft = (new BusinessExpensePdfTextImportService)->extractFromText("Faktúra č.: 000123\nFAKTÚRA č.:  000123        strana 1/1");
+        $this->assertSame('000123', $draft['external_number']);
+    }
+
     /** @return array<string, array{string, string}> */
     public static function ambiguousFields(): array
     {
         return [
             'number' => ['Invoice no.: OTHER-002', 'external_number'],
+            'different number in footer' => ['FAKTÚRA č.: OTHER-002    strana 1/1', 'external_number'],
+            'prose in footer' => ['FAKTÚRA č.: INV-001    strana 1/1 continued', 'external_number'],
+            'malformed number in footer' => ['FAKTÚRA č.: INV 001    strana 1/1', 'external_number'],
+            'incomplete counter' => ['FAKTÚRA č.: INV-001    strana 1/', 'external_number'],
+            'invalid counter' => ['FAKTÚRA č.: INV-001    strana 2/1', 'external_number'],
             'symbol' => ['Variabilný symbol: 0000777', 'variable_symbol'],
             'account' => ['IBAN: DE89370400440532013000', 'supplier_iban'],
             'invalid account' => ['IBAN: SK6807200002891987426354', 'supplier_iban'],
@@ -88,6 +100,56 @@ class BusinessExpensePdfTextImportTest extends TestCase
             $this->assertArrayNotHasKey($field, $draft);
         }
         $this->assertSame('0000042', $draft['external_number']);
+    }
+
+    /** @return array<string, array{string, ?string}> */
+    public static function partyLayouts(): array
+    {
+        return [
+            'buyer postal window' => ["Synthetic Shop s.r.o.\nOdberateľ:\nSynthetic Shop s.r.o.", null],
+            'delivery and billing addresses differ' => ["Synthetic Warehouse s.r.o.\nCustomer: Synthetic Shop Ltd.", null],
+            'sole unlabelled company' => ['Synthetic Shop s.r.o.', null],
+            'role word inside a postal name' => ["Synthetic Supplier Ltd.\nCustomer: Synthetic Shop Ltd.", null],
+            'signer is not the seller label' => ["Digitally signed by\nSynthetic Signatory Ltd.\nBuyer: Synthetic Shop Ltd.", null],
+            'explicit supplier after buyer' => ["Odběratel: Synthetic Shop s.r.o.\nDodavatel:\nSynthetic Carrier s.r.o.", 'Synthetic Carrier s.r.o.'],
+            'same seller and buyer candidate' => ["Seller: Synthetic Shop s.r.o.\nBill to: SYNTHETIC SHOP s. r. o.", null],
+            'competing explicit sellers' => ["Supplier: Synthetic Carrier Ltd.\nVendor: Synthetic Other Ltd.", null],
+            'adjacent party headings' => ["Seller:\tBuyer:\nSynthetic Carrier Ltd.\tSynthetic Shop Ltd.", null],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('partyLayouts')]
+    public function supplier_and_title_require_a_distinct_explicit_seller(string $parties, ?string $expected): void
+    {
+        $draft = (new BusinessExpensePdfTextImportService)->extractFromText("IBAN: SK6807200002891987426353\n{$parties}\nInvoice no.: INV-001\nTotal due: 19.50 EUR");
+        if ($expected === null) {
+            $this->assertArrayNotHasKey('supplier_name', $draft);
+            $this->assertArrayNotHasKey('title', $draft);
+        } else {
+            $this->assertSame($expected, $draft['supplier_name']);
+            $this->assertSame($expected, $draft['title']);
+        }
+        if ($expected !== null) {
+            $this->assertArrayNotHasKey('supplier_iban', $draft);
+        } else {
+            $this->assertSame('SK6807200002891987426353', $draft['supplier_iban']);
+        }
+        $this->assertTrue($draft['payment_review_required']);
+    }
+
+    #[Test]
+    public function a_supplier_named_only_in_an_annex_does_not_receive_the_invoice_payment(): void
+    {
+        $invoice = "IBAN: SK6807200002891987426353\nInvoice no.: INV-001\nInvoice date: 2026-11-01\nDue date: 2026-11-15\nTotal due: 19.50 EUR";
+        $annex = "Service detail\nSupplier: Synthetic Subcontractor Ltd.\nIBAN: DE89370400440532013000";
+        foreach ([$invoice."\f".$annex, $annex."\f".$invoice] as $text) {
+            $draft = (new BusinessExpensePdfTextImportService)->extractFromText($text);
+            $this->assertArrayNotHasKey('supplier_name', $draft);
+            $this->assertArrayNotHasKey('title', $draft);
+            $this->assertSame('SK6807200002891987426353', $draft['supplier_iban']);
+            $this->assertSame(19.5, $draft['total']);
+        }
     }
 
     #[Test]

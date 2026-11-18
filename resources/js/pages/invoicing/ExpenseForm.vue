@@ -464,7 +464,7 @@ function applyImportDraft(draft: ExpenseImportDraft) {
     form.value.currency = draft.currency;
     currencyHasExplicitValue.value = true;
   }
-  importNotice.value = t('invoicing.expense_import_prefilled');
+  importNotice.value = t(partialTextDraft ? 'invoicing.expense_pdf_text_prefilled' : 'invoicing.expense_import_prefilled');
 }
 
 async function onFileSelected(file: File) {

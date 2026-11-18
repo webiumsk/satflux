@@ -625,6 +625,7 @@
     "expense_attachment_upload": "Nahrať prílohu",
     "expense_extract_failed": "Vyťaženie z ISDOC sa nepodarilo.",
     "expense_import_prefilled": "Údaje boli vyťažené z ISDOC. Skontrolujte polia pred uložením.",
+    "expense_pdf_text_prefilled": "Údaje boli vyťažené z textu PDF. Skontrolujte polia pred uložením.",
     "expense_attachment_choose": "Vybrať súbor",
     "expense_attachment_remove": "Odstrániť",
     "expense_attachment_add_more": "Pridať ďalší súbor",

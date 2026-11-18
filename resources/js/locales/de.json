@@ -625,6 +625,7 @@
     "expense_attachment_upload": "Anhang hochladen",
     "expense_extract_failed": "ISDOC-Extraktion fehlgeschlagen.",
     "expense_import_prefilled": "Felder wurden aus ISDOC extrahiert. Bitte vor dem Speichern prüfen.",
+    "expense_pdf_text_prefilled": "Die Angaben wurden aus dem PDF-Text übernommen. Prüfen Sie sie vor dem Speichern.",
     "expense_attachment_choose": "Datei auswählen",
     "expense_attachment_remove": "Entfernen",
     "expense_attachment_add_more": "Weitere Datei hinzufügen",

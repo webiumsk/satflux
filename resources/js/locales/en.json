@@ -625,6 +625,7 @@
     "expense_attachment_upload": "Upload attachment",
     "expense_extract_failed": "ISDOC extraction failed.",
     "expense_import_prefilled": "Fields were extracted from ISDOC. Review before saving.",
+    "expense_pdf_text_prefilled": "Fields were extracted from the PDF text. Review them before saving.",
     "expense_attachment_choose": "Choose file",
     "expense_attachment_remove": "Remove",
     "expense_attachment_add_more": "Add another file",

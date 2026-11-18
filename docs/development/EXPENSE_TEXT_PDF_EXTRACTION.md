@@ -1,5 +1,7 @@
 # Text PDF expense extraction
 
+**Supplier validation correction (2026-11-18).** The earlier nine-field probe accepted any company name found before the buyer heading. The postal window in the supplied invoice contains the buyer. The supplier and title checks below are historical presence checks. Comparing the actual parties reproduces the wrong attribution on PR456. A fresh draft now leaves both names empty for this invoice and retains the eight other fields.
+
 ## Authorization and acceptance contract - 2026-11-17
 
 The owner authorizes text-PDF draft extraction after the read-only SPS diagnosis.

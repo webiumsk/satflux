@@ -27,6 +27,10 @@ class BusinessExpensePdfTextImportService
 
     private const CREDIT_NUMBER_LABELS = 'dobropis\h+[čc](?:[íi]slo)?\.?|credit\h+note\h+(?:number|no\.?|#)';
 
+    private const SELLER_LABELS = 'dod[áa]vate[ľl]|dodavatel|supplier(?:\h+name)?|seller|vendor';
+
+    private const BUYER_LABELS = 'odberate[ľl]|odb[ěe]ratel|customer|buyer|bill\h+to';
+
     private const NUMBER_LABELS = self::INVOICE_NUMBER_LABELS.'|'.self::CREDIT_NUMBER_LABELS;
 
     private const ISSUE_DATE_LABELS = 'd[áa]tum\h+(?:vystavenia|vyhotovenia)|datum\h+vystaven[íi]|invoice\h+date|issue\h+date|date\h+of\h+issue';
@@ -172,7 +176,8 @@ class BusinessExpensePdfTextImportService
             }
         }
 
-        $amount = $this->invoiceTotal($text, $number);
+        $invoicePage = $this->invoiceHeaderPage($text, $number);
+        $amount = $this->invoiceTotal($text, $invoicePage);
         if ($amount !== null && (float) $amount > 0) {
             $amount = match ($this->documentType($text)) {
                 'invoice' => $amount,
@@ -193,13 +198,24 @@ class BusinessExpensePdfTextImportService
         if (! array_intersect_key($fields, array_flip(['external_number', 'issue_date', 'delivery_date', 'due_date', 'total']))) {
             return [];
         }
-        $supplier = $this->supplier($text);
+        $header = $this->supplierHeader($invoicePage ?? '');
+        $sellers = $this->partyNames($invoicePage ?? '', self::SELLER_LABELS);
+        $supplier = $this->unique($sellers, fn (string $value) => $this->supplierName($value));
+        if ($supplier !== null) {
+            $partyKey = static fn (string $name): string => (string) preg_replace('/[^\p{L}\p{N}]/u', '', mb_strtolower($name));
+            $buyers = $this->partyNames($invoicePage ?? '', self::BUYER_LABELS);
+            if (in_array($partyKey($supplier), array_map($partyKey, $buyers), true)) {
+                $supplier = null;
+            }
+        }
         if ($supplier !== null) {
             $fields['supplier_name'] = $supplier;
             $fields['title'] = $supplier;
         }
         // Accounts in the buyer's section are not supplier payment instructions.
-        $ibans = $this->issuerIbans($this->supplierHeader($text));
+        // A seller identified only after the buyer boundary cannot establish ownership of an earlier account.
+        $ibans = $supplier !== null && $this->partyNames($header, self::SELLER_LABELS) === []
+            ? [] : $this->issuerIbans($header);
         $iban = $this->unique($ibans, fn (string $value) => SupplierPaymentIban::normalize($value));
         if ($iban !== null) {
             $fields['supplier_iban'] = $iban;
@@ -240,10 +256,14 @@ class BusinessExpensePdfTextImportService
 
     private function invoiceNumber(string $value): ?string
     {
-        return preg_match('/^[\p{L}\p{N}][\p{L}\p{N}\/._-]{0,63}$/uD', $value) ? $value : null;
+        if (! preg_match('/^([\p{L}\p{N}][\p{L}\p{N}\/._-]{0,63})(?:\h+strana\h+([1-9][0-9]{0,5})\/([1-9][0-9]{0,5}))?$/iuD', $value, $parts)) {
+            return null;
+        }
+
+        return isset($parts[2]) && (int) $parts[2] > (int) $parts[3] ? null : $parts[1];
     }
 
-    private function invoiceTotal(string $text, ?string $number): ?string
+    private function invoiceTotal(string $text, ?string $invoicePage): ?string
     {
         $amounts = [];
         foreach ($this->values($text, self::TOTAL_LABELS) as $value) {
@@ -256,24 +276,34 @@ class BusinessExpensePdfTextImportService
         if (count($amounts) === 1) {
             return (string) array_key_first($amounts);
         }
-        if ($number === null || ! str_contains($text, "\f") || $amounts === []) {
+
+        // An annex subtotal cannot replace the one coherent invoice summary.
+        return $invoicePage === null ? null : $this->unique($this->values($invoicePage, self::TOTAL_LABELS), fn (string $value) => $this->amount($value));
+    }
+
+    private function invoiceHeaderPage(string $text, ?string $number): ?string
+    {
+        $pages = array_values(array_filter(explode("\f", $text), static fn (string $page): bool => trim($page) !== ''));
+        if (count($pages) === 1) {
+            return $pages[0];
+        }
+        if ($number === null) {
             return null;
         }
-
-        $headers = [];
-        foreach (explode("\f", $text) as $page) {
+        $header = null;
+        foreach ($pages as $page) {
             $pageNumber = $this->unique($this->values($page, self::NUMBER_LABELS), fn (string $value) => $this->invoiceNumber($value));
             $issue = $this->unique($this->values($page, self::ISSUE_DATE_LABELS), fn (string $value) => $this->date($value));
             $due = $this->unique($this->values($page, self::DUE_DATE_LABELS), fn (string $value) => $this->date($value));
             if ($pageNumber !== null && $issue !== null && $due !== null) {
-                $headers[] = ['number' => $pageNumber,
-                    'total' => $this->unique($this->values($page, self::TOTAL_LABELS), fn (string $value) => $this->amount($value))];
+                if ($pageNumber !== $number || $header !== null) {
+                    return null;
+                }
+                $header = $page;
             }
         }
 
-        // An annex subtotal cannot replace the one coherent invoice summary.
-        // More than one header page or any conflicting document identity stays unresolved.
-        return count($headers) === 1 && $headers[0]['number'] === $number ? $headers[0]['total'] : null;
+        return $header;
     }
 
     /** @return list<string> */
@@ -365,35 +395,25 @@ class BusinessExpensePdfTextImportService
         return $sign.$integer.'.'.$fraction;
     }
 
-    private function supplier(string $text): ?string
+    /** @return list<string> */
+    private function partyNames(string $text, string $labels): array
     {
-        $header = $this->alignBankTable($this->supplierHeader($text));
-        $labelled = $this->values($header, 'dod[áa]vate[ľl]|dodavatel|supplier|seller|vendor');
-        if ($labelled !== []) {
-            return $this->unique($labelled, fn (string $value) => $this->supplierName($value));
-        }
-        $candidates = [];
-        foreach (explode("\n", $header) as $line) {
-            $line = trim($line);
-            if (preg_match('/\b(?:bank|banka|bankov[ée]|IBAN|BIC|SWIFT)\b/iu', $line)) {
-                continue;
-            }
-            if (preg_match('/^[\p{L}\p{N}][\p{L}\p{N} &\x{27}.,()\/-]+(?:s\.\h*r\.\h*o\.|a\.\h*s\.|ltd\.?|gmbh)$/iuD', $line)) {
-                $candidates[] = $line;
-            }
-        }
+        // Postal windows, logos and signatures can name someone other than the supplier.
+        // Accept a role label only at the start of a line or cell with a separated value.
+        preg_match_all('/(?:^|[\n\t])[ ]*(?:'.$labels.')[ ]*(?::[ \t]*(?:\n[ \t]*)?|\t+[ ]*|\n[ \t]*)([^\n\r\t\f]+)/iu', $text, $matches);
 
-        return $this->unique($candidates, fn (string $value) => $this->supplierName($value));
+        return array_map('trim', $matches[1]);
     }
 
     private function supplierHeader(string $text): string
     {
-        return preg_split('/\b(?:odberate[ľl]|odb[ěe]ratel|customer|buyer|bill\h+to)\b\h*:?/iu', $text, 2)[0];
+        return preg_split('/\b(?:'.self::BUYER_LABELS.')\b\h*:?/iu', $text, 2)[0];
     }
 
     private function supplierName(string $value): ?string
     {
-        return $value !== '' && mb_strlen($value) <= 255 && ! preg_match('/[\p{Cc}\p{Zl}\p{Zp}]/u', $value)
+        return $value !== '' && mb_strlen($value) <= 255 && ! preg_match('/[:\p{Cc}\p{Zl}\p{Zp}]/u', $value)
+            && ! preg_match('/^(?:'.self::BUYER_LABELS.'|'.self::SELLER_LABELS.'|IBAN|BIC|SWIFT)$/iuD', $value)
             ? $value : null;
     }
 

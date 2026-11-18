@@ -501,6 +501,14 @@ describe('structured supplier snapshots and received credit notes', () => {
     expect(payload).toMatchObject({ company_contact_id: 'contact-bank', supplier_iban: null, supplier_name: null });
   });
 
+  it('identifies the extraction source in the prefill notice', async () => {
+    await render();
+    await extract({ source: 'pdf_text', external_number: 'TEXT-01' });
+    expect(wrapper!.text()).toContain(en.invoicing.expense_pdf_text_prefilled);
+    await extract({ source: 'isdoc', external_number: 'XML-01' });
+    expect(wrapper!.text()).toContain(en.invoicing.expense_import_prefilled);
+  });
+
   it.each([true, false])('preserves omitted supplier snapshots from a partial text-PDF draft without a contact (local=%s)', async local => {
     existingExpense.supplier_name = 'Saved supplier';
     existingExpense.supplier_iban = 'CZ6508000000192000145399';
