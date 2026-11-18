@@ -11,7 +11,7 @@ Allowed audit/implementation scope, provider/consumer revisions, invoice state m
 
 ## Repeatable workflow
 
-Separate actual billing, effective entitlement, authorization, admin privilege and quota/cost policy. Trace checkout/webhooks/renewal/reconciliation and retries. Preserve original mint/payout evidence and outstanding-invoice safety. Verify signatures and idempotency before settlement. For free PRO produce read-only findings and owner questions only; never call paid activation to manufacture promo access.
+Separate actual billing, effective entitlement, authorization, admin privilege and quota/cost policy. Trace checkout/webhooks/renewal/reconciliation and retries. Preserve original mint/payout evidence and outstanding-invoice safety. Verify signatures and idempotency before settlement. For free PRO, verify current scope against the owner decision and keep promotional access independent of paid activation.
 
 ## Acceptance criteria
 

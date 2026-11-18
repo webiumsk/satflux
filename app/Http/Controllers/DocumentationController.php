@@ -34,7 +34,7 @@ class DocumentationController extends Controller
                 is_string($search) ? $search : null,
             ),
             'categories' => $this->docs->categories($locale),
-        ]);
+        ])->header('X-Robots-Tag', 'noindex');
     }
 
     /** A single article by slug (404 if unknown). */
@@ -46,6 +46,6 @@ class DocumentationController extends Controller
             abort(404);
         }
 
-        return response()->json(['data' => $article]);
+        return response()->json(['data' => $article])->header('X-Robots-Tag', 'noindex');
     }
 }

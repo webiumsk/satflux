@@ -1,5 +1,13 @@
 # Local workspace
 
+## Public documentation and agent guidance - 2026-11-18
+
+The scoped worktree `storage/app/private/worktrees/public-llm-docs` holds
+`feat/public-llm-docs` over verified master `58416785`. It contains the
+owner-authorized public documentation and internal instruction changes. The
+primary checkout has separate existing work. The owner authorizes branch
+publication. Keep the scoped worktree for follow-up review.
+
 ## PR456 review correction ready for publication - 2026-11-18
 
 The retained text-PDF worktree stays on `feat/expense-text-pdf-extraction` at

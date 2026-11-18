@@ -7,6 +7,7 @@ export default {
         './resources/views/public.blade.php',
         './resources/views/partials/landing-hero-shell.blade.php',
         './resources/views/partials/landing-showcase-shell.blade.php',
+        './resources/views/partials/public-documentation.blade.php',
         './resources/js/pages/Landing.vue',
         './resources/js/pages/LandingEntry.vue',
         './resources/js/pages/LandingShowcase.vue',

@@ -37,7 +37,14 @@ export function updatePageMeta(
   }
 
   // Update og:url, twitter:url, and canonical on client-side navigation
-  const currentUrl = window.location.href;
+  const url = new URL(window.location.href);
+  const isGuide = route.name === 'documentation-show';
+  if (isGuide || route.name === 'documentation') {
+    url.search = '';
+    url.hash = '';
+    url.pathname = url.pathname.replace(/\/$/, '');
+  }
+  const currentUrl = url.href;
   const ogUrl = document.querySelector('meta[property="og:url"]');
   if (ogUrl) ogUrl.setAttribute('content', currentUrl);
   const twitterUrl = document.querySelector('meta[name="twitter:url"]');
@@ -50,5 +57,21 @@ export function updatePageMeta(
     canonical.rel = 'canonical';
     canonical.href = currentUrl;
     document.head.appendChild(canonical);
+  }
+
+  const markdownHref = isGuide ? `${currentUrl}.md` : null;
+  const markdownLink = document.head.querySelector<HTMLLinkElement>('link[data-documentation-markdown]');
+  if (markdownHref && overrides && typeof route.params.slug === 'string' && /^[a-z0-9][a-z0-9-]*$/.test(route.params.slug)) {
+    const link = markdownLink ?? document.createElement('link');
+    link.rel = 'alternate';
+    link.type = 'text/markdown';
+    link.href = markdownHref;
+    link.setAttribute('data-documentation-markdown', '');
+    if (!markdownLink) document.head.appendChild(link);
+  } else if (markdownLink && markdownLink.href !== markdownHref) {
+    markdownLink.remove();
+  }
+  if (!isGuide || overrides) {
+    document.head.querySelector('meta[data-documentation-noindex]')?.remove();
   }
 }

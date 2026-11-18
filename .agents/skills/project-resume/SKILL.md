@@ -7,7 +7,8 @@ description: "Resume a Satflux session or hand off a milestone using persistent 
 
 ## Required inputs
 
-Current request, root AGENTS.md, PROJECT_STATE, ROADMAP, DECISION_LOG, workflow, registry and Git status.
+Current request, root AGENTS.md, current brief, task-relevant state/roadmap/decision
+entries, workflow, registry and Git status.
 
 ## Repeatable workflow
 
@@ -15,7 +16,8 @@ Read state before planning. Check cwd/status/branch/remotes without changing bra
 
 ## Acceptance criteria
 
-State facts have sources/revisions; preserved edits and read-only repositories are explicit; proposed free PRO is not treated as implemented or authorized.
+State facts have sources and revisions. Preserve existing edits and identify
+repository permissions. Confirm the current decision for the requested scope.
 
 ## Expected outputs
 

@@ -5,6 +5,7 @@ namespace App\Services\Documentation;
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\Extension\FrontMatter\FrontMatterExtension;
+use League\CommonMark\Extension\FrontMatter\FrontMatterParserInterface;
 use League\CommonMark\Extension\FrontMatter\Output\RenderedContentWithFrontMatter;
 use League\CommonMark\Extension\GithubFlavoredMarkdownExtension;
 use League\CommonMark\MarkdownConverter;
@@ -33,6 +34,8 @@ class UserDocsRepository
 
     private MarkdownConverter $converter;
 
+    private FrontMatterParserInterface $frontMatterParser;
+
     public function __construct(?string $baseDir = null)
     {
         $this->baseDir = $baseDir ?? base_path('docs/user');
@@ -43,8 +46,10 @@ class UserDocsRepository
         ]);
         $environment->addExtension(new CommonMarkCoreExtension);
         $environment->addExtension(new GithubFlavoredMarkdownExtension);
-        $environment->addExtension(new FrontMatterExtension);
+        $frontMatter = new FrontMatterExtension;
+        $environment->addExtension($frontMatter);
         $this->converter = new MarkdownConverter($environment);
+        $this->frontMatterParser = $frontMatter->getFrontMatterParser();
     }
 
     public function normalizeLocale(?string $locale): string
@@ -65,6 +70,24 @@ class UserDocsRepository
         unset($article['order']);
 
         return $article;
+    }
+
+    /** @return array{content: string, locale: string}|null */
+    public function markdown(string $slug, string $locale): ?array
+    {
+        $canonical = $this->filePath($slug, self::FALLBACK_LOCALE);
+        if ($canonical === null) {
+            return null;
+        }
+
+        $locale = $this->normalizeLocale($locale);
+        $path = $this->filePath($slug, $locale) ?? $canonical;
+        $input = $this->frontMatterParser->parse((string) file_get_contents($path));
+
+        return [
+            'content' => $input->getContent(),
+            'locale' => $path === $canonical ? self::FALLBACK_LOCALE : $locale,
+        ];
     }
 
     /**
@@ -169,16 +192,24 @@ class UserDocsRepository
     private function filePath(string $slug, string $locale): ?string
     {
         // Reject traversal - slugs are single path segments only.
-        if ($slug === '' || ! preg_match('/^[a-z0-9][a-z0-9-]*$/', $slug)) {
+        if (! preg_match('/\A[a-z0-9][a-z0-9-]*\z/', $slug)) {
             return null;
         }
-        $localized = $this->baseDir.'/'.$locale.'/'.$slug.'.md';
-        if (is_file($localized)) {
-            return $localized;
-        }
-        $fallback = $this->baseDir.'/'.self::FALLBACK_LOCALE.'/'.$slug.'.md';
 
-        return is_file($fallback) ? $fallback : null;
+        $root = realpath($this->baseDir);
+        if ($root === false) {
+            return null;
+        }
+
+        foreach (array_unique([$locale, self::FALLBACK_LOCALE]) as $candidate) {
+            $path = $root.'/'.$candidate.'/'.$slug.'.md';
+            // Published files must be in their locale directory, including after symlink resolution.
+            if (is_file($path) && realpath($path) === $path) {
+                return $path;
+            }
+        }
+
+        return null;
     }
 
     /** @return array{0: array<string,mixed>, 1: string} front-matter + rendered HTML */

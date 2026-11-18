@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Read [AGENTS.md](AGENTS.md) for shared project rules, security invariants and scope.
+This file provides development commands and application context.
 
 ## Project Overview
 
@@ -44,7 +45,7 @@ npm run version:minor   # Bump minor version
 ```
 Browser (Vue SPA)
   → Axios (/api, withCredentials: true)
-  → Laravel API routes (routes/api.php, all guarded by auth:sanctum)
+  → Laravel API routes (routes/api.php, authenticated SPA routes use auth:sanctum)
   → Controllers → Services
     ├─ Eloquent (PostgreSQL)
     └─ BtcPayClient → BTCPay Server Greenfield API
@@ -71,7 +72,6 @@ Browser (Vue SPA)
 ### Multi-Tenancy & Security
 
 - Store access is enforced at the application layer via the `stores` table (`user_id` → `btcpay_store_id`)
-- Only local UUIDs are ever sent to the frontend - `btcpay_store_id` is never exposed
 - Dual API key architecture: server-level key (provisioning) vs. per-merchant encrypted keys (scoped operations)
 - Audit logging on sensitive actions (store create/update, exports)
 
@@ -95,6 +95,5 @@ The public docs at `/documentation` are authored as **repo Markdown** under `doc
 - **Never expose `btcpay_store_id`** to the frontend; always use the local UUID. **Single deliberate exception:** `StoreController::formatStore`/`formatStoreFromBtcPay` include it because the Pay Button embed snippet and API key generation need the real BTCPay store ID (`PayButtonForm.vue`, `ApiKeys.vue`). Do not add new exposures - the `Store` model hides it (`$hidden`) so it never leaks via `toArray()`/`toJson()`.
 - **`EnsureStoreOwnership` middleware** must be applied to all store-scoped API routes
 - BTCPay API responses are cached with cache keys scoped by user/API key hash
-- Webhook signature verification is active when `BTCPAY_WEBHOOK_SECRET` is set
 - Test BTCPay HTTP calls using `Http::fake()` (see existing store creation tests for pattern)
 - `php artisan optimize:clear` is required after any `.env` or config file changes
