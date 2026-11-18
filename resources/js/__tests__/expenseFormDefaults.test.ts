@@ -974,7 +974,7 @@ describe('company currency defaults and sparse extraction', () => {
       expect(write).not.toHaveBeenCalled();
       expect(wrapper!.text()).toContain(en.invoicing.expense_select_invoice_currency);
       await currency.setValue('JPY');
-      expect(currency.get('option[value="CHF"]').exists()).toBe(true);
+      expect(currency.find('option[value="CHF"]').exists()).toBe(true);
       await extract({ source: 'pdf_text', currency: 'EUR' });
       expect(currency.element.value).toBe('JPY');
       await wrapper!.get('form').trigger('submit');
