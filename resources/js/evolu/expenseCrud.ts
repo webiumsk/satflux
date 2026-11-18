@@ -343,17 +343,31 @@ export async function insertLocalExpense(
     return withExpenseReconciliation(evolu, (scope) => insertLocalExpenseInReconciliation(scope, companyId, payload, options), undefined, payload.company_contact_id ? ["allContactsQuery"] : []);
 }
 
+// Fields used to build the expense text-PDF review, including the saved payment state.
+const reviewedExpenseFields = [
+    "companyContactId", "supplierName", "supplierIban", "paymentReviewRequired", "title", "externalNumber",
+    "variableSymbol", "constantSymbol", "specificSymbol", "issueDate", "deliveryDate", "dueDate",
+    "total", "currency", "internalNote",
+] as const satisfies readonly (keyof EvoluExpenseRow)[];
+
 /**
  * Update a fresh live expense under the required origin gate, retaining the caller's expected company binding.
  * Reject missing/deleted/cancelled targets or a provided company mismatch, then prove persistence before returning the Result.
  */
 export async function updateLocalExpense(
-    evolu: Evolu<InvoicingLocalSchema>, expenseId: ExpenseId, payload: ExpenseSavePayload, current?: EvoluExpenseRow | null,
+    evolu: Evolu<InvoicingLocalSchema>, expenseId: ExpenseId, payload: ExpenseSavePayload,
+    expected?: EvoluExpenseRow | { reviewBaseline: Readonly<EvoluExpenseRow> } | null,
 ) {
     return withExpenseReconciliation(evolu, (scope) => {
         const fresh = currentExpenseTarget(scope, expenseId);
+        const isReview = expected && "reviewBaseline" in expected;
+        const current = isReview ? expected.reviewBaseline : expected;
         if (!fresh || fresh.isDeleted === 1 || (current && fresh.companyId !== current.companyId)) {
             return { ok: false as const, error: "expense_target_changed" };
+        }
+        if (isReview && (expected.reviewBaseline.id !== fresh.id
+            || reviewedExpenseFields.some(field => (expected.reviewBaseline[field] ?? null) !== (fresh[field] ?? null)))) {
+            return { ok: false as const, error: "expense_review_changed" };
         }
         return updateLocalExpenseCore(scope.evolu, expenseId, payload, fresh);
     }, undefined, payload.company_contact_id ? ["allContactsQuery"] : []);

@@ -263,6 +263,18 @@ describe("expense attachment page integration", () => {
             expect(route.query).toEqual({});
         });
 
+    it("passes the original review baseline to the local gate and keeps a conflicted attachment pending", async () => {
+        const review = await openTextReview(true);
+        mocks.updateExpense.mockResolvedValueOnce({ ok: false, error: "expense_review_changed" });
+        review.vm.$emit("confirm"); await flushPromises();
+        const baseline = mocks.updateExpense.mock.lastCall![3].reviewBaseline;
+        expect(Object.isFrozen(baseline)).toBe(true);
+        expect(baseline).toMatchObject({ total: "1.00", title: "Synthetic existing expense", internalNote: null,
+            supplierName: "Retained supplier", variableSymbol: "0007" });
+        expect(window.alert).toHaveBeenCalledWith(en.invoicing.migration.error_preview_changed);
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+    });
+
     it.each([true, false])("reviews the current supplier record after the initially loaded copy becomes stale (local=%s)", async local => {
         const review = await openTextReview(local, () => {
             Object.assign(models.value[0]!, { company_contact_id: "new-supplier-contact", supplier_name: "New saved supplier",

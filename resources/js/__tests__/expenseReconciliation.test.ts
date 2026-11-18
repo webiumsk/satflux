@@ -44,6 +44,32 @@ describe("expense writer reconciliation authority", () => {
         expect(probe.state.expense[0]).toMatchObject({ total: "20.00", currency: "EUR", internalNote: "Synthetic note", status: "recorded" });
     });
 
+    it.each([
+        ["internalNote", "Payment amount: 2.00"], ["title", "New title"], ["externalNumber", "INV-NEW"],
+        ["variableSymbol", "0020"], ["constantSymbol", "0308"], ["specificSymbol", "17"],
+        ["issueDate", "2026-11-10"], ["deliveryDate", "2026-11-11"], ["dueDate", "2026-12-01"],
+        ["total", "22.00"], ["currency", "USD"], ["supplierName", "New supplier"],
+        ["supplierIban", null], ["companyContactId", null], ["paymentReviewRequired", 1],
+    ])("rejects an approved extraction if %s changes while waiting to write", async (field, changed) => {
+        const probe = createExpenseWorkerProbe();
+        const row = probe.state.expense[0];
+        Object.assign(row, { supplierIban: "CZ6508000000192000145399", companyContactId: probe.transaction.companyId });
+        const baseline = Object.freeze({ ...row }) as never;
+        const pending = updateLocalExpense(probe.evolu, probe.expense.id as never, payload, { reviewBaseline: baseline });
+        row[field as string] = changed;
+        expect(await pending).toEqual({ ok: false, error: "expense_review_changed" });
+        expect(probe.financialMutations()).toHaveLength(0);
+        expect(row[field as string]).toBe(changed);
+    });
+
+    it("saves the proposed values when the reviewed original still matches", async () => {
+        const probe = createExpenseWorkerProbe();
+        const baseline = Object.freeze({ ...probe.state.expense[0] }) as never;
+        const result = await updateLocalExpense(probe.evolu, probe.expense.id as never, payload, { reviewBaseline: baseline });
+        expect(result.ok).toBe(true);
+        expect(probe.state.expense[0].total).toBe("20.00");
+    });
+
     it("does not save a queued note once the fresh expense is cancelled", async () => {
         const probe = createExpenseWorkerProbe();
         expect((await cancelLocalExpense(probe.evolu, probe.expense.id as never)).ok).toBe(true);

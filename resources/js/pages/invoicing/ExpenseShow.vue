@@ -1234,11 +1234,13 @@ async function onConfirmExtract() {
     if (!draft) return;
     let approvedPayload: ReturnType<typeof draftToPayload> | null = null;
     let reviewBaseline: Expense | null = null;
+    let localReviewBaseline: Readonly<EvoluExpenseRow> | undefined;
     if (draft.source === 'pdf_text') {
       if (localFirst) {
         const current = expenseRows.value.find(row => row.id === requestedExpense && row.companyId === requestedCompany);
         if (!current) throw new Error(t('errors.generic'));
-        reviewBaseline = evoluExpenseToApi(current) as Expense;
+        localReviewBaseline = Object.freeze({ ...current });
+        reviewBaseline = evoluExpenseToApi(localReviewBaseline) as Expense;
       } else {
         reviewBaseline = await invoicingApi.expenses.get<Expense>(requestedCompany, requestedExpense);
       }
@@ -1264,9 +1266,15 @@ async function onConfirmExtract() {
       }
       if (localFirst) {
         if (!expenseResource.evolu || expense.value?.id !== requestedExpense) throw new Error(t('errors.generic'));
-        const current = expenseRows.value.find((row) => row.id === requestedExpense && row.companyId === requestedCompany);
-        if (!current) throw new Error(t('errors.generic'));
-        const result = await updateLocalExpense(expenseResource.evolu, requestedExpense as ExpenseId, payload, current);
+        const expected = localReviewBaseline ? { reviewBaseline: localReviewBaseline }
+          : expenseRows.value.find(row => row.id === requestedExpense && row.companyId === requestedCompany);
+        if (!expected) throw new Error(t('errors.generic'));
+        const result = await updateLocalExpense(expenseResource.evolu, requestedExpense as ExpenseId, payload, expected);
+        if (!stillCurrent()) return;
+        if (!result.ok && result.error === 'expense_review_changed') {
+          window.alert(t('invoicing.migration.error_preview_changed'));
+          return;
+        }
         if (!result.ok) throw new Error(t('errors.generic'));
         await expenseResource.refresh();
         if (!stillCurrent()) return;
