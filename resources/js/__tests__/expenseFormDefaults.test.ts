@@ -31,6 +31,7 @@ const existingExpense = {
 };
 
 vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ push: mocks.push, replace: mocks.replace }) }));
+vi.mock('@/store/auth', () => ({ useAuthStore: () => ({ user: { id: 1 } }) }));
 vi.mock('@/composables/useExpenseSupplierContacts', () => ({ useExpenseSupplierContacts: () => ({
   contacts: supplierContacts, loading: contactsLoading, failed: ref(false), refresh: vi.fn(),
 }) }));

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DOMWrapper, flushPromises, mount, type VueWrapper } from "@vue/test-utils";
-import { computed, reactive, ref } from "vue";
+import { computed, reactive, ref, type Component } from "vue";
 import { createI18n } from "vue-i18n";
 import en from "@/locales/en.json";
 import { evoluExpenseToApi, type EvoluExpenseRow } from "@/evolu/expenseMap";
@@ -23,6 +23,8 @@ const serverCompany = "00000000-0000-4000-8000-000000000001";
 const newExpenseId = "synthetic-created-expense";
 const company = ref(localCompany);
 const ownerRouting = ref('private');
+const session = reactive<{ user: { id: number } | null }>({ user: { id: 1 } });
+vi.mock('@/store/auth', () => ({ useAuthStore: () => session }));
 // A lagging query is observable state, including when another consumer warms the computed projection.
 const filteredLagId = ref<string | null>(null);
 const route = reactive({ name: "invoicing-expense-new", params: {} as { expenseId?: string }, query: {} });
@@ -111,7 +113,7 @@ vi.mock("@/components/invoicing/ExpenseShowSidebar.vue", () => ({ default: {
 } }));
 vi.mock("@/components/invoicing/ExpenseAttachmentPanel.vue", () => ({ default: {
     name: "ExpenseAttachmentPanel",
-    props: ["fileName", "hasPending", "detectError", "detecting", "previewUrl", "previewKind", "pendingFiles", "selectedPendingId"],
+    props: ["fileName", "hasFile", "hasPending", "previewFailed", "detectError", "detecting", "previewUrl", "previewKind", "pendingFiles", "selectedPendingId", "savedAttachments", "selectedAttachmentId"],
     emits: ["file-selected", "files-selected", "clear", "select-pending", "remove-pending", "select-attachment", "download", "remove-saved", "check-isdoc"],
     template: '<section data-test="attachment-panel"><span>{{ fileName }}</span><p>{{ detectError }}</p></section>',
 } }));
@@ -141,14 +143,14 @@ function deferred<T>() {
 }
 let wrapper: VueWrapper | undefined;
 let consentChoice = false;
-function render(kind: "new" | "show" | "edit" = "new", local = true) {
+function render(kind: "new" | "show" | "edit" = "new", local = true, panel?: Component) {
     mocks.local = local;
     company.value = local ? localCompany : serverCompany;
     route.name = kind === "new" ? "invoicing-expense-new" : kind === "edit" ? "invoicing-expense-edit" : "invoicing-expense-show";
     route.params = kind === "new" ? {} : { expenseId: "expense-a" };
     wrapper = mount(kind === "show" ? ExpenseShow : ExpenseForm, { global: {
         plugins: [createI18n({ legacy: false, locale: "en", messages: { en } })],
-        stubs: { UblEmbeddedPdfViewer: true, RouterLink: { template: '<a href="#"><slot /></a>' } },
+        stubs: { UblEmbeddedPdfViewer: true, RouterLink: { template: '<a href="#"><slot /></a>' }, ...(panel && { ExpenseAttachmentPanel: panel }) },
     } });
     return wrapper;
 }
@@ -172,6 +174,7 @@ beforeEach(() => {
     vi.resetAllMocks();
     consentChoice = false;
     ownerRouting.value = 'private';
+    session.user = { id: 1 };
     mocks.release.mockResolvedValue(undefined);
     mocks.local = true;
     mocks.displayForeign = false;
@@ -1173,6 +1176,148 @@ describe('expense-detail conflict recovery and reactive payment view',()=>{
 const embeddedXml = (filename = "received.pdf") => `<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"><cac:AdditionalDocumentReference><cac:Attachment><cbc:EmbeddedDocumentBinaryObject filename="${filename}" mimeCode="application/pdf">${btoa('%PDF-1.4 synthetic received PDF')}</cbc:EmbeddedDocumentBinaryObject></cac:Attachment></cac:AdditionalDocumentReference></Invoice>`;
 const xmlBlob = (xml: string) => Object.assign(new Blob([xml], { type: 'application/xml' }), { text: async () => xml });
 
+describe('saved attachments on expense edit', () => {
+    it.each([true, false])('opens the saved PDF and switches to another original (local=%s)', async local => {
+        const expense = fixture('expense-a', local ? localCompany : serverCompany);
+        expense.attachments = [
+            { id: 'first', original_filename: 'invoice.pdf', mime: 'application/pdf' },
+            { id: 'second', original_filename: 'receipt.png', mime: 'image/png' },
+        ];
+        models.value = [expense];
+        const invoice = pdf('invoice.pdf');
+        const receipt = new Blob(['synthetic image'], { type: 'image/png' });
+        mocks.archiveRead.mockImplementation(async (_evolu, _company, row) => ({ blob: row.id === 'first' ? invoice : receipt }));
+        mocks.blob.mockImplementation(async url => url.endsWith('/first') ? invoice : receipt);
+
+        const { default: attachmentPanel } = await vi.importActual<typeof import('@/components/invoicing/ExpenseAttachmentPanel.vue')>('@/components/invoicing/ExpenseAttachmentPanel.vue');
+        render('edit', local, attachmentPanel);
+        await flushPromises();
+        const panel = wrapper!.findComponent({ name: 'ExpenseAttachmentPanel' });
+        expect(panel.get('iframe[title="PDF preview"]').attributes('src')).toBe('blob:synthetic-pdf');
+        expect(panel.get('button[title="invoice.pdf"]').text()).toBe('invoice.pdf');
+        expect(URL.createObjectURL).toHaveBeenLastCalledWith(invoice);
+
+        await panel.get('button[title="receipt.png"]').trigger('click');
+        await flushPromises();
+        expect(panel.get('img').attributes('src')).toBe('blob:synthetic-pdf');
+        expect(panel.find('iframe').exists()).toBe(false);
+        expect(URL.createObjectURL).toHaveBeenLastCalledWith(receipt);
+        expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:synthetic-pdf');
+        if (local) expect(mocks.blob).not.toHaveBeenCalled();
+        else expect(mocks.blob).toHaveBeenLastCalledWith(`/api/invoicing/companies/${serverCompany}/expenses/expense-a/attachments/second`);
+        for (const call of [mocks.localDetect, mocks.detect, mocks.insertAttachment, mocks.upload]) expect(call).not.toHaveBeenCalled();
+    });
+
+    it('restores the verified local PDF after discarding a pending file', async () => {
+        const expense = fixture();
+        const original = pdf('archived.pdf');
+        const reference = createManualExpenseOriginalReference({ companyId: localCompany, expenseId: expense.id,
+            attachmentId: 'original', sizeBytes: original.size, sha256: 'a'.repeat(64), mimeType: original.type });
+        expense.attachments = [{ id: 'original', original_filename: original.name, mime: original.type,
+            sizeBytes: String(original.size), contentBase64: encodeExpenseOriginalReference(reference) }];
+        models.value = [expense];
+        mocks.archiveRead.mockResolvedValue({ blob: original });
+        render('edit');
+        await flushPromises();
+        const panel = wrapper!.findComponent({ name: 'ExpenseAttachmentPanel' });
+        expect(URL.createObjectURL).toHaveBeenLastCalledWith(original);
+        expect(mocks.archiveRead).toHaveBeenCalledWith(mocks.evolu, localCompany,
+            expect.objectContaining({ id: 'original', expenseId: expense.id }), { maxBytes: 2 * 1024 * 1024 });
+
+        await select(pdf('pending.pdf'));
+        expect(panel.props()).toMatchObject({ fileName: 'pending.pdf', hasPending: true });
+        panel.vm.$emit('remove-pending', panel.props('selectedPendingId'));
+        await flushPromises();
+        expect(panel.props()).toMatchObject({ fileName: 'archived.pdf', hasPending: false, previewKind: 'pdf', previewUrl: 'blob:synthetic-pdf' });
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        expect(mocks.blob).not.toHaveBeenCalled();
+    });
+
+    it('withholds an inline PDF when its ownership cannot be verified', async () => {
+        models.value[0]!.attachments = [{ id: 'unverified', original_filename: 'invoice.pdf', mime: 'application/pdf' }];
+        mocks.archiveRead.mockRejectedValue(new Error('original_unverified'));
+        render('edit');
+        await flushPromises();
+        expect(mocks.archiveRead).toHaveBeenCalledOnce();
+        expect(wrapper!.findComponent({ name: 'ExpenseAttachmentPanel' }).props()).toMatchObject({ previewFailed: true, previewUrl: null });
+        expect(mocks.attachmentBlob).not.toHaveBeenCalled();
+        expect(URL.createObjectURL).not.toHaveBeenCalled();
+    });
+
+    it('opens a legacy server attachment without a separate attachment row', async () => {
+        mocks.get.mockResolvedValue({ ...fixture('expense-a', serverCompany), attachment_path: 'originals/synthetic', original_filename: 'legacy.pdf' });
+        mocks.blob.mockResolvedValue(pdf('legacy.pdf'));
+        render('edit', false);
+        await flushPromises();
+        expect(wrapper!.findComponent({ name: 'ExpenseAttachmentPanel' }).props()).toMatchObject({
+            fileName: 'legacy.pdf', hasFile: true, previewKind: 'pdf', previewUrl: 'blob:synthetic-pdf',
+        });
+        expect(mocks.blob).toHaveBeenCalledWith(`/api/invoicing/companies/${serverCompany}/expenses/expense-a/attachment`);
+    });
+
+    it('prevents saving the previous expense while the next edit is loading or unavailable', async () => {
+        const nextExpense = deferred<ReturnType<typeof fixture>>();
+        const expense = fixture('expense-a', serverCompany);
+        expense.attachments = [{ id: 'first', original_filename: 'invoice.pdf', mime: 'application/pdf' }];
+        mocks.get.mockResolvedValueOnce(expense).mockReturnValue(nextExpense.promise);
+        mocks.blob.mockResolvedValue(pdf('invoice.pdf'));
+        render('edit', false);
+        await flushPromises();
+        const panel = () => wrapper!.findComponent({ name: 'ExpenseAttachmentPanel' });
+        expect(panel().props('fileName')).toBe('invoice.pdf');
+
+        route.params.expenseId = 'expense-b';
+        await flushPromises();
+        async function expectSaveUnavailable() {
+            expect(wrapper!.text()).not.toContain('invoice.pdf');
+            const buttons = wrapper!.findAll('button').filter(button => button.text() === en.common.save);
+            expect(buttons.every(button => button.attributes('disabled') !== undefined)).toBe(true);
+            const form = wrapper!.find('form');
+            if (form.exists()) await form.trigger('submit');
+            await flushPromises();
+            expect(mocks.update).not.toHaveBeenCalled();
+        }
+        await expectSaveUnavailable();
+        nextExpense.reject(new Error('record unavailable'));
+        await flushPromises();
+        await expectSaveUnavailable();
+    });
+
+    it.each([true, false])('clears the saved selection and discards a delayed preview after logout (local=%s)', async local => {
+        const read = deferred<Blob>();
+        const expense = fixture('expense-a', local ? localCompany : serverCompany);
+        expense.attachments = [{ id: 'first', original_filename: 'invoice.pdf', mime: 'application/pdf' }];
+        models.value = [expense];
+        mocks.blob.mockReturnValue(read.promise);
+        mocks.archiveRead.mockImplementation(async () => ({ blob: await read.promise }));
+        render('edit', local);
+        await flushPromises();
+        expect(local ? mocks.archiveRead : mocks.blob).toHaveBeenCalledOnce();
+        session.user = null;
+        await flushPromises();
+        read.resolve(pdf('invoice.pdf'));
+        await flushPromises();
+        expect(URL.createObjectURL).not.toHaveBeenCalled();
+        expect(wrapper!.text()).not.toContain('invoice.pdf');
+    });
+
+    it('discards a saved preview that finishes after the editor closes', async () => {
+        const read = deferred<Blob>();
+        const expense = fixture('expense-a', serverCompany);
+        expense.attachments = [{ id: 'first', original_filename: 'invoice.pdf', mime: 'application/pdf' }];
+        mocks.get.mockResolvedValue(expense);
+        mocks.blob.mockReturnValue(read.promise);
+        render('edit', false);
+        await flushPromises();
+        expect(mocks.blob).toHaveBeenCalledOnce();
+        wrapper!.unmount();
+        wrapper = undefined;
+        read.resolve(pdf('invoice.pdf'));
+        await flushPromises();
+        expect(URL.createObjectURL).not.toHaveBeenCalled();
+    });
+});
+
 describe('embedded PDFs from preserved expense XML', () => {
     it.each([true, false])('reloads saved XML after clearing a pending attachment that interrupted its read (local: %s)', async local => {
         const oldText = deferred<string>();
@@ -1181,8 +1326,8 @@ describe('embedded PDFs from preserved expense XML', () => {
         models.value = [expense];
         mocks.get.mockResolvedValue(expense);
         const firstBlob = Object.assign(new Blob(['synthetic XML'], { type: 'application/xml' }), { text: () => oldText.promise });
-        mocks.attachmentBlob.mockReturnValueOnce(xmlBlob(embeddedXml('initial.pdf')))
-            .mockReturnValueOnce(firstBlob).mockReturnValue(xmlBlob(embeddedXml('restored.pdf')));
+        mocks.archiveRead.mockResolvedValueOnce({ blob: xmlBlob(embeddedXml('initial.pdf')) })
+            .mockResolvedValueOnce({ blob: firstBlob }).mockResolvedValue({ blob: xmlBlob(embeddedXml('restored.pdf')) });
         mocks.blob.mockResolvedValueOnce(xmlBlob(embeddedXml('initial.pdf')))
             .mockResolvedValueOnce(firstBlob).mockResolvedValue(xmlBlob(embeddedXml('restored.pdf')));
         consentChoice = true;
@@ -1203,7 +1348,7 @@ describe('embedded PDFs from preserved expense XML', () => {
         expect(panel.props('hasPending')).toBe(false);
         expect(wrapper!.get('[data-testid="ubl-embedded-pdfs"]').text()).toContain('restored.pdf');
         expect(wrapper!.text()).not.toContain('obsolete.pdf');
-        expect(local ? mocks.attachmentBlob : mocks.blob).toHaveBeenCalledTimes(3);
+        expect(local ? mocks.archiveRead : mocks.blob).toHaveBeenCalledTimes(3);
         expect(mocks.insertAttachment).not.toHaveBeenCalled();
         expect(mocks.upload).not.toHaveBeenCalled();
     });
@@ -1213,7 +1358,7 @@ describe('embedded PDFs from preserved expense XML', () => {
         expense.attachments = [{ id: 'original', original_filename: 'received.pdf', mime: 'application/pdf' }];
         models.value = [expense];
         mocks.get.mockResolvedValue(expense);
-        mocks.attachmentBlob.mockReturnValue(pdf('received.pdf'));
+        mocks.archiveRead.mockResolvedValue({ blob: pdf('received.pdf') });
         mocks.blob.mockResolvedValue(pdf('received.pdf'));
         render('show', local);
         await flushPromises();
@@ -1223,7 +1368,7 @@ describe('embedded PDFs from preserved expense XML', () => {
         await flushPromises();
         expect(panel.props('previewUrl')).toBeNull();
         expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:synthetic-pdf');
-        expect(local ? mocks.attachmentBlob : mocks.blob).toHaveBeenCalledTimes(1);
+        expect(local ? mocks.archiveRead : mocks.blob).toHaveBeenCalledTimes(1);
     });
 
     it.each([true, false])('offers PDFs in an already imported expense without changing original custody (local: %s)', async local => {
@@ -1231,7 +1376,7 @@ describe('embedded PDFs from preserved expense XML', () => {
         expense.attachments = [{ id: 'original', original_filename: 'received.xml', mime: 'application/xml' }];
         models.value = [expense];
         mocks.get.mockResolvedValue(expense);
-        mocks.attachmentBlob.mockReturnValue(xmlBlob(embeddedXml()));
+        mocks.archiveRead.mockResolvedValue({ blob: xmlBlob(embeddedXml()) });
         mocks.blob.mockResolvedValue(xmlBlob(embeddedXml()));
         render('show', local);
         await flushPromises();

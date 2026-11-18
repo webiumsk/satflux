@@ -15,7 +15,7 @@ import {
 } from "@/evolu/expenseMap";
 import type { EvoluExpenseAttachmentRow } from "@/evolu/expenseAttachmentCrud";
 import { isInvoicingLocalFirst } from "@/evolu/flags";
-import type { CompanyId, InvoicingLocalSchema } from "@/evolu/schema";
+import type { InvoicingLocalSchema } from "@/evolu/schema";
 import type { ExpenseListRow } from "@/composables/useExpenseRowMeta";
 import { toAppRows } from "../evolu/queryLoad";
 
@@ -152,7 +152,17 @@ export function useInvoicingExpense(
         const expenseRows = useQuery(allExpensesQuery);
         const transactionRows = useQuery(allBankTransactionsQuery);
         const matchRows = useQuery(allBankTransactionMatchesQuery);
-        const attachmentRows = useQuery(allExpenseAttachmentsQuery);
+        const allAttachmentRows = useQuery(allExpenseAttachmentsQuery);
+        const matchingExpenses = computed(() => expenseRows.value.filter(
+            row => row.id === expenseId.value && row.companyId === companyId.value,
+        ));
+        // Owner scoping adds ownerId to the runtime projection of both queries.
+        const attachmentRows = computed(() => {
+            const matches = matchingExpenses.value;
+            const owner = matches.length === 1 ? Reflect.get(matches[0], "ownerId") : null;
+            if (typeof owner !== "string" || !owner) return [];
+            return allAttachmentRows.value.filter(row => row.expenseId === expenseId.value && Reflect.get(row, "ownerId") === owner);
+        });
 
         /** Rebuild the current detail from its company-scoped row and the latest bank evidence subscriptions. */
         function syncExpense(): void {
@@ -160,12 +170,8 @@ export function useInvoicingExpense(
                 expense.value = null;
                 return;
             }
-            const row = expenseRows.value.find(
-                (e) => e.id === expenseId.value && e.companyId === (companyId.value as CompanyId),
-            );
-            const attachments = toAppRows<EvoluExpenseAttachmentRow>(
-                attachmentRows.value.filter((a) => a.expenseId === expenseId.value),
-            );
+            const row = matchingExpenses.value[0];
+            const attachments = toAppRows<EvoluExpenseAttachmentRow>(attachmentRows.value);
             expense.value = row ? evoluExpenseToApi(effectiveExpensePayment(row as EvoluExpenseRow,
                 toAppRows<EvoluBankTransactionRow>(transactionRows.value), toAppRows<EvoluBankTransactionMatchRow>(matchRows.value)), attachments) : null;
         }
