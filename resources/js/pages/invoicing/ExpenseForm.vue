@@ -29,7 +29,7 @@
       <h1 class="invoicing-title">
         {{ isNew ? t(isCreditNote ? 'invoicing.expense_credit_note_new' : 'invoicing.expenses_new') : expenseLabel }}
       </h1>
-      <button type="button" class="invoicing-btn-primary" :disabled="saving || hasUnresolvedProcessing" @click="save">
+      <button type="button" class="invoicing-btn-primary" :disabled="!formReady || saving || hasUnresolvedProcessing" @click="save">
         {{ t('common.save') }}
       </button>
     </div>
@@ -42,6 +42,7 @@
     </div>
 
     <ExpenseDuplicateWarning
+      v-if="formReady"
       class="mb-4"
       :company-id="companyId"
       :draft="form"
@@ -51,7 +52,8 @@
       :evolu="expenseResource.evolu"
     />
 
-    <div class="grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)] gap-6 items-start">
+    <p v-if="!formReady" role="status" class="text-sm text-gray-600">{{ error || t('common.loading') }}</p>
+    <div v-else class="grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)] gap-6 items-start">
       <form class="invoicing-card-pad space-y-4 min-w-0" @input="markFormEdited" @change="markFormEdited" @submit.prevent="save">
         <div>
           <label for="expense-document-kind" class="invoicing-sf-label">{{ t('invoicing.expense_document_kind') }}</label>
@@ -154,28 +156,40 @@
           {{ t('invoicing.expense_mark_paid_on_create') }}
         </label>
         <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
-        <button type="submit" class="invoicing-btn-primary" :disabled="saving || hasUnresolvedProcessing">{{ t('common.save') }}</button>
+        <button type="submit" class="invoicing-btn-primary" :disabled="!formReady || saving || hasUnresolvedProcessing">{{ t('common.save') }}</button>
       </form>
 
-      <ExpenseAttachmentPanel
-        allow-multiple
-        :file-name="pendingAttachmentName"
-        :has-file="pendingFiles.length > 0"
-        :has-pending="pendingFiles.length > 0"
-        :pending-files="pendingFileSummaries"
-        :selected-pending-id="selectedPendingId"
-        :preview-url="previewUrl"
-        :preview-kind="previewKind"
-        :detecting="detecting || saving || extracting"
-        :detect-error="detectErrorMessage"
-        :has-isdoc="lastDetectHasIsdoc"
-        :detection-status="detectionStatus"
-        @check-isdoc="retryDetection"
-        @file-selected="onFileSelected"
-        @files-selected="onFilesSelected"
-        @select-pending="selectPendingFile"
-        @remove-pending="removePendingFile"
-      />
+      <div class="min-w-0 h-full flex flex-col">
+        <ExpenseAttachmentPanel
+          allow-multiple
+          :file-name="panelFileName"
+          :has-file="panelHasFile"
+          :allow-remove-saved="false"
+          :saved-attachments="savedAttachments"
+          :selected-attachment-id="pendingAttachmentName ? null : selectedAttachmentId"
+          :has-pending="pendingFiles.length > 0"
+          :pending-files="pendingFileSummaries"
+          :selected-pending-id="selectedPendingId"
+          :preview-url="pendingAttachmentName ? previewUrl : savedPreviewUrl"
+          :preview-loading="!pendingAttachmentName && previewLoading"
+          :preview-failed="!pendingAttachmentName && previewFailed"
+          :preview-kind="pendingAttachmentName ? previewKind : savedPreviewKind"
+          :detecting="detecting || saving || extracting"
+          :detect-error="detectErrorMessage"
+          :has-isdoc="lastDetectHasIsdoc"
+          :detection-status="detectionStatus"
+          @check-isdoc="retryDetection"
+          @file-selected="onFileSelected"
+          @files-selected="onFilesSelected"
+          @select-pending="selectPendingFile"
+          @remove-pending="removePendingFile"
+          @select-attachment="onSelectAttachment"
+        />
+        <template v-if="!pendingAttachmentName && (embeddedUblXml || embeddedUblTooLarge)">
+          <UblEmbeddedPdfPanel :xml="embeddedUblXml" />
+          <p v-if="embeddedUblTooLarge" role="alert" class="p-3 text-sm text-amber-700">{{ t('invoicing.ubl_pdf_rejected') }}</p>
+        </template>
+      </div>
       <p v-if="localFirst" class="text-xs text-gray-500">
         {{ t('invoicing.local_first_expenses_isdoc_bridge') }}
       </p>
@@ -191,6 +205,8 @@ import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { sqliteTrue } from '@evolu/common';
 import { createQuery } from '@evolu/common/local-first';
+import { useExpenseAttachmentPreview } from '../../composables/useExpenseAttachmentPreview';
+import UblEmbeddedPdfPanel from '../../components/invoicing/UblEmbeddedPdfPanel.vue';
 import ExpenseAttachmentPanel from '../../components/invoicing/ExpenseAttachmentPanel.vue';
 import ExpenseAttachmentConsentModal from '../../components/invoicing/ExpenseAttachmentConsentModal.vue';
 import ExpenseIsdocExtractModal from '../../components/invoicing/ExpenseIsdocExtractModal.vue';
@@ -268,6 +284,17 @@ const {
   skipExtract,
   uploadAllPendingAttachments,
 } = useExpenseIsdocAttachment(companyId, expenseId);
+const savedExpense = ref<ExpenseApiRow | null>(null);
+const formReady = computed(() => isNew.value || (!!savedExpense.value && savedExpense.value.id === expenseId.value
+  && (!localFirst || expenseResource.expense.value?.id === expenseId.value)));
+const { selectedAttachmentId, savedAttachments, savedPreviewUrl, savedPreviewKind, embeddedUblXml, embeddedUblTooLarge,
+  previewFailed, previewLoading, panelFileName, panelHasFile, revokeSavedPreview, loadSavedPreview, onSelectAttachment,
+} = useExpenseAttachmentPreview({ companyId, expenseId, expense: savedExpense, pendingAttachmentName, resource: expenseResource, localFirst });
+
+watch(() => Boolean(pendingAttachmentName.value), pending => {
+  if (pending) revokeSavedPreview();
+  else if (savedExpense.value) void loadSavedPreview();
+}, { flush: 'sync' });
 
 const detectErrorMessage = computed(() => {
   if (!detectError.value) return '';
@@ -279,7 +306,7 @@ const detectErrorMessage = computed(() => {
 
 const today = new Date().toISOString().slice(0, 10);
 
-const form = ref({
+const emptyForm = {
   company_contact_id: '',
   supplier_name: '',
   supplier_iban: '',
@@ -296,7 +323,8 @@ const form = ref({
   currency: 'EUR',
   internal_note: '',
   mark_paid: false,
-});
+};
+const form = ref({ ...emptyForm });
 const documentKind = ref(route.query.credit_note === '1' ? 'credit_note' : 'expense');
 const isCreditNote = computed(() => documentKind.value === 'credit_note');
 const selectedContact = computed(() => supplierContacts.value.find(contact => contact.id === form.value.company_contact_id));
@@ -326,7 +354,10 @@ function rememberPaymentState(expense: ExpenseApiRow) {
 }
 watch([paymentTuple, () => form.value.mark_paid], () => { confirmedPaymentTuple.value = null; }, { flush: 'sync' });
 watch(hasUnresolvedProcessing, pending => { if (pending) confirmedPaymentTuple.value = null; }, { flush: 'sync' });
-watch(() => localFirst ? companyShareRoutingKey(companyId.value) : 'server', () => { confirmedPaymentTuple.value = null; }, { flush: 'sync' });
+watch(() => localFirst ? companyShareRoutingKey(companyId.value) : 'server', () => {
+  confirmedPaymentTuple.value = null;
+  if (savedExpense.value) void loadSavedPreview();
+}, { flush: 'sync' });
 
 function onDocumentKindChange() {
   form.value.total = Math.abs(Number(form.value.total) || 0) * (isCreditNote.value ? -1 : 1);
@@ -358,8 +389,20 @@ let sourceReadController: AbortController | null = null;
 function markFormEdited() {
   formEditRevision++;
 }
-watch([companyId, expenseId], () => {
+watch([companyId, expenseId, isNew], (_current, [, previousId]) => {
   contextGeneration++;
+  savedExpense.value = null;
+  internalNumber.value = '';
+  expenseLabel.value = '';
+  importNotice.value = '';
+  if (previousId && isNew.value) {
+    form.value = { ...emptyForm, currency: defaultCurrency.value || 'EUR' };
+    documentKind.value = route.query.credit_note === '1' ? 'credit_note' : 'expense';
+    variableSymbolFollowsNumber.value = true;
+    deliveryDateFollowsIssueDate.value = true;
+  }
+  selectedAttachmentId.value = null;
+  revokeSavedPreview();
   createdLocalExpenseId.value = null;
   saving.value = false;
   error.value = '';
@@ -376,9 +419,11 @@ watch([companyId, expenseId], () => {
   allowCurrencyDefault.value = true;
   previousInvoiceCurrency.value = null;
   sourceReadController?.abort();
+  if (!isNew.value && expenseId.value) void loadExpense();
 }, { flush: 'sync' });
 onUnmounted(() => {
   contextGeneration++;
+  revokeSavedPreview();
   duplicateEditActive.value = false;
   sourceReadController?.abort();
 });
@@ -473,13 +518,13 @@ function applyImportDraft(draft: ExpenseImportDraft) {
 }
 
 async function onFileSelected(file: File) {
-  if (saving.value || extracting.value || detecting.value) return;
+  if (!formReady.value || saving.value || extracting.value || detecting.value) return;
   error.value = '';
   await onDocumentSelected(file);
 }
 
 async function onFilesSelected(files: File[]) {
-  if (saving.value || extracting.value || detecting.value) return;
+  if (!formReady.value || saving.value || extracting.value || detecting.value) return;
   error.value = '';
   await onDocumentsSelected(files);
 }
@@ -515,38 +560,23 @@ function expenseShowTo(id: string) {
 }
 
 async function loadExpense() {
-  if (isNew.value) return;
-  if (localFirst) {
-    await expenseResource.refresh();
-    const e = expenseResource.expense.value;
-    if (!e) return;
-    rememberPaymentState(e);
-    internalNumber.value = e.internal_number;
-    expenseLabel.value = e.internal_number + (e.title ? ` · ${e.title}` : '');
-    form.value = {
-      company_contact_id: e.company_contact_id || '',
-      supplier_name: e.supplier_name || '',
-      supplier_iban: e.supplier_iban || '',
-      payment_review_required: expensePaymentReviewRequired(e.payment_review_required, e.internal_note),
-      title: e.title || '',
-      external_number: e.external_number || '',
-      variable_symbol: e.variable_symbol || '',
-      constant_symbol: e.constant_symbol || '',
-      specific_symbol: e.specific_symbol || '',
-      issue_date: (e.issue_date || '').slice(0, 10),
-      delivery_date: (e.delivery_date || '').slice(0, 10),
-      due_date: e.due_date ? e.due_date.slice(0, 10) : '',
-      total: parseFloat(e.total) || 0,
-      currency: e.currency || 'EUR',
-      internal_note: e.internal_note || '',
-      mark_paid: false,
-    };
-    documentKind.value = form.value.total < 0 ? 'credit_note' : 'expense';
-    supplierNameManuallyEdited.value = true;
-    supplierIbanManuallyEdited.value = true;
+  const company = companyId.value;
+  const id = expenseId.value;
+  if (isNew.value || !id) return;
+  const generation = contextGeneration;
+  const current = () => generation === contextGeneration && company === companyId.value && id === expenseId.value;
+  let e: ExpenseApiRow | null;
+  try {
+    if (localFirst) {
+      await expenseResource.refresh();
+      e = expenseResource.expense.value;
+    } else e = await invoicingApi.expenses.get<ExpenseApiRow>(company, id);
+    if (!current()) return;
+    if (!e || e.id !== id) throw new Error('expense_unavailable');
+  } catch {
+    if (current()) error.value = t('invoicing.expense_unavailable');
     return;
   }
-  const e = await invoicingApi.expenses.get<ExpenseApiRow>(companyId.value, expenseId.value!);
   rememberPaymentState(e);
   internalNumber.value = e.internal_number;
   expenseLabel.value = e.internal_number + (e.title ? ` · ${e.title}` : '');
@@ -571,6 +601,9 @@ async function loadExpense() {
   documentKind.value = form.value.total < 0 ? 'credit_note' : 'expense';
   supplierNameManuallyEdited.value = true;
   supplierIbanManuallyEdited.value = true;
+  savedExpense.value = e;
+  selectedAttachmentId.value = savedAttachments.value[0]?.id ?? null;
+  void loadSavedPreview();
 }
 
 /** Prefill a new received correction without claiming a persisted document relationship. */
@@ -618,7 +651,7 @@ async function prefillCreditNote(expectedEditRevision: number) {
  * Navigate only within the captured context, replacing the initial copy edit and pushing ordinary saves.
  */
 async function save() {
-  if (saving.value || extracting.value || detecting.value) return;
+  if (!formReady.value || saving.value || extracting.value || detecting.value) return;
   if (hasUnresolvedProcessing.value) { error.value = t('invoicing.expense_attachment_processing_pending'); return; }
   markFormEdited();
   const requestedCompany = companyId.value;
@@ -748,6 +781,11 @@ onMounted(async () => {
   const initialGeneration = contextGeneration;
   const stillInitialContext = () => initialGeneration === contextGeneration && initialCompany === companyId.value;
   rememberCompany(initialCompany);
+  if (!isNew.value) {
+    if (!localFirst) void loadQuota().catch(() => { /* Extraction can reload quota when needed. */ });
+    await loadExpense();
+    return;
+  }
   if (!localFirst) {
     await loadQuota();
     if (!stillInitialContext()) return;
@@ -757,7 +795,6 @@ onMounted(async () => {
   } else {
     form.value.currency = defaultCurrency.value || 'EUR';
   }
-  await loadExpense();
   if (!stillInitialContext()) return;
   try { await prefillCreditNote(initialEditRevision); }
   catch { if (stillInitialContext() && initialEditRevision === formEditRevision) error.value = t('invoicing.expense_unavailable'); }

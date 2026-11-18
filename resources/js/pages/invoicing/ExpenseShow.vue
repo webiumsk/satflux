@@ -270,8 +270,10 @@
                 :selected-pending-id="selectedPendingId"
                 :saved-attachments="savedAttachments"
                 :selected-attachment-id="selectedAttachmentId"
-                :preview-url="panelPreviewUrl"
-                :preview-kind="panelPreviewKind"
+                :preview-url="pendingAttachmentName ? previewUrl : savedPreviewUrl"
+                :preview-loading="!pendingAttachmentName && previewLoading"
+                :preview-failed="!pendingAttachmentName && previewFailed"
+                :preview-kind="pendingAttachmentName ? previewKind : savedPreviewKind"
                 :detecting="detecting || uploading || extracting || processingExtraction"
                 :detect-error="detectErrorMessage"
                 :has-isdoc="lastDetectHasIsdoc"
@@ -379,11 +381,8 @@ import {
 import { releaseLocalExpenseBankClaim } from "../../evolu/bankCrud";
 import { evoluExpenseToApi, filterLocalExpenses, type EvoluExpenseRow } from "../../evolu/expenseMap";
 import { toAppRows } from "../../evolu/queryLoad";
-import {
-  attachmentBlobUrl,
-  attachmentContentBlob,
-  type EvoluExpenseAttachmentRow,
-} from "../../evolu/expenseAttachmentCrud";
+import { attachmentBlobUrl } from "../../evolu/expenseAttachmentCrud";
+import { useExpenseAttachmentPreview } from "../../composables/useExpenseAttachmentPreview";
 import { isExpenseOriginalReference } from "../../evolu/expenseOriginalReference";
 import { readVerifiedExpenseAttachment, deleteVerifiedExpenseAttachment } from "../../evolu/expenseOriginalArchive";
 import { isInvoicingLocalFirst } from "../../evolu/flags";
@@ -392,7 +391,7 @@ import type { CompanyId, ExpenseId } from "../../evolu/schema";
 import { updateLocalExpenseNote } from "../../evolu/expenseCrud";
 import { expenseMutationErrorKey } from "../../utils/expenseError";
 import { expensePaymentReviewRequired } from "../../utils/expensePaymentReview";
-import { getWebBlob, invoicingApi } from "../../services/api";
+import { invoicingApi } from "../../services/api";
 import { useInvoicingSaveFeedback } from "../../composables/useInvoicingSaveFeedback";
 
 type ExpenseAttachment = {
@@ -482,16 +481,10 @@ function reviewTextPdfValues(values: ReturnType<typeof draftToPayload>, currentC
 }
 const noteDraft = ref("");
 const noteSaving = ref(false);
-const savedPreviewUrl = ref<string | null>(null);
-const embeddedUblXml = ref<string | null>(null);
-const embeddedUblTooLarge = ref(false);
-const savedPreviewKind = ref<"pdf" | "image" | "other" | null>(null);
-const selectedAttachmentId = ref<string | null>(null);
 const uploadError = ref('');
 const loadError = ref('');
 let contextGeneration = 0;
 let loadRequest = 0;
-let previewRequest = 0;
 let neighborRequest = 0;
 
 function captureContext() {
@@ -577,44 +570,10 @@ const detectErrorMessage = computed(() => {
   return detectError.value;
 });
 
-const savedAttachments = computed(() => expense.value?.attachments ?? []);
-
-const selectedAttachment = computed(() => {
-  const list = savedAttachments.value;
-  if (!list.length) return null;
-  const id = selectedAttachmentId.value;
-  if (id) {
-    return list.find((a) => a.id === id) ?? list[0];
-  }
-
-  return list[0];
-});
-
-const panelFileName = computed(() => {
-  if (pendingAttachmentName.value) return pendingAttachmentName.value;
-
-  return (
-    selectedAttachment.value?.original_filename ||
-    expense.value?.original_filename ||
-    ""
-  );
-});
-
-const panelHasFile = computed(() =>
-  Boolean(
-    pendingAttachmentName.value ||
-    savedAttachments.value.length > 0 ||
-    expense.value?.attachment_path,
-  ),
-);
-
-const panelPreviewUrl = computed(
-  () => previewUrl.value || savedPreviewUrl.value,
-);
-
-const panelPreviewKind = computed(
-  () => previewKind.value || savedPreviewKind.value,
-);
+const { selectedAttachmentId, selectedAttachment, savedAttachments, savedPreviewUrl, savedPreviewKind,
+  embeddedUblXml, embeddedUblTooLarge, previewFailed, previewLoading, panelFileName, panelHasFile,
+  attachmentPreviewUrl, localAttachmentRow, revokeSavedPreview, loadSavedPreview, onSelectAttachment,
+} = useExpenseAttachmentPreview({ companyId, expenseId, expense, pendingAttachmentName, resource: expenseResource, localFirst });
 
 const isOverdue = computed(() => {
   if (
@@ -765,86 +724,6 @@ async function load() {
   }
 }
 
-function revokeSavedPreview() {
-  previewRequest++;
-  embeddedUblXml.value = null;
-  embeddedUblTooLarge.value = false;
-  if (savedPreviewUrl.value) {
-    URL.revokeObjectURL(savedPreviewUrl.value);
-    savedPreviewUrl.value = null;
-  }
-  savedPreviewKind.value = null;
-}
-
-function attachmentPreviewUrl(attachmentId?: string | null, company = companyId.value, id = expenseId.value) {
-  if (attachmentId) {
-    return `/api/invoicing/companies/${company}/expenses/${id}/attachments/${attachmentId}`;
-  }
-
-  return `/api/invoicing/companies/${company}/expenses/${id}/attachment`;
-}
-
-function localAttachmentRow(
-  attachmentId?: string | null,
-): EvoluExpenseAttachmentRow | null {
-  if (!attachmentId || !expenseResource.attachmentRows) return null;
-  return (
-    (expenseResource.attachmentRows.value.find(
-      (row) => row.id === attachmentId,
-    ) as EvoluExpenseAttachmentRow | undefined) ?? null
-  );
-}
-
-async function loadSavedPreview() {
-  revokeSavedPreview();
-  const context = captureContext();
-  const request = previewRequest;
-  const selected = selectedAttachmentId.value;
-  const current = () => isCurrentContext(context) && request === previewRequest
-    && selected === selectedAttachmentId.value && !pendingAttachmentName.value;
-  if (pendingAttachmentName.value) return;
-
-  const att = selectedAttachment.value;
-  if (!att && !expense.value?.attachment_path) return;
-
-  try {
-    const row = localFirst ? localAttachmentRow(att?.id) : null;
-    const blob = localFirst
-      ? (row ? isExpenseOriginalReference(row.contentBase64)
-        ? (await readVerifiedExpenseAttachment(expenseResource.evolu!, context.company, row, { maxBytes: 2 * 1024 * 1024 })).blob
-        : attachmentContentBlob(row) : null)
-      : await getWebBlob(attachmentPreviewUrl(att?.id, context.company, context.expense));
-    if (!blob || !current()) return;
-    const name = att?.original_filename || expense.value?.original_filename || "";
-    const mime = blob.type.split(';')[0].trim().toLowerCase();
-    if (name.toLowerCase().endsWith(".pdf") || mime === "application/pdf") {
-      savedPreviewKind.value = "pdf";
-    } else if (mime.startsWith("image/")) {
-      savedPreviewKind.value = "image";
-    } else {
-      savedPreviewKind.value = "other";
-    }
-    if (savedPreviewKind.value === "pdf" || savedPreviewKind.value === "image") {
-      const preview = savedPreviewKind.value === "pdf" && mime !== "application/pdf"
-        ? new Blob([blob], { type: "application/pdf" }) : blob;
-      savedPreviewUrl.value = URL.createObjectURL(preview);
-    } else if (name.toLowerCase().endsWith(".xml") || mime === "application/xml" || mime === "text/xml") {
-      // Read only the already-authorized original, within the browser parser budget.
-      if (blob.size > 2 * 1024 * 1024) {
-        embeddedUblTooLarge.value = true;
-        return;
-      }
-      const xml = await blob.text();
-      if (current()) embeddedUblXml.value = xml;
-    }
-  } catch (error) {
-    if (current()) {
-      savedPreviewKind.value = "other";
-      if (error instanceof Error && error.message === "original_too_large") embeddedUblTooLarge.value = true;
-    }
-  }
-}
-
 async function downloadAttachment() {
   const att = selectedAttachment.value;
   if (localFirst) {
@@ -870,13 +749,6 @@ async function downloadAttachment() {
   window.open(attachmentPreviewUrl(att?.id), "_blank");
 }
 
-function onSelectAttachment(id: string) {
-  selectedAttachmentId.value = id;
-  if (!pendingAttachmentName.value) {
-    loadSavedPreview();
-  }
-}
-
 async function onRemoveSavedAttachment(id: string) {
   const context = captureContext();
   if (!hasLoadedExpense(context)) return;
@@ -890,20 +762,11 @@ async function onRemoveSavedAttachment(id: string) {
       await expenseResource.refresh();
       if (!isCurrentContext(context)) return;
       expense.value = expenseResource.expense.value as Expense | null;
-      if (selectedAttachmentId.value === id) {
-        selectedAttachmentId.value =
-          expense.value?.attachments?.[0]?.id ?? null;
-      }
-      await loadSavedPreview();
       return;
     }
     const updated = await invoicingApi.expenses.deleteAttachment<NonNullable<typeof expense.value>>(context.company, context.expense, id);
     if (!isCurrentContext(context)) return;
     expense.value = updated;
-    if (selectedAttachmentId.value === id) {
-      selectedAttachmentId.value = expense.value?.attachments?.[0]?.id ?? null;
-    }
-    await loadSavedPreview();
   } catch {
     if (isCurrentContext(context)) window.alert(t("invoicing.expense_attachment_remove_failed"));
   }

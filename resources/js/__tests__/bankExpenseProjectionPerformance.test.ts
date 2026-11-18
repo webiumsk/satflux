@@ -178,6 +178,23 @@ describe('bounded canonical expense and payment projections', () => {
         expect(expenses.every((row) => row.status === 'recorded' && row.paidAt === null)).toBe(true);
     });
 
+    it('only exposes attachment metadata from the selected expense and its owner', () => {
+        const { expense } = pair();
+        mocks.queryRows.set('expenses', shallowRef([expense]));
+        const attachment = { id: 'same-id', expenseId: expense.id, mimeType: 'application/pdf', sizeBytes: '100' };
+        mocks.queryRows.set('attachments', shallowRef([
+            { ...attachment, ownerId: 'owner-b', originalFilename: 'foreign.pdf' },
+            { ...attachment, ownerId: 'owner-a', originalFilename: 'invoice.pdf' },
+            { ...attachment, id: 'without-owner', originalFilename: 'unverified.pdf' },
+            { ...attachment, ownerId: 'owner-a', expenseId: 'other-expense', originalFilename: 'other.pdf' },
+        ]));
+        const scope = effectScope();
+        scopes.push(scope);
+        const detail = scope.run(() => useInvoicingExpense(ref('company-a'), ref(expense.id)))!;
+        expect(detail.expense.value?.attachments).toEqual([expect.objectContaining({ original_filename: 'invoice.pdf' })]);
+        expect(detail.attachmentRows?.value.map(row => row.originalFilename)).toEqual(['invoice.pdf']);
+    });
+
     it('the actual payment hook filters canonical conflicts before limiting its visible rows', async () => {
         const pairs = Array.from({ length: 70 }, (_, index) => pair(index));
         const transactions = pairs.map(({ transaction }, index) => index < 60 ? transaction : { ...transaction, amount: '20.00' });

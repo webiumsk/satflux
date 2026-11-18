@@ -57,6 +57,7 @@
                 {{ att.original_filename || t('invoicing.expense_attachment_unnamed') }}
               </button>
               <button
+                v-if="allowRemoveSaved"
                 type="button"
                 class="p-1 text-gray-500 hover:text-red-600 rounded hover:bg-gray-100 shrink-0"
                 :title="t('invoicing.expense_attachment_remove')"
@@ -151,7 +152,7 @@
             class="absolute inset-0 w-full h-full object-contain"
           />
           <div v-else class="absolute inset-0 flex items-center justify-center p-4 text-sm text-gray-600 text-center">
-            {{ t('invoicing.expense_preview_file_attached') }}
+            {{ previewLoading ? t('common.loading') : previewFailed ? t('invoicing.expense_attachment_download_failed') : t('invoicing.expense_preview_file_attached') }}
           </div>
         </div>
       </div>
@@ -207,6 +208,9 @@ const props = withDefaults(
     selectedPendingId?: string | null;
     hasPending?: boolean;
     allowMultiple?: boolean;
+    allowRemoveSaved?: boolean;
+    previewLoading?: boolean;
+    previewFailed?: boolean;
   }>(),
   {
     embedded: false,
@@ -217,6 +221,7 @@ const props = withDefaults(
     selectedPendingId: null,
     hasPending: false,
     allowMultiple: true,
+    allowRemoveSaved: true,
     detectionStatus: null,
   },
 );
