@@ -141,6 +141,111 @@ describe("expense attachment bridge", () => {
         expectNoCompanyApi();
     });
 
+    it.each([true, false])("offers text-PDF extraction without claiming embedded ISDOC (local=%s)", async local => {
+        const detect = local ? mocks.localDetect : mocks.detect;
+        const extract = local ? mocks.localExtract : mocks.extract;
+        detect.mockResolvedValue({ has_isdoc: false, extraction_source: "pdf_text", quota });
+        extract.mockResolvedValue({ data: { ...draft, source: "pdf_text", payment_review_required: false }, quota });
+        render(local); await choose(pdf());
+        expect(resource.lastDetectHasIsdoc.value).toBe(false);
+        expect(resource.detectionStatus.value).toBe("text_found");
+        expect(resource.extractionSource.value).toBe("pdf_text");
+        expect(resource.showExtractModal.value).toBe(true);
+        expect(extract).not.toHaveBeenCalled();
+        expect(await resource.confirmExtract()).toEqual({ ...draft, source: "pdf_text", payment_review_required: true });
+        expect(extract).toHaveBeenCalledOnce();
+        expect(mocks.insert).not.toHaveBeenCalled();
+        expect(mocks.upload).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        { has_isdoc: true, extraction_source: "pdf_text" },
+        { has_isdoc: false, extraction_source: "isdoc" },
+        { has_isdoc: true, extraction_source: null },
+        { has_isdoc: false, extraction_source: "unknown" },
+        { has_isdoc: false, extraction_source: false },
+    ])("rejects inconsistent or unknown detection metadata %j", async detection => {
+        mocks.localDetect.mockResolvedValue({ ...detection, quota });
+        render(); await choose(pdf());
+        expect(resource.detectionStatus.value).toBe("error");
+        expect(resource.showExtractModal.value).toBe(false);
+        expect(resource.extractionSource.value).toBeNull();
+        expect(await resource.confirmExtract()).toBeNull();
+        expect(mocks.localExtract).not.toHaveBeenCalled();
+    });
+
+    it("rejects a text-PDF source claim for an image attachment", async () => {
+        mocks.localDetect.mockResolvedValue({ has_isdoc: false, extraction_source: "pdf_text", quota });
+        render(); await choose(new File(["synthetic image"], "synthetic.png", { type: "image/png" }));
+        expect(resource.detectionStatus.value).toBe("error");
+        expect(resource.showExtractModal.value).toBe(false);
+        expect(mocks.localExtract).not.toHaveBeenCalled();
+    });
+
+    it("keeps source metadata attached to the queued file rather than the preview selection", async () => {
+        mocks.detect.mockResolvedValueOnce({ has_isdoc: true, extraction_source: "isdoc", quota })
+            .mockResolvedValueOnce({ has_isdoc: false, extraction_source: "pdf_text", quota });
+        render(false);
+        const files = [pdf(), new File(["synthetic"], "text.pdf", { type: "application/pdf" })];
+        await resource.onDocumentsSelected(files);
+        expect(resource.pendingAttachment.value).toBe(files[1]);
+        expect(resource.extractionSource.value).toBe("isdoc");
+        expect(resource.lastDetectHasIsdoc.value).toBe(false);
+        resource.skipExtract();
+        expect(resource.extractionSource.value).toBe("pdf_text");
+        expect((await resource.confirmExtract())?.payment_review_required).toBe(true);
+        expect((mocks.extract.mock.calls[0][1] as FormData).get("file")).toBe(files[1]);
+        expect(resource.showExtractModal.value).toBe(false);
+    });
+
+    it("reopens text extraction for the same pending identity without detecting it again", async () => {
+        mocks.localDetect.mockResolvedValue({ has_isdoc: false, extraction_source: "pdf_text", quota });
+        render(); await choose(pdf());
+        const id = resource.selectedPendingId.value;
+        resource.skipExtract();
+        await resource.retryDetection();
+        expect(resource.showExtractModal.value).toBe(true);
+        expect(resource.selectedPendingId.value).toBe(id);
+        expect(resource.extractionSource.value).toBe("pdf_text");
+        expect(mocks.localDetect).toHaveBeenCalledOnce();
+    });
+
+    it("retains the explicit ISDOC source's existing payment-review semantics", async () => {
+        mocks.localDetect.mockResolvedValue({ has_isdoc: true, extraction_source: "isdoc", quota });
+        const safeDraft = { ...draft, source: "isdoc", payment_review_required: false };
+        mocks.localExtract.mockResolvedValue({ data: safeDraft, quota });
+        render(); await choose(pdf());
+        expect(resource.lastDetectHasIsdoc.value).toBe(true);
+        expect(resource.detectionStatus.value).toBe("found");
+        expect(await resource.confirmExtract()).toEqual(safeDraft);
+    });
+
+    it.each(["company", "expense"])("drops text drafts after the %s context changes during extraction", async scope => {
+        mocks.localDetect.mockResolvedValue({ has_isdoc: false, extraction_source: "pdf_text", quota });
+        const pending = deferred<{ data: typeof draft & { source: "pdf_text" }; quota: typeof quota }>();
+        mocks.localExtract.mockReturnValue(pending.promise);
+        render(); await choose(pdf());
+        const extracting = resource.confirmExtract();
+        if (scope === "company") company.value = "another-company";
+        else expense.value = "another-expense";
+        pending.resolve({ data: { ...draft, source: "pdf_text" }, quota });
+        expect(await extracting).toBeNull();
+        expect(resource.pendingFiles.value).toHaveLength(0);
+        expect(resource.showExtractModal.value).toBe(false);
+        expect(resource.extractionSource.value).toBeNull();
+        expect(mocks.insert).not.toHaveBeenCalled();
+    });
+
+    it("keeps a mismatched extraction source unresolved without applying its draft", async () => {
+        mocks.localDetect.mockResolvedValue({ has_isdoc: false, extraction_source: "pdf_text", quota });
+        mocks.localExtract.mockResolvedValue({ data: { ...draft, source: "isdoc", payment_review_required: false }, quota });
+        render(); await choose(pdf());
+        await expect(resource.confirmExtract()).rejects.toThrow(en.invoicing.expense_attachment_detect_failed);
+        expect(resource.showExtractModal.value).toBe(true);
+        expect(resource.hasUnresolvedProcessing.value).toBe(true);
+        expect(mocks.insert).not.toHaveBeenCalled();
+    });
+
     it("skips extraction when no embedded ISDOC is detected", async () => {
         mocks.localDetect.mockResolvedValue({ has_isdoc: false, quota });
         render();

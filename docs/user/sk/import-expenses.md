@@ -2,7 +2,7 @@
 title: Import nákladov zo SuperFaktúry
 category: invoicing
 order: 12
-updated: 2026-11-17
+updated: 2026-11-18
 ---
 
 # Import nákladov zo SuperFaktúry
@@ -51,7 +51,11 @@ Suma neuhradených nákladov zahŕňa celé sumy dokladov, ktoré nie sú označ
 
 Otvorte konkrétny náklad a pridajte jeho PDF. V lokálnom účtovníctve sa prílohy aj vyťažené údaje ukladajú medzi vaše šifrované lokálne dáta. Jedna lokálna príloha môže mať najviac **10 MiB**. Vo formulári vytvorenia alebo úpravy stlačte **Uložiť**, aby sa uložili pripravené prílohy. V detaile nákladu sa prílohy uložia ihneď po dokončení alebo preskočení voliteľného spracovania ISDOC.
 
-Hneď po výbere súboru sa aplikácia opýta na povolenie dočasného spracovania na serveri na kontrolu vložených údajov ISDOC. Voľbou **Ponechať prílohu bez spracovania** kontrolu preskočíte. Pri prílohe vidíte, či kontrola čaká, bola preskočená, dokončená alebo zlyhala; pred uložením ju môžete zopakovať. Ak sa ISDOC nájde, samostatne potvrďte vyťaženie údajov alebo ponechajte iba prílohu. Kontrola aj vyťaženie prebehnú pred **Uložiť**; kým čaká rozhodnutie o spracovaní, uloženie je nedostupné. Vyťaženie využíva váš existujúci limit a kredity; nejde o OCR. Po vyčerpaní limitu môžete súbor stále priložiť a údaje zadať ručne.
+Hneď po výbere súboru sa aplikácia opýta na povolenie dočasného spracovania na serveri na kontrolu vloženého ISDOC alebo čitateľného textu PDF faktúry. Voľbou **Ponechať prílohu bez spracovania** kontrolu preskočíte. Pri prílohe vidíte stav kontroly a môžete ju zopakovať. Ak sa nájdu podporované údaje, samostatne potvrďte vyťaženie. Kontrola aj vyťaženie prebehnú pred **Uložiť** vo formulári; kým čaká rozhodnutie, uloženie je nedostupné. Každé úspešné vyťaženie sa raz započíta do vášho existujúceho limitu alebo kreditov. Nejde o OCR: obrázkové skeny môžete naďalej priložiť a údaje zadať ručne.
+
+Textové PDF vytvorí čiastočne predvyplnený návrh podľa rozpoznaných slovenských, českých alebo anglických označení polí. Textové PDF môže mať najviac **25 strán** v rámci existujúceho limitu prílohy **10 MiB**. Chýbajúce, nejednoznačné alebo nepodporované údaje zostanú nevyplnené a nevymažú uloženého dodávateľa či účet. Porovnajte údaje s pôvodným dokladom. Vo formulári vytvorenia alebo úpravy ich po kontrole uložte. V detaile nákladu sa pri textovom PDF otvorí náhľad; náklad zmení až **Uložiť vyťažené údaje**, kým **Ponechať iba prílohu** jeho polia nezmení. Existujúce vyťaženie ISDOC v detaile naďalej údaje použije po potvrdení vyťaženia. Platobné údaje z textového PDF vždy vyžadujú kontrolu úhrady a nikdy automaticky neoznačia náklad ako uhradený ani nesprístupnia Platobné QR.
+
+Pre **Platobné QR** po vyťažení textu skontrolujte platobné údaje vo formulári vytvorenia alebo úpravy; z detailu nákladu otvorte **Upraviť**. Porovnajte pôvodný doklad a históriu úhrad, overte presného príjemcu, IBAN dodávateľa, sumu, menu a variabilný symbol a potvrďte, že celá suma zostáva neuhradená. Zvoľte **Uložiť**. **Platobné QR** bude dostupné v zozname nákladov iba pri splnení podmienok v časti **Platobné QR kódy** nižšie. Výber kontaktu ani vyťaženie polí túto kontrolu nenahrádza. Evidované dôkazy o úhrade alebo bankové prepojenie potvrdenie neumožnia; vyťaženie neoznačí náklad ako uhradený ani automaticky nesprístupní QR.
 
 Ak sa ukladanie väčšej prílohy preruší, zopakujte ho, kým je súbor stále vybraný. Po obnovení stránky odstráňte neúplnú prílohu a znova vyberte pôvodný súbor. Pred vytvorením úplnej zálohy dokončite nahrávanie alebo neúplnú prílohu odstráňte.
 

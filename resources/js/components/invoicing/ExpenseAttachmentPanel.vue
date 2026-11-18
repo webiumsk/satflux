@@ -164,7 +164,7 @@
         type="button"
         class="rounded text-xs font-medium text-indigo-700 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600"
         @click="$emit('check-isdoc')"
-      >{{ t(activeDetectionStatus === 'found' ? 'invoicing.expense_attachment_extract_isdoc' : activeDetectionStatus === 'error' ? 'invoicing.expense_attachment_retry_isdoc' : 'invoicing.expense_attachment_check_isdoc') }}</button>
+      >{{ t(activeDetectionStatus === 'found' || activeDetectionStatus === 'text_found' ? 'invoicing.expense_attachment_extract_isdoc' : activeDetectionStatus === 'error' ? 'invoicing.expense_attachment_retry_isdoc' : 'invoicing.expense_attachment_check_isdoc') }}</button>
     </div>
     <p v-if="detectError" class="mt-2 text-sm text-amber-700 shrink-0 px-1">{{ detectError }}</p>
     <p v-if="allowMultiple && pendingFiles.length > 1" class="mt-2 text-xs text-gray-500 shrink-0 px-1">

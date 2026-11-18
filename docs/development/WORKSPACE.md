@@ -1,5 +1,31 @@
 # Local workspace
 
+## PR456 review correction ready for publication - 2026-11-18
+
+The retained text-PDF worktree stays on `feat/expense-text-pdf-extraction` at
+published `bab3d9fa` plus the reviewed correction. Only12 source/test/guide paths
+and5 technical-state documents belong to the correction commit. Both independent
+reviewers accept the frozen hashes; main checks and the private boolean-only sample
+probe pass. Original-head CI44195801806 is successful; new-head CI is verified
+after publication. Main owns Git publication on the same authorized branch.
+Primary unrelated work is preserved. No private document fixture, tool/graph
+installation, production target, merge or deployment is involved.
+[Correction contract, review and validation evidence](EXPENSE_TEXT_PDF_EXTRACTION.md).
+
+## Text-PDF extraction reviewed worktree - 2026-11-18
+
+Primary unrelated edits remain preserved. Authorized implementation is isolated
+in retained `storage/app/private/worktrees/expense-text-pdf-extraction`, branch
+`feat/expense-text-pdf-extraction`, based on verified master `2ffd3465` with merged
+PR455. Only28 independently reviewed source/test/locale/guide paths and5 scoped
+technical-state documents belong to this publication. Main owns Git publication.
+
+Existing dependencies are reused; no graph/tool installation, production database,
+external AI, original-document fixture, merge or deployment is involved. Graphify
+was queried in the primary checkout; this worktree has no graph and none was built.
+Private review reports and field-presence-only sample evidence stay untracked.
+[Reviewed hashes, test evidence and pending publication gate](EXPENSE_TEXT_PDF_EXTRACTION.md).
+
 ## PR455 review corrections accepted - 2026-11-17
 
 All three supplied findings reproduce on `0ec7e835` and are corrected: normalized

@@ -22,6 +22,7 @@ const localCompany = "abcdefghijklmnopqrstuv";
 const serverCompany = "00000000-0000-4000-8000-000000000001";
 const newExpenseId = "synthetic-created-expense";
 const company = ref(localCompany);
+const ownerRouting = ref('private');
 // A lagging query is observable state, including when another consumer warms the computed projection.
 const filteredLagId = ref<string | null>(null);
 const route = reactive({ name: "invoicing-expense-new", params: {} as { expenseId?: string }, query: {} });
@@ -32,7 +33,7 @@ function fixture(id = "expense-a", owner = localCompany) {
         title: "Synthetic existing expense", status: "recorded", issue_date: "2026-01-01",
         delivery_date: "2026-01-01", due_date: null, paid_at: null,
         total: "1.00", currency: "EUR", variable_symbol: null as string | null, constant_symbol: null,
-        specific_symbol: null, internal_note: null, attachment_path: null, original_filename: null,
+        specific_symbol: null, internal_note: null as string | null, attachment_path: null, original_filename: null,
         company_contact_id: null as string | null, supplier_name: null as string | null,
         supplier_iban: null as string | null, payment_review_required: false,
         attachments: [] as Attachment[], isDeleted: null as number | null,
@@ -68,6 +69,10 @@ vi.mock("@/composables/useEffectiveAccess", () => ({ useEffectiveAccess: () => (
 vi.mock("@/composables/useExpenseSupplierContacts", () => ({ useExpenseSupplierContacts: () => ({
     contacts: ref([]), loading: ref(false), failed: ref(false), refresh: vi.fn(),
 }) }));
+vi.mock("@/evolu/companyShareRegistry", async importOriginal => ({
+    ...await importOriginal<typeof import("@/evolu/companyShareRegistry")>(),
+    companyShareRoutingKey: () => ownerRouting.value,
+}));
 vi.mock("@/evolu/flags", () => ({ isInvoicingLocalFirst: () => mocks.local }));
 vi.mock("@/evolu/client", () => ({
     useInvoicingEvolu: () => mocks.evolu,
@@ -115,6 +120,7 @@ import ExpenseForm from "@/pages/invoicing/ExpenseForm.vue";
 import ExpenseShow from "@/pages/invoicing/ExpenseShow.vue";
 import ExpenseIsdocExtractModal from "@/components/invoicing/ExpenseIsdocExtractModal.vue";
 import ExpenseAttachmentConsentModal from "@/components/invoicing/ExpenseAttachmentConsentModal.vue";
+import ExpenseTextPdfReviewModal from "@/components/invoicing/ExpenseTextPdfReviewModal.vue";
 
 type AttachmentInput = { filename: string; mimeType: string | null; contentBase64: string };
 function appendAttachment(_evolu: object, id: string, input: AttachmentInput) {
@@ -135,12 +141,12 @@ function deferred<T>() {
 }
 let wrapper: VueWrapper | undefined;
 let consentChoice = false;
-function render(kind: "new" | "show" = "new", local = true) {
+function render(kind: "new" | "show" | "edit" = "new", local = true) {
     mocks.local = local;
     company.value = local ? localCompany : serverCompany;
-    route.name = kind === "new" ? "invoicing-expense-new" : "invoicing-expense-show";
+    route.name = kind === "new" ? "invoicing-expense-new" : kind === "edit" ? "invoicing-expense-edit" : "invoicing-expense-show";
     route.params = kind === "new" ? {} : { expenseId: "expense-a" };
-    wrapper = mount(kind === "new" ? ExpenseForm : ExpenseShow, { global: {
+    wrapper = mount(kind === "show" ? ExpenseShow : ExpenseForm, { global: {
         plugins: [createI18n({ legacy: false, locale: "en", messages: { en } })],
         stubs: { UblEmbeddedPdfViewer: true, RouterLink: { template: '<a href="#"><slot /></a>' } },
     } });
@@ -165,6 +171,7 @@ function expectNoLegacyExpenseWrites() {
 beforeEach(() => {
     vi.resetAllMocks();
     consentChoice = false;
+    ownerRouting.value = 'private';
     mocks.release.mockResolvedValue(undefined);
     mocks.local = true;
     mocks.displayForeign = false;
@@ -213,6 +220,150 @@ afterEach(() => {
 });
 
 describe("expense attachment page integration", () => {
+    async function openTextReview(local: boolean, beforeExtraction?: () => void) {
+        consentChoice = true;
+        if (!local) models.value = [fixture("expense-a", serverCompany)];
+        Object.assign(models.value[0]!, { supplier_name: "Retained supplier", supplier_iban: "CZ6508000000192000145399", variable_symbol: "0007" });
+        mocks.get.mockImplementation(async () => ({ ...models.value[0]! }));
+        mocks.update.mockImplementation(async (_company, id: string, payload: Record<string, unknown>) => {
+            const expense = models.value.find(row => row.id === id)!;
+            Object.assign(expense, payload, { total: String(payload.total ?? expense.total) }); return expense;
+        });
+        (local ? mocks.localDetect : mocks.detect).mockResolvedValue({ has_isdoc: false, extraction_source: "pdf_text", quota });
+        (local ? mocks.localExtract : mocks.extract).mockResolvedValue({ data: { ...draft, source: "pdf_text", payment_review_required: false,
+            supplier_name: "Different extracted supplier", supplier_iban: "SK6807200002891987426353", variable_symbol: "00019" }, quota });
+        render("show", local); await flushPromises(); await select();
+        beforeExtraction?.();
+        wrapper!.findComponent(ExpenseIsdocExtractModal).vm.$emit("confirm"); await flushPromises();
+        const review = wrapper!.findComponent(ExpenseTextPdfReviewModal);
+        expect(review.props("open")).toBe(true);
+        expect(mocks.updateExpense).not.toHaveBeenCalled(); expect(mocks.update).not.toHaveBeenCalled();
+        expect(mocks.insertAttachment).not.toHaveBeenCalled(); expect(mocks.upload).not.toHaveBeenCalled();
+        return review;
+    }
+
+    it.each([true, false].flatMap(local => [true, false].map(accept => ({ local, accept }))))(
+        "requires an explicit detail text-PDF review decision (local=$local, accept=$accept)", async ({ local, accept }) => {
+            const review = await openTextReview(local);
+            const approvedValues = review.props("values");
+            expect(approvedValues).toMatchObject({ supplier_name: "Retained supplier", supplier_iban: "CZ6508000000192000145399",
+                title: draft.title, total: draft.total, variable_symbol: "00019", payment_review_required: true });
+            review.vm.$emit(accept ? "confirm" : "cancel");
+            review.vm.$emit("confirm"); await flushPromises();
+            const update = local ? mocks.updateExpense : mocks.update;
+            expect(update).toHaveBeenCalledTimes(accept ? 1 : 0);
+            if (accept) {
+                const written = { ...approvedValues };
+                for (const field of ["company_contact_id", "supplier_name", "supplier_iban"]) Reflect.deleteProperty(written, field);
+                expect(update.mock.lastCall![2]).toEqual(written);
+            }
+            else expect(models.value[0]!.title).toBe("Synthetic existing expense");
+            expect(local ? mocks.insertAttachment : mocks.upload).toHaveBeenCalledOnce();
+            expect(wrapper!.findComponent(ExpenseTextPdfReviewModal).props("open")).toBe(false);
+            expect(route.query).toEqual({});
+        });
+
+    it("passes the original review baseline to the local gate and keeps a conflicted attachment pending", async () => {
+        const review = await openTextReview(true);
+        mocks.updateExpense.mockResolvedValueOnce({ ok: false, error: "expense_review_changed" });
+        review.vm.$emit("confirm"); await flushPromises();
+        const baseline = mocks.updateExpense.mock.lastCall![3].reviewBaseline;
+        expect(Object.isFrozen(baseline)).toBe(true);
+        expect(baseline).toMatchObject({ total: "1.00", title: "Synthetic existing expense", internalNote: null,
+            supplierName: "Retained supplier", variableSymbol: "0007" });
+        expect(window.alert).toHaveBeenCalledWith(en.invoicing.migration.error_preview_changed);
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+    });
+
+    it.each([true, false])("reviews the current supplier record after the initially loaded copy becomes stale (local=%s)", async local => {
+        const review = await openTextReview(local, () => {
+            Object.assign(models.value[0]!, { company_contact_id: "new-supplier-contact", supplier_name: "New saved supplier",
+                supplier_iban: "SK6807200002891987426353" });
+        });
+        expect(review.props("values")).toMatchObject({ company_contact_id: "new-supplier-contact", supplier_name: "New saved supplier",
+            supplier_iban: "SK6807200002891987426353" });
+        review.vm.$emit("confirm"); await flushPromises();
+        const payload = (local ? mocks.updateExpense : mocks.update).mock.lastCall![2];
+        for (const key of ["company_contact_id", "supplier_name", "supplier_iban"]) expect(payload).not.toHaveProperty(key);
+        expect(models.value[0]).toMatchObject({ company_contact_id: "new-supplier-contact", supplier_name: "New saved supplier",
+            supplier_iban: "SK6807200002891987426353" });
+    });
+
+    it.each([true, false])("does not overwrite supplier changes arriving at the text-PDF write boundary (local=%s)", async local => {
+        const review = await openTextReview(local);
+        const update = local ? mocks.updateExpense : mocks.update;
+        update.mockImplementationOnce((_scope: unknown, id: string, payload: Record<string, unknown>) => {
+            const current = models.value.find(row => row.id === id)!;
+            Object.assign(current, { company_contact_id: null, supplier_name: "Concurrent supplier", supplier_iban: null });
+            Object.assign(current, payload);
+            return local ? { ok: true, value: { id } } : Promise.resolve({ ...current });
+        });
+        review.vm.$emit("confirm"); await flushPromises();
+        expect(models.value[0]).toMatchObject({ company_contact_id: null, supplier_name: "Concurrent supplier", supplier_iban: null });
+        expect(update).toHaveBeenCalledOnce();
+    });
+
+    it.each([true, false].flatMap(local => ["company", "expense", "unmount", "record"].map(change => ({ local, change }))))(
+        "invalidates a pending text review after $change changes (local=$local)", async ({ local, change }) => {
+            const review = await openTextReview(local);
+            if (change === "company") company.value = local ? "different-local-company" : "00000000-0000-4000-8000-000000000002";
+            if (change === "expense") {
+                models.value.push(fixture("expense-b", local ? localCompany : serverCompany));
+                route.params.expenseId = "expense-b";
+            }
+            if (change === "record") models.value[0]!.internal_note = "Payment amount: 2.00";
+            if (change === "unmount") wrapper!.unmount();
+            await flushPromises();
+            if (change !== "unmount") {
+                expect(review.props("open")).toBe(false);
+                review.vm.$emit("confirm"); await flushPromises();
+            }
+            expect(mocks.updateExpense).not.toHaveBeenCalled(); expect(mocks.update).not.toHaveBeenCalled();
+            expect(mocks.insertAttachment).not.toHaveBeenCalled(); expect(mocks.upload).not.toHaveBeenCalled();
+        });
+
+    it.each([true, false])("rejects a record change between approval and its continuation (local=%s)", async local => {
+        const review = await openTextReview(local);
+        review.vm.$emit("confirm");
+        models.value[0]!.internal_note = "Payment amount: 2.00";
+        await flushPromises();
+        expect(mocks.updateExpense).not.toHaveBeenCalled(); expect(mocks.update).not.toHaveBeenCalled();
+        expect(mocks.insertAttachment).not.toHaveBeenCalled(); expect(mocks.upload).not.toHaveBeenCalled();
+    });
+
+    it("invalidates a text review after the local encrypted owner routing changes", async () => {
+        const review = await openTextReview(true);
+        ownerRouting.value = "different-owner"; await flushPromises();
+        expect(review.props("open")).toBe(false);
+        review.vm.$emit("confirm"); await flushPromises();
+        expect(mocks.updateExpense).not.toHaveBeenCalled(); expect(mocks.insertAttachment).not.toHaveBeenCalled();
+    });
+
+    it.each([true, false])("keeps the next queued decision blocked until text review finishes (accept=%s)", async accept => {
+        consentChoice = true;
+        mocks.localDetect.mockResolvedValueOnce({ has_isdoc: false, extraction_source: "pdf_text", quota });
+        mocks.localExtract.mockResolvedValueOnce({ data: { ...draft, source: "pdf_text" }, quota });
+        render("show"); await flushPromises();
+        wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).vm.$emit("files-selected", [pdf("first.pdf"), pdf("second.pdf")]);
+        await flushPromises();
+        const consent = wrapper!.findComponent(ExpenseAttachmentConsentModal);
+        consent.vm.$emit("confirm"); await flushPromises();
+        wrapper!.findComponent(ExpenseIsdocExtractModal).vm.$emit("confirm"); await flushPromises();
+        const review = wrapper!.findComponent(ExpenseTextPdfReviewModal);
+        expect(review.props("open")).toBe(true);
+        expect(consent.props("open")).toBe(false);
+        expect(consent.props("busy")).toBe(true);
+        consent.vm.$emit("confirm"); consent.vm.$emit("skip"); await flushPromises();
+        expect(mocks.localDetect).toHaveBeenCalledOnce(); expect(mocks.updateExpense).not.toHaveBeenCalled();
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        review.vm.$emit(accept ? "confirm" : "cancel"); await flushPromises();
+        expect(mocks.updateExpense).toHaveBeenCalledTimes(accept ? 1 : 0);
+        expect(consent.props("open")).toBe(true); expect(consent.props("busy")).toBe(false);
+        expect(mocks.insertAttachment).not.toHaveBeenCalled();
+        consent.vm.$emit("skip"); await flushPromises();
+        expect(mocks.insertAttachment).toHaveBeenCalledTimes(2);
+    });
+
     it.each([true, false])("opens a copied expense with its exact duplicate marker from detail (local=%s)", async (local) => {
         mocks.duplicate.mockResolvedValueOnce({ ok: true, value: { id: "copied-expense" } });
         mocks.action.mockResolvedValueOnce({ id: "copied-expense" });
@@ -427,6 +578,58 @@ describe("expense attachment page integration", () => {
         expect(mocks.insertAttachment).toHaveBeenCalledOnce();
         expect(wrapper!.text()).toContain(draft.title);
         expectNoLegacyExpenseWrites();
+    });
+
+    it.each([true, false])("extracts text-PDF fields before form Save with payment review required (local=%s)", async local => {
+        consentChoice = true;
+        const detect = local ? mocks.localDetect : mocks.detect;
+        const extract = local ? mocks.localExtract : mocks.extract;
+        detect.mockResolvedValue({ has_isdoc: false, extraction_source: "pdf_text", quota });
+        extract.mockResolvedValue({ data: { ...draft, source: "pdf_text", payment_review_required: false,
+            supplier_name: "Synthetic supplier", supplier_iban: "SK6807200002891987426353", variable_symbol: "0007" }, quota });
+        render("new", local); await flushPromises(); await select();
+        const modal = wrapper!.findComponent(ExpenseIsdocExtractModal);
+        expect(modal.props("source")).toBe("pdf_text");
+        expect(modal.props("open")).toBe(true);
+        expect(mocks.insertExpense).not.toHaveBeenCalled(); expect(mocks.create).not.toHaveBeenCalled();
+        modal.vm.$emit("confirm"); await flushPromises();
+        expect(mocks.insertExpense).not.toHaveBeenCalled(); expect(mocks.create).not.toHaveBeenCalled();
+        await wrapper!.get("form").trigger("submit"); await flushPromises();
+        const payload = local ? mocks.insertExpense.mock.lastCall![2] : mocks.create.mock.lastCall![1];
+        expect(payload).toMatchObject({ title: draft.title, total: draft.total, variable_symbol: "0007", payment_review_required: true });
+        expect(expensePaymentQrDetails({ ...payload, status: "recorded" })).toBeNull();
+    });
+
+    it.each([true, false])("retains text payment evidence from detail extraction into subsequent edit review (local=%s)", async local => {
+        consentChoice = true;
+        if (!local) models.value = [fixture("expense-a", serverCompany)];
+        Object.assign(models.value[0]!, { supplier_name: "Saved supplier", supplier_iban: "CZ6508000000192000145399",
+            variable_symbol: "0007", internal_note: "Saved expense note" });
+        mocks.update.mockImplementation(async (_company, id: string, payload: Record<string, unknown>) => {
+            const expense = models.value.find(row => row.id === id)!;
+            Object.assign(expense, payload, { total: String(payload.total ?? expense.total) }); return expense;
+        });
+        const detect = local ? mocks.localDetect : mocks.detect;
+        const extract = local ? mocks.localExtract : mocks.extract;
+        detect.mockResolvedValue({ has_isdoc: false, extraction_source: "pdf_text", quota });
+        extract.mockResolvedValue({ data: { ...draft, source: "pdf_text", payment_review_required: false,
+            supplier_name: "Saved supplier", supplier_iban: "CZ6508000000192000145399", variable_symbol: "0007",
+            internal_note: "Imported from text PDF.\n\nPayment amount: 2.00" }, quota });
+        render("show", local); await flushPromises(); await select();
+        wrapper!.findComponent(ExpenseIsdocExtractModal).vm.$emit("confirm"); await flushPromises();
+        expect(mocks.updateExpense).not.toHaveBeenCalled(); expect(mocks.update).not.toHaveBeenCalled();
+        wrapper!.findComponent(ExpenseTextPdfReviewModal).vm.$emit("confirm"); await flushPromises();
+        const payload = (local ? mocks.updateExpense : mocks.update).mock.lastCall![2];
+        expect(payload).toMatchObject({ payment_review_required: true,
+            internal_note: "Saved expense note\n\nImported from text PDF.\n\nPayment amount: 2.00" });
+        expect(models.value[0]).toMatchObject({ supplier_name: "Saved supplier", supplier_iban: "CZ6508000000192000145399" });
+        expect(models.value[0]!.internal_note).toBe(payload.internal_note);
+        expect(expensePaymentQrDetails(models.value[0]!)).toBeNull();
+        wrapper!.unmount();
+        render("edit", local); await flushPromises();
+        expect(wrapper!.find("#expense-confirm-payment-details").exists()).toBe(false);
+        await wrapper!.get("textarea").setValue("");
+        expect(wrapper!.find("#expense-confirm-payment-details").exists()).toBe(false);
     });
 
     it.each([undefined, null])("keeps detail extraction fail-closed for review flag %s and preserves saved recipient snapshots", async payment_review_required => {

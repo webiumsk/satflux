@@ -501,6 +501,117 @@ describe('structured supplier snapshots and received credit notes', () => {
     expect(payload).toMatchObject({ company_contact_id: 'contact-bank', supplier_iban: null, supplier_name: null });
   });
 
+  it.each([true, false])('preserves omitted supplier snapshots from a partial text-PDF draft without a contact (local=%s)', async local => {
+    existingExpense.supplier_name = 'Saved supplier';
+    existingExpense.supplier_iban = 'CZ6508000000192000145399';
+    await render(local, true);
+    await extract({ source: 'pdf_text', title: 'Text invoice', variable_symbol: '00042' });
+    expect(value('#expense-supplier-name')).toBe('Saved supplier');
+    expect(value('#expense-supplier-iban')).toBe('CZ6508000000192000145399');
+    await wrapper!.get('form').trigger('submit'); await flushPromises();
+    const payload = local ? mocks.updateLocal.mock.lastCall![2] : mocks.update.mock.lastCall![2];
+    expect(payload).toMatchObject({ company_contact_id: null, supplier_name: 'Saved supplier',
+      supplier_iban: 'CZ6508000000192000145399', variable_symbol: '00042', payment_review_required: true });
+  });
+
+  it.each([true, false])('clears the prior automatic account when a later text PDF changes supplier without an account (local=%s)', async local => {
+    await render(local);
+    await extract({ source: 'pdf_text', supplier_name: 'Supplier A', supplier_iban: 'SK6807200002891987426353' });
+    await extract({ source: 'pdf_text', supplier_name: 'Supplier B' });
+    expect(value('#expense-supplier-name')).toBe('Supplier B');
+    expect(value('#expense-supplier-iban')).toBe('');
+  });
+
+  it.each([true, false])('withholds an account-only text draft beneath a previous automatic supplier (local=%s)', async local => {
+    await render(local);
+    await extract({ source: 'pdf_text', supplier_name: 'Supplier A', supplier_iban: 'SK6807200002891987426353' });
+    await extract({ source: 'pdf_text', supplier_iban: 'CZ6508000000192000145399' });
+    expect(value('#expense-supplier-name')).toBe('Supplier A');
+    expect(value('#expense-supplier-iban')).toBe('');
+  });
+
+  it.each([true, false])('preserves an automatic same-supplier account through sparse text drafts but clears it on a later identity change (local=%s)', async local => {
+    await render(local);
+    await extract({ source: 'pdf_text', supplier_name: 'Supplier A', supplier_iban: 'SK6807200002891987426353' });
+    await extract({ source: 'pdf_text', title: 'No recipient fields' });
+    await extract({ source: 'pdf_text', supplier_name: ' supplier a ' });
+    expect(value('#expense-supplier-iban')).toBe('SK6807200002891987426353');
+    await extract({ source: 'pdf_text', supplier_name: 'Supplier B' });
+    expect(value('#expense-supplier-name')).toBe('Supplier B');
+    expect(value('#expense-supplier-iban')).toBe('');
+  });
+
+  it.each([true, false])('keeps an unknown account unassociated and does not carry it into a later named supplier (local=%s)', async local => {
+    await render(local);
+    await extract({ source: 'pdf_text', supplier_iban: 'CZ6508000000192000145399' });
+    expect(value('#expense-supplier-name')).toBe('');
+    expect(value('#expense-supplier-iban')).toBe('CZ6508000000192000145399');
+    await extract({ source: 'pdf_text', supplier_name: 'Supplier A' });
+    expect(value('#expense-supplier-name')).toBe('Supplier A');
+    expect(value('#expense-supplier-iban')).toBe('');
+  });
+
+  it.each([true, false].flatMap(local => ['contact', 'manual'].map(owner => ({ local, owner }))))(
+    'does not associate an unknown text account with a retained $owner name (local=$local)', async ({ local, owner }) => {
+      await render(local);
+      if (owner === 'contact') await wrapper!.get('#expense-supplier-contact').setValue('contact-empty');
+      else await wrapper!.get('#expense-supplier-name').setValue('Manually named supplier');
+      const name = value('#expense-supplier-name');
+      await extract({ source: 'pdf_text', supplier_iban: 'CZ6508000000192000145399' });
+      expect(value('#expense-supplier-name')).toBe(name);
+      expect(value('#expense-supplier-iban')).toBe('');
+    });
+
+  it.each([true, false].flatMap(local => ['contact', 'manual', 'saved'].map(owner => ({ local, owner }))))(
+    'preserves explicit $owner recipient snapshots through conflicting and sparse text drafts (local=$local)', async ({ local, owner }) => {
+      if (owner === 'saved') {
+        existingExpense.supplier_name = 'Saved supplier';
+        existingExpense.supplier_iban = 'SK6807200002891987426353';
+      }
+      await render(local, owner === 'saved');
+      if (owner === 'contact') await wrapper!.get('#expense-supplier-contact').setValue('contact-bank');
+      if (owner === 'manual') {
+        await wrapper!.get('#expense-supplier-name').setValue('Manual supplier');
+        await wrapper!.get('#expense-supplier-iban').setValue('SK6807200002891987426353');
+      }
+      const name = value('#expense-supplier-name');
+      await extract({ source: 'pdf_text', supplier_name: 'Supplier B' });
+      await extract({ source: 'pdf_text', supplier_iban: 'CZ6508000000192000145399' });
+      expect(value('#expense-supplier-name')).toBe(name);
+      expect(value('#expense-supplier-iban')).toBe('SK6807200002891987426353');
+    });
+
+  it.each([true, false])('preserves a manually cleared account when text extraction omits supplier identity (local=%s)', async local => {
+    await render(local);
+    await extract({ source: 'pdf_text', supplier_name: 'Supplier A', supplier_iban: 'SK6807200002891987426353' });
+    await wrapper!.get('#expense-supplier-iban').setValue('');
+    await extract({ source: 'pdf_text', supplier_iban: 'CZ6508000000192000145399' });
+    expect(value('#expense-supplier-name')).toBe('Supplier A');
+    expect(value('#expense-supplier-iban')).toBe('');
+  });
+
+  it.each([true, false])('requires review for matching text-PDF instructions even when the draft says false (local=%s)', async local => {
+    await render(local);
+    await wrapper!.get('#expense-supplier-contact').setValue('contact-bank');
+    await extract({ source: 'pdf_text', payment_review_required: false, supplier_name: 'Supplier A',
+      supplier_iban: 'SK6807200002891987426353', variable_symbol: '00042', total: 12, currency: 'EUR' });
+    const payload = await submit(local);
+    expect(payload).toMatchObject({ supplier_name: 'Supplier A', supplier_iban: 'SK6807200002891987426353', payment_review_required: true });
+    expect(payload).not.toHaveProperty('payment_details_confirmation');
+    expect(expensePaymentQrDetails({ ...payload, status: 'recorded' } as never)).toBeNull();
+  });
+
+  it.each([true, false])('retains concrete text-PDF payment evidence even after an attempted note edit (local=%s)', async local => {
+    await render(local);
+    await extract({ source: 'pdf_text', payment_review_required: false, supplier_name: 'Supplier A',
+      supplier_iban: 'SK6807200002891987426353', variable_symbol: '00042', total: 12, currency: 'EUR',
+      internal_note: 'Imported from text PDF.\n\nPayment amount: 2.00' });
+    expect(wrapper!.find('#expense-confirm-payment-details').exists()).toBe(false);
+    await wrapper!.get('textarea').setValue('');
+    expect(wrapper!.find('#expense-confirm-payment-details').exists()).toBe(false);
+    expect(await submit(local)).toMatchObject({ payment_review_required: true, internal_note: 'Payment amount: 2.00' });
+  });
+
   it('does not derive payment instructions from copied notes or a generic title', async () => {
     await render();
     await wrapper!.get('textarea').setValue('Supplier: Copied supplier\nSupplier bank account: SK6807200002891987426353');
@@ -956,13 +1067,41 @@ describe('manual payment-details review in an edited legacy expense', () => {
     await flushPromises();
     expect(mocks.updateLocal.mock.calls[0][2]).not.toHaveProperty('payment_details_confirmation');
   });
-  it.each(['Payment amount: 2.00', 'Payment date: 2026-11-17'])('keeps concrete original payment evidence blocked after note edits: %s', async note => {
+  it.each([true, false].flatMap(local => ['Payment amount: 2.00', 'Payment date: 2026-11-17'].flatMap(note =>
+    ['', 'Replacement ordinary note', 'Payment amount: 0.00'].map(edited => ({ local, note, edited })))))(
+    'retains original payment evidence through save and reopen after note edits (local=$local, note=$note, edited=$edited)', async ({ local, note, edited }) => {
     existingExpense.payment_review_required = true;
-    existingExpense.internal_note = note;
-    await render(true, true);
+    existingExpense.internal_note = 'Old ordinary note\n' + note;
+    await render(local, true);
     await wrapper!.get('#expense-supplier-contact').setValue('contact-bank');
     expect(wrapper!.find('#expense-confirm-payment-details').exists()).toBe(false);
-    await wrapper!.get('textarea').setValue('');
+    await wrapper!.get('textarea').setValue(edited);
     expect(wrapper!.find('#expense-confirm-payment-details').exists()).toBe(false);
+    await wrapper!.get('form').trigger('submit'); await flushPromises();
+    const payload = (local ? mocks.updateLocal : mocks.update).mock.lastCall![2];
+    expect(payload.internal_note).toBe([edited, note].filter(Boolean).join('\n'));
+    expect(payload).not.toHaveProperty('payment_details_confirmation');
+    existingExpense.internal_note = payload.internal_note;
+    wrapper!.unmount();
+    await render(local, true);
+    expect((wrapper!.get('textarea').element as HTMLTextAreaElement).value).toBe(payload.internal_note);
+    expect(wrapper!.find('#expense-confirm-payment-details').exists()).toBe(false);
+  });
+
+  it.each([true, false])('does not duplicate retained evidence and leaves ordinary or zero-payment notes editable (local=%s)', async local => {
+    existingExpense.internal_note = 'Old note\nPayment amount: 0.00\nPayment amount: unknown\nPayment date: unknown';
+    await render(local, true);
+    await wrapper!.get('textarea').setValue('New note\nPayment amount: unknown');
+    await wrapper!.get('form').trigger('submit'); await flushPromises();
+    expect((local ? mocks.updateLocal : mocks.update).mock.lastCall![2].internal_note)
+      .toBe('New note\nPayment amount: unknown\nPayment date: unknown');
+  });
+
+  it.each([true, false])('allows clearing an ISDOC-only uncertainty note and a zero paid amount (local=%s)', async local => {
+    existingExpense.internal_note = 'Imported from ISDOC.\nPayment amount: 0.00\nOrdinary note';
+    await render(local, true);
+    await wrapper!.get('textarea').setValue('');
+    await wrapper!.get('form').trigger('submit'); await flushPromises();
+    expect((local ? mocks.updateLocal : mocks.update).mock.lastCall![2].internal_note).toBeNull();
   });
 });

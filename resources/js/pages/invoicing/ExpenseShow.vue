@@ -1,9 +1,10 @@
 <template>
   <InvoicingPageShell content-class="pt-4 pb-10">
-    <ExpenseAttachmentConsentModal :open="showProcessingConsent" :file-name="processingConsentFileName"
+    <ExpenseAttachmentConsentModal :open="showProcessingConsent && !textPdfReviewValues" :file-name="processingConsentFileName"
       :busy="detecting || extracting || processingExtraction" @confirm="onConfirmProcessingConsent" @skip="onSkipProcessingConsent" />
     <ExpenseIsdocExtractModal
-      :open="showExtractModal"
+      :open="showExtractModal && !textPdfReviewValues"
+      :source="extractionSource"
       :extracting="extracting || processingExtraction"
       :purchasing="purchasing"
       :quota="quota"
@@ -13,6 +14,8 @@
       @confirm="onConfirmExtract"
       @purchase="purchasePack"
     />
+    <ExpenseTextPdfReviewModal :open="textPdfReviewValues !== null" :values="textPdfReviewValues"
+      @confirm="resolveTextPdfReview(true)" @cancel="resolveTextPdfReview(false)" />
     <template #header>
       <InvoicingAppHeader :show-filter-bar="false" />
     </template>
@@ -355,6 +358,7 @@ import ExpenseAttachmentPanel from "../../components/invoicing/ExpenseAttachment
 import ExpenseAttachmentConsentModal from "../../components/invoicing/ExpenseAttachmentConsentModal.vue";
 import UblEmbeddedPdfPanel from "../../components/invoicing/UblEmbeddedPdfPanel.vue";
 import ExpenseIsdocExtractModal from "../../components/invoicing/ExpenseIsdocExtractModal.vue";
+import ExpenseTextPdfReviewModal from "../../components/invoicing/ExpenseTextPdfReviewModal.vue";
 import ExpenseShowSidebar from "../../components/invoicing/ExpenseShowSidebar.vue";
 import InvoicingAppHeader from "../../components/invoicing/InvoicingAppHeader.vue";
 import InvoicingPageShell from "../../components/invoicing/InvoicingPageShell.vue";
@@ -373,7 +377,7 @@ import {
   updateLocalExpense,
 } from "../../evolu/expenseCrud";
 import { releaseLocalExpenseBankClaim } from "../../evolu/bankCrud";
-import { filterLocalExpenses, type EvoluExpenseRow } from "../../evolu/expenseMap";
+import { evoluExpenseToApi, filterLocalExpenses, type EvoluExpenseRow } from "../../evolu/expenseMap";
 import { toAppRows } from "../../evolu/queryLoad";
 import {
   attachmentBlobUrl,
@@ -383,6 +387,7 @@ import {
 import { isExpenseOriginalReference } from "../../evolu/expenseOriginalReference";
 import { readVerifiedExpenseAttachment, deleteVerifiedExpenseAttachment } from "../../evolu/expenseOriginalArchive";
 import { isInvoicingLocalFirst } from "../../evolu/flags";
+import { companyShareRoutingKey } from "../../evolu/companyShareRegistry";
 import type { CompanyId, ExpenseId } from "../../evolu/schema";
 import { updateLocalExpenseNote } from "../../evolu/expenseCrud";
 import { expenseMutationErrorKey } from "../../utils/expenseError";
@@ -449,6 +454,24 @@ const acting = ref(false);
 const duplicating = ref(false);
 const uploading = ref(false);
 const processingExtraction = ref(false);
+const textPdfReviewValues = ref<ReturnType<typeof draftToPayload> | null>(null);
+let textPdfReviewRevision = 0;
+let resolvePendingTextPdfReview: ((accepted: boolean) => void) | null = null;
+function resolveTextPdfReview(accepted: boolean) {
+  const resolve = resolvePendingTextPdfReview;
+  resolvePendingTextPdfReview = null;
+  textPdfReviewValues.value = null;
+  resolve?.(accepted);
+}
+function invalidateTextPdfReview() {
+  textPdfReviewRevision++;
+  resolveTextPdfReview(false);
+}
+function reviewTextPdfValues(values: ReturnType<typeof draftToPayload>): Promise<boolean> {
+  resolveTextPdfReview(false);
+  textPdfReviewValues.value = Object.freeze({ ...values });
+  return new Promise(resolve => { resolvePendingTextPdfReview = resolve; });
+}
 const noteDraft = ref("");
 const noteSaving = ref(false);
 const savedPreviewUrl = ref<string | null>(null);
@@ -464,11 +487,13 @@ let previewRequest = 0;
 let neighborRequest = 0;
 
 function captureContext() {
-  return { generation: contextGeneration, company: companyId.value, expense: expenseId.value };
+  return { generation: contextGeneration, company: companyId.value, expense: expenseId.value,
+    routing: localFirst ? companyShareRoutingKey(companyId.value) : 'server' };
 }
 
 function isCurrentContext(context: ReturnType<typeof captureContext>) {
-  return context.generation === contextGeneration && context.company === companyId.value && context.expense === expenseId.value;
+  return context.generation === contextGeneration && context.company === companyId.value && context.expense === expenseId.value
+    && context.routing === (localFirst ? companyShareRoutingKey(companyId.value) : 'server');
 }
 
 function hasLoadedExpense(context: ReturnType<typeof captureContext>) {
@@ -483,6 +508,7 @@ const {
   lastDetectHasIsdoc,
   detectError,
   showExtractModal,
+  extractionSource,
   showProcessingConsent,
   processingConsentFileName,
   detectionStatus,
@@ -613,6 +639,8 @@ watch(expenseResource.expense, (projected) => {
 watch(expense, (e) => {
   noteDraft.value = e?.internal_note ?? "";
 });
+// A preview must be approved against the same record values that were displayed.
+watch([expense, expenseResource.expense], invalidateTextPdfReview, { deep: true, flush: 'sync' });
 
 function expenseListTo() {
   return { name: "invoicing-expenses", params: { companyId: companyId.value } };
@@ -1052,7 +1080,7 @@ function draftToPayload(draft: ExpenseImportDraft, current: Expense) {
     // Saved recipient snapshots, including explicit clears, need a deliberate edit.
     supplier_name: current.supplier_name ?? null,
     supplier_iban: current.supplier_iban ?? null,
-    payment_review_required: expensePaymentReviewRequired(current.payment_review_required, current.internal_note) || draft.payment_review_required !== false || retainsUnprovenReference || supplierConflict,
+    payment_review_required: expensePaymentReviewRequired(current.payment_review_required, current.internal_note) || draft.source === 'pdf_text' || draft.payment_review_required !== false || retainsUnprovenReference || supplierConflict,
     title: draft.title ?? current.title,
     external_number: draft.external_number ?? current.external_number,
     variable_symbol: draft.variable_symbol ?? current.variable_symbol,
@@ -1064,7 +1092,9 @@ function draftToPayload(draft: ExpenseImportDraft, current: Expense) {
     due_date: draft.due_date?.slice(0, 10) ?? current.due_date,
     total: draft.total ?? current.total,
     currency: draft.currency ?? current.currency,
-    internal_note: current.internal_note,
+    internal_note: draft.source === 'pdf_text' && draft.internal_note?.trim()
+      && !current.internal_note?.includes(draft.internal_note.trim())
+      ? [current.internal_note?.trim(), draft.internal_note.trim()].filter(Boolean).join('\n\n') : current.internal_note,
   };
 }
 
@@ -1193,28 +1223,65 @@ function onPanelClear() {
 
 async function onConfirmExtract() {
   if (extracting.value || processingExtraction.value) return;
-  const requestedCompany = companyId.value;
-  const requestedExpense = expenseId.value;
-  const capturedGeneration = contextGeneration;
-  const stillCurrent = () => capturedGeneration === contextGeneration && requestedCompany === companyId.value && requestedExpense === expenseId.value;
+  const context = captureContext();
+  const requestedCompany = context.company;
+  const requestedExpense = context.expense;
+  const stillCurrent = () => isCurrentContext(context);
   processingExtraction.value = true;
   try {
     const draft = await confirmExtract();
     if (!stillCurrent()) return;
     if (!draft) return;
+    let approvedPayload: ReturnType<typeof draftToPayload> | null = null;
+    let reviewBaseline: Expense | null = null;
+    let localReviewBaseline: Readonly<EvoluExpenseRow> | undefined;
+    if (draft.source === 'pdf_text') {
+      if (localFirst) {
+        const current = expenseRows.value.find(row => row.id === requestedExpense && row.companyId === requestedCompany);
+        if (!current) throw new Error(t('errors.generic'));
+        localReviewBaseline = Object.freeze({ ...current });
+        reviewBaseline = evoluExpenseToApi(localReviewBaseline) as Expense;
+      } else {
+        reviewBaseline = await invoicingApi.expenses.get<Expense>(requestedCompany, requestedExpense);
+      }
+      if (!stillCurrent()) return;
+      if (reviewBaseline.id !== requestedExpense) throw new Error(t('errors.generic'));
+      approvedPayload = draftToPayload(draft, reviewBaseline);
+      const reviewRevision = textPdfReviewRevision;
+      const accepted = await reviewTextPdfValues(approvedPayload);
+      if (!stillCurrent() || reviewRevision !== textPdfReviewRevision) return;
+      if (!accepted) {
+        await uploadAttachmentOnly();
+        return;
+      }
+    }
     if (draft) {
+      if (!expense.value) throw new Error(t('errors.generic'));
+      const payload = approvedPayload ? { ...approvedPayload } : draftToPayload(draft, expense.value);
+      // Showing saved supplier values is not an instruction to overwrite later remote edits.
+      if (reviewBaseline) {
+        for (const field of ['company_contact_id', 'supplier_name', 'supplier_iban'] as const) {
+          if (payload[field] === (reviewBaseline[field] ?? null)) Reflect.deleteProperty(payload, field);
+        }
+      }
       if (localFirst) {
         if (!expenseResource.evolu || expense.value?.id !== requestedExpense) throw new Error(t('errors.generic'));
-        const current = expenseRows.value.find((row) => row.id === requestedExpense && row.companyId === requestedCompany);
-        if (!current) throw new Error(t('errors.generic'));
-        const result = await updateLocalExpense(expenseResource.evolu, requestedExpense as ExpenseId, draftToPayload(draft, expense.value), current);
+        const expected = localReviewBaseline ? { reviewBaseline: localReviewBaseline }
+          : expenseRows.value.find(row => row.id === requestedExpense && row.companyId === requestedCompany);
+        if (!expected) throw new Error(t('errors.generic'));
+        const result = await updateLocalExpense(expenseResource.evolu, requestedExpense as ExpenseId, payload, expected);
+        if (!stillCurrent()) return;
+        if (!result.ok && result.error === 'expense_review_changed') {
+          window.alert(t('invoicing.migration.error_preview_changed'));
+          return;
+        }
         if (!result.ok) throw new Error(t('errors.generic'));
         await expenseResource.refresh();
         if (!stillCurrent()) return;
         expense.value = expenseResource.expense.value as Expense | null;
       } else {
         if (!expense.value) throw new Error(t('errors.generic'));
-        const updated = await invoicingApi.expenses.update<NonNullable<typeof expense.value>>(requestedCompany, requestedExpense, draftToPayload(draft, expense.value));
+        const updated = await invoicingApi.expenses.update<NonNullable<typeof expense.value>>(requestedCompany, requestedExpense, payload);
         if (!stillCurrent()) return;
         expense.value = updated;
       }
@@ -1242,8 +1309,9 @@ async function onSkipExtract() {
   await uploadAttachmentOnly();
 }
 
-watch([companyId, expenseId], () => {
+watch([companyId, expenseId, () => localFirst ? companyShareRoutingKey(companyId.value) : 'server'], () => {
   contextGeneration++;
+  resolveTextPdfReview(false);
   loadRequest++;
   neighborRequest++;
   expense.value = null;
@@ -1272,6 +1340,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   contextGeneration++;
+  resolveTextPdfReview(false);
   revokeSavedPreview();
 });
 </script>

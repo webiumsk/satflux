@@ -1,5 +1,41 @@
 # Development decision log
 
+## Preserve expense classification and retained payment authority - 2026-11-18
+
+EF file-specification references establish attachment presence even without a
+stream Type; nested direct dictionaries/arrays are inspected without following
+indirect cycles. Any attachment retains exclusive structured handling. Positive
+credit signs require one unambiguous numbered/bare document kind; conflicting or
+unknown types withhold positive totals, while negative amounts retain their sign.
+
+Text-PDF previews use a current scoped row or fresh server record as one baseline.
+A readonly display of saved supplier/contact values creates no edit intent; omit
+unchanged fields from mutation so concurrent supplier edits survive the write gap.
+Protected original payment-evidence lines survive ordinary note edits and saves;
+zero-only amounts and ISDOC-only uncertainty remain editable under existing rules.
+Five-language guides explain exact manual review/Save and unchanged QR eligibility.
+All five supplied findings are fixed; independent QA/security accept the final
+frozen scope. [Evidence](EXPENSE_TEXT_PDF_EXTRACTION.md). No new schema/payment authority.
+
+## Review-only text-PDF expense drafts - 2026-11-18
+
+Reuse the installed PDF parser behind an additive import facade. Any embedded
+file stays exclusively on the existing ISDOC path; structured-reader errors must
+not downgrade to visible text. Only PDFs without embedded files use bounded,
+conservative SK/CS/EN field mapping. Conflicting or missing fields remain absent.
+A unique coherent invoice header may distinguish a total from annex totals;
+page order alone never chooses it. Decoder safeguards are partial, not a global
+process-memory/CPU sandbox; legacy structured-reader limits remain documented.
+
+Text drafts always require payment review and retain concrete payment evidence.
+New/edit forms prefill without writes until Save. Detail extraction previews the
+exact frozen merged payload and writes only after explicit approval, invalidated
+by context/owner/record changes. Track automatic supplier/account provenance
+across sparse drafts so changed or unknown identities cannot inherit an unrelated
+account. Deliberate saved/contact/manual snapshots and clears remain authoritative.
+No OCR/provider, schema or quota-policy change is needed. Independent QA/security
+accept the final reviewed scope; [contract and checks](EXPENSE_TEXT_PDF_EXTRACTION.md).
+
 ## PR455 review corrections accepted - 2026-11-17
 
 All three supplied findings reproduce on `0ec7e835` and are corrected: normalized

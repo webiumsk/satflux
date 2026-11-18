@@ -17,7 +17,10 @@ import { saveManualExpenseAttachmentArchive } from '../evolu/manualExpenseAttach
 import { EXPENSE_ORIGINAL_MAX_BYTES } from '../evolu/expenseOriginalReference';
 import { companyShareRoutingKey } from '../evolu/companyShareRegistry';
 
+export type ExpenseExtractionSource = 'isdoc' | 'pdf_text';
+
 export type ExpenseImportDraft = {
+  source?: ExpenseExtractionSource;
   supplier_name?: string | null;
   supplier_iban?: string | null;
   payment_review_required?: boolean | null;
@@ -34,12 +37,13 @@ export type ExpenseImportDraft = {
   currency?: string;
 };
 
-export type ExpenseFileDetectionStatus = 'pending' | 'skipped' | 'checking' | 'found' | 'absent' | 'error';
+export type ExpenseFileDetectionStatus = 'pending' | 'skipped' | 'checking' | 'found' | 'text_found' | 'absent' | 'error';
 
 export type PendingExpenseFile = {
   id: string;
   file: File;
   hasIsdoc: boolean;
+  extractionSource: ExpenseExtractionSource | null;
   detectError: string;
   detectionStatus: ExpenseFileDetectionStatus;
 };
@@ -115,6 +119,7 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
   );
 
   const lastDetectHasIsdoc = computed(() => selectedPending.value?.hasIsdoc ?? false);
+  const extractionSource = computed(() => pendingFiles.value.find(entry => entry.id === isdocModalFileId.value)?.extractionSource ?? null);
 
   const detectError = computed(() => selectedPending.value?.detectError || selectionError.value);
   const detectionStatus = computed(() => selectedPending.value?.detectionStatus ?? null);
@@ -143,10 +148,11 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
     }
   }
 
-  function updatePendingEntry(id: string, patch: Partial<Pick<PendingExpenseFile, 'hasIsdoc' | 'detectError' | 'detectionStatus'>>) {
+  function updatePendingEntry(id: string, patch: Partial<Pick<PendingExpenseFile, 'hasIsdoc' | 'extractionSource' | 'detectError' | 'detectionStatus'>>) {
     const entry = pendingFiles.value.find((item) => item.id === id);
     if (!entry) return;
     if (patch.hasIsdoc !== undefined) entry.hasIsdoc = patch.hasIsdoc;
+    if (patch.extractionSource !== undefined) entry.extractionSource = patch.extractionSource;
     if (patch.detectError !== undefined) entry.detectError = patch.detectError;
     if (patch.detectionStatus !== undefined) entry.detectionStatus = patch.detectionStatus;
   }
@@ -154,7 +160,7 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
   /** Show one decision at a time, keeping the exact file identity throughout retries. */
   function advanceDialogs() {
     if (disposed || detecting.value || extracting.value || showExtractModal.value || showProcessingConsent.value) return;
-    extractionQueue.value = extractionQueue.value.filter(id => pendingFiles.value.some(entry => entry.id === id && entry.hasIsdoc));
+    extractionQueue.value = extractionQueue.value.filter(id => pendingFiles.value.some(entry => entry.id === id && entry.extractionSource !== null));
     consentQueue.value = consentQueue.value.filter(id => pendingFiles.value.some(entry => entry.id === id && entry.detectionStatus === 'pending'));
     const extracted = extractionQueue.value[0];
     if (extracted) {
@@ -191,6 +197,7 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
       id,
       file,
       hasIsdoc: false,
+      extractionSource: null,
       detectError: '',
       detectionStatus: 'pending',
     });
@@ -210,7 +217,7 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
     const entry = pendingFiles.value.find(item => item.id === id);
     if (!entry) return;
     const captured = context();
-    updatePendingEntry(id, { hasIsdoc: false, detectError: '', detectionStatus: 'checking' });
+    updatePendingEntry(id, { hasIsdoc: false, extractionSource: null, detectError: '', detectionStatus: 'checking' });
     activeDetections++;
     detecting.value = true;
 
@@ -218,16 +225,21 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
     fd.append('file', entry.file);
 
     try {
-      type Detection = { quota?: IsdocExtractQuota; has_isdoc?: boolean };
+      type Detection = { quota?: IsdocExtractQuota; has_isdoc?: boolean; extraction_source?: unknown };
       const detected = localFirst
         ? await invoicingApi.expenses.ephemeral.detectIsdoc<Detection>(fd)
         : await invoicingApi.expenses.detectIsdoc<Detection>(captured.company, fd);
       if (!isCurrent(captured, id)) return;
       if (typeof detected.has_isdoc !== 'boolean') throw new Error('detect_failed');
-      quota.value = (detected.quota as typeof quota.value) ?? quota.value;
       const hasIsdoc = detected.has_isdoc;
-      updatePendingEntry(id, { hasIsdoc, detectionStatus: hasIsdoc ? 'found' : 'absent' });
-      if (hasIsdoc && !extractionQueue.value.includes(id)) extractionQueue.value.push(id);
+      // Old servers expose only has_isdoc. New source metadata must agree with that literal claim.
+      const source = detected.extraction_source === undefined ? (hasIsdoc ? 'isdoc' : null) : detected.extraction_source;
+      if (!((source === 'isdoc' && hasIsdoc) || (source === null && !hasIsdoc)
+        || (source === 'pdf_text' && !hasIsdoc && previewKindForFile(entry.file) === 'pdf'))) throw new Error('detect_failed');
+      quota.value = (detected.quota as typeof quota.value) ?? quota.value;
+      updatePendingEntry(id, { hasIsdoc, extractionSource: source,
+        detectionStatus: source === 'isdoc' ? 'found' : source === 'pdf_text' ? 'text_found' : 'absent' });
+      if (source !== null && !extractionQueue.value.includes(id)) extractionQueue.value.push(id);
     } catch (e: unknown) {
       if (!isCurrent(captured, id)) return;
       const err = e as { response?: { data?: { message?: string; errors?: { file?: string[] } } } };
@@ -261,7 +273,7 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
     if (detecting.value || extracting.value) return;
     const id = processingConsentFileId.value;
     if (!id) return;
-    updatePendingEntry(id, { detectionStatus: 'skipped', hasIsdoc: false, detectError: '' });
+    updatePendingEntry(id, { detectionStatus: 'skipped', hasIsdoc: false, extractionSource: null, detectError: '' });
     processingConsentFileId.value = null;
     consentQueue.value = consentQueue.value.filter(value => value !== id);
     advanceDialogs();
@@ -271,7 +283,7 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
     if (detecting.value || extracting.value || showExtractModal.value || showProcessingConsent.value) return;
     const entry = selectedPending.value;
     if (!entry) return;
-    if (entry.hasIsdoc) {
+    if (entry.extractionSource !== null) {
       if (!extractionQueue.value.includes(entry.id)) extractionQueue.value.push(entry.id);
       advanceDialogs();
     } else if (localFirst) {
@@ -332,7 +344,7 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
     if (extracting.value || (localFirst && !evolu)) return null;
     const id = isdocModalFileId.value ?? selectedPendingId.value;
     const entry = pendingFiles.value.find((item) => item.id === id);
-    if (!entry?.hasIsdoc) return null;
+    if (!entry?.extractionSource) return null;
 
     const captured = context();
 
@@ -344,12 +356,15 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
         ? await invoicingApi.expenses.ephemeral.extract<ExpenseImportDraft>(fd)
         : await invoicingApi.expenses.extract<ExpenseImportDraft>(captured.company, fd);
       if (!isCurrent(captured, entry.id)) return null;
+      if (res.data.source !== undefined && res.data.source !== entry.extractionSource) throw new Error(t('invoicing.expense_attachment_detect_failed'));
+      const draft = entry.extractionSource === 'pdf_text'
+        ? { ...res.data, source: 'pdf_text' as const, payment_review_required: true } : res.data;
       quota.value = (res.quota as typeof quota.value) ?? quota.value;
       showExtractModal.value = false;
       isdocModalFileId.value = null;
       extractionQueue.value = extractionQueue.value.filter(value => value !== entry.id);
 
-      return res.data;
+      return draft;
     } catch (error: unknown) {
       if (!isCurrent(captured, entry.id)) return null;
       throw error;
@@ -503,6 +518,7 @@ export function useExpenseIsdocAttachment(companyId: Ref<string>, expenseId?: Re
     previewUrl,
     previewKind,
     lastDetectHasIsdoc,
+    extractionSource,
     detectError,
     detectionStatus,
     showProcessingConsent,

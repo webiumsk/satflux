@@ -10,6 +10,7 @@ use App\Models\BusinessExpense;
 use App\Models\BusinessExpenseAttachment;
 use App\Models\Company;
 use App\Services\Invoicing\BusinessExpenseBulkService;
+use App\Services\Invoicing\BusinessExpenseImportService;
 use App\Services\Invoicing\BusinessExpenseIsdocImportService;
 use App\Services\Invoicing\BusinessExpenseIsdocPackService;
 use App\Services\Invoicing\BusinessExpenseIsdocQuotaService;
@@ -33,6 +34,7 @@ class BusinessExpenseController extends Controller
         protected BusinessExpenseIsdocImportService $isdocImportService,
         protected BusinessExpenseIsdocQuotaService $isdocQuotaService,
         protected BusinessExpenseIsdocPackService $isdocPackService,
+        protected BusinessExpenseImportService $documentImportService,
     ) {}
 
     public function index(Request $request, Company $company): JsonResponse
@@ -168,10 +170,11 @@ class BusinessExpenseController extends Controller
         ]);
 
         $file = $request->file('file');
+        $detection = $this->documentImportService->detectFromUpload($file);
 
         return response()->json([
             'data' => [
-                'has_isdoc' => $this->isdocImportService->hasIsdocInUpload($file),
+                ...$detection,
                 'quota' => $this->isdocQuotaService->snapshot($request->user()),
                 'filename' => $file->getClientOriginalName(),
             ],
@@ -187,7 +190,7 @@ class BusinessExpenseController extends Controller
         $user = $request->user();
         $this->isdocQuotaService->assertCanExtract($user);
 
-        $draft = $this->isdocImportService->extractFromUpload($request->file('file'));
+        $draft = $this->documentImportService->extractFromUpload($request->file('file'));
 
         $this->isdocQuotaService->recordExtraction($user, null, $company->id);
 

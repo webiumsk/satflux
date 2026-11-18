@@ -7,7 +7,7 @@ use App\Models\ExpenseIsdocCreditBalance;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
-use App\Services\Invoicing\BusinessExpenseIsdocImportService;
+use App\Services\Invoicing\BusinessExpenseImportService;
 use App\Services\Invoicing\BusinessExpenseIsdocQuotaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -83,8 +83,8 @@ class EphemeralBusinessExpenseTest extends TestCase
     #[Test]
     public function detection_without_a_company_uses_the_existing_parser_and_does_not_consume_quota(): void
     {
-        $this->mock(BusinessExpenseIsdocImportService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('hasIsdocInUpload')->once()->withArgs(fn (UploadedFile $file) => $file->getClientOriginalName() === 'synthetic.pdf')->andReturn(true);
+        $this->mock(BusinessExpenseImportService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('detectFromUpload')->once()->withArgs(fn (UploadedFile $file) => $file->getClientOriginalName() === 'synthetic.pdf')->andReturn(['has_isdoc' => true, 'extraction_source' => 'isdoc']);
         });
         $this->actingAs($this->user)->postJson(self::ROOT.'detect-isdoc', ['file' => $this->pdf()])
             ->assertOk()->assertJsonPath('data.has_isdoc', true)
@@ -114,7 +114,7 @@ class EphemeralBusinessExpenseTest extends TestCase
     #[Test]
     public function extraction_failure_does_not_record_or_consume_quota(): void
     {
-        $this->mock(BusinessExpenseIsdocImportService::class, function (MockInterface $mock) {
+        $this->mock(BusinessExpenseImportService::class, function (MockInterface $mock) {
             $mock->shouldReceive('extractFromUpload')->once()->andThrow(ValidationException::withMessages(['file' => ['Synthetic unreadable ISDOC.']]));
         });
         $this->actingAs($this->user)->postJson(self::ROOT.'extract', ['file' => $this->pdf()])
@@ -127,7 +127,7 @@ class EphemeralBusinessExpenseTest extends TestCase
     public function a_free_unit_used_during_parsing_is_rechecked_before_the_draft_is_returned(): void
     {
         config(['invoicing.expense_isdoc_extract_free_limit' => 1]);
-        $this->mock(BusinessExpenseIsdocImportService::class, function (MockInterface $mock) {
+        $this->mock(BusinessExpenseImportService::class, function (MockInterface $mock) {
             $mock->shouldReceive('extractFromUpload')->once()->andReturnUsing(function () {
                 AuditLog::log(BusinessExpenseIsdocQuotaService::EXTRACT_ACTION, 'business_expense', null, ['billing' => 'free'], $this->user->id);
 
@@ -144,9 +144,9 @@ class EphemeralBusinessExpenseTest extends TestCase
     public function exhausted_quota_blocks_extraction_before_parsing_but_detection_remains_available(): void
     {
         config(['invoicing.expense_isdoc_extract_free_limit' => 0]);
-        $this->mock(BusinessExpenseIsdocImportService::class, function (MockInterface $mock) {
+        $this->mock(BusinessExpenseImportService::class, function (MockInterface $mock) {
             $mock->shouldNotReceive('extractFromUpload');
-            $mock->shouldReceive('hasIsdocInUpload')->once()->andReturn(false);
+            $mock->shouldReceive('detectFromUpload')->once()->andReturn(['has_isdoc' => false, 'extraction_source' => null]);
         });
         $this->actingAs($this->user)->postJson(self::ROOT.'extract', ['file' => $this->pdf()])
             ->assertUnprocessable()->assertJsonValidationErrors('quota');
@@ -176,9 +176,9 @@ class EphemeralBusinessExpenseTest extends TestCase
     #[DataProvider('endpoints')]
     public function callers_cannot_supply_company_expense_or_user_identity(string $method, string $endpoint): void
     {
-        $this->mock(BusinessExpenseIsdocImportService::class, function (MockInterface $mock) {
+        $this->mock(BusinessExpenseImportService::class, function (MockInterface $mock) {
             $mock->shouldNotReceive('extractFromUpload');
-            $mock->shouldNotReceive('hasIsdocInUpload');
+            $mock->shouldNotReceive('detectFromUpload');
         });
         $this->actingAs($this->user)->json($method, self::ROOT.$endpoint, [
             'file' => $this->pdf(), 'company_id' => 'abcdefghijklmnopqrstuv', 'expense_id' => 'synthetic-expense', 'user_id' => 999,
@@ -190,9 +190,9 @@ class EphemeralBusinessExpenseTest extends TestCase
     #[Test]
     public function missing_wrong_extension_and_oversized_files_fail_before_parsing(): void
     {
-        $this->mock(BusinessExpenseIsdocImportService::class, function (MockInterface $mock) {
+        $this->mock(BusinessExpenseImportService::class, function (MockInterface $mock) {
             $mock->shouldNotReceive('extractFromUpload');
-            $mock->shouldNotReceive('hasIsdocInUpload');
+            $mock->shouldNotReceive('detectFromUpload');
         });
         $this->actingAs($this->user);
         foreach (['detect-isdoc', 'extract'] as $endpoint) {
@@ -208,8 +208,8 @@ class EphemeralBusinessExpenseTest extends TestCase
     #[Test]
     public function plaintext_detection_has_a_bounded_user_rate_limit(): void
     {
-        $this->mock(BusinessExpenseIsdocImportService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('hasIsdocInUpload')->times(10)->andReturn(false);
+        $this->mock(BusinessExpenseImportService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('detectFromUpload')->times(10)->andReturn(['has_isdoc' => false, 'extraction_source' => null]);
         });
         $this->actingAs($this->user);
         for ($i = 0; $i < 10; $i++) {
@@ -222,7 +222,7 @@ class EphemeralBusinessExpenseTest extends TestCase
 
     private function fakeExtraction(): void
     {
-        $this->mock(BusinessExpenseIsdocImportService::class, function (MockInterface $mock) {
+        $this->mock(BusinessExpenseImportService::class, function (MockInterface $mock) {
             $mock->shouldReceive('extractFromUpload')->once()->andReturn([
                 'source' => 'isdoc', 'title' => 'Synthetic supplier', 'external_number' => 'SYNTHETIC-1',
                 'issue_date' => '2026-06-01', 'total' => 12.5, 'currency' => 'EUR',

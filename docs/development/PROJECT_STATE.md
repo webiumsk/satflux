@@ -1,5 +1,44 @@
 # Project state
 
+## PR456 supplied review corrections accepted - 2026-11-18
+
+All five supplied findings reproduce on `bab3d9fa` and are corrected on the same
+feature branch. Untyped EF attachments retain structured-only processing; credit
+references cannot negate invoice totals; ambiguous positive signs remain unresolved.
+Text review uses current supplier baselines and omits unchanged supplier/contact
+intent from writes. Form note edits retain protected payment evidence after reopen.
+All five import guides explain explicit review/Save before eligible Payment QR.
+
+Main460 JS tests, lint/typecheck ratchets, locale parity and production build pass.
+Independent QA320 JS,122 PHP/993 assertions and6 native Chrome scenarios pass;
+security279 JS,122 PHP/993 and6 parser controls pass. Scopes overlap. Both accept
+delta12 `f44dfbf0b64f0be42f4e1ed2983cbe50ec1b0270dbc7a8a8b12b6639108fb330`
+and complete28 `22847b3e39c6e7eca22a8919736e7237bac44160ca579bbeeb44871f2b3e510c`.
+Pint/PHPStan pass, and the corrected-parser private probe still finds all9 fields.
+Original-head CI44195801806 is successful; correction-head CI follows publication.
+Main owns the scoped17-path correction; unrelated primary edits remain preserved.
+No merge/deployment. [Finding disposition and evidence](EXPENSE_TEXT_PDF_EXTRACTION.md).
+
+## Reviewed text-PDF expense extraction - 2026-11-18
+
+PR455 is verified merged at master `2ffd3465`; older open-PR entries below are
+historical. The owner authorizes readable text-PDF extraction after the SPS audit.
+Branch `feat/expense-text-pdf-extraction` adds sparse draft extraction before Save,
+retaining ISDOC priority, existing quotas, consent and payment-review safeguards.
+Detail text extraction requires explicit approval of the displayed merged payload.
+No OCR, external AI, migration or dependency change is included.
+
+Main checks pass442 JS tests,244 PHP cases/1780 assertions (13 optional PostgreSQL
+concurrency cases skip), lint/typecheck ratchets, locale parity, Pint/PHPStan and
+production build. Independent QA accepts288 JS tests,111 PHP/936 assertions and20
+native scenarios; security accepts the final source and independently verifies the
+last145 Form cases. Scopes overlap. Both accept complete28 aggregate
+`9789f7632b6ffea55c9d10ce2cc2febd6ab3decfd644dc6dbd08adc926957219`.
+The private read-only sample probe finds all9 basic fields; no document values or
+binary fixture enter Git. Primary unrelated edits remain preserved. Main owns
+publication; new-head CI must be verified afterward. No merge/deployment occurs.
+[Contract, review attribution and limits](EXPENSE_TEXT_PDF_EXTRACTION.md).
+
 ## PR455 review corrections accepted - 2026-11-17
 
 All three supplied findings reproduce on `0ec7e835` and are corrected: normalized
