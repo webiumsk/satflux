@@ -156,6 +156,28 @@ class BusinessExpensePdfTextImportTest extends TestCase
 
     #[Test]
     #[DataProvider('storageModes')]
+    public function an_addressee_repeated_in_the_postal_window_is_not_a_payment_recipient(bool $ephemeral): void
+    {
+        $text = "BANK DETAILS\nIBAN\nBIC/SWIFT\nSynthetic Savings s.r.o.\nSK6807200002891987426353\nBREXSKBX\nSynthetic Shop Ltd.\n1 Example Street\nCustomer:\nSynthetic Shop Ltd.\nInvoice no.: INV-001\nTotal due: 19.50 EUR";
+        $this->actingAs($this->user)->postJson($this->root($ephemeral).'extract', ['file' => $this->pdf($text)])
+            ->assertOk()->assertJsonMissingPath('data.supplier_name')->assertJsonMissingPath('data.title')
+            ->assertJsonPath('data.supplier_iban', 'SK6807200002891987426353')->assertJsonPath('data.total', 19.5)
+            ->assertJsonPath('data.payment_review_required', true);
+    }
+
+    #[Test]
+    #[DataProvider('storageModes')]
+    public function detection_and_extraction_accept_the_same_invoice_number_in_a_paginated_footer(bool $ephemeral): void
+    {
+        $text = "Invoice no.: 000123\nInvoice no.: 000123        strana 1/1";
+        $this->actingAs($this->user)->postJson($this->root($ephemeral).'detect-isdoc', ['file' => $this->pdf($text)])
+            ->assertOk()->assertJsonPath('data.extraction_source', 'pdf_text');
+        $this->postJson($this->root($ephemeral).'extract', ['file' => $this->pdf($text)])
+            ->assertOk()->assertJsonPath('data.external_number', '000123')->assertJsonPath('data.payment_review_required', true);
+    }
+
+    #[Test]
+    #[DataProvider('storageModes')]
     public function quota_remains_required_before_text_extraction_and_detection_remains_free(bool $ephemeral): void
     {
         config(['invoicing.expense_isdoc_extract_free_limit' => 0]);

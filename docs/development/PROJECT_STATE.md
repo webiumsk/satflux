@@ -1,5 +1,11 @@
 # Project state
 
+## Expense text-PDF supplier correction - 2026-11-18
+
+The postal addressee in the reported invoice was copied into both the supplier and the expense title. The earlier nine-field sample check verified presence and position only. An exact comparison against the known buyer reproduces the error. With the correction, the same sample retains its eight other fields and leaves supplier and title for manual entry. The form identifies text-PDF extraction in its success message.
+
+A second reported PDF repeats the invoice number beside a printed page counter. The parser rejected the whole line and offered no draft. Removing only the counter during diagnosis restored the number and the explicitly labelled supplier. The PDF contains detached date values and monetary summaries in two currencies.
+
 ## PR456 supplied review corrections accepted - 2026-11-18
 
 All five supplied findings reproduce on `bab3d9fa` and are corrected on the same

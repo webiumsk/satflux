@@ -15,9 +15,13 @@
           </div>
         </dl>
         <p v-else class="mt-4 text-sm text-gray-600">{{ t('invoicing.expense_pdf_text_review_empty') }}</p>
+        <div v-if="needsCurrency" class="mt-4">
+          <label :for="currencyId" class="invoicing-sf-label">{{ t('invoicing.expense_import_field_currency') }}</label>
+          <ExpenseCurrencySelect :id="currencyId" v-model="selectedCurrency" :previous-invoice-currency="previousCurrency || ''" />
+        </div>
         <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
           <button type="button" class="invoicing-btn-secondary" @click="cancel">{{ t('invoicing.expense_pdf_text_review_skip') }}</button>
-          <button v-if="rows.length" type="button" class="invoicing-btn-primary" @click="confirm">{{ t('invoicing.expense_pdf_text_review_save') }}</button>
+          <button v-if="rows.length" type="button" class="invoicing-btn-primary" :disabled="needsCurrency && !selectedCurrency" @click="confirm">{{ t('invoicing.expense_pdf_text_review_save') }}</button>
         </div>
       </div>
     </div>
@@ -25,20 +29,25 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, useId } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import ExpenseCurrencySelect from './ExpenseCurrencySelect.vue';
 import { useDialogFocus } from '../../composables/useDialogFocus';
 import type { ExpenseSavePayload } from '../../evolu/expenseCrud';
 
 export type ExpenseTextPdfReviewValues = Pick<ExpenseSavePayload,
   'supplier_name' | 'supplier_iban' | 'title' | 'external_number' | 'variable_symbol' | 'constant_symbol' | 'specific_symbol'
   | 'issue_date' | 'delivery_date' | 'due_date' | 'total' | 'currency' | 'internal_note'>;
-const props = defineProps<{ open: boolean; values: ExpenseTextPdfReviewValues | null }>();
-const emit = defineEmits<{ confirm: []; cancel: [] }>();
+const props = defineProps<{ open: boolean; values: ExpenseTextPdfReviewValues | null; previousCurrency?: string }>();
+const emit = defineEmits<{ confirm: [currency?: string]; cancel: [] }>();
 const { t } = useI18n();
 const dialogRoot = ref<HTMLElement | null>(null);
 const titleId = useId();
 const bodyId = useId();
+const currencyId = useId();
+const selectedCurrency = ref('');
+const needsCurrency = computed(() => props.values?.total != null && props.values.currency === '');
+watch(() => props.values, () => { selectedCurrency.value = ''; });
 const fields = [
   ['supplier_name', 'invoicing.expense_supplier_name'], ['supplier_iban', 'invoicing.expense_supplier_iban'],
   ['title', 'invoicing.expense_col_title'], ['external_number', 'invoicing.expense_col_external'],
@@ -53,6 +62,10 @@ const rows = computed(() => fields.flatMap(([field, label]) => {
   return value == null || String(value).trim() === '' ? [] : [{ field, label, value: String(value) }];
 }));
 function cancel() { if (props.open) emit('cancel'); }
-function confirm() { if (props.open && rows.value.length) emit('confirm'); }
+function confirm() {
+  if (!props.open || !rows.value.length) return;
+  if (!needsCurrency.value) emit('confirm');
+  else if (selectedCurrency.value) emit('confirm', selectedCurrency.value);
+}
 const { onDialogKeydown } = useDialogFocus(dialogRoot, () => props.open, cancel);
 </script>

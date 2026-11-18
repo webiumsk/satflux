@@ -1,5 +1,9 @@
 # Development roadmap
 
+## Expense supplier role verification - 2026-11-18
+
+Review the follow-up to PR456 that requires an explicit supplier role for text-PDF prefills. Regression coverage includes a postal addressee repeated in the buyer block and manual completion of partial drafts.
+
 ## PR456 supplied review corrections accepted - 2026-11-18
 
 Five verified findings on `bab3d9fa` are fixed and independently accepted: EF

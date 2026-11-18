@@ -140,12 +140,9 @@
             <input v-model.number="form.total" type="number" :min="isCreditNote ? undefined : 0" :max="isCreditNote ? -0.01 : undefined" step="0.01" class="invoicing-sf-input w-full" required />
           </div>
           <div>
-            <label class="invoicing-sf-label">{{ t('invoicing.currency') }}</label>
-            <select v-model="form.currency" class="invoicing-sf-input w-full" @change="currencyHasExplicitValue = true">
-              <option value="EUR">EUR</option>
-              <option value="CZK">CZK</option>
-              <option value="USD">USD</option>
-            </select>
+            <label for="expense-currency" class="invoicing-sf-label">{{ t('invoicing.expense_import_field_currency') }}</label>
+            <ExpenseCurrencySelect id="expense-currency" v-model="form.currency" :previous-invoice-currency="previousInvoiceCurrency"
+              @change="allowCurrencyDefault = false" />
           </div>
         </div>
         <div>
@@ -187,6 +184,7 @@
 </template>
 
 <script setup lang="ts">
+import ExpenseCurrencySelect from "../../components/invoicing/ExpenseCurrencySelect.vue";
 import ExpenseDuplicateWarning from "../../components/invoicing/ExpenseDuplicateWarning.vue";
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -306,7 +304,8 @@ let extractedSupplier: { name: string; iban: string } | null = null;
 let automaticSupplier: { name: string; iban: string } | null = null;
 const supplierNameManuallyEdited = ref(false);
 const supplierIbanManuallyEdited = ref(false);
-const currencyHasExplicitValue = ref(false);
+const allowCurrencyDefault = ref(true);
+const previousInvoiceCurrency = ref<string | null>(null);
 const confirmedPaymentTuple = ref<string | null>(null);
 const originalPaymentState = ref({ status: isNew.value ? 'recorded' : '', paidAt: null as string | null,
   note: null as string | null, bankLinked: false });
@@ -374,7 +373,8 @@ watch([companyId, expenseId], () => {
   originalPaymentState.value = { status: isNew.value ? 'recorded' : '', paidAt: null, note: null, bankLinked: false };
   supplierNameManuallyEdited.value = false;
   supplierIbanManuallyEdited.value = false;
-  currencyHasExplicitValue.value = false;
+  allowCurrencyDefault.value = true;
+  previousInvoiceCurrency.value = null;
   sourceReadController?.abort();
 }, { flush: 'sync' });
 onUnmounted(() => {
@@ -460,11 +460,16 @@ function applyImportDraft(draft: ExpenseImportDraft) {
     form.value.total = Number(draft.total);
     documentKind.value = form.value.total < 0 ? 'credit_note' : 'expense';
   }
-  if (draft.currency) {
+  if (partialTextDraft && draft.total != null && !draft.currency?.trim()) {
+    previousInvoiceCurrency.value = form.value.currency || previousInvoiceCurrency.value || '';
+    form.value.currency = '';
+    allowCurrencyDefault.value = false;
+  } else if (draft.currency && (previousInvoiceCurrency.value === null || draft.total != null)) {
+    previousInvoiceCurrency.value = null;
     form.value.currency = draft.currency;
-    currencyHasExplicitValue.value = true;
+    allowCurrencyDefault.value = false;
   }
-  importNotice.value = t('invoicing.expense_import_prefilled');
+  importNotice.value = t(partialTextDraft ? 'invoicing.expense_pdf_text_prefilled' : 'invoicing.expense_import_prefilled');
 }
 
 async function onFileSelected(file: File) {
@@ -624,6 +629,10 @@ async function save() {
   const stillCurrent = () => capturedGeneration === contextGeneration && requestedCompany === companyId.value && requestedExpense === expenseId.value && requestedNew === isNew.value
     && (!requestedDuplicate || duplicateEditActive.value);
   error.value = '';
+  if (!form.value.currency) {
+    error.value = t('invoicing.expense_select_invoice_currency');
+    return;
+  }
   if (!form.value.issue_date) {
     error.value = t('validation.required');
     return;
@@ -744,7 +753,7 @@ onMounted(async () => {
     if (!stillInitialContext()) return;
     const companyRec = await invoicingApi.companies.get<{ default_currency?: string }>(initialCompany);
     if (!stillInitialContext()) return;
-    if (!currencyHasExplicitValue.value) form.value.currency = companyRec?.default_currency || 'EUR';
+    if (allowCurrencyDefault.value) form.value.currency = companyRec?.default_currency || 'EUR';
   } else {
     form.value.currency = defaultCurrency.value || 'EUR';
   }

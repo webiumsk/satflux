@@ -14,8 +14,8 @@
       @confirm="onConfirmExtract"
       @purchase="purchasePack"
     />
-    <ExpenseTextPdfReviewModal :open="textPdfReviewValues !== null" :values="textPdfReviewValues"
-      @confirm="resolveTextPdfReview(true)" @cancel="resolveTextPdfReview(false)" />
+    <ExpenseTextPdfReviewModal :open="textPdfReviewValues !== null" :values="textPdfReviewValues" :previous-currency="previousReviewCurrency"
+      @confirm="confirmTextPdfReview" @cancel="resolveTextPdfReview(null)" />
     <template #header>
       <InvoicingAppHeader :show-filter-bar="false" />
     </template>
@@ -455,20 +455,28 @@ const duplicating = ref(false);
 const uploading = ref(false);
 const processingExtraction = ref(false);
 const textPdfReviewValues = ref<ReturnType<typeof draftToPayload> | null>(null);
+const previousReviewCurrency = ref('');
 let textPdfReviewRevision = 0;
-let resolvePendingTextPdfReview: ((accepted: boolean) => void) | null = null;
-function resolveTextPdfReview(accepted: boolean) {
+let resolvePendingTextPdfReview: ((currency: string | null) => void) | null = null;
+function resolveTextPdfReview(currency: string | null) {
   const resolve = resolvePendingTextPdfReview;
   resolvePendingTextPdfReview = null;
   textPdfReviewValues.value = null;
-  resolve?.(accepted);
+  resolve?.(currency);
+}
+function confirmTextPdfReview(selectedCurrency?: string) {
+  const reviewed = textPdfReviewValues.value;
+  if (!reviewed) return;
+  const currency = reviewed.currency || selectedCurrency;
+  if (currency) resolveTextPdfReview(currency);
 }
 function invalidateTextPdfReview() {
   textPdfReviewRevision++;
-  resolveTextPdfReview(false);
+  resolveTextPdfReview(null);
 }
-function reviewTextPdfValues(values: ReturnType<typeof draftToPayload>): Promise<boolean> {
-  resolveTextPdfReview(false);
+function reviewTextPdfValues(values: ReturnType<typeof draftToPayload>, currentCurrency: string): Promise<string | null> {
+  resolveTextPdfReview(null);
+  previousReviewCurrency.value = currentCurrency;
   textPdfReviewValues.value = Object.freeze({ ...values });
   return new Promise(resolve => { resolvePendingTextPdfReview = resolve; });
 }
@@ -1091,7 +1099,7 @@ function draftToPayload(draft: ExpenseImportDraft, current: Expense) {
       draft.delivery_date?.slice(0, 10) ?? current.delivery_date,
     due_date: draft.due_date?.slice(0, 10) ?? current.due_date,
     total: draft.total ?? current.total,
-    currency: draft.currency ?? current.currency,
+    currency: draft.source === 'pdf_text' && draft.total != null ? draft.currency?.trim() || '' : draft.currency ?? current.currency,
     internal_note: draft.source === 'pdf_text' && draft.internal_note?.trim()
       && !current.internal_note?.includes(draft.internal_note.trim())
       ? [current.internal_note?.trim(), draft.internal_note.trim()].filter(Boolean).join('\n\n') : current.internal_note,
@@ -1248,12 +1256,13 @@ async function onConfirmExtract() {
       if (reviewBaseline.id !== requestedExpense) throw new Error(t('errors.generic'));
       approvedPayload = draftToPayload(draft, reviewBaseline);
       const reviewRevision = textPdfReviewRevision;
-      const accepted = await reviewTextPdfValues(approvedPayload);
+      const approvedCurrency = await reviewTextPdfValues(approvedPayload, reviewBaseline.currency);
       if (!stillCurrent() || reviewRevision !== textPdfReviewRevision) return;
-      if (!accepted) {
+      if (approvedCurrency === null) {
         await uploadAttachmentOnly();
         return;
       }
+      approvedPayload.currency = approvedCurrency;
     }
     if (draft) {
       if (!expense.value) throw new Error(t('errors.generic'));
@@ -1311,7 +1320,7 @@ async function onSkipExtract() {
 
 watch([companyId, expenseId, () => localFirst ? companyShareRoutingKey(companyId.value) : 'server'], () => {
   contextGeneration++;
-  resolveTextPdfReview(false);
+  resolveTextPdfReview(null);
   loadRequest++;
   neighborRequest++;
   expense.value = null;
@@ -1340,7 +1349,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   contextGeneration++;
-  resolveTextPdfReview(false);
+  resolveTextPdfReview(null);
   revokeSavedPreview();
 });
 </script>
