@@ -43,7 +43,8 @@ class BusinessExpensePdfTextImportService
 
     private const SYMBOL_LABELS = 'variabiln[ýyíi]\h+symbol|variable\h+symbol|VS';
 
-    private const CURRENCY_LABELS = 'currency|mena|měna';
+    // A bare space is a field separator only before a currency code or euro sign.
+    private const CURRENCY_LABELS = '(?:currency|mena|měna)(?=\h*[:\t\n]|\h+(?:[A-Z]{3}\b|€))';
 
     private const CURRENCIES = 'EUR|USD|GBP|CZK|CHF|PLN|HUF|SEK|NOK|DKK';
 
@@ -203,9 +204,8 @@ class BusinessExpensePdfTextImportService
         if ($amount !== null) {
             $fields['total'] = (float) $amount;
         }
-        $currencies = $this->currencyTokens($summary['payment']);
-        if ($currencies === [] && $amount !== null && $invoicePage !== null && $invoicePage !== $summary['payment']
-            && $this->values($summary['payment'], self::CURRENCY_LABELS, true) === []) {
+        $currencies = array_merge($this->values($summary['payment'], self::CURRENCY_LABELS, true), $this->currencyTokens($summary['payment']));
+        if ($currencies === [] && $amount !== null && $invoicePage !== null && $invoicePage !== $summary['payment']) {
             $declared = $this->values($invoicePage, self::CURRENCY_LABELS, true);
             if ($declared !== []) {
                 $currencies = array_merge($declared, $this->currencyTokens($invoicePage));
@@ -259,6 +259,14 @@ class BusinessExpensePdfTextImportService
 
     private function documentType(string $text): ?string
     {
+        $types = $this->documentTypes($text);
+
+        return count($types) === 1 ? $types[0] : null;
+    }
+
+    /** @return list<string> */
+    private function documentTypes(string $text): array
+    {
         $types = [];
         foreach ([
             'invoice' => [self::INVOICE_NUMBER_LABELS, 'fakt[úu]ra|invoice'],
@@ -266,11 +274,11 @@ class BusinessExpensePdfTextImportService
         ] as $type => [$numberLabels, $heading]) {
             if ($this->values($text, $numberLabels, true) !== []
                 || preg_match('/(?:^|\n)\h*(?:'.$heading.')\h*(?=\n|$)/iu', $text)) {
-                $types[$type] = true;
+                $types[] = $type;
             }
         }
 
-        return count($types) === 1 ? (string) array_key_first($types) : null;
+        return $types;
     }
 
     /** @return list<string> */
@@ -325,6 +333,11 @@ class BusinessExpensePdfTextImportService
             $dated = array_filter($pages, fn (string $page): bool => $this->values($page, $dateLabels) !== []);
 
             return ['header' => null, 'fields' => count($dated) === 1 ? reset($dated) : '', 'payment' => ''];
+        }
+
+        // An invoice and a credit note can share a number and seller but have opposite payment directions.
+        if (count($this->documentTypes($text)) > 1) {
+            return $unresolved;
         }
 
         $header = null;
