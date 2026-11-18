@@ -90,7 +90,7 @@ export function useExpenseAttachmentPreview(options: {
       if (localFirst) {
         const row = localAttachmentRow(att?.id);
         if (!row || !resource.evolu) throw new Error('original_unavailable');
-        blob = (await readVerifiedExpenseAttachment(resource.evolu, companyId.value, row, { maxBytes: xmlPreviewLimit })).blob;
+        blob = (await readVerifiedExpenseAttachment(resource.evolu, companyId.value, row)).blob;
       } else {
         blob = await getWebBlob(attachmentPreviewUrl(att?.id));
       }
@@ -113,11 +113,10 @@ export function useExpenseAttachmentPreview(options: {
           }
         }
       }
-    } catch (error) {
+    } catch {
       if (current()) {
         savedPreviewKind.value = 'other';
-        if (error instanceof Error && error.message === 'original_too_large') embeddedUblTooLarge.value = true;
-        else previewFailed.value = true;
+        previewFailed.value = true;
       }
     } finally {
       if (current()) previewLoading.value = false;
@@ -136,7 +135,15 @@ export function useExpenseAttachmentPreview(options: {
     revokeSavedPreview();
   }, { flush: 'sync' });
   watch(() => selectedAttachment.value?.id, (id, previousId) => {
-    if (previousId && id !== previousId) revokeSavedPreview();
+    if (!previousId) return;
+    if (id && id !== selectedAttachmentId.value) {
+      // The selected row disappeared. Adopt the fallback just as the panel does.
+      selectedAttachmentId.value = id;
+      void loadSavedPreview();
+    } else {
+      if (!id) selectedAttachmentId.value = null;
+      revokeSavedPreview();
+    }
   }, { flush: 'sync' });
   watch(() => Boolean(scopedExpense.value), available => { if (!available) revokeSavedPreview(); }, { flush: 'sync' });
   return { selectedAttachmentId, selectedAttachment, savedAttachments, savedPreviewUrl, savedPreviewKind,

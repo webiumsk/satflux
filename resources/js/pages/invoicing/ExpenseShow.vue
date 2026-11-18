@@ -762,20 +762,11 @@ async function onRemoveSavedAttachment(id: string) {
       await expenseResource.refresh();
       if (!isCurrentContext(context)) return;
       expense.value = expenseResource.expense.value as Expense | null;
-      if (selectedAttachmentId.value === id) {
-        selectedAttachmentId.value =
-          expense.value?.attachments?.[0]?.id ?? null;
-      }
-      await loadSavedPreview();
       return;
     }
     const updated = await invoicingApi.expenses.deleteAttachment<NonNullable<typeof expense.value>>(context.company, context.expense, id);
     if (!isCurrentContext(context)) return;
     expense.value = updated;
-    if (selectedAttachmentId.value === id) {
-      selectedAttachmentId.value = expense.value?.attachments?.[0]?.id ?? null;
-    }
-    await loadSavedPreview();
   } catch {
     if (isCurrentContext(context)) window.alert(t("invoicing.expense_attachment_remove_failed"));
   }

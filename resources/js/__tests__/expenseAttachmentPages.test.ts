@@ -1177,6 +1177,51 @@ const embeddedXml = (filename = "received.pdf") => `<Invoice xmlns="urn:oasis:na
 const xmlBlob = (xml: string) => Object.assign(new Blob([xml], { type: 'application/xml' }), { text: async () => xml });
 
 describe('saved attachments on expense edit', () => {
+    it.each(['edit', 'show'] as const)('loads the surviving attachment once after the selected row disappears on %s', async page => {
+        const first = { id: 'first', original_filename: 'first.pdf', mime: 'application/pdf' };
+        const second = { id: 'second', original_filename: 'second.png', mime: 'image/png' };
+        models.value[0]!.attachments = [first, second];
+        const image = new Blob(['synthetic receipt'], { type: second.mime });
+        const secondRead = deferred<{ blob: Blob }>();
+        mocks.archiveRead.mockResolvedValueOnce({ blob: pdf(first.original_filename) }).mockReturnValueOnce(secondRead.promise);
+        render(page);
+        await flushPromises();
+        const panel = wrapper!.findComponent({ name: 'ExpenseAttachmentPanel' });
+        expect(mocks.archiveRead).toHaveBeenCalledTimes(1);
+        expect(panel.props()).toMatchObject({ fileName: first.original_filename, previewKind: 'pdf' });
+
+        models.value[0]!.attachments = [second];
+        await flushPromises();
+        expect(panel.props()).toMatchObject({ selectedAttachmentId: second.id, fileName: second.original_filename, previewUrl: null });
+        expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:synthetic-pdf');
+        expect(mocks.archiveRead.mock.calls.map(call => call[2].id)).toEqual([first.id, second.id]);
+        secondRead.resolve({ blob: image });
+        await flushPromises();
+        expect(panel.props()).toMatchObject({ previewKind: 'image', previewUrl: 'blob:synthetic-pdf' });
+        expect(URL.createObjectURL).toHaveBeenLastCalledWith(image);
+        expect(mocks.archiveRead).toHaveBeenCalledTimes(2);
+    });
+
+    it('defers reading the replacement saved attachment until the pending file is cleared', async () => {
+        const first = { id: 'first', original_filename: 'first.pdf', mime: 'application/pdf' };
+        const second = { id: 'second', original_filename: 'second.pdf', mime: 'application/pdf' };
+        models.value[0]!.attachments = [first, second];
+        mocks.archiveRead.mockImplementation(async (_evolu, _company, row) => ({ blob: pdf(row.originalFilename) }));
+        render('edit');
+        await flushPromises();
+        await select(pdf('pending.pdf'));
+        models.value[0]!.attachments = [second];
+        await flushPromises();
+        const panel = wrapper!.findComponent({ name: 'ExpenseAttachmentPanel' });
+        expect(panel.props()).toMatchObject({ fileName: 'pending.pdf', hasPending: true, previewKind: 'pdf' });
+        expect(mocks.archiveRead.mock.calls.map(call => call[2].id)).toEqual([first.id]);
+
+        panel.vm.$emit('remove-pending', panel.props('selectedPendingId'));
+        await flushPromises();
+        expect(panel.props()).toMatchObject({ selectedAttachmentId: second.id, fileName: second.original_filename, hasPending: false, previewKind: 'pdf' });
+        expect(mocks.archiveRead.mock.calls.map(call => call[2].id)).toEqual([first.id, second.id]);
+    });
+
     it.each([true, false])('opens the saved PDF and switches to another original (local=%s)', async local => {
         const expense = fixture('expense-a', local ? localCompany : serverCompany);
         expense.attachments = [
@@ -1203,8 +1248,13 @@ describe('saved attachments on expense edit', () => {
         expect(panel.find('iframe').exists()).toBe(false);
         expect(URL.createObjectURL).toHaveBeenLastCalledWith(receipt);
         expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:synthetic-pdf');
-        if (local) expect(mocks.blob).not.toHaveBeenCalled();
-        else expect(mocks.blob).toHaveBeenLastCalledWith(`/api/invoicing/companies/${serverCompany}/expenses/expense-a/attachments/second`);
+        if (local) {
+            expect(mocks.archiveRead.mock.calls.map(call => call[2].id)).toEqual(['first', 'second']);
+            expect(mocks.blob).not.toHaveBeenCalled();
+        } else {
+            const path = `/api/invoicing/companies/${serverCompany}/expenses/expense-a/attachments`;
+            expect(mocks.blob.mock.calls).toEqual([[`${path}/first`], [`${path}/second`]]);
+        }
         for (const call of [mocks.localDetect, mocks.detect, mocks.insertAttachment, mocks.upload]) expect(call).not.toHaveBeenCalled();
     });
 
@@ -1222,7 +1272,7 @@ describe('saved attachments on expense edit', () => {
         const panel = wrapper!.findComponent({ name: 'ExpenseAttachmentPanel' });
         expect(URL.createObjectURL).toHaveBeenLastCalledWith(original);
         expect(mocks.archiveRead).toHaveBeenCalledWith(mocks.evolu, localCompany,
-            expect.objectContaining({ id: 'original', expenseId: expense.id }), { maxBytes: 2 * 1024 * 1024 });
+            expect.objectContaining({ id: 'original', expenseId: expense.id }));
 
         await select(pdf('pending.pdf'));
         expect(panel.props()).toMatchObject({ fileName: 'pending.pdf', hasPending: true });
@@ -1444,6 +1494,28 @@ describe('embedded PDFs from preserved expense XML', () => {
 
 
 describe("archived received originals on expense detail", () => {
+    it.each([
+        ['scan.pdf', 'application/pdf', 'pdf'],
+        ['photo.png', 'image/png', 'image'],
+    ])('previews a verified %s above the XML parsing limit', async (filename, mime, previewKind) => {
+        const blob = new Blob([new Uint8Array(2 * 1024 * 1024 + 1)], { type: mime });
+        const expense = models.value[0]!;
+        const reference = createManualExpenseOriginalReference({ companyId: localCompany, expenseId: expense.id,
+            attachmentId: 'original', sizeBytes: blob.size, sha256: 'a'.repeat(64), mimeType: mime });
+        expense.attachments = [{ id: 'original', original_filename: filename, mime,
+            sizeBytes: String(blob.size), contentBase64: encodeExpenseOriginalReference(reference) }];
+        mocks.archiveRead.mockImplementation(async (_evolu, _company, _row, options) => {
+            if (options?.maxBytes < blob.size) throw new Error('original_too_large');
+            return { blob };
+        });
+        render('show');
+        await flushPromises();
+        const panel = wrapper!.findComponent({ name: 'ExpenseAttachmentPanel' });
+        expect(panel.props()).toMatchObject({ fileName: filename, previewKind, previewUrl: 'blob:synthetic-pdf' });
+        expect(mocks.archiveRead).toHaveBeenCalledExactlyOnceWith(mocks.evolu, localCompany, expect.objectContaining({ id: 'original' }));
+        expect(URL.createObjectURL).toHaveBeenCalledWith(blob);
+    });
+
     function archivedExpense(sizeBytes = 450 * 1024) {
         const expense = fixture("expense-a", localCompany);
         const ref = createExpenseOriginalReference({ companyId: localCompany, receiptId: "receipt", expenseId: expense.id,
@@ -1483,8 +1555,7 @@ describe("archived received originals on expense detail", () => {
         render("show", true);
         await flushPromises();
         expect(wrapper!.get('[data-testid="ubl-embedded-pdfs"]').text()).toContain("archived.pdf");
-        expect(mocks.archiveRead).toHaveBeenCalledWith(mocks.evolu, localCompany,
-            expect.objectContaining({ id: "original" }), { maxBytes: 2 * 1024 * 1024 });
+        expect(mocks.archiveRead).toHaveBeenCalledExactlyOnceWith(mocks.evolu, localCompany, expect.objectContaining({ id: "original" }));
         expect(mocks.attachmentBlob).not.toHaveBeenCalled();
         wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).vm.$emit("download");
         await flushPromises();
@@ -1499,7 +1570,7 @@ describe("archived received originals on expense detail", () => {
         const text = vi.fn();
         const blob = Object.assign(new Blob([new Uint8Array(2 * 1024 * 1024 + 1)], { type: "application/xml" }), { text });
         mocks.archiveRead.mockImplementation(async (_client, _company, _row, options) => {
-            if (options?.maxBytes) throw new Error("original_too_large");
+            if (options?.maxBytes < blob.size) throw new Error("original_too_large");
             return { bytes: new Uint8Array(blob.size), blob };
         });
         vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
@@ -1528,9 +1599,14 @@ describe("archived received originals on expense detail", () => {
 
     it("waits for authorized archive cleanup before refreshing a deleted attachment", async () => {
         archivedExpense();
-        mocks.archiveRead.mockResolvedValue({ bytes: new Uint8Array(0), blob: xmlBlob(embeddedXml()) });
+        const remaining = { id: "remaining", original_filename: "remaining.pdf", mime: "application/pdf" };
+        models.value[0]!.attachments.push(remaining);
+        mocks.archiveRead.mockResolvedValueOnce({ blob: xmlBlob(embeddedXml()) }).mockResolvedValueOnce({ blob: pdf(remaining.original_filename) });
         const deletion = deferred<void>();
-        mocks.archiveDelete.mockReturnValue(deletion.promise);
+        mocks.archiveDelete.mockImplementation(async () => {
+            await deletion.promise;
+            models.value[0]!.attachments = [remaining];
+        });
         vi.mocked(window.confirm).mockReturnValue(true);
         render("show", true);
         await flushPromises();
@@ -1542,5 +1618,9 @@ describe("archived received originals on expense detail", () => {
         deletion.resolve();
         await flushPromises();
         expect(mocks.refresh).toHaveBeenCalledOnce();
+        expect(mocks.archiveRead.mock.calls.map(call => call[2].id)).toEqual(["original", remaining.id]);
+        expect(wrapper!.findComponent({ name: "ExpenseAttachmentPanel" }).props()).toMatchObject({
+            selectedAttachmentId: remaining.id, fileName: remaining.original_filename, previewKind: "pdf",
+        });
     });
 });
