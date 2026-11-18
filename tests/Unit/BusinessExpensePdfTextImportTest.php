@@ -153,6 +153,53 @@ class BusinessExpensePdfTextImportTest extends TestCase
     }
 
     #[Test]
+    public function a_numbered_annex_cannot_displace_the_invoice_seller_when_dates_are_missing(): void
+    {
+        $invoice = "Supplier: Synthetic Carrier Ltd.\nIBAN: SK6807200002891987426353\nInvoice no.: INV-001\nInvoice date: 2026-11-01\nTotal due: 19.50 EUR";
+        $other = "Supplier: Synthetic Subcontractor Ltd.\nIBAN: DE89370400440532013000\nInvoice no.: INV-001\nInvoice date: 2026-11-01\nDue date: 2026-11-15";
+        $service = new BusinessExpensePdfTextImportService;
+        foreach (['Service detail', ''] as $heading) {
+            $detail = $heading."\n".$other;
+            foreach ([$invoice."\f".$detail, $detail."\f".$invoice] as $text) {
+                $draft = $service->extractFromText($text);
+                if ($heading === '') {
+                    $this->assertArrayNotHasKey('supplier_name', $draft);
+                    $this->assertArrayNotHasKey('title', $draft);
+                    $this->assertArrayNotHasKey('supplier_iban', $draft);
+                } else {
+                    $this->assertSame('Synthetic Carrier Ltd.', $draft['supplier_name']);
+                    $this->assertSame('Synthetic Carrier Ltd.', $draft['title']);
+                    $this->assertSame('SK6807200002891987426353', $draft['supplier_iban']);
+                }
+                $this->assertSame(19.5, $draft['total']);
+
+                $withAnnexTotal = $service->extractFromText(str_replace($other, $other."\nTotal due: 3.00 EUR", $text));
+                if ($heading === '') {
+                    $this->assertArrayNotHasKey('total', $withAnnexTotal);
+                } else {
+                    $this->assertSame(19.5, $withAnnexTotal['total']);
+                }
+            }
+        }
+    }
+
+    #[Test]
+    public function an_unmarked_page_cannot_supply_the_payee_for_another_numbered_pages_total(): void
+    {
+        $other = "Invoice no.: INV-001\nSupplier: Synthetic Contractor Ltd.\nIBAN: DE89370400440532013000\nInvoice date: 2026-11-01\nDue date: 2026-11-15";
+        foreach (['', 'IBAN: SK6807200002891987426353'] as $account) {
+            $invoice = "Invoice no.: INV-001\nTotal due: 19.50 EUR\n".$account;
+            foreach ([$invoice."\f".$other, $other."\f".$invoice] as $text) {
+                $draft = (new BusinessExpensePdfTextImportService)->extractFromText($text);
+                $this->assertArrayNotHasKey('supplier_name', $draft);
+                $this->assertArrayNotHasKey('title', $draft);
+                $this->assertArrayNotHasKey('supplier_iban', $draft);
+                $this->assertSame(19.5, $draft['total']);
+            }
+        }
+    }
+
+    #[Test]
     public function a_buyer_account_never_becomes_the_supplier_account(): void
     {
         foreach (['Customer:', 'Customer', 'Odberateľ:', 'Odberateľ'] as $heading) {

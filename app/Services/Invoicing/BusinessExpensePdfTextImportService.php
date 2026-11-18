@@ -202,9 +202,8 @@ class BusinessExpensePdfTextImportService
         $sellers = $this->partyNames($invoicePage ?? '', self::SELLER_LABELS);
         $supplier = $this->unique($sellers, fn (string $value) => $this->supplierName($value));
         if ($supplier !== null) {
-            $partyKey = static fn (string $name): string => (string) preg_replace('/[^\p{L}\p{N}]/u', '', mb_strtolower($name));
             $buyers = $this->partyNames($invoicePage ?? '', self::BUYER_LABELS);
-            if (in_array($partyKey($supplier), array_map($partyKey, $buyers), true)) {
+            if (in_array($this->partyKey($supplier), array_map($this->partyKey(...), $buyers), true)) {
                 $supplier = null;
             }
         }
@@ -290,20 +289,68 @@ class BusinessExpensePdfTextImportService
         if ($number === null) {
             return null;
         }
+        // The document-wide number is already unique across all numbered pages.
+        $numbered = array_filter($pages, fn (string $page): bool => $this->values($page, self::NUMBER_LABELS) !== []);
+        $invoicePages = $numbered;
+        if (count($numbered) > 1) {
+            $invoicePages = array_values(array_filter($numbered, static fn (string $page): bool => ! preg_match(
+                '/^\s*(?:service\h+details?|annex|appendix|príloha|příloha)(?:\h+\d+)?\h*:?\h*(?=\n|$)/iu', $page
+            )));
+            if (count($invoicePages) === 1) {
+                $invoice = $invoicePages[0];
+                $sellers = $this->sellerKeys($invoice);
+                foreach ($numbered as $page) {
+                    if ($sellers !== [] && array_diff($this->sellerKeys($page), $sellers) !== []) {
+                        return $invoice;
+                    }
+                }
+            }
+        }
+
         $header = null;
-        foreach ($pages as $page) {
-            $pageNumber = $this->unique($this->values($page, self::NUMBER_LABELS), fn (string $value) => $this->invoiceNumber($value));
+        foreach ($invoicePages as $page) {
             $issue = $this->unique($this->values($page, self::ISSUE_DATE_LABELS), fn (string $value) => $this->date($value));
             $due = $this->unique($this->values($page, self::DUE_DATE_LABELS), fn (string $value) => $this->date($value));
-            if ($pageNumber !== null && $issue !== null && $due !== null) {
-                if ($pageNumber !== $number || $header !== null) {
+            if ($issue !== null && $due !== null) {
+                if ($header !== null) {
                     return null;
                 }
                 $header = $page;
             }
         }
+        if ($header === null || count($invoicePages) < 2) {
+            return $header;
+        }
+
+        // A repeated number and complete dates do not identify the payee of another page's total.
+        $sellers = $this->sellerKeys($header);
+        $accounts = $this->issuerIbans($this->supplierHeader($header));
+        foreach ($invoicePages as $page) {
+            if ($page === $header) {
+                continue;
+            }
+            $pageSellers = $this->sellerKeys($page);
+            $pageAccounts = $this->issuerIbans($this->supplierHeader($page));
+            if ($pageSellers === [] && $pageAccounts === [] && $this->values($page, self::TOTAL_LABELS) === []) {
+                continue;
+            }
+            if ($pageSellers === [] || array_diff($pageSellers, $sellers) !== [] || array_diff($pageAccounts, $accounts) !== []) {
+                return null;
+            }
+        }
 
         return $header;
+    }
+
+    /** @return list<string> */
+    private function sellerKeys(string $page): array
+    {
+        return array_map($this->partyKey(...), $this->partyNames($page, self::SELLER_LABELS));
+    }
+
+    private function partyKey(string $name): string
+    {
+        return (string) preg_replace('/[^\p{L}\p{N}]/u', '', mb_strtolower($name));
     }
 
     /** @return list<string> */
