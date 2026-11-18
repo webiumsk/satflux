@@ -23,6 +23,8 @@ class BusinessExpensePdfTextImportService
 
     private const DECODE_BYTES = 16 * 1024 * 1024;
 
+    private const DOCUMENT_MARKER = '/\b(?:fakt[úu]ra|faktury|invoice|credit\h+note|dobropis)\b/iu';
+
     private const INVOICE_NUMBER_LABELS = '[čc][íi]slo\h+fakt[úu]ry|fakt[úu]ra\h+[čc](?:[íi]slo)?\.?|invoice\h+(?:number|no\.?|#)';
 
     private const CREDIT_NUMBER_LABELS = 'dobropis\h+[čc](?:[íi]slo)?\.?|credit\h+note\h+(?:number|no\.?|#)';
@@ -36,6 +38,12 @@ class BusinessExpensePdfTextImportService
     private const ISSUE_DATE_LABELS = 'd[áa]tum\h+(?:vystavenia|vyhotovenia)|datum\h+vystaven[íi]|invoice\h+date|issue\h+date|date\h+of\h+issue';
 
     private const DUE_DATE_LABELS = 'd[áa]tum\h+splatnosti|datum\h+splatnosti|due\h+date|payment\h+due\h+date';
+
+    private const DELIVERY_DATE_LABELS = 'd[áa]tum\h+dodania(?:\h+slu[žz]by)?|datum\h+(?:dod[áa]n[íi]|zdaniteln[ée]ho\h+pln[ěe]n[íi])|delivery\h+date|tax\h+point\h+date';
+
+    private const SYMBOL_LABELS = 'variabiln[ýyíi]\h+symbol|variable\h+symbol|VS';
+
+    private const CURRENCIES = 'EUR|USD|GBP|CZK|CHF|PLN|HUF|SEK|NOK|DKK';
 
     private const TOTAL_LABELS = 'celkom\h+k\h+[úu]hrade|celkem\h+k\h+[úu]hrad[ěe]|celkov[áa]\h+suma|amount\h+due|total\h+due|grand\h+total|invoice\h+total';
 
@@ -150,7 +158,7 @@ class BusinessExpensePdfTextImportService
         }
         $text = str_replace(["\r\n", "\r", "\xc2\xa0", "\xe2\x80\xaf"], ["\n", "\n", ' ', ' '], $text);
         $text = preg_replace('/\n?\f\n?/u', "\n\f\n", $text);
-        if (! preg_match('/\b(?:fakt[úu]ra|faktury|invoice|credit\h+note|dobropis)\b/iu', $text)) {
+        if (! preg_match(self::DOCUMENT_MARKER, $text)) {
             return [];
         }
 
@@ -159,7 +167,9 @@ class BusinessExpensePdfTextImportService
         if ($number !== null) {
             $fields['external_number'] = $number;
         }
-        $symbol = $this->unique($this->values($text, 'variabiln[ýyíi]\h+symbol|variable\h+symbol|VS'),
+        $summary = $this->invoiceSummary($text, $number);
+        $invoicePage = $summary['header'];
+        $symbol = $this->unique($this->values($summary['fields'], self::SYMBOL_LABELS),
             fn (string $value) => preg_match('/^\d{1,10}$/D', $value) ? $value : null);
         if ($symbol !== null) {
             $fields['variable_symbol'] = $symbol;
@@ -167,20 +177,18 @@ class BusinessExpensePdfTextImportService
 
         foreach ([
             'issue_date' => self::ISSUE_DATE_LABELS,
-            'delivery_date' => 'd[áa]tum\h+dodania(?:\h+slu[žz]by)?|datum\h+(?:dod[áa]n[íi]|zdaniteln[ée]ho\h+pln[ěe]n[íi])|delivery\h+date|tax\h+point\h+date',
+            'delivery_date' => self::DELIVERY_DATE_LABELS,
             'due_date' => self::DUE_DATE_LABELS,
         ] as $field => $labels) {
-            $date = $this->unique($this->values($text, $labels), fn (string $value) => $this->date($value));
+            $date = $this->unique($this->values($summary['fields'], $labels), fn (string $value) => $this->date($value));
             if ($date !== null) {
                 $fields[$field] = $date;
             }
         }
 
-        $summary = $this->invoiceSummary($text, $number);
-        $invoicePage = $summary['header'];
-        $amount = $this->invoiceTotal($summary['total_text'], $invoicePage);
+        $amount = $this->unique($this->values($summary['payment'], self::TOTAL_LABELS), fn (string $value) => $this->amount($value));
         if ($amount !== null && (float) $amount > 0) {
-            $amount = match ($this->documentType($text)) {
+            $amount = match ($this->documentType($summary['fields'])) {
                 'invoice' => $amount,
                 'credit_note' => '-'.$amount,
                 default => null,
@@ -189,7 +197,7 @@ class BusinessExpensePdfTextImportService
         if ($amount !== null) {
             $fields['total'] = (float) $amount;
         }
-        preg_match_all('/\b(?:EUR|USD|GBP|CZK|CHF|PLN|HUF|SEK|NOK|DKK)\b|€/u', $text, $currencies);
+        preg_match_all('/\b(?:'.self::CURRENCIES.')\b|€/u', $summary['payment'], $currencies);
         $currency = $this->unique($currencies[0], fn (string $value) => $value === '€' ? 'EUR' : $value);
         if ($currency !== null) {
             $fields['currency'] = $currency;
@@ -263,86 +271,94 @@ class BusinessExpensePdfTextImportService
         return isset($parts[2]) && (int) $parts[2] > (int) $parts[3] ? null : $parts[1];
     }
 
-    private function invoiceTotal(string $text, ?string $invoicePage): ?string
-    {
-        $amounts = [];
-        foreach ($this->values($text, self::TOTAL_LABELS) as $value) {
-            $amount = $this->amount($value);
-            if ($amount === null) {
-                return null;
-            }
-            $amounts[$amount] = true;
-        }
-        if (count($amounts) === 1) {
-            return (string) array_key_first($amounts);
-        }
-
-        // An annex subtotal cannot replace the one coherent invoice summary.
-        return $invoicePage === null ? null : $this->unique($this->values($invoicePage, self::TOTAL_LABELS), fn (string $value) => $this->amount($value));
-    }
-
-    /** @return array{header: ?string, total_text: string} */
+    /** @return array{header: ?string, fields: string, payment: string} */
     private function invoiceSummary(string $text, ?string $number): array
     {
-        $pages = array_values(array_filter(explode("\f", $text), static fn (string $page): bool => trim($page) !== ''));
+        // Annex numbers, dates and payees are references, even when the invoice itself is unnumbered.
+        $pages = array_values(array_filter(explode("\f", $text), static fn (string $page): bool => trim($page) !== ''
+            && ! preg_match('/^\s*(?:service\h+details?|annex|appendix|príloha|příloha)(?:\h+\d+)?\h*:?\h*(?=\n|$)/iu', $page)));
+        $text = implode("\n\f\n", $pages);
+        if (! preg_match(self::DOCUMENT_MARKER, $text)) {
+            return ['header' => null, 'fields' => '', 'payment' => ''];
+        }
         if (count($pages) === 1) {
-            return ['header' => $pages[0], 'total_text' => $text];
+            return ['header' => $text, 'fields' => $text, 'payment' => $text];
         }
+        $unresolved = ['header' => null, 'fields' => '', 'payment' => ''];
         if ($number === null) {
-            return ['header' => null, 'total_text' => $text];
-        }
-        // The document-wide number is already unique across all numbered pages.
-        $numbered = array_filter($pages, fn (string $page): bool => $this->values($page, self::NUMBER_LABELS) !== []);
-        $invoicePages = $numbered;
-        if (count($numbered) > 1) {
-            $invoicePages = array_values(array_filter($numbered, static fn (string $page): bool => ! preg_match(
-                '/^\s*(?:service\h+details?|annex|appendix|príloha|příloha)(?:\h+\d+)?\h*:?\h*(?=\n|$)/iu', $page
-            )));
-            if (count($invoicePages) === 1) {
-                $invoice = $invoicePages[0];
-                $sellers = $this->sellerKeys($invoice);
-                foreach ($numbered as $page) {
-                    if ($sellers !== [] && array_diff($this->sellerKeys($page), $sellers) !== []) {
-                        // A different seller's annex cannot supply this invoice's payable total.
-                        return ['header' => $invoice, 'total_text' => $invoice];
-                    }
-                }
-            }
+            // Keep dates from one dated page without combining different invoice identities.
+            $dateLabels = self::ISSUE_DATE_LABELS.'|'.self::DELIVERY_DATE_LABELS.'|'.self::DUE_DATE_LABELS;
+            $dated = array_filter($pages, fn (string $page): bool => $this->values($page, $dateLabels) !== []);
+
+            return ['header' => null, 'fields' => count($dated) === 1 ? reset($dated) : '', 'payment' => ''];
         }
 
+        $numbered = array_filter($pages, fn (string $page): bool => $this->values($page, self::NUMBER_LABELS) !== []);
         $header = null;
-        foreach ($invoicePages as $page) {
+        foreach ($numbered as $page) {
             $issue = $this->unique($this->values($page, self::ISSUE_DATE_LABELS), fn (string $value) => $this->date($value));
             $due = $this->unique($this->values($page, self::DUE_DATE_LABELS), fn (string $value) => $this->date($value));
             if ($issue !== null && $due !== null) {
                 if ($header !== null) {
-                    return ['header' => null, 'total_text' => $text];
+                    return $unresolved;
                 }
                 $header = $page;
             }
         }
-        if ($header === null || count($invoicePages) < 2) {
-            return ['header' => $header, 'total_text' => $text];
+
+        if ($header === null) {
+            // A repeated footer on a page of its own is not a competing invoice.
+            $numbered = array_filter($numbered, static fn (string $page): bool => ! preg_match(
+                '/^\s*(?:'.self::NUMBER_LABELS.')(?![\p{L}\p{N}])\h*:?[ \t]*[^\n\r]+\s*$/iuD', $page
+            ));
+            if (count($numbered) !== 1) {
+                return $unresolved;
+            }
+            // A partial header cannot resolve conflicting totals elsewhere in the document.
+            $page = reset($numbered);
+            $total = $this->unique($this->values($text, self::TOTAL_LABELS), fn (string $value) => $this->amount($value));
+
+            return ['header' => null, 'fields' => $page, 'payment' => $total === null ? '' : $page];
         }
 
-        // A repeated number and complete dates do not identify the payee of another page's total.
         $sellers = $this->sellerKeys($header);
-        $accounts = $this->issuerIbans($this->supplierHeader($header));
-        foreach ($invoicePages as $page) {
-            if ($page === $header) {
-                continue;
+        $accounts = $this->accountKeys($header);
+        $payablePages = [];
+        foreach ($numbered as $page) {
+            $totals = $this->values($page, self::TOTAL_LABELS);
+            if ($page !== $header) {
+                $pageSellers = $this->sellerKeys($page);
+                $pageAccounts = $this->accountKeys($page);
+                if ($pageSellers === [] && $pageAccounts === [] && $totals === []) {
+                    continue;
+                }
+                if ($pageSellers === [] || array_diff($pageSellers, $sellers) !== [] || array_diff($pageAccounts, $accounts) !== []) {
+                    // A shared number cannot establish which of two different payees issued the invoice.
+                    return ['header' => null, 'fields' => '', 'payment' => ''];
+                }
             }
-            $pageSellers = $this->sellerKeys($page);
-            $pageAccounts = $this->issuerIbans($this->supplierHeader($page));
-            if ($pageSellers === [] && $pageAccounts === [] && $this->values($page, self::TOTAL_LABELS) === []) {
-                continue;
-            }
-            if ($pageSellers === [] || array_diff($pageSellers, $sellers) !== [] || array_diff($pageAccounts, $accounts) !== []) {
-                return ['header' => null, 'total_text' => $text];
+            if ($totals !== []) {
+                $payablePages[] = $page;
             }
         }
 
-        return ['header' => $header, 'total_text' => $text];
+        // An unreadable total outside a marked annex still requires manual review.
+        foreach ($this->values($text, self::TOTAL_LABELS) as $value) {
+            if ($this->amount($value) === null) {
+                return ['header' => $header, 'fields' => $header, 'payment' => ''];
+            }
+        }
+        $payment = $payablePages === [] || in_array($header, $payablePages, true) ? $header : implode("\n\f\n", $payablePages);
+
+        return ['header' => $header, 'fields' => $header, 'payment' => $payment];
+    }
+
+    /** @return list<string> */
+    private function accountKeys(string $page): array
+    {
+        $accounts = $this->issuerIbans($this->supplierHeader($page));
+
+        return array_values(array_unique(array_map(static fn (string $value): string => SupplierPaymentIban::normalize($value) ?? $value, $accounts)));
     }
 
     /** @return list<string> */
@@ -413,7 +429,7 @@ class BusinessExpensePdfTextImportService
 
     private function amount(string $value): ?string
     {
-        $value = trim(preg_replace('/\h*(?:EUR|USD|GBP|CZK|CHF|PLN|HUF|SEK|NOK|DKK|€)$/u', '', trim($value)));
+        $value = trim(preg_replace('/\h*(?:'.self::CURRENCIES.'|€)$/u', '', trim($value)));
         if (! preg_match('/^[+-]?\h*\d[\d .,\x{00a0}\x{202f}]*$/uD', $value)) {
             return null;
         }
@@ -452,18 +468,28 @@ class BusinessExpensePdfTextImportService
         // Accept a role label only at the start of a line or cell with a separated value.
         preg_match_all('/(?:^|[\n\t])[ ]*(?:'.$labels.')[ ]*(?::[ \t]*(?:\n[ \t]*)?|\t+[ ]*|\n[ \t]*)([^\n\r\t\f]+)/iu', $text, $matches);
 
-        return array_map('trim', $matches[1]);
+        $headings = self::BUYER_LABELS.'|'.self::SELLER_LABELS.'|invoice|fakt[úu]ra|credit\h+note|dobropis';
+        $metadata = self::NUMBER_LABELS.'|'.self::ISSUE_DATE_LABELS.'|'.self::DUE_DATE_LABELS.'|'.self::DELIVERY_DATE_LABELS
+            .'|'.self::TOTAL_LABELS.'|'.self::SYMBOL_LABELS.'|IBAN|BIC(?:/SWIFT)?|SWIFT|currency|mena|měna|bank\h+details|bankov[ée]\h+spojenie';
+
+        $structured = '(?:'.self::NUMBER_LABELS.')\h+[\p{L}\p{N}][\p{L}\p{N}/._-]{0,63}'
+            .'|(?:currency|mena|měna)\h+(?:'.self::CURRENCIES.'|€)'
+            .'|IBAN\h+[A-Z]{2}[0-9]{2}[A-Z0-9 ]+|(?:BIC(?:/SWIFT)?|SWIFT)\h+(?-i:[A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)';
+        $names = array_map('trim', $matches[1]);
+
+        return array_values(array_filter($names, static fn (string $name): bool => ! preg_match(
+            '~^(?:'.$headings.'|'.$metadata.')\h*:?$|^(?:'.$metadata.')(?:\h*:|\h+[+\-\d])|^(?:'.$structured.')$~iuD', $name
+        )));
     }
 
     private function supplierHeader(string $text): string
     {
-        return preg_split('/\b(?:'.self::BUYER_LABELS.')\b\h*:?/iu', $text, 2)[0];
+        return preg_split('/(?:^|[\n\t])[ ]*(?:'.self::BUYER_LABELS.')(?=[:\h\n]|$)/iu', $text, 2)[0];
     }
 
     private function supplierName(string $value): ?string
     {
         return $value !== '' && mb_strlen($value) <= 255 && ! preg_match('/[:\p{Cc}\p{Zl}\p{Zp}]/u', $value)
-            && ! preg_match('/^(?:'.self::BUYER_LABELS.'|'.self::SELLER_LABELS.'|IBAN|BIC|SWIFT)$/iuD', $value)
             ? $value : null;
     }
 

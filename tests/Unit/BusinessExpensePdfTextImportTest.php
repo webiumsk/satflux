@@ -166,12 +166,13 @@ class BusinessExpensePdfTextImportTest extends TestCase
                     $this->assertArrayNotHasKey('supplier_name', $draft);
                     $this->assertArrayNotHasKey('title', $draft);
                     $this->assertArrayNotHasKey('supplier_iban', $draft);
+                    $this->assertArrayNotHasKey('total', $draft);
                 } else {
                     $this->assertSame('Synthetic Carrier Ltd.', $draft['supplier_name']);
                     $this->assertSame('Synthetic Carrier Ltd.', $draft['title']);
                     $this->assertSame('SK6807200002891987426353', $draft['supplier_iban']);
+                    $this->assertSame(19.5, $draft['total']);
                 }
-                $this->assertSame(19.5, $draft['total']);
 
                 $withAnnexTotal = $service->extractFromText(str_replace($other, $other."\nTotal due: 3.00 EUR", $text));
                 if ($heading === '') {
@@ -198,9 +199,83 @@ class BusinessExpensePdfTextImportTest extends TestCase
                 $this->assertArrayNotHasKey('supplier_name', $draft);
                 $this->assertArrayNotHasKey('title', $draft);
                 $this->assertArrayNotHasKey('supplier_iban', $draft);
-                $this->assertSame(19.5, $draft['total']);
+                $this->assertArrayNotHasKey('total', $draft);
             }
         }
+    }
+
+    /** @return array<string, array{string, string, array<string, mixed>}> */
+    public static function invoiceScopes(): array
+    {
+        $invoice = "Invoice no.: I-01\nSupplier: Carrier Ltd.\nInvoice date: 2026-11-01";
+        $dated = $invoice."\nDue date: 2026-11-10";
+        $detail = "Service detail\nInvoice no.: I-01\nSupplier: Contractor Ltd.\nIBAN: DE89370400440532013000\nDue date: 2026-12-01\nInvoice date: 2026-11-20";
+        $sameSeller = str_replace('Contractor Ltd.', 'Carrier Ltd.', $detail);
+        $unmarked = "Invoice no.: I-01\nSupplier: Contractor Ltd.\nTotal due: 3.00 USD";
+
+        return [
+            'only numbered page is a marked annex' => ["Invoice\nSupplier: Carrier Ltd.\nTotal due: 11 EUR", $detail,
+                ['supplier_iban' => null, 'total' => 11.0, 'currency' => 'EUR', 'due_date' => null]],
+            'annex with the same seller has the only total' => [$dated, $sameSeller."\nTotal due: 3.00 USD", ['total' => null]],
+            'invoice has amount without currency' => [$invoice."\nTotal due: 11", $detail."\nTotal due: 3.00 USD", ['total' => 11.0, 'currency' => null]],
+            'invoice has complete amount and currency' => [$dated."\nTotal due: 11 EUR", $sameSeller."\nTotal due: 3.00 USD", ['total' => 11.0, 'currency' => 'EUR']],
+            'only the invoice has authority for dates' => [$invoice, $detail."\nDelivery date: 2026-11-21",
+                ['issue_date' => '2026-11-01', 'delivery_date' => null, 'due_date' => null]],
+            'only a rejected seller states an amount' => [$dated, $unmarked, ['supplier_name' => null, 'total' => null]],
+            'incomplete competing headers cannot combine dates' => [$invoice, $unmarked."\nDue date: 2026-11-20",
+                ['issue_date' => null, 'due_date' => null, 'total' => null]],
+            'same seller has differently formatted accounts' => [$dated."\nIBAN: SK68 0720 0002 8919 8742 6353",
+                $invoice."\nIBAN: SK6807200002891987426353", ['supplier_name' => 'Carrier Ltd.', 'supplier_iban' => 'SK6807200002891987426353']],
+            'unsupported account still conflicts' => [$dated."\nIBAN: SK6807200002891987426353",
+                $invoice."\nIBAN: unsupported", ['supplier_name' => null, 'supplier_iban' => null]],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('invoiceScopes')]
+    public function fields_respect_the_invoice_scope_in_either_page_order(string $invoice, string $other, array $fields): void
+    {
+        $service = new BusinessExpensePdfTextImportService;
+        foreach ([$invoice."\f".$other, $other."\f".$invoice] as $text) {
+            $draft = $service->extractFromText($text);
+            $this->assertSame('I-01', $draft['external_number']);
+            foreach ($fields as $key => $expected) {
+                if ($expected === null) {
+                    $this->assertArrayNotHasKey($key, $draft);
+                } else {
+                    $this->assertSame($expected, $draft[$key] ?? null, $key);
+                }
+            }
+        }
+    }
+
+    #[Test]
+    public function buyer_words_inside_a_supplier_name_preserve_the_supplier_bank_section(): void
+    {
+        foreach (["Customer:\n", "Buyer\n", 'Buyer ', "\tBill to:\t"] as $heading) {
+            $text = "Supplier: Synthetic Customer Service Ltd.\nIBAN: SK6807200002891987426353\n".$heading."Client Ltd.\nIBAN: DE89370400440532013000\nInvoice no.: I-01";
+            $draft = (new BusinessExpensePdfTextImportService)->extractFromText($text);
+            $this->assertSame('Synthetic Customer Service Ltd.', $draft['supplier_name']);
+            $this->assertSame('SK6807200002891987426353', $draft['supplier_iban'] ?? null);
+        }
+    }
+
+    #[Test]
+    public function an_empty_seller_label_does_not_name_the_invoice_heading_or_metadata_as_the_supplier(): void
+    {
+        $service = new BusinessExpensePdfTextImportService;
+        foreach (['Invoice', 'Faktúra', 'Credit note', 'Invoice date', 'Variabilný symbol', 'Total due', 'Invoice no. I-01', 'Currency EUR', 'IBAN DE89370400440532013000'] as $heading) {
+            $draft = $service->extractFromText("Supplier:\n{$heading}\nInvoice no.: I-01");
+            $this->assertArrayNotHasKey('supplier_name', $draft, $heading);
+            $this->assertArrayNotHasKey('title', $draft);
+        }
+        foreach (['Invoice Services Ltd.', 'Swift Logistics Ltd.'] as $company) {
+            $draft = $service->extractFromText("Supplier:\n{$company}\nInvoice no.: I-01");
+            $this->assertSame($company, $draft['supplier_name']);
+            $this->assertSame($company, $draft['title']);
+        }
+        $draft = $service->extractFromText("Supplier:\nInvoice\nSeller: Carrier Ltd.\nInvoice no.: I-01");
+        $this->assertSame('Carrier Ltd.', $draft['supplier_name']);
     }
 
     #[Test]
