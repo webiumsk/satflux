@@ -178,6 +178,10 @@ class BusinessExpensePdfTextImportTest extends TestCase
                     $this->assertArrayNotHasKey('total', $withAnnexTotal);
                 } else {
                     $this->assertSame(19.5, $withAnnexTotal['total']);
+                    $onlyAnnexTotal = str_replace('Total due: 19.50 EUR', '', $text);
+                    $draft = $service->extractFromText(str_replace($other, $other."\nTotal due: 3.00 EUR", $onlyAnnexTotal));
+                    $this->assertSame('Synthetic Carrier Ltd.', $draft['supplier_name']);
+                    $this->assertArrayNotHasKey('total', $draft);
                 }
             }
         }

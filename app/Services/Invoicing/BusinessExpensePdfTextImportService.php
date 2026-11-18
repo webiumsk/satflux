@@ -176,8 +176,9 @@ class BusinessExpensePdfTextImportService
             }
         }
 
-        $invoicePage = $this->invoiceHeaderPage($text, $number);
-        $amount = $this->invoiceTotal($text, $invoicePage);
+        $summary = $this->invoiceSummary($text, $number);
+        $invoicePage = $summary['header'];
+        $amount = $this->invoiceTotal($summary['total_text'], $invoicePage);
         if ($amount !== null && (float) $amount > 0) {
             $amount = match ($this->documentType($text)) {
                 'invoice' => $amount,
@@ -280,14 +281,15 @@ class BusinessExpensePdfTextImportService
         return $invoicePage === null ? null : $this->unique($this->values($invoicePage, self::TOTAL_LABELS), fn (string $value) => $this->amount($value));
     }
 
-    private function invoiceHeaderPage(string $text, ?string $number): ?string
+    /** @return array{header: ?string, total_text: string} */
+    private function invoiceSummary(string $text, ?string $number): array
     {
         $pages = array_values(array_filter(explode("\f", $text), static fn (string $page): bool => trim($page) !== ''));
         if (count($pages) === 1) {
-            return $pages[0];
+            return ['header' => $pages[0], 'total_text' => $text];
         }
         if ($number === null) {
-            return null;
+            return ['header' => null, 'total_text' => $text];
         }
         // The document-wide number is already unique across all numbered pages.
         $numbered = array_filter($pages, fn (string $page): bool => $this->values($page, self::NUMBER_LABELS) !== []);
@@ -301,7 +303,8 @@ class BusinessExpensePdfTextImportService
                 $sellers = $this->sellerKeys($invoice);
                 foreach ($numbered as $page) {
                     if ($sellers !== [] && array_diff($this->sellerKeys($page), $sellers) !== []) {
-                        return $invoice;
+                        // A different seller's annex cannot supply this invoice's payable total.
+                        return ['header' => $invoice, 'total_text' => $invoice];
                     }
                 }
             }
@@ -313,13 +316,13 @@ class BusinessExpensePdfTextImportService
             $due = $this->unique($this->values($page, self::DUE_DATE_LABELS), fn (string $value) => $this->date($value));
             if ($issue !== null && $due !== null) {
                 if ($header !== null) {
-                    return null;
+                    return ['header' => null, 'total_text' => $text];
                 }
                 $header = $page;
             }
         }
         if ($header === null || count($invoicePages) < 2) {
-            return $header;
+            return ['header' => $header, 'total_text' => $text];
         }
 
         // A repeated number and complete dates do not identify the payee of another page's total.
@@ -335,11 +338,11 @@ class BusinessExpensePdfTextImportService
                 continue;
             }
             if ($pageSellers === [] || array_diff($pageSellers, $sellers) !== [] || array_diff($pageAccounts, $accounts) !== []) {
-                return null;
+                return ['header' => null, 'total_text' => $text];
             }
         }
 
-        return $header;
+        return ['header' => $header, 'total_text' => $text];
     }
 
     /** @return list<string> */
