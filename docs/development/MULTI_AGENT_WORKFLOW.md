@@ -2,7 +2,9 @@
 
 ## Resume and plan
 
-1. Read root AGENTS.md, PROJECT_STATE, ROADMAP, DECISION_LOG and workspace/projects.yaml.
+1. Read root AGENTS.md, [the current brief](CURRENT_BRIEF.md) and workspace/projects.yaml.
+   Read entries from PROJECT_STATE, ROADMAP and DECISION_LOG relevant to the current
+   task. Follow their evidence links when a decision or status needs verification.
 2. Inspect Git status/branch/remotes in each affected repository without modifying it.
    Resolve environment overrides first, then root-relative fallbacks. A directory's
    existence does not establish that it is the intended repository: verify its remote.
@@ -11,7 +13,7 @@
    task table: task ID, role, repository, inputs, exact writable files, prerequisites,
    outputs and review gates. Main owns shared files and status.
 5. Delegate independent tasks to real agents, reconcile evidence, and implement only
-   authorized scope. External repositories remain read-only during bootstrap.
+   authorized scope. Apply the repository access rules in AGENTS.md.
 
 ## Installed configuration and discovery
 
@@ -99,6 +101,8 @@ orchestration validation. Product tests are required when product code changes.
 
 Update state after milestones: dated observation source, completed scope, changed
 repositories, reviews, tests, unresolved risks, owner decisions and next allowed task.
+Keep the brief short and update its active focus when handing off. Link to history
+for detailed evidence and use Git or deployment evidence for current status.
 Keep historical results attributed; do not claim an old CI count was rerun locally.
 No credentials, recovery phrases, real payment identifiers or host-specific absolute
 paths belong in tracked state. Skills reference this workflow rather than duplicating

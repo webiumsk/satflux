@@ -121,6 +121,9 @@ def main():
         require(project['access_during_bootstrap'] == expected, f"{project['id']}: unsafe bootstrap access")
     markdown = [ROOT / 'AGENTS.md', *(ROOT / 'docs/development').glob('*.md'), *skill_files]
     require((ROOT / 'AGENTS.md').stat().st_size < 32768, 'Root instructions exceed default discovery budget')
+    brief = ROOT / 'docs/development/CURRENT_BRIEF.md'
+    require(brief.is_file() and 0 < brief.stat().st_size <= 4096,
+            'Current brief must exist and fit within 4 KiB')
     for path in markdown:
         text = path.read_text()
         require(re.search(r'/home/[^/\s]+/', text) is None and '\u2014' not in text,

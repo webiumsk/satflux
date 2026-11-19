@@ -18,7 +18,17 @@ docs/user/
 - The **slug** is the filename without `.md` and must match across locales
   (e.g. `en/create-account.md` and `sk/create-account.md`). Use
   `lowercase-with-dashes`.
-- The article URL is `/documentation/<slug>`.
+- The article URL is `/documentation/<slug>`. The initial HTML uses the
+  canonical English guides. The interactive site keeps its locale selection.
+- The clean Markdown body is available at `/documentation/<slug>.md`.
+  Add `?locale=sk` (or `en`, `es`, `de`, `cs`) to request a translation.
+  The response reports its actual language, including English fallback, in
+  the `Content-Language` header.
+- `/llms.txt` is a short index of selected public guides, generated from their
+  canonical titles and URLs. `/documentation` lists the full public catalog.
+- Googlebot and OAI-SearchBot can fetch the public documentation JSON used by
+  the interactive site. The JSON responses carry `X-Robots-Tag: noindex` so the
+  article HTML can be the search result.
 
 ## Article front-matter
 
@@ -54,4 +64,5 @@ then reference its slug from an article's `category:`.
 
 - Reader: `app/Services/Documentation/UserDocsRepository.php`
 - API: `app/Http/Controllers/DocumentationController.php` (`/api/documentation`, `/api/documentation/{slug}`)
-- Frontend (unchanged, consumes the same API): `resources/js/pages/documentation/`
+- Public HTML, Markdown and text index: `app/Http/Controllers/PublicDocumentationController.php`
+- Interactive frontend (consumes the same API): `resources/js/pages/documentation/`

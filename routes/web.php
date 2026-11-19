@@ -7,6 +7,7 @@ use App\Http\Controllers\Invoicing\BusinessDocumentPayController;
 use App\Http\Controllers\Invoicing\BusinessDocumentPaymentIntentPayController;
 use App\Http\Controllers\LandingPayButtonController;
 use App\Http\Controllers\OgImageController;
+use App\Http\Controllers\PublicDocumentationController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StoreAppPageController;
 use App\Http\Middleware\EnsureCompanyOwnership;
@@ -43,8 +44,7 @@ Route::get('/og-image.webp', [OgImageController::class, 'generate']);
 // SEO: robots.txt with dynamic sitemap URL
 Route::get('/robots.txt', function () {
     $sitemapUrl = rtrim(config('app.url'), '/').'/sitemap.xml';
-    $content = "User-agent: *\n"
-        ."Allow: /\n"
+    $rules = "Allow: /\n"
         ."Allow: /documentation\n"
         ."Allow: /documentation/*\n"
         ."Allow: /faq\n"
@@ -56,7 +56,16 @@ Route::get('/robots.txt', function () {
         ."Disallow: /account\n"
         ."Disallow: /admin\n"
         ."Disallow: /dashboard\n"
-        ."Disallow: /api/\n\n"
+        ."Disallow: /api/\n";
+
+    // Search crawlers can render the Vue help pages using the public documentation API.
+    $content = "User-agent: *\n".$rules."\n"
+        ."User-agent: Googlebot\n"
+        ."User-agent: OAI-SearchBot\n"
+        .$rules
+        ."Allow: /api/documentation$\n"
+        ."Allow: /api/documentation?\n"
+        ."Allow: /api/documentation/\n\n"
         ."Sitemap: {$sitemapUrl}\n";
 
     return response($content, 200, ['Content-Type' => 'text/plain']);
@@ -64,6 +73,11 @@ Route::get('/robots.txt', function () {
 
 // SEO: sitemap.xml
 Route::get('/sitemap.xml', [SitemapController::class, 'index']);
+
+Route::get('/llms.txt', [PublicDocumentationController::class, 'llms']);
+Route::get('/documentation/{slug}.md', [PublicDocumentationController::class, 'markdown']);
+Route::get('/documentation/{slug?}', [PublicDocumentationController::class, 'html']);
+Route::get('/documentation/{path}', fn () => abort(404))->where('path', '.+');
 
 // Public business invoice Bitcoin pay (lazy BTCPay checkout)
 Route::middleware(['throttle:30,1'])->group(function () {

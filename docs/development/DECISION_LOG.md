@@ -1,5 +1,26 @@
 # Development decision log
 
+## 2026-11-19 - Publish the reviewed public documentation branch
+
+The owner authorizes committing and pushing `feat/public-llm-docs` to
+`webiumsk/satflux` after confirming the reviewed file manifest. PR creation,
+merge and deployment are outside this authorization.
+
+## 2026-11-18 - Serve public guides in crawler-readable formats
+
+The owner approves the documentation and agent guidance work. Use one
+docs-as-code source for initial English HTML, localized Markdown with fallback,
+and a curated English `/llms.txt`. Keep application navigation at the existing
+guide URLs. Googlebot and OAI-SearchBot can fetch the public documentation JSON
+used by Vue. The JSON sends `noindex`, the wildcard policy remains in place, and
+the internal OpenAPI catalog stays protected. MCP and mailbox automation remain
+separate future work.
+
+Use [AGENTS.md](../../AGENTS.md) for shared development rules and the
+[current brief](CURRENT_BRIEF.md) to direct routine tasks to relevant journal
+entries. Verify feature-specific approval against the owner's current instructions
+and recorded decisions.
+
 ## Require role evidence for text-PDF suppliers - 2026-11-18
 
 A legal company name in an address window can belong to the buyer. Only populate the supplier and derived title from unambiguous seller-labelled text. When that evidence is missing, the user can select a supplier contact or enter the name manually. Sample validation must check the identity against the known parties.

@@ -3,10 +3,11 @@
     $homepageDemoPosUrl = \App\Support\HomepageDemoUrl::resolve();
 @endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" style="background-color:#111827;color:#fff">
+<html lang="{{ $documentLanguage ?? str_replace('_', '-', app()->getLocale()) }}" style="background-color:#111827;color:#fff">
 
 <head>
     @include('partials.spa-head')
+    <link rel="describedby" href="/llms.txt">
 
     @vite(['resources/css/public.css', 'resources/js/public.ts'])
 
@@ -31,7 +32,11 @@
         data-homepage-variant="{{ $homepageVariant }}"
         data-homepage-demo-pos-url="{{ $homepageDemoPosUrl }}"
         data-lnurl-auth-enabled="{{ $lnurlAuthEnabled ? 'true' : 'false' }}"
-    ></div>
+    >
+        @isset($documentation)
+            @include('partials.public-documentation', $documentation)
+        @endisset
+    </div>
 </body>
 
 </html>

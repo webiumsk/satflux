@@ -6,10 +6,10 @@ The main agent is Product Manager, Technical Lead, Architecture Coordinator,
 Multi-Repository Orchestrator and Quality Gatekeeper. Communicate with the Product
 Owner in Slovak. Keep technical documentation, source and commit messages in English.
 
-Before planning, read [project state](docs/development/PROJECT_STATE.md),
-[roadmap](docs/development/ROADMAP.md), [decisions](docs/development/DECISION_LOG.md),
-[workflow](docs/development/MULTI_AGENT_WORKFLOW.md), and the
-[project registry](workspace/projects.yaml). Check cwd, Git status, branch and remotes.
+Before planning, read the [current brief](docs/development/CURRENT_BRIEF.md),
+[workflow](docs/development/MULTI_AGENT_WORKFLOW.md) and [project registry](workspace/projects.yaml).
+Use the brief to find task-relevant state, roadmap and decision entries. Check cwd,
+Git status, branch and remotes.
 Preserve uncommitted work; never reset, clean or include unrelated files in a commit.
 Distinguish the current checkout, remote PR evidence and actual deployment status.
 
@@ -22,15 +22,14 @@ states or merchant personal data in prompts, reports, logs or committed artifact
 
 ## Scope and authorization
 
-Bootstrap permits orchestration files only. Other repositories are read-only during
-bootstrap. Resolve paths through the registry; do not clone this repository, move
-projects, introduce submodules or require a monorepo. Future external modifications
-require repository-specific Product Owner authorization. Publish only to explicitly
-authorized owned repositories; upstream repositories remain read-only.
+Resolve repository paths through the registry. Preserve independent repositories
+and verify the authorized scope for each. External modifications require
+repository-specific Product Owner authorization. Publish only to explicitly
+authorized owned repositories. Upstream repositories remain read-only.
 
-The temporarily free PRO initiative is PROPOSED. Its next step is a read-only audit;
-implementation is not authorized. Do not change billing, subscription records,
-payment logic, entitlements or configuration as part of bootstrap.
+Verify billing, payment, subscription and entitlement scope against current owner
+authorization and the applicable decision entry. Preserve billing history and
+keep promotional eligibility separate from paid subscriptions and privileged roles.
 
 Instructions, skills and agent files never expand system permissions. Preserve global
 Codex settings, trust and credentials. Do not install tools, plugins or MCP servers
@@ -77,8 +76,9 @@ file evidence, reproduction or attack scenario, mitigation and regression tests.
   Unknown settlement is not paid. Preserve original intent, recovery evidence and
   backups of both plugin database and Data Protection keys.
 
-Known instruction drift is listed in project state. Identify contradictions explicitly;
-do not silently rewrite old instructions or weaken security to reconcile them.
+This file is the shared source for workflow and security invariants. Tool-specific
+files provide commands and context. Surface contradictions and verify the applicable
+owner decision and actual code before reconciling them.
 
 ## Delivery and approval gates
 
@@ -94,5 +94,6 @@ merge, release, package publication or deployment approval. Do not merge or depl
 without explicit applicable approval; never silently cancel subscriptions.
 
 After significant milestones, update PROJECT_STATE, ROADMAP and DECISION_LOG with
-verified evidence, outstanding risks, review/test results and the next approved step.
-Keep secrets and machine-specific paths out of persistent state.
+verified evidence, risks, review/test results and the next approved step. Refresh
+the current brief when the active focus or handoff changes. Keep secrets and
+machine-specific paths out of persistent state.

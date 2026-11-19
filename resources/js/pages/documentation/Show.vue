@@ -189,6 +189,7 @@ interface DocArticle {
   slug: string;
   title: string;
   content?: string;
+  meta_description?: string | null;
   created_at?: string;
   updated_at?: string;
   category_id?: string | number | null;
@@ -370,8 +371,8 @@ watch(locale, () => {
 
 watch(
   article,
-  (a: { title: string; meta_description?: string } | null) => {
-    if (a) {
+  (a) => {
+    if (a && a.slug === route.params.slug) {
       updatePageMeta(route, {
         title: a.title,
         description: a.meta_description || a.title,

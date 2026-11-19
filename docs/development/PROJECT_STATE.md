@@ -1,5 +1,37 @@
 # Project state
 
+## Public documentation discovery and agent guidance - 2026-11-19
+
+The owner-approved work is retained in `feat/public-llm-docs` over verified
+master `58416785`. Public documentation has initial English HTML and metadata,
+five-locale Markdown with English fallback, and a curated `/llms.txt` from
+published guides. Googlebot and OAI-SearchBot can fetch the public JSON needed
+for Vue rendering. The JSON sends `noindex` and the wildcard crawler policy
+and protected OpenAPI authority are preserved.
+
+Agent roles and tool-specific instructions now refer to the shared rules in
+[AGENTS.md](../../AGENTS.md). [The current brief](CURRENT_BRIEF.md) points to
+relevant history. Prior billing decisions remain in the journals.
+
+Local checks pass 71 PHP tests with 672 assertions, including protected API
+and homepage regressions. A separate cached-route run passes 15 documentation
+tests. Pint, PHPStan, the production build, focused Vue tests, lint, locale
+parity, three OpenAPI schemas and orchestration validation pass. Typecheck
+reports 107 inherited errors and zero new errors. Headless Chrome passes seven
+scenarios using the final assets and locally captured Laravel responses,
+including no-JavaScript content, Slovak Vue navigation and Markdown metadata.
+Independent QA accepts 51 PHP tests, nine Vue tests and a separate 514-check
+HTTP probe covering 220 guide/locale combinations and all 11 index links.
+Independent security accepts the reviewed 31-file manifest
+`0c65c3fc9b83a1b18626361d8cb45f3c28078e54ae3a3e74e55d871e715ae2a7`.
+The Codex app-server discovery probe timed out at initialization in both runs.
+The isolated worktree has no Graphify graph.
+
+The owner authorizes publishing the reviewed branch to the owned Satflux origin.
+This scope covers the commit and push. PR creation, merge and deployment are
+separate decisions. See [the workspace](WORKSPACE.md) and
+[the public documentation guide](../user/README.md).
+
 ## Expense text-PDF supplier correction - 2026-11-18
 
 The postal addressee in the reported invoice was copied into both the supplier and the expense title. The earlier nine-field sample check verified presence and position only. An exact comparison against the known buyer reproduces the error. With the correction, the same sample retains its eight other fields and leaves supplier and title for manual entry. The form identifies text-PDF extraction in its success message.

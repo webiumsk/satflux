@@ -1,5 +1,13 @@
 # Development roadmap
 
+## Public documentation discovery and agent instructions - 2026-11-18
+
+The owner approves initial HTML, Markdown and a curated `/llms.txt` for public
+guides, plus a short current brief and consistent project instructions. The owner
+authorizes pushing the reviewed `feat/public-llm-docs` branch. PR creation,
+merge and deployment are separate decisions. After deployment, evaluate useful
+referrals, signups and recurring support questions against a baseline.
+
 ## Expense supplier role verification - 2026-11-18
 
 Review the follow-up to PR456 that requires an explicit supplier role for text-PDF prefills. Regression coverage includes a postal addressee repeated in the buyer block and manual completion of partial drafts.
@@ -2836,7 +2844,7 @@ boundary; the owner accepted that limitation.
 
 Existing payment integrations and deferred NWC work are not expanded by this roadmap.
 
-## Offline security/reliability follow-up — 2026-10-19
+## Offline security/reliability follow-up - 2026-10-19
 
 The source fixes and local test evidence are recorded in
 [the incident analysis](../security/incident-analysis-2026-10-18.md). The immediate
